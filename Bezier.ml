@@ -1,2 +1,2 @@
-type curve=Bezier of float array
+type curve=Bezier of (float*float) array
  
