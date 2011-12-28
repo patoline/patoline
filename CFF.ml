@@ -1,7 +1,7 @@
 open Binary
 open Bezier
 
-type font= { file:in_channel; offset:int; offSize:int; nameIndex:int array;
+type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
              gsubrIndex:string array
            }
@@ -222,7 +222,7 @@ let findDict f a b key=
       
       
     
-let loadFont ?offset:(off=0) file=
+let loadFont ?offset:(off=0) ?size:(size=0) file=
   let f=open_in file in
     seek_in f (off+2);
     let hdrSize=input_byte f in
@@ -253,11 +253,11 @@ let loadFont ?offset:(off=0) file=
         done;
         gsubr
     in
-      { file=f; offset=off; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
+      { file=f; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
         stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex }
         
 
-      
+let glyph_of_char _ _=0        
         
 let loadGlyph font ?index:(idx=0) gl=
   let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
@@ -656,12 +656,16 @@ let fontName ?index:(idx=0) font=
     buf
 
 let fontBBox ?index:(idx=0) font=
-  match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
-      (a::b::c::d::_)->(int_of_float a,int_of_float b,int_of_float c,int_of_float d)
-    | _->raise Not_found
-
+  try
+    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
+        (a::b::c::d::_)->(int_of_float d,int_of_float c,int_of_float b,int_of_float a)
+      | _->(0,0,0,0)
+  with
+      Not_found->(0,0,0,0)
 let italicAngle ?index:(idx=0) font=
-  match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
-      h::_->h
-    | _->raise Not_found
-
+  try
+    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
+        h::_->h
+      | _->0.
+  with
+      Not_found->0.

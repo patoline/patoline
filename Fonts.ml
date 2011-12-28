@@ -27,6 +27,12 @@ let loadFont ?offset:(off=0) f=
     else
       raise Not_supported
 
+let glyph_of_char f c=
+  match f with
+      CFF x->CFF.glyph_of_char x c
+    | Opentype x->Opentype.glyph_of_char x c
+
+
 let loadGlyph f g=
   match f with
       CFF x->CFFGlyph (CFF.loadGlyph x g)
@@ -41,6 +47,11 @@ let glyphFont gl=
   match gl with
       CFFGlyph x->CFF (CFF.glyphFont x)
     | OpentypeGlyph x->Opentype (Opentype.glyphFont x)
+
+let glyphNumber gl=
+  match gl with
+      CFFGlyph x->CFF.glyphNumber x
+    | OpentypeGlyph x->Opentype.glyphNumber x
 
 let fontName f=
   match f with

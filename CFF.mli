@@ -1,6 +1,7 @@
 type font = {
   file : in_channel;
   offset : int;
+  size:int;
   offSize : int;
   nameIndex : int array;
   dictIndex : int array;
@@ -20,11 +21,12 @@ type glyph = {
 exception Index
 exception Type2Int of int
 
-val loadFont : ?offset:int -> string->font
-
+val loadFont : ?offset:int -> ?size:int->string->font
+val glyph_of_char:font->char->int
 val loadGlyph : font -> ?index:int->int -> glyph
 val outlines : glyph -> Bezier.curve list
 val glyphFont : glyph -> font
+val glyphNumber : glyph -> int
 
 val fontName:?index:int->font->string
 val fontBBox:?index:int->font->(int*int*int*int)
