@@ -1,16 +1,14 @@
+(** This module defines the common interface to font faces. All
+"submodules" should define at least the same functions, although there
+does not seem to be a way in OCaml to express this while leaving the
+subtype constructors accessible
+
+    Here is how to load glyphs from a char :
+    [let font=loadFont file in loadGlyph font (glyph_of_char font char)]
+ *)
+
 open Binary
 open Bezier
-
-(*
-module type Font = sig
-  type font
-  type glyph
-  val loadFont : string->int->int->font list
-  val loadGlyph : font->int->int->glyph
-  val outlines : glyph->Bezier.curve list
-  val glyphFont:glyph->font
-end
-*)
 
 
 type font = CFF of CFF.font | Opentype of Opentype.font
@@ -18,6 +16,10 @@ type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
 
 exception Not_supported
 
+
+
+(** loadFont pretends it can recognize font file types, but it
+    actually only looks at the extension in the file name *)
 let loadFont ?offset:(off=0) f=
   if Filename.check_suffix f ".otf" then
     Opentype (Opentype.loadFont ~offset:off f)

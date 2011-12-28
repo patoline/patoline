@@ -14,7 +14,6 @@ module type Driver = sig
   val lineto : driver->(float*float) -> unit
   val curveto : driver->(float*float) -> (float*float) -> (float*float) -> unit
 
-  val close:driver->unit
   val stroke:driver->unit
   val fill:driver->unit
   val fill_stroke:driver->unit
