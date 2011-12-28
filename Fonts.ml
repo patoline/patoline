@@ -55,6 +55,11 @@ let glyphNumber gl=
       CFFGlyph x->CFF.glyphNumber x
     | OpentypeGlyph x->Opentype.glyphNumber x
 
+let glyphWidth gl=
+  match gl with
+      CFFGlyph x->CFF.glyphWidth x
+    | OpentypeGlyph x->Opentype.glyphWidth x
+
 let fontName f=
   match f with
       CFF x->CFF.fontName x

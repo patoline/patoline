@@ -32,7 +32,7 @@ module Pdf =
   (struct
      type params=string
          
-     type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; mutable fontGlyphs:IntSet.t }
+     type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; mutable fontGlyphs:float IntMap.t }
      type driver= { out_chan:out_channel;
                     mutable xref:int IntMap.t;
                     mutable pages:int IntMap.t;
@@ -122,11 +122,6 @@ module Pdf =
                          
                          (* Widths *)
                          let w=futureObject pdf in
-                           (*let m0=IntSet.min_elt widths in
-                             output_string pdf.out_chan ("["^(string_of_int m0)^"[");
-                             IntSet.iter (fun x->output_string pdf.out_chan ((string_of_int m0)^" ")) widths;
-                             output_string pdf.out_chan "]]";
-                             endObject pdf;*)
                            
                            
                          (* Font dictionary *)
@@ -144,7 +139,7 @@ module Pdf =
                                                            fontName^" /DescendantFonts ["^(string_of_int fontDict)^" 0 R] >>");
                              endObject pdf;
 
-                             let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w; fontGlyphs=IntSet.empty } in
+                             let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w; fontGlyphs=IntMap.empty } in
                                pdf.fonts<-StrMap.add (Fonts.fontName font) result pdf.fonts;
                                result
                    )
@@ -156,8 +151,14 @@ module Pdf =
        (* Toutes les largeurs des polices *)
        StrMap.iter (fun _ x->
                       resumeObject pdf x.fontWidthsObj;
-                      output_string pdf.out_chan "[]";
-                      endObject pdf;
+                      let (m0,_)=IntMap.min_binding x.fontGlyphs in
+                        output_string pdf.out_chan ("[ "^(string_of_int m0)^" [ ");
+                        for i=m0 to fst (IntMap.max_binding x.fontGlyphs) do
+                          let w=try IntMap.find i x.fontGlyphs with Not_found->0. in
+                            output_string pdf.out_chan ((string_of_float w)^" ");
+                        done;
+                        output_string pdf.out_chan "]]";
+                        endObject pdf;
                    ) pdf.fonts;
 
        (* Ecriture du pageTree *)
@@ -300,6 +301,10 @@ module Pdf =
                                 card
                             )
                         in
+                        let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
+                          if not (IntMap.mem (Fonts.glyphNumber gl) pdfFont.fontGlyphs) then
+                            pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
+
                           if idx <> pdf.currentFont || size <> pdf.currentSize then
                             pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int size)^" Tf <"))
                           else

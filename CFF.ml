@@ -273,8 +273,10 @@ let loadGlyph font ?index:(idx=0) gl=
       matrix=Array.of_list fontMatrix;
       subrs=font.subrIndex.(idx);
       gsubrs=font.gsubrIndex }
+
+exception Found of float
       
-let outlines gl=
+let outlines_ gl onlyWidth=
   Random.init (int_of_char gl.type2.[0]);
   let stack=Array.create 48 0. in
   let stackC=ref 0 in
@@ -354,14 +356,17 @@ let outlines gl=
         match int_of_char (program.[!pc]) with
             RMOVETO->
               (moveto (!x +. stack.(!stackC-2)) (!y +. stack.(!stackC-1));
+               if onlyWidth && !stackC>2 then raise (Found stack.(0));
                stackC:=0;
                incr pc)
           | HMOVETO->
               (moveto (!x +. stack.(!stackC-1)) !y;
+               if onlyWidth && !stackC>1 then raise (Found stack.(0));
                stackC:=0;
                incr pc)
           | VMOVETO->
               (moveto !x (!y +. stack.(!stackC-1));
+               if onlyWidth && !stackC>1 then raise (Found stack.(0));
                stackC:=0;
                incr pc)
           | RLINETO->
@@ -452,9 +457,14 @@ let outlines gl=
                    incr pc)
                 
           | HSTEM | VSTEM | HSTEMHM
-          | VSTEMHM->(hints := !hints + !stackC / 2 ; stackC:=0 ; incr pc)
+          | VSTEMHM->(
+              if onlyWidth && (!stackC land 1)=1 then raise (Found stack.(0));
+              
+              hints := !hints + !stackC / 2 ; stackC:=0 ; incr pc
+            )
               
           | HINTMASK->((*print_string "hints : ";print_int !hints;print_string ",";print_int !stackC;print_newline();*)
+              if onlyWidth && !stackC > 0 then raise (Found stack.(0));
               hints := !hints + !stackC / 2 ;
               stackC:=0 ; pc := !pc + 1 + (int_of_float (ceil ((float_of_int !hints)/.8.))))
               
@@ -463,6 +473,7 @@ let outlines gl=
               
           | ENDCHAR->
               (if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
+               if onlyWidth && !stackC>0 then raise (Found stack.(0));
                pc:=String.length program)
           | RETURN->pc:=String.length program
               
@@ -646,6 +657,21 @@ let outlines gl=
   in
     execute gl.type2;
     List.rev !resultat
+
+let outlines glyph=outlines_ glyph false
+let glyphWidth glyph=
+  try let _=outlines_ glyph true in raise (Found 0.) with
+      Found x->
+        (try
+           let f=glyph.glyphFont.file in
+           let off=glyph.glyphFont.offset in
+           let privOffset=findDict f (glyph.glyphFont.dictIndex.(0)) (glyph.glyphFont.dictIndex.(1)) 18 in
+             match privOffset with
+                 offset::size::_->List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 21)
+               | _->0.
+         with
+             _->0.)+.x
+
 
 let glyphNumber glyph=glyph.glyphNumber
 

@@ -145,6 +145,18 @@ let outlines gl=match gl with
 
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
+
+
+let glyphWidth gl=
+  match gl with
+      CFFGlyph (CFF(f, offset),x)->
+        (let num=CFF.glyphNumber x in
+         let (a,_)=tableLookup "hhea" f.CFF.file offset in
+         let nh=(seek_in (f.CFF.file) (a+34); readInt f.CFF.file 2) in
+         let (b,_)=tableLookup "hmtx" f.CFF.file offset in
+           seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
+           (float_of_int (readInt f.CFF.file 2)))
+          
           
 let fontName ?index:(idx=0) f =
   match f with

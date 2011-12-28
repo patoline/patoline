@@ -7,5 +7,5 @@ val loadGlyph : font -> ?index:int->int -> glyph
 val outlines : glyph -> Bezier.curve list
 val glyphFont : glyph -> font
 val glyphNumber : glyph -> int
-
+val glyphWidth : glyph->float
 val fontName:?index:int->font -> string
