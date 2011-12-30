@@ -60,7 +60,7 @@ let glyph_of_char font char0=
   match font with
       CFF (font,offset0)->
         let file=font.file in
-        let char=int_of_char char0 in
+        let char=Batteries.UChar.code char0 in
         let (a,b)=tableLookup "cmap" file offset0 in
           seek_in file (a+2);
           let numTables=readInt file 4 in

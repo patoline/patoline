@@ -1,3 +1,4 @@
+open Batteries
 type font = {
   file : in_channel;
   offset : int;
@@ -22,7 +23,7 @@ exception Index
 exception Type2Int of int
 
 val loadFont : ?offset:int -> ?size:int->string->font
-val glyph_of_char:font->char->int
+val glyph_of_char:font->UChar.t->int
 val loadGlyph : font -> ?index:int->int -> glyph
 val outlines : glyph -> Bezier.curve list
 val glyphFont : glyph -> font

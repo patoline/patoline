@@ -4,6 +4,7 @@ module type Driver =
   sig
     type driver
     type params = string
+    val filename:string->string
     val init : params -> driver
     val close : driver -> unit
     val begin_page : driver -> float * float -> unit

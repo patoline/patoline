@@ -1,9 +1,10 @@
-
+open Binary
 module Rope=Batteries.Rope
 
 module type Driver = sig
   type driver
   type params=string
+  val filename:string->string
   val init : params -> driver
   val close : driver -> unit
 
@@ -24,9 +25,6 @@ module type Driver = sig
 
 end
 
-module IntMap=Map.Make (struct type t=int let compare=compare end)
-module StrMap=Map.Make (String)
-module IntSet=Set.Make (struct type t=int let compare=compare end)
 
 module Pdf = 
   (struct
@@ -52,6 +50,8 @@ module Pdf =
          
      let pageTree=1
        
+     let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
+
      let init file=
        let out_chan=open_out file in
          output_string out_chan ("%PDF-1.7\n%"^String.make 4 (char_of_int 128)^"\n");

@@ -1,5 +1,5 @@
 all:
-	ocamlbuild -use-ocamlfind -pp cpp test2.native
+	ocamlbuild -use-ocamlfind -pp cpp Texprime.native
 
 doc:
 	ocamlbuild -use-ocamlfind -pp cpp doc.docdir/index.html
