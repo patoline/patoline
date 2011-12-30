@@ -12,7 +12,7 @@ type box=GlyphBox of glyphBox | Glue of (float*float*float)
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 12
 
-
+exception Impossible
 
 let isGlue x=match x with Glue _->true | _->false
 
@@ -27,6 +27,7 @@ module LineMap=Map.Make (struct type t=line let compare=compare end)
 let lineBreak ?format:(w,h = a4)
     ?lead:(lead0 = 15.) 
     ?measure:(measure=pt_of_mm 150.)
+    ?line_height:(line_height=33)
     ?figures:(figures = [||]) lines=
   
 
@@ -99,14 +100,24 @@ let lineBreak ?format:(w,h = a4)
 
                 (* Y a-t-il encore des boites dans ce paragraphe ? *)
                 if !i>=DynArray.length (DynArray.get lines node.paragraph) then (
-                  let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
-                                 lastLineEnd=0; lastFigure=node.lastFigure;
-                                 height=node.height+1;
-                                 lineStart= 0; lineEnd= 0 }
-                  in
-                  let badness'=lastBadness in
-                    register node nextNode badness';
-                    break !todo' !demerits'
+
+                  (* On s'apprete a changer de paragraphe.
+                     - On ne peut pas le faire si on est une ou deux lignes avant la fin de la page
+                     - Ni si on est juste une ligne apres le debut.
+                     - Si on est a la fin de la page, il faut enlever une ligne.
+                  *)
+                  
+                  if (node.height < line_height-3 || node.height=line_height-1) && node.height >=1 then
+                    (Printf.printf "Cas litigieux :%d %d\n" node.height line_height;
+                     let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
+                                    lastLineEnd=0; lastFigure=node.lastFigure;
+                                    height=if node.height=line_height-1 then 0 else node.height+1;
+                                    lineStart= 0; lineEnd= 0 }
+                     in
+                     let badness'=lastBadness in
+                       register node nextNode badness');
+                  
+                  break !todo' !demerits'
 
                 ) else (
                   
@@ -116,10 +127,9 @@ let lineBreak ?format:(w,h = a4)
                     while !j <= (DynArray.length (DynArray.get lines node.paragraph)) && (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= measure do
                       (if !j=DynArray.length (DynArray.get lines node.paragraph) ||
                          (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= measure && isGlue (get node.paragraph !j)) then
-
                            (let nextNode={ paragraph=node.paragraph; lastLineStart=node.lineStart;
                                            lastLineEnd=node.lineEnd; lastFigure=node.lastFigure;
-                                           height=node.height+1;
+                                           height=(node.height+1) mod line_height;
                                            lineStart= !i; lineEnd= !j }
                             in
                               register node nextNode (lastBadness+.(badness node.paragraph !i node.paragraph !j)))
@@ -131,10 +141,12 @@ let lineBreak ?format:(w,h = a4)
             )
       )
   in
-  let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);lineStart=0; lineEnd=0; lastFigure=(-1); height=0 } 0. in
+  let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);lineStart=0; lineEnd=0; lastFigure=(-1); height= -1 } 0. in
   let demerits=break todo (LineMap.empty) in
   let (b,(_,_)) = LineMap.max_binding demerits in
-  let rec makeLines result node=
+    
+  let rec makeLines node result=
+    (*************************************)
     print_line node;
     for i=node.lineStart to node.lineEnd-1 do
       match get node.paragraph i with
@@ -142,9 +154,20 @@ let lineBreak ?format:(w,h = a4)
         | GlyphBox x->Printf.printf "%s" (UTF8.to_string x.contents)
     done;
     print_newline();
+    (*************************************)
     try
+      
       let _,next=LineMap.find node demerits in
-      let result'=
+        makeLines next (node::result)
+    with
+        Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
+  in
+  let pages=DynArray.create () in
+  let rec makePages p=match p with
+      []->()
+    | node::s ->(
+        if node.height=0 then DynArray.add pages (Array.create line_height []);
+        
         if node.lineEnd > node.lineStart then
           (
             let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
@@ -152,18 +175,15 @@ let lineBreak ?format:(w,h = a4)
             let compression=min 1. ((measure-.minLine)/.(maxLine-. minLine)) in
             let rec makeLine i=
               if i>=node.lineEnd then [] else
-              match get node.paragraph i with
-                  Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
-                | x->(x::makeLine (i+1))
+                match get node.paragraph i with
+                    Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
+                  | x->(x::makeLine (i+1))
             in
-              (makeLine node.lineStart)::result
-          )
-        else
-          result
-      in
-        makeLines result' next
-    with
-        Not_found->result
+              (DynArray.last pages).(node.height)<-makeLine node.lineStart
+          );
+        
+        makePages s
+      )
   in
-    makeLines [] b
-
+    makePages (makeLines b []);
+    DynArray.to_array pages

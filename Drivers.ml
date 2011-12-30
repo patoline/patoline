@@ -203,7 +203,10 @@ module Pdf =
        pdf.current_pageSize<-size
            
      let end_page pdf=
-       if pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET ");
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       pdf.posT<-(0.,0.);
+       pdf.currentFont<- -1;
+       pdf.currentSize<- -1;
        let str=Rope.to_string pdf.current_page in
        let contentObject=beginObject pdf in
          output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length str))^" >>\nstream\n");
