@@ -41,19 +41,27 @@ let add_paragraph text=
           
 
 
-
-
 module M=Output.Routine(Pdf)
 
+
+
+let spec=[]
+
+
 let _=
-  let filename="test.tex" in
-  let file=
-    let op=open_in filename in
-    let str=String.create (in_channel_length op) in
-      Pervasives.really_input op str 0 (in_channel_length op);
-      close_in op;
-      str
-  in
-    add_paragraph (UTF8.of_string file);
-    let lines=lineBreak paragraphs in
-      M.output_routine filename lines
+  let filename=ref [] in
+  Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :";
+    
+    match !filename with
+        []->Printf.printf "no input files\n"
+      | h::_->
+          let file=
+            let op=open_in h in
+            let str=String.create (in_channel_length op) in
+              Pervasives.really_input op str 0 (in_channel_length op);
+              close_in op;
+              str
+          in
+            add_paragraph (UTF8.of_string file);
+            let lines=lineBreak paragraphs in
+              M.output_routine !filename lines
