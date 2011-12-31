@@ -72,4 +72,4 @@ let _=
           in
             add_paragraph (UTF8.of_string file);
             let pages=lineBreak paragraphs in
-              M.output_routine !filename pages
+              M.output_routine h pages

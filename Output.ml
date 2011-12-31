@@ -5,7 +5,7 @@ module Routine=functor (M:Drivers.Driver)->struct
 
   let output_routine filename pages=
 
-    let drv=M.init (M.filename "test.pdf") in
+    let drv=M.init (M.filename filename) in
     let lead=15. in
     let y0=pt_of_mm 270. in
       for i=0 to Array.length pages-1 do
