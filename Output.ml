@@ -16,12 +16,12 @@ module Routine=functor (M:Drivers.Driver)->struct
           let x=ref 100. in
           let rec make_line l0=match l0 with []->() | _->
             let rec nextWord l=match l with
-                []->([],0.,[])
-              | (Glue (_,a,_))::s->([],a,s)
-              | (GlyphBox a)::s->let u,v,w=nextWord s in (a.glyph::u,v+.a.width,w)
+                []->([],0.,0.,[])
+              | (Glue (_,a,_))::s->([],0.,a,s)
+              | (GlyphBox a)::s->let u,s,v,w=nextWord s in (a.glyph::u,a.size, v+.a.width,w)
             in
-            let (u,v,w)=nextWord l0 in
-              M.text drv (!x,y0-.lead*.(float_of_int j)) 12 u;
+            let (u,s,v,w)=nextWord l0 in
+              M.text drv (!x,y0-.lead*.(float_of_int j)) (int_of_float s) u;
               x:= !x +. v;
               make_line w
           in

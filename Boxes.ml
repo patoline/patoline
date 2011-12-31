@@ -5,7 +5,7 @@ open Constants
 module UTF8=Batteries.UTF8
 module DynArray=Batteries.DynArray
 
-type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; width:float }
+type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float }
 
 type box=GlyphBox of glyphBox | Glue of (float*float*float)
 

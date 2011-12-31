@@ -31,7 +31,7 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
         
-let dyp_merge = Dyp.keep_all    
+(* let dyp_merge = Dyp.keep_all *)
 
 let dyn_array_of_list l =
     let a = DynArray.create() in
@@ -41,12 +41,14 @@ let dyn_array_of_list l =
 
 %start main
 
+%relation atom<seq
+
 %layout [ ' ' '\r' '\t' ]
  
 %lexer
 
 let utf8_char =
-    ['\033'-'\127']
+    ['\033'-'\091''\093'-'\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -66,6 +68,7 @@ main lexer =
     !res 
   }
   '\n' -> NEWLINE { set_newline lexbuf }
+  '\\''='+ -> OP { String.length (Dyp.lexeme lexbuf) - 1 }
 
 %parser
 
@@ -74,7 +77,7 @@ word:
     { let fsize=float_of_int !current_size in
       List.map (fun c ->
         let gl=glyphCache c in
-        GlyphBox { contents=UTF8.of_char c; glyph=gl; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) w }
+        GlyphBox { contents=UTF8.of_char c; glyph=gl; size = float !current_size; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) w }
 
 paragraph:
   /* possibly empty */
@@ -83,19 +86,38 @@ paragraph:
     { let fsize=float_of_int !current_size in
       w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
 
-full_paragraph:
-   paragraph<p>
-     { dyn_array_of_list p }
+header:
+   OP paragraph<p> OP
+     { let l = $1 in
+       print_string "coucou"; print_newline ();
+       if $3 <> l then raise Dyp.Giveup;
+       print_int l ; print_newline ();
+       let l = 1. +. 0.5 *. float l in
+       let p = List.map (function
+          GlyphBox b -> GlyphBox { b with size = l *. b.size; width = b.width *. l }
+        | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
+       in
+       dyn_array_of_list p
+     }
+
+paragraphs:
+   paragraph<p> [parskip paragraph]*<ps>
+     { List.rev_map dyn_array_of_list (p::ps) }
 
 parskip:
   | NEWLINE NEWLINE+
 
-text:
-  | NEWLINE* full_paragraph<p>
-    { [p] }
-  | text<t> parskip full_paragraph<p>
-    { p::t }
+newlines:
+  | NEWLINE*
 
+text:
+    newlines
+    { [] } atom
+  | text(<=seq)<t> header<h> newlines
+    { h::t } atom  
+  | text(<=atom)<t> paragraphs<p> newlines
+    { p @ t } seq
+  
 main:
-  | text<t> NEWLINE* eof 
+  | text<t> eof 
     { dyn_array_of_list t }
