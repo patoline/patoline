@@ -31,12 +31,15 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
         
-(* let dyp_merge = Dyp.keep_all *)
-
 let dyn_array_of_list l =
     let a = DynArray.create() in
     List.iter (fun x -> DynArray.add a x) (List.rev l);
     a
+
+let dyp_merge = Dyp.keep_all
+
+(* very important to allow using regexp for special combination of characteres*)
+let dypgen_choose_token = `all
 }
 
 %start main
@@ -68,7 +71,8 @@ main lexer =
     !res 
   }
   '\n' -> NEWLINE { set_newline lexbuf }
-  '\\''='+ -> OP { String.length (Dyp.lexeme lexbuf) - 1 }
+  '\\''\\' -> CHAR { UTF8.get (UTF8.of_string "\\") 0 }
+  '\\' -> SPECIAL
 
 %parser
 
@@ -80,19 +84,17 @@ word:
         GlyphBox { contents=UTF8.of_char c; glyph=gl; size = float !current_size; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) w }
 
 paragraph:
-  /* possibly empty */
-    { [] }
+    word<w>
+    { w }
   | paragraph<p> NEWLINE? word<w>
     { let fsize=float_of_int !current_size in
       w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
 
 header:
-   OP paragraph<p> OP
-     { let l = $1 in
-       print_string "coucou"; print_newline ();
-       if $3 <> l then raise Dyp.Giveup;
-       print_int l ; print_newline ();
-       let l = 1. +. 0.5 *. float l in
+   SPECIAL '='+<op> paragraph<p> '='+<cl>
+     { let op = String.length op in 
+       if String.length cl <> op then raise Dyp.Giveup;
+       let l = 1. +. 0.5 *. float op in
        let p = List.map (function
           GlyphBox b -> GlyphBox { b with size = l *. b.size; width = b.width *. l }
         | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
