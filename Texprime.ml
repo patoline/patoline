@@ -43,5 +43,5 @@ let _=
         M.output_routine h pages
     with
       Syntax_Error(pos,msg) ->
-	Printf.printf "%s:%d,%d %s\n" pos.pos_fname (pos.pos_bol - pos.pos_lnum) pos.pos_cnum msg
+	Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg
 

@@ -41,6 +41,8 @@ let dyn_array_of_list l =
 
 %start main
 
+%layout [ ' ' '\r' '\t' ]
+ 
 %lexer
 
 let utf8_char =
@@ -51,50 +53,49 @@ let utf8_char =
   | ['\240'-'\243']['\129'-'\191']['\129'-'\191']['\129'-'\191']
   | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
 
-let parskip = '\n' ['\r''\t'' ']* '\n' ['\r''\t'' ']*
-
-let newline = '\n' '\r'? 
-
-let space = [' ''\t']
-
 let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  parskip -> PARSKIP { set_newline lexbuf; set_newline lexbuf }
-  utf8_char -> CHAR { UTF8.get (UTF8.of_string (Dyp.lexeme lexbuf)) 0  }
-  space -> SPACE { () }
-  newline -> NEWLINE { set_newline lexbuf }
- 
+  utf8_char+ -> WORD {
+    let str = UTF8.of_string (Dyp.lexeme lexbuf) in
+    let len = UTF8.length str in
+    let res = ref [] in
+    for i = 0 to len - 1 do 
+      res := UTF8.get str i :: ! res
+    done ;  
+    !res 
+  }
+  '\n' -> NEWLINE { set_newline lexbuf }
+
 %parser
+
+word:
+  | WORD<w>
+    { let fsize=float_of_int !current_size in
+      List.map (fun c ->
+        let gl=glyphCache c in
+        GlyphBox { contents=UTF8.of_char c; glyph=gl; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) w }
 
 paragraph:
   /* possibly empty */
     { [] }
-  | paragraph<p> CHAR<c>
-    { let gl=glyphCache c in
-      let fsize=float_of_int !current_size in
-      (GlyphBox { contents=UTF8.of_char c; glyph=gl; width=fsize*.(Fonts.glyphWidth gl)/.1000. })::p }
-  | paragraph<p> SPACE* NEWLINE SPACE*
-    { let next = dyp.Dyp.next_lexeme () in
-      if next <> [] && (String.length (List.hd next) > 0) && (List.hd next).[0] = '\n' then raise Dyp.Giveup;
-      let fsize=float_of_int !current_size in
-      (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.))::p }
-  | paragraph<p> SPACE+
-    { let next = dyp.Dyp.next_lexeme () in
-      if next <> [] && (String.length (List.hd next) > 0) && (List.hd next).[0] = '\n' then raise Dyp.Giveup;
-      let fsize=float_of_int !current_size in
-      (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.))::p }
+  | paragraph<p> NEWLINE? word<w>
+    { let fsize=float_of_int !current_size in
+      w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
 
 full_paragraph:
    paragraph<p>
      { dyn_array_of_list p }
 
+parskip:
+  | NEWLINE NEWLINE+
+
 text:
-  | [PARSKIP]? full_paragraph<p>
+  | NEWLINE* full_paragraph<p>
     { [p] }
-  | text<t> PARSKIP full_paragraph<p>
+  | text<t> parskip full_paragraph<p>
     { p::t }
 
 main:
-  | text<t> eof 
+  | text<t> NEWLINE* eof 
     { dyn_array_of_list t }
