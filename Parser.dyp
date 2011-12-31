@@ -4,26 +4,9 @@ open Binary
 open Boxes
 open Constants
 open Lexing 
+open Util
+open Dyp
 
-module UTF8=Batteries.UTF8
-module UChar=Batteries.UChar
-module DynArray=Batteries.DynArray
-
-
-let glyphCache_=ref StrMap.empty
-
-let glyphCache gl=
-  let font=try StrMap.find (Fonts.fontName !current_font) !glyphCache_ with
-        Not_found->(let fontCache=ref IntMap.empty in
-                      glyphCache_:=StrMap.add (Fonts.fontName !current_font) fontCache !glyphCache_;
-                      fontCache)
-  in
-  let code=UChar.code gl in
-    try IntMap.find code !font with
-        Not_found->
-          (let loaded=Fonts.loadGlyph !current_font (Fonts.glyph_of_char !current_font gl) in
-             font:=IntMap.add code loaded !font;
-             loaded)
 
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -31,14 +14,13 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
         
-let dyn_array_of_list l =
-    let a = DynArray.create() in
-    List.iter (fun x -> DynArray.add a x) (List.rev l);
-    a
+type global_data = { cur_section : int Section.IntMap.t }
+
+let global_data = { cur_section = Section.IntMap.empty }
 
 let dyp_merge = Dyp.keep_all
 
-(* very important to allow using regexp for special combination of characteres*)
+(* very important to allow using regexp for special combination of characteres *)
 let dypgen_choose_token = `all
 }
 
@@ -61,45 +43,40 @@ let utf8_char =
 let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD {
-    let str = UTF8.of_string (Dyp.lexeme lexbuf) in
-    let len = UTF8.length str in
-    let res = ref [] in
-    for i = 0 to len - 1 do 
-      res := UTF8.get str i :: ! res
-    done ;  
-    !res 
-  }
+  utf8_char+ -> WORD { let fsize=float_of_int !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
   '\n' -> NEWLINE { set_newline lexbuf }
   '\\''\\' -> CHAR { UTF8.get (UTF8.of_string "\\") 0 }
   '\\' -> SPECIAL
 
 %parser
 
-word:
-  | WORD<w>
-    { let fsize=float_of_int !current_size in
-      List.map (fun c ->
-        let gl=glyphCache c in
-        GlyphBox { contents=UTF8.of_char c; glyph=gl; size = float !current_size; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) w }
-
 paragraph:
-    word<w>
+    WORD<w>
     { w }
-  | paragraph<p> NEWLINE? word<w>
-    { let fsize=float_of_int !current_size in
+  | paragraph<p> NEWLINE? WORD<w>
+    { let fsize=float !current_size in
       w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
 
 header:
-   SPECIAL '='+<op> paragraph<p> '='+<cl>
-     { let op = String.length op in 
-       if String.length cl <> op then raise Dyp.Giveup;
+   SPECIAL ['='+ | '-'+]<op> paragraph<p> ['='+ | '-'+]<cl>
+     @{ if cl <> op then raise Dyp.Giveup;
+       let numbering = op.[0] = '=' in
+       let op = String.length op in 
        let l = 1. +. 0.5 *. float op in
+       let fsize = float !current_size in
+       let p, global_data =
+         if numbering then
+           let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
+           let s = Section.index_to_string fsize global_data.cur_section in 
+           p @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: s, global_data
+         else 
+	   p, global_data
+       in	   
        let p = List.map (function
           GlyphBox b -> GlyphBox { b with size = l *. b.size; width = b.width *. l }
         | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
        in
-       dyn_array_of_list p
+       dyn_array_of_list p, [Global_data global_data]
      }
 
 paragraphs:
@@ -123,3 +100,4 @@ text:
 main:
   | text<t> eof 
     { dyn_array_of_list t }
+
