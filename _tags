@@ -1,1 +1,1 @@
- <*>: package(batteries), thread, -warn_A
+ <*>: package(batteries), package(dyp), thread, -warn_A

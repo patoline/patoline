@@ -1,0 +1,100 @@
+{
+open Drivers
+open Binary
+open Boxes
+open Constants
+open Lexing 
+
+module UTF8=Batteries.UTF8
+module UChar=Batteries.UChar
+module DynArray=Batteries.DynArray
+
+
+let glyphCache_=ref StrMap.empty
+
+let glyphCache gl=
+  let font=try StrMap.find (Fonts.fontName !current_font) !glyphCache_ with
+        Not_found->(let fontCache=ref IntMap.empty in
+                      glyphCache_:=StrMap.add (Fonts.fontName !current_font) fontCache !glyphCache_;
+                      fontCache)
+  in
+  let code=UChar.code gl in
+    try IntMap.find code !font with
+        Not_found->
+          (let loaded=Fonts.loadGlyph !current_font (Fonts.glyph_of_char !current_font gl) in
+             font:=IntMap.add code loaded !font;
+             loaded)
+
+let set_newline dyplexbuf =
+  let l = Dyp.std_lexbuf dyplexbuf in
+  let pos = l.lex_curr_p in
+  let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
+  l.lex_curr_p <- npos
+        
+let dyp_merge = Dyp.keep_all    
+
+let dyn_array_of_list l =
+    let a = DynArray.create() in
+    List.iter (fun x -> DynArray.add a x) (List.rev l);
+    a
+}
+
+%start main
+
+%lexer
+
+let utf8_char =
+    ['\033'-'\127']
+  | ['\194'-'\223']['\129'-'\191']
+  | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
+  | '\239'['\129'-'\159']['\129'-'\191']
+  | ['\240'-'\243']['\129'-'\191']['\129'-'\191']['\129'-'\191']
+  | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
+
+let parskip = '\n' ['\r''\t'' ']* '\n' ['\r''\t'' ']*
+
+let newline = '\n' '\r'? 
+
+let space = [' ''\t']
+
+let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
+
+main lexer =
+  parskip -> PARSKIP { set_newline lexbuf; set_newline lexbuf }
+  utf8_char -> CHAR { UTF8.get (UTF8.of_string (Dyp.lexeme lexbuf)) 0  }
+  space -> SPACE { () }
+  newline -> NEWLINE { set_newline lexbuf }
+ 
+%parser
+
+paragraph:
+  /* possibly empty */
+    { [] }
+  | paragraph<p> CHAR<c>
+    { let gl=glyphCache c in
+      let fsize=float_of_int !current_size in
+      (GlyphBox { contents=UTF8.of_char c; glyph=gl; width=fsize*.(Fonts.glyphWidth gl)/.1000. })::p }
+  | paragraph<p> SPACE* NEWLINE SPACE*
+    { let next = dyp.Dyp.next_lexeme () in
+      if next <> [] && (String.length (List.hd next) > 0) && (List.hd next).[0] = '\n' then raise Dyp.Giveup;
+      let fsize=float_of_int !current_size in
+      (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.))::p }
+  | paragraph<p> SPACE+
+    { let next = dyp.Dyp.next_lexeme () in
+      if next <> [] && (String.length (List.hd next) > 0) && (List.hd next).[0] = '\n' then raise Dyp.Giveup;
+      let fsize=float_of_int !current_size in
+      (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.))::p }
+
+full_paragraph:
+   paragraph<p>
+     { dyn_array_of_list p }
+
+text:
+  | [PARSKIP]? full_paragraph<p>
+    { [p] }
+  | text<t> PARSKIP full_paragraph<p>
+    { p::t }
+
+main:
+  | text<t> eof 
+    { dyn_array_of_list t }
