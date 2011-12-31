@@ -1,5 +1,5 @@
 all: Parser.ml
-	ocamlbuild -use-ocamlfind -cflag -rectypes -pp cpp Texprime.native
+	ocamlbuild -use-ocamlfind -pp cpp Texprime.native
 
 doc:
 	ocamlbuild -use-ocamlfind -pp cpp doc.docdir/index.html
