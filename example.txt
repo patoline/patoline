@@ -1,0 +1,25 @@
+
+\ --- Introduction ---
+
+Un document TeX' c'est beaucoup mieux qu'un document TeX !
+ 
+\ ==== Titre 4 ====
+
+\ === Titre 3 ===
+
+\ == Titre 2 ==
+
+\ == Titre 2b ==
+
+\ === Titre 3b ===
+
+\ == Titre 2 ==
+
+\ == Titre 2b ==
+
+\ = Titre 1 =
+
+Ceci est un petit texte sympa, avec un premier paragraphe assez long
+pour avoir des sauts de lignes :
+
+avec même des accents, surtout l'été !
