@@ -16,9 +16,13 @@ exception Impossible
 
 let isGlue x=match x with Glue _->true | _->false
 
-type line= { paragraph:int; lastLineStart:int; lastLineEnd:int; lineStart:int; lineEnd:int; lastFigure:int; height:int }
+type line= { paragraph:int; lastLineStart:int; lastLineEnd:int;
+             lineStart:int; lineEnd:int; lastFigure:int; height:int;
+             paragraph_height:int
+           }
 
-let print_line l=Printf.printf "{ paragraph=%d; lastLineStart=%d; lastLineEnd=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
+let print_line l=
+  Printf.printf "{ paragraph=%d; lastLineStart=%d; lastLineEnd=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
   l.paragraph l.lastLineStart l.lastLineEnd l.lineStart l.lineEnd l.lastFigure l.height
 
 module LineMap=Map.Make (struct type t=line let compare=compare end)
@@ -79,6 +83,7 @@ let lineBreak ?format:(w,h = a4)
         let todo'=ref (LineMap.remove node todo) in
           if node.paragraph >= DynArray.length lines then break !todo' demerits else
             (
+              (*Printf.printf "node : ";print_line node;*)
               (* On commence par chercher la première vraie boite après node *)
               let i=ref node.lineEnd in
               let demerits'=ref demerits in
@@ -94,7 +99,8 @@ let lineBreak ?format:(w,h = a4)
                       Not_found->reallyAdd ()
               in
 
-                while !i< DynArray.length (DynArray.get lines node.paragraph) && (match get node.paragraph !i with GlyphBox _->false | _->true) do
+                while !i< DynArray.length (DynArray.get lines node.paragraph) &&
+                  (match get node.paragraph !i with GlyphBox _->false | _->true) do
                   incr i
                 done;
 
@@ -107,12 +113,11 @@ let lineBreak ?format:(w,h = a4)
                      - Si on est a la fin de la page, il faut enlever une ligne.
                   *)
                   
-                  if (node.height < line_height-3 || node.height=line_height-1) && node.height >=1 then
-                    (Printf.printf "Cas litigieux :%d %d\n" node.height line_height;
-                     let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
+                  if (node.height < line_height-3 || node.height=line_height-1) && (node.height >=1 || node.paragraph_height<=1) then
+                    (let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
                                     lastLineEnd=0; lastFigure=node.lastFigure;
-                                    height=if node.height=line_height-1 then 0 else node.height+1;
-                                    lineStart= 0; lineEnd= 0 }
+                                    height=if node.height=line_height-1 then -1 else node.height+1;
+                                    lineStart= 0; lineEnd= 0; paragraph_height= -1 }
                      in
                      let badness'=lastBadness in
                        register node nextNode badness');
@@ -124,14 +129,19 @@ let lineBreak ?format:(w,h = a4)
                   
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let j=ref (!i+1) in
-                    while !j <= (DynArray.length (DynArray.get lines node.paragraph)) && (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= measure do
+                    while !j <= (DynArray.length (DynArray.get lines node.paragraph)) && 
+                      (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= measure do
+                        
                       (if !j=DynArray.length (DynArray.get lines node.paragraph) ||
-                         (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= measure && isGlue (get node.paragraph !j)) then
+                         (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= measure && 
+                            isGlue (get node.paragraph !j)) then
                            (let nextNode={ paragraph=node.paragraph; lastLineStart=node.lineStart;
                                            lastLineEnd=node.lineEnd; lastFigure=node.lastFigure;
                                            height=(node.height+1) mod line_height;
-                                           lineStart= !i; lineEnd= !j }
+                                           lineStart= !i; lineEnd= !j;
+                                           paragraph_height=node.paragraph_height+1 }
                             in
+                              print_line nextNode;
                               register node nextNode (lastBadness+.(badness node.paragraph !i node.paragraph !j)))
                       );
                       incr j
@@ -141,10 +151,10 @@ let lineBreak ?format:(w,h = a4)
             )
       )
   in
-  let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);lineStart=0; lineEnd=0; lastFigure=(-1); height= -1 } 0. in
+  let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);
+                               lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
   let demerits=break todo (LineMap.empty) in
   let (b,(_,_)) = LineMap.max_binding demerits in
-    
   let rec makeLines node result=
     (*************************************)
     print_line node;
