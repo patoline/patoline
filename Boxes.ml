@@ -28,15 +28,15 @@ let print_line l=
 module LineMap=Map.Make (struct type t=line let compare=compare end)
 
 
-let lineBreak ?format:(w,h = a4)
-    ?lead:(lead0 = 15.) 
-    ?measure:(measure=pt_of_mm 150.)
-    ?line_height:(line_height=33)
-    ?figures:(figures = [||]) lines=
+type parameters={ format:float*float;
+                  lead:float;
+                  measure:float;
+                  line_height:int }
+
+let lineBreak parameters0 ?figures:(figures = [||]) lines=
   
-
   let get i j=DynArray.get (DynArray.get lines i) j in
-
+    
   let length_min=Array.create (DynArray.length lines) [||] in
   let length_nom=Array.create (DynArray.length lines) [||] in
   let length_max=Array.create (DynArray.length lines) [||] in
@@ -61,27 +61,27 @@ let lineBreak ?format:(w,h = a4)
         length_max.(i).(DynArray.length (DynArray.get lines i))<- !bmax;
       done
   in
-  let badness pi i pj j=
-    let length_nom_=length_nom.(pj).(j) -. length_nom.(pi).(i) in
-    let bad=100.*.(if length_nom_ = measure then 0. else
-                     if length_nom_ > measure then
-                       (let length_min_=length_min.(pj).(j) -. length_min.(pi).(i) in
-                          (length_nom_-. measure) /. length_min_)
-                     else
-                       (let length_max_=length_max.(pj).(j) -. length_max.(pi).(i) in
-                          (measure -. length_nom_) /. length_max_)
-                  )**3.
+  let rec break parameters todo demerits=
+   
+    let badness pi i pj j=
+      let length_nom_=length_nom.(pj).(j) -. length_nom.(pi).(i) in
+      let bad=100.*.(if length_nom_ = parameters.measure then 0. else
+                       if length_nom_ > parameters.measure then
+                         (let length_min_=length_min.(pj).(j) -. length_min.(pi).(i) in
+                            (length_nom_-. parameters.measure) /. length_min_)
+                       else
+                         (let length_max_=length_max.(pj).(j) -. length_max.(pi).(i) in
+                            (parameters.measure -. length_nom_) /. length_max_)
+                    )**3.
+      in
+        bad
     in
-      bad
-  in
-    
-  (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
-  let rec break todo demerits=
-    if LineMap.is_empty todo then demerits else
+      (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
+      if LineMap.is_empty todo then demerits else
       (
         let node,lastBadness=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-          if node.paragraph >= DynArray.length lines then break !todo' demerits else
+          if node.paragraph >= DynArray.length lines then break parameters !todo' demerits else
             (
               (*Printf.printf "node : ";print_line node;*)
               (* On commence par chercher la première vraie boite après node *)
@@ -113,16 +113,18 @@ let lineBreak ?format:(w,h = a4)
                      - Si on est a la fin de la page, il faut enlever une ligne.
                   *)
                   
-                  if (node.height < line_height-3 || node.height=line_height-1) && (node.height >=1 || node.paragraph_height<=1) then
-                    (let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
-                                    lastLineEnd=0; lastFigure=node.lastFigure;
-                                    height=if node.height=line_height-1 then -1 else node.height+1;
-                                    lineStart= 0; lineEnd= 0; paragraph_height= -1 }
-                     in
-                     let badness'=lastBadness in
-                       register node nextNode badness');
+                  if (node.height < parameters.line_height-3 || node.height=parameters.line_height-1) &&
+                    (node.height >=1 || node.paragraph_height<=1) then
+
+                      (let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
+                                      lastLineEnd=0; lastFigure=node.lastFigure;
+                                      height=if node.height=parameters.line_height-1 then -1 else node.height+1;
+                                      lineStart= 0; lineEnd= 0; paragraph_height= -1 }
+                       in
+                       let badness'=lastBadness in
+                         register node nextNode badness');
                   
-                  break !todo' !demerits'
+                  break parameters !todo' !demerits'
 
                 ) else (
                   
@@ -130,14 +132,14 @@ let lineBreak ?format:(w,h = a4)
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let j=ref (!i+1) in
                     while !j <= (DynArray.length (DynArray.get lines node.paragraph)) && 
-                      (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= measure do
+                      (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= parameters.measure do
                         
                       (if !j=DynArray.length (DynArray.get lines node.paragraph) ||
-                         (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= measure && 
+                         (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= parameters.measure && 
                             isGlue (get node.paragraph !j)) then
                            (let nextNode={ paragraph=node.paragraph; lastLineStart=node.lineStart;
                                            lastLineEnd=node.lineEnd; lastFigure=node.lastFigure;
-                                           height=(node.height+1) mod line_height;
+                                           height=(node.height+1) mod parameters.line_height;
                                            lineStart= !i; lineEnd= !j;
                                            paragraph_height=node.paragraph_height+1 }
                             in
@@ -146,14 +148,14 @@ let lineBreak ?format:(w,h = a4)
                       );
                       incr j
                     done;
-                    break !todo' !demerits'
+                    break parameters !todo' !demerits'
                 )
             )
       )
   in
   let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);
                                lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
-  let demerits=break todo (LineMap.empty) in
+  let demerits=break parameters0 todo (LineMap.empty) in
   let (b,(_,_)) = LineMap.max_binding demerits in
   let rec makeLines node result=
     (*************************************)
@@ -176,13 +178,13 @@ let lineBreak ?format:(w,h = a4)
   let rec makePages p=match p with
       []->()
     | node::s ->(
-        if node.height=0 then DynArray.add pages (Array.create line_height []);
+        if node.height=0 then DynArray.add pages (Array.create parameters0.line_height []);
         
         if node.lineEnd > node.lineStart then
           (
             let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
             let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
-            let compression=min 1. ((measure-.minLine)/.(maxLine-. minLine)) in
+            let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
             let rec makeLine i=
               if i>=node.lineEnd then [] else
                 match get node.paragraph i with

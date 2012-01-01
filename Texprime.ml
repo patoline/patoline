@@ -15,6 +15,9 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
+let default={ format=a4; lead=15.; measure=pt_of_mm 270.; line_height=30 }
+
+
 let _=
   let filename=ref [] in
     Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :";    
@@ -39,7 +42,7 @@ let _=
 	in
 	if List.length text > 1 then
 	  raise (Failure "detecting parsing ambiguities, please report");
-        let pages=lineBreak (fst (List.hd text)) in
+        let pages=lineBreak default (fst (List.hd text)) in
         M.output_routine h pages
     with
       Syntax_Error(pos,msg) ->

@@ -1,4 +1,5 @@
 open Binary
+open Constants
 module Rope=Batteries.Rope
 
 module type Driver = sig
@@ -285,7 +286,8 @@ module Pdf =
          result.[0]<-hex ((i land 0xf000)lsr 12);
          result
            
-     let text pdf (x,y) size glyphs=
+     let text pdf (x_,y_) size glyphs=
+       let x,y=pt_of_mm x_, pt_of_mm y_ in
        if not pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " BT "); 
        pdf.isText<-true;
 
