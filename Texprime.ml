@@ -15,7 +15,7 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
-let default={ format=a4; lead=15.; measure=pt_of_mm 270.; line_height=30 }
+let default={ format=a4; lead=8.; measure=270.; line_height=30 }
 
 
 let _=
@@ -43,7 +43,7 @@ let _=
 	if List.length text > 1 then
 	  raise (Failure "detecting parsing ambiguities, please report");
         let pages=lineBreak default (fst (List.hd text)) in
-        M.output_routine h pages
+        M.output_routine h default pages
     with
       Syntax_Error(pos,msg) ->
 	Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

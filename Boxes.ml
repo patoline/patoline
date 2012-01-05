@@ -10,7 +10,7 @@ type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float }
 type box=GlyphBox of glyphBox | Glue of (float*float*float)
 
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
-let current_size=ref 12
+let current_size=ref 4.
 
 exception Impossible
 

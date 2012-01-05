@@ -3,6 +3,7 @@ open Constants
 module Rope=Batteries.Rope
 
 module type Driver = sig
+  (** Dans ce module, toutes les commandes prennent en argument des unités métriques *)
   type driver
   type params=string
   val filename:string->string
@@ -22,9 +23,10 @@ module type Driver = sig
   val close_stroke:driver->unit
   val closePath:driver->unit
 
-  val text:driver->(float*float)->int->Fonts.glyph list->unit
+  val text:driver->(float*float)->float->Fonts.glyph list->unit
 
 end
+
 
 
 module Pdf = 
@@ -32,6 +34,8 @@ module Pdf =
      type params=string
          
      type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; mutable fontGlyphs:float IntMap.t }
+
+     (* l'implémentation de pdf, par contre, est toute en unité pdf, i.e. 1 pt adobe = 1/72 inch *)
      type driver= { out_chan:out_channel;
                     mutable xref:int IntMap.t;
                     mutable pages:int IntMap.t;
@@ -47,7 +51,7 @@ module Pdf =
                     mutable fonts : pdfFont StrMap.t;
                     mutable pageFonts: (int*int) StrMap.t;
                     mutable currentFont:int;
-                    mutable currentSize:int }
+                    mutable currentSize:float }
          
      let pageTree=1
        
@@ -65,7 +69,7 @@ module Pdf =
            isText=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
-           currentFont=(-1); currentSize=(-1) }
+           currentFont=(-1); currentSize=(-1.) }
            
      let resumeObject pdf n=
        flush pdf.out_chan;
@@ -199,15 +203,15 @@ module Pdf =
            close_out pdf.out_chan
 
 
-     let begin_page pdf size=
+     let begin_page pdf (x,y)=
        pdf.current_page<-Rope.empty;
-       pdf.current_pageSize<-size
+       pdf.current_pageSize<-(pt_of_mm x,pt_of_mm y)
            
      let end_page pdf=
        if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        pdf.posT<-(0.,0.);
        pdf.currentFont<- -1;
-       pdf.currentSize<- -1;
+       pdf.currentSize<- -1.;
        let str=Rope.to_string pdf.current_page in
        let contentObject=beginObject pdf in
          output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length str))^" >>\nstream\n");
@@ -232,7 +236,7 @@ module Pdf =
            pdf.pages<-IntMap.add (1+IntMap.cardinal pdf.pages) pageObject pdf.pages
 
 
-     let moveto pdf pos=pdf.vpos<-pos
+     let moveto pdf (x,y)=pdf.vpos<-(pt_of_mm x, pt_of_mm y)
        
      let really_move pdf=
        if pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET ");
@@ -243,14 +247,19 @@ module Pdf =
        pdf.pos<-(0.,0.);
        pdf.vpos<-(infinity,infinity)
 
-     let lineto pdf ((x,y) as pos)=
-       really_move pdf;
-       pdf.current_page <- Rope.append pdf.current_page
-         (Rope.of_string ((string_of_float x)^" "^(string_of_float y)^" l "));
-       pdf.pos<-pos;
-       pdf.vpos<-pos
+     let lineto pdf (x_,y_)=
+       let (x,y) as pos=pt_of_mm x_, pt_of_mm y_ in
+         really_move pdf;
+         pdf.current_page <- Rope.append pdf.current_page
+           (Rope.of_string ((string_of_float x)^" "^(string_of_float y)^" l "));
+            pdf.pos<-pos;
+            pdf.vpos<-pos
 
-     let curveto pdf (x1,y1) (x2,y2) ((x3,y3) as pos)=
+     let curveto pdf (x1_,y1_) (x2_,y2_) ((x3_,y3_) as pos)=
+       let x1,y1,x2,y2,x3,y3=
+         pt_of_mm x1_,pt_of_mm y1_,
+         pt_of_mm x2_,pt_of_mm y2_,
+         pt_of_mm x3_,pt_of_mm y3_ in
        really_move pdf;
        pdf.current_page <- Rope.append pdf.current_page
          (Rope.of_string ((string_of_float x1)^" "^(string_of_float y1)^" "^(string_of_float x2)^" "^
@@ -286,8 +295,9 @@ module Pdf =
          result.[0]<-hex ((i land 0xf000)lsr 12);
          result
            
-     let text pdf (x_,y_) size glyphs=
+     let text pdf (x_,y_) size_ glyphs=
        let x,y=pt_of_mm x_, pt_of_mm y_ in
+       let size=pt_of_mm size_ in
        if not pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " BT "); 
        pdf.isText<-true;
 
@@ -311,7 +321,7 @@ module Pdf =
                             pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
 
                           if idx <> pdf.currentFont || size <> pdf.currentSize then
-                            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int size)^" Tf <"))
+                            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int (int_of_float size))^" Tf <"))
                           else
                             (if not !opened then  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "<"));
                           pdf.current_page <- Rope.append pdf.current_page (Rope.of_string (hexShow (Fonts.glyphNumber gl)));

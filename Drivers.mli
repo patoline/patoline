@@ -18,7 +18,7 @@ module type Driver =
     val fill_stroke : driver -> unit
     val close_stroke : driver -> unit
     val closePath : driver -> unit
-    val text : driver -> float * float -> int -> Fonts.glyph list -> unit
+    val text : driver -> float * float -> float -> Fonts.glyph list -> unit
   end
 
 module Pdf : Driver

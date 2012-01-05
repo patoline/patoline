@@ -43,7 +43,7 @@ let utf8_char =
 let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { let fsize=float_of_int !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
+  utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
   '\n' -> NEWLINE { set_newline lexbuf }
   '\\''\\' -> CHAR { UTF8.get (UTF8.of_string "\\") 0 }
   '\\' -> SPECIAL
@@ -54,7 +54,7 @@ paragraph:
     WORD<w>
     { w }
   | paragraph<p> NEWLINE? WORD<w>
-    { let fsize=float !current_size in
+    { let fsize= !current_size in
       w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
 
 header:
@@ -63,7 +63,7 @@ header:
        let numbering = op.[0] = '=' in
        let op = String.length op in 
        let l = 1. +. 0.5 *. float op in
-       let fsize = float !current_size in
+       let fsize = !current_size in
        let p, global_data =
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
