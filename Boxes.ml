@@ -1,9 +1,7 @@
 open Drivers
 open Binary
 open Constants
-
-module UTF8=Batteries.UTF8
-module DynArray=Batteries.DynArray
+open CamomileLibrary
 
 type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float }
 
@@ -35,20 +33,20 @@ type parameters={ format:float*float;
 
 let lineBreak parameters0 ?figures:(figures = [||]) lines=
   
-  let get i j=DynArray.get (DynArray.get lines i) j in
+  let get i j=lines.(i).(j) in
     
-  let length_min=Array.create (DynArray.length lines) [||] in
-  let length_nom=Array.create (DynArray.length lines) [||] in
-  let length_max=Array.create (DynArray.length lines) [||] in
+  let length_min=Array.create (Array.length lines) [||] in
+  let length_nom=Array.create (Array.length lines) [||] in
+  let length_max=Array.create (Array.length lines) [||] in
   let _=
     let bmin=ref 0. in
     let bnom=ref 0. in
     let bmax=ref 0. in
-      for i=0 to DynArray.length lines-1 do
-        length_min.(i)<-Array.create (DynArray.length (DynArray.get lines i)+1) 0.;
-        length_nom.(i)<-Array.create (DynArray.length (DynArray.get lines i)+1) 0.;
-        length_max.(i)<-Array.create (DynArray.length (DynArray.get lines i)+1) 0.;
-        for j=0 to DynArray.length (DynArray.get lines i)-1 do
+      for i=0 to Array.length lines-1 do
+        length_min.(i)<-Array.create (Array.length (Array.get lines i)+1) 0.;
+        length_nom.(i)<-Array.create (Array.length (Array.get lines i)+1) 0.;
+        length_max.(i)<-Array.create (Array.length (Array.get lines i)+1) 0.;
+        for j=0 to Array.length (Array.get lines i)-1 do
           length_min.(i).(j)<- !bmin;
           length_nom.(i).(j)<- !bnom;
           length_max.(i).(j)<- !bmax;
@@ -56,9 +54,9 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                Glue (a,b,c)->(bmin:= !bmin+.a;bnom:= !bnom+.b;bmax:= !bmax+.c)
              | GlyphBox x->(bmin:= !bmin+.x.width;bnom:= !bnom+.x.width;bmax:= !bmax+.x.width));
         done;
-        length_min.(i).(DynArray.length (DynArray.get lines i))<- !bmin;
-        length_nom.(i).(DynArray.length (DynArray.get lines i))<- !bnom;
-        length_max.(i).(DynArray.length (DynArray.get lines i))<- !bmax;
+        length_min.(i).(Array.length (Array.get lines i))<- !bmin;
+        length_nom.(i).(Array.length (Array.get lines i))<- !bnom;
+        length_max.(i).(Array.length (Array.get lines i))<- !bmax;
       done
   in
   let rec break parameters todo demerits=
@@ -81,7 +79,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
       (
         let node,lastBadness=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-          if node.paragraph >= DynArray.length lines then break parameters !todo' demerits else
+          if node.paragraph >= Array.length lines then break parameters !todo' demerits else
             (
               (*Printf.printf "node : ";print_line node;*)
               (* On commence par chercher la première vraie boite après node *)
@@ -99,13 +97,13 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                       Not_found->reallyAdd ()
               in
 
-                while !i< DynArray.length (DynArray.get lines node.paragraph) &&
+                while !i< Array.length (Array.get lines node.paragraph) &&
                   (match get node.paragraph !i with GlyphBox _->false | _->true) do
                   incr i
                 done;
 
                 (* Y a-t-il encore des boites dans ce paragraphe ? *)
-                if !i>=DynArray.length (DynArray.get lines node.paragraph) then (
+                if !i>=Array.length (Array.get lines node.paragraph) then (
 
                   (* On s'apprete a changer de paragraphe.
                      - On ne peut pas le faire si on est une ou deux lignes avant la fin de la page
@@ -131,10 +129,10 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                   
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let j=ref (!i+1) in
-                    while !j <= (DynArray.length (DynArray.get lines node.paragraph)) && 
+                    while !j <= (Array.length (Array.get lines node.paragraph)) && 
                       (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= parameters.measure do
                         
-                      (if !j=DynArray.length (DynArray.get lines node.paragraph) ||
+                      (if !j=Array.length (Array.get lines node.paragraph) ||
                          (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= parameters.measure && 
                             isGlue (get node.paragraph !j)) then
                            (let nextNode={ paragraph=node.paragraph; lastLineStart=node.lineStart;
@@ -163,7 +161,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
     for i=node.lineStart to node.lineEnd-1 do
       match get node.paragraph i with
           Glue _->Printf.printf " "
-        | GlyphBox x->Printf.printf "%s" (UTF8.to_string x.contents)
+        | GlyphBox x->Printf.printf "%s" (x.contents)
     done;
     print_newline();
     (*************************************)
@@ -174,28 +172,28 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
     with
         Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
   in
-  let pages=DynArray.create () in
-  let rec makePages p=match p with
-      []->()
+  let rec makePages p pages=match p with
+      []->pages
     | node::s ->(
-        if node.height=0 then DynArray.add pages (Array.create parameters0.line_height []);
+        let pages'=if node.height=0 || (match pages with []->true | _->false) then
+          (Array.create parameters0.line_height [])::pages else pages in
+        let first=List.hd pages' in
         
-        if node.lineEnd > node.lineStart then
-          (
-            let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
-            let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
-            let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
-            let rec makeLine i=
-              if i>=node.lineEnd then [] else
-                match get node.paragraph i with
-                    Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
-                  | x->(x::makeLine (i+1))
-            in
-              (DynArray.last pages).(node.height)<-makeLine node.lineStart
-          );
-        
-        makePages s
+          if node.lineEnd > node.lineStart then
+            (
+              let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
+              let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
+              let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
+              let rec makeLine i=
+                if i>=node.lineEnd then [] else
+                  match get node.paragraph i with
+                      Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
+                    | x->(x::makeLine (i+1))
+              in
+                first.(node.height)<-makeLine node.lineStart
+            );
+          
+          makePages s pages'
       )
   in
-    makePages (makeLines b []);
-    DynArray.to_array pages
+    Array.of_list (List.rev (makePages (makeLines b []) []))

@@ -1,5 +1,6 @@
 open Binary
 open CFF
+open CamomileLibrary
 let offsetTable=12
 let dirSize=16
   
@@ -60,7 +61,7 @@ let glyph_of_char font char0=
   match font with
       CFF (font,offset0)->
         let file=font.file in
-        let char=Batteries.UChar.code char0 in
+        let char=UChar.code char0 in
         let (a,b)=tableLookup "cmap" file offset0 in
           seek_in file (a+2);
           let numTables=readInt file 4 in

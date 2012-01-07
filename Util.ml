@@ -3,9 +3,18 @@ open Binary
 open Boxes
 open Constants
 
-module UTF8=Batteries.UTF8
-module UChar=Batteries.UChar
-module DynArray=Batteries.DynArray
+open CamomileLibrary
+
+let array_of_rev_list l0=
+  match l0 with
+      []->[||]
+    | h0::_->
+        let arr=Array.create (List.length l0) h0 in
+        let rec do_it l i=match l with
+            []->arr
+          | h::s->(arr.(i)<-h; do_it s (i-1))
+        in
+          do_it l0 (Array.length arr-1)
 
 let glyphCache_=ref StrMap.empty
 
@@ -23,17 +32,11 @@ let glyphCache gl=
              loaded)
 
 let glyph_of_string fsize str =
-  let str = UTF8.of_string str in
   let len = UTF8.length str in
   let res = ref [] in
   for i = 0 to len - 1 do 
     res := UTF8.get str i :: ! res
-  done ;  
+  done ;
   List.map (fun c ->
     let gl=glyphCache c in
-    GlyphBox { contents=UTF8.of_char c; glyph=gl; size = fsize; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) !res 
-
-let dyn_array_of_list l =
-    let a = DynArray.create() in
-    List.iter (fun x -> DynArray.add a x) (List.rev l);
-    a
+    GlyphBox { contents=UTF8.init 1 (fun _->c); glyph=gl; size = fsize; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) !res 

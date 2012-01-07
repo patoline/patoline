@@ -5,9 +5,6 @@ let readInt f n0=
   in
     readInt_ 0 0
       
-let rec pow n=
-  if n<=0 then 1 else
-    n*(pow n-1)
 
 module IntMap=Map.Make (struct type t=int let compare=compare end)
 module StrMap=Map.Make (String)

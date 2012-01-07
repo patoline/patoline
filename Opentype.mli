@@ -1,4 +1,5 @@
-open Batteries
+open CamomileLibrary
+
 exception Table_not_found
 type font = CFF of (CFF.font*int)
 type glyph = CFFGlyph of (font*CFF.glyph)

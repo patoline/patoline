@@ -1,6 +1,13 @@
 open Binary
 open Constants
-module Rope=Batteries.Rope
+
+module Rope=struct
+  type t=string
+  let empty=""
+  let append a b=a^b
+  let of_string a=a
+  let to_string a=a
+end
 
 module type Driver = sig
   (** Dans ce module, toutes les commandes prennent en argument des unités métriques *)

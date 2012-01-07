@@ -4,9 +4,6 @@ open Boxes
 open Constants
 open Lexing 
 
-module UTF8=Batteries.UTF8
-module UChar=Batteries.UChar
-module DynArray=Batteries.DynArray
 
 
 module M=Output.Routine(Pdf)
@@ -42,9 +39,11 @@ let _=
 	in
 	if List.length text > 1 then
 	  raise (Failure "detecting parsing ambiguities, please report");
-        let pages=lineBreak default (fst (List.hd text)) in
-        M.output_routine h default pages
+
+          let parsed=fst (List.hd text) in
+          let pages=lineBreak default (Array.of_list (List.map (Array.of_list) parsed)) in
+            M.output_routine h default pages
     with
-      Syntax_Error(pos,msg) ->
-	Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg
+        Syntax_Error(pos,msg) ->
+	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg
 

@@ -6,7 +6,7 @@ open Constants
 open Lexing 
 open Util
 open Dyp
-
+open CamomileLibrary
 
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -45,7 +45,7 @@ let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 main lexer =
   utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
   '\n' -> NEWLINE { set_newline lexbuf }
-  '\\''\\' -> CHAR { UTF8.get (UTF8.of_string "\\") 0 }
+  '\\''\\' -> CHAR { UTF8.get ("\\") 0 }
   '\\' -> SPECIAL
 
 %parser
@@ -76,12 +76,12 @@ header:
           GlyphBox b -> GlyphBox { b with size = l *. b.size; width = b.width *. l }
         | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
        in
-       dyn_array_of_list p, [Global_data global_data]
+         p, [Global_data global_data]
      }
 
 paragraphs:
    paragraph<p> [parskip paragraph]*<ps>
-     { List.rev_map dyn_array_of_list (p::ps) }
+     { List.rev (p::ps) }
 
 parskip:
   | NEWLINE NEWLINE+
@@ -99,5 +99,5 @@ text:
   
 main:
   | text<t> eof 
-    { dyn_array_of_list t }
+    { t }
 
