@@ -1,5 +1,6 @@
 open Binary
 open Bezier
+open Constants
 
 type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
@@ -296,13 +297,14 @@ let outlines_ gl onlyWidth=
     
   let lineto x1 y1=
     opened:=true;
-    resultat:=([| !x,!y; x1,y1 |])::(!resultat);
+    resultat:=([| mm_of_pt !x; mm_of_pt x1 |],[| mm_of_pt !y; mm_of_pt y1 |])::(!resultat);
     x:=x1;
     y:=y1
   in
   let curveto x1 y1 x2 y2 x3 y3=
     opened:=true;
-    resultat:=([| !x,!y; x1,y1; x2,y2; x3,y3 |])::(!resultat);
+    resultat:=([| mm_of_pt !x;mm_of_pt x1;mm_of_pt x2;mm_of_pt x3 |],
+               [| mm_of_pt !y; mm_of_pt y1; mm_of_pt y2; mm_of_pt y3 |])::(!resultat);
     x:=x3;
     y:=y3
   in

@@ -73,7 +73,7 @@ header:
 	   p, global_data
        in	   
        let p = List.map (function
-          GlyphBox b -> GlyphBox { b with size = l *. b.size; width = b.width *. l }
+          GlyphBox b -> GlyphBox { b with size = l *. b.size }
         | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
        in
          p, [Global_data global_data]

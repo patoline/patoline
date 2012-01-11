@@ -1,3 +1,4 @@
+open Constants
 open Binary
 open CFF
 open CamomileLibrary
@@ -157,7 +158,6 @@ let glyphWidth gl=
          let (b,_)=tableLookup "hmtx" f.CFF.file offset in
            seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
            (float_of_int (readInt f.CFF.file 2)))
-          
           
 let fontName ?index:(idx=0) f =
   match f with

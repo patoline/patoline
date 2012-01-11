@@ -17,10 +17,11 @@ module Routine=functor (M:Drivers.Driver)->struct
             let rec nextWord l=match l with
                 []->([],0.,0.,[])
               | (Glue (_,a,_))::s->([],0.,a,s)
-              | (GlyphBox a)::s->let u,s,v,w=nextWord s in (a.glyph::u,a.size, v+.a.width,w)
+              | (GlyphBox a)::s->let u,s,v,w=nextWord s in (a.glyph::u,a.size, v+.a.width*.a.size/.1000.,w)
             in
             let (u,s,v,w)=nextWord l0 in
               M.text drv (!x,y0-.parameters.lead*.(float_of_int j)) s u;
+              (* print_string "y=";print_float (y0-.parameters.lead*.(float_of_int j));print_newline(); *)
               x:= !x +. v;
               make_line w
           in

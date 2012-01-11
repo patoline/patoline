@@ -167,7 +167,7 @@ module Pdf =
                         output_string pdf.out_chan ("[ "^(string_of_int m0)^" [ ");
                         for i=m0 to fst (IntMap.max_binding x.fontGlyphs) do
                           let w=try IntMap.find i x.fontGlyphs with Not_found->0. in
-                            output_string pdf.out_chan ((string_of_float w)^" ");
+                            output_string pdf.out_chan ((string_of_int (round w))^" ");
                         done;
                         output_string pdf.out_chan "]]";
                         endObject pdf;
@@ -328,7 +328,7 @@ module Pdf =
                             pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
 
                           if idx <> pdf.currentFont || size <> pdf.currentSize then
-                            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int (int_of_float size))^" Tf <"))
+                            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int (round size))^" Tf <"))
                           else
                             (if not !opened then  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "<"));
                           pdf.current_page <- Rope.append pdf.current_page (Rope.of_string (hexShow (Fonts.glyphNumber gl)));
