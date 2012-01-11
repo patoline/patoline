@@ -20,6 +20,4 @@ Un document TeX' c'est beaucoup mieux qu'un document TeX !
 \ = Titre 1 =
 
 Ceci est un petit texte sympa, avec un premier paragraphe assez long
-pour avoir des sauts de lignes :
-
-avec même des accents, surtout l'été !
+pour avoir des sauts de lignes : avec même des accents, surtout l'été !

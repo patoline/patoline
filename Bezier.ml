@@ -51,11 +51,74 @@ let bounding_box (a,b)=
       let y0=if ty>=0 && ty<=1 then ty else b.(0) in
 *)
 
-let bounding_box' a=
-  let rec bound x0 y0 x1 y1 i=
-    if i>=Array.length a then ((x0,y0),(x1,y1)) else
-      let x,y=a.(i) in bound (min x0 x) (min y0 y) (max x1 x) (max y1 y) (i+1)
-  in
-    bound (1./.0.) (1./.0.) (-1./.0.) (-1./.0.) 0
+let bernstein_extr f=
+  match Array.length f with
+      0->(1./.0., -1./.0.)
+    | 1->f.(0),f.(0)
+    | 2->if f.(0) > f.(1) then f.(1),f.(0) else f.(0),f.(1)
+    | 3->
+        (
+          let a=f.(0) and b=f.(1) and c=f.(2) in
+          let ax=a-.b+.c in
+          let bx=b-.2.*.a in
+          let xx=(-.bx)/.(2.*.ax) in
+            if ax != 0. && xx>0. && xx<1. then
+              if ax>0. then (casteljau f xx, max a c) else
+                (min a c, casteljau f xx)
+            else
+              if c>=a then (a,c) else (c,a)
+        )
+    | 4->
+        (
+          let a=f.(0) and b=f.(1) and c=f.(2) and d=f.(3) in
+          let ax= -3.*.a +. 9.*.b -. 9.*.c +.3.*.d in
+          let bx= 6.*.a-.12.*.b+.6.*.c in
+          let cx= -3.*.a+.3.*.b in
+          let discr= bx*.bx -. 4.*.ax*.cx in
+            if ax <> 0. then
+
+              if discr < 0. then (if a<d then (a,d) else (d,a)) else
+                let t0= (-.bx -. sqrt discr) /.(2.*.ax) in
+                let t1= (-.bx +. sqrt discr) /.(2.*.ax) in
+                let (f0,f1)=
+                  if t0>0. && t0<1. then (
+                    let ft0=casteljau f t0 in
+                      if ft0<a then 
+                        if d<a then (min d ft0,a) else (ft0,d)
+                      else
+                        if d<a then (d,ft0) else (a,max ft0 d)
+                  ) else (
+                    if a<d then (a,d) else (d,a)
+                  ) in
+
+                  if t1>0. && t1<1. then (
+                    let ft1=casteljau f t1 in
+                      if ft1<f0 then (ft1,f1) else
+                        if ft1>f1 then (f0,ft1) else (f0,f1)
+                  ) else (f0,f1) 
+                    
+            else
+              if bx <> 0. then
+                (let t0= -.cx/.bx in
+                 let f0=if t0>0. && t0<1. then casteljau f t0 else a in
+                   if f0<a then
+                     if a<d then (f0,d) else (min f0 d, a)
+                   else
+                     if a>d then (d,f0) else (a,max f0 d))
+              else
+                if a<=d then (a,d) else (d,a)
+        )
+    | _->
+        (let rec bound x0 x1 i=
+           if i>=Array.length f then (x0,x1) else
+             if f.(i) < x0 then bound f.(i) x1 (i+1) else
+               if f.(i) > x1 then bound x0 f.(i) (i+1) else
+                 bound x0 x1 (i+1)
+         in
+           bound (1./.0.) (-1./.0.) 0)
         
       
+let bounding_box (a,b)=
+  let (x0,x1)=bernstein_extr a in
+  let (y0,y1)=bernstein_extr b in
+    (x0,y0), (x1,y1)

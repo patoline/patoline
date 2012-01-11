@@ -1,10 +1,11 @@
+#define DEBUG_BOXES 1
+
 open Drivers
 open Binary
 open Constants
 open CamomileLibrary
 
-
-type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float }
+type glyphBox= { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float; x0:float; x1:float; y0:float; y1:float }
 
 type box=GlyphBox of glyphBox | Glue of (float*float*float)
 
@@ -15,14 +16,17 @@ exception Impossible
 
 let isGlue x=match x with Glue _->true | _->false
 
-type line= { paragraph:int; lastLineStart:int; lastLineEnd:int;
-             lineStart:int; lineEnd:int; lastFigure:int; height:int;
+type line= { paragraph:int; lineStart:int; lineEnd:int; lastFigure:int; height:int;
              paragraph_height:int
            }
 
 let print_line l=
-  Printf.printf "{ paragraph=%d; lastLineStart=%d; lastLineEnd=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
-  l.paragraph l.lastLineStart l.lastLineEnd l.lineStart l.lineEnd l.lastFigure l.height
+#ifdef DEBUG_BOXES
+  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
+  l.paragraph l.lineStart l.lineEnd l.lastFigure l.height
+#else
+  ()
+#endif
 
 module LineMap=Map.Make (struct type t=line let compare=compare end)
 
@@ -31,6 +35,20 @@ type parameters={ format:float*float;
                   lead:float;
                   measure:float;
                   line_height:int }
+
+let box_width comp=function
+    GlyphBox y->y.width*.y.size/.1000.
+  | Glue (a,_,c)->(a+.(c-.a)*.comp)
+
+let lower_y=function
+    GlyphBox y->y.y0*.y.size/.1000.
+  | _->infinity
+
+let upper_y=function
+    GlyphBox y->y.y1*.y.size/.1000.
+  | _-> -.infinity
+
+
 
 let lineBreak parameters0 ?figures:(figures = [||]) lines=
   
@@ -53,13 +71,43 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
           length_max.(i).(j)<- !bmax;
           (match get i j with
                Glue (a,b,c)->(bmin:= !bmin+.a;bnom:= !bnom+.b;bmax:= !bmax+.c)
-             | GlyphBox x->(bmin:= !bmin+.x.width;bnom:= !bnom+.x.width;bmax:= !bmax+.x.width));
+             | GlyphBox x->(let w=x.width*.x.size/.1000. in bmin:= !bmin+.w;bnom:= !bnom+.w;bmax:= !bmax+.w));
         done;
         length_min.(i).(Array.length (Array.get lines i))<- !bmin;
         length_nom.(i).(Array.length (Array.get lines i))<- !bnom;
         length_max.(i).(Array.length (Array.get lines i))<- !bmax;
       done
   in
+
+  let rec collide pages node0 node1 comp0 comp1 xi xj i j max_col=
+    if (i>node0.lineEnd || j>node1.lineEnd) then
+      max_col
+    else
+      let wi=box_width comp0 pages.(node0.paragraph).(i) in
+      let wj=box_width comp1 pages.(node1.paragraph).(j) in
+      let yi=lower_y pages.(node0.paragraph).(i) in
+      let yj=upper_y pages.(node1.paragraph).(j) in
+        if xi +.wi < xj+. wj then
+          let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
+            collide pages node0 node1 comp0 comp1 (xi+.wi) xj (i+1) j max_col'
+        else
+          let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
+            collide pages node0 node1 comp0 comp1 xi (xj+.wj) i (j+1) max_col'
+  in
+  let makeLine node=
+    let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
+    let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
+    let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
+    let rec makeLine i=
+      if i>=node.lineEnd then [] else
+        match get node.paragraph i with
+            Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
+          | x->(x::makeLine (i+1))
+    in
+      makeLine node.lineStart
+  in
+
+
   let rec break parameters todo demerits=
    
     let badness pi i pj j=
@@ -115,29 +163,29 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                   if (node.height < parameters.line_height-3 || node.height=parameters.line_height-1) &&
                     (node.height >=1 || node.paragraph_height<=1) then
 
-                      (let nextNode={ paragraph=node.paragraph+1; lastLineStart=0;
-                                      lastLineEnd=0; lastFigure=node.lastFigure;
+                      (let nextNode={ paragraph=node.paragraph+1; lastFigure=node.lastFigure;
                                       height=if node.height=parameters.line_height-1 then -1 else node.height+1;
                                       lineStart= 0; lineEnd= 0; paragraph_height= -1 }
                        in
                        let badness'=lastBadness in
                          register node nextNode badness');
-                  
+
                   break parameters !todo' !demerits'
 
                 ) else (
                   
-                  
+                  Printf.printf "i = %d\n" !i; flush stdout;
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let j=ref (!i+1) in
+                  Printf.printf "%f %f\n" (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) parameters.measure; flush stdout;
+
                     while !j <= (Array.length (Array.get lines node.paragraph)) && 
                       (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= parameters.measure do
                         
                       (if !j=Array.length (Array.get lines node.paragraph) ||
                          (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= parameters.measure && 
                             isGlue (get node.paragraph !j)) then
-                           (let nextNode={ paragraph=node.paragraph; lastLineStart=node.lineStart;
-                                           lastLineEnd=node.lineEnd; lastFigure=node.lastFigure;
+                           (let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                            height=(node.height+1) mod parameters.line_height;
                                            lineStart= !i; lineEnd= !j;
                                            paragraph_height=node.paragraph_height+1 }
@@ -152,12 +200,15 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
             )
       )
   in
-  let todo=LineMap.singleton { paragraph=0; lastLineStart=(-1); lastLineEnd=(-1);
-                               lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
+  let todo=LineMap.singleton { paragraph=0; lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
   let demerits=break parameters0 todo (LineMap.empty) in
+    Printf.printf "demerits : done %d\n" (LineMap.cardinal demerits);
   let (b,(_,_)) = LineMap.max_binding demerits in
+    print_line b;
   let rec makeLines node result=
-    (*************************************)
+
+
+#ifdef DEBUG_BOXES
     print_line node;
     for i=node.lineStart to node.lineEnd-1 do
       match get node.paragraph i with
@@ -165,14 +216,17 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
         | GlyphBox x->Printf.printf "%s" (x.contents)
     done;
     print_newline();
-    (*************************************)
-    try
-      
+
+#endif
+
+
+    try  
       let _,next=LineMap.find node demerits in
         makeLines next (node::result)
     with
         Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
   in
+
   let rec makePages p pages=match p with
       []->pages
     | node::s ->(
@@ -181,18 +235,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
         let first=List.hd pages' in
         
           if node.lineEnd > node.lineStart then
-            (
-              let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
-              let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
-              let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
-              let rec makeLine i=
-                if i>=node.lineEnd then [] else
-                  match get node.paragraph i with
-                      Glue (a,_,c)->(Glue (a, a+.compression*.(c-.a), c) :: makeLine (i+1))
-                    | x->(x::makeLine (i+1))
-              in
-                first.(node.height)<-makeLine node.lineStart
-            );
+            first.(node.height)<-makeLine node;
           
           makePages s pages'
       )

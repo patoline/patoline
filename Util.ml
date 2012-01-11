@@ -33,10 +33,26 @@ let glyphCache gl=
 
 let glyph_of_string fsize str =
   let len = UTF8.length str in
-  let res = ref [] in
-  for i = 0 to len - 1 do 
-    res := UTF8.get str i :: ! res
-  done ;
-  List.map (fun c ->
-    let gl=glyphCache c in
-    GlyphBox { contents=UTF8.init 1 (fun _->c); glyph=gl; size = fsize; width=fsize*.(Fonts.glyphWidth gl)/.1000. }) !res 
+  let rec make_glyphs idx glyphs=
+    try
+      let c=UTF8.look str idx in
+      let gl=glyphCache c in
+      let (y0,y1)=List.fold_left (fun (a,b) (_,y)->
+                                    let (c,d)=Bezier.bernstein_extr y in
+                                      (min a c, max b d)
+                                 ) (1./.0., -1./.0.) (Fonts.outlines gl)
+      in
+      let (x0,x1)=List.fold_left (fun (a,b) (y,_)->
+                                    let (c,d)=Bezier.bernstein_extr y in
+                                      (min a c, max b d)
+                                 ) (1./.0., -1./.0.) (Fonts.outlines gl)
+      in
+        make_glyphs (UTF8.next str idx)
+          (GlyphBox { contents=UTF8.init 1 (fun _->c); glyph=gl; size = fsize; width=Fonts.glyphWidth gl;
+                      x0=x0; x1=x1;
+                      y0=y0; y1=y1 } :: glyphs)
+    with
+        _->glyphs
+  in
+    make_glyphs (UTF8.first str) []
+
