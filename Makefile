@@ -2,6 +2,8 @@
 FONTS=CFF.mli CFF.ml Opentype.mli Opentype.ml Fonts.ml
 SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Boxes.ml Output.ml Util.ml Section.ml Parser.dyp Texprime.ml
 
+DOC=Drivers.mli Fonts.ml CFF.mli Opentype.mli Output.ml
+
 EXEC = texprime
 
 
@@ -12,8 +14,9 @@ EXEC = texprime
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg  -pp cpp
-CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -pp cpp
+CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I _build -pp cpp
+CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I _build -pp cpp
+CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I _build -pp cpp
 CAMLDEP = ocamlfind ocamldep -pp cpp
 
 
@@ -44,11 +47,16 @@ SMLYL = $(filter %.ml,$(SMLDYP))
 OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
+
 $(EXEC): $(OBJS) 
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(LIBS) $(OBJS)
 
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) -o $(EXEC) $(LIBS:.cma=.cmxa) $(OPTOBJS)
+
+doc:$(OBJS)
+	mkdir -p doc
+	$(CAMLDOC) -d doc $(DOC)
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
 
@@ -93,9 +101,10 @@ $(EXEC).opt: $(OPTOBJS)
 	$(CAMLYACC) $<
 
 clean::
-	rm -f *.cm[iox] *~ .*~ #*#
+	rm -f *.cm[iox] *~ .*~ \#*\#
 	rm -f $(EXEC)
 	rm -f $(EXEC).opt
+	rm -Rf doc
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
@@ -112,24 +121,3 @@ depend: .depend
 	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) > .depend
 
 include .depend
-
-
-
-
-# texprime: $(MLIS:.mli=.cmi) $(MLS:.ml=.cmx)
-
-# 	ocamlfind ocamlopt -package batteries -o $@ $(MLS:.ml=.cmx)
-
-# %.cmi:%.mli
-# 	ocamlfind ocamlopt -package batteries -package dyp -c -o $@ $<
-
-# %.cmx:%.ml
-# 	ocamlfind ocamlopt -package batteries -package dyp  -pp cpp -c -o $@ $<
-
-
-# %.ml: %.dyp 
-# 	dypgen --no-mli $<
-
-
-# clean:
-# 	rm -Rf *~ *.cmo *.cmx *.cmi *.o texprime

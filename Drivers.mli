@@ -5,10 +5,17 @@ module type Driver =
     type driver
     type params = string
     val filename:string->string
+
     val init : params -> driver
+      (** First function to call before using the driver *)
+
     val close : driver -> unit
+      (** Last function to call, for some drivers need a footer *)
+      
     val begin_page : driver -> float * float -> unit
+      (** Starts a new page *)
     val end_page : driver -> unit
+      (** Flushes the current page *)
     val moveto : driver -> float * float -> unit
     val lineto : driver -> float * float -> unit
     val curveto :
