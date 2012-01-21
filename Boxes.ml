@@ -79,20 +79,26 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
       done
   in
 
-  let rec collide pages node0 node1 comp0 comp1 xi xj i j max_col=
-    if (i>node0.lineEnd || j>node1.lineEnd) then
+  let compression m p i j=
+    let minLine=length_min.(p).(j) -. length_min.(p).(i) in
+    let maxLine=length_max.(p).(j) -. length_max.(p).(i) in
+      min 1. ((m-.minLine)/.(maxLine-. minLine))
+      
+  in
+  let rec collide pi comp_i max_i pj comp_j max_j i xi j xj max_col=
+    if (i>=max_i || j>=max_j) then
       max_col
     else
-      let wi=box_width comp0 pages.(node0.paragraph).(i) in
-      let wj=box_width comp1 pages.(node1.paragraph).(j) in
-      let yi=lower_y pages.(node0.paragraph).(i) in
-      let yj=upper_y pages.(node1.paragraph).(j) in
+      let wi=box_width comp_i lines.(pi).(i) in
+      let wj=box_width comp_j lines.(pj).(j) in
+      let yi=lower_y lines.(pi).(i) in
+      let yj=upper_y lines.(pj).(j) in
         if xi +.wi < xj+. wj then
           let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
-            collide pages node0 node1 comp0 comp1 (xi+.wi) xj (i+1) j max_col'
+            collide pi comp_i max_i pj comp_j max_j (i+1) (xi+.wi) j xj max_col'
         else
           let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
-            collide pages node0 node1 comp0 comp1 xi (xj+.wj) i (j+1) max_col'
+            collide pi comp_i max_i pj comp_j max_j i xi (j+1) (xj+.wj) max_col'
   in
   let makeLine node=
     let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
@@ -178,18 +184,25 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let j=ref (!i+1) in
                   Printf.printf "%f %f\n" (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) parameters.measure; flush stdout;
-
+                    
                     while !j <= (Array.length (Array.get lines node.paragraph)) && 
                       (length_min.(node.paragraph).(!j) -. length_min.(node.paragraph).(!i)) <= parameters.measure do
                         
                       (if !j=Array.length (Array.get lines node.paragraph) ||
                          (length_max.(node.paragraph).(!j) -. length_max.(node.paragraph).(!i) >= parameters.measure && 
                             isGlue (get node.paragraph !j)) then
-                           (let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
+                           (let comp0=compression parameters.measure node.paragraph node.lineStart node.lineEnd in
+                            let comp1=compression parameters.measure node.paragraph !i !j in
+                            let v_distance= if node.height+1>=parameters.line_height then 0. else
+                              collide node.paragraph comp0 node.lineEnd node.paragraph comp1 !j
+                                node.lineStart 0. !i 0. infinity
+                            in
+                            let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                            height=(node.height+1) mod parameters.line_height;
                                            lineStart= !i; lineEnd= !j;
                                            paragraph_height=node.paragraph_height+1 }
                             in
+                              Printf.printf "collide : %f\n" v_distance;
                               print_line nextNode;
                               register node nextNode (lastBadness+.(badness node.paragraph !i node.paragraph !j)))
                       );

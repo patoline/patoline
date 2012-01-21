@@ -12,7 +12,7 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
-let default={ format=a4; lead=5.; measure=150.; line_height=30 }
+let default={ format=a4; lead=3.; measure=150.; line_height=30 }
 
 
 let _=
