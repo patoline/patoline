@@ -46,7 +46,7 @@ let draw_glyph (x0,y0) gl=
 let draw_line (x0,y0) pages node comp=
   let x=ref (float_of_int x0) in
   let y=ref y0 in
-    for i=node.lineStart to node.lineEnd do
+    for i=node.lineStart to node.lineEnd-1 do
       match pages.(node.paragraph).(i) with
           GlyphBox gl->(
             Graphics.draw_rect
@@ -63,17 +63,19 @@ let draw_line (x0,y0) pages node comp=
     flush stdout
     
 
+let inf_zero x=if x=infinity || x= -.infinity then 0. else x
+
 
 let rec collide lines pi comp_i max_i pj comp_j max_j i xi j xj max_col=
-  if (i>max_i || j>max_j) then
+  if (i>=max_i && j>=max_j) then
     max_col
   else
-    let wi=box_width comp_i lines.(pi).(i) in
-    let wj=box_width comp_j lines.(pj).(j) in
-    let yi=if xj+.wj < xi then infinity else lower_y lines.(pi).(i) in
-    let yj=if xi+.wi < xj then infinity else upper_y lines.(pj).(j) in
-      if xi +.wi < xj+. wj then (
-        let x0=max xi xj in
+    let wi=if i<max_i then box_width comp_i lines.(pi).(i) else 0. in
+    let wj=if j<max_j then box_width comp_j lines.(pj).(j) else 0. in
+      if xi +.wi < xj+. wj || j>=max_j then (
+        let yi=inf_zero (if i>=max_i then 0. else lower_y lines.(pi).(i)) in
+        let yj=inf_zero (if xi+.wi<xj || j>=max_j then 0. else upper_y lines.(pj).(j)) in
+        let x0=if xi+.wi<xj then xi else max xi xj in
         let w0=xi +. wi -. x0 in
           if w0>=0. then (
             Graphics.set_color Graphics.red;
@@ -84,11 +86,13 @@ let rec collide lines pi comp_i max_i pj comp_j max_j i xi j xj max_col=
           collide lines pi comp_i max_i pj comp_j max_j (i+1) (xi+.wi) j xj max_col
 
       ) else (
-
-        let x0=max xi xj in
+        let yi=inf_zero (if xj>xi+.wi || i>=max_i then 0. else lower_y lines.(pi).(i)) in
+        let yj=inf_zero (if j>=max_j then 0. else upper_y lines.(pj).(j)) in
+        let x0=if xj+.wj<xi then xj else max xi xj in
         let w0=xj +. wj -. x0 in
           if w0>=0. then (
             Graphics.set_color Graphics.green;
+            Printf.printf "%d %d %d %d\n"(round (mm*.x0)) (round (200.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj)));
             Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj)));
             Graphics.set_color Graphics.black;
             (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
@@ -102,12 +106,12 @@ let _=
   let text=Parser.main (Dyp.from_string (Parser.pp ()) test) in
   let parsed=fst (List.hd text) in
   let pages=array_of_rev_list (List.map (array_of_rev_list) parsed) in
-  let node={ paragraph=0; lineStart=0; lineEnd=67; lastFigure= -1; height=0; paragraph_height=0 } in
-  let node'={ paragraph=0; lineStart=69; lineEnd=139; lastFigure= -1; height=0; paragraph_height=0 } in
-  let comp=0. in
-  let comp'=0.7 in
-  let x0=0. in
-  let x0'=10. in
+  let node={ paragraph=0; lineStart=0; lineEnd=68; lastFigure= -1; height=0; paragraph_height=0 } in
+  let node'={ paragraph=0; lineStart=69; lineEnd=140; lastFigure= -1; height=0; paragraph_height=0 } in
+  let comp=1. in
+  let comp'=0. in
+  let x0=10. in
+  let x0'=0. in
 
     Graphics.open_graph "";
     draw_line (round (x0*.mm),100) pages node comp;
