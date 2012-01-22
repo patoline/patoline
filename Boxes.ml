@@ -85,20 +85,36 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
       min 1. ((m-.minLine)/.(maxLine-. minLine))
       
   in
+
   let rec collide pi comp_i max_i pj comp_j max_j i xi j xj max_col=
-    if (i>=max_i || j>=max_j) then
+    if (i>max_i || j>max_j) then
       max_col
     else
       let wi=box_width comp_i lines.(pi).(i) in
       let wj=box_width comp_j lines.(pj).(j) in
-      let yi=lower_y lines.(pi).(i) in
-      let yj=upper_y lines.(pj).(j) in
-        if xi +.wi < xj+. wj then
-          let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
-            collide pi comp_i max_i pj comp_j max_j (i+1) (xi+.wi) j xj max_col'
-        else
-          let max_col'=if not (is_infinite yj || is_infinite yi) then min max_col (yi-.yj) else max_col in
-            collide pi comp_i max_i pj comp_j max_j i xi (j+1) (xj+.wj) max_col'
+      let yi=if xj+.wj < xi then infinity else lower_y lines.(pi).(i) in
+      let yj=if xi+.wi < xj then infinity else upper_y lines.(pj).(j) in
+        if xi +.wi < xj+. wj then (
+          let x0=max xi xj in
+          let w0=xi +. wi -. x0 in
+            (* if w0>=0. then ( *)
+            (*   Graphics.set_color Graphics.red; *)
+            (*   Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
+            (*   Graphics.set_color Graphics.black; *)
+            (* ); *)
+            collide pi comp_i max_i pj comp_j max_j (i+1) (xi+.wi) j xj max_col
+
+        ) else (
+
+          let x0=max xi xj in
+          let w0=xj +. wj -. x0 in
+            (* if w0>=0. then ( *)
+            (*   Graphics.set_color Graphics.green; *)
+            (*   Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
+            (*   Graphics.set_color Graphics.black; *)
+            (* ); *)
+            collide pi comp_i max_i pj comp_j max_j i xi (j+1) (xj+.wj) max_col
+        )
   in
   let makeLine node=
     let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
