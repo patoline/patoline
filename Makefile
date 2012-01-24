@@ -1,8 +1,8 @@
 
 FONTS=CFF.mli CFF.ml Opentype.mli Opentype.ml Fonts.ml
-SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Boxes.ml Output.ml Util.ml Section.ml Parser.dyp Texprime.ml
+SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Boxes.mli Boxes.ml Output.ml Util.ml Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts.ml CFF.mli Opentype.mli Output.ml
+DOC=Drivers.mli Fonts.ml CFF.mli Opentype.mli Boxes.mli Output.ml
 
 EXEC = texprime
 

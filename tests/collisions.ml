@@ -69,7 +69,8 @@ let inf_zero x=if x=infinity || x= -.infinity then 0. else x
 let rec collide lines pi comp_i max_i pj comp_j max_j i xi j xj max_col=
   if (i>=max_i && j>=max_j) then
     max_col
-  else
+  else (
+    let _=Graphics.wait_next_event [Graphics.Key_pressed] in
     let wi=if i<max_i then box_width comp_i lines.(pi).(i) else 0. in
     let wj=if j<max_j then box_width comp_j lines.(pj).(j) else 0. in
       if xi +.wi < xj+. wj || j>=max_j then (
@@ -99,6 +100,7 @@ let rec collide lines pi comp_i max_i pj comp_j max_j i xi j xj max_col=
           );
           collide lines pi comp_i max_i pj comp_j max_j i xi (j+1) (xj+.wj) max_col
       )
+  )
 
 
       

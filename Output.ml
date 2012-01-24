@@ -16,7 +16,7 @@ module Routine=functor (M:Drivers.Driver)->struct
           let rec make_line l0=match l0 with []->() | _->
             let rec nextWord l=match l with
                 []->([],0.,0.,[])
-              | (Glue (_,a,_))::s->([],0.,a,s)
+              | (Glue y)::s->([],0.,y.glue_min_width,s)
               | (GlyphBox a)::s->let u,s,v,w=nextWord s in (a.glyph::u,a.size, v+.a.width*.a.size/.1000.,w)
             in
             let (u,s,v,w)=nextWord l0 in

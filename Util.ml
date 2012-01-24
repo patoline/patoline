@@ -16,6 +16,9 @@ let array_of_rev_list l0=
         in
           do_it l0 (Array.length arr-1)
 
+let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
+let current_size=ref 4.
+
 let glyphCache_=ref StrMap.empty
 
 let glyphCache gl=
@@ -32,7 +35,7 @@ let glyphCache gl=
              loaded)
 
 let glyph_of_string fsize str =
-  let len = UTF8.length str in
+
   let rec make_glyphs idx glyphs=
     try
       let c=UTF8.look str idx in
@@ -56,3 +59,5 @@ let glyph_of_string fsize str =
   in
     make_glyphs (UTF8.first str) []
 
+
+let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.

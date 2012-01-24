@@ -55,7 +55,9 @@ paragraph:
     { w }
   | paragraph<p> NEWLINE? WORD<w>
     { let fsize= !current_size in
-      w @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: p }
+        w @ (Glue { glue_min_width= 2.*. fsize/.9.;
+                    glue_max_width= fsize/.2.;
+                    glue_badness=knuth_h_badness (fsize/.3.) }) :: p }
 
 header:
    SPECIAL ['='+ | '-'+]<op> paragraph<p> ['='+ | '-'+]<cl>
@@ -68,13 +70,17 @@ header:
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
            let s = Section.index_to_string fsize global_data.cur_section in 
-           p @ (Glue (2.*. fsize/.9., fsize/.3., fsize/.2.)) :: s, global_data
+           p @ (Glue { glue_min_width= 2.*. fsize/.9.;
+                       glue_max_width= fsize/.2.;
+                       glue_badness=knuth_h_badness (fsize/.3.) }) :: s, global_data
          else 
 	   p, global_data
        in	   
        let p = List.map (function
-          GlyphBox b -> GlyphBox { b with size = l *. b.size }
-        | Glue(x,y,z) -> Glue(x*.l, y*.l, z*.l)) p
+                             GlyphBox b -> GlyphBox { b with size = l *. b.size }
+                           | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
+                                              glue_max_width= x.glue_max_width*.l;
+                                              glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }) p
        in
          p, [Global_data global_data]
      }
