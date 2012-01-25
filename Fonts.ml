@@ -64,3 +64,8 @@ let fontName f=
   match f with
       CFF x->CFF.fontName x
     | Opentype x->Opentype.fontName x
+
+let transform f glyphs=
+  match f with
+      CFF _->glyphs
+    | Opentype x->Opentype.lookups x Opentype.gsub glyphs

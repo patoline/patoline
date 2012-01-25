@@ -14,9 +14,9 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
         
-type global_data = { cur_section : int Section.IntMap.t }
+type global_data = { cur_section : int IntMap.t }
 
-let global_data = { cur_section = Section.IntMap.empty }
+let global_data = { cur_section = IntMap.empty }
 
 let dyp_merge = Dyp.keep_all
 
@@ -40,7 +40,7 @@ let utf8_char =
   | ['\240'-'\243']['\129'-'\191']['\129'-'\191']['\129'-'\191']
   | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
 
-let macro = '\\'['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
+let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
   utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
@@ -51,13 +51,12 @@ main lexer =
 %parser
 
 paragraph:
-    WORD<w>
-    { w }
+    WORD<w> { w }
   | paragraph<p> NEWLINE? WORD<w>
     { let fsize= !current_size in
-        w @ (Glue { glue_min_width= 2.*. fsize/.9.;
-                    glue_max_width= fsize/.2.;
-                    glue_badness=knuth_h_badness (fsize/.3.) }) :: p }
+        p@(Glue { glue_min_width= 2.*. fsize/.9.;
+                  glue_max_width= fsize/.2.;
+                  glue_badness=knuth_h_badness (fsize/.3.) }) :: w }
 
 header:
    SPECIAL ['='+ | '-'+]<op> paragraph<p> ['='+ | '-'+]<cl>
@@ -70,24 +69,26 @@ header:
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
            let s = Section.index_to_string fsize global_data.cur_section in 
-           p @ (Glue { glue_min_width= 2.*. fsize/.9.;
-                       glue_max_width= fsize/.2.;
-                       glue_badness=knuth_h_badness (fsize/.3.) }) :: s, global_data
+             s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
+                          glue_max_width= fsize/.2.;
+                          glue_badness=knuth_h_badness (fsize/.3.) }) :: 
+                    (Mark 0)::p), global_data
          else 
 	   p, global_data
-       in	   
+       in
        let p = List.map (function
                              GlyphBox b -> GlyphBox { b with size = l *. b.size }
                            | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
                                               glue_max_width= x.glue_max_width*.l;
-                                              glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }) p
+                                              glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
+                           | x->x) p
        in
          p, [Global_data global_data]
-     }
+      }
 
 paragraphs:
    paragraph<p> [parskip paragraph]*<ps>
-     { List.rev (p::ps) }
+     { p::ps }
 
 parskip:
   | NEWLINE NEWLINE+

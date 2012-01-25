@@ -11,3 +11,8 @@ val glyphFont : glyph -> font
 val glyphNumber : glyph -> int
 val glyphWidth : glyph->float
 val fontName:?index:int->font -> string
+val lookups :
+  font ->
+  (in_channel -> int -> int -> 'a list -> 'a list * 'a list) ->
+  'a list -> 'a list
+val gsub : in_channel -> int -> int -> int list -> int list * int list

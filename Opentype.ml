@@ -6,7 +6,7 @@ let offsetTable=12
 let dirSize=16
   
 exception Table_not_found
-  
+
 let tableLookup table file off=
   seek_in file (off+4);
   let numTables=readInt file 2 in
@@ -162,3 +162,128 @@ let glyphWidth gl=
 let fontName ?index:(idx=0) f =
   match f with
       CFF (x,_)->CFF.fontName x ~index:idx
+
+let otype_file font=match font with
+    CFF (font,offset0)->font.file, offset0
+
+
+
+
+
+(************* Layout tables : GSUB, GPOS, etc. ***************)
+
+
+
+let lookups font apply glyphs0=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+    
+  let lookup= seek_in file (gsubOff+8); readInt file 2 in
+  let lookupCount= seek_in file (gsubOff+lookup); readInt file 2 in
+  let glyphs=ref glyphs0 in
+    (* Iteration sur les lookuptables *)
+    for i=1 to lookupCount do
+      
+      let offset=seek_in file (gsubOff+lookup+i*2); readInt file 2 in
+
+      let lookupType=seek_in file (gsubOff+lookup+offset); readInt file 2 in
+      (* let lookupFlag=seek_in file (gsubOff+lookup+offset+2); readInt file 2 in *)
+      let subtableCount=seek_in file (gsubOff+lookup+offset+4); readInt file 2 in
+
+      let maxOff=gsubOff+lookup+offset + 6+subtableCount*2 in
+
+      let rec lookupSubtables off gl=
+        if off>=maxOff then gl else
+          let subtableOff=seek_in file off; readInt file 2 in
+
+          let u,v=apply file (gsubOff+lookup+offset+subtableOff) lookupType gl in
+            u@(lookupSubtables (off+2) v)
+      in
+        glyphs:=lookupSubtables (gsubOff+lookup+offset + 6) !glyphs
+    done;
+    !glyphs
+
+
+let coverageIndex file off glyph=
+  let format=seek_in file off; readInt file 2 in
+  let count=readInt file 2 in
+  let rec format1 x0 x1=
+    if x0>=x1 then raise Not_found else
+      if x1=x0+1 then
+        (let x2=(x0+x1)/2 in
+         let current=seek_in file (off+4+2*x2); readInt file 2 in
+           if current=glyph then x2 else raise Not_found)
+      else
+        (let x2=(x0+x1)/2 in
+         let current=seek_in file (off+4+2*x2); readInt file 2 in
+           if glyph<current then format1 x0 x2 else format1 x2 x1)
+  in
+  let rec format2 x0 x1=
+    if x0>=x1 then raise Not_found else
+      if x1=x0+1 then
+        (let start=seek_in file (off+6*x0+4); readInt file 2 in
+         let final=readInt file 2 in
+         let cvIdx=readInt file 2 in
+           if glyph>=start && glyph<=final then
+             cvIdx+glyph-start
+           else
+             raise Not_found)
+
+      else
+        
+        (let x2=(x0+x1)/2 in
+         let final=seek_in file (off+6*x0+6); readInt file 2 in
+           if glyph>final then
+             format2 x2 x1
+           else
+             format2 x0 x2)
+  in    
+    if format=1 then format1 0 count else
+      if format=2 then format2 0 count else
+        (Printf.printf "format : %d\n" format; raise Not_found)
+
+
+#define LIGATURE 4
+
+let rec gsub file offset lookupType glyphs=
+  if lookupType <> LIGATURE then [],glyphs else (
+    match glyphs with
+        []->[],[]
+      | h::s->(
+          (* let substFormat=seek_in file offset ; readInt file 2 in *)
+          let coverageOffset=seek_in file (offset+2); readInt file 2 in
+          (* let ligSetCount=readInt file 2 in *)
+            try
+              let coverage=coverageIndex file (offset+coverageOffset) h in
+              let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt file 2 in
+              let ligatureCount=seek_in file (offset+ligatureSetOff); readInt file 2 in
+              let initOff=offset+ligatureSetOff in
+              let rec ligatureSet off i l=match l with
+                  []->[],[]
+                | h::s when i=0 -> [h],s
+                | h::s->
+                    (let ligOff=seek_in file off; readInt file 2 in
+                     let result=seek_in file (initOff+ligOff) ; readInt file 2 in
+                     let compCount=readInt file 2 in
+                     let rec compareComps c l=match l with
+                         l' when c<=0 -> true, l'
+                       | []->false, []
+                       | h::s->
+                           (let comp=readInt file 2 in
+                              if comp=h then compareComps (c-1) s else false, [])
+                     in
+                     let applies, next=compareComps (compCount-1) s in
+                       if applies then [result], next else
+                         ligatureSet (off+2) (i-1) l
+                    )
+              in
+              let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
+              let a',b'=gsub file offset LIGATURE b in
+                a@a', b'
+                                     
+            with
+                Not_found->
+                  (let a,b=gsub file offset LIGATURE s in
+                     (h::a, b))
+        )
+  )
