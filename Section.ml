@@ -1,10 +1,4 @@
-
-module Int = struct
-  type t = int
-  let compare = compare
-end
-
-module IntMap = Map.Make(Int)
+open Binary
 
 type index = int IntMap.t
 

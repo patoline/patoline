@@ -4,17 +4,7 @@ open Drivers
 open Binary
 open Constants
 open CamomileLibrary
-
-type glyphBox = { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float; x0:float; x1:float; y0:float; y1:float }
-type glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
-type drawingBox = { drawing_min_width:float; drawing_max_width:float;
-                    drawing_y0:float->float; drawing_y1:float->float;
-                    drawing_badness:float->float }
-
-type box=
-    GlyphBox of glyphBox 
-  | Glue of glueBox
-  | Drawing of drawingBox
+open Util
 
 
 exception Impossible
@@ -62,15 +52,18 @@ let box_width comp=function
     GlyphBox x->x.width*.x.size/.1000.
   | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
   | Drawing x->(x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
+  | _->0.
 
 let lower_y x w=match x with
     GlyphBox y->y.y0*.y.size/.1000.
   | Drawing y->y.drawing_y0 w
   | Glue _->0.
+  | _->0.
 
 let upper_y x w=match x with
     GlyphBox y->y.y1*.y.size/.1000.
   | Drawing y->y.drawing_y1 w
+  | Glue _->0.
   | _-> 0.
 
 
@@ -94,6 +87,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                Glue x->(bmin:= !bmin+.x.glue_min_width;bmax:= !bmax+.x.glue_max_width)
              | GlyphBox x->(let w=x.width*.x.size/.1000. in bmin:= !bmin+.w;bmax:= !bmax+.w)
              | Drawing x->(bmin:= !bmin+.x.drawing_min_width;bmax:= !bmax+.x.drawing_max_width)
+             | _->()
           );
         done;
         length_min.(i).(Array.length (Array.get lines i))<- !bmin;
@@ -283,7 +277,8 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                                 node.lineStart 0. !i 0. infinity
                             in
                               
-                            let v_incr=int_of_float (ceil (-.v_distance/.parameters.lead)) in
+                            let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
+                              Printf.printf "v_incr=%f\n" (-.v_distance/.parameters.lead);
                               if node.height+v_incr<parameters.line_height || v_incr=1 then (
                                 let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                                height=(node.height+v_incr) mod parameters.line_height;
@@ -311,45 +306,47 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
   in
   let todo=LineMap.singleton { paragraph=0; lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
   let demerits=break parameters0 todo (LineMap.empty) in
-    Printf.printf "demerits : done %d\n\n\n" (LineMap.cardinal demerits);
-    let (b,(bad,_)) = LineMap.max_binding demerits in
-      Printf.printf "initial badness : %f\n" bad;
-    print_line b;
-    let rec makeLines node result=
-    (* print_text_line lines node; *)
-    try  
-      let _,next=LineMap.find node demerits in
-        makeLines next (node::result)
-    with
-        Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
-  in
-  let makeLine node=
-    let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
-    let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
-    let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
-    let rec makeLine i=
-      if i>=node.lineEnd then [] else
-        match get node.paragraph i with
-            Glue x->(let w=x.glue_min_width+.compression*.(x.glue_max_width-.x.glue_min_width) in
-                       Glue { x with glue_min_width=w; glue_max_width=w}) :: makeLine (i+1)
-          | x->(x::makeLine (i+1))
-    in
-      makeLine node.lineStart
-  in
+  let (b,(bad,_)) = LineMap.max_binding demerits in
 
-  let rec makePages p pages=match p with
-      []->pages
-    | node::s ->(
-        print_text_line lines node;
-        let pages'=if node.height=0 || (match pages with []->true | _->false) then
-          (Array.create parameters0.line_height [])::pages else pages in
-        let first=List.hd pages' in
-          Printf.printf "node.height=%d\n" node.height; flush stdout;
-          if node.lineEnd > node.lineStart then
-            first.(max 0 node.height)<-makeLine node;
-          
-          makePages s pages'
-      )
-  in
-  let ln=(makeLines b []) in
-    Array.of_list (List.rev (makePages ln []))
+    if b.paragraph<Array.length lines then
+      raise Impossible
+    else (
+      let rec makeLines node result=
+        (* print_text_line lines node; *)
+        try  
+          let _,next=LineMap.find node demerits in
+            makeLines next (node::result)
+        with
+            Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
+      in
+      let makeLine node y=
+        let minLine=length_min.(node.paragraph).(node.lineEnd) -. length_min.(node.paragraph).(node.lineStart) in
+        let maxLine=length_max.(node.paragraph).(node.lineEnd) -. length_max.(node.paragraph).(node.lineStart) in
+        let compression=min 1. ((parameters0.measure-.minLine)/.(maxLine-. minLine)) in
+        let rec makeLine x i line=
+          if i>=node.lineEnd then line else
+            match get node.paragraph i with
+                Glue g->let w=g.glue_min_width+.compression*.(g.glue_max_width-.g.glue_min_width) in
+                  makeLine (x+.w) (i+1) line
+              | box->makeLine (x+.(box_width compression box)) (i+1) ((x,y,box)::line)
+        in
+          makeLine 0. node.lineStart []
+      in
+        
+      let rec makePages p pages=match p with
+          []->pages
+        | node::s ->(
+            print_text_line lines node;
+            let pages'=if node.height=0 || (match pages with []->true | _->false) then
+              (Array.create parameters0.line_height [])::pages else pages in
+            let first=List.hd pages' in
+              Printf.printf "node.height=%d\n" node.height; flush stdout;
+              if node.lineEnd > node.lineStart && node.height>=0 then
+                first.(node.height)<-makeLine node (float_of_int node.height *. parameters0.lead);
+              
+              makePages s pages'
+          )
+      in
+      let ln=(makeLines b []) in
+        Array.of_list (List.rev (makePages ln []))
+    )

@@ -1,8 +1,8 @@
 open Drivers
 open Binary
-open Boxes
-open Constants
 
+open Constants
+open Bezier
 open CamomileLibrary
 
 let array_of_rev_list l0=
@@ -19,6 +19,30 @@ let array_of_rev_list l0=
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
 
+
+type glyph = { contents:UTF8.t; glyph:Fonts.glyph; size: float; width:float; x0:float; x1:float; y0:float; y1:float }
+
+type drawing=
+    Curve of (float*float*curve)
+  | Glyph of (float*float*glyph)
+
+
+type glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
+type drawingBox = { drawing_min_width:float; drawing_max_width:float;
+                    drawing_y0:float->float; drawing_y1:float->float;
+                    drawing_badness:float->float;
+                    drawing:float->drawing list }
+
+type box=
+    GlyphBox of glyph
+  | Glue of glueBox
+  | Drawing of drawingBox
+  | Mark of int
+let is_glyph=function
+    GlyphBox _->true
+  | _->false
+
+
 let glyphCache_=ref StrMap.empty
 
 let glyphCache gl=
@@ -27,37 +51,46 @@ let glyphCache gl=
                       glyphCache_:=StrMap.add (Fonts.fontName !current_font) fontCache !glyphCache_;
                       fontCache)
   in
-  let code=UChar.code gl in
-    try IntMap.find code !font with
+    try IntMap.find gl !font with
         Not_found->
-          (let loaded=Fonts.loadGlyph !current_font (Fonts.glyph_of_char !current_font gl) in
-             font:=IntMap.add code loaded !font;
+          (let glyph=Fonts.loadGlyph !current_font gl in
+           let (y0,y1)=List.fold_left (fun (a,b) (_,y)->
+                                         let (c,d)=Bezier.bernstein_extr y in
+                                           (min a c, max b d)
+                                      ) (1./.0., -1./.0.) (Fonts.outlines glyph)
+           in
+           let (x0,x1)=List.fold_left (fun (a,b) (y,_)->
+                                         let (c,d)=Bezier.bernstein_extr y in
+                                           (min a c, max b d)
+                                      ) (1./.0., -1./.0.) (Fonts.outlines glyph)
+           in
+           let loaded=GlyphBox { contents=UTF8.init 1 (fun _->UChar.of_char ' ');
+                                 glyph=glyph; size = !current_size;
+                                 width=Fonts.glyphWidth glyph;
+                                 x0=x0; x1=x1;
+                                 y0=y0; y1=y1 } in
+             
+             font:=IntMap.add gl loaded !font;
              loaded)
 
-let glyph_of_string fsize str =
 
-  let rec make_glyphs idx glyphs=
+
+
+let glyph_of_string fsize str =
+  let rec make_codes idx codes=
     try
-      let c=UTF8.look str idx in
-      let gl=glyphCache c in
-      let (y0,y1)=List.fold_left (fun (a,b) (_,y)->
-                                    let (c,d)=Bezier.bernstein_extr y in
-                                      (min a c, max b d)
-                                 ) (1./.0., -1./.0.) (Fonts.outlines gl)
-      in
-      let (x0,x1)=List.fold_left (fun (a,b) (y,_)->
-                                    let (c,d)=Bezier.bernstein_extr y in
-                                      (min a c, max b d)
-                                 ) (1./.0., -1./.0.) (Fonts.outlines gl)
-      in
-        make_glyphs (UTF8.next str idx)
-          (GlyphBox { contents=UTF8.init 1 (fun _->c); glyph=gl; size = fsize; width=Fonts.glyphWidth gl;
-                      x0=x0; x1=x1;
-                      y0=y0; y1=y1 } :: glyphs)
+      let c=Fonts.glyph_of_char !current_font (UTF8.look str idx) in
+        make_codes (UTF8.next str idx) (c::codes)
     with
-        _->glyphs
+        _->List.rev codes
   in
-    make_glyphs (UTF8.first str) []
+    (* List.iter (Printf.printf "%d ") (make_codes (UTF8.first str) []);Printf.printf "\n"; *)
+  let codes=Fonts.transform !current_font (make_codes (UTF8.first str) []) in
+
+    (* List.iter (Printf.printf "%d ") codes;Printf.printf "\n"; *)
+
+    List.map (fun x->let GlyphBox y=glyphCache x in
+                GlyphBox { y with (* contents=UTF8.init 1 (fun _->c); *) size = !current_size }) codes
 
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
