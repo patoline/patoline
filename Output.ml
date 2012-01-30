@@ -13,8 +13,8 @@ module Routine=functor (M:Drivers.Driver)->struct
         for j=0 to Array.length pages.(i)-1 do
           List.iter (fun (x,y,box)->
                        match box with
-                           GlyphBox a->M.text drv (x0 +. x,y0-.y) a.size [a.glyph];
-                         | Mark _->Printf.printf "mark page %d (%f,%f)\n" (i+1) x y;
+                           GlyphBox (size,a)->M.text drv (x0 +. x,y0-.y) size [a.glyph];
+                         | Mark _->()
                          | _->()) pages.(i).(j)
         done;
         M.end_page drv;

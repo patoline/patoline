@@ -1,11 +1,11 @@
-#define DEBUG_BOXES 1
+
 
 open Drivers
 open Binary
 open Constants
 open CamomileLibrary
 open Util
-
+open FontsTypes
 
 exception Impossible
 
@@ -16,27 +16,22 @@ type line= { paragraph:int; lineStart:int; lineEnd:int; lastFigure:int; height:i
            }
 
 let print_line l=
-#ifdef DEBUG_BOXES
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
   l.paragraph l.lineStart l.lineEnd l.lastFigure l.height
-#else
-  ()
-#endif
 
 let print_text_line lines node=
-
-#ifdef DEBUG_BOXES
   print_line node;
   for i=node.lineStart to node.lineEnd-1 do
-    match lines.(node.paragraph).(i) with
+    let rec print_box=function
         Glue _->Printf.printf " "
-      | GlyphBox x->Printf.printf "%s" (x.contents)
+      | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
+      | Kerning x->print_box x.kern_contents
       | _->Printf.printf "[]"
+    in
+
+      print_box (lines.(node.paragraph).(i))
   done;
   print_newline();
-#else
-  ()
-#endif
 
 
 
@@ -48,22 +43,34 @@ type parameters={ format:float*float;
                   measure:float;
                   line_height:int }
 
-let box_width comp=function
-    GlyphBox x->x.width*.x.size/.1000.
+let rec box_width comp=function
+    GlyphBox (size,x)->x.width*.size/.1000.
   | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
   | Drawing x->(x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
+  | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
   | _->0.
 
-let lower_y x w=match x with
-    GlyphBox y->y.y0*.y.size/.1000.
+let rec box_interval=function
+    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
+  | Glue x->(x.glue_min_width, x.glue_max_width)
+  | Drawing x->(x.drawing_min_width, x.drawing_max_width)
+  | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
+  | _->(0.,0.)
+
+
+
+let rec lower_y x w=match x with
+    GlyphBox (size,y)->y.y0*.size/.1000.
   | Drawing y->y.drawing_y0 w
   | Glue _->0.
+  | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
   | _->0.
 
-let upper_y x w=match x with
-    GlyphBox y->y.y1*.y.size/.1000.
+let rec upper_y x w=match x with
+    GlyphBox (size,y)->y.y1*.size/.1000.
   | Drawing y->y.drawing_y1 w
   | Glue _->0.
+  | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
   | _-> 0.
 
 
@@ -83,12 +90,9 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
         for j=0 to Array.length (Array.get lines i)-1 do
           length_min.(i).(j)<- !bmin;
           length_max.(i).(j)<- !bmax;
-          (match get i j with
-               Glue x->(bmin:= !bmin+.x.glue_min_width;bmax:= !bmax+.x.glue_max_width)
-             | GlyphBox x->(let w=x.width*.x.size/.1000. in bmin:= !bmin+.w;bmax:= !bmax+.w)
-             | Drawing x->(bmin:= !bmin+.x.drawing_min_width;bmax:= !bmax+.x.drawing_max_width)
-             | _->()
-          );
+          let a,b=box_interval (get i j) in
+            bmin:= !bmin+.a;
+            bmax:= !bmax+.b
         done;
         length_min.(i).(Array.length (Array.get lines i))<- !bmin;
         length_max.(i).(Array.length (Array.get lines i))<- !bmax;
@@ -213,23 +217,20 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
               let i=ref node.lineEnd in
               let demerits'=ref demerits in
               let register node nextNode badness=
-                Printf.printf "register\n";
-                print_line nextNode;
+                print_text_line lines nextNode;
                 let reallyAdd ()=
-                  Printf.printf "Added %f !\n" badness;
                   todo':=LineMap.add nextNode badness !todo';
                   demerits':=LineMap.add nextNode (badness,node) !demerits'
                 in
                   try
                     let bad,_=LineMap.find nextNode !demerits' in
-                      if bad>badness then reallyAdd () else
-                        (Printf.printf "bad=%f, badness=%f\n" bad badness; flush stdout)
+                      if bad>badness then reallyAdd ()
                   with
                       Not_found->reallyAdd ()
               in
 
                 while !i< Array.length (Array.get lines node.paragraph) &&
-                  (match get node.paragraph !i with GlyphBox _->false | _->true) do
+                  (match get node.paragraph !i with Glue _->true | _->false) do
                   incr i
                 done;
 
@@ -278,7 +279,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                             in
                               
                             let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
-                              Printf.printf "v_incr=%f\n" (-.v_distance/.parameters.lead);
+                              (* Printf.printf "v_incr=%f\n" (-.v_distance/.parameters.lead); *)
                               if node.height+v_incr<parameters.line_height || v_incr=1 then (
                                 let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                                height=(node.height+v_incr) mod parameters.line_height;
@@ -288,11 +289,11 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                                 let v_bad=v_badness (float_of_int v_incr*.parameters.lead) node nextNode in
                                 let bad=(lastBadness+. v_bad*.v_bad +.
                                            (h_badness node.paragraph !i !j)) in
-                                  Printf.printf "\nVertical badness\n";
-                                  print_text_line lines node;
-                                  print_text_line lines nextNode;
-                                  Printf.printf "v_badness = %f, h_badness = %f\n" v_bad (h_badness node.paragraph !i !j);
-                                  Printf.printf "badness = %f\n" bad;
+                                  (* Printf.printf "\nVertical badness\n"; *)
+                                  (* print_text_line lines node; *)
+                                  (* print_text_line lines nextNode; *)
+                                  (* Printf.printf "v_badness = %f, h_badness = %f\n" v_bad (h_badness node.paragraph !i !j); *)
+                                  (* Printf.printf "badness = %f\n" bad; *)
                                   register node nextNode bad
                               )
                            )
@@ -328,6 +329,8 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
             match get node.paragraph i with
                 Glue g->let w=g.glue_min_width+.compression*.(g.glue_max_width-.g.glue_min_width) in
                   makeLine (x+.w) (i+1) line
+              | Kerning kbox as box -> makeLine (x+.(box_width compression box)) (i+1) 
+                  ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
               | box->makeLine (x+.(box_width compression box)) (i+1) ((x,y,box)::line)
         in
           makeLine 0. node.lineStart []
@@ -340,7 +343,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
             let pages'=if node.height=0 || (match pages with []->true | _->false) then
               (Array.create parameters0.line_height [])::pages else pages in
             let first=List.hd pages' in
-              Printf.printf "node.height=%d\n" node.height; flush stdout;
+              (* Printf.printf "node.height=%d\n" node.height; flush stdout; *)
               if node.lineEnd > node.lineStart && node.height>=0 then
                 first.(node.height)<-makeLine node (float_of_int node.height *. parameters0.lead);
               

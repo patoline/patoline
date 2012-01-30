@@ -9,7 +9,7 @@ subtype constructors accessible
 
 open Binary
 open Bezier
-
+open FontsTypes
 
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
@@ -65,7 +65,13 @@ let fontName f=
       CFF x->CFF.fontName x
     | Opentype x->Opentype.fontName x
 
-let transform f glyphs=
+let substitutions f glyphs=
   match f with
       CFF _->glyphs
-    | Opentype x->Opentype.lookups x Opentype.gsub glyphs
+    | Opentype x->Opentype.gsub x glyphs
+
+let kerning f glyphs=
+  match f with
+      CFF _->glyphs
+    | Opentype x->Opentype.gpos x glyphs
+

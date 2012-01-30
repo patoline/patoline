@@ -1,8 +1,8 @@
 
-FONTS=CFF.mli CFF.ml Opentype.mli Opentype.ml Fonts.ml
+FONTS=Fonts/FontsTypes.ml Fonts/CFF.mli Fonts/CFF.ml Fonts/Opentype.mli Fonts/Opentype.ml Fonts.ml
 SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Boxes.mli Boxes.ml Output.ml Util.ml Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts.ml CFF.mli Opentype.mli Boxes.mli Output.ml
+DOC=Drivers.mli Fonts.ml Fonts/FontsTypes.mli Fonts/CFF.mli Fonts/Opentype.mli Boxes.mli Output.ml
 
 EXEC = texprime
 
@@ -14,9 +14,9 @@ EXEC = texprime
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I _build -pp cpp
-CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I _build -pp cpp
-CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I _build -pp cpp
+CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp cpp
+CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp cpp
+CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp cpp
 CAMLDEP = ocamlfind ocamldep -pp cpp
 
 
@@ -64,44 +64,17 @@ doc:$(OBJS)
 	dypgen --no-mli $<
 
 .ml.cmo:
-	$(CAMLC) -c $<
+	$(CAMLC) -c -o $@ $<
 
 .mli.cmi:
 	$(CAMLC) -c $<
 
 .ml.cmx:
-	$(CAMLOPT) -c $<
-
-.mll.cmo:
-	$(CAMLLEX) $<
-	$(CAMLC) -c $*.ml
-
-.mll.cmx:
-	$(CAMLLEX) $<
-	$(CAMLOPT) -c $*.ml
-
-.mly.cmo:
-	$(CAMLYACC) $<
-	$(CAMLC) -c $*.mli
-	$(CAMLC) -c $*.ml
-
-.mly.cmx:
-	$(CAMLYACC) $<
-	$(CAMLOPT) -c $*.mli
-	$(CAMLOPT) -c $*.ml
-
-.mly.cmi:
-	$(CAMLYACC) $<
-	$(CAMLC) -c $*.mli
-
-.mll.ml:
-	$(CAMLLEX) $<
-
-.mly.ml:
-	$(CAMLYACC) $<
+	$(CAMLOPT) -c -o $@ $<
 
 clean::
 	rm -f *.cm[iox] *~ .*~ \#*\#
+	rm -f Fonts/*.cm[iox] Fonts/*~ Fonts/*.*~ Fonts/\#*\#
 	rm -f $(EXEC)
 	rm -f $(EXEC).opt
 	rm -Rf doc

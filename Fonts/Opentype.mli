@@ -1,4 +1,5 @@
 open CamomileLibrary
+open FontsTypes
 
 exception Table_not_found
 type font = CFF of (CFF.font*int)
@@ -11,8 +12,7 @@ val glyphFont : glyph -> font
 val glyphNumber : glyph -> int
 val glyphWidth : glyph->float
 val fontName:?index:int->font -> string
-val lookups :
-  font ->
-  (in_channel -> int -> int -> 'a list -> 'a list * 'a list) ->
-  'a list -> 'a list
-val gsub : in_channel -> int -> int -> int list -> int list * int list
+val gsub : font -> glyph_ids list -> glyph_ids list
+val gpos : font -> glyph_ids list -> glyph_ids list
+
+

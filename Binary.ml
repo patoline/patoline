@@ -1,10 +1,13 @@
+open CamomileLibrary
+
 let readInt f n0=
   let rec readInt_ n x=
     if n=n0 then x else
       readInt_ (n+1) ((x lsl 8) + (input_byte f))
   in
     readInt_ 0 0
-      
+
+let int16 x=if x<=0x7f then x else x-0x10000
 
 let round x=
   let c=ceil x in
@@ -34,6 +37,14 @@ let rec drop x l=
         []->[]
       | _::s->drop (x-1) l
           
+
+let concat_utf8 a b=
+  let x=UTF8.Buf.create (UTF8.length a+UTF8.length b) in
+    UTF8.Buf.add_string x a;
+    UTF8.Buf.add_string x b;
+    UTF8.Buf.contents
+
+
 module IntMap=Map.Make (struct type t=int let compare=compare end)
 module StrMap=Map.Make (String)
 module IntSet=Set.Make (struct type t=int let compare=compare end)

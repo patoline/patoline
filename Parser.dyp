@@ -8,6 +8,9 @@ open Util
 open Dyp
 open CamomileLibrary
 
+let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
+let current_size=ref 4.
+
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
   let pos = l.lex_curr_p in
@@ -43,7 +46,7 @@ let utf8_char =
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string fsize (Dyp.lexeme lexbuf) }
+  utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string !current_font fsize (Dyp.lexeme lexbuf) }
   '\n' -> NEWLINE { set_newline lexbuf }
   '\\''\\' -> CHAR { UTF8.get ("\\") 0 }
   '\\' -> SPECIAL
@@ -68,7 +71,7 @@ header:
        let p, global_data =
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
-           let s = Section.index_to_string fsize global_data.cur_section in 
+           let s = Section.index_to_string !current_font fsize global_data.cur_section in 
              s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
                           glue_max_width= fsize/.2.;
                           glue_badness=knuth_h_badness (fsize/.3.) }) :: 
@@ -77,7 +80,7 @@ header:
 	   p, global_data
        in
        let p = List.map (function
-                             GlyphBox b -> GlyphBox { b with size = l *. b.size }
+                             GlyphBox (size,b) -> GlyphBox (l*.size, b)
                            | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
                                               glue_max_width= x.glue_max_width*.l;
                                               glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
