@@ -5,7 +5,8 @@ type line = {
   paragraph : int;
   lineStart : int;
   lineEnd : int;
-  last_hyphen:int;
+  hyphenStart:int;
+  hyphenEnd:int;
   lastFigure : int;
   height : int;
   paragraph_height : int;
