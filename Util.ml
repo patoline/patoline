@@ -17,8 +17,6 @@ let array_of_rev_list l0=
         in
           do_it l0 (Array.length arr-1)
 
-
-
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
                x0:float; x1:float; y0:float; y1:float }
 
@@ -33,11 +31,14 @@ type drawingBox = { drawing_min_width:float; drawing_max_width:float;
                     drawing_badness:float->float;
                     drawing:float->drawing list }
 
-type box=
+type hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
+
+and box=
     GlyphBox of (float*glyph)
   | Kerning of box kerningBox
   | Glue of glueBox
   | Drawing of drawingBox
+  | Hyphen of hyphenBox
   | Mark of int
 
 let is_glyph=function

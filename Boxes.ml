@@ -11,9 +11,8 @@ exception Impossible
 
 let isGlue x=match x with Glue _->true | _->false
 
-type line= { paragraph:int; lineStart:int; lineEnd:int; lastFigure:int; height:int;
-             paragraph_height:int
-           }
+type line= { paragraph:int; lineStart:int; lineEnd:int; last_hyphen:int; lastFigure:int; height:int;
+             paragraph_height:int }
 
 let print_line l=
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; lastFigure=%d; height=%d }\n"
@@ -248,6 +247,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
 
                       (let nextNode={ 
                          paragraph=node.paragraph+1; lastFigure=node.lastFigure;
+                         last_hyphen= -1;
                          height=
                            if (node.height=parameters.line_height-1 ||
                                node.paragraph+1>=Array.length lines) then
@@ -281,7 +281,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                             let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
                               (* Printf.printf "v_incr=%f\n" (-.v_distance/.parameters.lead); *)
                               if node.height+v_incr<parameters.line_height || v_incr=1 then (
-                                let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
+                                let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure; last_hyphen= -1;
                                                height=(node.height+v_incr) mod parameters.line_height;
                                                lineStart= !i; lineEnd= !j;
                                                paragraph_height=node.paragraph_height+1 }
@@ -305,7 +305,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
             )
       )
   in
-  let todo=LineMap.singleton { paragraph=0; lineStart=0; lineEnd=0; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
+  let todo=LineMap.singleton { paragraph=0; lineStart=0; lineEnd=0; last_hyphen= -1; lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
   let demerits=break parameters0 todo (LineMap.empty) in
   let (b,(bad,_)) = LineMap.max_binding demerits in
 

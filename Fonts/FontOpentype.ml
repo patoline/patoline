@@ -8,6 +8,7 @@ let dirSize=16
   
 exception Table_not_found
 
+
 let tableLookup table file off=
   seek_in file (off+4);
   let numTables=readInt file 2 in
@@ -46,7 +47,7 @@ let tableList file off=
       
 type font = CFF of (CFF.font*int)
   
-let loadFont ?offset:(off=0) ?size:(_=0) file=
+let loadFont ?offset:(off=0) file=
   let f=open_in file in
   let typ=String.create 4 in
     seek_in f off;
@@ -434,7 +435,5 @@ let rec gpos font glyphs0=
     !glyphs
 
 
-
-
-
-
+let substitutions=gsub
+let positioning=gpos

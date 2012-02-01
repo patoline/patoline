@@ -101,7 +101,7 @@ module Pdf =
            Not_found->
              match font with
                  Fonts.CFF x->raise Fonts.Not_supported
-               | Fonts.Opentype (Opentype.CFF (x,_))->
+               | Fonts.Opentype (FontOpentype.CFF (x,_))->
                    ((* Font program *)
                      let program=(
                        let buf=String.create (x.CFF.size) in
