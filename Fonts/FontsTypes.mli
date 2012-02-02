@@ -23,5 +23,6 @@ module type Font =
     val substitutions : font -> glyph_ids list -> glyph_ids list
     val positioning : font -> glyph_ids list -> glyph_ids list
   end
+val kern : glyph_ids -> glyph_ids kerningBox
 val glyph_id_cont : glyph_ids -> int
 val glyph_id_utf8 : glyph_ids -> CamomileLibrary.UTF8.t

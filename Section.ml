@@ -11,10 +11,10 @@ let increment lvl index:index =
     if l < lvl then IntMap.remove l acc else acc) index index in
   index
 
-let index_to_string font fsize index =
+let index_to_string subst kern font fsize index =
   let str = 
     IntMap.fold (fun l s acc ->
       string_of_int s ^ "." ^ acc) index ""
   in
-  Util.glyph_of_string font fsize str
+  Util.glyph_of_string subst kern font fsize str
 

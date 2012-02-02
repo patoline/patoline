@@ -7,9 +7,28 @@ open Lexing
 open Util
 open Dyp
 open CamomileLibrary
+open FontsTypes
 
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
+
+let rec my_kerning =
+  let open FontsTypes in 
+  let of_char x=UTF8.init 1 (fun _-> UChar.of_char x) in
+    function
+        []->[]
+      | [l]->[l]
+      | a::b::s->
+          (let la=glyph_id_utf8 a and lb=glyph_id_utf8 b in
+             if (la,lb) = (of_char 'T', of_char 'o') then
+               KernID { (kern a) with advance_width= (-80.) }::(my_kerning (b::s))
+             else
+               a::(my_kerning (b::s))
+          )
+let comp f g x=f (g x)
+
+let current_subst=ref (Fonts.substitutions (!current_font))
+let current_pos=ref (comp my_kerning (Fonts.positioning (!current_font)))
 let hyphenation_dict=
   let i=open_in "dict_en" in
   let inp=input_value i in
@@ -52,7 +71,7 @@ let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
   utf8_char+ -> WORD {
-    hyphenate hyphenation_dict !current_font !current_size (Dyp.lexeme lexbuf)
+    hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size (Dyp.lexeme lexbuf)
     (* glyph_of_string !current_font !current_size (Dyp.lexeme lexbuf) *)
   }
   '\n' -> NEWLINE { set_newline lexbuf }
@@ -79,7 +98,7 @@ header:
        let p, global_data =
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
-           let s = Section.index_to_string !current_font fsize global_data.cur_section in 
+           let s = Section.index_to_string !current_subst !current_pos !current_font  fsize global_data.cur_section in 
              s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
                           glue_max_width= fsize/.2.;
                           glue_badness=knuth_h_badness (fsize/.3.) }) :: 
@@ -94,6 +113,11 @@ header:
          | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
                             glue_max_width= x.glue_max_width*.l;
                             glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
+         | Kerning x -> Kerning { advance_width = l*.x.advance_width;
+                                  advance_height = l*.x.advance_height;
+                                  kern_x0 = l*.x.kern_x0;
+                                  kern_y0 = l*.x.kern_y0;
+                                  kern_contents=resize x.kern_contents }
          | x->x
        in
        let p = List.map resize p in

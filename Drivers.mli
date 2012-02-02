@@ -1,5 +1,5 @@
 (** Common interface for output drivers of TeX' *)
-
+open Fonts
 module type Driver =
   sig
     type driver

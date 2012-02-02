@@ -58,6 +58,9 @@ doc:Makefile $(OBJS)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 
+top:
+	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
+
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
 
 .dyp.ml:

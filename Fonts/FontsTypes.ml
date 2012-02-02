@@ -20,7 +20,9 @@ module type Font=(
     val positioning:font->glyph_ids list->glyph_ids list
   end)
 
-
+let kern contents=match contents with
+    KernID x->x
+  | GlyphID x->{ advance_height=0.; advance_width=0.; kern_x0=0.;kern_y0=0.; kern_contents=contents }
 let rec glyph_id_cont=function
     KernID x->glyph_id_cont x.kern_contents
   | GlyphID (_,x)->x

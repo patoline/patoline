@@ -58,6 +58,12 @@ name *)
 val glyphCache :
   Fonts.font -> Binary.IntMap.key -> CamomileLibrary.UTF8.t -> glyph
 val glyph_of_string :
+  (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
+  (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
-val hyphenate : Hyphenate.ptree -> Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
+val hyphenate :
+  Hyphenate.ptree -> 
+  (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
+  (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
+  Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val knuth_h_badness : float -> float -> float

@@ -1,8 +1,5 @@
-(** Defines the common interface to font faces. All
-    "submodules" should define at least the same functions, although there
-    does not seem to be a way in OCaml to express this while leaving the
-    subtype constructors accessible
-    
+(** Font types. Only supported right now : OpenType and CFF.
+
     Here is how to load glyphs from a char :
     [let font=loadFont file in loadGlyph font (glyph_of_char font char)]
  *)
@@ -16,8 +13,6 @@ open CamomileLibrary
 exception Not_supported
 
 
-type font = CFF of FontCFF.font | Opentype of FontOpentype.font
-type glyph = CFFGlyph of FontCFF.glyph | OpentypeGlyph of FontOpentype.glyph
 
 module type Font=FontsTypes.Font
 module Opentype=(FontOpentype:Font)
@@ -25,12 +20,12 @@ module CFF=(FontCFF:Font)
 
 (** loadFont pretends it can recognize font file types, but it
     actually only looks at the extension in the file name *)
-let loadFont ?offset:(off=0) f=
-  if Filename.check_suffix f ".otf" then
-    Opentype (FontOpentype.loadFont ~offset:off f)
-  else
-    if Filename.check_suffix f ".cff" then
-      CFF (FontCFF.loadFont ~offset:off f)
+type font = CFF of FontCFF.font | Opentype of FontOpentype.font
+type glyph = CFFGlyph of FontCFF.glyph | OpentypeGlyph of FontOpentype.glyph
+  let loadFont ?offset:(off=0) ?size:(_=0) f=
+    let size=let i=open_in f in let l=in_channel_length i in close_in i; l in
+    if Filename.check_suffix f ".otf" then
+      Opentype (FontOpentype.loadFont ~offset:off f ~size:size)
     else
       raise Not_supported
 
@@ -75,7 +70,7 @@ let substitutions f glyphs=
       CFF x->FontCFF.substitutions x glyphs
     | Opentype x->FontOpentype.substitutions x glyphs
 
-let kerning f glyphs=
+let positioning f glyphs=
   match f with
       CFF x->FontCFF.substitutions x glyphs
     | Opentype x->FontOpentype.positioning x glyphs

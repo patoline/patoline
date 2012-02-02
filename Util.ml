@@ -5,18 +5,6 @@ open Constants
 open Bezier
 open CamomileLibrary
 
-
-let array_of_rev_list l0=
-  match l0 with
-      []->[||]
-    | h0::_->
-        let arr=Array.create (List.length l0) h0 in
-        let rec do_it l i=match l with
-            []->arr
-          | h::s->(arr.(i)<-h; do_it s (i-1))
-        in
-          do_it l0 (Array.length arr-1)
-
 type 'a kerningBox='a FontsTypes.kerningBox
 
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
@@ -119,9 +107,7 @@ let glyphCache cur_font gl cont=
              loaded)
 
 
-
-
-let glyph_of_string font fsize str =
+let glyph_of_string substitution_ positioning_ font fsize str =
   let rec make_codes idx codes=
     try
       let c=Fonts.glyph_of_char font (UTF8.look str idx) in
@@ -129,8 +115,8 @@ let glyph_of_string font fsize str =
     with
         _->List.rev codes
   in
-  let codes=Fonts.substitutions font (make_codes (UTF8.first str) []) in
-  let kerns=Fonts.kerning font codes in
+  let codes=substitution_ (make_codes (UTF8.first str) []) in
+  let kerns=positioning_ codes in
     
 
   let rec kern=function
@@ -154,17 +140,18 @@ let glyph_of_string font fsize str =
     kern kerns
 
 
-let hyphenate tree font fsize str=
+let hyphenate tree subs kern font fsize str=
   let hyphenated=Hyphenate.hyphenate str tree in
   let pos=Array.make (List.length hyphenated) ([||],[||]) in
   let rec hyph l i cur=match l with
-      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string font fsize cur); hyphenated=pos }]
+      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize cur); hyphenated=pos }]
     | h::s->(
-        pos.(i)<-(Array.of_list (glyph_of_string font fsize (cur^h^"-")),
-                  Array.of_list (glyph_of_string font fsize (List.fold_left (^) "" s)));
+        pos.(i)<-(Array.of_list (glyph_of_string subs kern font fsize (cur^h^"-")),
+                  Array.of_list (glyph_of_string subs kern font fsize (List.fold_left (^) "" s)));
         hyph s (i+1) (cur^h)
       )
   in
     hyph hyphenated 0 ""
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
+
