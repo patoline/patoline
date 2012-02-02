@@ -40,7 +40,7 @@ and box=
   | Drawing of drawingBox
   | Hyphen of hyphenBox
   | Mark of int
-
+  | Empty
 let is_glyph=function
     GlyphBox _->true
   | _->false
@@ -111,7 +111,17 @@ let glyph_of_string font fsize str =
     kern kerns
 
 
-
-
+let hyphenate tree font fsize str=
+  let hyphenated=Hyphenate.hyphenate str tree in
+  let pos=Array.make (List.length hyphenated) ([||],[||]) in
+  let rec hyph l i cur=match l with
+      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string font fsize cur); hyphenated=pos }]
+    | h::s->(
+        pos.(i)<-(Array.of_list (glyph_of_string font fsize (cur^h^"-")),
+                  Array.of_list (glyph_of_string font fsize (List.fold_left (^) "" s)));
+        hyph s (i+1) (cur^h)
+      )
+  in
+    hyph hyphenated 0 ""
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.

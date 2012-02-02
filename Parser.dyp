@@ -10,6 +10,11 @@ open CamomileLibrary
 
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
+let hyphenation_dict=
+  let i=open_in "dict_en" in
+  let inp=input_value i in
+    close_in i;
+    inp
 
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -46,7 +51,10 @@ let utf8_char =
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { let fsize= !current_size in Util.glyph_of_string !current_font fsize (Dyp.lexeme lexbuf) }
+  utf8_char+ -> WORD {
+    hyphenate hyphenation_dict !current_font !current_size (Dyp.lexeme lexbuf)
+    (* glyph_of_string !current_font !current_size (Dyp.lexeme lexbuf) *)
+  }
   '\n' -> NEWLINE { set_newline lexbuf }
   '\\''\\' -> CHAR { UTF8.get ("\\") 0 }
   '\\' -> SPECIAL
@@ -79,13 +87,16 @@ header:
          else 
 	   p, global_data
        in
-       let p = List.map (function
-                             GlyphBox (size,b) -> GlyphBox (l*.size, b)
-                           | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
-                                              glue_max_width= x.glue_max_width*.l;
-                                              glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
-                           | x->x) p
+       let rec resize=function
+           GlyphBox (size,b) -> GlyphBox (l*.size, b)
+         | Hyphen x->Hyphen { hyphen_normal=Array.map resize x.hyphen_normal;
+                              hyphenated=Array.map (fun (a,b)->Array.map resize a, Array.map resize b) x.hyphenated }
+         | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
+                            glue_max_width= x.glue_max_width*.l;
+                            glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
+         | x->x
        in
+       let p = List.map resize p in
          p, [Global_data global_data]
       }
 
