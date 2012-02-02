@@ -697,3 +697,6 @@ let italicAngle ?index:(idx=0) font=
       | _->0.
   with
       Not_found->0.
+
+let substitutions _ x=x
+let positioning _ x=x

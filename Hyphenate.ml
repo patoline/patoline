@@ -110,6 +110,7 @@ let hyphenate a0 tree =
         in
           make_hyphens 1 1
 
+let empty=Node ([||], C.empty)
 
 (* let patterns= *)
 (*   let i=open_in "patterns" in *)
@@ -132,9 +133,9 @@ let hyphenate a0 tree =
 (*     output_value o tree; *)
 (*     close_out o *)
 
-let tree=
-  let i=open_in "dict_en" in
-  let inp=input_value i in
-    close_in i;
-    inp
-let _=let str="associated" in hyphenate str tree
+(* let tree= *)
+(*   let i=open_in "dict_en" in *)
+(*   let inp=input_value i in *)
+(*     close_in i; *)
+(*     inp *)
+(* let _=let str="associated" in hyphenate str tree *)

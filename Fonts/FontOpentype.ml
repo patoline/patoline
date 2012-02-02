@@ -1,7 +1,7 @@
 open FontsTypes
 open Constants
 open Binary
-open CFF
+open FontCFF
 open CamomileLibrary
 let offsetTable=12
 let dirSize=16
@@ -44,10 +44,9 @@ let tableList file off=
   in
     getTables (off+dirSize*(numTables-1)+offsetTable) []
       
-      
-type font = CFF of (CFF.font*int)
+type font = CFF of (FontCFF.font*int)
   
-let loadFont ?offset:(off=0) file=
+let loadFont ?offset:(off=0) ?size:(_=0) file=
   let f=open_in file in
   let typ=String.create 4 in
     seek_in f off;
@@ -55,10 +54,10 @@ let loadFont ?offset:(off=0) file=
     match typ with
         "OTTO"->
           let (a,b)=tableLookup "CFF " f off in
-            CFF (CFF.loadFont file ~offset:(off+a) ~size:b, off)
+            CFF (FontCFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
           
-type glyph = CFFGlyph of (font*CFF.glyph)
+type glyph = CFFGlyph of (font*FontCFF.glyph)
 
 let glyph_of_char font char0=
   match font with
@@ -142,28 +141,28 @@ let glyphFont f=match f with
   
 let loadGlyph f ?index:(idx=0) gl=
   match f with
-      CFF (x,_)->CFFGlyph (f, CFF.loadGlyph x ~index:idx gl)
+      CFF (x,_)->CFFGlyph (f, FontCFF.loadGlyph x ~index:idx gl)
         
 let outlines gl=match gl with
-    CFFGlyph (_,x)->CFF.outlines x
+    CFFGlyph (_,x)->FontCFF.outlines x
 
 let glyphNumber gl=match gl with
-    CFFGlyph (_,x)->CFF.glyphNumber x
+    CFFGlyph (_,x)->FontCFF.glyphNumber x
 
 
 let glyphWidth gl=
   match gl with
       CFFGlyph (CFF(f, offset),x)->
-        (let num=CFF.glyphNumber x in
-         let (a,_)=tableLookup "hhea" f.CFF.file offset in
-         let nh=(seek_in (f.CFF.file) (a+34); readInt f.CFF.file 2) in
-         let (b,_)=tableLookup "hmtx" f.CFF.file offset in
-           seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
-           (float_of_int (readInt f.CFF.file 2)))
+        (let num=FontCFF.glyphNumber x in
+         let (a,_)=tableLookup "hhea" f.FontCFF.file offset in
+         let nh=(seek_in (f.FontCFF.file) (a+34); readInt f.FontCFF.file 2) in
+         let (b,_)=tableLookup "hmtx" f.FontCFF.file offset in
+           seek_in (f.FontCFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
+           (float_of_int (readInt f.FontCFF.file 2)))
           
 let fontName ?index:(idx=0) f =
   match f with
-      CFF (x,_)->CFF.fontName x ~index:idx
+      CFF (x,_)->FontCFF.fontName x ~index:idx
 
 let otype_file font=match font with
     CFF (font,offset0)->font.file, offset0

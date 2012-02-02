@@ -1,8 +1,8 @@
 
-FONTS=Fonts/FontsTypes.ml Fonts/CFF.mli Fonts/CFF.ml Fonts/FontOpentype.ml Fonts.ml
-SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Boxes.mli Boxes.ml Output.ml Hyphenate.ml Util.ml Section.ml Parser.dyp Texprime.ml
+FONTS=Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
+SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts.ml Fonts/FontsTypes.mli Fonts/CFF.mli Fonts/Opentype.mli Boxes.mli Output.ml
+DOC=Drivers.mli Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 
 EXEC = texprime
 
@@ -54,7 +54,7 @@ $(EXEC): $(OBJS)
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) -o $(EXEC) $(LIBS:.cma=.cmxa) $(OPTOBJS)
 
-doc:$(OBJS)
+doc:Makefile $(OBJS)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 

@@ -40,7 +40,7 @@ let _=
 	  raise (Failure "detecting parsing ambiguities, please report");
           
           let parsed=fst (List.hd text) in
-          let pages=lineBreak default (array_of_rev_list (List.map (Array.of_list) parsed)) in
+          let pages=lineBreak default (Array.of_list (List.rev (List.map (Array.of_list) parsed))) in
             M.output_routine h default pages
     with
         Syntax_Error(pos,msg) ->

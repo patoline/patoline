@@ -1,5 +1,3 @@
-
-
 open Drivers
 open Binary
 open Constants
@@ -9,7 +7,6 @@ open FontsTypes
 
 exception Impossible
 
-let isGlue x=match x with Glue _->true | _->false
 
 type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenEnd:int;
              lastFigure:int; height:int; paragraph_height:int }
@@ -42,44 +39,6 @@ type parameters={ format:float*float;
                   measure:float;
                   line_height:int }
 
-let rec box_width comp=function
-    GlyphBox (size,x)->x.width*.size/.1000.
-  | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
-  | Drawing x->(x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
-  | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
-  | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
-  | Empty->0.
-  | _->0.
-
-let rec box_interval=function
-    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
-  | Glue x->(x.glue_min_width, x.glue_max_width)
-  | Drawing x->(x.drawing_min_width, x.drawing_max_width)
-  | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
-  | Hyphen x->boxes_interval x.hyphen_normal
-  | _->(0.,0.)
-
-and boxes_interval boxes=
-  let a=ref 0. in let b=ref 0. in
-    for i=0 to Array.length boxes-1 do
-      let (u,v)=box_interval (boxes.(i)) in
-        a:= !a+.u;b:= !b+.v
-    done;
-    (!a,!b)
-
-let rec lower_y x w=match x with
-    GlyphBox (size,y)->y.y0*.size/.1000.
-  | Drawing y->y.drawing_y0 w
-  | Glue _->0.
-  | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
-  | _->0.
-
-let rec upper_y x w=match x with
-    GlyphBox (size,y)->y.y1*.size/.1000.
-  | Drawing y->y.drawing_y1 w
-  | Glue _->0.
-  | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
-  | _-> 0.
 
 
 
@@ -251,7 +210,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                     let yi=lower_y boxes_i.(i) wi in
                     let yj=upper_y boxes_j.(j) wj in
                       
-                      if !xj>= !xi+.wi || isGlue boxes_i.(i) || isGlue boxes_j.(j) then
+                      if !xj>= !xi+.wi || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
                         (xi:= !xi+.w0;
                          mean_collide boxes_i (i+1) max_i boxes_j j max_j w_tot col col2)
                       else
@@ -264,7 +223,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                     let yi=lower_y boxes_i.(i) wi in
                     let yj=upper_y boxes_j.(j) wj in
                       
-                      if !xi>= !xj+.wj || isGlue boxes_i.(i) || isGlue boxes_j.(j) then
+                      if !xi>= !xj+.wj || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
                         (xj:= !xj +. w0;
                          mean_collide boxes_i i max_i boxes_j j max_j w_tot col col2)
                       else

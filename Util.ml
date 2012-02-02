@@ -1,10 +1,10 @@
 open Drivers
 open Binary
-
+open FontsTypes
 open Constants
 open Bezier
 open CamomileLibrary
-open FontsTypes
+
 
 let array_of_rev_list l0=
   match l0 with
@@ -16,6 +16,8 @@ let array_of_rev_list l0=
           | h::s->(arr.(i)<-h; do_it s (i-1))
         in
           do_it l0 (Array.length arr-1)
+
+type 'a kerningBox='a FontsTypes.kerningBox
 
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
                x0:float; x1:float; y0:float; y1:float }
@@ -44,6 +46,47 @@ and box=
 let is_glyph=function
     GlyphBox _->true
   | _->false
+let is_glue=function
+    Glue _->true
+  | _->false
+let rec box_width comp=function
+    GlyphBox (size,x)->x.width*.size/.1000.
+  | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
+  | Drawing x->(x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
+  | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
+  | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
+  | Empty->0.
+  | _->0.
+
+let rec box_interval=function
+    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
+  | Glue x->(x.glue_min_width, x.glue_max_width)
+  | Drawing x->(x.drawing_min_width, x.drawing_max_width)
+  | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
+  | Hyphen x->boxes_interval x.hyphen_normal
+  | _->(0.,0.)
+
+and boxes_interval boxes=
+  let a=ref 0. in let b=ref 0. in
+    for i=0 to Array.length boxes-1 do
+      let (u,v)=box_interval (boxes.(i)) in
+        a:= !a+.u;b:= !b+.v
+    done;
+    (!a,!b)
+
+let rec lower_y x w=match x with
+    GlyphBox (size,y)->y.y0*.size/.1000.
+  | Drawing y->y.drawing_y0 w
+  | Glue _->0.
+  | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
+  | _->0.
+
+let rec upper_y x w=match x with
+    GlyphBox (size,y)->y.y1*.size/.1000.
+  | Drawing y->y.drawing_y1 w
+  | Glue _->0.
+  | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
+  | _-> 0.
 
 
 let glyphCache_=ref StrMap.empty

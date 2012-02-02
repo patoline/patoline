@@ -1,3 +1,5 @@
+(** Output routines. An output routine is just a functor taking a driver module *)
+
 open Constants
 open Boxes
 open Util

@@ -104,9 +104,9 @@ module Pdf =
                | Fonts.Opentype (FontOpentype.CFF (x,_))->
                    ((* Font program *)
                      let program=(
-                       let buf=String.create (x.CFF.size) in
-                         seek_in x.CFF.file x.CFF.offset;
-                         really_input x.CFF.file buf 0 x.CFF.size;
+                       let buf=String.create (x.FontCFF.size) in
+                         seek_in x.FontCFF.file x.FontCFF.offset;
+                         really_input x.FontCFF.file buf 0 x.FontCFF.size;
                          buf) in
                      let fontFile=beginObject pdf in
                        output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length program))^
@@ -117,14 +117,14 @@ module Pdf =
                        
                        (* Font descriptor -- A completer*)
                        
-                       let fontName=CFF.fontName x in
+                       let fontName=FontCFF.fontName x in
                        let descr=beginObject pdf in
-                       let (a,b,c,d)=CFF.fontBBox x in
+                       let (a,b,c,d)=FontCFF.fontBBox x in
                          output_string pdf.out_chan ("<< /Type /FontDescriptor"^
                                                        " /FontName /"^fontName^
                                                        " /Flags 4 /FontBBox ["^((string_of_int a)^" "^(string_of_int b)^" "^
                                                                                   (string_of_int c)^" "^(string_of_int d))^
-                                                       "] /ItalicAngle "^(string_of_float (CFF.italicAngle x))^
+                                                       "] /ItalicAngle "^(string_of_float (FontCFF.italicAngle x))^
                                                        " /Ascent 0"^
                                                        " /Descent 0"^
                                                        " /CapHeight 0"^

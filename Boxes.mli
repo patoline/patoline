@@ -1,6 +1,8 @@
+(** The main algorithm of TeX' (line-breaking and page-breaking) *)
+
 open Util
 exception Impossible
-val isGlue : box -> bool
+
 type line = {
   paragraph : int;
   lineStart : int;
@@ -18,8 +20,5 @@ type parameters = {
   measure : float;
   line_height : int;
 }
-val box_width : float -> box -> float
-val lower_y : box -> float -> float
-val upper_y : box -> float -> float
 val lineBreak :
   parameters -> ?figures:'a array -> box array array -> (float * float * box) list array array
