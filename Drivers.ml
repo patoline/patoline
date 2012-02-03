@@ -9,6 +9,10 @@ module Rope=struct
   let to_string a=a
 end
 
+type lineCap=Butt_cap | Round_cap | Proj_square_cap
+type lineJoin=Miter_join | Round_join | Bevel_join
+type color={ red:float; green:float; blue:float }
+let black={ red=0.; green=0.; blue=0. }
 module type Driver = sig
   (** Dans ce module, toutes les commandes prennent en argument des unités métriques *)
   type driver
@@ -25,11 +29,14 @@ module type Driver = sig
   val curveto : driver->(float*float) -> (float*float) -> (float*float) -> unit
 
   val dash_pattern : driver -> float list -> unit
+  val line_width : driver -> float -> unit
+  val line_cap : driver->lineCap->unit
+  val line_join : driver->lineJoin->unit
 
-  val stroke:driver->unit
-  val fill:driver->unit
-  val fill_stroke:driver->unit
-  val close_stroke:driver->unit
+  val stroke: ?color:color -> driver-> unit
+  val fill: ?color:color -> driver-> unit
+  val fill_stroke: ?color:color -> driver->unit
+  val close_stroke: ?color:color -> driver->unit
   val closePath:driver->unit
 
   val text:driver->(float*float)->float->Fonts.glyph list->unit
@@ -53,9 +60,9 @@ module Pdf =
 
                     mutable vpos:float*float;
                     mutable pos:float*float;
-
+                    mutable stroking_color:color;
+                    mutable non_stroking_color:color;
                     mutable posT:float*float;
-
                     mutable isText : bool;
                     mutable fonts : pdfFont StrMap.t;
                     mutable pageFonts: (int*int) StrMap.t;
@@ -75,6 +82,7 @@ module Pdf =
            vpos=(0.,0.);
            pos=(infinity,infinity);
            posT=(0.,0.);
+           stroking_color=black;non_stroking_color=black;
            isText=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
@@ -248,7 +256,7 @@ module Pdf =
      let moveto pdf (x,y)=pdf.vpos<-(pt_of_mm x, pt_of_mm y)
        
      let really_move pdf=
-       if pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET ");
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        if pdf.vpos <> pdf.pos then
          pdf.current_page <- Rope.append pdf.current_page 
            (Rope.of_string ((string_of_float (fst pdf.vpos)) ^ " " ^ (string_of_float (snd pdf.vpos)) ^ " m "))
@@ -277,6 +285,7 @@ module Pdf =
        pdf.vpos<-pos
          
      let dash_pattern pdf l=
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        let l0=List.map (fun x->round (pt_of_mm x)) l in
          match l0 with
              []->(pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "[] 0 d "))
@@ -295,22 +304,66 @@ module Pdf =
                            ) l0;
                  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ("] "^(string_of_int phase)^" d "))
              )
-         
+     let line_width pdf w=
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((string_of_float (pt_of_mm w))^" w "))
+     let line_join pdf j=
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       pdf.current_page<-Rope.append pdf.current_page (
+         Rope.of_string (
+           match j with
+               Miter_join->" 0 j "
+             | Round_join->" 1 j "
+             | Bevel_join->" 2 j "
+             | _->""
+         ))
+     let line_cap pdf c=
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       pdf.current_page<-Rope.append pdf.current_page (
+         Rope.of_string (
+           match c with
+               Butt_cap->" 0 J "
+             | Round_cap->" 1 J "
+             | Proj_square_cap->" 2 J "
+             | _->""
+         ))
          
      let closePath pdf=
        end_path pdf;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " h ")
-     let stroke pdf=
+
+     let change_stroking_color pdf color=
+       if color <> pdf.stroking_color then (
+         pdf.stroking_color<-color;
+         pdf.current_page <- Rope.append pdf.current_page 
+           (Rope.of_string (
+              (string_of_float color.red)^" "^(string_of_float color.green)^" "^(string_of_float color.blue)^" RG "
+            ))
+       )
+     let change_non_stroking_color pdf color=
+       if color <> pdf.non_stroking_color then (
+         pdf.non_stroking_color<-color;
+         pdf.current_page <- Rope.append pdf.current_page 
+           (Rope.of_string (
+              (string_of_float color.red)^" "^(string_of_float color.green)^" "^(string_of_float color.blue)^" rg "
+            ))
+       )
+
+     let stroke ?(color:color=black) pdf=
        end_path pdf;
+       change_stroking_color pdf color;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " S ")
-     let close_stroke pdf=
+     let close_stroke ?(color:color=black) pdf=
        end_path pdf;
+       change_stroking_color pdf color;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " s ")
-     let fill_stroke pdf=
+     let fill_stroke ?(color:color=black)  pdf=
        end_path pdf;
-       pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " b ")
-     let fill pdf=
+       change_non_stroking_color pdf color; 
+      pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " b ")
+     let fill ?(color:color=black)  pdf=
        end_path pdf;
+       change_non_stroking_color pdf color;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " f ")
 
      let hexShow i=

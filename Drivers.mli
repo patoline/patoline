@@ -1,5 +1,10 @@
 (** Common interface for output drivers of TeX' *)
 open Fonts
+type lineCap=Butt_cap | Round_cap | Proj_square_cap
+type lineJoin=Miter_join | Round_join | Bevel_join
+type color={ red:float; green:float; blue:float }
+val black:color
+
 module type Driver =
   sig
     type driver
@@ -21,11 +26,14 @@ module type Driver =
     val curveto :
       driver -> float * float -> float * float -> float * float -> unit
     val dash_pattern : driver -> float list -> unit
+    val line_width : driver -> float -> unit
+    val line_cap : driver -> lineCap -> unit
+    val line_join : driver -> lineJoin -> unit
 
-    val stroke : driver -> unit
-    val fill : driver -> unit
-    val fill_stroke : driver -> unit
-    val close_stroke : driver -> unit
+    val stroke: ?color:color -> driver-> unit
+    val fill: ?color:color -> driver-> unit
+    val fill_stroke: ?color:color -> driver->unit
+    val close_stroke: ?color:color -> driver->unit
     val closePath : driver -> unit
     val text : driver -> float * float -> float -> Fonts.glyph list -> unit
   end
