@@ -24,6 +24,8 @@ module type Driver = sig
   val lineto : driver->(float*float) -> unit
   val curveto : driver->(float*float) -> (float*float) -> (float*float) -> unit
 
+  val dash_pattern : driver -> float list -> unit
+
   val stroke:driver->unit
   val fill:driver->unit
   val fill_stroke:driver->unit
@@ -273,6 +275,27 @@ module Pdf =
                             (string_of_float y2)^" "^(string_of_float x3)^" "^(string_of_float y3)^" "^" c "));
        pdf.pos<-pos;
        pdf.vpos<-pos
+         
+     let dash_pattern pdf l=
+       let l0=List.map (fun x->round (pt_of_mm x)) l in
+         match l0 with
+             []->(pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "[] 0 d "))
+           | h::s->(
+               let rec pgcd a_ b_=Printf.printf "%d %d\n" a_ b_ ; flush stdout; if a_=b_ then a_ else
+                 let (a,b)=if a_<b_ then (b_,a_) else (a_,b_) in
+                 let div=a/b in
+                 let rem=a-div*b in
+                   if rem=0 then b else
+                     pgcd b rem
+               in
+               let phase=List.fold_left pgcd h s in
+                 pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " [");
+                 List.iter (fun x->pdf.current_page<-Rope.append pdf.current_page
+                              (Rope.of_string ((string_of_int (x/phase)) ^ " "))
+                           ) l0;
+                 pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ("] "^(string_of_int phase)^" d "))
+             )
+         
          
      let closePath pdf=
        end_path pdf;

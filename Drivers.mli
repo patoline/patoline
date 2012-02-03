@@ -20,6 +20,8 @@ module type Driver =
     val lineto : driver -> float * float -> unit
     val curveto :
       driver -> float * float -> float * float -> float * float -> unit
+    val dash_pattern : driver -> float list -> unit
+
     val stroke : driver -> unit
     val fill : driver -> unit
     val fill_stroke : driver -> unit
