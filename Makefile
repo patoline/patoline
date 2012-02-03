@@ -54,6 +54,9 @@ $(EXEC): $(OBJS)
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) -o $(EXEC) $(LIBS:.cma=.cmxa) $(OPTOBJS)
 
+graphic_font: tests/graphics_font.ml $(OBJS)
+	$(CAMLC) $(OBJS) graphics.cma -o graphics_font tests/graphics_font.ml
+
 doc:Makefile $(OBJS)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
@@ -81,6 +84,7 @@ clean::
 	rm -f $(EXEC)
 	rm -f $(EXEC).opt
 	rm -Rf doc
+	rm -f graphics_font
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
