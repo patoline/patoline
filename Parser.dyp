@@ -13,7 +13,6 @@ let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
 
 let rec my_kerning =
-  let open FontsTypes in 
   let of_char x=UTF8.init 1 (fun _-> UChar.of_char x) in
     function
         []->[]
