@@ -281,7 +281,7 @@ module Pdf =
          match l0 with
              []->(pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "[] 0 d "))
            | h::s->(
-               let rec pgcd a_ b_=Printf.printf "%d %d\n" a_ b_ ; flush stdout; if a_=b_ then a_ else
+               let rec pgcd a_ b_=if a_=b_ then a_ else
                  let (a,b)=if a_<b_ then (b_,a_) else (a_,b_) in
                  let div=a/b in
                  let rem=a-div*b in
