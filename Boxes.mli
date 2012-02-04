@@ -14,11 +14,5 @@ type line = {
   paragraph_height : int;
 }
 
-type parameters = {
-  format : float * float;
-  lead : float;
-  measure : float;
-  line_height : int;
-}
 val lineBreak :
   parameters -> ?figures:'a array -> box array array -> (float * float * box) list array array

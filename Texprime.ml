@@ -12,7 +12,7 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
-let default={ format=a4; lead=5.; measure=150.; line_height=38 }
+let default={ format=a4; lead=5.; measure=150.; lines_by_page=38 }
 
 let _=
   let filename=ref [] in

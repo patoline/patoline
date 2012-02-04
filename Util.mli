@@ -1,6 +1,10 @@
 (** Defines the type of the boxes used in the optimizer. It is
     essential that all lengths defined here be expressed in
     typographical units, i.e. 1/1000 of a "metal box" *)
+type parameters={ format:float*float;
+                  lead:float;
+                  measure:float;
+                  lines_by_page:int }
 type box =
     GlyphBox of (float * glyph)
   | Kerning of box FontsTypes.kerningBox

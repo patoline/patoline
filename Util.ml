@@ -5,6 +5,13 @@ open Constants
 open Bezier
 open CamomileLibrary
 
+
+type parameters={ format:float*float;
+                  lead:float;
+                  measure:float;
+                  lines_by_page:int }
+
+
 type 'a kerningBox='a FontsTypes.kerningBox
 
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;

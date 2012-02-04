@@ -50,11 +50,6 @@ let rec print_graph file lines graph=
     Printf.fprintf f "};\n";
     close_out f
 
-type parameters={ format:float*float;
-                  lead:float;
-                  measure:float;
-                  line_height:int }
-
 
 
 
@@ -290,7 +285,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                      paragraph=node.paragraph+1; lastFigure=node.lastFigure;
                      hyphenStart= -1; hyphenEnd= -1;
                      height=
-                       if (node.height=parameters.line_height-1 ||
+                       if (node.height=parameters.lines_by_page-1 ||
                            node.paragraph+1>=Array.length lines) then
                          -1
                        else
@@ -315,7 +310,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                             node.lineEnd node.hyphenEnd in
                           let comp1=compression parameters.measure node.paragraph i node.hyphenEnd j hyphen in
                             
-                          let v_distance= if node.height+1>=parameters.line_height then 0. else
+                          let v_distance= if node.height+1>=parameters.lines_by_page then 0. else
                             collide line0 comp0 0. line1 comp1 0.
                           in
                           let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
@@ -323,10 +318,10 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                         ) else
                           (0.,1)
                       in
-                        if node.height+v_incr<parameters.line_height || v_incr=1 then (
+                        if node.height+v_incr<parameters.lines_by_page || v_incr=1 then (
                           let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                          hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
-                                         height=(node.height+v_incr) mod parameters.line_height;
+                                         height=(node.height+v_incr) mod parameters.lines_by_page;
                                          lineStart= i; lineEnd= j;
                                          paragraph_height=node.paragraph_height+1 }
                           in
@@ -418,7 +413,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
           []->pages
         | node::s ->(
             let pages'=if node.height=0 || (match pages with []->true | _->false) then
-              (Array.create parameters0.line_height [])::pages else pages in
+              (Array.create parameters0.lines_by_page [])::pages else pages in
             let first=List.hd pages' in
               (* Printf.printf "node.height=%d\n" node.height; flush stdout; *)
               if node.lineEnd > node.lineStart && node.height>=0 then

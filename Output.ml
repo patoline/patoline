@@ -16,15 +16,15 @@ module Routine=functor (M:Driver)->struct
         M.line_width drv 0.05 ;
         M.dash_pattern drv [3.;3.];
         M.moveto drv (10.0 , 270.0);
-        M.lineto drv (10.0 , 270.0 -. parameters.lead *. (float_of_int parameters.line_height));
-        M.lineto drv (10.0 +. parameters.measure , 270.0 -. parameters.lead *. (float_of_int parameters.line_height));
+        M.lineto drv (10.0 , 270.0 -. parameters.lead *. (float_of_int parameters.lines_by_page));
+        M.lineto drv (10.0 +. parameters.measure , 270.0 -. parameters.lead *. (float_of_int parameters.lines_by_page));
         M.lineto drv (10.0 +. parameters.measure , 270.0);
         M.lineto drv (10.0 , 270.0);
         (*STRANGE: if I don't do a stroke here, the color of the stroke below
          * is reset to black on the second page... *)
         (*M.stroke ~color:{red=0.5 ; blue=0.5 ; green=0.5} drv;
         M.line_width drv 0.01 ;
-        for l=1 to parameters.line_height do
+        for l=1 to parameters.lines_by_page do
           M.moveto drv (10.0 , 270.0 -. parameters.lead *. (float_of_int l));
           M.lineto drv (10.0 +. parameters.measure , 270.0 -. parameters.lead *. (float_of_int l))
         done;
