@@ -27,12 +27,28 @@ let print_text_line lines node=
     in
       print_box (lines.(node.paragraph).(i))
   done;
-  print_newline();
-
+  print_newline()
 
 
 module LineMap=Map.Make (struct type t=line let compare=compare end)
 
+let rec print_graph file lines graph=
+  let f=open_out file in
+    Printf.fprintf f "digraph {\n";
+    LineMap.iter (fun k (_,a)->
+                    Printf.fprintf f "node_%d_%s_%s [label=\"%d, %d\"];\n"
+                      k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
+                      (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+                      k.lineStart k.lineEnd;
+                    
+                    Printf.fprintf f "node_%d_%s_%s -> node_%d_%s_%s\n"
+                      a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
+                      (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
+                      k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
+                      (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+                 ) graph;
+    Printf.fprintf f "};\n";
+    close_out f
 
 type parameters={ format:float*float;
                   lead:float;
@@ -353,6 +369,9 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
   let todo=LineMap.singleton { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1;
                                lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
   let demerits=break parameters0 todo (LineMap.empty) in
+
+    print_graph "graph" lines demerits;
+    
   let (b,(bad,_)) = LineMap.max_binding demerits in
 
     if b.paragraph<Array.length lines then
