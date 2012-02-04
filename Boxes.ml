@@ -14,17 +14,17 @@ type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenE
 let print_line l=
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d }\n"
   l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
+let rec print_box=function
+    Glue _->Printf.printf " "
+  | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
+  | Kerning x->print_box x.kern_contents
+  | Hyphen x->Array.iter print_box x.hyphen_normal
+  | _->Printf.printf "[]"
+
 
 let print_text_line lines node=
   print_line node;
   for i=node.lineStart to node.lineEnd-1 do
-    let rec print_box=function
-        Glue _->Printf.printf " "
-      | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
-      | Kerning x->print_box x.kern_contents
-      | Hyphen x->Array.iter print_box x.hyphen_normal
-      | _->Printf.printf "[]"
-    in
       print_box (lines.(node.paragraph).(i))
   done;
   print_newline()

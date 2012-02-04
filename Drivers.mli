@@ -2,6 +2,8 @@
 open Fonts
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
+
+(** The three components of a color need to be between 0. and 1. *)
 type color={ red:float; green:float; blue:float }
 val black:color
 

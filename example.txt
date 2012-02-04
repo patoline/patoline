@@ -21,7 +21,10 @@ Un document TeX' c'est beaucoup mieux qu'un document TeX !
 
 VQ Ceffi est un petit texte sympa, avec un premier paragraphe assez long
 et des sauts de lignes : avec même des accents, surtout l'été
-!  Thurisind was king of the Gepids, an East Germanic Gothic people,
+!
+
+
+ThurisindThurisindThurisind waswaswas kingkingking of the Gepids, an East Germanic Gothic people,
 from c. 548 to 560. He was the penultimate Gepid king, and succeeded
 King Elemund by staging a coup d'état and forcing the king's son into
 exile. Thurisind's kingdom, known as Gepidia, was located in Central

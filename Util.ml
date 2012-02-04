@@ -149,16 +149,18 @@ let glyph_of_string substitution_ positioning_ font fsize str =
 
 let hyphenate tree subs kern font fsize str=
   let hyphenated=Hyphenate.hyphenate str tree in
-  let pos=Array.make (List.length hyphenated) ([||],[||]) in
+  let pos=Array.make (List.length hyphenated-1) ([||],[||]) in
   let rec hyph l i cur=match l with
       []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize cur); hyphenated=pos }]
     | h::s->(
-        pos.(i)<-(Array.of_list (glyph_of_string subs kern font fsize (cur^h^"-")),
-                  Array.of_list (glyph_of_string subs kern font fsize (List.fold_left (^) "" s)));
+        pos.(i)<-(Array.of_list (glyph_of_string subs kern font fsize (cur^"-")),
+                  Array.of_list (glyph_of_string subs kern font fsize (List.fold_left (^) "" l)));
         hyph s (i+1) (cur^h)
       )
   in
-    hyph hyphenated 0 ""
+    match hyphenated with
+        []->glyph_of_string subs kern font fsize str
+      | h::s->hyph s 0 h
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 
