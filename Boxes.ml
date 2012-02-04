@@ -307,18 +307,22 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
                   let rec break_next j sum_min sum_max=
                     let make_next_node hyphen=
-                      let line0=make_line node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd in
-                      let line1=make_line node.paragraph i j node.hyphenEnd hyphen in
-                      let comp0=compression parameters.measure node.paragraph node.lineStart node.hyphenStart
-                        node.lineEnd node.hyphenEnd in
-                      let comp1=compression parameters.measure node.paragraph i node.hyphenEnd j hyphen in
-                        
-                      let v_distance= if node.height+1>=parameters.line_height then 0. else
-                        collide line0 comp0 0. line1 comp1 0.
+                      let v_badness,v_incr=
+                        if node.height>=0 then (
+                          let line0=make_line node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd in
+                          let line1=make_line node.paragraph i j node.hyphenEnd hyphen in
+                          let comp0=compression parameters.measure node.paragraph node.lineStart node.hyphenStart
+                            node.lineEnd node.hyphenEnd in
+                          let comp1=compression parameters.measure node.paragraph i node.hyphenEnd j hyphen in
+                            
+                          let v_distance= if node.height+1>=parameters.line_height then 0. else
+                            collide line0 comp0 0. line1 comp1 0.
+                          in
+                          let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
+                            v_badness (float_of_int v_incr*.parameters.lead) line0 comp0 line1 comp1, v_incr
+                        ) else
+                          (0.,1)
                       in
-                      let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
-                        (* Printf.printf "v_incr=%f\n" (-.v_distance/.parameters.lead); *)
-                        
                         if node.height+v_incr<parameters.line_height || v_incr=1 then (
                           let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                          hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
@@ -326,14 +330,8 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                                          lineStart= i; lineEnd= j;
                                          paragraph_height=node.paragraph_height+1 }
                           in
-                          let v_bad=v_badness (float_of_int v_incr*.parameters.lead) line0 comp0 line1 comp1 in
-                          let bad=(lastBadness+. v_bad*.v_bad +.
+                          let bad=(lastBadness+. v_badness*.v_badness +.
                                      (h_badness node.paragraph i j)) in
-                            (* Printf.printf "\nVertical badness\n"; *)
-                            (* print_text_line lines node; *)
-                            (* print_text_line lines nextNode; *)
-                            (* Printf.printf "v_badness = %f, h_badness = %f\n" v_bad (h_badness node.paragraph !i !j); *)
-                            (* Printf.printf "badness = %f\n" bad; *)
                             register node nextNode bad
                         )
                     in
