@@ -97,7 +97,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
           minLine := !minLine+.a;
           maxLine := !maxLine+.b
       done;
-      min 1. ((m-. !minLine)/.(!maxLine-. !minLine))
+      max 0. (min 1. ((m-. !minLine)/.(!maxLine-. !minLine)))
   in
   let make_line pi lineStart lineEnd hyphenStart hyphenEnd=
     let arr0=
@@ -353,7 +353,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                             )
                           | _->()
                   in
-                    break_next (i+1) 0. 0.;
+                    break_next i 0. 0.;
                     break parameters !todo' !demerits'
                 )
             )

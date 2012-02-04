@@ -218,7 +218,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                                lastFigure=(-1) } 0. in
   let demerits=break parameters0 todo (LineMap.empty) in
 
-    (* print_graph "graph" lines demerits; *)
+  print_graph "graph" lines demerits;
   let (b,(bad,_)) = LineMap.max_binding demerits in
 
     if b.paragraph<Array.length lines then

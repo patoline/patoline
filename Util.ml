@@ -151,7 +151,7 @@ let hyphenate tree subs kern font fsize str=
   let hyphenated=Hyphenate.hyphenate str tree in
   let pos=Array.make (List.length hyphenated-1) ([||],[||]) in
   let rec hyph l i cur=match l with
-      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize cur); hyphenated=pos }]
+      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize str); hyphenated=pos }]
     | h::s->(
         pos.(i)<-(Array.of_list (glyph_of_string subs kern font fsize (cur^"-")),
                   Array.of_list (glyph_of_string subs kern font fsize (List.fold_left (^) "" l)));
