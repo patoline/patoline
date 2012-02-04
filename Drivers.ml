@@ -62,6 +62,10 @@ module Pdf =
                     mutable pos:float*float;
                     mutable stroking_color:color;
                     mutable non_stroking_color:color;
+                    mutable line_cap:lineCap;
+                    mutable line_join:lineJoin;
+                    mutable line_width:float;
+                    mutable dash_pattern:float list;
                     mutable posT:float*float;
                     mutable isText : bool;
                     mutable fonts : pdfFont StrMap.t;
@@ -83,6 +87,10 @@ module Pdf =
            pos=(infinity,infinity);
            posT=(0.,0.);
            stroking_color=black;non_stroking_color=black;
+           line_cap=Butt_cap;
+           line_join=Miter_join;
+           line_width=1.0;
+           dash_pattern=[];
            isText=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
@@ -222,13 +230,19 @@ module Pdf =
 
      let begin_page pdf (x,y)=
        pdf.current_page<-Rope.empty;
-       pdf.current_pageSize<-(pt_of_mm x,pt_of_mm y)
-           
-     let end_page pdf=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       pdf.current_pageSize<-(pt_of_mm x,pt_of_mm y);
        pdf.posT<-(0.,0.);
        pdf.currentFont<- -1;
        pdf.currentSize<- -1.;
+       pdf.dash_pattern<-[];
+       pdf.line_width <- 1.0;
+       pdf.line_cap<-Butt_cap;
+       pdf.line_join<-Miter_join;
+       pdf.stroking_color<-black;
+       pdf.non_stroking_color<-black
+           
+     let end_page pdf=
+       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        let str=Rope.to_string pdf.current_page in
        let contentObject=beginObject pdf in
          output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length str))^" >>\nstream\n");
@@ -305,47 +319,64 @@ module Pdf =
                  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ("] "^(string_of_int phase)^" d "))
              )
      let line_width pdf w=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
-       pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((string_of_float (pt_of_mm w))^" w "))
+       let ptw=pt_of_mm w in
+         if ptw <> pdf.line_width then (
+           if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+           pdf.line_width<-ptw;
+           pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((string_of_float ptw)^" w "))
+         )
+
      let line_join pdf j=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
-       pdf.current_page<-Rope.append pdf.current_page (
-         Rope.of_string (
-           match j with
-               Miter_join->" 0 j "
-             | Round_join->" 1 j "
-             | Bevel_join->" 2 j "
-             | _->""
-         ))
+       if j<>pdf.line_join then (
+         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         pdf.line_join<-j;
+         pdf.current_page<-Rope.append pdf.current_page (
+           Rope.of_string (
+             match j with
+                 Miter_join->" 0 j "
+               | Round_join->" 1 j "
+               | Bevel_join->" 2 j "
+                   (* | _->"" *)
+           ))
+       )
      let line_cap pdf c=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
-       pdf.current_page<-Rope.append pdf.current_page (
-         Rope.of_string (
-           match c with
-               Butt_cap->" 0 J "
-             | Round_cap->" 1 J "
-             | Proj_square_cap->" 2 J "
-             | _->""
-         ))
+       if c<>pdf.line_cap then (
+         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         pdf.line_cap<-c;
+         pdf.current_page<-Rope.append pdf.current_page (
+           Rope.of_string (
+             match c with
+                 Butt_cap->" 0 J "
+               | Round_cap->" 1 J "
+               | Proj_square_cap->" 2 J "
+                   (* | _->"" *)
+           ))
+       )
          
      let closePath pdf=
        end_path pdf;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " h ")
 
      let change_stroking_color pdf color=
+       let r=max 0. (min 1. color.red) in
+       let g=max 0. (min 1. color.green) in
+       let b=max 0. (min 1. color.blue) in
        if color <> pdf.stroking_color then (
          pdf.stroking_color<-color;
          pdf.current_page <- Rope.append pdf.current_page 
            (Rope.of_string (
-              (string_of_float color.red)^" "^(string_of_float color.green)^" "^(string_of_float color.blue)^" RG "
+              (string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" RG "
             ))
        )
      let change_non_stroking_color pdf color=
+       let r=max 0. (min 1. color.red) in
+       let g=max 0. (min 1. color.green) in
+       let b=max 0. (min 1. color.blue) in
        if color <> pdf.non_stroking_color then (
          pdf.non_stroking_color<-color;
          pdf.current_page <- Rope.append pdf.current_page 
            (Rope.of_string (
-              (string_of_float color.red)^" "^(string_of_float color.green)^" "^(string_of_float color.blue)^" rg "
+              (string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" rg "
             ))
        )
 
