@@ -1,0 +1,20 @@
+Accents: (uppercase A with a "`" accents fails!!!)
+
+á Á à ä Ä â Â é É è È ë Ë ê Ê í Í ì Ì ï Ï î Î ó Ó ò Ò ö Ö ô Ô ú Ú ù Ù ü Ü û Û
+
+å Å ø Ø ñ Ñ ç Ç æ Æ œ Œ þ Þ ð Ð ß
+
+Money: $ £ ¢ ₡ € ¥ ¤
+
+Symbols: © ™ ®
+
+Misc: ÷ × ¼ ½ ¾ ³ ² ± ° § ¶
+
+non-breakable space: " "
+
+punctuation: ¡ ¿ « »
+
+Greek: (lowercase "pi" fails!!!)
+
+α Α β Β γ Γ δ Δ ε Ε ζ Ζ η Η θ Θ ι Ι κ Κ λ Λ μ Μ ν Ν ξ Ξ ο Ο Π ρ Ρ σ Σ ς Σ τ Τ υ Υ φ Φ χ Χ ψ Ψ ω Ω
+
