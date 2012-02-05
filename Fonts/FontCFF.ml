@@ -81,14 +81,13 @@ let showStack st stc=
 
 exception Index
 exception Type2Int of int
-  
+
 let readCFFInt f=
   let b0=input_byte f in
     if b0<28 || b0==31 then
       raise (Type2Int b0)
     else
       if b0=30 then
-        
         let first=ref true in
         let next=ref 0 in
         let input_next ()=
@@ -101,7 +100,6 @@ let readCFFInt f=
             (first:=true;
              !next)
         in
-          
         let rec parseInt x=
           let a=input_next () in
             if a<=9 then parseInt (x*10+a) else (float_of_int x,a)
@@ -126,11 +124,10 @@ let readCFFInt f=
               (0.,b1)
         in
           (a0+.a1) *. (10. ** a2)
-            
       else
         float_of_int (
           if b0>=32 then
-            if b0<=246 then b0-139 else 
+            if b0<=246 then b0-139 else
               let b1=input_byte f in
                 if b0<=250 then
                   (((b0-247) lsl 8) lor b1) + 108
@@ -147,8 +144,8 @@ let readCFFInt f=
                    (((((b1 lsl 8) lor b2) lsl 8) lor b3) lsl 8) lor b4
             )
         )
-          
-          
+
+
 let index f idx_off=
   seek_in f idx_off;
   let count=readInt f 2 in
@@ -158,7 +155,7 @@ let index f idx_off=
       idx_arr.(i) <- idx_off+2+(count+1)*idx_offSize + (readInt f idx_offSize);
     done;
     idx_arr
-      
+
 let strIndex f idx_off=
   let off=index f idx_off in
   let str=Array.create (Array.length off-1) "" in
@@ -168,7 +165,7 @@ let strIndex f idx_off=
       really_input f (str.(i)) 0 (off.(i+1)-off.(i))
     done;
     str
-      
+
 let indexGet f idx_off idx=
   seek_in f idx_off;
   let count=readInt f 2 in
@@ -185,7 +182,7 @@ let indexGet f idx_off idx=
 let dict f a b=
   let rec dict' stack l=
     if pos_in f >= b then l else
-      try 
+      try
         let op=readCFFInt f in
           dict' (op::stack) l
       with
@@ -201,11 +198,11 @@ let dict f a b=
   in
     seek_in f a;
     dict' [] []
-      
+
 let findDict f a b key=
   let rec dict' stack=
     if pos_in f >= b then raise Not_found else
-      try 
+      try
         let op=readCFFInt f in dict' (op::stack)
       with
           (Type2Int b0)->
@@ -218,11 +215,8 @@ let findDict f a b key=
               if op=key then stack else dict' []
   in
     seek_in f a;
-    dict' [] 
-      
-      
-      
-    
+    dict' []
+
 let loadFont ?offset:(off=0) ?size:(size=0) file=
   let f=open_in file in
     seek_in f (off+2);
@@ -231,7 +225,6 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
     let nameIndex=index f (off+hdrSize) in
     let dictIndex=index f (nameIndex.(Array.length nameIndex-1)) in
     let stringIndex=index f (dictIndex.(Array.length dictIndex-1)) in
-      
     let subrIndex=
       let subrs=Array.create (Array.length dictIndex-1) [||] in
         for idx=0 to Array.length dictIndex-2 do
@@ -256,10 +249,8 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
     in
       { file=f; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
         stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex }
-        
 
-let glyph_of_char _ _=0        
-        
+let glyph_of_char _ _=0
 let loadGlyph font ?index:(idx=0) gl=
   let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
   let fontMatrix=
@@ -276,7 +267,6 @@ let loadGlyph font ?index:(idx=0) gl=
       gsubrs=font.gsubrIndex }
 
 exception Found of float
-      
 let outlines_ gl onlyWidth=
   Random.init (int_of_char gl.type2.[0]);
   let stack=Array.create 48 0. in
@@ -292,9 +282,7 @@ let outlines_ gl onlyWidth=
   let y=ref 0. in
   let x0=ref 0. in
   let y0=ref 0. in
-    
   let resultat=ref [] in
-    
   let lineto x1 y1=
     opened:=true;
     resultat:=([| !x; x1 |],[| !y; y1 |])::(!resultat);
@@ -327,7 +315,6 @@ let outlines_ gl onlyWidth=
     else
       stackC:=0
   in
-    
   let rec hvcurveto c=
     if c <= !stackC-4 then
       (curveto
@@ -349,7 +336,6 @@ let outlines_ gl onlyWidth=
     else
       stackC:=0
   in
-    
   let rec execute program=
     let pc=ref 0 in
       while !pc < String.length program do
@@ -457,28 +443,22 @@ let outlines_ gl onlyWidth=
                    curveto x1 y1 x2 y2 x3 y3;
                    stackC:=0;
                    incr pc)
-                
           | HSTEM | VSTEM | HSTEMHM
           | VSTEMHM->(
               if onlyWidth && (!stackC land 1)=1 then raise (Found stack.(0));
-              
               hints := !hints + !stackC / 2 ; stackC:=0 ; incr pc
             )
-              
           | HINTMASK->((*print_string "hints : ";print_int !hints;print_string ",";print_int !stackC;print_newline();*)
               if onlyWidth && !stackC > 0 then raise (Found stack.(0));
               hints := !hints + !stackC / 2 ;
               stackC:=0 ; pc := !pc + 1 + (int_of_float (ceil ((float_of_int !hints)/.8.))))
-              
           | CNTRMASK->((*print_string "hints : ";print_int !hints;print_string ",";print_int !stackC;print_newline();*)
               stackC:=0 ; pc := !pc + 1 + (int_of_float (ceil ((float_of_int !hints)/.8.))))
-              
           | ENDCHAR->
               (if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
                if onlyWidth && !stackC>0 then raise (Found stack.(0));
                pc:=String.length program)
           | RETURN->pc:=String.length program
-              
           | CALLSUBR->
               (let subrBias=
                  if Array.length gl.subrs < 1240 then 107 else
@@ -510,7 +490,6 @@ let outlines_ gl onlyWidth=
                           let y1= y0 +. stack.(3) in
                           let x2= x1 +. stack.(4) in
                           let y2= y1 +. stack.(5) in
-                            
                           let x3=x2 +. stack.(6) in
                           let y3=y2 +. stack.(7) in
                           let x4=x3 +. stack.(8) in
@@ -529,12 +508,14 @@ let outlines_ gl onlyWidth=
                           let y1= y0 +. stack.(3) in
                           let x2= x1 +. stack.(4) in
                           let y2= y1 +. stack.(5) in
-                            
                           let x3=x2 +. stack.(6) in
                           let y3=y2 +. stack.(7) in
                           let x4=x3 +. stack.(8) in
                           let y4=y3 +. stack.(9) in
-                          let (x5,y5)=if abs_float (x4 -. !x) > abs_float (y4 -. !y) then (x4+.stack.(10), y4) else (x4, y4+.stack.(10)) in
+                          let (x5,y5)=if abs_float (x4 -. !x) > abs_float (y4 -. !y) then
+                            (x4+.stack.(10), y4) else
+                            (x4, y4+.stack.(10))
+                          in
                             curveto x0 y0 x1 y1 x2 y2;
                             curveto x3 y3 x4 y4 x5 y5);
                        stackC:=0;
@@ -546,7 +527,6 @@ let outlines_ gl onlyWidth=
                           let y1= !y +. stack.(2) in
                           let x2= x1 +. stack.(3) in
                           let x3= y1 +. stack.(4) in
-                            
                           let x4=x2 +. stack.(5) in
                           let x5=y1 +. stack.(6) in
                             curveto x0 !y x1 y1 x2 y1;
@@ -560,7 +540,6 @@ let outlines_ gl onlyWidth=
                           let x1= x0 +. stack.(2) in
                           let y1= y0 +. stack.(3) in
                           let x2= x1 +. stack.(4) in
-                            
                           let x3=x2 +. stack.(5) in
                           let x4=x3 +. stack.(6) in
                           let y4=y1 +. stack.(7) in
@@ -632,7 +611,6 @@ let outlines_ gl onlyWidth=
 
                   | op->failwith ("Type 2 : undefined operator 12 "^(string_of_int op))
                 )
-                  
           | op when op>=32 ->
               if op<=246 then (stack.(!stackC)<-float_of_int (op-139); incr stackC; incr pc) else
                 (let op1=int_of_char (program.[!pc+1]) in
@@ -677,7 +655,7 @@ let glyphWidth glyph=
 
 let glyphNumber glyph=glyph.glyphNumber
 
-let fontName ?index:(idx=0) font= 
+let fontName ?index:(idx=0) font=
   let buf = String.create (font.nameIndex.(idx+1)-font.nameIndex.(idx)) in
     seek_in font.file (font.nameIndex.(idx));
     really_input font.file buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));

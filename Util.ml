@@ -9,7 +9,19 @@ open CamomileLibrary
 type parameters={ format:float*float;
                   lead:float;
                   measure:float;
-                  lines_by_page:int }
+                  lines_by_page:int;
+                  left_margin:float }
+
+type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenEnd:int;
+             lastFigure:int; height:int; paragraph_height:int; page:int }
+
+module Line=struct
+  type t=line
+  let compare line0 line1=
+    compare line0 line1
+end
+module LineMap=Map.Make(Line)
+
 
 
 type 'a kerningBox='a FontsTypes.kerningBox
@@ -109,7 +121,6 @@ let glyphCache cur_font gl cont=
                         glyph=glyph; width=Fonts.glyphWidth glyph;
                         x0=x0; x1=x1;
                         y0=y0; y1=y1 } in
-             
              font:=IntMap.add gl loaded !font;
              loaded)
 
@@ -124,7 +135,6 @@ let glyph_of_string substitution_ positioning_ font fsize str =
   in
   let codes=substitution_ (make_codes (UTF8.first str) []) in
   let kerns=positioning_ codes in
-    
 
   let rec kern=function
       GlyphID (c,h)::s ->let y=glyphCache font h c in GlyphBox (fsize, y)::kern s
@@ -163,4 +173,3 @@ let hyphenate tree subs kern font fsize str=
       | h::s->hyph s 0 h
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
-

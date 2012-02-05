@@ -7,13 +7,9 @@ open FontsTypes
 
 exception Impossible
 
-
-type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenEnd:int;
-             lastFigure:int; height:int; paragraph_height:int }
-
 let print_line l=
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d }\n"
-  l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
+    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
 let rec print_box=function
     Glue _->Printf.printf " "
   | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
@@ -25,22 +21,19 @@ let rec print_box=function
 let print_text_line lines node=
   print_line node;
   for i=node.lineStart to node.lineEnd-1 do
-      print_box (lines.(node.paragraph).(i))
+    print_box (lines.(node.paragraph).(i))
   done;
   print_newline()
-
-
-module LineMap=Map.Make (struct type t=line let compare=compare end)
 
 let rec print_graph file lines graph=
   let f=open_out file in
     Printf.fprintf f "digraph {\n";
-    LineMap.iter (fun k (_,a)->
+    LineMap.iter (fun k (_,_,a)->
                     Printf.fprintf f "node_%d_%s_%s [label=\"%d, %d\"];\n"
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
                       k.lineStart k.lineEnd;
-                    
+
                     Printf.fprintf f "node_%d_%s_%s -> node_%d_%s_%s\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
@@ -53,29 +46,7 @@ let rec print_graph file lines graph=
 
 
 
-let lineBreak parameters0 ?figures:(figures = [||]) lines=
-  
-  let get i j=lines.(i).(j) in
-    
-  let length_min=Array.create (Array.length lines) [||] in
-  let length_max=Array.create (Array.length lines) [||] in
-  let _=
-    let bmin=ref 0. in
-    let bmax=ref 0. in
-      for i=0 to Array.length lines-1 do
-        length_min.(i)<-Array.create (Array.length (Array.get lines i)+1) 0.;
-        length_max.(i)<-Array.create (Array.length (Array.get lines i)+1) 0.;
-        for j=0 to Array.length (Array.get lines i)-1 do
-          length_min.(i).(j)<- !bmin;
-          length_max.(i).(j)<- !bmax;
-          let a,b=box_interval (get i j) in
-            bmin:= !bmin+.a;
-            bmax:= !bmax+.b
-        done;
-        length_min.(i).(Array.length (Array.get lines i))<- !bmin;
-        length_max.(i).(Array.length (Array.get lines i))<- !bmax;
-      done
-  in
+let lineBreak parameters ?figures:(figures = [||]) lines=
 
   let compression m p i hi j hj=
     let minLine=ref 0. in
@@ -158,7 +129,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                       );
                       xi:= !xi+.wi;
                       collide boxes_i (i+1) max_i boxes_j j max_j (min max_col (yi-.yj))
-                        
+
                   ) else (
                     let yi=if !xj > !xi +. wi || i>=max_i then 0. else lower_y box_i wi in
                     let yj=upper_y box_j wj in
@@ -166,7 +137,8 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                     let w0= !xj +. wj -. x0 in
                       if w0>=0. then (
                         (* Graphics.set_color Graphics.green; *)
-                        (* Printf.printf "%d %d %d %d\n"(round (mm*.x0)) (round (200.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
+                        (* Printf.printf "%d %d %d %d\n"(round (mm*.x0)) (round (200.+.mm*.yj)) (round (mm*.w0))
+                           (round (80.+.mm*.(yi-.yj))); *)
                         (* Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
                         (* Graphics.set_color Graphics.black; *)
                         (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
@@ -179,14 +151,9 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
     in
       collide line_i 0 (Array.length line_i) line_j 0 (Array.length line_j) infinity
   in
-    
-  let rec break parameters todo demerits=
-   
-    let h_badness pi i j=
-      let min_l=length_min.(pi).(j)-.length_min.(pi).(i) in
-      let max_l=length_max.(pi).(j)-.length_max.(pi).(i) in
-      let comp=if max_l=min_l then 0. else (parameters.measure-.min_l) /. (max_l-.min_l) in
 
+  let rec break todo demerits=
+    let h_badness pi i j comp=
       let bad=ref 0. in
         for k=i to j-1 do
           bad:= !bad +.
@@ -220,7 +187,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                     let w0= !xi+.wi-.x0 in
                     let yi=lower_y boxes_i.(i) wi in
                     let yj=upper_y boxes_j.(j) wj in
-                      
+
                       if !xj>= !xi+.wi || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
                         (xi:= !xi+.w0;
                          mean_collide boxes_i (i+1) max_i boxes_j j max_j w_tot col col2)
@@ -233,7 +200,7 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
                     let w0= !xj+.wj-.x0 in
                     let yi=lower_y boxes_i.(i) wi in
                     let yj=upper_y boxes_j.(j) wj in
-                      
+
                       if !xi>= !xj+.wj || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
                         (xj:= !xj +. w0;
                          mean_collide boxes_i i max_i boxes_j j max_j w_tot col col2)
@@ -247,152 +214,159 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
       in
         mean_collide line_i 0 (Array.length line_i) line_j 0 (Array.length line_j) 0. 0. 0.
     in
-      
+
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else
       (
-        let node,lastBadness=LineMap.min_binding todo in
+        let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-          if node.paragraph >= Array.length lines then break parameters !todo' demerits else
+          if node.paragraph >= Array.length lines then break !todo' demerits else
             (
               (* On commence par chercher la première vraie boite après node *)
               let demerits'=ref demerits in
-              let register node nextNode badness=
+              let register node nextNode badness next_params=
                 let reallyAdd ()=
-                  todo':=LineMap.add nextNode badness !todo';
-                  demerits':=LineMap.add nextNode (badness,node) !demerits'
+                  todo':=LineMap.add nextNode (badness,next_params) !todo';
+                  demerits':=LineMap.add nextNode (badness,next_params,node) !demerits'
                 in
                   try
-                    let bad,_=LineMap.find nextNode !demerits' in
+                    let bad,_,_=LineMap.find nextNode !demerits' in
                       if bad>badness then reallyAdd ()
                   with
                       Not_found->reallyAdd ()
               in
               let i=node.lineEnd+1 in
                 (* Y a-t-il encore des boites dans ce paragraphe ? *)
-                if i>=Array.length (Array.get lines node.paragraph) then (
-                  
+                if i>=Array.length lines.(node.paragraph) then (
+
                   (* On s'apprete a changer de paragraphe.
                      - On ne peut pas le faire si on est une ou deux lignes avant la fin de la page
                      - Ni si on est juste une ligne apres le debut.
                      - Si on est a la fin de la page, il faut enlever une ligne.
                   *)
-                  
+
                   (* if (node.height < parameters.line_height-3 || node.height=parameters.line_height-1) && *)
                   (*   (node.height >=1 || node.paragraph_height<=1) then *)
 
-                  (let nextNode={ 
+                  (let nextNode={
                      paragraph=node.paragraph+1; lastFigure=node.lastFigure;
                      hyphenStart= -1; hyphenEnd= -1;
                      height=
-                       if (node.height=parameters.lines_by_page-1 ||
+                       if (node.height=lastParameters.lines_by_page-1 ||
                            node.paragraph+1>=Array.length lines) then
                          -1
                        else
                          node.height+1;
-                     lineStart= -1; lineEnd= -1; paragraph_height= -1 }
+                     lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
                    in
                    let badness'=lastBadness in
-                     register node nextNode badness');
-                  
-                  break parameters !todo' !demerits'
+                     register node nextNode badness' (parameters nextNode));
+
+                  break !todo' !demerits'
 
                 ) else (
-                  
+
                   (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
+                  let params=parameters node in
                   let rec break_next j sum_min sum_max=
                     let make_next_node hyphen=
+                      let comp1=compression params.measure node.paragraph i node.hyphenEnd j hyphen in
                       let v_badness,v_incr=
                         if node.height>=0 then (
                           let line0=make_line node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd in
                           let line1=make_line node.paragraph i j node.hyphenEnd hyphen in
-                          let comp0=compression parameters.measure node.paragraph node.lineStart node.hyphenStart
+                          let comp0=compression lastParameters.measure node.paragraph node.lineStart node.hyphenStart
                             node.lineEnd node.hyphenEnd in
-                          let comp1=compression parameters.measure node.paragraph i node.hyphenEnd j hyphen in
-                            
-                          let v_distance= if node.height+1>=parameters.lines_by_page then 0. else
+                          let v_distance= if node.height+1>=params.lines_by_page then 0. else
                             collide line0 comp0 0. line1 comp1 0.
                           in
-                          let v_incr=int_of_float (ceil (max 1. (-.v_distance/.parameters.lead))) in
-                            v_badness (float_of_int v_incr*.parameters.lead) line0 comp0 line1 comp1, v_incr
+                          let v_incr=int_of_float (ceil (max 1. (-.v_distance/.params.lead))) in
+                            v_badness (float_of_int v_incr*.params.lead) line0 comp0 line1 comp1, v_incr
                         ) else
                           (0.,1)
                       in
-                        if node.height+v_incr<parameters.lines_by_page || v_incr=1 then (
+                        if node.height+v_incr<params.lines_by_page || v_incr=1 then (
                           let nextNode={ paragraph=node.paragraph; lastFigure=node.lastFigure;
                                          hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
-                                         height=(node.height+v_incr) mod parameters.lines_by_page;
+                                         height=(node.height+v_incr) mod params.lines_by_page;
                                          lineStart= i; lineEnd= j;
-                                         paragraph_height=node.paragraph_height+1 }
+                                         paragraph_height=node.paragraph_height+1;
+                                         page=node.page }
                           in
                           let bad=(lastBadness+. v_badness*.v_badness +.
-                                     (h_badness node.paragraph i j)) in
-                            register node nextNode bad
+                                     (h_badness node.paragraph i j comp1)) in
+                            register node nextNode bad params
                         )
                     in
-                      
+
                       if j>=Array.length (lines.(node.paragraph)) then make_next_node (-1) else
                         match lines.(node.paragraph).(j) with
                             Hyphen x->(
                               for i=0 to Array.length x.hyphenated-1 do
                                 let a,b=boxes_interval (fst x.hyphenated.(i)) in
-                                  if sum_min+.a <= parameters.measure && sum_max+.b >= parameters.measure then
+                                  if sum_min+.a <= params.measure && sum_max+.b >= params.measure then
                                     make_next_node i
                               done;
                               let a,b=boxes_interval x.hyphen_normal in
                                 break_next (j+1) (sum_min+. a) (sum_max+. b)
                             )
-                          | _ when sum_min <= parameters.measure->(
-                              (if sum_max >= parameters.measure then
+                          | _ when sum_min <= params.measure->(
+                              (if sum_max >= params.measure then
                                  match lines.(node.paragraph).(j) with
                                      Glue _->make_next_node (-1)
                                    | _->());
-                                       
+
                               let a,b=box_interval lines.(node.paragraph).(j) in
                                 break_next (j+1) (sum_min+. a) (sum_max+. b)
                             )
                           | _->()
                   in
-                    break_next i 0. 0.;
-                    break parameters !todo' !demerits'
+                    if node.hyphenEnd>=0 then (
+                      match lines.(node.paragraph).(node.lineEnd) with
+                          Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(node.hyphenEnd)) in
+                            break_next (node.lineEnd+1) a b
+                        | _->break_next i 0. 0.
+                    ) else break_next i 0. 0.;
+
+                     break !todo' !demerits'
                 )
             )
       )
   in
-  let todo=LineMap.singleton { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1;
-                               lastFigure=(-1); height= -1;paragraph_height= -1 } 0. in
-  let demerits=break parameters0 todo (LineMap.empty) in
-
+  let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1;
+                   lastFigure=(-1); height= -1;paragraph_height= -1; page=0 } in
+  let first_parameters=parameters first_line in
+  let todo=LineMap.singleton  first_line (0., first_parameters) in
+  let demerits=break todo (LineMap.empty) in
+  let (b,(bad,b_params,_)) = LineMap.max_binding demerits in
     print_graph "graph" lines demerits;
-    
-  let (b,(bad,_)) = LineMap.max_binding demerits in
 
     if b.paragraph<Array.length lines then
       (Printf.printf "impossible"; flush stdout; raise Impossible)
     else (
-      let rec makeLines node result=
-        try  
-          let _,next=LineMap.find node demerits in
-            makeLines next (node::result)
+      let rec makeLines params node result=
+        try
+          let _,params',next=LineMap.find node demerits in
+            makeLines params' next ((params,node)::result)
         with
             Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
       in
-      let makeLine node y=
-        let comp=compression parameters0.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
+      let makeLine parameters node y=
+        let comp=compression parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
         let rec makeLine boxes x i max_i line=
           if i>=max_i then (x,line) else
-            
+
             match boxes.(i) with
-                
+
                 Glue g->let w=g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width) in
                   makeLine boxes (x+.w) (i+1) max_i line
-                    
+
               | Kerning kbox as box -> makeLine boxes (x+.(box_width comp box)) (i+1) max_i
                   ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
-                    
+
               | Hyphen h->let (a,b)=makeLine h.hyphen_normal x 0 (Array.length h.hyphen_normal) line in
                   makeLine boxes a (i+1) max_i b
-                    
+
               | box->makeLine boxes (x+.(box_width comp box)) (i+1) max_i ((x,y,box)::line)
         in
         let u,v=(if node.hyphenStart>=0 then match lines.(node.paragraph).(node.lineStart-1) with
@@ -408,21 +382,21 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
           else
             v'
       in
-        
+
       let rec makePages p pages=match p with
           []->pages
-        | node::s ->(
+        | (params,node)::s ->(
             let pages'=if node.height=0 || (match pages with []->true | _->false) then
-              (Array.create parameters0.lines_by_page [])::pages else pages in
+              (Array.create params.lines_by_page (params,[]))::pages else pages in
             let first=List.hd pages' in
               (* Printf.printf "node.height=%d\n" node.height; flush stdout; *)
               if node.lineEnd > node.lineStart && node.height>=0 then
                 first.(node.height)<-
-                  makeLine node (float_of_int node.height *. parameters0.lead);
-              
+                  (params, makeLine params node (float_of_int node.height *. params.lead));
+
               makePages s pages'
           )
       in
-      let ln=(makeLines b []) in
+      let ln=(makeLines b_params b []) in
         Array.of_list (List.rev (makePages ln []))
     )

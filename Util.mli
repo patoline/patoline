@@ -1,10 +1,46 @@
 (** Defines the type of the boxes used in the optimizer. It is
     essential that all lengths defined here be expressed in
     typographical units, i.e. 1/1000 of a "metal box" *)
+type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenEnd:int;
+             lastFigure:int; height:int; paragraph_height:int; page:int }
+
+module Line : sig type t = line val compare : 'a -> 'a -> int end
+module LineMap :
+  sig
+    type key = Line.t
+    type 'a t = 'a Map.Make(Line).t
+    val empty : 'a t
+    val is_empty : 'a t -> bool
+    val mem : key -> 'a t -> bool
+    val add : key -> 'a -> 'a t -> 'a t
+    val singleton : key -> 'a -> 'a t
+    val remove : key -> 'a t -> 'a t
+    val merge :
+      (key -> 'a option -> 'b option -> 'c option) -> 'a t -> 'b t -> 'c t
+    val compare : ('a -> 'a -> int) -> 'a t -> 'a t -> int
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+    val iter : (key -> 'a -> unit) -> 'a t -> unit
+    val fold : (key -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+    val for_all : (key -> 'a -> bool) -> 'a t -> bool
+    val exists : (key -> 'a -> bool) -> 'a t -> bool
+    val filter : (key -> 'a -> bool) -> 'a t -> 'a t
+    val partition : (key -> 'a -> bool) -> 'a t -> 'a t * 'a t
+    val cardinal : 'a t -> int
+    val bindings : 'a t -> (key * 'a) list
+    val min_binding : 'a t -> key * 'a
+    val max_binding : 'a t -> key * 'a
+    val choose : 'a t -> key * 'a
+    val split : key -> 'a t -> 'a t * 'a option * 'a t
+    val find : key -> 'a t -> 'a
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
+  end
+
 type parameters={ format:float*float;
                   lead:float;
                   measure:float;
-                  lines_by_page:int }
+                  lines_by_page:int;
+                  left_margin:float }
 type box =
     GlyphBox of (float * glyph)
   | Kerning of box FontsTypes.kerningBox
@@ -66,7 +102,7 @@ val glyph_of_string :
   (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val hyphenate :
-  Hyphenate.ptree -> 
+  Hyphenate.ptree ->
   (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
   (FontsTypes.glyph_ids list->FontsTypes.glyph_ids list)->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list

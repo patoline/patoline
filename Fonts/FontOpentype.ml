@@ -5,7 +5,6 @@ open FontCFF
 open CamomileLibrary
 let offsetTable=12
 let dirSize=16
-  
 exception Table_not_found
 
 
@@ -17,7 +16,6 @@ let tableLookup table file off=
     let middle=(i+j) / 2 in
       seek_in file (off+offsetTable+middle*dirSize);
       really_input file tableName 0 4;
-      
       if middle<=i then
         if tableName=table then
           ((seek_in file (off+offsetTable+i*dirSize+8);readInt file 4),
@@ -31,7 +29,6 @@ let tableLookup table file off=
           lookup i middle
   in
     lookup 0 numTables
-      
 let tableList file off=
   seek_in file (off+4);
   let numTables=readInt file 2 in
@@ -43,9 +40,7 @@ let tableList file off=
          getTables (n-dirSize) (newTable::l))
   in
     getTables (off+dirSize*(numTables-1)+offsetTable) []
-      
 type font = CFF of (FontCFF.font*int)
-  
 let loadFont ?offset:(off=0) ?size:(_=0) file=
   let f=open_in file in
   let typ=String.create 4 in
@@ -56,7 +51,6 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
           let (a,b)=tableLookup "CFF " f off in
             CFF (FontCFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
-          
 type glyph = CFFGlyph of (font*FontCFF.glyph)
 
 let glyph_of_char font char0=
@@ -71,10 +65,8 @@ let glyph_of_char font char0=
           let cid=ref 0 in
 
             while !cid=0 && !table<numTables do
-              
               seek_in file (a+8+8* !table);
               let offset=a+readInt file 4 in
-                
                 seek_in file offset;
                 let t=readInt file 2 in
                   (match t with
@@ -134,15 +126,12 @@ let glyph_of_char font char0=
                   incr table
             done;
             !cid
-              
 
 let glyphFont f=match f with
     CFFGlyph (x,_)->x
-  
 let loadGlyph f ?index:(idx=0) gl=
   match f with
       CFF (x,_)->CFFGlyph (f, FontCFF.loadGlyph x ~index:idx gl)
-        
 let outlines gl=match gl with
     CFFGlyph (_,x)->FontCFF.outlines x
 
@@ -159,7 +148,6 @@ let glyphWidth gl=
          let (b,_)=tableLookup "hmtx" f.FontCFF.file offset in
            seek_in (f.FontCFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
            (float_of_int (readInt f.FontCFF.file 2)))
-          
 let fontName ?index:(idx=0) f =
   match f with
       CFF (x,_)->FontCFF.fontName x ~index:idx
@@ -199,14 +187,13 @@ let coverageIndex file off glyph=
              raise Not_found)
 
       else
-        
         (let x2=(x0+x1)/2 in
          let final=seek_in file (off+6*x0+6); readInt file 2 in
            if glyph>final then
              format2 x2 x1
            else
              format2 x0 x2)
-  in    
+  in
     if format=1 then format1 0 count else
       if format=2 then format2 0 count else
         (Printf.printf "format : %d\n" format; raise Not_found)
@@ -222,7 +209,6 @@ let class_def file off glyph=
         else
           0
     ) else if format=2 then (
-      
       let classRangeCount=readInt file 2 in
       let off0=off+4 in
       let rec format2 x0 x1=
@@ -238,7 +224,6 @@ let class_def file off glyph=
               readInt file 2
       in
         format2 0 classRangeCount
-          
     ) else 0
 
 
@@ -249,13 +234,11 @@ let gsub font glyphs0=
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
 
-    
   let lookup= seek_in file (gsubOff+8); readInt file 2 in
   let lookupCount= seek_in file (gsubOff+lookup); readInt file 2 in
   let glyphs=ref glyphs0 in
     (* Iteration sur les lookuptables *)
     for i=1 to lookupCount do
-      
       let offset=seek_in file (gsubOff+lookup+i*2); readInt file 2 in
 
       let lookupType=seek_in file (gsubOff+lookup+offset); readInt file 2 in
@@ -310,7 +293,6 @@ let gsub font glyphs0=
                         let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
                         let a',b'=gsub b in
                           a@a', b'
-                            
                       with
                           Not_found->
                             (let a,b=gsub s in
@@ -332,23 +314,19 @@ let gsub font glyphs0=
 #define GPOS_PAIR 2
 
 let rec gpos font glyphs0=
-  
   let (file,off0)=otype_file font in
   let (gposOff,_)=tableLookup "GPOS" file off0 in
 
-    
   let lookup= seek_in file (gposOff+8); readInt file 2 in
   let lookupCount= seek_in file (gposOff+lookup); readInt file 2 in
   let glyphs=ref glyphs0 (* (List.map (fun x->GlyphID x) glyphs0) *) in
     (* Iteration sur les lookuptables *)
     for i=1 to lookupCount do
-      
       let offset=seek_in file (gposOff+lookup+i*2); readInt file 2 in
 
       let lookupType=seek_in file (gposOff+lookup+offset); readInt file 2 in
       (* let lookupFlag=seek_in file (gposOff+lookup+offset+2); readInt file 2 in *)
       let subtableCount=seek_in file (gposOff+lookup+offset+4); readInt file 2 in
-        
       let maxOff=gposOff+lookup+offset + 6+subtableCount*2 in
 
       let rec lookupSubtables off gl=
@@ -382,7 +360,6 @@ let rec gpos font glyphs0=
                             advance_height=if (format land 0x8) <> 0 then float_of_int (int16 (readInt file 2)) else 0.;
                             kern_contents=gl }
                         in
-                          
                           try
                             let coverage=coverageIndex file (offset+coverageOffset) h in
                               if format=1 then (
