@@ -32,7 +32,7 @@ module Routine=functor (M:Driver)->struct
                 let param,line=pages.(i).(j) in
                   List.iter (fun (x,y,box)->
                                match box with
-                                   GlyphBox (size,a)->M.text drv (param.left_margin +. x,y0-.y) size [a.glyph];
+                                   GlyphBox (size,a)->M.text ~color:{red=1.;green=0.;blue=0.} drv (param.left_margin +. x,y0-.y) size [a.glyph];
                                  | Mark _->()
                                  | _->()) line
               done;

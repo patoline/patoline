@@ -39,16 +39,16 @@ module type Driver = sig
   val close_stroke: ?color:color -> driver->unit
   val closePath:driver->unit
 
-  val text:driver->(float*float)->float->Fonts.glyph list->unit
+  val text:?color:color->driver->(float*float)->float->Fonts.glyph list->unit
 
 end
 
 
 
-module Pdf = 
+module Pdf =
   (struct
      type params=string
-         
+
      type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; mutable fontGlyphs:float IntMap.t }
 
      (* l'implémentation de pdf, par contre, est toute en unité pdf, i.e. 1 pt adobe = 1/72 inch *)
@@ -72,9 +72,9 @@ module Pdf =
                     mutable pageFonts: (int*int) StrMap.t;
                     mutable currentFont:int;
                     mutable currentSize:float }
-         
+
      let pageTree=1
-       
+
      let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 
      let init file=
@@ -95,7 +95,7 @@ module Pdf =
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
            currentFont=(-1); currentSize=(-1.) }
-           
+
      let resumeObject pdf n=
        flush pdf.out_chan;
        pdf.xref<-IntMap.add n (pos_out pdf.out_chan) pdf.xref;
@@ -132,9 +132,9 @@ module Pdf =
                        output_string pdf.out_chan program;
                        output_string pdf.out_chan "\nendstream\n";
                        endObject pdf;
-                       
+
                        (* Font descriptor -- A completer*)
-                       
+
                        let fontName=FontCFF.fontName x in
                        let descr=beginObject pdf in
                        let (a,b,c,d)=FontCFF.fontBBox x in
@@ -149,11 +149,11 @@ module Pdf =
                                                        " /StemV 0"^
                                                        " /FontFile3 "^(string_of_int fontFile)^" 0 R >>");
                          endObject pdf;
-                         
+
                          (* Widths *)
                          let w=futureObject pdf in
-                           
-                           
+
+
                          (* Font dictionary *)
                          let fontDict=beginObject pdf in
                            output_string pdf.out_chan ("<< /Type /Font /Subtype /CIDFontType0"^
@@ -162,7 +162,7 @@ module Pdf =
                                                          " /W "^(string_of_int w)^" 0 R"^
                                                          " /FontDescriptor "^(string_of_int descr)^" 0 R >>");
                            endObject pdf;
-                           
+
                            (* CID Font dictionary *)
                            let cidFontDict=beginObject pdf in
                              output_string pdf.out_chan ("<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /"^
@@ -173,7 +173,6 @@ module Pdf =
                                pdf.fonts<-StrMap.add (Fonts.fontName font) result pdf.fonts;
                                result
                    )
-       
 
 
      let close pdf=
@@ -199,18 +198,18 @@ module Pdf =
                             (fun _ a str->str^(if String.length str=0 then "" else " ")^(string_of_int a)^" 0 R") pdf.pages "")^
               "] >>"));
        endObject pdf;
-       
+
        (* Metadata stream *)
        let meta=beginObject pdf in
          output_string pdf.out_chan "<< /Type /Metadata /Subtype XML /Length 0 >>\nstream\nendstream";
          endObject pdf;
-       
+
        (* Ecriture du catalogue *)
        let cat=beginObject pdf in
          output_string pdf.out_chan ("<< /Type /Catalog /Metadata "^(string_of_int meta)^" 0 R /Pages "^
                                        (string_of_int pageTree)^" 0 R >>");
          endObject pdf;
-       
+
 
          (* Ecriture de xref *)
          flush pdf.out_chan;
@@ -240,7 +239,7 @@ module Pdf =
        pdf.line_join<-Miter_join;
        pdf.stroking_color<-black;
        pdf.non_stroking_color<-black
-           
+
      let end_page pdf=
        if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        let str=Rope.to_string pdf.current_page in
@@ -261,18 +260,18 @@ module Pdf =
              StrMap.iter (fun _ (a,b)->output_string pdf.out_chan ("/F"^string_of_int a^" "^string_of_int b^" 0 R ")) pdf.pageFonts;
              output_string pdf.out_chan " >> ");
            output_string pdf.out_chan (">> /Contents "^(string_of_int contentObject)^" 0 R >>");
-           
+
            endObject pdf;
-           
+
            pdf.pages<-IntMap.add (1+IntMap.cardinal pdf.pages) pageObject pdf.pages
 
 
      let moveto pdf (x,y)=pdf.vpos<-(pt_of_mm x, pt_of_mm y)
-       
+
      let really_move pdf=
        if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        if pdf.vpos <> pdf.pos then
-         pdf.current_page <- Rope.append pdf.current_page 
+         pdf.current_page <- Rope.append pdf.current_page
            (Rope.of_string ((string_of_float (fst pdf.vpos)) ^ " " ^ (string_of_float (snd pdf.vpos)) ^ " m "))
      let end_path pdf=
        pdf.pos<-(0.,0.);
@@ -297,7 +296,7 @@ module Pdf =
                             (string_of_float y2)^" "^(string_of_float x3)^" "^(string_of_float y3)^" "^" c "));
        pdf.pos<-pos;
        pdf.vpos<-pos
-         
+
      let dash_pattern pdf l=
        if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
        let l0=List.map (fun x->round (pt_of_mm x)) l in
@@ -352,29 +351,31 @@ module Pdf =
                    (* | _->"" *)
            ))
        )
-         
+
      let closePath pdf=
        end_path pdf;
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " h ")
 
      let change_stroking_color pdf color=
-       let r=max 0. (min 1. color.red) in
-       let g=max 0. (min 1. color.green) in
-       let b=max 0. (min 1. color.blue) in
        if color <> pdf.stroking_color then (
-         pdf.stroking_color<-color;
-         pdf.current_page <- Rope.append pdf.current_page 
-           (Rope.of_string (
-              (string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" RG "
-            ))
+         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         let r=max 0. (min 1. color.red) in
+         let g=max 0. (min 1. color.green) in
+         let b=max 0. (min 1. color.blue) in
+           pdf.stroking_color<-color;
+           pdf.current_page <- Rope.append pdf.current_page
+             (Rope.of_string (
+                (string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" RG "
+              ))
        )
      let change_non_stroking_color pdf color=
-       let r=max 0. (min 1. color.red) in
-       let g=max 0. (min 1. color.green) in
-       let b=max 0. (min 1. color.blue) in
        if color <> pdf.non_stroking_color then (
+         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         let r=max 0. (min 1. color.red) in
+         let g=max 0. (min 1. color.green) in
+         let b=max 0. (min 1. color.blue) in
          pdf.non_stroking_color<-color;
-         pdf.current_page <- Rope.append pdf.current_page 
+         pdf.current_page <- Rope.append pdf.current_page
            (Rope.of_string (
               (string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" rg "
             ))
@@ -390,7 +391,7 @@ module Pdf =
        pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " s ")
      let fill_stroke ?(color:color=black)  pdf=
        end_path pdf;
-       change_non_stroking_color pdf color; 
+       change_non_stroking_color pdf color;
       pdf.current_page <- Rope.append pdf.current_page (Rope.of_string " b ")
      let fill ?(color:color=black)  pdf=
        end_path pdf;
@@ -408,41 +409,43 @@ module Pdf =
          result.[1]<-hex ((i land 0x0f00)lsr 8);
          result.[0]<-hex ((i land 0xf000)lsr 12);
          result
-           
-     let text pdf (x_,y_) size_ glyphs=
+
+     let text ?(color:color=black) pdf (x_,y_) size_ glyphs=
        let x,y=pt_of_mm x_, pt_of_mm y_ in
        let size=pt_of_mm size_ in
-       if not pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " BT "); 
-       pdf.isText<-true;
 
-       let (x0,y0)=pdf.posT in
-         pdf.current_page<-Rope.append pdf.current_page (Rope.of_string (string_of_float (x-.x0)^" "^(string_of_float (y-.y0))^" Td "));
-         pdf.posT<-(x,y);
-         let opened=ref false in
-           List.iter (fun gl->
-                        let fnt=Fonts.glyphFont gl in
-                          (* Inclusion de la police sur la page *)
-                        let idx=try fst (StrMap.find (Fonts.fontName fnt) pdf.pageFonts) with
-                            Not_found->(
-                              let card=StrMap.cardinal pdf.pageFonts in
-                              let pdfFont=addFont pdf fnt in
-                                pdf.pageFonts <- StrMap.add (Fonts.fontName fnt) (card, pdfFont.fontObject) pdf.pageFonts;
-                                card
-                            )
-                        in
-                        let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
-                          if not (IntMap.mem (Fonts.glyphNumber gl) pdfFont.fontGlyphs) then
-                            pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
+         change_non_stroking_color pdf color;
+         if not pdf.isText then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " BT ");
+         pdf.isText<-true;
 
-                          if idx <> pdf.currentFont || size <> pdf.currentSize then
-                            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int (round size))^" Tf <"))
-                          else
-                            (if not !opened then  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "<"));
-                          pdf.current_page <- Rope.append pdf.current_page (Rope.of_string (hexShow (Fonts.glyphNumber gl)));
-                          
-                          pdf.currentFont<-idx;
-                          pdf.currentSize<-size;
-                          opened:=true;
-                   ) glyphs;
-         if !opened then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "> Tj ");
+         let (x0,y0)=pdf.posT in
+           pdf.current_page<-Rope.append pdf.current_page (Rope.of_string (string_of_float (x-.x0)^" "^(string_of_float (y-.y0))^" Td "));
+           pdf.posT<-(x,y);
+           let opened=ref false in
+             List.iter (fun gl->
+                          let fnt=Fonts.glyphFont gl in
+                            (* Inclusion de la police sur la page *)
+                          let idx=try fst (StrMap.find (Fonts.fontName fnt) pdf.pageFonts) with
+                              Not_found->(
+                                let card=StrMap.cardinal pdf.pageFonts in
+                                let pdfFont=addFont pdf fnt in
+                                  pdf.pageFonts <- StrMap.add (Fonts.fontName fnt) (card, pdfFont.fontObject) pdf.pageFonts;
+                                  card
+                              )
+                          in
+                          let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
+                            if not (IntMap.mem (Fonts.glyphNumber gl) pdfFont.fontGlyphs) then
+                              pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
+
+                            if idx <> pdf.currentFont || size <> pdf.currentSize then
+                              pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((if !opened then "> Tj " else "")^"/F"^(string_of_int idx)^" "^(string_of_int (round size))^" Tf <"))
+                            else
+                              (if not !opened then  pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "<"));
+                            pdf.current_page <- Rope.append pdf.current_page (Rope.of_string (hexShow (Fonts.glyphNumber gl)));
+
+                            pdf.currentFont<-idx;
+                            pdf.currentSize<-size;
+                            opened:=true;
+                       ) glyphs;
+             if !opened then pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "> Tj ");
    end:Driver)

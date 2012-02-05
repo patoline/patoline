@@ -18,7 +18,7 @@ module type Driver =
 
     val close : driver -> unit
       (** Last function to call, for some drivers need a footer *)
-      
+
     val begin_page : driver -> float * float -> unit
       (** Starts a new page *)
     val end_page : driver -> unit
@@ -37,7 +37,7 @@ module type Driver =
     val fill_stroke: ?color:color -> driver->unit
     val close_stroke: ?color:color -> driver->unit
     val closePath : driver -> unit
-    val text : driver -> float * float -> float -> Fonts.glyph list -> unit
+    val text : ?color:color->driver -> float * float -> float -> Fonts.glyph list -> unit
   end
 
 module Pdf : Driver
