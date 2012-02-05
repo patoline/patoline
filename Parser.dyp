@@ -139,7 +139,7 @@ text:
   | text(<=seq)<t> header<h> newlines
     { h::t } atom  
   | text(<=atom)<t> paragraphs<p> newlines
-    { p @ t } seq
+    { (List.rev p) @ t } seq
   
 main:
   | text<t> eof 
