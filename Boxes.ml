@@ -44,8 +44,6 @@ let rec print_graph file lines graph=
     close_out f
 
 
-
-
 let lineBreak parameters ?figures:(figures = [||]) lines=
 
   let compression m p i hi j hj=
@@ -152,7 +150,7 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
       collide line_i 0 (Array.length line_i) line_j 0 (Array.length line_j) infinity
   in
 
-  let rec break todo demerits=
+  let rec break allow_impossible todo demerits=
     let h_badness pi i j comp=
       let bad=ref 0. in
         for k=i to j-1 do
@@ -220,7 +218,7 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
       (
         let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-          if node.paragraph >= Array.length lines then break !todo' demerits else
+          if node.paragraph >= Array.length lines then break false !todo' demerits else
             (
               (* On commence par chercher la première vraie boite après node *)
               let demerits'=ref demerits in
@@ -262,7 +260,7 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
                    let badness'=lastBadness in
                      register node nextNode badness' (parameters nextNode));
 
-                  break !todo' !demerits'
+                  break false !todo' !demerits'
 
                 ) else (
 
@@ -319,6 +317,7 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
                               let a,b=box_interval lines.(node.paragraph).(j) in
                                 break_next (j+1) (sum_min+. a) (sum_max+. b)
                             )
+                          | _ when allow_impossible -> make_next_node (-1)
                           | _->()
                   in
                     if node.hyphenEnd>=0 then (
@@ -328,7 +327,7 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
                         | _->break_next i 0. 0.
                     ) else break_next i 0. 0.;
 
-                     break !todo' !demerits'
+                    break false !todo' !demerits'
                 )
             )
       )
@@ -336,67 +335,80 @@ let lineBreak parameters ?figures:(figures = [||]) lines=
   let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1;
                    lastFigure=(-1); height= -1;paragraph_height= -1; page=0 } in
   let first_parameters=parameters first_line in
-  let todo=LineMap.singleton  first_line (0., first_parameters) in
-  let demerits=break todo (LineMap.empty) in
-  let (b,(bad,b_params,_)) = LineMap.max_binding demerits in
-    print_graph "graph" lines demerits;
 
-    if b.paragraph<Array.length lines then
-      (Printf.printf "impossible"; flush stdout; raise Impossible)
-    else (
-      let rec makeLines params node result=
-        try
-          let _,params',next=LineMap.find node demerits in
-            makeLines params' next ((params,node)::result)
-        with
-            Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
-      in
-      let makeLine parameters node y=
-        let comp=compression parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
-        let rec makeLine boxes x i max_i line=
-          if i>=max_i then (x,line) else
+  let log=ref [] in
+  let todo0=LineMap.singleton first_line (0., first_parameters) in
+  let rec really_break allow_impossible todo demerits=
+    let demerits'=break allow_impossible todo demerits in
+      if LineMap.cardinal demerits' = 0 then (
+        log:=Overfull_line first_line :: (!log);
+        really_break true todo0 demerits'
+      ) else (
+        let (b,(bad,param,_))= LineMap.max_binding demerits' in
+          if b.paragraph < Array.length lines then (
+            log:=Overfull_line b::(!log);
+            really_break true (LineMap.singleton b (bad, param)) demerits'
+          ) else
+            demerits'
+      )
+  in
+  let demerits=really_break false todo0 LineMap.empty in
+  let (b,(bad,b_params,_))=LineMap.max_binding demerits in
 
-            match boxes.(i) with
 
-                Glue g->let w=g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width) in
-                  makeLine boxes (x+.w) (i+1) max_i line
 
-              | Kerning kbox as box -> makeLine boxes (x+.(box_width comp box)) (i+1) max_i
-                  ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
+  let rec makeLines params node result=
+    try
+      let _,params',next=LineMap.find node demerits in
+        makeLines params' next ((params,node)::result)
+    with
+        Not_found->if node.paragraph>0 || node.height>=0 then raise Impossible else result
+  in
+  let makeLine parameters node y=
+    let comp=compression parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
+    let rec makeLine boxes x i max_i line=
+      if i>=max_i then (x,line) else
 
-              | Hyphen h->let (a,b)=makeLine h.hyphen_normal x 0 (Array.length h.hyphen_normal) line in
-                  makeLine boxes a (i+1) max_i b
+        match boxes.(i) with
 
-              | box->makeLine boxes (x+.(box_width comp box)) (i+1) max_i ((x,y,box)::line)
-        in
-        let u,v=(if node.hyphenStart>=0 then match lines.(node.paragraph).(node.lineStart-1) with
-                     Hyphen x->let _,y=x.hyphenated.(node.hyphenStart) in
-                       makeLine y 0. 0 (Array.length y) []
-                   | _->0., []
-                 else 0.,[])
-        in
-        let u',v'=makeLine lines.(node.paragraph) u node.lineStart node.lineEnd v in
-          if node.hyphenEnd>=0 then match lines.(node.paragraph).(node.lineEnd) with
-              Hyphen x->let y,_=x.hyphenated.(node.hyphenEnd) in snd (makeLine y u' 0 (Array.length y) v')
-            | _->v'
-          else
-            v'
-      in
+            Glue g->let w=g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width) in
+              makeLine boxes (x+.w) (i+1) max_i line
 
-      let rec makePages p pages=match p with
-          []->pages
-        | (params,node)::s ->(
-            let pages'=if node.height=0 || (match pages with []->true | _->false) then
-              (Array.create params.lines_by_page (params,[]))::pages else pages in
-            let first=List.hd pages' in
-              (* Printf.printf "node.height=%d\n" node.height; flush stdout; *)
-              if node.lineEnd > node.lineStart && node.height>=0 then
-                first.(node.height)<-
-                  (params, makeLine params node (float_of_int node.height *. params.lead));
+          | Kerning kbox as box -> makeLine boxes (x+.(box_width comp box)) (i+1) max_i
+              ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
 
-              makePages s pages'
-          )
-      in
-      let ln=(makeLines b_params b []) in
-        Array.of_list (List.rev (makePages ln []))
-    )
+          | Hyphen h->let (a,b)=makeLine h.hyphen_normal x 0 (Array.length h.hyphen_normal) line in
+              makeLine boxes a (i+1) max_i b
+
+          | box->makeLine boxes (x+.(box_width comp box)) (i+1) max_i ((x,y,box)::line)
+    in
+    let u,v=(if node.hyphenStart>=0 then match lines.(node.paragraph).(node.lineStart-1) with
+                 Hyphen x->let _,y=x.hyphenated.(node.hyphenStart) in
+                   makeLine y 0. 0 (Array.length y) []
+               | _->0., []
+             else 0.,[])
+    in
+    let u',v'=makeLine lines.(node.paragraph) u node.lineStart node.lineEnd v in
+      if node.hyphenEnd>=0 then match lines.(node.paragraph).(node.lineEnd) with
+          Hyphen x->let y,_=x.hyphenated.(node.hyphenEnd) in snd (makeLine y u' 0 (Array.length y) v')
+        | _->v'
+      else
+        v'
+  in
+
+  let rec makePages p pages=match p with
+      []->pages
+    | (params,node)::s ->(
+        let pages'=if node.height=0 || (match pages with []->true | _->false) then
+          (Array.create params.lines_by_page (params,[]))::pages else pages in
+        let first=List.hd pages' in
+          (* Printf.printf "node.height=%d\n" node.height; flush stdout; *)
+          if node.lineEnd > node.lineStart && node.height>=0 then
+            first.(node.height)<-
+              (params, makeLine params node (float_of_int node.height *. params.lead));
+
+          makePages s pages'
+      )
+  in
+  let ln=(makeLines b_params b []) in
+    (!log, Array.of_list (List.rev (makePages ln [])))

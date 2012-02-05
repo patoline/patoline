@@ -80,6 +80,8 @@ and hyphenBox = {
   hyphenated : (box array * box array) array;
 }
 
+type error_log=Overfull_line of line
+
 val is_glyph : box -> bool
 val is_glue : box -> bool
 val box_width : float -> box -> float

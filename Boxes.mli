@@ -5,4 +5,4 @@ exception Impossible
 
 val lineBreak :
   (line->parameters) ->
-  ?figures:'a array -> box array array -> (parameters * ((float * float * box) list)) array array
+  ?figures:'a array -> box array array -> (error_log list)*((parameters * ((float * float * box) list)) array array)

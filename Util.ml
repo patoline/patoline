@@ -50,6 +50,17 @@ and box=
   | Hyphen of hyphenBox
   | Mark of int
   | Empty
+
+
+type error_log=Overfull_line of line
+
+
+
+
+
+
+
+
 let is_glyph=function
     GlyphBox _->true
   | _->false
