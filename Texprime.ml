@@ -39,10 +39,10 @@ let _=
 	      if List.length text > 1 then
 	        raise (Failure "detecting parsing ambiguities, please report");
               let parsed=fst (List.hd text) in
-              let paragraphs=Array.of_list (List.rev (List.map (Array.of_list) parsed)) in
+              let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
               let log,pages=Boxes.lineBreak default paragraphs in
                 List.iter (function
-                               Overfull_line h->Printf.printf "Overfull line starting at box %d in paragraph %d\n" h.lineStart h.paragraph
+                               Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h)
                           ) log;
                 M.output_routine h pages
     with

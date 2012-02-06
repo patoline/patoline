@@ -3,7 +3,7 @@ open Drivers
 open Binary
 open Boxes
 open Constants
-open Lexing 
+open Lexing
 open Util
 open Dyp
 open CamomileLibrary
@@ -39,7 +39,7 @@ let set_newline dyplexbuf =
   let pos = l.lex_curr_p in
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
-        
+
 type global_data = { cur_section : int IntMap.t }
 
 let global_data = { cur_section = IntMap.empty }
@@ -55,7 +55,7 @@ let dypgen_choose_token = `all
 %relation atom<seq
 
 %layout [ ' ' '\r' '\t' ]
- 
+
 %lexer
 
 let utf8_char =
@@ -91,18 +91,18 @@ header:
    SPECIAL ['='+ | '-'+]<op> paragraph<p> ['='+ | '-'+]<cl>
      @{ if cl <> op then raise Dyp.Giveup;
        let numbering = op.[0] = '=' in
-       let op = String.length op in 
+       let op = String.length op in
        let l = 1. +. 0.5 *. float op in
        let fsize = !current_size in
        let p, global_data =
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
-           let s = Section.index_to_string !current_subst !current_pos !current_font  fsize global_data.cur_section in 
+           let s = Section.index_to_string !current_subst !current_pos !current_font  fsize global_data.cur_section in
              s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
                           glue_max_width= fsize/.2.;
-                          glue_badness=knuth_h_badness (fsize/.3.) }) :: 
-                    (Mark 0)::p), global_data
-         else 
+                          glue_badness=knuth_h_badness (fsize/.3.) }) :: p)
+               , global_data
+         else
 	   p, global_data
        in
        let rec resize=function
@@ -137,11 +137,10 @@ text:
     newlines
     { [] } atom
   | text(<=seq)<t> header<h> newlines
-    { h::t } atom  
+    { t@[h] } atom
   | text(<=atom)<t> paragraphs<p> newlines
-    { (List.rev p) @ t } seq
-  
-main:
-  | text<t> eof 
-    { t }
+      { t@p } seq
 
+main:
+  | text<t> eof
+    { t }
