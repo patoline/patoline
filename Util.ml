@@ -12,8 +12,8 @@ type parameters={ format:float*float;
                   lines_by_page:int;
                   left_margin:float }
 
-type line= { paragraph:int; lineStart:int; lineEnd:int; hyphenStart:int; hyphenEnd:int;
-             lastFigure:int; height:int; paragraph_height:int; page:int }
+type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
+             height:int; paragraph_height:int; page:int}
 
 module Line=struct
   type t=line
@@ -31,16 +31,14 @@ type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
 
 type drawing=
     Curve of (float*float*curve)
-  | Glyph of (float*float*float*glyph)
+  | Drawing_Box of (float*float*box)
 
+and drawingBox = { drawing_x0:float; drawing_x1:float; drawing_y0:float; drawing_y1:float;
+                   drawing_contents:drawing list }
 
-type glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
-type drawingBox = { drawing_min_width:float; drawing_max_width:float;
-                    drawing_y0:float->float; drawing_y1:float->float;
-                    drawing_badness:float->float;
-                    drawing:float->drawing list }
+and glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
 
-type hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
+and hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
 
 and box=
     GlyphBox of (float*glyph)
@@ -52,9 +50,29 @@ and box=
   | Empty
 
 
-type error_log=Overfull_line of line
+type error_log=
+    Overfull_line of line
+  | Widow of line
+  | Orphan of line
 
 
+let print_line l=
+  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d }\n"
+    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
+let rec print_box=function
+    Glue _->Printf.printf " "
+  | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
+  | Kerning x->print_box x.kern_contents
+  | Hyphen x->Array.iter print_box x.hyphen_normal
+  | _->Printf.printf "[]"
+
+
+let print_text_line lines node=
+  print_line node;
+  for i=node.lineStart to node.lineEnd-1 do
+    print_box (lines.(node.paragraph).(i))
+  done;
+  print_newline()
 
 
 
@@ -70,7 +88,7 @@ let is_glue=function
 let rec box_width comp=function
     GlyphBox (size,x)->x.width*.size/.1000.
   | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
-  | Drawing x->(x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
+  | Drawing x->(x.drawing_x1-.x.drawing_x0)
   | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
   | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
   | Empty->0.
@@ -79,7 +97,7 @@ let rec box_width comp=function
 let rec box_interval=function
     GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
   | Glue x->(x.glue_min_width, x.glue_max_width)
-  | Drawing x->(x.drawing_min_width, x.drawing_max_width)
+  | Drawing x->let w=x.drawing_x1-.x.drawing_x0 in w,w
   | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
   | _->(0.,0.)
@@ -94,14 +112,14 @@ and boxes_interval boxes=
 
 let rec lower_y x w=match x with
     GlyphBox (size,y)->y.y0*.size/.1000.
-  | Drawing y->y.drawing_y0 w
+  | Drawing y->y.drawing_y0
   | Glue _->0.
   | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
   | _->0.
 
 let rec upper_y x w=match x with
     GlyphBox (size,y)->y.y1*.size/.1000.
-  | Drawing y->y.drawing_y1 w
+  | Drawing y->y.drawing_y1
   | Glue _->0.
   | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
   | _-> 0.
@@ -156,7 +174,7 @@ let glyph_of_string substitution_ positioning_ font fsize str =
                                        kern_x0=h.kern_x0 +. h'.kern_x0;
                                        kern_y0=h.kern_y0 +. h'.kern_y0;
                                        kern_contents=h'.kern_contents }::s)
-           | GlyphID (c,h')->(let y=glyphCache font h' c in 
+           | GlyphID (c,h')->(let y=glyphCache font h' c in
                             Kerning { advance_height=h.advance_height*.(fsize)/.1000.;
                                       advance_width=h.advance_width*.(fsize)/.1000.;
                                       kern_x0=h.kern_x0*.(fsize)/.1000.;

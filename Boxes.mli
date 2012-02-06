@@ -3,6 +3,10 @@
 open Util
 exception Impossible
 
+type pages=((parameters * ((float * float * box) list)) array array)
+
 val lineBreak :
   (line->parameters) ->
-  ?figures:'a array -> box array array -> (error_log list)*((parameters * ((float * float * box) list)) array array)
+  ?figures:drawingBox array ->
+  box array array ->
+  (error_log list)*pages

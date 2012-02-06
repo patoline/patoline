@@ -114,7 +114,6 @@ let lineBreak parameters0 ?figures:(figures = [||]) lines=
           bad:= !bad +.
             (match lines.(pi).(i) with
                  Glue x->x.glue_badness (x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
-               | Drawing x->x.drawing_badness (x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
                | _->0.
             )
         done;
