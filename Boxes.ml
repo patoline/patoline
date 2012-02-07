@@ -10,8 +10,6 @@ open FontsTypes
 exception Impossible
 type pages=((parameters * ((float * float * box) list)) array array)
 
-let exor a b=(a || b) && (not a || not b)
-
 let rec print_graph file paragraphs graph=
   let f=open_out file in
     Printf.fprintf f "digraph {\n";
@@ -41,8 +39,9 @@ let is_last paragraph j=
   in
     is_last (j+1)
 
+let is_hyphen =function Hyphen _->true | _->false
 
-let compression paragraphs m p i hi j hj=
+let comp paragraphs m p i hi j hj=
   let minLine=ref 0. in
   let maxLine=ref 0. in
     if hi>=0 then (
@@ -64,23 +63,26 @@ let compression paragraphs m p i hi j hj=
     done;
     max 0. (min 1. ((m-. !minLine)/.(!maxLine-. !minLine)))
 
+let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
+  line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
+
 let makeLine paragraphs parameters node y=
-  let comp=compression paragraphs parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
+  let comp0=comp paragraphs parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
   let rec makeLine boxes x i max_i line=
     if i>=max_i then (x,line) else
 
       match boxes.(i) with
 
-          Glue g->let w=g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width) in
+          Glue g->let w=g.glue_min_width+.comp0*.(g.glue_max_width-.g.glue_min_width) in
             makeLine boxes (x+.w) (i+1) max_i line
 
-        | Kerning kbox as box -> makeLine boxes (x+.(box_width comp box)) (i+1) max_i
+        | Kerning kbox as box -> makeLine boxes (x+.(box_width comp0 box)) (i+1) max_i
             ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
 
         | Hyphen h->let (a,b)=makeLine h.hyphen_normal x 0 (Array.length h.hyphen_normal) line in
             makeLine boxes a (i+1) max_i b
 
-        | box->makeLine boxes (x+.(box_width comp box)) (i+1) max_i ((x,y,box)::line)
+        | box->makeLine boxes (x+.(box_width comp0 box)) (i+1) max_i ((x,y,box)::line)
   in
   let u,v=(if node.hyphenStart>=0 then match paragraphs.(node.paragraph).(node.lineStart-1) with
                Hyphen x->let _,y=x.hyphenated.(node.hyphenStart) in
@@ -96,90 +98,242 @@ let makeLine paragraphs parameters node y=
       v'
 
 
-
 let lineBreak parameters ?figures:(figures = [||]) paragraphs=
+  let collide
+      paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0
+      paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0=
 
-  let make_line pi lineStart lineEnd hyphenStart hyphenEnd=
-    let arr0=
-      (try
-         match paragraphs.(pi).(lineStart-1) with
-             Hyphen x->fst (x.hyphenated.(hyphenStart))
-           | _->[||]
-       with
-           _->[||])
-    in
-    let arr1=
-      (try
-         match paragraphs.(pi).(lineEnd) with
-             Hyphen x->fst (x.hyphenated.(hyphenEnd))
-           | _->[||]
-       with
-           _->[||])
-    in
-      Array.append (Array.append arr0 (
-                      if lineStart<lineEnd then
-                        Array.sub paragraphs.(pi) lineStart (lineEnd-lineStart)
-                      else
-                        [||]
-                    )) arr1
-  in
+    let xi=ref xj_0 in
+    let xj=ref xi_0 in
 
-  let collide line_i comp_i xi_0 line_j comp_j xj_0=
-    let xi=ref xi_0 in
-    let xj=ref xj_0 in
-    let rec collide boxes_i i max_i boxes_j j max_j max_col=
-      if i>=max_i && j>=max_j then
-        max_col
-      else (
+    let comp_i=0. in
+    let comp_j=0. in
 
-        let box_i=if i>=0 && i<max_i then boxes_i.(i) else Empty in
-        let box_j=if j>=0 && j<max_j then boxes_j.(j) else Empty in
+    let rec collide boxes_i i boxes_j j max_col=
 
-          match box_i,box_j with
-              Hyphen xi, Hyphen xj ->collide
-                xi.hyphen_normal 0 (Array.length xi.hyphen_normal)
-                xj.hyphen_normal 0 (Array.length xj.hyphen_normal) max_col
-            | Hyphen xi, _ ->collide xi.hyphen_normal 0 (Array.length xi.hyphen_normal) boxes_j j max_j max_col
-            | _, Hyphen xj ->collide boxes_i i max_i xj.hyphen_normal 0 (Array.length xj.hyphen_normal) max_col
-            | _->(
-                (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-                let wi=box_width comp_i box_i in
-                let wj=box_width comp_j box_j in
-                  if (!xi +.wi < !xj+. wj || j>=max_j) && i<max_i then (
-                    let yi=lower_y box_i wi in
-                    let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-                    let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
-                    let w0= !xi +. wi -. x0 in
-                      if w0>=0. then (
-                        (* Graphics.set_color Graphics.red; *)
-                        (* Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
-                        (* Graphics.set_color Graphics.black; *)
-                        (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-                      );
-                      xi:= !xi+.wi;
-                      collide boxes_i (i+1) max_i boxes_j j max_j (min max_col (yi-.yj))
+      match boxes_i, boxes_j with
+          [],[]->max_col
 
-                  ) else (
-                    let yi=if !xj > !xi +. wi || i>=max_i then 0. else lower_y box_i wi in
-                    let yj=upper_y box_j wj in
-                    let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
-                    let w0= !xj +. wj -. x0 in
-                      if w0>=0. then (
-                        (* Graphics.set_color Graphics.green; *)
-                        (* Printf.printf "%d %d %d %d\n"(round (mm*.x0)) (round (200.+.mm*.yj)) (round (mm*.w0))
-                           (round (80.+.mm*.(yi-.yj))); *)
-                        (* Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
-                        (* Graphics.set_color Graphics.black; *)
-                        (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-                      );
-                      xj:= !xj+.wj;
-                      collide boxes_i i max_i boxes_j (j+1) max_j (min max_col (yi-.yj))
-                  )
+        | (hi,_,maxi)::si, _ when i>=maxi->
+            (match si with
+                 (_,i0,_)::_->collide si i0 boxes_j j max_col
+               | _->collide [] (-1) boxes_j j max_col)
+
+        | _, (hj,_,maxj)::sj when j>=maxj->
+            (match sj with
+                 (_,j0,_)::_->collide boxes_i i sj j0 max_col
+               | _->collide boxes_i i [] (-1) max_col)
+
+        | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
+            (match hi.(i), hj.(j) with
+                 Hyphen xi, Hyphen xj ->
+                   collide
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                     max_col
+               | Hyphen xi, _ ->
+                   collide
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     boxes_j j max_col
+               | _, Hyphen xj ->
+                   collide
+                     boxes_i i
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                     max_col
+               | _->failwith "impossible case"
+            )
+        | _->(
+            let box_i=match boxes_i with
+                []->Empty
+              | (hi,_,_)::_->hi.(i)
+            in
+            let box_j=match boxes_j with
+                []->Empty
+              | (hj,_,_)::_->hj.(j)
+            in
+              (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+            let wi=box_width comp_i box_i in
+            let wj=box_width comp_j box_j in
+              if (!xi +.wi < !xj+. wj || boxes_j=[]) && boxes_i<>[] then (
+                let yi=lower_y box_i wi in
+                let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
+                let w0= !xi +. wi -. x0 in
+                  if w0>=0. then (
+                    (* Graphics.set_color Graphics.red; *)
+                    (* Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
+                    (* Graphics.set_color Graphics.black; *)
+                    (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+                  );
+                  xi:= !xi+.wi;
+                  collide boxes_i (i+1) boxes_j j (min max_col (yi-.yj))
+              ) else (
+                let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+                let yj=upper_y box_j wj in
+                let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
+                let w0= !xj +. wj -. x0 in
+                  if w0>=0. then (
+                    (* Graphics.set_color Graphics.green; *)
+                    (* Graphics.draw_rect (round (mm*.x0)) (round (20.+.mm*.yj)) (round (mm*.w0)) (round (80.+.mm*.(yi-.yj))); *)
+                    (* Graphics.set_color Graphics.black; *)
+                    (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+                  );
+                  xj:= !xj+.wj;
+                  collide boxes_i i boxes_j (j+1) (min max_col (yi-.yj))
               )
-      )
+          )
     in
-      collide line_i 0 (Array.length line_i) line_j 0 (Array.length line_j) infinity
+    let li0=
+      (paragraphs.(paragraph_i), lineStart_i, lineEnd_i)::
+        (if hyphenEnd_i>=0 then
+           (match paragraphs.(paragraph_i).(lineEnd_i) with
+                Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_i) in [(hyp, 0, Array.length hyp)]
+              | _->[])
+         else [])
+    in
+    let li=
+      (if hyphenStart_i>=0 then
+         (match paragraphs.(paragraph_i).(lineStart_i-1) with
+              Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_i) in (hyp, 0, Array.length hyp)::li0
+            | _->li0)
+       else li0)
+    in
+    let lj0=
+      (paragraphs.(paragraph_j), lineStart_j, lineEnd_j)::
+      (if hyphenEnd_j>=0 then
+         (match paragraphs.(paragraph_j).(lineEnd_j) with
+              Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_j) in [(hyp,0,Array.length hyp)]
+            | _->[])
+       else [])
+    in
+    let lj=
+      (if hyphenStart_j>=0 then
+         (match paragraphs.(paragraph_j).(lineStart_j-1) with
+              Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_j) in (hyp,0,Array.length hyp)::lj0
+            | _->lj0)
+       else lj0)
+    in
+      collide li lineStart_i lj lineStart_j infinity
   in
+
+  let v_badness v_space
+      paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0
+      paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0=
+
+    let xi=ref xj_0 in
+    let xj=ref xi_0 in
+
+    let comp_i=0. in
+    let comp_j=0. in
+
+    let rec collide boxes_i i boxes_j j w_tot col col2=
+      match boxes_i, boxes_j with
+          [],[]->if w_tot<=0. then 0. else ((col2-. col*.col)/.w_tot)
+
+        | (hi,_,maxi)::si, _ when i>=maxi->
+            (match si with
+                 (_,i0,_)::_->collide si i0 boxes_j j w_tot col col2
+               | _->collide [] (-1) boxes_j j w_tot col col2)
+
+        | _, (hj,_,maxj)::sj when j>=maxj->
+            (match sj with
+                 (_,j0,_)::_->collide boxes_i i sj j0 w_tot col col2
+               | _->collide boxes_i i [] (-1) w_tot col col2)
+
+        | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
+            (match hi.(i), hj.(j) with
+                 Hyphen xi, Hyphen xj ->
+                   collide
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                     w_tot col col2
+               | Hyphen xi, _ ->
+                   collide
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     boxes_j j
+                     w_tot col col2
+               | _, Hyphen xj ->
+                   collide
+                     boxes_i i
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                      w_tot col col2
+               | _->failwith "impossible case"
+            )
+        | _->(
+            let box_i=match boxes_i with
+                []->Empty
+              | (hi,_,_)::_->hi.(i)
+            in
+            let box_j=match boxes_j with
+                []->Empty
+              | (hj,_,_)::_->hj.(j)
+            in
+              (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+            let wi=box_width comp_i box_i in
+            let wj=box_width comp_j box_j in
+              if (!xi +.wi < !xj+. wj || boxes_j=[]) && boxes_i<>[] then (
+
+                let x0=max !xi !xj in
+                let w0= !xi+.wi-.x0 in
+                let yi=lower_y box_i wi in
+                let yj=upper_y box_j wj in
+                  if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
+                    (xi:= !xi+.w0;
+                     collide boxes_i (i+1) boxes_j j w_tot col col2)
+                  else
+                    (let area=w0*.(v_space+.yi-.yj) in
+                       xi:= !xi+.w0;
+                       collide boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
+              ) else (
+                let x0=max !xi !xj in
+                let w0= !xj+.wj-.x0 in
+                let yi=lower_y box_i wi in
+                let yj=upper_y box_j wj in
+                  if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
+                    (xj:= !xj +. w0;
+                     collide boxes_i i boxes_j (j+1) w_tot col col2)
+                  else
+                    (let area=w0*.(v_space+.yi-.yj) in
+                       xj:= !xj +. w0;
+                       collide boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
+              )
+          )
+    in
+    let li0=
+      (paragraphs.(paragraph_i), lineStart_i, lineEnd_i)::
+        (if hyphenEnd_i>=0 then
+           (match paragraphs.(paragraph_i).(lineEnd_i) with
+                Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_i) in [(hyp, 0, Array.length hyp)]
+              | _->[])
+         else [])
+    in
+    let li=
+      (if hyphenStart_i>=0 then
+         (match paragraphs.(paragraph_i).(lineStart_i-1) with
+              Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_i) in (hyp, 0, Array.length hyp)::li0
+            | _->li0)
+       else li0)
+    in
+    let lj0=
+      (paragraphs.(paragraph_j), lineStart_j, lineEnd_j)::
+      (if hyphenEnd_j>=0 then
+         (match paragraphs.(paragraph_j).(lineEnd_j) with
+              Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_j) in [(hyp,0,Array.length hyp)]
+            | _->[])
+       else [])
+    in
+    let lj=
+      (if hyphenStart_j>=0 then
+         (match paragraphs.(paragraph_j).(lineStart_j-1) with
+              Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_j) in (hyp,0,Array.length hyp)::lj0
+            | _->lj0)
+       else lj0)
+    in
+      collide li lineStart_i lj lineStart_j 0. 0. 0.
+  in
+
+
+
 
   let log=ref [] in
 
@@ -195,56 +349,6 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
         done;
         !bad
     in
-    let v_badness v_space line_i comp_i line_j comp_j=
-      (* Calcul de la moyenne de collision *)
-      let xi=ref 0. in
-      let xj=ref 0. in
-      let rec mean_collide boxes_i i max_i boxes_j j max_j w_tot col col2=
-        if i>=max_i || j>=max_j then
-          (if w_tot<=0. then 0. else (col2 -. col*.col)/.w_tot)
-        else (
-          match boxes_i.(i),boxes_j.(j) with
-              Hyphen hi, Hyphen hj ->mean_collide
-                hi.hyphen_normal 0 (Array.length hi.hyphen_normal)
-                hj.hyphen_normal 0 (Array.length hj.hyphen_normal) w_tot col col2
-            | Hyphen hi, _ ->mean_collide hi.hyphen_normal 0 (Array.length hi.hyphen_normal) boxes_j j max_j w_tot col col2
-            | _, Hyphen hj ->mean_collide boxes_i i max_i hj.hyphen_normal 0 (Array.length hj.hyphen_normal) w_tot col col2
-            | _->(
-                let wi=box_width comp_i boxes_i.(i) in
-                let wj=box_width comp_j boxes_j.(j) in
-                  if !xi +.wi < !xj+. wj then (
-                    let x0=max !xi !xj in
-                    let w0= !xi+.wi-.x0 in
-                    let yi=lower_y boxes_i.(i) wi in
-                    let yj=upper_y boxes_j.(j) wj in
-
-                      if !xj>= !xi+.wi || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
-                        (xi:= !xi+.w0;
-                         mean_collide boxes_i (i+1) max_i boxes_j j max_j w_tot col col2)
-                      else
-                        (let area=w0*.(v_space+.yi-.yj) in
-                           xi:= !xi+.w0;
-                           mean_collide boxes_i (i+1) max_i boxes_j j max_j (w_tot+.w0) (col+.area) (col+.area*.area))
-                  ) else (
-                    let x0=max !xi !xj in
-                    let w0= !xj+.wj-.x0 in
-                    let yi=lower_y boxes_i.(i) wi in
-                    let yj=upper_y boxes_j.(j) wj in
-
-                      if !xi>= !xj+.wj || is_glue boxes_i.(i) || is_glue boxes_j.(j) then
-                        (xj:= !xj +. w0;
-                         mean_collide boxes_i i max_i boxes_j j max_j w_tot col col2)
-                      else
-                        (let area=w0*.(v_space+.yi-.yj) in
-                           xj:= !xj +. w0;
-                           mean_collide boxes_i i max_i boxes_j j max_j (w_tot+.w0) (col+.area) (col+.area*.area))
-                  )
-              )
-        )
-      in
-        mean_collide line_i 0 (Array.length line_i) line_j 0 (Array.length line_j) 0. 0. 0.
-    in
-
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
@@ -295,17 +399,20 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
                   let params=parameters node in
                   let rec break_next j sum_min sum_max=
                     let make_next_node hyphen=
-                      let comp1=compression paragraphs params.measure pi i node.hyphenEnd j hyphen in
+                      let comp1=comp paragraphs params.measure pi i node.hyphenEnd j hyphen in
                         let v_badness,v_incr=
-                          let line0=make_line node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd in
-                          let line1=make_line pi i j node.hyphenEnd hyphen in
-                          let comp0=compression paragraphs lastParameters.measure node.paragraph node.lineStart node.hyphenStart
+                          let comp0=comp paragraphs lastParameters.measure node.paragraph node.lineStart node.hyphenStart
                             node.lineEnd node.hyphenEnd in
                           let v_distance= if node.height+1>=params.lines_by_page then 0. else
-                            collide line0 comp0 0. line1 comp1 0.
+                            collide
+                              node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin
+                              pi i j node.hyphenEnd hyphen params.left_margin
                           in
-                          let v_incr=int_of_float (ceil (max 1. (-.v_distance/.params.lead))) in
-                            v_badness (float_of_int v_incr*.params.lead) line0 comp0 line1 comp1, v_incr
+                          let v_incr=ceil (max 1. (-.v_distance/.params.lead)) in
+                            v_badness v_incr
+                              node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin
+                              pi i j node.hyphenEnd hyphen params.left_margin,
+                          int_of_float v_incr
                         in
                           if node.height+v_incr<params.lines_by_page || v_incr=1 then (
 
@@ -431,16 +538,16 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
         Not_found->if node.paragraph>0 then raise Impossible else result
   in
 
-  let rec makePages page_num last_figure p pages=match p with
-      []->pages
+  let pages=Array.create (b.page+1) [] in
+
+  let rec makePages page_num last_figure p=match p with
+      []->()
     | (params,node)::s ->(
-        let pages'=if node.page<>page_num || pages=[] then
-          (Array.create params.lines_by_page (params,[]))::pages else pages in
-        let first=List.hd pages' in
-          if node.lineEnd > node.lineStart && node.height>=0 then
-            first.(node.height) <- (params, makeLine paragraphs params node (float_of_int node.height *. params.lead));
-          makePages node.page node.lastFigure s pages'
+        if node.lineEnd > node.lineStart && node.height>=0 then
+          pages.(node.page) <- (params, node)::pages.(node.page);
+        makePages node.page node.lastFigure s
       )
   in
   let ln=(makeParagraphs b_params b []) in
-    (!log, Array.of_list (List.rev (makePages 0 (-1) ln [])))
+    makePages 0 (-1) ln;
+    (!log, pages)
