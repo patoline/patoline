@@ -62,7 +62,7 @@ let _=
                 (*              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h) *)
                 (*           ) log; *)
                 (* flush stdout; *)
-                M.output_routine h pages
+                M.output_routine h paragraphs pages
     with
         Syntax_Error(pos,msg) ->
 	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

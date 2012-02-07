@@ -5,8 +5,9 @@ exception Impossible
 
 type pages=((parameters * ((float * float * box) list)) array array)
 
+val compression:box array array->(parameters*line)->float
 val lineBreak :
   (line->parameters) ->
   ?figures:drawingBox array ->
   box array array ->
-  (error_log list)*pages
+  (error_log list)*((parameters*line) list array)

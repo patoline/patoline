@@ -237,8 +237,17 @@ module Pdf =
        pdf.stroking_color<-black;
        pdf.non_stroking_color<-black
 
+     let end_text pdf=
+       if pdf.isText then (
+         pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET ");
+         pdf.isText<-false;
+         pdf.posT<- (0.,0.);
+         pdf.currentFont<- -1;
+         pdf.currentSize<- -1.
+       )
+
      let end_page pdf=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       end_text pdf;
        let str=Rope.to_string pdf.current_page in
        let contentObject=beginObject pdf in
          output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length str))^" >>\nstream\n");
@@ -266,7 +275,7 @@ module Pdf =
      let moveto pdf (x,y)=pdf.vpos<-(pt_of_mm x, pt_of_mm y)
 
      let really_move pdf=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       end_text pdf;
        if pdf.vpos <> pdf.pos then
          pdf.current_page <- Rope.append pdf.current_page
            (Rope.of_string ((string_of_float (fst pdf.vpos)) ^ " " ^ (string_of_float (snd pdf.vpos)) ^ " m "))
@@ -295,7 +304,7 @@ module Pdf =
        pdf.vpos<-pos
 
      let set_dash_pattern pdf l=
-       if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+       end_text pdf;
        let l0=List.map (fun x->round (pt_of_mm x)) l in
          match l0 with
              []->(pdf.current_page<-Rope.append pdf.current_page (Rope.of_string "[] 0 d "))
@@ -317,14 +326,14 @@ module Pdf =
      let set_line_width pdf w=
        let ptw=pt_of_mm w in
          if ptw <> pdf.line_width then (
-           if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+           end_text pdf;
            pdf.line_width<-ptw;
            pdf.current_page<-Rope.append pdf.current_page (Rope.of_string ((string_of_float ptw)^" w "))
          )
 
      let set_line_join pdf j=
        if j<>pdf.line_join then (
-         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         end_text pdf;
          pdf.line_join<-j;
          pdf.current_page<-Rope.append pdf.current_page (
            Rope.of_string (
@@ -337,7 +346,7 @@ module Pdf =
        )
      let set_line_cap pdf c=
        if c<>pdf.line_cap then (
-         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         end_text pdf;
          pdf.line_cap<-c;
          pdf.current_page<-Rope.append pdf.current_page (
            Rope.of_string (
@@ -355,7 +364,7 @@ module Pdf =
 
      let change_stroking_color pdf color=
        if color <> pdf.stroking_color then (
-         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         end_text pdf;
          let r=max 0. (min 1. color.red) in
          let g=max 0. (min 1. color.green) in
          let b=max 0. (min 1. color.blue) in
@@ -367,7 +376,7 @@ module Pdf =
        )
      let change_non_stroking_color pdf color=
        if color <> pdf.non_stroking_color then (
-         if pdf.isText then (pdf.current_page<-Rope.append pdf.current_page (Rope.of_string " ET "); pdf.isText<-false);
+         end_text pdf;
          let r=max 0. (min 1. color.red) in
          let g=max 0. (min 1. color.green) in
          let b=max 0. (min 1. color.blue) in
