@@ -212,20 +212,20 @@ let rec box_width comp=function
 
 
 let rec box_interval=function
-    GlyphBox x->let y=Fonts.glyphWidth x.glyph*.x.glyph_size/.1000. in (y,y,y)
-  | Glue x
-  | Drawing x->x.drawing_min_width, x.drawing_nominal_width, x.drawing_max_width
-  | Kerning x->let (a,b,c)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
+    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
+  | Glue x->(x.glue_min_width, x.glue_max_width)
+  | Drawing x->let w=x.drawing_x1-.x.drawing_x0 in w,w
+  | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
-  | _->(0.,0.,0.)
+  | _->(0.,0.)
 
 and boxes_interval boxes=
-  let a=ref 0. in let b=ref 0. in let c=ref 0. in
+  let a=ref 0. in let b=ref 0. in
     for i=0 to Array.length boxes-1 do
-      let (u,v,w)=box_interval (boxes.(i)) in
-        a:= !a+.u;b:= !b+.v;c:= !c+.w
+      let (u,v)=box_interval (boxes.(i)) in
+        a:= !a+.u;b:= !b+.v
     done;
-    (!a,!b,!c)
+    (!a,!b)
 
 let draw_boxes l=
   let rec draw_box x y dr=function
