@@ -125,7 +125,10 @@ header:
 
 paragraphs:
    paragraph<p> [parskip paragraph]*<ps>
-     { p::ps }
+     { List.map (fun x->Glue { glue_min_width=2.*.(!current_size);
+                               glue_max_width=2.*.(!current_size);
+                               glue_badness=fun _->0. }::x)
+         (p::ps) }
 
 parskip:
   | NEWLINE NEWLINE+

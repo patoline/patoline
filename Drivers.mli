@@ -27,14 +27,22 @@ module type Driver =
     val lineto : driver -> float * float -> unit
     val curveto :
       driver -> float * float -> float * float -> float * float -> unit
-    val dash_pattern : driver -> float list -> unit
-    val line_width : driver -> float -> unit
-    val line_cap : driver -> lineCap -> unit
-    val line_join : driver -> lineJoin -> unit
+    (* val dash_pattern : driver -> float list -> unit *)
+    (* val line_width : driver -> float -> unit *)
+    (* val line_cap : driver -> lineCap -> unit *)
+    (* val line_join : driver -> lineJoin -> unit *)
 
-    val stroke: ?color:color -> driver-> unit
+    val stroke :
+           ?color:color ->
+           ?dash_pattern:float list ->
+           ?line_width:float ->
+           ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
     val fill: ?color:color -> driver-> unit
-    val fill_stroke: ?color:color -> driver->unit
+    val fill_stroke:
+           ?color:color ->
+           ?dash_pattern:float list ->
+           ?line_width:float ->
+           ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
     val close_stroke: ?color:color -> driver->unit
     val closePath : driver -> unit
     val text : ?color:color->driver -> float * float -> float -> Fonts.glyph list -> unit

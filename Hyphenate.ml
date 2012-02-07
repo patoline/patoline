@@ -61,7 +61,6 @@ let insert_exception tree a0=
         )
   in
     insert 0 tree
-    
 
 
 exception Exp of (string list)
@@ -74,7 +73,6 @@ let hyphenate a0 tree =
       a.[0]<-'.';
       a.[String.length a-1]<-'.';
       let breaks=Array.create (String.length a+1) '0' in
-        
       let rec hyphenate i j t=if j>=String.length a then () else match t with
         | Exception (x,_) when i=0 && j=String.length a-1->raise (Exp x)
         | Exception (_,t)->
@@ -84,7 +82,6 @@ let hyphenate a0 tree =
                  hyphenate i (j+1) t'
              with
                  Not_found->())
-              
         | Node (x,t) -> (
             if Array.length x>0 then (
               for k=0 to Array.length x-1 do
@@ -100,7 +97,7 @@ let hyphenate a0 tree =
         for i=0 to String.length a-1 do
           hyphenate i i tree;
         done;
-        
+
         let rec make_hyphens i j=
           if j>=String.length a-2 then [String.sub a i (j-i+1)] else
             if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 then
@@ -127,7 +124,7 @@ let empty=Node ([||], C.empty)
 (*    ["oblig";"a";"tory"]; ["phil";"an";"thropic"]; ["present"]; ["presents"]; *)
 (*    ["project"]; ["projects"]; ["reci";"procity"]; ["re";"cog";"ni";"zance"]; *)
 (*    ["ref";"or";"ma";"tion"]; ["ret";"ri";"bu";"tion";"ta";"ble"]] *)
-  
+
 (* let _= *)
 (*   let o=open_out "dict_en" in *)
 (*     output_value o tree; *)

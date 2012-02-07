@@ -39,12 +39,12 @@ let loadGlyph f g=
   match f with
       CFF x->CFFGlyph (FontCFF.loadGlyph x g)
     | Opentype x->OpentypeGlyph (FontOpentype.loadGlyph x g)
-        
+
 let outlines gl=
   match gl with
       CFFGlyph x->FontCFF.outlines x
     | OpentypeGlyph x->FontOpentype.outlines x
-        
+
 let glyphFont gl=
   match gl with
       CFFGlyph x->CFF (FontCFF.glyphFont x)
@@ -74,4 +74,3 @@ let positioning f glyphs=
   match f with
       CFF x->FontCFF.substitutions x glyphs
     | Opentype x->FontOpentype.positioning x glyphs
-

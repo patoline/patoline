@@ -43,7 +43,6 @@ let rec print_graph file lines graph=
     LineMap.iter (fun k (_,a)->
                     Printf.fprintf f "node_%d_%s [label=\""
                       k.paragraph (if k.lineEnd>=0 then string_of_int k.lineEnd else "x");
-                    
                     Printf.fprintf f "\"];\n";
 
                     Printf.fprintf f "node_%d_%s -> node_%d_%s\n"
@@ -57,9 +56,7 @@ let rec print_graph file lines graph=
 
 
 let lineBreak parameters0 ?figures:(figures = [||]) lines=
-  
   let get i j=lines.(i).(j) in
-    
   let length_min=Array.create (Array.length lines) [||] in
   let length_max=Array.create (Array.length lines) [||] in
   let _=
