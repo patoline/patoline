@@ -34,7 +34,8 @@ module type Driver = sig
   val fill: ?color:color -> driver-> unit
   val fill_stroke: ?color:color -> ?dash_pattern:float list-> ?line_width:float-> ?line_cap:lineCap-> ?line_join:lineJoin->
     driver->unit
-  val close_stroke: ?color:color -> driver->unit
+  val close_stroke: ?color:color -> ?dash_pattern:float list-> ?line_width:float-> ?line_cap:lineCap-> ?line_join:lineJoin->
+    driver->unit
   val closePath:driver->unit
 
   val text:?color:color->driver->(float*float)->float->Fonts.glyph list->unit
@@ -322,13 +323,12 @@ module Pdf =
                  Buffer.add_string pdf.current_page ("] "^(string_of_int phase)^" d ")
              )
      let set_line_width pdf w=
-       let ptw=pt_of_mm w in
-         if ptw <> pdf.line_width then (
-           end_text pdf;
-           pdf.line_width<-ptw;
-           Buffer.add_string pdf.current_page (string_of_float ptw);
-           Buffer.add_string pdf.current_page " w "
-         )
+       if w <> pdf.line_width then (
+         end_text pdf;
+         pdf.line_width<-w;
+         Buffer.add_string pdf.current_page (string_of_float w);
+         Buffer.add_string pdf.current_page " w "
+       )
 
      let set_line_join pdf j=
        if j<>pdf.line_join then (
@@ -392,10 +392,20 @@ module Pdf =
        set_line_join pdf line_join;
        change_stroking_color pdf color;
        Buffer.add_string pdf.current_page " S "
-     let close_stroke ?(color:color=black) pdf=
+     let close_stroke ?(color:color=black)
+         ?(dash_pattern=[])
+         ?(line_width=1.)
+         ?(line_cap=Butt_cap)
+         ?(line_join=Miter_join)
+         pdf=
        end_path pdf;
+       set_dash_pattern pdf dash_pattern;
+       set_line_width pdf line_width;
+       set_line_cap pdf line_cap;
+       set_line_join pdf line_join;
        change_stroking_color pdf color;
        Buffer.add_string pdf.current_page " s "
+
      let fill_stroke ?(color:color=black)
          ?(dash_pattern=[])
          ?(line_width=1.)
@@ -409,6 +419,7 @@ module Pdf =
        set_line_join pdf line_join;
        change_non_stroking_color pdf color;
        Buffer.add_string pdf.current_page " b "
+
      let fill ?(color:color=black)
          pdf=
        end_path pdf;

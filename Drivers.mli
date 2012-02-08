@@ -43,7 +43,11 @@ module type Driver =
            ?dash_pattern:float list ->
            ?line_width:float ->
            ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
-    val close_stroke: ?color:color -> driver->unit
+    val close_stroke:
+           ?color:color ->
+           ?dash_pattern:float list ->
+           ?line_width:float ->
+           ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
     val closePath : driver -> unit
     val text : ?color:color->driver -> float * float -> float -> Fonts.glyph list -> unit
   end
