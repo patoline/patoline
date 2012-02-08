@@ -1,4 +1,3 @@
-
 FONTS=Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
 SOURCES = Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Boxes.mli Boxes.ml Knuth.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
@@ -48,7 +47,7 @@ OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
 
-$(EXEC): $(OBJS) 
+$(EXEC): $(OBJS)
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(LIBS) $(OBJS)
 
 $(EXEC).opt: $(OPTOBJS)
@@ -56,6 +55,9 @@ $(EXEC).opt: $(OPTOBJS)
 
 graphic_font: tests/graphics_font.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o graphics_font tests/graphics_font.ml
+
+collisions: tests/collisions.ml $(OBJS)
+	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml
 
 doc:Makefile $(OBJS)
 	mkdir -p doc

@@ -28,6 +28,7 @@ module Routine=functor (M:Driver)->struct
                                M.stroke ~color:{red=0.7 ; blue=0.7 ; green=0.7}  ~dash_pattern:pat ~line_width:wid drv;
                                let comp=compression paragraphs (param,line) in
                                let rec make_line boxes x y j jmax=
+
                                  if j>=jmax then x else
                                    match boxes.(j) with
                                        Glue g->(
@@ -35,8 +36,8 @@ module Routine=functor (M:Driver)->struct
                                            make_line boxes (x+.w) y (j+1) jmax
                                        )
                                      | Kerning kbox ->(
-                                         let _=make_line [|kbox.kern_contents|] (x+.kbox.kern_x0) (y+.kbox.kern_y0) 0 1 in
-                                           make_line boxes (x+.kbox.advance_width) y (j+1) jmax
+                                         let x'=make_line [|kbox.kern_contents|] (x+.kbox.kern_x0) (y+.kbox.kern_y0) 0 1 in
+                                           make_line boxes (x'+.kbox.advance_width) y (j+1) jmax
                                        )
                                      | Hyphen h->(
                                          let x'=make_line h.hyphen_normal x y 0 (Array.length h.hyphen_normal) in
@@ -50,7 +51,7 @@ module Routine=functor (M:Driver)->struct
                                in
                                let y=270. -. (float_of_int line.height)*.param.lead in
                                let x0=(if line.hyphenStart>=0 then
-                                         match paragraphs.(line.paragraph).(line.lineStart-1) with
+                                         match paragraphs.(line.paragraph).(line.lineStart) with
                                              Hyphen x->let hyp=snd x.hyphenated.(line.hyphenStart) in
                                                make_line hyp param.left_margin y 0 (Array.length hyp)
                                            | _->param.left_margin
@@ -58,7 +59,7 @@ module Routine=functor (M:Driver)->struct
                                in
                                let x1=make_line paragraphs.(line.paragraph)
                                  x0 (270.-.param.lead*.(float_of_int line.height))
-                                 line.lineStart line.lineEnd
+                                 (if line.hyphenStart>=0 then line.lineStart+1 else line.lineStart) line.lineEnd
                                in
                                  if line.hyphenEnd>=0 then
                                    match paragraphs.(line.paragraph).(line.lineEnd) with
