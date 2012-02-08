@@ -11,7 +11,7 @@ let spec = []
 exception Syntax_Error of Lexing.position * string
 
 let default line=
-  let l=38 in
+  let l=48 in
     { format=a4; lead=5.; measure=150.; lines_by_page=l; left_margin=20. }
 
 
@@ -62,7 +62,7 @@ let _=
                 (*              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h) *)
                 (*           ) log; *)
                 (* flush stdout; *)
-                M.output_routine h paragraphs pages
+                M.output_routine h paragraphs [|figure|] pages
     with
         Syntax_Error(pos,msg) ->
 	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

@@ -6,7 +6,8 @@ type parameters = {
   left_margin : float;
 }
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             height:int; paragraph_height:int; page:int}
+             isFigure:bool; height:int; paragraph_height:int; page:int}
+
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
   sig
@@ -89,6 +90,7 @@ val box_interval : box -> float * float
 val boxes_interval : box array -> float * float
 val lower_y : box -> 'a -> float
 val upper_y : box -> 'a -> float
+val line_height : box array array->line->float*float
 val glyphCache_ : glyph Binary.IntMap.t ref Binary.StrMap.t ref
 val glyphCache :
   Fonts.font -> Binary.IntMap.key -> CamomileLibrary.UTF8.t -> glyph

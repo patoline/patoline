@@ -66,38 +66,6 @@ let comp paragraphs m p i hi j hj=
 let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
 
-let makeLine paragraphs parameters node y=
-  let comp0=comp paragraphs parameters.measure node.paragraph node.lineStart node.hyphenStart node.lineEnd node.hyphenEnd in
-  let rec makeLine boxes x i max_i line=
-    if i>=max_i then (x,line) else
-
-      match boxes.(i) with
-
-          Glue g->let w=g.glue_min_width+.comp0*.(g.glue_max_width-.g.glue_min_width) in
-            makeLine boxes (x+.w) (i+1) max_i line
-
-        | Kerning kbox as box -> makeLine boxes (x+.(box_width comp0 box)) (i+1) max_i
-            ((x+.kbox.kern_x0, y+.kbox.kern_y0, kbox.kern_contents)::line)
-
-        | Hyphen h->let (a,b)=makeLine h.hyphen_normal x 0 (Array.length h.hyphen_normal) line in
-            makeLine boxes a (i+1) max_i b
-
-        | box->makeLine boxes (x+.(box_width comp0 box)) (i+1) max_i ((x,y,box)::line)
-  in
-  let u,v=(if node.hyphenStart>=0 then match paragraphs.(node.paragraph).(node.lineStart-1) with
-               Hyphen x->let _,y=x.hyphenated.(node.hyphenStart) in
-                 makeLine y 0. 0 (Array.length y) []
-             | _->0., []
-           else 0.,[])
-  in
-  let u',v'=makeLine paragraphs.(node.paragraph) u node.lineStart node.lineEnd v in
-    if node.hyphenEnd>=0 then match paragraphs.(node.paragraph).(node.lineEnd) with
-        Hyphen x->let y,_=x.hyphenated.(node.hyphenEnd) in snd (makeLine y u' 0 (Array.length y) v')
-      | _->v'
-    else
-      v'
-
-
 let lineBreak parameters ?figures:(figures = [||]) paragraphs=
   let collide
       paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
@@ -316,7 +284,6 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
 
 
 
-
   let log=ref [] in
 
   let rec break allow_impossible todo demerits=
@@ -360,20 +327,23 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
 
                   if Array.length figures - node.lastFigure > 1 then (
                     let fig=figures.(node.lastFigure+1) in
-                    let h=int_of_float (ceil ((fig.drawing_y1 -. fig.drawing_y0)/.current_parameters.lead)) in
-                      if node.height<=current_parameters.lines_by_page - h then
-                        let nextNode={
-                          paragraph=pi; lastFigure=node.lastFigure+1;
-                          hyphenStart= -1; hyphenEnd= -1;
-                          height=node.height+h;
-                          lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
-                        in
-                          register node nextNode lastBadness current_parameters;
+                    let vspace,_=line_height paragraphs node in
+                    let h=int_of_float (ceil ((abs_float vspace +. fig.drawing_y1 -. fig.drawing_y0)/.current_parameters.lead)) in
+                      for h'=0 to 2 do
+                        if node.height+h+h' <= current_parameters.lines_by_page - h then
+                          let nextNode={
+                            paragraph=pi; lastFigure=node.lastFigure+1; isFigure=true;
+                            hyphenStart= -1; hyphenEnd= -1;
+                            height=node.height+h+h';
+                            lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
+                          in
+                            register node nextNode lastBadness current_parameters;
+                      done
                   )
                 );
 
                 if pi>=Array.length paragraphs then (
-                  let endNode={paragraph=pi;lastFigure=node.lastFigure;hyphenStart= -1;hyphenEnd= -1;
+                  let endNode={paragraph=pi;lastFigure=node.lastFigure;hyphenStart= -1;hyphenEnd= -1; isFigure=false;
                                height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page } in
                     register node endNode lastBadness current_parameters;
                 ) else (
@@ -403,7 +373,7 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
                             let allow_widow= next_page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
                               if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
                                 let nextNode={
-                                  paragraph=pi; lastFigure=node.lastFigure;
+                                  paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
                                   hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
                                   height=
                                     if node.height+v_incr >= params.lines_by_page then 1 else
@@ -481,7 +451,7 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
             )
       )
   in
-  let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1;
+  let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
                    lastFigure=(-1); height= 0;paragraph_height= -1; page=0 } in
   let first_parameters=parameters first_line in
 
@@ -522,14 +492,14 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
 
   let pages=Array.create (b.page+1) [] in
 
-  let rec makePages page_num last_figure p=match p with
+  let rec makePages=function
       []->()
     | (params,node)::s ->(
-        if node.lineEnd > node.lineStart && node.height>=0 then
+        if node.paragraph<Array.length paragraphs then
           pages.(node.page) <- (params, node)::pages.(node.page);
-        makePages node.page node.lastFigure s
+        makePages s
       )
   in
   let ln=(makeParagraphs b_params b []) in
-    makePages 0 (-1) ln;
+    makePages ln;
     (!log, pages)

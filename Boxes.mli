@@ -3,7 +3,6 @@
 open Util
 exception Impossible
 
-type pages=((parameters * ((float * float * box) list)) array array)
 
 val compression:box array array->(parameters*line)->float
 val lineBreak :

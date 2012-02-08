@@ -13,7 +13,7 @@ type parameters={ format:float*float;
                   left_margin:float }
 
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             height:int; paragraph_height:int; page:int}
+             isFigure:bool; height:int; paragraph_height:int; page:int}
 
 module Line=struct
   type t=line
@@ -124,6 +124,35 @@ let rec upper_y x w=match x with
   | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
   | _-> 0.
 
+let line_height paragraphs node=
+  let rec line_height boxes k maxk min_height max_height=
+    if k>=maxk then (min_height,max_height) else (
+      match boxes.(k) with
+          Hyphen x->(
+            let a,b=line_height x.hyphen_normal 0 (Array.length x.hyphen_normal) min_height max_height in
+              line_height boxes (k+1) maxk a b
+          )
+        | _->(line_height boxes (k+1) maxk
+                (min min_height (lower_y boxes.(k) 0.))
+                (max max_height (upper_y boxes.(k) 0.)))
+    )
+  in
+  let a0,b0=
+    if node.hyphenStart>=0 then (
+      match paragraphs.(node.paragraph).(node.lineStart) with
+          Hyphen x->
+            (let hyp=snd x.hyphenated.(node.hyphenStart) in
+             let u,v=line_height hyp 0 (Array.length hyp) 0. 0. in
+               line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd u v)
+        | _->line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd 0. 0.
+    ) else (line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd 0. 0.)
+  in
+    if node.hyphenEnd>=0 then (
+      match paragraphs.(node.paragraph).(node.lineEnd) with
+          Hyphen x->let hyp=fst x.hyphenated.(node.hyphenEnd) in
+            line_height hyp 0 (Array.length hyp) a0 b0
+        | _->a0,b0
+    ) else a0,b0
 
 let glyphCache_=ref StrMap.empty
 
