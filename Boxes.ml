@@ -347,72 +347,69 @@ let lineBreak parameters ?figures:(figures = [||]) paragraphs=
                                height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page } in
                     register node endNode lastBadness current_parameters;
                 ) else (
-                  (* Ensuite, on cherche toutes les coupes possibles. Cas particulier : la fin du paragraphe. *)
+
                   let params=parameters node in
                   let rec break_next j sum_min sum_max=
                     let make_next_node hyphen=
+                      let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
+                                   node.hyphenStart node.lineEnd node.hyphenEnd) in
                       let comp1=comp paragraphs params.measure pi i node.hyphenEnd j hyphen in
-                        let v_badness,v_incr=
-                          let comp0=comp paragraphs lastParameters.measure node.paragraph node.lineStart node.hyphenStart
-                            node.lineEnd node.hyphenEnd in
-                          let v_distance= if node.height+1>=params.lines_by_page then 0. else
-                              collide
-                              node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin comp0
-                              pi i j node.hyphenEnd hyphen params.left_margin comp1
+                      let v_distance=(if node.height+1>=params.lines_by_page then 0. else
+                                        collide
+                                          node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin comp0
+                                          pi i j node.hyphenEnd hyphen params.left_margin comp1)
+                      in
+                      let fv_incr=ceil (max 1. (-.v_distance/.params.lead)) in
+                      let v_badness=v_badness fv_incr
+                        node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin comp0
+                        pi i j node.hyphenEnd hyphen params.left_margin comp1
+                      in
+                      let v_incr=int_of_float fv_incr in
+
+                      let next_page = if node.height+v_incr >= params.lines_by_page then node.page+1 else node.page in
+                      let allow_orphan= next_page = node.page || node.paragraph_height>1 in
+                      let allow_widow= next_page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
+
+                        if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
+
+                          let nextNode_={
+                            paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
+                            hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
+                            height = if node.height+v_incr >= params.lines_by_page then 1 else node.height+v_incr;
+                            lineStart= i; lineEnd= j;
+                            paragraph_height=node.paragraph_height+1;
+                            page=next_page }
                           in
-                          let v_incr=ceil (max 1. (-.v_distance/.params.lead)) in
-                            v_badness v_incr
-                              node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd lastParameters.left_margin comp0
-                              pi i j node.hyphenEnd hyphen params.left_margin comp1,
-                          int_of_float v_incr
-                        in
-                          if node.height+v_incr<params.lines_by_page || v_incr=1 then (
+                          let nextNode=if next_page=node.page then nextNode_ else
+                            { nextNode_ with height=int_of_float (ceil ((snd (line_height paragraphs nextNode_))/.params.lead)) } in
+                          let bad=(lastBadness+. v_badness*.v_badness +.
+                                     (h_badness pi i j comp1) +.
+                                     (if sum_min>params.measure then 1e20 else 0.)
+                                  ) in
 
-                            let next_page=if node.height+v_incr >= params.lines_by_page then node.page+1 else node.page in
-                            let allow_orphan= next_page = node.page || node.paragraph_height>1 in
-                            let allow_widow= next_page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
-                              if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
-                                let nextNode={
-                                  paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
-                                  hyphenStart= node.hyphenEnd; hyphenEnd= hyphen;
-                                  height=
-                                    if node.height+v_incr >= params.lines_by_page then 1 else
-                                      node.height+v_incr;
-                                  lineStart= i; lineEnd= j;
-                                  paragraph_height=node.paragraph_height+1;
-                                  page=next_page }
-                                in
-                                let bad=(lastBadness+. v_badness*.v_badness +.
-                                           (h_badness pi i j comp1) +.
-                                           (if sum_min>params.measure then 1e20 else 0.)
-                                        ) in
-                                  (* print_text_line paragraphs nextNode; *)
-                                  (* Printf.printf "%d %d\n" next_page node.page; flush stdout; *)
-
-                                  if not allow_orphan && allow_widow && allow_impossible then (
-                                    log:=(Orphan node)::(!log);
-                                    let last_bad, last_par, last_ant=LineMap.find node demerits in
-                                    let replacement={ node with height=1; page=node.page+1 } in
-                                      demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
-                                        (LineMap.remove node !demerits');
-                                      todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
-                                  )
-                                  else if not allow_widow && allow_orphan && allow_impossible then (
-                                    log:=(Widow nextNode)::(!log);
-                                    let last_bad, last_par, last_ant=LineMap.find node demerits in
-                                    let replacement={ node with height=1; page=node.page+1 } in
-                                      demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
-                                        (LineMap.remove node !demerits');
-                                      todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
-                                  )
-                                  else if sum_min > params.measure then (
-                                    log:=(Overfull_line nextNode)::(!log);
-                                    register node nextNode bad params
-                                  )
-                                  else
-                                    register node nextNode bad params
-                              )
-                          )
+                            if not allow_orphan && allow_widow && allow_impossible then (
+                              log:=(Orphan node)::(!log);
+                              let last_bad, last_par, last_ant=LineMap.find node demerits in
+                              let replacement={ node with height=1; page=node.page+1 } in
+                                demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
+                                  (LineMap.remove node !demerits');
+                                todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
+                            )
+                            else if not allow_widow && allow_orphan && allow_impossible then (
+                              log:=(Widow nextNode)::(!log);
+                              let last_bad, last_par, last_ant=LineMap.find node demerits in
+                              let replacement={ node with height=1; page=node.page+1 } in
+                                demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
+                                  (LineMap.remove node !demerits');
+                                todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
+                            )
+                            else if sum_min > params.measure then (
+                              log:=(Overfull_line nextNode)::(!log);
+                              register node nextNode bad params
+                            )
+                            else
+                              register node nextNode bad params
+                        )
                     in
 
                       if j>=Array.length (paragraphs.(pi)) then (if sum_min<=params.measure then make_next_node (-1)) else (

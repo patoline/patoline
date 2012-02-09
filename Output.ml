@@ -106,6 +106,11 @@ module Routine=functor (M:Driver)->struct
                               M.lineto drv (x1,y1+.yshift);
                               M.lineto drv (x1,y0+.yshift);
                               M.close_stroke drv;
+
+                              List.iter (function
+                                             Drawing_Box (x,y,l)->ignore (draw_box drv (x0+.x) (y0+.yshift+.y) 0. l)
+                                           | _->()
+                                        ) figures.(line.lastFigure).drawing_contents
                           ) else (
                             make_line param line;
                           );
