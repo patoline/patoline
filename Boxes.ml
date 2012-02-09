@@ -66,7 +66,7 @@ let comp paragraphs m p i hi j hj=
 let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
 
-let lineBreak parameters ?figures:(figures = [||]) paragraphs=
+let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
   let collide
       paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
       paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0 comp_j=

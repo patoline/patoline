@@ -10,6 +10,7 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
+let measure _=150.
 let default line=
   let l=48 in
     { format=a4; lead=5.; measure=150.; lines_by_page=l; left_margin=20. }
@@ -55,7 +56,7 @@ let _=
 	        raise (Failure "detecting parsing ambiguities, please report");
               let parsed=fst (List.hd text) in
               let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
-              let log,pages=Boxes.lineBreak default ~figures:[|figure|] paragraphs in
+              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:default ~figures:[|figure|] paragraphs in
                 (* List.iter (function *)
                 (*                Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h) *)
                 (*              | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h) *)
