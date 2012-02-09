@@ -94,8 +94,8 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 
-#Fonts.mli: Fonts.ml
-#	$(CAMLC) $(CUSTOM) -i Fonts.ml | sed -e "s/->[ \t]*FTypes./-> Types./g" > Fonts.mli
+top:
+	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
 

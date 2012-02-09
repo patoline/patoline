@@ -103,11 +103,7 @@ header:
        let p, global_data =
          if numbering then
            let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
-           let s = Section.index_to_string
-             !current_subst
-             !current_pos
-             !current_font  fsize global_data.cur_section
-           in
+           let s = Section.index_to_string !current_subst !current_pos !current_font  fsize global_data.cur_section in
              s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
                           glue_nominal_width= fsize/.3.;
                           glue_max_width= fsize/.2.;
