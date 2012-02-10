@@ -35,7 +35,7 @@ let print_text_line lines pi i hi j hj=
 
 
 
-module LineMap=Map.Make (struct type t=line let compare=compare end)
+module LineMap=New_map.Make (struct type t=line let compare=compare end)
 
 let rec print_graph file lines graph=
   let f=open_out file in

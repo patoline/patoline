@@ -25,7 +25,7 @@ module Line=struct
   let compare line0 line1=
     compare line0 line1
 end
-module LineMap=Map.Make(Line)
+module LineMap=New_map.Make(Line)
 
 
 

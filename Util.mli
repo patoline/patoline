@@ -13,7 +13,7 @@ module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
   sig
     type key = Line.t
-    type 'a t = 'a Map.Make(Line).t
+    type 'a t = 'a New_map.Make(Line).t
     val empty : 'a t
     val is_empty : 'a t -> bool
     val mem : key -> 'a t -> bool

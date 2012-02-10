@@ -12,7 +12,7 @@ module C=(*struct
       []->raise Not_found
     | (u,v)::s when u=a -> v
     | _::s->find a s
-end*)Map.Make (struct type t=char let compare=compare end)
+end*)New_map.Make (struct type t=char let compare=compare end)
 
 type ptree=
   Node of (char array)*(ptree C.t)
