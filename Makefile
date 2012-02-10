@@ -13,10 +13,10 @@ EXEC = texprime
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp cpp
-CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp cpp
-CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp cpp
-CAMLDEP = ocamlfind ocamldep -pp cpp
+CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
+CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
+CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 
 
