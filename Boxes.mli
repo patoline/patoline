@@ -7,7 +7,7 @@ exception Impossible
 val compression:box array array->(parameters*line)->float
 val lineBreak :
   measure:(line->float)->
-  parameters:(line->parameters) ->
+  parameters:(line->float->float->parameters) ->
   ?figures:drawingBox array ->
   box array array ->
   (error_log list)*((parameters*line) list array)

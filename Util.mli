@@ -3,10 +3,11 @@ type parameters = {
   lead : float;
   measure : float;
   lines_by_page : int;
-  left_margin : float;
+  left_margin : float
 }
+val print_parameters:parameters->unit
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; height:int; paragraph_height:int; page:int}
+             isFigure:bool; mutable height:int; paragraph_height:int; mutable page:int}
 
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :

@@ -447,8 +447,10 @@ module Pdf =
          pdf.isText<-true;
 
          let (x0,y0)=pdf.posT in
-           Buffer.add_string pdf.current_page (string_of_float (x-.x0)^" "^string_of_float (y-.y0)^" Td ");
-           pdf.posT<-(x,y);
+           if x0<>x || y0<>y then (
+             Buffer.add_string pdf.current_page (string_of_float (x-.x0)^" "^string_of_float (y-.y0)^" Td ");
+             pdf.posT<-(x,y)
+           );
            let opened=ref false in
              List.iter (fun gl->
                           let fnt=Fonts.glyphFont gl in

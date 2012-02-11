@@ -10,10 +10,10 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
-let measure _=150.
-let default line=
+let measure line=if line.height<20 then 150. else 100.
+let default line _ _=
   let l=48 in
-    { format=a4; lead=5.; measure=150.; lines_by_page=l; left_margin=20. }
+    { format=a4; lead=5.; measure=measure line; lines_by_page=l; left_margin=20. }
 
 
 let bacon="Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua. In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."

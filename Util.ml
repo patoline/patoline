@@ -10,10 +10,15 @@ type parameters={ format:float*float;
                   lead:float;
                   measure:float;
                   lines_by_page:int;
-                  left_margin:float }
+                  left_margin:float
+                }
+
+let print_parameters p=
+  Printf.printf "{ format=(%f, %f); lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
+    (fst p.format) (snd p.format) p.lead p.measure p.lines_by_page p.left_margin
 
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; height:int; paragraph_height:int; page:int}
+             isFigure:bool; mutable height:int; paragraph_height:int; mutable page:int}
 
 module Line=struct
   type t=line
