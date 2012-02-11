@@ -1,5 +1,7 @@
 open Binary
 open Constants
+open CamomileLibrary
+open FontsTypes
 
 module Buf=CamomileLibrary.UTF8.Buf
 module Buffer=struct
@@ -48,7 +50,7 @@ module Pdf =
   (struct
      type params=string
 
-     type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; mutable fontGlyphs:float IntMap.t }
+     type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int; mutable fontGlyphs:Fonts.glyph IntMap.t }
 
      (* l'implémentation de pdf, par contre, est toute en unité pdf, i.e. 1 pt adobe = 1/72 inch *)
      type driver= { out_chan:out_channel;
@@ -169,85 +171,168 @@ module Pdf =
                            endObject pdf;
 
                            (* CID Font dictionary *)
+                           let toUnicode=futureObject pdf in
                            let cidFontDict=beginObject pdf in
-                             output_string pdf.out_chan ("<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /"^
-                                                           fontName^" /DescendantFonts ["^(string_of_int fontDict)^" 0 R] >>");
+                             Printf.fprintf pdf.out_chan
+                               "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s /DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>"
+                               fontName fontDict toUnicode;
                              endObject pdf;
 
-                             let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w; fontGlyphs=IntMap.empty } in
+                             let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w; fontToUnicode=toUnicode; fontGlyphs=IntMap.empty } in
                                pdf.fonts<-StrMap.add (Fonts.fontName font) result pdf.fonts;
                                result
                    )
 
 
+
      let close pdf=
 
        (* Tous les dictionnaires de unicode mapping *)
-       (* StrMap.iter (fun _ x-> *)
+       StrMap.iter (fun _ x->
+                      let buf=Buf.create 256 in
+                        Buf.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
+                        Buf.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
+                        Buf.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
+                        Buf.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+                        let range=ref [] in
+                        let one=ref [] in
+                        let multRange=ref [] in
+                        let rec make_cmap glyphs=
+                          if not (IntMap.is_empty glyphs) then (
+                            (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
+                            let m0,_=IntMap.min_binding glyphs in
+                            let a,b=
+                              let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
+                                (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
+                            in
+                            let one_char, mult_char=IntMap.partition (fun _ gl->UTF8.length ((Fonts.glyphNumber gl).glyph_utf8) = 1) a in
+                            let rec unicode_diff a0=
+                              if not (IntMap.is_empty a0) then (
+                                let _,m0=IntMap.min_binding a0 in
+                                let num0=Fonts.glyphNumber m0 in
+                                let u,v=IntMap.partition (fun _ x->let num=Fonts.glyphNumber x in
+                                                            num.glyph_index-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
+                                                              num0.glyph_index-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
+                                                         ) a0
+                                in
+                                let _,m1=IntMap.max_binding u in
+                                  if IntMap.cardinal u > 1 then (
+                                    range:=(num0.glyph_index,(Fonts.glyphNumber m1).glyph_index,
+                                            (UTF8.get num0.glyph_utf8 0))::(!range)
+                                  ) else (
+                                    one:=(num0.glyph_index, num0.glyph_utf8)::(!one)
+                                  );
+                                  unicode_diff v
+                              )
+                            in
+                              unicode_diff one_char;
+                              if not (IntMap.is_empty mult_char) then (
+                                let _,m0=IntMap.min_binding mult_char in
+                                let first=ref ((Fonts.glyphNumber m0).glyph_index) in
+                                let last=ref ((Fonts.glyphNumber m0).glyph_index-1) in
+                                let cur=ref [] in
+                                  IntMap.iter (fun _ a->
+                                                 let num=Fonts.glyphNumber a in
+                                                   if num.glyph_index > (!last)+1 then (
+                                                     (match !cur with
+                                                          _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+                                                        | [h]->one:=(!first, h)::(!one)
+                                                        | []->());
+                                                     cur:=[]
+                                                   );
+                                                   if !cur=[] then
+                                                     first:=num.glyph_index;
+                                                   cur:=num.glyph_utf8::(!cur);
+                                                   last:=num.glyph_index
+                                              ) mult_char;
 
-       (*                let rec make_cmap glyphs= *)
-       (*                  (\* On commence par partitionner par premier octet (voir adobe technical note #5144) *\) *)
-       (*                  let m0,_=IntMap.min_binding glyphs in *)
-       (*                  let a,b= *)
-       (*                    let a,gi,b=IntMap.split (m0 land 0xff00) in *)
-       (*                      IntMap.add (m0 land 0xff00) gi a, b *)
-       (*                  in *)
-       (*                  let rec unicode_diff a0= *)
-       (*                    let m0,_=IntMap.min_binding a0 in *)
-       (*                    let u,v=IntMap.partition (fun k _-> *)
-       (*                    make_cmap b *)
-       (*                in *)
-       (*                  make_cmap x.fontGlyphs *)
+                                  match !cur with
+                                      _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+                                    | [h]->one:=(!first, h)::(!one)
+                                    | []->()
 
-       (*             ) pdf.fonts; *)
+                              );
+                              make_cmap b
+                          )
+                        in
+                          make_cmap x.fontGlyphs;
+                          let rec print_utf8 utf idx=
+                            try
+                              Buf.add_string buf (Printf.sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
+                              print_utf8 utf (UTF8.next utf idx)
+                            with
+                                _->()
+                          in
+                            if !one<>[] then (
+                              Buf.add_string buf (Printf.sprintf "%d beginbfchar\n" (List.length !one));
+                              List.iter (fun (a,b)->
+                                           Buf.add_string buf (Printf.sprintf "<%04x> <" a);
+                                           print_utf8 b (UTF8.first b);
+                                           Buf.add_string buf ">\n") !one;
+                              Buf.add_string buf "endbfchar\n"
+                            );
+                            if !range<>[] || !multRange<>[] then (
+                              Buf.add_string buf (Printf.sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
+                              List.iter (fun (a,b,c)->Buf.add_string buf (Printf.sprintf "<%04x> <%04x> <%04x>\n"
+                                                                            a b (UChar.uint_code c))) !range;
+                              List.iter (fun (a,b)->
+                                           Buf.add_string buf (Printf.sprintf "<%04x> [" a);
+                                           List.iter (fun c->
+                                                        Buf.add_string buf "<";
+                                                        print_utf8 c (UTF8.first c);
+                                                        Buf.add_string buf ">") b;
+                                           Buf.add_string buf "]\n") !multRange;
+                              Buf.add_string buf "endbfrange\n"
+                            );
+                            Buf.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
 
+
+                            resumeObject pdf x.fontToUnicode;
+                            Printf.fprintf pdf.out_chan "<< /Length %d >>\nstream\n%s\nendstream"
+                              (String.length (Buf.contents buf)) (Buf.contents buf);
+
+                            endObject pdf
+                   ) pdf.fonts;
        (* Toutes les largeurs des polices *)
        StrMap.iter (fun _ x->
                       resumeObject pdf x.fontWidthsObj;
                       let (m0,_)=IntMap.min_binding x.fontGlyphs in
-                        output_string pdf.out_chan ("[ "^(string_of_int m0)^" [ ");
+                        Printf.fprintf pdf.out_chan "[ %d [ " m0;
                         for i=m0 to fst (IntMap.max_binding x.fontGlyphs) do
-                          let w=try IntMap.find i x.fontGlyphs with Not_found->0. in
-                            output_string pdf.out_chan ((string_of_int (round w))^" ");
+                          let w=try Fonts.glyphWidth (IntMap.find i x.fontGlyphs) with Not_found->0. in
+                            Printf.fprintf pdf.out_chan "%d " (round w);
                         done;
-                        output_string pdf.out_chan "]]";
+                        Printf.fprintf pdf.out_chan "]]";
                         endObject pdf;
                    ) pdf.fonts;
 
        (* Ecriture du pageTree *)
        resumeObject pdf pageTree;(
-         output_string pdf.out_chan
-           ("<< /Type /Pages /Count "^(string_of_int (IntMap.cardinal pdf.pages))^
-              " /Kids ["^(IntMap.fold
-                            (fun _ a str->str^(if String.length str=0 then "" else " ")^(string_of_int a)^" 0 R") pdf.pages "")^
-              "] >>"));
+         Printf.fprintf pdf.out_chan "<< /Type /Pages /Count %d /Kids [" (IntMap.cardinal pdf.pages);
+         IntMap.iter (fun _ a->Printf.fprintf pdf.out_chan " %d 0 R" a) pdf.pages;
+         Printf.fprintf pdf.out_chan "] >>";
+       );
        endObject pdf;
 
        (* Metadata stream *)
-       let meta=beginObject pdf in
-         output_string pdf.out_chan "<< /Type /Metadata /Subtype XML /Length 0 >>\nstream\nendstream";
-         endObject pdf;
+       (* let meta=beginObject pdf in *)
+       (*   output_string pdf.out_chan "<< /Type /Metadata /Subtype XML /Length 0 >>\nstream\nendstream"; *)
+       (*   endObject pdf; *)
 
        (* Ecriture du catalogue *)
        let cat=beginObject pdf in
-         output_string pdf.out_chan ("<< /Type /Catalog /Metadata "^(string_of_int meta)^" 0 R /Pages "^
-                                       (string_of_int pageTree)^" 0 R >>");
+         Printf.fprintf pdf.out_chan "<< /Type /Catalog /Pages %d 0 R >>" pageTree;
          endObject pdf;
 
 
          (* Ecriture de xref *)
          flush pdf.out_chan;
          let xref=pos_out pdf.out_chan in
-           output_string pdf.out_chan ("xref\n0 "^(string_of_int (1+IntMap.cardinal pdf.xref))^"\n0000000000 65535 f \n");
-           IntMap.iter (fun _ a->
-                          let str=string_of_int a in
-                            output_string pdf.out_chan ( (String.make (10-String.length str) '0')^str^" 00000 n \n")
-                       ) pdf.xref;
+           Printf.fprintf pdf.out_chan "xref\n0 %d \n0000000000 65535 f \n" (1+IntMap.cardinal pdf.xref);
+           IntMap.iter (fun _ a->Printf.fprintf pdf.out_chan "%010d 00000 n \n" a) pdf.xref;
 
            (* Trailer *)
-           output_string pdf.out_chan ("trailer\n<< /Size "^(string_of_int (1+IntMap.cardinal pdf.xref))^
-                                         " /Root "^(string_of_int cat)^" 0 R >>\nstartxref\n"^(string_of_int xref)^
-                                         "\n%%EOF\n");
+           Printf.fprintf pdf.out_chan "trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF\n"  (1+IntMap.cardinal pdf.xref) cat xref;
            close_out pdf.out_chan
 
 
@@ -479,7 +564,7 @@ module Pdf =
            let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
            let num=(Fonts.glyphNumber gl).FontsTypes.glyph_index in
              if not (IntMap.mem num pdfFont.fontGlyphs) then
-               pdfFont.fontGlyphs<-IntMap.add num (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
+               pdfFont.fontGlyphs<-IntMap.add num gl pdfFont.fontGlyphs;
 
              if idx <> pdf.currentFont || size <> pdf.currentSize then (
                if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
