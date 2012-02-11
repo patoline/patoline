@@ -4,7 +4,7 @@ type index = int IntMap.t
 
 let increment lvl index:index =
   let cur_index =
-    try IntMap.find lvl index with Not_found -> 0 
+    try IntMap.find lvl index with Not_found -> 0
   in
   let index = IntMap.add lvl (cur_index + 1) index in
   let index = IntMap.fold (fun l _ acc ->
@@ -12,9 +12,8 @@ let increment lvl index:index =
   index
 
 let index_to_string subst kern font fsize index =
-  let str = 
+  let str =
     IntMap.fold (fun l s acc ->
       string_of_int s ^ "." ^ acc) index ""
   in
   Util.glyph_of_string subst kern font fsize str
-

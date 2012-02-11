@@ -10,7 +10,7 @@ exception Table_not_found
 
 let tableLookup table file off=
   seek_in file (off+4);
-  let numTables=readInt file 2 in
+  let numTables=readInt2 file in
   let tableName="    " in
   let rec lookup i j=
     let middle=(i+j) / 2 in
@@ -18,8 +18,8 @@ let tableLookup table file off=
       really_input file tableName 0 4;
       if middle<=i then
         if tableName=table then
-          ((seek_in file (off+offsetTable+i*dirSize+8);readInt file 4),
-           (seek_in file (off+offsetTable+i*dirSize+12);readInt file 4))
+          ((seek_in file (off+offsetTable+i*dirSize+8);readInt4 file),
+           (seek_in file (off+offsetTable+i*dirSize+12);readInt4 file))
         else
           raise Table_not_found
       else
@@ -31,7 +31,7 @@ let tableLookup table file off=
     lookup 0 numTables
 let tableList file off=
   seek_in file (off+4);
-  let numTables=readInt file 2 in
+  let numTables=readInt2 file in
   let rec getTables n l=
     if n=offsetTable then l else
       (seek_in file (off+n);
@@ -51,6 +51,7 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
           let (a,b)=tableLookup "CFF " f off in
             CFF (FontCFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
+
 type glyph = CFFGlyph of (font*FontCFF.glyph)
 
 let glyph_of_char font char0=
@@ -60,15 +61,15 @@ let glyph_of_char font char0=
         let char=UChar.code char0 in
         let (a,b)=tableLookup "cmap" file offset0 in
           seek_in file (a+2);
-          let numTables=readInt file 4 in
+          let numTables=readInt4 file in
           let table=ref 0 in
           let cid=ref 0 in
 
             while !cid=0 && !table<numTables do
               seek_in file (a+8+8* !table);
-              let offset=a+readInt file 4 in
+              let offset=a+readInt4 file in
                 seek_in file offset;
-                let t=readInt file 2 in
+                let t=readInt2 file in
                   (match t with
                        0->if char<256 then (
                          seek_in file (offset+6+char);
@@ -76,50 +77,50 @@ let glyph_of_char font char0=
                      | 2->
                          (let i=(char lsr 8) land 0xff in
                           let j=char land 0xff in
-                          let k=(seek_in file (offset+6+i*2); readInt file 2) lsr 3 in
+                          let k=(seek_in file (offset+6+i*2); readInt2 file) lsr 3 in
                           let subHeaders=offset+6+256*2+k*8 in
                             if k=0 then
                               (seek_in file (subHeaders+6);
-                               let idRangeOffset=readInt file 2 in
+                               let idRangeOffset=readInt2 file in
                                  seek_in file (subHeaders+idRangeOffset+i*2);
-                                 cid:=readInt file 2
+                                 cid:=readInt2 file
                               )
                             else
-                              (let firstCode=seek_in file subHeaders; readInt file 2 in
-                               let entryCount=seek_in file (subHeaders+2); readInt file 2 in
+                              (let firstCode=seek_in file subHeaders; readInt2 file in
+                               let entryCount=seek_in file (subHeaders+2); readInt2 file in
                                let idDelta=seek_in file (subHeaders+4); readInt file 2 in
-                               let idRangeOffset=seek_in file (subHeaders+6); readInt file 2 in
+                               let idRangeOffset=seek_in file (subHeaders+6); readInt2 file in
                                  if j>=firstCode && j < (firstCode+entryCount) then
-                                   (let p=seek_in file (subHeaders+8+idRangeOffset+j*2); readInt file 2 in
+                                   (let p=seek_in file (subHeaders+8+idRangeOffset+j*2); readInt2 file in
                                       cid:=if p=0 then p else p+idDelta))
                          )
                      | 4->
-                         (let sc2=seek_in file (offset+6); readInt file 2 in
+                         (let sc2=seek_in file (offset+6); readInt2 file in
                           let rec smallestEnd i j=
                             if j<=i then i else
                               let middle=((i+j) lsr 1) land 0xfffe in
-                              let end_=seek_in file (offset+14+middle); readInt file 2 in
+                              let end_=seek_in file (offset+14+middle); readInt2 file in
                                 if char>end_ then
                                   smallestEnd (middle+2) j
                                 else
                                   smallestEnd i middle
                           in
                           let seg=smallestEnd 0 (sc2-2) in
-                          let start=seek_in file (offset+16+sc2+seg); readInt file 2 in
-                          let delta=seek_in file (offset+16+2*sc2+seg); readInt file 2 in
+                          let start=seek_in file (offset+16+sc2+seg); readInt2 file in
+                          let delta=seek_in file (offset+16+2*sc2+seg); readInt2 file in
                           let p_idrOffset=offset+16+3*sc2+seg in
-                          let idrOffset=seek_in file p_idrOffset; readInt file 2 in
+                          let idrOffset=seek_in file p_idrOffset; readInt2 file in
                             if char<start then table:=numTables else
                               if idrOffset=0 then
                                 cid:=(char+delta) land 0xffff
                               else
-                                (seek_in file (idrOffset+2*(char-start)+p_idrOffset); cid:=readInt file 2)
+                                (seek_in file (idrOffset+2*(char-start)+p_idrOffset); cid:=readInt2 file)
                          )
                      | 6->
-                         (let first=seek_in file (offset+6); readInt file 2 in
-                          let entryCount=seek_in file (offset+8); readInt file 2 in
+                         (let first=seek_in file (offset+6); readInt2 file in
+                          let entryCount=seek_in file (offset+8); readInt2 file in
                             if first<=char && char <first+entryCount then
-                              (seek_in file (offset+10+(char-first)*2); cid:=readInt file 2)
+                              (seek_in file (offset+10+(char-first)*2); cid:=readInt2 file)
                          )
                      | x->failwith ("cmap : type "^(string_of_int t)^" unsupported (yet)")
                   );
@@ -142,12 +143,12 @@ let glyphNumber gl=match gl with
 let glyphWidth gl=
   match gl with
       CFFGlyph (CFF(f, offset),x)->
-        (let num=FontCFF.glyphNumber x in
+        (let num=(FontCFF.glyphNumber x).glyph_index in
          let (a,_)=tableLookup "hhea" f.FontCFF.file offset in
-         let nh=(seek_in (f.FontCFF.file) (a+34); readInt f.FontCFF.file 2) in
+         let nh=(seek_in (f.FontCFF.file) (a+34); readInt2 f.FontCFF.file) in
          let (b,_)=tableLookup "hmtx" f.FontCFF.file offset in
            seek_in (f.FontCFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
-           (float_of_int (readInt f.FontCFF.file 2)))
+           (float_of_int (readInt2 f.FontCFF.file)))
 let fontName ?index:(idx=0) f =
   match f with
       CFF (x,_)->FontCFF.fontName x ~index:idx
@@ -162,25 +163,25 @@ let otype_file font=match font with
 (************* Layout tables : GSUB, GPOS, etc. ***************)
 
 let coverageIndex file off glyph=
-  let format=seek_in file off; readInt file 2 in
-  let count=readInt file 2 in
+  let format=seek_in file off; readInt2 file in
+  let count=readInt2 file in
   let rec format1 x0 x1=
     if x0>=x1 then raise Not_found else
       if x1=x0+1 then
         (let x2=(x0+x1)/2 in
-         let current=seek_in file (off+4+2*x2); readInt file 2 in
+         let current=seek_in file (off+4+2*x2); readInt2 file in
            if current=glyph then x2 else raise Not_found)
       else
         (let x2=(x0+x1)/2 in
-         let current=seek_in file (off+4+2*x2); readInt file 2 in
+         let current=seek_in file (off+4+2*x2); readInt2 file in
            if glyph<current then format1 x0 x2 else format1 x2 x1)
   in
   let rec format2 x0 x1=
     if x0>=x1 then raise Not_found else
       if x1=x0+1 then
-        (let start=seek_in file (off+6*x0+4); readInt file 2 in
-         let final=readInt file 2 in
-         let cvIdx=readInt file 2 in
+        (let start=seek_in file (off+6*x0+4); readInt2 file in
+         let final=readInt2 file in
+         let cvIdx=readInt2 file in
            if glyph>=start && glyph<=final then
              cvIdx+glyph-start
            else
@@ -188,7 +189,7 @@ let coverageIndex file off glyph=
 
       else
         (let x2=(x0+x1)/2 in
-         let final=seek_in file (off+6*x0+6); readInt file 2 in
+         let final=seek_in file (off+6*x0+6); readInt2 file in
            if glyph>final then
              format2 x2 x1
            else
@@ -200,28 +201,28 @@ let coverageIndex file off glyph=
 
 
 let class_def file off glyph=
-  let format=seek_in file off; readInt file 2 in
+  let format=seek_in file off; readInt2 file in
     if format=1 then (
-      let startGlyph=readInt file 2 in
-      let glyphCount=readInt file 2 in
+      let startGlyph=readInt2 file in
+      let glyphCount=readInt2 file in
         if glyph>=startGlyph && glyph<startGlyph+glyphCount then
-          (seek_in file (off+6+2*(glyph-startGlyph)); readInt file 2)
+          (seek_in file (off+6+2*(glyph-startGlyph)); readInt2 file)
         else
           0
     ) else if format=2 then (
-      let classRangeCount=readInt file 2 in
+      let classRangeCount=readInt2 file in
       let off0=off+4 in
       let rec format2 x0 x1=
         let x2=(x0+x1)/2 in
-        let rstart=seek_in file (off0+6*x2); readInt file 2 in
-        let rend=readInt file 2 in
+        let rstart=seek_in file (off0+6*x2); readInt2 file in
+        let rend=readInt2 file in
           if glyph<rstart then
             if x1-x0<=1 then 0 else format2 x0 x2
           else
             if glyph>rend then
               if x1-x0<=1 then 0 else format2 x2 x1
             else
-              readInt file 2
+              readInt2 file
       in
         format2 0 classRangeCount
     ) else 0
@@ -234,22 +235,22 @@ let gsub font glyphs0=
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
 
-  let lookup= seek_in file (gsubOff+8); readInt file 2 in
-  let lookupCount= seek_in file (gsubOff+lookup); readInt file 2 in
+  let lookup= seek_in file (gsubOff+8); readInt2 file in
+  let lookupCount= seek_in file (gsubOff+lookup); readInt2 file in
   let glyphs=ref glyphs0 in
     (* Iteration sur les lookuptables *)
     for i=1 to lookupCount do
-      let offset=seek_in file (gsubOff+lookup+i*2); readInt file 2 in
+      let offset=seek_in file (gsubOff+lookup+i*2); readInt2 file in
 
-      let lookupType=seek_in file (gsubOff+lookup+offset); readInt file 2 in
-      (* let lookupFlag=seek_in file (gsubOff+lookup+offset+2); readInt file 2 in *)
-      let subtableCount=seek_in file (gsubOff+lookup+offset+4); readInt file 2 in
+      let lookupType=seek_in file (gsubOff+lookup+offset); readInt2 file in
+      (* let lookupFlag=seek_in file (gsubOff+lookup+offset+2); readInt2 file in *)
+      let subtableCount=seek_in file (gsubOff+lookup+offset+4); readInt2 file in
 
       let maxOff=gsubOff+lookup+offset + 6+subtableCount*2 in
 
       let rec lookupSubtables off gl=
         if off>=maxOff then gl else
-          let subtableOff=seek_in file off; readInt file 2 in
+          let subtableOff=seek_in file off; readInt2 file in
           let offset=gsubOff+lookup+offset+subtableOff in
 
           let rec gsub glyphs=
@@ -257,37 +258,37 @@ let gsub font glyphs0=
               match glyphs with
                   []->[],[]
                 | h_::s->(
-                    let h=glyph_id_cont h_ in
-                    (* let substFormat=seek_in file offset ; readInt file 2 in *)
-                    let coverageOffset=seek_in file (offset+2); readInt file 2 in
-                      (* let ligSetCount=readInt file 2 in *)
+                    let h=h_.glyph_index in
+                    (* let substFormat=seek_in file offset ; readInt2 file in *)
+                    let coverageOffset=seek_in file (offset+2); readInt2 file in
+                      (* let ligSetCount=readInt2 file in *)
                       try
                         let coverage=coverageIndex file (offset+coverageOffset) h in
-                        let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt file 2 in
-                        let ligatureCount=seek_in file (offset+ligatureSetOff); readInt file 2 in
+                        let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt2 file in
+                        let ligatureCount=seek_in file (offset+ligatureSetOff); readInt2 file in
                         let initOff=offset+ligatureSetOff in
                         let rec ligatureSet off i l=match l with
                             []->[],[]
                           | h::s when i=0 -> [h],s
                           | _::s->
-                              (let ligOff=seek_in file off; readInt file 2 in
-                               let result=seek_in file (initOff+ligOff) ; readInt file 2 in
-                               let compCount=readInt file 2 in
+                              (let ligOff=seek_in file off; readInt2 file in
+                               let result=seek_in file (initOff+ligOff) ; readInt2 file in
+                               let compCount=readInt2 file in
                                let buf=UTF8.Buf.create 1 in
-                                 UTF8.Buf.add_string buf (glyph_id_utf8 h_);
-                               let rec compareComps c l=match l with
-                                   l' when c<=0 -> true, l'
-                                 | []->false, []
-                                 | h::s->
-                                     (let comp=readInt file 2 in
-                                        if comp=glyph_id_cont h then (
-                                          UTF8.Buf.add_string buf (glyph_id_utf8 h);
-                                          compareComps (c-1) s
-                                        ) else false, [])
-                               in
-                               let applies, next=compareComps (compCount-1) s in
-                                 if applies then [GlyphID (UTF8.Buf.contents buf, result)], next else
-                                   ligatureSet (off+2) (i-1) l
+                                 UTF8.Buf.add_string buf (h_.glyph_utf8);
+                                 let rec compareComps c l=match l with
+                                     l' when c<=0 -> true, l'
+                                   | []->false, []
+                                   | h::s->
+                                       (let comp=readInt2 file in
+                                          if comp=h.glyph_index then (
+                                            UTF8.Buf.add_string buf  h.glyph_utf8;
+                                            compareComps (c-1) s
+                                          ) else false, [])
+                                 in
+                                 let applies, next=compareComps (compCount-1) s in
+                                   if applies then [{glyph_utf8=UTF8.Buf.contents buf;glyph_index=result}], next else
+                                     ligatureSet (off+2) (i-1) l
                               )
                         in
                         let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
@@ -317,21 +318,21 @@ let rec gpos font glyphs0=
   let (file,off0)=otype_file font in
   let (gposOff,_)=tableLookup "GPOS" file off0 in
 
-  let lookup= seek_in file (gposOff+8); readInt file 2 in
-  let lookupCount= seek_in file (gposOff+lookup); readInt file 2 in
+  let lookup= seek_in file (gposOff+8); readInt2 file in
+  let lookupCount= seek_in file (gposOff+lookup); readInt2 file in
   let glyphs=ref glyphs0 (* (List.map (fun x->GlyphID x) glyphs0) *) in
     (* Iteration sur les lookuptables *)
     for i=1 to lookupCount do
-      let offset=seek_in file (gposOff+lookup+i*2); readInt file 2 in
+      let offset=seek_in file (gposOff+lookup+i*2); readInt2 file in
 
-      let lookupType=seek_in file (gposOff+lookup+offset); readInt file 2 in
-      (* let lookupFlag=seek_in file (gposOff+lookup+offset+2); readInt file 2 in *)
-      let subtableCount=seek_in file (gposOff+lookup+offset+4); readInt file 2 in
+      let lookupType=seek_in file (gposOff+lookup+offset); readInt2 file in
+      (* let lookupFlag=seek_in file (gposOff+lookup+offset+2); readInt2 file in *)
+      let subtableCount=seek_in file (gposOff+lookup+offset+4); readInt2 file in
       let maxOff=gposOff+lookup+offset + 6+subtableCount*2 in
 
       let rec lookupSubtables off gl=
         if off>=maxOff then gl else
-          let subtableOff=seek_in file off; readInt file 2 in
+          let subtableOff=seek_in file off; readInt2 file in
           let offset=gposOff+lookup+offset+subtableOff in
 
 
@@ -344,20 +345,20 @@ let rec gpos font glyphs0=
                   let h'=glyph_id_cont id_h' in
                   match lookupType with
                       GPOS_PAIR->(
-                        let format=seek_in file offset; readInt file 2 in
+                        let format=seek_in file offset; readInt2 file in
                           (* Printf.printf "format : %d\n" format; *)
-                        let coverageOffset=readInt file 2 in
-                        let valueFormat1=readInt file 2 in
-                        let valueFormat2=readInt file 2 in
+                        let coverageOffset=readInt2 file in
+                        let valueFormat1=readInt2 file in
+                        let valueFormat2=readInt2 file in
 
                         let rec compute_size x r=if x=0 then r else compute_size (x lsr 1) (r+(x land 1)) in
                         let size1=compute_size valueFormat1 0 in
                         let size2=compute_size valueFormat2 0 in
                         let readAll format gl=
-                          { kern_x0=if (format land 0x1) <> 0 then float_of_int (int16 (readInt file 2)) else 0.;
-                            kern_y0=if (format land 0x2) <> 0 then float_of_int (int16 (readInt file 2)) else 0.;
-                            advance_width=if (format land 0x4) <> 0 then float_of_int (int16 (readInt file 2)) else 0.;
-                            advance_height=if (format land 0x8) <> 0 then float_of_int (int16 (readInt file 2)) else 0.;
+                          { kern_x0=if (format land 0x1) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
+                            kern_y0=if (format land 0x2) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
+                            advance_width=if (format land 0x4) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
+                            advance_height=if (format land 0x8) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
                             kern_contents=gl }
                         in
                           try
@@ -365,23 +366,23 @@ let rec gpos font glyphs0=
                               if format=1 then (
                                 let rec pairSetTable off0 x0 x1=
                                   let x2=(x0+x1)/2 in
-                                  let gl=seek_in file (off0+x2*(1+size1+size2)*2); readInt file 2 in
+                                  let gl=seek_in file (off0+x2*(1+size1+size2)*2); readInt2 file in
                                     if x1-x0<=1 then
                                       if gl=h' then readAll valueFormat1 id_h, readAll valueFormat2 id_h' else raise Not_found
                                     else
                                       if gl>h' then pairSetTable off0 x0 x2 else pairSetTable off0 x2 x1
                                 in
-                                let pairSetOffset=seek_in file (offset+10+coverage*2); readInt file 2 in
-                                let count=seek_in file (offset+pairSetOffset); readInt file 2 in
+                                let pairSetOffset=seek_in file (offset+10+coverage*2); readInt2 file in
+                                let count=seek_in file (offset+pairSetOffset); readInt2 file in
                                 let a,b=pairSetTable (offset+pairSetOffset+2) 0 count in
                                   (if valueFormat1<>0 then KernID a else id_h)::
                                     (gpos ((if valueFormat2<>0 then KernID b else id_h')::s))
                               ) else if format=2 then (
 
-                                let classdef1=seek_in file (offset+8); class_def file (offset+readInt file 2) h in
-                                let classdef2=seek_in file (offset+10); class_def file (offset+readInt file 2) h' in
-                                let class1count=seek_in file (offset+12); readInt file 2 in
-                                let class2count=seek_in file (offset+14); readInt file 2 in
+                                let classdef1=seek_in file (offset+8); class_def file (offset+readInt2 file) h in
+                                let classdef2=seek_in file (offset+10); class_def file (offset+readInt2 file) h' in
+                                let class1count=seek_in file (offset+12); readInt2 file in
+                                let class2count=seek_in file (offset+14); readInt2 file in
                                   if classdef1>class1count || classdef2>class2count then
                                     glyphs
                                   else

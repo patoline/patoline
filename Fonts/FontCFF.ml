@@ -1,13 +1,14 @@
 open Binary
 open Bezier
 open Constants
+open FontsTypes
 
 type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
              gsubrIndex:string array
            }
 
-type glyph= { glyphFont:font; glyphNumber:int; type2:string; matrix:float array; subrs:string array; gsubrs:string array }
+type glyph= { glyphFont:font; glyphNumber:glyph_id; type2:string; matrix:float array; subrs:string array; gsubrs:string array }
 
 let glyphFont gl=gl.glyphFont
 
@@ -261,7 +262,7 @@ let loadGlyph font ?index:(idx=0) gl=
   in
     { glyphFont=font;
       glyphNumber=gl;
-      type2=indexGet font.file (font.offset+charStrings) gl;
+      type2=indexGet font.file (font.offset+charStrings) gl.glyph_index;
       matrix=Array.of_list fontMatrix;
       subrs=font.subrIndex.(idx);
       gsubrs=font.gsubrIndex }

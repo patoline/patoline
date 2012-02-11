@@ -49,7 +49,7 @@ module type Driver =
            ?line_width:float ->
            ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
     val closePath : driver -> unit
-    val text : ?color:color->driver -> float * float -> float -> Fonts.glyph list -> unit
+    val text : ?color:color-> ?kerning:(float*float)->driver -> float * float -> float -> Fonts.glyph -> unit
   end
 
 module Pdf : Driver

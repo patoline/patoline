@@ -3,12 +3,21 @@ type parameters = {
   lead : float;
   measure : float;
   lines_by_page : int;
-  left_margin : float
+  left_margin : float;
 }
-val print_parameters:parameters->unit
-type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; mutable height:int; paragraph_height:int; mutable page:int}
-
+val print_parameters : parameters -> unit
+type line = {
+  paragraph : int;
+  lastFigure : int;
+  lineEnd : int;
+  lineStart : int;
+  hyphenStart : int;
+  hyphenEnd : int;
+  isFigure : bool;
+  mutable height : int;
+  paragraph_height : int;
+  mutable page : int;
+}
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
   sig
@@ -75,12 +84,8 @@ and box =
   | Glue of glueBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
-  | Mark of int
   | Empty
-type error_log=
-    Overfull_line of line
-  | Widow of line
-  | Orphan of line
+type error_log = Overfull_line of line | Widow of line | Orphan of line
 val print_line : line -> unit
 val print_box : box -> unit
 val print_text_line : box array array -> line -> unit
@@ -91,17 +96,16 @@ val box_interval : box -> float * float
 val boxes_interval : box array -> float * float
 val lower_y : box -> 'a -> float
 val upper_y : box -> 'a -> float
-val line_height : box array array->line->float*float
+val line_height : box array array -> line -> float * float
 val glyphCache_ : glyph Binary.IntMap.t ref Binary.StrMap.t ref
-val glyphCache :
-  Fonts.font -> Binary.IntMap.key -> CamomileLibrary.UTF8.t -> glyph
+val glyphCache : Fonts.font -> FontsTypes.glyph_id -> glyph
 val glyph_of_string :
-  (FontsTypes.glyph_ids list -> 'a) ->
-  ('a -> FontsTypes.glyph_ids list) ->
+  (FontsTypes.glyph_id list -> FontsTypes.glyph_id list) ->
+  (FontsTypes.glyph_ids list -> FontsTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val hyphenate :
   Hyphenate.ptree ->
-  (FontsTypes.glyph_ids list -> 'a) ->
-  ('a -> FontsTypes.glyph_ids list) ->
+  (FontsTypes.glyph_id list -> FontsTypes.glyph_id list) ->
+  (FontsTypes.glyph_ids list -> FontsTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val knuth_h_badness : float -> float -> float

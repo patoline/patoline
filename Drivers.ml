@@ -38,7 +38,7 @@ module type Driver = sig
     driver->unit
   val closePath:driver->unit
 
-  val text:?color:color->driver->(float*float)->float->Fonts.glyph list->unit
+  val text:?color:color-> ?kerning:(float*float)-> driver->(float*float)->float->Fonts.glyph->unit
 
 end
 
@@ -57,6 +57,7 @@ module Pdf =
                     mutable current_page:Buffer.t;
                     mutable current_pageSize:float*float;
 
+                    (* Graphics parameters *)
                     mutable vpos:float*float;
                     mutable pos:float*float;
                     mutable stroking_color:color;
@@ -65,7 +66,11 @@ module Pdf =
                     mutable line_join:lineJoin;
                     mutable line_width:float;
                     mutable dash_pattern:float list;
+
+                    (* Text parameters *)
                     mutable posT:float*float;
+                    mutable opened_line:bool;
+                    mutable opened_word:bool;
                     mutable isText : bool;
                     mutable fonts : pdfFont StrMap.t;
                     mutable pageFonts: (int*int) StrMap.t;
@@ -90,6 +95,8 @@ module Pdf =
            line_join=Miter_join;
            line_width=1.0;
            dash_pattern=[];
+           opened_line=false;
+           opened_word=false;
            isText=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
@@ -141,7 +148,7 @@ module Pdf =
                                                        " /FontName /"^fontName^
                                                        " /Flags 4 /FontBBox ["^((string_of_int a)^" "^(string_of_int b)^" "^
                                                                                   (string_of_int c)^" "^(string_of_int d))^
-                                                       "] /ItalicAngle "^(string_of_float (FontCFF.italicAngle x))^
+                                                       "] /ItalicAngle "^(Printf.sprintf "%f" (FontCFF.italicAngle x))^
                                                        " /Ascent 0"^
                                                        " /Descent 0"^
                                                        " /CapHeight 0"^
@@ -151,7 +158,6 @@ module Pdf =
 
                          (* Widths *)
                          let w=futureObject pdf in
-
 
                          (* Font dictionary *)
                          let fontDict=beginObject pdf in
@@ -175,6 +181,25 @@ module Pdf =
 
 
      let close pdf=
+
+       (* Tous les dictionnaires de unicode mapping *)
+       (* StrMap.iter (fun _ x-> *)
+
+       (*                let rec make_cmap glyphs= *)
+       (*                  (\* On commence par partitionner par premier octet (voir adobe technical note #5144) *\) *)
+       (*                  let m0,_=IntMap.min_binding glyphs in *)
+       (*                  let a,b= *)
+       (*                    let a,gi,b=IntMap.split (m0 land 0xff00) in *)
+       (*                      IntMap.add (m0 land 0xff00) gi a, b *)
+       (*                  in *)
+       (*                  let rec unicode_diff a0= *)
+       (*                    let m0,_=IntMap.min_binding a0 in *)
+       (*                    let u,v=IntMap.partition (fun k _-> *)
+       (*                    make_cmap b *)
+       (*                in *)
+       (*                  make_cmap x.fontGlyphs *)
+
+       (*             ) pdf.fonts; *)
 
        (* Toutes les largeurs des polices *)
        StrMap.iter (fun _ x->
@@ -241,6 +266,8 @@ module Pdf =
 
      let end_text pdf=
        if pdf.isText then (
+         if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
+         if pdf.opened_line then (Buffer.add_string pdf.current_page "] TJ "; pdf.opened_line<-false);
          Buffer.add_string pdf.current_page " ET ";
          pdf.isText<-false;
          pdf.posT<- (0.,0.);
@@ -279,16 +306,16 @@ module Pdf =
      let really_move pdf=
        end_text pdf;
        if pdf.vpos <> pdf.pos then
-         Buffer.add_string pdf.current_page
-           ((string_of_float (fst pdf.vpos)) ^ " " ^ (string_of_float (snd pdf.vpos)) ^ " m ")
+         Buffer.add_string pdf.current_page (Printf.sprintf "%f %f m " (fst pdf.vpos) (snd pdf.vpos))
      let end_path pdf=
+       end_text pdf;
        pdf.pos<-(0.,0.);
        pdf.vpos<-(infinity,infinity)
 
      let lineto pdf (x_,y_)=
        let (x,y) as pos=pt_of_mm x_, pt_of_mm y_ in
          really_move pdf;
-         Buffer.add_string pdf.current_page ((string_of_float x)^" "^(string_of_float y)^" l ");
+         Buffer.add_string pdf.current_page (Printf.sprintf "%f %f l " x y);
          pdf.pos<-pos;
          pdf.vpos<-pos
 
@@ -298,9 +325,7 @@ module Pdf =
          pt_of_mm x2_,pt_of_mm y2_,
          pt_of_mm x3_,pt_of_mm y3_ in
          really_move pdf;
-         Buffer.add_string pdf.current_page
-         ((string_of_float x1)^" "^(string_of_float y1)^" "^(string_of_float x2)^" "^
-            (string_of_float y2)^" "^(string_of_float x3)^" "^(string_of_float y3)^" "^" c ");
+         Buffer.add_string pdf.current_page (Printf.sprintf "%f %f %f %f %f %f c " x1 y1 x2 y2 x3 y3);
          pdf.pos<-pos;
          pdf.vpos<-pos
 
@@ -326,8 +351,7 @@ module Pdf =
        if w <> pdf.line_width then (
          end_text pdf;
          pdf.line_width<-w;
-         Buffer.add_string pdf.current_page (string_of_float w);
-         Buffer.add_string pdf.current_page " w "
+         Buffer.add_string pdf.current_page (Printf.sprintf "%f w " w);
        )
 
      let set_line_join pdf j=
@@ -366,8 +390,7 @@ module Pdf =
          let g=max 0. (min 1. color.green) in
          let b=max 0. (min 1. color.blue) in
            pdf.stroking_color<-color;
-           Buffer.add_string pdf.current_page
-             ((string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" RG ")
+           Buffer.add_string pdf.current_page (Printf.sprintf "%f %f %f RG " r g b);
        )
      let change_non_stroking_color pdf color=
        if color <> pdf.non_stroking_color then (
@@ -375,8 +398,8 @@ module Pdf =
          let r=max 0. (min 1. color.red) in
          let g=max 0. (min 1. color.green) in
          let b=max 0. (min 1. color.blue) in
-         pdf.non_stroking_color<-color;
-         Buffer.add_string pdf.current_page ((string_of_float r)^" "^(string_of_float g)^" "^(string_of_float b)^" rg ")
+           pdf.non_stroking_color<-color;
+           Buffer.add_string pdf.current_page (Printf.sprintf "%f %f %f rg " r g b);
        )
 
      let stroke ?(color:color=black)
@@ -426,19 +449,7 @@ module Pdf =
        change_non_stroking_color pdf color;
        Buffer.add_string pdf.current_page " f "
 
-     let hexShow i=
-       let result=String.create 4 in
-       let hex x=
-         if x<=9 then char_of_int (int_of_char '0'+x) else
-           char_of_int (int_of_char 'a'-10+x)
-       in
-         result.[3]<-hex (i land 0x000f);
-         result.[2]<-hex ((i land 0x00f0)lsr 4);
-         result.[1]<-hex ((i land 0x0f00)lsr 8);
-         result.[0]<-hex ((i land 0xf000)lsr 12);
-         result
-
-     let text ?(color:color=black) pdf (x_,y_) size_ glyphs=
+     let text ?(color:color=black) ?(kerning=(0.,0.)) pdf (x_,y_) size_ gl=
        let x,y=pt_of_mm x_, pt_of_mm y_ in
        let size=pt_of_mm size_ in
 
@@ -447,41 +458,52 @@ module Pdf =
          pdf.isText<-true;
 
          let (x0,y0)=pdf.posT in
-           if x0<>x || y0<>y then (
-             Buffer.add_string pdf.current_page (string_of_float (x-.x0)^" "^string_of_float (y-.y0)^" Td ");
+           if y0<>y then (
+             if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
+             if pdf.opened_line then (Buffer.add_string pdf.current_page " ] TJ "; pdf.opened_line<-false);
+             Buffer.add_string pdf.current_page (Printf.sprintf "%f %f Td " (x-.x0) (y-.y0));
              pdf.posT<-(x,y)
            );
-           let opened=ref false in
-             List.iter (fun gl->
-                          let fnt=Fonts.glyphFont gl in
-                            (* Inclusion de la police sur la page *)
-                          let idx=try fst (StrMap.find (Fonts.fontName fnt) pdf.pageFonts) with
-                              Not_found->(
-                                let card=StrMap.cardinal pdf.pageFonts in
-                                let pdfFont=addFont pdf fnt in
-                                  pdf.pageFonts <- StrMap.add (Fonts.fontName fnt) (card, pdfFont.fontObject) pdf.pageFonts;
-                                  card
-                              )
-                          in
-                          let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
-                            if not (IntMap.mem (Fonts.glyphNumber gl) pdfFont.fontGlyphs) then
-                              pdfFont.fontGlyphs<-IntMap.add (Fonts.glyphNumber gl) (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
+           let x1,y1=pdf.posT in
 
-                            if idx <> pdf.currentFont || size <> pdf.currentSize then (
-                              if !opened then Buffer.add_string pdf.current_page "> Tj ";
-                              Buffer.add_string pdf.current_page "/F";
-                              Buffer.add_string pdf.current_page (string_of_int idx);
-                              Buffer.add_string pdf.current_page " ";
-                              Buffer.add_string pdf.current_page (string_of_int (round size));
-                              Buffer.add_string pdf.current_page " Tf <"
-                            ) else (
-                              if not !opened then Buffer.add_string pdf.current_page "<"
-                            );
-                            Buffer.add_string pdf.current_page (hexShow (Fonts.glyphNumber gl));
+           let fnt=Fonts.glyphFont gl in
+             (* Inclusion de la police sur la page *)
+           let idx=try fst (StrMap.find (Fonts.fontName fnt) pdf.pageFonts) with
+               Not_found->(
+                 let card=StrMap.cardinal pdf.pageFonts in
+                 let pdfFont=addFont pdf fnt in
+                   pdf.pageFonts <- StrMap.add (Fonts.fontName fnt) (card, pdfFont.fontObject) pdf.pageFonts;
+                   card
+               )
+           in
+           let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
+           let num=(Fonts.glyphNumber gl).FontsTypes.glyph_index in
+             if not (IntMap.mem num pdfFont.fontGlyphs) then
+               pdfFont.fontGlyphs<-IntMap.add num (Fonts.glyphWidth gl) pdfFont.fontGlyphs;
 
-                            pdf.currentFont<-idx;
-                            pdf.currentSize<-size;
-                            opened:=true;
-                       ) glyphs;
-             if !opened then Buffer.add_string pdf.current_page "> Tj ";
+             if idx <> pdf.currentFont || size <> pdf.currentSize then (
+               if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
+               if pdf.opened_line then Buffer.add_string pdf.current_page "] TJ ";
+               Buffer.add_string pdf.current_page (Printf.sprintf "/F%d %d Tf " idx (round size));
+               pdf.currentFont<-idx;
+               pdf.currentSize<-size;
+             );
+
+             if not pdf.opened_line then (Buffer.add_string pdf.current_page " ["; pdf.opened_line<-true);
+
+             if x1<>x then (
+               let str=Printf.sprintf "%f" (1000.*.(x1-.x)/.size) in
+               let i=ref 0 in
+                 while !i<String.length str && (str.[!i]='0' || str.[!i]='.') do incr i done;
+                 if !i<String.length str then (
+                   if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
+                   Buffer.add_string pdf.current_page str;
+                   pdf.posT<-(x1 -. size*.(float_of_string str)/.1000., y1);
+                 )
+             );
+             let (x2,y2)=pdf.posT in
+               if not pdf.opened_word then (Buffer.add_string pdf.current_page "<"; pdf.opened_word<-true);
+               Buffer.add_string pdf.current_page (Printf.sprintf "%04x" num);
+               pdf.posT<-(x2 +. round_float size*.Fonts.glyphWidth gl/.1000., y1)
+
    end:Driver)

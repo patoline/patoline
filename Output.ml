@@ -19,7 +19,7 @@ module Routine=functor (M:Driver)->struct
                               x'+.w) 0. h.hyphen_normal)
       )
     | GlyphBox (size,a)->(
-        M.text drv (x,y) size [a.glyph];
+        M.text drv (x,y) size a.glyph;
         size*.a.width/.1000.
       )
     | Drawing d->(

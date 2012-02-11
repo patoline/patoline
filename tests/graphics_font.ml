@@ -1,7 +1,7 @@
 let f="AGaramondPro-Regular.otf"
 
 let font=Fonts.loadFont f
-    
+
 let _=match font with
     Fonts.CFF _->print_string "CFF\n"
   | _->print_string "Other\n"
@@ -23,7 +23,7 @@ let _=
         Graphics.moveto (round x0) (round y0);Graphics.lineto (round x0) (round y1); Graphics.lineto (round x1) (round y1);
         Graphics.lineto (round x1) (round y0); Graphics.lineto (round x0) (round y0);
         List.iter (fun (x,y)->
-                     if Array.length x = 2 then 
+                     if Array.length x = 2 then
                        (let (a,b)=x.(0),y.(0) in
                         let (c,d)=x.(1),y.(1) in
                           Graphics.moveto (round a) (round b);
@@ -36,6 +36,6 @@ let _=
                           Graphics.moveto (round a) (round b);
                           Graphics.curveto (round c, round d) (round e, round f) (round g, round h))
                   ) out;
-        let _=Graphics.wait_next_event [Graphics.Key_pressed] in 
+        let _=Graphics.wait_next_event [Graphics.Key_pressed] in
         incr i
     done
