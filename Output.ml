@@ -58,19 +58,11 @@ module Routine=functor (M:Driver)->struct
                   M.begin_page drv parameters.format;
                   let pat=[3.;3.] in
                   let wid=0.01 in
-                  let _=
-                    let x0=parameters.left_margin in
-                    let w=parameters.measure in
-                      M.moveto drv (x0 , 270.0);
-                      M.lineto drv (x0 , 270.0 -. parameters.lead *. (float_of_int parameters.lines_by_page-.1.));
-                      M.moveto drv (x0 +. w , 270.0 -. parameters.lead *. (float_of_int parameters.lines_by_page-.1.));
-                      M.lineto drv (x0 +. w , 270.0)
-                  in
                   let make_line param line=
                     let y=270.0-.param.lead*.float_of_int line.height in
-                      M.moveto drv (param.left_margin, 270.0-.param.lead*.float_of_int line.height);
-                      M.lineto drv (param.left_margin+.param.measure,270.0-.param.lead*.float_of_int line.height);
-                      M.stroke ~color:{red=0.7 ; blue=0.7 ; green=0.7}  ~dash_pattern:pat ~line_width:wid drv;
+                      (* M.moveto drv (param.left_margin, 270.0-.param.lead*.float_of_int line.height); *)
+                      (* M.lineto drv (param.left_margin+.param.measure,270.0-.param.lead*.float_of_int line.height); *)
+                      (* M.stroke ~color:{red=0.7 ; blue=0.7 ; green=0.7}  ~dash_pattern:pat ~line_width:wid drv; *)
                       let comp=compression paragraphs (param,line) in
 
                       let rec make_line boxes x y j jmax=

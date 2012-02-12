@@ -52,6 +52,8 @@ module type Driver =
     val begin_alternative_text:driver->string->unit
     val end_alternative_text:driver->unit
     val text : ?color:color-> ?kerning:(float*float)->driver -> float * float -> float -> Fonts.glyph -> unit
+    val link:driver->float*float->float*float->string->unit
+    val destination:driver->string->float*float->unit
   end
 
 module Pdf : Driver

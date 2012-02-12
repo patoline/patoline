@@ -44,7 +44,8 @@ module type Driver = sig
   val end_alternative_text:driver->unit
 
   val text:?color:color-> ?kerning:(float*float)-> driver->(float*float)->float->Fonts.glyph->unit
-
+  val link:driver->(float*float)->(float*float)->string->unit
+  val destination:driver->string->(float*float)->unit
 end
 
 
@@ -61,6 +62,7 @@ module Pdf =
                     mutable pages:int IntMap.t;
                     mutable current_page:Buffer.t;
                     mutable current_pageSize:float*float;
+                    mutable current_page_obj:int;
 
                     (* Graphics parameters *)
                     mutable vpos:float*float;
@@ -82,7 +84,12 @@ module Pdf =
                     mutable fonts : pdfFont StrMap.t;
                     mutable pageFonts: (int*int) StrMap.t;
                     mutable currentFont:int;
-                    mutable currentSize:float }
+                    mutable currentSize:float;
+
+                    (* Hypertext *)
+                    mutable destinations:(int*int*float*float) StrMap.t;
+                    mutable page_links:(int*float*float*float*float) list;
+                  }
 
      let pageTree=1
 
@@ -94,6 +101,7 @@ module Pdf =
          { out_chan=out_chan; pages=IntMap.empty; xref=IntMap.singleton pageTree 0;
            current_pageSize=(0.,0.);
            current_page=Buffer.empty;
+           current_page_obj=(-1);
            vpos=(0.,0.);
            pos=(infinity,infinity);
            posT=(0.,0.);
@@ -109,7 +117,9 @@ module Pdf =
            alternative_text=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
-           currentFont=(-1); currentSize=(-1.) }
+           currentFont=(-1); currentSize=(-1.);
+           destinations=StrMap.empty; page_links=[]
+         }
 
      let resumeObject pdf n=
        flush pdf.out_chan;
@@ -193,6 +203,13 @@ module Pdf =
 
 
      let close pdf=
+       (* Les destinations *)
+       StrMap.iter (fun _ (a,b,c,d)->
+                      resumeObject pdf a;
+                      Printf.fprintf pdf.out_chan "[ %d 0 R /XYZ %f %f null]" b c d;
+                      endObject pdf
+                   ) pdf.destinations;
+
 
        (* Tous les dictionnaires de unicode mapping *)
        StrMap.iter (fun _ x->
@@ -345,6 +362,7 @@ module Pdf =
 
      let begin_page pdf (x,y)=
        Buffer.clear pdf.current_page;
+       pdf.current_page_obj<-futureObject pdf;
        pdf.current_pageSize<-(pt_of_mm x,pt_of_mm y);
        pdf.posT<-(0.,0.);
        pdf.currentFont<- -1;
@@ -392,21 +410,29 @@ module Pdf =
          output_string pdf.out_chan "\nendstream";
          endObject pdf;
 
-         let pageObject=beginObject pdf in
-           output_string pdf.out_chan ("<< /Type /Page /Parent "^(string_of_int pageTree)^" 0 R /MediaBox [ 0 0 "^
-                                         (string_of_int (int_of_float (fst pdf.current_pageSize)))^" "^
-                                         (string_of_int (int_of_float (snd pdf.current_pageSize)))^" ] ");
-           output_string pdf.out_chan "/Resources <<";
-           output_string pdf.out_chan " /ProcSet [/PDF /Text] ";
-           if StrMap.cardinal pdf.pageFonts >0 then (
-             output_string pdf.out_chan " /Font << ";
-             StrMap.iter (fun _ (a,b)->output_string pdf.out_chan ("/F"^string_of_int a^" "^string_of_int b^" 0 R ")) pdf.pageFonts;
-             output_string pdf.out_chan " >> ");
-           output_string pdf.out_chan (">> /Contents "^(string_of_int contentObject)^" 0 R >>");
+         resumeObject pdf pdf.current_page_obj;
 
+         Printf.fprintf pdf.out_chan "<< /Type /Page /Parent %d 0 R /MediaBox [ 0 0 %d %d ] "
+           pageTree (round (fst pdf.current_pageSize)) (round (snd pdf.current_pageSize));
+         Printf.fprintf pdf.out_chan "/Resources << /ProcSet [/PDF /Text]";
+
+           if StrMap.cardinal pdf.pageFonts >0 then (
+             Printf.fprintf pdf.out_chan " /Font << ";
+             StrMap.iter (fun _ (a,b)->Printf.fprintf pdf.out_chan "/F%d %d 0 R " a b) pdf.pageFonts;
+             Printf.fprintf pdf.out_chan ">> "
+           );
+           Printf.fprintf pdf.out_chan ">> /Contents %d 0 R " contentObject;
+
+           if pdf.page_links <> [] then (
+             Printf.fprintf pdf.out_chan "/Annots [";
+             List.iter (fun (a,x0,y0,x1,y1)->Printf.fprintf pdf.out_chan "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest %d 0 R >> " x0 y0 x1 y1 a) pdf.page_links;
+             Printf.fprintf pdf.out_chan "]";
+             pdf.page_links<-[]
+           );
+           Printf.fprintf pdf.out_chan ">>";
            endObject pdf;
 
-           pdf.pages<-IntMap.add (1+IntMap.cardinal pdf.pages) pageObject pdf.pages
+           pdf.pages<-IntMap.add (1+IntMap.cardinal pdf.pages) pdf.current_page_obj pdf.pages
 
 
      let moveto pdf (x,y)=pdf.vpos<-(pt_of_mm x, pt_of_mm y)
@@ -615,4 +641,24 @@ module Pdf =
              if not pdf.opened_word then (Buffer.add_string pdf.current_page "<"; pdf.opened_word<-true);
              Buffer.add_string pdf.current_page (Printf.sprintf "%04x" num);
              pdf.posLine<- pdf.posLine +. round_float size*.Fonts.glyphWidth gl/.1000.
+
+     let link pdf (x0,y0) (x1,y1) name=
+       let obj,_,_,_=
+         try
+           StrMap.find name pdf.destinations
+         with
+             Not_found->
+               (let obj=futureObject pdf in pdf.destinations<-StrMap.add name (obj, 0, 0., 0.) pdf.destinations; obj,0,0.,0.)
+       in
+         pdf.page_links<-(obj,x0,y0,x1,y1)::pdf.page_links
+
+     let destination pdf name (x,y)=
+       let obj=
+         try
+           let x,_,_,_=StrMap.find name pdf.destinations in x
+         with
+             Not_found->futureObject pdf
+       in
+         pdf.destinations<-StrMap.add name (obj, pdf.current_page_obj, x,y) pdf.destinations
+
    end:Driver)
