@@ -91,12 +91,16 @@ val print_box : box -> unit
 val print_text_line : box array array -> line -> unit
 val is_glyph : box -> bool
 val is_glue : box -> bool
+val is_hyphen : box -> bool
 val box_width : float -> box -> float
 val box_interval : box -> float * float
 val boxes_interval : box array -> float * float
 val lower_y : box -> 'a -> float
 val upper_y : box -> 'a -> float
 val line_height : box array array -> line -> float * float
+val comp :
+  box array array -> float -> int -> int -> int -> int -> int -> float
+val compression : box array array -> parameters * line -> float
 val glyphCache_ : glyph Binary.IntMap.t ref Binary.StrMap.t ref
 val glyphCache : Fonts.font -> FontsTypes.glyph_id -> glyph
 val glyph_of_string :

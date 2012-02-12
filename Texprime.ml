@@ -56,13 +56,14 @@ let _=
 	        raise (Failure "detecting parsing ambiguities, please report");
               let parsed=fst (List.hd text) in
               let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
-              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:default ~figures:[|figure|] paragraphs in
-                (* List.iter (function *)
-                (*                Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h) *)
-                (*              | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h) *)
-                (*              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h) *)
-                (*           ) log; *)
-                (* flush stdout; *)
+              let badness=Badness.badness paragraphs [|figure|] [|(0,0)|] in
+              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:default ~figures:[|figure|] ~badness:badness paragraphs in
+                List.iter (function
+                               Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h)
+                             | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h)
+                             | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h)
+                          ) log;
+                flush stdout;
                 M.output_routine h paragraphs [|figure|] pages
     with
         Syntax_Error(pos,msg) ->

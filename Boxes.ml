@@ -44,34 +44,153 @@ let is_last paragraph j=
   in
     is_last (j+1)
 
-let is_hyphen =function Hyphen _->true | _->false
 
-let comp paragraphs m p i hi j hj=
-  let minLine=ref 0. in
-  let maxLine=ref 0. in
-    if hi>=0 then (
-      match paragraphs.(p).(i) with
-          Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(hi)) in
-            (minLine:= !minLine+.a;
-             maxLine:= !maxLine+.b)
-        | _->());
-    if hj>=0 then (
-      match paragraphs.(p).(j) with
-          Hyphen x->let a,b=boxes_interval (fst x.hyphenated.(hj)) in
-            (minLine:= !minLine+.a;
-             maxLine:= !maxLine+.b)
-        | _->());
-    for k=(if hi<0 then i else i+1) to j-1 do
-      let a,b=box_interval paragraphs.(p).(k) in
-        minLine := !minLine+.a;
-        maxLine := !maxLine+.b
-    done;
-    max 0. (min 1. ((m-. !minLine)/.(!maxLine-. !minLine)))
+let badness paragraphs figures citations node params nextNode params'=
+  let v_badness v_space node0 x0 comp0 node1 x1 comp1=
+    let xi=ref x0 in
+    let xj=ref x1 in
 
-let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
-  line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
+    let rec v_badness boxes_i i boxes_j j w_tot col col2=
 
-let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
+      match boxes_i, boxes_j with
+          [],_ | _,[] ->if w_tot<=0. then 0. else ((col2-.col*.col)/.w_tot)
+
+        | (hi,_,maxi)::si, _ when i>=maxi->
+            (match si with
+                 (_,i0,_)::_->v_badness si i0 boxes_j j w_tot col col2
+               | _->v_badness [] (-1) boxes_j j w_tot col col2)
+
+        | _, (hj,_,maxj)::sj when j>=maxj->
+            (match sj with
+                 (_,j0,_)::_->v_badness boxes_i i sj j0 w_tot col col2
+               | _->v_badness boxes_i i [] (-1) w_tot col col2)
+
+        | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
+            (match hi.(i), hj.(j) with
+                 Hyphen xi, Hyphen xj ->
+                   v_badness
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                     w_tot col col2
+               | Hyphen xi, _ ->
+                   v_badness
+                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
+                     boxes_j j
+                     w_tot col col2
+               | _, Hyphen xj ->
+                   v_badness
+                     boxes_i i
+                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
+                     w_tot col col2
+               | _->failwith "impossible case"
+            )
+        | _->(
+            let box_i=match boxes_i with
+                []->Empty
+              | (hi,_,_)::_->hi.(i)
+            in
+            let box_j=match boxes_j with
+                []->Empty
+              | (hj,_,_)::_->hj.(j)
+            in
+              (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+              let wi=box_width comp0 box_i in
+              let wj=box_width comp1 box_j in
+                if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
+                  let yi=lower_y box_i wi in
+                  let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                  let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
+                  let w0= !xi +. wi -. x0 in
+                    xi:= !xi+.wi;
+                    if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
+                      (v_badness boxes_i (i+1) boxes_j j w_tot col col2)
+                    else
+                      (let area=w0*.(v_space+.yi-.yj) in
+                         v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
+                ) else (
+                  let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+                  let yj=upper_y box_j wj in
+                  let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
+                  let w0= !xj +. wj -. x0 in
+                    xj:= !xj +. w0;
+                    if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
+                      (v_badness boxes_i i boxes_j (j+1) w_tot col col2)
+                    else
+                      (let area=w0*.(v_space+.yi-.yj) in
+                         v_badness boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
+                )
+          )
+    in
+    let li0=
+      (paragraphs.(node0.paragraph), (if node0.hyphenStart>=0 then node0.lineStart+1 else node0.lineStart), node0.lineEnd)::
+        (if node0.hyphenEnd>=0 then
+           (match paragraphs.(node0.paragraph).(node0.lineEnd) with
+                Hyphen x->let hyp=fst x.hyphenated.(node0.hyphenEnd) in [(hyp, 0, Array.length hyp)]
+              | _->[])
+         else [])
+    in
+    let li=
+      (if node0.hyphenStart>=0 then
+         (match paragraphs.(node0.paragraph).(node0.lineStart) with
+              Hyphen x->let hyp=snd x.hyphenated.(node0.hyphenStart) in (hyp, 0, Array.length hyp)::li0
+            | _->li0)
+       else li0)
+    in
+    let lj0=
+      (paragraphs.(node1.paragraph), (if node1.hyphenStart>=0 then node1.lineStart+1 else node1.lineStart), node1.lineEnd)::
+        (if node1.hyphenEnd>=0 then
+           (match paragraphs.(node1.paragraph).(node1.lineEnd) with
+                Hyphen x->let hyp=fst x.hyphenated.(node1.hyphenEnd) in [(hyp,0,Array.length hyp)]
+              | _->[])
+         else [])
+    in
+    let lj=
+      (if node1.hyphenStart>=0 then
+         (match paragraphs.(node1.paragraph).(node1.lineStart) with
+              Hyphen x->(let hyp=snd x.hyphenated.(node1.hyphenStart) in (hyp,0,Array.length hyp)::lj0)
+            | _->lj0)
+       else lj0)
+    in
+      match li, lj with
+          (_,i,_)::_,(_,j,_)::_->
+            v_badness li i lj j 0. 0. 0.
+        | _->failwith "impossible case"
+  in
+  let h_badness node comp=
+    let bad=ref 0. in
+      for k=node.lineStart to node.lineEnd-1 do
+        bad:= !bad +.
+          (match paragraphs.(node.paragraph).(k) with
+               Glue x->x.glue_badness (x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
+             | _->0.
+          )
+      done;
+      !bad
+  in
+  let comp1=compression paragraphs (params',nextNode) in
+  let v_bad=
+    if node.page=nextNode.page then (
+      v_badness (float_of_int (nextNode.height-node.height)*.params.lead)
+        node params.left_margin (compression paragraphs (params,node))
+        nextNode params'.left_margin comp1
+    ) else (
+      (* Pour toutes les figures déjà placées *)
+      let bad=ref 0. in
+        for i=0 to nextNode.lastFigure do
+          if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) then
+            bad:=(!bad) +. 2000.
+        done;
+        for i=nextNode.lastFigure+1 to Array.length figures-1 do
+          if citations.(i) < (nextNode.paragraph, nextNode.lineStart) then
+            bad:=(!bad) +. 5000.
+        done;
+        !bad
+    )
+  in
+    (h_badness node comp1) +. v_bad
+
+
+let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(figures = [||]) paragraphs=
   let collide
       paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
       paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0 comp_j=
@@ -173,136 +292,12 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
         | _->failwith "impossible case"
   in
 
-  let v_badness v_space
-      paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
-      paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0 comp_j=
-
-    let xi=ref xj_0 in
-    let xj=ref xi_0 in
-
-    let rec v_badness boxes_i i boxes_j j w_tot col col2=
-
-      match boxes_i, boxes_j with
-          [],_ | _,[] ->if w_tot<=0. then 0. else ((col2-.col*.col)/.w_tot)
-
-        | (hi,_,maxi)::si, _ when i>=maxi->
-            (match si with
-                 (_,i0,_)::_->v_badness si i0 boxes_j j w_tot col col2
-               | _->v_badness [] (-1) boxes_j j w_tot col col2)
-
-        | _, (hj,_,maxj)::sj when j>=maxj->
-            (match sj with
-                 (_,j0,_)::_->v_badness boxes_i i sj j0 w_tot col col2
-               | _->v_badness boxes_i i [] (-1) w_tot col col2)
-
-        | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
-            (match hi.(i), hj.(j) with
-                 Hyphen xi, Hyphen xj ->
-                   v_badness
-                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                     w_tot col col2
-               | Hyphen xi, _ ->
-                   v_badness
-                     ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                     boxes_j j
-                     w_tot col col2
-               | _, Hyphen xj ->
-                   v_badness
-                     boxes_i i
-                     ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                     w_tot col col2
-               | _->failwith "impossible case"
-            )
-        | _->(
-            let box_i=match boxes_i with
-                []->Empty
-              | (hi,_,_)::_->hi.(i)
-            in
-            let box_j=match boxes_j with
-                []->Empty
-              | (hj,_,_)::_->hj.(j)
-            in
-              (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-              let wi=box_width comp_i box_i in
-              let wj=box_width comp_j box_j in
-                if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-                  let yi=lower_y box_i wi in
-                  let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-                  let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
-                  let w0= !xi +. wi -. x0 in
-                    xi:= !xi+.wi;
-                    if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
-                      (v_badness boxes_i (i+1) boxes_j j w_tot col col2)
-                    else
-                      (let area=w0*.(v_space+.yi-.yj) in
-                         v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
-                ) else (
-                  let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-                  let yj=upper_y box_j wj in
-                  let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
-                  let w0= !xj +. wj -. x0 in
-                    xj:= !xj +. w0;
-                    if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
-                      (v_badness boxes_i i boxes_j (j+1) w_tot col col2)
-                    else
-                      (let area=w0*.(v_space+.yi-.yj) in
-                         v_badness boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
-                )
-          )
-    in
-    let li0=
-      (paragraphs.(paragraph_i), (if hyphenStart_i>=0 then lineStart_i+1 else lineStart_i), lineEnd_i)::
-        (if hyphenEnd_i>=0 then
-           (match paragraphs.(paragraph_i).(lineEnd_i) with
-                Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_i) in [(hyp, 0, Array.length hyp)]
-              | _->[])
-         else [])
-    in
-    let li=
-      (if hyphenStart_i>=0 then
-         (match paragraphs.(paragraph_i).(lineStart_i) with
-              Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_i) in (hyp, 0, Array.length hyp)::li0
-            | _->li0)
-       else li0)
-    in
-    let lj0=
-      (paragraphs.(paragraph_j), (if hyphenStart_j>=0 then lineStart_j+1 else lineStart_j), lineEnd_j)::
-        (if hyphenEnd_j>=0 then
-           (match paragraphs.(paragraph_j).(lineEnd_j) with
-                Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_j) in [(hyp,0,Array.length hyp)]
-              | _->[])
-         else [])
-    in
-    let lj=
-      (if hyphenStart_j>=0 then
-         (match paragraphs.(paragraph_j).(lineStart_j) with
-              Hyphen x->(let hyp=snd x.hyphenated.(hyphenStart_j) in (hyp,0,Array.length hyp)::lj0)
-            | _->lj0)
-       else lj0)
-    in
-      match li, lj with
-          (_,i,_)::_,(_,j,_)::_->
-            v_badness li i lj j 0. 0. 0.
-        | _->failwith "impossible case"
-  in
 
 
 
   let log=ref [] in
 
   let rec break allow_impossible todo demerits=
-    let h_badness pi i j comp=
-      let bad=ref 0. in
-        for k=i to j-1 do
-          bad:= !bad +.
-            (match paragraphs.(pi).(i) with
-                 Glue x->x.glue_badness (x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
-               | _->0.
-            )
-        done;
-        !bad
-    in
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
@@ -341,7 +336,7 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
                             height=node.height+h+h';
                             lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
                           in
-                            register node nextNode lastBadness lastParameters;
+                            register node nextNode (lastBadness+.badness node lastParameters nextNode lastParameters) lastParameters;
                       done
                   )
                 );
@@ -373,10 +368,9 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
                         let rec break_next j sum_min sum_max=
                           let make_next_node hyphen=
                             let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
-
                               r_params:=parameters nextNode sum_min sum_max;
                               let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd j hyphen in
-                              let height', v_badness=
+                              let height'=
                                 if page=node.page then (
                                   let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
                                                node.hyphenStart node.lineEnd node.hyphenEnd) in
@@ -386,56 +380,49 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
                                     pi i j node.hyphenEnd hyphen !r_params.left_margin comp1
                                   in
                                   let fv_incr=ceil (max 1. (-.v_distance/.(!r_params).lead)) in
-                                  let v_badness=v_badness fv_incr
-                                    node.paragraph node.lineStart node.lineEnd node.hyphenStart node.hyphenEnd
-                                    lastParameters.left_margin comp0
-                                    pi i j node.hyphenEnd hyphen (!r_params).left_margin comp1
-                                  in
-                                  let v_incr=int_of_float fv_incr in
-                                    (node.height+v_incr, v_badness)
+                                    node.height+(int_of_float fv_incr)
                                 ) else (
                                   int_of_float
-                                    (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead)),
-                                  0.
+                                    (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
                                 )
                               in
                                 if height'=height then (
-                                  let allow_orphan= page=node.page || node.paragraph_height>1 in
+                                  let allow_orphan= page=node.page || node.paragraph_height>0 in
                                   let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
                                     if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
 
-                                      let bad=(lastBadness+.
-                                                 v_badness*.v_badness +.
-                                                 (h_badness pi i j comp1) +.
-                                                 (if sum_min>(!r_params).measure then 1e20 else 0.)
-                                              ) in
-
-                                        if not allow_orphan && allow_widow && allow_impossible then (
-                                          log:=(Orphan node)::(!log);
-                                          let last_bad, last_par, last_ant=LineMap.find node demerits in
-                                          let replacement={ node with height=1; page=node.page+1 } in
-                                            demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
-                                              (LineMap.remove node !demerits');
-                                            todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
-                                            solutions_exist:=true;
-                                        )
-                                        else if not allow_widow && allow_orphan && allow_impossible then (
-                                          log:=(Widow nextNode)::(!log);
-                                          let last_bad, last_par, last_ant=LineMap.find node demerits in
-                                          let replacement={ node with height=1; page=node.page+1 } in
-                                            demerits' := LineMap.add replacement (last_bad, last_par, last_ant)
-                                              (LineMap.remove node !demerits');
-                                            todo' := LineMap.add replacement (last_bad, last_par) (LineMap.remove node !todo');
-                                            solutions_exist:=true;
-                                        )
-                                        else if sum_min > (!r_params).measure then (
-                                          log:=(Overfull_line nextNode)::(!log);
+                                      if not allow_orphan && allow_widow && allow_impossible then (
+                                        log:=(Orphan node)::(!log);
+                                        let _,_, last_ant=LineMap.find node demerits in
+                                        let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                          demerits' := LineMap.add last_ant
+                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                            (LineMap.remove node !demerits');
+                                          todo' := LineMap.add last_ant
+                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                            (LineMap.remove node !todo');
                                           solutions_exist:=true;
-                                          register node nextNode bad (!r_params)
-                                        ) else (
+                                      )
+                                      else if not allow_widow && allow_orphan && allow_impossible then (
+                                        log:=(Widow nextNode)::(!log);
+                                        let _,_, last_ant=LineMap.find node demerits in
+                                        let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                          demerits' := LineMap.add last_ant
+                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                            (LineMap.remove node !demerits');
+                                          todo' := LineMap.add last_ant
+                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                            (LineMap.remove node !todo');
                                           solutions_exist:=true;
-                                          register node nextNode bad (!r_params)
-                                        )
+                                      )
+                                      else if sum_min > (!r_params).measure then (
+                                        log:=(Overfull_line nextNode)::(!log);
+                                        solutions_exist:=true;
+                                        register node nextNode (lastBadness+.badness node lastParameters nextNode !r_params) (!r_params)
+                                      ) else (
+                                        solutions_exist:=true;
+                                        register node nextNode (lastBadness+.badness node lastParameters nextNode !r_params) (!r_params)
+                                      )
                                     )
                                 )
                           in

@@ -1,5 +1,5 @@
 FONTS=Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
-SOURCES = new_map.ml Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Boxes.mli Boxes.ml Knuth.ml Output.ml Section.ml Parser.dyp Texprime.ml
+SOURCES = new_map.ml Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Badness.ml Boxes.mli Boxes.ml Knuth.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
 DOC=Drivers.mli Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 

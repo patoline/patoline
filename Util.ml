@@ -89,6 +89,11 @@ let is_glyph=function
 let is_glue=function
     Glue _->true
   | _->false
+let is_hyphen =function Hyphen _->true | _->false
+
+
+
+
 let rec box_width comp=function
     GlyphBox (size,x)->x.width*.size/.1000.
   | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
@@ -157,6 +162,34 @@ let line_height paragraphs node=
             line_height hyp 0 (Array.length hyp) a0 b0
         | _->a0,b0
     ) else a0,b0
+
+let comp paragraphs m p i hi j hj=
+  let minLine=ref 0. in
+  let maxLine=ref 0. in
+    if hi>=0 then (
+      match paragraphs.(p).(i) with
+          Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(hi)) in
+            (minLine:= !minLine+.a;
+             maxLine:= !maxLine+.b)
+        | _->());
+    if hj>=0 then (
+      match paragraphs.(p).(j) with
+          Hyphen x->let a,b=boxes_interval (fst x.hyphenated.(hj)) in
+            (minLine:= !minLine+.a;
+             maxLine:= !maxLine+.b)
+        | _->());
+    for k=(if hi<0 then i else i+1) to j-1 do
+      let a,b=box_interval paragraphs.(p).(k) in
+        minLine := !minLine+.a;
+        maxLine := !maxLine+.b
+    done;
+    max 0. (min 1. ((m-. !minLine)/.(!maxLine-. !minLine)))
+
+let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
+  line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
+
+
+
 
 let glyphCache_=ref StrMap.empty
 
