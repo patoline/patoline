@@ -357,7 +357,7 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
                     hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
                     height = h0;
                     lineStart= i; lineEnd= i;
-                    paragraph_height=node.paragraph_height+1;
+                    paragraph_height=if pi=node.paragraph then node.paragraph_height+1 else 0;
                     page=page0 }
                   in
                   let solutions_exist=ref false in
@@ -402,7 +402,6 @@ let lineBreak ~measure ~parameters ?figures:(figures = [||]) paragraphs=
                                 if height'=height then (
                                   let allow_orphan= page=node.page || node.paragraph_height>1 in
                                   let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
-
                                     if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
 
                                       let bad=(lastBadness+.
