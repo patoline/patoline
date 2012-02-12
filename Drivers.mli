@@ -49,6 +49,8 @@ module type Driver =
            ?line_width:float ->
            ?line_cap:lineCap -> ?line_join:lineJoin -> driver -> unit
     val closePath : driver -> unit
+    val begin_alternative_text:driver->string->unit
+    val end_alternative_text:driver->unit
     val text : ?color:color-> ?kerning:(float*float)->driver -> float * float -> float -> Fonts.glyph -> unit
   end
 

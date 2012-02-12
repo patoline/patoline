@@ -27,7 +27,11 @@ let int16 x=if x<=0x7f then x else x-0x10000
 
 let round x=
   let c=ceil x in
-    if (c-.x) < 0.5 && (c-.x)> -0.5 then int_of_float c else int_of_float (floor x)
+    if (c-.x) < 0.5 && (c-.x)> -0.5 then int_of_float c else
+      if c-.x=0.5 || c-.x=(-0.5) then
+        if int_of_float (floor x) mod 2=0 then int_of_float (floor x) else int_of_float c
+      else
+        int_of_float (floor x)
 
 let round_float x=
   let c=ceil x in

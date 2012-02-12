@@ -40,6 +40,9 @@ module type Driver = sig
     driver->unit
   val closePath:driver->unit
 
+  val begin_alternative_text:driver->string->unit
+  val end_alternative_text:driver->unit
+
   val text:?color:color-> ?kerning:(float*float)-> driver->(float*float)->float->Fonts.glyph->unit
 
 end
@@ -71,9 +74,11 @@ module Pdf =
 
                     (* Text parameters *)
                     mutable posT:float*float;
+                    mutable posLine:float;
                     mutable opened_line:bool;
                     mutable opened_word:bool;
                     mutable isText : bool;
+                    mutable alternative_text:bool;
                     mutable fonts : pdfFont StrMap.t;
                     mutable pageFonts: (int*int) StrMap.t;
                     mutable currentFont:int;
@@ -92,6 +97,7 @@ module Pdf =
            vpos=(0.,0.);
            pos=(infinity,infinity);
            posT=(0.,0.);
+           posLine=0.;
            stroking_color=black;non_stroking_color=black;
            line_cap=Butt_cap;
            line_join=Miter_join;
@@ -100,6 +106,7 @@ module Pdf =
            opened_line=false;
            opened_word=false;
            isText=false;
+           alternative_text=false;
            fonts=StrMap.empty;
            pageFonts=StrMap.empty;
            currentFont=(-1); currentSize=(-1.) }
@@ -349,10 +356,26 @@ module Pdf =
        pdf.stroking_color<-black;
        pdf.non_stroking_color<-black
 
+     let begin_alternative_text pdf text=()
+       (* if not pdf.isText then Buffer.add_string pdf.current_page " BT "; *)
+       (* if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false); *)
+       (* if pdf.opened_line then (Buffer.add_string pdf.current_page " ] TJ "; pdf.opened_line<-false; pdf.posLine<-0.); *)
+       (* pdf.alternative_text<-true; *)
+       (* Buffer.add_string pdf.current_page "/Span <</ActualText("; *)
+       (* Buffer.add_string pdf.current_page text; *)
+       (* Buffer.add_string pdf.current_page ")>> BDC" *)
+
+     let end_alternative_text pdf=()
+       (* if pdf.alternative_text then ( *)
+       (*   pdf.alternative_text<-false; *)
+       (*   if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false); *)
+       (*   Buffer.add_string pdf.current_page " EMC " *)
+       (* ) *)
      let end_text pdf=
        if pdf.isText then (
          if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
-         if pdf.opened_line then (Buffer.add_string pdf.current_page "] TJ "; pdf.opened_line<-false);
+         if pdf.opened_line then (Buffer.add_string pdf.current_page "] TJ "; pdf.opened_line<-false; pdf.posLine<-0.);
+         end_alternative_text pdf;
          Buffer.add_string pdf.current_page " ET ";
          pdf.isText<-false;
          pdf.posT<- (0.,0.);
@@ -534,6 +557,7 @@ module Pdf =
        change_non_stroking_color pdf color;
        Buffer.add_string pdf.current_page " f "
 
+
      let text ?(color:color=black) ?(kerning=(0.,0.)) pdf (x_,y_) size_ gl=
        let x,y=pt_of_mm x_, pt_of_mm y_ in
        let size=pt_of_mm size_ in
@@ -545,7 +569,8 @@ module Pdf =
          let (x0,y0)=pdf.posT in
            if y0<>y then (
              if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
-             if pdf.opened_line then (Buffer.add_string pdf.current_page " ] TJ "; pdf.opened_line<-false);
+             if pdf.opened_line then (Buffer.add_string pdf.current_page " ] TJ "; pdf.opened_line<-false; pdf.posLine<-0.);
+             end_alternative_text pdf;
              Buffer.add_string pdf.current_page (Printf.sprintf "%f %f Td " (x-.x0) (y-.y0));
              pdf.posT<-(x,y)
            );
@@ -568,27 +593,26 @@ module Pdf =
 
              if idx <> pdf.currentFont || size <> pdf.currentSize then (
                if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
-               if pdf.opened_line then Buffer.add_string pdf.current_page "] TJ ";
+               if pdf.opened_line then (Buffer.add_string pdf.current_page "] TJ "; pdf.opened_line<-false; pdf.posLine<-0.);
+               end_alternative_text pdf;
                Buffer.add_string pdf.current_page (Printf.sprintf "/F%d %d Tf " idx (round size));
                pdf.currentFont<-idx;
                pdf.currentSize<-size;
              );
 
-             if not pdf.opened_line then (Buffer.add_string pdf.current_page " ["; pdf.opened_line<-true);
+             if not pdf.opened_line then (Buffer.add_string pdf.current_page " ["; pdf.opened_line<-true; pdf.posLine<-0.);
 
-             if x1<>x then (
-               let str=Printf.sprintf "%f" (1000.*.(x1-.x)/.size) in
+             if x1+.pdf.posLine <> x then (
+               let str=Printf.sprintf "%f" (1000.*.(x1+.pdf.posLine -. x)/.size) in
                let i=ref 0 in
                  while !i<String.length str && (str.[!i]='0' || str.[!i]='.') do incr i done;
                  if !i<String.length str then (
                    if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
                    Buffer.add_string pdf.current_page str;
-                   pdf.posT<-(x1 -. size*.(float_of_string str)/.1000., y1);
+                   pdf.posLine<-(pdf.posLine -. size*.(float_of_string str)/.1000.);
                  )
              );
-             let (x2,y2)=pdf.posT in
-               if not pdf.opened_word then (Buffer.add_string pdf.current_page "<"; pdf.opened_word<-true);
-               Buffer.add_string pdf.current_page (Printf.sprintf "%04x" num);
-               pdf.posT<-(x2 +. round_float size*.Fonts.glyphWidth gl/.1000., y1)
-
+             if not pdf.opened_word then (Buffer.add_string pdf.current_page "<"; pdf.opened_word<-true);
+             Buffer.add_string pdf.current_page (Printf.sprintf "%04x" num);
+             pdf.posLine<- pdf.posLine +. round_float size*.Fonts.glyphWidth gl/.1000.
    end:Driver)

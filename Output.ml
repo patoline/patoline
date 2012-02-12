@@ -5,6 +5,8 @@ open Boxes
 open Util
 open FontsTypes
 open Drivers
+open CamomileLibrary
+
 module Routine=functor (M:Driver)->struct
 
 
@@ -34,6 +36,16 @@ module Routine=functor (M:Driver)->struct
     | Glue g->g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width)
 
     | b->box_width comp b
+
+
+  let rec boxes_contents l i j=
+    let buf=UTF8.Buf.create 256 in
+      for k=i to j-1 do
+        match l.(k) with
+            GlyphBox (_,a)->UTF8.Buf.add_string buf (a.contents)
+          | _->()
+      done;
+      UTF8.Buf.contents buf
 
   let output_routine filename paragraphs (figures:drawingBox array) (pages:(parameters*line) list array)=
     let drv=M.init (M.filename filename) in
@@ -68,8 +80,12 @@ module Routine=functor (M:Driver)->struct
                       in
                       let x'=(if line.hyphenStart>=0 then
                                 match paragraphs.(line.paragraph).(line.lineStart) with
-                                    Hyphen x->let hyp=snd x.hyphenated.(line.hyphenStart) in
-                                      make_line hyp param.left_margin y 0 (Array.length hyp)
+                                    Hyphen x->(
+                                      let hyp=snd x.hyphenated.(line.hyphenStart) in
+                                      let w=make_line hyp param.left_margin y 0 (Array.length hyp) in
+                                        M.end_alternative_text drv;
+                                        w
+                                    )
                                   | _->param.left_margin
                               else param.left_margin)
                       in
@@ -79,8 +95,11 @@ module Routine=functor (M:Driver)->struct
                       in
                         if line.hyphenEnd>=0 then
                           match paragraphs.(line.paragraph).(line.lineEnd) with
-                              Hyphen x->let hyp=fst x.hyphenated.(line.hyphenEnd) in
-                                ignore (make_line hyp x'' y 0 (Array.length hyp))
+                              Hyphen x->(
+                                let hyp=fst x.hyphenated.(line.hyphenEnd) in
+                                  M.begin_alternative_text drv (boxes_contents x.hyphen_normal 0 (Array.length x.hyphen_normal));
+                                  ignore (make_line hyp x'' y 0 (Array.length hyp))
+                              )
                             | _->()
                   in
 
