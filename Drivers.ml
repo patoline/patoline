@@ -300,7 +300,7 @@ module Pdf =
                               List.iter (fun (a,b,c)->Buf.add_string buf (Printf.sprintf "<%04x> <%04x> <%04x>\n"
                                                                             a b (UChar.uint_code c))) !range;
                               List.iter (fun (a,b)->
-                                           Buf.add_string buf (Printf.sprintf "<%04x> [" a);
+                                           Buf.add_string buf (Printf.sprintf "<%04x> <%04x> [" a (a+List.length b-1));
                                            List.iter (fun c->
                                                         Buf.add_string buf "<";
                                                         print_utf8 c (UTF8.first c);
