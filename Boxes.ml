@@ -52,6 +52,7 @@ let is_last paragraph j=
   in
     is_last (j+1)
 
+exception No_solution
 
 let badness paragraphs figures citations node params nextNode params'=
   let v_badness v_space node0 x0 comp0 node1 x1 comp1=
@@ -474,6 +475,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                           ) else break_next i 0. 0.;
                       );
                     );
+                      if not !solutions_exist then fix page (height+1);
                   in
                     fix node.page (node.height+1);
                     if !local_opt <> [] then (
@@ -501,15 +503,25 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
   let first_parameters=parameters first_line 0. 0. in
 
   let todo0=LineMap.singleton first_line (0., first_parameters) in
+  let last_failure=ref None in
   let rec really_break allow_impossible todo demerits=
     let demerits'=break allow_impossible todo demerits in
       if LineMap.cardinal demerits' = 0 then (
-        log:=Overfull_line first_line :: (!log);
-        really_break true todo0 demerits'
+        match !last_failure with
+            Some x when x=first_line -> raise No_solution
+          | _->(
+              last_failure:=Some first_line;
+              really_break true todo0 demerits'
+            )
       ) else (
         let (b,(bad,param,_))= LineMap.max_binding demerits' in
           if b.paragraph < Array.length paragraphs then (
-            really_break true (LineMap.singleton b (bad, param)) demerits'
+            match !last_failure with
+                Some x when x=b->raise No_solution
+              | _->(
+                  last_failure:=Some b;
+                  really_break true (LineMap.singleton b (bad, param)) demerits'
+                )
           ) else
             demerits'
       )
