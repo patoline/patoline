@@ -10,11 +10,16 @@ let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
-let measure line=if line.height<20 then 150. else 100.
-let default line _ _=
+let measure line=150.(* if line.height<20 then 150. else 100. *)
+let default figures line _ _=
   let l=48 in
-    { format=a4; lead=5.; measure=measure line; lines_by_page=l; left_margin=20. }
-
+    { format=a4; lead=5.; measure=measure line; lines_by_page=l;
+      left_margin=
+        if line.isFigure then (
+          20.+.(measure line -. (figures.(line.lastFigure).drawing_x1 -. figures.(line.lastFigure).drawing_x0))/.2.
+        ) else 20.;
+      local_optimization=5
+    }
 
 let bacon="Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua. In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."
 
@@ -57,7 +62,9 @@ let _=
               let parsed=fst (List.hd text) in
               let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
               let badness=Badness.badness paragraphs [|figure|] [|(0,0)|] in
-              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:default ~figures:[|figure|] ~badness:badness paragraphs in
+              let figures=[|figure|] in
+              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:(default figures) ~figures:figures
+                ~badness:badness paragraphs in
                 List.iter (function
                                Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h)
                              | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h)

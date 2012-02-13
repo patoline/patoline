@@ -10,7 +10,8 @@ type parameters={ format:float*float;
                   lead:float;
                   measure:float;
                   lines_by_page:int;
-                  left_margin:float
+                  left_margin:float;
+                  local_optimization:int
                 }
 
 let print_parameters p=
@@ -154,7 +155,7 @@ let line_height paragraphs node=
              let u,v=line_height hyp 0 (Array.length hyp) 0. 0. in
                line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd u v)
         | _->line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd 0. 0.
-    ) else (line_height paragraphs.(node.paragraph) (node.lineStart+1) node.lineEnd 0. 0.)
+    ) else (line_height paragraphs.(node.paragraph) (node.lineStart) node.lineEnd 0. 0.)
   in
     if node.hyphenEnd>=0 then (
       match paragraphs.(node.paragraph).(node.lineEnd) with

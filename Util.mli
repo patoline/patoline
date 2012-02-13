@@ -4,6 +4,7 @@ type parameters = {
   measure : float;
   lines_by_page : int;
   left_margin : float;
+  local_optimization:int
 }
 val print_parameters : parameters -> unit
 type line = {

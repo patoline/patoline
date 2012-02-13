@@ -11,28 +11,36 @@ exception Impossible
 type pages=((parameters * ((float * float * box) list)) array array)
 
 
-let rec print_graph file paragraphs graph=
+let rec print_graph file paragraphs graph path=
   let f=open_out file in
+  let rec make_path p1 p2=function
+      [] | [_]->false
+    | (_,h)::(a,h')::s->(p1=h && p2=h') || make_path p1 p2 ((a,h')::s)
+  in
+
+
     Printf.fprintf f "digraph {\n";
-    LineMap.iter (fun k (_,_,a)->
+    LineMap.iter (fun k (b,_,a)->
                     Printf.fprintf f "node_%d_%s_%s [label=\"%d, %d\"];\n"
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
                       k.lineStart k.lineEnd;
 
-                    Printf.fprintf f "node_%d_%s_%s -> node_%d_%s_%s[color=%s]\n"
+                    Printf.fprintf f "node_%d_%s_%s -> node_%d_%s_%s[color=%s, label=\"%f\"]\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
-                      (if k.lastFigure<>a.lastFigure then "green" else "black")
+                      (if k.lastFigure<>a.lastFigure then "green" else
+                         if make_path a k path then "blue" else "black")
+                      b
                  ) graph;
     Printf.fprintf f "};\n";
     close_out f
 let print_simple_graph file paragraphs graph=
   print_graph file paragraphs (
     LineMap.fold (fun k->LineMap.add { k with height=0; page=0 }) LineMap.empty graph
-  )
+  ) []
 
 
 let is_last paragraph j=
@@ -313,7 +321,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                 in
                   try
                     let bad,_,_=LineMap.find nextNode !demerits' in
-                      if bad>badness then reallyAdd ()
+                      if compare bad badness <= 0 then reallyAdd ()
                   with
                       Not_found->reallyAdd ()
               in
@@ -328,7 +336,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                     let fig=figures.(node.lastFigure+1) in
                     let vspace,_=line_height paragraphs node in
                     let h=int_of_float (ceil ((abs_float vspace +. fig.drawing_y1 -. fig.drawing_y0)/.lastParameters.lead)) in
-                      for h'=0 to 2 do
+                      for h'=0 to 0 do
                         if node.height+h+h' <= lastParameters.lines_by_page - h then
                           let nextNode={
                             paragraph=pi; lastFigure=node.lastFigure+1; isFigure=true;
@@ -336,7 +344,10 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                             height=node.height+h+h';
                             lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
                           in
-                            register node nextNode (lastBadness+.badness node lastParameters nextNode lastParameters) lastParameters;
+                          let w=fig.drawing_x1-.fig.drawing_x0 in
+                          let params=parameters nextNode w w in
+                            register node nextNode
+                              (lastBadness+.badness node lastParameters nextNode params) params
                       done
                   )
                 );
@@ -357,6 +368,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                   in
                   let solutions_exist=ref false in
                   let r_params=ref lastParameters in
+                  let local_opt=ref [] in
                   let rec fix page height=
                     r_nextNode.height<-height;
                     r_nextNode.page<-page;
@@ -389,40 +401,42 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                 if height'=height then (
                                   let allow_orphan= page=node.page || node.paragraph_height>0 in
                                   let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
-                                    if (not allow_orphan && not allow_widow) || (allow_orphan && allow_widow) || allow_impossible then (
 
-                                      if not allow_orphan && allow_widow && allow_impossible then (
-                                        log:=(Orphan node)::(!log);
-                                        let _,_, last_ant=LineMap.find node demerits in
-                                        let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                          demerits' := LineMap.add last_ant
-                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
-                                            (LineMap.remove node !demerits');
-                                          todo' := LineMap.add last_ant
-                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
-                                            (LineMap.remove node !todo');
-                                          solutions_exist:=true;
-                                      )
-                                      else if not allow_widow && allow_orphan && allow_impossible then (
-                                        log:=(Widow nextNode)::(!log);
-                                        let _,_, last_ant=LineMap.find node demerits in
-                                        let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                          demerits' := LineMap.add last_ant
-                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
-                                            (LineMap.remove node !demerits');
-                                          todo' := LineMap.add last_ant
-                                            (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
-                                            (LineMap.remove node !todo');
-                                          solutions_exist:=true;
-                                      )
-                                      else if sum_min > (!r_params).measure then (
-                                        log:=(Overfull_line nextNode)::(!log);
+                                    if not allow_orphan && allow_widow then (
+                                      log:=(Orphan node)::(!log);
+                                      let _,_, last_ant=LineMap.find node demerits in
+                                      let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                        demerits' := LineMap.add last_ant
+                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                          (LineMap.remove node !demerits');
+                                        todo' := LineMap.add last_ant
+                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                          (LineMap.remove node !todo');
                                         solutions_exist:=true;
-                                        register node nextNode (lastBadness+.badness node lastParameters nextNode !r_params) (!r_params)
-                                      ) else (
+                                    )
+                                    else if not allow_widow && allow_orphan then (
+                                      log:=(Widow nextNode)::(!log);
+                                      let _,_, last_ant=LineMap.find node demerits in
+                                      let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                        demerits' := LineMap.add last_ant
+                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                          (LineMap.remove node !demerits');
+                                        todo' := LineMap.add last_ant
+                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                          (LineMap.remove node !todo');
                                         solutions_exist:=true;
-                                        register node nextNode (lastBadness+.badness node lastParameters nextNode !r_params) (!r_params)
-                                      )
+                                    )
+                                    else if sum_min > (!r_params).measure then (
+                                      log:=(Overfull_line nextNode)::(!log);
+                                      solutions_exist:=true;
+                                      let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
+                                        local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
+                                        (* register node nextNode bad (!r_params) *)
+                                    ) else (
+                                      solutions_exist:=true;
+                                      let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
+                                        local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
+                                        (* register node nextNode bad (!r_params) *)
                                     )
                                 )
                           in
@@ -461,7 +475,22 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                       );
                     );
                   in
-                    fix node.page (node.height+1)
+                    fix node.page (node.height+1);
+                    if !local_opt <> [] then (
+                      let l0=List.sort (fun (_,_,b0,_) (_,_,b1,_)->compare b0 b1) !local_opt in
+                      let deg=List.fold_left (fun m (_,_,_,p)->max m p.local_optimization) 0 l0 in
+                      let rec register_list i l=
+                        if i>0 && deg>0 then (
+                          match l with
+                              []->()
+                            | (node,nextNode,bad,params)::s->(
+                                register node nextNode bad params;
+                                register_list (i-1) s
+                              )
+                        )
+                      in
+                        register_list deg l0
+                    )
                 );
                 break false !todo' !demerits'
             )
@@ -486,17 +515,17 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       )
   in
   let demerits=really_break false todo0 LineMap.empty in
-    print_graph "graph" paragraphs demerits;
 
-    let rec find_last demerits0 b0 bad0 b_params0=
-      let (b,(bad,b_params,_))=LineMap.max_binding demerits0 in
-        if b.paragraph=b0.paragraph && b.lastFigure=b0.lastFigure then (
-          if bad<bad0 then find_last (LineMap.remove b demerits0) b bad b_params
-          else find_last (LineMap.remove b demerits0) b0 bad0 b_params0
-        ) else (b0,b_params0)
-    in
-    let (b0,(bad0,b_params0,_))=LineMap.max_binding demerits in
-    let (b,b_params)=find_last demerits b0 bad0 b_params0 in
+  let rec find_last demerits0 b0 bad0 b_params0=
+    let (b,(bad,b_params,_))=LineMap.max_binding demerits0 in
+      if b.paragraph=b0.paragraph && b.lastFigure=b0.lastFigure then (
+        if bad<bad0 then find_last (LineMap.remove b demerits0) b bad b_params
+        else find_last (LineMap.remove b demerits0) b0 bad0 b_params0
+      ) else (b0,b_params0)
+  in
+  let (b0,(bad0,b_params0,_))=LineMap.max_binding demerits in
+  let (b,b_params)=find_last demerits b0 bad0 b_params0 in
+
 
   let rec makeParagraphs params node result=
     try
@@ -517,5 +546,6 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       )
   in
   let ln=(makeParagraphs b_params b []) in
+    print_graph "graph" paragraphs demerits ln;
     makePages ln;
     (!log, pages)

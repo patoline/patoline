@@ -1,5 +1,5 @@
 type curve=(float array)*(float array)
- 
+
 let curve (a,b) i=a.(i),b.(i)
 
 
@@ -12,29 +12,57 @@ let derivee a=
       b.(i)<-a.(i+1)-.a.(i)
     done;
     b
-      
 
-let casteljau f0 x=
-  let f=Array.copy f0 in
+let casteljau_right f x=
   for t=Array.length f downto 2 do
     for i=0 to (t-2) do
       f.(i) <- (1. -. x) *. f.(i) +. x *. f.(i+1)
     done
   done;
-  f.(0)
+  f
 
 
-let newton x0 epsilon a=
-  let b=derivee a in
-  let rec find x=
-    let fx=casteljau a x in
-      if abs_float fx <=epsilon then
-        let f'x=casteljau b x in
-          find (x -. fx/.f'x)
-      else
-        x
+let casteljau_left f x=
+  for t=1 to Array.length f-1 do
+    for i=Array.length f-1 downto t do
+      f.(i) <- (1. -. x) *. f.(i-1) +. x *. f.(i)
+    done
+  done;
+  f
+
+let eval f0 x=
+  let f=Array.copy f0 in
+    (casteljau_right f x).(0)
+
+let restrict f0 a b=
+  let f=Array.copy f0 in
+    casteljau_left (casteljau_right f a) b
+
+let descartes x0 x1 epsilon a=
+  let has_root x=
+    let rec has_root a b i=
+      if i>=Array.length x then (a<=0. && b>=0.) else
+        if x.(i)<=a then
+          has_root x.(i) b (i+1)
+        else has_root a (max b x.(i)) (i+1)
+    in
+      has_root x.(0) x.(0) 1
   in
-    find x0
+  let rec find_root x t0 t1=
+    if has_root x then (
+      let m=(t0+.t1)/.2. in
+        if t1-.t0 <= epsilon then [m] else (
+          let left=casteljau_left (Array.copy x) 0.5 in
+          let right=casteljau_right x 0.5 in
+            (find_root left t0 m)@(find_root right m t1)
+        )
+    ) else (
+      []
+    )
+  in
+    find_root a x0 x1
+
+
 
 (* Pour faire une bounding box correcte, il faudrait faire une regle de Descartes,
    decouper en intervalles, et faire un coup de Newton sur chaque intervalle, mais... *)
@@ -51,6 +79,28 @@ let bounding_box (a,b)=
       let y0=if ty>=0 && ty<=1 then ty else b.(0) in
 *)
 
+let bernstein_solve f=
+  if Array.length f<=0 then failwith "one-dimensional system" else (
+
+    if Array.length f=1 then (if f.(0)=0. then failwith "one-dimensional system" else [])
+    else if Array.length f=2 then (
+      let t=f.(0)/.(f.(0)-.f.(1)) in
+        if t>=0. && t<=1. then [t] else []
+    ) else (
+      if Array.length f=3 then (
+        let a=f.(0)-.2.*.f.(1)+.f.(2) in
+        let b= 2.*.(f.(1) -. f.(0)) in
+        let c=f.(0) in
+        let discr= b*.b -. 4.*.a*.c in
+          if discr<0. then [] else
+            if discr=0. then [-.b/.(2.*.a)] else
+              [ (-.b-.sqrt discr)/.(2.*.a); (-.b+.sqrt discr)/.(2.*.a) ]
+      ) else (
+        descartes 0. 1. (1e-20) f
+      )
+    )
+  )
+
 let bernstein_extr f=
   match Array.length f with
       0->(1./.0., -1./.0.)
@@ -63,8 +113,8 @@ let bernstein_extr f=
           let bx=b-.2.*.a in
           let xx=(-.bx)/.(2.*.ax) in
             if ax != 0. && xx>0. && xx<1. then
-              if ax>0. then (casteljau f xx, max a c) else
-                (min a c, casteljau f xx)
+              if ax>0. then (eval f xx, max a c) else
+                (min a c, eval f xx)
             else
               if c>=a then (a,c) else (c,a)
         )
@@ -82,8 +132,8 @@ let bernstein_extr f=
                 let t1= (-.bx +. sqrt discr) /.(2.*.ax) in
                 let (f0,f1)=
                   if t0>0. && t0<1. then (
-                    let ft0=casteljau f t0 in
-                      if ft0<a then 
+                    let ft0=eval f t0 in
+                      if ft0<a then
                         if d<a then (min d ft0,a) else (ft0,d)
                       else
                         if d<a then (d,ft0) else (a,max ft0 d)
@@ -92,15 +142,15 @@ let bernstein_extr f=
                   ) in
 
                   if t1>0. && t1<1. then (
-                    let ft1=casteljau f t1 in
+                    let ft1=eval f t1 in
                       if ft1<f0 then (ft1,f1) else
                         if ft1>f1 then (f0,ft1) else (f0,f1)
-                  ) else (f0,f1) 
-                    
+                  ) else (f0,f1)
+
             else
               if bx <> 0. then
                 (let t0= -.cx/.bx in
-                 let f0=if t0>0. && t0<1. then casteljau f t0 else a in
+                 let f0=if t0>0. && t0<1. then eval f t0 else a in
                    if f0<a then
                      if a<d then (f0,d) else (min f0 d, a)
                    else
@@ -116,8 +166,7 @@ let bernstein_extr f=
                  bound x0 x1 (i+1)
          in
            bound (1./.0.) (-1./.0.) 0)
-        
-      
+
 let bounding_box (a,b)=
   let (x0,x1)=bernstein_extr a in
   let (y0,y1)=bernstein_extr b in

@@ -4,7 +4,7 @@ open CamomileLibrary
 type 'a kerningBox= { advance_height:float; advance_width:float; kern_x0:float; kern_y0:float; kern_contents:'a }
 
 type glyph_id = { glyph_utf8:CamomileLibrary.UTF8.t; glyph_index:int }
-
+let empty_glyph= { glyph_utf8=UTF8.init 0 (fun _->UChar.chr 0); glyph_index=0 }
 type glyph_ids=KernID of (glyph_ids kerningBox) | GlyphID of glyph_id
 
 module type Font=(

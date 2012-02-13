@@ -8,7 +8,7 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
   let rec v_badness boxes_i i boxes_j j w_tot col col2=
 
     match boxes_i, boxes_j with
-        [],_ | _,[] ->if w_tot<=0. then 0. else ((col2-.col*.col)/.w_tot)
+        [],_ | _,[] ->if w_tot<=0. then 0. else ((col*.col-.col2)/.w_tot)
 
       | (hi,_,maxi)::si, _ when i>=maxi->
           (match si with
@@ -125,25 +125,39 @@ let h_badness paragraphs node comp=
 
 
 let badness paragraphs figures citations node params nextNode params'=
-  let comp1=compression paragraphs (params',nextNode) in
-  let v_bad=
-    if node.page=nextNode.page then (
-      v_badness paragraphs
-        (float_of_int (nextNode.height-node.height)*.params.lead)
-        node params.left_margin (compression paragraphs (params,node))
-        nextNode params'.left_margin comp1
-    ) else (
+  if nextNode.paragraph>=Array.length paragraphs then 0. else (
+    let comp1=compression paragraphs (params',nextNode) in
+    let v_bad=
+      if node.page=nextNode.page then (
+        v_badness paragraphs
+          (float_of_int (nextNode.height-node.height)*.params.lead)
+          node params.left_margin (compression paragraphs (params,node))
+          nextNode params'.left_margin comp1
+      ) else 0.
+    in
+    let figure_badness=
       (* Pour toutes les figures déjà placées *)
       let bad=ref 0. in
-        for i=0 to nextNode.lastFigure do
-          if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) then
-            bad:=(!bad) +. 2000.
-        done;
+      let fig_after=
+        if node.page<>nextNode.page then 5000. else
+          if node.paragraph<>nextNode.paragraph then 10000. else 0.
+      in
         for i=nextNode.lastFigure+1 to Array.length figures-1 do
           if citations.(i) < (nextNode.paragraph, nextNode.lineStart) then
-            bad:=(!bad) +. 5000.
+            bad:=(!bad) +. fig_after
         done;
+
+        let fig_before=
+          if node.page<>nextNode.page then 5000. else
+            if node.paragraph<>nextNode.paragraph then 10000. else 0.
+        in
+          for i=0 to nextNode.lastFigure do
+            if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) &&
+              (not nextNode.isFigure || i=nextNode.lastFigure)
+            then
+              bad:=(!bad) +. fig_before
+          done;
         !bad
-    )
-  in
-    (h_badness paragraphs nextNode comp1) +. v_bad
+    in
+      (h_badness paragraphs nextNode comp1) +. v_bad +. figure_badness
+  )

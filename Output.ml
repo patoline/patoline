@@ -103,10 +103,10 @@ module Routine=functor (M:Driver)->struct
                           if line.isFigure then (
                             let fig=figures.(line.lastFigure) in
                             let vspace0,_=line_height paragraphs last_line in
-                            let _,vspace1=line_height paragraphs last_line in
+                            let _,vspace1=line_height paragraphs line in
                             let h=fig.drawing_y1-.fig.drawing_y0 in
                             let yshift=
-                              ((float_of_int (line.height - last_line.height))*.param.lead -. vspace0 -. vspace1 -.h)/.2.
+                              ((float_of_int (line.height - last_line.height))*.param.lead +. vspace0 -. vspace1 -.h)/.2.
                             in
                             let x0,y0,x1,y1=param.left_margin,y,
                               param.left_margin+.fig.drawing_x1-.fig.drawing_x0,

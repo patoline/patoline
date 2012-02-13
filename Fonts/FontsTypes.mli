@@ -7,6 +7,7 @@ type 'a kerningBox = {
 }
 
 type glyph_id = { glyph_utf8:CamomileLibrary.UTF8.t; glyph_index:int }
+val empty_glyph:glyph_id
 
 type glyph_ids =
     KernID of glyph_ids kerningBox
