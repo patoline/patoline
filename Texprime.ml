@@ -61,9 +61,11 @@ let _=
 	        raise (Failure "detecting parsing ambiguities, please report");
               let parsed=fst (List.hd text) in
               let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
-              let badness=Badness.badness paragraphs [|figure|] [|(0,0)|] in
-              let figures=[|figure|] in
-              let log,pages=Boxes.lineBreak ~measure:measure ~parameters:(default figures) ~figures:figures
+              let badness=Badness.badness paragraphs [||] [||] in
+              let figures=[||] in
+              let log,pages=Boxes.lineBreak
+                ~measure:measure ~parameters:(default figures)
+                ~figures:figures
                 ~badness:badness paragraphs in
                 List.iter (function
                                Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h)

@@ -311,6 +311,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
+          print_text_line paragraphs node;
           if node.paragraph >= Array.length paragraphs then break false !todo' demerits else
             (
               (* On commence par chercher la première vraie boite après node *)
@@ -379,6 +380,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                         fix (page+1) 1
                       else (
                         let rec break_next j sum_min sum_max=
+                          Printf.printf "%d %f %f\n" j sum_min sum_max;
                           let make_next_node hyphen=
                             let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
                               r_params:=parameters nextNode sum_min sum_max;
@@ -399,6 +401,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                     (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
                                 )
                               in
+                                Printf.printf "%d %d\n" height height';
                                 if height'=height then (
                                   let allow_orphan= page=node.page || node.paragraph_height>0 in
                                   let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
@@ -503,24 +506,28 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
   let first_parameters=parameters first_line 0. 0. in
 
   let todo0=LineMap.singleton first_line (0., first_parameters) in
-  let last_failure=ref None in
+  let last_failure=ref LineMap.empty in
   let rec really_break allow_impossible todo demerits=
     let demerits'=break allow_impossible todo demerits in
       if LineMap.cardinal demerits' = 0 then (
-        match !last_failure with
-            Some x when x=first_line -> raise No_solution
-          | _->(
-              last_failure:=Some first_line;
+        try
+          LineMap.find first_line !last_failure;
+          raise No_solution
+        with
+            Not_found->(
+              last_failure:=LineMap.add first_line 0 !last_failure;
               really_break true todo0 demerits'
             )
       ) else (
         let (b,(bad,param,_))= LineMap.max_binding demerits' in
           if b.paragraph < Array.length paragraphs then (
-            match !last_failure with
-                Some x when x=b->raise No_solution
-              | _->(
-                  last_failure:=Some b;
-                  really_break true (LineMap.singleton b (bad, param)) demerits'
+            try
+              LineMap.find b !last_failure;
+              raise No_solution
+            with
+                Not_found->(
+                  last_failure:=LineMap.add b 0 !last_failure;
+                  really_break true todo0 demerits'
                 )
           ) else
             demerits'
