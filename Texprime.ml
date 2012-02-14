@@ -67,11 +67,11 @@ let _=
                 ~measure:measure ~parameters:(default figures)
                 ~figures:figures
                 ~badness:badness paragraphs in
-                List.iter (function
-                               Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h)
-                             | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h)
-                             | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h)
-                          ) log;
+                (* List.iter (function *)
+                (*                Overfull_line h->(Printf.printf "Overfull line : "; print_text_line paragraphs h) *)
+                (*              | Widow h->(Printf.printf "Widow : "; print_text_line paragraphs h) *)
+                (*              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h) *)
+                (*           ) log; *)
                 flush stdout;
                 M.output_routine h paragraphs [|figure|] pages
     with

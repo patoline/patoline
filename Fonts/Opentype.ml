@@ -1,7 +1,7 @@
-open FontsTypes
+open FTypes
 open Constants
 open Binary
-open FontCFF
+open CFF
 open CamomileLibrary
 let offsetTable=12
 let dirSize=16
@@ -40,7 +40,7 @@ let tableList file off=
          getTables (n-dirSize) (newTable::l))
   in
     getTables (off+dirSize*(numTables-1)+offsetTable) []
-type font = CFF of (FontCFF.font*int)
+type font = CFF of (CFF.font*int)
 let loadFont ?offset:(off=0) ?size:(_=0) file=
   let f=open_in file in
   let typ=String.create 4 in
@@ -49,12 +49,12 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
     match typ with
         "OTTO"->
           let (a,b)=tableLookup "CFF " f off in
-            CFF (FontCFF.loadFont file ~offset:(off+a) ~size:b, off)
+            CFF (CFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
 
-type glyph = CFFGlyph of (font*FontCFF.glyph)
+type glyph = CFFGlyph of (font*CFF.glyph)
 
-let glyph_of_char font char0=
+let glyph_of_uchar font char0=
   match font with
       CFF (font,offset0)->
         let file=font.file in
@@ -128,39 +128,37 @@ let glyph_of_char font char0=
             done;
             !cid
 
+let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
+
+
 let glyphFont f=match f with
     CFFGlyph (x,_)->x
 let loadGlyph f ?index:(idx=0) gl=
   match f with
-      CFF (x,_)->CFFGlyph (f, FontCFF.loadGlyph x ~index:idx gl)
+      CFF (x,_)->CFFGlyph (f, CFF.loadGlyph x ~index:idx gl)
 let outlines gl=match gl with
-    CFFGlyph (_,x)->FontCFF.outlines x
+    CFFGlyph (_,x)->CFF.outlines x
 
 let glyphNumber gl=match gl with
-    CFFGlyph (_,x)->FontCFF.glyphNumber x
+    CFFGlyph (_,x)->CFF.glyphNumber x
 
 
 let glyphWidth gl=
   match gl with
       CFFGlyph (CFF(f, offset),x)->
-        (let num=(FontCFF.glyphNumber x).glyph_index in
-         let (a,_)=tableLookup "hhea" f.FontCFF.file offset in
-         let nh=(seek_in (f.FontCFF.file) (a+34); readInt2 f.FontCFF.file) in
-         let (b,_)=tableLookup "hmtx" f.FontCFF.file offset in
-           seek_in (f.FontCFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
-           (float_of_int (readInt2 f.FontCFF.file)))
+        (let num=(CFF.glyphNumber x).glyph_index in
+         let (a,_)=tableLookup "hhea" f.CFF.file offset in
+         let nh=(seek_in (f.CFF.file) (a+34); readInt2 f.CFF.file) in
+         let (b,_)=tableLookup "hmtx" f.CFF.file offset in
+           seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
+           (float_of_int (readInt2 f.CFF.file)))
 let fontName ?index:(idx=0) f =
   match f with
-      CFF (x,_)->FontCFF.fontName x ~index:idx
+      CFF (x,_)->CFF.fontName x ~index:idx
 
 let otype_file font=match font with
     CFF (font,offset0)->font.file, offset0
 
-
-
-
-
-(************* Layout tables : GSUB, GPOS, etc. ***************)
 
 let coverageIndex file off glyph=
   let format=seek_in file off; readInt2 file in
@@ -227,8 +225,238 @@ let class_def file off glyph=
         format2 0 classRangeCount
     ) else 0
 
+(************* Layout tables : GSUB, GPOS, etc. ***************)
 
+let readCoverageIndex file off=
+  let format=seek_in file off; readInt2 file in
+  let count=readInt2 file in
+  let rec format1 i result=
+    if i>=count then result else (
+      let c=readInt2 file in
+        format1 (i+1) ((c,i)::result)
+    )
+  in
+  let rec format2 i result=
+
+    if i>=count then result else (
+      let start=readInt2 file in
+      let final=readInt2 file in
+      let cvIdx=readInt2 file in
+      let rec make_range i result=
+        if i>final then result else (
+          make_range (i+1) ((i,i+cvIdx-start)::result)
+        )
+      in
+        format2 (i+1) (make_range start result)
+    )
+  in
+    if format=1 then format1 0 [] else
+      if format=2 then format2 0 [] else
+        []
+
+let readClass file off=
+  let format=seek_in file off; readInt2 file in
+    if format=1 then (
+      let startGlyph=readInt2 file in
+      let glyphCount=readInt2 file in
+      let rec classValues i result=if i>=glyphCount then List.rev result else
+        (classValues (i-1) ((startGlyph+i, readInt2 file)::result))
+      in
+        classValues 0 []
+    ) else if format=2 then (
+      let classRangeCount=readInt2 file in
+      let rec format2 i result=
+        if i>=classRangeCount then result else (
+          let startGlyph=readInt2 file in
+          let endGlyph=readInt2 file in
+          let cl=readInt2 file in
+          let rec make_range i r= if i>endGlyph then r else (make_range (i+1) ((i,cl)::r)) in
+            format2 (i+1) (make_range startGlyph result)
+        )
+      in
+        format2 0 []
+    ) else []
+(*********************************)
+
+
+#define GSUB_SINGLE 1
+#define GSUB_MULTIPLE 2
+#define GSUB_ALTERNATE 3
 #define GSUB_LIGATURE 4
+#define GSUB_CONTEXT 5
+#define GSUB_CHAINING 6
+
+
+let rec readLookup file gsubOff i=
+  let subst=ref [] in
+  let lookup= seek_in file (gsubOff+8); readInt2 file in
+  let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
+
+  let lookupType=seek_in file offset0; readInt2 file in
+    (* let lookupFlag=seek_in file (offset0+2); readInt2 file in *)
+  let subtableCount=seek_in file (offset0+4); readInt2 file in
+    for subtable=0 to subtableCount-1 do
+      let offset1=seek_in file (offset0+6+subtable*2); offset0+(readInt2 file) in
+
+        match lookupType with
+            GSUB_SINGLE->(
+              let format=seek_in file offset1;readInt2 file in
+              let coverageOff=readInt2 file in
+                if format=1 then (
+                  let delta=readInt2 file in
+                  let cov=readCoverageIndex file (offset1+coverageOff) in
+                    List.iter (fun (a,_)->subst:=(Subst { original_glyphs=[|a|]; subst_glyphs=[|a+delta|]})::(!subst)) cov
+                ) else if format=2 then (
+                  let cov=readCoverageIndex file (offset1+coverageOff) in
+                    List.iter (fun (a,b)->
+                                 let gl=seek_in file (offset1+6+b*2); readInt2 file in
+                                   subst:=(Subst { original_glyphs=[|a|]; subst_glyphs=[|gl|]})::(!subst)) cov
+                )
+            )
+          | GSUB_MULTIPLE->(
+              let coverageOff=seek_in file (offset1+2); readInt2 file in
+              let cov=readCoverageIndex file (offset1+coverageOff) in
+                List.iter (fun (first_glyph,alternate)->
+                             let offset2=seek_in file (offset1+6+alternate*2); offset1+readInt2 file in
+                             let glyphCount=seek_in file offset2; readInt2 file in
+                             let arr=Array.make glyphCount 0 in
+                               for comp=0 to glyphCount-1 do
+                                 arr.(comp)<-readInt2 file;
+                               done;
+                               subst:=(Subst { original_glyphs=[|first_glyph|]; subst_glyphs=arr})::(!subst)
+                          ) cov
+            )
+          | GSUB_ALTERNATE->(
+              let coverageOff=seek_in file (offset1+2); readInt2 file in
+              let cov=readCoverageIndex file (offset1+coverageOff) in
+                List.iter (fun (first_glyph,alternate)->
+                             let offset2=seek_in file (offset1+6+alternate*2); offset1+readInt2 file in
+                             let glyphCount=seek_in file offset2; readInt2 file in
+                             let arr=Array.make (1+glyphCount) first_glyph in
+                               for comp=1 to glyphCount do
+                                 arr.(comp)<-readInt2 file;
+                               done;
+                               subst:=(Alternative arr)::(!subst)
+                          ) cov
+            )
+          | GSUB_LIGATURE->(
+              let coverageOff=seek_in file (offset1+2); readInt2 file in
+              let cov=readCoverageIndex file (offset1+coverageOff) in
+                (* let ligSetCount=seek_in file (offset1+4); readInt2 file in *)
+                List.iter (fun (first_glyph,ligset)->
+                             (* for ligset=0 to ligSetCount-2 do *)
+                             let offset2=seek_in file (offset1+6+ligset*2); offset1+readInt2 file in
+                             let ligCount=seek_in file offset2; readInt2 file in
+                               for lig=0 to ligCount-1 do
+                                 let offset3=seek_in file (offset2+2+lig*2); offset2+readInt2 file in
+                                 let ligGlyph=seek_in file offset3; readInt2 file in
+                                 let compCount=readInt2 file in
+                                 let arr=Array.make compCount first_glyph in
+                                   for comp=1 to compCount-1 do
+                                     arr.(comp)<-readInt2 file
+                                   done;
+                                   subst:=(Ligature { ligature_glyphs=arr; ligature=ligGlyph })::(!subst)
+                               done
+                                 (* done *)
+                          ) cov
+            )
+          | GSUB_CONTEXT->(
+              let format=seek_in file offset1; readInt2 file in
+                if format=1 then (
+                  let coverageOff=readInt2 file in
+                  let cov=readCoverageIndex file (offset1+coverageOff) in
+                    List.iter (fun (first_glyph, subruleSet)->
+                                 let offset2=offset1+6+subruleSet*2 in
+                                 let subruleCount=seek_in file offset2; readInt2 file in
+                                   for j=0 to subruleCount-1 do
+                                     let subruleOff=seek_in file (offset2+2+j*2); readInt2 file in
+
+                                     let glyphCount=seek_in file (offset2+subruleOff); readInt2 file in
+                                     let substCount=readInt2 file in
+                                     let arr=Array.make glyphCount (first_glyph,[]) in
+                                       for i=1 to glyphCount-1 do
+                                         arr.(i)<-(readInt2 file, [])
+                                       done;
+                                       for i=0 to substCount do
+                                         let seqIdx=readInt2 file in
+                                         let lookupIdx=readInt2 file in
+                                           arr.(seqIdx)<-(fst arr.(i), (readLookup file gsubOff lookupIdx)@(snd arr.(i)))
+                                       done;
+                                       subst:=(Context arr)::(!subst)
+                                   done
+                              ) cov
+                ) else if format=2 then (
+
+                ) else if format=3 then (
+
+                )
+            )
+          | GSUB_CHAINING->(
+              let format=seek_in file offset1; readInt2 file in
+                if format=1 then (
+
+                ) else if format=2 then (
+
+                ) else if format=3 then (
+                  let backCount=readInt2 file in
+                  let back_arr=Array.make backCount IntSet.empty in
+                    for i=1 to backCount do
+                      let covOff=seek_in file (offset1+2+i*2); readInt2 file in
+                      let cov=readCoverageIndex file (offset1+covOff) in
+                        List.iter (fun (a,_)->back_arr.(backCount-i)<-IntSet.add a back_arr.(backCount-i)) cov
+                    done;
+                    let offset2=offset1+4+backCount*2 in
+                    let inputCount=seek_in file offset2; readInt2 file in
+                    let input_arr=Array.make inputCount IntSet.empty in
+                      for i=0 to inputCount-1 do
+                        let covOff=seek_in file (offset2+2+i*2); readInt2 file in
+                        let cov=readCoverageIndex file (offset1+covOff) in
+                          List.iter (fun (a,_)->input_arr.(i)<-IntSet.add a input_arr.(i)) cov
+                      done;
+                      let offset3=offset2+2+inputCount*2 in
+                      let aheadCount=seek_in file offset3; readInt2 file in
+                      let ahead_arr=Array.make aheadCount IntSet.empty in
+                        for i=0 to aheadCount-1 do
+                          let covOff=seek_in file (offset3+2+i*2); readInt2 file in
+                          let cov=readCoverageIndex file (offset1+covOff) in
+                            List.iter (fun (a,_)->ahead_arr.(i)<-IntSet.add a ahead_arr.(i)) cov
+                        done;
+                        subst:=(Chain {before=back_arr; input=input_arr; after=ahead_arr})::(!subst)
+                );
+            )
+          | _->()
+    done;
+    List.rev !subst
+
+
+let read_gsub font=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+  let lookup= seek_in file (gsubOff+8); readInt2 file in
+  let lookupCount= seek_in file (gsubOff+lookup); readInt2 file in
+    (* Iteration sur les lookuptables *)
+  let arr=Array.make lookupCount [] in
+    for i=0 to lookupCount-1 do
+      arr.(i)<-readLookup file gsubOff i
+    done;
+    arr
+
+let read_scripts font=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+  let scripts=seek_in file (gsubOff+4); readInt2 file in
+  let scriptCount=seek_in file (gsubOff+scripts);readInt2 file in
+  let arr=Array.make scriptCount "" in
+    Printf.printf "%d\n" scriptCount;
+    for i=0 to scriptCount-1 do
+      let scriptTag=String.create 4 in
+        seek_in file (gsubOff+scripts+2+i*6);
+        let _=input file scriptTag 0 4 in
+        let offset1=gsubOff+scripts+readInt2 file in
+          Printf.printf "%s\n" scriptTag
+    done
+
+
 
 let gsub font glyphs0=
 
@@ -253,53 +481,55 @@ let gsub font glyphs0=
           let subtableOff=seek_in file off; readInt2 file in
           let offset=gsubOff+lookup+offset+subtableOff in
 
-          let rec gsub glyphs=
-            if lookupType <> GSUB_LIGATURE then [],glyphs else (
-              match glyphs with
-                  []->[],[]
-                | h_::s->(
-                    let h=h_.glyph_index in
-                    (* let substFormat=seek_in file offset ; readInt2 file in *)
-                    let coverageOffset=seek_in file (offset+2); readInt2 file in
-                      (* let ligSetCount=readInt2 file in *)
-                      try
-                        let coverage=coverageIndex file (offset+coverageOffset) h in
-                        let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt2 file in
-                        let ligatureCount=seek_in file (offset+ligatureSetOff); readInt2 file in
-                        let initOff=offset+ligatureSetOff in
-                        let rec ligatureSet off i l=match l with
-                            []->[],[]
-                          | h::s when i=0 -> [h],s
-                          | _::s->
-                              (let ligOff=seek_in file off; readInt2 file in
-                               let result=seek_in file (initOff+ligOff) ; readInt2 file in
-                               let compCount=readInt2 file in
-                               let buf=UTF8.Buf.create 1 in
-                                 UTF8.Buf.add_string buf (h_.glyph_utf8);
-                                 let rec compareComps c l=match l with
-                                     l' when c<=0 -> true, l'
-                                   | []->false, []
-                                   | h::s->
-                                       (let comp=readInt2 file in
-                                          if comp=h.glyph_index then (
-                                            UTF8.Buf.add_string buf  h.glyph_utf8;
-                                            compareComps (c-1) s
-                                          ) else false, [])
-                                 in
-                                 let applies, next=compareComps (compCount-1) s in
-                                   if applies then [{glyph_utf8=UTF8.Buf.contents buf;glyph_index=result}], next else
-                                     ligatureSet (off+2) (i-1) l
-                              )
-                        in
-                        let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
-                        let a',b'=gsub b in
-                          a@a', b'
-                      with
-                          Not_found->
-                            (let a,b=gsub s in
-                               (h_::a, b))
-                  )
-            )
+          let rec gsub glyphs=match lookupType with
+              GSUB_LIGATURE-> (
+                match glyphs with
+                    []->[],[]
+                  | h_::s->(
+                      let h=h_.glyph_index in
+                        (* let substFormat=seek_in file offset ; readInt2 file in *)
+                      let coverageOffset=seek_in file (offset+2); readInt2 file in
+                        (* let ligSetCount=readInt2 file in *)
+                        try
+                          let coverage=coverageIndex file (offset+coverageOffset) h in
+                          let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt2 file in
+                          let ligatureCount=seek_in file (offset+ligatureSetOff); readInt2 file in
+                          let initOff=offset+ligatureSetOff in
+                          let rec ligatureSet off i l=match l with
+                              []->[],[]
+                            | h::s when i=0 -> [h],s
+                            | _::s->
+                                (let ligOff=seek_in file off; readInt2 file in
+                                 let result=seek_in file (initOff+ligOff) ; readInt2 file in
+                                 let compCount=readInt2 file in
+                                 let buf=UTF8.Buf.create 1 in
+                                   UTF8.Buf.add_string buf (h_.glyph_utf8);
+                                   let rec compareComps c l=match l with
+                                       l' when c<=0 -> true, l'
+                                     | []->false, []
+                                     | h::s->
+                                         (let comp=readInt2 file in
+                                            if comp=h.glyph_index then (
+                                              UTF8.Buf.add_string buf  h.glyph_utf8;
+                                              compareComps (c-1) s
+                                            ) else false, [])
+                                   in
+                                   let applies, next=compareComps (compCount-1) s in
+                                     if applies then [{glyph_utf8=UTF8.Buf.contents buf;glyph_index=result}], next else
+                                       ligatureSet (off+2) (i-1) l
+                                )
+                          in
+                          let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
+                          let a',b'=gsub b in
+                            a@a', b'
+                        with
+                            Not_found->
+                              (let a,b=gsub s in
+                                 (h_::a, b))
+                    )
+              )
+
+            | _-> [],glyphs
           in
 
           let u,v=gsub gl in

@@ -1,6 +1,6 @@
 open Drivers
 open Binary
-open FontsTypes
+open Fonts.Types
 open Constants
 open Bezier
 open CamomileLibrary
@@ -30,7 +30,7 @@ module LineMap=New_map.Make(Line)
 
 
 
-type 'a kerningBox='a FontsTypes.kerningBox
+type 'a kerningBox='a Fonts.Types.kerningBox
 
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
                x0:float; x1:float; y0:float; y1:float }
@@ -224,7 +224,7 @@ let glyphCache cur_font gl=
 let glyph_of_string substitution_ positioning_ font fsize str =
   let rec make_codes idx codes=
     try
-      let c=Fonts.glyph_of_char font (UTF8.look str idx) in
+      let c=Fonts.glyph_of_uchar font (UTF8.look str idx) in
         make_codes (UTF8.next str idx) ({glyph_utf8=UTF8.init 1 (fun _->UTF8.look str idx); glyph_index=c}::codes)
     with
         _->List.rev codes

@@ -7,7 +7,9 @@ open Lexing
 open Util
 open Dyp
 open CamomileLibrary
-open FontsTypes
+open Fonts.Types
+
+module OT=Fonts.Opentype
 
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
@@ -24,9 +26,24 @@ let rec my_kerning =
              else
                a::(my_kerning (b::s))
           )
+
+let all_subst=
+  match !current_font with
+      Fonts.Opentype x->(
+        let subs=Fonts.Opentype.read_gsub x in
+        let arr0=[|OT.glyph_of_char x 'c'; OT.glyph_of_char x 't'|] in
+          List.filter (function Ligature lig->lig.ligature_glyphs<>arr0 | _->true)
+            (List.concat (Array.to_list subs))
+      )
+    | _->[]
+
+let my_subst font glyphs=match font with
+    Fonts.Opentype x -> List.fold_left Fonts.Types.apply glyphs all_subst
+  | f->Fonts.substitutions f glyphs
+
 let comp f g x=f (g x)
 
-let current_subst=ref (Fonts.substitutions (!current_font))
+let current_subst=ref (my_subst (!current_font))
 let current_pos=ref (comp my_kerning (Fonts.positioning (!current_font)))
 let hyphenation_dict=
   let i=open_in "dict_en" in

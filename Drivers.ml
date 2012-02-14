@@ -1,7 +1,7 @@
 open Binary
 open Constants
 open CamomileLibrary
-open FontsTypes
+open Fonts.Types
 
 module Buf=CamomileLibrary.UTF8.Buf
 module Buffer=struct
@@ -144,12 +144,12 @@ module Pdf =
            Not_found->
              match font with
                  Fonts.CFF x->raise Fonts.Not_supported
-               | Fonts.Opentype (FontOpentype.CFF (x,_))->
+               | Fonts.Opentype (Opentype.CFF (x,_))->
                    ((* Font program *)
                      let program=(
-                       let buf=String.create (x.FontCFF.size) in
-                         seek_in x.FontCFF.file x.FontCFF.offset;
-                         really_input x.FontCFF.file buf 0 x.FontCFF.size;
+                       let buf=String.create (x.CFF.size) in
+                         seek_in x.CFF.file x.CFF.offset;
+                         really_input x.CFF.file buf 0 x.CFF.size;
                          buf) in
                      let fontFile=beginObject pdf in
                        output_string pdf.out_chan ("<< /Length "^(string_of_int (String.length program))^
@@ -160,14 +160,14 @@ module Pdf =
 
                        (* Font descriptor -- A completer*)
 
-                       let fontName=FontCFF.fontName x in
+                       let fontName=CFF.fontName x in
                        let descr=beginObject pdf in
-                       let (a,b,c,d)=FontCFF.fontBBox x in
+                       let (a,b,c,d)=CFF.fontBBox x in
                          output_string pdf.out_chan ("<< /Type /FontDescriptor"^
                                                        " /FontName /"^fontName^
                                                        " /Flags 4 /FontBBox ["^((string_of_int a)^" "^(string_of_int b)^" "^
                                                                                   (string_of_int c)^" "^(string_of_int d))^
-                                                       "] /ItalicAngle "^(Printf.sprintf "%f" (FontCFF.italicAngle x))^
+                                                       "] /ItalicAngle "^(Printf.sprintf "%f" (CFF.italicAngle x))^
                                                        " /Ascent 0"^
                                                        " /Descent 0"^
                                                        " /CapHeight 0"^
@@ -613,7 +613,7 @@ module Pdf =
                )
            in
            let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
-           let num=(Fonts.glyphNumber gl).FontsTypes.glyph_index in
+           let num=(Fonts.glyphNumber gl).Fonts.Types.glyph_index in
              if not (IntMap.mem num pdfFont.fontGlyphs) then
                pdfFont.fontGlyphs<-IntMap.add num gl pdfFont.fontGlyphs;
 

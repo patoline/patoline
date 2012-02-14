@@ -1,7 +1,7 @@
 open Binary
 open Bezier
 open Constants
-open FontsTypes
+open FTypes
 
 type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
@@ -251,7 +251,9 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
       { file=f; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
         stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex }
 
-let glyph_of_char _ _=0
+let glyph_of_uchar _ _=0
+let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
+
 let loadGlyph font ?index:(idx=0) gl=
   let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
   let fontMatrix=

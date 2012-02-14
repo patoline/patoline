@@ -1,4 +1,4 @@
-open FontsTypes
+open Types
 let f="AGaramondPro-Regular.otf"
 
 let font=Fonts.loadFont f
@@ -17,8 +17,8 @@ let round x=off+(int_of_float (x/.mult))
 
 let _=
   let xx0=100 in
-  let yy0=100 in
-  let i=ref 34 in
+  let yy0=10 in
+  let i=ref 233 in
     Graphics.open_graph "";
     while true do
       Graphics.clear_graph ();

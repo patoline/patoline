@@ -71,3 +71,4 @@ let concat_utf8 a b=
 module IntMap=New_map.Make (struct type t=int let compare=compare end)
 module StrMap=New_map.Make (String)
 module IntSet=Set.Make (struct type t=int let compare=compare end)
+module IntervalMap=Map.Make (struct type t=int*int let compare=compare end)

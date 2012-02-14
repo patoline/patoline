@@ -3,7 +3,7 @@
 open Constants
 open Boxes
 open Util
-open FontsTypes
+open Fonts.Types
 open Drivers
 open CamomileLibrary
 

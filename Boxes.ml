@@ -3,7 +3,7 @@ open Binary
 open Constants
 open CamomileLibrary
 open Util
-open FontsTypes
+open Fonts.Types
 
 
 
@@ -311,7 +311,6 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters)=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-          print_text_line paragraphs node;
           if node.paragraph >= Array.length paragraphs then break false !todo' demerits else
             (
               (* On commence par chercher la première vraie boite après node *)
@@ -380,7 +379,6 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                         fix (page+1) 1
                       else (
                         let rec break_next j sum_min sum_max=
-                          Printf.printf "%d %f %f\n" j sum_min sum_max;
                           let make_next_node hyphen=
                             let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
                               r_params:=parameters nextNode sum_min sum_max;
@@ -401,7 +399,6 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                     (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
                                 )
                               in
-                                Printf.printf "%d %d\n" height height';
                                 if height'=height then (
                                   let allow_orphan= page=node.page || node.paragraph_height>0 in
                                   let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in

@@ -6,71 +6,76 @@
 
 open Binary
 open Bezier
-open FontsTypes
+open FTypes
 open CamomileLibrary
 
 
 exception Not_supported
 
+module Types=FTypes
 
+module type Font=FTypes.Font
+module Opentype=Opentype
+module CFF=CFF
 
-module type Font=FontsTypes.Font
-module Opentype=(FontOpentype:Font)
-module CFF=(FontCFF:Font)
+module Opentype_=(Opentype:Font)
+module CFF_=(CFF:Font)
 
 (** loadFont pretends it can recognize font file types, but it
     actually only looks at the extension in the file name *)
-type font = CFF of FontCFF.font | Opentype of FontOpentype.font
-type glyph = CFFGlyph of FontCFF.glyph | OpentypeGlyph of FontOpentype.glyph
-  let loadFont ?offset:(off=0) ?size:(_=0) f=
-    let size=let i=open_in f in let l=in_channel_length i in close_in i; l in
+type font = CFF of CFF.font | Opentype of Opentype.font
+type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
+let loadFont ?offset:(off=0) ?size:(_=0) f=
+  let size=let i=open_in f in let l=in_channel_length i in close_in i; l in
     if Filename.check_suffix f ".otf" then
-      Opentype (FontOpentype.loadFont ~offset:off f ~size:size)
+      Opentype (Opentype.loadFont ~offset:off f ~size:size)
     else
       raise Not_supported
 
-let glyph_of_char f c=
+
+let glyph_of_uchar f c=
   match f with
-      CFF x->FontCFF.glyph_of_char x c
-    | Opentype x->FontOpentype.glyph_of_char x c
+      CFF x->CFF.glyph_of_uchar x c
+    | Opentype x->Opentype.glyph_of_uchar x c
+let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
 
 let loadGlyph f g=
   match f with
-      CFF x->CFFGlyph (FontCFF.loadGlyph x g)
-    | Opentype x->OpentypeGlyph (FontOpentype.loadGlyph x g)
+      CFF x->CFFGlyph (CFF.loadGlyph x g)
+    | Opentype x->OpentypeGlyph (Opentype.loadGlyph x g)
 
 let outlines gl=
   match gl with
-      CFFGlyph x->FontCFF.outlines x
-    | OpentypeGlyph x->FontOpentype.outlines x
+      CFFGlyph x->CFF.outlines x
+    | OpentypeGlyph x->Opentype.outlines x
 
 let glyphFont gl=
   match gl with
-      CFFGlyph x->CFF (FontCFF.glyphFont x)
-    | OpentypeGlyph x->Opentype (FontOpentype.glyphFont x)
+      CFFGlyph x->CFF (CFF.glyphFont x)
+    | OpentypeGlyph x->Opentype (Opentype.glyphFont x)
 
 let glyphNumber gl=
   match gl with
-      CFFGlyph x->FontCFF.glyphNumber x
-    | OpentypeGlyph x->FontOpentype.glyphNumber x
+      CFFGlyph x->CFF.glyphNumber x
+    | OpentypeGlyph x->Opentype.glyphNumber x
 
 let glyphWidth gl=
   match gl with
-      CFFGlyph x->FontCFF.glyphWidth x
-    | OpentypeGlyph x->FontOpentype.glyphWidth x
+      CFFGlyph x->CFF.glyphWidth x
+    | OpentypeGlyph x->Opentype.glyphWidth x
 
 let fontName f=
   match f with
-      CFF x->FontCFF.fontName x
-    | Opentype x->FontOpentype.fontName x
+      CFF x->CFF.fontName x
+    | Opentype x->Opentype.fontName x
 
 let substitutions f glyphs=
   match f with
-      CFF x->FontCFF.substitutions x glyphs
-    | Opentype x->FontOpentype.substitutions x glyphs
+      CFF x->CFF.substitutions x glyphs
+    | Opentype x->Opentype.substitutions x glyphs
 
 let positioning f glyphs=
   match f with
-      CFF x->FontCFF.substitutions x glyphs
-    | Opentype x->FontOpentype.positioning x glyphs
+      CFF x->CFF.substitutions x glyphs
+    | Opentype x->Opentype.positioning x glyphs

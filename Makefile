@@ -1,10 +1,14 @@
-FONTS=Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
-SOURCES = new_map.ml Constants.ml Binary.ml Bezier.ml $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Badness.ml Boxes.mli Boxes.ml Knuth.ml Output.ml Section.ml Parser.dyp Texprime.ml
+BASE=Bezier.ml new_map.ml new_map.mli Constants.ml Binary.ml
+
+FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
+FONTS=$(FONTS0) Fonts.mli  Fonts.ml
+SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
 DOC=Drivers.mli Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 
 EXEC = texprime
 
+LIBS=fonts.cma
 
 ########################## Advanced user's variables #####################
 #
@@ -14,6 +18,7 @@ EXEC = texprime
 
 
 CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
+CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
 CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
@@ -46,25 +51,38 @@ SMLYL = $(filter %.ml,$(SMLDYP))
 OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
+FONTS_MLI=$(filter %.mli, $(FONTS))
+FONTS_CMI=$(FONTS_MLI:.mli=.cmi)
+FONTS_OBJS=Bezier.cmo new_map.cmo Binary.cmo $(filter %.cmo, $(FONTS:.ml=.cmo))
+FONTS_OPTOBJS=$(FONTS_OBJS:.cmo=.cmx)
 
 $(EXEC): $(OBJS)
-	$(CAMLC) $(CUSTOM) -o $(EXEC) $(LIBS) $(OBJS)
+	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
 
 $(EXEC).opt: $(OPTOBJS)
-	$(CAMLOPT) -o $(EXEC) $(LIBS:.cma=.cmxa) $(OPTOBJS)
+	$(CAMLOPT) $(CUSTOM) -o $(EXEC) $(OPTOBJS)
 
-graphic_font: tests/graphics_font.ml $(OBJS)
+fonts.top: $(FONTS_CMI) $(FONTS_OBJS)
+	$(CAMLMKTOP) $(CUSTOM) -o $@ $(FONTS_OBJS)
+
+fonts.cma: $(FONTS_CMI) $(FONTS_OBJS)
+	$(CAMLC) $(CUSTOM) -a -o $@ $(FONTS_OBJS)
+
+graphics_font: tests/graphics_font.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o graphics_font tests/graphics_font.ml
 
 collisions: tests/collisions.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml
 
+test:$(OBJS) test.ml
+	$(CAMLC) $(FONTS_OBJS) -o $@ $(OBJS) test.ml
+
 doc:Makefile $(OBJS)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 
-top:
-	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
+Fonts.mli: $(BASE:.ml=.cmo) $(FONTS0:.ml=.cmo)
+	$(CAMLC) $(CUSTOM) -i Fonts.ml | sed -e "s/->[ \t]*FTypes./-> Types./g" > Fonts.mli
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
 
@@ -87,6 +105,7 @@ clean::
 	rm -f $(EXEC).opt
 	rm -Rf doc
 	rm -f graphics_font
+	rm -f Fonts.mli
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
