@@ -12,7 +12,7 @@ open CamomileLibrary
 
 exception Not_supported
 
-module Types=FTypes
+module FTypes=FTypes
 
 module type Font=FTypes.Font
 module Opentype=Opentype
@@ -69,6 +69,10 @@ let fontName f=
   match f with
       CFF x->CFF.fontName x
     | Opentype x->Opentype.fontName x
+
+let select_features a b=match a with
+    CFF x->CFF.select_features x b
+  | Opentype x->Opentype.select_features x b
 
 let substitutions f glyphs=
   match f with

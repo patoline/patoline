@@ -441,19 +441,130 @@ let read_gsub font=
     done;
     arr
 
+let read_lookup font i=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+    readLookup file gsubOff i
+
+
+let str_tag=function
+    Alternates -> "aalt"
+  | SmallCapitals -> "c2sc"
+  | CaseSensitiveForms -> "case"
+  | DiscretionaryLigatures -> "dlig"
+  | Denominators -> "dnom"
+  | Fractions -> "frac"
+  | StandardLigatures -> "liga"
+  | LiningFigures -> "lnum"
+  | LocalizedForms -> "locl"
+  | Numerators -> "numr"
+  | OldStyleFigures -> "onum"
+  | Ordinals -> "odrn"
+  | Ornaments -> "ornm"
+  | ProportionalFigures -> "pnum"
+  | StylisticAlternates -> "salt"
+  | ScientificInferiors -> "sinf"
+  | SmallCapitals -> "smcp"
+  | Subscript -> "subs"
+  | Superscript -> "sups"
+  | Titling -> "titl"
+  | TabularFigures -> "tnum"
+  | SlashedZero -> "zero"
+  | _ -> ""
+
+let tag_str=function
+    "aalt" -> Alternates
+  | "c2sc" -> SmallCapitals
+  | "case" -> CaseSensitiveForms
+  | "dlig" -> DiscretionaryLigatures
+  | "dnom" -> Denominators
+  | "frac" -> Fractions
+  | "liga" -> StandardLigatures
+  | "lnum" -> LiningFigures
+  | "locl" -> LocalizedForms
+  | "numr" -> Numerators
+  | "onum" -> OldStyleFigures
+  | "ordn" -> Ordinals
+  | "ornm" -> Ornaments
+  | "pnum" -> ProportionalFigures
+  | "salt" -> StylisticAlternates
+  | "sinf" -> ScientificInferiors
+  | "smcp" -> SmallCapitals
+  | "subs" -> Subscript
+  | "sups" -> Superscript
+  | "titl" -> Titling
+  | "tnum" -> TabularFigures
+  | "zero" -> SlashedZero
+  | x -> raise (Unknown_feature x)
+
+let select_features font feature_tags=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+  let features=seek_in file (gsubOff+6); readInt2 file in
+  let featureCount=seek_in file (gsubOff+features);readInt2 file in
+
+  let tags_str=List.map str_tag feature_tags in
+
+  let feature_tag=String.create 4 in
+  let rec select i result=
+    if i>=featureCount then result else (
+        seek_in file (gsubOff+features+2+i*6);
+        let _=input file feature_tag 0 4 in
+        let lookupOff=readInt2 file in
+        let lookupCount=seek_in file (gsubOff+features+lookupOff+2); readInt2 file in
+        let rec read lookup s=
+          if lookup>=lookupCount then s else (
+            let l=readInt2 file in read (lookup+1) (IntSet.add l s)
+          )
+        in
+          if List.mem feature_tag tags_str then
+            select (i+1) (read 0 result)
+          else
+            select (i+1) result
+    )
+  in
+    List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (IntSet.elements (select 0 IntSet.empty)))
+
+module FeatSet=Set.Make (struct type t=features let compare=compare end)
+
+let read_features font=
+  let (file,off0)=otype_file font in
+  let (gsubOff,_)=tableLookup "GSUB" file off0 in
+  let features=seek_in file (gsubOff+6); readInt2 file in
+  let featureCount=seek_in file (gsubOff+features);readInt2 file in
+  let buf=String.create 4 in
+  let rec make_features i result=
+    if i>=featureCount then result else (
+      seek_in file (gsubOff+features+2+i*6);
+      let _=input file buf 0 4 in
+        try
+          make_features (i+1) (FeatSet.add (tag_str buf) result)
+        with
+            Unknown_feature _ -> make_features (i+1) result
+    )
+  in
+    FeatSet.elements (make_features 0 FeatSet.empty)
+
 let read_scripts font=
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let scripts=seek_in file (gsubOff+4); readInt2 file in
-  let scriptCount=seek_in file (gsubOff+scripts);readInt2 file in
+  let scriptCount=seek_in file (gsubOff+scripts); readInt2 file in
   let arr=Array.make scriptCount "" in
-    Printf.printf "%d\n" scriptCount;
     for i=0 to scriptCount-1 do
       let scriptTag=String.create 4 in
         seek_in file (gsubOff+scripts+2+i*6);
         let _=input file scriptTag 0 4 in
-        let offset1=gsubOff+scripts+readInt2 file in
-          Printf.printf "%s\n" scriptTag
+        let off=readInt2 file in
+          Printf.printf "\n%s\n" scriptTag;
+          let offset1=gsubOff+scripts+off in
+          let langSysCount=seek_in file (offset1+2); readInt2 file in
+            for langSys=0 to langSysCount-1 do
+              let langSysTag=String.create 4 in
+                seek_in file (offset1+4+langSys*6);
+                let _=input file langSysTag 0 4 in
+                  Printf.printf "lang : %s\n" langSysTag
+          done
     done
 
 

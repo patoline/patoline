@@ -3,7 +3,7 @@ open Binary
 open Constants
 open CamomileLibrary
 open Util
-open Fonts.Types
+open Fonts.FTypes
 
 
 

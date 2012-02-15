@@ -1,7 +1,7 @@
 open Binary
 open Constants
 open CamomileLibrary
-open Fonts.Types
+open Fonts.FTypes
 
 module Buf=CamomileLibrary.UTF8.Buf
 module Buffer=struct
@@ -613,7 +613,7 @@ module Pdf =
                )
            in
            let pdfFont=StrMap.find (Fonts.fontName fnt) pdf.fonts in
-           let num=(Fonts.glyphNumber gl).Fonts.Types.glyph_index in
+           let num=(Fonts.glyphNumber gl).Fonts.FTypes.glyph_index in
              if not (IntMap.mem num pdfFont.fontGlyphs) then
                pdfFont.fontGlyphs<-IntMap.add num gl pdfFont.fontGlyphs;
 

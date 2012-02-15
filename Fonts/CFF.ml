@@ -679,5 +679,7 @@ let italicAngle ?index:(idx=0) font=
   with
       Not_found->0.
 
+
+let select_features _ _=[]
 let substitutions _ x=x
 let positioning _ x=x

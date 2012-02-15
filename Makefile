@@ -1,8 +1,8 @@
-BASE=Bezier.ml new_map.ml new_map.mli Constants.ml Binary.ml
+BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
-FONTS=$(FONTS0) Fonts.mli  Fonts.ml
-SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
+FONTS=$(FONTS0) Fonts.ml
+SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
 DOC=Drivers.mli Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 
@@ -33,7 +33,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 ################ Nothing to set up or fix here
 ##############################################################
 
-all:: .depend.input .depend $(EXEC)
+all : $(EXEC)
 
 opt : $(EXEC).opt
 
@@ -51,38 +51,30 @@ SMLYL = $(filter %.ml,$(SMLDYP))
 OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
-FONTS_MLI=$(filter %.mli, $(FONTS))
-FONTS_CMI=$(FONTS_MLI:.mli=.cmi)
-FONTS_OBJS=Bezier.cmo new_map.cmo Binary.cmo $(filter %.cmo, $(FONTS:.ml=.cmo))
-FONTS_OPTOBJS=$(FONTS_OBJS:.cmo=.cmx)
-
 $(EXEC): $(OBJS)
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
 
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC) $(OPTOBJS)
 
-fonts.top: $(FONTS_CMI) $(FONTS_OBJS)
-	$(CAMLMKTOP) $(CUSTOM) -o $@ $(FONTS_OBJS)
+fonts.cma: Fonts.cmi $(FONTS) $(BASE)
+	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0) Fonts.ml
 
-fonts.cma: $(FONTS_CMI) $(FONTS_OBJS)
-	$(CAMLC) $(CUSTOM) -a -o $@ $(FONTS_OBJS)
-
-graphics_font: tests/graphics_font.ml $(OBJS)
-	$(CAMLC) $(OBJS) graphics.cma -o graphics_font tests/graphics_font.ml
+graphics_font: tests/graphics_font.ml fonts.cma
+	$(CAMLC) fonts.cma graphics.cma -o graphics_font tests/graphics_font.ml
 
 collisions: tests/collisions.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml
 
-test:$(OBJS) test.ml
-	$(CAMLC) $(FONTS_OBJS) -o $@ $(OBJS) test.ml
+test:test.ml $(BASE:.ml=.cmo) fonts.cma
+	$(CAMLC) -o test $(BASE:.ml=.cmo) fonts.cma test.ml
 
-doc:Makefile $(OBJS)
-	mkdir -p doc
-	$(CAMLDOC) -d doc $(DOC)
+#doc:Makefile $(OBJS)
+#	mkdir -p doc
+#	$(CAMLDOC) -d doc $(DOC)
 
-Fonts.mli: $(BASE:.ml=.cmo) $(FONTS0:.ml=.cmo)
-	$(CAMLC) $(CUSTOM) -i Fonts.ml | sed -e "s/->[ \t]*FTypes./-> Types./g" > Fonts.mli
+#Fonts.mli: Fonts.ml
+#	$(CAMLC) $(CUSTOM) -i Fonts.ml | sed -e "s/->[ \t]*FTypes./-> Types./g" > Fonts.mli
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
 
@@ -98,14 +90,12 @@ Fonts.mli: $(BASE:.ml=.cmo) $(FONTS0:.ml=.cmo)
 .ml.cmx:
 	$(CAMLOPT) -c -o $@ $<
 
-clean::
-	rm -f *.cm[iox] *~ .*~ \#*\#
+clean:
+	rm -f *.cm[iox] *.o *~ \#*\#
 	rm -f Fonts/*.cm[iox] Fonts/*~ Fonts/*.*~ Fonts/\#*\#
-	rm -f $(EXEC)
-	rm -f $(EXEC).opt
 	rm -Rf doc
 	rm -f graphics_font
-	rm -f Fonts.mli
+
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
@@ -115,9 +105,9 @@ clean::
 	    (echo 'unchanged'; rm -f .depend.new) || \
 	    (echo 'changed'; mv .depend.new .depend.input)
 
-depend: .depend
+depend : .depend
 
-.depend:: $(SMLIY) .depend.input
+.depend : $(SMLIY) .depend.input
 	@echo '--Re-building dependencies'
 	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) > .depend
 

@@ -50,7 +50,7 @@ module LineMap :
     val map : ('a -> 'b) -> 'a t -> 'b t
     val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
   end
-type 'a kerningBox = 'a Fonts.Types.kerningBox
+type 'a kerningBox = 'a Fonts.FTypes.kerningBox
 type glyph = {
   contents : CamomileLibrary.UTF8.t;
   glyph : Fonts.glyph;
@@ -103,14 +103,14 @@ val comp :
   box array array -> float -> int -> int -> int -> int -> int -> float
 val compression : box array array -> parameters * line -> float
 val glyphCache_ : glyph Binary.IntMap.t ref Binary.StrMap.t ref
-val glyphCache : Fonts.font -> Fonts.Types.glyph_id -> glyph
+val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> glyph
 val glyph_of_string :
-  (Fonts.Types.glyph_id list -> Fonts.Types.glyph_id list) ->
-  (Fonts.Types.glyph_ids list -> Fonts.Types.glyph_ids list) ->
+  (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
+  (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val hyphenate :
   Hyphenate.ptree ->
-  (Fonts.Types.glyph_id list -> Fonts.Types.glyph_id list) ->
-  (Fonts.Types.glyph_ids list -> Fonts.Types.glyph_ids list) ->
+  (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
+  (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val knuth_h_badness : float -> float -> float

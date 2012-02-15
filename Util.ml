@@ -1,6 +1,6 @@
 open Drivers
 open Binary
-open Fonts.Types
+open Fonts.FTypes
 open Constants
 open Bezier
 open CamomileLibrary
@@ -30,7 +30,7 @@ module LineMap=New_map.Make(Line)
 
 
 
-type 'a kerningBox='a Fonts.Types.kerningBox
+type 'a kerningBox='a Fonts.FTypes.kerningBox
 
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
                x0:float; x1:float; y0:float; y1:float }
