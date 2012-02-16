@@ -95,7 +95,7 @@ clean:
 	rm -f Fonts/*.cm[iox] Fonts/*~ Fonts/*.*~ Fonts/\#*\#
 	rm -Rf doc
 	rm -f graphics_font
-
+	rm -f *.o
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
