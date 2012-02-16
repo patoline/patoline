@@ -21,16 +21,22 @@ let rec print_graph file paragraphs graph path=
 
     Printf.fprintf f "digraph {\n";
     LineMap.iter (fun k (b,_,a)->
-                    Printf.fprintf f "node_%d_%s_%s [label=\"%d, %d\"];\n"
+                    Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d, %d, %d\"];\n"
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
-                      k.lineStart k.lineEnd;
+                      (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
 
-                    Printf.fprintf f "node_%d_%s_%s -> node_%d_%s_%s[color=%s, label=\"%f\"]\n"
+                      k.lineStart k.lineEnd k.hyphenEnd;
+
+                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"%F\"]\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
+                      (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x")
+
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+                      (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
+
                       (if k.lastFigure<>a.lastFigure then "green" else
                          if make_path a k path then "blue" else "black")
                       b
@@ -322,7 +328,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                 in
                   try
                     let bad,_,_=LineMap.find nextNode !demerits' in
-                      if compare bad badness <= 0 then reallyAdd ()
+                      if bad >= badness then reallyAdd ()
                   with
                       Not_found->reallyAdd ()
               in
@@ -367,18 +373,18 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                     paragraph_height=if pi=node.paragraph then node.paragraph_height+1 else 0;
                     page=page0 }
                   in
-                  let solutions_exist=ref false in
                   let r_params=ref lastParameters in
                   let local_opt=ref [] in
+                  let solutions_exist=ref false in
                   let rec fix page height=
                     r_nextNode.height<-height;
                     r_nextNode.page<-page;
                     let measure0=measure r_nextNode in
-                    if not !solutions_exist then (
-                      if height>=(!r_params).lines_by_page then
-                        fix (page+1) 1
-                      else (
-                        let rec break_next j sum_min sum_max=
+                      if not !solutions_exist then (
+                        if height>=(!r_params).lines_by_page then
+                          fix (page+1) 1
+                        else (
+                          let rec break_next j sum_min sum_max=
                           let make_next_node hyphen=
                             let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
                               r_params:=parameters nextNode sum_min sum_max;
@@ -400,12 +406,14 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                 )
                               in
                                 if height'=height then (
-                                  let allow_orphan= page=node.page || node.paragraph_height>0 in
-                                  let allow_widow= page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
+                                  let allow_orphan= (!r_params).allow_orphans
+                                    || page=node.page || node.paragraph_height>0 in
+                                  let allow_widow= (!r_params).allow_widows ||
+                                    page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
 
                                     if not allow_orphan && allow_widow then (
                                       log:=(Orphan node)::(!log);
-                                      let _,_, last_ant=LineMap.find node demerits in
+                                      let _,_,last_ant=LineMap.find node demerits in
                                       let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
                                         demerits' := LineMap.add last_ant
                                           (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
@@ -414,8 +422,8 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                           (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
                                           (LineMap.remove node !todo');
                                         solutions_exist:=true;
-                                    )
-                                    else if not allow_widow && allow_orphan then (
+
+                                    ) else if not allow_widow && allow_orphan then (
                                       log:=(Widow nextNode)::(!log);
                                       let _,_, last_ant=LineMap.find node demerits in
                                       let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
@@ -441,30 +449,26 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                     )
                                 )
                           in
-
                             if j>=Array.length (paragraphs.(pi)) then (if sum_min<=measure0 then make_next_node (-1)) else (
-                              match paragraphs.(pi).(j) with
-                                  Hyphen x->(
-                                    for i=0 to Array.length x.hyphenated-1 do
-                                      let a,b=boxes_interval (fst x.hyphenated.(i)) in
-                                        if (sum_min+.a <= measure0 || allow_impossible) && sum_max+.b >= measure0 then (
-                                          make_next_node i
-                                        )
-                                    done;
-                                    let a,b=boxes_interval x.hyphen_normal in
-                                      break_next (j+1) (sum_min+. a) (sum_max+. b)
-                                  )
-                                | _ when sum_min <= measure0->(
-                                    (if sum_max >= measure0 then
-                                       match paragraphs.(pi).(j) with
-                                           Glue _->make_next_node (-1)
-                                         | _->());
-
-                                    let a,b=box_interval paragraphs.(pi).(j) in
-                                      break_next (j+1) (sum_min+. a) (sum_max+. b)
-                                  )
-                                | _ when allow_impossible -> make_next_node (-1)
-                                | _->()
+                              (match paragraphs.(pi).(j) with
+                                   Hyphen x->(
+                                     for k=0 to Array.length x.hyphenated-1 do
+                                       let a,b=boxes_interval (fst x.hyphenated.(k)) in
+                                         if sum_min+.a <= measure0 && sum_max+.b >= measure0 then (
+                                           make_next_node k
+                                         )
+                                     done;
+                                   )
+                                 | _->()
+                              );
+                              if sum_min <= measure0 then (
+                                (if sum_max >= measure0 then
+                                   match paragraphs.(pi).(j) with
+                                       Glue _->make_next_node (-1)
+                                     | _->());
+                                let a,b=box_interval paragraphs.(pi).(j) in
+                                  break_next (j+1) (sum_min+. a) (sum_max+. b)
+                              ) else if allow_impossible then (make_next_node (-1))
                             )
                         in
                           if node.hyphenEnd>=0 then (
@@ -477,21 +481,25 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                     );
                       if not !solutions_exist then fix page (height+1);
                   in
-                    fix node.page (node.height+1);
-                    if !local_opt <> [] then (
-                      let l0=List.sort (fun (_,_,b0,_) (_,_,b1,_)->compare b0 b1) !local_opt in
-                      let deg=List.fold_left (fun m (_,_,_,p)->max m p.local_optimization) 0 l0 in
-                      let rec register_list i l=
-                        if i>0 && deg>0 then (
-                          match l with
-                              []->()
-                            | (node,nextNode,bad,params)::s->(
-                                register node nextNode bad params;
-                                register_list (i-1) s
-                              )
-                        )
-                      in
-                        register_list deg l0
+                    (try
+                       fix node.page (node.height+1);
+                       if !local_opt <> [] then (
+                         let l0=List.sort (fun (_,_,b0,_) (_,_,b1,_)->compare b0 b1) !local_opt in
+                         let deg=List.fold_left (fun m (_,_,_,p)->max m p.local_optimization) 0 l0 in
+                         let rec register_list i l=
+                           if i>0 || deg<=0 then (
+                             match l with
+                                 []->()
+                               | (node,nextNode,bad,params)::s->(
+                                   register node nextNode bad params;
+                                   register_list (i-1) s
+                                 )
+                           )
+                         in
+                           register_list deg l0
+                       )
+                     with
+                         Not_found->()
                     )
                 );
                 break false !todo' !demerits'
@@ -508,8 +516,8 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
     let demerits'=break allow_impossible todo demerits in
       if LineMap.cardinal demerits' = 0 then (
         try
-          LineMap.find first_line !last_failure;
-          raise No_solution
+          let _=LineMap.find first_line !last_failure in
+            raise No_solution
         with
             Not_found->(
               last_failure:=LineMap.add first_line 0 !last_failure;
@@ -519,8 +527,8 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
         let (b,(bad,param,_))= LineMap.max_binding demerits' in
           if b.paragraph < Array.length paragraphs then (
             try
-              LineMap.find b !last_failure;
-              raise No_solution
+              let _=LineMap.find b !last_failure in
+                raise No_solution
             with
                 Not_found->(
                   last_failure:=LineMap.add b 0 !last_failure;

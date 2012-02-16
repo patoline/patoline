@@ -159,5 +159,19 @@ let badness paragraphs figures citations node params nextNode params'=
           done;
         !bad
     in
-      (h_badness paragraphs nextNode comp1) +. v_bad +. figure_badness
+      (h_badness paragraphs nextNode comp1)
+      +. v_bad
+      +. figure_badness
+
+        (* Page pas assez remplie *)
+      +. (if node.page<>nextNode.page && node.height<>params.lines_by_page-1 then 1e20 else 0.)
+
+        (* Hyphenation *)
+      +. (if nextNode.hyphenEnd >=0 then
+            (if nextNode.hyphenStart >=0 then
+               1e31
+             else
+               1e30)
+          else
+            0.)
   )
