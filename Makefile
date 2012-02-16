@@ -57,11 +57,17 @@ $(EXEC): $(OBJS)
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC) $(OPTOBJS)
 
-fonts.cma: Fonts.cmi $(FONTS) $(BASE)
+fonts.cma: $(FONTS0) $(BASE)
 	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0) Fonts.ml
+
+fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
+	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
 
 graphics_font: tests/graphics_font.ml fonts.cma
 	$(CAMLC) fonts.cma graphics.cma -o graphics_font tests/graphics_font.ml
+
+graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
+	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml
 
 collisions: tests/collisions.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml

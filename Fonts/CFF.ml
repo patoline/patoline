@@ -229,12 +229,19 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
     let subrIndex=
       let subrs=Array.create (Array.length dictIndex-1) [||] in
         for idx=0 to Array.length dictIndex-2 do
-          let privOffset=findDict f (dictIndex.(idx)) (dictIndex.(idx+1)) 18 in
-            match privOffset with
-                offset::size::_->
-                  let subrsOffset=int_of_float (List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 19)) in
-                    subrs.(idx) <- strIndex f (off+int_of_float offset+subrsOffset)
-              | _->()
+          try
+            let privOffset=findDict f (dictIndex.(idx)) (dictIndex.(idx+1)) 18 in
+              match privOffset with
+                  offset::size::_->(
+                    try
+                      let subrsOffset=int_of_float (List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 19)) in
+                        subrs.(idx) <- strIndex f (off+int_of_float offset+subrsOffset)
+                    with
+                        Not_found -> ()
+                  )
+                | _->()
+          with
+              Not_found -> ()
         done;
         subrs
     in
