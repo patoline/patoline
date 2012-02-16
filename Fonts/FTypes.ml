@@ -206,7 +206,7 @@ module type Font=(
     (** Loads a font in the memory from a file name. Actual
         implementations may keep the file open *)
     val loadFont: ?offset:int-> ?size:int->string->font
-
+    val cardinal: font->int
     (** Computes the index of a glyph corresponding to a given
         character in the font, but loses the link between the character
         and the glyph. It is your responsibility to maintain this link

@@ -276,6 +276,13 @@ let loadGlyph font ?index:(idx=0) gl=
       subrs=font.subrIndex.(idx);
       gsubrs=font.gsubrIndex }
 
+let cardinal font=
+  let idx=0 in
+  let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+    seek_in font.file (font.offset+charStrings);
+    readInt2 font.file
+
+
 exception Found of float
 let outlines_ gl onlyWidth=
   Random.init (int_of_char gl.type2.[0]);

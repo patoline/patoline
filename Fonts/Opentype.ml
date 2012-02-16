@@ -52,6 +52,10 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
             CFF (CFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
 
+let cardinal=function
+    CFF (f,_)->CFF.cardinal f
+  | _->failwith ("OpenType : format non reconnu, Opentype.ml, line "^(string_of_int __LINE__))
+
 type glyph = CFFGlyph of (font*CFF.glyph)
 
 let glyph_of_uchar font char0=

@@ -51,6 +51,11 @@ let loadGlyph f g=
       CFF x->CFFGlyph (CFF.loadGlyph x g)
     | Opentype x->OpentypeGlyph (Opentype.loadGlyph x g)
 
+let cardinal f=
+  match f with
+      CFF x->CFF.cardinal x
+    | Opentype x->Opentype.cardinal x
+
 let outlines gl=
   match gl with
       CFFGlyph x->CFF.outlines x
@@ -75,6 +80,7 @@ let fontName f=
   match f with
       CFF x->CFF.fontName x
     | Opentype x->Opentype.fontName x
+
 
 let select_features a b=match a with
     CFF x->CFF.select_features x b
