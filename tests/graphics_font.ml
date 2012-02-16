@@ -15,7 +15,7 @@ let x=read_lookup font 4
 let _=
   let xx0=100 in
   let yy0=100 in
-  let arr= [| 116; 911; 912; 913 |] in
+  let arr= [| 34;612 |] in
     Graphics.open_graph "";
     let rec show_glyphs i=
       Graphics.clear_graph ();

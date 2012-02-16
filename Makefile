@@ -4,7 +4,7 @@ FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.ml
 SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
+DOC=Drivers.mli Fonts/FTypes.ml Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 
 EXEC = texprime
 
@@ -69,9 +69,9 @@ collisions: tests/collisions.ml $(OBJS)
 test:test.ml $(BASE:.ml=.cmo) fonts.cma
 	$(CAMLC) -o test $(BASE:.ml=.cmo) fonts.cma test.ml
 
-#doc:Makefile $(OBJS)
-#	mkdir -p doc
-#	$(CAMLDOC) -d doc $(DOC)
+doc:Makefile $(OBJS)
+	mkdir -p doc
+	$(CAMLDOC) -d doc $(DOC)
 
 #Fonts.mli: Fonts.ml
 #	$(CAMLC) $(CUSTOM) -i Fonts.ml | sed -e "s/->[ \t]*FTypes./-> Types./g" > Fonts.mli

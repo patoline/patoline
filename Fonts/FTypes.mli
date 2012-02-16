@@ -34,8 +34,9 @@ type features =
   | Titling
   | TabularFigures
   | SlashedZero
+val str_of_feature : features->string
 val print_feature : features -> unit
-type ligature = { ligature_glyphs : int array; ligature : int; }
+
 type subst = { original_glyphs : int array; subst_glyphs : int array; }
 type chain = {
   before : Binary.IntSet.t array;
@@ -45,13 +46,13 @@ type chain = {
 type substitution =
     Alternative of int array
   | Subst of subst
-  | Ligature of ligature
+
   | Chain of chain
   | Context of (int * substitution list) array
 val print_int_array : int array -> unit
 val print_int_list : int list -> unit
 val print_subst : substitution -> unit
-val apply_ligature : glyph_id list -> ligature -> glyph_id list
+
 val apply_subst : glyph_id list -> subst -> glyph_id list
 val apply_alternative : glyph_id list -> int array -> int -> glyph_id list
 val apply : glyph_id list -> substitution -> glyph_id list
@@ -68,7 +69,7 @@ module type Font =
     val glyphNumber : glyph -> glyph_id
     val glyphWidth : glyph -> float
     val fontName : ?index:int -> font -> string
+    val font_features : font -> features list
     val select_features : font -> features list -> substitution list
-    val substitutions : font -> glyph_id list -> glyph_id list
     val positioning : font -> glyph_ids list -> glyph_ids list
   end

@@ -11,7 +11,9 @@ type parameters={ format:float*float;
                   measure:float;
                   lines_by_page:int;
                   left_margin:float;
-                  local_optimization:int
+                  local_optimization:int;
+                  allow_widows:bool;
+                  allow_orphans:bool
                 }
 
 let print_parameters p=
@@ -62,8 +64,8 @@ type error_log=
 
 
 let print_line l=
-  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d }\n"
-    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
+  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d; page=%d }\n"
+    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
 let rec print_box=function
     Glue _->Printf.printf " "
   | GlyphBox (_,x)->Printf.printf "%s" (x.contents)

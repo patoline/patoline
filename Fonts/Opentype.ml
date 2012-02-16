@@ -355,7 +355,7 @@ let rec readLookup file gsubOff i=
                                    for comp=1 to compCount-1 do
                                      arr.(comp)<-readInt2 file
                                    done;
-                                   subst:=(Ligature { ligature_glyphs=arr; ligature=ligGlyph })::(!subst)
+                                   subst:=(Subst { original_glyphs=arr; subst_glyphs=[|ligGlyph|] })::(!subst)
                                done
                                  (* done *)
                           ) cov
@@ -464,7 +464,6 @@ let str_tag=function
   | ProportionalFigures -> "pnum"
   | StylisticAlternates -> "salt"
   | ScientificInferiors -> "sinf"
-  | SmallCapitals -> "smcp"
   | Subscript -> "subs"
   | Superscript -> "sups"
   | Titling -> "titl"
@@ -527,7 +526,7 @@ let select_features font feature_tags=
 
 module FeatSet=Set.Make (struct type t=features let compare=compare end)
 
-let read_features font=
+let font_features font=
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
@@ -550,7 +549,6 @@ let read_scripts font=
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let scripts=seek_in file (gsubOff+4); readInt2 file in
   let scriptCount=seek_in file (gsubOff+scripts); readInt2 file in
-  let arr=Array.make scriptCount "" in
     for i=0 to scriptCount-1 do
       let scriptTag=String.create 4 in
         seek_in file (gsubOff+scripts+2+i*6);
@@ -566,90 +564,6 @@ let read_scripts font=
                   Printf.printf "lang : %s\n" langSysTag
           done
     done
-
-
-
-let gsub font glyphs0=
-
-  let (file,off0)=otype_file font in
-  let (gsubOff,_)=tableLookup "GSUB" file off0 in
-
-  let lookup= seek_in file (gsubOff+8); readInt2 file in
-  let lookupCount= seek_in file (gsubOff+lookup); readInt2 file in
-  let glyphs=ref glyphs0 in
-    (* Iteration sur les lookuptables *)
-    for i=1 to lookupCount do
-      let offset=seek_in file (gsubOff+lookup+i*2); readInt2 file in
-
-      let lookupType=seek_in file (gsubOff+lookup+offset); readInt2 file in
-      (* let lookupFlag=seek_in file (gsubOff+lookup+offset+2); readInt2 file in *)
-      let subtableCount=seek_in file (gsubOff+lookup+offset+4); readInt2 file in
-
-      let maxOff=gsubOff+lookup+offset + 6+subtableCount*2 in
-
-      let rec lookupSubtables off gl=
-        if off>=maxOff then gl else
-          let subtableOff=seek_in file off; readInt2 file in
-          let offset=gsubOff+lookup+offset+subtableOff in
-
-          let rec gsub glyphs=match lookupType with
-              GSUB_LIGATURE-> (
-                match glyphs with
-                    []->[],[]
-                  | h_::s->(
-                      let h=h_.glyph_index in
-                        (* let substFormat=seek_in file offset ; readInt2 file in *)
-                      let coverageOffset=seek_in file (offset+2); readInt2 file in
-                        (* let ligSetCount=readInt2 file in *)
-                        try
-                          let coverage=coverageIndex file (offset+coverageOffset) h in
-                          let ligatureSetOff=seek_in file (offset+6+coverage*2); readInt2 file in
-                          let ligatureCount=seek_in file (offset+ligatureSetOff); readInt2 file in
-                          let initOff=offset+ligatureSetOff in
-                          let rec ligatureSet off i l=match l with
-                              []->[],[]
-                            | h::s when i=0 -> [h],s
-                            | _::s->
-                                (let ligOff=seek_in file off; readInt2 file in
-                                 let result=seek_in file (initOff+ligOff) ; readInt2 file in
-                                 let compCount=readInt2 file in
-                                 let buf=UTF8.Buf.create 1 in
-                                   UTF8.Buf.add_string buf (h_.glyph_utf8);
-                                   let rec compareComps c l=match l with
-                                       l' when c<=0 -> true, l'
-                                     | []->false, []
-                                     | h::s->
-                                         (let comp=readInt2 file in
-                                            if comp=h.glyph_index then (
-                                              UTF8.Buf.add_string buf  h.glyph_utf8;
-                                              compareComps (c-1) s
-                                            ) else false, [])
-                                   in
-                                   let applies, next=compareComps (compCount-1) s in
-                                     if applies then [{glyph_utf8=UTF8.Buf.contents buf;glyph_index=result}], next else
-                                       ligatureSet (off+2) (i-1) l
-                                )
-                          in
-                          let a,b=ligatureSet (offset+ligatureSetOff+2) ligatureCount glyphs in
-                          let a',b'=gsub b in
-                            a@a', b'
-                        with
-                            Not_found->
-                              (let a,b=gsub s in
-                                 (h_::a, b))
-                    )
-              )
-
-            | _-> [],glyphs
-          in
-
-          let u,v=gsub gl in
-            u@(lookupSubtables (off+2) v)
-      in
-        glyphs:=lookupSubtables (gsubOff+lookup+offset + 6) !glyphs
-    done;
-    !glyphs
-
 
 
 #define GPOS_SINGLE 1
@@ -753,5 +667,4 @@ let rec gpos font glyphs0=
     !glyphs
 
 
-let substitutions=gsub
 let positioning=gpos

@@ -18,7 +18,13 @@ module type Font=FTypes.Font
 module Opentype=Opentype
 module CFF=CFF
 
+(** This module is not to be used. It is here to enforce correct
+    typing of interface Opentype, while leaving all its interface
+    exported by module Opentype above *)
 module Opentype_=(Opentype:Font)
+(** This module is not to be used. It is here to enforce correct
+    typing of interface CFF, while leaving all its interface
+    exported by module CFF above *)
 module CFF_=(CFF:Font)
 
 (** loadFont pretends it can recognize font file types, but it
@@ -74,12 +80,7 @@ let select_features a b=match a with
     CFF x->CFF.select_features x b
   | Opentype x->Opentype.select_features x b
 
-let substitutions f glyphs=
-  match f with
-      CFF x->CFF.substitutions x glyphs
-    | Opentype x->Opentype.substitutions x glyphs
-
 let positioning f glyphs=
   match f with
-      CFF x->CFF.substitutions x glyphs
+      CFF x->CFF.positioning x glyphs
     | Opentype x->Opentype.positioning x glyphs

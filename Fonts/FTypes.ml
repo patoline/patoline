@@ -1,4 +1,4 @@
-(** XPlacement, YPlacement, XAdvance, YAdvance *)
+(** All common types used for fonts, as well as helpers for "font features" *)
 open CamomileLibrary
 open Binary
 
@@ -43,36 +43,35 @@ type features=
   | TabularFigures
   | SlashedZero
 
-let print_feature=function
-    Alternates -> Printf.printf "Alternates\n"
-  | SmallCapitals -> Printf.printf "SmallCapitals\n"
-  | CaseSensitiveForms -> Printf.printf "CaseSensitiveForms\n"
-  | DiscretionaryLigatures -> Printf.printf "DiscretionaryLigatures\n"
-  | Denominators -> Printf.printf "Denominators\n"
-  | Fractions -> Printf.printf "Fractions\n"
-  | StandardLigatures -> Printf.printf "StandardLigatures\n"
-  | LiningFigures -> Printf.printf "LiningFigures\n"
-  | LocalizedForms -> Printf.printf "LocalizedForms\n"
-  | Numerators -> Printf.printf "Numerators\n"
-  | OldStyleFigures -> Printf.printf "OldStyleFigures\n"
-  | Ordinals -> Printf.printf "Ordinals\n"
-  | Ornaments -> Printf.printf "Ornaments\n"
-  | ProportionalFigures -> Printf.printf "ProportionalFigures\n"
-  | StylisticAlternates -> Printf.printf "StylisticAlternates\n"
-  | ScientificInferiors -> Printf.printf "ScientificInferiors\n"
-  | Subscript -> Printf.printf "Subscript\n"
-  | Superscript -> Printf.printf "Superscript\n"
-  | Titling -> Printf.printf "Titling\n"
-  | TabularFigures -> Printf.printf "TabularFigures\n"
-  | SlashedZero -> Printf.printf "SlashedZero\n"
+let str_of_feature=function
+    Alternates -> "Alternates\n"
+  | SmallCapitals ->  "SmallCapitals\n"
+  | CaseSensitiveForms -> "CaseSensitiveForms\n"
+  | DiscretionaryLigatures -> "DiscretionaryLigatures\n"
+  | Denominators -> "Denominators\n"
+  | Fractions -> "Fractions\n"
+  | StandardLigatures -> "StandardLigatures\n"
+  | LiningFigures -> "LiningFigures\n"
+  | LocalizedForms -> "LocalizedForms\n"
+  | Numerators -> "Numerators\n"
+  | OldStyleFigures -> "OldStyleFigures\n"
+  | Ordinals -> "Ordinals\n"
+  | Ornaments -> "Ornaments\n"
+  | ProportionalFigures -> "ProportionalFigures\n"
+  | StylisticAlternates -> "StylisticAlternates\n"
+  | ScientificInferiors -> "ScientificInferiors\n"
+  | Subscript -> "Subscript\n"
+  | Superscript ->  "Superscript\n"
+  | Titling -> "Titling\n"
+  | TabularFigures -> "TabularFigures\n"
+  | SlashedZero -> "SlashedZero\n"
+let print_feature x=Printf.printf "%s" (str_of_feature x)
 
-type ligature= { ligature_glyphs:int array; ligature:int }
 type subst= { original_glyphs:int array; subst_glyphs:int array }
 type chain= { before:IntSet.t array; input:IntSet.t array; after:IntSet.t array }
 type substitution=
     Alternative of int array
   | Subst of subst
-  | Ligature of ligature
   | Chain of chain
   | Context of (int*(substitution list)) array
 
@@ -102,8 +101,6 @@ let print_subst=function
   | Subst x->(printf "Subst { original_glyphs=";open_box 1; print_int_array x.original_glyphs;close_box();
               printf "; subst_glyphs=";open_box 1; print_int_array x.subst_glyphs; close_box();
               printf " }\n")
-  | Ligature x->(printf "Ligature { ligature_glyphs=";open_box 1; print_int_array x.ligature_glyphs;close_box();
-                 printf "; ligature= %d }\n" x.ligature)
   | Chain x->(printf "Chain { ... }\n")
   | Context _->(printf "Context { ... }\n")
 
@@ -111,12 +108,12 @@ let print_subst=function
 
 let apply_ligature glyphs0 lig=
   let rec apply_lig i buffer glyphs=
-    if i>=Array.length lig.ligature_glyphs then (
-      { glyph_utf8=UTF8.Buf.contents buffer; glyph_index=lig.ligature }::glyphs
+    if i>=Array.length lig.original_glyphs then (
+      { glyph_utf8=UTF8.Buf.contents buffer; glyph_index=lig.subst_glyphs.(0) }::glyphs
     ) else (
       match glyphs with
           []->[]
-        | h::s when (h.glyph_index=lig.ligature_glyphs.(i))->(
+        | h::s when (h.glyph_index=lig.original_glyphs.(i))->(
             UTF8.Buf.add_string buffer h.glyph_utf8;
             apply_lig (i+1) buffer s
           )
@@ -155,10 +152,10 @@ let apply_subst glyphs0 x=
       | h::s->h::(apply_all s)
     in
       apply_all glyphs0
-  ) else (
+  ) else if Array.length x.subst_glyphs=1 then apply_ligature glyphs0 x else (
     let rec matches a i=
       if i>=Array.length x.original_glyphs then (
-        Array.to_list (Array.map (fun u->{ glyph_utf8=""; glyph_index=u }) x.subst_glyphs)
+        (Array.to_list (Array.map (fun u->{ glyph_utf8=""; glyph_index=u }) x.subst_glyphs))@a
       ) else (
         match a with
             []->[]
@@ -185,25 +182,59 @@ let apply_alternative glyphs0 alt i=List.map (fun x->if x.glyph_index=alt.(0) th
 let apply glyphs0 subst=match subst with
     Alternative x -> glyphs0
   | Subst x -> apply_subst glyphs0 x
-  | Ligature x -> apply_ligature glyphs0 x
   | _->glyphs0
 
 
 
 module type Font=(
   sig
+    (** To understand this interface, one must understand the
+        difference between a glyph and a character. While most UTF8
+        characters can have corresponding glyphs, a glyph may not
+        represent exactly one character. Sometimes it will represent
+        more than one character (as in the case of ligatures) and
+        sometimes none (as in the case of ornaments). To ease the
+        manipulation of glyphs, this modules allows to manipulate
+        integers representing their indices in the font, for instance
+        to write glyph substitutions more easily, and also to load
+        informations such as their outlines. *)
+
+    (** Type font *)
     type font
     type glyph
+
+    (** Loads a font in the memory from a file name. Actual
+        implementations may keep the file open *)
     val loadFont: ?offset:int-> ?size:int->string->font
+
+    (** Computes the index of a glyph corresponding to a given
+        character in the font, but loses the link between the character
+        and the glyph. It is your responsibility to maintain this link
+        with the [glyph_id] type *)
     val glyph_of_char:font->char->int
     val glyph_of_uchar:font->UChar.t->int
+
+    (** Load the actual glyph, which gives more precise knownledge
+        about the glyph : its width and outlines, for instance *)
     val loadGlyph:font-> ?index:int ->glyph_id->glyph
+
+    (** Outlines of the glyph as a list of Bezier curves, each given
+        by two arrays of coefficients of Bernstein polynomials. The
+        degree of the polynomial is the length of the array minus
+        one. *)
     val outlines:glyph->(float array*float array) list
     val glyphFont:glyph->font
     val glyphNumber:glyph->glyph_id
     val glyphWidth:glyph->float
     val fontName:?index:int->font->string
+
+    (** Lists all the available features of the font *)
+    val font_features:font->features list
+
+    (** Converts a given list of features into a list of corresponding substitutions *)
     val select_features:font->features list->substitution list
-    val substitutions:font->glyph_id list->glyph_id list
+
+    (** Applies the available positioning information to a glyph
+        list. This can be used for kerning, but not only *)
     val positioning:font->glyph_ids list->glyph_ids list
   end)

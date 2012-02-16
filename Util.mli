@@ -5,6 +5,8 @@ type parameters = {
   lines_by_page : int;
   left_margin : float;
   local_optimization : int;
+  allow_widows:bool;
+  allow_orphans:bool
 }
 val print_parameters : parameters -> unit
 type line = {

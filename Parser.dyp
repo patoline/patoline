@@ -11,7 +11,7 @@ open Fonts.FTypes
 
 module OT=Fonts.Opentype
 
-let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
+let current_font=ref (Fonts.loadFont "AJensonPro-Regular.otf")
 let current_size=ref 4.
 
 let rec my_kerning =
@@ -28,19 +28,13 @@ let rec my_kerning =
           )
 
 let all_subst=
-  match !current_font with
-      Fonts.Opentype x->(
-        let subs=Fonts.Opentype.read_gsub x in
-        let arr0=[||] in (* [|OT.glyph_of_char x 'c'; OT.glyph_of_char x 't'|] in *)
-          List.filter (function Ligature lig->lig.ligature_glyphs<>arr0 | _->false)
-            (List.concat (Array.to_list subs))
-      )
-    | _->[]
+  let subs=Fonts.select_features !current_font [ StandardLigatures] in
+    subs
+  (* let arr0=[||] in (\* [|OT.glyph_of_char x 'c'; OT.glyph_of_char x 't'|] in *\) *)
+  (*   List.filter (function Subst lig->lig.subst_glyphs<>arr0 | _->false) subs *)
 
 
-let my_subst font glyphs=match font with
-    Fonts.Opentype x -> List.fold_left apply glyphs all_subst
-  | f->Fonts.substitutions f glyphs
+let my_subst font glyphs=List.fold_left apply glyphs all_subst
 
 let title_subst glyphs=List.fold_left apply glyphs ((Fonts.select_features !current_font [SmallCapitals])@all_subst)
 
@@ -110,13 +104,13 @@ paragraph:
           (hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size w) }
 
 title:
-    WORD<w> { (hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size w) }
-  | paragraph<p> NEWLINE? WORD<w>
+    WORD<w> { Printf.printf "%s\n" w;flush stdout;hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size (String.uppercase w) }
+  | title<p> NEWLINE? WORD<w>
     { let fsize= !current_size in
         p@(Glue { glue_min_width= 2.*. fsize/.9.;
                   glue_max_width= fsize/.2.;
                   glue_badness=knuth_h_badness (fsize/.3.) }) ::
-          (hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size w) }
+          (hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size (String.uppercase w)) }
 
 
 header:
