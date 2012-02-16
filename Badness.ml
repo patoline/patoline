@@ -126,12 +126,13 @@ let h_badness paragraphs node comp=
 
 let badness paragraphs figures citations node params nextNode params'=
   if nextNode.paragraph>=Array.length paragraphs then 0. else (
+    let comp0=compression paragraphs (params,node) in
     let comp1=compression paragraphs (params',nextNode) in
     let v_bad=
       if node.page=nextNode.page then (
         v_badness paragraphs
           (float_of_int (nextNode.height-node.height)*.params.lead)
-          node params.left_margin (compression paragraphs (params,node))
+          node params.left_margin comp0
           nextNode params'.left_margin comp1
       ) else 0.
     in
@@ -162,11 +163,9 @@ let badness paragraphs figures citations node params nextNode params'=
       (h_badness paragraphs nextNode comp1)
       +. v_bad
       +. figure_badness
-
         (* Page pas assez remplie *)
       +. (if node.page<>nextNode.page && node.height<>params.lines_by_page-1 then 1e20 else 0.)
-
-        (* Hyphenation *)
+        (* Cesures *)
       +. (if nextNode.hyphenEnd >=0 then
             (if nextNode.hyphenStart >=0 then
                1e31
@@ -174,4 +173,5 @@ let badness paragraphs figures citations node params nextNode params'=
                1e30)
           else
             0.)
+      +. (1000.*.(abs_float (comp0-.comp1)))
   )

@@ -4,10 +4,7 @@ let f="AGaramondPro-Regular.otf"
 
 let font=loadFont f
 
-let off=100
-let mult=2.
-
-let round x=off+(int_of_float (x/.mult))
+let round x=(int_of_float (x/.2.))
 
 let x=read_lookup font 4
 
@@ -15,10 +12,11 @@ let x=read_lookup font 4
 let _=
   let xx0=100 in
   let yy0=100 in
-  let arr= [| 34;612 |] in
+  let arr= [| 34;35;36;37 |] in
     Graphics.open_graph "";
     let rec show_glyphs i=
       Graphics.clear_graph ();
+      Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0;
       let gl=loadGlyph font { empty_glyph with glyph_index=arr.(i mod (Array.length arr)) } in
       let out=outlines gl in
         List.iter (fun (x,y)->
