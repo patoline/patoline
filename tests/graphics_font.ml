@@ -12,13 +12,16 @@ let x=read_lookup font 4
 let _=
   let xx0=100 in
   let yy0=100 in
-  let arr= [| 34;35;36;37 |] in
+  (*  let arr= [| 34 ; 35 ; 36 ; 36 ; 37 ; 115 ; 116; 911; 912; 913 |] in *)
+  let arr = Array.init 935 (fun i -> i) in
     Graphics.open_graph "";
     let rec show_glyphs i=
       let gl=loadGlyph font { empty_glyph with glyph_index=arr.(i mod (Array.length arr)) } in
       Graphics.clear_graph ();
-      Graphics.moveto 10 10;
-      Graphics.draw_string ("glyph " ^ (string_of_int (glyphNumber gl).glyph_index));
+      Graphics.set_color (Graphics.rgb 150 150 150);
+      Graphics.moveto 5 5; Graphics.draw_string "'n': +1  'N': +50  'p': -1 'P': -50  'q': quit";
+      Graphics.moveto 10 20; Graphics.draw_string ("glyph " ^ (string_of_int (glyphNumber gl).glyph_index));
+      Graphics.set_color Graphics.black;
       Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0;
       let out=outlines gl in
         List.iter (fun (x,y)->
@@ -35,7 +38,13 @@ let _=
                           Graphics.moveto (xx0+round a) (yy0+round b);
                           Graphics.curveto (xx0+round c, yy0+round d) (xx0+round e, yy0+round f) (xx0+round g, yy0+round h))
                   ) out;
-        let _=Graphics.wait_next_event [Graphics.Key_pressed] in
-          show_glyphs (i+1)
+        let s=Graphics.wait_next_event [Graphics.Key_pressed] in
+          match s.Graphics.key with
+             'q' -> exit 0
+           | 'p' -> show_glyphs (Array.length arr + i-1)
+           | 'P' -> show_glyphs (Array.length arr + i-50)
+           | 'N' -> show_glyphs (Array.length arr + i+50)
+           | ' ' | 'n' -> show_glyphs (i+1)
+           | _ -> show_glyphs (i+1)
     in
       show_glyphs 0
