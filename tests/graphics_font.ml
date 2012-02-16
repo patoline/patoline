@@ -15,9 +15,11 @@ let _=
   let arr= [| 34;35;36;37 |] in
     Graphics.open_graph "";
     let rec show_glyphs i=
-      Graphics.clear_graph ();
-      Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0;
       let gl=loadGlyph font { empty_glyph with glyph_index=arr.(i mod (Array.length arr)) } in
+      Graphics.clear_graph ();
+      Graphics.moveto 10 10;
+      Graphics.draw_string ("glyph " ^ (string_of_int (glyphNumber gl).glyph_index));
+      Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0;
       let out=outlines gl in
         List.iter (fun (x,y)->
                      if Array.length x = 2 then
