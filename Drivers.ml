@@ -621,7 +621,7 @@ module Pdf =
                if pdf.opened_word then (Buffer.add_string pdf.current_page ">"; pdf.opened_word<-false);
                if pdf.opened_line then (Buffer.add_string pdf.current_page "] TJ "; pdf.opened_line<-false; pdf.posLine<-0.);
                end_alternative_text pdf;
-               Buffer.add_string pdf.current_page (Printf.sprintf "/F%d %d Tf " idx (round size));
+               Buffer.add_string pdf.current_page (Printf.sprintf "/F%d %f Tf " idx size);
                pdf.currentFont<-idx;
                pdf.currentSize<-size;
              );

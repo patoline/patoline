@@ -51,7 +51,11 @@ let descartes x0 x1 epsilon a=
   let rec find_root x t0 t1=
     if has_root x then (
       let m=(t0+.t1)/.2. in
-        if t1-.t0 <= epsilon then [m] else (
+        if t1-.t0 <= epsilon then (
+          let x0=eval x t0 in
+          let x1=eval x t1 in
+            if x0*.x1<=0. then [m] else []
+        ) else (
           let left=casteljau_left (Array.copy x) 0.5 in
           let right=casteljau_right x 0.5 in
             (find_root left t0 m)@(find_root right m t1)
