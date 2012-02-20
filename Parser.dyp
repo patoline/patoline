@@ -11,7 +11,7 @@ open Fonts.FTypes
 
 module OT=Fonts.Opentype
 
-let current_font=ref (Fonts.loadFont "AJensonPro-Regular.otf")
+let current_font=ref (Fonts.loadFont "AldusLTStd-Roman.otf")
 let current_size=ref 4.
 
 let rec my_kerning =
@@ -96,6 +96,7 @@ main lexer =
 
 paragraph:
     WORD<w> { (hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size w) }
+
   | paragraph<p> NEWLINE? WORD<w>
     { let fsize= !current_size in
         p@(Glue { glue_min_width= 2.*. fsize/.9.;

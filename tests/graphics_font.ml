@@ -1,7 +1,7 @@
 open Fonts.FTypes
 open Fonts.Opentype
 
-let f = try Sys.argv.(1) with _ -> "AGaramondPro-Regular.otf"
+let f = try Sys.argv.(1) with _ -> "AldusLTStd-Roman.otf"
 let initial_glyph = try int_of_string Sys.argv.(2) with _ -> 0
 
 let font= loadFont f
@@ -22,10 +22,10 @@ let _=
 
       Graphics.set_color (Graphics.rgb 150 150 150);
       Graphics.moveto 5 5; Graphics.draw_string "'n': +1  'N': +50  'p': -1 'P': -50  'q': quit";
-      Graphics.moveto 10 20; Graphics.draw_string (f ^ ", glyph " ^ (string_of_int (glyphNumber gl).glyph_index) ^ " / " ^ (string_of_int nb_glyphs));
+      Graphics.moveto 10 20; Graphics.draw_string (f ^ ", glyph " ^ (string_of_int (glyphNumber gl).glyph_index) ^ " / " ^ (string_of_int nb_glyphs) ^ " width : "^(string_of_float (glyphWidth gl)) );
       Graphics.set_color Graphics.black;
 
-      Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0;
+      (* Graphics.moveto 0 yy0;Graphics.lineto (Graphics.size_x()) yy0; *)
       let out=outlines gl in
         List.iter (fun (x,y)->
                      if Array.length x = 2 then

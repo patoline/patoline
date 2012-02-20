@@ -374,6 +374,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                     page_height=if page0=node.page then node.page_height+1 else 0;
                     page=page0 }
                   in
+
                   let r_params=ref lastParameters in
                   let local_opt=ref [] in
                   let solutions_exist=ref false in
@@ -467,7 +468,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                      Glue _->make_next_node (-1)
                                    | _->());
                               let a,b=box_interval paragraphs.(pi).(j) in
-                                break_next (j+1) (sum_min+. a) (sum_max+. b)
+                                break_next (j+1) (sum_smin+. a) (sum_max+. b)
                             ) else if allow_impossible then (make_next_node (-1))
                           )
                       in
@@ -516,7 +517,10 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       if LineMap.cardinal demerits' = 0 then (
         try
           let _=LineMap.find first_line !last_failure in
-            raise No_solution
+            print_graph "graph" paragraphs demerits [];
+            Printf.printf "No solution, incomplete document. Please report\n";
+            demerits';
+            (* raise No_solution *)
         with
             Not_found->(
               last_failure:=LineMap.add first_line 0 !last_failure;
@@ -527,11 +531,15 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
           if b.paragraph < Array.length paragraphs then (
             try
               let _=LineMap.find b !last_failure in
-                raise No_solution
+                print_graph "graph" paragraphs demerits [];
+                print_text_line paragraphs b;
+                Printf.printf "No solution, incomplete document. Please report\n";
+                demerits';
+                (* raise No_solution *)
             with
                 Not_found->(
                   last_failure:=LineMap.add b 0 !last_failure;
-                  really_break true todo0 demerits'
+                  really_break true (LineMap.singleton b (bad,param)) demerits'
                 )
           ) else
             demerits'

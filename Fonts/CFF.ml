@@ -355,9 +355,9 @@ let outlines_ gl onlyWidth=
   in
   let rec execute program=
     let pc=ref 0 in
-      while !pc < String.length program do
-        (*showStack stack !stackC;
-          print_int (int_of_char (program.[!pc]));print_newline();*)
+      while !pc <  (String.length program) do
+        (* showStack stack !stackC; *)
+        (* print_int (int_of_char (program.[!pc]));print_newline(); *)
         match int_of_char (program.[!pc]) with
             RMOVETO->
               (moveto (!x +. stack.(!stackC-2)) (!y +. stack.(!stackC-1));
@@ -497,7 +497,7 @@ let outlines_ gl onlyWidth=
                  execute (gl.gsubrs.(gsubrBias + (int_of_float (pop ()))));
                  incr pc)
           | ESCAPE->
-              ((*print_int (int_of_char (program.[!pc+1]));print_newline ();*)
+              ((* print_int (int_of_char (program.[!pc+1]));print_newline (); *)
                 match int_of_char (program.[!pc+1]) with
                     FLEX->
                       (if !stackC>=12 then
@@ -543,11 +543,11 @@ let outlines_ gl onlyWidth=
                           let x1= x0 +. stack.(1) in
                           let y1= !y +. stack.(2) in
                           let x2= x1 +. stack.(3) in
-                          let x3= y1 +. stack.(4) in
-                          let x4=x2 +. stack.(5) in
-                          let x5=y1 +. stack.(6) in
+                          let x3= x2 +. stack.(4) in
+                          let x4= x3 +. stack.(5) in
+                          let x5= x4 +. stack.(6) in
                             curveto x0 !y x1 y1 x2 y1;
-                            curveto x3 y1 x4 y1 x5 y1);
+                            curveto x3 y1 x4 !y x5 !y);
                        stackC:=0;
                        pc:= !pc+2)
                   | HFLEX1->
@@ -557,12 +557,12 @@ let outlines_ gl onlyWidth=
                           let x1= x0 +. stack.(2) in
                           let y1= y0 +. stack.(3) in
                           let x2= x1 +. stack.(4) in
-                          let x3=x2 +. stack.(5) in
-                          let x4=x3 +. stack.(6) in
-                          let y4=y1 +. stack.(7) in
-                          let x5=x4 +. stack.(8) in
+                          let x3= x2 +. stack.(5) in
+                          let x4= x3 +. stack.(6) in
+                          let y4= y1 +. stack.(7) in
+                          let x5= x4 +. stack.(8) in
                             curveto x0 y0 x1 y1 x2 y1;
-                            curveto x3 y1 x4 y4 x5 y4);
+                            curveto x3 y1 x4 y4 x5 !y);
                        stackC:=0;
                        pc:= !pc+2)
                   | ABS->(if !stackC>0 then stack.(!stackC-1) <- abs_float (stack.(!stackC-1)); pc:= !pc+2)
