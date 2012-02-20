@@ -349,10 +349,9 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                             paragraph=pi; lastFigure=node.lastFigure+1; isFigure=true;
                             hyphenStart= -1; hyphenEnd= -1;
                             height=node.height+h+h';
-                            lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page }
+                            lineStart= -1; lineEnd= -1; paragraph_height= -1; page_height=node.page_height+1; page=node.page }
                           in
-                          let w=fig.drawing_x1-.fig.drawing_x0 in
-                          let params=parameters nextNode w w in
+                          let params=parameters lastParameters nextNode fig.drawing_min_width fig.drawing_max_width in
                             register node nextNode
                               (lastBadness+.badness node lastParameters nextNode params) params
                       done
@@ -361,7 +360,8 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
 
                 if pi>=Array.length paragraphs then (
                   let endNode={paragraph=pi;lastFigure=node.lastFigure;hyphenStart= -1;hyphenEnd= -1; isFigure=false;
-                               height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1; page=node.page } in
+                               height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                               page_height=node.page_height+1; page=node.page } in
                     register node endNode lastBadness lastParameters;
                 ) else (
                   let page0,h0=if node.height>=lastParameters.lines_by_page-1 then (node.page+1,1) else (node.page, node.height+1) in
@@ -371,115 +371,114 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                     height = h0;
                     lineStart= i; lineEnd= i;
                     paragraph_height=if pi=node.paragraph then node.paragraph_height+1 else 0;
+                    page_height=if page0=node.page then node.page_height+1 else 0;
                     page=page0 }
                   in
                   let r_params=ref lastParameters in
                   let local_opt=ref [] in
                   let solutions_exist=ref false in
                   let rec fix page height=
-                    r_nextNode.height<-height;
-                    r_nextNode.page<-page;
-                    let measure0=measure r_nextNode in
-                      if not !solutions_exist then (
-                        if height>=(!r_params).lines_by_page then
-                          fix (page+1) 1
-                        else (
-                          let rec break_next j sum_min sum_max=
-                          let make_next_node hyphen=
-                            let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
-                              r_params:=parameters nextNode sum_min sum_max;
-                              let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd j hyphen in
-                              let height'=
-                                if page=node.page then (
-                                  let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
-                                               node.hyphenStart node.lineEnd node.hyphenEnd) in
-                                  let v_distance=collide
-                                    node.paragraph node.lineStart node.lineEnd node.hyphenStart
-                                    node.hyphenEnd lastParameters.left_margin comp0
-                                    pi i j node.hyphenEnd hyphen !r_params.left_margin comp1
-                                  in
-                                  let fv_incr=ceil (max 1. (-.v_distance/.(!r_params).lead)) in
-                                    node.height+(int_of_float fv_incr)
-                                ) else (
-                                  int_of_float
-                                    (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
-                                )
-                              in
-                                if height'=height then (
-                                  let allow_orphan= (!r_params).allow_orphans
-                                    || page=node.page || node.paragraph_height>0 in
-                                  let allow_widow= (!r_params).allow_widows ||
-                                    page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
-
-                                    if not allow_orphan && allow_widow then (
-                                      log:=(Orphan node)::(!log);
-                                      let _,_,last_ant=LineMap.find node demerits in
-                                      let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                        demerits' := LineMap.add last_ant
-                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
-                                          (LineMap.remove node !demerits');
-                                        todo' := LineMap.add last_ant
-                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
-                                          (LineMap.remove node !todo');
-                                        solutions_exist:=true;
-
-                                    ) else if not allow_widow && allow_orphan then (
-                                      log:=(Widow nextNode)::(!log);
-                                      let _,_, last_ant=LineMap.find node demerits in
-                                      let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                        demerits' := LineMap.add last_ant
-                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
-                                          (LineMap.remove node !demerits');
-                                        todo' := LineMap.add last_ant
-                                          (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
-                                          (LineMap.remove node !todo');
-                                        solutions_exist:=true;
-                                    )
-                                    else if sum_min > (!r_params).measure then (
-                                      log:=(Overfull_line nextNode)::(!log);
+                    if height>=(!r_params).lines_by_page then
+                      fix (page+1) 1
+                    else (
+                      r_nextNode.height<-height;
+                      r_nextNode.page<-page;
+                      r_nextNode.page_height<-if page=node.page then node.page_height+1 else 0;
+                      let measure0=measure r_nextNode in
+                      let rec break_next j sum_min sum_max=
+                        let make_next_node hyphen=
+                          let nextNode={ r_nextNode with lineEnd=j; hyphenEnd=hyphen } in
+                            r_params:=parameters lastParameters nextNode sum_min sum_max;
+                            let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd j hyphen in
+                            let height'=
+                              if page=node.page then (
+                                let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
+                                             node.hyphenStart node.lineEnd node.hyphenEnd) in
+                                let v_distance=collide
+                                  node.paragraph node.lineStart node.lineEnd node.hyphenStart
+                                  node.hyphenEnd lastParameters.left_margin comp0
+                                  pi i j node.hyphenEnd hyphen !r_params.left_margin comp1
+                                in
+                                let fv_incr=ceil (max 1. (-.v_distance/.(!r_params).lead)) in
+                                  node.height+(int_of_float fv_incr)
+                              ) else (
+                                int_of_float
+                                  (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
+                              )
+                            in
+                              if height'=height then (
+                                let allow_orphan= (!r_params).allow_orphans
+                                  || page=node.page || node.paragraph_height>0 in
+                                let allow_widow= (!r_params).allow_widows ||
+                                  page=node.page || (not (is_last paragraphs.(node.paragraph) j)) in
+                                  if not allow_orphan && allow_widow then (
+                                    log:=(Orphan node)::(!log);
+                                    let _,_,last_ant=LineMap.find node demerits in
+                                    let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                      demerits' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                        (LineMap.remove node !demerits');
+                                      todo' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                        (LineMap.remove node !todo');
                                       solutions_exist:=true;
-                                      let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
-                                        local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
-                                        (* register node nextNode bad (!r_params) *)
-                                    ) else (
+
+                                  ) else if not allow_widow && allow_orphan then (
+                                    log:=(Widow nextNode)::(!log);
+                                    let _,_, last_ant=LineMap.find node demerits in
+                                    let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                      demerits' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                        (LineMap.remove node !demerits');
+                                      todo' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                        (LineMap.remove node !todo');
                                       solutions_exist:=true;
-                                      let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
-                                        local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
-                                        (* register node nextNode bad (!r_params) *)
-                                    )
-                                )
-                          in
-                            if j>=Array.length (paragraphs.(pi)) then (if sum_min<=measure0 then make_next_node (-1)) else (
-                              (match paragraphs.(pi).(j) with
-                                   Hyphen x->(
-                                     for k=0 to Array.length x.hyphenated-1 do
-                                       let a,b=boxes_interval (fst x.hyphenated.(k)) in
-                                         if sum_min+.a <= measure0 && sum_max+.b >= measure0 then (
-                                           make_next_node k
-                                         )
-                                     done;
-                                   )
-                                 | _->()
-                              );
-                              if sum_min <= measure0 then (
-                                (if sum_max >= measure0 then
-                                   match paragraphs.(pi).(j) with
-                                       Glue _->make_next_node (-1)
-                                     | _->());
-                                let a,b=box_interval paragraphs.(pi).(j) in
-                                  break_next (j+1) (sum_min+. a) (sum_max+. b)
-                              ) else if allow_impossible then (make_next_node (-1))
-                            )
+                                  )
+                                  else if sum_min > (!r_params).measure then (
+                                    log:=(Overfull_line nextNode)::(!log);
+                                    solutions_exist:=true;
+                                    let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
+                                      local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
+                                      (* register node nextNode bad (!r_params) *)
+                                  ) else (
+                                    solutions_exist:=true;
+                                    let bad=(lastBadness+.badness node lastParameters nextNode !r_params) in
+                                      local_opt:=(node,nextNode,bad,!r_params)::(!local_opt);
+                                      (* register node nextNode bad (!r_params) *)
+                                  )
+                              )
                         in
-                          if node.hyphenEnd>=0 then (
-                            match paragraphs.(node.paragraph).(node.lineEnd) with
-                                Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(node.hyphenEnd)) in
-                                  break_next (node.lineEnd+1) a b
-                              | _->break_next i 0. 0.
-                          ) else break_next i 0. 0.;
-                      );
-                    );
-                      if not !solutions_exist then fix page (height+1);
+                          if j>=Array.length (paragraphs.(pi)) then (if sum_min<=measure0 then make_next_node (-1)) else (
+                            (match paragraphs.(pi).(j) with
+                                 Hyphen x->(
+                                   for k=0 to Array.length x.hyphenated-1 do
+                                     let a,b=boxes_interval (fst x.hyphenated.(k)) in
+                                       if sum_min+.a <= measure0 && sum_max+.b >= measure0 then (
+                                         make_next_node k
+                                       )
+                                   done;
+                                 )
+                               | _->()
+                            );
+                            if sum_min <= measure0 then (
+                              (if sum_max >= measure0 then
+                                 match paragraphs.(pi).(j) with
+                                     Glue _->make_next_node (-1)
+                                   | _->());
+                              let a,b=box_interval paragraphs.(pi).(j) in
+                                break_next (j+1) (sum_min+. a) (sum_max+. b)
+                            ) else if allow_impossible then (make_next_node (-1))
+                          )
+                      in
+                        if node.hyphenEnd>=0 then (
+                          match paragraphs.(node.paragraph).(node.lineEnd) with
+                              Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(node.hyphenEnd)) in
+                                break_next (node.lineEnd+1) a b
+                            | _->break_next i 0. 0.
+                        ) else break_next i 0. 0.;
+                        if (not !solutions_exist) && page<=node.page+1 then fix page (height+1);
+                    )
                   in
                     (try
                        fix node.page (node.height+1);
@@ -507,8 +506,8 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
       )
   in
   let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-                   lastFigure=(-1); height= 0;paragraph_height= -1; page=0 } in
-  let first_parameters=parameters first_line 0. 0. in
+                   lastFigure=(-1); height= 0;paragraph_height= -1; page_height=0; page=0 } in
+  let first_parameters=parameters default_params first_line 0. 0. in
 
   let todo0=LineMap.singleton first_line (0., first_parameters) in
   let last_failure=ref LineMap.empty in

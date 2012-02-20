@@ -11,24 +11,27 @@ let spec = []
 exception Syntax_Error of Lexing.position * string
 
 let measure line=150.(* if line.height<20 then 150. else 100. *)
-let default figures line _ _=
-  let l=48 in
+let default paragraphs figures last_parameters line _ _=
+  fold_left_line paragraphs
+    (fun a b->match b with
+         Parameters p -> p a
+       | _ -> a)
     { format=a4; lead=5.;
       measure=measure line;
-      lines_by_page=l;
+      lines_by_page=
+        if line.page_height <= 0 then 48 else last_parameters.lines_by_page;
       left_margin=
         if line.isFigure then (
-          20.+.(measure line -. (figures.(line.lastFigure).drawing_x1 -. figures.(line.lastFigure).drawing_x0))/.2.
+          20.+.(measure line -. (figures.(line.lastFigure).drawing_max_width +. figures.(line.lastFigure).drawing_min_width)/.2.)/.2.
         ) else 20.;
       local_optimization=0;
       allow_widows=false;
       allow_orphans=false
     }
-
-let bacon="Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua. In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."
+    line
 
 let figure=
-  { drawing_x0= 0.; drawing_x1= 50.; drawing_y0= 0.; drawing_y1= 50.; drawing_contents=[] }
+  { drawing_min_width=50.; drawing_max_width=50.; drawing_y0= 0.; drawing_y1= 50.; drawing_contents=[] }
     (* let lexbuf=Dyp.from_string (Parser.pp ()) bacon in *)
     (* let text=Parser.main lexbuf in *)
     (* let parsed=fst (List.hd text) in *)
@@ -68,7 +71,8 @@ let _=
               let badness=Badness.badness paragraphs [||] [||] in
               let figures=[||] in
               let log,pages=Boxes.lineBreak
-                ~measure:measure ~parameters:(default figures)
+                ~measure:measure
+                ~parameters:(default paragraphs figures)
                 ~figures:figures
                 ~badness:badness paragraphs in
                 List.iter (function
@@ -77,7 +81,7 @@ let _=
                              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h)
                           ) log;
                 flush stdout;
-                M.output_routine h paragraphs [|figure|] pages
+                M.output_routine h paragraphs figures pages
     with
         Syntax_Error(pos,msg) ->
 	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

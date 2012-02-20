@@ -6,7 +6,7 @@ exception Impossible
 
 val lineBreak :
   measure:(line->float)->
-  parameters:(line->float->float->parameters) ->
+  parameters:(parameters->line->float->float->parameters) ->
   ?badness:(line->parameters->line->parameters->float) ->
   ?figures:drawingBox array ->
   box array array ->

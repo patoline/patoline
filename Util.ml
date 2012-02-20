@@ -16,12 +16,21 @@ type parameters={ format:float*float;
                   allow_orphans:bool
                 }
 
+let default_params={ format=(0.,0.);
+                     lead=0.;
+                     measure=0.;
+                     lines_by_page=0;
+                     left_margin=0.;
+                     local_optimization=0;
+                     allow_widows=true;
+                     allow_orphans=true }
+
 let print_parameters p=
   Printf.printf "{ format=(%f, %f); lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
     (fst p.format) (snd p.format) p.lead p.measure p.lines_by_page p.left_margin
 
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; mutable height:int; paragraph_height:int; mutable page:int}
+             isFigure:bool; mutable height:int; paragraph_height:int; mutable page_height:int; mutable page:int}
 
 module Line=struct
   type t=line
@@ -41,7 +50,7 @@ type drawing=
     Curve of (float*float*curve)
   | Drawing_Box of (float*float*box)
 
-and drawingBox = { drawing_x0:float; drawing_x1:float; drawing_y0:float; drawing_y1:float;
+and drawingBox = { drawing_min_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
                    drawing_contents:drawing list }
 
 and glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
@@ -54,6 +63,7 @@ and box=
   | Glue of glueBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
+  | Parameters of (parameters -> parameters)
   | Empty
 
 
@@ -82,6 +92,34 @@ let print_text_line lines node=
   print_newline()
 
 
+let fold_left_line paragraphs f x0 line=
+   let rec fold boxes i maxi result=
+    if i>=maxi then result else
+      match boxes.(i) with
+          Hyphen h -> fold boxes (i+1) maxi
+            (fold h.hyphen_normal 0 (Array.length h.hyphen_normal) result)
+        | b -> fold boxes (i+1) maxi (f result b)
+  in
+  let x1=
+    if line.hyphenStart>=0 then
+      (match paragraphs.(line.paragraph).(line.lineStart) with
+           Hyphen h->fold paragraphs.(line.paragraph) (line.lineStart+1) line.lineEnd (
+             let _,boxes=h.hyphenated.(line.hyphenStart) in
+               fold boxes 0 (Array.length boxes) x0
+           )
+         | _ -> fold paragraphs.(line.paragraph) line.lineStart line.lineEnd x0)
+    else
+      (fold paragraphs.(line.paragraph) line.lineStart line.lineEnd x0)
+  in
+    if line.hyphenEnd>=0 then
+      (match paragraphs.(line.paragraph).(line.lineEnd) with
+         Hyphen h->(
+             let boxes,_=h.hyphenated.(line.hyphenEnd) in
+               fold boxes 0 (Array.length boxes) x1
+           )
+         | _ -> x1)
+    else
+      x1
 
 
 
@@ -100,7 +138,7 @@ let is_hyphen =function Hyphen _->true | _->false
 let rec box_width comp=function
     GlyphBox (size,x)->x.width*.size/.1000.
   | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
-  | Drawing x->(x.drawing_x1-.x.drawing_x0)
+  | Drawing x->x.drawing_min_width+.comp*.(x.drawing_max_width -. x.drawing_min_width)
   | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
   | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
   | Empty->0.
@@ -109,7 +147,7 @@ let rec box_width comp=function
 let rec box_interval=function
     GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
   | Glue x->(x.glue_min_width, x.glue_max_width)
-  | Drawing x->let w=x.drawing_x1-.x.drawing_x0 in w,w
+  | Drawing x->x.drawing_min_width, x.drawing_max_width
   | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
   | _->(0.,0.)

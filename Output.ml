@@ -25,13 +25,12 @@ module Routine=functor (M:Driver)->struct
         size*.a.width/.1000.
       )
     | Drawing d->(
-        let x0=x-.d.drawing_x0 in
-        let y0=y-.d.drawing_y0 in
+        let y0=y+.d.drawing_y0 in
           List.iter (function
-                         Drawing_Box (x',y',box)->ignore (draw_box drv (x0+.x') (y0+.y') comp box)
+                         Drawing_Box (x',y',box)->ignore (draw_box drv (x+.x') (y0+.y') comp box)
                        | Curve (x',y',curve)->()
                     ) d.drawing_contents;
-          d.drawing_x1-.d.drawing_x0
+          d.drawing_min_width +. comp*. (d.drawing_max_width -. d.drawing_min_width)
       )
     | Glue g->g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width)
 
@@ -109,7 +108,7 @@ module Routine=functor (M:Driver)->struct
                               ((float_of_int (line.height - last_line.height))*.param.lead +. vspace0 -. vspace1 -.h)/.2.
                             in
                             let x0,y0,x1,y1=param.left_margin,y,
-                              param.left_margin+.fig.drawing_x1-.fig.drawing_x0,
+                              param.left_margin+.(fig.drawing_max_width+.fig.drawing_min_width)/.2.,
                               y+.fig.drawing_y1+.fig.drawing_y0
                             in
                               M.moveto drv (x0,y0+.yshift);
@@ -129,7 +128,7 @@ module Routine=functor (M:Driver)->struct
                       )
                   in
                     make_page { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-                                lastFigure=(-1); height= 0;paragraph_height= -1; page=0 } (List.rev pages.(i));
+                                lastFigure=(-1); height= 0; paragraph_height= -1; page_height= -1; page=0 } (List.rev pages.(i));
                     M.end_page drv;
                 );
         done

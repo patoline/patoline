@@ -8,6 +8,8 @@ type parameters = {
   allow_widows:bool;
   allow_orphans:bool
 }
+val default_params:parameters
+
 val print_parameters : parameters -> unit
 type line = {
   paragraph : int;
@@ -19,6 +21,7 @@ type line = {
   isFigure : bool;
   mutable height : int;
   paragraph_height : int;
+  mutable page_height:int;
   mutable page : int;
 }
 module Line : sig type t = line val compare : 'a -> 'a -> int end
@@ -66,8 +69,8 @@ type drawing =
     Curve of (float * float * Bezier.curve)
   | Drawing_Box of (float * float * box)
 and drawingBox = {
-  drawing_x0 : float;
-  drawing_x1 : float;
+  drawing_min_width : float;
+  drawing_max_width : float;
   drawing_y0 : float;
   drawing_y1 : float;
   drawing_contents : drawing list;
@@ -87,8 +90,10 @@ and box =
   | Glue of glueBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
+  | Parameters of (parameters -> parameters)
   | Empty
 type error_log = Overfull_line of line | Widow of line | Orphan of line
+val fold_left_line : box array array -> ('a -> box -> 'a) -> 'a -> line -> 'a
 val print_line : line -> unit
 val print_box : box -> unit
 val print_text_line : box array array -> line -> unit
