@@ -468,7 +468,7 @@ let lineBreak ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(
                                      Glue _->make_next_node (-1)
                                    | _->());
                               let a,b=box_interval paragraphs.(pi).(j) in
-                                break_next (j+1) (sum_smin+. a) (sum_max+. b)
+                                break_next (j+1) (sum_min+. a) (sum_max+. b)
                             ) else if allow_impossible then (make_next_node (-1))
                           )
                       in
