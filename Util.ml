@@ -243,15 +243,17 @@ let glyphCache cur_font gl=
     try IntMap.find gl.glyph_index !font with
         Not_found->
           (let glyph=Fonts.loadGlyph cur_font gl in
-           let (y0,y1)=List.fold_left (fun (a,b) (_,y)->
-                                         let (c,d)=Bezier.bernstein_extr y in
-                                           (min a c, max b d)
-                                      ) (1./.0., -1./.0.) (Fonts.outlines glyph)
+           let (y0,y1)=List.fold_left (List.fold_left (fun (a,b) (_,y)->
+                                                         let (c,d)=Bezier.bernstein_extr y in
+                                                           (min a c, max b d)
+                                                      ))
+             (1./.0., -1./.0.) (Fonts.outlines glyph)
            in
-           let (x0,x1)=List.fold_left (fun (a,b) (y,_)->
-                                         let (c,d)=Bezier.bernstein_extr y in
-                                           (min a c, max b d)
-                                      ) (1./.0., -1./.0.) (Fonts.outlines glyph)
+           let (x0,x1)=List.fold_left (List.fold_left (fun (a,b) (y,_)->
+                                                        let (c,d)=Bezier.bernstein_extr y in
+                                                          (min a c, max b d)
+                                                     ))
+             (1./.0., -1./.0.) (Fonts.outlines glyph)
            in
            let loaded={ contents=gl.glyph_utf8;
                         glyph=glyph; width=Fonts.glyphWidth glyph;

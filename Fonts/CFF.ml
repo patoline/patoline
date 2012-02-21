@@ -302,14 +302,17 @@ let outlines_ gl onlyWidth=
   let resultat=ref [] in
   let lineto x1 y1=
     opened:=true;
-    resultat:=([| !x; x1 |],[| !y; y1 |])::(!resultat);
+    let h,s = match !resultat with []->[],[] | h::s-> h,s in
+      resultat:= (([| !x; x1 |],[| !y; y1 |])::h)::s;
     x:=x1;
     y:=y1
   in
   let curveto x1 y1 x2 y2 x3 y3=
     opened:=true;
-    resultat:=([| !x;x1;x2;x3 |],
-               [| !y;y1;y2;y3 |])::(!resultat);
+    let h,s = match !resultat with []->[],[] | h::s-> h,s in
+
+    resultat:=(([| !x;x1;x2;x3 |],
+                [| !y;y1;y2;y3 |])::h)::s;
     x:=x3;
     y:=y3
   in
@@ -317,6 +320,7 @@ let outlines_ gl onlyWidth=
     if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
     x:=x1; y:=y1;
     x0:=x1; y0:=y1;
+    match !resultat with (_::_)::_ ->resultat:=([]::(!resultat)) | _-> ();
     opened:=false;
   in
   let rec hlineto c=
@@ -474,6 +478,7 @@ let outlines_ gl onlyWidth=
           | ENDCHAR->
               (if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
                if onlyWidth && !stackC>0 then raise (Found stack.(0));
+               match !resultat with []::s -> resultat:=s | _->();
                pc:=String.length program)
           | RETURN->pc:=String.length program
           | CALLSUBR->

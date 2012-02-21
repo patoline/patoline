@@ -222,7 +222,7 @@ module type Font=(
         by two arrays of coefficients of Bernstein polynomials. The
         degree of the polynomial is the length of the array minus
         one. *)
-    val outlines:glyph->(float array*float array) list
+    val outlines:glyph->(float array*float array) list list
     val glyphFont:glyph->font
     val glyphNumber:glyph->glyph_id
     val glyphWidth:glyph->float

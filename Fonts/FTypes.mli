@@ -65,7 +65,7 @@ module type Font =
     val glyph_of_char : font -> char -> int
     val glyph_of_uchar : font -> CamomileLibrary.UChar.t -> int
     val loadGlyph : font -> ?index:int -> glyph_id -> glyph
-    val outlines : glyph -> (float array * float array) list
+    val outlines : glyph -> (float array * float array) list list
     val glyphFont : glyph -> font
     val glyphNumber : glyph -> glyph_id
     val glyphWidth : glyph -> float
