@@ -2,7 +2,7 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.ml
-SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
+SOURCES = $(BASE) $(FONTS) Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
 
 DOC=Drivers.mli Fonts/FTypes.ml Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
 
@@ -57,8 +57,8 @@ $(EXEC): $(OBJS)
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC) $(OPTOBJS)
 
-fonts.cma: $(FONTS0) $(BASE)
-	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0) Fonts.ml
+fonts.cma: $(FONTS0:.ml=.cmo) $(BASE:.ml=.cmo)
+	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0.ml=.cmo) Fonts.ml
 
 fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
 	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
@@ -71,6 +71,12 @@ graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 
 collisions: tests/collisions.ml $(OBJS)
 	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml
+
+pdf_test: tests/pdf.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers2.cmo
+	$(CAMLC) -o pdf_test $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers2.cmo tests/pdf.ml
+
+kerner: kerner.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo)
+	$(CAMLC) $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) -o kerner kerner.ml
 
 test:test.ml $(BASE:.ml=.cmo) fonts.cma
 	$(CAMLC) -o test $(BASE:.ml=.cmo) fonts.cma test.ml

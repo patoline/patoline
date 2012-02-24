@@ -94,8 +94,11 @@ and box =
   | Empty
 type error_log = Overfull_line of line | Widow of line | Orphan of line
 val fold_left_line : box array array -> ('a -> box -> 'a) -> 'a -> line -> 'a
+val last_line : box array array -> line -> box
+val first_line : box array array -> line -> box
 val print_line : line -> unit
 val print_box : box -> unit
+val print_box_type : box -> unit
 val print_text_line : box array array -> line -> unit
 val is_glyph : box -> bool
 val is_glue : box -> bool

@@ -74,3 +74,5 @@ module type Font =
     val select_features : font -> features list -> substitution list
     val positioning : font -> glyph_ids list -> glyph_ids list
   end
+
+val glyph_roots : (float array*float array) list list -> (int*int*int*int*float list array)

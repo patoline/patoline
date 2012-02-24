@@ -83,6 +83,13 @@ let rec print_box=function
   | Hyphen x->Array.iter print_box x.hyphen_normal
   | _->Printf.printf "[]"
 
+let rec print_box_type=function
+    Glue _->Printf.printf "Glue "
+  | GlyphBox _->Printf.printf "GlyphBox "
+  | Kerning x->Printf.printf "Kerning "
+  | Hyphen x->Printf.printf "Hyphen "
+  | _->Printf.printf "[]"
+
 
 let print_text_line lines node=
   print_line node;
@@ -120,6 +127,33 @@ let fold_left_line paragraphs f x0 line=
          | _ -> x1)
     else
       x1
+
+let first_line paragraphs line=
+  let rec find boxes i=
+    match boxes.(i) with
+        Hyphen x->find (x.hyphen_normal) 0
+      | _-> boxes.(i)
+  in
+    if line.hyphenStart<0 then (
+      find paragraphs.(line.paragraph) line.lineStart
+    ) else (
+      match paragraphs.(line.paragraph).(line.lineStart) with
+          Hyphen x-> let b,_=x.hyphenated.(line.hyphenStart) in find b 0
+        | b -> b
+    )
+let last_line paragraphs line=
+  let rec find boxes i=
+    match boxes.(i) with
+        Hyphen x->find (x.hyphen_normal) (Array.length x.hyphen_normal-1)
+      | _-> boxes.(i)
+  in
+    if line.hyphenEnd<0 then (
+      find paragraphs.(line.paragraph) (line.lineEnd-1)
+    ) else (
+      match paragraphs.(line.paragraph).(line.lineEnd) with
+          Hyphen x-> let _,b = x.hyphenated.(line.hyphenEnd) in find b (Array.length b-1)
+        | b -> b
+    )
 
 
 

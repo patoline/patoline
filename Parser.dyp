@@ -11,7 +11,7 @@ open Fonts.FTypes
 
 module OT=Fonts.Opentype
 
-let current_font=ref (Fonts.loadFont "AldusLTStd-Roman.otf")
+let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
 
 let rec my_kerning =
@@ -28,7 +28,7 @@ let rec my_kerning =
           )
 
 let all_subst=
-  let subs=Fonts.select_features !current_font [ StandardLigatures] in
+  let subs=Fonts.select_features !current_font [ StandardLigatures; DiscretionaryLigatures ] in
     subs
   (* let arr0=[||] in (\* [|OT.glyph_of_char x 'c'; OT.glyph_of_char x 't'|] in *\) *)
   (*   List.filter (function Subst lig->lig.subst_glyphs<>arr0 | _->false) subs *)
