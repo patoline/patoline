@@ -6,7 +6,9 @@ open Fonts.FTypes
 module Buf=UTF8.Buf
 
 type structure= { name:string;
-                  pages:int array;
+                  page:int;
+                  struct_x:float;
+                  struct_y:float;
                   substructures:structure array }
 
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
@@ -57,7 +59,7 @@ module Pdf=
 
      type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
                      mutable fontGlyphs:Fonts.glyph IntMap.t }
-     let output ?(structure:structure={name="";pages=[||];substructures=[||]})
+     let output ?(structure:structure={name="";page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
          pages fileName=
 
        let outChan=open_out fileName in
@@ -80,6 +82,20 @@ module Pdf=
            n+1
        in
        let endObject pdf=fprintf outChan "\nendobj\n" in
+       let pdf_string str=
+         let str'=String.create (2*String.length str) in
+         let rec fill i j=
+           if i>=String.length str then String.sub str' 0 j else (
+             match str.[i] with
+                 '\\'-> (str'.[j]<-'\\'; str'.[j+1]<-'\\'; fill (i+1) (j+2))
+               | '\n'-> (str'.[j]<-'\\'; str'.[j+1]<-'n'; fill (i+1) (j+2))
+               | '('-> (str'.[j]<-'\\'; str'.[j+1]<-'('; fill (i+1) (j+2))
+               | ')'-> (str'.[j]<-'\\'; str'.[j+1]<-')'; fill (i+1) (j+2))
+               | _-> (str'.[j]<-str.[i]; fill (i+1) (j+1))
+           )
+         in
+           fill 0 0
+       in
        let addFont font=
          try StrMap.find (Fonts.fontName font) !fonts with
              Not_found->
@@ -511,8 +527,50 @@ module Pdf=
          endObject ();
 
          (* Ecriture du catalogue *)
-         let cat=beginObject () in
-           fprintf outChan "<< /Type /Catalog /Pages 1 0 R >>";
+         let cat=futureObject () in
+           if structure.name="" && Array.length structure.substructures=0 then (
+             resumeObject cat;
+             fprintf outChan "<< /Type /Catalog /Pages 1 0 R >>";
+             endObject ()
+           ) else (
+             let count=ref 0 in
+             let rec make_outlines str par=
+               let hijosObjs=Array.map (fun _-> futureObject ()) str.substructures in
+                 for i=0 to Array.length str.substructures-1 do
+                   let (a,b)=make_outlines str.substructures.(i) hijosObjs.(i) in
+                     incr count;
+
+                     resumeObject hijosObjs.(i);
+                     fprintf outChan "<< /Title (%s) /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
+                     if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
+                     if i<Array.length str.substructures-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
+                     if a>0 then
+                       fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
+                         a b (Array.length str.substructures.(i).substructures);
+                     if str.substructures.(i).page>=0 then
+                       fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
+                         str.substructures.(i).struct_x
+                         str.substructures.(i).struct_y;
+                     fprintf outChan ">> ";
+                     endObject ()
+                 done;
+                 if Array.length hijosObjs>0 then
+                   (hijosObjs.(0),hijosObjs.(Array.length hijosObjs-1))
+                 else
+                   (-1,-1)
+             in
+
+
+             let outlines=futureObject () in
+             let a,b=make_outlines structure outlines in
+
+               resumeObject outlines;
+               fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
+               endObject ();
+               resumeObject cat;
+               fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R >>" outlines;
+               endObject ()
+           );
            endObject ();
 
            (* Ecriture de xref *)

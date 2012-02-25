@@ -14,35 +14,16 @@ module OT=Fonts.Opentype
 let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
 let current_size=ref 4.
 
-let rec my_kerning =
-  let of_char x=UTF8.init 1 (fun _-> UChar.of_char x) in
-    function
-        []->[]
-      | [l]->[l]
-      | a::b::s->
-          (let la=glyph_id_utf8 a and lb=glyph_id_utf8 b in
-             if (la,lb) = (of_char 'T', of_char 'o') then
-               KernID { (kern a) with advance_width= (-80.) }::(my_kerning (b::s))
-             else
-               a::(my_kerning (b::s))
-          )
 
 let all_subst=
-  let subs=Fonts.select_features !current_font [ StandardLigatures; DiscretionaryLigatures ] in
-    subs
-  (* let arr0=[||] in (\* [|OT.glyph_of_char x 'c'; OT.glyph_of_char x 't'|] in *\) *)
-  (*   List.filter (function Subst lig->lig.subst_glyphs<>arr0 | _->false) subs *)
-
+  Fonts.select_features !current_font [ StandardLigatures; DiscretionaryLigatures ]
 
 let my_subst font glyphs=List.fold_left apply glyphs all_subst
 
-let title_subst glyphs=List.fold_left apply glyphs ((Fonts.select_features !current_font [SmallCapitals])@all_subst)
+let title_subst glyphs=List.fold_left apply glyphs ((Fonts.select_features !current_font [])@all_subst)
 
-
-let comp f g x=f (g x)
-
-let current_subst=ref (my_subst (!current_font))
-let current_pos=ref (comp my_kerning (Fonts.positioning (!current_font)))
+let current_subst=ref (my_subst !current_font)
+let current_pos=ref (Fonts.positioning !current_font)
 let hyphenation_dict=
   let i=open_in "dict_en" in
   let inp=input_value i in
@@ -84,10 +65,7 @@ let utf8_char =
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { Dyp.lexeme lexbuf
-    (* hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size (Dyp.lexeme lexbuf) *)
-    (* glyph_of_string !current_font !current_size (Dyp.lexeme lexbuf) *)
-  }
+  utf8_char+ -> WORD { Dyp.lexeme lexbuf }
   '\n' -> NEWLINE { set_newline lexbuf }
   '\\''\\' -> CHAR { UTF8.get ("\\") 0 }
   '\\' -> SPECIAL
@@ -105,7 +83,7 @@ paragraph:
           (hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size w) }
 
 title:
-    WORD<w> { Printf.printf "%s\n" w;flush stdout;hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size (String.uppercase w) }
+    WORD<w> { Printf.printf "%s\n" w;flush stdout;hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size w}
   | title<p> NEWLINE? WORD<w>
     { let fsize= !current_size in
         p@(Glue { glue_min_width= 2.*. fsize/.9.;
