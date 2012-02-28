@@ -327,6 +327,12 @@ module Pdf=
                  set_line_cap params.lineCap;
                  set_line_width (pt_of_mm params.lineWidth);
                  set_dash_pattern params.dashPattern;
+                 (match params.fillColor with
+                      None->()
+                    | Some col -> change_stroking_color col);
+                 (match params.fillColor with
+                      None->()
+                    | Some col -> change_non_stroking_color col);
                  let (x0,y0)=path.(0) in
                    Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
                    Array.iter (
@@ -345,17 +351,11 @@ module Pdf=
                    match params.fillColor, params.strokingColor with
                        None, None->()
                      | None, Some col -> (
-                         change_stroking_color col;
                          if params.close then Buf.add_string pageBuf "s " else
                            Buf.add_string pageBuf "S "
                        )
-                     | Some col, None -> (
-                         change_non_stroking_color col;
-                         Buf.add_string pageBuf "f "
-                       )
+                     | Some col, None -> (Buf.add_string pageBuf "f ")
                      | Some fCol, Some sCol -> (
-                         change_non_stroking_color fCol;
-                         change_stroking_color sCol;
                          if params.close then Buf.add_string pageBuf "b " else
                            Buf.add_string pageBuf "B "
                        )
