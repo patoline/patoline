@@ -8,6 +8,12 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
 
+type global_data = { cur_section : int IntMap.t }
+
+let global_data = { cur_section = IntMap.empty }
+
+let dyp_merge = Dyp.keep_all
+
 (* very important to allow using regexp for special combination of characteres *)
 (* let dypgen_choose_token = `all *)
 
