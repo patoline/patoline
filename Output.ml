@@ -30,8 +30,9 @@ let routine paragraphs (figures:drawingBox array) (opt_pages:(parameters*line) l
                                       x'+.w) 0. h.hyphen_normal)
               )
             | GlyphBox (size,a)->(
-                page.pageContents<- (Drivers.Glyph { glyph_x=x;glyph_y=y; glyph_size=size;
-                                                      glyph=a.Util.glyph }) :: page.pageContents;
+                page.pageContents<- (Drivers.Glyph { glyph_x=x;glyph_y=y; glyph_color=black;
+                                                     glyph_size=size;
+                                                     glyph=a.Util.glyph }) :: page.pageContents;
                 size*.a.width/.1000.
               )
             | Glue g->g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width)
