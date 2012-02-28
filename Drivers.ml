@@ -328,7 +328,7 @@ module Pdf=
                  set_line_width (pt_of_mm params.lineWidth);
                  set_dash_pattern params.dashPattern;
                  let (x0,y0)=path.(0) in
-                   Buf.add_string pageBuf (sprintf "%f %f m " x0.(0) y0.(0));
+                   Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
                    Array.iter (
                      fun (x,y)->
                        if Array.length x<=2 && Array.length y<=2 then (
