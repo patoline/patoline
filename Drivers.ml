@@ -323,6 +323,10 @@ module Pdf=
                )
              | Path (params,path)->(
                  close_text ();
+                 set_line_join params.lineJoin;
+                 set_line_cap params.lineCap;
+                 set_line_width (pt_of_mm params.lineWidth);
+                 set_dash_pattern params.dashPattern;
                  let (x0,y0)=path.(0) in
                    Buf.add_string pageBuf (sprintf "%f %f m " x0.(0) y0.(0));
                    Array.iter (
@@ -330,16 +334,14 @@ module Pdf=
                        if Array.length x<=2 && Array.length y<=2 then (
                          let x1=if Array.length x=2 then x.(1) else x.(0) in
                          let y1=if Array.length y=2 then y.(1) else y.(0) in
-                           Buf.add_string pageBuf (sprintf "%f %f l " x1 y1);
+                           Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
                        ) else if Array.length x=3 then (
                          Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                   x.(1) y.(1) x.(2) y.(2) x.(3) y.(3));
+                                                   (pt_of_mm x.(1)) (pt_of_mm y.(1))
+                                                   (pt_of_mm x.(2)) (pt_of_mm y.(2))
+                                                   (pt_of_mm x.(3)) (pt_of_mm y.(3)));
                        )
                    ) path;
-                   set_line_join params.lineJoin;
-                   set_line_cap params.lineCap;
-                   set_line_width (pt_of_mm params.lineWidth);
-                   set_dash_pattern params.dashPattern;
                    match params.fillColor, params.strokingColor with
                        None, None->()
                      | None, Some col -> (
