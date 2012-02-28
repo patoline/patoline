@@ -10,11 +10,11 @@ module Buf :
     val add_buffer : buf -> buf -> unit
   end
 type structure = {
-  name : string;
-  page : int;
-  struct_x : float;
-  struct_y : float;
-  substructures : structure array;
+  mutable name : string;
+  mutable page : int;
+  mutable struct_x : float;
+  mutable struct_y : float;
+  mutable substructures : structure array;
 }
 type lineCap = Butt_cap | Round_cap | Proj_square_cap
 type lineJoin = Miter_join | Round_join | Bevel_join
@@ -34,6 +34,7 @@ val default : path_parameters
 type glyph = {
   glyph_x : float;
   glyph_y : float;
+  glyph_color : color;
   glyph_size : float;
   glyph : Fonts.glyph;
 }
