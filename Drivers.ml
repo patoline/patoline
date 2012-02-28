@@ -5,11 +5,11 @@ open Constants
 open Fonts.FTypes
 module Buf=UTF8.Buf
 
-type structure= { name:string;
-                  page:int;
-                  struct_x:float;
-                  struct_y:float;
-                  substructures:structure array }
+type structure= { mutable name:string;
+                  mutable page:int;
+                  mutable struct_x:float;
+                  mutable struct_y:float;
+                  mutable substructures:structure array }
 
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
@@ -35,7 +35,7 @@ let default= { close=false;strokingColor=Some black;fillColor=None;
                lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=pt_of_mm 1.;
                dashPattern=[] }
 
-type glyph={ glyph_x:float; glyph_y:float; glyph_size:float; glyph:Fonts.glyph }
+type glyph={ glyph_x:float; glyph_y:float; glyph_color: color; glyph_size:float; glyph:Fonts.glyph }
 
 type link= { link_x0:float;link_y0:float;link_x1:float;link_y1:float;
              dest_page:int; dest_x:float; dest_y:float }
@@ -170,7 +170,7 @@ module Pdf=
              (* Dessins *)
            let strokingColor=ref black in
            let nonStrokingColor=ref black in
-           let lineWidth=ref 1. in
+           let lineWidth=ref (pt_of_mm 1.) in
            let lineJoin=ref Miter_join in
            let lineCap=ref Butt_cap in
            let dashPattern=ref [] in
@@ -186,6 +186,7 @@ module Pdf=
            in
            let change_stroking_color col =
              if col<> !strokingColor then (
+               close_text();
                match col with
                    RGB color -> (
                      close_text ();
@@ -199,6 +200,7 @@ module Pdf=
            in
            let change_non_stroking_color col =
              if col<> !nonStrokingColor then (
+               close_text();
                match col with
                    RGB color -> (
                      close_text ();
@@ -328,7 +330,7 @@ module Pdf=
                        if Array.length x<=2 && Array.length y<=2 then (
                          let x1=if Array.length x=2 then x.(1) else x.(0) in
                          let y1=if Array.length y=2 then y.(1) else y.(0) in
-                           Buf.add_string pageBuf (sprintf "%f %f m " x1 y1);
+                           Buf.add_string pageBuf (sprintf "%f %f l " x1 y1);
                        ) else if Array.length x=3 then (
                          Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
                                                    x.(1) y.(1) x.(2) y.(2) x.(3) y.(3));
