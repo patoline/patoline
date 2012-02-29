@@ -4,9 +4,9 @@ open Util
 exception Impossible
 
 
-val lineBreak :
+val typeset :
   measure:(line->float)->
-  parameters:(parameters->line->float->float->parameters) ->
+  parameters:(parameters->line->float->float->float->parameters) ->
   ?badness:(line->parameters->line->parameters->float) ->
   ?figures:drawingBox array ->
   box array array ->

@@ -1,7 +1,7 @@
 (** Output routines. An output routine is just a functor taking a driver module *)
 
 open Constants
-open Boxes
+open Typeset
 open Util
 open Fonts.FTypes
 open Drivers
@@ -9,14 +9,17 @@ open CamomileLibrary
 
 
 let routine paragraphs (figures:drawingBox array) (opt_pages:(parameters*line) list array)=
-  let draw_page p=
+  let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
+  let par=ref (-1) in
+  let draw_page i p=
     let page= { pageFormat=0.,0. ; pageContents=[] } in
       List.iter (
         fun (param,line)->
           let (h,w)=page.pageFormat in
           let (h',w')=param.format in
-          page.pageFormat<- (max h h', max w w');
-          let y=270.0-.param.lead*.float_of_int line.height in
+            page.pageFormat<- (max h h', max w w');
+            let y=270.0-.param.lead*.float_of_int line.height in
+              if line.paragraph<> !par then (par:=line.paragraph; positions.(!par)<-(i,0., y+. param.lead/.2. +. snd (line_height paragraphs line)));
 
           let comp=compression paragraphs (param,line) in
           let rec draw_box x y comp=function
@@ -68,4 +71,5 @@ let routine paragraphs (figures:drawingBox array) (opt_pages:(parameters*line) l
       ) p;
       page
   in
-    Array.map draw_page opt_pages
+  let a=Array.mapi draw_page opt_pages in
+    (a, positions)

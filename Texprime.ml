@@ -5,18 +5,14 @@ open Lexing
 open Util
 open Fonts
 open Fonts.FTypes
-
+open Parser
 
 let spec = []
 
 exception Syntax_Error of Lexing.position * string
 
 let measure line=150.(* if line.height<20 then 150. else 100. *)
-let default paragraphs figures last_parameters line _ _=
-    fold_left_line paragraphs
-      (fun a b->match b with
-           Parameters p -> p a
-         | _ -> a)
+let default paragraphs figures last_parameters line _ _ _=
       { format=a4; lead=5.;
         measure=measure line;
         lines_by_page=
@@ -26,13 +22,15 @@ let default paragraphs figures last_parameters line _ _=
              20.+.(measure line -. (figures.(line.lastFigure).drawing_max_width +. figures.(line.lastFigure).drawing_min_width)/.2.)/.2.
            ) else 20.);
         local_optimization=0;
+        min_height_diff=1;
+        min_page_diff=0;
         allow_widows=false;
         allow_orphans=false
       }
-      line
+
 
 let figure=
-  { drawing_min_width=50.; drawing_max_width=50.; drawing_y0= 0.; drawing_y1= 50.; drawing_contents=[] }
+  { drawing_min_width=50.; drawing_max_width=50.;drawing_nominal_width=50.; drawing_y0= 0.; drawing_y1= 50.; drawing_contents=[] }
     (* let lexbuf=Dyp.from_string (Parser.pp ()) bacon in *)
     (* let text=Parser.main lexbuf in *)
     (* let parsed=fst (List.hd text) in *)
@@ -65,13 +63,12 @@ let _=
 	              (Syntax_Error (Dyp.lexeme_start_p lexbuf,
 			             "unexpected char"))
 	    in
-	      if List.length text > 1 then
-	        raise (Failure "detecting parsing ambiguities, please report");
-              let parsed=fst (List.hd text) in
+            let parsed=(fst (List.hd text)) in
+
               let paragraphs=Array.of_list (List.map (Array.of_list) parsed) in
-              let badness=Badness.badness paragraphs [||] [||] in
+              let badness=Badness.badness paragraphs in
               let figures=[||] in
-              let log,pages=Boxes.lineBreak
+              let log,pages=Typeset.typeset
                 ~measure:measure
                 ~parameters:(default paragraphs figures)
                 ~figures:figures
@@ -82,7 +79,7 @@ let _=
                              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h)
                           ) log;
                 flush stdout;
-                Pdf.output (Output.routine paragraphs figures pages) (Pdf.filename h)
+                Pdf.output (fst (Output.routine paragraphs figures pages)) (Pdf.filename h)
     with
         Syntax_Error(pos,msg) ->
 	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

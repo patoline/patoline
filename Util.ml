@@ -12,6 +12,8 @@ type parameters={ format:float*float;
                   lines_by_page:int;
                   left_margin:float;
                   local_optimization:int;
+                  min_height_diff:int;
+                  min_page_diff:int;
                   allow_widows:bool;
                   allow_orphans:bool
                 }
@@ -22,6 +24,8 @@ let default_params={ format=(0.,0.);
                      lines_by_page=0;
                      left_margin=0.;
                      local_optimization=0;
+                     min_height_diff=1;
+                     min_page_diff=0;
                      allow_widows=true;
                      allow_orphans=true }
 
@@ -50,10 +54,10 @@ type drawing=
     Curve of (float*float*curve)
   | Drawing_Box of (float*float*box)
 
-and drawingBox = { drawing_min_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
+and drawingBox = { drawing_min_width:float; drawing_nominal_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
                    drawing_contents:drawing list }
 
-and glueBox = { glue_min_width:float; glue_max_width:float; glue_badness:float->float }
+and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float }
 
 and hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
 
@@ -63,7 +67,6 @@ and box=
   | Glue of glueBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
-  | Parameters of (parameters -> parameters)
   | Empty
 
 
@@ -72,6 +75,7 @@ type error_log=
   | Widow of line
   | Orphan of line
 
+type citation= { citation_paragraph:int; citation_box:int }
 
 let print_line l=
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d; page=%d }\n"
@@ -179,20 +183,20 @@ let rec box_width comp=function
   | _->0.
 
 let rec box_interval=function
-    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y)
-  | Glue x->(x.glue_min_width, x.glue_max_width)
-  | Drawing x->x.drawing_min_width, x.drawing_max_width
-  | Kerning x->let (a,b)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width)
+    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y,y)
+  | Glue x->(x.glue_min_width, x.glue_nominal_width, x.glue_max_width)
+  | Drawing x->x.drawing_min_width, x.drawing_nominal_width, x.drawing_max_width
+  | Kerning x->let (a,b,c)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
-  | _->(0.,0.)
+  | _->(0.,0.,0.)
 
 and boxes_interval boxes=
-  let a=ref 0. in let b=ref 0. in
+  let a=ref 0. in let b=ref 0. in let c=ref 0. in
     for i=0 to Array.length boxes-1 do
-      let (u,v)=box_interval (boxes.(i)) in
-        a:= !a+.u;b:= !b+.v
+      let (u,v,w)=box_interval (boxes.(i)) in
+        a:= !a+.u;b:= !b+.v;c:= !c+.w
     done;
-    (!a,!b)
+    (!a,!b,!c)
 
 let rec lower_y x w=match x with
     GlyphBox (size,y)->y.y0*.size/.1000.
@@ -241,24 +245,29 @@ let line_height paragraphs node=
 let comp paragraphs m p i hi j hj=
   let minLine=ref 0. in
   let maxLine=ref 0. in
+  let nomLine=ref 0. in
     if hi>=0 then (
       match paragraphs.(p).(i) with
-          Hyphen x->let a,b=boxes_interval (snd x.hyphenated.(hi)) in
+          Hyphen x->let a,b,c=boxes_interval (snd x.hyphenated.(hi)) in
             (minLine:= !minLine+.a;
+             nomLine:= !nomLine+.c;
              maxLine:= !maxLine+.b)
         | _->());
     if hj>=0 then (
       match paragraphs.(p).(j) with
-          Hyphen x->let a,b=boxes_interval (fst x.hyphenated.(hj)) in
+          Hyphen x->let a,b,c=boxes_interval (fst x.hyphenated.(hj)) in
             (minLine:= !minLine+.a;
-             maxLine:= !maxLine+.b)
+             nomLine:= !nomLine+.b;
+             maxLine:= !maxLine+.c)
         | _->());
     for k=(if hi<0 then i else i+1) to j-1 do
-      let a,b=box_interval paragraphs.(p).(k) in
+      let a,b,c=box_interval paragraphs.(p).(k) in
         minLine := !minLine+.a;
-        maxLine := !maxLine+.b
+        nomLine := !nomLine+.b;
+        maxLine := !maxLine+.c
     done;
-    max 0. (min 1. ((m-. !minLine)/.(!maxLine-. !minLine)))
+    let com= max 0. ((m-. !minLine)/.(!maxLine-. !minLine)) in
+      if com>=1. then ((!nomLine-. !minLine)/.(!maxLine-. !minLine)) else com
 
 let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
@@ -329,8 +338,8 @@ let glyph_of_string substitution_ positioning_ font fsize str =
     kern kerns
 
 
-let hyphenate tree subs kern font fsize str=
-  let hyphenated=Hyphenate.hyphenate str tree in
+let hyphenate hyph subs kern font fsize str=
+  let hyphenated=hyph str in
   let pos=Array.make (List.length hyphenated-1) ([||],[||]) in
   let rec hyph l i cur=match l with
       []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize str); hyphenated=pos }]
@@ -345,3 +354,18 @@ let hyphenate tree subs kern font fsize str=
       | h::s->hyph s 0 h
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
+
+let rec resize l=function
+    GlyphBox (size,b) -> GlyphBox (l*.size, b)
+  | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
+                       hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
+  | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
+                     glue_max_width= x.glue_max_width*.l;
+                     glue_nominal_width= x.glue_nominal_width*.l;
+                     glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
+  | Kerning x -> Kerning { advance_width = l*.x.advance_width;
+                           advance_height = l*.x.advance_height;
+                           kern_x0 = l*.x.kern_x0;
+                           kern_y0 = l*.x.kern_y0;
+                           kern_contents=resize l x.kern_contents }
+  | x->x

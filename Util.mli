@@ -5,6 +5,8 @@ type parameters = {
   lines_by_page : int;
   left_margin : float;
   local_optimization : int;
+  min_height_diff:int;
+  min_page_diff:int;
   allow_widows:bool;
   allow_orphans:bool
 }
@@ -70,6 +72,7 @@ type drawing =
   | Drawing_Box of (float * float * box)
 and drawingBox = {
   drawing_min_width : float;
+  drawing_nominal_width : float;
   drawing_max_width : float;
   drawing_y0 : float;
   drawing_y1 : float;
@@ -78,6 +81,7 @@ and drawingBox = {
 and glueBox = {
   glue_min_width : float;
   glue_max_width : float;
+  glue_nominal_width : float;
   glue_badness : float -> float;
 }
 and hyphenBox = {
@@ -90,9 +94,9 @@ and box =
   | Glue of glueBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
-  | Parameters of (parameters -> parameters)
   | Empty
 type error_log = Overfull_line of line | Widow of line | Orphan of line
+type citation= { citation_paragraph:int; citation_box:int }
 val fold_left_line : box array array -> ('a -> box -> 'a) -> 'a -> line -> 'a
 val last_line : box array array -> line -> box
 val first_line : box array array -> line -> box
@@ -104,8 +108,8 @@ val is_glyph : box -> bool
 val is_glue : box -> bool
 val is_hyphen : box -> bool
 val box_width : float -> box -> float
-val box_interval : box -> float * float
-val boxes_interval : box array -> float * float
+val box_interval : box -> float * float * float
+val boxes_interval : box array -> float * float * float
 val lower_y : box -> 'a -> float
 val upper_y : box -> 'a -> float
 val line_height : box array array -> line -> float * float
@@ -119,8 +123,9 @@ val glyph_of_string :
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val hyphenate :
-  Hyphenate.ptree ->
+  (string -> string list) ->
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
 val knuth_h_badness : float -> float -> float
+val resize:float -> box -> box

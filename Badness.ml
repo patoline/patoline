@@ -20,7 +20,7 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
                (_,j0,_)::_->v_badness boxes_i i sj j0 w_tot col col2
              | _->v_badness boxes_i i [] (-1) w_tot col col2)
 
-      | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
+      | (hi,_,maxi)::si, (hj,_,maxj)::sj ->
           (match hi.(i), hj.(j) with
                Hyphen xi, Hyphen xj ->
                  v_badness
@@ -37,44 +37,43 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
                    boxes_i i
                    ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
                    w_tot col col2
-             | _->failwith "impossible case"
+             | _->(
+                 let box_i=match boxes_i with
+                     []->Empty
+                   | (hi,_,_)::_->hi.(i)
+                 in
+                 let box_j=match boxes_j with
+                     []->Empty
+                   | (hj,_,_)::_->hj.(j)
+                 in
+                   (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+                 let wi=box_width comp0 box_i in
+                 let wj=box_width comp1 box_j in
+                   if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
+                     let yi=lower_y box_i wi in
+                     let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                     let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
+                     let w0= !xi +. wi -. x0 in
+                       xi:= !xi+.wi;
+                       if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
+                         (v_badness boxes_i (i+1) boxes_j j w_tot col col2)
+                       else
+                         (let area=w0*.(v_space+.yi-.yj) in
+                            v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
+                   ) else (
+                     let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+                     let yj=upper_y box_j wj in
+                     let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
+                     let w0= !xj +. wj -. x0 in
+                       xj:= !xj +. w0;
+                       if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
+                         (v_badness boxes_i i boxes_j (j+1) w_tot col col2)
+                       else
+                         (let area=w0*.(v_space+.yi-.yj) in
+                            v_badness boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
+                   )
+               )
           )
-      | _->(
-          let box_i=match boxes_i with
-              []->Empty
-            | (hi,_,_)::_->hi.(i)
-          in
-          let box_j=match boxes_j with
-              []->Empty
-            | (hj,_,_)::_->hj.(j)
-          in
-            (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-          let wi=box_width comp0 box_i in
-          let wj=box_width comp1 box_j in
-            if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-              let yi=lower_y box_i wi in
-              let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-              let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
-              let w0= !xi +. wi -. x0 in
-                xi:= !xi+.wi;
-                if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
-                  (v_badness boxes_i (i+1) boxes_j j w_tot col col2)
-                else
-                  (let area=w0*.(v_space+.yi-.yj) in
-                     v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
-            ) else (
-              let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-              let yj=upper_y box_j wj in
-              let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
-              let w0= !xj +. wj -. x0 in
-                xj:= !xj +. w0;
-                if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
-                  (v_badness boxes_i i boxes_j (j+1) w_tot col col2)
-                else
-                  (let area=w0*.(v_space+.yi-.yj) in
-                     v_badness boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
-            )
-        )
   in
   let li0=
     (paragraphs.(node0.paragraph), (if node0.hyphenStart>=0 then node0.lineStart+1 else node0.lineStart), node0.lineEnd)::
@@ -124,7 +123,7 @@ let h_badness paragraphs node comp=
 
 
 
-let badness paragraphs figures citations node params nextNode params'=
+let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node params nextNode params'=
   if nextNode.paragraph>=Array.length paragraphs then 0. else (
     let comp0=compression paragraphs (params,node) in
     let comp1=compression paragraphs (params',nextNode) in

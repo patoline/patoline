@@ -2,9 +2,10 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.ml
-SOURCES = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.ml Boxes.mli Boxes.ml Output.ml Section.ml Parser.dyp Texprime.ml
+SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Typography.ml
+SOURCES=$(SOURCES0) Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts/FTypes.ml Fonts.ml Hyphenate.mli Util.mli Boxes.mli Output.ml
+DOC=Drivers.mli Fonts/FTypes.ml Fonts.ml Hyphenate.mli Util.mli Typeset.mli Output.ml
 
 EXEC = texprime
 
@@ -51,6 +52,9 @@ SMLYL = $(filter %.ml,$(SMLDYP))
 OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
+TEST = $(filter %.ml, $(SOURCES0))
+TESTOBJ = $(TEST:.ml=.cmo)
+
 $(EXEC): $(OBJS)
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
 
@@ -58,14 +62,20 @@ $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 	cp $(EXEC).opt $(EXEC)
 
+typography.cma: $(TESTOBJ) Typography.cmo
+	$(CAMLC) -a -o typography.cma $(TESTOBJ) Typography.cmo
+
+test: $(TESTOBJ) Typography.cmo tests/document.ml
+	$(CAMLC) -o test $(TESTOBJ) Typography.cmo tests/document.ml
+
 fonts.cma: $(FONTS0:.ml=.cmo) $(BASE:.ml=.cmo)
 	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0.ml=.cmo) Fonts.ml
 
 fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
 	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
 
-graphics_font: tests/graphics_font.ml fonts.cma
-	$(CAMLC) fonts.cma graphics.cma -o graphics_font tests/graphics_font.ml
+graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
+	$(CAMLC) -o graphics_font $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
 
 graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml
@@ -79,8 +89,6 @@ pdf_test: tests/pdf.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers.cmo
 kerner: kerner.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo)
 	$(CAMLC) $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) -o kerner kerner.ml
 
-test:test.ml $(BASE:.ml=.cmo) fonts.cma
-	$(CAMLC) -o test $(BASE:.ml=.cmo) fonts.cma test.ml
 
 doc:Makefile $(OBJS)
 	mkdir -p doc

@@ -1,18 +1,6 @@
 open Str
 
-module C=(*struct
-  type 'a t=(char*'a) list
-  let empty=[]
-  let rec add a b c=match c with
-      []->[(a,b)]
-    | (u,_)::s when a=u->(u,b)::s
-    | h::s->h::(add a b s)
-  let singleton a b=[a,b]
-  let rec find a b=match b with
-      []->raise Not_found
-    | (u,v)::s when u=a -> v
-    | _::s->find a s
-end*)New_map.Make (struct type t=char let compare=compare end)
+module C=New_map.Make (struct type t=char let compare=compare end)
 
 type ptree=
   Node of (char array)*(ptree C.t)
@@ -65,7 +53,7 @@ let insert_exception tree a0=
 
 exception Exp of (string list)
 
-let hyphenate a0 tree =
+let hyphenate tree a0=
   if String.length a0<=4 then [a0] else
 
     let a=String.create (String.length a0+2) in
@@ -135,4 +123,4 @@ let empty=Node ([||], C.empty)
 (*   let inp=input_value i in *)
 (*     close_in i; *)
 (*     inp *)
-(* let _=let str="associated" in hyphenate str tree *)
+(* let _=let str="associated" in hyphenate tree str *)

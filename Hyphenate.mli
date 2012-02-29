@@ -47,4 +47,4 @@ val insert : ptree -> string -> ptree
 val insert_exception : ptree -> string list -> ptree
 
 (** Self-explicit *)
-val hyphenate : string -> ptree -> string list
+val hyphenate : ptree -> string -> string list

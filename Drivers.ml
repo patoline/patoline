@@ -83,18 +83,17 @@ module Pdf=
        in
        let endObject pdf=fprintf outChan "\nendobj\n" in
        let pdf_string str=
-         let str'=String.create (2*String.length str) in
-         let rec fill i j=
-           if i>=String.length str then String.sub str' 0 j else (
-             match str.[i] with
-                 '\\'-> (str'.[j]<-'\\'; str'.[j+1]<-'\\'; fill (i+1) (j+2))
-               | '\n'-> (str'.[j]<-'\\'; str'.[j+1]<-'n'; fill (i+1) (j+2))
-               | '('-> (str'.[j]<-'\\'; str'.[j+1]<-'('; fill (i+1) (j+2))
-               | ')'-> (str'.[j]<-'\\'; str'.[j+1]<-')'; fill (i+1) (j+2))
-               | _-> (str'.[j]<-str.[i]; fill (i+1) (j+1))
-           )
-         in
-           fill 0 0
+         let str'=String.create (2+2*UTF8.length str) in
+           str'.[0]<-'\254';str'.[1]<- '\255';
+           let rec fill idx i=
+             if UTF8.out_of_range str idx then str' else (
+               let code=UChar.code (UTF8.look str idx) in
+                 str'.[i]<-(char_of_int ((code lsr 8) land 0xff));
+                 str'.[i+1]<-(char_of_int (code land 0xff));
+                 fill (UTF8.next str idx) (i+2)
+             )
+           in
+             fill (UTF8.first str) 2
        in
        let addFont font=
          try StrMap.find (Fonts.fontName font) !fonts with
@@ -343,6 +342,11 @@ module Pdf=
                            Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
                        ) else if Array.length x=3 then (
                          Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                   (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
+                                                   (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
+                                                   (pt_of_mm x.(2)) (pt_of_mm y.(2)));
+                       ) else if Array.length x=4 then (
+                         Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
                                                    (pt_of_mm x.(1)) (pt_of_mm y.(1))
                                                    (pt_of_mm x.(2)) (pt_of_mm y.(2))
                                                    (pt_of_mm x.(3)) (pt_of_mm y.(3)));
@@ -553,8 +557,8 @@ module Pdf=
                          a b (Array.length str.substructures.(i).substructures);
                      if str.substructures.(i).page>=0 then
                        fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
-                         str.substructures.(i).struct_x
-                         str.substructures.(i).struct_y;
+                         (pt_of_mm str.substructures.(i).struct_x)
+                         (pt_of_mm str.substructures.(i).struct_y);
                      fprintf outChan ">> ";
                      endObject ()
                  done;
@@ -566,7 +570,7 @@ module Pdf=
 
 
              let outlines=futureObject () in
-             let a,b=make_outlines structure outlines in
+             let a,b=make_outlines structure (* { name=""; page=0; struct_x=0.; struct_y=0.; substructures=[|structure|] } *) outlines in
 
                resumeObject outlines;
                fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;

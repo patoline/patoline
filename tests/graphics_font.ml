@@ -46,12 +46,6 @@ let _=
                                                      ^ (string_of_int nb_glyphs) ^ " width : "^(string_of_float (glyphWidth gl)) );
         let out=outlines gl in
           draw_glyph xx0 yy0 out;
-          let x=find_right_density out (glyphWidth gl) (fun y ->1. ) 10000. in
-            Graphics.set_color Graphics.black;
-            Graphics.moveto xx0 yy0;
-            Graphics.lineto (xx0+round (glyphWidth gl)) yy0;
-            Graphics.moveto (xx0+round x) yy0;
-            Graphics.lineto (xx0+round x) (yy0+1000);
             Graphics.synchronize ();
             let s=Graphics.wait_next_event [Graphics.Key_pressed] in
               match s.Graphics.key with
