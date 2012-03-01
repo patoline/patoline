@@ -5,7 +5,7 @@ FONTS=$(FONTS0) Fonts.ml
 SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Typography.ml
 SOURCES=$(SOURCES0) Section.ml Parser.dyp Texprime.ml
 
-DOC=Drivers.mli Fonts/FTypes.ml Fonts.ml Hyphenate.mli Util.mli Typeset.mli Output.ml
+DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml
 
 EXEC = texprime
 
@@ -53,7 +53,7 @@ OBJS = $(SMLYL:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
 TEST = $(filter %.ml, $(SOURCES0))
-TESTOBJ = $(TEST:.ml=.cmo)
+TESTOBJ = $(TEST:.ml=.cmx)
 
 $(EXEC): $(OBJS)
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
@@ -65,8 +65,8 @@ $(EXEC).opt: $(OPTOBJS)
 typography.cma: $(TESTOBJ) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TESTOBJ) Typography.cmo
 
-test: $(TESTOBJ) Typography.cmo tests/document.ml
-	$(CAMLC) -o test $(TESTOBJ) Typography.cmo tests/document.ml
+test: $(TESTOBJ) Typography.cmx tests/document.ml
+	$(CAMLOPT) -o test $(TESTOBJ) tests/document.ml
 
 fonts.cma: $(FONTS0:.ml=.cmo) $(BASE:.ml=.cmo)
 	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0.ml=.cmo) Fonts.ml

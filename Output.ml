@@ -6,9 +6,9 @@ open Util
 open Fonts.FTypes
 open Drivers
 open CamomileLibrary
+open Typography
 
-
-let routine paragraphs (figures:drawingBox array) (opt_pages:(parameters*line) list array)=
+let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line) list array)=
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
   let par=ref (-1) in
   let draw_page i p=
@@ -69,7 +69,18 @@ let routine paragraphs (figures:drawingBox array) (opt_pages:(parameters*line) l
                    )
                  | _->())
       ) p;
-      page
+
+      let pnum=glyph_of_string env.substitutions env.positioning env.font env.size (string_of_int (i+1)) in
+      let (_,w,_)=boxes_interval (Array.of_list pnum) in
+      let x=(fst page.pageFormat -. w)/.2. in
+        List.iter (function
+                       (GlyphBox (s,a))->
+                         page.pageContents<- (Drivers.Glyph { glyph_x=x;glyph_y=20.; glyph_color=black;
+                                                              glyph_size=s;
+                                                              glyph=a.Util.glyph }) :: page.pageContents
+                     | _ -> ()
+                  ) pnum;
+        page
   in
   let a=Array.mapi draw_page opt_pages in
     (a, positions)

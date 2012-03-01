@@ -5,135 +5,24 @@ open Fonts
 open Fonts.FTypes
 
 
-let figures:drawingBox list ref=ref []
-
+(* Pour choisir la police, et d'autres paramètres, on a un
+   environnement. On peut tout modifier de manière uniforme sur tout
+   le document à partir de n'importe où (voir le type content pour les
+   scopes) *)
 type environment={
-  font:font;
-  size:float;
-  stdGlue:box;
-  hyphenate:string->(string*string) array;
-  substitutions:glyph_id list -> glyph_id list;
-  positioning:glyph_ids list -> glyph_ids list;
+  mutable font:font;
+  mutable size:float;
+  mutable stdGlue:box;
+  mutable hyphenate:string->(string*string) array;
+  mutable substitutions:glyph_id list -> glyph_id list;
+  mutable positioning:glyph_ids list -> glyph_ids list;
 }
-
-type content=
-    B of box
-  | T of string
-  | Scoped of (environment->environment)*(content list)
-
-let font f t=
-  let font=loadFont f in
-    Scoped ((fun env->
-               { env with
-                   font=font;
-                   substitutions=
-                   (fun glyphs -> List.fold_left apply glyphs (
-                      Fonts.select_features font [ StandardLigatures ]
-                    ));
-                   positioning=positioning font }), t)
-
-let size fsize t=
-  Scoped ((fun env -> { env with
-                          size=fsize;
-                          stdGlue=Glue { glue_min_width= 2.*. fsize/.9.;
-                                         glue_max_width= fsize/.2.;
-                                         glue_nominal_width= fsize/.3.;
-                                         glue_badness=knuth_h_badness (fsize/.3.) }
-                      }), t)
-
-type tree={
-  name:string;
-  content:content list list;
-  children:tree IntMap.t;
-  mutable tree_paragraph:int;
-}
-
-let doc_graph out t0=
-  Printf.fprintf out "digraph {\n";
-  let rec do_it path t=
-    Printf.fprintf out "%s [label=\"%s\"];\n" path t.name;
-    List.iter (fun (i,x)->
-                 let p=path^"_"^(string_of_int i) in
-                   Printf.fprintf out "%s -> %s;\n" path p;
-                   do_it p x) (IntMap.bindings t.children)
-  in
-    do_it "x0" t0;
-    Printf.fprintf out "}\n"
-
-let empty={ name=""; content=[]; children=IntMap.empty; tree_paragraph= (-1) }
-
-let cur=ref []
-let str=ref empty
-
-let next_key t=
-  try
-    fst (IntMap.max_binding t)+1
-  with
-      _ -> 0
-
-
-let newPar par=
-  let rec newPar tree path=
-    match path with
-        []->{ tree with content=par::tree.content }
-      | h::t->(
-          let t'=try IntMap.find h tree.children with _->empty in
-            { tree with children=IntMap.add h (newPar t' t) tree.children }
-        )
-  in
-    str:=newPar !str !cur
-
-let up ()=
-  let rec up=function
-      []->[]
-    | [h]->[]
-    | h::s-> h::up s
-  in
-    cur:=up !cur
-
-let add_features f t=
-  Scoped ((fun env->
-             { env with substitutions=
-                 (fun glyphs -> List.fold_left apply glyphs (
-                    Fonts.select_features env.font f
-                  ))
-             }),
-          t)
-
-let structNum path name=
-  let n=match path with
-      h::s->List.fold_left (fun x y -> x^"."^(string_of_int (y+1))) (string_of_int (h+1)) s
-    | []->"0"
-  in
-    if List.length path <= 1 then
-      [Scoped ((fun env->{ env with substitutions=(fun glyphs -> List.fold_left apply glyphs (
-                                                     Fonts.select_features env.font [OldStyleFigures; SmallCapitals]
-                                                   ));
-                             size=sqrt (sqrt phi)*.env.size
-                         }), [T (n ^ " " ^ (CM.uppercase name))])]
-    else
-      [add_features [OldStyleFigures] [T (n ^ " " ^ name)]]
-
-let newStruct name=
-  let rec newStruct tree path=
-    match path with
-        []-> (let next=next_key tree.children in
-                cur:= !cur @ [next];
-                { tree with children=IntMap.add next { empty with name=name } tree.children })
-      | h::t-> let t'=try IntMap.find h tree.children with _->empty in
-          { tree with children=IntMap.add h (newStruct t' t) tree.children }
-  in
-    str:=newStruct !str !cur
-
-let title t=str:= { !str with name=t }
-
-
 let defaultEnv=
   let f=loadFont "AGaramondPro-Regular.otf" in
   let fsize=5. in
     {
       font=f;
-      size=5.;
+      size=4.;
       stdGlue=Glue { glue_min_width= 2.*. fsize/.9.;
                      glue_max_width= fsize/.2.;
                      glue_nominal_width= fsize/.3.;
@@ -167,9 +56,141 @@ let defaultEnv=
     }
 
 
+(* Type du contenu. B est une boîte quelconque. Les espaces dans T
+   seront transformés en la boîte stdGlue de l'environnement, qui
+   n'est pas nécennairement une GlueBox *)
+type content=
+    B of box
+  | T of string
+  | Scoped of (environment->environment)*(content list)
+
+
+
+(****************************************************************)
+
+
+
+(* Le jeu est de construire la structure de document suivante :
+   C'est un arbre, avec du contenu texte à chaque nœud. *)
+
+type tree={
+  name:string;
+  content:content list list;
+  children:tree IntMap.t;
+  mutable tree_paragraph:int;
+}
+let empty={ name=""; content=[]; children=IntMap.empty; tree_paragraph= (-1) }
+
+(* La structure actuelle *)
+let str=ref empty
+(* Le chemin vers le noeud courant *)
+let cur=ref []
+
+(* Liste des figures. La définition des drawingBox est dans Util.ml,
+   c'est essentiellement le type du driver avec un cadre autour *)
+let figures:drawingBox list ref=ref []
+
+(* Sortie en dot de la structure du document *)
+let doc_graph out t0=
+  Printf.fprintf out "digraph {\n";
+  let rec do_it path t=
+    Printf.fprintf out "%s [label=\"%s\"];\n" path t.name;
+    List.iter (fun (i,x)->
+                 let p=path^"_"^(string_of_int i) in
+                   Printf.fprintf out "%s -> %s;\n" path p;
+                   do_it p x) (IntMap.bindings t.children)
+  in
+    do_it "x0" t0;
+    Printf.fprintf out "}\n"
+
+
+let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
+
+(* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
+let newPar par=
+  let rec newPar tree path=
+    match path with
+        []->{ tree with content=par::tree.content }
+      | h::t->(
+          let t'=try IntMap.find h tree.children with _->empty in
+            { tree with children=IntMap.add h (newPar t' t) tree.children }
+        )
+  in
+    str:=newPar !str !cur
+
+(* Remonter d'un niveau dans l'arbre, par rapport au noeud courant *)
+let up ()=
+  let rec up=function
+      []->[]
+    | [h]->[]
+    | h::s-> h::up s
+  in
+    cur:=up !cur
+
+
+let newStruct name=
+  let rec newStruct tree path=
+    match path with
+        []-> (let next=next_key tree.children in
+                cur:= !cur @ [next];
+                { tree with children=IntMap.add next { empty with name=name } tree.children })
+      | h::t-> let t'=try IntMap.find h tree.children with _->empty in
+          { tree with children=IntMap.add h (newStruct t' t) tree.children }
+  in
+    str:=newStruct !str !cur
+
+let title t=str:= { !str with name=t }
+
+
+(****************************************************************)
+
+
+(* Quelques Exemples d'environnement *)
+
+(* Changer de font dans un scope *)
+let font f t=
+  let font=loadFont f in
+    Scoped ((fun env->
+               { env with
+                   font=font;
+                   substitutions=
+                   (fun glyphs -> List.fold_left apply glyphs (
+                      Fonts.select_features font [ StandardLigatures ]
+                    ));
+                   positioning=positioning font }), t)
+
+(* Changer de taille dans un scope *)
+let size fsize t=
+  Scoped ((fun env -> { env with
+                          size=fsize;
+                          stdGlue=Glue { glue_min_width= 2.*. fsize/.9.;
+                                         glue_max_width= fsize/.2.;
+                                         glue_nominal_width= fsize/.3.;
+                                         glue_badness=knuth_h_badness (fsize/.3.) }
+                      }), t)
+
+
+(* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
+   qui existe *)
+let add_features f t=
+  Scoped ((fun env->
+             { env with substitutions=
+                 (fun glyphs -> List.fold_left apply glyphs (
+                    Fonts.select_features env.font f
+                  ))
+             }),
+          t)
+
+(****************************************************************)
+
+(* Partie compliquée : il faut comprendre ce que fait l'optimiseur
+   pour toucher à ça, ou apprendre en le touchant *)
+
 let exceptions=ref IntMap.empty
 
-let lineBreak p n=
+(* Garantit que la paragraphe p sera séparé du p-1 par au moins n
+   lignes. Voir l'usage plus loin dans flatten *)
+let lineBreak n p=
   let f=
     try
       let f0=IntMap.find p !exceptions in
@@ -180,6 +201,19 @@ let lineBreak p n=
   in
     exceptions:= IntMap.add p f !exceptions
 
+(* Garantit que la paragraphe p sera séparé du p-1 par au moins n pages *)
+let pageBreak n p=
+  let f=
+    try
+      let f0=IntMap.find p !exceptions in
+        (fun x line a b c -> if line.lineStart=0 then { (f0 x line a b c) with min_page_diff=(n+1) } else x)
+    with
+        _-> (fun x line a b c -> if line.lineStart=0 then { x with min_page_diff=(n+1) } else x)
+
+  in
+    exceptions:= IntMap.add p f !exceptions
+
+(* Centre les lignes d'un paragraphe. Il faut un optimiseur différent ici *)
 let center p=
   let f=
     try
@@ -201,14 +235,16 @@ let center p=
 
 let measure (_:line)=150.
 let parameters paragraphs figures last_parameters line (m0:float) (m1:float) (m2:float)=
-  let p={ format=a4; lead=6.;
+  let p={ format=a4; lead=5.;
           measure= measure line;
-          lines_by_page=
-      if line.page_height <= 0 then 38 else last_parameters.lines_by_page;
-          left_margin=
-      (if line.isFigure then (
-         20.+.(measure line -. (figures.(line.lastFigure).drawing_max_width +. figures.(line.lastFigure).drawing_min_width)/.2.)/.2.
-       ) else 20.);
+          lines_by_page=if line.page_height <= 0 then 45 else last_parameters.lines_by_page;
+          left_margin=(
+            let space=(fst a4-.measure line)/.2. in
+              if line.isFigure then (
+                space+.(measure line -. (figures.(line.lastFigure).drawing_max_width
+                                         +. figures.(line.lastFigure).drawing_min_width)/.2.)/.2.
+              ) else space
+          );
           local_optimization=0;
           min_page_diff=0;
           min_height_diff=1;
@@ -217,6 +253,29 @@ let parameters paragraphs figures last_parameters line (m0:float) (m1:float) (m2
         }
   in
     try (IntMap.find line.paragraph !exceptions) p line m0 m1 m2 with Not_found -> p
+
+
+
+
+(****************************************************************)
+
+(* Fonctions auxiliaires qui produisent un document optimisablo à
+   partir de l'arbre *)
+
+
+let structNum path name=
+  let n=match path with
+      h::s->List.fold_left (fun x y -> x^"."^(string_of_int (y+1))) (string_of_int (h+1)) s
+    | []->"0"
+  in
+    if List.length path <= 1 then
+      [Scoped ((fun env->{ env with substitutions=(fun glyphs -> List.fold_left apply glyphs (
+                                                     Fonts.select_features env.font [OldStyleFigures; SmallCapitals]
+                                                   ));
+                             size=sqrt (sqrt phi)*.env.size
+                         }), [T (n ^ " " ^ (CM.uppercase name))])]
+    else
+      [add_features [OldStyleFigures] [T (n ^ " " ^ name)]]
 
 
 let is_space c=c=' ' || c='\n' || c='\t'
@@ -264,11 +323,11 @@ let flatten env0 str=
   let rec flatten env path tree=
     tree.tree_paragraph<- !n;
     if path<>[] then (
-      lineBreak !n 1;
-      lineBreak (!n+1) 1;
+      lineBreak 1 !n;
+      lineBreak 1 (!n+1);
       add_paragraph (structNum path tree.name);
     ) else if tree.name<>"" then (
-      lineBreak (!n+1) 3;
+      lineBreak 3 (!n+1);
       center !n;
       add_paragraph [size 10. [T (tree.name)] ]
     );

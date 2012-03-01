@@ -24,5 +24,5 @@ let _=
     ~badness:(Badness.badness pars)
     pars
   in
-  let u,v=Output.routine pars [||] pages in
+  let u,v=Output.routine pars [||] defaultEnv pages in
     Drivers.Pdf.output ~structure:(make_struct v !str) u "test.pdf"

@@ -79,7 +79,7 @@ let _=
                              | Orphan h->(Printf.printf "Orphan : "; print_text_line paragraphs h)
                           ) log;
                 flush stdout;
-                Pdf.output (fst (Output.routine paragraphs figures pages)) (Pdf.filename h)
+                Pdf.output (fst (Output.routine paragraphs figures Typography.defaultEnv pages)) (Pdf.filename h)
     with
         Syntax_Error(pos,msg) ->
 	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg

@@ -1,3 +1,6 @@
+(** Ce module fournit les types de l'optimiseur, et toutes les
+    fonctions de manipulation *)
+
 type parameters = {
   format : float * float;
   lead : float;
@@ -67,16 +70,13 @@ type glyph = {
   y0 : float;
   y1 : float;
 }
-type drawing =
-    Curve of (float * float * Bezier.curve)
-  | Drawing_Box of (float * float * box)
 and drawingBox = {
   drawing_min_width : float;
   drawing_nominal_width : float;
   drawing_max_width : float;
   drawing_y0 : float;
   drawing_y1 : float;
-  drawing_contents : drawing list;
+  drawing_contents : Drivers.contents list;
 }
 and glueBox = {
   glue_min_width : float;

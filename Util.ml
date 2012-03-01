@@ -50,12 +50,9 @@ type 'a kerningBox='a Fonts.FTypes.kerningBox
 type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
                x0:float; x1:float; y0:float; y1:float }
 
-type drawing=
-    Curve of (float*float*curve)
-  | Drawing_Box of (float*float*box)
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
-                   drawing_contents:drawing list }
+                   drawing_contents:Drivers.contents list }
 
 and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float }
 
