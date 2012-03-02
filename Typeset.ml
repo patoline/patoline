@@ -264,7 +264,8 @@ let typeset ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(fi
                               )
                             in
                               if height>=height'
-                                && (page,height) >= (node.page + !r_params.min_page_diff, node.height + !r_params.min_height_diff)
+                                && (page,height) >= (node.page + !r_params.min_page_diff,
+                                                     node.height + !r_params.min_height_diff)
                               then (
                                 let allow_orphan= (!r_params).allow_orphans
                                   || page=node.page || node.paragraph_height>0 in
@@ -308,7 +309,9 @@ let typeset ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(fi
                                   )
                               )
                         in
-                          if j>=Array.length (paragraphs.(pi)) then (if sum_min<=measure0 then make_next_node (-1)) else (
+                          if j>=Array.length (paragraphs.(pi)) then (
+                            if sum_min<=measure0 || allow_impossible then make_next_node (-1)
+                          ) else (
                             (match paragraphs.(pi).(j) with
                                  Hyphen x->(
                                    for k=0 to Array.length x.hyphenated-1 do
@@ -327,7 +330,16 @@ let typeset ~measure ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(fi
                                    | _->());
                               let a,b,c=box_interval paragraphs.(pi).(j) in
                                 break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
-                            ) else if allow_impossible then (make_next_node (-1))
+                            ) else (
+                              if allow_impossible then (
+                                match paragraphs.(pi).(j) with
+                                    Glue _->make_next_node (-1)
+                                  | _->(
+                                      let a,b,c=box_interval paragraphs.(pi).(j) in
+                                        break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
+                                    )
+                              )
+                            )
                           )
                       in
                         if node.hyphenEnd>=0 then (
