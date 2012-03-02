@@ -100,7 +100,7 @@ let bernstein_solve f=
             if discr=0. then [-.b/.(2.*.a)] else
               [ (-.b-.sqrt discr)/.(2.*.a); (-.b+.sqrt discr)/.(2.*.a) ]
       ) else (
-        descartes 0. 1. (1e-20) f
+        descartes 0. 1. (1e-5) f
       )
     )
   )
@@ -175,3 +175,50 @@ let bounding_box (a,b)=
   let (x0,x1)=bernstein_extr a in
   let (y0,y1)=bernstein_extr b in
     (x0,y0), (x1,y1)
+
+
+let intersect (a,b) (c,d)=
+  let eps=1e-5 in
+  let extr_a= List.filter (fun x-> x>=0. && x<=1.)
+    (0. :: (List.sort compare (bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
+  let extr_c= List.filter (fun x-> x>=0. && x<=1.)
+    (0. :: (List.sort compare (bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
+  let sort x y=if x<y then (x,y) else (y,x) in
+  let rec make_intervals l1 l2=match l1,l2 with
+      [],_-> []
+    | [_],_->[]
+    | _,[]-> []
+    | _,[_]->[]
+    | h1::h2::s, h1'::h2'::s'-> (h1,h2,h1',h2')::(make_intervals (h2::s) l2)@(make_intervals l1 (h2'::s'))
+  in
+  let rec inter l res=match l with
+      []->res
+    | (u1,v1,u2,v2)::s ->(
+        let xa0,xa1=sort (eval a u1) (eval a v1) in
+        let ya0,ya1=sort (eval b u1) (eval b v1) in
+        let xc0,xc1=sort (eval c u2) (eval c v2) in
+        let yc0,yc1=sort (eval d u2) (eval d v2) in
+          if xa1<xc0 || xa0 > xc1 || ya1<yc0 || ya0 > yc1 then
+            inter s res
+          else (
+            let m1=(u1+.v1)/.2. in
+            let m2=(u2+.v2)/.2. in
+              if v1-.u1 < eps && v2-.u2 < eps then
+                inter s ((m1,m2)::res)
+              else (
+                inter ((u1,m1,u2,m2)::(u1,m1,m2,v2)::
+                         (m1,v1,u2,m2)::(m1,v1,m2,v2)::s)
+                  res
+              )
+          )
+      )
+  in
+    inter (make_intervals extr_a extr_c) []
+
+let x1=[| 0.; 100.; 200.; 200.|]
+let y1=[| 0.; 0.; 100.; 200.|]
+
+let x2=[| 0.; 0.; 100.; 200.|]
+let y2=[| 200.; 100.; 0.; 0.|]
+
+let _=intersect (x1,y1) (x2,y2)
