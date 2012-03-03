@@ -360,17 +360,9 @@ let intersect (a,b) (c,d)=
     in
     let rec inter l res=match l with
         []->res
-      | (u1,v1,u2,v2)::s ->(
-          let x0=(eval a u1) in
-          let x1=(eval a v1) in
-          let y0=(eval b u1) in
-          let y1=(eval b v1) in
+      | (u1,v1,x0,y0,x1,y1,u2,v2,x0',y0',x1',y1')::s ->(
           let xa0,xa1=sort x0 x1 in
           let ya0,ya1=sort y0 y1 in
-          let x0'=(eval c u2) in
-          let x1'=(eval c v2) in
-          let y0'=(eval d u2) in
-          let y1'=(eval d v2) in
           let xc0,xc1=sort x0' x1' in
           let yc0,yc1=sort y0' y1' in
             if xa1<xc0 || xa0 > xc1 || ya1<yc0 || ya0 > yc1 then
@@ -385,14 +377,24 @@ let intersect (a,b) (c,d)=
                      inter s res
                   )
                 else (
-                  inter ((u1,m1,u2,m2)::(u1,m1,m2,v2)::
-                           (m1,v1,u2,m2)::(m1,v1,m2,v2)::s)
-                    res
+                  let xm1=eval a m1 in
+                  let ym1=eval b m1 in
+                  let xm2=eval c m2 in
+                  let ym2=eval d m2 in
+                    inter ((u1,m1,x0,y0,xm1,ym1,   u2,m2,x0',y0',xm2,ym2)::
+                             (m1,v1,xm1,ym1,x1,y1,   u2,m2,x0',y0',xm2,ym2)::
+                             (u1,m1,x0,y0,xm1,ym1,   m2,v2,xm2,ym2,x1',y1')::
+                             (m1,v1,xm1,ym1,x1,y1,   m2,v2,xm2,ym2,x1',y1')::
+                             s)
+                      res
                 )
             )
         )
     in
-      inter (make_intervals extr_a extr_c) []
+      inter (List.map (fun (u1,v1,u2,v2)->
+                         (u1,v1,eval a u1, eval b u1, eval a v1, eval b v1,
+                          u2,v2,eval c u2, eval d u2, eval c v2, eval d v2)
+                      ) (make_intervals extr_a extr_c)) []
 
 let x1=[| 0.; 100.; 200.; 200.|]
 let y1=[| 0.; 0.; 100.; 200.|]

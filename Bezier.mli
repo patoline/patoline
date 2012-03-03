@@ -32,3 +32,9 @@ val bernstein_extr : float array -> float * float
     définissable comme ça qui contient la courbe *)
 val bounding_box :
   float array * float array -> (float * float) * (float * float)
+
+(** Cet algorithme est une combinaison de l'algo naif sur les morceaux
+    convexes des courbes, et d'un calcul de resultant pour verifer la
+    sortie *)
+val intersect :
+  float array * float array -> float array * float array -> (float * float) list

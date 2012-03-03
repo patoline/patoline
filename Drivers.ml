@@ -326,7 +326,7 @@ module Pdf=
                  set_line_cap params.lineCap;
                  set_line_width (pt_of_mm params.lineWidth);
                  set_dash_pattern params.dashPattern;
-                 (match params.fillColor with
+                 (match params.strokingColor with
                       None->()
                     | Some col -> change_stroking_color col);
                  (match params.fillColor with
