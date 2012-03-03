@@ -177,6 +177,154 @@ let bounding_box (a,b)=
     (x0,y0), (x1,y1)
 
 
+
+
+let mult a b=
+  let result=Array.make_matrix (Array.length a) (Array.length b.(0)) 0. in
+    for i=0 to Array.length result-1 do
+      for j=0 to Array.length result.(0)-1 do
+        let rec compute k sum=
+          if k>=Array.length b then result.(i).(j)<-sum else
+            compute (k+1) (sum+.a.(i).(k)*.b.(k).(j))
+        in
+          compute 0 0.
+      done
+    done;
+    result
+
+(* let fwd_subst l= *)
+(*   let result=Array.make_matrix (Array.length l) (Array.length l.(0)) 0. in *)
+(*     for j=0 to Array.length l-1 do *)
+(*       for i=0 to Array.length l-1 do *)
+(*         let rec compute k sum= *)
+(*           if k>=i then ( *)
+(*             if i=j then *)
+(*               result.(i).(j)<-(1.-.sum)/.l.(i).(i) *)
+(*             else *)
+(*               result.(i).(j)<-(-.sum)/.l.(i).(i) *)
+(*           ) else *)
+(*             compute (k+1) (sum +. l.(i).(k)*.result.(k).(j)) *)
+(*         in *)
+(*           compute 0 0. *)
+(*       done *)
+(*     done; *)
+(*     result *)
+
+(* let a=[| *)
+(*   [|1.;0.;0.;0.|]; *)
+(*   [|0.;1.;0.;0.|]; *)
+(*   [|0.;4.;1.;0.|]; *)
+(*   [|0.;2.;0.;1.|] *)
+(* |] *)
+
+(* let _=fwd_subst a *)
+
+
+let det a=
+  let sign=ref 1 in
+    for j=0 to Array.length a.(0)-1 do
+      let rec maxi i k=
+        if i>=Array.length a then k else
+          if abs_float a.(k).(j) < abs_float a.(i).(j) then maxi (i+1) i else
+            maxi (i+1) k
+      in
+      let pivot=maxi j j in
+
+      let tmp=a.(pivot) in
+        a.(pivot)<-a.(j);
+        a.(j)<- tmp;
+
+        if (pivot-j) land 1 = 1 then sign:= - !sign;
+        for i=j+1 to Array.length a-1 do
+          let fact= a.(i).(j)/.a.(j).(j) in
+            for k=0 to Array.length a.(0)-1 do
+              a.(i).(k)<-a.(i).(k) -. fact *. a.(j).(k)
+            done
+        done
+    done;
+    let rec d i s=
+      if i>=Array.length a then
+        if !sign>0 then s else -.s
+      else
+        d (i+1) (s*.a.(i).(i))
+    in
+      d 0 1.
+
+
+(* let a= *)
+(*   let n=4 in *)
+(*   let b=10. in *)
+(*   let a=Array.make_matrix n n 0. in *)
+(*     for i=0 to n-1 do *)
+(*       for j=0 to n-1 do *)
+(*         a.(i).(j)<-(Random.float b)-.b/.2. *)
+(*       done *)
+(*     done; *)
+(*     a *)
+
+(* let print_maple a= *)
+(*   Printf.printf "["; *)
+(*   for i=0 to Array.length a-1 do *)
+(*     Printf.printf "%s[" (if i=0 then "" else ","); *)
+(*     for j=0 to Array.length a.(i)-1 do *)
+(*       Printf.printf "%s%f" (if j>0 then "," else "") a.(i).(j); *)
+(*     done; *)
+(*     Printf.printf "]"; *)
+(*   done; *)
+(*   Printf.printf "]" *)
+
+(* let _=print_maple a *)
+
+(* let _=det a *)
+
+let binom n=
+  let a=Array.make_matrix n n 0 in
+    for i=0 to n-1 do
+      a.(0).(i)<-1
+    done;
+    for i=1 to n-1 do
+      for j=i to n-1 do
+        a.(i).(j)<-
+          if i<=j then
+            a.(i-1).(j-1)+a.(i).(j-1)
+          else
+            0
+      done
+    done;
+    a
+let _=binom 4
+
+let monomial a=
+  let b=binom (Array.length a) in
+  let x=Array.make (Array.length a) 0. in
+    for k=0 to Array.length a-1 do
+      for i=k to Array.length a-1 do
+        let f=(float_of_int (b.(k).(i)*b.(i).(Array.length a-1))) *. a.(k) in
+
+        x.(i)<-x.(i) +. (if (i-k) land 1=1 then -.f else f)
+
+      done
+    done;
+    x
+
+(* let evalm a t= *)
+(*   let rec ev i s=if i<0 then s else *)
+(*     ev (i-1) ((s*.t)+.a.(i)) *)
+(*   in *)
+(*     ev (Array.length a-1) 0. *)
+
+(* let a= *)
+(*   let b=20. in *)
+(*   let a=Array.make 10 0. in *)
+(*     for i=0 to Array.length a-1 do *)
+(*       a.(i)<-(Random.float b)-.b/.2. *)
+(*     done; *)
+(*     a *)
+
+(* let _=eval a 0.25 *)
+(* let _=evalm (monomial a) 0.25 *)
+
+
 let intersect (a,b) (c,d)=
   let eps=1e-5 in
   let extr_a= List.filter (fun x-> x>=0. && x<=1.)
@@ -189,31 +337,62 @@ let intersect (a,b) (c,d)=
     | [_],_->[]
     | _,[]-> []
     | _,[_]->[]
-    | h1::h2::s, h1'::h2'::s'-> (h1,h2,h1',h2')::(make_intervals (h2::s) l2)@(make_intervals l1 (h2'::s'))
+    | h1::h2::s, h1'::h2'::s'-> (h1,h2,h1',h2')::(make_intervals [h1;h2] (h2'::s'))@(make_intervals (h2::s) l2)
   in
-  let rec inter l res=match l with
-      []->res
-    | (u1,v1,u2,v2)::s ->(
-        let xa0,xa1=sort (eval a u1) (eval a v1) in
-        let ya0,ya1=sort (eval b u1) (eval b v1) in
-        let xc0,xc1=sort (eval c u2) (eval c v2) in
-        let yc0,yc1=sort (eval d u2) (eval d v2) in
-          if xa1<xc0 || xa0 > xc1 || ya1<yc0 || ya0 > yc1 then
-            inter s res
-          else (
-            let m1=(u1+.v1)/.2. in
-            let m2=(u2+.v2)/.2. in
-              if v1-.u1 < eps && v2-.u2 < eps then
-                inter s ((m1,m2)::res)
-              else (
-                inter ((u1,m1,u2,m2)::(u1,m1,m2,v2)::
-                         (m1,v1,u2,m2)::(m1,v1,m2,v2)::s)
-                  res
-              )
-          )
-      )
-  in
-    inter (make_intervals extr_a extr_c) []
+
+  let inside x y x0 y0=
+    let resultant=Array.make_matrix (Array.length x+Array.length x-1) (Array.length x+Array.length x-1) 0. in
+    let ma=monomial x in
+    let mb=monomial y in
+      for i=0 to Array.length mb-2 do
+        for j=0 to Array.length ma-1 do
+          resultant.(i).(i+j)<-ma.(Array.length ma-1-j)
+        done;
+        resultant.(i).(i+Array.length a-1)<-resultant.(i).(i+Array.length a-1) -. x0
+      done;
+      for i=Array.length mb-1 to Array.length resultant-1 do
+        for j=0 to Array.length mb-1 do
+          resultant.(i).(i-Array.length mb+1 + j)<-mb.(Array.length mb-1-j)
+        done;
+        resultant.(i).(i)<-resultant.(i).(i) -. y0
+      done;
+      det resultant
+    in
+    let rec inter l res=match l with
+        []->res
+      | (u1,v1,u2,v2)::s ->(
+          let x0=(eval a u1) in
+          let x1=(eval a v1) in
+          let y0=(eval b u1) in
+          let y1=(eval b v1) in
+          let xa0,xa1=sort x0 x1 in
+          let ya0,ya1=sort y0 y1 in
+          let x0'=(eval c u2) in
+          let x1'=(eval c v2) in
+          let y0'=(eval d u2) in
+          let y1'=(eval d v2) in
+          let xc0,xc1=sort x0' x1' in
+          let yc0,yc1=sort y0' y1' in
+            if xa1<xc0 || xa0 > xc1 || ya1<yc0 || ya0 > yc1 then
+              inter s res
+            else (
+              let m1=(u1+.v1)/.2. in
+              let m2=(u2+.v2)/.2. in
+                if v1-.u1 < eps && v2-.u2 < eps then
+                  (if inside a b x0' y0' *. inside a b x1' y1' < 0. && inside c d x0 y0 *. inside c d x1 y1 < 0. then
+                     inter s ((m1,m2)::res)
+                   else
+                     inter s res
+                  )
+                else (
+                  inter ((u1,m1,u2,m2)::(u1,m1,m2,v2)::
+                           (m1,v1,u2,m2)::(m1,v1,m2,v2)::s)
+                    res
+                )
+            )
+        )
+    in
+      inter (make_intervals extr_a extr_c) []
 
 let x1=[| 0.; 100.; 200.; 200.|]
 let y1=[| 0.; 0.; 100.; 200.|]
