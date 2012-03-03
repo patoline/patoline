@@ -32,7 +32,7 @@ type path_parameters= {
 }
 
 let default= { close=false;strokingColor=Some black;fillColor=None;
-               lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=pt_of_mm 1.;
+               lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=1.;
                dashPattern=[] }
 
 type glyph={ glyph_x:float; glyph_y:float; glyph_color: color; glyph_size:float; glyph:Fonts.glyph }
@@ -169,7 +169,7 @@ module Pdf=
              (* Dessins *)
            let strokingColor=ref black in
            let nonStrokingColor=ref black in
-           let lineWidth=ref (pt_of_mm 1.) in
+           let lineWidth=ref 1. in
            let lineJoin=ref Miter_join in
            let lineCap=ref Butt_cap in
            let dashPattern=ref [] in
