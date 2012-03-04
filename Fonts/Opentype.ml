@@ -142,20 +142,31 @@ let loadGlyph f ?index:(idx=0) gl=
       CFF (x,_)->CFFGlyph (f, CFF.loadGlyph x ~index:idx gl)
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
+let glyph_y0 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_y0 x
+let glyph_y1 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_y1 x
 
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
 
+let glyphContents gl=match gl with
+    CFFGlyph (_,x)->CFF.glyphContents x
+
 
 let glyphWidth gl=
   match gl with
-      CFFGlyph (CFF(f, offset),x)->
+      CFFGlyph (_,x) when x.glyphWidth <> infinity -> x.glyphWidth
+    | CFFGlyph (CFF(f, offset),x)->
         (let num=(CFF.glyphNumber x).glyph_index in
          let (a,_)=tableLookup "hhea" f.CFF.file offset in
          let nh=(seek_in (f.CFF.file) (a+34); readInt2 f.CFF.file) in
          let (b,_)=tableLookup "hmtx" f.CFF.file offset in
            seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
-           (float_of_int (readInt2 f.CFF.file)))
+           let w=float_of_int (readInt2 f.CFF.file) in
+             x.glyphWidth<-w;
+             w
+        )
 let fontName ?index:(idx=0) f =
   match f with
       CFF (x,_)->CFF.fontName x ~index:idx

@@ -1,6 +1,3 @@
-(** Ce module implémente un type somme de tous les types de fonts
-    existants, avec l'interface de FTypes, qu'il ré-exporte *)
-
 exception Not_supported
 module FTypes :
   sig
@@ -71,6 +68,7 @@ module FTypes :
     val print_int_array : int array -> unit
     val print_int_list : int list -> unit
     val print_subst : substitution -> unit
+    val apply_ligature : glyph_id list -> subst -> glyph_id list
     val apply_subst : glyph_id list -> subst -> glyph_id list
     val apply_alternative :
       glyph_id list -> int array -> int -> glyph_id list
@@ -88,6 +86,9 @@ module FTypes :
         val glyphFont : glyph -> font
         val glyphNumber : glyph -> glyph_id
         val glyphWidth : glyph -> float
+        val glyphContents : glyph -> CamomileLibrary.UTF8.t
+        val glyph_y0 : glyph -> float
+        val glyph_y1 : glyph -> float
         val fontName : ?index:int -> font -> string
         val font_features : font -> features list
         val select_features : font -> features list -> substitution list
@@ -114,7 +115,10 @@ module Opentype :
     val glyphFont : glyph -> font
     val loadGlyph : font -> ?index:int -> FTypes.glyph_id -> glyph
     val outlines : glyph -> (float array * float array) list list
+    val glyph_y0 : glyph -> float
+    val glyph_y1 : glyph -> float
     val glyphNumber : glyph -> FTypes.glyph_id
+    val glyphContents : glyph -> CamomileLibrary.UTF8.t
     val glyphWidth : glyph -> float
     val fontName : ?index:int -> font -> string
     val otype_file : font -> in_channel * int
@@ -185,6 +189,12 @@ module CFF :
       matrix : float array;
       subrs : string array;
       gsubrs : string array;
+      glyphContents : CamomileLibrary.UTF8.t;
+      mutable glyphWidth : float;
+      mutable glyphX0 : float;
+      mutable glyphX1 : float;
+      mutable glyphY0 : float;
+      mutable glyphY1 : float;
     }
     val glyphFont : glyph -> font
     val showStack : float array -> int -> unit
@@ -205,6 +215,10 @@ module CFF :
     val outlines_ : glyph -> bool -> (float array * float array) list list
     val outlines : glyph -> (float array * float array) list list
     val glyphWidth : glyph -> float
+    val glyphContents : glyph -> CamomileLibrary.UTF8.t
+    val compute_bb : glyph -> unit
+    val glyph_y0 : glyph -> float
+    val glyph_y1 : glyph -> float
     val glyphNumber : glyph -> FTypes.glyph_id
     val fontName : ?index:int -> font -> string
     val fontBBox : ?index:int -> font -> int * int * int * int
@@ -213,6 +227,8 @@ module CFF :
     val select_features : 'a -> 'b -> 'c list
     val positioning : 'a -> 'b -> 'b
   end
+module Opentype_ : Font
+module CFF_ : Font
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
 val loadFont : ?offset:int -> ?size:int -> string -> font
@@ -222,9 +238,13 @@ val loadGlyph : font -> FTypes.glyph_id -> glyph
 val cardinal : font -> int
 val outlines : glyph -> (float array * float array) list list
 val glyphFont : glyph -> font
+val glyphContents : glyph -> CamomileLibrary.UTF8.t
 val glyphNumber : glyph -> FTypes.glyph_id
 val glyphWidth : glyph -> float
+val glyph_y0 : glyph -> float
+val glyph_y1 : glyph -> float
 val fontName : font -> string
 val select_features :
   font -> FTypes.features list -> FTypes.substitution list
+val fontFeatures : font -> Opentype.FeatSet.elt list
 val positioning : font -> FTypes.glyph_ids list -> FTypes.glyph_ids list

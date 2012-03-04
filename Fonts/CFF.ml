@@ -1,3 +1,4 @@
+open CamomileLibrary
 open Binary
 open Bezier
 open Constants
@@ -8,7 +9,12 @@ type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int a
              gsubrIndex:string array
            }
 
-type glyph= { glyphFont:font; glyphNumber:glyph_id; type2:string; matrix:float array; subrs:string array; gsubrs:string array }
+type glyph= { glyphFont:font; glyphNumber:glyph_id; type2:string; matrix:float array; subrs:string array; gsubrs:string array;
+              glyphContents:UTF8.t;
+              mutable glyphWidth:float;
+              mutable glyphX0:float; mutable glyphX1:float;
+              mutable glyphY0:float; mutable glyphY1:float
+            }
 
 let glyphFont gl=gl.glyphFont
 
@@ -274,7 +280,11 @@ let loadGlyph font ?index:(idx=0) gl=
       type2=indexGet font.file (font.offset+charStrings) gl.glyph_index;
       matrix=Array.of_list fontMatrix;
       subrs=font.subrIndex.(idx);
-      gsubrs=font.gsubrIndex }
+      gsubrs=font.gsubrIndex;
+      glyphContents=gl.glyph_utf8;
+      glyphWidth=infinity;
+      glyphX0=infinity; glyphX1= -.infinity;
+      glyphY0=infinity; glyphY1= -.infinity }
 
 let cardinal font=
   let idx=0 in
@@ -662,17 +672,43 @@ let outlines_ gl onlyWidth=
 
 let outlines glyph=outlines_ glyph false
 let glyphWidth glyph=
-  try let _=outlines_ glyph true in raise (Found 0.) with
-      Found x->
-        (try
-           let f=glyph.glyphFont.file in
-           let off=glyph.glyphFont.offset in
-           let privOffset=findDict f (glyph.glyphFont.dictIndex.(0)) (glyph.glyphFont.dictIndex.(1)) 18 in
-             match privOffset with
-                 offset::size::_->List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 21)
-               | _->0.
-         with
-             _->0.)+.x
+  if glyph.glyphWidth=infinity then
+    glyph.glyphWidth<-(
+      try let _=outlines_ glyph true in raise (Found 0.) with
+          Found x->
+            (try
+               let f=glyph.glyphFont.file in
+               let off=glyph.glyphFont.offset in
+               let privOffset=findDict f (glyph.glyphFont.dictIndex.(0)) (glyph.glyphFont.dictIndex.(1)) 18 in
+                 match privOffset with
+                     offset::size::_->List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 21)
+                   | _->0.
+             with
+                 _->0.)+.x
+    );
+  glyph.glyphWidth
+
+
+let glyphContents gl=gl.glyphContents
+let compute_bb gl=
+  List.iter (List.iter (fun (x,y)->
+                          let (a,b)=Bezier.bernstein_extr x in
+                          let (c,d)=Bezier.bernstein_extr y in
+                            gl.glyphX0<-min gl.glyphX0 a;
+                            gl.glyphX1<-max gl.glyphX1 b;
+                            gl.glyphY0<-min gl.glyphY0 c;
+                            gl.glyphY1<-max gl.glyphY1 d)
+            )
+    (outlines gl)
+
+
+let glyph_y0 gl=
+  if gl.glyphY0 = infinity then compute_bb gl;
+  gl.glyphY0
+
+let glyph_y1 gl=
+  if gl.glyphY1 = -.infinity then compute_bb gl;
+  gl.glyphY1
 
 
 let glyphNumber glyph=glyph.glyphNumber

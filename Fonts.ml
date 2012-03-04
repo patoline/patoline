@@ -66,6 +66,12 @@ let glyphFont gl=
       CFFGlyph x->CFF (CFF.glyphFont x)
     | OpentypeGlyph x->Opentype (Opentype.glyphFont x)
 
+let glyphContents gl=
+  match gl with
+      CFFGlyph x->CFF.glyphContents x
+    | OpentypeGlyph x->Opentype.glyphContents x
+
+
 let glyphNumber gl=
   match gl with
       CFFGlyph x->CFF.glyphNumber x
@@ -76,15 +82,28 @@ let glyphWidth gl=
       CFFGlyph x->CFF.glyphWidth x
     | OpentypeGlyph x->Opentype.glyphWidth x
 
+let glyph_y0 gl=
+  match gl with
+      CFFGlyph x->CFF.glyph_y0 x
+    | OpentypeGlyph x->Opentype.glyph_y0 x
+let glyph_y1 gl=
+  match gl with
+      CFFGlyph x->CFF.glyph_y1 x
+    | OpentypeGlyph x->Opentype.glyph_y1 x
+
 let fontName f=
   match f with
       CFF x->CFF.fontName x
     | Opentype x->Opentype.fontName x
 
-
 let select_features a b=match a with
     CFF x->CFF.select_features x b
   | Opentype x->Opentype.select_features x b
+
+let fontFeatures a=match a with
+    CFF x->CFF.font_features x
+  | Opentype x->Opentype.font_features x
+
 
 let positioning f glyphs=
   match f with

@@ -227,6 +227,9 @@ module type Font=(
     val glyphFont:glyph->font
     val glyphNumber:glyph->glyph_id
     val glyphWidth:glyph->float
+    val glyphContents:glyph->UTF8.t
+    val glyph_y0:glyph->float
+    val glyph_y1:glyph->float
     val fontName:?index:int->font->string
 
     (** Lists all the available features of the font *)
