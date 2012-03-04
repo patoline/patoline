@@ -52,7 +52,7 @@ type contents =
   | Path of path_parameters * Bezier.curve array
   | Link of link
 val translate : float -> float -> contents -> contents
-val bounding_box : 'a -> contents list -> float * float * float * float
+val bounding_box : contents list -> float * float * float * float
 type page = {
   mutable pageFormat : float * float;
   mutable pageContents : contents list;

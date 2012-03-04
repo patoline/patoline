@@ -49,9 +49,10 @@ module LineMap=New_map.Make(Line)
 
 type 'a kerningBox='a Fonts.FTypes.kerningBox
 
-type drawingBox = { drawing_min_width:float; drawing_nominal_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
-                   drawing_badness : float -> float;
-                   drawing_contents:float -> Drivers.contents list }
+type drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
+                    drawing_max_width:float; drawing_y0:float; drawing_y1:float;
+                    drawing_badness : float -> float;
+                    drawing_contents:float -> Drivers.contents list }
 
 and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float;
                 glue_contents : float -> Drivers.contents list }
@@ -66,6 +67,17 @@ and box=
   | Hyphen of hyphenBox
   | Empty
 
+let drawing yOff cont=
+  let (a,b,c,d)=Drivers.bounding_box cont in
+    {
+      drawing_min_width=c-.a;
+      drawing_nominal_width=c-.a;
+      drawing_max_width=c-.a;
+      drawing_y0=yOff+.b;
+      drawing_y1=yOff+.d;
+      drawing_badness=(fun _->0.);
+      drawing_contents=(fun _->cont)
+    }
 
 type error_log=
     Overfull_line of line
@@ -283,18 +295,6 @@ let glyphCache cur_font gl=
     try IntMap.find gl.glyph_index !font with
         Not_found->
           (let glyph=Fonts.loadGlyph cur_font gl in
-           let (y0,y1)=List.fold_left (List.fold_left (fun (a,b) (_,y)->
-                                                         let (c,d)=Bezier.bernstein_extr y in
-                                                           (min a c, max b d)
-                                                      ))
-             (1./.0., -1./.0.) (Fonts.outlines glyph)
-           in
-           let (x0,x1)=List.fold_left (List.fold_left (fun (a,b) (y,_)->
-                                                        let (c,d)=Bezier.bernstein_extr y in
-                                                          (min a c, max b d)
-                                                     ))
-             (1./.0., -1./.0.) (Fonts.outlines glyph)
-           in
            let loaded={ glyph=glyph;
                         glyph_x=infinity;glyph_y=infinity;
                         glyph_color=black;

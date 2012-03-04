@@ -17,17 +17,12 @@ let fig=
       { FTypes.empty_glyph with
           FTypes.glyph_index=34} }
   in
+    drawing (-10.) [
+      Path ({ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }, [| a,b |]);
+      Path ({ default with lineWidth=0.1 }, [| c,d |]);
+      cont
+    ]
 
-    {
-      drawing_min_width=10.;drawing_max_width=10.;drawing_nominal_width=10.;
-      drawing_y0=0.;drawing_y1=10.;
-      drawing_badness=(fun _->0.);
-      drawing_contents=(fun _->[
-                          Path ({ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }, [| a,b |]);
-                          Path ({ default with lineWidth=0.1 }, [| c,d |]);
-                          cont
-                        ]);
-    }
 
 let _=
   title "Bacon Ipsum";
@@ -37,7 +32,7 @@ let _=
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
   in
-  newPar (normal 120.) params [font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun _->Drawing fig); T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."];
+  newPar (normal 120.) params [font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun env->env.stdGlue); B (fun _->Drawing fig); B (fun env->env.stdGlue);T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."];
 
   let ragged_left a b c line=
     let par=parameters a b c line in

@@ -72,14 +72,14 @@ let bounding_box l=
             let (xa,ya),(xb,yb)=Bezier.bounding_box p.(i) in
               x0' := min !x0' xa;
               y0' := min !y0' ya;
-              x1' := min !x1' xb;
-              y1' := min !y1' yb;
+              x1' := max !x1' xb;
+              y1' := max !y1' yb;
           done;
           bb !x0' !y0' !x1' !y1' s
       )
     | _::s -> bb x0 y0 x1 y1 s
   in
-    bb infinity infinity (-.infinity) (-.infinity)
+    bb infinity infinity (-.infinity) (-.infinity) l
 
 
 type page = { mutable pageFormat:float*float; mutable pageContents:contents list }

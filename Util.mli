@@ -92,6 +92,8 @@ and box =
   | Drawing of drawingBox
   | Hyphen of hyphenBox
   | Empty
+
+val drawing : float -> Drivers.contents list -> drawingBox
 type error_log = Overfull_line of line | Widow of line | Orphan of line
 type citation= { citation_paragraph:int; citation_box:int }
 val fold_left_line : box array array -> ('a -> box -> 'a) -> 'a -> line -> 'a
