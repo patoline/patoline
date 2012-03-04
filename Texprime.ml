@@ -13,7 +13,7 @@ exception Syntax_Error of Lexing.position * string
 
 let measure line=150.(* if line.height<20 then 150. else 100. *)
 let default paragraphs figures last_parameters line _ _ _=
-      { format=a4; lead=5.;
+      { lead=5.;
         measure=measure line;
         lines_by_page=
           if line.page_height <= 0 then 48 else last_parameters.lines_by_page;

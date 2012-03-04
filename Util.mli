@@ -1,14 +1,14 @@
 (** Ce module fournit les types de l'optimiseur, et toutes les
     fonctions de manipulation *)
-
+open Drivers
 type parameters = {
-  format : float * float;
   lead : float;
   measure : float;
   lines_by_page : int;
   left_margin : float;
   local_optimization : int;
-  min_height_diff:int;
+  min_height_before:int;
+  min_height_after:int;
   min_page_diff:int;
   allow_widows:bool;
   allow_orphans:bool
@@ -28,6 +28,9 @@ type line = {
   paragraph_height : int;
   mutable page_height:int;
   mutable page : int;
+  min_width : float;
+  nom_width : float;
+  max_width : float
 }
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
@@ -61,37 +64,31 @@ module LineMap :
     val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
   end
 type 'a kerningBox = 'a Fonts.FTypes.kerningBox
-type glyph = {
-  contents : CamomileLibrary.UTF8.t;
-  glyph : Fonts.glyph;
-  width : float;
-  x0 : float;
-  x1 : float;
-  y0 : float;
-  y1 : float;
-}
-and drawingBox = {
+
+type drawingBox = {
   drawing_min_width : float;
   drawing_nominal_width : float;
   drawing_max_width : float;
   drawing_y0 : float;
   drawing_y1 : float;
-  drawing_contents : Drivers.contents list;
+  drawing_badness : float -> float;
+  drawing_contents : float -> Drivers.contents list;
 }
 and glueBox = {
   glue_min_width : float;
   glue_max_width : float;
   glue_nominal_width : float;
   glue_badness : float -> float;
+  glue_contents : float -> Drivers.contents list;
 }
 and hyphenBox = {
   hyphen_normal : box array;
   hyphenated : (box array * box array) array;
 }
 and box =
-    GlyphBox of (float * glyph)
+    GlyphBox of Drivers.glyph
   | Kerning of box kerningBox
-  | Glue of glueBox
+  | Glue of drawingBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
   | Empty

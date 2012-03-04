@@ -46,5 +46,4 @@ val insert : ptree -> string -> ptree
 (** Inserts an exceptional pattern in the tree *)
 val insert_exception : ptree -> string list -> ptree
 
-(** Self-explicit *)
 val hyphenate : ptree -> string -> string list

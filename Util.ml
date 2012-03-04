@@ -6,35 +6,37 @@ open Bezier
 open CamomileLibrary
 
 
-type parameters={ format:float*float;
-                  lead:float;
+type parameters={ lead:float;
                   measure:float;
                   lines_by_page:int;
                   left_margin:float;
                   local_optimization:int;
-                  min_height_diff:int;
+                  min_height_before:int;
+                  min_height_after:int;
                   min_page_diff:int;
                   allow_widows:bool;
                   allow_orphans:bool
                 }
 
-let default_params={ format=(0.,0.);
-                     lead=0.;
+let default_params={ lead=0.;
                      measure=0.;
                      lines_by_page=0;
                      left_margin=0.;
                      local_optimization=0;
-                     min_height_diff=1;
+                     min_height_before=1;
+                     min_height_after=1;
                      min_page_diff=0;
                      allow_widows=true;
                      allow_orphans=true }
 
 let print_parameters p=
-  Printf.printf "{ format=(%f, %f); lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
-    (fst p.format) (snd p.format) p.lead p.measure p.lines_by_page p.left_margin
+  Printf.printf "{ lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
+    p.lead p.measure p.lines_by_page p.left_margin
 
 type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; mutable height:int; paragraph_height:int; mutable page_height:int; mutable page:int}
+             isFigure:bool; mutable height:int; paragraph_height:int; mutable page_height:int; mutable page:int;
+             min_width:float; nom_width:float; max_width:float
+           }
 
 module Line=struct
   type t=line
@@ -47,21 +49,19 @@ module LineMap=New_map.Make(Line)
 
 type 'a kerningBox='a Fonts.FTypes.kerningBox
 
-type glyph = { contents:UTF8.t; glyph:Fonts.glyph; width:float;
-               x0:float; x1:float; y0:float; y1:float }
+type drawingBox = { drawing_min_width:float; drawing_nominal_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
+                   drawing_badness : float -> float;
+                   drawing_contents:float -> Drivers.contents list }
 
-
-and drawingBox = { drawing_min_width:float; drawing_nominal_width:float; drawing_max_width:float; drawing_y0:float; drawing_y1:float;
-                   drawing_contents:Drivers.contents list }
-
-and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float }
+and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float;
+                glue_contents : float -> Drivers.contents list }
 
 and hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
 
 and box=
-    GlyphBox of (float*glyph)
+    GlyphBox of glyph
   | Kerning of box kerningBox
-  | Glue of glueBox
+  | Glue of drawingBox
   | Drawing of drawingBox
   | Hyphen of hyphenBox
   | Empty
@@ -79,7 +79,7 @@ let print_line l=
     l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
 let rec print_box=function
     Glue _->Printf.printf " "
-  | GlyphBox (_,x)->Printf.printf "%s" (x.contents)
+  | GlyphBox x->Printf.printf "%s" (Fonts.glyphContents x.glyph)
   | Kerning x->print_box x.kern_contents
   | Hyphen x->Array.iter print_box x.hyphen_normal
   | _->Printf.printf "[]"
@@ -171,17 +171,17 @@ let is_hyphen =function Hyphen _->true | _->false
 
 
 let rec box_width comp=function
-    GlyphBox (size,x)->x.width*.size/.1000.
-  | Glue x->(x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
+    GlyphBox x->Fonts.glyphWidth x.glyph*.x.glyph_size/.1000.
+  | Glue x
   | Drawing x->x.drawing_min_width+.comp*.(x.drawing_max_width -. x.drawing_min_width)
   | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
   | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
   | Empty->0.
-  | _->0.
+
 
 let rec box_interval=function
-    GlyphBox (size,x)->let y=x.width*.size/.1000. in (y,y,y)
-  | Glue x->(x.glue_min_width, x.glue_nominal_width, x.glue_max_width)
+    GlyphBox x->let y=Fonts.glyphWidth x.glyph*.x.glyph_size/.1000. in (y,y,y)
+  | Glue x
   | Drawing x->x.drawing_min_width, x.drawing_nominal_width, x.drawing_max_width
   | Kerning x->let (a,b,c)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
@@ -196,16 +196,16 @@ and boxes_interval boxes=
     (!a,!b,!c)
 
 let rec lower_y x w=match x with
-    GlyphBox (size,y)->y.y0*.size/.1000.
+    GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.
+  | Glue y
   | Drawing y->y.drawing_y0
-  | Glue _->0.
   | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
   | _->0.
 
 let rec upper_y x w=match x with
-    GlyphBox (size,y)->y.y1*.size/.1000.
+    GlyphBox y->Fonts.glyph_y1 y.glyph*.y.glyph_size/.1000.
+  | Glue y
   | Drawing y->y.drawing_y1
-  | Glue _->0.
   | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
   | _-> 0.
 
@@ -295,10 +295,10 @@ let glyphCache cur_font gl=
                                                      ))
              (1./.0., -1./.0.) (Fonts.outlines glyph)
            in
-           let loaded={ contents=gl.glyph_utf8;
-                        glyph=glyph; width=Fonts.glyphWidth glyph;
-                        x0=x0; x1=x1;
-                        y0=y0; y1=y1 } in
+           let loaded={ glyph=glyph;
+                        glyph_x=infinity;glyph_y=infinity;
+                        glyph_color=black;
+                        glyph_size=infinity } in
              font:=IntMap.add gl.glyph_index loaded !font;
              loaded)
 
@@ -315,7 +315,7 @@ let glyph_of_string substitution_ positioning_ font fsize str =
   let kerns=positioning_ (List.map (fun x->GlyphID x) codes) in
 
   let rec kern=function
-      GlyphID h::s ->let y=glyphCache font h in GlyphBox (fsize, y)::kern s
+      GlyphID h::s ->let y=glyphCache font h in GlyphBox { y with glyph_size=fsize }::kern s
     | KernID h::s->
         (match h.kern_contents with
              KernID h'->kern (KernID { advance_height=h.advance_height;
@@ -328,7 +328,7 @@ let glyph_of_string substitution_ positioning_ font fsize str =
                                       advance_width=h.advance_width*.(fsize)/.1000.;
                                       kern_x0=h.kern_x0*.(fsize)/.1000.;
                                       kern_y0=h.kern_y0*.(fsize)/.1000.;
-                                      kern_contents=GlyphBox (fsize, y) }::(kern s))
+                                      kern_contents=GlyphBox { y with glyph_size=fsize } }::(kern s))
         )
     | []->[]
   in
@@ -353,13 +353,14 @@ let hyphenate hyph subs kern font fsize str=
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 
 let rec resize l=function
-    GlyphBox (size,b) -> GlyphBox (l*.size, b)
+    GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }
   | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
                        hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
-  | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
-                     glue_max_width= x.glue_max_width*.l;
-                     glue_nominal_width= x.glue_nominal_width*.l;
-                     glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
+  | Glue x -> Glue { x with
+                       drawing_min_width= x.drawing_min_width*.l;
+                       drawing_max_width= x.drawing_max_width*.l;
+                       drawing_nominal_width= x.drawing_nominal_width*.l;
+                       drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.) }
   | Kerning x -> Kerning { advance_width = l*.x.advance_width;
                            advance_height = l*.x.advance_height;
                            kern_x0 = l*.x.kern_x0;

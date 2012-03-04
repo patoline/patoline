@@ -5,8 +5,8 @@ exception Impossible
 
 
 val typeset :
-  measure:(line->float)->
-  parameters:(parameters->line->float->float->float->parameters) ->
+  completeLine:(box array array -> line -> bool -> line list) array->
+  parameters:(box array array -> drawingBox array -> parameters->line->parameters) array ->
   ?badness:(line->parameters->line->parameters->float) ->
   ?figures:drawingBox array ->
   box array array ->

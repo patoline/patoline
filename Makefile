@@ -1,11 +1,11 @@
 BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
-FONTS=$(FONTS0) Fonts.ml
-SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Typography.ml
+FONTS=$(FONTS0) Fonts.mli Fonts.ml
+SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml
 SOURCES=$(SOURCES0) Section.ml Parser.dyp Texprime.ml
 
-DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml
+DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
 
 EXEC = texprime
 
@@ -68,8 +68,8 @@ typography.cma: $(TESTOBJ) Typography.cmo
 test: $(TESTOBJ) Typography.cmx tests/document.ml
 	$(CAMLOPT) -o test $(TESTOBJ) tests/document.ml
 
-fonts.cma: $(FONTS0:.ml=.cmo) $(BASE:.ml=.cmo)
-	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0.ml=.cmo) Fonts.ml
+fonts.cma: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo)
+	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0:.ml=.cmo) Fonts.cmo
 
 fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
 	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
@@ -90,7 +90,7 @@ kerner: kerner.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo)
 	$(CAMLC) $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) -o kerner kerner.ml
 
 
-doc:Makefile $(OBJS)
+doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 

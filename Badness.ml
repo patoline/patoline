@@ -115,7 +115,8 @@ let h_badness paragraphs node comp=
     for k=node.lineStart to node.lineEnd-1 do
       bad:= !bad +.
         (match paragraphs.(node.paragraph).(k) with
-             Glue x->x.glue_badness (x.glue_min_width+.(x.glue_max_width-.x.glue_min_width)*.comp)
+             Drawing x
+           | Glue x->x.drawing_badness (x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
            | _->0.
         )
     done;

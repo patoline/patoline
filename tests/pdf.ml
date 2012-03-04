@@ -23,7 +23,7 @@ let l=List.concat (List.map ( fun (t0,_)->
 
 let pages=[| { pageFormat=a4; pageContents=
                  [
-                   Path ({ default with close=true; fillColor=Some black;strokingColor=Some (RGB { red=1.;green=1.;blue=0. }); lineWidth=0.1 }, [| a,b |]);
+                   Path ({ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }, [| a,b |]);
                    Path ({ default with lineWidth=0.1 }, [| c,d |]);
                    cont
                  ]@l

@@ -12,14 +12,14 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
   let par=ref (-1) in
   let draw_page i p=
-    let page= { pageFormat=0.,0. ; pageContents=[] } in
+    let page= { pageFormat=a4 ; pageContents=[] } in
       List.iter (
         fun (param,line)->
-          let (h,w)=page.pageFormat in
-          let (h',w')=param.format in
-            page.pageFormat<- (max h h', max w w');
             let y=270.0-.param.lead*.float_of_int line.height in
-              if line.paragraph<> !par then (par:=line.paragraph; positions.(!par)<-(i,0., y+. param.lead/.2. +. snd (line_height paragraphs line)));
+              if line.paragraph<> !par then (
+                par:=line.paragraph;
+                positions.(!par)<-(i,0., y+. param.lead/.2. +. snd (line_height paragraphs line))
+              );
 
           let comp=compression paragraphs (param,line) in
           let rec draw_box x y comp=function
@@ -32,13 +32,16 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
                                     let w=draw_box (x+.x') y comp box in
                                       x'+.w) 0. h.hyphen_normal)
               )
-            | GlyphBox (size,a)->(
-                page.pageContents<- (Drivers.Glyph { glyph_x=x;glyph_y=y; glyph_color=black;
-                                                     glyph_size=size;
-                                                     glyph=a.Util.glyph }) :: page.pageContents;
-                size*.a.width/.1000.
+            | GlyphBox a->(
+                page.pageContents<- (Drivers.Glyph { a with glyph_x=x;glyph_y=y }) :: page.pageContents;
+                a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
               )
-            | Glue g->g.glue_min_width+.comp*.(g.glue_max_width-.g.glue_min_width)
+            | Glue g
+            | Drawing g ->(
+                let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
+                  page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+                  w
+              )
 
             | b->box_width comp b
           in
@@ -74,13 +77,11 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
       let (_,w,_)=boxes_interval (Array.of_list pnum) in
       let x=(fst page.pageFormat -. w)/.2. in
         List.iter (function
-                       (GlyphBox (s,a))->
-                         page.pageContents<- (Drivers.Glyph { glyph_x=x;glyph_y=20.; glyph_color=black;
-                                                              glyph_size=s;
-                                                              glyph=a.Util.glyph }) :: page.pageContents
+                       (GlyphBox a)->
+                         page.pageContents<- (Drivers.Glyph { a with glyph_x=x;glyph_y=20. }) :: page.pageContents
                      | _ -> ()
                   ) pnum;
-        page
+        { page with pageContents=List.rev page.pageContents }
   in
   let a=Array.mapi draw_page opt_pages in
     (a, positions)
