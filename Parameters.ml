@@ -26,21 +26,21 @@ let normal measure paragraphs line allow_impossible=
                 hyphenation 0 result)
           | _ -> result
       in
-        if sum_max >= measure then
+        if sum_max >= measure || allow_impossible then
           match paragraphs.(line.paragraph).(j) with
 
-              Glue _ when sum_min <= measure->
+              Glue _ when sum_min <= measure || allow_impossible->
                 break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
                   ({ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
                        nom_width=sum_nom; max_width=sum_max
-                   }::result0)
+                   }::(if allow_impossible then [] else result0))
 
-            | Glue _ when allow_impossible ->
-                { line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                    nom_width=sum_nom; max_width=sum_max
-                }::result0
+            | Glue _ when allow_impossible && result0=[]->
+                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
+                     nom_width=sum_nom; max_width=sum_max
+                 }]
 
-            | _ when sum_min<=measure || allow_impossible ->
+            | _ when sum_min<=measure || (allow_impossible && result0=[]) ->
                 break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c) result0
             | _ -> result0
         else
