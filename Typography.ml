@@ -5,7 +5,7 @@ open Binary
 open Constants
 open Fonts
 open Fonts.FTypes
-
+open Drivers
 
 (** Pour choisir la police, et d'autres paramètres, on a un
    environnement. On peut tout modifier de manière uniforme sur tout
@@ -205,6 +205,43 @@ let size fsize t=
                                 drawing_nominal_width= fsize/.3.;
                                 drawing_contents = (fun _->[]);
                                 drawing_badness=knuth_h_badness (fsize/.3.) }}), t)
+let glues t=
+  Scoped ((fun env ->
+             match env.stdGlue with
+                 Glue g ->(
+                   let rec select_glue=function
+                       []->Glue g
+                     | Alternative a::_->(
+                         let gl=
+                           (glyphCache env.font { empty_glyph with glyph_index=a.(Random.int (Array.length a-1)) })
+                         in
+                           Glue { g with
+                                    drawing_contents=(
+                                      fun w->[
+                                        Drivers.Glyph { gl with
+                                                          glyph_y=0.;
+                                                          glyph_x=
+                                            (w-.env.size*.Fonts.glyphWidth gl.glyph/.1000.)/.2.;
+                                                          glyph_size=env.size }
+                                      ]);
+                                    drawing_min_width=(
+                                      g.drawing_min_width+.
+                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
+                                    drawing_nominal_width=(
+                                      g.drawing_nominal_width+.
+                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
+                                    drawing_max_width=(
+                                      g.drawing_max_width+.
+                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
+
+                                })
+                       | _::s-> select_glue s
+                   in
+                     { env with stdGlue=select_glue (select_features env.font [Ornaments]) }
+                 )
+               |_->env
+          ), t)
+
 
 
 (* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce

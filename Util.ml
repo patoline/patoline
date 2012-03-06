@@ -67,24 +67,24 @@ and box=
   | Hyphen of hyphenBox
   | Empty
 
-let drawing yOff cont=
+let drawing ?offset:(offset=0.) cont=
   let (a,b,c,d)=Drivers.bounding_box cont in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
       drawing_max_width=c-.a;
-      drawing_y0=yOff+.b;
-      drawing_y1=yOff+.d;
+      drawing_y0=offset+.b;
+      drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
       drawing_contents=(fun _->cont)
     }
+
+
 
 type error_log=
     Overfull_line of line
   | Widow of line
   | Orphan of line
-
-type citation= { citation_paragraph:int; citation_box:int }
 
 let print_line l=
   Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d; page=%d }\n"
@@ -207,6 +207,40 @@ and boxes_interval boxes=
     done;
     (!a,!b,!c)
 
+
+let draw_boxes l=
+  let rec draw_box x y dr=function
+      Kerning kbox ->(
+        let dr',_=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr kbox.kern_contents in
+          dr', kbox.advance_width
+      )
+    | Hyphen h->(
+        Array.fold_left (fun (dr',x') box->
+                           let dr'',w=draw_box (x+.x') y dr' box in
+                             dr'',x'+.w
+                        ) (dr,0.) h.hyphen_normal
+      )
+    | GlyphBox a->(
+        ((Drivers.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y }) :: dr),
+        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+      )
+    | Glue g
+    | Drawing g ->(
+        let w=g.drawing_nominal_width in
+          (List.map (translate x (y+.g.drawing_y0)) (g.drawing_contents w)) @ dr, w
+      )
+    | b->dr,(box_width 0. b)
+  in
+  let rec make_line x y res=function
+      []->res
+    | h::s->(
+        let dr,w=draw_box x y res h in
+          make_line (x+.w) y dr s
+      )
+  in
+    make_line 0. 0. [] l
+
+
 let rec lower_y x w=match x with
     GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.
   | Glue y
@@ -299,7 +333,7 @@ let glyphCache cur_font gl=
            let loaded={ glyph=glyph;
                         glyph_x=0.;glyph_y=0.;
                         glyph_color=black;
-                        glyph_size=infinity } in
+                        glyph_size=0. } in
              font:=IntMap.add gl.glyph_index loaded !font;
              loaded)
 
@@ -335,21 +369,15 @@ let glyph_of_string substitution_ positioning_ font fsize str =
   in
     kern kerns
 
-
 let hyphenate hyph subs kern font fsize str=
   let hyphenated=hyph str in
-  let pos=Array.make (List.length hyphenated-1) ([||],[||]) in
-  let rec hyph l i cur=match l with
-      []->[Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize str); hyphenated=pos }]
-    | h::s->(
-        pos.(i)<-(Array.of_list (glyph_of_string subs kern font fsize (cur^"-")),
-                  Array.of_list (glyph_of_string subs kern font fsize (List.fold_left (^) "" l)));
-        hyph s (i+1) (cur^h)
-      )
-  in
-    match hyphenated with
-        []->glyph_of_string subs kern font fsize str
-      | h::s->hyph s 0 h
+    if Array.length hyphenated=0 then
+      glyph_of_string subs kern font fsize str
+    else
+      [Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize str);
+                hyphenated=Array.map (fun (a,b)->(Array.of_list (glyph_of_string subs kern font fsize a),
+                                                  Array.of_list (glyph_of_string subs kern font fsize b))) hyphenated }]
+
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 
