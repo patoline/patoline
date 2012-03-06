@@ -275,9 +275,10 @@ let comp paragraphs m p i hi j hj=
         nomLine := !nomLine+.b;
         maxLine := !maxLine+.c
     done;
-    let com= max 0. ((m-. !minLine)/.(!maxLine-. !minLine)) in
-      if com>=1. then ((!nomLine-. !minLine)/.(!maxLine-. !minLine)) else com
-
+    if !maxLine = !minLine then 0. else (
+      let com= max 0. ((m-. !minLine)/.(!maxLine-. !minLine)) in
+        if com>=1. then ((!nomLine-. !minLine)/.(!maxLine-. !minLine)) else com
+    )
 let compression paragraphs (parameters,line)=comp paragraphs parameters.measure
   line.paragraph line.lineStart line.hyphenStart line.lineEnd line.hyphenEnd
 
@@ -296,7 +297,7 @@ let glyphCache cur_font gl=
         Not_found->
           (let glyph=Fonts.loadGlyph cur_font gl in
            let loaded={ glyph=glyph;
-                        glyph_x=infinity;glyph_y=infinity;
+                        glyph_x=0.;glyph_y=0.;
                         glyph_color=black;
                         glyph_size=infinity } in
              font:=IntMap.add gl.glyph_index loaded !font;
