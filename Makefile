@@ -3,13 +3,13 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
 SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml
-SOURCES=$(SOURCES0) Section.ml Parser.dyp Texprime.ml
-
+SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
+SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
 DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
 
 EXEC = texprime
 
-LIBS=fonts.cma
+LIBS=fonts.cma texprime.cma
 
 ########################## Advanced user's variables #####################
 #
@@ -34,9 +34,9 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 ################ Nothing to set up or fix here
 ##############################################################
 
-all : $(EXEC)
+all : $(EXEC) $(LIBS)
 
-opt : $(EXEC).opt
+opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
 
 #ocamlc -custom other options graphics.cma other files -cclib -lgraphics -cclib -lX11
 #ocamlc -thread -custom other options threads.cma other files -cclib -lthreads
@@ -45,7 +45,7 @@ opt : $(EXEC).opt
 #ocamlc -custom other options unix.cma other files -cclib -lunix
 #ocamlc -custom other options dbm.cma other files -cclib -lmldbm -cclib -lndbm
 
-SMLIY = $(SOURCES:.mly=.ml)
+SMLIY = $(SOURCES_EXEC:.mly=.ml)
 SMLIYL = $(SMLIY:.mll=.ml)
 SMLDYP = $(SMLIYL:.dyp=.ml)
 SMLYL = $(filter %.ml,$(SMLDYP))
@@ -73,6 +73,12 @@ fonts.cma: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo)
 
 fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
 	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
+
+texprime.cma: $(SOURCES_LIBS)
+	$(CAMLC) -a -o $@ $(SOURCES_LIBS)
+
+texprime.cmxa: $(SOURCES_LIBS:.cma=.cmxa)
+	$(CAMLOPT) -a -o $@ $(SOURCES_LIBS:.cma=.cmxa)
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
 	$(CAMLC) -o graphics_font $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
@@ -112,7 +118,7 @@ top:
 	$(CAMLOPT) -c -o $@ $<
 
 clean:
-	rm -f *.cm[iox] *.o *~ \#*\#
+	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
 	rm -f Fonts/*.cm[iox] Fonts/*~ Fonts/*.*~ Fonts/\#*\#
 	rm -Rf doc
 	rm -f graphics_font
@@ -120,7 +126,7 @@ clean:
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '
-	@(ls $(SMLIY) $(SMLIY:.ml=.mli) 2>/dev/null || true) \
+	@(ls $(SMLIY) $(SMLIY:.ml=.mli) DefaultFormat.ml 2>/dev/null || true) \
 	     >  .depend.new
 	@diff .depend.new .depend.input 2>/dev/null 1>/dev/null && \
 	    (echo 'unchanged'; rm -f .depend.new) || \
@@ -130,6 +136,7 @@ depend : .depend
 
 .depend : $(SMLIY) .depend.input
 	@echo '--Re-building dependencies'
-	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) > .depend
+	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) DefaultFormat.ml > .depend
+
 
 include .depend
