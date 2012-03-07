@@ -34,7 +34,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 ################ Nothing to set up or fix here
 ##############################################################
 
-all : $(EXEC) $(LIBS)
+all : $(EXEC) $(LIBS) Doc.pdf
 
 opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
 
@@ -99,6 +99,12 @@ kerner: kerner.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo)
 doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
+
+Doc.pdf: texprime texprime.cma
+	./texprime Doc.txp > Doc.ml
+	$(CAMLC) texprime.cma Doc.ml -o Doc
+	./Doc
+
 
 top:
 	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml

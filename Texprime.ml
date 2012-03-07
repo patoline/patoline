@@ -11,6 +11,22 @@ exception Syntax_Error of Lexing.position * string
 
 let spec = []
 
+let postambule : ('a, 'b, 'c) format = "
+  let gr=open_out \"doc_graph\" in
+    doc_graph gr !str;
+    close_out gr;
+
+  let params,compl,pars=flatten defaultEnv !str in
+  let (_,pages)=Typeset.typeset
+    ~completeLine:compl
+    ~parameters:params
+    ~badness:(Badness.badness pars)
+    pars
+  in
+  let u,v=Output.routine pars [||] defaultEnv pages in
+    Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
+" 
+
 let _=
   let filename=ref [] in
     Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :";
@@ -24,31 +40,32 @@ let _=
 	      let docs = Parser.main lexbuf in
 	      close_in op;
 	      match docs with
-		[(pre, doc), _] ->
+		((pre, docs), _) :: _ ->
+		  Printf.printf "open Typography\nopen Parameters\nopen Fonts.FTypes\nopen Util\nopen Fonts\nopen Drivers\nopen DefaultFormat;;\n\n";
 		  begin match pre with
-		    None -> Printf.printf "open Typography\nopen Parameters\nopen Fonts.FTypes\nopen Util\nopen Fonts\nopen Drivers\nopen DefaultFormat;;\n\n"
-		  | Some pre -> Printf.printf "%s\n\n" pre
+		    None -> ()
+		  | Some(title, at) -> 
+		      Printf.printf "title \"%s\";;\n\n" title;
+		      match at with
+			None -> ()
+		      | Some(auth,inst) ->
+			Printf.printf "author \"%s\";;\n\n" auth;
+			  match inst with
+			    None -> ()
+			  | Some(inst) ->
+			    Printf.printf "institute \"%s\";;\n\n" inst
 		  end;
-		  List.iter (fun p ->
-		    Printf.printf "newPar textWidth parameters [T \"%s\"];;\n"  (String.escaped p))
-	
-		    doc;
-		  Printf.printf "
-  let gr=open_out \"doc_graph\" in
-    doc_graph gr !str;
-    close_out gr;
-
-  let params,compl,pars=flatten defaultEnv !str in
-  let (_,pages)=Typeset.typeset
-    ~completeLine:compl
-    ~parameters:params
-    ~badness:(Badness.badness pars)
-    pars
-  in
-  let u,v=Output.routine pars [||] defaultEnv pages in
-    Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\"
-" (Filename.chop_extension h)
-	      | _ -> failwith "Ambiguous document"
+		  let rec output_list docs = List.iter output_doc docs
+		  and output_doc = function
+		    Paragraph p ->
+		      Printf.printf "newPar textWidth parameters [T \"%s\"];;\n"  (String.escaped p)
+		    | Struct(title, docs) ->
+		      Printf.printf "newStruct \"%s\";;\n\n" title;
+		      output_list docs;
+		      Printf.printf "up();;\n\n"
+		  in
+		  output_list docs;
+		  Printf.printf postambule (Filename.chop_extension h)
 	    with
 	    | Dyp.Syntax_error ->
 	      raise

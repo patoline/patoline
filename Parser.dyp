@@ -9,7 +9,13 @@ let set_newline dyplexbuf =
   l.lex_curr_p <- npos
 
 (* very important to allow using regexp for special combination of characteres *)
-let dypgen_choose_token = `all
+(* let dypgen_choose_token = `all *)
+
+let dyp_merge = keep_one
+
+type doc =
+     Paragraph of string
+   | Struct of (string * doc list)
 }
 
 %start main
@@ -21,7 +27,7 @@ let dypgen_choose_token = `all
 %lexer
 
 let utf8_char =
-    ['\033'-'\091''\093'-'\127']
+    ['\033'-'\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -31,11 +37,11 @@ let utf8_char =
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { Dyp.lexeme lexbuf }
   '\n' -> NEWLINE { set_newline lexbuf }
-  '\\''\\' -> CHAR { "\\" }
-  '\\' -> SPECIAL
-
+  "=>" -> STRUCT
+  "=<" -> END
+  '=''='+ -> SECT { Dyp.lexeme lexbuf }
+  utf8_char+ -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
@@ -44,17 +50,40 @@ paragraph:
   | paragraph<p> NEWLINE? WORD<w> { p ^ " " ^ w }
 
 preambule:
-  [NEWLINE]*
-	{ None }
+/*  [NEWLINE]*
+	{ if None }*/
+| SECT<st> [NEWLINE]*
+  paragraph<title> [NEWLINE]*
+  [ parskip paragraph<author> [NEWLINE]* 
+    [parskip paragraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
+  SECT<en> [NEWLINE]*    
+  { if String.length $1 < 10 or String.length en < 10 then raise Giveup;
+    Some(title,at) }
 
 parskip:
   | NEWLINE [NEWLINE]+
 
+ptext:
+  /* empty */
+    {[]}
+  | parskip text<t>
+    { t }
+
+textp:
+    { [] }
+  | text<t> parskip
+    { t }
+
+textn:
+    { [] }
+  | text<t> [NEWLINE]*
+    { t }
+
 text:
-    paragraph<p>
-    { [p] }
-  | text<t> parskip paragraph<p>
-    { p :: t }
+  | textp<t> paragraph<p>
+    { Paragraph p :: t }
+  | textn<t> STRUCT NEWLINE? paragraph<title> ptext<content> [NEWLINE]* END
+    { Struct(title, List.rev content) :: t }
 
 main:
   | preambule<p> text<t> [NEWLINE]* eof

@@ -17,4 +17,10 @@ let ragged_right a b c line=
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
 
+let author str =
+  newPar (normal 150.) center [size 7. [T str] ]
+
+let institute str =
+  newPar (normal 150.) center [size 4. [T str] ]
+
 let textWidth = normal 150.
