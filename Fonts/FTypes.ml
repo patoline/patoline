@@ -269,7 +269,7 @@ let glyph_roots glyph=
                                                         )
                                                      ) l []))
                         in
-                        let arr=Array.make (int_of_float (ceil maxy)-int_of_float (floor miny)+1) [] in
+                        let arr=Array.make (int_of_float (ceil maxy)-int_of_float (floor miny)+2)  [] in
                           for i=0 to Array.length path-1 do
                             let _,y0,_,y1=path.(i) in
                               for j=int_of_float (floor (min y0 y1)) to int_of_float (ceil (max y0 y1)) do

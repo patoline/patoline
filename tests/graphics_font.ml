@@ -1,12 +1,14 @@
 open Fonts.FTypes
 open Fonts.Opentype
 open Bezier
-let f = try Sys.argv.(1) with _ -> "AGaramondPro-Regular.otf"
+let f = try Sys.argv.(1) with _ -> "euler.otf"
 let initial_glyph = try int_of_string Sys.argv.(2) with _ -> 0
 
 let font= loadFont f
 let nb_glyphs = cardinal font
-let round=Binary.round
+
+let zoom=ref 1.
+let round x=Binary.round x
 
 
 let draw_glyph xx0 yy0 glyph=
@@ -29,6 +31,20 @@ let draw_glyph xx0 yy0 glyph=
       in draw arr.(y-miny)
     done
 
+let draw_empty_glyph xx0 yy0 glyph=
+  List.iter (
+    List.iter (
+      fun (a,b)->
+        Graphics.moveto (xx0+round a.(0)) (yy0+round b.(0));
+        if Array.length a=2 then
+          Graphics.lineto (xx0+round a.(1)) (yy0+round b.(1))
+        else (
+          Graphics.curveto (xx0+round a.(1), yy0+round b.(1)) (xx0+round a.(2), yy0+round b.(2))
+            (xx0+round a.(3), yy0+round b.(3))
+        )
+    )
+  ) (glyph)
+
 
 let _=
   let xx0=100 in
@@ -36,24 +52,29 @@ let _=
   let arr = Array.init nb_glyphs (fun i -> i) in
     Graphics.open_graph "";
     Graphics.auto_synchronize false;
-    let rec show_glyphs i=
+    let rec show_glyphs empt i=
       let gl=loadGlyph font { empty_glyph with glyph_index=arr.(i mod (Array.length arr)) } in
         Graphics.clear_graph ();
 
         Graphics.set_color (Graphics.rgb 150 150 150);
-        Graphics.moveto 5 5; Graphics.draw_string "'n': +1  'N': +50  'p': -1 'P': -50  'q': quit";
+        Graphics.moveto 5 5; Graphics.draw_string "'n': +1  'N': +50  'p': -1 'P': -50 'e' : empty '+': zoom '-': zoom  'q': quit";
         Graphics.moveto 10 20; Graphics.draw_string (f ^ ", glyph " ^ (string_of_int (glyphNumber gl).glyph_index) ^ " / "
                                                      ^ (string_of_int nb_glyphs) ^ " width : "^(string_of_float (glyphWidth gl)) );
-        let out=outlines gl in
-          draw_glyph xx0 yy0 out;
+        let out=List.map (List.map (fun (a,b)->Array.map (fun x->x*. !zoom) a, Array.map (fun x->x*. !zoom) b)) (outlines gl) in
+          if empt then draw_empty_glyph xx0 yy0 out else
+            draw_glyph xx0 yy0 out ;
+
             Graphics.synchronize ();
             let s=Graphics.wait_next_event [Graphics.Key_pressed] in
               match s.Graphics.key with
                   'q' -> exit 0
-                | 'p' -> show_glyphs (Array.length arr + i-1)
-                | 'P' -> show_glyphs (Array.length arr + i-50)
-                | 'N' -> show_glyphs (Array.length arr + i+50)
-                | ' ' | 'n' -> show_glyphs (i+1)
-                | _ -> show_glyphs (i+1)
+                | 'p' -> show_glyphs empt (Array.length arr + i-1)
+                | 'P' -> show_glyphs empt (Array.length arr + i-50)
+                | 'N' -> show_glyphs empt (Array.length arr + i+50)
+                | 'e' -> show_glyphs (not empt) i
+                | '+' -> (zoom:= !zoom+.0.1; show_glyphs empt i)
+                | '-' -> (zoom:= !zoom-.0.1; show_glyphs empt i)
+                | ' ' | 'n' -> show_glyphs empt (i+1)
+                | _ -> show_glyphs empt (i+1)
     in
-      show_glyphs initial_glyph
+      show_glyphs false initial_glyph
