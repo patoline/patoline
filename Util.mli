@@ -76,13 +76,6 @@ type drawingBox = {
   drawing_badness : float -> float;
   drawing_contents : float -> Drivers.contents list;
 }
-and glueBox = {
-  glue_min_width : float;
-  glue_max_width : float;
-  glue_nominal_width : float;
-  glue_badness : float -> float;
-  glue_contents : float -> Drivers.contents list;
-}
 and hyphenBox = {
   hyphen_normal : box array;
   hyphenated : (box array * box array) array;

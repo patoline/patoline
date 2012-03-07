@@ -54,8 +54,6 @@ type drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                     drawing_badness : float -> float;
                     drawing_contents:float -> Drivers.contents list }
 
-and glueBox = { glue_min_width:float; glue_max_width:float; glue_nominal_width: float; glue_badness:float->float;
-                glue_contents : float -> Drivers.contents list }
 
 and hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
 
@@ -76,7 +74,7 @@ let drawing ?offset:(offset=0.) cont=
       drawing_y0=offset+.b;
       drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
-      drawing_contents=(fun _->cont)
+      drawing_contents=(fun _->List.map (translate (-.a) 0.) cont)
     }
 
 
@@ -207,7 +205,6 @@ and boxes_interval boxes=
     done;
     (!a,!b,!c)
 
-
 let draw_boxes l=
   let rec draw_box x y dr=function
       Kerning kbox ->(
@@ -227,7 +224,7 @@ let draw_boxes l=
     | Glue g
     | Drawing g ->(
         let w=g.drawing_nominal_width in
-          (List.map (translate x (y+.g.drawing_y0)) (g.drawing_contents w)) @ dr, w
+          (List.map (translate (x) (y+.g.drawing_y0)) (g.drawing_contents w)) @ dr, w
       )
     | b->dr,(box_width 0. b)
   in
