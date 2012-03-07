@@ -4,6 +4,7 @@ open Fonts.FTypes
 open Util
 open Fonts
 open Drivers
+open Diag
 let _=Random.self_init ()
 
 let fig env=
@@ -21,6 +22,45 @@ let fig env=
       cont
     ]
 
+let fig2 env=
+  let contents_a=[Glyph { glyph_x=10.;glyph_y=1.; glyph_size=5.; glyph_color=black;
+                   glyph=(Fonts.loadGlyph env.font
+                            { FTypes.empty_glyph with
+                                FTypes.glyph_index=34}) }]
+  in
+  let contents_b=[Glyph { glyph_x=20.;glyph_y=30.; glyph_size=5.; glyph_color=black;
+                   glyph=(Fonts.loadGlyph env.font
+                            { FTypes.empty_glyph with
+                                FTypes.glyph_index=35}) }]
+  in
+  let state = [] in
+  let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
+  let a, state = Node.make_draw state ~contents:contents_a ~parameters:params () in
+  let b, state = Node.make_draw state ~contents:contents_b ~parameters:params () in
+  let ab = Node.edge
+    ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }
+    a b
+  in
+    drawing ~offset:(-10.) (ab::state)
+
+let fig3 env=
+  let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
+  let bezier1 = ([| -1.0;30.0 |],[|-1.0;0.0|]) in
+  let bezier2 = ([| 10.0;20.0 |],[|-10.0;20.0|]) in
+  let p1 = Path (params, [| bezier1 |]) in
+  let p2 = Path (params, [| bezier2 |]) in
+  let l = 
+    match Bezier.intersect bezier1 bezier2 with
+      | [] -> []
+      | (t,t') :: _ -> 
+	let x = Bezier.eval (fst bezier1) t in
+	let y = Bezier.eval (snd bezier1) t in
+	[Glyph { glyph_x=x;glyph_y=y; glyph_size=3.; glyph_color=black;
+                   glyph=(Fonts.loadGlyph env.font
+                            { FTypes.empty_glyph with
+                                FTypes.glyph_index=34}) }]
+  in
+    drawing ~offset:(-10.) (p1 :: p2 ::l)
 
 let _=
   title "Bacon Ipsum";
@@ -30,7 +70,7 @@ let _=
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
   in
-  newPar (normal 120.) params ([font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun env->env.stdGlue); B (fun env->Drawing (fig env)); B (fun env->env.stdGlue);T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."] @ (
+  newPar (normal 120.) params ([font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun env->env.stdGlue); B (fun env->Drawing (fig3 env)); B (fun env->env.stdGlue);T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."] @ (
                                  let rec f i=if i=0 then [] else (
                                    (B (fun env->env.stdGlue))::
                                      (FileRef ("tests/document.ml", 0x4f6, 20))::
