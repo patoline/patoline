@@ -2,7 +2,7 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
-SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml
+SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml Diag.ml
 SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
 SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
 DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
@@ -65,7 +65,7 @@ $(EXEC).opt: $(OPTOBJS)
 typography.cma: $(TESTOBJ) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TESTOBJ) Typography.cmo
 
-test: $(TESTOBJ) Typography.cmx tests/document.ml
+test: $(TESTOBJ) Typography.cmx Diag.cmx tests/document.ml
 	$(CAMLOPT) -o test $(TESTOBJ) tests/document.ml
 
 fonts.cma: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo)
