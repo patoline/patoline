@@ -346,14 +346,15 @@ let intersect (a,b) (c,d)=
   in
 
   let inside x y x0 y0=
-    let resultant=Array.make_matrix (Array.length x+Array.length y-1) (Array.length x+Array.length y-1) 0. in
+    let resultant=Array.make_matrix (Array.length x+Array.length y-2) (Array.length x+Array.length y-2) 0. in
     let ma=monomial x in
     let mb=monomial y in
       for i=0 to Array.length mb-2 do
         for j=0 to Array.length ma-1 do
           resultant.(i).(i+j)<-ma.(Array.length ma-1-j)
         done;
-        resultant.(i).(i+Array.length a-1)<-resultant.(i).(i+Array.length a-1) -. x0
+
+        resultant.(i).(i+Array.length ma-1)<-resultant.(i).(i+Array.length ma-1) -. x0
       done;
       for i=Array.length mb-1 to Array.length resultant-1 do
         for j=0 to Array.length mb-1 do
@@ -377,10 +378,10 @@ let intersect (a,b) (c,d)=
               let m2=(u2+.v2)/.2. in
                 if v1-.u1 < eps && v2-.u2 < eps then
                   (if (inside a b x0' y0' *. inside a b x1' y1' < 0. ||
-			  inside a b x0' y0' = 0.)
-		      &&
-			(inside c d x0 y0 *. inside c d x1 y1 <= 0.)
-		    then inter s ((m1,m2)::res)
+			 inside a b x0' y0' = 0.)
+		     &&
+			 (inside c d x0 y0 *. inside c d x1 y1 <= 0.)
+		   then inter s ((m1,m2)::res)
                    else
                      inter s res
                   )
@@ -414,7 +415,9 @@ let intersect (a,b) (c,d)=
 let x1=[| -1.; 30.|]
 let y1=[| 0.; 0.|]
 
-let x2=[| 10.; 30.|]
-let y2=[| -30.; 50.|]
+
+let x2=[| 10.; 30.; 20.|]
+let y2=[| -30.; 0.; 50.|]
+
 
 let _=intersect (x1,y1) (x2,y2)
