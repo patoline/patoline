@@ -7,9 +7,18 @@ open Fonts
 open Fonts.FTypes
 open Parser
 
-exception Syntax_Error of Lexing.position * string
-
 let spec = []
+
+let preambule = "
+  open Typography
+  open Parameters
+  open Fonts.FTypes
+  open Util
+  open Fonts
+  open Drivers
+  open DefaultFormat;;
+
+"
 
 let postambule : ('a, 'b, 'c) format = "
   let gr=open_out \"doc_graph\" in
@@ -38,10 +47,9 @@ let _=
             let lexbuf = Dyp.from_channel (Parser.pp ()) op in
             try
 	      let docs = Parser.main lexbuf in
-	      close_in op;
 	      match docs with
 		((pre, docs), _) :: _ ->
-		  Printf.printf "open Typography\nopen Parameters\nopen Fonts.FTypes\nopen Util\nopen Fonts\nopen Drivers\nopen DefaultFormat;;\n\n";
+		  Printf.printf "%s" preambule;
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
@@ -57,14 +65,21 @@ let _=
 		  end;
 		  let rec output_list docs = List.iter output_doc docs
 		  and output_doc = function
-		    Paragraph p ->
-		      Printf.printf "newPar textWidth parameters [T \"%s\"];;\n"  (String.escaped p)
+		    | Paragraph p ->
+		      Printf.printf "newPar textWidth parameters [T \"%s\"];;\n" 
+			(String.escaped p)
+		    | Caml(s,e) ->
+		      let size = e - s in
+		      let buf=String.create size in
+		      let _= seek_in op s; input op buf 0 size in
+		      Printf.printf "%s;;\n\n" buf
 		    | Struct(title, docs) ->
 		      Printf.printf "newStruct \"%s\";;\n\n" title;
 		      output_list docs;
 		      Printf.printf "up();;\n\n"
 		  in
 		  output_list docs;
+		  close_in op;
 		  Printf.printf postambule (Filename.chop_extension h)
 	    with
 	    | Dyp.Syntax_error ->

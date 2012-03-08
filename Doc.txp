@@ -5,13 +5,21 @@ Pierre-Etienne Meunier et al.
 
 LAMA UMR 5127, Université de Savoie
 ====================================================
+{{
+let x = 2
+}}
 
 => Introduction
 
 Tex' c'est bien mieux que TeX. Un point c'est tout.
-
 =<
 
 => Quick start
 
+=> Mon premier Document
+
+Pour faire un titre on utilise
+ =>
+
+=<
 =< 

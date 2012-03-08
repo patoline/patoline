@@ -1,6 +1,9 @@
+
 {
 open Lexing
 open Dyp
+
+exception Syntax_Error of Lexing.position * string
 
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -15,7 +18,42 @@ let dyp_merge = keep_one
 
 type doc =
      Paragraph of string
+   | Caml of int * int
    | Struct of (string * doc list)
+
+let comment_stack = Stack.create ()
+
+
+let push_comment () = Stack.push `Comment comment_stack
+let push_caml () = 
+  try 
+    match Stack.top comment_stack with
+       `Comment -> ()
+     | _ -> Stack.push `Caml comment_stack
+  with
+    Stack.Empty -> Stack.push `Caml comment_stack
+
+let pop_comment (lexbuf:('a Dyp.dyplexbuf)) = 
+  try
+    match Stack.pop comment_stack with
+      `Comment -> Stack.is_empty comment_stack
+    | `Caml -> 
+	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
+		"Coment ended as goal."))
+  with
+    Stack.Empty -> 
+	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
+		"Illegal closing comment"))
+
+let pop_caml (lexbuf:('a Dyp.dyplexbuf)) = 
+  try
+    match Stack.top comment_stack with
+      `Caml -> ignore (Stack.pop comment_stack); Stack.is_empty comment_stack
+    | `Comment -> false
+  with
+    Stack.Empty -> 
+	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
+		"Illegal closing goal"))
 }
 
 %start main
@@ -36,9 +74,24 @@ let utf8_char =
 
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
+rule comment = parse
+    '*' ')' { if pop_comment lexbuf then () else comment lexbuf }
+  | '}' '}' { if pop_caml lexbuf then () else comment lexbuf } 
+  | '(' '*' { push_comment (); comment lexbuf } 
+  | '{' '{' { push_caml (); comment lexbuf } 
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
+  | '\n' { set_newline lexbuf; comment lexbuf }
+  | _ { comment lexbuf }
+
 main lexer =
   '\n' -> NEWLINE { set_newline lexbuf }
   '=''='+ -> SECT { Dyp.lexeme lexbuf }
+  '(' '*' -> { push_comment (); comment lexbuf }
+  '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
+		    let start = l.lex_start_p.pos_cnum + 2 in 
+		    push_caml (); comment lexbuf;
+		    start, l.lex_start_p.pos_cnum
+		  }
   utf8_char+ -> WORD { Dyp.lexeme lexbuf }
 
 %parser
@@ -82,6 +135,8 @@ text:
     { Paragraph p :: t }
   | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
     { Struct(title, List.rev content) :: t }
+  | textn<t> CAML<s,e> [NEWLINE]*
+    { Caml(s,e) :: t }
 
 main:
   | preambule<p> text<t> [NEWLINE]* eof
