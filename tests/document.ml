@@ -70,7 +70,7 @@ let _=
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
   in
-  newPar (normal 120.) params ([font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun env->env.stdGlue); B (fun env->Drawing (fig3 env)); B (fun env->env.stdGlue);T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."] @ (
+  newPar (normal 120.) params ([font "AGaramondPro-Italic.otf" [T "Résumé."]; B (fun env->env.stdGlue); T "Bacon ipsum dolor sit amet ut bacon deserunt, eu pancetta aliqua ham hock sed pig pastrami elit et. Ribeye qui cillum sirloin, reprehenderit pork chop aliqua."; B (fun env->env.stdGlue); B (fun env->Drawing (fig2 env)); B (fun env->env.stdGlue);T "In pariatur laborum est chuck in, et commodo culpa excepteur tri-tip tenderloin. Occaecat meatball proident, labore ground round salami in sed beef ribs officia. Spare ribs qui sausage, beef et beef ribs strip steak leberkase."] @ (
                                  let rec f i=if i=0 then [] else (
                                    (B (fun env->env.stdGlue))::
                                      (FileRef ("tests/document.ml", 0x4f6, 20))::
