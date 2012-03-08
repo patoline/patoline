@@ -1,5 +1,7 @@
 type curve=(float array)*(float array)
 
+exception OneDimensionalSystem
+
 let curve (a,b) i=a.(i),b.(i)
 
 
@@ -84,9 +86,9 @@ let bounding_box (a,b)=
 *)
 
 let bernstein_solve f=
-  if Array.length f<=0 then failwith "one-dimensional system" else (
+  if Array.length f<=0 then [] else (
 
-    if Array.length f=1 then (if f.(0)=0. then failwith "one-dimensional system" else [])
+    if Array.length f=1 then []
     else if Array.length f=2 then (
       let t=f.(0)/.(f.(0)-.f.(1)) in
         if t>=0. && t<=1. then [t] else []
@@ -236,10 +238,11 @@ let det a=
 
         if (pivot-j) land 1 = 1 then sign:= - !sign;
         for i=j+1 to Array.length a-1 do
-          let fact= a.(i).(j)/.a.(j).(j) in
-            for k=0 to Array.length a.(0)-1 do
-              a.(i).(k)<-a.(i).(k) -. fact *. a.(j).(k)
-            done
+	  if a.(j).(j) <> 0.0 then
+	    (let fact= a.(i).(j)/.a.(j).(j) in
+             for k=0 to Array.length a.(0)-1 do
+               a.(i).(k)<-a.(i).(k) -. fact *. a.(j).(k)
+             done)
         done
     done;
     let rec d i s=
@@ -327,10 +330,12 @@ let monomial a=
 
 let intersect (a,b) (c,d)=
   let eps=1e-5 in
-  let extr_a= List.filter (fun x-> x>=0. && x<=1.)
-    (0. :: (List.sort compare (bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
-  let extr_c= List.filter (fun x-> x>=0. && x<=1.)
-    (0. :: (List.sort compare (bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
+  let extr_a=
+    List.filter (fun x-> x>=0. && x<=1.)
+      ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
+  let extr_c=
+    List.filter (fun x-> x>=0. && x<=1.)
+      ((List.sort compare (0. :: 1.::bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
   let sort x y=if x<y then (x,y) else (y,x) in
   let rec make_intervals l1 l2=match l1,l2 with
       [],_-> []
@@ -341,7 +346,7 @@ let intersect (a,b) (c,d)=
   in
 
   let inside x y x0 y0=
-    let resultant=Array.make_matrix (Array.length x+Array.length x-1) (Array.length x+Array.length x-1) 0. in
+    let resultant=Array.make_matrix (Array.length x+Array.length y-1) (Array.length x+Array.length y-1) 0. in
     let ma=monomial x in
     let mb=monomial y in
       for i=0 to Array.length mb-2 do
@@ -371,8 +376,11 @@ let intersect (a,b) (c,d)=
               let m1=(u1+.v1)/.2. in
               let m2=(u2+.v2)/.2. in
                 if v1-.u1 < eps && v2-.u2 < eps then
-                  (if inside a b x0' y0' *. inside a b x1' y1' < 0. && inside c d x0 y0 *. inside c d x1 y1 < 0. then
-                     inter s ((m1,m2)::res)
+                  (if (inside a b x0' y0' *. inside a b x1' y1' < 0. ||
+			  inside a b x0' y0' = 0.)
+		      &&
+			(inside c d x0 y0 *. inside c d x1 y1 <= 0.)
+		    then inter s ((m1,m2)::res)
                    else
                      inter s res
                   )
@@ -396,10 +404,17 @@ let intersect (a,b) (c,d)=
                           u2,v2,eval c u2, eval d u2, eval c v2, eval d v2)
                       ) (make_intervals extr_a extr_c)) []
 
-let x1=[| 0.; 100.; 200.; 200.|]
-let y1=[| 0.; 0.; 100.; 200.|]
+(* let x1=[| 0.; 100.; 200.; 200.|] *)
+(* let y1=[| 0.; 0.; 100.; 200.|] *)
 
-let x2=[| 0.; 0.; 100.; 200.|]
-let y2=[| 200.; 100.; 0.; 0.|]
+(* let x2=[| 0.; 0.; 100.; 200.|] *)
+(* let y2=[| 200.; 100.; 0.; 0.|] *)
+
+
+let x1=[| -1.; 30.|]
+let y1=[| 0.; 0.|]
+
+let x2=[| 10.; 30.|]
+let y2=[| -30.; 50.|]
 
 let _=intersect (x1,y1) (x2,y2)
