@@ -38,8 +38,6 @@ let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
   '\n' -> NEWLINE { set_newline lexbuf }
-  "=>" -> STRUCT
-  "=<" -> END
   '=''='+ -> SECT { Dyp.lexeme lexbuf }
   utf8_char+ -> WORD { Dyp.lexeme lexbuf }
 
@@ -50,13 +48,13 @@ paragraph:
   | paragraph<p> NEWLINE? WORD<w> { p ^ " " ^ w }
 
 preambule:
-/*  [NEWLINE]*
-	{ if None }*/
-| SECT<st> [NEWLINE]*
+  [NEWLINE]*
+	{ None }
+| - SECT<st> [NEWLINE]*
   paragraph<title> [NEWLINE]*
   [ parskip paragraph<author> [NEWLINE]* 
     [parskip paragraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
-  SECT<en> [NEWLINE]*    
+  - SECT<en> [NEWLINE]*    
   { if String.length $1 < 10 or String.length en < 10 then raise Giveup;
     Some(title,at) }
 
@@ -82,7 +80,7 @@ textn:
 text:
   | textp<t> paragraph<p>
     { Paragraph p :: t }
-  | textn<t> STRUCT NEWLINE? paragraph<title> ptext<content> [NEWLINE]* END
+  | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
     { Struct(title, List.rev content) :: t }
 
 main:
