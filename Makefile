@@ -100,11 +100,10 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 
-Doc.pdf: texprime texprime.cma Doc.txp
-	./texprime Doc.txp > Doc.ml
-	$(CAMLC) texprime.cma Doc.ml -o Doc
-	./Doc
-
+%.pdf: texprime texprime.cma %.txp
+	./texprime $*.txp > $*.ml
+	$(CAMLC) texprime.cma $*.ml -o $*
+	./$*
 
 top:
 	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
