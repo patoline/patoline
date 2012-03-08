@@ -5,9 +5,24 @@ Pierre-Etienne Meunier et al.
 
 LAMA UMR 5127, Université de Savoie
 ====================================================
-{{
-let x = 2
-}}
+[[
+module Env_abstract = struct
+  let parameters a b c line =
+    let par=parameters a b c line in
+      { par with
+          measure=120.;
+          left_margin=par.left_margin +. (par.measure-.120.)/.2. }
+  let textWidth = normal 120.
+  let do_begin_abstract () = ()
+  let do_end_abstract () = ()
+end
+]]
+
+\begin{abstract}
+TeX' est un logiciel permettant de produire des documents de haute qualité. Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.
+
+Pour l'instant le logiciel est en cours de dévoleppement et on est loin d'avoir atteind tous les objectifs !
+\end{abstract}
 
 => Introduction
 

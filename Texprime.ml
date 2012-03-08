@@ -53,15 +53,15 @@ let _=
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "title \"%s\";;\n\n" title;
+		      Printf.printf "title %b \"%s\";;\n\n" (at = None) title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.printf "author \"%s\";;\n\n" auth;
+			Printf.printf "author %b \"%s\";;\n\n" (inst = None) auth;
 			  match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.printf "institute \"%s\";;\n\n" inst
+			    Printf.printf "institute true \"%s\";;\n\n" inst
 		  end;
 		  let rec output_list docs = List.iter output_doc docs
 		  and output_doc = function
@@ -77,6 +77,23 @@ let _=
 		      Printf.printf "newStruct \"%s\";;\n\n" title;
 		      output_list docs;
 		      Printf.printf "up();;\n\n"
+		    | Macro(mtype, name, args) ->
+		      begin
+			match mtype with
+			| `Single -> Printf.printf "%s" name
+			| `Begin -> Printf.printf "module TEMP = struct\n open Env_%s;;\n do_begin_%s" name name
+			| `End -> Printf.printf "do_end_%s" name
+		      end;
+		      List.iter (function
+		        Paragraph p -> Printf.printf " \"%s\"" (String.escaped p)
+		      | Caml(s,e) ->
+			let size = e - s in
+			let buf=String.create size in
+			let _= seek_in op s; input op buf 0 size in
+			Printf.printf " (%s)" buf) args;
+		      if args = [] then Printf.printf " ()";
+		      if mtype = `End then Printf.printf "\nend";
+		      Printf.printf ";;\n\n" 
 		  in
 		  output_list docs;
 		  close_in op;

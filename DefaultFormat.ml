@@ -17,24 +17,24 @@ let ragged_right a b c line=
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
 
-let title str =
+let title is_last str =
   let mcenter a b c l =
     { (center a b c l) with
-      min_height_after = 3 }
+      min_height_after = if is_last then 4 else 2 }
   in
   newPar (normal 150.) mcenter [size 10. [T str] ]
 
-let author str =
+let author is_last str =
   let mcenter a b c l =
     { (center a b c l) with
-      min_height_after = 1 }
+      min_height_after = if is_last then 3 else 1 }
   in
   newPar (normal 150.) mcenter [size 6. [T str] ]
 
-let institute str =
+let institute is_last str =
   let mcenter a b c l =
     { (center a b c l) with
-      min_height_after = 1 }
+      min_height_after = if is_last then 3 else 1 }
   in
   newPar (normal 150.) mcenter [size 4. [T str] ]
 
