@@ -16,6 +16,9 @@ module Env_abstract = struct
   let do_begin_abstract () = ()
   let do_end_abstract () = ()
 end
+
+let large text =
+  newPar textWidth parameters [size 10. [T text]]
 }}
 
 \begin{abstract}
@@ -26,7 +29,8 @@ Pour l'instant le logiciel est en cours de dévoleppement et on est loin d'avoir
 
 => Introduction
 
-Tex' c'est bien mieux que TeX. Un point c'est tout.
+\large{TeX' c'est bien mieux que TeX. Un point c'est tout.}
+
 =<
 
 => Quick start
