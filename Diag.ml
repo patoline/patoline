@@ -1,9 +1,19 @@
 
-type point = float * float
-let proj (x,y) = x
-let proj' (x,y) = y
-let middle (x0,y0) (x1,y1) = (0.5 *. (x0 +. x1), 0.5 *. (y0 +. y1))
-let distance (x0,y0) (x1,y1) = sqrt ((x1 -. x0)**2. +. (y1 -. y0)**2.)
+let pi = 3.14159
+let half_pi = pi /. 2.
+
+module Point = struct 
+  type t = float * float
+  let proj (x,y) = x
+  let proj' (x,y) = y
+  let middle (x0,y0) (x1,y1) = (0.5 *. (x0 +. x1), 0.5 *. (y0 +. y1))
+  let distance (x0,y0) (x1,y1) = sqrt ((x1 -. x0)**2. +. (y1 -. y0)**2.)
+  let (+) (x0,y0) (x1,y1) = (x0 +. x1), (y0 +. y1)
+  let (-) (x0,y0) (x1,y1) = (x0 -. x1), (y0 -. y1)
+  let (/) (x0,y0) r = (x0 /. r, y0 /.r)
+end
+
+open Point
 
 module Curve = struct
   type t =  Bezier.curve list
@@ -37,8 +47,20 @@ module Curve = struct
     (Bezier.eval xs t, Bezier.eval ys t)
 end
 
+module Vector = struct
+  type t = Point.t 
+  let of_points p q = ((proj q -. proj p),
+		       (proj' q -. proj' p))
+  let scal_mul r (x,y) = (x *. r, y *. r)
+  let translate p vec = Point.(p + vec)
+  let rotate angle (x,y) = (* Angle en radians *)
+    (x *. cos angle -. y *. sin angle,
+     x *. sin angle +. y *. cos angle)
+      
+end
+
 module Rectangle = struct
-  type t = { bottom_left : point ; top_right : point }
+  type t = { bottom_left : Point.t ; top_right : Point.t }
   let curve : t -> Curve.t = fun r ->
     let x1,y1 = r.bottom_left in
     let x3,y3 = r.top_right in
@@ -56,7 +78,7 @@ module Rectangle = struct
   (*   Curve.draw ~parameters:parameters (curve r) *)
   let make x1 y1 x3 y3 = { bottom_left = (x1,y1) ;
 			   top_right = (x3, y3) }
-  let points: t -> point list = fun r ->
+  let points: t -> Point.t list = fun r ->
     let x1,y1 = r.bottom_left in
     let x3,y3 = r.top_right in
     let x2 = x3 in
@@ -69,38 +91,67 @@ end
 
 
 module NodeShape = struct
-  type t = ?contents:Rectangle.t -> Curve.t
-  let circle contents = 
+  type t = ?inner_sep:float -> Drivers.contents list -> Curve.t
+
+  let default_inner_sep = 0.2
+
+  let rectangle ?inner_sep:(inner_sep = default_inner_sep) contents = 
     let (x0,y0,x1,y1) = Drivers.bounding_box contents in
+    let x0 = x0 -. inner_sep in
+    let y0 = y0 -. inner_sep in
+    let x1 = x1 +. inner_sep in
+    let y1 = y1 +. inner_sep in
     (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
     (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
     match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
       | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	let h = (x1 -. x0) /. 10. in
-	let v = (y1 -. y0) /. 10. in
-	let advance_h (x,y) h =  (x +. h, y) in
-	let advance_v (x,y) v =  (x, y +. h) in
 	Curve.of_point_lists [
-	  [p1;(advance_v p1 (-. v));(advance_v p2 (-. v));p2] ;	(* The bottom curve *)
-	  [p2;(advance_h p2 h);(advance_h p3 h);p3] ;	(* The right-hand curve *)
-	  [p3;(advance_v p3 v);(advance_v p4 v);p4] ;	(* The top curve *)
-	  [p4;(advance_h p4 (-. h));(advance_h p1 (-. h));p1] 	(* The left-hand curve *)
+	  [p1;p2] ;	(* The bottom curve *)
+	  [p2;p3] ;	(* The right-hand curve *)
+	  [p3;p4] ;	(* The top curve *)
+	  [p4;p1] 	(* The left-hand curve *)
 	]
       | _ -> assert false
+
+  let circle  ?inner_sep:(inner_sep = default_inner_sep) contents = 
+    let (x0,y0,x1,y1) = Drivers.bounding_box contents in
+    let x0 = x0 -. inner_sep in
+    let y0 = y0 -. inner_sep in
+    let x1 = x1 +. inner_sep in
+    let y1 = y1 +. inner_sep in
+    (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+    (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
+    match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
+      | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
+	let control p1 p2 =
+	   Vector.(translate
+	     (Point.middle p1 p2)
+	     (scal_mul 0.5 (rotate (-. half_pi) (of_points p1 p2))));
+	in
+	Curve.of_point_lists [
+	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
+	  [p2; control p2 p3; p3] ;	(* The right-hand curve *)
+	  [p3; control p3 p4; p4] ;	(* The top curve *)
+	  [p4; control p4 p1; p1] (* The left-hand curve *)
+	]
+      | _ -> assert false
+
 end
 
 module Node = struct
   type t = { shape : Curve.t ;
 	     parameters : Drivers.path_parameters ;
 	     contents : Drivers.contents list ;
-	     center : point }
+	     center : Point.t }
   let make
       ?contents:(contents = []) 
       ?parameters:(parameters = Drivers.default)
       ?center:(center = (
 	let x0,y0,x1,y1 = Drivers.bounding_box contents in 
 	middle (x0,y0) (x1,y1))) 
-      ?shape:(shape = NodeShape.circle)
+      ?shape:(shape = fun contents -> NodeShape.rectangle 
+	~inner_sep:NodeShape.default_inner_sep 
+	contents)
       ()
       =
     { shape = shape contents ; 
@@ -125,10 +176,26 @@ module Node = struct
 	  | Some (t2, bezier2) ->
     	    let finish = Curve.bezier_evaluate bezier2 t2 in
     	    Curve.draw ~parameters:parameters (Curve.of_point_lists [start :: (controls @ [finish])])
+  let bend_left ?angle:(angle=30.) node1 node2 = 
+    let node1 = node1.center in
+    let node2 = node2.center in
+    let angle = (-. angle) *. pi /. 180. in
+    let vec = Vector.(scal_mul (0.5 /. (cos angle)) (of_points node1 node2)) in
+    let vec = Vector.rotate (angle) vec in
+    [Vector.translate node1 vec]
+  let bend_right ?angle:(angle=30.) node1 node2 = 
+    let node1 = node1.center in
+    let node2 = node2.center in
+    let angle = angle *. pi /. 180. in
+    let vec = Vector.(scal_mul (0.5 /. (cos angle)) (of_points node1 node2)) in
+    let vec = Vector.rotate (angle) vec in
+    [Vector.translate node1 vec]
   let make_draw l
       ?contents:(contents = []) 
       ?parameters:(parameters = Drivers.default)
-      ?shape:(shape = NodeShape.circle) 
+      ?shape:(shape = fun contents -> NodeShape.rectangle 
+	~inner_sep:NodeShape.default_inner_sep 
+	contents)
       ?center:(center = (
 	let x0,y0,x1,y1 = Drivers.bounding_box contents in 
 	middle (x0,y0) (x1,y1))) 

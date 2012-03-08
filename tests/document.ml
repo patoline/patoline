@@ -26,22 +26,52 @@ let fig2 env=
   let contents_a=[Glyph { glyph_x=10.;glyph_y=1.; glyph_size=5.; glyph_color=black;
                    glyph=(Fonts.loadGlyph env.font
                             { FTypes.empty_glyph with
-                                FTypes.glyph_index=34}) }]
+                                FTypes.glyph_index=35}) }]
   in
   let contents_b=[Glyph { glyph_x=20.;glyph_y=30.; glyph_size=5.; glyph_color=black;
                    glyph=(Fonts.loadGlyph env.font
                             { FTypes.empty_glyph with
-                                FTypes.glyph_index=35}) }]
+                                FTypes.glyph_index=43}) }]
+  in
+  let contents_c=[Glyph { glyph_x=50.;glyph_y=15.; glyph_size=3.; glyph_color=black;
+                   glyph=(Fonts.loadGlyph env.font
+                            { FTypes.empty_glyph with
+                                FTypes.glyph_index=38}) }]
   in
   let state = [] in
   let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
-  let a, state = Node.make_draw state ~contents:contents_a ~parameters:params () in
+  let a, state = Node.make_draw state 
+    ~contents:contents_a 
+    ~parameters:params
+    ~shape:(NodeShape.circle ~inner_sep:5.)
+    () in
   let b, state = Node.make_draw state ~contents:contents_b ~parameters:params () in
+  let c, state = Node.make_draw state 
+    ~contents:contents_c 
+    ~parameters:params
+    ~shape:(NodeShape.circle)
+    () in
   let ab = Node.edge
     ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }
+    ~controls:(Node.bend_left a b)
     a b
   in
-    drawing ~offset:(-10.) (ab::state)
+  let ab' = Node.edge
+    ~parameters:{ default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 }
+    ~controls:(Node.bend_right ~angle:60.0 a b)
+    a b
+  in
+  let ac = Node.edge
+    ~parameters:{ default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 }
+    ~controls:(Node.bend_right ~angle:10.0 a c)
+    a c
+  in
+  let cb = Node.edge
+    ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 }
+    ~controls:(Node.bend_left ~angle:20.0 c b)
+    c b
+  in
+    drawing ~offset:(-10.) (ab'::ab::ac::cb::state)
 
 let fig3 env=
   let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
