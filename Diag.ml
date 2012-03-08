@@ -136,6 +136,29 @@ module NodeShape = struct
 	]
       | _ -> assert false
 
+  let flower  ?inner_sep:(inner_sep = default_inner_sep) ?amplitude:(amplitude=1.0) contents = 
+    let (x0,y0,x1,y1) = Drivers.bounding_box contents in
+    let x0 = x0 -. inner_sep in
+    let y0 = y0 -. inner_sep in
+    let x1 = x1 +. inner_sep in
+    let y1 = y1 +. inner_sep in
+    (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+    (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
+    match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
+      | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
+	let control p1 p2 =
+	   Vector.(translate
+	     (Point.middle p1 p2)
+	     (scal_mul amplitude (rotate (-. half_pi) (of_points p1 p2))));
+	in
+	Curve.of_point_lists [
+	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
+	  [p2; control p2 p3; p3] ;	(* The right-hand curve *)
+	  [p3; control p3 p4; p4] ;	(* The top curve *)
+	  [p4; control p4 p1; p1] (* The left-hand curve *)
+	]
+      | _ -> assert false
+
 end
 
 module Node = struct

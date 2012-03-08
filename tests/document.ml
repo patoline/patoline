@@ -49,7 +49,7 @@ let fig2 env=
   let c, state = Node.make_draw state 
     ~contents:contents_c 
     ~parameters:params
-    ~shape:(NodeShape.circle)
+    ~shape:(NodeShape.flower ~amplitude:3.)
     () in
   let ab = Node.edge
     ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }
