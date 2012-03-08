@@ -100,7 +100,7 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc
 	$(CAMLDOC) -d doc $(DOC)
 
-Doc.pdf: texprime texprime.cma
+Doc.pdf: texprime texprime.cma Doc.txp
 	./texprime Doc.txp > Doc.ml
 	$(CAMLC) texprime.cma Doc.ml -o Doc
 	./Doc

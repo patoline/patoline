@@ -1,33 +1,6 @@
 {
-open Drivers
-open Binary
-open Constants
 open Lexing
-open Util
 open Dyp
-open CamomileLibrary
-open Fonts.FTypes
-
-module OT=Fonts.Opentype
-
-let current_font=ref (Fonts.loadFont "AGaramondPro-Regular.otf")
-let current_size=ref 4.
-
-
-let all_subst=
-  Fonts.select_features !current_font [ StandardLigatures; DiscretionaryLigatures ]
-
-let my_subst font glyphs=List.fold_left apply glyphs all_subst
-
-let title_subst glyphs=List.fold_left apply glyphs ((Fonts.select_features !current_font [])@all_subst)
-
-let current_subst=ref (my_subst !current_font)
-let current_pos=ref (Fonts.positioning !current_font)
-let hyphenation_dict=
-  let i=open_in "dict_en" in
-  let inp=input_value i in
-    close_in i;
-    inp
 
 let set_newline dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -35,14 +8,14 @@ let set_newline dyplexbuf =
   let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
 
-type global_data = { cur_section : int IntMap.t }
+(* very important to allow using regexp for special combination of characteres *)
+(* let dypgen_choose_token = `all *)
 
-let global_data = { cur_section = IntMap.empty }
+let dyp_merge = keep_one
 
-let dyp_merge = Dyp.keep_all
-
-(* very important to allow using regexp for special combination of characters *)
-let dypgen_choose_token = `all
+type doc =
+     Paragraph of string
+   | Struct of (string * doc list)
 }
 
 %start main
@@ -54,7 +27,7 @@ let dypgen_choose_token = `all
 %lexer
 
 let utf8_char =
-    ['\033'-'\091''\093'-'\127']
+    ['\033'-'\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -64,99 +37,53 @@ let utf8_char =
 let macro = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']
 
 main lexer =
-  utf8_char+ -> WORD { Dyp.lexeme lexbuf }
   '\n' -> NEWLINE { set_newline lexbuf }
-  '\\''\\' -> CHAR { UTF8.get ("\\") 0 }
-  '\\' -> SPECIAL
+  '=''='+ -> SECT { Dyp.lexeme lexbuf }
+  utf8_char+ -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
 paragraph:
-    WORD<w> { (hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size w) }
+    WORD<w> { w }
+  | paragraph<p> NEWLINE? WORD<w> { p ^ " " ^ w }
 
-  | paragraph<p> NEWLINE? WORD<w>
-    { let fsize= !current_size in
-        p@(Glue { glue_min_width= 2.*. fsize/.9.;
-                  glue_nominal_width= fsize/.3.;
-                  glue_max_width= fsize/.2.;
-                  glue_badness=knuth_h_badness (fsize/.3.) }) ::
-          (hyphenate hyphenation_dict !current_subst !current_pos !current_font !current_size w) }
-
-title:
-    WORD<w> { Printf.printf "%s\n" w;flush stdout;hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size w}
-  | title<p> NEWLINE? WORD<w>
-    { let fsize= !current_size in
-        p@(Glue { glue_min_width= 2.*. fsize/.9.;
-                  glue_nominal_width= fsize/.3.;
-                  glue_max_width= fsize/.2.;
-                  glue_badness=knuth_h_badness (fsize/.3.) }) ::
-          (hyphenate hyphenation_dict title_subst !current_pos !current_font !current_size (String.uppercase w)) }
-
-
-header:
-   SPECIAL ['='+ | '-'+]<op> title<p> ['='+ | '-'+]<cl>
-     @{ if cl <> op then raise Dyp.Giveup;
-       let numbering = op.[0] = '=' in
-       let op = String.length op in
-       let l = 1. +. 0.5 *. float op in
-       let fsize = !current_size in
-       let p, global_data =
-         if numbering then
-           let global_data = { dyp.global_data with cur_section = Section.increment op dyp.global_data.cur_section } in
-           let s = Section.index_to_string
-             !current_subst
-             !current_pos
-             !current_font  fsize global_data.cur_section
-           in
-             s @ ((Glue { glue_min_width= 2.*. fsize/.9.;
-                          glue_nominal_width= fsize/.3.;
-                          glue_max_width= fsize/.2.;
-                          glue_badness=knuth_h_badness (fsize/.3.) }) :: p)
-               , global_data
-         else
-	   p, global_data
-       in
-       let rec resize=function
-           GlyphBox (size,b) -> GlyphBox (l*.size, b)
-         | Hyphen x->Hyphen { hyphen_normal=Array.map resize x.hyphen_normal;
-                              hyphenated=Array.map (fun (a,b)->Array.map resize a, Array.map resize b) x.hyphenated }
-         | Glue x -> Glue { glue_min_width= x.glue_min_width*.l;
-                            glue_nominal_width= x.glue_nominal_width*.l;
-                            glue_max_width= x.glue_max_width*.l;
-                            glue_badness = knuth_h_badness (2.*.(x.glue_max_width+.x.glue_min_width)/.3.) }
-         | Kerning x -> Kerning { advance_width = l*.x.advance_width;
-                                  advance_height = l*.x.advance_height;
-                                  kern_x0 = l*.x.kern_x0;
-                                  kern_y0 = l*.x.kern_y0;
-                                  kern_contents=resize x.kern_contents }
-         | x->x
-       in
-       let p = List.map resize p in
-         p, [Global_data global_data]
-      }
-
-paragraphs:
-   paragraph<p> [parskip paragraph]*<ps>
-     { List.map (fun x->Glue { glue_min_width=2.*.(!current_size);
-                               glue_nominal_width=2.*.(!current_size);
-                               glue_max_width=2.*.(!current_size);
-                               glue_badness=fun _->0. }::x)
-         (p::ps) }
+preambule:
+  [NEWLINE]*
+	{ None }
+| - SECT<st> [NEWLINE]*
+  paragraph<title> [NEWLINE]*
+  [ parskip paragraph<author> [NEWLINE]* 
+    [parskip paragraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
+  - SECT<en> [NEWLINE]*    
+  { if String.length $1 < 10 or String.length en < 10 then raise Giveup;
+    Some(title,at) }
 
 parskip:
-  | NEWLINE NEWLINE+
+  | NEWLINE [NEWLINE]+
 
-newlines:
-  | NEWLINE*
+ptext:
+  /* empty */
+    {[]}
+  | parskip text<t>
+    { t }
+
+textp:
+    { [] }
+  | text<t> parskip
+    { t }
+
+textn:
+    { [] }
+  | text<t> [NEWLINE]*
+    { t }
 
 text:
-    newlines
-    { [] } atom
-  | text(<=seq)<t> header<h> newlines
-    { t@[h] } atom
-  | text(<=atom)<t> paragraphs<p> newlines
-      { t@p } seq
+  | textp<t> paragraph<p>
+    { Paragraph p :: t }
+  | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
+    { Struct(title, List.rev content) :: t }
 
 main:
-  | text<t> eof
-    { t }
+  | preambule<p> text<t> [NEWLINE]* eof
+    { p, List.rev t }
+  
