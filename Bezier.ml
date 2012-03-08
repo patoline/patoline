@@ -330,12 +330,10 @@ let monomial a=
 
 let intersect (a,b) (c,d)=
   let eps=1e-5 in
-  let extr_a=
-    List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
-  let extr_c=
-    List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
+  let extr_a= List.filter (fun x-> x>=0. && x<=1.)
+    (0. :: (List.sort compare (bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
+  let extr_c= List.filter (fun x-> x>=0. && x<=1.)
+    (0. :: (List.sort compare (bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
   let sort x y=if x<y then (x,y) else (y,x) in
   let rec make_intervals l1 l2=match l1,l2 with
       [],_-> []
@@ -377,11 +375,8 @@ let intersect (a,b) (c,d)=
               let m1=(u1+.v1)/.2. in
               let m2=(u2+.v2)/.2. in
                 if v1-.u1 < eps && v2-.u2 < eps then
-                  (if (inside a b x0' y0' *. inside a b x1' y1' < 0. ||
-			 inside a b x0' y0' = 0.)
-		     &&
-			 (inside c d x0 y0 *. inside c d x1 y1 <= 0.)
-		   then inter s ((m1,m2)::res)
+                  (if inside a b x0' y0' *. inside a b x1' y1' < 0. && inside c d x0 y0 *. inside c d x1 y1 < 0. then
+                     inter s ((m1,m2)::res)
                    else
                      inter s res
                   )
@@ -415,9 +410,7 @@ let intersect (a,b) (c,d)=
 let x1=[| -1.; 30.|]
 let y1=[| 0.; 0.|]
 
-
-let x2=[| 10.; 30.; 20.|]
-let y2=[| -30.; 0.; 50.|]
-
+let x2=[| 0.; 0.; 100.; 200.|]
+let y2=[| 200.; 100.; 0.; 0.|]
 
 let _=intersect (x1,y1) (x2,y2)
