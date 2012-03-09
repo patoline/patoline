@@ -24,8 +24,8 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
           let comp=compression paragraphs (param,line) in
           let rec draw_box x y comp=function
               Kerning kbox ->(
-                let _=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) comp kbox.kern_contents in
-                  kbox.advance_width
+                let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) comp kbox.kern_contents in
+                  w+.kbox.advance_width
               )
             | Hyphen h->(
                 (Array.fold_left (fun x' box->
