@@ -127,18 +127,10 @@ module ArrowTip = struct
 							~norm:bend
 							(Vector.turn_right (Vector.of_points l p)))
 	in
-	let middle_rp = (Point.middle p r) in
-	let mr = Vector.translate middle_rp (Vector.normalise
+	let mr = Vector.translate (Point.middle p r) (Vector.normalise
 							~norm:bend
 							(Vector.turn_left (Vector.of_points r p)))
 	in
-	let _ = begin
-	Printf.printf ("(x,y) = (%f,%f), (xl,yl) = (%f,%f), (ml_x,ml_y) = (%f,%f), (xr,yr) = (%f,%f), (mr_x,mr_y) = (%f,%f), milieu (r,p) = (%f,%f) \n") 
-	  x y
-	  xl yl (proj ml) (proj' ml)
-	  xr yr (proj mr) (proj' mr) 
-	  (proj middle_rp) (proj' middle_rp)
-	end in
 	Curve.(draw ~parameters:params (of_point_lists [
 	  [r;mr;p] ;
 	  [p;ml;l]
@@ -252,18 +244,26 @@ module Node = struct
       ?controls:(controls = [])
       node2 = 
     let underlying_curve = (Curve.of_point_lists [node1.center :: (controls @ [node2.center])]) in
-    match Curve.latest_intersection underlying_curve node1.shape.NodeShape.curve with
-      | None -> failwith 
-	"The shape of start node should be a closed curve. Or perhaps one node lies inside another?"
-      | Some (t1, bezier1) ->
-    	let start = Curve.bezier_evaluate bezier1 t1 in
-    	match Curve.earliest_intersection underlying_curve node2.shape.NodeShape.curve with
-	  | None -> 
-	    failwith
-	      "The shape of start node should be a closed curve. Or perhaps one node lies inside another?"
-	  | Some (t2, bezier2) ->
-    	    let finish = Curve.bezier_evaluate bezier2 t2 in
-    	    Curve.draw ~parameters:parameters (Curve.of_point_lists [start :: (controls @ [finish])])
+    let start = node1.center begin
+      match Curve.latest_intersection underlying_curve node1.shape.NodeShape.curve with
+	| None -> begin
+	  Printf.printf
+	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
+	  node1.center
+	end
+	| Some (t1, bezier1) -> Curve.bezier_evaluate bezier1 t1 
+    end in
+    let finish = begin 
+      match Curve.earliest_intersection underlying_curve node2.shape.NodeShape.curve with
+	| None -> begin
+	  Printf.printf
+	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
+	  node2.center
+	end
+	| Some (t2, bezier2) -> Curve.bezier_evaluate bezier2 t2 
+    end in
+    Curve.draw ~parameters:parameters (Curve.of_point_lists [start :: (controls @ [finish])])
+
   let bend_left ?angle:(angle=30.) node1 node2 = 
     let node1 = node1.center in
     let node2 = node2.center in
