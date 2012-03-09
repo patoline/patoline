@@ -113,8 +113,8 @@ module ArrowTip = struct
       | Drivers.Path (params, curve) -> 
 	let curve = Array.to_list curve in 
 	let a, b = list_last curve in
-	let da = Bezier.(eval (derivee a) 1.) in
-	let db = Bezier.(eval (derivee b) 1.) in
+	let da = Bezier.eval (Bezier.derivee a) 1. in
+	let db = Bezier.eval (Bezier.derivee b) 1. in
 	let x = Bezier.eval a 1. in
 	let y = Bezier.eval b 1. in
 	let p = (x,y) in
@@ -131,10 +131,10 @@ module ArrowTip = struct
 							~norm:bend
 							(Vector.turn_left (Vector.of_points r p)))
 	in
-	Curve.(draw ~parameters:params (of_point_lists [
+	Curve.draw ~parameters:params (Curve.of_point_lists [
 	  [r;mr;p] ;
 	  [p;ml;l]
-	]))
+	])
       | _ -> assert false    
 end
 
@@ -237,7 +237,7 @@ module Node = struct
       contents = contents ; 
       center = center }
   let draw : t -> Drivers.contents list = fun node -> 
-    node.contents @ [NodeShape.(Curve.draw ~parameters:node.shape.parameters node.shape.curve)]
+    node.contents @ [Curve.draw ~parameters:node.shape.NodeShape.parameters node.shape.NodeShape.curve]
   let edge
       ?parameters:(parameters = Drivers.default)
       node1
