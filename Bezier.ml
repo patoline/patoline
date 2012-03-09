@@ -165,13 +165,29 @@ let bernstein_extr f=
                 if a<=d then (a,d) else (d,a)
         )
     | _->
-        (let rec bound x0 x1 i=
-           if i>=Array.length f then (x0,x1) else
-             if f.(i) < x0 then bound f.(i) x1 (i+1) else
-               if f.(i) > x1 then bound x0 f.(i) (i+1) else
-                 bound x0 x1 (i+1)
-         in
-           bound (1./.0.) (-1./.0.) 0)
+        (let fmin=ref (infinity) in
+         let fmax=ref (-.infinity) in
+           (match Array.length f with
+                0->(fmin:=0.; fmax:=0.)
+              | 1->(fmin:=f.(0); fmax:=f.(0))
+              | 2->(fmin:=min !fmin f.(0); fmax:=max !fmax f.(0))
+              | 3->
+                  (let a=f.(0) and b=f.(1) and c=f.(2) in
+                     fmin:=min !fmin a; fmax:=max !fmax a;
+                     fmin:=min !fmin c; fmax:=max !fmax c;
+                     let ax=a-.b+.c in
+                     let bx=b-.2.*.a in
+                     let xx=(-.bx)/.(2.*.ax) in
+                       if ax != 0. && xx>0. && xx<1. then (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
+                  )
+              | _->(
+                  fmin:=min !fmin f.(0); fmax:=max !fmax f.(0);
+                  fmin:=min !fmin f.(1); fmax:=max !fmax f.(1);
+                  List.iter (fun x->let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
+                    (bernstein_solve (derivee f))
+                ));
+           !fmin, !fmax
+        )
 
 let bounding_box (a,b)=
   let (x0,x1)=bernstein_extr a in
