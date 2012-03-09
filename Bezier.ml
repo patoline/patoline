@@ -11,7 +11,7 @@ let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
 let derivee a=
   let b=Array.create (Array.length a-1) 0. in
     for i=0 to Array.length b-1 do
-      b.(i)<-(a.(i+1)-.a.(i))*.(float_of_int (Array.length a-1))
+      b.(i)<-(a.(i+1)-.a.(i)) *. (float_of_int (Array.length a-1))
     done;
     b
 
@@ -115,14 +115,14 @@ let bernstein_extr f=
     | 3->
         (
           let a=f.(0) and b=f.(1) and c=f.(2) in
+          let fmin=ref (min a c) in
+          let fmax=ref (max a c) in
           let ax=a-.b+.c in
           let bx=b-.2.*.a in
           let xx=(-.bx)/.(2.*.ax) in
-            if ax != 0. && xx>0. && xx<1. then
-              if ax>0. then (eval f xx, max a c) else
-                (min a c, eval f xx)
-            else
-              if c>=a then (a,c) else (c,a)
+            if ax <> 0. && bx<>0. && xx>0. && xx<1. then
+              (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
+            (!fmin, !fmax)
         )
     | 4->
         (
@@ -178,13 +178,13 @@ let bernstein_extr f=
                      let ax=a-.b+.c in
                      let bx=b-.2.*.a in
                      let xx=(-.bx)/.(2.*.ax) in
-                       if ax != 0. && xx>0. && xx<1. then (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
+                       if bx<>0. && ax<>0. && xx>0. && xx<1. then (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
                   )
               | _->(
                   fmin:=min !fmin f.(0); fmax:=max !fmax f.(0);
                   fmin:=min !fmin f.(1); fmax:=max !fmax f.(1);
-                  List.iter (fun x->let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
-                    (bernstein_solve (derivee f))
+                  List.iter (fun x->if x>=0. && x<=1. then let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
+                    (bernstein_solve (derivee f));
                 ));
            !fmin, !fmax
         )

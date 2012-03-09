@@ -67,8 +67,11 @@ $(EXEC).opt: $(OPTOBJS)
 typography.cma: $(TEST:.ml=.cmo) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo
 
-test: $(TESTOBJ) Typography.cmx Diag.cmx tests/document.ml
-	$(CAMLOPT) -o test $(TESTOBJ) tests/document.ml
+test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
+	$(CAMLC) -o test $(TESTOBJ:.cmx=.cmo) tests/document.ml
+
+test2: $(TESTOBJ) Typography.cmx Diag.cmx tests/document2.ml
+	$(CAMLOPT) -o test2 $(TESTOBJ) tests/document2.ml
 
 fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo))
 	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.cmo
@@ -85,7 +88,7 @@ texprime.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
-	$(CAMLC) -o graphics_font $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
+	$(CAMLC) -o graphics_font graphics.cma $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
 
 graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml

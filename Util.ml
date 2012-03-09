@@ -71,10 +71,10 @@ let drawing ?offset:(offset=0.) cont=
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
       drawing_max_width=c-.a;
-      drawing_y0=offset+.b;
-      drawing_y1=offset+.d;
+      drawing_y0=offset;
+      drawing_y1=offset+.d-.b;
       drawing_badness=(fun _->0.);
-      drawing_contents=(fun _->List.map (translate (-.a) 0.) cont)
+      drawing_contents=(fun _->List.map (translate (-.a) (-.b)) cont)
     }
 
 type error_log=

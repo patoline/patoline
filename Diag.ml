@@ -244,7 +244,7 @@ module Node = struct
       ?controls:(controls = [])
       node2 = 
     let underlying_curve = (Curve.of_point_lists [node1.center :: (controls @ [node2.center])]) in
-    let start = node1.center begin
+    let start = begin
       match Curve.latest_intersection underlying_curve node1.shape.NodeShape.curve with
 	| None -> begin
 	  Printf.printf

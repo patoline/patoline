@@ -72,7 +72,7 @@ let fig2 env=
     ~controls:(Node.bend_left ~angle:20.0 c b)
     c b
   in
-    drawing ~offset:(-10.) (ab'::ab::ac::cb::state)
+    drawing ~offset:(0.) (ab'::ab::ac::state)
 
 let fig3 env=
   let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
