@@ -56,17 +56,19 @@ let rec print_macro ch op mtype name args =
 
 and print_contents op ch l = 
   Printf.fprintf ch "(";
-  begin match l with
-    [] ->  Printf.fprintf ch "[]";
-  | TC s :: l -> 
-    Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
-    print_contents op ch l
-  | MC(mtype, name, args) :: l -> 
-    Printf.fprintf ch "(";
-    print_macro ch op mtype name args;
-    Printf.fprintf ch ")@";
-    print_contents op ch l
-  end;
+  let rec fn l = 
+    begin match l with
+      [] ->  Printf.fprintf ch "[]";
+    | TC s :: l -> 
+      Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
+      fn l
+    | MC(mtype, name, args) :: l -> 
+      Printf.fprintf ch "(";
+      print_macro ch op mtype name args;
+      Printf.fprintf ch ")@";
+      fn l
+    end;
+  in fn l;
   Printf.fprintf ch ")"
 
 let _=
