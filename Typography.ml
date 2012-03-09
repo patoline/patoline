@@ -314,19 +314,22 @@ let structNum path name=
 let is_space c=c=' ' || c='\n' || c='\t'
 let sources=ref StrMap.empty
 
-let flatten env0 str=
-
-  let paragraphs=ref [] in
-  let param=ref [] in
-  let compl=ref [] in
-  let n=ref 0 in
-
-  let rec boxify env box=function
-      []->[]
-    | (B b)::s->(b env)::(boxify env (box+1) s)
-    | (T t)::s->(
-        let rec cut_str i0 i result=
-          if i>=String.length t then (
+let rec boxify env =function
+[]->[]
+  | (B b)::s->(b env)::(boxify env s)
+  | (T t)::s->(
+    let rec cut_str i0 i result=
+      if i>=String.length t then (
+        if i0<>i then (
+          if result<>[] then
+            result @ (env.stdGlue :: (glyph_of_string env.substitutions env.positioning env.font env.size
+                                        (String.sub t i0 (i-i0))))
+          else
+            glyph_of_string env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
+        ) else result
+      ) else (
+        if is_space t.[i] then
+          cut_str (i+1) (i+1) (
             if i0<>i then (
               if result<>[] then
                 result @ (env.stdGlue :: (glyph_of_string env.substitutions env.positioning env.font env.size
@@ -334,39 +337,39 @@ let flatten env0 str=
               else
                 glyph_of_string env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
             ) else result
-          ) else (
-            if is_space t.[i] then
-              cut_str (i+1) (i+1) (
-                if i0<>i then (
-                  if result<>[] then
-                    result @ (env.stdGlue :: (glyph_of_string env.substitutions env.positioning env.font env.size
-                                                (String.sub t i0 (i-i0))))
-                  else
-                    glyph_of_string env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
-                ) else result
-              )
-            else (
-              cut_str i0 (i+1) result
-            )
           )
-        in
-        let c=cut_str 0 0 [] in
-          c @ (boxify env (box + List.length c) s)
+        else (
+          cut_str i0 (i+1) result
+        )
       )
-    | FileRef (file,off,size)::s -> (
-        let i=try StrMap.find file !sources with _-> (let i=open_in file in sources:= StrMap.add file i !sources; i) in
-        let buf=String.create size in
-        let _=seek_in i off; input i buf 0 size in
-          boxify env box (T buf::s)
-      )
-    | Scoped (env', p)::s->(
-        let c=(boxify (env' env) box p) in
-          c@(boxify env (box+List.length c) s)
-      )
-  in
+    in
+    let c=cut_str 0 0 [] in
+    c @ (boxify env s)
+  )
+  | FileRef (file,off,size)::s -> (
+    let i=try 
+	    StrMap.find file !sources 
+      with _-> (let i=open_in file in sources:= StrMap.add file i !sources; i) 
+    in
+    let buf=String.create size in
+    let _=seek_in i off; input i buf 0 size in
+    boxify env (T buf::s)
+  )
+  | Scoped (env', p)::s->(
+    let c=(boxify (env' env) p) in
+    c@(boxify env s)
+  )
+
+let flatten env0 str=
+
+  let paragraphs=ref [] in
+  let param=ref [] in
+  let compl=ref [] in
+  let n=ref 0 in
+
 
   let add_paragraph p=
-    paragraphs:=(Array.of_list (boxify env0 0 p.par_contents))::(!paragraphs);
+    paragraphs:=(Array.of_list (boxify env0 p.par_contents))::(!paragraphs);
     compl:=(p.completeLine)::(!compl);
     param:=(p.parameters)::(!param);
     incr n;
