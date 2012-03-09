@@ -19,34 +19,23 @@ module Env_abstract = struct
 end
 
 let fig2 env=
-  let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut aça va bien?"]) in
-  (* let contents_a=[Glyph { glyph_x=10.;glyph_y=1.; glyph_size=5.; glyph_color=black; *)
-  (*                  glyph=(Fonts.loadGlyph env.font *)
-  (*                           { FTypes.empty_glyph with *)
-  (*                               FTypes.glyph_index=35}) }] *)
-  (* in *)
-  let contents_b=[Glyph { glyph_x=20.;glyph_y=30.; glyph_size=5.; glyph_color=black;
-                   glyph=(Fonts.loadGlyph env.font
-                            { FTypes.empty_glyph with
-                                FTypes.glyph_index=43}) }]
-  in
-  let contents_c=[Glyph { glyph_x=50.;glyph_y=15.; glyph_size=3.; glyph_color=black;
-                   glyph=(Fonts.loadGlyph env.font
-                            { FTypes.empty_glyph with
-                                FTypes.glyph_index=38}) }]
+  let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut ça va bien?"]) in
+  let contents_b= List.map (translate 20. 50.) (draw_boxes (boxify { env with size = 4. } [T "J"])) in
+  let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. } [T "Ailllaillaille!"]))
   in
   let state = [] in
-  let params = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } in  
+  let params = { NodeShape.default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } 
+  in  
   let a, state = Node.make_draw state 
     ~contents:contents_a 
-    ~parameters:params
-    ~shape:(NodeShape.circle ~inner_sep:5.)
+    ~shape:(NodeShape.circle ~parameters:params ~inner_sep:5.)
     () in
-  let b, state = Node.make_draw state ~contents:contents_b ~parameters:params () in
+  let b, state = Node.make_draw state ~contents:contents_b
+    ~shape:(NodeShape.rectangle ~parameters:{ params with lineWidth=3. ; lineJoin=Round_join} ~inner_sep:4.)
+    () in
   let c, state = Node.make_draw state 
     ~contents:contents_c 
-    ~parameters:params
-    ~shape:(NodeShape.flower ~amplitude:3.)
+    ~shape:(NodeShape.flower ~parameters:params ~amplitude:3.)
     () in
   let ab = Node.edge
     ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }
@@ -68,7 +57,8 @@ let fig2 env=
     ~controls:(Node.bend_left ~angle:20.0 c b)
     c b
   in
-    drawing ~offset:(-10.) (ab'::ab::ac::cb::state)
+  let tip_ab = ArrowTip.simple ab () in 
+    drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
 
 let large text =
   newPar textWidth parameters [size 10. (text @ [B (fun env->Drawing (fig2 env));T "eeeet ouais." ])]
@@ -77,7 +67,7 @@ let large text =
 \begin{abstract}
 TeX' est un logiciel permettant de produire des documents de haute qualité. Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.
 
-Pour l'instant le logiciel est en cours de dévoleppement et on est loin d'avoir atteind tous les objectifs !
+Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
 \end{abstract}
 
 => Introduction
