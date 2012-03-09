@@ -77,8 +77,6 @@ let drawing ?offset:(offset=0.) cont=
       drawing_contents=(fun _->List.map (translate (-.a) 0.) cont)
     }
 
-
-
 type error_log=
     Overfull_line of line
   | Widow of line
@@ -208,8 +206,8 @@ and boxes_interval boxes=
 let draw_boxes l=
   let rec draw_box x y dr=function
       Kerning kbox ->(
-        let dr',_=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr kbox.kern_contents in
-          dr', kbox.advance_width
+        let dr',w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr kbox.kern_contents in
+          dr', w+.kbox.advance_width
       )
     | Hyphen h->(
         Array.fold_left (fun (dr',x') box->
