@@ -11,7 +11,7 @@ let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
 let derivee a=
   let b=Array.create (Array.length a-1) 0. in
     for i=0 to Array.length b-1 do
-      b.(i)<-a.(i+1)-.a.(i)
+      b.(i)<-(a.(i+1)-.a.(i))*.(float_of_int (Array.length a-1))
     done;
     b
 
@@ -412,13 +412,13 @@ let intersect (a,b) (c,d)=
 (* let y2=[| 200.; 100.; 0.; 0.|] *)
 
 
-let x1=[| -1.; 30.|]
-let y1=[| 0.; 0.|]
+(* let x1=[| -1.; 30.|] *)
+(* let y1=[| 0.; 0.|] *)
 
-let x2=[| 10.; 30.; 20.|]
-let y2=[| -30.; 0.; 50.|]
+(* let x2=[| 10.; 30.; 20.|] *)
+(* let y2=[| -30.; 0.; 50.|] *)
 
-let _=intersect (x1,y1) (x2,y2)
+(* let _=intersect (x1,y1) (x2,y2) *)
 
 
 
@@ -441,13 +441,13 @@ let elevate2 f ra rb=
   let a=Array.length f in
   let b=if Array.length f>=0 then Array.length f.(0) else 0 in
   let res=Array.make_matrix (a+ra) (b+rb) 0. in
-  let bin=binom (max (a+ra) (b+rb)) in
+  let bin=binom (1+max (a+ra) (b+rb)) in
     if a>0 && b>0 then (
       for i=0 to a+ra-1 do
         for j=0 to b+rb-1 do
 
-          for i'=0 to max (a-1) i do
-            for j'=0 to max (b-1) j do
+          for i'=0 to min (a-1) i do
+            for j'=0 to min (b-1) j do
               let x0=(float_of_int (bin.(i').(a-1) * bin.(i-i').(ra)))/.
                 (float_of_int bin.(i).(a+ra-1))
               in
@@ -488,13 +488,11 @@ let times2 f g=
   let ag=Array.length g in
   let bg=Array.length g.(0) in
   let h=Array.make_matrix (af+ag-1) (bf+bg-1) 0. in
-  let bin=binom (max (af+ag-1) (bf+bg-1)) in
+  let bin=binom (max (af+ag) (bf+bg)) in
     for i=0 to af+ag-2 do
       for j=0 to bf+bg-2 do
-
         for i'=max 0 (i-ag+1) to min i (af-1) do
-          for j'=max 0 (j-bg+1) to min i (bf-1) do
-
+          for j'=max 0 (j-bg+1) to min j (bf-1) do
             let a=bin.(i').(af-1) * bin.(i-i').(ag-1) * bin.(j').(bf-1) * bin.(j-j').(bg-1) in
               h.(i).(j) <- h.(i).(j) +. f.(i').(j')*.g.(i-i').(j-j')*. (float_of_int a)
 
@@ -504,6 +502,79 @@ let times2 f g=
       done
     done;
     h
+
+
+let plus2 f g=
+  let mf=Array.length f in
+  let nf=Array.length f.(0) in
+  let mg=Array.length g in
+  let ng=Array.length g.(0) in
+  let ff=elevate2 f (max mf mg-mf) (max nf ng-nf) in
+  let gg=elevate2 g (max mf mg-mg) (max nf ng-ng) in
+  let h=Array.make_matrix (max mf mg) (max nf ng) 0. in
+    for i=0 to Array.length ff-1 do
+      for j=0 to Array.length ff.(0)-1 do
+        h.(i).(j) <- ff.(i).(j)+.gg.(i).(j)
+      done
+    done;
+    h
+
+let minus2 f g=
+  let mf=Array.length f in
+  let nf=Array.length f.(0) in
+  let mg=Array.length g in
+  let ng=Array.length g.(0) in
+  let ff=elevate2 f (max mf mg-mf) (max nf ng-nf) in
+  let gg=elevate2 g (max mf mg-mg) (max nf ng-ng) in
+  let h=Array.make_matrix (max mf mg) (max nf ng) 0. in
+    for i=0 to Array.length ff-1 do
+      for j=0 to Array.length ff.(0)-1 do
+        h.(i).(j) <- ff.(i).(j)-.gg.(i).(j)
+      done
+    done;
+    h
+
+let derivee2_0 f=Array.map derivee f
+let derivee2_1 a=
+  let b=Array.make_matrix (Array.length a-1)  (Array.length a.(0)) 0. in
+    for i=0 to Array.length b-1 do
+      for j=0 to Array.length b.(0)-1 do
+
+        b.(i).(j)<-(a.(i+1).(j)-.a.(i).(j))*.(float_of_int (Array.length a-1))
+
+      done
+    done;
+    b
+
+
+let promote0 f=[|f|]
+let promote1 f=Array.map (fun x->[|x|]) f
+
+let sq2 f=times2 f f
+
+(* let rand ()= *)
+(*   let n=41 in *)
+(*   let m=41 in *)
+(*   let x=10. in *)
+(*   let a=Array.make_matrix m n 0. in *)
+(*     for i=0 to m-1 do *)
+(*       for j=0 to n-1 do *)
+(*         a.(i).(j)<- (Random.float x)-.x *)
+(*       done *)
+(*     done; *)
+(*     a *)
+
+(* let _=Random.self_init () *)
+
+(* let _= *)
+(*   let a=rand () in *)
+(*   let b=rand () in *)
+(*   let x=Random.float 1. in *)
+(*   let y=Random.float 1. in *)
+(*     Printf.printf "%f %f\n"(eval2 (restrict2 a 0. 1. 0.5 1.) y 0.5) (eval2 a y 0.75); *)
+(*     derivee2_1 a *)
+
+
 
 let plus f g=
   let n=Array.length f in
@@ -543,10 +614,10 @@ let times f g=
 
 
 
-let xa=[|50.;400.;400.;200.|]
-let ya=[|50.;100.;78.;400.|]
-let xb=[|450.;400.;300.;500.|]
-let yb=[|30.;30.;499.;400.|]
+(* let xa=[|50.;400.;400.;200.|] *)
+(* let ya=[|50.;100.;78.;400.|] *)
+(* let xb=[|450.;400.;300.;500.|] *)
+(* let yb=[|30.;30.;499.;400.|] *)
 
 (* let _=distance (xa, ya) (xb, yb) *)
 
