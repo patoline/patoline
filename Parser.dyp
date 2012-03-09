@@ -16,28 +16,15 @@ let set_newline dyplexbuf =
 
 let dyp_merge = keep_one
 
-type content =
-     TC of string
-   | FC of string
-
-let print_content ch = function
-     TC s -> Printf.fprintf ch "T \"%s\"" (String.escaped s)
-   | FC s -> Printf.fprintf ch "(%s)" s
-
-let print_contents ch l = 
-    Printf.fprintf ch "[ ";
-    let first = ref true in
-    List.iter (fun x -> 
-      if not !first then Printf.fprintf ch "; ";
-      first := false;
-      print_content ch x) l;
-    Printf.fprintf ch "]"
-
 type doc =
      Paragraph of content list
    | Caml of int * int
    | Struct of content list * doc list
    | Macro of [ `Single | `Begin | `End ] * string * doc list
+
+and content =
+     TC of string
+   | MC of [ `Single | `Begin | `End ] * string * doc list
 
 let comment_stack = Stack.create ()
 
@@ -80,7 +67,7 @@ let pop_caml (lexbuf:('a Dyp.dyplexbuf)) =
 %lexer
 
 let utf8_char =
-    ['\033'-'\039''\042'-'\090''\092''\094''\096'-'\122''\124''\126''\127']
+    ['\033'-'\039''\042'-'\090''\094''\096'-'\122''\124''\126''\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -105,18 +92,22 @@ main lexer =
 		    push_caml (); comment lexbuf;
 		    start, l.lex_start_p.pos_cnum
 		  }
-  '\\' "begin" -> BEGIN
-  '\\' "end" -> END
-  '\\' ['a'-'z''A'-'Z''_'] ['a'-'z''A'-'Z''0'-'9''_']*
-    -> MACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  utf8_char+ | '(' | ')' | '{' | '}' | '[' | ']' -> WORD { Dyp.lexeme lexbuf }
+  '\\' "Begin" -> BEGIN
+  '\\' "End" -> END
+  '\\' ['a'-'z'] ['a'-'z''A'-'Z''0'-'9''_']*
+    -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  '\\' ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
+    -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  utf8_char+ | '(' | ')' | '[' | ']' -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
 paragraph:
     WORD+<w> { [TC (String.concat " " w)] }
-  | WORD+<w> NEWLINE paragraph<p> { TC (String.concat " " w) :: p }
-  
+  | WORD+<w> [NEWLINE]? paragraph<p> { TC (String.concat " " w) :: p }
+  | parmacro<m> { [ m ] }
+  | parmacro<m> [NEWLINE]? paragraph<p> { m :: p }
+
 preambule:
   [NEWLINE]*
 	{ None }
@@ -155,20 +146,24 @@ args:
   | CAML<s,e> [NEWLINE]? args<a>
     { Caml(s,e) :: a }
 
-funcall:
+topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" [NEWLINE]? args<a>
       { Macro(`Begin, name, a) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" [NEWLINE]? args<a>
       { Macro(`End, name, a) }
-  | MACRO<name> [NEWLINE]? args<a>
+  | TMACRO<name> [NEWLINE]? args<a>
       { Macro(`Single, name, a) }
+
+parmacro:
+  | PMACRO<name> [NEWLINE]? args<a>
+      { MC(`Single, name, a) }
 
 text:
   | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
     { Struct(title, List.rev content) :: t } atom
   | textn<t> CAML<s,e>
     { Caml(s,e) :: t } atom
-  | textn<t> funcall<m>
+  | textn<t> topmacro<m>
     { m :: t } atom
   | textp<t> paragraph<p>
     { Paragraph p :: t } nonatom

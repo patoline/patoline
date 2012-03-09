@@ -60,19 +60,21 @@ let fig2 env=
   let tip_ab = ArrowTip.simple ab () in 
     drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
 
-let large text =
-  newPar textWidth parameters [size 10. (text @ [B (fun env->Drawing (fig2 env));T "eeeet ouais." ])]
+let fig2 () =  [B (fun env->Drawing (fig2 env)) ]
+
+let large text = [size 10. text]
 }}
 
-\begin{abstract}
+\Begin{abstract}
 TeX' est un logiciel permettant de produire des documents de haute qualité. Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.
 
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
-\end{abstract}
+\End{abstract}
 
 => Introduction
 
-\large{TeX' c'est bien mieux que TeX. Un point c'est tout.}
+\large{TeX' c'est bien mieux que TeX. Un point c'est tout. \fig2 
+       eeeet ouais ! }
 
 =<
 
