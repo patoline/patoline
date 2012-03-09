@@ -52,7 +52,7 @@ module Vector = struct
   let of_points p q = ((proj q -. proj p),
 		       (proj' q -. proj' p))
   let scal_mul r (x,y) = (x *. r, y *. r)
-  let translate p vec = Point.(p + vec)
+  let translate p vec = (p + vec)
   let rotate angle (x,y) = (* Angle en radians *)
     (x *. cos angle -. y *. sin angle,
      x *. sin angle +. y *. cos angle)
@@ -124,9 +124,9 @@ module NodeShape = struct
     match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
       | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
 	let control p1 p2 =
-	   Vector.(translate
+	   Vector.translate
 	     (Point.middle p1 p2)
-	     (scal_mul 0.5 (rotate (-. half_pi) (of_points p1 p2))));
+	     (Vector.scal_mul 0.5 (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
 	in
 	Curve.of_point_lists [
 	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
@@ -147,9 +147,9 @@ module NodeShape = struct
     match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
       | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
 	let control p1 p2 =
-	   Vector.(translate
+	   Vector.translate
 	     (Point.middle p1 p2)
-	     (scal_mul amplitude (rotate (-. half_pi) (of_points p1 p2))));
+	     (Vector.scal_mul amplitude (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
 	in
 	Curve.of_point_lists [
 	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
@@ -203,14 +203,14 @@ module Node = struct
     let node1 = node1.center in
     let node2 = node2.center in
     let angle = (-. angle) *. pi /. 180. in
-    let vec = Vector.(scal_mul (0.5 /. (cos angle)) (of_points node1 node2)) in
+    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
     let vec = Vector.rotate (angle) vec in
     [Vector.translate node1 vec]
   let bend_right ?angle:(angle=30.) node1 node2 = 
     let node1 = node1.center in
     let node2 = node2.center in
     let angle = angle *. pi /. 180. in
-    let vec = Vector.(scal_mul (0.5 /. (cos angle)) (of_points node1 node2)) in
+    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
     let vec = Vector.rotate (angle) vec in
     [Vector.translate node1 vec]
   let make_draw l
