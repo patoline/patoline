@@ -124,46 +124,6 @@ let bernstein_extr f=
               (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
             (!fmin, !fmax)
         )
-    | 4->
-        (
-          let a=f.(0) and b=f.(1) and c=f.(2) and d=f.(3) in
-          let ax= -3.*.a +. 9.*.b -. 9.*.c +.3.*.d in
-          let bx= 6.*.a-.12.*.b+.6.*.c in
-          let cx= -3.*.a+.3.*.b in
-          let discr= bx*.bx -. 4.*.ax*.cx in
-            if ax <> 0. then
-
-              if discr < 0. then (if a<d then (a,d) else (d,a)) else
-                let t0= (-.bx -. sqrt discr) /.(2.*.ax) in
-                let t1= (-.bx +. sqrt discr) /.(2.*.ax) in
-                let (f0,f1)=
-                  if t0>0. && t0<1. then (
-                    let ft0=eval f t0 in
-                      if ft0<a then
-                        if d<a then (min d ft0,a) else (ft0,d)
-                      else
-                        if d<a then (d,ft0) else (a,max ft0 d)
-                  ) else (
-                    if a<d then (a,d) else (d,a)
-                  ) in
-
-                  if t1>0. && t1<1. then (
-                    let ft1=eval f t1 in
-                      if ft1<f0 then (ft1,f1) else
-                        if ft1>f1 then (f0,ft1) else (f0,f1)
-                  ) else (f0,f1)
-
-            else
-              if bx <> 0. then
-                (let t0= -.cx/.bx in
-                 let f0=if t0>0. && t0<1. then eval f t0 else a in
-                   if f0<a then
-                     if a<d then (f0,d) else (min f0 d, a)
-                   else
-                     if a>d then (d,f0) else (a,max f0 d))
-              else
-                if a<=d then (a,d) else (d,a)
-        )
     | _->
         (let fmin=ref (infinity) in
          let fmax=ref (-.infinity) in
@@ -311,7 +271,7 @@ let binom n=
       done
     done;
     a
-let _=binom 4
+
 
 let monomial a=
   let b=binom (Array.length a) in
@@ -568,6 +528,60 @@ let promote1 f=Array.map (fun x->[|x|]) f
 
 let sq2 f=times2 f f
 
+exception Found
+
+let solve2 eq0 eq1=
+  let eps=1e-3 in
+  let rec solve2 l r=match l with
+      []->r
+    | ((u1,v1,u2,v2) as h)::s ->(
+        if v1-.u1<eps && v2-.u2<eps then (
+          let r0=restrict2 eq0 u1 v1 u2 v2 in
+          let r1=restrict2 eq1 u1 v1 u2 v2 in
+            if r0.(0).(0) *. r0.(0).(Array.length r0.(0)-1) > 0. &&
+              r0.(0).(Array.length r0.(0)-1) *. r0.(Array.length r0-1).(Array.length r0.(0)-1) > 0. &&
+              r0.(Array.length r0-1).(Array.length r0.(0)-1) *. r0.(Array.length r0-1).(0) > 0. &&
+              r0.(Array.length r0-1).(0)*.r0.(0).(0) > 0. &&
+
+              r1.(0).(0) *. r1.(0).(Array.length r1.(0)-1) > 0. &&
+              r1.(0).(Array.length r1.(0)-1) *. r1.(Array.length r1-1).(Array.length r1.(0)-1) > 0. &&
+              r1.(Array.length r1-1).(Array.length r1.(0)-1) *. r1.(Array.length r1-1).(0) > 0. &&
+              r1.(Array.length r1-1).(0)*.r1.(0).(0) > 0.
+            then solve2 s r else solve2 s (h::r)
+
+        ) else (
+          let r0=restrict2 eq0 u1 v1 u2 v2 in
+          let r1=restrict2 eq1 u1 v1 u2 v2 in
+            if (try
+                  for i=0 to Array.length r0-1 do
+                    for j=0 to Array.length r0.(i)-1 do
+                      if r0.(i).(j) *. r0.(0).(0) <= 0. then raise Found
+                    done
+                  done;
+                  false
+                with
+                    Found -> true) && (
+              try
+                for i=0 to Array.length r1-1 do
+                  for j=0 to Array.length r1.(i)-1 do
+                    if r1.(i).(j) *. r1.(0).(0) <= 0. then raise Found
+                  done
+                done;
+                false
+              with
+                  Found -> true)
+            then (
+
+              let m1=(u1+.v1)/.2. in
+              let m2=(u2+.v2)/.2. in
+                solve2 ((u1,m1,u2,m2)::(u1,m1,m2,v2)::(m1,v1,u2,m2)::(m1,v1,m2,v2)::s) r
+            ) else solve2 s r
+        )
+      )
+  in
+    solve2 [(0.,1.,0.,1.)] []
+
+
 (* let rand ()= *)
 (*   let n=41 in *)
 (*   let m=41 in *)
@@ -628,14 +642,29 @@ let times f g=
     h
 
 
-
+let distance (xa,ya) (xb,yb)=
+  let dist=plus2 (sq2 (minus2 (promote0 xa) (promote1 xb))) (sq2 (minus2 (promote0 ya) (promote1 yb))) in
+  let d0=derivee2_0 dist in
+  let d1=derivee2_1 dist in
+    List.fold_left (fun d (u1,v1,u2,v2)->
+                      let m1=(u1+.v1)/.2. in
+                      let m2=(u2+.v2)/.2. in
+                      let x0=(eval xa m1 -. eval xb m2) in
+                      let y0=(eval ya m1 -. eval yb m2) in
+                        min d (sqrt (x0*.x0+.y0*.y0))
+                   ) infinity ((0.,0.,0.,0.)::(0.,0.,1.,1.)::(1.,1.,0.,0.)::(1.,1.,1.,1.)::(solve2 d0 d1))
 
 (* let xa=[|50.;400.;400.;200.|] *)
 (* let ya=[|50.;100.;78.;400.|] *)
+
 (* let xb=[|450.;400.;300.;500.|] *)
 (* let yb=[|30.;30.;499.;400.|] *)
 
+
 (* let _=distance (xa, ya) (xb, yb) *)
+
+
+
 
 (* let draw x y= *)
 (*   Graphics.moveto (int_of_float x.(0)) (int_of_float y.(0)); *)
@@ -649,6 +678,8 @@ let times f g=
 (*   Graphics.clear_graph (); *)
 (*   draw xa ya; *)
 (*   draw xb yb; *)
-(*   Graphics.moveto (int_of_float (eval xa 0.472)) (int_of_float (eval ya 0.472)); *)
-(*   Graphics.lineto (int_of_float (eval xb 0.)) (int_of_float (eval yb 0.)); *)
+(*   let s=0.616 in *)
+(*   let t=0.37 in *)
+(*   Graphics.moveto (int_of_float (eval xa s)) (int_of_float (eval ya s)); *)
+(*   Graphics.lineto (int_of_float (eval xb t)) (int_of_float (eval yb t)); *)
 (*   let _=Graphics.wait_next_event [Graphics.Key_pressed] in () *)
