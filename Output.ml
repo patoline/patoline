@@ -24,8 +24,8 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
           let comp=compression paragraphs (param,line) in
           let rec draw_box x y comp=function
               Kerning kbox ->(
-                let x'=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) comp kbox.kern_contents in
-                  x' +. kbox.advance_width
+                let _=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) comp kbox.kern_contents in
+                  kbox.advance_width
               )
             | Hyphen h->(
                 (Array.fold_left (fun x' box->
@@ -33,7 +33,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
                                       x'+.w) 0. h.hyphen_normal)
               )
             | GlyphBox a->(
-                page.pageContents<- (Drivers.Glyph { a with glyph_x=x;glyph_y=y }) :: page.pageContents;
+                page.pageContents<- (Drivers.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y }) :: page.pageContents;
                 a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
               )
             | Glue g

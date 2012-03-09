@@ -152,5 +152,8 @@ val hyphenate :
 (** Exemple de fonction de badness utilisable pour les glueBox *)
 val knuth_h_badness : float -> float -> float
 
+(** Une glue vide aux tailles qu'on lui donne *)
+val glue : float -> float -> float -> box
+
 (** Multiplier la taille des boîtes *)
 val resize:float -> box -> box

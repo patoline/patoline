@@ -26,7 +26,7 @@ let rec print_graph file paragraphs graph path=
 
                       k.lineStart k.lineEnd k.hyphenEnd;
 
-                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"%d\"]\n"
+                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"%f\"]\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
                       (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x")
@@ -37,7 +37,7 @@ let rec print_graph file paragraphs graph path=
 
                       (if k.lastFigure<>a.lastFigure then "green" else
                          if make_path a k path then "blue" else "black")
-                      (k.height-a.height)
+                      b (*k.height-a.height*)
                  ) graph;
     Printf.fprintf f "};\n";
     close_out f

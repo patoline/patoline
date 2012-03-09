@@ -114,15 +114,15 @@ let _=
   in
   let ragged_right a b c line=
     let par=parameters a b c line in
+    let m=line.nom_width in
       { par with
-          measure=line.nom_width;
-          left_margin=par.left_margin+.par.measure-.line.nom_width }
+          measure=m;
+          left_margin=par.left_margin+.par.measure-.m }
   in
-
   newStruct "About meatloaf";
-  newPar (normal 150.) ragged_right [glues [T "Meatloaf pork anim, ad pancetta dolore pastrami ribeye elit laborum. Cillum sint officia, id ham hock ad non cow. Pork belly pork chop swine bresaola velit drumstick, turducken ut beef ribs reprehenderit tongue enim meatloaf. Ea fatback esse flank fugiat shank, officia anim short loin swine bacon sunt. Occaecat mollit eiusmod prosciutto exercitation. Pig occaecat do, ut labore beef ribs ball tip prosciutto deserunt id in."]];
+  newPar (nominal 150.) ragged_right [glues [T "Meatloaf pork anim, ad pancetta dolore pastrami ribeye elit laborum. Cillum sint officia, id ham hock ad non cow. Pork belly pork chop swine bresaola velit drumstick, turducken ut beef ribs reprehenderit tongue enim meatloaf. Ea fatback esse flank fugiat shank, officia anim short loin swine bacon sunt. Occaecat mollit eiusmod prosciutto exercitation. Pig occaecat do, ut labore beef ribs ball tip prosciutto deserunt id in."]];
   newStruct "Pour aller danser le jerky...";
-  newPar (normal 150.) ragged_left [features [OldStyleFigures] [T "Jerky quis excepteur, sunt aute reprehenderit commodo kielbasa turducken in et strip steak eu. Nostrud laborum veniam cillum, eu et tempor ball tip pork beef ribs ad dolore capicola sunt. Qui andouille sunt flank strip steak pastrami. Aute quis est, pork nostrud in et consectetur cillum brisket ribeye occaecat. Drumstick t-bone chuck, frankfurter velit mollit voluptate flank dolore andouille. Flank sirloin eu incididunt exercitation capicola."]];
+  newPar (nominal 150.) ragged_left [glues [T "Jerky quis excepteur, sunt aute reprehenderit commodo kielbasa turducken in et strip steak eu. Nostrud laborum veniam cillum, eu et tempor ball tip pork beef ribs ad dolore capicola sunt. Qui andouille sunt flank strip steak pastrami. Aute quis est, pork nostrud in et consectetur cillum brisket ribeye occaecat. Drumstick t-bone chuck, frankfurter velit mollit voluptate flank dolore andouille. Flank sirloin eu incididunt exercitation capicola."]];
 
   up();
   newStruct "Du hamburger";

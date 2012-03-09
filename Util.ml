@@ -377,6 +377,13 @@ let hyphenate hyph subs kern font fsize str=
 
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
+let glue a b c=
+  Glue { drawing_min_width= a;
+         drawing_max_width= c;
+         drawing_y0=0.; drawing_y1=0.;
+         drawing_nominal_width= b;
+         drawing_contents=(fun _->[]);
+         drawing_badness=knuth_h_badness b }
 
 let rec resize l=function
     GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }

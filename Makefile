@@ -55,6 +55,8 @@ OPTOBJS = $(OBJS:.cmo=.cmx)
 TEST = $(filter %.ml, $(SOURCES0))
 TESTOBJ = $(TEST:.ml=.cmx)
 
+LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
+
 $(EXEC): $(OBJS)
 	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
 
@@ -62,23 +64,25 @@ $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 	cp $(EXEC).opt $(EXEC)
 
-typography.cma: $(TESTOBJ) Typography.cmo
-	$(CAMLC) -a -o typography.cma $(TESTOBJ) Typography.cmo
+typography.cma: $(TEST:.ml=.cmo) Typography.cmo
+	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo
 
 test: $(TESTOBJ) Typography.cmx Diag.cmx tests/document.ml
 	$(CAMLOPT) -o test $(TESTOBJ) tests/document.ml
 
-fonts.cma: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo)
-	$(CAMLC) -a -o fonts.cma $(BASE:.ml=.cmo) $(FONTS0:.ml=.cmo) Fonts.cmo
+fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo))
+	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.cmo
 
-fonts.cmxa: $(FONTS) $(BASE) $(OPTOBJS)
-	$(CAMLOPT) -a -o fonts.cmxa $(BASE:.ml=.cmx) $(FONTS0) Fonts.ml
+fonts.cmxa: $(filter %.cmx, $(FONTS0:.ml=.cmx)) $(filter %.cmx, $(BASE:.ml=.cmx))
+	$(CAMLOPT) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS0:.ml=.cmx)) Fonts.cmx
 
-texprime.cma: $(SOURCES_LIBS)
-	$(CAMLC) -a -o $@ $(SOURCES_LIBS)
 
-texprime.cmxa: $(SOURCES_LIBS:.cma=.cmxa)
-	$(CAMLOPT) -a -o $@ $(SOURCES_LIBS:.cma=.cmxa)
+texprime.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
+	$(CAMLC) -a -o texprime.cma $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
+
+texprime.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
+	$(CAMLOPT) -a -o texprime.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
+
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
 	$(CAMLC) -o graphics_font $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
@@ -102,7 +106,7 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 
 %.pdf: texprime texprime.cma %.txp
 	./texprime $*.txp > $*.ml
-	$(CAMLC) texprime.cma $*.ml -o $*
+	$(CAMLC)  -o $* texprime.cma $*.ml
 	./$*
 
 top:

@@ -38,7 +38,7 @@ let eval f0 x=
 
 let restrict f0 a b=
   let f=Array.copy f0 in
-    casteljau_left (casteljau_right f a) b
+    casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
 
 let descartes x0 x1 epsilon a=
   let has_root x=
@@ -181,7 +181,7 @@ let bounding_box (a,b)=
 
 
 
-let mult a b=
+let mult_matrix a b=
   let result=Array.make_matrix (Array.length a) (Array.length b.(0)) 0. in
     for i=0 to Array.length result-1 do
       for j=0 to Array.length result.(0)-1 do
@@ -265,16 +265,16 @@ let det a=
 (*     done; *)
 (*     a *)
 
-(* let print_maple a= *)
-(*   Printf.printf "["; *)
-(*   for i=0 to Array.length a-1 do *)
-(*     Printf.printf "%s[" (if i=0 then "" else ","); *)
-(*     for j=0 to Array.length a.(i)-1 do *)
-(*       Printf.printf "%s%f" (if j>0 then "," else "") a.(i).(j); *)
-(*     done; *)
-(*     Printf.printf "]"; *)
-(*   done; *)
-(*   Printf.printf "]" *)
+let print_maple a=
+  Printf.printf "[";
+  for i=0 to Array.length a-1 do
+    Printf.printf "%s[" (if i=0 then "" else ",");
+    for j=0 to Array.length a.(i)-1 do
+      Printf.printf "%s%f" (if j>0 then "," else "") a.(i).(j);
+    done;
+    Printf.printf "]";
+  done;
+  Printf.printf "]\n"
 
 (* let _=print_maple a *)
 
@@ -419,3 +419,149 @@ let x2=[| 10.; 30.; 20.|]
 let y2=[| -30.; 0.; 50.|]
 
 let _=intersect (x1,y1) (x2,y2)
+
+
+
+
+
+let elevate f r=
+  if r<=0 then f else (
+    let g=Array.make (Array.length f+r) 0. in
+    let n=Array.length f-1 in
+    let bin=binom (n+r) in
+      for i=0 to Array.length f-1 do
+        for j=i to i+r do
+          g.(j)<-g.(j)+. (float_of_int (bin.(i).(n)*bin.(j-i).(r))) /. (float_of_int bin.(j).(n+r)) *. f.(i)
+        done
+      done;
+      g)
+
+
+let elevate2 f ra rb=
+  let a=Array.length f in
+  let b=if Array.length f>=0 then Array.length f.(0) else 0 in
+  let res=Array.make_matrix (a+ra) (b+rb) 0. in
+  let bin=binom (max (a+ra) (b+rb)) in
+    if a>0 && b>0 then (
+      for i=0 to a+ra-1 do
+        for j=0 to b+rb-1 do
+
+          for i'=0 to max (a-1) i do
+            for j'=0 to max (b-1) j do
+              let x0=(float_of_int (bin.(i').(a-1) * bin.(i-i').(ra)))/.
+                (float_of_int bin.(i).(a+ra-1))
+              in
+              let x1=(float_of_int (bin.(j').(b-1) * bin.(j-j').(rb)))/.
+                (float_of_int bin.(j).(b+rb-1))
+              in
+                res.(i).(j)<-res.(i).(j) +. x0*.x1*.f.(i').(j')
+            done
+          done
+
+        done
+      done
+    );
+    res
+
+
+(* On a des polynomes en u sur la premiere dimension, en v sur la deuxieme *)
+let eval2 f u v=eval (Array.map (fun g->eval g u) f) v
+
+let restrict2 f u0 u1 v0 v1 =
+  let transpose g=
+    let t=Array.make_matrix (Array.length g.(0)) (Array.length g) 0. in
+      for i=0 to Array.length t-1 do
+        for j=0 to Array.length t.(0)-1 do
+          t.(i).(j)<-g.(j).(i)
+        done
+      done;
+      t
+  in
+  let restr g a b=casteljau_left (casteljau_right g a) ((b-.a)/.(1.-.a)) in
+    transpose (Array.map (fun x->restr x v0 v1)
+                 (transpose (Array.map (fun x->restrict x u0 u1) f)))
+
+
+let times2 f g=
+  let af=Array.length f in
+  let bf=Array.length f.(0) in
+  let ag=Array.length g in
+  let bg=Array.length g.(0) in
+  let h=Array.make_matrix (af+ag-1) (bf+bg-1) 0. in
+  let bin=binom (max (af+ag-1) (bf+bg-1)) in
+    for i=0 to af+ag-2 do
+      for j=0 to bf+bg-2 do
+
+        for i'=max 0 (i-ag+1) to min i (af-1) do
+          for j'=max 0 (j-bg+1) to min i (bf-1) do
+
+            let a=bin.(i').(af-1) * bin.(i-i').(ag-1) * bin.(j').(bf-1) * bin.(j-j').(bg-1) in
+              h.(i).(j) <- h.(i).(j) +. f.(i').(j')*.g.(i-i').(j-j')*. (float_of_int a)
+
+          done
+        done;
+        h.(i).(j)<-h.(i).(j) /. (float_of_int (bin.(i).(af+ag-2)*bin.(j).(bf+bg-2)))
+      done
+    done;
+    h
+
+let plus f g=
+  let n=Array.length f in
+  let m=Array.length g in
+  let ff=elevate f (max n m - n) in
+  let gg=elevate g (max n m - m) in
+  let h=Array.make (max n m) 0. in
+    for i=0 to Array.length ff do
+      h.(i)<-ff.(i)+.gg.(i)
+    done;
+    h
+
+let minus f g=
+  let n=Array.length f in
+  let m=Array.length g in
+  let ff=elevate f (max n m - n) in
+  let gg=elevate g (max n m - m) in
+  let h=Array.make (max n m) 0. in
+    for i=0 to Array.length ff do
+      h.(i)<-ff.(i)-.gg.(i)
+    done;
+    h
+
+
+let times f g=
+  let m=Array.length f-1 in
+  let n=Array.length g-1 in
+  let h=Array.make (m+n+1) 0. in
+  let bin=binom (m+n) in
+    for i=0 to m+n do
+      for j=max 0 (i-n) to min m i do
+        h.(i)<-h.(i)+. (float_of_int (bin.(j).(m)*bin.(i-j).(n))) /. (float_of_int bin.(i).(m+n)) *. f.(j) *. g.(i-j)
+      done
+    done;
+    h
+
+
+
+
+let xa=[|50.;400.;400.;200.|]
+let ya=[|50.;100.;78.;400.|]
+let xb=[|450.;400.;300.;500.|]
+let yb=[|30.;30.;499.;400.|]
+
+(* let _=distance (xa, ya) (xb, yb) *)
+
+(* let draw x y= *)
+(*   Graphics.moveto (int_of_float x.(0)) (int_of_float y.(0)); *)
+(*   Graphics.curveto (int_of_float x.(1),int_of_float y.(1)) *)
+(*     (int_of_float x.(2),int_of_float y.(2)) *)
+(*     (int_of_float x.(3),int_of_float y.(3)) *)
+
+
+(* let _= *)
+(*   Graphics.open_graph ""; *)
+(*   Graphics.clear_graph (); *)
+(*   draw xa ya; *)
+(*   draw xb yb; *)
+(*   Graphics.moveto (int_of_float (eval xa 0.472)) (int_of_float (eval ya 0.472)); *)
+(*   Graphics.lineto (int_of_float (eval xb 0.)) (int_of_float (eval yb 0.)); *)
+(*   let _=Graphics.wait_next_event [Graphics.Key_pressed] in () *)
