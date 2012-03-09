@@ -48,33 +48,34 @@ let _=
             try
 	      let docs = Parser.main lexbuf in
 	      match docs with
-		((pre, docs), _) :: _ ->
+	        [] | (_::_::_) -> assert false
+	      | [(pre, docs), _] ->
 		  Printf.printf "%s" preambule;
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "title %b \"%s\";;\n\n" (at = None) title;
+		      Printf.printf "title %b %a;;\n\n" (at = None) print_contents title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.printf "author %b \"%s\";;\n\n" (inst = None) auth;
+			Printf.printf "author %b %a;;\n\n" (inst = None) print_contents auth;
 			  match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.printf "institute true \"%s\";;\n\n" inst
+			    Printf.printf "institute true %a;;\n\n" print_contents inst
 		  end;
 		  let rec output_list docs = List.iter output_doc docs
 		  and output_doc = function
 		    | Paragraph p ->
-		      Printf.printf "newPar textWidth parameters [T \"%s\"];;\n" 
-			(String.escaped p)
+		      Printf.printf "newPar textWidth parameters %a;;\n" 
+			print_contents p
 		    | Caml(s,e) ->
 		      let size = e - s in
 		      let buf=String.create size in
 		      let _= seek_in op s; input op buf 0 size in
 		      Printf.printf "%s;;\n\n" buf
 		    | Struct(title, docs) ->
-		      Printf.printf "newStruct \"%s\";;\n\n" title;
+		      Printf.printf "newStruct %a;;\n\n" print_contents title;
 		      output_list docs;
 		      Printf.printf "up();;\n\n"
 		    | Macro(mtype, name, args) ->
@@ -85,12 +86,13 @@ let _=
 			| `End -> Printf.printf "do_end_%s" name
 		      end;
 		      List.iter (function
-		        Paragraph p -> Printf.printf " \"%s\"" (String.escaped p)
+		        Paragraph p -> Printf.printf " %a" print_contents p
 		      | Caml(s,e) ->
 			let size = e - s in
 			let buf=String.create size in
 			let _= seek_in op s; input op buf 0 size in
-			Printf.printf " (%s)" buf) args;
+			Printf.printf " (%s)" buf
+		      | _ -> assert false) args;
 		      if args = [] then Printf.printf " ()";
 		      if mtype = `End then Printf.printf "\nend";
 		      Printf.printf ";;\n\n" 

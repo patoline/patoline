@@ -16,10 +16,27 @@ let set_newline dyplexbuf =
 
 let dyp_merge = keep_one
 
+type content =
+     TC of string
+   | FC of string
+
+let print_content ch = function
+     TC s -> Printf.fprintf ch "T \"%s\"" (String.escaped s)
+   | FC s -> Printf.fprintf ch "(%s)" s
+
+let print_contents ch l = 
+    Printf.fprintf ch "[ ";
+    let first = ref true in
+    List.iter (fun x -> 
+      if not !first then Printf.fprintf ch "; ";
+      first := false;
+      print_content ch x) l;
+    Printf.fprintf ch "]"
+
 type doc =
-     Paragraph of string
+     Paragraph of content list
    | Caml of int * int
-   | Struct of string * doc list
+   | Struct of content list * doc list
    | Macro of [ `Single | `Begin | `End ] * string * doc list
 
 let comment_stack = Stack.create ()
@@ -97,9 +114,9 @@ main lexer =
 %parser
 
 paragraph:
-    WORD<w> { w }
-  | paragraph<p> NEWLINE? WORD<w> { p ^ " " ^ w }
-
+    WORD+<w> { [TC (String.concat " " w)] }
+  | WORD+<w> NEWLINE paragraph<p> { TC (String.concat " " w) :: p }
+  
 preambule:
   [NEWLINE]*
 	{ None }
@@ -108,7 +125,7 @@ preambule:
   [ parskip paragraph<author> [NEWLINE]* 
     [parskip paragraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
   - SECT<en> [NEWLINE]*    
-  { if String.length $1 < 10 or String.length en < 10 then raise Giveup;
+  { if String.length st < 10 or String.length en < 10 then raise Giveup;
     Some(title,at) }
 
 parskip:

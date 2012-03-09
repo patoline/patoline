@@ -5,12 +5,6 @@ open Constants
 open Fonts.FTypes
 module Buf=UTF8.Buf
 
-type structure= { mutable name:string;
-                  mutable page:int;
-                  mutable struct_x:float;
-                  mutable struct_y:float;
-                  mutable substructures:structure array }
-
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
 
@@ -85,6 +79,14 @@ let bounding_box l=
 
 type page = { mutable pageFormat:float*float; mutable pageContents:contents list }
 
+type structure= { mutable name:string;
+		  mutable displayname:contents list;
+                  mutable page:int;
+                  mutable struct_x:float;
+                  mutable struct_y:float;
+                  mutable substructures:structure array }
+
+
 module type Driver=sig
   val filename:string->string
   val output: ?structure:structure -> page array -> string -> unit
@@ -97,7 +99,8 @@ module Pdf=
 
      type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
                      mutable fontGlyphs:Fonts.glyph IntMap.t }
-     let output ?(structure:structure={name="";page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+     let output ?(structure:structure={name="";displayname=[];
+				       page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
          pages fileName=
 
        let outChan=open_out fileName in

@@ -80,6 +80,7 @@ type content=
 
 type node={
   name:string;
+  displayname:content list;
   children:tree IntMap.t;
   mutable tree_paragraph:int;
 }
@@ -93,7 +94,7 @@ and tree=
   | Paragraph of paragraph
 
 
-let empty={ name=""; children=IntMap.empty; tree_paragraph= (-1) }
+let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
 
 (* La structure actuelle *)
 let str=ref (Node empty)
@@ -150,9 +151,20 @@ let up ()=
   in
     cur:=up !cur
 
+let string_of_contents l =
+  let s = ref "" in
+  List.iter (function
+    T str -> 
+      if !s = "" then s:= str else s:= !s ^" " ^str
+  | _ -> ()) l;
+  !s
 
-let newStruct name=
-  let para=Node { empty with name=name } in
+let newStruct ?label displayname =
+  let name = match label with
+      None -> string_of_contents displayname
+    | Some s -> s
+  in
+  let para=Node { empty with name=name; displayname = displayname } in
   let rec newStruct tree path=
     match path with
         []->(match tree with
@@ -171,10 +183,15 @@ let newStruct name=
   in
     str:=newStruct !str !cur
 
-let title t=
+let title ?label displayname =
+  let name = match label with
+      None -> string_of_contents displayname
+    | Some s -> s
+  in
   match !str with
-      Paragraph _->str:= Node { name=t; children=IntMap.singleton 1 !str; tree_paragraph=0 }
-    | Node n -> str:=Node { n with name=t }
+      Paragraph _->str:= Node { name=name; displayname = displayname; 
+				children=IntMap.singleton 1 !str; tree_paragraph=0 }
+    | Node n -> str:=Node { n with name=name; displayname = displayname }
 
 
 (****************************************************************)
@@ -429,6 +446,7 @@ let rec make_struct positions tree=
   match tree with
       Paragraph p ->
           { Drivers.name="";
+	    Drivers.displayname=[];
             Drivers.page=0;
             Drivers.struct_x=0.;
             Drivers.struct_y=0.;
@@ -442,6 +460,7 @@ let rec make_struct positions tree=
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
           { Drivers.name=s.name;
+	    Drivers.displayname=[] (* FIXME boxify ?env [T s.name] *);
             Drivers.page=p;
             Drivers.struct_x=x;
             Drivers.struct_y=y;

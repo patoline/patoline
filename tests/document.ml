@@ -8,8 +8,8 @@ open Diag
 let _=Random.self_init ()
 
 let fig env=
-  let (a,b) as u=([|0.; 10.; 20.;20.|], [|0.; 0.;10.;20.|]) in
-  let (c,d) as v=([|0.; 0.; 10.;20.|], [|20.; 10.;0.;0.|]) in
+  let (a,b) =([|0.; 10.; 20.;20.|], [|0.; 0.;10.;20.|]) in
+  let (c,d) =([|0.; 0.; 10.;20.|], [|20.; 10.;0.;0.|]) in
 
   let cont=Glyph { glyph_x=10.;glyph_y=1.; glyph_size=5.; glyph_color=black;
                    glyph=(Fonts.loadGlyph env.font
@@ -94,7 +94,7 @@ let fig3 env=
     drawing ~offset:(-10.) (p1 :: p2 ::l)
 
 let _=
-  title "Bacon Ipsum";
+  title [ T "Bacon Ipsum"];
   let params a b c line=
     let par=parameters a b c line in
       { par with
@@ -120,19 +120,19 @@ let _=
           measure=m;
           left_margin=par.left_margin+.par.measure-.m }
   in
-  newStruct "About meatloaf";
+  newStruct [ T "About meatloaf"];
   newPar (normal 150.) ragged_right [glues [T "Meatloaf pork anim, ad pancetta dolore pastrami ribeye elit laborum. Cillum sint officia, id ham hock ad non cow. Pork belly pork chop swine bresaola velit drumstick, turducken ut beef ribs reprehenderit tongue enim meatloaf. Ea fatback esse flank fugiat shank, officia anim short loin swine bacon sunt. Occaecat mollit eiusmod prosciutto exercitation. Pig occaecat do, ut labore beef ribs ball tip prosciutto deserunt id in."]];
-  newStruct "Pour aller danser le jerky...";
+  newStruct [ T "Pour aller danser le jerky..."];
   newPar (normal 150.) ragged_left [glues [T "Jerky quis excepteur, sunt aute reprehenderit commodo kielbasa turducken in et strip steak eu. Nostrud laborum veniam cillum, eu et tempor ball tip pork beef ribs ad dolore capicola sunt. Qui andouille sunt flank strip steak pastrami. Aute quis est, pork nostrud in et consectetur cillum brisket ribeye occaecat. Drumstick t-bone chuck, frankfurter velit mollit voluptate flank dolore andouille. Flank sirloin eu incididunt exercitation capicola."]];
 
   up();
-  newStruct "Du hamburger";
+  newStruct [ T "Du hamburger" ];
   newPar (normal 150.) parameters [T "Hamburger ex spare ribs salami bresaola eu et, fatback id nostrud jowl turkey ut. Dolore kielbasa ham beef pastrami. Frankfurter pancetta magna, do meatloaf turducken jowl salami. Ad ribeye rump biltong swine, ut in pig drumstick flank strip steak cow. Aute eu boudin aliqua qui sed. Tail tongue duis, do irure culpa in bacon sint short loin nisi commodo fatback cillum nulla. Ex minim spare ribs do chuck." ];
   newPar (normal 150.) parameters [T "Venison tail consequat short loin beef ribs in, tenderloin reprehenderit officia. Pariatur pork belly swine strip steak kielbasa sausage. Minim aliqua non dolore, pariatur sunt qui chuck pastrami laborum tri-tip drumstick. Tail bresaola ut turducken beef ribs ut. Consequat rump pig strip steak, tri-tip swine aliqua ad ea short loin shoulder nulla ham turducken. Occaecat chicken ribeye pig, sirloin chuck ball tip laborum pork loin hamburger magna dolore."];
 
   up();
   up();
-  newStruct "¡Viva el jamon!";
+  newStruct [T "¡Viva el jamon!"];
   newPar (normal 150.) parameters [
     size 2. [T "Nostrud bresaola fugiat magna consequat, do incididunt strip steak kielbasa turkey pancetta. Eu do sirloin, beef venison veniam chicken in officia t-bone pork belly. T-bone nulla aliquip pancetta bacon non. Reprehenderit in corned beef ham hock officia venison. Sunt ex non voluptate, chicken deserunt brisket. Duis ullamco pariatur meatloaf exercitation andouille in. Filet mignon velit sed shankle kielbasa."] ;
 

@@ -71,7 +71,7 @@ let fig2 env=
     drawing ~offset:(-10.) (ab'::ab::ac::cb::state)
 
 let large text =
-  newPar textWidth parameters [size 10. [T text;B (fun env->Drawing (fig2 env));T "eeeet ouais." ]]
+  newPar textWidth parameters [size 10. (text @ [B (fun env->Drawing (fig2 env));T "eeeet ouais." ])]
 }}
 
 \begin{abstract}
