@@ -115,13 +115,17 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
               let wi=box_width comp_i box_i in
               let wj=box_width comp_j box_j in
                 if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-                  let yi=lower_y box_i wi in
-                  let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                  let yi_=lower_y box_i wi in
+                  let yi=if yi_=infinity then 0. else yi_ in
+                  let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                  let yj=if yj_=(-.infinity) then 0. else yj_ in
                     xi:= !xi+.wi;
                     collide boxes_i (i+1) boxes_j j (min max_col (yi-.yj))
                 ) else (
-                  let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-                  let yj=upper_y box_j wj in
+                  let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+                  let yi=if yi_=(infinity) then 0. else yi_ in
+                  let yj_=upper_y box_j wj in
+                  let yj=if yj_=(-.infinity) then 0. else yj_ in
                     xj:= !xj+.wj;
                     collide boxes_i i boxes_j (j+1) (min max_col (yi-.yj))
                 )

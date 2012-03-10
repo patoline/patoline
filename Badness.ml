@@ -6,7 +6,6 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
   let xj=ref x1 in
 
   let rec v_badness boxes_i i boxes_j j w_tot col col2=
-
     match boxes_i, boxes_j with
         [],_ | _,[] ->if w_tot<=0. then 0. else ((col*.col-.col2)/.w_tot)
 
@@ -50,8 +49,10 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
                  let wi=box_width comp0 box_i in
                  let wj=box_width comp1 box_j in
                    if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-                     let yi=lower_y box_i wi in
-                     let yj=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                     let yi_=lower_y box_i wi in
+                     let yi=if yi_=infinity then 0. else yi_ in
+                     let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+                     let yj=if yj_=(-.infinity) then 0. else yj_ in
                      let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
                      let w0= !xi +. wi -. x0 in
                        xi:= !xi+.wi;
@@ -61,8 +62,11 @@ let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
                          (let area=w0*.(v_space+.yi-.yj) in
                             v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
                    ) else (
-                     let yi=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-                     let yj=upper_y box_j wj in
+                     let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+                     let yi=if yi_=(infinity) then 0. else yi_ in
+                     let yj_=upper_y box_j wj in
+                     let yj=if yj_=(-.infinity) then 0. else yj_ in
+
                      let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
                      let w0= !xj +. wj -. x0 in
                        xj:= !xj +. w0;
