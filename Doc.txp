@@ -69,6 +69,7 @@ let large text = [size 10. text]
 \Begin{abstract}
 TeX' est un logiciel permettant de produire des documents de haute qualité. Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.
 
+\Italic
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
 \End{abstract}
 
@@ -115,4 +116,17 @@ Pour faire un titre on utilise
 
 
 =<
+
+(*
+=> Alegreya
+
+\family{{alegreya}}{\alternative{{Regular}}{Test Alegreya regular et \italic{Test italic} } }
+
+\family{{alegreya}}{\alternative{{Bold}}{Test Alegreya bold et \italic{Test italic} } }
+
+\family{{alegreya}}{\alternative{{Caps}}{Test Alegreya caps et \italic{Test italic} } }
+
+\family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic} } }
+=<
+*)
 =< 

@@ -154,7 +154,7 @@ depend : .depend
 
 .depend : $(SMLIY) .depend.input
 	@echo '--Re-building dependencies'
-	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) DefaultFormat.ml > .depend
+	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) Maths.ml DefaultFormat.ml > .depend
 
 
 include .depend

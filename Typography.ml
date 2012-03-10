@@ -63,6 +63,30 @@ let lmmono =
 	loadFont "Otf/lmmonoltcond10-oblique.otf"));
   ]
 
+(*Alegreya raises : Opentype.Table_not_found
+let alegreya =
+  [ Regular, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/Alegreya-Regular.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/Alegreya-Italic.otf"));
+    Bold, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/Alegreya-Bold.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/Alegreya-BoldItalic.otf"));
+    Caps, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/AlegreyaSC-Regular.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/AlegreyaSC-Italic.otf"));
+    Demi, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/Alegreya-Black.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/Alegreya-BlackItalic.otf"));
+  ]*)
+
 let selectFont fam alt it =
   try
     let r, i = List.assoc alt fam in
@@ -76,6 +100,7 @@ type environment={
   mutable fontFamily:fontFamily;
   mutable fontItalic:bool;
   mutable fontAlternative:fontAlternative;
+  mutable fontFeatures:Fonts.FTypes.features list;
   mutable font:font;
   mutable size:float;
   mutable stdGlue:box;
@@ -90,6 +115,7 @@ let defaultEnv=
       fontFamily=lmroman;
       fontItalic=false;
       fontAlternative=Regular;
+      fontFeatures= [ StandardLigatures ];
       font=f;
       substitutions=
         (fun glyphs -> List.fold_left apply glyphs (
@@ -194,7 +220,7 @@ let doc_graph out t0=
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 
 (* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
-let newPar ?environment:(environment=defaultEnv) complete parameters par=
+let newPar ?(environment=defaultEnv) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
   let rec newPar tree path=
     match path with
@@ -272,7 +298,7 @@ let updateFont env font =
        font=font;
        substitutions=
          (fun glyphs -> List.fold_left apply glyphs (
-           Fonts.select_features font [ StandardLigatures ]
+           Fonts.select_features font env.fontFeatures
           ));
        positioning=positioning font }
   
@@ -281,30 +307,40 @@ let font f t=
   let font=loadFont f in
     [Scoped ((fun env-> updateFont env font), t)]
 
+let envItalic b env =
+  let font = selectFont env.fontFamily env.fontAlternative b in
+  let env = { env with fontItalic = b } in
+  updateFont env font
+      
 let italic t =
-  [Scoped ((fun env ->
-    let font = selectFont env.fontFamily env.fontAlternative true in
-    let env = { env with fontItalic = true } in
-    updateFont env font), t)]
+  [Scoped(envItalic true, t)]
+
+module Italic = struct
+  let do_begin_Italic () = ()
+  let do_end_Italic () = ()
+  let defaultEnv = envItalic true defaultEnv
+end
+
+module Env_Italic = Italic
 
 let notItalic t =
-  [Scoped ((fun env ->
-    let font = selectFont env.fontFamily env.fontAlternative false in
-    let env = { env with fontItalic = false } in
-    updateFont env font), t)]
+  [Scoped (envItalic false, t)]
 
 let toggleItalic t =
-  [Scoped ((fun env ->
-    let it = not env.fontItalic in
-    let font = selectFont env.fontFamily env.fontAlternative it in
-    let env = { env with fontItalic = it } in
-    updateFont env font), t)]
-    
-let alternative alt t =
-  [Scoped ((fun env ->
-    let font = selectFont env.fontFamily alt env.fontItalic in
-    let env = { env with fontAlternative = alt } in
-    updateFont env font), t)]
+  [Scoped ((fun env -> envItalic (not env.fontItalic) env), t)]
+ 
+let envAlternative features alt env =
+  let font = selectFont env.fontFamily alt env.fontItalic in
+  let env = { env with fontAlternative = alt } in
+  updateFont env font
+ 
+let alternative ?features alt t =
+  [Scoped ((fun env -> 
+    let features = match features with
+	None -> env.fontFeatures
+      | Some f -> f
+    in
+    envAlternative features alt env), t)]
 
 let family fam t =
   [Scoped ((fun env ->
@@ -419,14 +455,13 @@ let structNum path name=
       h::s->List.fold_left (fun x y -> x^"."^(string_of_int (y+1))) (string_of_int (h+1)) s
     | []->"0"
   in
-    if List.length path <= 1 then
-      [Scoped ((fun env->{ env with substitutions=(fun glyphs -> List.fold_left apply glyphs (
-                                                     Fonts.select_features env.font [OldStyleFigures; SmallCapitals]
-                                                   ));
-                             size=sqrt (sqrt phi)*.env.size
-                         }), [T (n ^ " " ^ (CM.uppercase name))])]
-    else
-      [features [OldStyleFigures] [T (n ^ " " ^ name)]]
+  if List.length path <= 2 then
+    [Scoped ((fun env->{(envAlternative (OldStyleFigures::env.fontFeatures) Caps env) with
+      size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
+    }), (T n::B (fun env -> env.stdGlue)::name))]
+  else
+    [Scoped ((fun env-> envAlternative (OldStyleFigures::env.fontFeatures) Caps env),
+	     (T n::B (fun env -> env.stdGlue)::name))]
 
 
 let is_space c=c=' ' || c='\n' || c='\t'
@@ -487,7 +522,7 @@ let flatten env0 str=
 
 
   let add_paragraph p=
-    paragraphs:=(Array.of_list (boxify env0 p.par_contents))::(!paragraphs);
+    paragraphs:=(Array.of_list (boxify p.par_env p.par_contents))::(!paragraphs);
     compl:=(p.completeLine)::(!compl);
     param:=(p.parameters)::(!param);
     incr n;
@@ -499,7 +534,7 @@ let flatten env0 str=
       | Node s-> (
           s.tree_paragraph <- !n;
           if path<>[] then (
-            add_paragraph ({ par_contents=structNum path s.name;
+            add_paragraph ({ par_contents=structNum path s.displayname;
                              par_env=env;
                              parameters=
                                (fun paragraphs figures last_parameters line ->

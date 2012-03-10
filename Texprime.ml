@@ -39,21 +39,48 @@ let postambule : ('a, 'b, 'c) format = "
 let rec print_macro ch op mtype name args =
   begin
     match mtype with
-    | `Single -> Printf.fprintf ch "%s" name
-    | `Module -> Printf.fprintf ch "open %s;; do_%s" name name
-    | `Begin -> Printf.fprintf ch "module TEMP = struct\n open Env_%s;;\n do_begin_%s" name name
-    | `End -> Printf.fprintf ch "do_end_%s" name
-  end;
-  List.iter (function
-    Paragraph p -> Printf.fprintf ch " %a" (print_contents op) p
-  | Caml(s,e) ->
-    let size = e - s in
-    let buf=String.create size in
-    let _= seek_in op s; input op buf 0 size in
-    Printf.fprintf ch " (%s)" buf
-  | _ -> assert false) args;
-  if args = [] then Printf.fprintf ch " ()";
-  if mtype = `End then Printf.fprintf ch "\nend"
+    | `Single -> 
+      Printf.fprintf ch "%s" name;
+      List.iter (function
+        Paragraph p -> Printf.fprintf ch " %a" (print_contents op) p
+      | Caml(s,e) ->
+	let size = e - s in
+	let buf=String.create size in
+	let _= seek_in op s; input op buf 0 size in
+	Printf.fprintf ch " (%s)" buf
+      | _ -> assert false) args;
+      if args = [] then Printf.fprintf ch " ()";
+    | `Module | `Begin -> 
+      let end_open =
+	if args = [] then 
+	  ""
+	else begin
+	  let num = ref 1 in
+	  Printf.fprintf ch "module Args = struct\n";
+	  List.iter (function
+            Paragraph p -> Printf.fprintf ch "arg%d = %a;;" !num (print_contents op) p;
+	      incr num
+	  | Caml(s,e) ->
+	    let size = e - s in
+	    let buf=String.create size in
+	    let _= seek_in op s; input op buf 0 size in
+	    Printf.fprintf ch "arg%d = %s;;" !num buf;
+	    incr num
+	  | _ -> assert false) args;
+	  Printf.printf "end;;\n";
+	  "(Args)"
+	end
+      in
+      let modname = 
+	if mtype = `Begin then begin
+	  Printf.fprintf ch "module TEMP = struct\n";
+	  "Env_"^name
+	end
+	else name
+      in
+      Printf.fprintf ch "open %s%s;;\n do_begin_%s()" modname end_open name
+    | `End -> Printf.fprintf ch "do_end_%s();;\nend" name
+  end
 
 and print_contents op ch l = 
   Printf.fprintf ch "(";
@@ -105,7 +132,7 @@ let _=
 		  let rec output_list docs = List.iter output_doc docs
 		  and output_doc = function
 		    | Paragraph p ->
-		      Printf.printf "newPar textWidth parameters %a;;\n" 
+		      Printf.printf "newPar ~environment:defaultEnv textWidth parameters %a;;\n" 
 			(print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
