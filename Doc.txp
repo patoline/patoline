@@ -21,7 +21,8 @@ end
 let fig2 env=
   let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut ça va bien?"]) in
   let contents_b= List.map (translate 20. 50.) (draw_boxes (boxify { env with size = 4. } [T "J"])) in
-  let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. } [T "Ailllaillaille!"]))
+  let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. } 
+    (alternative Bold [T "Ailllaillaille!"])))
   in
   let state = [] in
   let params = { NodeShape.default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } 
@@ -73,7 +74,8 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 => Introduction
 
-\large{TeX' c'est bien mieux que TeX. Un point c'est tout. \fig2 eeeet ouais ! }
+\large{TeX' c'est bien mieux que TeX. Un point c'est tout. \fig2 
+  \italic{eeeet \alternative{{Bold}}{ouais !}} }
 
 =<
 
@@ -83,6 +85,34 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 Pour faire un titre on utilise
  =>
+
+=<
+=<
+
+=> Test des polices
+
+=> Latin Modern Roman
+
+\family{{lmroman}}{\alternative{{Regular}}{Test latin modern roman regular et \italic{Test italic}}}
+
+\family{{lmroman}}{\alternative{{Bold}}{Test latin modern roman bold et \italic{Test italic}}}
+
+\family{{lmroman}}{\alternative{{Caps}}{Test latin modern roman caps et \italic{Test italic}}}
+
+\family{{lmroman}}{\alternative{{Demi}}{Test latin modern roman demi et \italic{Test italic}}}
+
+=<
+
+=> Latin Modern Mono
+
+\family{{lmmono}}{\alternative{{Regular}}{Test latin modern mono regular et \italic{Test italic}}}
+
+\family{{lmmono}}{\alternative{{Bold}}{Test latin modern mono bold et \italic{Test italic}}}
+
+\family{{lmmono}}{\alternative{{Caps}}{Test latin modern mono caps et \italic{Test italic}}}
+
+\family{{lmmono}}{\alternative{{Demi}}{Test latin modern mono demi et \italic{Test italic}}}
+
 
 =<
 =< 

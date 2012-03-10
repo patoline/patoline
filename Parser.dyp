@@ -20,11 +20,11 @@ type doc =
      Paragraph of content list
    | Caml of int * int
    | Struct of content list * doc list
-   | Macro of [ `Single | `Begin | `End ] * string * doc list
+   | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
 
 and content =
      TC of string
-   | MC of [ `Single | `Begin | `End ] * string * doc list
+   | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
 
 let comment_stack = Stack.create ()
 
@@ -152,7 +152,7 @@ topmacro:
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" [NEWLINE]? args<a>
       { Macro(`End, name, a) }
   | TMACRO<name> [NEWLINE]? args<a>
-      { Macro(`Single, name, a) }
+      { Macro(`Module, name, a) }
 
 parmacro:
   | PMACRO<name> [NEWLINE]? args<a>

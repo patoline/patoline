@@ -40,6 +40,7 @@ let rec print_macro ch op mtype name args =
   begin
     match mtype with
     | `Single -> Printf.fprintf ch "%s" name
+    | `Module -> Printf.fprintf ch "open %s;; do_%s" name name
     | `Begin -> Printf.fprintf ch "module TEMP = struct\n open Env_%s;;\n do_begin_%s" name name
     | `End -> Printf.fprintf ch "do_end_%s" name
   end;
@@ -59,9 +60,11 @@ and print_contents op ch l =
   let rec fn l = 
     begin match l with
       [] ->  Printf.fprintf ch "[]";
-    | TC s :: l -> 
-      Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
+    | TC s :: ((_::_) as l) -> 
+      Printf.fprintf ch "(T \"%s\")::(B (fun env -> env.stdGlue))::" (String.escaped s);
       fn l
+    | TC s :: [] -> 
+      Printf.fprintf ch "[T \"%s\"]" (String.escaped s);
     | MC(mtype, name, args) :: l -> 
       Printf.fprintf ch "(";
       print_macro ch op mtype name args;

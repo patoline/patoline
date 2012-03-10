@@ -11,7 +11,71 @@ open Drivers
    environnement. On peut tout modifier de manière uniforme sur tout
    le document à partir de n'importe où (voir le type content, plus
    bas, pour les scopes) *)
+
+type fontAlternative = Regular | Bold | Caps | Demi
+ 
+(* Italic is second *)
+type fontFamily = (fontAlternative * (font Lazy.t * font Lazy.t)) list
+
+let lmroman =
+  [ Regular, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmroman10-regular.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmroman10-italic.otf"));
+    Bold, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmroman10-bold.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmroman10-bolditalic.otf"));
+    Caps, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmromancaps10-regular.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmromancaps10-oblique.otf"));
+    Demi, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmromandemi10-regular.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmromandemi10-oblique.otf"));
+  ]
+
+let lmmono =
+  [ Regular, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmmonolt10-regular.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmmonolt10-oblique.otf"));
+    Bold, (
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmmonolt10-bold.otf"),
+       Lazy.lazy_from_fun (fun () -> 
+	 loadFont "Otf/lmmonolt10-boldoblique.otf"));
+    Caps, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmmonocaps10-regular.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmmonocaps10-oblique.otf"));
+    Demi, (
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmmonoltcond10-regular.otf"),
+      Lazy.lazy_from_fun (fun () -> 
+	loadFont "Otf/lmmonoltcond10-oblique.otf"));
+  ]
+
+let selectFont fam alt it =
+  try
+    let r, i = List.assoc alt fam in
+    Lazy.force (if it then i else r)
+  with Not_found ->
+    /* FIXME: keep the font name and print a better message */
+    Printf.fprintf stderr "Font not found in family.\n"; 
+    exit 1
+
 type environment={
+  mutable fontFamily:fontFamily;
+  mutable fontItalic:bool;
+  mutable fontAlternative:fontAlternative;
   mutable font:font;
   mutable size:float;
   mutable stdGlue:box;
@@ -20,10 +84,18 @@ type environment={
   mutable positioning:glyph_ids list -> glyph_ids list;
 }
 let defaultEnv=
-  let f=loadFont "AGaramondPro-Regular.otf" in
+  let f=selectFont lmroman Regular false in
   let fsize=5. in
     {
+      fontFamily=lmroman;
+      fontItalic=false;
+      fontAlternative=Regular;
       font=f;
+      substitutions=
+        (fun glyphs -> List.fold_left apply glyphs (
+           Fonts.select_features f [ StandardLigatures ]
+         ));
+      positioning=positioning f;
       size=4.;
       stdGlue=Glue { drawing_min_width= 2.*. fsize/.9.;
                      drawing_max_width= fsize/.2.;
@@ -52,11 +124,6 @@ let defaultEnv=
                 []->[||]
               | h::s->(hyph s 0 h; pos)
       );
-      substitutions=
-        (fun glyphs -> List.fold_left apply glyphs (
-           Fonts.select_features f [ StandardLigatures ]
-         ));
-      positioning=positioning f
     }
 
 
@@ -199,17 +266,50 @@ let title ?label displayname =
 
 (* Quelques Exemples d'environnement *)
 
-(* Changer de font dans un scope *)
+let updateFont env font =
+     { env with
+       font=font;
+       substitutions=
+         (fun glyphs -> List.fold_left apply glyphs (
+           Fonts.select_features font [ StandardLigatures ]
+          ));
+       positioning=positioning font }
+  
+(* Changer de font dans un scope, ignore la famille, attention, à éviter en direct *)
 let font f t=
   let font=loadFont f in
-    Scoped ((fun env->
-               { env with
-                   font=font;
-                   substitutions=
-                   (fun glyphs -> List.fold_left apply glyphs (
-                      Fonts.select_features font [ StandardLigatures ]
-                    ));
-                   positioning=positioning font }), t)
+    [Scoped ((fun env-> updateFont env font), t)]
+
+let italic t =
+  [Scoped ((fun env ->
+    let font = selectFont env.fontFamily env.fontAlternative true in
+    let env = { env with fontItalic = true } in
+    updateFont env font), t)]
+
+let notItalic t =
+  [Scoped ((fun env ->
+    let font = selectFont env.fontFamily env.fontAlternative false in
+    let env = { env with fontItalic = false } in
+    updateFont env font), t)]
+
+let toggleItalic t =
+  [Scoped ((fun env ->
+    let it = not env.fontItalic in
+    let font = selectFont env.fontFamily env.fontAlternative it in
+    let env = { env with fontItalic = it } in
+    updateFont env font), t)]
+    
+let alternative alt t =
+  [Scoped ((fun env ->
+    let font = selectFont env.fontFamily alt env.fontItalic in
+    let env = { env with fontAlternative = alt } in
+    updateFont env font), t)]
+
+let family fam t =
+  [Scoped ((fun env ->
+    let font = selectFont fam env.fontAlternative env.fontItalic in
+    let env = { env with fontFamily = fam } in
+    updateFont env font), t)]
 
 (* Changer de taille dans un scope *)
 let size fsize t=
