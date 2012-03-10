@@ -371,7 +371,8 @@ let outlines_ gl onlyWidth=
     let pc=ref 0 in
       while !pc <  (String.length program) do
         (* showStack stack !stackC; *)
-        (* print_int (int_of_char (program.[!pc]));print_newline(); *)
+        (* Printf.printf "%d\n" (int_of_char (program.[!pc])); *)
+        (* flush stdout; *)
         match int_of_char (program.[!pc]) with
             RMOVETO->
               (moveto (!x +. stack.(!stackC-2)) (!y +. stack.(!stackC-1));
@@ -501,7 +502,8 @@ let outlines_ gl onlyWidth=
           | SHORTINT->
               (let a=int_of_char (program.[!pc+1]) in
                let b=int_of_char (program.[!pc+2]) in
-                 stack.(!stackC) <- (float_of_int ((a lsl 8) lor b)) /. (float_of_int (1 lsl 16));
+               let i=((a lsl 8) lor b) in
+                 stack.(!stackC) <- float_of_int (if i land 0x8000 <> 0 then i - 0x7fff else i);
                  incr stackC;
                  pc:= !pc+3)
           | CALLGSUBR->
