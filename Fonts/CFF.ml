@@ -503,7 +503,7 @@ let outlines_ gl onlyWidth=
               (let a=int_of_char (program.[!pc+1]) in
                let b=int_of_char (program.[!pc+2]) in
                let i=((a lsl 8) lor b) in
-                 stack.(!stackC) <- float_of_int (if i land 0x8000 <> 0 then i - 0x7fff else i);
+                 stack.(!stackC) <- float_of_int (if i lsr 15 <> 0 then (i land 0x7fff) - 0x8000 else i);
                  incr stackC;
                  pc:= !pc+3)
           | CALLGSUBR->
