@@ -26,12 +26,12 @@ module Curve = struct
     (Array.of_list xs, Array.of_list ys)
   let of_point_lists l = List.map bezier_of_point_list l
   let of_contents = function
-    | Drivers.Path (_, beziers) -> Array.to_list beziers
+    | Drivers.Path (_, beziers) -> List.map Array.to_list beziers
     | _ -> failwith "Attempt to convert a non-path value of type Drivers.content to Curve.t."
   let draw
     ?parameters:(parameters=Drivers.default)
     (curve:t) =
-      Drivers.Path (parameters, Array.of_list curve)
+      Drivers.Path (parameters, [Array.of_list curve])
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
     List.map (fun t -> (t,bezier1)) res
@@ -110,7 +110,7 @@ module ArrowTip = struct
 
   let simple path ?size:(size=6.0) ?angle:(angle=0.4) ?bend:(bend=2.) () =
     match path with
-      | Drivers.Path (params, curve) -> 
+      | Drivers.Path (params, curve::_) -> 
 	let curve = Array.to_list curve in 
 	let a, b = list_last curve in
 	let da = Bezier.eval (Bezier.derivee a) 1. in

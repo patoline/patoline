@@ -38,14 +38,21 @@ type link= { link_x0:float;link_y0:float;link_x1:float;link_y1:float;
 
 type contents=
     Glyph of glyph
-  | Path of path_parameters * (Bezier.curve array)
+  | Path of path_parameters * (Bezier.curve array list)
   | Link of link
 
 let translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
-  | Path (a,b)->Path (a, Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v)) b)
+  | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)
   | Link l -> Link { l with link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
                        link_x1=l.link_x1+.x; link_y1=l.link_y1+.y }
+
+let resize alpha=function
+    Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
+  | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha },
+                       List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
+  | Link l -> Link { l with link_x0=l.link_x0*.alpha; link_y0=l.link_y0*.alpha;
+                       link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha }
 
 
 let bounding_box l=
@@ -58,18 +65,19 @@ let bounding_box l=
         let y1'=g.glyph_y +. g.glyph_size*.Fonts.glyph_y1 g.glyph/.1000. in
           bb (min x0 x0') (min y0 y0') (max x1 x1') (max y1 y1') s
       )
-    | Path (_,p)::s->(
+    | Path (_,ps)::s->(
         let x0'=ref x0 in
         let y0'=ref y0 in
         let x1'=ref x1 in
         let y1'=ref y1 in
-          for i=0 to Array.length p-1 do
-            let (xa,ya),(xb,yb)=Bezier.bounding_box p.(i) in
-              x0' := min !x0' xa;
-              y0' := min !y0' ya;
-              x1' := max !x1' xb;
-              y1' := max !y1' yb;
-          done;
+          List.iter (fun p->
+                       for i=0 to Array.length p-1 do
+                         let (xa,ya),(xb,yb)=Bezier.bounding_box p.(i) in
+                           x0' := min !x0' xa;
+                           y0' := min !y0' ya;
+                           x1' := max !x1' xb;
+                           y1' := max !y1' yb;
+                       done) ps;
           bb !x0' !y0' !x1' !y1' s
       )
     | _::s -> bb x0 y0 x1 y1 s
@@ -362,7 +370,8 @@ module Pdf=
                      Buf.add_string pageBuf (sprintf "%04x" num);
                      xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
                )
-             | Path (params,path)->(
+             | Path (params,[])->()
+             | Path (params,paths) ->(
                  close_text ();
                  set_line_join params.lineJoin;
                  set_line_cap params.lineCap;
@@ -374,26 +383,28 @@ module Pdf=
                  (match params.fillColor with
                       None->()
                     | Some col -> change_non_stroking_color col);
-                 let (x0,y0)=path.(0) in
-                   Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
-                   Array.iter (
-                     fun (x,y)->
-                       if Array.length x<=2 && Array.length y<=2 then (
-                         let x1=if Array.length x=2 then x.(1) else x.(0) in
-                         let y1=if Array.length y=2 then y.(1) else y.(0) in
-                           Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
-                       ) else if Array.length x=3 then (
-                         Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                   (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
-                                                   (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
-                                                   (pt_of_mm x.(2)) (pt_of_mm y.(2)));
-                       ) else if Array.length x=4 then (
-                         Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                   (pt_of_mm x.(1)) (pt_of_mm y.(1))
-                                                   (pt_of_mm x.(2)) (pt_of_mm y.(2))
-                                                   (pt_of_mm x.(3)) (pt_of_mm y.(3)));
-                       )
-                   ) path;
+                 List.iter (fun path->
+                              let (x0,y0)=path.(0) in
+                                Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+                                Array.iter (
+                                  fun (x,y)->
+                                    if Array.length x=2 && Array.length y=2 then (
+                                      let x1=if Array.length x=2 then x.(1) else x.(0) in
+                                      let y1=if Array.length y=2 then y.(1) else y.(0) in
+                                        Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
+                                    ) else if Array.length x=3 && Array.length y=3 then (
+                                      Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                            (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
+                                                            (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
+                                                            (pt_of_mm x.(2)) (pt_of_mm y.(2)));
+                                    ) else if Array.length x=4 && Array.length y=4 then (
+                                      Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                            (pt_of_mm x.(1)) (pt_of_mm y.(1))
+                                                            (pt_of_mm x.(2)) (pt_of_mm y.(2))
+                                                            (pt_of_mm x.(3)) (pt_of_mm y.(3)));
+                                    )
+                                ) path;
+                           ) paths;
                    match params.fillColor, params.strokingColor with
                        None, None->()
                      | None, Some col -> (

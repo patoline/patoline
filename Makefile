@@ -4,7 +4,7 @@ FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
 SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml Diag.ml
 SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
-SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
+SOURCES_LIBS=$(SOURCES0) Maths.ml DefaultFormat.ml
 DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
 
 EXEC = texprime
@@ -18,7 +18,7 @@ LIBS=fonts.cma texprime.cma
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w" # graphics.cma
+CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w" -g # graphics.cma
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
 CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
@@ -67,9 +67,15 @@ $(EXEC).opt: $(OPTOBJS)
 typography.cma: $(TEST:.ml=.cmo) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo
 
+maths: $(TESTOBJ) Maths.ml
+	$(CAMLOPT) -o maths $(TESTOBJ) Maths.ml
+
+proof: $(TESTOBJ) tests/proof.ml
+	$(CAMLOPT) -o proof $(TESTOBJ) tests/proof.ml
+
+
 test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
 	$(CAMLC) -o test $(TESTOBJ:.cmx=.cmo) tests/document.ml
-
 test2: $(TESTOBJ) Typography.cmx Diag.cmx tests/document2.ml
 	$(CAMLOPT) -o test2 $(TESTOBJ) tests/document2.ml
 
@@ -104,8 +110,8 @@ kerner: kerner.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo)
 
 
 doc:Makefile $(SOURCES0:.ml=.cmo)
-	mkdir -p doc
-	$(CAMLDOC) -d doc $(DOC)
+	mkdir -p doc_html
+	$(CAMLDOC) -d doc_html $(DOC)
 
 %.pdf: texprime texprime.cma %.txp
 	./texprime $*.txp > $*.ml

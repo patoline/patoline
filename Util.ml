@@ -65,6 +65,7 @@ and box=
   | Hyphen of hyphenBox
   | Empty
 
+
 let drawing ?offset:(offset=0.) cont=
   let (a,b,c,d)=Drivers.bounding_box cont in
     {
@@ -387,11 +388,14 @@ let rec resize l=function
     GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }
   | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
                        hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
+  | Drawing x
   | Glue x -> Glue { x with
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
-                       drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.) }
+                       drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
+                       drawing_contents=(fun w->List.map (Drivers.resize l) (x.drawing_contents w))
+                   }
   | Kerning x -> Kerning { advance_width = l*.x.advance_width;
                            advance_height = l*.x.advance_height;
                            kern_x0 = l*.x.kern_x0;

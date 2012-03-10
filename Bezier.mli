@@ -38,3 +38,22 @@ val bounding_box :
     sortie *)
 val intersect :
   float array * float array -> float array * float array -> (float * float) list
+
+val plus :
+  float array -> float array -> float array
+val minus :
+  float array -> float array -> float array
+val times :
+  float array -> float array -> float array
+
+val plus2 :
+  float array array -> float array array -> float array array
+val minus2 :
+  float array array -> float array array -> float array array
+val times2 :
+  float array array -> float array array -> float array array
+
+val solve2 :
+  float array array -> float array array -> (float*float*float*float) list
+val distance :
+  (float array *float array)-> (float array*float array)-> float

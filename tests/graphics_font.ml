@@ -59,7 +59,10 @@ let _=
         Graphics.set_color (Graphics.rgb 150 150 150);
         Graphics.moveto 5 5; Graphics.draw_string "'n': +1  'N': +50  'p': -1 'P': -50 'e' : empty '+': zoom '-': zoom  'q': quit";
         Graphics.moveto 10 20; Graphics.draw_string (f ^ ", glyph " ^ (string_of_int (glyphNumber gl).glyph_index) ^ " / "
-                                                     ^ (string_of_int nb_glyphs) ^ " width : "^(string_of_float (glyphWidth gl)) );
+                                                     ^ (string_of_int nb_glyphs) ^ " width : "^(string_of_float (glyphWidth gl))
+                                                     ^ " y0 : "^(string_of_float (glyph_y0 gl))
+                                                     ^ " y1 : "^(string_of_float (glyph_y1 gl))
+                                                    );
         let out=List.map (List.map (fun (a,b)->Array.map (fun x->x*. !zoom) a, Array.map (fun x->x*. !zoom) b)) (outlines gl) in
           if empt then draw_empty_glyph xx0 yy0 out else
             draw_glyph xx0 yy0 out ;

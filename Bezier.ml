@@ -127,25 +127,10 @@ let bernstein_extr f=
     | _->
         (let fmin=ref (infinity) in
          let fmax=ref (-.infinity) in
-           (match Array.length f with
-                0->(fmin:=0.; fmax:=0.)
-              | 1->(fmin:=f.(0); fmax:=f.(0))
-              | 2->(fmin:=min !fmin f.(0); fmax:=max !fmax f.(0))
-              | 3->
-                  (let a=f.(0) and b=f.(1) and c=f.(2) in
-                     fmin:=min !fmin a; fmax:=max !fmax a;
-                     fmin:=min !fmin c; fmax:=max !fmax c;
-                     let ax=a-.b+.c in
-                     let bx=b-.2.*.a in
-                     let xx=(-.bx)/.(2.*.ax) in
-                       if bx<>0. && ax<>0. && xx>0. && xx<1. then (fmin:=min !fmin (eval f xx); fmax:=max !fmax (eval f xx));
-                  )
-              | _->(
-                  fmin:=min !fmin f.(0); fmax:=max !fmax f.(0);
-                  fmin:=min !fmin f.(1); fmax:=max !fmax f.(1);
-                  List.iter (fun x->if x>=0. && x<=1. then let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
-                    (bernstein_solve (derivee f));
-                ));
+           fmin:=min !fmin f.(0); fmax:=max !fmax f.(0);
+           fmin:=min !fmin f.(1); fmax:=max !fmax f.(1);
+           List.iter (fun x->if x>=0. && x<=1. then let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
+             (bernstein_solve (derivee f));
            !fmin, !fmax
         )
 
@@ -653,6 +638,8 @@ let distance (xa,ya) (xb,yb)=
                       let y0=(eval ya m1 -. eval yb m2) in
                         min d (sqrt (x0*.x0+.y0*.y0))
                    ) infinity ((0.,0.,0.,0.)::(0.,0.,1.,1.)::(1.,1.,0.,0.)::(1.,1.,1.,1.)::(solve2 d0 d1))
+
+
 
 (* let xa=[|50.;400.;400.;200.|] *)
 (* let ya=[|50.;100.;78.;400.|] *)

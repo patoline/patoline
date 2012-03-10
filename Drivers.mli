@@ -42,7 +42,7 @@ type link = {
 }
 type contents =
     Glyph of glyph
-  | Path of path_parameters * Bezier.curve array
+  | Path of path_parameters * (Bezier.curve array list)
   | Link of link
 type structure = {
   mutable name : string;
@@ -53,6 +53,7 @@ type structure = {
   mutable substructures : structure array;
 }
 val translate : float -> float -> contents -> contents
+val resize : float -> contents -> contents
 val bounding_box : contents list -> float * float * float * float
 type page = {
   mutable pageFormat : float * float;
