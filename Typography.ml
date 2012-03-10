@@ -153,6 +153,7 @@ type node={
 }
 and paragraph={
   par_contents:content list;
+  par_env:environment;
   parameters:box array array -> drawingBox array -> parameters -> line -> parameters;
   completeLine:box array array -> line -> bool -> line list
 }
@@ -193,8 +194,8 @@ let doc_graph out t0=
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 
 (* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
-let newPar complete parameters par=
-  let para=Paragraph {par_contents=par; parameters=parameters; completeLine=complete } in
+let newPar ?environment:(environment=defaultEnv) complete parameters par=
+  let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
   let rec newPar tree path=
     match path with
         []->(match tree with
@@ -499,6 +500,7 @@ let flatten env0 str=
           s.tree_paragraph <- !n;
           if path<>[] then (
             add_paragraph ({ par_contents=structNum path s.name;
+                             par_env=env;
                              parameters=
                                (fun paragraphs figures last_parameters line ->
                                   { (parameters paragraphs figures last_parameters line) with
@@ -506,6 +508,7 @@ let flatten env0 str=
                              completeLine=Parameters.normal (fst a4) });
           ) else if s.name<>"" then (
             add_paragraph {par_contents=[size 10. [T (s.name)] ];
+                           par_env=env;
                            parameters=(
                              fun paragraphs figures last_parameters line ->
                                let c=center paragraphs figures last_parameters line in
