@@ -162,7 +162,7 @@ let glyphWidth gl=
          let (a,_)=tableLookup "hhea" f.CFF.file offset in
          let nh=(seek_in (f.CFF.file) (a+34); readInt2 f.CFF.file) in
          let (b,_)=tableLookup "hmtx" f.CFF.file offset in
-           seek_in (f.CFF.file) (if num>nh then b+4*(nh-1) else b+4*num);
+           seek_in (f.CFF.file) (if num>=nh then (b+4*(nh-1)) else (b+4*num));
            let w=float_of_int (readInt2 f.CFF.file) in
              x.glyphWidth<-w;
              w
