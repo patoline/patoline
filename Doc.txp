@@ -90,7 +90,29 @@ Pour faire un titre on utilise
 =<
 =<
 
+
+=> Test Verbatim
+
+Voici un programme écrit dans ce merveilleux language qu'est \alternative{{Caps}}{OCaml} :
+'''OCaml
+let f x = x
+let g x = f (f x)
+'''
+
+=<
+
 => Test des polices
+
+(*
+Otf/lmmono10-italic.otf         Otf/lmmonoltcond10-oblique.otf      Otf/lmmonoslant10-regular.otf  Otf/lmromandemi10-regular.otf
+Otf/lmmono10-regular.otf        Otf/lmmonoltcond10-regular.otf      Otf/lmroman10-bolditalic.otf   Otf/lmromandunh10-oblique.otf
+Otf/lmmonocaps10-oblique.otf    Otf/lmmonoprop10-oblique.otf        Otf/lmroman10-bold.otf         Otf/lmromandunh10-regular.otf
+Otf/lmmonocaps10-regular.otf    Otf/lmmonoprop10-regular.otf        Otf/lmroman10-italic.otf       Otf/lmromanslant10-bold.otf
+Otf/lmmonolt10-boldoblique.otf  Otf/lmmonoproplt10-boldoblique.otf  Otf/lmroman10-regular.otf      Otf/lmromanslant10-regular.otf
+Otf/lmmonolt10-bold.otf         Otf/lmmonoproplt10-bold.otf         Otf/lmromancaps10-oblique.otf
+Otf/lmmonolt10-oblique.otf      Otf/lmmonoproplt10-oblique.otf      Otf/lmromancaps10-regular.otf
+Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromandemi10-oblique.otf
+*)
 
 => Latin Modern Roman
 
@@ -117,6 +139,8 @@ Pour faire un titre on utilise
 
 =<
 
+=< 
+
 (* Alegreya raises : Opentype.Table_not_found
 => Alegreya
 "test une chaine dans un commentaire *) }"
@@ -129,15 +153,5 @@ Pour faire un titre on utilise
 \family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic}}}
 =<
 *)
-=< 
 
 
-=> Test Verbatim
-
-Voici un programme écrit dans ce merveilleux language qu'est \alternative{{Caps}}{OCaml} :
-'''OCaml
-let f x = x
-let g x = f (f x)
-'''
-
-=<
