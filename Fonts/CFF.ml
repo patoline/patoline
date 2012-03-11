@@ -371,7 +371,7 @@ let outlines_ gl onlyWidth=
     let pc=ref 0 in
       while !pc <  (String.length program) do
         (* showStack stack !stackC; *)
-        (* Printf.printf "%d\n" (int_of_char (program.[!pc])); *)
+        (* Printf.printf "%d > %d\n" !pc (int_of_char (program.[!pc])); *)
         (* flush stdout; *)
         match int_of_char (program.[!pc]) with
             RMOVETO->
@@ -417,31 +417,31 @@ let outlines_ gl onlyWidth=
           | HVCURVETO->(hvcurveto 0; incr pc)
           | HHCURVETO->
               (let c=ref 0 in
+               let dy1=if (!stackC) land 1 = 1 then (incr c; stack.(0)) else 0. in
                  while !c <= !stackC-4 do
-                   let (dy1,off)=if (!stackC - !c) land 1 = 1 then (stack.(!c), 1) else (0.,0) in
-                   let x1=(!x +. stack.(!c+off)) in
-                   let y1=(!y +. dy1) in
-                   let x2=x1 +. stack.(!c+off+1) in
-                   let y2=y1 +. stack.(!c+off+2) in
-                   let x3=x2 +. stack.(!c+off+3) in
+                   let x1= !x +. stack.(!c) in
+                   let y1= !y +. (if !c=1 then dy1 else 0.) in
+                   let x2=x1 +. stack.(!c+1) in
+                   let y2=y1 +. stack.(!c+2) in
+                   let x3=x2 +. stack.(!c+3) in
                    let y3=y2 in
                      curveto x1 y1 x2 y2 x3 y3;
-                     c:= !c+off+4
+                     c:= !c+4
                  done;
                  stackC:=0;
                  incr pc)
           | VVCURVETO->
               (let c=ref 0 in
+               let dx1=if (!stackC - !c) land 1 = 1 then (incr c; stack.(!c)) else 0. in
                  while !c <= !stackC-4 do
-                   let (dx1,off)=if (!stackC - !c) land 1 = 1 then (stack.(!c), 1) else (0.,0) in
-                   let x1=(!x +. dx1) in
-                   let y1=(!y +. stack.(!c+off)) in
-                   let x2=x1 +. stack.(!c+off+1) in
-                   let y2=y1 +. stack.(!c+off+2) in
+                   let x1=(!x +. (if !c=1 then dx1 else 0.)) in
+                   let y1=(!y +. stack.(!c)) in
+                   let x2=x1 +. stack.(!c+1) in
+                   let y2=y1 +. stack.(!c+2) in
                    let x3=x2 in
-                   let y3=y2 +. stack.(!c+off+3) in
+                   let y3=y2 +. stack.(!c+3) in
                      curveto x1 y1 x2 y2 x3 y3;
-                     c:= !c+off+4
+                     c:= !c+4
                  done;
                  stackC:=0;
                  incr pc)
@@ -478,14 +478,14 @@ let outlines_ gl onlyWidth=
           | HSTEM | VSTEM | HSTEMHM
           | VSTEMHM->(
               if onlyWidth && (!stackC land 1)=1 then raise (Found stack.(0));
-              hints := !hints + !stackC / 2 ; stackC:=0 ; incr pc
-            )
-          | HINTMASK->((*print_string "hints : ";print_int !hints;print_string ",";print_int !stackC;print_newline();*)
-              if onlyWidth && !stackC > 0 then raise (Found stack.(0));
               hints := !hints + !stackC / 2 ;
-              stackC:=0 ; pc := !pc + 1 + (int_of_float (ceil ((float_of_int !hints)/.8.))))
-          | CNTRMASK->((*print_string "hints : ";print_int !hints;print_string ",";print_int !stackC;print_newline();*)
-              stackC:=0 ; pc := !pc + 1 + (int_of_float (ceil ((float_of_int !hints)/.8.))))
+              stackC:=0 ; incr pc
+            )
+          | HINTMASK | CNTRMASK ->(
+              hints:= !hints+ !stackC/2;
+              if onlyWidth && !stackC > 0 then raise (Found stack.(0));
+              stackC:=0 ; pc := !pc + 1 + (if !hints land 7=0 then (!hints/8) else (!hints/8+1))
+            )
           | ENDCHAR->
               (if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
                if onlyWidth && !stackC>0 then raise (Found stack.(0));
@@ -642,8 +642,11 @@ let outlines_ gl onlyWidth=
                       (if stack.(!stackC-2) <= stack.(!stackC-1) then stack.(!stackC-4) <- stack.(!stackC-3);
                        stackC:= !stackC-3;
                        pc:= !pc+2)
-
-                  | op->failwith ("Type 2 : undefined operator 12 "^(string_of_int op))
+                  | 0 -> incr pc        (* dotsection (deprecated operator) *)
+                  | op->(
+                      Printf.printf "Type 2 : undefined operator %d\n" op;
+                      pc:= !pc+1
+                    )
                 )
           | op when op>=32 ->
               if op<=246 then (stack.(!stackC)<-float_of_int (op-139); incr stackC; incr pc) else
@@ -666,7 +669,10 @@ let outlines_ gl onlyWidth=
                           pc:= !pc+5
                        )
                 )
-          | op->failwith ("Type 2 : undefined operator "^(string_of_int op))
+          | op->(
+              Printf.printf "Type 2 : undefined operator %d\n" op;
+              pc:= !pc+1
+            )
       done
   in
     execute gl.type2;
