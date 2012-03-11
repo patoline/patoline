@@ -18,6 +18,7 @@ let dyp_merge = keep_one
 
 type doc =
      Paragraph of content list
+   | Verbatim of (string option * string list)
    | Caml of int * int
    | Struct of content list * doc list
    | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
@@ -34,6 +35,17 @@ let pop_caml' lexbuf =
      decr caml_depth; 
      if !caml_depth = 0	then
       raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Splitted end of caml code"))
+
+let concat words =
+    let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "'"; "\""  ] in
+    let rec fn acc last = function
+      [] -> acc
+    | (w::l) ->
+       let last' = List.mem w non_word in
+       let acc = if last' || last then w ^ acc else w ^" "^acc in
+       fn acc last' l
+    in fn "" true (List.rev words) 
+       
 }
 
 %start main
@@ -46,18 +58,32 @@ let pop_caml' lexbuf =
 %lexer
 
 let utf8_char =
-    ['\033'-'\039''\042'-'\090''\094''\096'-'\122''\124''\126''\127']
+    ['\033' '\035'-'\038' '\042'-'\090' '\094' '\096'-'\122' '\124''\126''\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
   | ['\240'-'\243']['\129'-'\191']['\129'-'\191']['\129'-'\191']
   | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
 
+let string = '"' ([^'"'] | "\\\"")* '"'
+
+let newline = '\r'* '\n' '\r'*
+
+let verbatim_line = (''' ''' [^'\n' '\r' '''] [^'\n''\r']*) | 
+                    (''' [^'\n' '\r' '''] [^'\n''\r']*) | 
+                    ([^'\n' '\r' '''] [^'\n''\r']*) | 
+		    (''' '''?)
+
+let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9''_']*
+
+let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
+
 rule comment = parse
     '*' ')' { if pop_comment () then () else comment lexbuf }
   | '(' '*' { push_comment (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
   | '\n' { set_newline lexbuf; comment lexbuf }
+  | string { comment lexbuf }
   | _ { comment lexbuf }
 
 and caml = parse
@@ -68,10 +94,11 @@ and caml = parse
   | '{' { push_caml (); caml lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
   | '\n' { set_newline lexbuf; caml lexbuf }
+  | string { caml lexbuf }
   | _ { caml lexbuf }
 
 main lexer =
-  '\n' -> NEWLINE { set_newline lexbuf }
+  newline -> NEWLINE { set_newline lexbuf }
   '(' '*' -> { push_comment (); comment lexbuf }
   '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
 		    let start = l.lex_start_p.pos_cnum + 2 in 
@@ -80,18 +107,18 @@ main lexer =
 		  }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
-  '\\' ['a'-'z'] ['a'-'z''A'-'Z''0'-'9''_']*
+  '\\' lident
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  '\\' ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
+  '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '='+ -> SECT { Dyp.lexeme lexbuf }
-  utf8_char+ | '(' | ')' | '[' | ']' -> WORD { Dyp.lexeme lexbuf }
+  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | ''' | '"' -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
 paragraph:
-    WORD+<w> { [TC (String.concat " " w)] }
-  | WORD+<w> [NEWLINE]? paragraph<p> { TC (String.concat " " w) :: p }
+    WORD+<w> { [TC (concat w)] }
+  | WORD+<w> [NEWLINE]? paragraph<p> { TC (concat w) :: p }
   | parmacro<m> { [ m ] }
   | parmacro<m> [NEWLINE]? paragraph<p> { m :: p }
 
@@ -152,6 +179,10 @@ text:
     { Caml(s,e) :: t } atom
   | textn<t> topmacro<m>
     { m :: t } atom
+  | textn<t> - "'''" [ lident|uident ]?<lang> NEWLINE
+    [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
+    - "'''" [NEWLINE]*
+    { Verbatim(lang, ls) :: t } atom
   | textp<t> paragraph<p>
     { Paragraph p :: t } nonatom
   | text(=atom)<t> paragraph<p>

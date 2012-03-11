@@ -103,11 +103,15 @@ type environment={
   mutable fontFeatures:Fonts.FTypes.features list;
   mutable font:font;
   mutable size:float;
+  mutable par_indent:float;
   mutable stdGlue:box;
   mutable hyphenate:string->(string*string) array;
   mutable substitutions:glyph_id list -> glyph_id list;
   mutable positioning:glyph_ids list -> glyph_ids list;
 }
+
+let defaultFam= lmroman
+let defaultMono= lmmono
 let defaultEnv=
   let f=selectFont lmroman Regular false in
   let fsize=5. in
@@ -123,6 +127,7 @@ let defaultEnv=
          ));
       positioning=positioning f;
       size=4.;
+      par_indent = 4.0 *. phi;
       stdGlue=Glue { drawing_min_width= 2.*. fsize/.9.;
                      drawing_max_width= fsize/.2.;
                      drawing_y0=0.; drawing_y1=0.;
@@ -342,11 +347,13 @@ let alternative ?features alt t =
     in
     envAlternative features alt env), t)]
 
+let envFamily fam env =
+  let font = selectFont fam env.fontAlternative env.fontItalic in
+  let env = { env with fontFamily = fam } in
+  updateFont env font
+
 let family fam t =
-  [Scoped ((fun env ->
-    let font = selectFont fam env.fontAlternative env.fontItalic in
-    let env = { env with fontFamily = fam } in
-    updateFont env font), t)]
+  [Scoped ((fun env -> envFamily fam env), t)]
 
 (* Changer de taille dans un scope *)
 let size fsize t=
@@ -554,14 +561,14 @@ let flatten env0 str=
               []->()
             | (_, (Paragraph p as tr))::s->(
                 flatten env path (
-                  let g=B (fun env->Glue { drawing_min_width= env.size *. phi;
-                                           drawing_max_width= env.size *. phi;
+                  let g=B (fun env->Glue { drawing_min_width= env.par_indent;
+                                           drawing_max_width= env.par_indent;
                                            drawing_y0=0.;drawing_y1=0.;
-                                           drawing_nominal_width= env.size *. phi;
+                                           drawing_nominal_width= env.par_indent;
                                            drawing_contents=(fun _->[]);
                                            drawing_badness=fun _-> 0. })
                   in
-                    if indent then (
+                    if indent && p.par_env.par_indent <> 0.0 then (
                       Paragraph { p with par_contents=g::p.par_contents }
                     ) else tr);
                 flat_children num true s

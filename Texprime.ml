@@ -146,6 +146,21 @@ let _=
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
+		    | Verbatim(lang, lines) ->
+		      Printf.printf "module VERB = struct\n\n";
+		      Printf.printf "let verbEnv = { (envFamily defaultMono defaultEnv)
+                                                     with par_indent = 0.0 };;\n\n";
+		      let lang = match lang with
+			  None -> "T"
+			 | Some s -> s
+		      in
+		      List.iter (fun l ->
+			Printf.printf
+			  "newPar ~environment:verbEnv (normal 1e100) ragged_left (lang_%s \"%s\");;\n"
+			  lang l)
+			lines;
+		      Printf.printf "end;;\n\n"
+		      
 		  in
 		  output_list docs;
 		  close_in op;
@@ -161,4 +176,6 @@ let _=
 			       "unexpected char"))
     with
         Syntax_Error(pos,msg) ->
-	  Printf.printf "%s:%d,%d %s\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg
+	  Printf.fprintf stderr "%s:%d,%d %s\n" 
+	    pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg;
+	  exit 1

@@ -119,7 +119,7 @@ Pour faire un titre on utilise
 
 (* Alegreya raises : Opentype.Table_not_found
 => Alegreya
-
+"test une chaine dans un commentaire *) }"
 \family{{alegreya}}{\alternative{{Regular}}{Test Alegreya regular et \italic{Test italic}}}
 
 \family{{alegreya}}{\alternative{{Bold}}{Test Alegreya bold et \italic{Test italic}}}
@@ -130,3 +130,14 @@ Pour faire un titre on utilise
 =<
 *)
 =< 
+
+
+=> Test Verbatim
+
+Voici un programme écrit dans ce merveilleux language qu'est \alternative{{Caps}}{OCaml} :
+'''OCaml
+let f x = x
+let g x = f (f x)
+'''
+
+=<

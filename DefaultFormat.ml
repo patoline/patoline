@@ -40,3 +40,5 @@ let institute is_last str =
 
 let textWidth = normal 150.
 
+let lang_OCaml s = [T s]
+
