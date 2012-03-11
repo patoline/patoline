@@ -26,35 +26,14 @@ and content =
      TC of string
    | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
 
-let comment_stack = Stack.create ()
-
-
-let push_comment () = Stack.push `Comment comment_stack
-let push_caml () = Stack.push `Caml comment_stack
-
-let pop_comment (lexbuf:('a Dyp.dyplexbuf)) = 
-  try
-    match Stack.pop comment_stack with
-      `Comment -> Stack.is_empty comment_stack
-    | `Caml -> 
-	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-		"Coment ended as caml."))
-  with
-    Stack.Empty -> 
-	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-		"Illegal closing comment"))
-
-let pop_caml (lexbuf:('a Dyp.dyplexbuf)) = 
-  try
-    match Stack.pop comment_stack with
-      `Caml -> Stack.is_empty comment_stack
-    | `Comment -> 
-	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-		"Caml ended as comment."))
-  with
-    Stack.Empty -> 
-	raise (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-		"Illegal closing caml"))
+let comment_depth = ref 0 let push_comment () = incr comment_depth
+let caml_depth = ref 0 let push_caml () = incr caml_depth
+let pop_comment () = decr comment_depth; !comment_depth = 0
+let pop_caml () = decr caml_depth; !caml_depth = 0
+let pop_caml' lexbuf =
+     decr caml_depth; 
+     if !caml_depth = 0	then
+      raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Splitted end of caml code"))
 }
 
 %start main
@@ -75,21 +54,28 @@ let utf8_char =
   | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
 
 rule comment = parse
-    '*' ')' { if pop_comment lexbuf then () else comment lexbuf }
-  | '}' '}' { if pop_caml lexbuf then () else comment lexbuf } 
+    '*' ')' { if pop_comment () then () else comment lexbuf }
   | '(' '*' { push_comment (); comment lexbuf } 
-  | '{' '{' { push_caml (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
   | '\n' { set_newline lexbuf; comment lexbuf }
   | _ { comment lexbuf }
 
+and caml = parse
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unexpected end of comment")) }
+  | '}' '}' { pop_caml' lexbuf ; if pop_caml () then () else caml lexbuf } 
+  | '}' { pop_caml' lexbuf; caml lexbuf } 
+  | '(' '*' { push_comment (); comment lexbuf } 
+  | '{' { push_caml (); caml lexbuf } 
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
+  | '\n' { set_newline lexbuf; caml lexbuf }
+  | _ { caml lexbuf }
+
 main lexer =
   '\n' -> NEWLINE { set_newline lexbuf }
-  '=''='+ -> SECT { Dyp.lexeme lexbuf }
   '(' '*' -> { push_comment (); comment lexbuf }
   '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
 		    let start = l.lex_start_p.pos_cnum + 2 in 
-		    push_caml (); comment lexbuf;
+		    push_caml (); push_caml (); caml lexbuf;
 		    start, l.lex_start_p.pos_cnum
 		  }
   '\\' "Begin" -> BEGIN
@@ -98,6 +84,7 @@ main lexer =
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '\\' ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  '='+ -> SECT { Dyp.lexeme lexbuf }
   utf8_char+ | '(' | ')' | '[' | ']' -> WORD { Dyp.lexeme lexbuf }
 
 %parser

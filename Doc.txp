@@ -117,16 +117,16 @@ Pour faire un titre on utilise
 
 =<
 
-(*
+(* Alegreya raises : Opentype.Table_not_found
 => Alegreya
 
-\family{{alegreya}}{\alternative{{Regular}}{Test Alegreya regular et \italic{Test italic} } }
+\family{{alegreya}}{\alternative{{Regular}}{Test Alegreya regular et \italic{Test italic}}}
 
-\family{{alegreya}}{\alternative{{Bold}}{Test Alegreya bold et \italic{Test italic} } }
+\family{{alegreya}}{\alternative{{Bold}}{Test Alegreya bold et \italic{Test italic}}}
 
-\family{{alegreya}}{\alternative{{Caps}}{Test Alegreya caps et \italic{Test italic} } }
+\family{{alegreya}}{\alternative{{Caps}}{Test Alegreya caps et \italic{Test italic}}}
 
-\family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic} } }
+\family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic}}}
 =<
 *)
 =< 
