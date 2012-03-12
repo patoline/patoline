@@ -271,11 +271,12 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                               && (page,height) >= (node.page + !r_params.min_page_diff,
                                                    node.height + !r_params.min_height_before)
                             then (
-                              let allow_orphan= (!r_params).allow_orphans
-                                || page=node.page || node.paragraph_height>0 in
-                              let allow_widow= (!r_params).allow_widows ||
+                              let allow_orphan=
+                                page=node.page || node.paragraph_height>0 in
+                              let allow_widow=
                                 page=node.page || (not (is_last paragraphs.(node.paragraph) nextNode.lineEnd)) in
-                                if not allow_orphan && allow_widow then (
+
+                                if not allow_orphan && allow_widow && ((!r_params).allow_orphans || allow_impossible) then (
                                   log:=(Orphan node)::(!log);
                                   let _,_,last_ant=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
@@ -287,7 +288,7 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                                       (LineMap.remove node !todo');
                                     solutions_exist:=true;
 
-                                ) else if not allow_widow && allow_orphan then (
+                                ) else if not allow_widow && allow_orphan && ((!r_params).allow_widows || allow_impossible) then (
                                   log:=(Widow nextNode)::(!log);
                                   let _,_, last_ant=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in

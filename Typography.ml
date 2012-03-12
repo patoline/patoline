@@ -438,8 +438,8 @@ let parameters paragraphs figures last_parameters line=
     min_page_diff=0;
     min_height_before=max 1 last_parameters.min_height_after;
     min_height_after=1;
-    allow_widows=false;
-    allow_orphans=false
+    allow_widows=true;
+    allow_orphans=true
   }
 
 (* Centre les lignes d'un paragraphe. Il faut un optimiseur différent ici *)
