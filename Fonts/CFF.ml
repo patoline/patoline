@@ -432,7 +432,7 @@ let outlines_ gl onlyWidth=
                  incr pc)
           | VVCURVETO->
               (let c=ref 0 in
-               let dx1=if (!stackC - !c) land 1 = 1 then (incr c; stack.(!c)) else 0. in
+               let dx1=if (!stackC - !c) land 1 = 1 then (incr c; stack.(0)) else 0. in
                  while !c <= !stackC-4 do
                    let x1=(!x +. (if !c=1 then dx1 else 0.)) in
                    let y1=(!y +. stack.(!c)) in
@@ -514,8 +514,7 @@ let outlines_ gl onlyWidth=
                  execute (gl.gsubrs.(gsubrBias + (int_of_float (pop ()))));
                  incr pc)
           | ESCAPE->
-              ((* print_int (int_of_char (program.[!pc+1]));print_newline (); *)
-                match int_of_char (program.[!pc+1]) with
+              (match int_of_char (program.[!pc+1]) with
                     FLEX->
                       (if !stackC>=12 then
                          (let x0= !x +. stack.(0) in
