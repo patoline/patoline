@@ -561,12 +561,12 @@ let flatten env0 str=
               []->()
             | (_, (Paragraph p as tr))::s->(
                 flatten env path (
-                  let g=B (fun env->Glue { drawing_min_width= env.par_indent;
-                                           drawing_max_width= env.par_indent;
-                                           drawing_y0=0.;drawing_y1=0.;
-                                           drawing_nominal_width= env.par_indent;
-                                           drawing_contents=(fun _->[]);
-                                           drawing_badness=fun _-> 0. })
+                  let g=B (fun env->Drawing { drawing_min_width= env.par_indent;
+                                              drawing_max_width= env.par_indent;
+                                              drawing_y0=0.;drawing_y1=0.;
+                                              drawing_nominal_width= env.par_indent;
+                                              drawing_contents=(fun _->[]);
+                                              drawing_badness=fun _-> 0. })
                   in
                     if indent && p.par_env.par_indent <> 0.0 then (
                       Paragraph { p with par_contents=g::p.par_contents }
