@@ -79,18 +79,18 @@ let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9''_']*
 let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_']*
 
 rule comment = parse
-    '*' ')' { if pop_comment () then () else comment lexbuf }
-  | '(' '*' { push_comment (); comment lexbuf } 
+    '*' ')' {  if pop_comment () then () else comment lexbuf }
+  | '(' '*' {  push_comment (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
-  | '\n' { set_newline lexbuf; comment lexbuf }
-  | string { comment lexbuf }
-  | _ { comment lexbuf }
+  | '\n' {  set_newline lexbuf; comment lexbuf }
+  | string {  comment lexbuf }
+  | _ {  comment lexbuf }
 
 and caml = parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unexpected end of comment")) }
   | '}' '}' { pop_caml' lexbuf ; if pop_caml () then () else caml lexbuf } 
   | '}' { pop_caml' lexbuf; caml lexbuf } 
-  | '(' '*' { push_comment (); comment lexbuf } 
+  | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml lexbuf } 
   | '{' { push_caml (); caml lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
   | '\n' { set_newline lexbuf; caml lexbuf }
@@ -173,19 +173,24 @@ parmacro:
       { MC(`Single, name, a) }
 
 text:
+  /* Section */
   | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
     { Struct(title, List.rev content) :: t } atom
+  /* Code Caml */
   | textn<t> CAML<s,e>
     { Caml(s,e) :: t } atom
+  /* Top level macros \Begin or \Ident */
   | textn<t> topmacro<m>
     { m :: t } atom
+  /* verbatim / source code */
   | textn<t> - "'''" [ lident|uident ]?<lang> NEWLINE
     [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
     - "'''" [NEWLINE]*
     { Verbatim(lang, ls) :: t } atom
+  /* paragraphs : two cases */
   | textp<t> paragraph<p>
     { Paragraph p :: t } nonatom
-  | text(=atom)<t> paragraph<p>
+  | text(=atom)<t> [NEWLINE]* paragraph<p>
     { Paragraph p :: t } nonatom
 
 main:
