@@ -29,13 +29,13 @@ let normal measure paragraphs line allow_impossible=
         if sum_max >= measure || allow_impossible then
           match paragraphs.(line.paragraph).(j) with
 
-              Glue _ when sum_min <= measure || allow_impossible->
+              Glue _ when (sum_min <= measure || allow_impossible) && j>line.lineStart ->
                 break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
                   ({ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
                        nom_width=sum_nom; max_width=sum_max
                    }::(if allow_impossible then [] else result0))
 
-            | Glue _ when allow_impossible && result0=[]->
+            | Glue _ when allow_impossible && result0=[] && j>line.lineStart ->
                 [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
                      nom_width=sum_nom; max_width=sum_max
                  }]
