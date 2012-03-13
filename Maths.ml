@@ -44,7 +44,7 @@ type mathsEnvironment={
 }
 
 let default=
-  let font=Fonts.loadFont "euler.otf" in
+  let font=Fonts.loadFont "Otf/euler.otf" in
     {
       fonts=[|font,1.;
               font,1.;
