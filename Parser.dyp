@@ -67,7 +67,7 @@ let concat words =
 
 %start main
 
-%relation atom < ind < fun < sum < prod < rel < neg < conj < impl
+%relation atom < fun < ind < sum < prod < rel < neg < conj < impl
 %relation nonatom
 
 %layout [ ' ' '\r' '\t' ]
@@ -223,7 +223,7 @@ math:
       {Num num } atom
   | "(" math<a> ")" 
       { a } atom 
-  | leftind<i> - math(<=fun)<m> - rightind<fi>
+  | leftind<i> - math(<ind)<m> - rightind<fi>
       { Indices(fi i, m) } ind
   | math(<=fun)<m> - rightind<fi>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in

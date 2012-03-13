@@ -47,6 +47,8 @@ let print_math ch display m =
       Var name ->
 	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl env style \"%s\")) with %a } ]"
 	  name hn indices
+    | Indices(ind', m) ->
+      fn ind' ch m 
     | _ -> 
       Printf.fprintf ch "[]"
   and gn ch name ind =
