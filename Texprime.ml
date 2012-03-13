@@ -37,7 +37,7 @@ let postambule : ('a, 'b, 'c) format = "
 " 
 
 let print_math ch display m =
-  let style = if display then "Maths.Display" else "Maths.Script" in
+  let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch 
     "(List.map (fun b -> B (fun _ -> b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
     style;
