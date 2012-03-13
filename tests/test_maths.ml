@@ -55,10 +55,11 @@ let u=
     [| { pageFormat=(100.,100.); pageContents=
            List.map (translate 20. 20.) (
              List.map (Drivers.resize 10.) (
-               (* (Path ({Drivers.default with lineWidth=0.1}, rectangle (a,b) (c,d))):: *)
-               draw_boxes (draw_maths env st [Decoration (open_close (gl env st "(") (gl env st ")"), [a])])
-             )
-           ) }
+               draw_boxes (
+                 (draw_maths env st [Decoration (open_close (gl env st "(") (gl env st ")"), [a])])
+                 @(draw_maths env st [x]))
+             ))
+       }
     |]
 
 let _=
