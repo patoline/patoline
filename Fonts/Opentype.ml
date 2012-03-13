@@ -5,7 +5,7 @@ open CFF
 open CamomileLibrary
 let offsetTable=12
 let dirSize=16
-exception Table_not_found
+exception Table_not_found of string
 
 
 let tableLookup table file off=
@@ -21,7 +21,7 @@ let tableLookup table file off=
           ((seek_in file (off+offsetTable+i*dirSize+8);readInt4 file),
            (seek_in file (off+offsetTable+i*dirSize+12);readInt4 file))
         else
-          raise Table_not_found
+          raise (Table_not_found table)
       else
         if compare tableName table <=0 then
           lookup middle j
@@ -511,7 +511,7 @@ let tag_str=function
   | "zero" -> SlashedZero
   | x -> raise (Unknown_feature x)
 
-let select_features font feature_tags=
+let select_features font feature_tags=try
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
@@ -539,9 +539,12 @@ let select_features font feature_tags=
   in
     List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (IntSet.elements (select 0 IntSet.empty)))
 
+with Table_not_found _->[]
+
+
 module FeatSet=Set.Make (struct type t=features let compare=compare end)
 
-let font_features font=
+let font_features font=try
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
@@ -558,6 +561,7 @@ let font_features font=
     )
   in
     FeatSet.elements (make_features 0 FeatSet.empty)
+with Table_not_found _->[]
 
 let read_scripts font=
   let (file,off0)=otype_file font in
@@ -682,4 +686,4 @@ let rec gpos font glyphs0=
     !glyphs
 
 
-let positioning=gpos
+let positioning font glyphs0= try gpos font glyphs0 with Table_not_found _->glyphs0
