@@ -44,7 +44,7 @@ let print_math ch display m =
   let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None } in
   let rec fn indices ch m =
     match m with
-      Var name ->
+      Var name | Num name ->
 	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl env style \"%s\")) with %a } ]"
 	  name hn indices
     | Indices(ind', m) ->

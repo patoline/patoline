@@ -55,7 +55,7 @@ let pop_caml' lexbuf =
       raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Splitted end of caml code"))
 
 let concat words =
-    let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "'"; "\""  ] in
+    let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"  ] in
     let rec fn acc last = function
       [] -> acc
     | (w::l) ->
@@ -76,7 +76,7 @@ let concat words =
 %lexer
 
 let utf8_char =
-    ['\033' '\035' '\037'-'\038' '\042'-'\090' '\096'-'\122' '\124''\126''\127']
+    ['\033' '\035' '\037'-'\039' '\042'-'\090' '\096'-'\122' '\124''\126''\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -130,7 +130,7 @@ main lexer =
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '='+ -> SECT { Dyp.lexeme lexbuf }
-  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | ''' | '"' | '$' 
+  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | '"' | '$' 
        -> WORD { Dyp.lexeme lexbuf }
 
 %parser
