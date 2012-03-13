@@ -666,7 +666,7 @@ let outlines_ gl onlyWidth=
                             ((float_of_int (op1 land 0x7f))*.16777216. +.
                                (float_of_int op2)*.65536. +.
                                (float_of_int op3)*.256. +.
-                               (float_of_int op4) -. (if op1>=0x80 then 4294967296. else 0.)) /. (65536.);
+                               (float_of_int op4) -. (if op1 land 0x80 <> 0 then 2147483648. else 0.)) /. (65536.);
                           incr stackC;
                           pc:= !pc+5
                        )
