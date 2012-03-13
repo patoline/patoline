@@ -290,7 +290,7 @@ let monomial a=
 
 
 let intersect (a,b) (c,d)=
-  let eps=1e-5 in
+  let eps=1e-3 in
   let extr_a=
     List.filter (fun x-> x>=0. && x<=1.)
       ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
@@ -628,6 +628,18 @@ let times f g=
 
 
 let distance (xa,ya) (xb,yb)=
+  (* On commence par traiter le cas special de deux droites paralleles *)
+  (* let xa'=derivee xa in *)
+  (* let xb'=derivee xb in *)
+  (* let ya'=derivee ya in *)
+  (* let yb'=derivee yb in *)
+
+  (* let droite x'= *)
+  (*   let i=ref 0 in *)
+  (*     while !i< Array.length x' && abs_float (x'.(i) -. x'.(0)) > 1e-12 do incr i done; *)
+  (*     !i>=Array.length x' *)
+  (* in *)
+
   let dist=plus2 (sq2 (minus2 (promote0 xa) (promote1 xb))) (sq2 (minus2 (promote0 ya) (promote1 yb))) in
   let d0=derivee2_0 dist in
   let d1=derivee2_1 dist in

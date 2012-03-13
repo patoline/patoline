@@ -1,0 +1,65 @@
+open Drivers
+open Maths
+open Util
+
+let a =
+  let env=Maths.default in
+  let style=Display in
+    Ordinary  (noad (gl env style "a"))
+
+let a0=
+  let env=Maths.default in
+  let style=Display in
+    Ordinary  { (noad (gl env style "a")) with
+                  superscript_right=[Ordinary (noad (gl env style "0"))];
+                  superscript_left=[];
+                  subscript_right=[Ordinary (noad (gl env style "1"))];
+                  subscript_left=[] }
+
+let bx= (
+  Binary { bin_priority=0; bin_drawing=(noad (gl default Display "+"));
+           bin_left=[a]; bin_right=[a] }
+)
+
+let f=Fraction { numerator=[a]; denominator=[a]; line={Drivers.default with lineWidth = default.default_rule_thickness }}
+
+let x =
+  let env=Maths.default in
+  let style=Display in
+    Ordinary  { (noad (gl env style "V")) with
+                  superscript_right=[];
+                  superscript_left=[];
+                  subscript_right=[Ordinary (noad (gl env Script "i"))];
+                  subscript_left=[] }
+
+let integrale=
+  let env=Maths.default in
+  let style=Display in
+    Operator { op_limits=false; op_noad={ (noad [int env style]) with
+                                            superscript_right=[Ordinary (noad (gl env style "0"))];
+                                            superscript_left=[];
+                                            subscript_right=[Ordinary (noad (gl env style "a=0+1"))];
+                                            subscript_left=[]
+                                        };
+               op_left_spacing=0.5;
+               op_right_spacing=0.4;
+               op_left_contents=[a];
+               op_right_contents=[a] }
+
+
+let u=
+  (* let (a,b,c,d)=bounding_box bx in *)
+
+  let env=Maths.default in
+  let st=Display in
+    [| { pageFormat=(100.,100.); pageContents=
+           List.map (translate 20. 20.) (
+             List.map (Drivers.resize 10.) (
+               (* (Path ({Drivers.default with lineWidth=0.1}, rectangle (a,b) (c,d))):: *)
+               draw_boxes (draw_maths env st [Decoration (open_close (gl env st "(") (gl env st ")"), [a])])
+             )
+           ) }
+    |]
+
+let _=
+  Drivers.Pdf.output u "maths.pdf"

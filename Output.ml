@@ -39,7 +39,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
             | Glue g
             | Drawing g ->(
                 let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                  page.pageContents<- (List.map (translate x (y+.g.drawing_y0)) (g.drawing_contents w)) @ page.pageContents;
+                  page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
                   w
               )
 

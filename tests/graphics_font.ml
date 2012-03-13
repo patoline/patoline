@@ -80,4 +80,4 @@ let _=
                 | ' ' | 'n' -> show_glyphs empt (i+1)
                 | _ -> show_glyphs empt (i+1)
     in
-      show_glyphs false initial_glyph
+      show_glyphs true initial_glyph

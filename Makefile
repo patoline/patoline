@@ -2,9 +2,9 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
-SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml Diag.ml
+SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml Diag.ml Maths.ml
 SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
-SOURCES_LIBS=$(SOURCES0) Maths.ml DefaultFormat.ml
+SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
 DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
 
 EXEC = texprime
@@ -67,8 +67,8 @@ $(EXEC).opt: $(OPTOBJS)
 typography.cma: $(TEST:.ml=.cmo) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo
 
-maths: $(TESTOBJ) Maths.ml
-	$(CAMLOPT) -o maths $(TESTOBJ) Maths.ml
+maths: $(TESTOBJ) tests/test_maths.ml
+	$(CAMLOPT) -o maths $(TESTOBJ) tests/test_maths.ml
 
 proof: $(TESTOBJ) tests/proof.ml
 	$(CAMLOPT) -o proof $(TESTOBJ) tests/proof.ml
@@ -79,8 +79,11 @@ test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
 test2: $(TESTOBJ) Typography.cmx Diag.cmx tests/document2.ml
 	$(CAMLOPT) -o test2 $(TESTOBJ) tests/document2.ml
 
-fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo))
-	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.cmo
+ot: $(filter %.cmo, $(FONTS:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) tests/opentype.ml
+	$(CAMLC) -o ot $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo)) tests/opentype.ml
+
+fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) Fonts.cmi Fonts.ml
+	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.ml
 
 fonts.cmxa: $(filter %.cmx, $(FONTS0:.ml=.cmx)) $(filter %.cmx, $(BASE:.ml=.cmx))
 	$(CAMLOPT) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS0:.ml=.cmx)) Fonts.cmx

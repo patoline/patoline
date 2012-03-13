@@ -78,6 +78,8 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 \large{TeX' c'est bien mieux que TeX. Un point c'est tout. \fig2 
   \italic{eeeet \alternative{{Bold}}{ouais !}} }
 
+
+
 =<
 
 => Quick start
@@ -153,5 +155,3 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 \family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic}}}
 =<
 *)
-
-

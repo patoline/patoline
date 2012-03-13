@@ -1,3 +1,4 @@
+open CamomileLibrary
 open Typography
 open Drivers
 open Util
@@ -37,7 +38,9 @@ type mathsEnvironment={
   sup_drop:float;
   default_rule_thickness:float;
   subscript_distance:float;
-  superscript_distance:float
+  superscript_distance:float;
+  limit_subscript_distance:float;
+  limit_superscript_distance:float
 }
 
 let default=
@@ -47,38 +50,41 @@ let default=
               font,1.;
               font,1.;
               font,1.;
-              font,0.35;
-              font,0.35;
-              font,0.2;
-              font,0.2;
+              font,0.4;
+              font,0.4;
+              font,0.18;
+              font,0.18
             |];
-      numerator_spacing=0.02;
-      denominator_spacing=0.02;
-      sub1= 0.2;
+      numerator_spacing=0.08;
+      denominator_spacing=0.08;
+      sub1= 0.1;
       sub2= 0.1;
       sup1=0.35;
       sup2=0.2;
       sup3=0.3;
-      sub_drop=0.;
-      sup_drop=1.;
+      sub_drop=0.1;
+      sup_drop=0.2;
       default_rule_thickness=0.05;
-      subscript_distance= 0.12;
-      superscript_distance= 0.12
+      subscript_distance= 0.15;
+      superscript_distance= 0.1;
+      limit_subscript_distance= 0.12;
+      limit_superscript_distance= 0.12
     }
 
-type noad= { nucleus:box list;
-             subscript_left:math list; superscript_left:math list;
-             subscript_right:math list; superscript_right:math list }
+type noad= { mutable nucleus:box list;
+             mutable subscript_left:math list; mutable superscript_left:math list;
+             mutable subscript_right:math list; mutable superscript_right:math list }
 
 and binary= { bin_priority:int; bin_drawing:noad; bin_left:math list; bin_right:math list }
 and fraction= { numerator:math list; denominator:math list; line:Drivers.path_parameters }
-and operator= { op_priority:int; op_noad:noad; op_contents:math list }
+and operator= { op_noad:noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:math list; op_right_contents:math list }
 and math=
     Ordinary of noad
   | Binary of binary
   | Fraction of fraction
-  | Relation of binary
   | Operator of operator
+  | Decoration of (box list -> box list)*(math list)
+
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
 
@@ -158,221 +164,308 @@ let min_dist d (xa,ya) (xb,yb)=
 
 let line (a,b) (c,d)=[|a;c|], [|b;d|]
 
-let rec draw_maths mathsEnv style mlist0=
-  let noSpace=[] in
-  let thinSpace = [glue (1./.6.) (1./.6.) (1./.6.)] in
-  let medSpace =  [glue 0. (2./.9.) (1./.3.)] in
-  let thickSpace = [glue (5./.18.) (5./.18.) (5./.9.)] in
+let rec contents=function
+    GlyphBox x->(Fonts.glyphNumber x.glyph).glyph_utf8
+  | Kerning x->contents x.kern_contents
+  | _->""
+
+
+let rec draw_maths mathsEnv style mlist=
   let font,size = mathsEnv.fonts.(int_of_style style) in
+    match mlist with
 
-  let rec draw=function
-      []->[]
-    | Ordinary n::s->(
-        let (w0,w1,w2)=List.fold_left (fun (x0,x1,x2) b->let a,b,c=box_interval b in (x0+.a, x1+.b,x2+.c))
-          (0.,0.,0.) n.nucleus
-        in
-          if n.superscript_right<>[] ||
-            n.superscript_left<>[] ||
-            n.subscript_right<>[] ||
-            n.subscript_left<>[] then (
-
-              let l1=bezier_of_boxes (draw_boxes n.nucleus) in
-              let x0,y0,x1,y1=bounding_box [Path (Drivers.default,[Array.of_list l1])] in
+        []->[]
+      | Ordinary n::s->(
+          (* attacher les indices et les exposants n'est pas
+             complètement trivial. on utilise la règle de Knuth pour
+             la position verticale, puis un calcul de distance pour la
+             position horizontale. D'ailleurs, il est assez faux de
+             déplacer les indices de la distance qu'on calcule, mais
+             c'est rapide et ça marche bien dans la plupart des
+             cas. *)
 
 
-              let x_height=
-                let x=Fonts.loadGlyph font ({empty_glyph with glyph_index=Fonts.glyph_of_char font 'x'}) in
-                  (Fonts.glyph_y1 x)/.1000.
+          n.nucleus<-List.map (function
+                                   GlyphBox g->
+                                     GlyphBox { g with
+                                                  glyph_size=size;
+                                                  glyph=Fonts.loadGlyph font (Fonts.glyphNumber g.glyph) }
+                                 | x->x
+                              ) n.nucleus;
+
+            if n.superscript_right<>[] ||
+              n.superscript_left<>[] ||
+              n.subscript_right<>[] ||
+              n.subscript_left<>[] then (
+
+                let l1=bezier_of_boxes (draw_boxes n.nucleus) in
+                let x0,y0,x1,y1=bounding_box [Path (Drivers.default,[Array.of_list l1])] in
+
+
+                let x_height=
+                  let x=Fonts.loadGlyph font ({empty_glyph with glyph_index=Fonts.glyph_of_char font 'x'}) in
+                    (Fonts.glyph_y1 x)/.1000.
+                in
+                let u,v=if contents (last n.nucleus) <> "" then  0., 0. else
+                  y1 -. mathsEnv.sup_drop*.size, -.y0+. mathsEnv.sub_drop*.size
+                in
+
+                let a=draw_boxes (draw_maths mathsEnv (superStyle style) n.superscript_right) in
+                let b=draw_boxes (draw_maths mathsEnv (superStyle style) n.superscript_left) in
+                let c=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_right) in
+                let d=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_left) in
+                let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
+                let bb=Array.map (fun l->bounding_box [Path (Drivers.default, [Array.of_list l])]) bezier in
+
+                let y_place sup sub=
+                  let xa0,ya0,xa1,ya1=bb.(sub) in
+                  let xb0,yb0,xb1,yb1=bb.(sup) in
+                    if bezier.(sup)=[] then (
+                      0., max v (max (mathsEnv.sub1*.size) (ya1 -. 4./.5. *. abs_float x_height*.size))
+                    ) else (
+                      let p=
+                        if style=Display then mathsEnv.sup1 else
+                          if is_cramped style then mathsEnv.sup3 else mathsEnv.sup2
+                      in
+                      let u=max u (max (p*.size) (-.yb0 +. (abs_float x_height*.size)/.4.)) in
+                        if bezier.(sub)=[] then (
+                          u,0.
+                        ) else (
+                          let v=max v (mathsEnv.sub2*.size) in
+                            if (u+.yb0) -. (ya1-.v) > 4.*.mathsEnv.default_rule_thickness then (
+                              u,v
+                            ) else (
+                              let v=4.*.mathsEnv.default_rule_thickness*.size -. (u+.yb0) +. ya1 in
+                              let psi=4./.5.*.abs_float x_height*.size -. (u+.yb0) in
+                                if psi > 0. then (u+.psi, v-.psi) else (u,v)
+                            )
+                        )
+                    )
+                in
+
+
+                let off_ya,off_yc = y_place 0 2 in
+                let off_yb,off_yd = y_place 1 3 in
+
+                let xoff=
+                  let xa0,_,xa1,_=bb.(0) in
+                  let xb0,_,xb1,_=bb.(1) in
+                  let xc0,_,xc1,_=bb.(2) in
+                  let xd0,_,xd1,_=bb.(3) in
+                    [| x1-.xa0; x0 -.xb1; x1-.xc0; x0-.xd1 |]
+                in
+                let yoff=[| off_ya;off_yb; -.off_yc; -.off_yd |] in
+
+
+                let dist=Array.mapi (fun i l->
+                                       let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
+                                                            Array.map (fun x0->x0 +. yoff.(i)) y) l
+                                       in
+                                         List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
+                                    ) bezier
+                in
+                let dr=(draw_boxes n.nucleus)
+                  @ (List.map (translate (xoff.(0)-.dist.(0)+.size*.mathsEnv.superscript_distance) yoff.(0)) a)
+                  @ (List.map (translate (xoff.(1)+.dist.(1)-.size*.mathsEnv.superscript_distance) yoff.(1)) b)
+                  @ (List.map (translate (xoff.(2)-.dist.(2)+.size*.mathsEnv.subscript_distance) yoff.(2)) c)
+                  @ (List.map (translate (xoff.(3)+.dist.(3)-.size*.mathsEnv.subscript_distance) yoff.(3)) d)
+                in
+                let (a0,a1,a2,a3) = bounding_box dr in
+                  [ Drawing ({ drawing_min_width=a2-.a0;
+                               drawing_nominal_width=a2-.a0;
+                               drawing_max_width=a2-.a0;
+                               drawing_y0=0.;
+                               drawing_y1=a3;
+                               drawing_badness=(fun _->0.);
+                               drawing_contents=(fun _->dr) }) ]
+              ) else
+                n.nucleus
+        )@(draw_maths mathsEnv style s)
+
+      | Binary b::s->(
+          (draw_maths mathsEnv style b.bin_left)@
+            (draw_maths mathsEnv style [Ordinary b.bin_drawing])@
+            (draw_maths mathsEnv style b.bin_right)
+
+        )@(draw_maths mathsEnv style s)
+
+      | (Fraction f)::s->(
+
+          let ba=draw_boxes (draw_maths mathsEnv (match style with
+                                                      Display -> Text | Display' -> Text'
+                                                    | _ -> superStyle style)
+                               f.numerator) in
+          let bb=draw_boxes (draw_maths mathsEnv (match style with
+                                                      Display -> Text | Display' -> Text'
+                                                    | _ -> superStyle style)
+                               f.denominator) in
+          let x0a,y0a,x1a,y1a=bounding_box ba in
+          let x0b,y0b,x1b,y1b=bounding_box bb in
+          let wa=x1a-.x0a in
+          let wb=x1b-.x0b in
+          let w=max wa wb in
+            [ Drawing (drawing ~offset:(-.y0b) (
+
+                         (if f.line.lineWidth = 0. then [] else [Path ({f.line with lineWidth=f.line.lineWidth*.size}, [ [|line (0.,0.) (w,0.)|] ]) ])@
+                           (List.map (translate ((w-.wa)/.2.) (-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
+                           (List.map (translate ((w-.wb)/.2.) (-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
+
+                       ))]
+
+        )@(draw_maths mathsEnv style s)
+      | Operator op::s ->(
+
+          (* Ici, si op.op_limits est faux, c'est facile : c'est comme
+             pour Ordinary. Sinon, il faut calculer la densité de
+             l'encre en haut et en bas du symbole pour centrer les
+             indices et exposants. Si on passe op.op_limits=true et
+             qu'il y a des indices des deux côtés, ils ne sont
+             positionnés en-dessous que du côté où c'est possible *)
+
+          let op_noad=
+            if op.op_limits then (
+              let op', sup=
+                if op.op_noad.superscript_right=[] || op.op_noad.superscript_left=[] then
+                  ({ op.op_noad with superscript_right=[]; superscript_left=[] },
+                   op.op_noad.superscript_right @ op.op_noad.superscript_left)
+                else
+                  op.op_noad, []
               in
-
-              let u,v=match last n.nucleus with
-                  GlyphBox _ | Kerning _ -> 0., 0.
-                | _-> y1 -. mathsEnv.sup_drop, -.y0-. mathsEnv.sub_drop
+              let op'', sub=
+                if op.op_noad.subscript_right=[] || op.op_noad.subscript_left=[] then
+                  ({ op' with subscript_right=[]; subscript_left=[] },
+                   op.op_noad.subscript_right @ op.op_noad.subscript_left)
+                else
+                  op', []
               in
+              let drawn_op=draw_boxes (draw_maths mathsEnv style [Ordinary op'']) in
 
-              let a=draw_boxes (draw_maths mathsEnv (superStyle style) n.superscript_right) in
-              let b=draw_boxes (draw_maths mathsEnv (superStyle style) n.superscript_left) in
-              let c=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_right) in
-              let d=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_left) in
-              let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
-              let bb=Array.map (fun l->bounding_box [Path (Drivers.default, [Array.of_list l])]) bezier in
-              let xoff=Array.make 4 0. in
+              let ba=draw_boxes (draw_maths mathsEnv (superStyle style) sup) in
+              let bb=draw_boxes (draw_maths mathsEnv (subStyle style) sub) in
+              let x0,y0,x1,y1=bounding_box drawn_op in
+              let x0a,y0a,x1a,y1a=bounding_box ba in
+              let x0b,y0b,x1b,y1b=bounding_box bb in
 
-
-              let y_place sup sub=
-                let xa0,ya0,xa1,ya1=bb.(sub) in
-                let xb0,yb0,xb1,yb1=bb.(sup) in
-
-                  if bezier.(sup)=[] then (
-                    0., max v (max mathsEnv.sub1 (ya1 -. 4./.5. *. abs_float x_height))
-                  ) else (
-                    let p=
-                      if style=Display then mathsEnv.sup1 else
-                        if is_cramped style then mathsEnv.sup3 else mathsEnv.sup2
-                    in
-                    let u=max u (max p (-.yb0 +. (abs_float x_height)/.4.)) in
-                      if bezier.(sub)=[] then (
-                        u,0.
-                      ) else (
-                        let v=max v mathsEnv.sub2 in
-                          if (u+.yb0) -. (ya1-.v) > 4.*.mathsEnv.default_rule_thickness then (
-                            u,v
-                          ) else (
-                            let v=4.*.mathsEnv.default_rule_thickness -. (u+.yb0) +. ya1 in
-                            let psi=4./.5.*.abs_float x_height -. (u+.yb0) in
-                              if psi > 0. then (u+.psi, v-.psi) else (u,v)
-                          )
-                      )
+              let collide y=
+                let line=[|x0;x1|], [|y;y|] in
+                let rec make_ints area x=function
+                    (h1,_)::(h2,_)::s->
+                      make_ints
+                        (area +. (h2-.h1)*.(x1-.x0))
+                        (x +. (x0+.(h2+.h1)*.(x1-.x0)/.2.) *. (h2-.h1)*.(x1-.x0))
+                        s
+                  | _ ->x,area
+                in
+                  make_ints 0. 0. (
+                    List.sort compare (List.concat (List.map (Bezier.intersect line) (bezier_of_boxes drawn_op)))
                   )
               in
-
-
-              let off_ya,off_yc = y_place 0 2 in
-              let off_yb,off_yd = y_place 1 3 in
-
-              let xoff=
-                let xa0,_,xa1,_=bb.(0) in
-                let xb0,_,xb1,_=bb.(1) in
-                let xc0,_,xc1,_=bb.(2) in
-                let xd0,_,xd1,_=bb.(3) in
-                  [| x1-.xa0; x0 -.xb1; x1-.xc0; x0-.xd1 |]
+              let n=5 in
+              let rec center i y weight x=
+                if i>n then
+                  if weight=0. then
+                    (x0+.x1)/.2.          (* solution naive s'il n'y a aucune collision *)
+                  else
+                    x/.weight
+                else
+                  let x',w=collide (y+.(float_of_int i)*.(y1-.y0)/.(10.*.float_of_int n)) in
+                    center (i+1) y (weight+.w) (x +. x')
               in
-              let yoff=[| off_ya;off_yb; -.off_yc; -.off_yd |] in
+              let xsup=center 1 (y1-.(y1-.y0)/.10.) 0. 0. in
+              let xsub=center 1 y0 0. 0. in
 
-
-              let dist=Array.mapi (fun i l->
-                                     let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
-                                                          Array.map (fun x0->x0 +. yoff.(i)) y) l
-                                     in
-                                       List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
-                                  ) bezier
+              let yoff=
+                y0-.y1a-.mathsEnv.limit_subscript_distance*.size -. y0a
               in
-              let dr=(draw_boxes n.nucleus)
-                @ (List.map (translate (xoff.(0)-.dist.(0)+.mathsEnv.superscript_distance) yoff.(0)) a)
-                @ (List.map (translate (xoff.(1)+.dist.(1)+.mathsEnv.superscript_distance) yoff.(1)) b)
-                @ (List.map (translate (xoff.(2)-.dist.(2)+.mathsEnv.subscript_distance) yoff.(2)) c)
-                @ (List.map (translate (xoff.(3)+.dist.(3)+.mathsEnv.subscript_distance) yoff.(3)) d)
-              in
-              let (a0,a1,a2,a3) = bounding_box dr in
-                [ Drawing ({ drawing_min_width=a2-.a0;
-                             drawing_nominal_width=a2-.a0;
-                             drawing_max_width=a2-.a0;
-                             drawing_y0=a1;
-                             drawing_y1=a3;
-                             drawing_badness=(fun _->0.);
-                             drawing_contents=(fun _->dr) }) ]
-            ) else
-              n.nucleus
-      )@(draw s)
+                [ Drawing (drawing ~offset:(yoff) (
 
-    | Binary b::s->(
-        let left=try (
-          match last b.bin_left with
-              Ordinary _
-            | Fraction _->medSpace
-            | Relation _->[]
-            | Binary _->[]                (* à vérifier dans le TeXbook *)
-        ) with _->noSpace
-        in
-        let right=
-          match List.hd b.bin_right with
-              Ordinary _
-            | Fraction _->medSpace
-            | Relation _->[]
-            | Binary _->[]
-        in
+                             drawn_op @
+                               (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.size)) ba)@
+                               (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1a-.mathsEnv.limit_subscript_distance*.size)) bb)
 
-          (draw_maths mathsEnv style b.bin_left)@left @ (draw_maths mathsEnv style [Ordinary b.bin_drawing]) @ right@(draw_maths mathsEnv style b.bin_right)
+                           ))]
 
-      )@(draw s)
+            ) else draw_maths mathsEnv style [Ordinary op.op_noad]
+          in
+          let left=draw_boxes (draw_maths mathsEnv style op.op_left_contents) in
+          let bezier_left=bezier_of_boxes left in
+          let right=draw_boxes (draw_maths mathsEnv style op.op_right_contents) in
+          let bezier_right=bezier_of_boxes right in
+          let bezier_op=bezier_of_boxes (draw_boxes op_noad) in
+          let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
+          let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
+          let (x0_op,y0_op,x1_op,y1_op)=bounding_box (draw_boxes op_noad) in
 
-    | Relation b::s->(
-        let left=try (
-          match last b.bin_left with
-              Ordinary _
-            | Fraction _->thickSpace
-            | Relation _->[]
-            | Binary _->[]                (* à vérifier dans le TeXbook *)
-        ) with _->noSpace
-        in
-        let right=try
-          match List.hd b.bin_right with
-              Ordinary _
-            | Fraction _->thickSpace
-            | Relation _->[]
-            | Binary _->[]
-        with _->noSpace
-        in
+          let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_r) x, y) bezier_right in
+          let dist_r=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a lr) infinity bezier_op in
 
-          (draw_maths mathsEnv style b.bin_left)@left @ (draw_maths mathsEnv style [Ordinary b.bin_drawing]) @ right@(draw_maths mathsEnv style b.bin_right)
+          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 -. x1_l+.x0_op) x, y) bezier_left in
+          let dist_l=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity bezier_op in
 
-      )@(draw s)
-    | (Fraction f)::s->(
+          let x_op=if left=[] then 0. else (x1_l-.dist_l+.op.op_left_spacing) in
+          let x_right=x_op+.x1_op-.x0_r -. dist_r+.(if right=[] then 0. else op.op_right_spacing) in
 
-        let ba=draw_boxes (draw_maths mathsEnv (match style with
-                                               Display -> Text | Display' -> Text'
-                                             | _ -> superStyle style)
-                             f.numerator) in
-        let bb=draw_boxes (draw_maths mathsEnv (match style with
-                                               Display -> Text | Display' -> Text'
-                                             | _ -> superStyle style)
-                             f.denominator) in
-        let x0a,y0a,x1a,y1a=bounding_box ba in
-        let x0b,y0b,x1b,y1b=bounding_box bb in
-        let wa=x1a-.x0a in
-        let wb=x1b-.x0b in
-        let w=max wa wb in
-          [ Drawing (drawing ~offset:(-.y0b) (
+            (Drawing {
+               drawing_min_width=x_op;
+               drawing_nominal_width=x_op;
+               drawing_max_width=x_op;
+               drawing_y0=y0_l;
+               drawing_y1=y1_l;
+               drawing_badness=(fun _->0.);
+               drawing_contents=(fun _->left)})::
 
-                       (if f.line.lineWidth = 0. then [] else [Path (f.line, [ [|line (0.,0.) (w,0.)|] ]) ])@
-                         (List.map (translate ((w-.wa)/.2.) (-.y0a+.1.)) ba)@
-                         (List.map (translate ((w-.wb)/.2.) (-.y1b-.1.)) bb)
+              (Drawing {
+                 drawing_min_width=x_right-.x_op;
+                 drawing_nominal_width=x_right-.x_op;
+                 drawing_max_width=x_right-.x_op;
+                 drawing_y0=y0_op;
+                 drawing_y1=y1_op;
+                 drawing_badness=(fun _->0.);
+                 drawing_contents=(fun _->draw_boxes op_noad)})::
+              (Drawing {
+                 drawing_min_width=x1_r-.x0_r;
+                 drawing_nominal_width=x1_r-.x0_r;
+                 drawing_max_width=x1_r-.x0_r;
+                 drawing_y0=y0_l;
+                 drawing_y1=y1_l;
+                 drawing_badness=(fun _->0.);
+                 drawing_contents=(fun _->right)})::
+              (draw_maths mathsEnv style s)
+        )
+      | Decoration (rebox, inside) :: s ->(
+          (rebox ((draw_maths mathsEnv style inside))) @ (draw_maths mathsEnv style s)
+        )
 
-                     ))]
 
-      )@(draw s)
 
-  in
-  let result=draw mlist0 in
-  let _,size=mathsEnv.fonts.(int_of_style style) in
-      List.map (resize size) result
+let dist_boxes a b=
+  let left=draw_boxes a in
+  let bezier_left=bezier_of_boxes left in
+  let right=draw_boxes b in
+  let bezier_right=bezier_of_boxes right in
+  let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
+  let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
+  let lr = List.map (fun (x,y)->Array.map (fun x0->x0+.x1_l-.x0_r) x, y) bezier_right in
+    List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity lr
+
 
 let gl env st c=
   let font,s=(env.fonts.(int_of_style st)) in
-  GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_char font c})
-             with glyph_size=1.; glyph_x=0.; glyph_y=0. }
+  let rec make_it idx=
+    if UTF8.out_of_range c idx then [] else (
+      (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)})
+                  with glyph_size=1.; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
+    )
+  in
+    make_it (UTF8.first c)
 
-let a =
-  let env=default in
-  let style=Display in
-    Ordinary  { (noad [gl env style 'a']) with
-                  superscript_right=[Ordinary (noad [gl env style '0'])];
-                  superscript_left=[];
-                  subscript_right=[Ordinary (noad [gl env style '0'])];
-                  subscript_left=[] }
-  (* Ordinary  (noad [gl 'a']) *)
+let int env st=
+  let font,s=(env.fonts.(int_of_style st)) in
+    Drawing (drawing ~offset:(-0.8) [
+      Glyph { (glyphCache font { empty_glyph with glyph_index= 701 }) with glyph_size=1.; glyph_y= -0.8 }
+    ])
 
 
-let bx= (
-  Binary { bin_priority=0; bin_drawing=(noad [gl default Display '+']);
-           bin_left=[a]; bin_right=[a] }
-)
 
-(* let f=draw_boxes ( *)
-(*   draw_maths defaultEnv Display (\* [Ordinary (noad [gl '+'])] *\) *)
-(*     [Fraction { numerator=[a]; denominator=[a]; line={Drivers.default with lineWidth = 0.5 }}] *)
-(* ) *)
+let open_close left right box=left@box@right
 
-let u=
-  (* let (a,b,c,d)=bounding_box bx in *)
-    [| { pageFormat=(100.,100.); pageContents=
-           List.map (translate 20. 20.) (
-             List.map (Drivers.resize 10.) (
-               (* (Path ({Drivers.default with lineWidth=0.1}, rectangle (a,b) (c,d))):: *)
-               draw_boxes (draw_maths default Display [a])
-             )
-           ) }
-    |]
-
-let _=
-  Drivers.Pdf.output u "maths.pdf"
