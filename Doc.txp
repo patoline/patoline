@@ -155,3 +155,21 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 \family{{alegreya}}{\alternative{{Demi}}{Test Alegreya demi et \italic{Test italic}}}
 =<
 *)
+
+=> Math
+
+=> Math en display
+
+$$ x_i + 2 cos(x) <= a y_i^n - sin(t) $$
+
+
+$$ B = t^^P * A * P = P^(-1) A P  $$
+ 
+=<
+
+=> Math en paragraph
+
+Un beau paragraphe avec des maths : $ x + cos(t) <= y - sin(t) $.
+
+=<
+=<

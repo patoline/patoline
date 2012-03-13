@@ -16,15 +16,32 @@ let set_newline dyplexbuf =
 
 let dyp_merge = keep_one
 
+type math =
+     Var of string
+   | Fun of string
+   | Num of string   
+   | Prefix of string * math
+   | Postfix of string * math
+   | Binary of string * math * math
+   | Indices of indices * math
+   | Apply of math * math
+
+and indices = { up_right : math option;
+    down_right : math option; 
+    up_left : math option;
+    down_left : math option }
+
 type doc =
      Paragraph of content list
    | Verbatim of (string option * string list)
    | Caml of int * int
    | Struct of content list * doc list
    | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
+   | Math of math  
 
 and content =
      TC of string
+   | FC of math
    | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
@@ -50,7 +67,7 @@ let concat words =
 
 %start main
 
-%relation atom
+%relation atom < ind < fun < sum < prod < rel < neg < conj < impl
 %relation nonatom
 
 %layout [ ' ' '\r' '\t' ]
@@ -58,7 +75,7 @@ let concat words =
 %lexer
 
 let utf8_char =
-    ['\033' '\035'-'\038' '\042'-'\090' '\094' '\096'-'\122' '\124''\126''\127']
+    ['\033' '\035' '\037'-'\038' '\042'-'\090' '\096'-'\122' '\124''\126''\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -112,7 +129,8 @@ main lexer =
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '='+ -> SECT { Dyp.lexeme lexbuf }
-  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | ''' | '"' -> WORD { Dyp.lexeme lexbuf }
+  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | ''' | '"' | '$' 
+       -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
@@ -121,7 +139,9 @@ paragraph:
   | WORD+<w> [NEWLINE]? paragraph<p> { TC (concat w) :: p }
   | parmacro<m> { [ m ] }
   | parmacro<m> [NEWLINE]? paragraph<p> { m :: p }
-
+  | "$" math<m> "$" { [FC m] }
+  | "$" math<m> "$" [NEWLINE]? paragraph<p> { FC m :: p }
+ 
 preambule:
   [NEWLINE]*
 	{ None }
@@ -172,6 +192,62 @@ parmacro:
   | PMACRO<name> [NEWLINE]? args<a>
       { MC(`Single, name, a) }
 
+leftind:
+  | math(<=atom)<m1> - "^^" - math(<=atom)<m2> - "__" 
+      { { up_right = None; up_left = Some m1; down_right = None; down_left = Some m2 } }
+  | math(<=atom)<m1> - "__" - math(<=atom)<m2> - "^^" 
+      { { up_right = None; up_left = Some m2; down_right = None; down_left = Some m1 } }
+  | math(<=atom)<m1> - "^^"
+      { { up_right = None; up_left = Some m1; down_right = None; down_left = None } }
+  | math(<=atom)<m2> - "__" 
+      { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
+
+rightind:
+    /* empty */
+      { (fun i -> i) }
+  | "^" - math(<=atom)<m1> - "_" - math(<=atom)<m2>
+      { fun i -> { i with up_right = Some m1; down_right = Some m2 } }
+  | "_" - math(<=atom)<m1> - "^" - math(<=atom)<m2>
+      { fun i -> { i with up_right = Some m2; down_right = Some m1 } }
+  | "^" - math(<=atom)<m1>
+      { fun i -> { i with up_right = Some m1 } }
+  | "_" - math(<=atom)<m1>
+      { fun i -> { i with down_right = Some m1 } }
+
+math:
+    (['a'-'z''A'-'Z'])<name>
+      { Var(name) } atom
+  | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
+      { Fun(name) } atom
+  | (['-''+']?['0'-'9']+('.'['0'-'9']+)?) <num> 
+      {Num num } atom
+  | "(" math<a> ")" 
+      { a } atom 
+  | leftind<i> - math(<=fun)<m> - rightind<fi>
+      { Indices(fi i, m) } ind
+  | math(<=fun)<m> - rightind<fi>
+      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
+        Indices(fi d, m) } ind
+  | math(<=fun)<a> - "(" math<b> ")"
+      { Apply(a, b) } fun
+  | math(<=sum)<a> ["+"|"-"]<op> math(<sum)<b>
+      { Binary(op, a, b) } sum
+  | ["+"|"-"]<op> math(<sum)<b> 
+      { Prefix(op,b) } sum
+  | math(<=prod)<a> ["*"|"/"]<op> math(<prod)<b> 
+      { Binary(op, a, b) } prod
+  | math(<=prod)<a>  math(<prod)<b>
+      { Binary("*", a, b) } prod
+  | math(<=rel)<a> ["="|"<="|">="]<op> math(<rel)<b> 
+      { Binary(op, a, b) } rel
+  | "!"<op> math(<neg)<a>
+      { Prefix(op, a) } neg
+  | math(<=conj)<a> ["&&"|"||"]<op> math(<conj)<b> 
+      { Binary(op, a, b) } conj
+  | math(<=impl)<a> ["=>"|"<=>"]<op> math(<impl)<b> 
+      { Binary(op, a, b) } impl
+
+
 text:
   /* Section */
   | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
@@ -192,6 +268,9 @@ text:
     { Paragraph p :: t } nonatom
   | text(=atom)<t> [NEWLINE]* paragraph<p>
     { Paragraph p :: t } nonatom
+  /* Math en display style */
+  | textn<t> "$$" math<m> "$$"
+    { Math m :: t } atom
 
 main:
   | preambule<p> text<t> [NEWLINE]* eof

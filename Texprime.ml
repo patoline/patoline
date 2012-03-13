@@ -36,6 +36,9 @@ let postambule : ('a, 'b, 'c) format = "
     Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
 " 
 
+let rec print_math ch display m =
+  Printf.fprintf stdout "[T \"unsupported math\"]"
+
 let rec print_macro ch op mtype name args =
   begin
     match mtype with
@@ -97,6 +100,11 @@ and print_contents op ch l =
       print_macro ch op mtype name args;
       Printf.fprintf ch ")@";
       fn l
+    | FC m :: l ->
+      Printf.fprintf ch "(";
+      print_math ch false m;
+      Printf.fprintf ch ")@";
+      fn l
     end;
   in fn l;
   Printf.fprintf ch ")"
@@ -146,6 +154,9 @@ let _=
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
+		    | Math m ->
+		      Printf.printf "newPar ~environment:defaultEnv textWidth parameters %a;;\n" 
+		        (fun ch -> print_math ch true) m
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
 		      Printf.printf "let verbEnv = { (envFamily defaultMono defaultEnv)
