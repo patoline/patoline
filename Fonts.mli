@@ -103,7 +103,7 @@ module Opentype :
   sig
     val offsetTable : int
     val dirSize : int
-    exception Table_not_found
+    exception Table_not_found of string
     val tableLookup : string -> in_channel -> int -> int * int
     val tableList : in_channel -> int -> string list
     type font = Opentype.font = CFF of (CFF.font * int)

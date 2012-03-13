@@ -17,7 +17,7 @@ Array.iter (fun f ->
 	  let font = loadFont ("./Otf/"^f) in
 	  let features = fontFeatures font in
 	  let features = String.concat ", " (List.map (fun f -> FTypes.str_of_feature f ) features) in
-	  newPar textWidth parameters [T features])) fonts
+	  newPar textWidth parameters [T ("Supported features : "^features)])) fonts
 }}
 
 =<
