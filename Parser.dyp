@@ -25,6 +25,7 @@ type math =
    | Binary of string * math * math
    | Indices of indices * math
    | Apply of math * math
+   | Delim of string * math * string  
 
 and indices = { up_right : math option;
     down_right : math option; 
@@ -221,7 +222,13 @@ math:
       { Fun(name) } atom
   | (['-''+']?['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
+  | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "}" | ">"]<cl> 
+      { Delim(op,a,cl) } atom 
+  | "[" math<a> ")" 
+      { a } atom 
   | "(" math<a> ")" 
+      { a } atom 
+  | "{" math<a> "}" 
       { a } atom 
   | leftind<i> - math(<ind)<m> - rightind<fi>
       { Indices(fi i, m) } ind
@@ -238,7 +245,7 @@ math:
       { Binary(op, a, b) } prod
   | math(<=prod)<a>  math(<prod)<b>
       { Binary("*", a, b) } prod
-  | math(<=rel)<a> ["="|"<="|">="]<op> math(<rel)<b> 
+  | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
       { Binary(op, a, b) } rel
   | "!"<op> math(<neg)<a>
       { Prefix(op, a) } neg
