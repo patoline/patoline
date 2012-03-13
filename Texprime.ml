@@ -39,7 +39,7 @@ let postambule : ('a, 'b, 'c) format = "
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch 
-    "(List.map (fun b -> B (fun _ -> b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
+    "(List.map (fun b -> B (fun env -> Util.resize env.size b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
     style;
   let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None } in
   let rec fn indices ch m =
