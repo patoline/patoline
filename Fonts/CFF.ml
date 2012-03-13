@@ -503,7 +503,7 @@ let outlines_ gl onlyWidth=
               (let a=int_of_char (program.[!pc+1]) in
                let b=int_of_char (program.[!pc+2]) in
                let i=((a lsl 8) lor b) in
-                 stack.(!stackC) <- float_of_int (if i lsr 15 <> 0 then (i land 0x7fff) - 0x8000 else i);
+                 stack.(!stackC) <- float_of_int (if i land 0x8000 <> 0 then i - 0x8000 else i);
                  incr stackC;
                  pc:= !pc+3)
           | CALLGSUBR->
@@ -663,7 +663,12 @@ let outlines_ gl onlyWidth=
                        (let op2=int_of_char (program.[!pc+2]) in
                         let op3=int_of_char (program.[!pc+3]) in
                         let op4=int_of_char (program.[!pc+4]) in
-                          stack.(!stackC) <- (float_of_int ((((((op1 lsl 8) lor op2) lsl 8) lor op3) lsl 8 ) lor op4)) /. (float_of_int (1 lsl 16));
+                        let rec pow x i=if i=0 then 1. else x*.(pow x (i-1)) in
+                          stack.(!stackC) <-
+                            ((float_of_int op1)*.(pow 2. 24)+.
+                               (float_of_int op2)*.(pow 2. 16)+.
+                               (float_of_int op3)*.(pow 2. 8)+.
+                               (float_of_int op4) -. (if op1>=0x80 then pow 2. 32 else 0.)) /. (pow 2. 16);
                           incr stackC;
                           pc:= !pc+5
                        )
