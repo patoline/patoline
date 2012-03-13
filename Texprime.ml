@@ -36,8 +36,33 @@ let postambule : ('a, 'b, 'c) format = "
     Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
 " 
 
-let rec print_math ch display m =
-  Printf.fprintf stdout "[T \"unsupported math\"]"
+let print_math ch display m =
+  let style = if display then "Maths.Display" else "Maths.Script" in
+  Printf.fprintf ch 
+    "(List.map (fun b -> B (fun _ -> b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
+    style;
+  let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None } in
+  let rec fn indices ch m =
+    match m with
+      Var name ->
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl env style \"%s\")) with %a } ]"
+	  name hn indices
+    | _ -> 
+      Printf.fprintf ch "[]"
+  and gn ch name ind =
+    match ind with 
+      None ->
+      Printf.fprintf ch "%s = [];" name
+    | Some m ->
+      Printf.fprintf ch "%s = (%a);" name (fn no_ind) m
+  and hn ch ind =
+    gn ch "Maths.superscript_right" ind.up_right;
+    gn ch "Maths.superscript_left" ind.up_left;
+    gn ch "Maths.subscript_right" ind.down_right;
+    gn ch "Maths.subscript_left" ind.down_left;
+  in
+  fn no_ind ch m;
+  Printf.fprintf ch "))) "
 
 let rec print_macro ch op mtype name args =
   begin
@@ -155,7 +180,7 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
 		    | Math m ->
-		      Printf.printf "newPar ~environment:defaultEnv textWidth parameters %a;;\n" 
+		      Printf.printf "newPar ~environment:{defaultEnv with par_indent = 0.} textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
