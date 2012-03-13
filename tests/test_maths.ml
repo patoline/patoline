@@ -16,6 +16,7 @@ let a0=
                   subscript_right=[Ordinary (noad (gl env style "1"))];
                   subscript_left=[] }
 
+
 let bx= (
   Binary { bin_priority=0; bin_drawing=(noad (gl default Display "+"));
            bin_left=[a]; bin_right=[a] }
@@ -46,6 +47,14 @@ let integrale=
                op_left_contents=[a];
                op_right_contents=[a] }
 
+let cos=
+  let env=Maths.default in
+  let style=Display in
+    Ordinary  { (noad (gl_font env style (Fonts.loadFont "Otf/lmromancaps10-regular.otf") "cos")) with
+                  superscript_right=[];
+                  superscript_left=[];
+                  subscript_right=[];
+                  subscript_left=[] }
 
 let u=
   (* let (a,b,c,d)=bounding_box bx in *)
@@ -56,7 +65,8 @@ let u=
            List.map (translate 20. 20.) (
              List.map (Drivers.resize 10.) (
                draw_boxes (
-                 (draw_maths env st [Decoration (open_close (gl env st "(") (gl env st ")"), [a])])
+                 (draw_maths env st [cos])
+                 @(draw_maths env st [Decoration (open_close (gl env st "(") (gl env st ")"), [a])])
                  @(draw_maths env st [x]))
              ))
        }

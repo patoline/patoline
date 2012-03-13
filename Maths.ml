@@ -185,14 +185,6 @@ let rec draw_maths mathsEnv style mlist=
              cas. *)
 
 
-          n.nucleus<-List.map (function
-                                   GlyphBox g->
-                                     GlyphBox { g with
-                                                  glyph_size=size;
-                                                  glyph=Fonts.loadGlyph font (Fonts.glyphNumber g.glyph) }
-                                 | x->x
-                              ) n.nucleus;
-
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
@@ -454,7 +446,17 @@ let gl env st c=
   let rec make_it idx=
     if UTF8.out_of_range c idx then [] else (
       (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)})
-                  with glyph_size=1.; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
+                  with glyph_size=s; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
+    )
+  in
+    make_it (UTF8.first c)
+
+let gl_font env st font c=
+  let _,s=(env.fonts.(int_of_style st)) in
+  let rec make_it idx=
+    if UTF8.out_of_range c idx then [] else (
+      (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)})
+                  with glyph_size=s; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
     )
   in
     make_it (UTF8.first c)
