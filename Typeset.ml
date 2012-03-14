@@ -60,7 +60,7 @@ end
 
 
 module Make=functor (User:User)->struct
-  module UMap=Map.Make(User)
+  module UMap=New_map.Make(User)
 
   let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(figures = [||]) paragraphs=
     let collide
