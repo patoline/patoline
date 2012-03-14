@@ -279,9 +279,15 @@ let rec draw_maths mathsEnv style mlist=
         )@(draw_maths mathsEnv style s)
 
       | Binary b::s->(
-          (draw_maths mathsEnv style b.bin_left)@
-            (draw_maths mathsEnv style [Ordinary b.bin_drawing])@
-            (draw_maths mathsEnv style b.bin_right)
+          let gl=if b.bin_priority=0 then glue (5./.18.) (5./.18.) (5./.9.) else
+            if b.bin_priority=1 then glue 0. (2./.9.) (1./.3.) else
+              glue (1./.6.) (1./.6.) (1./.6.)
+          in
+            (draw_maths mathsEnv style b.bin_left)@
+              (resize size gl)::
+              (draw_maths mathsEnv style [Ordinary b.bin_drawing])@
+              (resize size gl)::
+              (draw_maths mathsEnv style b.bin_right)
 
         )@(draw_maths mathsEnv style s)
 
