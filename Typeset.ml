@@ -8,7 +8,6 @@ open Fonts.FTypes
 
 
 exception Impossible
-type pages=((parameters * ((float * float * box) list)) array array)
 
 
 let rec print_graph file paragraphs graph path=

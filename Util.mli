@@ -1,36 +1,30 @@
-(** Types de l'optimiseur (boîtes), et fonctions de manipulation *)
-open Drivers
-
-(** Parametres dont se sert l'optimiseur pour connaître le placement
-    des boîtes sur la ligne, le nombre de lignes sur la page, etc. *)
 type parameters = {
   lead : float;
   measure : float;
   lines_by_page : int;
   left_margin : float;
-  local_optimization : int; (** Arité sortante maximale du nœud du graphe courant*)
-  min_height_before:int;    (** Espace vertical minimal avant la ligne courante *)
-  min_height_after:int;     (** Espace vertical minimal après la ligne courante *)
-  min_page_diff:int         (** Nombre de pages minimal avant la ligne courante *)
+  local_optimization : int;
+  min_height_before : int;
+  min_height_after : int;
+  min_page_diff : int;
 }
-val default_params:parameters
-
+val default_params : parameters
 val print_parameters : parameters -> unit
 type line = {
-  paragraph : int;                      (** Paragraphe de cette ligne *)
-  lastFigure : int;                     (** Dernière figure placée avant cette ligne *)
-  lineEnd : int;                        (** Fin de la ligne  *)
-  lineStart : int;                      (** Début de la ligne  *)
-  hyphenStart : int;                    (** indice de césure de la première boîte (si c'est une HyphenBox)  *)
-  hyphenEnd : int;                      (** indice de césure de la dernière boîte (si c'est une HyphenBox)  *)
-  isFigure : bool;                      (** Cette ligne est-elle une figure ? Si c'est le cas, elle a l'indice lastFigure dans le tableau des figures *)
-  mutable height : int;                 (** Hauteur sur la page, en lignes  *)
-  paragraph_height : int;               (** Numéro de la ligne dans le paragraphe *)
-  mutable page_height:int;              (** Numéro de la ligne sur la page *)
-  mutable page : int;                   (** Numéro de la page  *)
-  min_width : float;                    (** Largeur minimale du matériel de cette ligne  *)
+  paragraph : int;
+  lastFigure : int;
+  lineEnd : int;
+  lineStart : int;
+  hyphenStart : int;
+  hyphenEnd : int;
+  isFigure : bool;
+  mutable height : int;
+  paragraph_height : int;
+  mutable page_height : int;
+  mutable page : int;
+  min_width : float;
   nom_width : float;
-  max_width : float                     (** Largeur maximale du matériel de cette ligne  *)
+  max_width : float;
 }
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
@@ -64,7 +58,6 @@ module LineMap :
     val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
   end
 type 'a kerningBox = 'a Fonts.FTypes.kerningBox
-
 type drawingBox = {
   drawing_min_width : float;
   drawing_nominal_width : float;
@@ -74,84 +67,53 @@ type drawingBox = {
   drawing_badness : float -> float;
   drawing_contents : float -> Drivers.contents list;
 }
-and hyphenBox = {
-  hyphen_normal : box array;
-  hyphenated : (box array * box array) array;
+and 'a hyphenBox = {
+  hyphen_normal : 'a box array;
+  hyphenated : ('a box array * 'a box array) array;
 }
-and box =
+and 'a box =
     GlyphBox of Drivers.glyph
-  | Kerning of box kerningBox
+  | Kerning of 'a box kerningBox
   | Glue of drawingBox
   | Drawing of drawingBox
-  | Hyphen of hyphenBox
+  | Hyphen of 'a hyphenBox
+  | User of 'a
   | Empty
-
-(** Encapsule proprement des dessins, en calculant la plus petite
-    boîte qui le contient. Le paramètre est le décalage par rapport à
-    la ligne de base. *)
 val drawing : ?offset:float -> Drivers.contents list -> drawingBox
 type error_log = Overfull_line of line | Widow of line | Orphan of line
-
-val fold_left_line : box array array -> ('a -> box -> 'a) -> 'a -> line -> 'a
-
-(** Dernière boîte de la ligne *)
-val last_line : box array array -> line -> box
-
-(** Première boîte de la ligne *)
-val first_line : box array array -> line -> box
-
-(** Affichage du type ligne *)
 val print_line : line -> unit
-val print_box : box -> unit
-val print_box_type : box -> unit
-val print_text_line : box array array -> line -> unit
-val is_glyph : box -> bool
-val is_glue : box -> bool
-val is_hyphen : box -> bool
-
-(** Largeur d'une boîte, en ajustant le paramètre variable entre 0. et 1. *)
-val box_width : float -> box -> float
-
-(** Les largeurs minimale, nominale et maximale d'une boîte *)
-val box_interval : box -> float * float * float
-
-(** Les largeurs minimale, nominale et maximale d'un tableau de boîtes *)
-val boxes_interval : box array -> float * float * float
-
-val draw_boxes : box list -> Drivers.contents list
-
-(** Bas de la boîte, en tenant compte de la largeur *)
-val lower_y : box -> float -> float
-(** Haut de la boîte, en tenant compte de la largeur *)
-val upper_y : box -> float -> float
-
-(** Hauteur maximale au-dessus et en-dessous de la ligne de base *)
-val line_height : box array array -> line -> float * float
-
+val print_box : 'a box -> unit
+val print_box_type : 'a box -> unit
+val print_text_line : 'a box array array -> line -> unit
+val fold_left_line :
+  'a box array array -> ('b -> 'a box -> 'b) -> 'b -> line -> 'b
+val first_line : 'a box array array -> line -> 'a box
+val last_line : 'a box array array -> line -> 'a box
+val is_glyph : 'a box -> bool
+val is_glue : 'a box -> bool
+val is_hyphen : 'a box -> bool
+val box_width : float -> 'a box -> float
+val box_interval : 'a box -> float * float * float
+val boxes_interval : 'a box array -> float * float * float
+val draw_boxes : 'a box list -> Drivers.contents list
+val lower_y : 'a box -> 'b -> float
+val upper_y : 'a box -> 'b -> float
+val line_height : 'a box array array -> line -> float * float
 val comp :
-  box array array -> float -> int -> int -> int -> int -> int -> float
-
-(** Paramètre entre 0. et 1. nécessaire pour que la ligne tienne dans
-    la mesure qu'on lui donne en paramètres *)
-val compression : box array array -> parameters * line -> float
-
-(** Hash-consing sur les glyphs du document *)
-val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> glyph
+  'a box array array -> float -> int -> int -> int -> int -> int -> float
+val compression : 'a box array array -> parameters * line -> float
+val glyphCache_ : Drivers.glyph Binary.IntMap.t ref Binary.StrMap.t ref
+val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> Drivers.glyph
 val glyph_of_string :
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
-  Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
+  Fonts.font -> float -> CamomileLibrary.UTF8.t -> 'a box list
 val hyphenate :
-  (string -> (string*string) array) ->
+  (CamomileLibrary.UTF8.t ->
+   (CamomileLibrary.UTF8.t * CamomileLibrary.UTF8.t) array) ->
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
-  Fonts.font -> float -> CamomileLibrary.UTF8.t -> box list
-
-(** Exemple de fonction de badness utilisable pour les glueBox *)
+  Fonts.font -> float -> CamomileLibrary.UTF8.t -> 'a box list
 val knuth_h_badness : float -> float -> float
-
-(** Une glue vide aux tailles qu'on lui donne *)
-val glue : float -> float -> float -> box
-
-(** Multiplier la taille des boîtes *)
-val resize:float -> box -> box
+val glue : float -> float -> float -> 'a box
+val resize : float -> 'a box -> 'a box

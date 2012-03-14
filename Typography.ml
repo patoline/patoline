@@ -96,15 +96,19 @@ let selectFont fam alt it =
     Printf.fprintf stderr "Font not found in family.\n"; 
     exit 1
 
-type environment={
+
+type user=unit
+
+
+type 'a environment={
   mutable fontFamily:fontFamily;
   mutable fontItalic:bool;
   mutable fontAlternative:fontAlternative;
   mutable fontFeatures:Fonts.FTypes.features list;
   mutable font:font;
   mutable size:float;
-  mutable par_indent:box list;
-  mutable stdGlue:box;
+  mutable par_indent:'a box list;
+  mutable stdGlue:'a box;
   mutable hyphenate:string->(string*string) array;
   mutable substitutions:glyph_id list -> glyph_id list;
   mutable positioning:glyph_ids list -> glyph_ids list;
@@ -112,7 +116,7 @@ type environment={
 
 let defaultFam= lmroman
 let defaultMono= lmmono
-let defaultEnv=
+let defaultEnv:user environment=
   let f=selectFont lmroman Regular false in
   let fsize=5. in
     {
@@ -166,11 +170,11 @@ let defaultEnv=
 (* Type du contenu. B est une boîte quelconque. Les espaces dans T
    seront transformés en la boîte stdGlue de l'environnement, qui
    n'est pas nécessairement une GlueBox *)
-type content=
-    B of (environment->box)
+type 'a content=
+    B of ('a environment->'a box)
   | T of string
   | FileRef of (string*int*int)
-  | Scoped of (environment->environment)*(content list)
+  | Scoped of ('a environment->'a environment)*('a content list)
 
 
 
@@ -181,22 +185,22 @@ type content=
 (* Le jeu est de construire la structure de document suivante :
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
-type node={
+type 'a node={
   name:string;
-  displayname:content list;
-  children:tree IntMap.t;
+  displayname:'a content list;
+  children:'a tree IntMap.t;
   mutable tree_paragraph:int;
 }
-and paragraph={
-  par_contents:content list;
-  par_env:environment;
-  parameters:box array array -> drawingBox array -> parameters -> line -> parameters;
-  completeLine:box array array -> line -> bool -> line list
+and 'a paragraph={
+  par_contents:'a content list;
+  par_env:'a environment;
+  parameters:'a box array array -> drawingBox array -> parameters -> line -> parameters;
+  completeLine:'a box array array -> line -> bool -> line list
 }
-and tree=
-    Node of node
-  | Paragraph of paragraph
-  | Figure of string*(environment -> drawingBox)
+and 'a tree=
+    Node of 'a node
+  | Paragraph of 'a paragraph
+  | Figure of string*('a environment -> drawingBox)
 
 let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
 

@@ -52,14 +52,15 @@ type drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                     drawing_contents:float -> Drivers.contents list }
 
 
-and hyphenBox= { hyphen_normal:box array; hyphenated:(box array* box array) array }
+and 'a hyphenBox= { hyphen_normal:'a box array; hyphenated:('a box array* 'a box array) array }
 
-and box=
+and 'a box=
     GlyphBox of glyph
-  | Kerning of box kerningBox
+  | Kerning of 'a box kerningBox
   | Glue of drawingBox
   | Drawing of drawingBox
-  | Hyphen of hyphenBox
+  | Hyphen of 'a hyphenBox
+  | User of 'a
   | Empty
 
 
@@ -182,7 +183,7 @@ let rec box_width comp=function
   | Drawing x->x.drawing_min_width+.comp*.(x.drawing_max_width -. x.drawing_min_width)
   | Kerning x->(box_width comp x.kern_contents) +. x.advance_width
   | Hyphen x->Array.fold_left (fun s x->s+.box_width comp x) 0. x.hyphen_normal
-  | Empty->0.
+  | _->0.
 
 
 let rec box_interval=function

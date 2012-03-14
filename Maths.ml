@@ -75,19 +75,19 @@ let default=
       close_dist=0.2
     }
 
-type noad= { mutable nucleus:box list;
-             mutable subscript_left:math list; mutable superscript_left:math list;
-             mutable subscript_right:math list; mutable superscript_right:math list }
+type 'a noad= { mutable nucleus:'a box list;
+             mutable subscript_left:'a math list; mutable superscript_left:'a math list;
+             mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
-and binary= { bin_priority:int; bin_drawing:noad; bin_left:math list; bin_right:math list }
-and fraction= { numerator:math list; denominator:math list; line:Drivers.path_parameters }
-and operator= { op_noad:noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:math list; op_right_contents:math list }
-and math=
-    Ordinary of noad
-  | Binary of binary
-  | Fraction of fraction
-  | Operator of operator
-  | Decoration of (mathsEnvironment -> style -> box list -> box list)*(math list)
+and 'a binary= { bin_priority:int; bin_drawing:'a noad; bin_left:'a math list; bin_right:'a math list }
+and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Drivers.path_parameters }
+and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
+and 'a math=
+    Ordinary of 'a noad
+  | Binary of 'a binary
+  | Fraction of 'a fraction
+  | Operator of 'a operator
+  | Decoration of (mathsEnvironment -> style -> 'a box list -> 'a box list)*('a math list)
 
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }

@@ -38,7 +38,7 @@ let institute is_last str =
   in
   newPar (normal 150.) mcenter [size 4. str ]
 
-let textWidth = normal 150.
+let textWidth : Typography.user Util.box array array -> Util.line -> bool -> Util.line list= normal 150.
 
 let lang_OCaml s = [T s]
 
