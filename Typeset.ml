@@ -276,29 +276,32 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                               let allow_widow=
                                 page=node.page || (not (is_last paragraphs.(node.paragraph) nextNode.lineEnd)) in
 
-                                if not allow_orphan && allow_widow && ((!r_params).allow_orphans || allow_impossible) then (
-                                  log:=(Orphan node)::(!log);
-                                  let _,_,last_ant=LineMap.find node demerits in
-                                  let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                    demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1 }, ant_ant)
-                                      (LineMap.remove node !demerits');
-                                    todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1})
-                                      (LineMap.remove node !todo');
-                                    solutions_exist:=true;
-
-                                ) else if not allow_widow && allow_orphan && ((!r_params).allow_widows || allow_impossible) then (
-                                  log:=(Widow nextNode)::(!log);
-                                  let _,_, last_ant=LineMap.find node demerits in
-                                  let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
-                                    demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 }, ant_ant)
-                                      (LineMap.remove node !demerits');
-                                    todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 })
-                                      (LineMap.remove node !todo');
-                                    solutions_exist:=true;
+                                if not allow_orphan && allow_widow then (
+                                  if (!r_params).allow_orphans || allow_impossible then (
+                                    log:=(Orphan node)::(!log);
+                                    let _,_,last_ant=LineMap.find node demerits in
+                                    let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                      demerits' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1 }, ant_ant)
+                                        (LineMap.remove node !demerits');
+                                      todo' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1})
+                                        (LineMap.remove node !todo');
+                                      solutions_exist:=true;
+                                  )
+                                ) else if not allow_widow && allow_orphan then (
+                                  if (!r_params).allow_widows || allow_impossible then (
+                                    log:=(Widow nextNode)::(!log);
+                                    let _,_, last_ant=LineMap.find node demerits in
+                                    let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
+                                      demerits' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height-1 }, ant_ant)
+                                        (LineMap.remove node !demerits');
+                                      todo' := LineMap.add last_ant
+                                        (ant_bad, { ant_par with lines_by_page=last_ant.height-1 })
+                                        (LineMap.remove node !todo');
+                                      solutions_exist:=true;
+                                  )
                                 )
                                 else if nextNode.min_width > (!r_params).measure then (
                                   log:=(Overfull_line nextNode)::(!log);
