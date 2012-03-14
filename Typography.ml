@@ -63,7 +63,7 @@ let lmmono =
 	loadFont "Otf/lmmonoltcond10-oblique.otf"));
   ]
 
-(*Alegreya raises : Opentype.Table_not_found
+(* Alegreya raises : Opentype.Table_not_found *)
 let alegreya =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
@@ -85,7 +85,7 @@ let alegreya =
 	loadFont "Otf/Alegreya-Black.otf"),
       Lazy.lazy_from_fun (fun () -> 
 	loadFont "Otf/Alegreya-BlackItalic.otf"));
-  ]*)
+  ]
 
 let selectFont fam alt it =
   try
@@ -438,8 +438,6 @@ let parameters paragraphs figures last_parameters line=
     min_page_diff=0;
     min_height_before=max 1 last_parameters.min_height_after;
     min_height_after=1;
-    allow_widows=false;
-    allow_orphans=false
   }
 
 (* Centre les lignes d'un paragraphe. Il faut un optimiseur différent ici *)

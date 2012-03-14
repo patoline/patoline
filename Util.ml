@@ -13,9 +13,7 @@ type parameters={ lead:float;
                   local_optimization:int;
                   min_height_before:int;
                   min_height_after:int;
-                  min_page_diff:int;
-                  allow_widows:bool;
-                  allow_orphans:bool
+                  min_page_diff:int
                 }
 
 let default_params={ lead=0.;
@@ -25,9 +23,8 @@ let default_params={ lead=0.;
                      local_optimization=0;
                      min_height_before=1;
                      min_height_after=1;
-                     min_page_diff=0;
-                     allow_widows=true;
-                     allow_orphans=true }
+                     min_page_diff=0
+                   }
 
 let print_parameters p=
   Printf.printf "{ lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
@@ -223,7 +220,7 @@ let draw_boxes l=
     | Glue g
     | Drawing g ->(
         let w=g.drawing_nominal_width in
-          (List.map (translate (x) (y+.g.drawing_y0)) (g.drawing_contents w)) @ dr, w
+          (List.map (translate (x) (y)) (g.drawing_contents w)) @ dr, w
       )
     | b->dr,(box_width 0. b)
   in

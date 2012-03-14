@@ -11,9 +11,7 @@ type parameters = {
   local_optimization : int; (** Arité sortante maximale du nœud du graphe courant*)
   min_height_before:int;    (** Espace vertical minimal avant la ligne courante *)
   min_height_after:int;     (** Espace vertical minimal après la ligne courante *)
-  min_page_diff:int;        (** Nombre de pages minimal avant la ligne courante *)
-  allow_widows:bool;        (** Considérer les fin de paragraphe sur la première ligne d'une page *)
-  allow_orphans:bool        (** Considérer les débuts de paragraphe sur la dernière ligne d'une page *)
+  min_page_diff:int         (** Nombre de pages minimal avant la ligne courante *)
 }
 val default_params:parameters
 
