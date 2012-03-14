@@ -62,6 +62,11 @@ let fig2 env=
     drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
 
 (*let fig2 () =  [B (fun env->Drawing (fig2 env)) ]*)
+let rectangle a b c d=Path ({Drivers.default with close=true}, [[|[|a;c|],[|b;b|]; [|c;c|],[|b;d|]; [|c;a|],[|d;d|] |]])
+let fig _ =drawing [
+    rectangle 0. 0. 30. 30.
+]
+
 let figRef ()= [B (fun _->User (NamedCitation "figure de Tom"))]
 let large text = [size 10. text]
 }}
@@ -126,7 +131,7 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 \family{{lmroman}}{\alternative{{Demi}}{Test latin modern roman demi et \italic{Test italic}}}
 
 {{
-figure ~name:"figure de Tom" fig2
+figure ~name:"figure de Tom" fig
 }}
 
 =<

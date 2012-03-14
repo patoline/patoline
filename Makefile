@@ -102,8 +102,8 @@ graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
 graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml
 
-collisions: tests/collisions.ml $(OBJS)
-	$(CAMLC) $(OBJS) graphics.cma -o collisions tests/collisions.ml
+collisions: tests/collisions.ml $(TESTOBJ:.cmx=.cmo)
+	$(CAMLC) $(TESTOBJ:.cmx=.cmo) graphics.cma -o collisions tests/collisions.ml
 
 pdf_test: tests/pdf.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers.cmo
 	$(CAMLC) -o pdf_test $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers.cmo tests/pdf.ml

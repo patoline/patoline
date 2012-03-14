@@ -1,7 +1,8 @@
 open Util
 
 
-let normal measure paragraphs line allow_impossible=
+let normal measure_ paragraphs line allow_impossible=
+  let measure=if line.lastFigure>=0 then 110. else measure_ in
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (
       if sum_min<=measure || allow_impossible then (

@@ -208,7 +208,7 @@ and 'a paragraph={
 and 'a tree=
     Node of 'a node
   | Paragraph of 'a paragraph
-  | Figure of string*('a environment -> drawingBox)
+  | Figure of string*('a environment -> drawingBox)*('a box array array -> drawingBox array -> parameters -> line -> parameters)
 
 let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
 
@@ -216,10 +216,6 @@ let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-
 let str=ref (Node empty)
 (* Le chemin vers le noeud courant *)
 let cur=ref []
-
-(* Liste des figures. La définition des drawingBox est dans Util.ml,
-   c'est essentiellement le type du driver avec un cadre autour *)
-let figures:drawingBox list ref=ref []
 
 (* Sortie en dot de la structure du document *)
 let doc_graph out t0=
@@ -259,20 +255,6 @@ let newPar ?(environment=defaultEnv) complete parameters par=
   in
     str:=newPar !str !cur
 
-let figure ?(name="") drawing=
-  let rec fig tree path=
-    match path with
-        []->(match tree with
-                 Node t->Node { t with children=IntMap.add (next_key t.children) (Figure (name,drawing)) t.children }
-               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (Figure (name,drawing)) IntMap.empty) })
-      | h::s->
-          (match tree with
-               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
-                          Node { t with children=IntMap.add h (fig t' s) t.children })
-
-             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (fig (Node empty) s) IntMap.empty) })
-  in
-    str:=fig !str !cur
 
 
 
@@ -460,22 +442,16 @@ let features f t=
 let parameters paragraphs figures last_parameters line=
   let mes=150. in
   { lead=5.;
-    measure= mes;
+    measure=mes ;
     lines_by_page=if line.page_height <= 0 then 45 else last_parameters.lines_by_page;
-    left_margin=(
-      let space=(fst a4-.mes)/.2. in
-        if line.isFigure then (
-          space+.(mes -. (figures.(line.lastFigure).drawing_max_width
-                          +. figures.(line.lastFigure).drawing_min_width)/.2.)/.2.
-        ) else space
-    );
+    left_margin=(fst a4-.150.)/.2.;
     local_optimization=0;
     min_page_diff=0;
-    min_height_before=max 1 last_parameters.min_height_after;
-    min_height_after=1;
+    min_height_before=max 0 last_parameters.min_height_after;
+    min_height_after=0;
   }
 
-(* Centre les lignes d'un paragraphe. Il faut un optimiseur différent ici *)
+
 let center paragraphs figures last_parameters l=
   let param=parameters paragraphs figures last_parameters l in
   let b=l.nom_width in
@@ -483,6 +459,23 @@ let center paragraphs figures last_parameters l=
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
     else
       param
+
+
+let figure ?(name="") ?(parameters=center) drawing=
+  let rec fig tree path=
+    match path with
+        []->(match tree with
+                 Node t->Node { t with children=IntMap.add (next_key t.children) (Figure (name,drawing,parameters)) t.children }
+               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (Figure (name,drawing,parameters)) IntMap.empty) })
+      | h::s->
+          (match tree with
+               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
+                          Node { t with children=IntMap.add h (fig t' s) t.children })
+
+             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (fig (Node empty) s) IntMap.empty) })
+  in
+    str:=fig !str !cur
+
 
 (****************************************************************)
 
@@ -558,6 +551,7 @@ let flatten env0 str=
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
   let figure_names=ref StrMap.empty in
+  let fig_param=ref IntMap.empty in
   let param=ref [] in
   let compl=ref [] in
   let n=ref 0 in
@@ -573,10 +567,11 @@ let flatten env0 str=
   let rec flatten env path tree=
     match tree with
         Paragraph p -> add_paragraph p
-      | Figure (name, f) -> (
+      | Figure (name, f, p) -> (
           let n=IntMap.cardinal !figures in
-          figure_names:=StrMap.add name n !figure_names;
-          figures:=IntMap.add n (f env) !figures
+            figure_names:=StrMap.add name n !figure_names;
+            fig_param:=IntMap.add n p !fig_param;
+            figures:=IntMap.add n (f env) !figures
         )
       | Node s-> (
           s.tree_paragraph <- !n;
@@ -625,7 +620,10 @@ let flatten env0 str=
                                User (NamedCitation s) -> User (Citation (StrMap.find s !figure_names))
                              | x -> x)) !paragraphs
     in
-      (Array.of_list (List.rev !param),
+    let params=Array.make (IntMap.cardinal !figures) center in
+      IntMap.iter (fun n p->params.(n)<-p) !fig_param;
+      (params,
+       Array.of_list (List.rev !param),
        Array.of_list (List.rev !compl),
        Array.of_list (List.rev figures_resolved),
        Array.of_list (List.map snd (IntMap.bindings !figures)))

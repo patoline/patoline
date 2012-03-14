@@ -18,12 +18,11 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
           let y=270.0-.param.lead*.float_of_int line.height in
 
             if line.isFigure then (
-
               let fig=figures.(line.lastFigure) in
-              page.pageContents<- (List.map (translate param.left_margin (y-.fig.drawing_y0)) (fig.drawing_contents fig.drawing_nominal_width)) @ page.pageContents;
+                page.pageContents<- (List.map (translate param.left_margin (y-.fig.drawing_y1)) (fig.drawing_contents fig.drawing_nominal_width))
+                @ page.pageContents;
 
-
-            ) else (
+            ) else if line.paragraph<Array.length paragraphs then (
 
               if line.paragraph<> !par then (
                 par:=line.paragraph;

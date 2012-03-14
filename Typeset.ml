@@ -30,7 +30,7 @@ let rec print_graph file paragraphs graph path=
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
                       (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
 
-                      (if k.lastFigure<>a.lastFigure then "green" else
+                      ((* if k.lastFigure<>a.lastFigure then "green" else *)
                          if make_path a k path then "blue" else "black")
                       b (*k.height-a.height*)
                  ) graph;
@@ -62,7 +62,24 @@ end
 module Make=functor (User:User)->struct
   module UMap=New_map.Make(User)
 
-  let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figures:(figures = [||]) paragraphs=
+  let haut=ref (Array.make 100 Empty)
+  let bas=ref (Array.make 100 Empty)
+
+  let writeBox arr i b=
+    if i>=Array.length !arr then (
+      let tmp= !arr in
+      arr:=Array.make ((Array.length !arr)*2) Empty;
+      for j=0 to Array.length !arr do
+        !arr.(j)<-tmp.(j)
+      done);
+    !arr.(i)<-b
+
+  let readBox arr i= !arr.(i)
+
+
+  let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
+
+
     let collide
         paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
         paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0 comp_j=
@@ -210,19 +227,19 @@ module Make=functor (User:User)->struct
                       let _=UMap.find (User.citation (node.lastFigure+1)) lastUser in
                       let fig=figures.(node.lastFigure+1) in
                       let vspace,_=line_height paragraphs node in
-                      let h=int_of_float (ceil ((abs_float vspace +. fig.drawing_y1 -. fig.drawing_y0)/.lastParameters.lead)) in
+                      let h=int_of_float (ceil ((abs_float vspace)/.lastParameters.lead)) in
                         for h'=0 to 0 do
                           if node.height+h+h' <= lastParameters.lines_by_page - h then
                             let nextNode={
                               paragraph=pi; lastFigure=node.lastFigure+1; isFigure=true;
                               hyphenStart= -1; hyphenEnd= -1;
-                              height=node.height+h+h';
+                              height=node.height+h;
                               lineStart= -1; lineEnd= -1; paragraph_height= -1; page_height=node.page_height+1; page=node.page;
-                              min_width=0.;nom_width=0.;max_width=0. }
+                              min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
                             in
-                            let params=lastParameters(* parameters lastParameters nextNode *) in
                               register node nextNode
-                                (lastBadness+.badness node lastParameters nextNode params) params
+                                (lastBadness+.badness node lastParameters nextNode lastParameters)
+                                (figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters nextNode)
                                 (IntMap.add nextNode.lastFigure nextNode lastFigures)
                         done
                     with
@@ -242,7 +259,7 @@ module Make=functor (User:User)->struct
                     hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
                     height = h0;
                     lineStart= i; lineEnd= i;
-                    paragraph_height=if pi=node.paragraph then node.paragraph_height+1 else 0;
+                    paragraph_height=0;
                     page_height=if page0=node.page then node.page_height+1 else 0;
                     page=page0;
                     min_width=0.;nom_width=0.;max_width=0. }
@@ -271,7 +288,9 @@ module Make=functor (User:User)->struct
                               node.hyphenEnd lastParameters.left_margin comp0
                               nextNode.paragraph i nextNode.lineEnd node.hyphenEnd nextNode.hyphenEnd !r_params.left_margin comp1
                             in
-                            let fv_incr=ceil (max 1. (-.v_distance/.(!r_params).lead)) in
+                            let fv_incr=ceil ((-.v_distance/.(!r_params).lead)) in
+                              print_text_line paragraphs nextNode;
+                              Printf.printf "%f\n" ((-.v_distance/.(!r_params).lead));
                               node.height+(int_of_float fv_incr)
                           ) else (
                             int_of_float
@@ -418,11 +437,10 @@ module Make=functor (User:User)->struct
         let (b0,(bad0,b_params0,_,_,_))=LineMap.max_binding demerits in
         let (b,b_params)=find_last demerits b0 bad0 b_params0 in
 
-
-        let rec makeParagraphs params node result=
+        let rec makeParagraphs node result=
           try
             let _,params',next,_,_=LineMap.find node demerits in
-              makeParagraphs params' next ((params',node)::result)
+              makeParagraphs next ((params',node)::result)
           with
               Not_found->result
         in
@@ -432,12 +450,11 @@ module Make=functor (User:User)->struct
         let rec makePages=function
             []->()
           | (params,node)::s ->(
-              if node.paragraph<Array.length paragraphs then
-                pages.(node.page) <- (params, node)::pages.(node.page);
+              pages.(node.page) <- (params, node)::pages.(node.page);
               makePages s
             )
         in
-        let ln=(makeParagraphs b_params b []) in
+        let ln=(makeParagraphs b []) in
           print_graph "graph" paragraphs demerits ln;
           makePages ln;
           (!log, pages)

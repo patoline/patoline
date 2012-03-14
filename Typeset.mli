@@ -35,17 +35,21 @@ module Make :
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
       val typeset :
-        completeLine:(UMap.key Util.box array array ->
+        completeLine:(User.t Util.box array array ->
                       Util.line -> bool -> Util.LineMap.key list)
                      array ->
-        parameters:(UMap.key Util.box array array ->
-                    Util.drawingBox array ->
+        figures:(Util.drawingBox) array ->
+        figure_parameters:(User.t Util.box array array ->
+                              Util.drawingBox array ->
+                                Util.parameters -> Util.LineMap.key -> Util.parameters)
+          array ->
+        parameters:(User.t Util.box array array ->
+                      Util.drawingBox array ->
                     Util.parameters -> Util.LineMap.key -> Util.parameters)
                    array ->
-        ?badness:(Util.LineMap.key ->
-                  Util.parameters ->
+        badness:(Util.LineMap.key ->
+                   Util.parameters ->
                   Util.LineMap.key -> Util.parameters -> float) ->
-        ?figures:Util.drawingBox array ->
-        UMap.key Util.box array array ->
+        User.t Util.box array array ->
         Util.error_log list * (Util.parameters * Util.LineMap.key) list array
     end

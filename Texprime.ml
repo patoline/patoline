@@ -25,12 +25,13 @@ let postambule : ('a, 'b, 'c) format = "
     doc_graph gr !str;
     close_out gr;
 
-  let params,compl,pars,figures=flatten defaultEnv !str in
+  let fig_params,params,compl,pars,figures=flatten defaultEnv !str in
   let (_,pages)=TS.typeset
     ~completeLine:compl
+    ~figure_parameters:fig_params
+    ~figures:figures
     ~parameters:params
     ~badness:(Badness.badness pars)
-    ~figures:figures
     pars
   in
   let u,v=Output.routine pars figures defaultEnv pages in
