@@ -391,6 +391,8 @@ let rec resize l=function
   | Drawing x -> Drawing { x with
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
+                       drawing_y0=x.drawing_y0*.l;
+                       drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
                        drawing_contents=(fun w->List.map (Drivers.resize l) (x.drawing_contents w))
@@ -398,6 +400,8 @@ let rec resize l=function
   | Glue x -> Glue { x with
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
+                       drawing_y0=x.drawing_y0*.l;
+                       drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
                        drawing_contents=(fun w->List.map (Drivers.resize l) (x.drawing_contents w))
