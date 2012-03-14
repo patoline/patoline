@@ -281,10 +281,10 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                                   let _,_,last_ant=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
                                     demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1 }, ant_ant)
                                       (LineMap.remove node !demerits');
                                     todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1})
                                       (LineMap.remove node !todo');
                                     solutions_exist:=true;
 
@@ -293,10 +293,10 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                                   let _,_, last_ant=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
                                     demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height+1 }, ant_ant)
+                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 }, ant_ant)
                                       (LineMap.remove node !demerits');
                                     todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height+1 })
+                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 })
                                       (LineMap.remove node !todo');
                                     solutions_exist:=true;
                                 )
@@ -361,21 +361,23 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
             (* raise No_solution *)
         with
             Not_found->(
-              last_failure:=LineMap.add first_line 0 !last_failure;
+              last_failure:=LineMap.add first_line first_parameters !last_failure;
               really_break true todo0 demerits'
             )
       ) else (
         let (b,(bad,param,_))= LineMap.max_binding demerits' in
           if b.paragraph < Array.length paragraphs then (
             try
-              let _=LineMap.find b !last_failure in
-                print_graph "graph" paragraphs demerits [];
-                Printf.printf "No solution, incomplete document. Please report\n";
-                demerits';
+              let p=LineMap.find b !last_failure in
+                if p=param then (
+                  print_graph "graph" paragraphs demerits [];
+                  Printf.printf "No solution, incomplete document. Please report\n";
+                  demerits'
+                ) else raise Not_found
                 (* raise No_solution *)
             with
                 Not_found->(
-                  last_failure:=LineMap.add b 0 !last_failure;
+                  last_failure:=LineMap.add b param !last_failure;
                   really_break true (LineMap.singleton b (bad,param)) demerits'
                 )
           ) else
