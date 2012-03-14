@@ -68,7 +68,7 @@ let concat words =
 
 %start main
 
-%relation atom < fun < ind < sum < prod < rel < neg < conj < impl
+%relation atom < fun < ind < prod < sum < rel < neg < conj < impl
 %relation nonatom
 
 %layout [ ' ' '\r' '\t' ]
