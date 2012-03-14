@@ -40,7 +40,9 @@ type mathsEnvironment={
   subscript_distance:float;
   superscript_distance:float;
   limit_subscript_distance:float;
-  limit_superscript_distance:float
+  limit_superscript_distance:float;
+  open_dist:float;
+  close_dist:float
 }
 
 let default=
@@ -68,7 +70,9 @@ let default=
       subscript_distance= 0.15;
       superscript_distance= 0.1;
       limit_subscript_distance= 0.12;
-      limit_superscript_distance= 0.12
+      limit_superscript_distance= 0.12;
+      open_dist=0.2;
+      close_dist=0.2
     }
 
 type noad= { mutable nucleus:box list;
@@ -83,7 +87,7 @@ and math=
   | Binary of binary
   | Fraction of fraction
   | Operator of operator
-  | Decoration of (box list -> box list)*(math list)
+  | Decoration of (mathsEnvironment -> style -> box list -> box list)*(math list)
 
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
@@ -425,7 +429,7 @@ let rec draw_maths mathsEnv style mlist=
               (draw_maths mathsEnv style s)
         )
       | Decoration (rebox, inside) :: s ->(
-          (rebox ((draw_maths mathsEnv style inside))) @ (draw_maths mathsEnv style s)
+          (rebox mathsEnv style ((draw_maths mathsEnv style inside))) @ (draw_maths mathsEnv style s)
         )
 
 
@@ -469,5 +473,50 @@ let int env st=
 
 
 
-let open_close left right box=left@box@right
+let open_close left right env style box=
+  let _,s=(env.fonts.(int_of_style style)) in
+  let left=draw_boxes left in
+  let bezier_left=bezier_of_boxes left in
 
+  let mid=draw_boxes box in
+  let bezier_mid=bezier_of_boxes mid in
+
+  let right=draw_boxes right in
+  let bezier_right=bezier_of_boxes right in
+
+  let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
+  let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
+  let (x0,y0,x1,y1)=bounding_box mid in
+
+  let l0 = List.map (fun (x,y)->Array.map (fun x->x+.x1_l-.x0) x, y) bezier_mid in
+  let dist0=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 in
+
+  let l1 = List.map (fun (x,y)->Array.map (fun x->x+.x1-.x0_r) x, y) bezier_right in
+  let dist1=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_mid) infinity l1 in
+
+
+    (Drawing {
+       drawing_min_width=x1_l-.dist0 +. env.open_dist*.s;
+       drawing_nominal_width=x1_l-.dist0 +. env.open_dist*.s;
+       drawing_max_width=x1_l-.dist0 +. env.open_dist*.s;
+       drawing_y0=y0_l;
+       drawing_y1=y1_l;
+       drawing_badness=(fun _->0.);
+       drawing_contents=(fun _->left)})::
+
+    (Drawing {
+       drawing_min_width=x1-.x0-.dist1  +. env.close_dist*.s;
+       drawing_nominal_width=x1-.x0-.dist1  +. env.close_dist*.s;
+       drawing_max_width=x1-.x0-.dist1 +. env.close_dist*.s;
+       drawing_y0=y0;
+       drawing_y1=y1;
+       drawing_badness=(fun _->0.);
+       drawing_contents=(fun _->draw_boxes box)})::
+    (Drawing {
+       drawing_min_width=x1_r-.x0_r;
+       drawing_nominal_width=x1_r-.x0_r;
+       drawing_max_width=x1_r-.x0_r;
+       drawing_y0=y0_r;
+       drawing_y1=y1_r;
+       drawing_badness=(fun _->0.);
+       drawing_contents=(fun _->right)})::[]
