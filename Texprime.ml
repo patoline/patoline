@@ -38,19 +38,36 @@ let postambule : ('a, 'b, 'c) format = "
     Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
 "
 
+let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
+
+let split_ind indices =
+  { no_ind with up_left = indices.up_left; down_left = indices.down_left; },
+  { no_ind with up_right = indices.up_right; down_right = indices.down_right; }
+
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch 
-    "(List.map (fun b -> B (fun env -> Util.resize env.size b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
+    "(List.map (fun b -> B (fun env0 -> Util.resize env0.size b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
     style;
-  let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None } in
   let rec fn indices ch m =
     match m with
       Var name | Num name ->
 	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl env style \"%s\")) with %a } ]"
 	  name hn indices
+    | Fun name ->
+        (* FIXME: transmission of the current font ... *)
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl_font env style defaultEnv.font \"%s\")) with %a } ]"
+	  name hn indices        
     | Indices(ind', m) ->
       fn ind' ch m 
+    | Binary(op,a,b) ->
+      let ind_left, ind_right = split_ind indices in
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=(Maths.noad (Maths.gl env style \"%s\")); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" op (fn ind_left) a (fn ind_right) b
+    | Apply(f,a) ->
+      let ind_left, ind_right = split_ind indices in
+      Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 
+    | Delim(op,a,cl) ->
+      dn indices op cl ch a
     | _ -> 
       Printf.fprintf ch "[]"
   and gn ch name ind =
@@ -64,6 +81,14 @@ let print_math ch display m =
     gn ch "Maths.superscript_left" ind.up_left;
     gn ch "Maths.subscript_right" ind.down_right;
     gn ch "Maths.subscript_left" ind.down_left;
+  and dn ind op cl ch m =
+    if ind = no_ind then
+      Printf.fprintf ch 
+	"[Maths.Decoration (Maths.open_close (Maths.gl env style \"%s\") (Maths.gl env style \"%s\"), %a)]"
+	op cl (fn no_ind) m
+    else
+      (* FIXME: indice sur les délimiteurs *)
+      Printf.fprintf ch "[]"
   in
   fn no_ind ch m;
   Printf.fprintf ch "))) "

@@ -179,7 +179,7 @@ $$ B = t^^P * A * P = P^(-1) A P  $$
 
 => Math en paragraph
 
-Un beau paragraphe avec des maths : $t^^j__X_i^n$, $t^^j__x_i^n$, $123^-12.5$.
+Un beau paragraphe avec des maths : $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^^j__x_i^n$, $123^-12.5$.
 
 =<
 =<
