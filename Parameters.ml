@@ -1,7 +1,6 @@
 open Util
 
 
-
 let normal measure paragraphs line allow_impossible=
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (

@@ -61,7 +61,7 @@ let fig2 env=
   let tip_ab = ArrowTip.simple ab () in 
     drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
 
-let fig2 () =  [B (fun env->Drawing (fig2 env)) ]
+(*let fig2 () =  [B (fun env->Drawing (fig2 env)) ]*)
 
 let large text = [size 10. text]
 }}
@@ -75,7 +75,7 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 => Introduction
 
-\large{TeX' c'est bien mieux que TeX. Un point c'est tout. \fig2 
+\large{TeX' c'est bien mieux que TeX. Un point c'est tout.
   \italic{eeeet \alternative{{Bold}}{ouais !}} }
 
 
@@ -120,11 +120,15 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 
 \family{{lmroman}}{\alternative{{Regular}}{Test latin modern roman regular et \italic{Test italic}}}
 
-\family{{lmroman}}{\alternative{{Bold}}{Test latin modern roman bold et \italic{Test italic}}}
+
 
 \family{{lmroman}}{\alternative{{Caps}}{Test latin modern roman caps et \italic{Test italic}}}
 
 \family{{lmroman}}{\alternative{{Demi}}{Test latin modern roman demi et \italic{Test italic}}}
+
+{{
+figure ~name:"figure de Tom" fig2
+}}
 
 =<
 

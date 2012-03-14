@@ -103,7 +103,7 @@ type environment={
   mutable fontFeatures:Fonts.FTypes.features list;
   mutable font:font;
   mutable size:float;
-  mutable par_indent:float;
+  mutable par_indent:box list;
   mutable stdGlue:box;
   mutable hyphenate:string->(string*string) array;
   mutable substitutions:glyph_id list -> glyph_id list;
@@ -127,7 +127,12 @@ let defaultEnv=
          ));
       positioning=positioning f;
       size=4.;
-      par_indent = 4.0 *. phi;
+      par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
+                              drawing_max_width= 4.0 *. phi;
+                              drawing_y0=0.;drawing_y1=0.;
+                              drawing_nominal_width= 4.0 *. phi;
+                              drawing_contents=(fun _->[]);
+                              drawing_badness=fun _-> 0. }];
       stdGlue=Glue { drawing_min_width= 2.*. fsize/.9.;
                      drawing_max_width= fsize/.2.;
                      drawing_y0=0.; drawing_y1=0.;
@@ -191,7 +196,7 @@ and paragraph={
 and tree=
     Node of node
   | Paragraph of paragraph
-
+  | Figure of string*(environment -> drawingBox)
 
 let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
 
@@ -210,7 +215,8 @@ let doc_graph out t0=
   let rec do_it path t=
     Printf.fprintf out "%s [label=\"%s\"];\n" path t.name;
     List.iter (fun (i,x)->match x with
-                   Paragraph _-> ()
+                   Paragraph _
+                 | Figure _-> ()
                  | Node n->(
                      let p=path^"_"^(string_of_int i) in
                        Printf.fprintf out "%s -> %s;\n" path p;
@@ -240,6 +246,23 @@ let newPar ?(environment=defaultEnv) complete parameters par=
              | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (newPar (Node empty) s) IntMap.empty) })
   in
     str:=newPar !str !cur
+
+let figure ?(name="") drawing=
+  let rec fig tree path=
+    match path with
+        []->(match tree with
+                 Node t->Node { t with children=IntMap.add (next_key t.children) (Figure (name,drawing)) t.children }
+               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (Figure (name,drawing)) IntMap.empty) })
+      | h::s->
+          (match tree with
+               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
+                          Node { t with children=IntMap.add h (fig t' s) t.children })
+
+             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (fig (Node empty) s) IntMap.empty) })
+  in
+    str:=fig !str !cur
+
+
 
 (* Remonter d'un niveau dans l'arbre, par rapport au noeud courant *)
 let up ()=
@@ -288,7 +311,7 @@ let title ?label displayname =
     | Some s -> s
   in
   match !str with
-      Paragraph _->str:= Node { name=name; displayname = displayname; 
+      Paragraph _ | Figure _->str:= Node { name=name; displayname = displayname; 
 				children=IntMap.singleton 1 !str; tree_paragraph=0 }
     | Node n -> str:=Node { n with name=name; displayname = displayname }
 
@@ -521,6 +544,8 @@ let rec boxify env =function
 let flatten env0 str=
 
   let paragraphs=ref [] in
+  let figures=ref IntMap.empty in
+  let figure_names=ref StrMap.empty in
   let param=ref [] in
   let compl=ref [] in
   let n=ref 0 in
@@ -536,6 +561,11 @@ let flatten env0 str=
   let rec flatten env path tree=
     match tree with
         Paragraph p -> add_paragraph p
+      | Figure (name, f) -> (
+          let n=IntMap.cardinal !figures + 1 in
+          figure_names:=StrMap.add name n !figure_names;
+          figures:=IntMap.add n (f env) !figures
+        )
       | Node s-> (
           s.tree_paragraph <- !n;
           if path<>[] then (
@@ -557,18 +587,15 @@ let flatten env0 str=
           );
           let rec flat_children num indent= function
               []->()
-            | (_, (Paragraph p as tr))::s->(
+            | (_, (Paragraph p))::s->(
                 flatten env path (
-                  let g=B (fun env->Drawing { drawing_min_width= env.par_indent;
-                                              drawing_max_width= env.par_indent;
-                                              drawing_y0=0.;drawing_y1=0.;
-                                              drawing_nominal_width= env.par_indent;
-                                              drawing_contents=(fun _->[]);
-                                              drawing_badness=fun _-> 0. })
-                  in
-                    if indent && p.par_env.par_indent <> 0.0 then (
-                      Paragraph { p with par_contents=g::p.par_contents }
-                    ) else tr);
+                  Paragraph { p with par_contents=
+                      (if indent then (List.map (fun x->B (fun _->x)) env.par_indent) else []) @ p.par_contents }
+                );
+                flat_children num true s
+              )
+            | (_,(Figure _ as h))::s->(
+                flatten env path h;
                 flat_children num true s
               )
             | (_, (Node _ as tr))::s->(
@@ -582,12 +609,13 @@ let flatten env0 str=
     flatten env0 [] str;
     (Array.of_list (List.rev !param),
      Array.of_list (List.rev !compl),
-     Array.of_list (List.rev !paragraphs))
+     Array.of_list (List.rev !paragraphs),
+     Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 
 let rec make_struct positions tree=
   match tree with
-      Paragraph p ->
+      Paragraph _ | Figure _->
           { Drivers.name="";
 	    Drivers.displayname=[];
             Drivers.page=0;
@@ -598,7 +626,7 @@ let rec make_struct positions tree=
         let (p,x,y)=positions.(s.tree_paragraph) in
         let rec make=function
             []->[]
-          | (_,Paragraph _) :: s->make s
+          | (_,Paragraph _) :: s | (_,Figure _) :: s->make s
           | (_,Node u)::s -> (make_struct positions (Node u))::(make s)
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in

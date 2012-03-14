@@ -70,8 +70,8 @@ typography.cma: $(TEST:.ml=.cmo) Typography.cmo
 maths: $(TESTOBJ) tests/test_maths.ml
 	$(CAMLOPT) -o maths $(TESTOBJ) tests/test_maths.ml
 
-proof: $(TESTOBJ) tests/proof.ml
-	$(CAMLOPT) -o proof $(TESTOBJ) tests/proof.ml
+proof: $(TESTOBJ:.cmx=.cmo) tests/proof.ml
+	$(CAMLC) -o proof $(TESTOBJ:.cmx=.cmo) tests/proof.ml
 
 
 test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
@@ -140,10 +140,8 @@ top:
 
 clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
-	rm -f Fonts/*.cm[iox] Fonts/*~ Fonts/*.*~ Fonts/\#*\#
+	rm -f Fonts/*.cm[ioxa] Fonts/*.cmxa Fonts/*.o Fonts/*~ Fonts/*.*~ Fonts/\#*\#
 	rm -Rf doc
-	rm -f graphics_font
-	rm -f *.o
 
 .depend.input: Makefile
 	@echo -n '--Checking Ocaml input files: '

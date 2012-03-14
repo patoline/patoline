@@ -25,14 +25,15 @@ let postambule : ('a, 'b, 'c) format = "
     doc_graph gr !str;
     close_out gr;
 
-  let params,compl,pars=flatten defaultEnv !str in
+  let params,compl,pars,figures=flatten defaultEnv !str in
   let (_,pages)=Typeset.typeset
     ~completeLine:compl
     ~parameters:params
     ~badness:(Badness.badness pars)
+    ~figures:figures
     pars
   in
-  let u,v=Output.routine pars [||] defaultEnv pages in
+  let u,v=Output.routine pars figures defaultEnv pages in
     Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
 " 
 
@@ -182,12 +183,12 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
 		    | Math m ->
-		      Printf.printf "newPar ~environment:{defaultEnv with par_indent = 0.} textWidth center %a;;\n" 
+		      Printf.printf "newPar ~environment:{defaultEnv with par_indent = []} textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
 		      Printf.printf "let verbEnv = { (envFamily defaultMono defaultEnv)
-                                                     with par_indent = 0.0 };;\n\n";
+                                                     with par_indent = [] };;\n\n";
 		      let lang = match lang with
 			  None -> "T"
 			 | Some s -> s

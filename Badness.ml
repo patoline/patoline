@@ -148,8 +148,10 @@ let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node 
           if node.paragraph<>nextNode.paragraph then 10000. else 0.
       in
         for i=nextNode.lastFigure+1 to Array.length figures-1 do
-          if citations.(i) < (nextNode.paragraph, nextNode.lineStart) then
-            bad:=(!bad) +. fig_after
+          if i<Array.length citations then (
+            if citations.(i) < (nextNode.paragraph, nextNode.lineStart) then
+              bad:=(!bad) +. fig_after
+          )
         done;
 
         let fig_before=
@@ -157,10 +159,12 @@ let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node 
             if node.paragraph<>nextNode.paragraph then 10000. else 0.
         in
           for i=0 to nextNode.lastFigure do
-            if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) &&
-              (not nextNode.isFigure || i=nextNode.lastFigure)
-            then
-              bad:=(!bad) +. fig_before
+            if i<Array.length citations then (
+              if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) &&
+                (not nextNode.isFigure || i=nextNode.lastFigure)
+              then
+                bad:=(!bad) +. fig_before
+            )
           done;
         !bad
     in
