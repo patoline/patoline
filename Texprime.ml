@@ -26,7 +26,7 @@ let postambule : ('a, 'b, 'c) format = "
     close_out gr;
 
   let params,compl,pars,figures=flatten defaultEnv !str in
-  let (_,pages)=Typeset.typeset
+  let (_,pages)=TS.typeset
     ~completeLine:compl
     ~parameters:params
     ~badness:(Badness.badness pars)
@@ -35,7 +35,7 @@ let postambule : ('a, 'b, 'c) format = "
   in
   let u,v=Output.routine pars figures defaultEnv pages in
     Drivers.Pdf.output ~structure:(make_struct v !str) u \"%s.pdf\" 
-" 
+"
 
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in

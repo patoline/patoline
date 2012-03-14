@@ -20,7 +20,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
             if line.isFigure then (
 
               let fig=figures.(line.lastFigure) in
-              page.pageContents<- (List.map (translate param.left_margin y) (fig.drawing_contents fig.drawing_nominal_width)) @ page.pageContents;
+              page.pageContents<- (List.map (translate param.left_margin (y-.fig.drawing_y0)) (fig.drawing_contents fig.drawing_nominal_width)) @ page.pageContents;
 
 
             ) else (

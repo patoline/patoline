@@ -62,7 +62,7 @@ let fig2 env=
     drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
 
 (*let fig2 () =  [B (fun env->Drawing (fig2 env)) ]*)
-
+let figRef ()= [B (fun _->User (NamedCitation "figure de Tom"))]
 let large text = [size 10. text]
 }}
 
@@ -76,8 +76,7 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 => Introduction
 
 \large{TeX' c'est bien mieux que TeX. Un point c'est tout.
-  \italic{eeeet \alternative{{Bold}}{ouais !}} }
-
+  \italic{eeeet \alternative{{Bold}}{ouais !}} } \figRef
 
 
 =<

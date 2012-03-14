@@ -18,10 +18,10 @@ LIBS=fonts.cma texprime.cma
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w" -g # graphics.cma
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg -I Fonts -pp "cpp -w" -g # graphics.cma
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
-CAMLOPT = ocamlfind ocamlopt -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 

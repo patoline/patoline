@@ -108,33 +108,35 @@ let print_text_line lines node=
 
 
 let fold_left_line paragraphs f x0 line=
-   let rec fold boxes i maxi result=
-    if i>=maxi then result else
-      match boxes.(i) with
-          Hyphen h -> fold boxes (i+1) maxi
-            (fold h.hyphen_normal 0 (Array.length h.hyphen_normal) result)
-        | b -> fold boxes (i+1) maxi (f result b)
-  in
-  let x1=
-    if line.hyphenStart>=0 then
-      (match paragraphs.(line.paragraph).(line.lineStart) with
-           Hyphen h->fold paragraphs.(line.paragraph) (line.lineStart+1) line.lineEnd (
-             let _,boxes=h.hyphenated.(line.hyphenStart) in
-               fold boxes 0 (Array.length boxes) x0
-           )
-         | _ -> fold paragraphs.(line.paragraph) line.lineStart line.lineEnd x0)
-    else
-      (fold paragraphs.(line.paragraph) line.lineStart line.lineEnd x0)
-  in
-    if line.hyphenEnd>=0 then
-      (match paragraphs.(line.paragraph).(line.lineEnd) with
-         Hyphen h->(
-             let boxes,_=h.hyphenated.(line.hyphenEnd) in
-               fold boxes 0 (Array.length boxes) x1
-           )
-         | _ -> x1)
-    else
-      x1
+  if line.paragraph>=Array.length paragraphs || line.paragraph<0 then x0 else (
+    let rec fold boxes i maxi result=
+      if i>=maxi || i>=Array.length boxes then result else
+        match boxes.(i) with
+            Hyphen h -> fold boxes (i+1) maxi
+              (fold h.hyphen_normal 0 (Array.length h.hyphen_normal) result)
+          | b -> fold boxes (i+1) maxi (f result b)
+    in
+    let x1=
+      if line.hyphenStart>=0 then
+        (match paragraphs.(line.paragraph).(line.lineStart) with
+             Hyphen h->fold paragraphs.(line.paragraph) (max 0 (line.lineStart+1)) line.lineEnd (
+               let _,boxes=h.hyphenated.(line.hyphenStart) in
+                 fold boxes 0 (Array.length boxes) x0
+             )
+           | _ -> fold paragraphs.(line.paragraph) (max 0 line.lineStart) line.lineEnd x0)
+      else
+        (fold paragraphs.(line.paragraph) (max 0 line.lineStart) line.lineEnd x0)
+    in
+      if line.hyphenEnd>=0 then
+        (match paragraphs.(line.paragraph).(line.lineEnd) with
+             Hyphen h->(
+               let boxes,_=h.hyphenated.(line.hyphenEnd) in
+                 fold boxes 0 (Array.length boxes) x1
+             )
+           | _ -> x1)
+      else
+        x1
+  )
 
 let first_line paragraphs line=
   let rec find boxes i=

@@ -97,7 +97,15 @@ let selectFont fam alt it =
     exit 1
 
 
-type user=unit
+type user=
+    NamedCitation of string
+  | Citation of int
+
+module TS=Typeset.Make (struct
+                          type t=user
+                          let compare=compare
+                          let citation x=Citation x
+                        end)
 
 
 type 'a environment={
@@ -500,7 +508,7 @@ let is_space c=c=' ' || c='\n' || c='\t'
 let sources=ref StrMap.empty
 
 let rec boxify env =function
-[]->[]
+    []->[]
   | (B b)::s->(b env)::(boxify env s)
   | (T t)::s->(
     let rec cut_str i0 i result=
@@ -566,7 +574,7 @@ let flatten env0 str=
     match tree with
         Paragraph p -> add_paragraph p
       | Figure (name, f) -> (
-          let n=IntMap.cardinal !figures + 1 in
+          let n=IntMap.cardinal !figures in
           figure_names:=StrMap.add name n !figure_names;
           figures:=IntMap.add n (f env) !figures
         )
@@ -610,11 +618,17 @@ let flatten env0 str=
             flat_children 0 false (IntMap.bindings s.children)
         )
   in
+
     flatten env0 [] str;
-    (Array.of_list (List.rev !param),
-     Array.of_list (List.rev !compl),
-     Array.of_list (List.rev !paragraphs),
-     Array.of_list (List.map snd (IntMap.bindings !figures)))
+    let figures_resolved=
+      List.map (Array.map (function
+                               User (NamedCitation s) -> User (Citation (StrMap.find s !figure_names))
+                             | x -> x)) !paragraphs
+    in
+      (Array.of_list (List.rev !param),
+       Array.of_list (List.rev !compl),
+       Array.of_list (List.rev figures_resolved),
+       Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 
 let rec make_struct positions tree=
