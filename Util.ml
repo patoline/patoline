@@ -72,7 +72,7 @@ let drawing ?offset:(offset=0.) cont=
       drawing_y0=offset;
       drawing_y1=offset+.d-.b;
       drawing_badness=(fun _->0.);
-      drawing_contents=(fun _->List.map (translate (-.a) (-.b)) cont)
+      drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
 type error_log=
