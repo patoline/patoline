@@ -476,7 +476,17 @@ let int env st=
       Glyph { (glyphCache font { empty_glyph with glyph_index= 701 }) with glyph_size=1.; glyph_y= -0.8 }
     ])
 
+let rightarrow env st=
+  let font,s=(env.fonts.(int_of_style st)) in
+    Drawing (drawing ~offset:(-0.8) [
+      Glyph { (glyphCache font { empty_glyph with glyph_index= 334 }) with glyph_size=1. }
+    ])
 
+let leftarrow env st=
+  let font,s=(env.fonts.(int_of_style st)) in
+    Drawing (drawing ~offset:(-0.8) [
+      Glyph { (glyphCache font { empty_glyph with glyph_index= 332 }) with glyph_size=1. }
+    ])
 
 let open_close left right env style box=
   let _,s=(env.fonts.(int_of_style style)) in
