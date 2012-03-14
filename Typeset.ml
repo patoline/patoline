@@ -76,113 +76,60 @@ module Make=functor (User:User)->struct
 
   let readBox arr i= !arr.(i)
 
-
   let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
 
 
-    let collide
-        paragraph_i lineStart_i lineEnd_i hyphenStart_i hyphenEnd_i xi_0 comp_i
-        paragraph_j lineStart_j lineEnd_j hyphenStart_j hyphenEnd_j xj_0 comp_j=
+    let collide line_haut params_i comp_i line_bas params_j comp_j=
 
-      let xi=ref xj_0 in
-      let xj=ref xi_0 in
+      let max_haut=
+        if line_haut.isFigure then
+          (let fig=figures.(line_haut.lastFigure) in
+             writeBox haut 0 (Drawing { fig with drawing_y1=0.; drawing_y0=fig.drawing_y0-.fig.drawing_y1 }); 1)
 
-      let rec collide boxes_i i boxes_j j max_col=
-
-        match boxes_i, boxes_j with
-            [],[]->max_col
-
-          | (hi,_,maxi)::si, _ when i>=maxi->
-              (match si with
-                   (_,i0,_)::_->collide si i0 boxes_j j max_col
-                 | _->collide [] (-1) boxes_j j max_col)
-
-          | _, (hj,_,maxj)::sj when j>=maxj->
-              (match sj with
-                   (_,j0,_)::_->collide boxes_i i sj j0 max_col
-                 | _->collide boxes_i i [] (-1) max_col)
-
-          | (hi,_,maxi)::si, (hj,_,maxj)::sj when is_hyphen hi.(i) || is_hyphen hj.(j) ->
-              (match hi.(i), hj.(j) with
-                   Hyphen xi, Hyphen xj ->
-                     collide
-                       ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                       ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                       max_col
-                 | Hyphen xi, _ ->
-                     collide
-                       ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                       boxes_j j max_col
-                 | _, Hyphen xj ->
-                     collide
-                       boxes_i i
-                       ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                       max_col
-                 | _->failwith "impossible case"
-              )
-          | _->(
-              let box_i=match boxes_i with
-                  []->Empty
-                | (hi,_,_)::_->hi.(i)
-              in
-              let box_j=match boxes_j with
-                  []->Empty
-                | (hj,_,_)::_->hj.(j)
-              in
-                (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-              let wi=box_width comp_i box_i in
-              let wj=box_width comp_j box_j in
-                if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-                  let yi_=lower_y box_i wi in
-                  let yi=if yi_=infinity then 0. else yi_ in
-                  let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-                  let yj=if yj_=(-.infinity) then 0. else yj_ in
-                    xi:= !xi+.wi;
-                    collide boxes_i (i+1) boxes_j j (min max_col (yi-.yj))
-                ) else (
-                  let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-                  let yi=if yi_=(infinity) then 0. else yi_ in
-                  let yj_=upper_y box_j wj in
-                  let yj=if yj_=(-.infinity) then 0. else yj_ in
-                    xj:= !xj+.wj;
-                    collide boxes_i i boxes_j (j+1) (min max_col (yi-.yj))
-                )
-            )
+        else
+          fold_left_line paragraphs (fun i b->writeBox haut i b; i+1) 0 line_haut
       in
-      let li0=
-        (paragraphs.(paragraph_i), (if hyphenStart_i>=0 then lineStart_i+1 else lineStart_i), lineEnd_i)::
-          (if hyphenEnd_i>=0 then
-             (match paragraphs.(paragraph_i).(lineEnd_i) with
-                  Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_i) in [(hyp, 0, Array.length hyp)]
-                | _->[])
-           else [])
+      let max_bas=
+        if line_bas.isFigure then
+          (let fig=figures.(line_bas.lastFigure) in
+             writeBox bas 0 (Drawing { fig with drawing_y1=0.; drawing_y0=fig.drawing_y0-.fig.drawing_y1 }); 1)
+        else
+          fold_left_line paragraphs (fun i b->writeBox bas i b; i+1) 0 line_bas
       in
-      let li=
-        (if hyphenStart_i>=0 then
-           (match paragraphs.(paragraph_i).(lineStart_i) with
-                Hyphen x->let hyp=snd x.hyphenated.(hyphenStart_i) in (hyp, 0, Array.length hyp)::li0
-              | _->li0)
-         else li0)
+      let xi=ref params_i.left_margin in
+      let xj=ref params_j.left_margin in
+      let rec collide i j max_col=
+        let box_i=readBox haut i in
+        let box_j=readBox bas j in
+        (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+        let wi=box_width comp_i box_i in
+        let wj=box_width comp_j box_j in
+          if !xi +.wi < !xj+. wj && i < max_haut then (
+            let yi_=lower_y box_i wi in
+            let yi=if yi_=infinity then 0. else yi_ in
+            let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
+            let yj=if j>=max_bas then -.infinity else if yj_=(-.infinity) then 0. else yj_ in
+            let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
+            let w0= !xi +. wi -. x0 in
+              (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
+              (*   (round (mm*. (w0))) (yi0 -yj0 + round (mm*. (yi-.yj))); *)
+              xi:= !xi+.wi;
+              collide (i+1) j (min max_col (yi-.yj))
+          ) else if j < max_bas then (
+            let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
+            let yi=if i>=max_haut then infinity else if yi_=(infinity) then 0. else yi_ in
+            let yj_=upper_y box_j wj in
+            let yj=if yj_=(-.infinity) then 0. else yj_ in
+
+            let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
+            let w0= !xj +. wj -. x0 in
+              (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
+              (*   (round (mm*. w0)) (yi0 -yj0 + round (mm*. (yi-.yj))); *)
+              xj:= !xj+.wj;
+              collide i (j+1) (min max_col (yi-.yj))
+          ) else max_col
       in
-      let lj0=
-        (paragraphs.(paragraph_j), (if hyphenStart_j>=0 then lineStart_j+1 else lineStart_j), lineEnd_j)::
-          (if hyphenEnd_j>=0 then
-             (match paragraphs.(paragraph_j).(lineEnd_j) with
-                  Hyphen x->let hyp=fst x.hyphenated.(hyphenEnd_j) in [(hyp,0,Array.length hyp)]
-                | _->[])
-           else [])
-      in
-      let lj=
-        (if hyphenStart_j>=0 then
-           (match paragraphs.(paragraph_j).(lineStart_j) with
-                Hyphen x->(let hyp=snd x.hyphenated.(hyphenStart_j) in (hyp,0,Array.length hyp)::lj0)
-              | _->lj0)
-         else lj0)
-      in
-        match li, lj with
-            (_,i,_)::_,(_,j,_)::_->
-              collide li i lj j infinity
-          | _->failwith "impossible case"
+        collide 0 0 infinity
     in
 
 
@@ -283,14 +230,8 @@ module Make=functor (User:User)->struct
                           if page=node.page then (
                             let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
                                          node.hyphenStart node.lineEnd node.hyphenEnd) in
-                            let v_distance=collide
-                              node.paragraph node.lineStart node.lineEnd node.hyphenStart
-                              node.hyphenEnd lastParameters.left_margin comp0
-                              nextNode.paragraph i nextNode.lineEnd node.hyphenEnd nextNode.hyphenEnd !r_params.left_margin comp1
-                            in
+                            let v_distance=collide node lastParameters comp0 nextNode !r_params comp1 in
                             let fv_incr=ceil ((-.v_distance/.(!r_params).lead)) in
-                              print_text_line paragraphs nextNode;
-                              Printf.printf "%f\n" ((-.v_distance/.(!r_params).lead));
                               node.height+(int_of_float fv_incr)
                           ) else (
                             int_of_float
