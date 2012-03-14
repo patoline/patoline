@@ -300,15 +300,20 @@ let rec draw_maths mathsEnv style mlist=
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
           let w=max wa wb in
-            [ Drawing (drawing ~offset:(-.y0b) (
-
-                         (if f.line.lineWidth = 0. then [] else [Path ({f.line with lineWidth=f.line.lineWidth*.size}, [ [|line (0.,0.) (w,0.)|] ]) ])@
-                           (List.map (translate ((w-.wa)/.2.) (-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
-                           (List.map (translate ((w-.wb)/.2.) (-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
-
-                       ))]
-
-        )@(draw_maths mathsEnv style s)
+            Drawing ({ drawing_min_width=w;
+                       drawing_nominal_width=w;
+                       drawing_max_width=w;
+                       drawing_y0=y0b-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.);
+                       drawing_y1=y1a-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.);
+                       drawing_badness=(fun _->0.);
+                       drawing_contents=(fun _->
+                                           (if f.line.lineWidth = 0. then [] else
+                                              [Path ({f.line with lineWidth=f.line.lineWidth*.size},
+                                                     [ [|line (0.,0.) (w,0.)|] ]) ])@
+                                             (List.map (translate ((w-.wa)/.2.) (-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
+                                             (List.map (translate ((w-.wb)/.2.) (-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
+                                        ) }) :: (draw_maths mathsEnv style s)
+        )
       | Operator op::s ->(
 
           (* Ici, si op.op_limits est faux, c'est facile : c'est comme
