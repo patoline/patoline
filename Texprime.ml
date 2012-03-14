@@ -60,9 +60,12 @@ let print_math ch display m =
 	  name hn indices        
     | Indices(ind', m) ->
       fn ind' ch m 
+    | Binary("/",a,b) ->
+      if (indices <> no_ind) then failwith "Indices on fraction.";
+      Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
     | Binary(op,a,b) ->
-      let ind_left, ind_right = split_ind indices in
-      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=(Maths.noad (Maths.gl env style \"%s\")); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" op (fn ind_left) a (fn ind_right) b
+      if (indices <> no_ind) then failwith "Indices on binary.";
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=(Maths.noad (Maths.gl env style \"%s\")); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" op (fn indices) a (fn indices) b
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 

@@ -170,6 +170,8 @@ figure ~name:"figure de Tom" fig
 
 $$ t^^j__X_i^n $$
 
+$$ {1 + x} / {1 - x}$$
+
 $$ x_i + 2 cos(x) <= a y_i^n - sin(t) $$
 
 
@@ -179,7 +181,7 @@ $$ B = t^^P * A * P = P^(-1) A P  $$
 
 => Math en paragraph
 
-Un beau paragraphe avec des maths : $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^^j__x_i^n$, $123^-12.5$.
+Un beau paragraphe avec des maths : $2/3$, $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^^j__x_i^n$, $123^-12.5$.
 
 =<
 =<
