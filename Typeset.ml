@@ -277,7 +277,7 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                                 page=node.page || (not (is_last paragraphs.(node.paragraph) nextNode.lineEnd)) in
 
                                 if not allow_orphan && allow_widow then (
-                                  if (!r_params).allow_orphans || allow_impossible then (
+                                  if allow_impossible then (
                                     log:=(Orphan node)::(!log);
                                     let _,_,last_ant=LineMap.find node demerits in
                                     let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
@@ -290,7 +290,7 @@ let typeset ~completeLine ~parameters ?badness:(badness=fun _ _ _ _->0.) ?figure
                                       solutions_exist:=true;
                                   )
                                 ) else if not allow_widow && allow_orphan then (
-                                  if (!r_params).allow_widows || allow_impossible then (
+                                  if allow_impossible then (
                                     log:=(Widow nextNode)::(!log);
                                     let _,_, last_ant=LineMap.find node demerits in
                                     let ant_bad, ant_par, ant_ant=LineMap.find last_ant demerits in
