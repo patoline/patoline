@@ -11,31 +11,7 @@ type glyph_ids = KernID of glyph_ids kerningBox | GlyphID of glyph_id
 val kern : glyph_ids -> glyph_ids kerningBox
 val glyph_id_cont : glyph_ids -> int
 val glyph_id_utf8 : glyph_ids -> CamomileLibrary.UTF8.t
-exception Unknown_feature of string
-type features =
-    Alternates
-  | SmallCapitals
-  | CaseSensitiveForms
-  | DiscretionaryLigatures
-  | Denominators
-  | Fractions
-  | StandardLigatures
-  | LiningFigures
-  | LocalizedForms
-  | Numerators
-  | OldStyleFigures
-  | Ordinals
-  | Ornaments
-  | ProportionalFigures
-  | StylisticAlternates
-  | ScientificInferiors
-  | Subscript
-  | Superscript
-  | Titling
-  | TabularFigures
-  | SlashedZero
-val str_of_feature : features -> string
-val print_feature : features -> unit
+
 type subst = { original_glyphs : int array; subst_glyphs : int array; }
 type chain = {
   before : Binary.IntSet.t array;
@@ -71,8 +47,8 @@ module type Font =
     val glyph_y0 : glyph -> float
     val glyph_y1 : glyph -> float
     val fontName : ?index:int -> font -> string
-    val font_features : font -> features list
-    val select_features : font -> features list -> substitution list
+    val font_features : font -> string list
+    val select_features : font -> string list -> substitution list
     val positioning : font -> glyph_ids list -> glyph_ids list
   end
 val glyph_roots :

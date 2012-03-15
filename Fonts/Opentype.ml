@@ -462,62 +462,33 @@ let read_lookup font i=
     readLookup file gsubOff i
 
 
-let str_tag=function
-    Alternates -> "aalt"
-  | SmallCapitals -> "c2sc"
-  | CaseSensitiveForms -> "case"
-  | DiscretionaryLigatures -> "dlig"
-  | Denominators -> "dnom"
-  | Fractions -> "frac"
-  | StandardLigatures -> "liga"
-  | LiningFigures -> "lnum"
-  | LocalizedForms -> "locl"
-  | Numerators -> "numr"
-  | OldStyleFigures -> "onum"
-  | Ordinals -> "odrn"
-  | Ornaments -> "ornm"
-  | ProportionalFigures -> "pnum"
-  | StylisticAlternates -> "salt"
-  | ScientificInferiors -> "sinf"
-  | Subscript -> "subs"
-  | Superscript -> "sups"
-  | Titling -> "titl"
-  | TabularFigures -> "tnum"
-  | SlashedZero -> "zero"
-  | _ -> ""
-
-let tag_str=function
-    "aalt" -> Alternates
-  | "c2sc" -> SmallCapitals
-  | "case" -> CaseSensitiveForms
-  | "dlig" -> DiscretionaryLigatures
-  | "dnom" -> Denominators
-  | "frac" -> Fractions
-  | "liga" -> StandardLigatures
-  | "lnum" -> LiningFigures
-  | "locl" -> LocalizedForms
-  | "numr" -> Numerators
-  | "onum" -> OldStyleFigures
-  | "ordn" -> Ordinals
-  | "ornm" -> Ornaments
-  | "pnum" -> ProportionalFigures
-  | "salt" -> StylisticAlternates
-  | "sinf" -> ScientificInferiors
-  | "smcp" -> SmallCapitals
-  | "subs" -> Subscript
-  | "sups" -> Superscript
-  | "titl" -> Titling
-  | "tnum" -> TabularFigures
-  | "zero" -> SlashedZero
-  | x -> raise (Unknown_feature x)
+let alternates = "aalt"
+let smallCapitals = "c2sc"
+let caseSensitiveForms = "case"
+let discretionaryLigatures = "dlig"
+let denominators = "dnom"
+let fractions = "frac"
+let standardLigatures = "liga"
+let liningFigures = "lnum"
+let localizedForms = "locl"
+let numerators = "numr"
+let oldStyleFigures = "onum"
+let ordinals = "odrn"
+let ornaments = "ornm"
+let proportionalFigures = "pnum"
+let stylisticAlternates = "salt"
+let scientificInferiors = "sinf"
+let subscript = "subs"
+let superscript = "sups"
+let titling = "titl"
+let tabularFigures = "tnum"
+let slashedZero = "zero"
 
 let select_features font feature_tags=try
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
-
-  let tags_str=List.map str_tag feature_tags in
 
   let feature_tag=String.create 4 in
   let rec select i result=
@@ -531,7 +502,7 @@ let select_features font feature_tags=try
             let l=readInt2 file in read (lookup+1) (IntSet.add l s)
           )
         in
-          if List.mem feature_tag tags_str then
+          if List.mem feature_tag feature_tags then
             select (i+1) (read 0 result)
           else
             select (i+1) result
@@ -540,9 +511,6 @@ let select_features font feature_tags=try
     List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (IntSet.elements (select 0 IntSet.empty)))
 
 with Table_not_found _->[]
-
-
-module FeatSet=Set.Make (struct type t=features let compare=compare end)
 
 let font_features font=try
   let (file,off0)=otype_file font in
@@ -554,14 +522,12 @@ let font_features font=try
     if i>=featureCount then result else (
       seek_in file (gsubOff+features+2+i*6);
       let _=input file buf 0 4 in
-        try
-          make_features (i+1) (FeatSet.add (tag_str buf) result)
-        with
-            Unknown_feature _ -> make_features (i+1) result
+        make_features (i+1) (String.copy buf::result)
     )
   in
-    FeatSet.elements (make_features 0 FeatSet.empty)
+    (make_features 0 [])
 with Table_not_found _->[]
+
 
 let read_scripts font=
   let (file,off0)=otype_file font in

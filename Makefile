@@ -80,8 +80,8 @@ test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
 test2: $(TESTOBJ) Typography.cmx Diag.cmx tests/document2.ml
 	$(CAMLOPT) -o test2 $(TESTOBJ) tests/document2.ml
 
-ot: $(filter %.cmo, $(FONTS:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) tests/opentype.ml
-	$(CAMLC) -o ot $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo)) tests/opentype.ml
+ot: $(filter %.cmo, $(FONTS:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) tests/test_opentype.ml
+	$(CAMLC) -o ot $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo)) tests/test_opentype.ml
 
 fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) Fonts.cmi Fonts.ml
 	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.ml

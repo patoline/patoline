@@ -22,32 +22,6 @@ module FTypes :
     val kern : glyph_ids -> glyph_ids kerningBox
     val glyph_id_cont : glyph_ids -> int
     val glyph_id_utf8 : glyph_ids -> CamomileLibrary.UTF8.t
-    exception Unknown_feature of string
-    type features =
-      FTypes.features =
-        Alternates
-      | SmallCapitals
-      | CaseSensitiveForms
-      | DiscretionaryLigatures
-      | Denominators
-      | Fractions
-      | StandardLigatures
-      | LiningFigures
-      | LocalizedForms
-      | Numerators
-      | OldStyleFigures
-      | Ordinals
-      | Ornaments
-      | ProportionalFigures
-      | StylisticAlternates
-      | ScientificInferiors
-      | Subscript
-      | Superscript
-      | Titling
-      | TabularFigures
-      | SlashedZero
-    val str_of_feature : features -> string
-    val print_feature : features -> unit
     type subst =
       FTypes.subst = {
       original_glyphs : int array;
@@ -90,8 +64,8 @@ module FTypes :
         val glyph_y0 : glyph -> float
         val glyph_y1 : glyph -> float
         val fontName : ?index:int -> font -> string
-        val font_features : font -> features list
-        val select_features : font -> features list -> substitution list
+        val font_features : font -> string list
+        val select_features : font -> string list -> substitution list
         val positioning : font -> glyph_ids list -> glyph_ids list
       end
     val glyph_roots :
@@ -129,40 +103,29 @@ module Opentype :
     val readLookup : in_channel -> int -> int -> FTypes.substitution list
     val read_gsub : font -> FTypes.substitution list array
     val read_lookup : font -> int -> FTypes.substitution list
-    val str_tag : FTypes.features -> string
-    val tag_str : string -> FTypes.features
-    val select_features :
-      font -> FTypes.features list -> FTypes.substitution list
-    module FeatSet :
-      sig
-        type elt = FTypes.features
-        type t = Opentype.FeatSet.t
-        val empty : t
-        val is_empty : t -> bool
-        val mem : elt -> t -> bool
-        val add : elt -> t -> t
-        val singleton : elt -> t
-        val remove : elt -> t -> t
-        val union : t -> t -> t
-        val inter : t -> t -> t
-        val diff : t -> t -> t
-        val compare : t -> t -> int
-        val equal : t -> t -> bool
-        val subset : t -> t -> bool
-        val iter : (elt -> unit) -> t -> unit
-        val fold : (elt -> 'a -> 'a) -> t -> 'a -> 'a
-        val for_all : (elt -> bool) -> t -> bool
-        val exists : (elt -> bool) -> t -> bool
-        val filter : (elt -> bool) -> t -> t
-        val partition : (elt -> bool) -> t -> t * t
-        val cardinal : t -> int
-        val elements : t -> elt list
-        val min_elt : t -> elt
-        val max_elt : t -> elt
-        val choose : t -> elt
-        val split : elt -> t -> t * bool * t
-      end
-    val font_features : font -> FeatSet.elt list
+    val alternates : string
+    val smallCapitals : string
+    val caseSensitiveForms : string
+    val discretionaryLigatures : string
+    val denominators : string
+    val fractions : string
+    val standardLigatures : string
+    val liningFigures : string
+    val localizedForms : string
+    val numerators : string
+    val oldStyleFigures : string
+    val ordinals : string
+    val ornaments : string
+    val proportionalFigures : string
+    val stylisticAlternates : string
+    val scientificInferiors : string
+    val subscript : string
+    val superscript : string
+    val titling : string
+    val tabularFigures : string
+    val slashedZero : string
+    val select_features : font -> string list -> FTypes.substitution list
+    val font_features : font -> string list
     val read_scripts : font -> unit
     val gpos : font -> FTypes.glyph_ids list -> FTypes.glyph_ids list
     val positioning : font -> FTypes.glyph_ids list -> FTypes.glyph_ids list
@@ -244,7 +207,6 @@ val glyphWidth : glyph -> float
 val glyph_y0 : glyph -> float
 val glyph_y1 : glyph -> float
 val fontName : font -> string
-val select_features :
-  font -> FTypes.features list -> FTypes.substitution list
-val fontFeatures : font -> Opentype.FeatSet.elt list
+val select_features : font -> string list -> FTypes.substitution list
+val fontFeatures : font -> string list
 val positioning : font -> FTypes.glyph_ids list -> FTypes.glyph_ids list

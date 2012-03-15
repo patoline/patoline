@@ -20,53 +20,6 @@ let rec glyph_id_utf8=function
     KernID x->glyph_id_utf8 x.kern_contents
   | GlyphID x->x.glyph_utf8
 
-exception Unknown_feature of string
-type features=
-    Alternates
-  | SmallCapitals
-  | CaseSensitiveForms
-  | DiscretionaryLigatures
-  | Denominators
-  | Fractions
-  | StandardLigatures
-  | LiningFigures
-  | LocalizedForms
-  | Numerators
-  | OldStyleFigures
-  | Ordinals
-  | Ornaments
-  | ProportionalFigures
-  | StylisticAlternates
-  | ScientificInferiors
-  | Subscript
-  | Superscript
-  | Titling
-  | TabularFigures
-  | SlashedZero
-
-let str_of_feature=function
-    Alternates -> "Alternates"
-  | SmallCapitals ->  "SmallCapitals"
-  | CaseSensitiveForms -> "CaseSensitiveForms"
-  | DiscretionaryLigatures -> "DiscretionaryLigatures"
-  | Denominators -> "Denominators"
-  | Fractions -> "Fractions"
-  | StandardLigatures -> "StandardLigatures"
-  | LiningFigures -> "LiningFigures"
-  | LocalizedForms -> "LocalizedForms"
-  | Numerators -> "Numerators"
-  | OldStyleFigures -> "OldStyleFigures"
-  | Ordinals -> "Ordinals"
-  | Ornaments -> "Ornaments"
-  | ProportionalFigures -> "ProportionalFigures"
-  | StylisticAlternates -> "StylisticAlternates"
-  | ScientificInferiors -> "ScientificInferiors"
-  | Subscript -> "Subscript"
-  | Superscript ->  "Superscript"
-  | Titling -> "Titling"
-  | TabularFigures -> "TabularFigures"
-  | SlashedZero -> "SlashedZero"
-let print_feature x=Printf.printf "%s" (str_of_feature x)
 
 type subst= { original_glyphs:int array; subst_glyphs:int array }
 type chain= { before:IntSet.t array; input:IntSet.t array; after:IntSet.t array }
@@ -233,10 +186,10 @@ module type Font=(
     val fontName:?index:int->font->string
 
     (** Lists all the available features of the font *)
-    val font_features:font->features list
+    val font_features:font->string list
 
     (** Converts a given list of features into a list of corresponding substitutions *)
-    val select_features:font->features list->substitution list
+    val select_features:font->string list->substitution list
 
     (** Applies the available positioning information to a glyph
         list. This can be used for kerning, but not only *)

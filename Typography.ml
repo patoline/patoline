@@ -113,7 +113,7 @@ type 'a environment={
   mutable fontFamily:fontFamily;
   mutable fontItalic:bool;
   mutable fontAlternative:fontAlternative;
-  mutable fontFeatures:Fonts.FTypes.features list;
+  mutable fontFeatures:string list;
   mutable font:font;
   mutable size:float;
   mutable par_indent:'a box list;
@@ -132,11 +132,11 @@ let defaultEnv:user environment=
       fontFamily=lmroman;
       fontItalic=false;
       fontAlternative=Regular;
-      fontFeatures= [ StandardLigatures ];
+      fontFeatures= [ Opentype.standardLigatures ];
       font=f;
       substitutions=
         (fun glyphs -> List.fold_left apply glyphs (
-           Fonts.select_features f [ StandardLigatures ]
+           Fonts.select_features f [ Opentype.standardLigatures ]
          ));
       positioning=positioning f;
       size=4.;
@@ -417,7 +417,7 @@ let glues t=
                                 })
                        | _::s-> select_glue s
                    in
-                     { env with stdGlue=select_glue (select_features env.font [Ornaments]) }
+                     { env with stdGlue=select_glue (select_features env.font [Opentype.ornaments]) }
                  )
                |_->env
           ), t)
@@ -505,11 +505,11 @@ let structNum path name=
     | []->"0"
   in
   if List.length path <= 2 then
-    [Scoped ((fun env->{(envAlternative (OldStyleFigures::env.fontFeatures) Caps env) with
+    [Scoped ((fun env->{(envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
       size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
     }), (T n::B (fun env -> [env.stdGlue])::name))]
   else
-    [Scoped ((fun env-> envAlternative (OldStyleFigures::env.fontFeatures) Caps env),
+    [Scoped ((fun env-> envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env),
 	     (T n::B (fun env -> [env.stdGlue])::name))]
 
 
