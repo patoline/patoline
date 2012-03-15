@@ -52,10 +52,10 @@ let default=
               font,1.;
               font,1.;
               font,1.;
+              font,0.7;
+              font,0.7;
               font,0.4;
-              font,0.4;
-              font,0.18;
-              font,0.18
+              font,0.4
             |];
       numerator_spacing=0.08;
       denominator_spacing=0.08;

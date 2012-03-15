@@ -205,7 +205,7 @@ $$ x_i + 2 cos(x) <= a y_i^n - sin(t) $$
 
 $$ t^^j__X_i^n $$
 
-$$ B = t^^P * A * P = P^(-1) A P  $$
+$$ B = t^^P * A * P = P^{-1} A P  $$
 
 $$ f(x,y) = { x + y } / { (x^2 + y^2) (x - y) } $$
 =<
