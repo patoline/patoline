@@ -19,13 +19,12 @@ module Point = struct
   let (/) (x0,y0) r = (x0 /. r, y0 /.r)
 end
 
-open Point
-
 module Curve = struct
   type t =  Bezier.curve list
   let bezier_of_point_list l = 
     let xs, ys = List.split l in
     (Array.of_list xs, Array.of_list ys)
+  let nb_beziers curve = List.length curve
   let of_point_lists l = List.map bezier_of_point_list l
   let of_contents = function
     | Drivers.Path (_, beziers) -> List.map Array.to_list beziers
@@ -35,24 +34,36 @@ module Curve = struct
     (curve:t) =
     if curve = [] then [] else
       [Drivers.Path (parameters, [Array.of_list curve])]
+
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
     List.map (fun t -> (t,bezier1)) res
+
   let intersections beziers1 beziers2 = 
-    List.flatten (List.map (fun bezier1 -> intersections bezier1 beziers2) beziers1)
+    let _, res = 
+      List.fold_left
+      (fun (i, res) bezier1 -> 
+	((succ i),
+	 (res @ (List.map (fun (t1,t2) -> (i,t1)) (intersections bezier1 beziers2)))))
+      (0,[])
+      beziers1
+    in res
+
   let latest_intersection beziers1 beziers2 =
     let inters = (intersections beziers1 beziers2) in
     let latest = List.fold_left 
-      (fun yet ((t,bezier) as candidate) -> match yet with
+      (fun yet ((i,t) as candidate) -> match yet with
 	| None -> Some candidate
-	| Some (t',bezier') -> Some (t,bezier))
+	| Some (_,_) -> Some (i,t))
       None
       inters
     in latest
+
+
   let earliest_intersection beziers1 beziers2 =
     match (intersections beziers1 beziers2) with
       | [] -> None
-      | (t,bezier) :: _ -> Some (t,bezier)
+      | (i,t) :: _ -> Some (i,t)
   let bezier_evaluate (xs,ys) t = 
     (Bezier.eval xs t, Bezier.eval ys t)
   let eval beziers t =
@@ -65,12 +76,34 @@ module Curve = struct
 	  else eval_rec reste (t -. 1.)
     in eval_rec beziers t
 
+  let restrict curve (i,t) (j,t') = 
+
+    let rec restrict_right res curve (j,t') = match  curve with
+	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
+      | (xs,ys) as bezier :: rest -> if j = 0 then
+	  let xs' = Bezier.restrict xs 0. t' in
+	  let ys' = Bezier.restrict ys 0. t' in
+	  List.rev ((xs',ys') :: res)
+	else restrict_right (bezier :: res) rest (j-1,t')
+    in
+
+    let rec restrict_left curve (i,t) (j,t') = match curve with
+	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
+      | (xs,ys) :: rest -> if i = 0 then
+	  let xs' = Bezier.restrict xs t 1. in
+	  let ys' = Bezier.restrict ys t 1. in
+	  restrict_right [] ((xs',ys') :: rest) (j,t')
+	else
+	  restrict_left rest (i-1,t) (j-1,t')
+    in
+    restrict_left curve (i,t) (j,t')
+
 end
 
 module Vector = struct
   type t = Point.t 
-  let of_points p q = ((proj q -. proj p),
-		       (proj' q -. proj' p))
+  let of_points p q = ((Point.proj q -. Point.proj p),
+		       (Point.proj' q -. Point.proj' p))
   let scal_mul r (x,y) = (x *. r, y *. r)
   let (+) (x,y) (x',y') = (x +. x', y +. y')
   let (-) (x,y) (x',y') = (x -. x', y -. y')
@@ -205,9 +238,9 @@ module NodeShape = struct
       (* let _ = Printf.printf ("Rectangle: (%f,%f), (%f,%f)") x0 y0 x1 y1 in *)
       function
 	| Anchor.Vec v -> v
-	| Anchor.Center -> middle p1 p3
-	| Anchor.East -> Point.(+) (middle p2 p3)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
-	| Anchor.West -> Point.(-) (middle p1 p4)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
+	| Anchor.Center -> Point.middle p1 p3
+	| Anchor.East -> Point.(+) (Point.middle p2 p3)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
+	| Anchor.West -> Point.(-) (Point.middle p1 p4)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
 	| a -> raise (Anchor.Undefined a)
     in
     { parameters = parameters ;
@@ -223,7 +256,7 @@ module NodeShape = struct
       let y0 = y0 -. inner_sep in
       let x1 = x1 +. inner_sep in
       let y1 = y1 +. inner_sep in
-      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+      (* let x_center, y_center = Point.middle (x0,y0)( x1,y1) in *)
       (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
       match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
 	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
@@ -248,11 +281,11 @@ module NodeShape = struct
       let (p1,p2,p3,p4) = extract_points bb in
       function
 	| Anchor.Vec v -> v
-	| Anchor.South -> middle p1 p2
-	| Anchor.West -> middle p1 p4
-	| Anchor.East -> middle p2 p3
-	| Anchor.North -> middle p3 p4
-	| Anchor.Center -> middle p1 p3
+	| Anchor.South -> Point.middle p1 p2
+	| Anchor.West -> Point.middle p1 p4
+	| Anchor.East -> Point.middle p2 p3
+	| Anchor.North -> Point.middle p3 p4
+	| Anchor.Center -> Point.middle p1 p3
 	| a -> raise (Anchor.Undefined a)
     in
     { parameters = parameters ;
@@ -267,7 +300,7 @@ module NodeShape = struct
       let y0 = y0 -. inner_sep in
       let x1 = x1 +. inner_sep in
       let y1 = y1 +. inner_sep in
-      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+      (* let x_center, y_center = Point.middle (x0,y0)( x1,y1) in *)
       (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
       match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
 	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
@@ -292,11 +325,11 @@ module NodeShape = struct
       let (p1,p2,p3,p4) = extract_points bb in
       function
 	| Anchor.Vec v -> v
-	| Anchor.South -> middle p1 p2
-	| Anchor.West -> middle p1 p4
-	| Anchor.East -> middle p2 p3
-	| Anchor.North -> middle p3 p4
-	| Anchor.Center -> middle p1 p3
+	| Anchor.South -> Point.middle p1 p2
+	| Anchor.West -> Point.middle p1 p4
+	| Anchor.East -> Point.middle p2 p3
+	| Anchor.North -> Point.middle p3 p4
+	| Anchor.Center -> Point.middle p1 p3
 	| a -> raise (Anchor.Undefined a)
     in
     { parameters = parameters ;
@@ -309,13 +342,13 @@ end
 module Node = struct
   type t = { curve : Curve.t ;
 	     parameters : Drivers.path_parameters ;
-	     make_anchor : Anchor.spec -> point ;
+	     make_anchor : Anchor.spec -> Point.t ;
 	     contents : Drivers.contents list }
 
   let center node = node.make_anchor Anchor.Center
 
-  type spec = { at : point ;
-		contents_spec : Typography.content list ;
+  type spec = { at : Point.t ;
+		contents_spec : (Typography.user Typography.content) list ;
 		shape : NodeShape.t ;
 		anchor: Anchor.spec }
   let default = { 
@@ -373,7 +406,7 @@ module Edge = struct
 	   }
 
   type parameters = { parameters_spec : Drivers.path_parameters ;
-		controls : point list ;
+		controls : Point.t list ;
 		head_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
 		tail_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
 		label_specs : label_spec list }
@@ -401,20 +434,20 @@ module Edge = struct
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
-	  Node.center node1
+	  (0,0.)
 	end
-	| Some (t1, bezier1) -> Curve.bezier_evaluate bezier1 t1 
+	| Some (i, t1) -> (i, t1)
     end in
     let finish = begin 
       match Curve.earliest_intersection underlying_curve node2.Node.curve with
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
-	  Node.center node2
+	  ((Curve.nb_beziers underlying_curve) - 1,1.)
 	end
-	| Some (t2, bezier2) -> Curve.bezier_evaluate bezier2 t2 
+	| Some (j, t2) -> (j, t2)
     end in
-    let curve = (Curve.of_point_lists [start :: (controls @ [finish])]) in
+    let curve = Curve.restrict underlying_curve start finish in
     { curve = curve ;
       head = head ~parameters:parameters curve ; 
       tail = tail ~parameters:parameters curve ;

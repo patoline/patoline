@@ -33,12 +33,13 @@ let fig2 env=
     Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:5. ()) }
   in
   let b, state = Node.make_draw state { Node.default with
-    Node.at = (20.,50.) ;
+    Node.at = (30.,70.) ;
     Node.contents_spec = [T "J"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:{ params with lineWidth=3. ; lineJoin=Round_join} ~inner_sep:4. ()) }
+    Node.shape = (NodeShape.rectangle ~parameters:{ params with (* lineWidth=3. ;  *)
+      lineJoin=Round_join} ~inner_sep:2. ()) }
   in
   let c, state = Node.make_draw state { Node.default with
-    Node.at = (50.,30.) ;
+    Node.at = (90.,30.) ;
     Node.contents_spec = (alternative Bold [T "Ailllaillaille!"]) ;
     Node.shape = (NodeShape.flower ~parameters:params ~amplitude:3. ()) }
   in
@@ -84,6 +85,10 @@ let fig2 env=
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } ;
     Edge.controls = (Edge.bend_left ~angle:20.0 c b) }
     c b
+  in
+  let ca, state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } }
+    c a
   in
   drawing ~offset:(-10.) state
 
@@ -157,7 +162,7 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 \family{{lmroman}}{\alternative{{Demi}}{Test latin modern roman demi et \italic{Test italic}}}
 
 {{
-figure ~name:"figure de Tom" fig
+figure ~name:"figure de Tom" fig2
 }}
 
 =<
