@@ -26,7 +26,9 @@ let int_of_style=function
   | ScriptScript'->7
 
 type mathsEnvironment={
-  fonts:(Fonts.font * float) array;
+  mathsFont:Fonts.font;
+  mathsSize:float;
+  mathsSubst:glyph_id list -> glyph_id list;
   numerator_spacing:float;
   denominator_spacing:float;
   sub1:float;
@@ -45,18 +47,11 @@ type mathsEnvironment={
   close_dist:float
 }
 
-let default=
-  let font=Fonts.loadFont "Otf/euler.otf" in
+let default_env=
     {
-      fonts=[|font,1.;
-              font,1.;
-              font,1.;
-              font,1.;
-              font,0.7;
-              font,0.7;
-              font,0.4;
-              font,0.4
-            |];
+      mathsFont=Fonts.loadFont "Otf/euler.otf";
+      mathsSubst=(fun x->x);
+      mathsSize=1.;
       numerator_spacing=0.08;
       denominator_spacing=0.08;
       sub1= 0.1;
@@ -75,9 +70,20 @@ let default=
       close_dist=0.2
     }
 
-type 'a noad= { mutable nucleus:mathsEnvironment -> style -> 'a box list;
-             mutable subscript_left:'a math list; mutable superscript_left:'a math list;
-             mutable subscript_right:'a math list; mutable superscript_right:'a math list }
+let default=[|
+  default_env;
+  default_env;
+  default_env;
+  default_env;
+  { default_env with mathsSize=0.5 };
+  { default_env with mathsSize=0.5 };
+  { default_env with mathsSize=0.25 };
+  { default_env with mathsSize=0.25 }
+|]
+
+type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
+                mutable subscript_left:'a math list; mutable superscript_left:'a math list;
+                mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
 and 'a binary_type =
     Invisible
@@ -98,11 +104,11 @@ let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=
 
 
 
-let symbol font size c=
-  {
-    glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black;
-    glyph=Fonts.loadGlyph font { empty_glyph with glyph_index=Fonts.glyph_of_char font c}
-  }
+(* let symbol font size c= *)
+(*   { *)
+(*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
+(*     glyph=Fonts.loadGlyph font { empty_glyph with glyph_index=Fonts.glyph_of_char font c} *)
+(*   } *)
 
 
 let cramp=function
@@ -179,7 +185,8 @@ let rec contents=function
 
 
 let rec draw_maths mathsEnv style mlist=
-  let font,size = mathsEnv.fonts.(int_of_style style) in
+  let env=mathsEnv.(int_of_style style) in
+
     match mlist with
 
         []->[]
@@ -193,7 +200,7 @@ let rec draw_maths mathsEnv style mlist=
              cas. *)
 
 
-	    let nucleus = n.nucleus mathsEnv style in
+	    let nucleus = n.nucleus env style in
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
@@ -204,11 +211,11 @@ let rec draw_maths mathsEnv style mlist=
 
 
                 let x_height=
-                  let x=Fonts.loadGlyph font ({empty_glyph with glyph_index=Fonts.glyph_of_char font 'x'}) in
+                  let x=Fonts.loadGlyph env.mathsFont ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'x'}) in
                     (Fonts.glyph_y1 x)/.1000.
                 in
                 let u,v=if contents (last nucleus) <> "" then  0., 0. else
-                  y1 -. mathsEnv.sup_drop*.size, -.y0+. mathsEnv.sub_drop*.size
+                  y1 -. env.sup_drop*.env.mathsSize, -.y0+. env.sub_drop*.env.mathsSize
                 in
 
                 let a=draw_boxes (draw_maths mathsEnv (superStyle style) n.superscript_right) in
@@ -222,22 +229,22 @@ let rec draw_maths mathsEnv style mlist=
                   let xa0,ya0,xa1,ya1=bb.(sub) in
                   let xb0,yb0,xb1,yb1=bb.(sup) in
                     if bezier.(sup)=[] then (
-                      0., max v (max (mathsEnv.sub1*.size) (ya1 -. 4./.5. *. abs_float x_height*.size))
+                      0., max v (max (env.sub1*.env.mathsSize) (ya1 -. 4./.5. *. abs_float x_height*.env.mathsSize))
                     ) else (
                       let p=
-                        if style=Display then mathsEnv.sup1 else
-                          if is_cramped style then mathsEnv.sup3 else mathsEnv.sup2
+                        if style=Display then env.sup1 else
+                          if is_cramped style then env.sup3 else env.sup2
                       in
-                      let u=max u (max (p*.size) (-.yb0 +. (abs_float x_height*.size)/.4.)) in
+                      let u=max u (max (p*.env.mathsSize) (-.yb0 +. (abs_float x_height*.env.mathsSize)/.4.)) in
                         if bezier.(sub)=[] then (
                           u,0.
                         ) else (
-                          let v=max v (mathsEnv.sub2*.size) in
-                            if (u+.yb0) -. (ya1-.v) > 4.*.mathsEnv.default_rule_thickness then (
+                          let v=max v (env.sub2*.env.mathsSize) in
+                            if (u+.yb0) -. (ya1-.v) > 4.*.env.default_rule_thickness then (
                               u,v
                             ) else (
-                              let v=4.*.mathsEnv.default_rule_thickness*.size -. (u+.yb0) +. ya1 in
-                              let psi=4./.5.*.abs_float x_height*.size -. (u+.yb0) in
+                              let v=4.*.env.default_rule_thickness*.env.mathsSize -. (u+.yb0) +. ya1 in
+                              let psi=4./.5.*.abs_float x_height*.env.mathsSize -. (u+.yb0) in
                                 if psi > 0. then (u+.psi, v-.psi) else (u,v)
                             )
                         )
@@ -266,10 +273,10 @@ let rec draw_maths mathsEnv style mlist=
                                     ) bezier
                 in
                 let dr=(draw_boxes nucleus)
-                  @ (List.map (translate (xoff.(0)-.dist.(0)+.size*.mathsEnv.superscript_distance) yoff.(0)) a)
-                  @ (List.map (translate (xoff.(1)+.dist.(1)-.size*.mathsEnv.superscript_distance) yoff.(1)) b)
-                  @ (List.map (translate (xoff.(2)-.dist.(2)+.size*.mathsEnv.subscript_distance) yoff.(2)) c)
-                  @ (List.map (translate (xoff.(3)+.dist.(3)-.size*.mathsEnv.subscript_distance) yoff.(3)) d)
+                  @ (List.map (translate (xoff.(0)-.dist.(0)+.env.mathsSize*.env.superscript_distance) yoff.(0)) a)
+                  @ (List.map (translate (xoff.(1)+.dist.(1)-.env.mathsSize*.env.superscript_distance) yoff.(1)) b)
+                  @ (List.map (translate (xoff.(2)-.dist.(2)+.env.mathsSize*.env.subscript_distance) yoff.(2)) c)
+                  @ (List.map (translate (xoff.(3)+.dist.(3)-.env.mathsSize*.env.subscript_distance) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
                   [ Drawing ({ drawing_min_width=a2-.a0;
@@ -291,13 +298,13 @@ let rec draw_maths mathsEnv style mlist=
 	  match b.bin_drawing with
 	    Invisible ->
             (draw_maths mathsEnv style b.bin_left)@
-              (resize size gl)::
+              (resize env.mathsSize gl)::
               (draw_maths mathsEnv style b.bin_right)
 	  | Normal(no_sp_left, op, no_sp_right) ->
             (draw_maths mathsEnv style b.bin_left)@
-              (if no_sp_left then [] else [resize size gl])@
+              (if no_sp_left then [] else [resize env.mathsSize gl])@
               (draw_maths mathsEnv style [Ordinary op])@
-              (if no_sp_right then [] else [resize size gl])@
+              (if no_sp_right then [] else [resize env.mathsSize gl])@
               (draw_maths mathsEnv style b.bin_right)
         )@(draw_maths mathsEnv style s)
 
@@ -319,15 +326,15 @@ let rec draw_maths mathsEnv style mlist=
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
                        drawing_max_width=w;
-                       drawing_y0=y0b-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.);
-                       drawing_y1=y1a-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.);
+                       drawing_y0=y0b-.y1b-.env.mathsSize*.(env.denominator_spacing+.f.line.lineWidth/.2.);
+                       drawing_y1=y1a-.y0a+.env.mathsSize*.(env.numerator_spacing+.f.line.lineWidth/.2.);
                        drawing_badness=(fun _->0.);
                        drawing_contents=(fun _->
                                            (if f.line.lineWidth = 0. then [] else
-                                              [Path ({f.line with lineWidth=f.line.lineWidth*.size},
+                                              [Path ({f.line with lineWidth=f.line.lineWidth*.env.mathsSize},
                                                      [ [|line (0.,0.) (w,0.)|] ]) ])@
-                                             (List.map (translate ((w-.wa)/.2.) (-.y0a+.size*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
-                                             (List.map (translate ((w-.wb)/.2.) (-.y1b-.size*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
+                                             (List.map (translate ((w-.wa)/.2.) (-.y0a+.env.mathsSize*.(env.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
+                                             (List.map (translate ((w-.wb)/.2.) (-.y1b-.env.mathsSize*.(env.denominator_spacing+.f.line.lineWidth/.2.))) bb)
                                         ) }) :: (draw_maths mathsEnv style s)
         )
       | Operator op::s ->(
@@ -392,13 +399,13 @@ let rec draw_maths mathsEnv style mlist=
               let xsub=center 1 y0 0. 0. in
 
               let yoff=
-                y0-.y1a-.mathsEnv.limit_subscript_distance*.size -. y0a
+                y0-.y1a-.env.limit_subscript_distance*.env.mathsSize -. y0a
               in
                 [ Drawing (drawing ~offset:(yoff) (
 
                              drawn_op @
-                               (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.size)) ba)@
-                               (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1a-.mathsEnv.limit_subscript_distance*.size)) bb)
+                               (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.env.limit_superscript_distance*.env.mathsSize)) ba)@
+                               (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1a-.env.limit_subscript_distance*.env.mathsSize)) bb)
 
                            ))]
 
@@ -450,7 +457,7 @@ let rec draw_maths mathsEnv style mlist=
               (draw_maths mathsEnv style s)
         )
       | Decoration (rebox, inside) :: s ->(
-          (rebox mathsEnv style ((draw_maths mathsEnv style inside))) @ (draw_maths mathsEnv style s)
+          (rebox env style ((draw_maths mathsEnv style inside))) @ (draw_maths mathsEnv style s)
         )
 
 
@@ -466,46 +473,47 @@ let dist_boxes a b=
     List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity lr
 
 
-let gl env st c=
-  let font,s=(env.fonts.(int_of_style st)) in
+let glyphs c env st=
+  let font=env.mathsFont in
+  let s=env.mathsSize in
   let rec make_it idx=
     if UTF8.out_of_range c idx then [] else (
-      (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)})
-                  with glyph_size=s; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
+      { glyph_utf8=UTF8.init 1 (fun _->UTF8.look c idx);
+        glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx) } :: make_it (UTF8.next c idx)
     )
   in
-    make_it (UTF8.first c)
+    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
 
-let gl_font env st font c=
-  let _,s=(env.fonts.(int_of_style st)) in
-  let rec make_it idx=
-    if UTF8.out_of_range c idx then [] else (
-      (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)})
-                  with glyph_size=s; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx))
-    )
-  in
-    make_it (UTF8.first c)
+(* let gl_font env st font c= *)
+(*   let _,s=(env.fonts.(int_of_style st)) in *)
+(*   let rec make_it idx= *)
+(*     if UTF8.out_of_range c idx then [] else ( *)
+(*       (GlyphBox { (glyphCache font { empty_glyph with glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx)}) *)
+(*                   with glyph_size=s; glyph_x=0.; glyph_y=0. }) :: (make_it (UTF8.next c idx)) *)
+(*     ) *)
+(*   in *)
+(*     make_it (UTF8.first c) *)
 
-let int env st=
-  let font,s=(env.fonts.(int_of_style st)) in
-    Drawing (drawing ~offset:(-0.8) [
-      Glyph { (glyphCache font { empty_glyph with glyph_index= 701 }) with glyph_size=1.; glyph_y= -0.8 }
-    ])
+(* let int env st= *)
+(*   let font,s=(env.fonts.(int_of_style st)) in *)
+(*     Drawing (drawing ~offset:(-0.8) [ *)
+(*       Glyph { (glyphCache font { empty_glyph with glyph_index= 701 }) with glyph_size=1.; glyph_y= -0.8 } *)
+(*     ]) *)
 
-let rightarrow env st=
-  let font,s=(env.fonts.(int_of_style st)) in
-    Drawing (drawing ~offset:(-0.8) [
-      Glyph { (glyphCache font { empty_glyph with glyph_index= 334 }) with glyph_size=1. }
-    ])
+(* let rightarrow env st= *)
+(*   let font,s=(env.fonts.(int_of_style st)) in *)
+(*     Drawing (drawing ~offset:(-0.8) [ *)
+(*       Glyph { (glyphCache font { empty_glyph with glyph_index= 334 }) with glyph_size=1. } *)
+(*     ]) *)
 
-let leftarrow env st=
-  let font,s=(env.fonts.(int_of_style st)) in
-    Drawing (drawing ~offset:(-0.8) [
-      Glyph { (glyphCache font { empty_glyph with glyph_index= 332 }) with glyph_size=1. }
-    ])
+(* let leftarrow env st= *)
+(*   let font,s=(env.fonts.(int_of_style st)) in *)
+(*     Drawing (drawing ~offset:(-0.8) [ *)
+(*       Glyph { (glyphCache font { empty_glyph with glyph_index= 332 }) with glyph_size=1. } *)
+(*     ]) *)
 
 let open_close left right env style box=
-  let _,s=(env.fonts.(int_of_style style)) in
+  let s=env.mathsSize in
   let left=draw_boxes left in
   let bezier_left=bezier_of_boxes left in
 

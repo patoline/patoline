@@ -47,16 +47,15 @@ let split_ind indices =
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch 
-    "(List.map (fun b -> B (fun env0 -> Util.resize env0.size b)) (let env = Maths.default and style = %s in Maths.draw_maths env style ("
-    style;
+    "[B (fun env0 -> List.map (fun b -> Util.resize env0.size b) (let style = %s and env = Maths.default.(Maths.int_of_style %s) in Maths.draw_maths Maths.default style ("
+    style style;
   let rec fn indices ch m =
     match m with
       Var name | Num name ->
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env style -> Maths.gl env style \"%s\")) with %a } ]"
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.glyphs \"%s\")) with %a } ]"
 	  name hn indices
     | Fun name ->
-        (* FIXME: transmission of the current font ... *)
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env style -> Maths.gl_font env style defaultEnv.font \"%s\")) with %a } ]"
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env -> Maths.glyphs \"%s\" { env with Maths.mathsFont=env0.font })) with %a } ]"
 	  name hn indices        
     | Indices(ind', m) ->
       fn ind' ch m 
@@ -68,7 +67,7 @@ let print_math ch display m =
       Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
     | Binary(pr,nsl,op,nsr,a,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
-      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (fun env style -> Maths.gl env style \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (Maths.glyphs \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 
@@ -90,14 +89,14 @@ let print_math ch display m =
   and dn ind op cl ch m =
     if ind = no_ind then
       Printf.fprintf ch 
-	"[Maths.Decoration (Maths.open_close (Maths.gl env style \"%s\") (Maths.gl env style \"%s\"), %a)]"
+	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" env style) (Maths.glyphs \"%s\" env style), %a)]"
 	op cl (fn no_ind) m
     else
       (* FIXME: indice sur les délimiteurs *)
       Printf.fprintf ch "[]"
   in
   fn no_ind ch m;
-  Printf.fprintf ch "))) "
+  Printf.fprintf ch ")))] "
 
 let rec print_macro ch op mtype name args =
   begin
@@ -154,7 +153,7 @@ and print_contents op ch l =
       Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
       fn l
     | GC :: l -> 
-      Printf.fprintf ch "(B (fun env -> env.stdGlue))::";
+      Printf.fprintf ch "(B (fun env -> [env.stdGlue]))::";
       fn l
     | MC(mtype, name, args) :: l -> 
       Printf.fprintf ch "(";

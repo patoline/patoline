@@ -180,7 +180,7 @@ let defaultEnv:user environment=
    seront transformés en la boîte stdGlue de l'environnement, qui
    n'est pas nécessairement une GlueBox *)
 type 'a content=
-    B of ('a environment->'a box)
+    B of ('a environment->'a box list)
   | T of string
   | FileRef of (string*int*int)
   | Scoped of ('a environment->'a environment)*('a content list)
@@ -507,10 +507,10 @@ let structNum path name=
   if List.length path <= 2 then
     [Scoped ((fun env->{(envAlternative (OldStyleFigures::env.fontFeatures) Caps env) with
       size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
-    }), (T n::B (fun env -> env.stdGlue)::name))]
+    }), (T n::B (fun env -> [env.stdGlue])::name))]
   else
     [Scoped ((fun env-> envAlternative (OldStyleFigures::env.fontFeatures) Caps env),
-	     (T n::B (fun env -> env.stdGlue)::name))]
+	     (T n::B (fun env -> [env.stdGlue])::name))]
 
 
 let is_space c=c=' ' || c='\n' || c='\t'
@@ -518,7 +518,7 @@ let sources=ref StrMap.empty
 
 let rec boxify env =function
     []->[]
-  | (B b)::s->(b env)::(boxify env s)
+  | (B b)::s->(b env)@(boxify env s)
   | (T t)::s->(
     let rec cut_str i0 i result=
       if i>=String.length t then (
@@ -613,7 +613,7 @@ let flatten env0 str=
             | (_, (Paragraph p))::s->(
                 flatten env path (
                   Paragraph { p with par_contents=
-                      (if indent then (List.map (fun x->B (fun _->x)) p.par_env.par_indent) else []) @ p.par_contents }
+                      (if indent then [B (fun _->p.par_env.par_indent)] else []) @ p.par_contents }
                 );
                 flat_children num true s
               )

@@ -5,41 +5,40 @@ open Util
 let a =
   let env=Maths.default in
   let style=Display in
-    Ordinary  (noad (gl env style "a"))
+    Ordinary  (noad (glyphs "a"))
 
 let a0=
   let env=Maths.default in
   let style=Display in
-    Ordinary  { (noad (gl env style "a")) with
-                  superscript_right=[Ordinary (noad (gl env style "0"))];
+    Ordinary  { (noad (glyphs "a")) with
+                  superscript_right=[Ordinary (noad (glyphs "0"))];
                   superscript_left=[];
-                  subscript_right=[Ordinary (noad (gl env style "1"))];
+                  subscript_right=[Ordinary (noad (glyphs "1"))];
                   subscript_left=[] }
 
 
 let bx= (
-  Binary { bin_priority=0; bin_drawing=(noad (gl default Display "+"));
+  Binary { bin_priority=0; bin_drawing=Normal (false, (noad (glyphs "+")), false);
            bin_left=[a]; bin_right=[a] }
 )
 
-let f=Fraction { numerator=[a]; denominator=[a]; line={Drivers.default with lineWidth = default.default_rule_thickness }}
 
 let x =
   let env=Maths.default in
   let style=Display in
-    Ordinary  { (noad (gl env style "V")) with
+    Ordinary  { (noad (glyphs "V")) with
                   superscript_right=[];
                   superscript_left=[];
-                  subscript_right=[Ordinary (noad (gl env Script "i"))];
+                  subscript_right=[Ordinary (noad (glyphs "i"))];
                   subscript_left=[] }
 
 let integrale=
   let env=Maths.default in
   let style=Display in
     Operator { op_limits=false; op_noad={ (noad [int env style]) with
-                                            superscript_right=[Ordinary (noad (gl env style "0"))];
+                                            superscript_right=[Ordinary (noad (glyphs "0"))];
                                             superscript_left=[];
-                                            subscript_right=[Ordinary (noad (gl env style "a=0+1"))];
+                                            subscript_right=[Ordinary (noad (glyphs "a=0+1"))];
                                             subscript_left=[]
                                         };
                op_left_spacing=0.5;

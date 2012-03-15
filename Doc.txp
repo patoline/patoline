@@ -92,7 +92,7 @@ let fig2 env=
   in
   drawing ~offset:(-10.) (List.rev state)
 
-let figRef ()= [B (fun _->User (NamedCitation "figure de Tom"))]
+let figRef ()= [B (fun _->[User (NamedCitation "figure de Tom")])]
 let large text = [size 10. text]
 }}
 
