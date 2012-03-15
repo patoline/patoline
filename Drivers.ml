@@ -535,15 +535,21 @@ module Pdf=
                               with
                                   _->()
                             in
-                              if !one<>[] then (
+                            let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
+                              if one_nonempty<>[] then (
                                 Buf.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
                                 List.iter (fun (a,b)->
                                              Buf.add_string buf (sprintf "<%04x> <" a);
                                              print_utf8 b (UTF8.first b);
-                                             Buf.add_string buf ">\n") !one;
+                                             Buf.add_string buf ">\n"
+                                          ) one_nonempty;
                                 Buf.add_string buf "endbfchar\n"
                               );
-                              if !range<>[] || !multRange<>[] then (
+
+                              let mult_nonempty=List.filter (fun (_,b)->b<>[])
+                                (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
+
+                              if !range<>[] || mult_nonempty<>[] then (
                                 Buf.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
                                 List.iter (fun (a,b,c)->Buf.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
                                                                               a b (UChar.uint_code c))) !range;
@@ -553,7 +559,8 @@ module Pdf=
                                                           Buf.add_string buf "<";
                                                           print_utf8 c (UTF8.first c);
                                                           Buf.add_string buf ">") b;
-                                             Buf.add_string buf "]\n") !multRange;
+                                             Buf.add_string buf "]\n"
+                                          ) mult_nonempty;
                                 Buf.add_string buf "endbfrange\n"
                               );
                               Buf.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
