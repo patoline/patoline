@@ -119,13 +119,13 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 
 %.pdf: texprime texprime.cma %.txp
 	./texprime $*.txp > $*.tml
-	$(CAMLC)  -o $* texprime.cma -impl $*.tml
-	./$*
+	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
+	./$*.tmx
 
 %.opt.pdf: texprime.opt texprime.cmxa %.txp
 	./texprime.opt $*.txp > $*.tml
-	$(CAMLOPT)  -o $* texprime.cmxa -impl $*.tml
-	./$*
+	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
+	./$*.tmx
 
 top:
 	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
