@@ -118,13 +118,13 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	$(CAMLDOC) -d doc_html $(DOC)
 
 %.pdf: texprime texprime.cma %.txp
-	./texprime $*.txp > $*.ml
-	$(CAMLC)  -o $* texprime.cma $*.ml
+	./texprime $*.txp > $*.tml
+	$(CAMLC)  -o $* texprime.cma -impl $*.tml
 	./$*
 
 %.opt.pdf: texprime.opt texprime.cmxa %.txp
-	./texprime.opt $*.txp > $*.ml
-	$(CAMLOPT)  -o $* texprime.cmxa $*.ml
+	./texprime.opt $*.txp > $*.tml
+	$(CAMLOPT)  -o $* texprime.cmxa -impl $*.tml
 	./$*
 
 top:
