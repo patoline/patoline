@@ -54,6 +54,9 @@ let print_math ch display m =
       Var name | Num name ->
 	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.glyphs \"%s\")) with %a } ]"
 	  name hn indices
+      | Symbol name ->
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.symbol \"%s\")) with %a } ]"
+	  name hn indices
     | Fun name ->
 	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env -> Maths.glyphs \"%s\" { env with Maths.mathsFont=env0.font })) with %a } ]"
 	  name hn indices        

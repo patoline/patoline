@@ -18,6 +18,7 @@ let dyp_merge = keep_one
 
 type math =
      Var of string
+   | Symbol of string
    | Fun of string
    | Num of string   
    | Prefix of string * math
@@ -281,7 +282,8 @@ math:
       { Binary(0, false, op, false, a, b) } impl
   | math(<=punc)<a> [","|";"]<op> math(<punc)<b> 
       { Binary(2, true, op, false, a, b) } punc
-
+  | "\\"(['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name>
+      { Symbol(name) } atom
 
 text:
   /* Section */

@@ -1,4 +1,5 @@
 open CamomileLibrary
+open Binary
 open Typography
 open Drivers
 open Util
@@ -29,6 +30,7 @@ type mathsEnvironment={
   mathsFont:Fonts.font;
   mathsSize:float;
   mathsSubst:glyph_id list -> glyph_id list;
+  mathsSymbols:int Binary.StrMap.t;
   numerator_spacing:float;
   denominator_spacing:float;
   sub1:float;
@@ -52,13 +54,25 @@ let default_env=
       mathsFont=Fonts.loadFont "Otf/euler.otf";
       mathsSubst=(fun x->x);
       mathsSize=1.;
+      mathsSymbols=List.fold_left (fun m (a,b)->Binary.StrMap.add a b m) Binary.StrMap.empty [
+        "leftarrow", 232;
+        "uparrow", 233;
+        "rightarrow", 234;
+        "downarrow", 235;
+        "leftrightarrow",236;
+        "updownarrow",237;
+        "forall", 263;
+        "exists", 265;
+        "notexists", 266;
+        "int",783
+      ];
       numerator_spacing=0.08;
       denominator_spacing=0.08;
       sub1= 0.1;
       sub2= 0.1;
-      sup1=0.35;
-      sup2=0.2;
-      sup3=0.3;
+      sup1=0.5;
+      sup2=0.5;
+      sup3=0.5;
       sub_drop=0.1;
       sup_drop=0.2;
       default_rule_thickness=0.05;
@@ -70,16 +84,19 @@ let default_env=
       close_dist=0.2
     }
 
-let default=[|
-  default_env;
-  default_env;
-  default_env;
-  default_env;
-  { default_env with mathsSize=0.5 };
-  { default_env with mathsSize=0.5 };
-  { default_env with mathsSize=0.25 };
-  { default_env with mathsSize=0.25 }
-|]
+let default=
+  let text_env={ default_env with mathsSymbols=StrMap.add "int" 782 default_env.mathsSymbols } in
+  let script_env=text_env in
+    [|
+      default_env;
+      default_env;
+      text_env;
+      text_env;
+      { script_env with mathsSize=0.5 };
+      { script_env with mathsSize=0.5 };
+      { script_env with mathsSize=0.25 };
+      { script_env with mathsSize=0.25 }
+    |]
 
 type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
@@ -483,6 +500,14 @@ let glyphs c env st=
     )
   in
     List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
+
+exception Unknown_symbol of string
+
+let symbol s env st=try
+  let font=env.mathsFont in
+    [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=Binary.StrMap.find s env.mathsSymbols }) with glyph_size=env.mathsSize} ]
+with
+    Not_found->raise (Unknown_symbol s)
 
 (* let gl_font env st font c= *)
 (*   let _,s=(env.fonts.(int_of_style st)) in *)

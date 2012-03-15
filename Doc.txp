@@ -193,9 +193,9 @@ figure ~name:"figure de Tom" fig2
 
 => Math en display
 
-$$ {1 + x} / {1 - x}$$
+$$ \int_a^b {{1 + x} / {1 - x}}$$
 
-$$ x_i + 2 cos(x) <= a y_i^n - sin(t) $$
+$$ x_i + 2 cos(x) \leftarrow a y_i^n - sin(t) $$
 
 $$ t^^j__X_i^n $$
 
