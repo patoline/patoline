@@ -5,6 +5,7 @@ Pierre-Etienne Meunier et al.
 
 LAMA UMR 5127, Université de Savoie
 ====================================================
+
 {{
 open Diag
 module Env_abstract = struct
@@ -19,47 +20,72 @@ module Env_abstract = struct
 end
 
 let fig2 env=
-  let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut ça va bien?"]) in
-  let contents_b= List.map (translate 20. 50.) (draw_boxes (boxify { env with size = 4. } [T "J"])) in
-  let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. } 
-    (alternative Bold [T "Ailllaillaille!"])))
-  in
+  (* let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut ça va bien?"]) in *)
+  (* let contents_b= List.map (translate 20. 50.) (draw_boxes (boxify { env with size = 4. } [T "J"])) in *)
+  (* let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. }  *)
+  (*   (alternative Bold [T "Ailllaillaille!"]))) *)
+  (* in *)
   let state = [] in
   let params = { NodeShape.default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } 
   in  
-  let a, state = Node.make_draw state 
-    ~contents:contents_a 
-    ~shape:(NodeShape.circle ~parameters:params ~inner_sep:5.)
-    () in
-  let b, state = Node.make_draw state ~contents:contents_b
-    ~shape:(NodeShape.rectangle ~parameters:{ params with lineWidth=3. ; lineJoin=Round_join} ~inner_sep:4.)
-    () in
-  let c, state = Node.make_draw state 
-    ~contents:contents_c 
-    ~shape:(NodeShape.flower ~parameters:params ~amplitude:3.)
-    () in
-  let ab = Node.edge
-    ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 }
-    ~controls:(Node.bend_left a b)
+  let a, state = Node.make_draw state { Node.default with
+    Node.contents_spec = [T "Salut, comment ça miss?"] ;
+    Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:5. ()) }
+  in
+  let b, state = Node.make_draw state { Node.default with
+    Node.at = (20.,50.) ;
+    Node.contents_spec = [T "J"] ;
+    Node.shape = (NodeShape.rectangle ~parameters:{ params with lineWidth=3. ; lineJoin=Round_join} ~inner_sep:4. ()) }
+  in
+  let c, state = Node.make_draw state { Node.default with
+    Node.at = (50.,30.) ;
+    Node.contents_spec = (alternative Bold [T "Ailllaillaille!"]) ;
+    Node.shape = (NodeShape.flower ~parameters:params ~amplitude:3. ()) }
+  in
+  let d, state = Node.make_draw state { 
+    Node.at = b.Node.make_anchor Anchor.West ;
+    Node.contents_spec = [T "Un truc à l'ouest de J"] ;
+    Node.anchor = Anchor.East ;
+    Node.shape = (NodeShape.rectangle 
+		    ~parameters:{ params with lineWidth=0.5 ; lineJoin=Round_join} 
+		    ~inner_sep:1. ()) }
+  in
+  let e, state = Node.make_draw state { Node.default with
+    Node.at = Node.center a ;
+    Node.contents_spec = [T "X"] ;
+    Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
+  in
+  let ab, state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } ;
+    Edge.controls = (Edge.bend_left a b) ;
+    Edge.head_spec = (fun ?parameters:(params=Drivers.default) curve ->
+      ArrowTip.simple ~parameters:params curve) ;
+    Edge.label_specs = [ 
+      { Edge.pos = 0.3 ;
+      Edge.node_spec = { Node.default with Node.contents_spec = [T "Label à 0.3 à gauche"] ; 
+	anchor = Anchor.East } } ;
+      { Edge.pos = 0.6 ;
+      Edge.node_spec = { Node.default with Node.contents_spec = [T "Label à 0.6 à droite"] ; 
+	anchor = Anchor.West } } ;
+    ] }
     a b
   in
-  let ab' = Node.edge
-    ~parameters:{ default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 }
-    ~controls:(Node.bend_right ~angle:60.0 a b)
+  let ab', state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 } ;
+    Edge.controls = (Edge.bend_right ~angle:60.0 a b) }
     a b
   in
-  let ac = Node.edge
-    ~parameters:{ default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 }
-    ~controls:(Node.bend_right ~angle:10.0 a c)
+  let ac, state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 } ;
+    Edge.controls = (Edge.bend_right ~angle:10.0 a c) }
     a c
   in
-  let cb = Node.edge
-    ~parameters:{ default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 }
-    ~controls:(Node.bend_left ~angle:20.0 c b)
+  let cb, state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } ;
+    Edge.controls = (Edge.bend_left ~angle:20.0 c b) }
     c b
   in
-  let tip_ab = ArrowTip.simple ab () in 
-    drawing ~offset:(-10.) (state @ [tip_ab;ab';ab;ac;cb])
+  drawing ~offset:(-10.) state
 
 (*let fig2 () =  [B (fun env->Drawing (fig2 env)) ]*)
 let rectangle a b c d=Path ({Drivers.default with close=true}, [[|[|a;c|],[|b;b|]; [|c;c|],[|b;d|]; [|c;a|],[|d;d|] |]])

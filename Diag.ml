@@ -1,3 +1,4 @@
+open Typography
 
 let pi = 3.14159
 let half_pi = pi /. 2.
@@ -8,6 +9,7 @@ let rec list_last = function
 
 module Point = struct 
   type t = float * float
+  type point = t
   let proj (x,y) = x
   let proj' (x,y) = y
   let middle (x0,y0) (x1,y1) = (0.5 *. (x0 +. x1), 0.5 *. (y0 +. y1))
@@ -31,7 +33,8 @@ module Curve = struct
   let draw
     ?parameters:(parameters=Drivers.default)
     (curve:t) =
-      Drivers.Path (parameters, [Array.of_list curve])
+    if curve = [] then [] else
+      [Drivers.Path (parameters, [Array.of_list curve])]
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
     List.map (fun t -> (t,bezier1)) res
@@ -52,6 +55,16 @@ module Curve = struct
       | (t,bezier) :: _ -> Some (t,bezier)
   let bezier_evaluate (xs,ys) t = 
     (Bezier.eval xs t, Bezier.eval ys t)
+  let eval beziers t =
+    let t = t *. (float_of_int (List.length beziers)) in
+    let rec eval_rec beziers t = 
+      match beziers with 
+	| [] -> Printf.printf ("Warning: evaluating an empty curve. Using (0.,0.)") ; (0.,0.)
+	| bezier :: reste -> 
+	  if t <= 1. then bezier_evaluate bezier t
+	  else eval_rec reste (t -. 1.)
+    in eval_rec beziers t
+
 end
 
 module Vector = struct
@@ -108,10 +121,13 @@ module ArrowTip = struct
   type t = { parameters : Drivers.path_parameters ; 
 	     curve : Curve.t }
 
-  let simple path ?size:(size=6.0) ?angle:(angle=0.4) ?bend:(bend=2.) () =
-    match path with
-      | Drivers.Path (params, curve::_) -> 
-	let curve = Array.to_list curve in 
+  let none = { parameters = Drivers.default ; curve = Curve.of_point_lists [] }
+
+  let simple ?size:(size=6.0)
+      ?angle:(angle=0.4)
+      ?bend:(bend=2.)
+      ?parameters:(parameters=Drivers.default) 
+      curve =
 	let a, b = list_last curve in
 	let da = Bezier.eval (Bezier.derivee a) 1. in
 	let db = Bezier.eval (Bezier.derivee b) 1. in
@@ -130,165 +146,307 @@ module ArrowTip = struct
 	let mr = Vector.translate (Point.middle p r) (Vector.normalise
 							~norm:bend
 							(Vector.turn_left (Vector.of_points r p)))
-	in
-	Curve.draw ~parameters:params (Curve.of_point_lists [
+	in 
+	{ parameters = parameters ;
+	  curve = (Curve.of_point_lists [
 	  [r;mr;p] ;
 	  [p;ml;l]
-	])
-      | _ -> assert false    
+	]) }
+
+  let draw tip = Curve.draw ~parameters:tip.parameters tip.curve
+
 end
 
-module NodeShape = struct
-  type t = { parameters : Drivers.path_parameters ; 
-	     curve : Curve.t }
 
-  let default = { Drivers.default with Drivers.close = true } 
-  let default_inner_sep = 0.2
+module Anchor = struct
+  type t = Vector.t
+  type spec = Vec of Vector.t | South | Center | East | West | North
+	      | Add of spec * Vector.t  (* To be completed *)
+	      | Angle of float 		(* An angle in radians *)
+  exception Undefined of spec
+end
+
+
+module NodeShape = struct
+  type bb = float * float * float * float
+  type t = { parameters : Drivers.path_parameters ; 
+	     make_curve : bb -> Curve.t ;
+	     make_anchor : bb -> Anchor.spec -> Anchor.t }
+
+  let default = { Drivers.default with Drivers.close = true ; Drivers.lineWidth=0.5 } 
+  let default_inner_sep = 0.5
 
   let rectangle ?inner_sep:(inner_sep = default_inner_sep) 
-      ?parameters:(parameters={ Drivers.default with Drivers.close = true}) contents = 
-    let (x0,y0,x1,y1) = Drivers.bounding_box contents in
-    let x0 = x0 -. inner_sep in
-    let y0 = y0 -. inner_sep in
-    let x1 = x1 +. inner_sep in
-    let y1 = y1 +. inner_sep in
-    (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
-    (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-    match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-      | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	{ parameters = parameters ;
-	  curve = Curve.of_point_lists [
-	  [p1;p2] ;	(* The bottom curve *)
-	  [p2;p3] ;	(* The right-hand curve *)
-	  [p3;p4] ;	(* The top curve *)
-	  [p4;p1] 	(* The left-hand curve *)
-	] }
-      | _ -> assert false
+      ?parameters:(parameters=default) () = 
+    let extract_points (x0,y0,x1,y1) =
+      let x0 = x0 -. inner_sep in
+      let y0 = y0 -. inner_sep in
+      let x1 = x1 +. inner_sep in
+      let y1 = y1 +. inner_sep in
+      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
+      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
+	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
+	  (p1,p2,p3,p4)
+	| _ -> assert false
+    in
+    let make_curve bb =
+      let (p1,p2,p3,p4) = extract_points bb in
+      Curve.of_point_lists [
+	[p1;p2] ;	(* The bottom curve *)
+	[p2;p3] ;	(* The right-hand curve *)
+	[p3;p4] ;	(* The top curve *)
+	[p4;p1] 	(* The left-hand curve *)
+      ]
+    in
+    let make_anchor bb = 
+      let (p1,p2,p3,p4) = extract_points bb in
+      (* let (x0,y0,x1,y1) = bb in *)
+      (* let _ = Printf.printf ("Rectangle: (%f,%f), (%f,%f)") x0 y0 x1 y1 in *)
+      function
+	| Anchor.Vec v -> v
+	| Anchor.Center -> middle p1 p3
+	| Anchor.East -> Point.(+) (middle p2 p3)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
+	| Anchor.West -> Point.(-) (middle p1 p4)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
+	| a -> raise (Anchor.Undefined a)
+    in
+    { parameters = parameters ;
+      make_curve = make_curve ;
+      make_anchor = make_anchor
+    }
 
-  let circle  ?inner_sep:(inner_sep = default_inner_sep) 
-      ?parameters:(parameters={ Drivers.default with Drivers.close = true}) contents = 
-    let (x0,y0,x1,y1) = Drivers.bounding_box contents in
-    let x0 = x0 -. inner_sep in
-    let y0 = y0 -. inner_sep in
-    let x1 = x1 +. inner_sep in
-    let y1 = y1 +. inner_sep in
-    (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
-    (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-    match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-      | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	let control p1 p2 =
-	   Vector.translate
-	     (Point.middle p1 p2)
-	     (Vector.scal_mul 0.5 (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
-	in
-	{ parameters = parameters ;
-	  curve = Curve.of_point_lists [
-	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
-	  [p2; control p2 p3; p3] ;	(* The right-hand curve *)
-	  [p3; control p3 p4; p4] ;	(* The top curve *)
-	  [p4; control p4 p1; p1] (* The left-hand curve *)
-	] }
-      | _ -> assert false
+
+  let circle ?inner_sep:(inner_sep = default_inner_sep) 
+      ?parameters:(parameters=default) () = 
+    let extract_points (x0,y0,x1,y1) =
+      let x0 = x0 -. inner_sep in
+      let y0 = y0 -. inner_sep in
+      let x1 = x1 +. inner_sep in
+      let y1 = y1 +. inner_sep in
+      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
+      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
+	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
+	  (p1,p2,p3,p4)
+	| _ -> assert false
+    in
+    let make_curve bb =
+      let (p1,p2,p3,p4) = extract_points bb in
+      let control p1 p2 =
+	Vector.translate
+	  (Point.middle p1 p2)
+	  (Vector.scal_mul 0.5 (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
+      in
+      Curve.of_point_lists [
+	[p1; control p1 p2; p2] ;	(* The bottom curve *)
+	[p2; control p2 p3; p3] ;	(* The right-hand curve *)
+	[p3; control p3 p4; p4] ;	(* The top curve *)
+	[p4; control p4 p1; p1] (* The left-hand curve *)
+      ] 
+    in
+    let make_anchor bb = 
+      let (p1,p2,p3,p4) = extract_points bb in
+      function
+	| Anchor.Vec v -> v
+	| Anchor.South -> middle p1 p2
+	| Anchor.West -> middle p1 p4
+	| Anchor.East -> middle p2 p3
+	| Anchor.North -> middle p3 p4
+	| Anchor.Center -> middle p1 p3
+	| a -> raise (Anchor.Undefined a)
+    in
+    { parameters = parameters ;
+      make_curve = make_curve ;
+      make_anchor = make_anchor
+    }
 
   let flower  ?inner_sep:(inner_sep = default_inner_sep) ?amplitude:(amplitude=1.0) 
-      ?parameters:(parameters={ Drivers.default with Drivers.close = true}) contents = 
-    let (x0,y0,x1,y1) = Drivers.bounding_box contents in
-    let x0 = x0 -. inner_sep in
-    let y0 = y0 -. inner_sep in
-    let x1 = x1 +. inner_sep in
-    let y1 = y1 +. inner_sep in
-    (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
-    (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-    match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-      | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	let control p1 p2 =
-	   Vector.translate
-	     (Point.middle p1 p2)
-	     (Vector.scal_mul amplitude (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
-	in
-	{ parameters = parameters ; 
-	  curve = Curve.of_point_lists [
-	  [p1; control p1 p2; p2] ;	(* The bottom curve *)
-	  [p2; control p2 p3; p3] ;	(* The right-hand curve *)
-	  [p3; control p3 p4; p4] ;	(* The top curve *)
-	  [p4; control p4 p1; p1] (* The left-hand curve *)
-	] }
-      | _ -> assert false
+      ?parameters:(parameters=default) () = 
+    let extract_points (x0,y0,x1,y1) =
+      let x0 = x0 -. inner_sep in
+      let y0 = y0 -. inner_sep in
+      let x1 = x1 +. inner_sep in
+      let y1 = y1 +. inner_sep in
+      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
+      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
+      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
+	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
+	  (p1,p2,p3,p4)
+	| _ -> assert false
+    in
+    let make_curve bb =
+      let (p1,p2,p3,p4) = extract_points bb in
+	  let control p1 p2 =
+	    Vector.translate
+	      (Point.middle p1 p2)
+	      (Vector.scal_mul amplitude (Vector.rotate (-. half_pi) (Vector.of_points p1 p2)));
+	  in
+	  Curve.of_point_lists [
+	    [p1; control p1 p2; p2] ;	(* The bottom curve *)
+	    [p2; control p2 p3; p3] ;	(* The right-hand curve *)
+	    [p3; control p3 p4; p4] ;	(* The top curve *)
+	    [p4; control p4 p1; p1] (* The left-hand curve *)
+	  ] 
+    in
+    let make_anchor bb = 
+      let (p1,p2,p3,p4) = extract_points bb in
+      function
+	| Anchor.Vec v -> v
+	| Anchor.South -> middle p1 p2
+	| Anchor.West -> middle p1 p4
+	| Anchor.East -> middle p2 p3
+	| Anchor.North -> middle p3 p4
+	| Anchor.Center -> middle p1 p3
+	| a -> raise (Anchor.Undefined a)
+    in
+    { parameters = parameters ;
+      make_curve = make_curve ;
+      make_anchor = make_anchor
+    }
 
 end
 
 module Node = struct
-  type t = { shape : NodeShape.t ;
-	     contents : Drivers.contents list ;
-	     center : Point.t }
+  type t = { curve : Curve.t ;
+	     parameters : Drivers.path_parameters ;
+	     make_anchor : Anchor.spec -> point ;
+	     contents : Drivers.contents list }
 
-  let make
-      ?contents:(contents = []) 
-      ?center:(center = (
-	let x0,y0,x1,y1 = Drivers.bounding_box contents in 
-	middle (x0,y0) (x1,y1))) 
-      ?shape:(shape = fun contents -> NodeShape.rectangle 
-	~inner_sep:NodeShape.default_inner_sep 
-	~parameters:{ Drivers.default with Drivers.close = true} 
-	contents)
-      ()
-      =
-    { shape = shape contents ; 
-      contents = contents ; 
-      center = center }
+  let center node = node.make_anchor Anchor.Center
+
+  type spec = { at : point ;
+		contents_spec : Typography.content list ;
+		shape : NodeShape.t ;
+		anchor: Anchor.spec }
+  let default = { 
+    at = (0.,0.) ;
+    contents_spec = [] ;
+    shape = NodeShape.rectangle ~inner_sep:NodeShape.default_inner_sep 
+      ~parameters:NodeShape.default () ;
+      anchor = Anchor.Center }
+
+  let make spec =
+    let shape = spec.shape in
+    let anchor = spec.anchor in
+    let at = spec.at in
+    (* Compute the contents a first time to get a bounding box of the right size *)
+    let contents = (Util.draw_boxes (boxify { defaultEnv with size = 4. } spec.contents_spec)) in
+    let bb_boot =  Drivers.bounding_box contents in
+    (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
+    (* But computing anchor needs make_anchor bb.  *)
+    let x,y = Vector.translate (Vector.minus (shape.NodeShape.make_anchor bb_boot anchor)) at in
+    (* Now translate the contents by x,y and compute the real bounding box, curve, etc *)
+    let contents = List.map (Drivers.translate x y) contents in
+    let bb =  Drivers.bounding_box contents in
+    let curve = shape.NodeShape.make_curve bb in
+    { curve = curve ; 
+      parameters = shape.NodeShape.parameters ;
+      contents =  contents ; 
+      make_anchor = fun anchor_spec -> (shape.NodeShape.make_anchor bb anchor_spec) }
+
+  (* En fait il faudra vite passer aussi curve a make_anchor... *)
+
+
   let draw : t -> Drivers.contents list = fun node -> 
-    node.contents @ [Curve.draw ~parameters:node.shape.NodeShape.parameters node.shape.NodeShape.curve]
-  let edge
-      ?parameters:(parameters = Drivers.default)
-      node1
-      ?controls:(controls = [])
-      node2 = 
-    let underlying_curve = (Curve.of_point_lists [node1.center :: (controls @ [node2.center])]) in
+    let shape_curve = 
+      Curve.draw ~parameters:node.parameters node.curve
+    in 
+    node.contents @ shape_curve
+
+  let make_draw l spec =
+    let node = make spec in
+    node, (l @ (draw node))
+end	    
+
+module Edge = struct
+
+
+  type label_spec = {
+    pos : float ;			(* A float between 0 and 1 *)
+    node_spec : Node.spec
+  }
+  type t = { curve : Curve.t ;
+	     head : ArrowTip.t ;
+	     tail : ArrowTip.t ;
+	     labels : Node.t list ;
+	     parameters : Drivers.path_parameters
+	   }
+
+  type parameters = { parameters_spec : Drivers.path_parameters ;
+		controls : point list ;
+		head_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
+		tail_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
+		label_specs : label_spec list }
+
+  let default = {
+    parameters_spec = Drivers.default ;
+    controls = [] ;
+    head_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
+    tail_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
+    label_specs = [] ;
+  }
+
+  let label_of_spec curve { pos = pos ; node_spec = spec } =
+    Node.make { spec with Node.at = Curve.eval curve pos }
+
+  let make spec node1 node2 =
+    let parameters = spec.parameters_spec in
+    let controls = spec.controls in
+    let head = spec.head_spec in
+    let tail = spec.tail_spec in
+    let labels = spec.label_specs in
+    let underlying_curve = (Curve.of_point_lists [(Node.center node1) :: (controls @ [Node.center node2])]) in
     let start = begin
-      match Curve.latest_intersection underlying_curve node1.shape.NodeShape.curve with
+      match Curve.latest_intersection underlying_curve node1.Node.curve with
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
-	  node1.center
+	  Node.center node1
 	end
 	| Some (t1, bezier1) -> Curve.bezier_evaluate bezier1 t1 
     end in
     let finish = begin 
-      match Curve.earliest_intersection underlying_curve node2.shape.NodeShape.curve with
+      match Curve.earliest_intersection underlying_curve node2.Node.curve with
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
-	  node2.center
+	  Node.center node2
 	end
 	| Some (t2, bezier2) -> Curve.bezier_evaluate bezier2 t2 
     end in
-    Curve.draw ~parameters:parameters (Curve.of_point_lists [start :: (controls @ [finish])])
+    let curve = (Curve.of_point_lists [start :: (controls @ [finish])]) in
+    { curve = curve ;
+      head = head ~parameters:parameters curve ; 
+      tail = tail ~parameters:parameters curve ;
+      labels = (List.map (label_of_spec curve) labels) ;
+      parameters = parameters }
+
+  let draw edge =
+    Curve.draw ~parameters:edge.parameters edge.curve @
+      ArrowTip.draw edge.head @
+      ArrowTip.draw edge.tail @
+      (List.flatten (List.map Node.draw edge.labels))
+
+    let make_draw l spec node1 node2 =
+      let edge = make spec node1 node2 
+      in 
+      edge, (l @ (draw edge))
+
+
 
   let bend_left ?angle:(angle=30.) node1 node2 = 
-    let node1 = node1.center in
-    let node2 = node2.center in
+    let node1 = Node.center node1 in
+    let node2 = Node.center node2 in
     let angle = (-. angle) *. pi /. 180. in
     let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
     let vec = Vector.rotate (angle) vec in
     [Vector.translate node1 vec]
   let bend_right ?angle:(angle=30.) node1 node2 = 
-    let node1 = node1.center in
-    let node2 = node2.center in
+    let node1 = Node.center node1 in
+    let node2 = Node.center node2 in
     let angle = angle *. pi /. 180. in
     let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
     let vec = Vector.rotate (angle) vec in
     [Vector.translate node1 vec]
-  let make_draw l
-      ?contents:(contents = []) 
-      ?shape:(shape = fun contents -> NodeShape.rectangle 
-	~inner_sep:NodeShape.default_inner_sep 
-	~parameters:{ Drivers.default with Drivers.close = true} 
-	contents)
-      ?center:(center = (
-	let x0,y0,x1,y1 = Drivers.bounding_box contents in 
-	middle (x0,y0) (x1,y1))) 
-      () =
-    let node = make ~contents:contents ~shape:shape ~center:center () in
-    node, (l @ (draw node))
-end	    
 
+end
