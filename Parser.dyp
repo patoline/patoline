@@ -75,8 +75,10 @@ let has_space dyp =
 }
 
 %start main
+%start math 
+%start paragraph
 
-%relation atom < fun < ind < prod < sum < rel < neg < conj < impl
+%relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
 %relation nonatom
 
 %layout [ ' ' '\r' '\t' ]
@@ -248,10 +250,6 @@ math:
       {Num num } atom
   | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "}" | ">"]<cl> 
       { Delim(op,a,cl) } atom 
-  | "[" math<a> ")" 
-      { a } atom 
-  | "(" math<a> ")" 
-      { a } atom 
   | "{" math<a> "}" 
       { a } atom 
   | leftind<i> - math(<ind)<m> - rightind<fi>
@@ -281,6 +279,8 @@ math:
       { Binary(false, op, false, a, b) } conj
   | math(<=impl)<a> ["=>"|"<=>"]<op> math(<impl)<b> 
       { Binary(false, op, false, a, b) } impl
+  | math(<=punc)<a> [","|";"]<op> math(<punc)<b> 
+      { Binary(true, op, false, a, b) } punc
 
 
 text:
