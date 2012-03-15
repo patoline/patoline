@@ -241,12 +241,16 @@ math:
       { Binary(op, a, b) } sum
   | ["+"|"-"]<op> math(<sum)<b> 
       { Prefix(op,b) } sum
-  | math(<=prod)<a> ["*"|"/"]<op> math(<prod)<b> 
-      { Binary(op, a, b) } prod
+  | math(<=prod)<a> ["."|"*"|"/"]<op> math(<prod)<b> 
+      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(op, a, b) } prod
   | math(<=prod)<a>  math(<prod)<b>
-      { Binary("*", a, b) } prod
+      { Binary("", a, b) } prod
   | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
-      { Binary(op, a, b) } rel
+      { let op = match op with
+          "<=" -> "≤"
+        | ">=" -> "≥"
+        | _ -> op
+        in Binary(op, a, b) } rel
   | "!"<op> math(<neg)<a>
       { Prefix(op, a) } neg
   | math(<=conj)<a> ["&&"|"||"]<op> math(<conj)<b> 
