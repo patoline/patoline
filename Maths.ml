@@ -79,7 +79,11 @@ type 'a noad= { mutable nucleus:mathsEnvironment -> style -> 'a box list;
              mutable subscript_left:'a math list; mutable superscript_left:'a math list;
              mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
-and 'a binary= { bin_priority:int; bin_drawing:'a noad; bin_left:'a math list; bin_right:'a math list }
+and 'a binary_type =
+    Invisible
+  | Normal of bool * 'a noad * bool (* the boolean remove spacing at left or right when true *)
+
+and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
 and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Drivers.path_parameters }
 and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
@@ -284,12 +288,17 @@ let rec draw_maths mathsEnv style mlist=
             if b.bin_priority=1 then glue 0. (2./.9.) (1./.3.) else
               glue (1./.6.) (1./.6.) (1./.6.)
           in
+	  match b.bin_drawing with
+	    Invisible ->
             (draw_maths mathsEnv style b.bin_left)@
               (resize size gl)::
-              (draw_maths mathsEnv style [Ordinary b.bin_drawing])@
-              (resize size gl)::
               (draw_maths mathsEnv style b.bin_right)
-
+	  | Normal(no_sp_left, op, no_sp_right) ->
+            (draw_maths mathsEnv style b.bin_left)@
+              (if no_sp_left then [] else [resize size gl])@
+              (draw_maths mathsEnv style [Ordinary op])@
+              (if no_sp_right then [] else [resize size gl])@
+              (draw_maths mathsEnv style b.bin_right)
         )@(draw_maths mathsEnv style s)
 
       | (Fraction f)::s->(
