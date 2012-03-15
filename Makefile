@@ -21,7 +21,8 @@ LIBS=fonts.cma texprime.cma
 CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg -I Fonts -pp "cpp -w" -g # graphics.cma
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
-CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -I Fonts -pp "cpp -w"
+CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp -I Fonts -g -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg -I Fonts -g -pp "cpp -w"
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 
@@ -86,14 +87,14 @@ fonts.cma: $(filter %.cmo, $(FONTS0:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo))
 	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS0:.ml=.cmo)) Fonts.ml
 
 fonts.cmxa: $(filter %.cmx, $(FONTS0:.ml=.cmx)) $(filter %.cmx, $(BASE:.ml=.cmx))
-	$(CAMLOPT) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS0:.ml=.cmx)) Fonts.cmx
+	$(CAMLOPTA) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS0:.ml=.cmx)) Fonts.cmx
 
 
 texprime.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
 	$(CAMLC) -a -o texprime.cma $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
 
 texprime.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
-	$(CAMLOPT) -a -o texprime.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o texprime.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
@@ -118,7 +119,12 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 
 %.pdf: texprime texprime.cma %.txp
 	./texprime $*.txp > $*.ml
-	$(CAMLC)  -o $* texprime.cma $*.ml
+	$(CAML)  -o $* texprime.cma $*.ml
+	./$*
+
+%.opt.pdf: texprime.opt texprime.cmxa %.txp
+	./texprime.opt $*.txp > $*.ml
+	$(CAMLOPT)  -o $* texprime.cmxa $*.ml
 	./$*
 
 top:
