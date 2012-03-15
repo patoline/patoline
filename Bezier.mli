@@ -18,6 +18,9 @@ val casteljau_left : float array -> float -> float array
 (** Version combinée de casteljau_left et casteljau_right *)
 val restrict : float array -> float -> float -> float array
 
+(** Divise une courbe en n > 0 selon le temps *)
+val divide : float array -> int -> (float array) list
+
 (** O(n^2) Evaluation d'une courbe de Bézier en un point, avec l'algo
     de De Casteljau *)
 val eval : float array -> float -> float

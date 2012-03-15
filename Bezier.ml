@@ -51,6 +51,15 @@ let restrict f0 a b=
       let f=Array.copy f0 in
       casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
 
+let divide f0 n = (* n > 0 *)
+  let rec divide_rec res f0 n = 	
+    if n = 1 then List.rev res else
+      let time_step = 1. /. (float_of_int n) in
+      let left = casteljau_left (Array.copy f0) time_step in
+      let right = casteljau_right (Array.copy f0) time_step in
+      divide_rec (left :: res) right (n - 1)
+  in divide_rec [] f0 n
+
 let descartes x0 x1 epsilon a=
   let has_root x=
     let rec has_root a b i=

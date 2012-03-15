@@ -1,6 +1,7 @@
 open Typography
 
 let pi = 3.14159
+let one_third = 1. /. 3.
 let half_pi = pi /. 2.
 let rec list_last = function
   [] -> assert false
@@ -173,9 +174,9 @@ module ArrowTip = struct
 
   let none = { parameters = Drivers.default ; curve = Curve.of_point_lists [] }
 
-  let simple ?size:(size=6.0)
+  let simple ?size:(size=3.0)
       ?angle:(angle=0.4)
-      ?bend:(bend=2.)
+      ?bend:(bend=0.5)
       ?parameters:(parameters=Drivers.default) 
       curve =
 	let a, b = list_last curve in
@@ -258,6 +259,8 @@ module NodeShape = struct
 	| Anchor.Center -> Point.middle p1 p3
 	| Anchor.East -> Point.(+) (Point.middle p2 p3)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
 	| Anchor.West -> Point.(-) (Point.middle p1 p4)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
+	| Anchor.North -> Point.(+) (Point.middle p3 p4)  (0.0, 0.5 *. parameters.Drivers.lineWidth)
+	| Anchor.South -> Point.(-) (Point.middle p1 p2)  (0.0, 0.5 *. parameters.Drivers.lineWidth)
 	| a -> raise (Anchor.Undefined a)
     in
     { parameters = parameters ;
@@ -342,10 +345,26 @@ module NodeShape = struct
       let (p1,p2,p3,p4) = extract_points bb in
       function
 	| Anchor.Vec v -> v
-	| Anchor.South -> Point.middle p1 p2
-	| Anchor.West -> Point.middle p1 p4
-	| Anchor.East -> Point.middle p2 p3
-	| Anchor.North -> Point.middle p3 p4
+	| Anchor.South -> begin match make_curve bb with
+	    | [ south_bezier ; east_bezier ; top_bezier ; west_bezier ] -> 
+	      Curve.bezier_evaluate south_bezier 0.5
+	    | _ -> assert false
+	end 
+	| Anchor.West -> begin match make_curve bb with
+	    | [ _ ; east_bezier ; top_bezier ; west_bezier ] -> 
+	      Curve.bezier_evaluate west_bezier 0.5
+	    | _ -> assert false
+	end 
+	| Anchor.East -> begin match make_curve bb with
+	    | [ _ ; east_bezier ; top_bezier ; _ ] -> 
+	      Curve.bezier_evaluate east_bezier 0.5
+	    | _ -> assert false
+	end 
+	| Anchor.North -> begin match make_curve bb with
+	    | [ _ ; _ ; top_bezier ; _ ] -> 
+	      Curve.bezier_evaluate top_bezier 0.5
+	    | _ -> assert false
+	end 
 	| Anchor.Center -> Point.middle p1 p3
 	| a -> raise (Anchor.Undefined a)
     in
@@ -410,23 +429,29 @@ end
 
 module Edge = struct
 
-
   type label_spec = {
     pos : float ;			(* A float between 0 and 1 *)
     node_spec : Node.spec
   }
-  type t = { curve : Curve.t ;
+
+  type transfo_spec = 
+    | BendLeft of float
+    | BendRight of float
+    | Squiggle of int * float
+    | Fore of float
+
+  type t = { curves : (Drivers.path_parameters * Curve.t) list ;
 	     head : ArrowTip.t ;
 	     tail : ArrowTip.t ;
 	     labels : Node.t list ;
-	     parameters : Drivers.path_parameters
 	   }
 
   type parameters = { parameters_spec : Drivers.path_parameters ;
 		controls : Point.t list ;
 		head_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
 		tail_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
-		label_specs : label_spec list }
+		label_specs : label_spec list ;
+		transfo_specs : transfo_spec list }
 
   let default = {
     parameters_spec = Drivers.default ;
@@ -434,22 +459,87 @@ module Edge = struct
     head_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
     tail_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
     label_specs = [] ;
+    transfo_specs = []
   }
 
   let label_of_spec curve { pos = pos ; node_spec = spec } =
     Node.make { spec with Node.at = Curve.eval curve pos }
 
-  let debug = ref (0.,0.)
+  let bend ?angle:(angle=30.) node1 node2 = 
+    let angle = (angle) *. pi /. 180. in
+    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
+    let vec = Vector.rotate (angle) vec in
+    Vector.translate node1 vec
 
-  let make spec node1 node2 =
-    let parameters = spec.parameters_spec in
-    let controls = spec.controls in
-    let head = spec.head_spec in
-    let tail = spec.tail_spec in
-    let labels = spec.label_specs in
-    let underlying_curve = (Curve.of_point_lists [(Node.center node1) :: (controls @ [Node.center node2])]) in
+  let squiggle freq angle (xs,ys) = 
+    let beziersx' = Bezier.divide xs freq in 
+    let beziersy' = Bezier.divide ys freq in 
+    let make_handles (xs,ys) =
+      let x0 = xs.(0) in
+      let x1 = xs.(Array.length xs - 1) in
+      let y0 = ys.(0) in
+      let y1 = ys.(Array.length ys - 1) in
+      let p0 = (x0,y0) in
+      let p1 = (x1,y1) in
+      let cosangle = cos angle in
+      let length_factor = if cosangle = 0.0 then one_third else 0.25 /. cosangle
+      in
+      let hx1,hy1 = Vector.translate p0
+	(Vector.scal_mul length_factor
+	   (Vector.rotate angle 
+	      (Vector.of_points p0 p1)))
+      in
+      let hx2,hy2 = Vector.translate p1
+	(Vector.scal_mul (-. length_factor)
+	   (Vector.rotate angle
+	      (Vector.of_points p0 p1)))
+      in
+      [|x0;hx1;hx2;x1|],
+      [|y0;hy1;hy2;y1|]
+    in
+    List.map make_handles (List.combine beziersx' beziersy')
+
+  let pre_of_transfo_spec = function
+    | BendLeft(angle) -> begin fun (params, curve) -> if Curve.nb_beziers curve = 1 then
+	begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+	  if Array.length xs = 2 then
+	    let x,y = bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+	    [params, [ [| xs.(0) ; x ; xs.(1) |], 
+		      [| ys.(0) ; y ; ys.(1) |] ]]
+	  else
+	    [params, curve]
+	end
+      else [params, curve]
+    end
+    | BendRight(angle) -> begin fun (params, curve) -> if Curve.nb_beziers curve = 1 then
+	begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+	  if Array.length xs = 2 then
+	    let x,y = bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+	    [params, [ [| xs.(0) ; x ; xs.(1) |], 
+		      [| ys.(0) ; y ; ys.(1) |] ]]
+	  else
+	    [params, curve]
+	end
+      else [params, curve]
+    end
+    | Squiggle (freq, amplitude) -> begin fun (params, curve) -> 
+      [(params, List.flatten (List.map (squiggle freq amplitude) curve))]
+    end
+    | Fore margin -> begin fun (params, curve) -> [
+      ({ params with 
+	Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+	Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
+       curve) ;
+      (params, curve) 
+    ]
+      end
+    | _ -> (fun x -> [x])
+
+  let post_of_transfo_spec _ x = [x]
+
+  let clip curve node1 node2 = 
     let start = begin
-      match Curve.latest_intersection underlying_curve node1.Node.curve with
+      match Curve.latest_intersection curve node1.Node.curve with
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
@@ -458,55 +548,60 @@ module Edge = struct
 	| Some (i, t1) -> (i, t1)
     end in
     let (j,t') as finish = begin 
-      match Curve.earliest_intersection underlying_curve node2.Node.curve with
+      match Curve.earliest_intersection curve node2.Node.curve with
 	| None -> begin
 	  Printf.printf
 	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
-	  ((Curve.nb_beziers underlying_curve) - 1,1.)
+	  ((Curve.nb_beziers curve) - 1,1.)
 	end
 	| Some (j, t2) -> (j, t2)
     end in
-    (* let x2,y2 = (Curve.eval underlying_curve (Curve.global_time underlying_curve finish)) in *)
-    let x2,y2 = (Curve.bezier_evaluate (List.nth underlying_curve j) t') in
-    debug := (x2,y2) ;
-    Printf.printf ("fin: %f,%f\n") x2 y2 ;
-    let curve = Curve.restrict underlying_curve start finish in
-    Printf.printf ("Longeur: %d\n") (Curve.nb_beziers curve) ;
-    Printf.printf ("j: %d\n") j ;
-    Printf.printf ("t': %f\n") t' ;
-    (* debug := Curve.eval curve 1. ; *)
-    { curve = curve ;
-      head = head ~parameters:parameters curve ; 
-      tail = tail ~parameters:parameters curve ;
-      labels = (List.map (label_of_spec curve) labels) ;
-      parameters = parameters }
+    Curve.restrict curve start finish 
+
+  let make spec node1 node2 =
+    let parameters = spec.parameters_spec in
+    let controls = spec.controls in
+    let head = spec.head_spec in
+    let tail = spec.tail_spec in
+    let labels = spec.label_specs in
+    let underlying_curve = (Curve.of_point_lists [(Node.center node1) :: (controls @ [Node.center node2])]) in
+    let curves = List.fold_left
+      (fun curves transfo_spec -> (List.flatten (List.map (pre_of_transfo_spec transfo_spec) curves)))
+      [parameters, underlying_curve]
+      spec.transfo_specs
+    in    
+    let curves = List.map (fun (params, curve) -> (params, clip curve node1 node2)) curves in
+    let curves = List.fold_left 
+      (fun curves transfo_spec -> (List.flatten (List.map (post_of_transfo_spec transfo_spec) curves)))
+      curves
+      spec.transfo_specs
+    in
+    match curves with
+      | [] -> Printf.printf ("Warning: one of your edge transformers has deleted all curves.\n") ;
+	{ curves = [parameters, underlying_curve] ;
+	  head = head ~parameters:parameters underlying_curve ; 
+	  tail = tail ~parameters:parameters underlying_curve ;
+	  labels = (List.map (label_of_spec underlying_curve) labels) 
+	}
+      | (params, curve) :: _ ->
+	{ curves = curves ;
+	  head = head ~parameters:params curve ; 
+	  tail = tail ~parameters:params curve ;
+	  labels = (List.map (label_of_spec curve) labels) 
+	}
 
   let draw edge =
-    Curve.draw ~parameters:edge.parameters edge.curve @
-      ArrowTip.draw edge.head @
-      ArrowTip.draw edge.tail @
-      (List.flatten (List.map Node.draw edge.labels))
+    (List.flatten
+       (List.map 
+	  (fun (params, curve) -> Curve.draw ~parameters:params curve) edge.curves)) 
+    @ ArrowTip.draw edge.head 
+    @ ArrowTip.draw edge.tail 
+    @ (List.flatten (List.map Node.draw edge.labels))
 
     let make_draw l spec node1 node2 =
       let edge = make spec node1 node2 
       in 
       edge, (l @ (draw edge))
 
-
-
-  let bend_left ?angle:(angle=30.) node1 node2 = 
-    let node1 = Node.center node1 in
-    let node2 = Node.center node2 in
-    let angle = (-. angle) *. pi /. 180. in
-    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
-    let vec = Vector.rotate (angle) vec in
-    [Vector.translate node1 vec]
-  let bend_right ?angle:(angle=30.) node1 node2 = 
-    let node1 = Node.center node1 in
-    let node2 = Node.center node2 in
-    let angle = angle *. pi /. 180. in
-    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
-    let vec = Vector.rotate (angle) vec in
-    [Vector.translate node1 vec]
 
 end

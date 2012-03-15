@@ -20,11 +20,6 @@ module Env_abstract = struct
 end
 
 let fig2 env=
-  (* let contents_a = draw_boxes (boxify { env with size = 4. } [T "salut ça va bien?"]) in *)
-  (* let contents_b= List.map (translate 20. 50.) (draw_boxes (boxify { env with size = 4. } [T "J"])) in *)
-  (* let contents_c=List.map (translate 50. 30.) (draw_boxes (boxify { env with size = 4. }  *)
-  (*   (alternative Bold [T "Ailllaillaille!"]))) *)
-  (* in *)
   let state = [] in
   let params = { NodeShape.default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } 
   in  
@@ -52,50 +47,50 @@ let fig2 env=
 		    ~inner_sep:1. ()) }
   in
   let e, state = Node.make_draw state { Node.default with
-    Node.at = Node.center a ;
+    Node.at = c.Node.make_anchor Anchor.North ;
+    Node.anchor = Anchor.South ;
     Node.contents_spec = [T "X"] ;
     Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
   in
   let ab, state = Edge.make_draw state { Edge.default with
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } ;
-    Edge.controls = (Edge.bend_left a b) ;
     Edge.head_spec = (fun ?parameters:(params=Drivers.default) curve ->
       ArrowTip.simple ~parameters:params curve) ;
     Edge.label_specs = [ 
       { Edge.pos = 0.3 ;
-      Edge.node_spec = { Node.default with Node.contents_spec = [T "Label à 0.3 à gauche"] ; 
+      Edge.node_spec = { Node.default with Node.contents_spec = [T "0.3 à gauche"] ; 
 	anchor = Anchor.East } } ;
       { Edge.pos = 0.6 ;
-      Edge.node_spec = { Node.default with Node.contents_spec = [T "Label à 0.6 à droite"] ; 
+      Edge.node_spec = { Node.default with Node.contents_spec = [T "0.6 à droite"] ; 
 	anchor = Anchor.West } } ;
     ] }
     a b
   in
-  let ab', state = Edge.make_draw state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 } ;
-    Edge.controls = (Edge.bend_right ~angle:60.0 a b) }
-    a b
-  in
+  (* let ab', state = Edge.make_draw state { Edge.default with *)
+  (*   Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 } ; *)
+  (*   Edge.transfo_specs = [Edge.BendRight 30.0] } *)
+  (*   a b *)
+  (* in *)
   let ac, state = Edge.make_draw state { Edge.default with
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 } ;
-    Edge.controls = (Edge.bend_right ~angle:10.0 a c) }
+    Edge.transfo_specs = [Edge.Squiggle (10,1.0)] }
     a c
   in
   let cb, state = Edge.make_draw state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.controls = (Edge.bend_left ~angle:20.0 c b) }
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } }
     c b
   in
   let ca, state = Edge.make_draw state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } }
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
+    Edge.transfo_specs = [Edge.BendLeft 60.0 ; Edge.Squiggle (10,1.0)] }
     c a
   in
-  let db, state = Node.make_draw state { Node.default with
-    Node.at = (!Edge.debug) ;
-    Node.contents_spec = [T "x"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
+  let ea, state = Edge.make_draw state { Edge.default with
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
+    Edge.transfo_specs = [Edge.Fore 2.] }
+    e a
   in
-  drawing ~offset:(-10.) state
+  drawing ~offset:(-10.) (List.rev state)
 
 let figRef ()= [B (fun _->User (NamedCitation "figure de Tom"))]
 let large text = [size 10. text]
