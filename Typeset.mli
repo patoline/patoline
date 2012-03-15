@@ -1,5 +1,6 @@
 module type User =
   sig type t val compare : t -> t -> int val citation : int -> t end
+
 module Make :
   functor (User : User) ->
     sig
@@ -34,22 +35,32 @@ module Make :
           val map : ('a -> 'b) -> 'a t -> 'b t
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
+
       val typeset :
-        completeLine:(User.t Util.box array array ->
+        completeLine:(UMap.key Util.box array array ->
+                      Util.drawingBox array ->
+                      Util.line Binary.IntMap.t ->
+                      Util.LineMap.key UMap.t ->
                       Util.line -> bool -> Util.LineMap.key list)
                      array ->
-        figures:(Util.drawingBox) array ->
-        figure_parameters:(User.t Util.box array array ->
-                              Util.drawingBox array ->
-                                Util.parameters -> Util.LineMap.key -> Util.parameters)
-          array ->
-        parameters:(User.t Util.box array array ->
-                      Util.drawingBox array ->
-                    Util.parameters -> Util.LineMap.key -> Util.parameters)
+        figures:Util.drawingBox array ->
+        figure_parameters:(UMap.key Util.box array array ->
+                           Util.drawingBox array ->
+                           Util.parameters ->
+                           Util.line Binary.IntMap.t ->
+                           Util.LineMap.key UMap.t ->
+                           Util.line -> Util.parameters)
+                          array ->
+        parameters:(UMap.key Util.box array array ->
+                    Util.drawingBox array ->
+                    Util.parameters ->
+                    Util.line Binary.IntMap.t ->
+                    Util.LineMap.key UMap.t ->
+                    Util.LineMap.key -> Util.parameters)
                    array ->
         badness:(Util.LineMap.key ->
-                   Util.parameters ->
-                  Util.LineMap.key -> Util.parameters -> float) ->
-        User.t Util.box array array ->
+                 Util.parameters ->
+                 Util.LineMap.key -> Util.parameters -> float) ->
+        UMap.key Util.box array array ->
         Util.error_log list * (Util.parameters * Util.LineMap.key) list array
     end

@@ -6,34 +6,31 @@ open Bezier
 open CamomileLibrary
 
 
-type parameters={ lead:float;
-                  measure:float;
-                  lines_by_page:int;
+
+type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
+             isFigure:bool; mutable height:float; paragraph_height:int; mutable page_line:int; mutable page:int;
+             min_width:float; nom_width:float; max_width:float
+           }
+
+
+
+type parameters={ measure:float;
+                  page_height:float;
                   left_margin:float;
                   local_optimization:int;
-                  min_height_before:int;
-                  min_height_after:int;
+                  next_acceptable_height:line->float->float;
+                  min_height_before:float;
                   min_page_diff:int
                 }
 
-let default_params={ lead=0.;
-                     measure=0.;
-                     lines_by_page=0;
+let default_params={ measure=0.;
+                     page_height=0.;
                      left_margin=0.;
                      local_optimization=0;
-                     min_height_before=1;
-                     min_height_after=1;
+                     next_acceptable_height=(fun _ h->h);
+                     min_height_before=0.;
                      min_page_diff=0
                    }
-
-let print_parameters p=
-  Printf.printf "{ lead=%f; measure=%f; lines_by_page=%d; left_margin=%f }\n"
-    p.lead p.measure p.lines_by_page p.left_margin
-
-type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; mutable height:int; paragraph_height:int; mutable page_height:int; mutable page:int;
-             min_width:float; nom_width:float; max_width:float
-           }
 
 module Line=struct
   type t=line
@@ -82,7 +79,7 @@ type error_log=
   | Orphan of line
 
 let print_line l=
-  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%d; page=%d }\n"
+  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
     l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
 let rec print_box=function
     Glue _->Printf.printf " "

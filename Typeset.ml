@@ -21,7 +21,7 @@ let rec print_graph file paragraphs graph path=
 
                       k.lineStart k.lineEnd k.hyphenEnd;
 
-                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"%f\"]\n"
+                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"\"]\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
                       (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x")
@@ -30,16 +30,16 @@ let rec print_graph file paragraphs graph path=
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
                       (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
 
-                      ((* if k.lastFigure<>a.lastFigure then "green" else *)
+                      (if k.lastFigure<>a.lastFigure then "green" else
                          if make_path a k path then "blue" else "black")
-                      b (*k.height-a.height*)
+                       (*k.height-a.height*)
                  ) graph;
     Printf.fprintf f "};\n";
     close_out f
 
 let print_simple_graph file paragraphs graph=
   print_graph file paragraphs (
-    LineMap.fold (fun k->LineMap.add { k with height=0; page=0 }) LineMap.empty graph
+    LineMap.fold (fun k->LineMap.add { k with height=0.; page=0 }) LineMap.empty graph
   ) []
 
 
@@ -78,7 +78,6 @@ module Make=functor (User:User)->struct
 
   let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
 
-
     let collide line_haut params_i comp_i line_bas params_j comp_j=
 
       let max_haut=
@@ -105,10 +104,10 @@ module Make=functor (User:User)->struct
         let wi=box_width comp_i box_i in
         let wj=box_width comp_j box_j in
           if !xi +.wi < !xj+. wj && i < max_haut then (
-            let yi_=lower_y box_i wi in
-            let yi=if yi_=infinity then 0. else yi_ in
-            let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-            let yj=if j>=max_bas then -.infinity else if yj_=(-.infinity) then 0. else yj_ in
+            let yi=lower_y box_i wi in
+            let yj=if !xi+.wi < !xj then -.infinity else
+              if upper_y box_j wj > -.infinity then upper_y box_j wj else 0.
+            in
             let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
             let w0= !xi +. wi -. x0 in
               (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
@@ -116,10 +115,10 @@ module Make=functor (User:User)->struct
               xi:= !xi+.wi;
               collide (i+1) j (min max_col (yi-.yj))
           ) else if j < max_bas then (
-            let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-            let yi=if i>=max_haut then infinity else if yi_=(infinity) then 0. else yi_ in
-            let yj_=upper_y box_j wj in
-            let yj=if yj_=(-.infinity) then 0. else yj_ in
+            let yi=if !xj +. wj < !xi then infinity else
+              if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
+
+            let yj=upper_y box_j wj in
 
             let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
             let w0= !xj +. wj -. x0 in
@@ -141,6 +140,7 @@ module Make=functor (User:User)->struct
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters,lastFigures,lastUser)=LineMap.min_binding todo in
+
         let todo'=ref (LineMap.remove node todo) in
           if node.paragraph >= Array.length paragraphs then break false !todo' demerits else
             (
@@ -174,19 +174,21 @@ module Make=functor (User:User)->struct
                       let _=UMap.find (User.citation (node.lastFigure+1)) lastUser in
                       let fig=figures.(node.lastFigure+1) in
                       let vspace,_=line_height paragraphs node in
-                      let h=int_of_float (ceil ((abs_float vspace)/.lastParameters.lead)) in
+                      let h=ceil (abs_float vspace) in
+                      let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
                         for h'=0 to 0 do
-                          if node.height+h+h' <= lastParameters.lines_by_page - h then
+                          if node.height+.h +. float_of_int h'+.fig_height <= lastParameters.page_height then
                             let nextNode={
                               paragraph=pi; lastFigure=node.lastFigure+1; isFigure=true;
                               hyphenStart= -1; hyphenEnd= -1;
-                              height=node.height+h;
-                              lineStart= -1; lineEnd= -1; paragraph_height= -1; page_height=node.page_height+1; page=node.page;
+                              height=node.height+.h+. float_of_int h';
+                              lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                              page_line=node.page_line+1; page=node.page;
                               min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
                             in
                               register node nextNode
                                 (lastBadness+.badness node lastParameters nextNode lastParameters)
-                                (figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters nextNode)
+                                (figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode)
                                 (IntMap.add nextNode.lastFigure nextNode lastFigures)
                         done
                     with
@@ -197,17 +199,17 @@ module Make=functor (User:User)->struct
                 if pi>=Array.length paragraphs then (
                   let endNode={paragraph=pi;lastFigure=node.lastFigure;hyphenStart= -1;hyphenEnd= -1; isFigure=false;
                                height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1;
-                               page_height=node.page_height+1; page=node.page; min_width=0.;nom_width=0.;max_width=0. } in
+                               page_line=node.page_line+1; page=node.page; min_width=0.;nom_width=0.;max_width=0. } in
                     register node endNode lastBadness lastParameters lastFigures;
                 ) else (
-                  let page0,h0=if node.height>=lastParameters.lines_by_page-1 then (node.page+1,1) else (node.page, node.height+1) in
+                  let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else (node.page, node.height) in
                   let r_nextNode={
                     paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
                     hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
                     height = h0;
                     lineStart= i; lineEnd= i;
                     paragraph_height=0;
-                    page_height=if page0=node.page then node.page_height+1 else 0;
+                    page_line=if page0=node.page then node.page_line+1 else 0;
                     page=page0;
                     min_width=0.;nom_width=0.;max_width=0. }
                   in
@@ -216,31 +218,45 @@ module Make=functor (User:User)->struct
                   let local_opt=ref [] in
                   let solutions_exist=ref false in
                   let rec fix page height=
-                    if height>=(!r_params).lines_by_page then
-                      fix (page+1) 1
+                    if height>=(!r_params).page_height then
+                      fix (page+1) 0.
                     else (
                       r_nextNode.height<-height;
                       r_nextNode.page<-page;
-                      r_nextNode.page_height<-if page=node.page then node.page_height+1 else 0;
+                      r_nextNode.page_line<-if page=node.page then node.page_line+1 else 0;
 
                       let make_next_node nextNode=
-                        r_params:=parameters.(pi) paragraphs figures lastParameters nextNode;
+                        r_params:=parameters.(pi) paragraphs figures lastParameters lastFigures lastUser nextNode;
                         let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                         let height'=
                           if page=node.page then (
-                            let comp0=(comp paragraphs lastParameters.measure node.paragraph node.lineStart
-                                         node.hyphenStart node.lineEnd node.hyphenEnd) in
-                            let v_distance=collide node lastParameters comp0 nextNode !r_params comp1 in
-                            let fv_incr=ceil ((-.v_distance/.(!r_params).lead)) in
-                              node.height+(int_of_float fv_incr)
+                            let rec v_distance node0 parameters=
+                              let comp_node=comp paragraphs parameters.measure node0.paragraph node0.lineStart
+                                node0.hyphenStart node0.lineEnd node0.hyphenEnd
+                              in
+                                if node0.isFigure then (
+                                  let dist=collide node0 parameters comp_node nextNode !r_params comp1 in
+                                    if dist < infinity then node0.height+. (ceil (-.dist)) else (
+                                      try
+                                        let ((_,_,ant,_,_))=LineMap.find node0 !demerits' in
+                                        let ((_,params,_,_,_))=LineMap.find ant !demerits' in
+                                          v_distance ant params
+                                      with
+                                          Not_found -> node0.height
+                                    )
+                                ) else (
+                                  let dist=collide node0 parameters comp_node nextNode !r_params comp1 in
+                                    node0.height+. (ceil (-.dist))
+                                )
+                            in
+                              v_distance node lastParameters
                           ) else (
-                            int_of_float
-                              (ceil ((snd (line_height paragraphs nextNode))/.(!r_params).lead))
+                            ceil (snd (line_height paragraphs nextNode))
                           )
                         in
                           if height>=height'
                             && (page,height) >= (node.page + !r_params.min_page_diff,
-                                                 node.height + !r_params.min_height_before)
+                                                 node.height +. !r_params.min_height_before)
                           then (
                             let allow_orphan=
                               page=node.page || node.paragraph_height>0 in
@@ -253,10 +269,10 @@ module Make=functor (User:User)->struct
                                   let _,_,last_ant,_,_=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant,ant_fig,ant_user=LineMap.find last_ant demerits in
                                     demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1 },ant_ant,ant_fig,ant_user)
+                                      (ant_bad, { ant_par with page_height=last_ant.height },ant_ant,ant_fig,ant_user)
                                       (LineMap.remove node !demerits');
                                     todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=ant_par.lines_by_page-1},ant_fig,ant_user)
+                                      (ant_bad, { ant_par with page_height=last_ant.height },ant_fig,ant_user)
                                       (LineMap.remove node !todo');
                                     solutions_exist:=true;
                                 )
@@ -266,10 +282,10 @@ module Make=functor (User:User)->struct
                                   let _,_, last_ant,_,_=LineMap.find node demerits in
                                   let ant_bad, ant_par, ant_ant, ant_fig,ant_user=LineMap.find last_ant demerits in
                                     demerits' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 },ant_ant,ant_fig,ant_user)
+                                      (ant_bad, { ant_par with page_height=last_ant.height },ant_ant,ant_fig,ant_user)
                                       (LineMap.remove node !demerits');
                                     todo' := LineMap.add last_ant
-                                      (ant_bad, { ant_par with lines_by_page=last_ant.height-1 },ant_fig,ant_user)
+                                      (ant_bad, { ant_par with page_height=last_ant.height },ant_fig,ant_user)
                                       (LineMap.remove node !todo');
                                     solutions_exist:=true;
                                 )
@@ -290,12 +306,13 @@ module Make=functor (User:User)->struct
                               )
                           )
                       in
-                        List.iter make_next_node (completeLine.(pi) paragraphs r_nextNode allow_impossible);
-                        if (not !solutions_exist) && page<=node.page+1 then fix page (height+1);
+                        List.iter make_next_node (completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible);
+                        let next_h=lastParameters.next_acceptable_height node height in
+                        if (not !solutions_exist) && page<=node.page+1 then fix page (if next_h=node.height then node.height+.1. else next_h);
                     )
                   in
                     (try
-                       fix node.page (node.height+1);
+                       fix node.page node.height;
                        if !local_opt <> [] then (
                          let l0=List.sort (fun (_,_,b0,_,_,_) (_,_,b1,_,_,_)->compare b0 b1) !local_opt in
                          let deg=List.fold_left (fun m (_,_,_,p,_,_)->max m p.local_optimization) 0 l0 in
@@ -320,9 +337,9 @@ module Make=functor (User:User)->struct
       )
     in
     let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-                     lastFigure=(-1); height= 0;paragraph_height= -1; page_height=0; page=0;
+                     lastFigure=(-1); height= 0.;paragraph_height= -1; page_line=0; page=0;
                      min_width=0.;nom_width=0.;max_width=0. } in
-    let first_parameters=parameters.(0) paragraphs figures default_params first_line in
+    let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty first_line in
 
     let todo0=LineMap.singleton first_line (0., first_parameters,IntMap.empty, UMap.empty) in
     let last_failure=ref LineMap.empty in

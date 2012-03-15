@@ -228,7 +228,7 @@ let _=
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "newPar ~environment:verbEnv (normal 1e100) ragged_left (lang_%s \"%s\");;\n"
+			  "newPar ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end;;\n\n"

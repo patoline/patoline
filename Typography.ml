@@ -1,11 +1,11 @@
 (** La "classe" de documents par defaut. *)
 
-open Util
 open Binary
 open Constants
 open Fonts
 open Fonts.FTypes
 open Drivers
+open Util
 
 (** Pour choisir la police, et d'autres paramètres, on a un
    environnement. On peut tout modifier de manière uniforme sur tout
@@ -107,6 +107,7 @@ module TS=Typeset.Make (struct
                           let citation x=Citation x
                         end)
 
+module C=Parameters.Completion (TS.UMap)
 
 type 'a environment={
   mutable fontFamily:fontFamily;
@@ -151,7 +152,7 @@ let defaultEnv:user environment=
                      drawing_nominal_width= fsize/.3.;
                      drawing_contents=(fun _->[]);
                      drawing_badness=knuth_h_badness (fsize/.3.) };
-      hyphenate=(
+      hyphenate=fun _->[||](*
         fun str->
           let hyphenation_dict=
             let i=open_in "dict_en" in
@@ -171,7 +172,7 @@ let defaultEnv:user environment=
             match hyphenated with
                 []->[||]
               | h::s->(hyph s 0 h; pos)
-      );
+                           *);
     }
 
 
@@ -202,13 +203,14 @@ type 'a node={
 and 'a paragraph={
   par_contents:'a content list;
   par_env:'a environment;
-  parameters:'a box array array -> drawingBox array -> parameters -> line -> parameters;
-  completeLine:'a box array array -> line -> bool -> line list
+  parameters:'a box array array -> drawingBox array -> parameters -> line IntMap.t -> line TS.UMap.t -> line -> parameters;
+  completeLine:'a box array array -> drawingBox array -> line IntMap.t -> line TS.UMap.t -> line -> bool -> line list
 }
 and 'a tree=
     Node of 'a node
   | Paragraph of 'a paragraph
-  | Figure of string*('a environment -> drawingBox)*('a box array array -> drawingBox array -> parameters -> line -> parameters)
+  | Figure of string*('a environment -> drawingBox)*
+      ('a box array array -> drawingBox array -> parameters -> line IntMap.t -> line TS.UMap.t -> line -> parameters)
 
 let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
 
@@ -439,21 +441,35 @@ let features f t=
 
 
 
-let parameters paragraphs figures last_parameters line=
-  let mes=150. in
-  { lead=5.;
-    measure=mes ;
-    lines_by_page=if line.page_height <= 0 then 45 else last_parameters.lines_by_page;
-    left_margin=(fst a4-.150.)/.2.;
-    local_optimization=0;
-    min_page_diff=0;
-    min_height_before=max 0 last_parameters.min_height_after;
-    min_height_after=0;
-  }
+let parameters paragraphs figures last_parameters last_figures last_users (line:Util.line)=
+  let mes0=150. in
+  let lead=5. in
+  let mes=
+    if IntMap.cardinal last_figures > 0 then
+      let fig,fig_line=IntMap.max_binding last_figures in
+        if line.page=fig_line.page &&
+          line.height<=
+          fig_line.height +.
+            (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
+
+              mes0 -. figures.(fig).drawing_nominal_width -. 1.
+        else
+          mes0
+    else
+      mes0
+  in
+    { measure=mes ;
+      page_height=if line.page_line <= 0 then 45.*.lead else last_parameters.page_height;
+      left_margin=(fst a4-.150.)/.2.;
+      local_optimization=0;
+      min_page_diff=0;
+      next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
+      min_height_before=0.;
+    }
 
 
-let center paragraphs figures last_parameters l=
-  let param=parameters paragraphs figures last_parameters l in
+let center paragraphs figures last_parameters lastFigures lastUsers l=
+  let param=parameters paragraphs figures last_parameters lastFigures lastUsers l in
   let b=l.nom_width in
     if param.measure >= b then
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
@@ -508,20 +524,20 @@ let rec boxify env =function
       if i>=String.length t then (
         if i0<>i then (
           if result<>[] then
-            result @ (env.stdGlue :: (glyph_of_string env.substitutions env.positioning env.font env.size
+            result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
                                         (String.sub t i0 (i-i0))))
           else
-            glyph_of_string env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
+            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
         ) else result
       ) else (
         if is_space t.[i] then
           cut_str (i+1) (i+1) (
             if i0<>i then (
               if result<>[] then
-                result @ (env.stdGlue :: (glyph_of_string env.substitutions env.positioning env.font env.size
+                result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
                                             (String.sub t i0 (i-i0))))
               else
-                glyph_of_string env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
+                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
             ) else result
           )
         else (
@@ -547,7 +563,7 @@ let rec boxify env =function
   )
 
 let flatten env0 str=
-
+  let lead=5. in
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
   let figure_names=ref StrMap.empty in
@@ -579,18 +595,18 @@ let flatten env0 str=
             add_paragraph ({ par_contents=structNum path s.displayname;
                              par_env=env;
                              parameters=
-                               (fun paragraphs figures last_parameters line ->
-                                  { (parameters paragraphs figures last_parameters line) with
-                                      min_height_before=2; min_height_after=2 });
-                             completeLine=Parameters.normal (fst a4) });
+                               (fun a b c d e f ->
+                                  { (parameters a b c d e f) with
+                                      next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+                             completeLine=C.normal (fst a4) });
           ) else if s.name<>"" then (
             add_paragraph {par_contents=[size 10. [T (s.name)] ];
                            par_env=env;
                            parameters=(
-                             fun paragraphs figures last_parameters line ->
-                               let c=center paragraphs figures last_parameters line in
-                                 { c with min_height_after=max 4 c.min_height_after });
-                           completeLine=Parameters.normal (fst a4) }
+                             fun a b c d e f ->
+                               let cen=center a b c d e f in
+                                 { cen with min_height_before=max (4.*.lead) c.min_height_before });
+                           completeLine=C.normal (fst a4) }
           );
           let rec flat_children num indent= function
               []->()

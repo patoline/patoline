@@ -9,12 +9,12 @@ LAMA UMR 5127, Université de Savoie
 {{
 open Diag
 module Env_abstract = struct
-  let parameters a b c line =
-    let par=parameters a b c line in
+  let parameters a b c d e line =
+    let par=parameters a b c d e line in
       { par with
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
-  let textWidth = normal 120.
+  let textWidth = C.normal 120.
   let do_begin_abstract () = ()
   let do_end_abstract () = ()
 end

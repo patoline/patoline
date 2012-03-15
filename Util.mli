@@ -1,15 +1,3 @@
-type parameters = {
-  lead : float;
-  measure : float;
-  lines_by_page : int;
-  left_margin : float;
-  local_optimization : int;
-  min_height_before : int;
-  min_height_after : int;
-  min_page_diff : int;
-}
-val default_params : parameters
-val print_parameters : parameters -> unit
 type line = {
   paragraph : int;
   lastFigure : int;
@@ -18,14 +6,24 @@ type line = {
   hyphenStart : int;
   hyphenEnd : int;
   isFigure : bool;
-  mutable height : int;
+  mutable height : float;
   paragraph_height : int;
-  mutable page_height : int;
+  mutable page_line : int;
   mutable page : int;
   min_width : float;
   nom_width : float;
   max_width : float;
 }
+type parameters = {
+  measure : float;
+  page_height : float;
+  left_margin : float;
+  local_optimization : int;
+  next_acceptable_height : line -> float -> float;
+  min_height_before : float;
+  min_page_diff : int;
+}
+val default_params : parameters
 module Line : sig type t = line val compare : 'a -> 'a -> int end
 module LineMap :
   sig

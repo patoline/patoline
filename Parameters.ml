@@ -1,8 +1,26 @@
 open Util
+open Binary
+module Completion=functor (UMap : Map.S)-> struct
 
+type 'a completion='a Util.box array array ->
+         Util.drawingBox array ->
+         Util.line Binary.IntMap.t ->
+         Util.line UMap.t -> Util.line -> bool -> Util.line list
 
-let normal measure_ paragraphs line allow_impossible=
-  let measure=if line.lastFigure>=0 then 110. else measure_ in
+let normal mes0 paragraphs figures last_figures last_users line allow_impossible=
+  let measure=
+    if IntMap.cardinal last_figures > 0 then
+      let fig,fig_line=IntMap.max_binding last_figures in
+        if line.page=fig_line.page &&
+          line.height<=
+          fig_line.height +.
+            (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
+              mes0 -. figures.(fig).drawing_nominal_width -. 1.
+        else
+          mes0
+    else
+      mes0
+  in
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (
       if sum_min<=measure || allow_impossible then (
@@ -54,41 +72,4 @@ let normal measure_ paragraphs line allow_impossible=
         | _->break_next line.lineStart 0. 0. 0. []
     ) else break_next line.lineStart 0. 0. 0. []
 
-let greedy measure paragraphs line allow_impossible=
-  let rec break_next j sum_min sum_nom sum_max result=
-    if j>=Array.length paragraphs.(line.paragraph) then (
-      if sum_min<=measure || allow_impossible then (
-        [{ line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max }]
-      ) else (
-        result
-      )
-
-    ) else (
-      let a,b,c=box_interval paragraphs.(line.paragraph).(j) in
-        if sum_max >= measure then
-          match paragraphs.(line.paragraph).(j) with
-
-              Glue _ when sum_nom <= measure->
-                break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
-                  [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                       nom_width=sum_nom; max_width=sum_max
-                   }]
-
-            | Glue _ when allow_impossible ->
-                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                     nom_width=sum_nom; max_width=sum_max
-                 }]
-
-            | _ when sum_nom<=measure || allow_impossible ->
-                break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c) result
-            | _ -> result
-        else
-          break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c) result
-    )
-  in
-    if line.hyphenStart>=0 then (
-      match paragraphs.(line.paragraph).(line.lineStart) with
-          Hyphen x->let a,b,c=boxes_interval (snd x.hyphenated.(line.hyphenStart)) in
-            break_next (line.lineStart+1) a b c []
-        | _->break_next line.lineStart 0. 0. 0. []
-    ) else break_next line.lineStart 0. 0. 0. []
+end

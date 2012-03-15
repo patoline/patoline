@@ -69,7 +69,7 @@ let has_space dyp =
     let next = dyp.next_lexeme () in
     match next with
       [] -> false
-    | s::_ when s.[0] = ' ' or s.[0] = '\t' -> true
+    | s::_ when s<>"" && (s.[0] = ' ' or s.[0] = '\t') -> true
     | [_] -> false
     | _ -> true 
 }

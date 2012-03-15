@@ -15,7 +15,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
     let page= { pageFormat=a4 ; pageContents=[] } in
       List.iter (
         fun (param,line)->
-          let y=270.0-.param.lead*.float_of_int line.height in
+          let y=270.0-.line.height in
 
             if line.isFigure then (
               let fig=figures.(line.lastFigure) in
@@ -26,7 +26,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
 
               if line.paragraph<> !par then (
                 par:=line.paragraph;
-                positions.(!par)<-(i,0., y+. param.lead/.2. +. snd (line_height paragraphs line))
+                positions.(!par)<-(i,0., y +. snd (line_height paragraphs line))
               );
 
               let comp=compression paragraphs (param,line) in
@@ -69,7 +69,7 @@ let routine paragraphs (figures:drawingBox array) env (opt_pages:(parameters*lin
                       else param.left_margin)
               in
               let x''=make_line paragraphs.(line.paragraph)
-                x' (270.-.param.lead*.(float_of_int line.height))
+                x' y
                 (if line.hyphenStart>=0 then line.lineStart+1 else line.lineStart) line.lineEnd
               in
                 (if line.hyphenEnd>=0 then

@@ -135,7 +135,7 @@ let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node 
     let v_bad=
       if node.page=nextNode.page then (
         v_badness paragraphs
-          (float_of_int (nextNode.height-node.height)*.params.lead)
+          (nextNode.height-.node.height)
           node params.left_margin comp0
           nextNode params'.left_margin comp1
       ) else 0.
@@ -172,7 +172,8 @@ let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node 
       +. v_bad
       +. figure_badness
         (* Page pas assez remplie *)
-      +. (if node.page<>nextNode.page && node.height<>params.lines_by_page-1 then 1e20 else 0.)
+      +. (if node.page<>nextNode.page &&
+            node.height<>params.page_height then 1e20 else 0.)
         (* Cesures *)
       +. (if nextNode.hyphenEnd >=0 then
             (if nextNode.hyphenStart >=0 then
