@@ -20,71 +20,71 @@ type fontFamily = (fontAlternative * (font Lazy.t * font Lazy.t)) list
 let lmroman =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmroman10-regular.otf"),
+	 loadFont "Otf/LatinModernRoman/lmroman10-regular.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmroman10-italic.otf"));
+	 loadFont "Otf/LatinModernRoman/lmroman10-italic.otf"));
     Bold, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmroman10-bold.otf"),
+	 loadFont "Otf/LatinModernRoman/lmroman10-bold.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmroman10-bolditalic.otf"));
+	 loadFont "Otf/LatinModernRoman/lmroman10-bolditalic.otf"));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmromancaps10-regular.otf"),
+	loadFont "Otf/LatinModernRoman/lmromancaps10-regular.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmromancaps10-oblique.otf"));
+	loadFont "Otf/LatinModernRoman/lmromancaps10-oblique.otf"));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmromandemi10-regular.otf"),
+	loadFont "Otf/LatinModernRoman/lmromandemi10-regular.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmromandemi10-oblique.otf"));
+	loadFont "Otf/LatinModernRoman/lmromandemi10-oblique.otf"));
   ]
 
 let lmmono =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmmonolt10-regular.otf"),
+	 loadFont "Otf/LatinModernMono/lmmonolt10-regular.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmmonolt10-oblique.otf"));
+	 loadFont "Otf/LatinModernMono/lmmonolt10-oblique.otf"));
     Bold, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmmonolt10-bold.otf"),
+	 loadFont "Otf/LatinModernMono/lmmonolt10-bold.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/lmmonolt10-boldoblique.otf"));
+	 loadFont "Otf/LatinModernMono/lmmonolt10-boldoblique.otf"));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmmonocaps10-regular.otf"),
+	loadFont "Otf/LatinModernMono/lmmonocaps10-regular.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmmonocaps10-oblique.otf"));
+	loadFont "Otf/LatinModernMono/lmmonocaps10-oblique.otf"));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmmonoltcond10-regular.otf"),
+	loadFont "Otf/LatinModernMono/lmmonoltcond10-regular.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/lmmonoltcond10-oblique.otf"));
+	loadFont "Otf/LatinModernMono/lmmonoltcond10-oblique.otf"));
   ]
 
 (* Alegreya raises : Opentype.Table_not_found *)
 let alegreya =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya-Regular.otf"),
+	 loadFont "Otf/Alegreya/Alegreya-Regular.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya-Italic.otf"));
+	 loadFont "Otf/Alegreya/Alegreya-Italic.otf"));
     Bold, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya-Bold.otf"),
+	 loadFont "Otf/Alegreya/Alegreya-Bold.otf"),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya-BoldItalic.otf"));
+	 loadFont "Otf/Alegreya/Alegreya-BoldItalic.otf"));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/AlegreyaSC-Regular.otf"),
+	loadFont "Otf/Alegreya/AlegreyaSC-Regular.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/AlegreyaSC-Italic.otf"));
+	loadFont "Otf/Alegreya/AlegreyaSC-Italic.otf"));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya-Black.otf"),
+	loadFont "Otf/Alegreya/Alegreya-Black.otf"),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya-BlackItalic.otf"));
+	loadFont "Otf/Alegreya/Alegreya-BlackItalic.otf"));
   ]
 
 let selectFont fam alt it =
