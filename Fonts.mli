@@ -9,6 +9,7 @@ module FTypes :
       kern_y0 : float;
       kern_contents : 'a;
     }
+    val empty_kern : 'a -> 'a kerningBox
     type glyph_id =
       FTypes.glyph_id = {
       glyph_utf8 : CamomileLibrary.UTF8.t;

@@ -5,6 +5,7 @@ type 'a kerningBox = {
   kern_y0 : float;
   kern_contents : 'a;
 }
+val empty_kern : 'a->'a kerningBox
 type glyph_id = { glyph_utf8 : CamomileLibrary.UTF8.t; glyph_index : int; }
 val empty_glyph : glyph_id
 type glyph_ids = KernID of glyph_ids kerningBox | GlyphID of glyph_id
