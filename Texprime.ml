@@ -52,11 +52,11 @@ let print_math ch display m =
   let rec fn indices ch m =
     match m with
       Var name | Num name ->
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl env style \"%s\")) with %a } ]"
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env style -> Maths.gl env style \"%s\")) with %a } ]"
 	  name hn indices
     | Fun name ->
         (* FIXME: transmission of the current font ... *)
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.gl_font env style defaultEnv.font \"%s\")) with %a } ]"
+	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env style -> Maths.gl_font env style defaultEnv.font \"%s\")) with %a } ]"
 	  name hn indices        
     | Indices(ind', m) ->
       fn ind' ch m 
@@ -65,7 +65,7 @@ let print_math ch display m =
       Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
     | Binary(op,a,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
-      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=(Maths.noad (Maths.gl env style \"%s\")); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" op (fn indices) a (fn indices) b
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=(Maths.noad (fun env style -> Maths.gl env style \"%s\")); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" op (fn indices) a (fn indices) b
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 

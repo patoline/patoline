@@ -75,7 +75,7 @@ let default=
       close_dist=0.2
     }
 
-type 'a noad= { mutable nucleus:'a box list;
+type 'a noad= { mutable nucleus:mathsEnvironment -> style -> 'a box list;
              mutable subscript_left:'a math list; mutable superscript_left:'a math list;
              mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
@@ -189,12 +189,13 @@ let rec draw_maths mathsEnv style mlist=
              cas. *)
 
 
+	    let nucleus = n.nucleus mathsEnv style in
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
               n.subscript_left<>[] then (
 
-                let l1=bezier_of_boxes (draw_boxes n.nucleus) in
+                let l1=bezier_of_boxes (draw_boxes nucleus) in
                 let x0,y0,x1,y1=bounding_box [Path (Drivers.default,[Array.of_list l1])] in
 
 
@@ -202,7 +203,7 @@ let rec draw_maths mathsEnv style mlist=
                   let x=Fonts.loadGlyph font ({empty_glyph with glyph_index=Fonts.glyph_of_char font 'x'}) in
                     (Fonts.glyph_y1 x)/.1000.
                 in
-                let u,v=if contents (last n.nucleus) <> "" then  0., 0. else
+                let u,v=if contents (last nucleus) <> "" then  0., 0. else
                   y1 -. mathsEnv.sup_drop*.size, -.y0+. mathsEnv.sub_drop*.size
                 in
 
@@ -260,7 +261,7 @@ let rec draw_maths mathsEnv style mlist=
                                          List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
                                     ) bezier
                 in
-                let dr=(draw_boxes n.nucleus)
+                let dr=(draw_boxes nucleus)
                   @ (List.map (translate (xoff.(0)-.dist.(0)+.size*.mathsEnv.superscript_distance) yoff.(0)) a)
                   @ (List.map (translate (xoff.(1)+.dist.(1)-.size*.mathsEnv.superscript_distance) yoff.(1)) b)
                   @ (List.map (translate (xoff.(2)-.dist.(2)+.size*.mathsEnv.subscript_distance) yoff.(2)) c)
@@ -275,7 +276,7 @@ let rec draw_maths mathsEnv style mlist=
                                drawing_badness=(fun _->0.);
                                drawing_contents=(fun _->dr) }) ]
               ) else
-                n.nucleus
+                nucleus
         )@(draw_maths mathsEnv style s)
 
       | Binary b::s->(
