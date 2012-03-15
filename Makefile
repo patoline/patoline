@@ -119,7 +119,7 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 
 %.pdf: texprime texprime.cma %.txp
 	./texprime $*.txp > $*.ml
-	$(CAML)  -o $* texprime.cma $*.ml
+	$(CAMLC)  -o $* texprime.cma $*.ml
 	./$*
 
 %.opt.pdf: texprime.opt texprime.cmxa %.txp
