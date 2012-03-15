@@ -35,6 +35,10 @@ module Curve = struct
     if curve = [] then [] else
       [Drivers.Path (parameters, [Array.of_list curve])]
 
+  let global_time curve (i,t) = 
+    let n = List.length curve in
+    (t +. (float_of_int i)) /. (float_of_int n)
+
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
     List.map (fun t -> (t,bezier1)) res
@@ -64,8 +68,10 @@ module Curve = struct
     match (intersections beziers1 beziers2) with
       | [] -> None
       | (i,t) :: _ -> Some (i,t)
+
   let bezier_evaluate (xs,ys) t = 
     (Bezier.eval xs t, Bezier.eval ys t)
+
   let eval beziers t =
     let t = t *. (float_of_int (List.length beziers)) in
     let rec eval_rec beziers t = 
@@ -78,7 +84,7 @@ module Curve = struct
 
   let restrict curve (i,t) (j,t') = 
 
-    let rec restrict_right res curve (j,t') = match  curve with
+    let rec restrict_right res curve (j,t') = match curve with
 	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
       | (xs,ys) as bezier :: rest -> if j = 0 then
 	  let xs' = Bezier.restrict xs 0. t' in
@@ -89,14 +95,25 @@ module Curve = struct
 
     let rec restrict_left curve (i,t) (j,t') = match curve with
 	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
-      | (xs,ys) :: rest -> if i = 0 then
-	  let xs' = Bezier.restrict xs t 1. in
-	  let ys' = Bezier.restrict ys t 1. in
-	  restrict_right [] ((xs',ys') :: rest) (j,t')
+      | (xs,ys) :: rest -> if i = 0 then begin
+	  if i = j then 
+	  let xs' = Bezier.restrict xs t t' in
+	  let ys' = Bezier.restrict ys t t' in
+	  [(xs',ys')]
+	  else
+	    let xs' = Bezier.restrict xs t 1. in
+	    let ys' = Bezier.restrict ys t 1. in
+	    restrict_right [] ((xs',ys') :: rest) (j,t')
+      end
 	else
 	  restrict_left rest (i-1,t) (j-1,t')
     in
+    
+    if i <= j then 
     restrict_left curve (i,t) (j,t')
+    else 
+      (Printf.printf ("Warning: restriction to an empty curve.\n") ;
+       [])
 
 end
 
@@ -422,6 +439,8 @@ module Edge = struct
   let label_of_spec curve { pos = pos ; node_spec = spec } =
     Node.make { spec with Node.at = Curve.eval curve pos }
 
+  let debug = ref (0.,0.)
+
   let make spec node1 node2 =
     let parameters = spec.parameters_spec in
     let controls = spec.controls in
@@ -438,7 +457,7 @@ module Edge = struct
 	end
 	| Some (i, t1) -> (i, t1)
     end in
-    let finish = begin 
+    let (j,t') as finish = begin 
       match Curve.earliest_intersection underlying_curve node2.Node.curve with
 	| None -> begin
 	  Printf.printf
@@ -447,7 +466,15 @@ module Edge = struct
 	end
 	| Some (j, t2) -> (j, t2)
     end in
+    (* let x2,y2 = (Curve.eval underlying_curve (Curve.global_time underlying_curve finish)) in *)
+    let x2,y2 = (Curve.bezier_evaluate (List.nth underlying_curve j) t') in
+    debug := (x2,y2) ;
+    Printf.printf ("fin: %f,%f\n") x2 y2 ;
     let curve = Curve.restrict underlying_curve start finish in
+    Printf.printf ("Longeur: %d\n") (Curve.nb_beziers curve) ;
+    Printf.printf ("j: %d\n") j ;
+    Printf.printf ("t': %f\n") t' ;
+    (* debug := Curve.eval curve 1. ; *)
     { curve = curve ;
       head = head ~parameters:parameters curve ; 
       tail = tail ~parameters:parameters curve ;

@@ -37,8 +37,19 @@ let eval f0 x=
     (casteljau_right f x).(0)
 
 let restrict f0 a b=
-  let f=Array.copy f0 in
-    casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
+  match Array.length f0 with
+    | 0 -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; [||]
+    | 1 -> Printf.printf ("Warning: attempt to restrict a trivial curve.\n") ; [|f0.(0)|]
+    | 2 -> 
+      let x = f0.(0) in
+	   let y = f0.(1) in
+	   let xy = y -. x in
+	   [| x +. a *. xy ;
+	      y -. (1. -. b) *. xy
+	   |]
+    | _ -> 
+      let f=Array.copy f0 in
+      casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
 
 let descartes x0 x1 epsilon a=
   let has_root x=

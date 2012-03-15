@@ -30,7 +30,7 @@ let fig2 env=
   in  
   let a, state = Node.make_draw state { Node.default with
     Node.contents_spec = [T "Salut, comment ça miss?"] ;
-    Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:5. ()) }
+    Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:4. ()) }
   in
   let b, state = Node.make_draw state { Node.default with
     Node.at = (30.,70.) ;
@@ -90,13 +90,12 @@ let fig2 env=
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } }
     c a
   in
+  let db, state = Node.make_draw state { Node.default with
+    Node.at = (!Edge.debug) ;
+    Node.contents_spec = [T "x"] ;
+    Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
+  in
   drawing ~offset:(-10.) state
-
-(*let fig2 () =  [B (fun env->Drawing (fig2 env)) ]*)
-let rectangle a b c d=Path ({Drivers.default with close=true}, [[|[|a;c|],[|b;b|]; [|c;c|],[|b;d|]; [|c;a|],[|d;d|] |]])
-let fig _ =drawing [
-    rectangle 0. 0. 30. 30.
-]
 
 let figRef ()= [B (fun _->User (NamedCitation "figure de Tom"))]
 let large text = [size 10. text]
