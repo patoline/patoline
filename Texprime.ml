@@ -147,11 +147,12 @@ and print_contents op ch l =
   let rec fn l = 
     begin match l with
       [] ->  Printf.fprintf ch "[]";
-    | TC s :: ((_::_) as l) -> 
-      Printf.fprintf ch "(T \"%s\")::(B (fun env -> env.stdGlue))::" (String.escaped s);
+    | TC s :: l -> 
+      Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
       fn l
-    | TC s :: [] -> 
-      Printf.fprintf ch "[T \"%s\"]" (String.escaped s);
+    | GC :: l -> 
+      Printf.fprintf ch "(B (fun env -> env.stdGlue))::";
+      fn l
     | MC(mtype, name, args) :: l -> 
       Printf.fprintf ch "(";
       print_macro ch op mtype name args;

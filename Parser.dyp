@@ -44,6 +44,7 @@ and content =
      TC of string
    | FC of math
    | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
+   | GC
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
 let caml_depth = ref 0 let push_caml () = incr caml_depth
@@ -63,7 +64,14 @@ let concat words =
        let acc = if last' || last then w ^ acc else w ^" "^acc in
        fn acc last' l
     in fn "" true (List.rev words) 
-       
+
+let has_space dyp =
+    let next = dyp.next_lexeme () in
+    match next with
+      [] -> false
+    | s::_ when s.[0] = ' ' or s.[0] = '\t' -> true
+    | [_] -> false
+    | _ -> true 
 }
 
 %start main
@@ -130,18 +138,34 @@ main lexer =
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '='+ -> SECT { Dyp.lexeme lexbuf }
-  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | '"' | '$' 
+  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | '"' | '$'
        -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
+enddollar:
+  "$" { has_space dyp }
+
+parmacro_sp:
+  parmacro<m> {m, has_space dyp}
+
+words_sp:
+  WORD+<w> {w, has_space dyp}
+
 paragraph:
-    WORD+<w> { [TC (concat w)] }
-  | WORD+<w> [NEWLINE]? paragraph<p> { TC (concat w) :: p }
-  | parmacro<m> { [ m ] }
-  | parmacro<m> [NEWLINE]? paragraph<p> { m :: p }
-  | "$" math<m> "$" { [FC m] }
-  | "$" math<m> "$" [NEWLINE]? paragraph<p> { FC m :: p }
+    WORD+<w> { [TC (concat w)] } atom
+  | words_sp<w,sp> paragraph(=nonatom)<p>
+    { TC (concat w) :: if sp then GC::p else p } atom
+  | WORD+<w> NEWLINE paragraph<p>
+    { TC (concat w) :: GC :: p } atom
+  | parmacro<m>
+    { [ m ] } nonatom
+  | parmacro_sp<m,sp> [NEWLINE]? paragraph<p> 
+    { m :: if $2 <> None or sp then GC::p else p } nonatom
+  | "$" math<m> "$" 
+    { [FC m] } nonatom
+  | "$" math<m> enddollar<sp> [NEWLINE]? paragraph<p> 
+    { FC m :: if sp or $4 <> None then GC::p else p } nonatom
  
 preambule:
   [NEWLINE]*
