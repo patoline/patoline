@@ -22,7 +22,7 @@ type math =
    | Num of string   
    | Prefix of string * math
    | Postfix of string * math
-   | Binary of bool * string * bool * math * math
+   | Binary of int * bool * string * bool * math * math
    | Indices of indices * math
    | Apply of math * math
    | Delim of string * math * string  
@@ -260,27 +260,27 @@ math:
   | math(<=fun)<a> - "(" math<b> ")"
       { Apply(a, b) } fun
   | math(<=sum)<a> ["+"|"-"]<op> math(<sum)<b>
-      { Binary(false, op, false, a, b) } sum
+      { Binary(2, false, op, false, a, b) } sum
   | ["+"|"-"]<op> math(<sum)<b> 
       { Prefix(op,b) } sum
   | math(<=prod)<a> ["."|"*"|"/"]<op> math(<prod)<b> 
-      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(false, op, false, a, b) } prod
+      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(2, false, op, false, a, b) } prod
   | math(<=prod)<a>  math(<prod)<b>
-      { Binary(false, "", false, a, b) } prod
+      { Binary(2, false, "", false, a, b) } prod
   | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
       { let op = match op with
           "<=" -> "≤"
         | ">=" -> "≥"
         | _ -> op
-        in Binary(false, op, false, a, b) } rel
+        in Binary(1, false, op, false, a, b) } rel
   | "!"<op> math(<neg)<a>
       { Prefix(op, a) } neg
   | math(<=conj)<a> ["&&"|"||"]<op> math(<conj)<b> 
-      { Binary(false, op, false, a, b) } conj
+      { Binary(0, false, op, false, a, b) } conj
   | math(<=impl)<a> ["=>"|"<=>"]<op> math(<impl)<b> 
-      { Binary(false, op, false, a, b) } impl
+      { Binary(0, false, op, false, a, b) } impl
   | math(<=punc)<a> [","|";"]<op> math(<punc)<b> 
-      { Binary(true, op, false, a, b) } punc
+      { Binary(2, true, op, false, a, b) } punc
 
 
 text:

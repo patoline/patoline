@@ -60,15 +60,15 @@ let print_math ch display m =
 	  name hn indices        
     | Indices(ind', m) ->
       fn ind' ch m 
-    | Binary(_,"/",_,a,b) ->
+    | Binary(_, _,"/",_,a,b) ->
       if (indices <> no_ind) then failwith "Indices on fraction.";
       Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
-    | Binary(_,"",_,a,b) ->
+    | Binary(pr, _,"",_,a,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
-      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" (fn indices) a (fn indices) b
-    | Binary(nsl,op,nsr,a,b) ->
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
+    | Binary(pr,nsl,op,nsr,a,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
-      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=0; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (fun env style -> Maths.gl env style \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" nsl op nsr (fn indices) a (fn indices) b
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (fun env style -> Maths.gl env style \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 
