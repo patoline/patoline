@@ -194,12 +194,11 @@ figure ~name:"figure de Tom" fig
 
 => Math en display
 
-$$ t^^j__X_i^n $$
-
 $$ {1 + x} / {1 - x}$$
 
 $$ x_i + 2 cos(x) <= a y_i^n - sin(t) $$
 
+$$ t^^j__X_i^n $$
 
 $$ B = t^^P * A * P = P^(-1) A P  $$
  

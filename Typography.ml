@@ -597,7 +597,7 @@ let flatten env0 str=
             | (_, (Paragraph p))::s->(
                 flatten env path (
                   Paragraph { p with par_contents=
-                      (if indent then (List.map (fun x->B (fun _->x)) env.par_indent) else []) @ p.par_contents }
+                      (if indent then (List.map (fun x->B (fun _->x)) p.par_env.par_indent) else []) @ p.par_contents }
                 );
                 flat_children num true s
               )
