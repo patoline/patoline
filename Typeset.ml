@@ -264,7 +264,7 @@ module Make=functor (User:User)->struct
                               page=node.page || (not (is_last paragraphs.(node.paragraph) nextNode.lineEnd)) in
 
                               if not allow_orphan && allow_widow then (
-                                if allow_impossible && not !solutions_exist then (
+                                if allow_impossible then (
                                   log:=(Orphan node)::(!log);
                                   let _,_,last_ant,_,_=LineMap.find node !demerits' in
                                   let ant_bad, ant_par, ant_ant,ant_fig,ant_user=LineMap.find last_ant !demerits' in
@@ -273,7 +273,7 @@ module Make=functor (User:User)->struct
                                     solutions_exist:=true;
                                 )
                               ) else if not allow_widow && allow_orphan then (
-                                if allow_impossible && not !solutions_exist then (
+                                if allow_impossible then (
                                   log:=(Widow nextNode)::(!log);
                                   let _,_, last_ant,_,_=LineMap.find node !demerits' in
                                   let ant_bad, ant_par, ant_ant, ant_fig,ant_user=LineMap.find last_ant !demerits' in
@@ -308,8 +308,8 @@ module Make=functor (User:User)->struct
 
                        if !local_opt=[] && !extreme_solutions<>[] then (
                          List.iter (fun (node,nextNode,bad,params,fig,user)->
-                                      let a,_,_=LineMap.split node !demerits' in
-                                      let b,_,_=LineMap.split node !todo' in
+                                      let a,_,_=LineMap.split nextNode !demerits' in
+                                      let b,_,_=LineMap.split nextNode !todo' in
                                         demerits':=a;
                                         todo':=b
                                    ) !extreme_solutions;
