@@ -183,9 +183,10 @@ let _=
             let lexbuf = Dyp.from_channel (Parser.pp ()) op in
             try
 	      let docs = Parser.main lexbuf in
+	      Printf.fprintf stderr "Fin du parsing (%d trees)\n" (List.length docs); flush stderr;
 	      match docs with
-	        [] | (_::_::_) -> assert false
-	      | [(pre, docs), _] ->
+	        [] -> assert false
+	      | ((pre, docs), _) :: _  ->
 		  Printf.printf "%s" preambule;
 		  begin match pre with
 		    None -> ()

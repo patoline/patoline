@@ -80,7 +80,6 @@ let has_space dyp =
 %start paragraph
 
 %relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
-%relation nonatom
 
 %layout [ ' ' '\r' '\t' ]
 
@@ -141,83 +140,66 @@ main lexer =
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '='+ -> SECT { Dyp.lexeme lexbuf }
-  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | '"' | '$'
+  utf8_char+ | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '_' | '"'
        -> WORD { Dyp.lexeme lexbuf }
 
 %parser
 
-enddollar:
-  "$" { has_space dyp }
+parelt:
+    parmacro<m> { m, has_space dyp }
+  | "$" math<m> "$" { FC m, has_space dyp }
+  | WORD<w> { TC (w), has_space dyp }
 
-parmacro_sp:
-  parmacro<m> {m, has_space dyp}
-
-words_sp:
-  WORD+<w> {w, has_space dyp}
+nparagraph:
+  | parelt<e,sp> NEWLINE nparagraph<p>  
+    { e :: if p <> [] then GC::p else p }
+  | parelt<e,sp> paragraph<p>  
+    { e :: if sp && p <> [] then GC::p else p }
 
 paragraph:
-    WORD+<w> { [TC (concat w)] } atom
-  | words_sp<w,sp> paragraph(=nonatom)<p>
-    { TC (concat w) :: if sp then GC::p else p } atom
-  | WORD+<w> NEWLINE paragraph<p>
-    { TC (concat w) :: GC :: p } atom
-  | parmacro<m>
-    { [ m ] } nonatom
-  | parmacro_sp<m,sp> [NEWLINE]? paragraph<p> 
-    { m :: if $2 <> None or sp then GC::p else p } nonatom
-  | "$" math<m> "$" 
-    { [FC m] } nonatom
-  | "$" math<m> enddollar<sp> [NEWLINE]? paragraph<p> 
-    { FC m :: if sp or $4 <> None then GC::p else p } nonatom
- 
+    NEWLINE { [] } | nparagraph<p> { p }
+
+neparagraph:
+  | parelt<e,sp> NEWLINE<n> neparagraph<p>  
+    { e :: if p <> [] then GC::p else p }
+  | parelt<e,sp> eparagraph<p>  
+    { e :: if sp && p <> [] then GC::p else p }
+
+eparagraph:
+    { [] } | neparagraph<p> { p }
+
 preambule:
-  [NEWLINE]*
 	{ None }
 | - SECT<st> [NEWLINE]*
   paragraph<title> [NEWLINE]*
-  [ parskip paragraph<author> [NEWLINE]* 
-    [parskip paragraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
-  - SECT<en> [NEWLINE]*    
+  [ NEWLINE nparagraph<author> [NEWLINE]* 
+    [NEWLINE nparagraph]?<institute> [NEWLINE]* {author, institute} ]?<at> 
+  - SECT<en>
   { if String.length st < 10 or String.length en < 10 then raise Giveup;
     Some(title,at) }
 
-parskip:
-  | NEWLINE [NEWLINE]+
-
-ptext:
-  /* empty */
-    {[]}
-  | parskip text<t>
-    { t }
-
-textp:
-    { [] }
-  | text(=nonatom)<t> parskip
-    { t }
-
-textn:
-    { [] }
-  | text<t> [NEWLINE]*
-    { t }
-
-args:
+args_aux:
     /* empty */
     { [] }
-  | "{" paragraph<p> "}" [NEWLINE]? args<a>
+  | "{" eparagraph<p> [NEWLINE]* "}" args<a>
     { Paragraph p::a }
-  | CAML<s,e> [NEWLINE]? args<a>
+  | CAML<s,e> args<a>
     { Caml(s,e) :: a }
 
+args:
+    args_aux<a> { a }
+  | NEWLINE args_aux<_::_ as a> { a }
+
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" [NEWLINE]? args<a>
+    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
       { Macro(`Begin, name, a) }
-  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" [NEWLINE]? args<a>
+  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
       { Macro(`End, name, a) }
-  | TMACRO<name> [NEWLINE]? args<a>
+  | TMACRO<name> args<a>
       { Macro(`Module, name, a) }
 
 parmacro:
-  | PMACRO<name> [NEWLINE]? args<a>
+  | PMACRO<name> args<a>
       { MC(`Single, name, a) }
 
 leftind:
@@ -285,31 +267,43 @@ math:
   | "\\"(['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name>
       { Symbol(name) } atom
 
-text:
+atomelt:
   /* Section */
-  | textn<t> - "=>" NEWLINE? paragraph<title> ptext<content> [NEWLINE]* "=<"
-    { Struct(title, List.rev content) :: t } atom
+  | - "=>" NEWLINE? paragraph<title> partext<content> [NEWLINE]* "=<"
+    { Struct(title, content) }
   /* Code Caml */
-  | textn<t> CAML<s,e>
-    { Caml(s,e) :: t } atom
+  | - CAML<s,e>
+    { Caml(s,e) }
   /* Top level macros \Begin or \Ident */
-  | textn<t> topmacro<m>
-    { m :: t } atom
+  | topmacro<m>
+    { m }
   /* verbatim / source code */
-  | textn<t> - "'''" [ lident|uident ]?<lang> NEWLINE
+  | - "'''" [ lident|uident ]?<lang> NEWLINE
     [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
-    - "'''" [NEWLINE]*
-    { Verbatim(lang, ls) :: t } atom
-  /* paragraphs : two cases */
-  | textp<t> paragraph<p>
-    { Paragraph p :: t } nonatom
-  | text(=atom)<t> [NEWLINE]* paragraph<p>
-    { Paragraph p :: t } nonatom
+    - "'''"
+    { Verbatim(lang, ls) }
   /* Math en display style */
-  | textn<t> "$$" math<m> "$$"
-    { Math m :: t } atom
+  | "$$" math<m> "$$"
+    { Math m }
+
+partext:
+    { [] }
+  | [NEWLINE]+ nparagraph<p> partext<t>
+    { Paragraph p::t }
+  | [NEWLINE]* atomelt<p> [NEWLINE]* text<t>
+   {  p::t }
+  | [NEWLINE]* atomelt<p>
+   {  [p] }
+
+text:
+  | nparagraph<p> partext<t>
+   { Paragraph p::t}
+  | atomelt<p> [NEWLINE]* text<t>
+   { p::t}
+  | atomelt<p> 
+   { [p] }
 
 main:
-  | preambule<p> text<t> [NEWLINE]* eof
-    { p, List.rev t }
+  | preambule<p> [NEWLINE]* text<t> [NEWLINE]* eof
+    { p, t }
   

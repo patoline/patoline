@@ -84,19 +84,16 @@ let default_env=
       close_dist=0.2
     }
 
-let default=
-  let text_env={ default_env with mathsSymbols=StrMap.add "int" 782 default_env.mathsSymbols } in
-  let script_env=text_env in
-    [|
-      default_env;
-      default_env;
-      text_env;
-      text_env;
-      { script_env with mathsSize=0.5 };
-      { script_env with mathsSize=0.5 };
-      { script_env with mathsSize=0.25 };
-      { script_env with mathsSize=0.25 }
-    |]
+let default=[|
+  default_env;
+  default_env;
+  default_env;
+  default_env;
+  { default_env with mathsSize=0.5 };
+  { default_env with mathsSize=0.5 };
+  { default_env with mathsSize=0.25 };
+  { default_env with mathsSize=0.25 }
+|]
 
 type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
