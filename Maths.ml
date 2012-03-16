@@ -89,10 +89,10 @@ let default=[|
   default_env;
   default_env;
   default_env;
-  { default_env with mathsSize=0.5 };
-  { default_env with mathsSize=0.5 };
-  { default_env with mathsSize=0.25 };
-  { default_env with mathsSize=0.25 }
+  { default_env with mathsSize=0.707 };
+  { default_env with mathsSize=0.707 };
+  { default_env with mathsSize=0.414 };
+  { default_env with mathsSize=0.414 }
 |]
 
 type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
