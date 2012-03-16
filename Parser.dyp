@@ -21,9 +21,9 @@ type math =
    | Symbol of string
    | Fun of string
    | Num of string   
-   | Prefix of string * math
-   | Postfix of string * math
-   | Binary of int * bool * string * bool * math * math
+   | Prefix of int * string * bool * math
+   | Postfix of int * math * bool * string
+   | Binary of int * math * bool * string * bool * math
    | Indices of indices * math
    | Apply of math * math
    | Delim of string * math * string  
@@ -256,27 +256,27 @@ math:
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
   | math(<=sum)<a> ["+"|"-"]<op> math(<sum)<b>
-      { Binary(2, false, op, false, a, b) } sum
+      { Binary(2, a, false, op, false, b) } sum
   | ["+"|"-"]<op> math(<sum)<b> 
-      { Prefix(op,b) } sum
+      { Prefix(2,op,false,b) } sum
+  | math(<sum)<b> [- "!"]<op>
+      { Postfix(2,b,true,op) } sum
   | math(<=prod)<a> ["."|"*"|"/"]<op> math(<prod)<b> 
-      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(2, false, op, false, a, b) } prod
+      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(2, a, false, op, false, b) } prod
   | math(<=prod)<a> math(<prod)<b>
-      { if layout_empty dyp 1 2 then raise Giveup; Binary(2, false, "", false, a, b) } prod
+      { if layout_empty dyp 1 2 then raise Giveup; Binary(2, a, false, "", false, b) } prod
   | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
       { let op = match op with
           "<=" -> "≤"
         | ">=" -> "≥"
         | _ -> op
-        in Binary(1, false, op, false, a, b) } rel
-  | "!"<op> math(<neg)<a>
-      { Prefix(op, a) } neg
+        in Binary(1, a, false, op, false, b) } rel
   | math(<=conj)<a> ["&&"|"||"]<op> math(<conj)<b> 
-      { Binary(0, false, op, false, a, b) } conj
+      { Binary(0, a, false, op, false, b) } conj
   | math(<=impl)<a> ["=>"|"<=>"]<op> math(<impl)<b> 
-      { Binary(0, false, op, false, a, b) } impl
+      { Binary(0, a, false, op, false, b) } impl
   | math(<=punc)<a> [","|";"]<op> math(<punc)<b> 
-      { Binary(2, true, op, false, a, b) } punc
+      { Binary(2, a, true, op, false, b) } punc
   | "\\"(['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name>
       { Symbol(name) } atom
 

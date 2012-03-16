@@ -47,28 +47,28 @@ let split_ind indices =
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch 
-    "[B (fun env0 -> List.map (fun b -> Util.resize env0.size b) (let style = %s and env = Maths.default.(Maths.int_of_style %s) in Maths.draw_maths Maths.default style ("
+    "[B (fun env0 -> List.map (fun b -> Util.resize env0.size b) (let style = %s and _env = Maths.default.(Maths.int_of_style %s) in Maths.draw_maths Maths.default style ("
     style style;
   let rec fn indices ch m =
     match m with
       Var name | Num name ->
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.glyphs \"%s\")) with %a } ]"
-	  name hn indices
+	let elt = "Maths.glyphs \""^name^"\"" in
+	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
       | Symbol name ->
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (Maths.symbol \"%s\")) with %a } ]"
-	  name hn indices
+	let elt = "Maths.symbol \""^name^"\"" in
+	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
     | Fun name ->
-	Printf.fprintf ch "[Maths.Ordinary  { (Maths.noad (fun env -> Maths.glyphs \"%s\" { env with Maths.mathsFont=env0.font })) with %a } ]"
-	  name hn indices        
+	let elt = "fun env -> Maths.glyphs \""^name^"\" { env with Maths.mathsFont=env0.font }" in
+	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
     | Indices(ind', m) ->
       fn ind' ch m 
-    | Binary(_, _,"/",_,a,b) ->
+    | Binary(_, a, _,"/",_,b) ->
       if (indices <> no_ind) then failwith "Indices on fraction.";
-      Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
-    | Binary(pr, _,"",_,a,b) ->
+      Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
+    | Binary(pr, a, _,"",_,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
       Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
-    | Binary(pr,nsl,op,nsr,a,b) ->
+    | Binary(pr,a,nsl,op,nsr,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
       Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (Maths.glyphs \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
     | Apply(f,a) ->
@@ -76,23 +76,34 @@ let print_math ch display m =
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
     | Delim(op,a,cl) ->
       dn indices op cl ch a
-    | _ -> 
-      Printf.fprintf ch "[]"
+    | Prefix(pr, op, nsp, b) ->
+      let ind_left, ind_right = split_ind indices in
+      let elt = "Maths.glyphs \""^op^"\"" in
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (hn elt) ind_left (fn ind_right) b
+    | Postfix(pr, a, nsp, op) ->
+      let ind_left, ind_right = split_ind indices in
+      let elt = "Maths.glyphs \""^op^"\"" in
+      Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (hn elt) ind_right nsp (fn ind_left) a
   and gn ch name ind =
     match ind with 
-      None ->
-      Printf.fprintf ch "%s = [];" name
+      None -> assert false
     | Some m ->
       Printf.fprintf ch "%s = (%a);" name (fn no_ind) m
-  and hn ch ind =
-    gn ch "Maths.superscript_right" ind.up_right;
-    gn ch "Maths.superscript_left" ind.up_left;
-    gn ch "Maths.subscript_right" ind.down_right;
-    gn ch "Maths.subscript_left" ind.down_left;
+  and hn elt ch ind =
+    if ind = no_ind then
+      Printf.fprintf ch "(Maths.noad (%s))" elt
+    else begin
+      Printf.fprintf ch "{ (Maths.noad (%s)) with " elt;
+      if ind.up_right <> None then gn ch "Maths.superscript_right" ind.up_right;
+      if ind.up_left <> None then gn ch "Maths.superscript_left" ind.up_left;
+      if ind.down_right <> None then gn ch "Maths.subscript_right" ind.down_right;
+      if ind.down_left <> None then gn ch "Maths.subscript_left" ind.down_left;
+      Printf.fprintf ch "}"
+    end
   and dn ind op cl ch m =
     if ind = no_ind then
       Printf.fprintf ch 
-	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" env style) (Maths.glyphs \"%s\" env style), %a)]"
+	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" _env style) (Maths.glyphs \"%s\" _env style), %a)]"
 	op cl (fn no_ind) m
     else
       (* FIXME: indice sur les délimiteurs *)
