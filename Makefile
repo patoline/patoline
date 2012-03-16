@@ -2,7 +2,10 @@ BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
-SOURCES0 = $(BASE) $(FONTS) Drivers.mli Drivers.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Output.ml Parameters.ml Typography.ml Diag.ml Maths.ml
+
+DRIVERS=Output/OutputPaper.ml Output/Drivers/Pdf.ml
+
+SOURCES0 = $(BASE) $(FONTS) Output/OutputCommon.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Parameters.ml Typography.ml $(DRIVERS) Diag.ml Maths.ml
 SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
 SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
 DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
@@ -18,11 +21,12 @@ LIBS=fonts.cma texprime.cma
 # You may also have to add various -I options.
 
 
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg -I Fonts -pp "cpp -w" -g # graphics.cma
-CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg -I Fonts -pp "cpp -w"
-CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts -pp "cpp -w"
-CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp -I Fonts -g -pp "cpp -w"
-CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg -I Fonts -g -pp "cpp -w"
+INCL= -I Fonts -I Output -I Output/Drivers
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(INCL) -pp "cpp -w" -g # graphics.cma
+CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(INCL) -pp "cpp -w"
+CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts $(INCL) -pp "cpp -w"
+CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp $(INCL) -g -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(INCL) -g -pp "cpp -w"
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 
@@ -147,6 +151,7 @@ top:
 clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
 	rm -f Fonts/*.cm[ioxa] Fonts/*.cmxa Fonts/*.o Fonts/*~ Fonts/*.*~ Fonts/\#*\#
+	rm -f Output/*.cm[ioxa] Output/*.cmxa Output/*.o Output/*~ Output/*.*~ Output/\#*\#
 	rm -Rf doc
 
 .depend.input: Makefile

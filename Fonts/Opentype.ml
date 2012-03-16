@@ -54,7 +54,7 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
 
 let cardinal=function
     CFF (f,_)->CFF.cardinal f
-  | _->failwith ("OpenType : format non reconnu, Opentype.ml, line "^(string_of_int __LINE__))
+
 
 type glyph = CFFGlyph of (font*CFF.glyph)
 

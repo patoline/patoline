@@ -4,7 +4,7 @@ open Binary
 open Constants
 open Fonts
 open Fonts.FTypes
-open Drivers
+open OutputCommon
 open Util
 
 (** Pour choisir la police, et d'autres paramètres, on a un
@@ -100,6 +100,7 @@ let selectFont fam alt it =
 type user=
     NamedCitation of string
   | Citation of int
+  | Pageref of string
 
 module TS=Typeset.Make (struct
                           type t=user
@@ -398,7 +399,7 @@ let glues t=
                            Glue { g with
                                     drawing_contents=(
                                       fun w->[
-                                        Drivers.Glyph { gl with
+                                        OutputCommon.Glyph { gl with
                                                           glyph_y=0.;
                                                           glyph_x=
                                             (w-.env.size*.Fonts.glyphWidth gl.glyph/.1000.)/.2.;
@@ -648,12 +649,12 @@ let flatten env0 str=
 let rec make_struct positions tree=
   match tree with
       Paragraph _ | Figure _->
-          { Drivers.name="";
-	    Drivers.displayname=[];
-            Drivers.page=0;
-            Drivers.struct_x=0.;
-            Drivers.struct_y=0.;
-            Drivers.substructures=[||] }
+          { OutputCommon.name="";
+	    OutputCommon.displayname=[];
+            OutputCommon.page=0;
+            OutputCommon.struct_x=0.;
+            OutputCommon.struct_y=0.;
+            OutputCommon.substructures=[||] }
     | Node s-> (
         let (p,x,y)=positions.(s.tree_paragraph) in
         let rec make=function
@@ -662,10 +663,10 @@ let rec make_struct positions tree=
           | (_,Node u)::s -> (make_struct positions (Node u))::(make s)
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
-          { Drivers.name=s.name;
-	    Drivers.displayname=[] (* FIXME boxify ?env [T s.name] *);
-            Drivers.page=p;
-            Drivers.struct_x=x;
-            Drivers.struct_y=y;
-            Drivers.substructures=a }
+          { OutputCommon.name=s.name;
+	    OutputCommon.displayname=[] (* FIXME boxify ?env [T s.name] *);
+            OutputCommon.page=p;
+            OutputCommon.struct_x=x;
+            OutputCommon.struct_y=y;
+            OutputCommon.substructures=a }
       )

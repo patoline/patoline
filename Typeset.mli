@@ -1,6 +1,14 @@
+val print_graph :
+  string ->
+  'a ->
+  (float * 'b * Util.LineMap.key * 'c * 'd) Util.LineMap.t ->
+  ('e * Util.LineMap.key) list -> unit
+val print_simple_graph :
+  string ->
+  'a -> (float * 'b * Util.LineMap.key * 'c * 'd) Util.LineMap.t -> unit
+val is_last : 'a Util.box array -> int -> bool
 module type User =
   sig type t val compare : t -> t -> int val citation : int -> t end
-
 module Make :
   functor (User : User) ->
     sig
@@ -35,7 +43,10 @@ module Make :
           val map : ('a -> 'b) -> 'a t -> 'b t
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
-
+      val haut : UMap.key Util.box array ref
+      val bas : UMap.key Util.box array ref
+      val writeBox : 'a Util.box array ref -> int -> 'a Util.box -> unit
+      val readBox : 'a array ref -> int -> 'a
       val typeset :
         completeLine:(UMap.key Util.box array array ->
                       Util.drawingBox array ->
@@ -59,8 +70,13 @@ module Make :
                     Util.LineMap.key -> Util.parameters)
                    array ->
         badness:(Util.LineMap.key ->
+                 UMap.key Util.box array ->
+                 int ->
                  Util.parameters ->
-                 Util.LineMap.key -> Util.parameters -> float) ->
+                 float ->
+                 Util.LineMap.key ->
+                 UMap.key Util.box array ->
+                 int -> Util.parameters -> float -> float) ->
         UMap.key Util.box array array ->
         Util.error_log list * (Util.parameters * Util.LineMap.key) list array
     end

@@ -1,7 +1,7 @@
 open CamomileLibrary
 open Binary
 open Typography
-open Drivers
+open OutputCommon
 open Util
 open Constants
 open Fonts.FTypes
@@ -104,7 +104,7 @@ and 'a binary_type =
   | Normal of bool * 'a noad * bool (* the boolean remove spacing at left or right when true *)
 
 and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
-and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Drivers.path_parameters }
+and 'a fraction= { numerator:'a math list; denominator:'a math list; line:OutputCommon.path_parameters }
 and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of 'a noad
@@ -221,7 +221,7 @@ let rec draw_maths mathsEnv style mlist=
               n.subscript_left<>[] then (
 
                 let l1=bezier_of_boxes (draw_boxes nucleus) in
-                let x0,y0,x1,y1=bounding_box [Path (Drivers.default,[Array.of_list l1])] in
+                let x0,y0,x1,y1=bounding_box [Path (OutputCommon.default,[Array.of_list l1])] in
 
 
                 let x_height=
@@ -237,7 +237,7 @@ let rec draw_maths mathsEnv style mlist=
                 let c=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_right) in
                 let d=draw_boxes (draw_maths mathsEnv (subStyle style) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
-                let bb=Array.map (fun l->bounding_box [Path (Drivers.default, [Array.of_list l])]) bezier in
+                let bb=Array.map (fun l->bounding_box [Path (OutputCommon.default, [Array.of_list l])]) bezier in
 
                 let y_place sup sub=
                   let xa0,ya0,xa1,ya1=bb.(sub) in
@@ -305,9 +305,9 @@ let rec draw_maths mathsEnv style mlist=
         )@(draw_maths mathsEnv style s)
 
       | Binary b::s->(
-          let gl=if b.bin_priority=0 then glue (5./.18.) (5./.18.) (5./.9.) else
+          let gl=if b.bin_priority=0 then glue (1./.6.) (1./.6.) (1./.6.) else
             if b.bin_priority=1 then glue 0. (2./.9.) (1./.3.) else
-              glue (1./.6.) (1./.6.) (1./.6.)
+              glue (5./.18.) (5./.18.) (5./.9.)
           in
 	  match b.bin_drawing with
 	    Invisible ->

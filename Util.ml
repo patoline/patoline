@@ -1,4 +1,4 @@
-open Drivers
+open OutputCommon
 open Binary
 open Fonts.FTypes
 open Constants
@@ -6,11 +6,22 @@ open Bezier
 open CamomileLibrary
 
 
-
-type line= { paragraph:int; lastFigure:int; lineEnd:int; lineStart:int; hyphenStart:int; hyphenEnd:int;
-             isFigure:bool; mutable height:float; paragraph_height:int; mutable page_line:int; mutable page:int;
-             min_width:float; nom_width:float; max_width:float
-           }
+type line= {
+  paragraph:int;                        (** L'indice du paragraphe dans le tableau *)
+  lastFigure:int;                       (** La dernière figure placée, initialement -1 *)
+  lineStart:int;                        (** Le numéro de la boite de début dans le paragraphe *)
+  lineEnd:int;                          (** Le numéro de la boite suivant la dernière boite de la ligne, ou, si la ligne est césurée, le numéro de la boite contenant la césure *)
+  hyphenStart:int;
+  hyphenEnd:int;
+  isFigure:bool;
+  mutable height:float;
+  paragraph_height:int;
+  mutable page_line:int;
+  mutable page:int;
+  min_width:float;
+  nom_width:float;
+  max_width:float
+}
 
 
 
@@ -46,7 +57,7 @@ type 'a kerningBox='a Fonts.FTypes.kerningBox
 type drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                     drawing_max_width:float; drawing_y0:float; drawing_y1:float;
                     drawing_badness : float -> float;
-                    drawing_contents:float -> Drivers.contents list }
+                    drawing_contents:float -> OutputCommon.contents list }
 
 
 and 'a hyphenBox= { hyphen_normal:'a box array; hyphenated:('a box array* 'a box array) array }
@@ -62,7 +73,7 @@ and 'a box=
 
 
 let drawing ?offset:(offset=0.) cont=
-  let (a,b,c,d)=Drivers.bounding_box cont in
+  let (a,b,c,d)=OutputCommon.bounding_box cont in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;
@@ -214,7 +225,7 @@ let draw_boxes l=
                         ) (dr,0.) h.hyphen_normal
       )
     | GlyphBox a->(
-        ((Drivers.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y }) :: dr),
+        ((OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y }) :: dr),
         a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
       )
     | Glue g
@@ -385,23 +396,23 @@ let rec resize l=function
     GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }
   | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
                        hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
-  | Drawing x -> Drawing { x with
+  | Drawing x -> Drawing {
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
-                       drawing_contents=(fun w->List.map (Drivers.resize l) (x.drawing_contents w))
+                       drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
                    }
-  | Glue x -> Glue { x with
+  | Glue x -> Glue {
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
-                       drawing_contents=(fun w->List.map (Drivers.resize l) (x.drawing_contents w))
+                       drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
                    }
   | Kerning x -> Kerning { advance_width = l*.x.advance_width;
                            advance_height = l*.x.advance_height;

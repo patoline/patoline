@@ -28,13 +28,13 @@ module Curve = struct
   let nb_beziers curve = List.length curve
   let of_point_lists l = List.map bezier_of_point_list l
   let of_contents = function
-    | Drivers.Path (_, beziers) -> List.map Array.to_list beziers
-    | _ -> failwith "Attempt to convert a non-path value of type Drivers.content to Curve.t."
+    | OutputCommon.Path (_, beziers) -> List.map Array.to_list beziers
+    | _ -> failwith "Attempt to convert a non-path value of type OutputCommon.content to Curve.t."
   let draw
-    ?parameters:(parameters=Drivers.default)
+    ?parameters:(parameters=OutputCommon.default)
     (curve:t) =
     if curve = [] then [] else
-      [Drivers.Path (parameters, [Array.of_list curve])]
+      [OutputCommon.Path (parameters, [Array.of_list curve])]
 
   let global_time curve (i,t) = 
     let n = List.length curve in
@@ -154,7 +154,7 @@ module Rectangle = struct
       [(x3,y3);(x4,y4)];
       [(x4,y4);(x1,y1)]
     ]
-  (* let draw ?parameters:(parameters=Drivers.default) r:t =  *)
+  (* let draw ?parameters:(parameters=OutputCommon.default) r:t =  *)
   (*   Curve.draw ~parameters:parameters (curve r) *)
   let make x1 y1 x3 y3 = { bottom_left = (x1,y1) ;
 			   top_right = (x3, y3) }
@@ -169,15 +169,15 @@ module Rectangle = struct
 end
 
 module ArrowTip = struct
-  type t = { parameters : Drivers.path_parameters ; 
+  type t = { parameters : OutputCommon.path_parameters ; 
 	     curve : Curve.t }
 
-  let none = { parameters = Drivers.default ; curve = Curve.of_point_lists [] }
+  let none = { parameters = OutputCommon.default ; curve = Curve.of_point_lists [] }
 
   let simple ?size:(size=3.0)
       ?angle:(angle=0.4)
       ?bend:(bend=0.5)
-      ?parameters:(parameters=Drivers.default) 
+      ?parameters:(parameters=OutputCommon.default) 
       curve =
 	let a, b = list_last curve in
 	let da = Bezier.eval (Bezier.derivee a) 1. in
@@ -220,11 +220,11 @@ end
 
 module NodeShape = struct
   type bb = float * float * float * float
-  type t = { parameters : Drivers.path_parameters ; 
+  type t = { parameters : OutputCommon.path_parameters ; 
 	     make_curve : bb -> Curve.t ;
 	     make_anchor : bb -> Anchor.spec -> Anchor.t }
 
-  let default = { Drivers.default with Drivers.close = true ; Drivers.lineWidth=0.5 } 
+  let default = { OutputCommon.default with OutputCommon.close = true ; OutputCommon.lineWidth=0.5 } 
   let default_inner_sep = 0.5
 
   let rectangle ?inner_sep:(inner_sep = default_inner_sep) 
@@ -257,10 +257,10 @@ module NodeShape = struct
       function
 	| Anchor.Vec v -> v
 	| Anchor.Center -> Point.middle p1 p3
-	| Anchor.East -> Point.(+) (Point.middle p2 p3)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
-	| Anchor.West -> Point.(-) (Point.middle p1 p4)  (0.5 *. parameters.Drivers.lineWidth, 0.0)
-	| Anchor.North -> Point.(+) (Point.middle p3 p4)  (0.0, 0.5 *. parameters.Drivers.lineWidth)
-	| Anchor.South -> Point.(-) (Point.middle p1 p2)  (0.0, 0.5 *. parameters.Drivers.lineWidth)
+	| Anchor.East -> Point.(+) (Point.middle p2 p3)  (0.5 *. parameters.OutputCommon.lineWidth, 0.0)
+	| Anchor.West -> Point.(-) (Point.middle p1 p4)  (0.5 *. parameters.OutputCommon.lineWidth, 0.0)
+	| Anchor.North -> Point.(+) (Point.middle p3 p4)  (0.0, 0.5 *. parameters.OutputCommon.lineWidth)
+	| Anchor.South -> Point.(-) (Point.middle p1 p2)  (0.0, 0.5 *. parameters.OutputCommon.lineWidth)
 	| a -> raise (Anchor.Undefined a)
     in
     { parameters = parameters ;
@@ -377,9 +377,9 @@ end
 
 module Node = struct
   type t = { curve : Curve.t ;
-	     parameters : Drivers.path_parameters ;
+	     parameters : OutputCommon.path_parameters ;
 	     make_anchor : Anchor.spec -> Point.t ;
-	     contents : Drivers.contents list }
+	     contents : OutputCommon.contents list }
 
   let center node = node.make_anchor Anchor.Center
 
@@ -400,13 +400,13 @@ module Node = struct
     let at = spec.at in
     (* Compute the contents a first time to get a bounding box of the right size *)
     let contents = (Util.draw_boxes (boxify { defaultEnv with size = 4. } spec.contents_spec)) in
-    let bb_boot =  Drivers.bounding_box contents in
+    let bb_boot =  OutputCommon.bounding_box contents in
     (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
     (* But computing anchor needs make_anchor bb.  *)
     let x,y = Vector.translate (Vector.minus (shape.NodeShape.make_anchor bb_boot anchor)) at in
     (* Now translate the contents by x,y and compute the real bounding box, curve, etc *)
-    let contents = List.map (Drivers.translate x y) contents in
-    let bb =  Drivers.bounding_box contents in
+    let contents = List.map (OutputCommon.translate x y) contents in
+    let bb =  OutputCommon.bounding_box contents in
     let curve = shape.NodeShape.make_curve bb in
     { curve = curve ; 
       parameters = shape.NodeShape.parameters ;
@@ -416,7 +416,7 @@ module Node = struct
   (* En fait il faudra vite passer aussi curve a make_anchor... *)
 
 
-  let draw : t -> Drivers.contents list = fun node -> 
+  let draw : t -> OutputCommon.contents list = fun node -> 
     let shape_curve = 
       Curve.draw ~parameters:node.parameters node.curve
     in 
@@ -440,24 +440,24 @@ module Edge = struct
     | Squiggle of int * float
     | Fore of float
 
-  type t = { curves : (Drivers.path_parameters * Curve.t) list ;
+  type t = { curves : (OutputCommon.path_parameters * Curve.t) list ;
 	     head : ArrowTip.t ;
 	     tail : ArrowTip.t ;
 	     labels : Node.t list ;
 	   }
 
-  type parameters = { parameters_spec : Drivers.path_parameters ;
+  type parameters = { parameters_spec : OutputCommon.path_parameters ;
 		controls : Point.t list ;
-		head_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
-		tail_spec : ?parameters:Drivers.path_parameters -> Curve.t -> ArrowTip.t ;
+		head_spec : ?parameters:OutputCommon.path_parameters -> Curve.t -> ArrowTip.t ;
+		tail_spec : ?parameters:OutputCommon.path_parameters -> Curve.t -> ArrowTip.t ;
 		label_specs : label_spec list ;
 		transfo_specs : transfo_spec list }
 
   let default = {
-    parameters_spec = Drivers.default ;
+    parameters_spec = OutputCommon.default ;
     controls = [] ;
-    head_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
-    tail_spec = (fun ?parameters:(parameters = Drivers.default) _ -> ArrowTip.none) ;
+    head_spec = (fun ?parameters:(parameters = OutputCommon.default) _ -> ArrowTip.none) ;
+    tail_spec = (fun ?parameters:(parameters = OutputCommon.default) _ -> ArrowTip.none) ;
     label_specs = [] ;
     transfo_specs = []
   }
@@ -527,8 +527,8 @@ module Edge = struct
     end
     | Fore margin -> begin fun (params, curve) -> [
       ({ params with 
-	Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
-	Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
+	OutputCommon.strokingColor=Some (OutputCommon.RGB { OutputCommon.red=1.;OutputCommon.green=1.;OutputCommon.blue=1. }); 
+	OutputCommon.lineWidth=params.OutputCommon.lineWidth +. 2. *. margin },
        curve) ;
       (params, curve) 
     ]

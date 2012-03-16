@@ -1,8 +1,8 @@
 type line = {
   paragraph : int;
   lastFigure : int;
-  lineEnd : int;
   lineStart : int;
+  lineEnd : int;
   hyphenStart : int;
   hyphenEnd : int;
   isFigure : bool;
@@ -63,21 +63,21 @@ type drawingBox = {
   drawing_y0 : float;
   drawing_y1 : float;
   drawing_badness : float -> float;
-  drawing_contents : float -> Drivers.contents list;
+  drawing_contents : float -> OutputCommon.contents list;
 }
 and 'a hyphenBox = {
   hyphen_normal : 'a box array;
   hyphenated : ('a box array * 'a box array) array;
 }
 and 'a box =
-    GlyphBox of Drivers.glyph
+    GlyphBox of OutputCommon.glyph
   | Kerning of 'a box kerningBox
   | Glue of drawingBox
   | Drawing of drawingBox
   | Hyphen of 'a hyphenBox
   | User of 'a
   | Empty
-val drawing : ?offset:float -> Drivers.contents list -> drawingBox
+val drawing : ?offset:float -> OutputCommon.contents list -> drawingBox
 type error_log = Overfull_line of line | Widow of line | Orphan of line
 val print_line : line -> unit
 val print_box : 'a box -> unit
@@ -93,15 +93,15 @@ val is_hyphen : 'a box -> bool
 val box_width : float -> 'a box -> float
 val box_interval : 'a box -> float * float * float
 val boxes_interval : 'a box array -> float * float * float
-val draw_boxes : 'a box list -> Drivers.contents list
+val draw_boxes : 'a box list -> OutputCommon.contents list
 val lower_y : 'a box -> 'b -> float
 val upper_y : 'a box -> 'b -> float
 val line_height : 'a box array array -> line -> float * float
 val comp :
   'a box array array -> float -> int -> int -> int -> int -> int -> float
 val compression : 'a box array array -> parameters * line -> float
-val glyphCache_ : Drivers.glyph Binary.IntMap.t ref Binary.StrMap.t ref
-val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> Drivers.glyph
+val glyphCache_ : OutputCommon.glyph Binary.IntMap.t ref Binary.StrMap.t ref
+val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> OutputCommon.glyph
 val glyph_of_string :
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->

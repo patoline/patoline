@@ -1,118 +1,49 @@
 open Util
 
 
-let v_badness paragraphs v_space node0 x0 comp0 node1 x1 comp1=
-  let xi=ref x0 in
-  let xj=ref x1 in
+let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
 
-  let rec v_badness boxes_i i boxes_j j w_tot col col2=
-    match boxes_i, boxes_j with
-        [],_ | _,[] ->if w_tot<=0. then 0. else ((col*.col-.col2)/.w_tot)
+  let xi=ref params_i.left_margin in
+  let xj=ref params_j.left_margin in
 
-      | (hi,_,maxi)::si, _ when i>=maxi->
-          (match si with
-               (_,i0,_)::_->v_badness si i0 boxes_j j w_tot col col2
-             | _->v_badness [] (-1) boxes_j j w_tot col col2)
+  let rec collide i j w_tot col col2=
+    let box_i=haut.(i) in
+    let box_j=bas.(j) in
+      (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
+    let wi=box_width comp_i box_i in
+    let wj=box_width comp_j box_j in
+      if !xi +.wi < !xj+. wj && i < max_haut then (
+        let yi=lower_y box_i wi in
+        let yj=if !xi+.wi < !xj then -.infinity else
+          if upper_y box_j wj > -.infinity then upper_y box_j wj else 0.
+        in
+        let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
+        let w0= !xi +. wi -. x0 in
 
-      | _, (hj,_,maxj)::sj when j>=maxj->
-          (match sj with
-               (_,j0,_)::_->v_badness boxes_i i sj j0 w_tot col col2
-             | _->v_badness boxes_i i [] (-1) w_tot col col2)
+          xi:= !xi+.wi;
+          if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
+            (collide (i+1) j w_tot col col2)
+          else
+            (let area=w0*.(v_space+.yi-.yj) in
+               collide (i+1) j (w_tot+.w0) (col+.area) (col+.area*.area))
+      ) else if j < max_bas then (
+        let yi=if !xj +. wj < !xi then infinity else
+          if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
+        let yj=upper_y box_j wj in
+        let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
+        let w0= !xj +. wj -. x0 in
+          xj:= !xj+.wj;
+          if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
+            (collide i (j+1) w_tot col col2)
+          else
+            (let area=w0*.(v_space+.yi-.yj) in
+               collide i (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
+      ) else (if w_tot<=0. then 0. else ((col*.col-.col2)/.w_tot))
+  in
+    collide 0 0 0. 0. 0.
 
-      | (hi,_,maxi)::si, (hj,_,maxj)::sj ->
-          (match hi.(i), hj.(j) with
-               Hyphen xi, Hyphen xj ->
-                 v_badness
-                   ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                   ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                   w_tot col col2
-             | Hyphen xi, _ ->
-                 v_badness
-                   ((xi.hyphen_normal, 0, Array.length xi.hyphen_normal)::(hi, i+1, maxi)::si) 0
-                   boxes_j j
-                   w_tot col col2
-             | _, Hyphen xj ->
-                 v_badness
-                   boxes_i i
-                   ((xj.hyphen_normal, 0, Array.length xj.hyphen_normal)::(hj, j+1, maxj)::sj) 0
-                   w_tot col col2
-             | _->(
-                 let box_i=match boxes_i with
-                     []->Empty
-                   | (hi,_,_)::_->hi.(i)
-                 in
-                 let box_j=match boxes_j with
-                     []->Empty
-                   | (hj,_,_)::_->hj.(j)
-                 in
-                   (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
-                 let wi=box_width comp0 box_i in
-                 let wj=box_width comp1 box_j in
-                   if (!xi +.wi < !xj+. wj && boxes_i<>[]) || boxes_j=[] then (
-                     let yi_=lower_y box_i wi in
-                     let yi=if yi_=infinity then 0. else yi_ in
-                     let yj_=if !xi+.wi < !xj then 0. else upper_y box_j wj in
-                     let yj=if yj_=(-.infinity) then 0. else yj_ in
-                     let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
-                     let w0= !xi +. wi -. x0 in
-                       xi:= !xi+.wi;
-                       if !xj>= !xi+.wi || is_glue box_i || is_glue box_j then
-                         (v_badness boxes_i (i+1) boxes_j j w_tot col col2)
-                       else
-                         (let area=w0*.(v_space+.yi-.yj) in
-                            v_badness boxes_i (i+1) boxes_j j (w_tot+.w0) (col+.area) (col+.area*.area))
-                   ) else (
-                     let yi_=if !xj > !xi +. wi then 0. else lower_y box_i wi in
-                     let yi=if yi_=(infinity) then 0. else yi_ in
-                     let yj_=upper_y box_j wj in
-                     let yj=if yj_=(-.infinity) then 0. else yj_ in
 
-                     let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
-                     let w0= !xj +. wj -. x0 in
-                       xj:= !xj +. w0;
-                       if !xi>= !xj+.wj || is_glue box_i || is_glue box_j then
-                         (v_badness boxes_i i boxes_j (j+1) w_tot col col2)
-                       else
-                         (let area=w0*.(v_space+.yi-.yj) in
-                            v_badness boxes_i i boxes_j (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
-                   )
-               )
-          )
-  in
-  let li0=
-    (paragraphs.(node0.paragraph), (if node0.hyphenStart>=0 then node0.lineStart+1 else node0.lineStart), node0.lineEnd)::
-      (if node0.hyphenEnd>=0 then
-         (match paragraphs.(node0.paragraph).(node0.lineEnd) with
-              Hyphen x->let hyp=fst x.hyphenated.(node0.hyphenEnd) in [(hyp, 0, Array.length hyp)]
-            | _->[])
-       else [])
-  in
-  let li=
-    (if node0.hyphenStart>=0 then
-       (match paragraphs.(node0.paragraph).(node0.lineStart) with
-            Hyphen x->let hyp=snd x.hyphenated.(node0.hyphenStart) in (hyp, 0, Array.length hyp)::li0
-          | _->li0)
-     else li0)
-  in
-  let lj0=
-    (paragraphs.(node1.paragraph), (if node1.hyphenStart>=0 then node1.lineStart+1 else node1.lineStart), node1.lineEnd)::
-      (if node1.hyphenEnd>=0 then
-         (match paragraphs.(node1.paragraph).(node1.lineEnd) with
-              Hyphen x->let hyp=fst x.hyphenated.(node1.hyphenEnd) in [(hyp,0,Array.length hyp)]
-            | _->[])
-       else [])
-  in
-  let lj=
-    (if node1.hyphenStart>=0 then
-       (match paragraphs.(node1.paragraph).(node1.lineStart) with
-            Hyphen x->(let hyp=snd x.hyphenated.(node1.hyphenStart) in (hyp,0,Array.length hyp)::lj0)
-          | _->lj0)
-     else lj0)
-  in
-    match li, lj with
-        (_,i,_)::_,(_,j,_)::_->
-          v_badness li i lj j 0. 0. 0.
-      | _->failwith "impossible case"
+
 
 let h_badness paragraphs node comp=
   let bad=ref 0. in
@@ -128,59 +59,31 @@ let h_badness paragraphs node comp=
 
 
 
-let badness paragraphs ?figures:(figures=[||]) ?citations:(citations=[||]) node params nextNode params'=
-  if nextNode.paragraph>=Array.length paragraphs then 0. else (
-    let comp0=compression paragraphs (params,node) in
-    let comp1=compression paragraphs (params',nextNode) in
+let badness paragraphs ?figures:(figures=[||])
+    node_i line_i max_i params_i comp_i
+    node_j line_j max_j params_j comp_j=
+
+  if node_j.paragraph>=Array.length paragraphs then 0. else (
     let v_bad=
-      if node.page=nextNode.page then (
-        v_badness paragraphs
-          (nextNode.height-.node.height)
-          node params.left_margin comp0
-          nextNode params'.left_margin comp1
+      if node_i.page=node_j.page then (
+        v_badness
+          (node_j.height-.node_i.height)
+          line_i max_i params_i comp_i
+          line_j max_j params_j comp_j
       ) else 0.
     in
-    let figure_badness=
-      (* Pour toutes les figures déjà placées *)
-      let bad=ref 0. in
-      let fig_after=
-        if node.page<>nextNode.page then 5000. else
-          if node.paragraph<>nextNode.paragraph then 10000. else 0.
-      in
-        for i=nextNode.lastFigure+1 to Array.length figures-1 do
-          if i<Array.length citations then (
-            if citations.(i) < (nextNode.paragraph, nextNode.lineStart) then
-              bad:=(!bad) +. fig_after
-          )
-        done;
-
-        let fig_before=
-          if node.page<>nextNode.page then 5000. else
-            if node.paragraph<>nextNode.paragraph then 10000. else 0.
-        in
-          for i=0 to nextNode.lastFigure do
-            if i<Array.length citations then (
-              if citations.(i) >= (nextNode.paragraph, nextNode.lineStart) &&
-                (not nextNode.isFigure || i=nextNode.lastFigure)
-              then
-                bad:=(!bad) +. fig_before
-            )
-          done;
-        !bad
-    in
-      (h_badness paragraphs nextNode comp1)
+      (h_badness paragraphs node_j comp_j)
       +. v_bad
-      +. figure_badness
         (* Page pas assez remplie *)
-      +. (if node.page<>nextNode.page &&
-            node.height<>params.page_height then 1e20 else 0.)
+      +. (if node_i.page<>node_j.page &&
+            node_i.height<>params_i.page_height then 10000. else 0.)
         (* Cesures *)
-      +. (if nextNode.hyphenEnd >=0 then
-            (if nextNode.hyphenStart >=0 then
+      +. (if node_j.hyphenEnd >=0 then
+            (if node_j.hyphenStart >=0 then
                1e31
              else
-               1e30)
+               10000.)
           else
             0.)
-      +. (1000.*.(abs_float (comp0-.comp1)))
+      +. (1000.*.(abs_float (comp_i-.comp_j)))
   )

@@ -18,10 +18,10 @@ List.iter (fun fs ->
         let len = String.length f in
         let ext = String.sub f (len - 4) 4 in
         if ext = ".otf" then (
-            newPar textWidth parameters ( T (f^" :") :: B (fun env -> env.stdGlue) :: font f [T pangramme]);
+            newPar textWidth parameters ( T (f^" :") :: B (fun env -> [env.stdGlue]) :: font f [T pangramme]);
             let font = loadFont f in
             let features = fontFeatures font in
-            let features = String.concat ", " (List.map (fun f -> FTypes.str_of_feature f ) features) in
+            let features = String.concat ", "  features in
             newPar textWidth parameters [T ("Supported features : "^features)]
         )
     ) fs
