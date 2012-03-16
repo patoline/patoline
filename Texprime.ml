@@ -73,7 +73,7 @@ let print_math ch display m =
       Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (Maths.glyphs \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
-      Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (dn ind_right "(" ")") a 
+      Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
     | Delim(op,a,cl) ->
       dn indices op cl ch a
     | _ -> 

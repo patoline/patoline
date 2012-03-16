@@ -73,6 +73,19 @@ let has_space dyp =
     | s::_ when s<>"" && (s.[0] = ' ' or s.[0] = '\t') -> true
     | [_] -> false
     | _ -> true 
+
+let layout_info dyp a b =
+    let a = dyp.rhs_end_pos a in
+    let b = dyp.rhs_start_pos b in
+    let cdiff = b.pos_cnum - a.pos_cnum in
+    let ldiff = b.pos_lnum - a.pos_lnum in
+    cdiff, ldiff
+
+let layout_newline dyp a b =
+    snd (layout_info dyp a b) > 0
+
+let layout_empty dyp a b =
+    fst (layout_info dyp a b) = 0
 }
 
 %start main
@@ -229,7 +242,7 @@ math:
       { Var(name) } atom
   | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
       { Fun(name) } atom
-  | (['-''+']?['0'-'9']+('.'['0'-'9']+)?) <num> 
+  | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
   | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "}" | ">"]<cl> 
       { Delim(op,a,cl) } atom 
@@ -240,7 +253,7 @@ math:
   | math(<=fun)<m> - rightind<fi>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
-  | math(<=fun)<a> - "(" math<b> ")"
+  | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
   | math(<=sum)<a> ["+"|"-"]<op> math(<sum)<b>
       { Binary(2, false, op, false, a, b) } sum
@@ -248,8 +261,8 @@ math:
       { Prefix(op,b) } sum
   | math(<=prod)<a> ["."|"*"|"/"]<op> math(<prod)<b> 
       { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(2, false, op, false, a, b) } prod
-  | math(<=prod)<a>  math(<prod)<b>
-      { Binary(2, false, "", false, a, b) } prod
+  | math(<=prod)<a> math(<prod)<b>
+      { if layout_empty dyp 1 2 then raise Giveup; Binary(2, false, "", false, a, b) } prod
   | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
       { let op = match op with
           "<=" -> "≤"
