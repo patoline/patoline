@@ -64,8 +64,8 @@ let print_math ch display m =
       fn ind' ch m 
     | Binary(_, a, _,"/",_,b) ->
       if (indices <> no_ind) then failwith "Indices on fraction.";
-      Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={Drivers.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
-    | Binary(pr, _,"",_,a,b) ->
+      Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
+    | Binary(pr, a, _,"",_,b) ->
       if (indices <> no_ind) then failwith "Indices on binary.";
       Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
     | Binary(pr,a,nsl,op,nsr,b) ->
