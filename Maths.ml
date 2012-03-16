@@ -89,10 +89,10 @@ let default=[|
   default_env;
   default_env;
   default_env;
-  { default_env with mathsSize=0.707 };
-  { default_env with mathsSize=0.707 };
-  { default_env with mathsSize=0.414 };
-  { default_env with mathsSize=0.414 }
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=4./.9. };
+  { default_env with mathsSize=4./.9. }
 |]
 
 type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
@@ -324,6 +324,12 @@ let rec draw_maths mathsEnv style mlist=
 
       | (Fraction f)::s->(
 
+        let hx =
+          let x=Fonts.loadGlyph env.mathsFont
+	    ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'x'}) in
+          (Fonts.glyph_y1 x)/.2000.
+        in
+
           let ba=draw_boxes (draw_maths mathsEnv (match style with
                                                       Display -> Text | Display' -> Text'
                                                     | _ -> superStyle style)
@@ -346,9 +352,9 @@ let rec draw_maths mathsEnv style mlist=
                        drawing_contents=(fun _->
                                            (if f.line.lineWidth = 0. then [] else
                                               [Path ({f.line with lineWidth=f.line.lineWidth*.env.mathsSize},
-                                                     [ [|line (0.,0.) (w,0.)|] ]) ])@
-                                             (List.map (translate ((w-.wa)/.2.) (-.y0a+.env.mathsSize*.(env.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
-                                             (List.map (translate ((w-.wb)/.2.) (-.y1b-.env.mathsSize*.(env.denominator_spacing+.f.line.lineWidth/.2.))) bb)
+                                                     [ [|line (0.,hx) (w,hx)|] ]) ])@
+                                             (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.env.mathsSize*.(env.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
+                                             (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.env.mathsSize*.(env.denominator_spacing+.f.line.lineWidth/.2.))) bb)
                                         ) }) :: (draw_maths mathsEnv style s)
         )
       | Operator op::s ->(
