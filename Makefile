@@ -8,7 +8,7 @@ DRIVERS=Output/OutputPaper.ml Output/Drivers/Pdf.ml
 SOURCES0 = $(BASE) $(FONTS) Output/OutputCommon.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Parameters.ml Typography.ml $(DRIVERS) Diag.ml Maths.ml
 SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
 SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
-DOC=Bezier.mli Drivers.mli Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Output.ml Typography.ml
+DOC=Bezier.mli Output/OutputCommon.ml Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Typography.ml
 
 EXEC = texprime
 

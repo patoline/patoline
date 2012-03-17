@@ -9,8 +9,8 @@ LAMA UMR 5127, Université de Savoie
 {{
 open Diag
 module Env_abstract = struct
-  let parameters a b c d e line =
-    let par=parameters a b c d e line in
+  let parameters a b c d line =
+    let par=parameters a b c d line in
       { par with
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
@@ -22,12 +22,6 @@ let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
 let figRef ()= [B (fun _->[User (NamedCitation "figure de Tom")])]
 let large text = [size 10. text]
-let pageref x=
-    [B (fun env->env.fixable<-true; try
-       let name=Binary.StrMap.find x env.figure_names in
-           boxify env [T (string_of_int (1+(Binary.IntMap.find name env.figure_positions).Util.page))]
-       with Not_found -> []
-    )]
 
 let fig2 env=
   let state = [] in
@@ -50,7 +44,7 @@ let fig2 env=
   in
   let d, state = Node.make_draw state { 
     Node.at = b.Node.make_anchor Anchor.West ;
-    Node.contents_spec =  (T "Cette figure est sur la page"::(B (fun env->[env.stdGlue]))::(pageref "figure de Tom")) ;
+    Node.contents_spec =  (T "Cette figure est sur la page"::(pageref "figure de Tom")) ;
     Node.anchor = Anchor.East ;
     Node.shape = (NodeShape.rectangle 
 		    ~parameters:{ params with lineWidth=0.5 ; lineJoin=Round_join} 
@@ -101,6 +95,7 @@ let fig2 env=
     e a
   in
   drawing ~offset:(-10.) (List.rev state)
+
 }}
 
 \Begin{abstract}
@@ -109,6 +104,7 @@ TeX' est un logiciel permettant de produire des documents de haute qualité. Il 
 \Italic
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
 \End{abstract}
+
 
 => Introduction
 
@@ -215,6 +211,12 @@ $$ f(x,y) = { x + y } / { (x^2 + y^2) (x - y) } $$
 => Math en paragraph
 
 Un beau paragraphe avec des maths : $2/3$, $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^^j__x_i^n$, $123^{-12.5}$.
+
+=<
+
+=> Table des matieres
+
+{{ table_of_contents !str max_int }}
 
 =<
 =<

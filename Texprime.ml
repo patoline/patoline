@@ -23,13 +23,13 @@ let preambule = "
 let postambule : ('a, 'b, 'c) format = "
   module Out=OutputPaper.Output(Pdf);;
   let filename=\"%s.pdf\" in
-  let rec resolve fig user=
+  let rec resolve env user fig=
 
-     defaultEnv.user_positions<-user;
-     defaultEnv.figure_positions<-fig;
-
-     let fig_params,params,compl,pars,figures=flatten defaultEnv !str in
-     let (_,pages,user',fig') as result=TS.typeset
+     let env'={ env with user_positions=user; figure_names=fig }
+     in
+     fixable:=false;
+     let fig_params,params,compl,pars,figNames,figures=flatten env' !str in
+     let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
        ~figures:figures
@@ -37,11 +37,11 @@ let postambule : ('a, 'b, 'c) format = "
        ~badness:(Badness.badness pars)
        pars
      in
-     if (fig<>fig' || user<>user') && defaultEnv.fixable then (
-       resolve fig' user'
-     ) else Out.output !str pars figures defaultEnv pages filename
+     if (user<>user') && !fixable then (
+       resolve env' user' figNames
+     ) else Out.output !str pars figures env pages filename
   in
-     resolve defaultEnv.figure_positions defaultEnv.user_positions
+     resolve defaultEnv defaultEnv.user_positions Binary.StrMap.empty
 "
 
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
@@ -221,7 +221,7 @@ let _=
 		  let rec output_list docs = List.iter output_doc docs
 		  and output_doc = function
 		    | Paragraph p ->
-		      Printf.printf "newPar ~environment:defaultEnv textWidth parameters %a;;\n" 
+		      Printf.printf "newPar ~environment:(fun x->x) textWidth parameters %a;;\n" 
 			(print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
@@ -236,11 +236,11 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
 		    | Math m ->
-		      Printf.printf "newPar ~environment:{defaultEnv with par_indent = []} textWidth center %a;;\n" 
+		      Printf.printf "newPar ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
-		      Printf.printf "let verbEnv = { (envFamily defaultMono defaultEnv)
+		      Printf.printf "let verbEnv x = { (envFamily defaultMono x)
                                                      with par_indent = [] };;\n\n";
 		      let lang = match lang with
 			  None -> "T"

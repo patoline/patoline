@@ -93,7 +93,7 @@ module Output=functor(M:Driver)->struct
     in
     let rec make_struct tree=
       match tree with
-          Paragraph _ | Figure _->
+          Paragraph _ | FigureDef _->
             { OutputCommon.name="";
               OutputCommon.displayname=[];
               OutputCommon.page=0;
@@ -104,7 +104,7 @@ module Output=functor(M:Driver)->struct
             let (p,x,y)=positions.(s.tree_paragraph) in
             let rec make=function
                 []->[]
-              | (_,Paragraph _) :: s | (_,Figure _) :: s->make s
+              | (_,Paragraph _) :: s | (_,FigureDef _) :: s->make s
               | (_,Node u)::s -> (make_struct (Node u))::(make s)
             in
             let a=Array.of_list (make (IntMap.bindings s.children)) in

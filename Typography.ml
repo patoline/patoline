@@ -99,36 +99,82 @@ let selectFont fam alt it =
 
 type user=
     NamedCitation of string
-  | Citation of int
+  | FigureRef of int
   | Pageref of string
+  | Structure of (int list*string)
+  | Figure of int
+
+let print_user=function
+    Structure (l,str)->print_string str
+  |_->()
+
 
 module TS=Typeset.Make (struct
                           type t=user
                           let compare=compare
-                          let citation x=Citation x
+                          let figureRef x=FigureRef x
+                          let figure x=Figure x
+                          let isFigure=function Figure _->true | _->false
+                          let figureNumber=function Figure x->x | _-> -1
                         end)
 
-module C=Parameters.Completion (TS.UMap)
+module C=Parameters.Completion (TS)
 
-type 'a environment={
-  mutable fontFamily:fontFamily;
-  mutable fontItalic:bool;
-  mutable fontAlternative:fontAlternative;
-  mutable fontFeatures:string list;
-  mutable fontColor:OutputCommon.color;
-  mutable font:font;
-  mutable size:float;
-  mutable par_indent:'a box list;
-  mutable stdGlue:'a box;
-  mutable hyphenate:string->(string*string) array;
-  mutable substitutions:glyph_id list -> glyph_id list;
-  mutable positioning:glyph_ids list -> glyph_ids list;
-
-  mutable user_positions:Util.line TS.UMap.t;
-  mutable figure_positions:Util.line IntMap.t;
-  mutable figure_names:int StrMap.t;
-  mutable fixable:bool
+type 'a node={
+  name:string;
+  displayname:'a content list;
+  children:'a tree IntMap.t;
+  node_env:'a environment -> 'a environment;
+  mutable tree_paragraph:int;
 }
+and 'a paragraph={
+  par_contents:'a content list;
+  par_env:'a environment -> 'a environment;
+  parameters:'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
+  completeLine:'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
+}
+and 'a tree=
+    Node of 'a node
+  | Paragraph of 'a paragraph
+  | FigureDef of string*('a environment -> drawingBox)*
+      ('a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters)
+
+and 'a environment={
+ fontFamily:fontFamily;
+ fontItalic:bool;
+ fontAlternative:fontAlternative;
+ fontFeatures:string list;
+ fontColor:OutputCommon.color;
+ font:font;
+ size:float;
+ par_indent:'a box list;
+ stdGlue:'a box;
+ hyphenate:string->(string*string) array;
+ substitutions:glyph_id list -> glyph_id list;
+ positioning:glyph_ids list -> glyph_ids list;
+
+ user_positions:Util.line TS.UMap.t;
+ figure_names:int StrMap.t;
+ mutable fixable:bool
+}
+
+(* Type du contenu. B est une boîte quelconque. Les espaces dans T
+   seront transformés en la boîte stdGlue de l'environnement, qui
+   n'est pas nécessairement une GlueBox *)
+and 'a content=
+    B of ('a environment->'a box list)
+  | Fix of ('a environment->'a box list)
+  | T of string
+  | FileRef of (string*int*int)
+  | Scoped of ('a environment->'a environment)*('a content list)
+
+(* let combine_env a b= *)
+(*   a.user_positions<-TS.UMap.fold TS.UMap.add a.user_positions b.user_positions; *)
+(*   a.figure_positions<-IntMap.fold IntMap.add a.figure_positions b.figure_positions; *)
+(*   a.figure_names<-StrMap.fold StrMap.add a.figure_names b.figure_names; *)
+(*   a.fixable<-a.fixable || b.fixable *)
+
+
 
 let defaultFam= lmroman
 let defaultMono= lmmono
@@ -183,21 +229,9 @@ let defaultEnv:user environment=
                            *);
 
         user_positions=TS.UMap.empty;
-        figure_positions=IntMap.empty;
         figure_names=StrMap.empty;
         fixable=false
     }
-
-
-(* Type du contenu. B est une boîte quelconque. Les espaces dans T
-   seront transformés en la boîte stdGlue de l'environnement, qui
-   n'est pas nécessairement une GlueBox *)
-type 'a content=
-    B of ('a environment->'a box list)
-  | Fix of ('a environment->'a box list)
-  | T of string
-  | FileRef of (string*int*int)
-  | Scoped of ('a environment->'a environment)*('a content list)
 
 
 
@@ -208,30 +242,14 @@ type 'a content=
 (* Le jeu est de construire la structure de document suivante :
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
-type 'a node={
-  name:string;
-  displayname:'a content list;
-  children:'a tree IntMap.t;
-  mutable tree_paragraph:int;
-}
-and 'a paragraph={
-  par_contents:'a content list;
-  par_env:'a environment;
-  parameters:'a box array array -> drawingBox array -> parameters -> line IntMap.t -> line TS.UMap.t -> line -> parameters;
-  completeLine:'a box array array -> drawingBox array -> line IntMap.t -> line TS.UMap.t -> line -> bool -> line list
-}
-and 'a tree=
-    Node of 'a node
-  | Paragraph of 'a paragraph
-  | Figure of string*('a environment -> drawingBox)*
-      ('a box array array -> drawingBox array -> parameters -> line IntMap.t -> line TS.UMap.t -> line -> parameters)
 
-let empty={ name=""; displayname = []; children=IntMap.empty; tree_paragraph= (-1) }
+let empty : user node={ name=""; displayname = []; children=IntMap.empty; node_env=(fun x->x); tree_paragraph= (-1) }
 
 (* La structure actuelle *)
 let str=ref (Node empty)
 (* Le chemin vers le noeud courant *)
 let cur=ref []
+let fixable=ref false
 
 (* Sortie en dot de la structure du document *)
 let doc_graph out t0=
@@ -240,7 +258,7 @@ let doc_graph out t0=
     Printf.fprintf out "%s [label=\"%s\"];\n" path t.name;
     List.iter (fun (i,x)->match x with
                    Paragraph _
-                 | Figure _-> ()
+                 | FigureDef _-> ()
                  | Node n->(
                      let p=path^"_"^(string_of_int i) in
                        Printf.fprintf out "%s -> %s;\n" path p;
@@ -252,10 +270,11 @@ let doc_graph out t0=
     Printf.fprintf out "}\n"
 
 
+
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 
 (* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
-let newPar ?(environment=defaultEnv) complete parameters par=
+let newPar ?(environment=(fun x->x)) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
   let rec newPar tree path=
     match path with
@@ -321,8 +340,10 @@ let title ?label displayname =
     | Some s -> s
   in
   match !str with
-      Paragraph _ | Figure _->str:= Node { name=name; displayname = displayname; 
-				children=IntMap.singleton 1 !str; tree_paragraph=0 }
+      Paragraph _ | FigureDef _->str:= Node { name=name; displayname = displayname; 
+				           children=IntMap.singleton 1 !str;
+                                           node_env=(fun x->x);
+                                           tree_paragraph=0 }
     | Node n -> str:=Node { n with name=name; displayname = displayname }
 
 
@@ -454,23 +475,23 @@ let features f t=
 
 
 
-
-let parameters paragraphs figures last_parameters last_figures last_users (line:Util.line)=
+let parameters paragraphs figures last_parameters last_users (line:Util.line)=
   let mes0=150. in
   let lead=5. in
   let mes=
-    if IntMap.cardinal last_figures > 0 then
-      let fig,fig_line=IntMap.max_binding last_figures in
-        if line.page=fig_line.page &&
-          line.height<=
-          fig_line.height +.
-            (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
-
-              mes0 -. figures.(fig).drawing_nominal_width -. 1.
-        else
-          mes0
-    else
-      mes0
+    let f=TS.UMap.filter (fun k _->TS.User.isFigure k) last_users in
+      if not (TS.UMap.is_empty f) then
+        let fig_,fig_line=TS.UMap.max_binding f in
+        let fig=TS.User.figureNumber fig_ in
+          if line.page=fig_line.page &&
+            line.height<=
+            fig_line.height +.
+              (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
+                mes0 -. figures.(fig).drawing_nominal_width -. 1.
+          else
+            mes0
+      else
+        mes0
   in
     { measure=mes ;
       page_height=if line.page_line <= 0 then 45.*.lead else last_parameters.page_height;
@@ -482,8 +503,8 @@ let parameters paragraphs figures last_parameters last_figures last_users (line:
     }
 
 
-let center paragraphs figures last_parameters lastFigures lastUsers l=
-  let param=parameters paragraphs figures last_parameters lastFigures lastUsers l in
+let center paragraphs figures last_parameters lastUsers l=
+  let param=parameters paragraphs figures last_parameters lastUsers l in
   let b=l.nom_width in
     if param.measure >= b then
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
@@ -495,8 +516,8 @@ let figure ?(name="") ?(parameters=center) drawing=
   let rec fig tree path=
     match path with
         []->(match tree with
-                 Node t->Node { t with children=IntMap.add (next_key t.children) (Figure (name,drawing,parameters)) t.children }
-               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (Figure (name,drawing,parameters)) IntMap.empty) })
+                 Node t->Node { t with children=IntMap.add (next_key t.children) (FigureDef (name,drawing,parameters)) t.children }
+               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (FigureDef (name,drawing,parameters)) IntMap.empty) })
       | h::s->
           (match tree with
                Node t->(let t'=try IntMap.find h t.children with _->Node empty in
@@ -533,7 +554,7 @@ let sources=ref StrMap.empty
 let rec boxify env=function
     []->[]
   | (B b)::s->(b env)@(boxify env s)
-  | (Fix b)::s->(env.fixable<-true; boxify env (B b::s))
+  | (Fix b)::s->(fixable:=true; boxify env (B b::s))
   | (T t)::s->(
     let rec cut_str i0 i result=
       if i>=String.length t then (
@@ -576,7 +597,6 @@ let rec boxify env=function
   | Scoped (fenv, p)::s->(
       let env'=fenv env in
       let c=(boxify env' p) in
-        env.fixable<-env.fixable || env'.fixable;
         c@(boxify env s)
   )
 
@@ -592,8 +612,8 @@ let flatten env0 str=
   let n=ref 0 in
 
 
-  let add_paragraph p=
-    paragraphs:=(Array.of_list (boxify p.par_env p.par_contents))::(!paragraphs);
+  let add_paragraph env p=
+    paragraphs:=(Array.of_list (boxify (p.par_env env) p.par_contents))::(!paragraphs);
     compl:=(p.completeLine)::(!compl);
     param:=(p.parameters)::(!param);
     incr n;
@@ -601,8 +621,8 @@ let flatten env0 str=
 
   let rec flatten env path tree=
     match tree with
-        Paragraph p -> add_paragraph p
-      | Figure (name, f, p) -> (
+        Paragraph p -> add_paragraph env p
+      | FigureDef (name, f, p) -> (
           let n=IntMap.cardinal !figures in
             figure_names:=StrMap.add name n !figure_names;
             fig_param:=IntMap.add n p !fig_param;
@@ -610,38 +630,41 @@ let flatten env0 str=
         )
       | Node s-> (
           s.tree_paragraph <- !n;
+          let env'=s.node_env env in
           if path<>[] then (
-            add_paragraph ({ par_contents=structNum path s.displayname;
-                             par_env=env;
-                             parameters=
-                               (fun a b c d e f ->
-                                  { (parameters a b c d e f) with
-                                      next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-                             completeLine=C.normal (fst a4) });
+            add_paragraph env'
+              ({ par_contents=(B (fun _->[User (Structure (path, s.name))]))::structNum path s.displayname;
+                 par_env=(fun x->x);
+                 parameters=
+                   (fun a b c d e ->
+                      { (parameters a b c d e) with
+                          next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+                 completeLine=C.normal (fst a4) });
           ) else if s.name<>"" then (
-            add_paragraph {par_contents=[size 10. [T (s.name)] ];
-                           par_env=env;
-                           parameters=(
-                             fun a b c d e f ->
-                               let cen=center a b c d e f in
-                                 { cen with min_height_before=max (4.*.lead) c.min_height_before });
-                           completeLine=C.normal (fst a4) }
+            add_paragraph env'
+              {par_contents=[size 10. [T (s.name)] ];
+               par_env=(fun x->x);
+               parameters=(
+                 fun a b c d e ->
+                   let cen=center a b c d e in
+                     { cen with min_height_before=max (4.*.lead) c.min_height_before });
+               completeLine=C.normal (fst a4) }
           );
           let rec flat_children num indent= function
               []->()
             | (_, (Paragraph p))::s->(
-                flatten env path (
+                flatten env' path (
                   Paragraph { p with par_contents=
-                      (if indent then [B (fun _->p.par_env.par_indent)] else []) @ p.par_contents }
+                      (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                 );
                 flat_children num true s
               )
-            | (_,(Figure _ as h))::s->(
-                flatten env path h;
+            | (_,(FigureDef _ as h))::s->(
+                flatten env' path h;
                 flat_children num true s
               )
             | (_, (Node _ as tr))::s->(
-                flatten env (path@[num]) tr;
+                flatten env' (path@[num]) tr;
                 flat_children (num+1) false s
               )
           in
@@ -652,22 +675,22 @@ let flatten env0 str=
     flatten env0 [] str;
     let figures_resolved=
       List.map (Array.map (function
-                               User (NamedCitation s) -> User (Citation (StrMap.find s !figure_names))
+                               User (NamedCitation s) -> User (FigureRef (StrMap.find s !figure_names))
                              | x -> x)) !paragraphs
     in
     let params=Array.make (IntMap.cardinal !figures) center in
       IntMap.iter (fun n p->params.(n)<-p) !fig_param;
-      env0.figure_names<- !figure_names;
       (params,
        Array.of_list (List.rev !param),
        Array.of_list (List.rev !compl),
        Array.of_list (List.rev figures_resolved),
+       !figure_names,
        Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 
 let rec make_struct positions tree=
   match tree with
-      Paragraph _ | Figure _->
+      Paragraph _ | FigureDef _->
           { OutputCommon.name="";
 	    OutputCommon.displayname=[];
             OutputCommon.page=0;
@@ -678,7 +701,7 @@ let rec make_struct positions tree=
         let (p,x,y)=positions.(s.tree_paragraph) in
         let rec make=function
             []->[]
-          | (_,Paragraph _) :: s | (_,Figure _) :: s->make s
+          | (_,Paragraph _) :: s | (_,FigureDef _) :: s->make s
           | (_,Node u)::s -> (make_struct positions (Node u))::(make s)
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
@@ -689,3 +712,43 @@ let rec make_struct positions tree=
             OutputCommon.struct_y=y;
             OutputCommon.substructures=a }
       )
+
+
+let table_of_contents tree max_level=
+  let rec toc path level tree=
+    match tree with
+        Paragraph p -> ()
+      | FigureDef (name, f, p) -> ()
+      | Node s when level < max_level-> (
+          let cur=if path<>[] then (
+            [Fix (fun env->
+                    try
+                      boxify env [T s.name;
+                                  T (string_of_int (1+(TS.UMap.find (Structure (path,s.name)) env.user_positions).Util.page))]
+                    with
+                        Not_found -> []
+                )]
+          ) else []
+          in
+          let rec flat_children num=function
+              []->()
+            | (_,(FigureDef _))::s
+            | (_,(Paragraph _))::s->flat_children num s
+            | (_,(Node _ as tr))::s->(
+                toc (path@[num]) (level+1) tr;
+                flat_children (num+1) s
+              )
+          in
+            if cur<>[] then newPar ~environment:(fun x->{x with par_indent=[]}) (C.normal 150.) parameters cur;
+            flat_children 0 (IntMap.bindings s.children)
+        )
+      | Node _->()
+  in
+    toc [] 0 tree
+
+let pageref x=
+  [Fix (fun env->try
+          let name=Binary.StrMap.find x env.figure_names in
+            boxify env [T (string_of_int (1+(TS.UMap.find (Figure name) env.user_positions).Util.page))]
+        with Not_found -> []
+       )]
