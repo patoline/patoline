@@ -22,20 +22,26 @@ let preambule = "
 
 let postambule : ('a, 'b, 'c) format = "
   module Out=OutputPaper.Output(Pdf);;
-  let gr=open_out \"doc_graph\" in
-    doc_graph gr !str;
-    close_out gr;
+  let filename=\"%s.pdf\" in
+  let rec resolve fig user=
 
-  let fig_params,params,compl,pars,figures=flatten defaultEnv !str in
-  let (_,pages)=TS.typeset
-    ~completeLine:compl
-    ~figure_parameters:fig_params
-    ~figures:figures
-    ~parameters:params
-    ~badness:(Badness.badness pars)
-    pars
+     defaultEnv.user_positions<-user;
+     defaultEnv.figure_positions<-fig;
+
+     let fig_params,params,compl,pars,figures=flatten defaultEnv !str in
+     let (_,pages,user',fig') as result=TS.typeset
+       ~completeLine:compl
+       ~figure_parameters:fig_params
+       ~figures:figures
+       ~parameters:params
+       ~badness:(Badness.badness pars)
+       pars
+     in
+     if (fig<>fig' || user<>user') && defaultEnv.fixable then (
+       resolve fig' user'
+     ) else Out.output !str pars figures defaultEnv pages filename
   in
-  Out.output !str pars figures defaultEnv pages \"%s.pdf\" 
+     resolve defaultEnv.figure_positions defaultEnv.user_positions
 "
 
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }

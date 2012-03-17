@@ -44,7 +44,9 @@ module Make :
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
       val haut : UMap.key Util.box array ref
+      val max_haut : int ref
       val bas : UMap.key Util.box array ref
+      val max_bas : int ref
       val writeBox : 'a Util.box array ref -> int -> 'a Util.box -> unit
       val readBox : 'a array ref -> int -> 'a
       val typeset :
@@ -78,5 +80,7 @@ module Make :
                  UMap.key Util.box array ->
                  int -> Util.parameters -> float -> float) ->
         UMap.key Util.box array array ->
-        Util.error_log list * (Util.parameters * Util.LineMap.key) list array
+        Util.error_log list *
+        (Util.parameters * Util.LineMap.key) list array *
+        Util.LineMap.key UMap.t * Util.line Binary.IntMap.t
     end

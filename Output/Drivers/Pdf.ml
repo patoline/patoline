@@ -223,13 +223,13 @@ let output ?(structure:structure={name="";displayname=[];
       in
       let rec output_contents=function
         | Glyph gl->(
+            change_non_stroking_color gl.glyph_color;
             if not !isText then Buf.add_string pageBuf " BT ";
             isText:=true;
             let gx=pt_of_mm gl.glyph_x in
             let gy=pt_of_mm gl.glyph_y in
             let size=pt_of_mm gl.glyph_size in
 
-              change_non_stroking_color gl.glyph_color;
 
 
               let fnt=Fonts.glyphFont (gl.glyph) in

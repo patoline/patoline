@@ -115,6 +115,7 @@ type 'a environment={
   mutable fontItalic:bool;
   mutable fontAlternative:fontAlternative;
   mutable fontFeatures:string list;
+  mutable fontColor:OutputCommon.color;
   mutable font:font;
   mutable size:float;
   mutable par_indent:'a box list;
@@ -122,6 +123,11 @@ type 'a environment={
   mutable hyphenate:string->(string*string) array;
   mutable substitutions:glyph_id list -> glyph_id list;
   mutable positioning:glyph_ids list -> glyph_ids list;
+
+  mutable user_positions:Util.line TS.UMap.t;
+  mutable figure_positions:Util.line IntMap.t;
+  mutable figure_names:int StrMap.t;
+  mutable fixable:bool
 }
 
 let defaultFam= lmroman
@@ -134,6 +140,7 @@ let defaultEnv:user environment=
       fontItalic=false;
       fontAlternative=Regular;
       fontFeatures= [ Opentype.standardLigatures ];
+      fontColor=OutputCommon.black;
       font=f;
       substitutions=
         (fun glyphs -> List.fold_left apply glyphs (
@@ -153,7 +160,7 @@ let defaultEnv:user environment=
                      drawing_nominal_width= fsize/.3.;
                      drawing_contents=(fun _->[]);
                      drawing_badness=knuth_h_badness (fsize/.3.) };
-      hyphenate=fun _->[||](*
+      hyphenate=fun _->[||];(*
         fun str->
           let hyphenation_dict=
             let i=open_in "dict_en" in
@@ -174,6 +181,11 @@ let defaultEnv:user environment=
                 []->[||]
               | h::s->(hyph s 0 h; pos)
                            *);
+
+        user_positions=TS.UMap.empty;
+        figure_positions=IntMap.empty;
+        figure_names=StrMap.empty;
+        fixable=false
     }
 
 
@@ -182,6 +194,7 @@ let defaultEnv:user environment=
    n'est pas nécessairement une GlueBox *)
 type 'a content=
     B of ('a environment->'a box list)
+  | Fix of ('a environment->'a box list)
   | T of string
   | FileRef of (string*int*int)
   | Scoped of ('a environment->'a environment)*('a content list)
@@ -517,28 +530,30 @@ let structNum path name=
 let is_space c=c=' ' || c='\n' || c='\t'
 let sources=ref StrMap.empty
 
-let rec boxify env =function
+let rec boxify env=function
     []->[]
   | (B b)::s->(b env)@(boxify env s)
+  | (Fix b)::s->(env.fixable<-true; boxify env (B b::s))
   | (T t)::s->(
     let rec cut_str i0 i result=
       if i>=String.length t then (
         if i0<>i then (
           if result<>[] then
             result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
+                                        env.fontColor
                                         (String.sub t i0 (i-i0))))
           else
-            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
+            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (String.sub t i0 (i-i0))
         ) else result
       ) else (
         if is_space t.[i] then
           cut_str (i+1) (i+1) (
             if i0<>i then (
               if result<>[] then
-                result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
+                result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
                                             (String.sub t i0 (i-i0))))
               else
-                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size (String.sub t i0 (i-i0))
+                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (String.sub t i0 (i-i0))
             ) else result
           )
         else (
@@ -558,10 +573,13 @@ let rec boxify env =function
     let _=seek_in i off; input i buf 0 size in
     boxify env (T buf::s)
   )
-  | Scoped (env', p)::s->(
-    let c=(boxify (env' env) p) in
-    c@(boxify env s)
+  | Scoped (fenv, p)::s->(
+      let env'=fenv env in
+      let c=(boxify env' p) in
+        env.fixable<-env.fixable || env'.fixable;
+        c@(boxify env s)
   )
+
 
 let flatten env0 str=
   let lead=5. in
@@ -639,6 +657,7 @@ let flatten env0 str=
     in
     let params=Array.make (IntMap.cardinal !figures) center in
       IntMap.iter (fun n p->params.(n)<-p) !fig_param;
+      env0.figure_names<- !figure_names;
       (params,
        Array.of_list (List.rev !param),
        Array.of_list (List.rev !compl),

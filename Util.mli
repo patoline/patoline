@@ -105,13 +105,15 @@ val glyphCache : Fonts.font -> Fonts.FTypes.glyph_id -> OutputCommon.glyph
 val glyph_of_string :
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
-  Fonts.font -> float -> CamomileLibrary.UTF8.t -> 'a box list
+  Fonts.font ->
+  float -> OutputCommon.color -> CamomileLibrary.UTF8.t -> 'a box list
 val hyphenate :
   (CamomileLibrary.UTF8.t ->
    (CamomileLibrary.UTF8.t * CamomileLibrary.UTF8.t) array) ->
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
-  Fonts.font -> float -> CamomileLibrary.UTF8.t -> 'a box list
+  Fonts.font ->
+  float -> OutputCommon.color -> CamomileLibrary.UTF8.t -> 'a box list
 val knuth_h_badness : float -> float -> float
 val glue : float -> float -> float -> 'a box
 val resize : float -> 'a box -> 'a box

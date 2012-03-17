@@ -342,7 +342,7 @@ let glyphCache cur_font gl=
              loaded)
 
 
-let glyph_of_string substitution_ positioning_ font fsize str =
+let glyph_of_string substitution_ positioning_ font fsize fcolor str =
   let rec make_codes idx codes=
     try
       let c=Fonts.glyph_of_uchar font (UTF8.look str idx) in
@@ -354,7 +354,7 @@ let glyph_of_string substitution_ positioning_ font fsize str =
   let kerns=positioning_ (List.map (fun x->GlyphID x) codes) in
 
   let rec kern=function
-      GlyphID h::s ->let y=glyphCache font h in GlyphBox { y with glyph_size=fsize }::kern s
+      GlyphID h::s ->let y=glyphCache font h in GlyphBox { y with glyph_color=fcolor; glyph_size=fsize }::kern s
     | KernID h::s->
         (match h.kern_contents with
              KernID h'->kern (KernID { advance_height=h.advance_height;
@@ -367,20 +367,20 @@ let glyph_of_string substitution_ positioning_ font fsize str =
                                       advance_width=h.advance_width*.(fsize)/.1000.;
                                       kern_x0=h.kern_x0*.(fsize)/.1000.;
                                       kern_y0=h.kern_y0*.(fsize)/.1000.;
-                                      kern_contents=GlyphBox { y with glyph_size=fsize } }::(kern s))
+                                      kern_contents=GlyphBox { y with glyph_color=fcolor; glyph_size=fsize } }::(kern s))
         )
     | []->[]
   in
     kern kerns
 
-let hyphenate hyph subs kern font fsize str=
+let hyphenate hyph subs kern font fsize fcolor str=
   let hyphenated=hyph str in
     if Array.length hyphenated=0 then
-      glyph_of_string subs kern font fsize str
+      glyph_of_string subs kern font fsize fcolor str
     else
-      [Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize str);
-                hyphenated=Array.map (fun (a,b)->(Array.of_list (glyph_of_string subs kern font fsize a),
-                                                  Array.of_list (glyph_of_string subs kern font fsize b))) hyphenated }]
+      [Hyphen { hyphen_normal=Array.of_list (glyph_of_string subs kern font fsize fcolor str);
+                hyphenated=Array.map (fun (a,b)->(Array.of_list (glyph_of_string subs kern font fsize fcolor a),
+                                                  Array.of_list (glyph_of_string subs kern font fsize fcolor b))) hyphenated }]
 
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.

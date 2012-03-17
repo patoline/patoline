@@ -388,17 +388,17 @@ module Make=functor (User:User)->struct
     in
     let demerits=really_break false todo0 LineMap.empty in
 
-    let rec find_last demerits0 b0 bad0 b_params0=
-      let (b,(bad,b_params,_,_,_))=LineMap.max_binding demerits0 in
+    let rec find_last demerits0 b0 bad0 b_params0 b_figures0 b_user0=
+      let (b,(bad,b_params,_,figs,user))=LineMap.max_binding demerits0 in
         if b.paragraph=b0.paragraph && b.lastFigure=b0.lastFigure then (
-          if bad<bad0 then find_last (LineMap.remove b demerits0) b bad b_params
-          else find_last (LineMap.remove b demerits0) b0 bad0 b_params0
-        ) else (b0,b_params0)
+          if bad<bad0 then find_last (LineMap.remove b demerits0) b bad b_params figs user
+          else find_last (LineMap.remove b demerits0) b0 bad0 b_params0 b_figures0 b_user0
+        ) else (b0,b_params0,b_figures0,b_user0)
     in
 
       try
-        let (b0,(bad0,b_params0,_,_,_))=LineMap.max_binding demerits in
-        let (b,b_params)=find_last demerits b0 bad0 b_params0 in
+        let (b0,(bad0,b_params0,_,fig0,user0))=LineMap.max_binding demerits in
+        let (b,b_params,b_figures,b_user)=find_last demerits b0 bad0 b_params0 fig0 user0 in
 
         let rec makeParagraphs node result=
           try
@@ -421,10 +421,10 @@ module Make=functor (User:User)->struct
           print_graph "graph" paragraphs demerits ln;
           Printf.printf "Le graphe a %d nœuds\n" (LineMap.cardinal demerits);
           makePages ln;
-          (!log, pages)
+          (!log, pages,b_user,b_figures)
       with
-          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||]) else (
+          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],UMap.empty,IntMap.empty) else (
             Printf.printf "Incomplete document, please report\n";
-            [],[||]
+            [],[||],UMap.empty,IntMap.empty
           )
 end
