@@ -105,6 +105,11 @@ TeX' est un logiciel permettant de produire des documents de haute qualité. Il 
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
 \End{abstract}
 
+=> Table des matieres
+
+{{ table_of_contents !str 1 }}
+
+=<
 
 => Introduction
 
@@ -214,9 +219,4 @@ Un beau paragraphe avec des maths : $2/3$, $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^
 
 =<
 
-=> Table des matieres
-
-{{ table_of_contents !str max_int }}
-
-=<
 =<

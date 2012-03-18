@@ -699,36 +699,76 @@ let rec make_struct positions tree=
 
 
 let table_of_contents tree max_level=
-  let rec toc path level tree=
-    match tree with
-        Paragraph p -> ()
-      | FigureDef (name, f, p) -> ()
-      | Node s when level < max_level-> (
-          let cur=if path<>[] then (
-            [Fix (fun env->
-                    try
-                      boxify env [T s.name;
-                                  T (string_of_int (1+(TS.UMap.find (Structure (path,s.name)) env.user_positions).Util.page))]
-                    with
-                        Not_found -> []
-                )]
-          ) else []
-          in
-          let rec flat_children num=function
-              []->()
-            | (_,(FigureDef _))::s
-            | (_,(Paragraph _))::s->flat_children num s
-            | (_,(Node _ as tr))::s->(
-                toc (path@[num]) (level+1) tr;
-                flat_children (num+1) s
-              )
-          in
-            if cur<>[] then newPar ~environment:(fun x->{x with par_indent=[]}) (C.normal 150.) parameters cur;
-            flat_children 0 (IntMap.bindings s.children)
-        )
-      | Node _->()
-  in
-    toc [] 0 tree
+  newPar (C.normal 150.) parameters [BFix (
+     fun env->
+       let orn=
+         glyphCache (Fonts.loadFont "ACaslonPro-Regular.otf") {empty_glyph with glyph_index=509}
+       in
+
+       let rec toc path level tree=
+         match tree with
+             Paragraph p -> []
+           | FigureDef (name, f, p) -> []
+           | Node s when level <= max_level-> (
+               Printf.printf "%s\n" s.name;
+               let rec flat_children num=function
+                   []->[]
+                 | (_,(FigureDef _))::s
+                 | (_,(Paragraph _))::s->flat_children num s
+                 | (_,(Node _ as tr))::s->(
+                     (toc (path@[num]) (level+1) tr)@
+                       flat_children (num+1) s
+                   )
+               in
+               let chi=flat_children 0 (IntMap.bindings s.children) in
+
+                 if path<>[] then (
+                 try
+                   let page=(1+(TS.UMap.find (Structure (path,s.name)) env.user_positions).Util.page) in
+
+                   let env'={ (envItalic true env) with
+                                substitutions=(fun glyphs->
+                                                 List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
+                                                   (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
+                            }
+                   in
+                   let name=boxify env' [T s.name] in
+
+                   let x0=75. in
+                   let spacing=1. in
+                   let orn_size=1. in
+                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
+                   let y=Fonts.glyphWidth orn.glyph*.orn_size/.1000. in
+
+
+
+                   let cont=
+                     (List.map (translate (x0-.w-.spacing) 0.) (draw_boxes name))@
+                       Glyph { orn with glyph_size=orn_size; glyph_x=x0;glyph_y=0.5 }::
+                       List.map (translate (x0+.y+.spacing) 0.)
+                       (draw_boxes (boxify env' [T (Printf.sprintf "page %d" page)]))
+
+                   in
+                   let (a,b,c,d)=OutputCommon.bounding_box cont in
+                     Drawing {
+                        drawing_min_width=150.;
+                        drawing_nominal_width=150.;
+                        drawing_max_width=150.;
+                        drawing_y0=b;
+                        drawing_y1=d;
+                        drawing_badness=(fun _->0.);
+                        drawing_contents=(fun _->cont)
+                      }::(glue 0. 0. 0.)::chi
+
+                 with
+                     Not_found -> chi
+               ) else chi
+             )
+           | Node _->[]
+       in
+         toc [] 0 (fst (top !str))
+                                     )]
+
 
 let pageref x=
   [Fix (fun env->try
