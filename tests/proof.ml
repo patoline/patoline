@@ -1,7 +1,8 @@
 open Fonts.FTypes
 open Fonts
 open Bezier
-open Drivers
+open OutputCommon
+open OutputPaper
 open Constants
 
 
@@ -38,7 +39,7 @@ let _=
                    else
                      translate x 0.
                        (resize (size/.1000.)
-                          (Path ({Drivers.default with lineWidth=0.01},
+                          (Path ({OutputCommon.default with lineWidth=0.01},
                                  (List.map (fun a->Array.of_list (List.rev a)) (outlines gl))))) :: l
 
                  ))
@@ -49,7 +50,7 @@ let _=
                           pageContents=p}] else (
             if line<max_line (* y -. (y1-.y0)*.size/.1000. >= bot *) then (
               let finaly= y -. y1*.size/.1000. in
-                make_pages (i0+10) (line+1) (finaly +. y0*.size/.1000.-.lead ) ((Path ({Drivers.default with lineWidth=0.01; strokingColor=Some (RGB { red=0.8;green=0.8;blue=0.8 })},
+                make_pages (i0+10) (line+1) (finaly +. y0*.size/.1000.-.lead ) ((Path ({OutputCommon.default with lineWidth=0.01; strokingColor=Some (RGB { red=0.8;green=0.8;blue=0.8 })},
                                                                                        [ [|[|0.;210.|],[|finaly;finaly|]|] ]))::
                                                                                   (* (Path ({Drivers.default with lineWidth=0.1}, [|[|0.;210.|],[|y;y|]|])):: *)
                                                                                   (List.map (translate left_margin (finaly)) l) @ p)
@@ -58,5 +59,5 @@ let _=
                  pageContents=p})::(make_pages i0 0 280. [])
           )
       in
-        Drivers.Pdf.output (Array.of_list ((make_pages 0 0 280. []))) ((Filename.chop_extension f)^".pdf")
+        Pdf.output (Array.of_list ((make_pages 0 0 280. []))) ((Filename.chop_extension f)^".pdf")
     done
