@@ -25,7 +25,8 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
             (collide (i+1) j w_tot col col2)
           else
             (let area=w0*.(v_space+.yi-.yj) in
-               collide (i+1) j (w_tot+.w0) (col+.area) (col+.area*.area))
+             let ar=if area=infinity || area= -.infinity || area=nan then 0. else area in
+               collide (i+1) j (w_tot+.w0) (col+.ar) (col+.ar*.ar))
       ) else if j < max_bas then (
         let yi=if !xj +. wj < !xi then infinity else
           if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
@@ -37,7 +38,8 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
             (collide i (j+1) w_tot col col2)
           else
             (let area=w0*.(v_space+.yi-.yj) in
-               collide i (j+1) (w_tot+.w0) (col+.area) (col+.area*.area))
+             let ar=if area=infinity || area= -.infinity || area=nan then 0. else area in
+               collide i (j+1) (w_tot+.w0) (col+.ar) (col+.ar*.ar))
       ) else (if w_tot<=0. then 0. else ((col*.col-.col2)/.w_tot))
   in
     collide 0 0 0. 0. 0.
