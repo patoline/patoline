@@ -23,12 +23,13 @@ let preambule = "
 let postambule : ('a, 'b, 'c) format = "
   module Out=OutputPaper.Output(Pdf);;
   let filename=\"%s.pdf\" in
-  let rec resolve env user fig=
+  let rec resolve i env user fig=
 
      let env'={ env with user_positions=user; figure_names=fig }
      in
+     let o=open_out \"doc\" in doc_graph o (fst (top !str)); close_out o;
      fixable:=false;
-     let fig_params,params,compl,pars,figNames,figures=flatten env' !str in
+     let fig_params,params,compl,pars,figNames,figures=flatten env' (fst (top !str)) in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -38,10 +39,10 @@ let postambule : ('a, 'b, 'c) format = "
        pars
      in
      if (user<>user') && !fixable then (
-       resolve env' user' figNames
-     ) else Out.output !str pars figures env pages filename
+       resolve i env' user' figNames
+     ) else Out.output (fst (top !str)) pars figures env pages filename
   in
-     resolve defaultEnv defaultEnv.user_positions Binary.StrMap.empty
+     resolve 0 defaultEnv defaultEnv.user_positions Binary.StrMap.empty
 "
 
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
@@ -173,7 +174,7 @@ and print_contents op ch l =
       Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
       fn l
     | GC :: l -> 
-      Printf.fprintf ch "(B (fun env -> [env.stdGlue]))::";
+      Printf.fprintf ch "(B (fun env -> env.stdGlue))::";
       fn l
     | MC(mtype, name, args) :: l -> 
       Printf.fprintf ch "(";
@@ -231,7 +232,7 @@ let _=
 		    | Struct(title, docs) ->
 		      Printf.printf "newStruct %a;;\n\n" (print_contents op) title;
 		      output_list docs;
-		      Printf.printf "up();;\n\n"
+		      Printf.printf "str:=up !str;;\n\n"
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 

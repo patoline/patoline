@@ -148,7 +148,7 @@ and 'a environment={
  font:font;
  size:float;
  par_indent:'a box list;
- stdGlue:'a box;
+ stdGlue:'a box list;
  hyphenate:string->(string*string) array;
  substitutions:glyph_id list -> glyph_id list;
  positioning:glyph_ids list -> glyph_ids list;
@@ -201,12 +201,12 @@ let defaultEnv:user environment=
                               drawing_nominal_width= 4.0 *. phi;
                               drawing_contents=(fun _->[]);
                               drawing_badness=fun _-> 0. }];
-      stdGlue=Glue { drawing_min_width= 2.*. fsize/.9.;
-                     drawing_max_width= fsize/.2.;
-                     drawing_y0=0.; drawing_y1=0.;
-                     drawing_nominal_width= fsize/.3.;
-                     drawing_contents=(fun _->[]);
-                     drawing_badness=knuth_h_badness (fsize/.3.) };
+      stdGlue=[Glue { drawing_min_width= 2.*. fsize/.9.;
+                      drawing_max_width= fsize/.2.;
+                      drawing_y0=0.; drawing_y1=0.;
+                      drawing_nominal_width= fsize/.3.;
+                      drawing_contents=(fun _->[]);
+                      drawing_badness=knuth_h_badness (fsize/.3.) }];
       hyphenate=fun _->[||];(*
         fun str->
           let hyphenation_dict=
@@ -408,50 +408,7 @@ let size fsize t=
   Scoped ((fun env ->
              { env with
                  size=fsize;
-                 stdGlue=Glue { drawing_min_width= 2.*. fsize/.9.;
-                                drawing_max_width= fsize/.2.;
-                                drawing_y0=0.;drawing_y1=0.;
-                                drawing_nominal_width= fsize/.3.;
-                                drawing_contents = (fun _->[]);
-                                drawing_badness=knuth_h_badness (fsize/.3.) }}), t)
-let glues t=
-  Scoped ((fun env ->
-             match env.stdGlue with
-                 Glue g ->(
-                   let rec select_glue=function
-                       []->Glue g
-                     | Alternative a::_->(
-                         let gl=
-                           (glyphCache env.font { empty_glyph with glyph_index=a.(Random.int (Array.length a-1)) })
-                         in
-                           Glue { g with
-                                    drawing_contents=(
-                                      fun w->[
-                                        OutputCommon.Glyph { gl with
-                                                          glyph_y=0.;
-                                                          glyph_x=
-                                            (w-.env.size*.Fonts.glyphWidth gl.glyph/.1000.)/.2.;
-                                                          glyph_size=env.size }
-                                      ]);
-                                    drawing_min_width=(
-                                      g.drawing_min_width+.
-                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
-                                    drawing_nominal_width=(
-                                      g.drawing_nominal_width+.
-                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
-                                    drawing_max_width=(
-                                      g.drawing_max_width+.
-                                        env.size*.Fonts.glyphWidth gl.glyph/.1000.);
-
-                                })
-                       | _::s-> select_glue s
-                   in
-                     { env with stdGlue=select_glue (select_features env.font [Opentype.ornaments]) }
-                 )
-               |_->env
-          ), t)
-
-
+                 stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }), t)
 
 (* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
    qui existe *)
@@ -525,10 +482,10 @@ let structNum path name=
   if List.length path <= 2 then
     [Scoped ((fun env->{(envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
       size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
-    }), (T n::B (fun env -> [env.stdGlue])::name))]
+                       }), (T n::B (fun env ->env.stdGlue)::name))]
   else
     [Scoped ((fun env-> envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env),
-	     (T n::B (fun env -> [env.stdGlue])::name))]
+	     (T n::B (fun env -> env.stdGlue)::name))]
 
 
 let is_space c=c=' ' || c='\n' || c='\t'
@@ -544,7 +501,7 @@ let rec boxify env=function
       if i>=String.length t then (
         if i0<>i then (
           if result<>[] then
-            result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
+            result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
                                         env.fontColor
                                         (String.sub t i0 (i-i0))))
           else
@@ -555,7 +512,7 @@ let rec boxify env=function
           cut_str (i+1) (i+1) (
             if i0<>i then (
               if result<>[] then
-                result @ (env.stdGlue :: (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
+                result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
                                             (String.sub t i0 (i-i0))))
               else
                 hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (String.sub t i0 (i-i0))
@@ -716,7 +673,7 @@ let table_of_contents tree max_level=
                  | (_,(FigureDef _))::s
                  | (_,(Paragraph _))::s->flat_children num s
                  | (_,(Node _ as tr))::s->(
-                     (toc (path@[num]) (level+1) tr)@
+                     (toc (num::path) (level+1) tr)@
                        flat_children (num+1) s
                    )
                in
@@ -726,13 +683,14 @@ let table_of_contents tree max_level=
                  try
                    let page=(1+(TS.UMap.find (Structure (path,s.name)) env.user_positions).Util.page) in
 
-                   let env'={ (envItalic true env) with
-                                substitutions=(fun glyphs->
-                                                 List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
-                                                   (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
-                            }
+                   let fenv env={ env with
+                                    substitutions=(fun glyphs->
+                                                     List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
+                                                       (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
+                                }
                    in
-                   let name=boxify env' [T s.name] in
+                   let env'=fenv env in
+                   let name=boxify env' [T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))); B (fun env->env.stdGlue); T s.name] in
 
                    let x0=75. in
                    let spacing=1. in
@@ -746,7 +704,7 @@ let table_of_contents tree max_level=
                      (List.map (translate (x0-.w-.spacing) 0.) (draw_boxes name))@
                        Glyph { orn with glyph_size=orn_size; glyph_x=x0;glyph_y=0.5 }::
                        List.map (translate (x0+.y+.spacing) 0.)
-                       (draw_boxes (boxify env' [T (Printf.sprintf "page %d" page)]))
+                       (draw_boxes (boxify (fenv (envItalic true env)) [T (Printf.sprintf "page %d" page)]))
 
                    in
                    let (a,b,c,d)=OutputCommon.bounding_box cont in
