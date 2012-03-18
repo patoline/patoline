@@ -41,7 +41,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 all : $(EXEC) $(LIBS) Doc.pdf
 
-opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
+opt : $(EXEC).opt $(LIBS:.cma=.cmxa) Doc.opt.pdf
 
 #ocamlc -custom other options graphics.cma other files -cclib -lgraphics -cclib -lX11
 #ocamlc -thread -custom other options threads.cma other files -cclib -lthreads
