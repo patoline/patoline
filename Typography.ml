@@ -92,7 +92,7 @@ let selectFont fam alt it =
     let r, i = List.assoc alt fam in
     Lazy.force (if it then i else r)
   with Not_found ->
-    /* FIXME: keep the font name and print a better message */
+    (* FIXME: keep the font name and print a better message *)
     Printf.fprintf stderr "Font not found in family.\n"; 
     exit 1
 
@@ -163,7 +163,8 @@ and 'a environment={
    n'est pas nécessairement une GlueBox *)
 and 'a content=
     B of ('a environment->'a box list)
-  | Fix of ('a environment->'a box list)
+  | BFix of ('a environment->'a box list)
+  | Fix of ('a environment->'a content list)
   | T of string
   | FileRef of (string*int*int)
   | Scoped of ('a environment->'a environment)*('a content list)
@@ -245,10 +246,37 @@ let defaultEnv:user environment=
 
 let empty : user node={ name=""; displayname = []; children=IntMap.empty; node_env=(fun x->x); tree_paragraph= (-1) }
 
+type 'a cxt=(int*'a tree) list
+let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
+
+
+let child (t,cxt) i=try
+  match t with
+      Node x->(IntMap.find i x.children, (i,t)::cxt)
+    | _->(Node empty, (i,t)::cxt)
+with
+    Not_found -> (Node empty, (i,t)::cxt)
+
+let newChild (t,cxt) chi=
+  match t with
+      Node x->(chi, (next_key x.children,t)::cxt)
+    | _->(chi, (0,Node { empty with children=IntMap.singleton 0 t })::cxt)
+
+let up (t,cxt) = match cxt with
+    []->(t,cxt)
+  | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
+  | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
+
+let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
+
+let rec follow t l=match l with
+    []->t
+  | (a,_)::s->follow (child t a) s
+
 (* La structure actuelle *)
-let str=ref (Node empty)
+let str=ref (Node empty, [])
 (* Le chemin vers le noeud courant *)
-let cur=ref []
+
 let fixable=ref false
 
 (* Sortie en dot de la structure du document *)
@@ -271,41 +299,17 @@ let doc_graph out t0=
 
 
 
-let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 
 (* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
 let newPar ?(environment=(fun x->x)) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
-  let rec newPar tree path=
-    match path with
-        []->(match tree with
-                 Node t->Node { t with children=IntMap.add (next_key t.children) para t.children }
-               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 para IntMap.empty) })
-      | h::s->
-          (match tree with
-               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
-                          Node { t with children=IntMap.add h (newPar t' s) t.children })
+    str:=up (newChild !str para)
 
-             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (newPar (Node empty) s) IntMap.empty) })
-  in
-    str:=newPar !str !cur
-
-
-
-
-(* Remonter d'un niveau dans l'arbre, par rapport au noeud courant *)
-let up ()=
-  let rec up=function
-      []->[]
-    | [h]->[]
-    | h::s-> h::up s
-  in
-    cur:=up !cur
 
 let string_of_contents l =
   let s = ref "" in
   List.iter (function
-    T str -> 
+    T str ->
       if !s = "" then s:= str else s:= !s ^" " ^str
   | _ -> ()) l;
   !s
@@ -316,35 +320,25 @@ let newStruct ?label displayname =
     | Some s -> s
   in
   let para=Node { empty with name=name; displayname = displayname } in
-  let rec newStruct tree path=
-    match path with
-        []->(match tree with
-                 Node t->(
-                   let next=next_key t.children in
-                     cur:= !cur @ [next];
-                     Node { t with children=IntMap.add next para t.children }
-                 )
-               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 para IntMap.empty) })
-      | h::s->
-          (match tree with
-               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
-                          Node { t with children=IntMap.add h (newStruct t' s) t.children })
-
-             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (newStruct (Node empty) s) IntMap.empty) })
-  in
-    str:=newStruct !str !cur
+    str:=newChild !str para
 
 let title ?label displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
   in
-  match !str with
-      Paragraph _ | FigureDef _->str:= Node { name=name; displayname = displayname; 
-				           children=IntMap.singleton 1 !str;
-                                           node_env=(fun x->x);
-                                           tree_paragraph=0 }
-    | Node n -> str:=Node { n with name=name; displayname = displayname }
+  let (t,path)= !str in
+  let (t0,_)=top !str in
+  let t0'=
+    match t0 with
+        Paragraph _ | FigureDef _->Node { name=name; displayname = displayname; 
+				          children=IntMap.singleton 1 t0;
+                                          node_env=(fun x->x);
+                                          tree_paragraph=0 }
+      | Node n -> Node { n with name=name; displayname = displayname }
+  in
+    str:=follow (t0',[]) path
+
 
 
 (****************************************************************)
@@ -513,19 +507,8 @@ let center paragraphs figures last_parameters lastUsers l=
 
 
 let figure ?(name="") ?(parameters=center) drawing=
-  let rec fig tree path=
-    match path with
-        []->(match tree with
-                 Node t->Node { t with children=IntMap.add (next_key t.children) (FigureDef (name,drawing,parameters)) t.children }
-               | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (FigureDef (name,drawing,parameters)) IntMap.empty) })
-      | h::s->
-          (match tree with
-               Node t->(let t'=try IntMap.find h t.children with _->Node empty in
-                          Node { t with children=IntMap.add h (fig t' s) t.children })
-
-             | _ -> Node { empty with children=IntMap.add 1 tree (IntMap.add 2 (fig (Node empty) s) IntMap.empty) })
-  in
-    str:=fig !str !cur
+  str:=up (newChild !str
+             (FigureDef (name,drawing,parameters)))
 
 
 (****************************************************************)
@@ -554,7 +537,8 @@ let sources=ref StrMap.empty
 let rec boxify env=function
     []->[]
   | (B b)::s->(b env)@(boxify env s)
-  | (Fix b)::s->(fixable:=true; boxify env (B b::s))
+  | (Fix b)::s->(fixable:=true; boxify env ((b env)@s))
+  | (BFix b)::s->(fixable:=true; (b env)@boxify env s)
   | (T t)::s->(
     let rec cut_str i0 i result=
       if i>=String.length t then (
@@ -749,6 +733,6 @@ let table_of_contents tree max_level=
 let pageref x=
   [Fix (fun env->try
           let name=Binary.StrMap.find x env.figure_names in
-            boxify env [T (string_of_int (1+(TS.UMap.find (Figure name) env.user_positions).Util.page))]
+            [T (string_of_int (1+(TS.UMap.find (Figure name) env.user_positions).Util.page))]
         with Not_found -> []
        )]
