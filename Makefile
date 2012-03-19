@@ -62,12 +62,13 @@ TESTOBJ = $(TEST:.ml=.cmx)
 
 LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 
-$(EXEC): $(OBJS)
-	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
-
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 	cp $(EXEC).opt $(EXEC)
+
+$(EXEC): $(OBJS)
+	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
+
 
 typography.cma: $(TEST:.ml=.cmo) Typography.cmo
 	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo

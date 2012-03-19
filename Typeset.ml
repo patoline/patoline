@@ -207,8 +207,23 @@ module Make=functor (User:User)->(
         collide 0 0 infinity
     in
 
+    let misses=ref 0 in
 
-
+    let cleanup demerits0 todo0=if !misses>=500 then (
+      misses:=0;
+      let rec clean demerits todo=match todo with
+          []->demerits
+        | h::s->
+            try
+              let (_,_,ant,_) as hh=LineMap.find h demerits0 in
+                clean (LineMap.add h hh demerits) (ant::s)
+            with
+                Not_found->clean demerits s
+      in
+        clean LineMap.empty (List.map fst (LineMap.bindings todo0))
+    ) else
+      demerits0
+    in
 
     let log=ref [] in
 
@@ -223,6 +238,7 @@ module Make=functor (User:User)->(
               (* On commence par chercher la première vraie boite après node *)
               let demerits'=ref demerits in
               let register node nextNode badness next_params=
+                demerits':=cleanup !demerits' !todo';
                 let reallyAdd ()=
                   let nextUser=Util.fold_left_line paragraphs (fun u box->match box with
                                                                    User uu->UMap.add uu nextNode u
@@ -236,7 +252,7 @@ module Make=functor (User:User)->(
                 in
                   try
                     let bad,_,_,_=LineMap.find nextNode !demerits' in
-                      if bad >= badness then reallyAdd ()
+                      if bad >= badness then reallyAdd () else incr misses
                   with
                       Not_found->reallyAdd ()
               in
@@ -390,7 +406,7 @@ module Make=functor (User:User)->(
                     (try
                        fix node.page (lastParameters.next_acceptable_height node node.height);
 
-                       if !local_opt=[] && !extreme_solutions<>[] then (
+                       if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                          List.iter (fun (node,nextNode,bad,params,user)->
                                       let a,_,_=LineMap.split nextNode !demerits' in
                                       let b,_,_=LineMap.split nextNode !todo' in
@@ -414,7 +430,7 @@ module Make=functor (User:User)->(
                            )
                          in
                            register_list deg l0
-                       )
+                       ) else demerits':= cleanup !demerits' !todo'
                      with
                          Not_found->()
                     )

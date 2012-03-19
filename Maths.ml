@@ -46,7 +46,8 @@ type mathsEnvironment={
   limit_subscript_distance:float;
   limit_superscript_distance:float;
   open_dist:float;
-  close_dist:float
+  close_dist:float;
+  kerning:bool
 }
 
 let default_env=
@@ -81,7 +82,8 @@ let default_env=
       limit_subscript_distance= 0.12;
       limit_superscript_distance= 0.12;
       open_dist=0.2;
-      close_dist=0.2
+      close_dist=0.2;
+      kerning=true
     }
 
 let default=[|
@@ -280,10 +282,13 @@ let rec draw_maths mathsEnv style mlist=
 
 
                 let dist=Array.mapi (fun i l->
-                                       let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
-                                                            Array.map (fun x0->x0 +. yoff.(i)) y) l
-                                       in
-                                         List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
+                                       if env.kerning then
+                                         let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
+                                                              Array.map (fun x0->x0 +. yoff.(i)) y) l
+                                         in
+                                           List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
+                                       else
+                                         0.
                                     ) bezier
                 in
                 let dr=(draw_boxes nucleus)
@@ -441,10 +446,16 @@ let rec draw_maths mathsEnv style mlist=
           let (x0_op,y0_op,x1_op,y1_op)=bounding_box (draw_boxes op_noad) in
 
           let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_r) x, y) bezier_right in
-          let dist_r=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a lr) infinity bezier_op in
+          let dist_r=if env.kerning then
+            List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a lr) infinity bezier_op
+          else 0.
+          in
 
           let ll = List.map (fun (x,y)->Array.map (fun x0->x0 -. x1_l+.x0_op) x, y) bezier_left in
-          let dist_l=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity bezier_op in
+          let dist_l=if env.kerning then
+            List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity bezier_op
+          else 0.
+          in
 
           let x_op=if left=[] then 0. else (x1_l-.dist_l+.op.op_left_spacing) in
           let x_right=x_op+.x1_op-.x0_r -. dist_r+.(if right=[] then 0. else op.op_right_spacing) in
