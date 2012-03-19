@@ -18,6 +18,9 @@ val casteljau_left : float array -> float -> float array
 (** Version combinée de casteljau_left et casteljau_right *)
 val restrict : float array -> float -> float -> float array
 
+(** Division d'une courbe en trois selon deux temps *)
+val split2 : float array -> float -> float -> (float array * float array * float array)
+
 (** Divise une courbe en n > 0 selon le temps *)
 val divide : float array -> int -> (float array) list
 

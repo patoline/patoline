@@ -51,6 +51,15 @@ let restrict f0 a b=
       let f=Array.copy f0 in
       casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
 
+let split2 f0 a b=
+  let f1 =Array.copy f0 in
+  let f2 =Array.copy f0 in
+  let f3 =Array.copy f0 in
+  let f1 = casteljau_left f1 a in
+  let f2 = casteljau_left (casteljau_right f2 a) ((b-.a)/.(1.-.a)) in
+  let f3 = casteljau_right f3 b in
+  f1,f2,f3
+
 let divide f0 n = (* n > 0 *)
   let rec divide_rec res f0 n = 	
     if n = 1 then List.rev res else
