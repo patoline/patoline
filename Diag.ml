@@ -1,4 +1,5 @@
 open Typography
+module Drivers = OutputCommon
 
 let pi = 3.14159
 let one_third = 1. /. 3.
@@ -610,17 +611,13 @@ module Edge = struct
       let rev_paths, (params, curve) = list_split_last_rev paths in
       List.rev ((params, Curve.restrict curve (0,0.) (Curve.nb_beziers curve - 1, 1. -. a)) :: rev_paths)
     end
-    | Fore margin -> begin fun (params, curve) -> [
-      ({ params with 
-	Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
-	Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
-       curve) ;
-      (params, curve) 
-    ]
-      end
-    | _ -> (fun x -> [x])
-
-  let post_of_transfo_spec _ x = [x]
+    | SquiggleFromTo (freq,amplitude,a,b) -> begin fun paths -> 
+      List.map (fun (params, curve) -> 
+	let curve1,curve,curve2 = Curve.split2 curve a b in
+	(params, curve1 @ (List.flatten (List.map (squiggle freq amplitude) curve)) @ curve2))
+	paths
+    end
+    | _ -> (fun x -> x)
 
   let clip curve node1 node2 = 
     let start = begin
