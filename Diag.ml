@@ -8,6 +8,13 @@ let rec list_last = function
   | [x] -> x
   | x :: l -> list_last l
 
+let list_split_last_rev l = 
+  let rec list_split_last_rec res = function
+    | [] -> assert false
+    | [x] -> res, x
+    | x :: l -> list_split_last_rec (x :: res) l
+  in list_split_last_rec [] l
+
 module Point = struct 
   type t = float * float
   type point = t
@@ -39,6 +46,14 @@ module Curve = struct
   let global_time curve (i,t) = 
     let n = List.length curve in
     (t +. (float_of_int i)) /. (float_of_int n)
+
+  let local_time curve a =
+    let n = List.length curve in
+    let a' = a *. (float_of_int n) in
+    let i_float = floor a' in
+    let i = int_of_float i_float in
+    let t = a' -. i_float in
+    (i, t)
 
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
@@ -115,6 +130,46 @@ module Curve = struct
     else 
       (Printf.printf ("Warning: restriction to an empty curve.\n") ;
        [])
+
+  let split2 curve a b =
+    let (i,t) = local_time curve a in
+    let (j,t') = local_time curve b in
+
+    let rec split2_right curve1 res curve (j,t') = match curve with
+	[] -> Printf.printf ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
+      | (xs,ys) as bezier :: rest -> if j = 0 then
+	  let xs1, xs', xs2 = Bezier.split2 xs 0. t' in
+	  let ys1, ys', ys2 = Bezier.split2 ys 0. t' in
+	  (curve1, 
+	   (List.rev ((xs',ys') :: res)), 
+	   (xs2, ys2) :: rest)
+	else split2_right curve1 (bezier :: res) rest (j-1,t')
+    in
+
+    let rec split2_left curve curve1 (i,t) (j,t') = match curve with
+	[] -> Printf.printf ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
+      | (xs,ys) :: rest -> if i = 0 then begin
+	if i = j then 
+	  let xs1, xs', xs2 = Bezier.split2 xs t t' in
+	  let ys1, ys', ys2 = Bezier.split2 ys t t' in
+	  (List.rev ((xs1,ys1) :: curve1)),
+	  [(xs',ys')],
+	  ((xs2,ys2) :: rest)
+	else
+	  (* Aaaaah il faut splitter en deux juste, c'est pas super efficace... *)
+	  let xs1, xs', xs2 = Bezier.split2 xs t 1. in
+	  let ys1, ys', ys2 = Bezier.split2 ys t 1. in
+	  split2_right (List.rev ((xs1,ys1) :: curve1)) [] ((xs',ys') :: rest) (j,t')
+      end
+	else
+	  split2_left rest ((xs,ys) :: curve1) (i-1,t) (j-1,t')
+    in
+    
+    if i <= j then 
+    split2_left curve [] (i,t) (j,t')
+    else 
+      (Printf.printf ("Warning: split2ion to an empty curve.\n") ;
+       [],[],[])
 
 end
 
@@ -438,7 +493,10 @@ module Edge = struct
     | BendLeft of float
     | BendRight of float
     | Squiggle of int * float
+    | SquiggleFromTo of int * float * float * float
     | Fore of float
+    | ShortenS of float			(* A float between 0 and 1 *)
+    | ShortenE of float			(* Idem *)
 
   type t = { curves : (OutputCommon.path_parameters * Curve.t) list ;
 	     head : ArrowTip.t ;
@@ -499,36 +557,63 @@ module Edge = struct
     in
     List.map make_handles (List.combine beziersx' beziersy')
 
-  let pre_of_transfo_spec = function
-    | BendLeft(angle) -> begin fun (params, curve) -> if Curve.nb_beziers curve = 1 then
-	begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-	  if Array.length xs = 2 then
-	    let x,y = bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-	    [params, [ [| xs.(0) ; x ; xs.(1) |], 
-		      [| ys.(0) ; y ; ys.(1) |] ]]
-	  else
-	    [params, curve]
-	end
-      else [params, curve]
+  let rec pre_of_transfo_spec = function
+    | BendLeft(angle) -> begin fun paths -> 
+      List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
+	  begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+	    if Array.length xs = 2 then
+	      let x,y = bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+	      (params, [ [| xs.(0) ; x ; xs.(1) |], 
+			 [| ys.(0) ; y ; ys.(1) |] ])
+	    else
+	      (params, curve)
+	  end
+	else (params, curve))
+	paths end
+    | BendRight(angle) -> begin fun paths -> 
+      List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
+	  begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+	    if Array.length xs = 2 then
+	      let x,y = bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+	      (params, [ [| xs.(0) ; x ; xs.(1) |], 
+			 [| ys.(0) ; y ; ys.(1) |] ])
+	    else
+	      (params, curve)
+	  end
+	else (params, curve))
+	paths end
+    | Squiggle (freq, amplitude) -> begin fun paths -> 
+      List.map (fun (params, curve) -> 
+      (params, List.flatten (List.map (squiggle freq amplitude) curve)))
+	paths
     end
-    | BendRight(angle) -> begin fun (params, curve) -> if Curve.nb_beziers curve = 1 then
-	begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-	  if Array.length xs = 2 then
-	    let x,y = bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-	    [params, [ [| xs.(0) ; x ; xs.(1) |], 
-		      [| ys.(0) ; y ; ys.(1) |] ]]
-	  else
-	    [params, curve]
-	end
-      else [params, curve]
+    | _ -> (fun x -> x)
+
+  let rec post_of_transfo_spec = function
+    | Fore margin -> begin fun paths -> 
+      let white_paths = List.map (fun (params, curve) -> 
+	{ params with 
+	  Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+	  Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
+	 curve)
+	paths
+      in
+      let white_paths = post_of_transfo_spec (ShortenS 0.1) white_paths in
+      let white_paths = post_of_transfo_spec (ShortenE 0.1) white_paths in
+      white_paths @ paths
+      end
+    | ShortenS a -> begin fun paths -> match paths with
+	| [] -> []
+	| (params, curve) :: rest -> (params, Curve.restrict curve (0,a) (Curve.nb_beziers curve - 1, 1.)) :: rest
     end
-    | Squiggle (freq, amplitude) -> begin fun (params, curve) -> 
-      [(params, List.flatten (List.map (squiggle freq amplitude) curve))]
+    | ShortenE a -> begin fun paths -> 
+      let rev_paths, (params, curve) = list_split_last_rev paths in
+      List.rev ((params, Curve.restrict curve (0,0.) (Curve.nb_beziers curve - 1, 1. -. a)) :: rev_paths)
     end
     | Fore margin -> begin fun (params, curve) -> [
       ({ params with 
-	OutputCommon.strokingColor=Some (OutputCommon.RGB { OutputCommon.red=1.;OutputCommon.green=1.;OutputCommon.blue=1. }); 
-	OutputCommon.lineWidth=params.OutputCommon.lineWidth +. 2. *. margin },
+	Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+	Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
        curve) ;
       (params, curve) 
     ]
@@ -566,13 +651,13 @@ module Edge = struct
     let labels = spec.label_specs in
     let underlying_curve = (Curve.of_point_lists [(Node.center node1) :: (controls @ [Node.center node2])]) in
     let curves = List.fold_left
-      (fun curves transfo_spec -> (List.flatten (List.map (pre_of_transfo_spec transfo_spec) curves)))
+      (fun curves transfo_spec -> (pre_of_transfo_spec transfo_spec curves))
       [parameters, underlying_curve]
       spec.transfo_specs
     in    
     let curves = List.map (fun (params, curve) -> (params, clip curve node1 node2)) curves in
     let curves = List.fold_left 
-      (fun curves transfo_spec -> (List.flatten (List.map (post_of_transfo_spec transfo_spec) curves)))
+      (fun curves transfo_spec -> (post_of_transfo_spec transfo_spec curves))
       curves
       spec.transfo_specs
     in
@@ -591,12 +676,13 @@ module Edge = struct
 	}
 
   let draw edge =
-    (List.flatten
-       (List.map 
-	  (fun (params, curve) -> Curve.draw ~parameters:params curve) edge.curves)) 
+    (List.flatten (List.map Node.draw edge.labels))
     @ ArrowTip.draw edge.head 
     @ ArrowTip.draw edge.tail 
-    @ (List.flatten (List.map Node.draw edge.labels))
+    @ (List.flatten
+       (List.map 
+	  (fun (params, curve) -> Curve.draw ~parameters:params curve) edge.curves)) 
+
 
     let make_draw l spec node1 node2 =
       let edge = make spec node1 node2 

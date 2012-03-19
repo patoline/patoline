@@ -73,7 +73,7 @@ let fig2 env=
   (* in *)
   let ac, state = Edge.make_draw state { Edge.default with
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 } ;
-    Edge.transfo_specs = [Edge.Squiggle (10,1.0)] }
+    Edge.transfo_specs = [Edge.SquiggleFromTo (4,1.0,0.3,0.7)] }
     a c
   in
   let cb, state = Edge.make_draw state { Edge.default with
