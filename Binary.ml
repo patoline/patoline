@@ -59,7 +59,7 @@ let rec drop x l=
   if x<=0 then l else
     match l with
         []->[]
-      | _::s->drop (x-1) l
+      | _::s->drop (x-1) s
 
 let concat_utf8 a b=
   let x=UTF8.Buf.create (UTF8.length a+UTF8.length b) in

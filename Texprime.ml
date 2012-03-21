@@ -38,8 +38,8 @@ let postambule : ('a, 'b, 'c) format = "
        ~badness:(Badness.badness pars)
        pars
      in
-     if (user<>user') && !fixable then (
-       resolve i env' user' figNames
+     if (user<>user') && !fixable  then (
+       resolve (i+1) env' user' figNames
      ) else Out.output (fst (top !str)) pars figures env pages filename
   in
      resolve 0 defaultEnv defaultEnv.user_positions Binary.StrMap.empty

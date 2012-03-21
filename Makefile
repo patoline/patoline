@@ -153,6 +153,7 @@ clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
 	rm -f Fonts/*.cm[ioxa] Fonts/*.cmxa Fonts/*.o Fonts/*~ Fonts/*.*~ Fonts/\#*\#
 	rm -f Output/*.cm[ioxa] Output/*.cmxa Output/*.o Output/*~ Output/*.*~ Output/\#*\#
+	rm -f Parser.ml
 	rm -Rf doc
 
 .depend.input: Makefile

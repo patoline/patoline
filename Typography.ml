@@ -125,6 +125,7 @@ type 'a node={
   displayname:'a content list;
   children:'a tree IntMap.t;
   node_env:'a environment -> 'a environment;
+  node_post_env:'a environment -> 'a environment;
   mutable tree_paragraph:int;
 }
 and 'a paragraph={
@@ -153,6 +154,7 @@ and 'a environment={
  substitutions:glyph_id list -> glyph_id list;
  positioning:glyph_ids list -> glyph_ids list;
 
+ counters:(int list) StrMap.t;
  user_positions:Util.line TS.UMap.t;
  figure_names:int StrMap.t;
  mutable fixable:bool
@@ -164,18 +166,11 @@ and 'a environment={
 and 'a content=
     B of ('a environment->'a box list)
   | BFix of ('a environment->'a box list)
-  | Fix of ('a environment->'a content list)
+  | C of ('a environment->'a content list)
+  | CFix of ('a environment->'a content list)
   | T of string
   | FileRef of (string*int*int)
   | Scoped of ('a environment->'a environment)*('a content list)
-
-(* let combine_env a b= *)
-(*   a.user_positions<-TS.UMap.fold TS.UMap.add a.user_positions b.user_positions; *)
-(*   a.figure_positions<-IntMap.fold IntMap.add a.figure_positions b.figure_positions; *)
-(*   a.figure_names<-StrMap.fold StrMap.add a.figure_names b.figure_names; *)
-(*   a.fixable<-a.fixable || b.fixable *)
-
-
 
 let defaultFam= lmroman
 let defaultMono= lmmono
@@ -207,31 +202,31 @@ let defaultEnv:user environment=
                       drawing_nominal_width= fsize/.3.;
                       drawing_contents=(fun _->[]);
                       drawing_badness=knuth_h_badness (fsize/.3.) }];
-      hyphenate=fun _->[||];(*
-        fun str->
-          let hyphenation_dict=
-            let i=open_in "dict_en" in
-            let inp=input_value i in
-              close_in i;
-              inp
-          in
-          let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
-          let pos=Array.make (List.length hyphenated-1) ("","") in
-          let rec hyph l i cur=match l with
-              []->()
-            | h::s->(
-                pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-                hyph s (i+1) (cur^h)
-              )
-          in
-            match hyphenated with
-                []->[||]
-              | h::s->(hyph s 0 h; pos)
-                           *);
-
-        user_positions=TS.UMap.empty;
-        figure_names=StrMap.empty;
-        fixable=false
+      hyphenate=(fun _->[||]);(*
+                                fun str->
+                              let hyphenation_dict=
+                              let i=open_in "dict_en" in
+                              let inp=input_value i in
+                              close_in i;
+                              inp
+                              in
+                              let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
+                              let pos=Array.make (List.length hyphenated-1) ("","") in
+                              let rec hyph l i cur=match l with
+                              []->()
+                              | h::s->(
+                              pos.(i)<-(cur^"-", List.fold_left (^) "" l);
+                              hyph s (i+1) (cur^h)
+                              )
+                              in
+                              match hyphenated with
+                              []->[||]
+                              | h::s->(hyph s 0 h; pos)
+                            *)
+      counters=StrMap.singleton "structure" [0];
+      user_positions=TS.UMap.empty;
+      figure_names=StrMap.empty;
+      fixable=false
     }
 
 
@@ -244,7 +239,11 @@ let defaultEnv:user environment=
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty : user node={ name=""; displayname = []; children=IntMap.empty; node_env=(fun x->x); tree_paragraph= (-1) }
+let empty : user node={ name="";
+                        displayname = []; children=IntMap.empty;
+                        node_env=(fun x->x);
+                        node_post_env=(fun x->x);
+                        tree_paragraph= (-1) }
 
 type 'a cxt=(int*'a tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
@@ -299,48 +298,6 @@ let doc_graph out t0=
 
 
 
-
-(* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
-let newPar ?(environment=(fun x->x)) complete parameters par=
-  let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
-    str:=up (newChild !str para)
-
-
-let string_of_contents l =
-  let s = ref "" in
-  List.iter (function
-    T str ->
-      if !s = "" then s:= str else s:= !s ^" " ^str
-  | _ -> ()) l;
-  !s
-
-let newStruct ?label displayname =
-  let name = match label with
-      None -> string_of_contents displayname
-    | Some s -> s
-  in
-  let para=Node { empty with name=name; displayname = displayname } in
-    str:=newChild !str para
-
-let title ?label displayname =
-  let name = match label with
-      None -> string_of_contents displayname
-    | Some s -> s
-  in
-  let (t,path)= !str in
-  let (t0,_)=top !str in
-  let t0'=
-    match t0 with
-        Paragraph _ | FigureDef _->Node { name=name; displayname = displayname; 
-				          children=IntMap.singleton 1 t0;
-                                          node_env=(fun x->x);
-                                          tree_paragraph=0 }
-      | Node n -> Node { n with name=name; displayname = displayname }
-  in
-    str:=follow (t0',[]) path
-
-
-
 (****************************************************************)
 
 
@@ -365,8 +322,7 @@ let envItalic b env =
   let env = { env with fontItalic = b } in
   updateFont env font
       
-let italic t =
-  [Scoped(envItalic true, t)]
+let italic t = [ Scoped(envItalic true, t) ]
 
 module Italic = struct
   let do_begin_Italic () = ()
@@ -420,6 +376,15 @@ let features f t=
 
 (****************************************************************)
 
+
+
+
+(* Exemple de manipulation de la structure : faire un nouveau paragraphe *)
+
+
+
+
+
 (* Partie compliquée : il faut comprendre ce que fait l'optimiseur
    pour toucher à ça, ou apprendre en touchant ça *)
 
@@ -470,22 +435,179 @@ let figure ?(name="") ?(parameters=center) drawing=
 
 (****************************************************************)
 
+
+
+
+let newPar ?(environment=(fun x->x)) complete parameters par=
+  let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
+    str:=up (newChild !str para)
+
+
+let string_of_contents l =
+  let s = ref "" in
+  List.iter (function
+    T str ->
+      if !s = "" then s:= str else s:= !s ^" " ^str
+  | _ -> ()) l;
+  !s
+
+let newStruct ?label displayname =
+  let name = match label with
+      None -> string_of_contents displayname
+    | Some s -> s
+  in
+
+  let para=Node { 
+    empty with
+      name=name;
+      displayname =displayname;
+      node_env=(
+        fun env->
+          { env with
+              counters=StrMap.add "structure" (
+                try
+                  0::(StrMap.find "structure" env.counters)
+                with
+                    Not_found -> [0]
+              ) env.counters }
+      );
+      node_post_env=(
+        fun env->
+          { env with
+              counters=StrMap.add "structure" (
+                try
+                  match StrMap.find "structure" env.counters with
+                      _::h::s->(h+1)::s
+                    | _ -> [0]
+                with
+                    Not_found -> [0]
+              ) env.counters }
+      );
+  }
+  in
+  let section_name=[
+    Scoped ((fun env->
+               let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                 { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                     size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
+                 }),
+            B (fun env->
+                 let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                 [User (Structure (path, name))])::
+              [C (fun env->
+                    let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                      T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))) ::
+                        (B (fun env->env.stdGlue))::
+                        displayname
+                 )]
+           )
+  ] in
+    str:=newChild !str para;
+    let lead = 5. in
+    let par={
+      par_contents=section_name;
+      par_env=(fun x->{ x with par_indent=[]});
+      parameters=
+        (fun a b c d e ->
+           { (parameters a b c d e) with
+               next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+      completeLine=C.normal (fst a4) }
+    in
+      str:=up (newChild !str (Paragraph par))
+
+
+
+
+
+let newStruct' ?label displayname =
+  let name = match label with
+      None -> string_of_contents displayname
+    | Some s -> s
+  in
+
+  let para=Node { 
+    empty with
+      name=name;
+      displayname =displayname;
+      node_env=(
+        fun env->
+          { env with
+              counters=StrMap.add "structure" (
+                try
+                  0::(StrMap.find "structure" env.counters)
+                with
+                    Not_found -> [0]
+              ) env.counters }
+      );
+      node_post_env=(
+        fun env->
+          { env with
+              counters=StrMap.add "structure" (
+                try
+                  match StrMap.find "structure" env.counters with
+                      _::s->s
+                    | [] -> [0]
+                with
+                    Not_found -> [0]
+              ) env.counters }
+      );
+  }
+  in
+  let section_name=[
+    Scoped ((fun env->
+               let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                 { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                     size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
+                 }),
+            B (fun env->
+                 let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                   [User (Structure (path, name))])::
+              displayname
+           )
+  ] in
+    str:=newChild !str para;
+    let lead = 5. in
+    let par={
+      par_contents=section_name;
+      par_env=(fun x->{ x with par_indent=[]});
+      parameters=
+        (fun a b c d e ->
+           { (parameters a b c d e) with
+               next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+      completeLine=C.normal (fst a4) }
+    in
+      str:=up (newChild !str (Paragraph par))
+
+
+
+let title ?label displayname =
+  let name = match label with
+      None -> string_of_contents displayname
+    | Some s -> s
+  in
+  let (t,path)= !str in
+  let (t0,_)=top !str in
+  let t0'=
+    match t0 with
+        Paragraph _ | FigureDef _->Node { name=name;
+                                          displayname = displayname; 
+				          children=IntMap.singleton 1 t0;
+                                          node_env=(fun x->x);
+                                          node_post_env=(fun x->x);
+                                          tree_paragraph=0 }
+      | Node n -> Node { n with name=name; displayname = displayname }
+  in
+    str:=follow (t0',[]) path
+
+
+
+
+
+
+
 (* Fonctions auxiliaires qui produisent un document optimisable à
    partir de l'arbre *)
 
-
-let structNum path name=
-  let n=match path with
-      h::s->List.fold_left (fun x y -> x^"."^(string_of_int (y+1))) (string_of_int (h+1)) s
-    | []->"0"
-  in
-  if List.length path <= 2 then
-    [Scoped ((fun env->{(envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
-      size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
-                       }), (T n::B (fun env ->env.stdGlue)::name))]
-  else
-    [Scoped ((fun env-> envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env),
-	     (T n::B (fun env -> env.stdGlue)::name))]
 
 
 let is_space c=c=' ' || c='\n' || c='\t'
@@ -494,7 +616,8 @@ let sources=ref StrMap.empty
 let rec boxify env=function
     []->[]
   | (B b)::s->(b env)@(boxify env s)
-  | (Fix b)::s->(fixable:=true; boxify env ((b env)@s))
+  | (C b)::s->(boxify env ((b env)@s))
+  | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
   | (BFix b)::s->(fixable:=true; (b env)@boxify env s)
   | (T t)::s->(
     let rec cut_str i0 i result=
@@ -560,7 +683,7 @@ let flatten env0 str=
     incr n;
   in
 
-  let rec flatten env path tree=
+  let rec flatten env tree=
     match tree with
         Paragraph p -> add_paragraph env p
       | FigureDef (name, f, p) -> (
@@ -571,49 +694,31 @@ let flatten env0 str=
         )
       | Node s-> (
           s.tree_paragraph <- !n;
-          let env'=s.node_env env in
-          if path<>[] then (
-            add_paragraph env'
-              ({ par_contents=(B (fun _->[User (Structure (path, s.name))]))::structNum path s.displayname;
-                 par_env=(fun x->x);
-                 parameters=
-                   (fun a b c d e ->
-                      { (parameters a b c d e) with
-                          next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-                 completeLine=C.normal (fst a4) });
-          ) else if s.name<>"" then (
-            add_paragraph env'
-              {par_contents=[size 10. [T (s.name)] ];
-               par_env=(fun x->x);
-               parameters=(
-                 fun a b c d e ->
-                   let cen=center a b c d e in
-                     { cen with min_height_before=max (4.*.lead) c.min_height_before });
-               completeLine=C.normal (fst a4) }
-          );
-          let rec flat_children num indent= function
-              []->()
-            | (_, (Paragraph p))::s->(
-                flatten env' path (
-                  Paragraph { p with par_contents=
-                      (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
-                );
-                flat_children num true s
-              )
-            | (_,(FigureDef _ as h))::s->(
-                flatten env' path h;
-                flat_children num true s
-              )
-            | (_, (Node _ as tr))::s->(
-                flatten env' (path@[num]) tr;
-                flat_children (num+1) false s
-              )
-          in
-            flat_children 0 false (IntMap.bindings s.children)
+          let count=drop 1 (try StrMap.find "structure" (env.counters) with _->[]) in
+            let rec flat_children indent env'= function
+                []->()
+              | (_, (Paragraph p))::s->(
+                  flatten env' (
+                    Paragraph { p with par_contents=
+                        (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
+                  );
+                  flat_children true env' s
+                )
+              | (_,(FigureDef _ as h))::s->(
+                  flatten env' h;
+                  flat_children true env' s
+                )
+              | (_, (Node h as tr))::s->(
+                  let env''=h.node_env env' in
+                    flatten env'' tr;
+                    flat_children false (h.node_post_env env'') s
+                )
+            in
+              flat_children false env (IntMap.bindings s.children)
         )
   in
 
-    flatten env0 [] str;
+    flatten env0 str;
     let figures_resolved=
       List.map (Array.map (function
                                User (NamedCitation s) -> User (FigureRef (StrMap.find s !figure_names))
@@ -656,81 +761,93 @@ let rec make_struct positions tree=
 
 
 let table_of_contents tree max_level=
-  newPar (C.normal 150.) parameters [BFix (
-     fun env->
-       let orn=
-         glyphCache (Fonts.loadFont "ACaslonPro-Regular.otf") {empty_glyph with glyph_index=509}
-       in
+  newPar ~environment:(fun x->{x with par_indent=[]}) (C.normal 150.) parameters [
+    BFix (
+      fun env->
+        let orn=
+          glyphCache (Fonts.loadFont "ACaslonPro-Regular.otf") {empty_glyph with glyph_index=509}
+        in
 
-       let rec toc path level tree=
-         match tree with
-             Paragraph p -> []
-           | FigureDef (name, f, p) -> []
-           | Node s when level <= max_level-> (
-               Printf.printf "%s\n" s.name;
-               let rec flat_children num=function
-                   []->[]
-                 | (_,(FigureDef _))::s
-                 | (_,(Paragraph _))::s->flat_children num s
-                 | (_,(Node _ as tr))::s->(
-                     (toc (num::path) (level+1) tr)@
-                       flat_children (num+1) s
-                   )
-               in
-               let chi=flat_children 0 (IntMap.bindings s.children) in
+        let rec toc env0 level tree=
+          match tree with
+              Paragraph p -> []
+            | FigureDef (name, f, p) -> []
+            | Node s when level <= max_level-> (
+                let rec flat_children env1=function
+                    []->[]
+                  | (_,(FigureDef _))::s
+                  | (_,(Paragraph _))::s->flat_children env1 s
+                  | (_,(Node h as tr))::s->(
+                      let env'=h.node_env env1 in
+                        (toc env' (level+1) tr)@
+                          flat_children (h.node_post_env env') s
+                    )
+                in
+                let chi=flat_children env0 (IntMap.bindings s.children) in
 
-                 if path<>[] then (
-                 try
-                   let page=(1+(TS.UMap.find (Structure (path,s.name)) env.user_positions).Util.page) in
-
-                   let fenv env={ env with
-                                    substitutions=(fun glyphs->
-                                                     List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
-                                                       (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
-                                }
-                   in
-                   let env'=fenv env in
-                   let name=boxify env' [T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))); B (fun env->env.stdGlue); T s.name] in
-
-                   let x0=75. in
-                   let spacing=1. in
-                   let orn_size=1. in
-                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
-                   let y=Fonts.glyphWidth orn.glyph*.orn_size/.1000. in
-
-
-
-                   let cont=
-                     (List.map (translate (x0-.w-.spacing) 0.) (draw_boxes name))@
-                       Glyph { orn with glyph_size=orn_size; glyph_x=x0;glyph_y=0.5 }::
-                       List.map (translate (x0+.y+.spacing) 0.)
-                       (draw_boxes (boxify (fenv (envItalic true env)) [T (Printf.sprintf "page %d" page)]))
-
-                   in
-                   let (a,b,c,d)=OutputCommon.bounding_box cont in
-                     Drawing {
-                        drawing_min_width=150.;
-                        drawing_nominal_width=150.;
-                        drawing_max_width=150.;
-                        drawing_y0=b;
-                        drawing_y1=d;
-                        drawing_badness=(fun _->0.);
-                        drawing_contents=(fun _->cont)
-                      }::(glue 0. 0. 0.)::chi
-
-                 with
-                     Not_found -> chi
-               ) else chi
-             )
-           | Node _->[]
-       in
-         toc [] 0 (fst (top !str))
-                                     )]
+                let count=drop 1 (try StrMap.find "structure" (env0.counters) with _->[]) in
+                  if count<>[] then (
+                    try
+                      let page=(1+(TS.UMap.find (Structure (count,s.name)) env0.user_positions).Util.page) in
+                      let fenv env={ env with
+                                       substitutions=(fun glyphs->
+                                                        List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
+                                                          (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
+                                   }
+                      in
+                      let env'=fenv env0 in
+                      let name=
+                        boxify env' [T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev count)));
+                                     B (fun env->env.stdGlue); T s.name]
+                      in
+                      let x0=75. in
+                      let spacing=1. in
+                      let orn_size=1. in
+                      let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
+                      let y=Fonts.glyphWidth orn.glyph*.orn_size/.1000. in
+                      let cont=
+                        (List.map (translate (x0-.w-.spacing) 0.) (draw_boxes name))@
+                          Glyph { orn with glyph_size=orn_size; glyph_x=x0;glyph_y=0.5 }::
+                          List.map (translate (x0+.y+.spacing) 0.)
+                          (draw_boxes (boxify (fenv (envItalic true env0)) [T (Printf.sprintf "page %d" page)]))
+                      in
+                      let (a,b,c,d)=OutputCommon.bounding_box cont in
+                        Drawing {
+                          drawing_min_width=150.;
+                          drawing_nominal_width=150.;
+                          drawing_max_width=150.;
+                          drawing_y0=b;
+                          drawing_y1=d;
+                          drawing_badness=(fun _->0.);
+                          drawing_contents=(fun _->cont)
+                        }::(glue 0. 0. 0.)::chi
+                    with
+                        Not_found -> chi
+                  )
+                  else chi
+              )
+            | Node _->[]
+        in
+          toc { env with counters=StrMap.add "structure" [0] env.counters }
+            0 (fst (top !str))
+    )]
 
 
 let pageref x=
-  [Fix (fun env->try
+  [CFix (fun env->try
           let name=Binary.StrMap.find x env.figure_names in
             [T (string_of_int (1+(TS.UMap.find (Figure name) env.user_positions).Util.page))]
         with Not_found -> []
        )]
+
+let names=ref StrMap.empty
+let label name=
+  [B (fun env -> names:=StrMap.add name (StrMap.find "structure" env.counters) !names; [])]
+
+let sectref name=
+  [ CFix (fun env->try
+            [T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                     (List.rev  (drop 1  (StrMap.find name !names)))))]
+          with
+              Not_found -> []
+         )]
