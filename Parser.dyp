@@ -271,13 +271,13 @@ math:
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | prefix<op> math(<sum)<b> 
-      { Prefix(2,op,false,b) } sum
+      { Prefix(3,op,false,b) } sum
   | math(<sum)<b> postfix<op>
-      { Postfix(2,b,true,op) } sum
+      { Postfix(3,b,true,op) } sum
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
-      { Binary(2, a, false, op, false, b) } prod
+      { Binary(3, a, false, op, false, b) } prod
   | math(<=prod)<a> - spaces math(<prod)<b>
-      { Binary(2, a, false, "", false, b) } prod
+      { Binary(3, a, false, "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
       { Binary(1, a, false, op, false, b) } rel
   | math(<=conj)<a> connector<op> math(<conj)<b> 

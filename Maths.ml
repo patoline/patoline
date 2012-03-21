@@ -310,9 +310,12 @@ let rec draw_maths mathsEnv style mlist=
         )@(draw_maths mathsEnv style s)
 
       | Binary b::s->(
-          let gl=if b.bin_priority=0 then glue (1./.6.) (1./.6.) (1./.6.) else
-            if b.bin_priority=1 then glue 0. (2./.9.) (1./.3.) else
-              glue (5./.18.) (5./.18.) (5./.9.)
+          let gl=
+	    match b.bin_priority with
+	      0->  glue (4./.9.) (4./.9.) (9./.18.)
+	    | 1 ->  glue (3./.9.) (3./.9.) (7./.18.)
+	    | 2 ->  glue (2./.9.) (2./.9.) (5./.18.)
+	    | _ ->  glue (1./.9.) (1./.9.) (3./.18.)
           in
 	  match b.bin_drawing with
 	    Invisible ->

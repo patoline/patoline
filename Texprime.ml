@@ -69,7 +69,7 @@ let print_math ch display m =
 	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
     | Indices(ind', m) ->
       fn ind' ch m 
-    | Binary(_, a, _,"/",_,b) ->
+    | Binary(_, a, _,"over",_,b) ->
       if (indices <> no_ind) then failwith "Indices on fraction.";
       Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
     | Binary(pr, a, _,"",_,b) ->
