@@ -6,6 +6,40 @@ Pierre-Etienne Meunier et al.
 LAMA UMR 5127, Université de Savoie
 ====================================================
 
+\Add_relation{\eq =}{=}
+\Add_relation{\leq <= ≤}{≤}
+\Add_relation{\geq >= ≥}{≥}
+\Add_relation{\in ∈}{∈}
+
+\Add_addition_like{+}{+}
+\Add_addition_like{-}{-}
+
+\Add_product_like{\dot .}{.}
+\Add_product_like{\times * ×}{×}
+\Add_product_like{\over /}{/}
+\Add_product_like{\divide ÷}{÷}
+
+\Add_connector{\land && ∧}{∧}
+\Add_connector{\lor || ∨}{∨}
+
+\Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
+\Add_arrow{-> \imply \rightarrow →}{→}
+\Add_arrow{\Implied_by \Lefttarrow ⇐}{⇐}
+\Add_arrow{<- \implied_by \leftarrow ←}{←}
+\Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
+\Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
+
+\Add_punctuation{,}{,}
+\Add_punctuation{;}{;}
+
+\Add_prefix{+}{+}
+\Add_prefix{-}{-}
+
+\Add_postfix{!}{!}
+
+\Add_symbol{\alpha α}{α}
+\Add_symbol{\int}{int}
+
 {{
 open Diag
 module Env_abstract = struct
@@ -221,4 +255,17 @@ Un beau paragraphe avec des maths : $2/3$, $cos(t)$, $x(t)$, $t^^j__X_i^n$, $t^
 
 =<
 
+=> Test des symboles
+
+Symboles : $\alpha$ $\int$
+
+Addition like : $a + b$ $a - b$
+
+Product like : $a . b$ $a * b$ $a / b$ $a \divide b$
+ 
+Relations : $a = b$ $a <= b$ $a >= b$ $a \in b$
+
+Connecteurs : $a \land b$ $a \lor b$
+
 =<
+=< 

@@ -517,11 +517,14 @@ let glyphs c env st=
 
 exception Unknown_symbol of string
 
-let symbol s env st=try
-  let font=env.mathsFont in
-    [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=Binary.StrMap.find s env.mathsSymbols }) with glyph_size=env.mathsSize} ]
-with
-    Not_found->raise (Unknown_symbol s)
+let symbol s env st=
+  try
+    let s = Binary.StrMap.find s env.mathsSymbols in
+    let font=env.mathsFont in
+    [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=s }) with glyph_size=env.mathsSize} ]
+  with
+    Not_found-> glyphs s env st
+
 
 (* let gl_font env st font c= *)
 (*   let _,s=(env.fonts.(int_of_style st)) in *)

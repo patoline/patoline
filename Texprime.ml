@@ -239,6 +239,7 @@ let _=
 		    | Math m ->
 		      Printf.printf "newPar ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m
+                    | Ignore -> ()
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
 		      Printf.printf "let verbEnv x = { (envFamily defaultMono x)

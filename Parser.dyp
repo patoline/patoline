@@ -40,6 +40,7 @@ type doc =
    | Struct of content list * doc list
    | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
    | Math of math  
+   | Ignore
 
 and content =
      TC of string
@@ -86,6 +87,15 @@ let layout_newline dyp a b =
 
 let layout_empty dyp a b =
     fst (layout_info dyp a b) = 0
+
+let add_symbol_rule rule_name rule_constr symbol_regexp symbol_value = 
+  let rule = (rule_name, [ Regexp symbol_regexp ], "default_priority", []) in
+  let action dyp l =
+    match l with
+      [ Lexeme_matched _ ] -> rule_constr symbol_value, []
+    | _ -> assert false
+  in
+  [Add_rules[rule, action]]
 }
 
 %start main
@@ -258,29 +268,25 @@ math:
         Indices(fi d, m) } ind
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
-  | math(<=sum)<a> ["+"|"-"]<op> math(<sum)<b>
+  | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | ["+"|"-"]<op> math(<sum)<b> 
+  | prefix<op> math(<sum)<b> 
       { Prefix(2,op,false,b) } sum
-  | math(<sum)<b> [- "!"]<op>
+  | math(<sum)<b> postfix<op>
       { Postfix(2,b,true,op) } sum
-  | math(<=prod)<a> ["."|"*"|"/"]<op> math(<prod)<b> 
-      { let op = if op = "*" then "×" (*mauvais utf: "⨉⨯"*) else op in Binary(2, a, false, op, false, b) } prod
+  | math(<=prod)<a> product_like<op> math(<prod)<b> 
+      { Binary(2, a, false, op, false, b) } prod
   | math(<=prod)<a> - spaces math(<prod)<b>
       { Binary(2, a, false, "", false, b) } prod
-  | math(<=rel)<a> ["="|"<="|">="|"<"|">"]<op> math(<rel)<b> 
-      { let op = match op with
-          "<=" -> "≤"
-        | ">=" -> "≥"
-        | _ -> op
-        in Binary(1, a, false, op, false, b) } rel
-  | math(<=conj)<a> ["&&"|"||"]<op> math(<conj)<b> 
+  | math(<=rel)<a> relation<op> math(<rel)<b> 
+      { Binary(1, a, false, op, false, b) } rel
+  | math(<=conj)<a> connector<op> math(<conj)<b> 
       { Binary(0, a, false, op, false, b) } conj
-  | math(<=impl)<a> ["=>"|"<=>"]<op> math(<impl)<b> 
+  | math(<=impl)<a> arrow<op> math(<impl)<b> 
       { Binary(0, a, false, op, false, b) } impl
-  | math(<=punc)<a> [","|";"]<op> math(<punc)<b> 
+  | math(<=punc)<a> punctuation<op> math(<punc)<b> 
       { Binary(2, a, true, op, false, b) } punc
-  | "\\"(['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name>
+  | symbol<name>
       { Symbol(name) } atom
 
 atomelt:
@@ -301,8 +307,46 @@ atomelt:
   /* Math en display style */
   | "$$" math<m> "$$"
     { Math m }
+  /* Symbol extension */
+  | "\\Add_relation" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "relation" (fun x -> Obj_relation x) regexp value }
+  | "\\Add_addition_like" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "addition_like" (fun x -> Obj_addition_like x) regexp value }
+  | "\\Add_product_like" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "product_like" (fun x -> Obj_product_like x) regexp value }
+  | "\\Add_connector" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "connector" (fun x -> Obj_connector x) regexp value }
+  | "\\Add_arrow" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "arrow" (fun x -> Obj_arrow x) regexp value }
+  | "\\Add_punctuation" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "punctuation" (fun x -> Obj_punctuation x) regexp value }
+  | "\\Add_prefix" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "prefix" (fun x -> Obj_prefix x) regexp value }
+  | "\\Add_postfix" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "postfix" (fun x -> Obj_postfix x) regexp value }
+  | "\\Add_symbol" "{" [ ['\\' -]?<s> WORD<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" WORD<value> "}"
+    @{ Ignore, let regexp = RE_Alt (List.map (fun x -> RE_String x) names) in
+      add_symbol_rule "symbol" (fun x -> Obj_symbol x) regexp value }
 
 partext:
+
     { [] }
   | [NEWLINE]+ nparagraph<p> partext<t>
     { Paragraph p::t }
