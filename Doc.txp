@@ -24,7 +24,7 @@ LAMA UMR 5127, Université de Savoie
 
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
 \Add_arrow{-> \imply \rightarrow →}{→}
-\Add_arrow{\Implied_by \Lefttarrow ⇐}{⇐}
+\Add_arrow{\Implied_by \Leftarrow ⇐}{⇐}
 \Add_arrow{<- \implied_by \leftarrow ←}{←}
 \Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
@@ -266,6 +266,14 @@ Product like : $a . b$ $a * b$ $a / b$ $a \divide b$
 Relations : $a = b$ $a <= b$ $a >= b$ $a \in b$
 
 Connecteurs : $a \land b$ $a \lor b$
+
+Arrows : $a -> b$ $a => b$ $a <-> b$ $a <=> b$ $a <- b$ $a \Leftarrow b$
+
+Punctuation_: $a, b$ $a; b$
+
+Prefix : $+a$ $-a$
+
+Postfix : $a!$
 
 =<
 =< 
