@@ -292,13 +292,21 @@ let rec draw_maths mathsEnv style mlist=
                                     ) bezier
                 in
                 let dr=(draw_boxes nucleus)
-                  @ (List.map (translate (xoff.(0)-.dist.(0)+.env.mathsSize*.env.superscript_distance) yoff.(0)) a)
-                  @ (List.map (translate (xoff.(1)+.dist.(1)-.env.mathsSize*.env.superscript_distance) yoff.(1)) b)
-                  @ (List.map (translate (xoff.(2)-.dist.(2)+.env.mathsSize*.env.subscript_distance) yoff.(2)) c)
-                  @ (List.map (translate (xoff.(3)+.dist.(3)-.env.mathsSize*.env.subscript_distance) yoff.(3)) d)
+                  @ (if n.superscript_right=[] then [] else 
+                      List.map (translate (xoff.(0)-.dist.(0)+.
+					     env.mathsSize*.env.superscript_distance) yoff.(0)) a)
+                  @ (if n.superscript_left=[] then [] else 
+		      List.map (translate (xoff.(1)+.dist.(1)-.
+					     env.mathsSize*.env.superscript_distance) yoff.(1)) b)
+                  @ (if n.subscript_right=[] then [] else 
+		      List.map (translate (xoff.(2)-.dist.(2)+.
+					     env.mathsSize*.env.subscript_distance) yoff.(2)) c)
+                  @ (if n.subscript_left=[] then [] else 
+		      List.map (translate (xoff.(3)+.dist.(3)-.
+					     env.mathsSize*.env.subscript_distance) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
-                  [ Drawing ({ drawing_min_width=a2-.a0;
+                  [ Drawing ({ drawing_min_width=x1-.x0;
                                drawing_nominal_width=a2-.a0;
                                drawing_max_width=a2-.a0;
                                drawing_y0=a1;
