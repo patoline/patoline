@@ -1,0 +1,40 @@
+\No_Grammar
+
+\Add_relation{\eq =}{=}
+\Add_relation{\leq <= ≤}{≤}
+\Add_relation{\geq >= ≥}{≥}
+\Add_relation{\in ∈}{∈}
+
+\Add_addition_like{+}{+}
+\Add_addition_like{-}{-}
+
+\Add_product_like{\dot .}{.}
+\Add_product_like{\times * ×}{×}
+\Add_product_like{\over}{over} (* Donne une barre de fraction *)
+\Add_product_like{/}{/}
+\Add_product_like{\divide ÷}{÷}
+
+\Add_connector{\land && ∧}{∧}
+\Add_connector{\lor || ∨}{∨}
+
+\Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
+\Add_arrow{-> \imply \rightarrow →}{→}
+\Add_arrow{\ImpliedBy \Leftarrow ⇐}{⇐}
+\Add_arrow{<- \impliedBy \leftarrow ←}{←}
+\Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
+\Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
+
+\Add_punctuation{,}{,}
+\Add_punctuation{;}{;}
+
+\Add_prefix{+}{+}
+\Add_prefix{-}{-}
+
+\Add_postfix{!}{!}
+
+\Add_symbol{\alpha α}{α}
+\Add_symbol{\int}{int}
+
+\Save_Grammar{texprimeDefault}
+
+Fin
