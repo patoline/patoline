@@ -122,8 +122,8 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc_html
 	$(CAMLDOC) -d doc_html $(DOC)
 
-texprimeDefault.tgr: DefaultGrammar.txp texprime.opt
-	./texprime.opt $<
+texprimeDefault.tgr: DefaultGrammar.opt.pdf
+	true
 
 %.pdf: texprime texprime.cma texprimeDefault.tgr %.txp
 	./texprime $*.txp > $*.tml

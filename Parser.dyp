@@ -94,9 +94,9 @@ end
 
 module StrSet = Set.Make(Str)
 
-type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t }
+type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
 
-let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty }
+let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
 
 let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"] in
@@ -121,7 +121,15 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
       [ Lexeme_matched _ ] -> rule_constr symbol_value, []
     | _ -> assert false
   in
-  [Add_rules[rule, action]; Local_data local_data]
+  let elt = if local_data.verbose then [Ignore] else
+    [Ignore; Paragraph
+      [FC (Binary(0, Symbol symbol_value, false, "⇐", false,
+      List.fold_right (fun s acc -> 
+        let elt = Symbol (String.escaped s) in
+        if acc = Var "" then elt else
+	Binary(0, elt, true, ",", false, acc)) symbols (Var "")))]] 
+  in
+  elt, [Add_rules[rule, action]; Local_data local_data]
 }
 
 %start main
@@ -228,9 +236,9 @@ title:
 grammar_aux:
     { Some "texprimeDefault" }
   |  [newline]* - "\\Use_Grammar{" [^'}']*<name> "}"
-    { Some name }
+    { Printf.fprintf stderr "Some\n"; Some name }
   |  [newline]* - "\\No_Grammar"
-    { None }
+    { Printf.fprintf stderr "None\n"; None }
 
 grammar: grammar_aux<g>
   @{ let action = match g with None -> [] |
@@ -330,70 +338,64 @@ math:
       { Symbol(name) } atom
 
 symbol_name:
-	([^' ''{''}']+) { $1 }
+	([^' ''{''}''\t''\n''\r']+) { $1 }
 
 atomelt:
   /* Section */
   | newline - "=>" newline? paragraph<title> [newline]* text<content> [newline]* "=<"
-    { Struct(title, List.rev content) }
+    { [Struct(title, List.rev content)] }
   /* Code Caml */
   | newline - CAML<s,e>
-    { Caml(s,e) }
+    { [Caml(s,e)] }
   /* verbatim / source code */
   | newline - "'''" [ lident|uident ]?<lang> newline
     [ - (verbatim_line)<l> - newline {l}]*<ls>
     - "'''"
-    { Verbatim(lang, ls) }
+    { [Verbatim(lang, ls)] }
   /* Top level macros \Begin or \Ident */
   | newline - topmacro<m>
-    { m }
+    { [m] }
   /* Math en display style */
   | "$$" math<m> "$$"
-    { Math m }
+    { [Math m] }
   /* Symbol extension */
   | "\\Add_relation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore, 
-      add_symbol_rule dyp.local_data "relation" (fun x -> Obj_relation x) names value }
+    @{ add_symbol_rule dyp.local_data "relation" (fun x -> Obj_relation x) names value }
   | "\\Add_addition_like" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "addition_like" (fun x -> Obj_addition_like x) names value }
+    @{ add_symbol_rule dyp.local_data "addition_like" (fun x -> Obj_addition_like x) names value }
   | "\\Add_product_like" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "product_like" (fun x -> Obj_product_like x) names value }
+    @{ add_symbol_rule dyp.local_data "product_like" (fun x -> Obj_product_like x) names value }
   | "\\Add_connector" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "connector" (fun x -> Obj_connector x) names value }
+    @{ add_symbol_rule dyp.local_data "connector" (fun x -> Obj_connector x) names value }
   | "\\Add_arrow" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "arrow" (fun x -> Obj_arrow x) names value }
+    @{ add_symbol_rule dyp.local_data "arrow" (fun x -> Obj_arrow x) names value }
   | "\\Add_punctuation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "punctuation" (fun x -> Obj_punctuation x) names value }
+    @{ add_symbol_rule dyp.local_data "punctuation" (fun x -> Obj_punctuation x) names value }
   | "\\Add_prefix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "prefix" (fun x -> Obj_prefix x) names value }
+    @{ add_symbol_rule dyp.local_data "prefix" (fun x -> Obj_prefix x) names value }
   | "\\Add_postfix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }
+    @{ add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
-    @{ Ignore,
-      add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
+    @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
   | "\\Save_Grammar" "{"  lident<name> "}"
     { let oc = open_out_bin (name ^ ".tgr") in
-      Marshal.to_channel oc (dyp.local_data, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
+      let ld = { dyp.local_data with verbose = false } in
+      Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
       close_out oc;
-      Ignore
+      [Ignore]
     } 
-   | paragraph<p> { Paragraph p }
+  | "\\Verbose_Changes" 
+    @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
+  | paragraph<p> { [Paragraph p] }
      
 
 /* BUG + TOO SLOW 
@@ -437,10 +439,10 @@ text:
   | { [] }
   | text<t> [newline]*<ln> atomelt<p> 
    @{ begin match t, p, ln with
-        (Paragraph _ :: _), Paragraph _, ([] | [_]) -> raise Giveup
+        (Paragraph _ :: _), (Paragraph _::_), ([] | [_]) -> raise Giveup
       | _ -> ()
       end;
-      (p::t), [ Keep_grammar; Local_data dyp.local_data ]}
+      (p @ t), [ Keep_grammar; Local_data dyp.local_data ]}
 
 main:
   | grammar [ [newline]* title ]?<p> text<t> [newline]* eof

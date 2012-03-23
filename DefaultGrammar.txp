@@ -1,11 +1,21 @@
 \No_Grammar
+======================================================================
+Symboles de TeX'
+======================================================================
+
+\Verbose_Changes
+
+Relation symbols
 
 \Add_relation{\eq =}{=}
+\Add_relation{\in ∈}{∈}
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
-\Add_relation{\in ∈}{∈}
+
+Addition like symbols
 
 \Add_addition_like{+}{+}
+\Add_addition_like{\oplus ⊕}{⊕}
 \Add_addition_like{-}{-}
 
 \Add_product_like{\dot .}{.}
@@ -13,6 +23,7 @@
 \Add_product_like{\over}{over} (* Donne une barre de fraction *)
 \Add_product_like{/}{/}
 \Add_product_like{\divide ÷}{÷}
+\Add_product_like{\otimes ⊗}{⊗}
 
 \Add_connector{\land && ∧}{∧}
 \Add_connector{\lor || ∨}{∨}
@@ -29,10 +40,38 @@
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
+\Add_prefix{\forall ∀}{∀}
+\Add_prefix{\exists ∃}{∃}
 
 \Add_postfix{!}{!}
 
 \Add_symbol{\alpha α}{α}
+\Add_symbol{\beta β}{β}
+\Add_symbol{\gamma γ}{γ}
+\Add_symbol{\delta δ}{δ}
+\Add_symbol{\epsilon ε}{ε}
+\Add_symbol{\chi χ}{χ}
+\Add_symbol{\rho ρ}{ρ}
+\Add_symbol{\theta θ}{θ}
+\Add_symbol{\phi φ}{φ}
+\Add_symbol{\varphi ϕ}{ϕ}
+\Add_symbol{\upsilon υ}{υ}
+\Add_symbol{\eta η}{η}
+\Add_symbol{\mu μ}{μ}
+\Add_symbol{\nu ν}{ν}
+\Add_symbol{\tau τ}{τ}
+\Add_symbol{\sigma σ}{σ}
+\Add_symbol{\varsigma ς}{ς}
+\Add_symbol{\pi π}{π}
+(*
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+\Add_symbol{\}{}
+*)
 \Add_symbol{\int}{int}
 
 \Save_Grammar{texprimeDefault}
