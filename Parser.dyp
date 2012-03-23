@@ -130,6 +130,8 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
 	Binary(0, elt, true, ",", false, acc)) symbols (Var "")))]] 
   in
   elt, [Add_rules[rule, action]; Local_data local_data]
+
+let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
 }
 
 %start main
@@ -244,7 +246,7 @@ grammar: grammar_aux<g>
   @{ let action = match g with None -> [] |
         Some filename -> 
 	  try 
-	  let ic = open_in (filename ^ ".tgr") in
+	  let ic = open_in (filename ^ gram_ext) in
 	  let local_data, grammar = input_value ic in
 	  close_in ic;
 	  Printf.fprintf stderr "Grammar Loaded.\n";
@@ -387,7 +389,7 @@ atomelt:
     "}" "{" symbol_name<value> "}"
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
   | "\\Save_Grammar" "{"  lident<name> "}"
-    { let oc = open_out_bin (name ^ ".tgr") in
+    { let oc = open_out_bin (name ^ gram_ext) in
       let ld = { dyp.local_data with verbose = false } in
       Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
       close_out oc;

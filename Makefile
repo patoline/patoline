@@ -63,11 +63,11 @@ TESTOBJ = $(TEST:.ml=.cmx)
 LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 
 $(EXEC).opt: $(OPTOBJS)
-	$(CAMLOPT) $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
+	$(CAMLOPT) dynlink.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 	cp $(EXEC).opt $(EXEC)
 
 $(EXEC): $(OBJS)
-	$(CAMLC) $(CUSTOM) -o $(EXEC) $(OBJS)
+	$(CAMLC) dynlink.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
 
 typography.cma: $(TEST:.ml=.cmo) Typography.cmo
@@ -122,15 +122,18 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc_html
 	$(CAMLDOC) -d doc_html $(DOC)
 
-texprimeDefault.tgr: DefaultGrammar.opt.pdf
+texprimeDefault.tgo: DefaultGrammar.pdf
 	true
 
-%.pdf: texprime texprime.cma texprimeDefault.tgr %.txp
+texprimeDefault.tgx: DefaultGrammar.opt.pdf
+	true
+
+%.pdf: texprime texprime.cma texprimeDefault.tgo %.txp
 	./texprime $*.txp > $*.tml
 	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
 	./$*.tmx
 
-%.opt.pdf: texprime.opt texprime.cmxa texprimeDefault.tgr %.txp
+%.opt.pdf: texprime.opt texprime.cmxa texprimeDefault.tgx %.txp
 	./texprime.opt $*.txp > $*.tml
 	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
 	./$*.tmx
