@@ -122,12 +122,15 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc_html
 	$(CAMLDOC) -d doc_html $(DOC)
 
-%.pdf: texprime texprime.cma %.txp
+texprimeDefault.tgr: DefaultGrammar.txp texprime.opt
+	./texprime.opt $<
+
+%.pdf: texprime texprime.cma texprimeDefault.tgr %.txp
 	./texprime $*.txp > $*.tml
 	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
 	./$*.tmx
 
-%.opt.pdf: texprime.opt texprime.cmxa %.txp
+%.opt.pdf: texprime.opt texprime.cmxa texprimeDefault.tgr %.txp
 	./texprime.opt $*.txp > $*.tml
 	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
 	./$*.tmx

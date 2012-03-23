@@ -342,7 +342,7 @@ let rec draw_maths mathsEnv style mlist=
 
         let hx =
           let x=Fonts.loadGlyph env.mathsFont
-	    ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'x'}) in
+	    ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'o'}) in
           (Fonts.glyph_y1 x)/.2000.
         in
 

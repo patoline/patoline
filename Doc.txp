@@ -6,41 +6,6 @@ Pierre-Etienne Meunier et al.
 LAMA UMR 5127, Université de Savoie
 ====================================================
 
-\Add_relation{\eq =}{=}
-\Add_relation{\leq <= ≤}{≤}
-\Add_relation{\geq >= ≥}{≥}
-\Add_relation{\in ∈}{∈}
-
-\Add_addition_like{+}{+}
-\Add_addition_like{-}{-}
-
-\Add_product_like{\dot .}{.}
-\Add_product_like{\times * ×}{×}
-\Add_product_like{\over}{over} (* Donne une barre de fraction *)
-\Add_product_like{/}{/}
-\Add_product_like{\divide ÷}{÷}
-
-\Add_connector{\land && ∧}{∧}
-\Add_connector{\lor || ∨}{∨}
-
-\Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
-\Add_arrow{-> \imply \rightarrow →}{→}
-\Add_arrow{\Implied_by \Leftarrow ⇐}{⇐}
-\Add_arrow{<- \implied_by \leftarrow ←}{←}
-\Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
-\Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
-
-\Add_punctuation{,}{,}
-\Add_punctuation{;}{;}
-
-\Add_prefix{+}{+}
-\Add_prefix{-}{-}
-
-\Add_postfix{!}{!}
-
-\Add_symbol{\alpha α}{α}
-\Add_symbol{\int}{int}
-
 {{
 open Diag
 module Env_abstract = struct
@@ -158,8 +123,7 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 => Mon premier Document
 
-Pour faire un titre on utilise
- =>
+Pour faire un titre on utilise =>
 
 =<
 =<
@@ -235,8 +199,8 @@ figure ~name:"figure de Tom" fig2
 
 => Math
 
-=> Math en display
-\label{{"maths"}}
+=> Math en display \label{{"maths"}}
+
 $$ 2+2$$
 
 $$ \int_a^b {{1 + x} \over {1 - x}}$$
@@ -262,15 +226,15 @@ Symboles : $\alpha$ $\int$
 
 Addition like : $a + b$ $a - b$
 
-Product like : $a . b$ $a * b$ $a / b$ $a \divide b$ $a \over b$
- 
+Product like : $a . b$ $a * b$ $a / b$ $a \divide b$ $a \over b$ $a - b$
+
 Relations : $a = b$ $a <= b$ $a >= b$ $a \in b$
 
 Connecteurs : $a \land b$ $a \lor b$
 
 Arrows : $a -> b$ $a => b$ $a <-> b$ $a <=> b$ $a <- b$ $a \Leftarrow b$
 
-Punctuation_: $a, b$ $a; b$
+Punctuation : $a, b$ $a; b$
 
 Prefix : $+a$ $-a$
 
