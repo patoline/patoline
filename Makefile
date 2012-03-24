@@ -54,7 +54,7 @@ opt : $(EXEC).opt $(LIBS:.cma=.cmxa) Doc.opt.pdf
 #ocamlc -custom other options dbm.cma other files -cclib -lmldbm -cclib -lndbm
 
 
-OBJS = $(SOURCES_EXEC:.ml=.cmo)
+OBJS = $(filter %.cmo, $(SOURCES_EXEC:.ml=.cmo))
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
 TEST = $(filter %.ml, $(SOURCES_LIBS))
