@@ -53,9 +53,16 @@ type mathsEnvironment={
 let default_env=
     {
       mathsFont=Fonts.loadFont "Otf/euler.otf";
+      (*
+      mathsFont=Fonts.loadFont "Otf/euler.otf";
+      mathsFont=Fonts.loadFont "Otf/Asana-Math/Asana-Math.otf";
+      mathsFont=Fonts.loadFont "Otf/xits-1.104/xits-regular.otf";
+      mathsFont=Fonts.loadFont "Otf/xits-1.104/xits-math.otf";
+      *)
       mathsSubst=(fun x->x);
       mathsSize=1.;
       mathsSymbols=List.fold_left (fun m (a,b)->Binary.StrMap.add a b m) Binary.StrMap.empty [
+        (*
         "leftarrow", 232;
         "uparrow", 233;
         "rightarrow", 234;
@@ -65,7 +72,11 @@ let default_env=
         "forall", 263;
         "exists", 265;
         "notexists", 266;
-        "int",783
+        *)
+        "sum",702;
+        "prod",703;
+        "coprod",704;
+        "int",783;
       ];
       numerator_spacing=0.08;
       denominator_spacing=0.08;

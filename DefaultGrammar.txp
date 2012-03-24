@@ -149,9 +149,6 @@ Symboles de TeX'
 (*
 \Add_symbol{\}{}
 *)
-
-== Other symbols ==
-
 \Add_symbol{\int}{int}
 \Add_symbol{\infty ∞}{∞}
 
