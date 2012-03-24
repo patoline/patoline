@@ -89,7 +89,7 @@ Symboles de TeX'
 
 \Add_postfix{!}{!}
 
-== Greek letters ==
+== Lowercase Greek letters ==
 
 \Add_symbol{\alpha α}{α}
 \Add_symbol{\beta β}{β}
@@ -97,36 +97,64 @@ Symboles de TeX'
 \Add_symbol{\delta δ}{δ}
 \Add_symbol{\epsilon ϵ}{ϵ}
 \Add_symbol{\varepsilon ε}{ε}
-\Add_symbol{\chi χ}{χ}
-\Add_symbol{\rho ρ}{ρ}
-\Add_symbol{\theta θ}{θ}
-\Add_symbol{\phi φ}{φ}
-\Add_symbol{\varphi ϕ}{ϕ}
-\Add_symbol{\upsilon υ}{υ}
+\Add_symbol{\zeta ζ}{ζ}
 \Add_symbol{\eta η}{η}
+\Add_symbol{\theta θ}{θ}
+\Add_symbol{\iota ι}{ι}
+\Add_symbol{\kappa κ}{κ}
+\Add_symbol{\lambda λ}{λ}
 \Add_symbol{\mu μ}{μ}
 \Add_symbol{\nu ν}{ν}
-\Add_symbol{\tau τ}{τ}
+\Add_symbol{\xi ξ}{ξ}
+\Add_symbol{\omicron ο}{ο}
+\Add_symbol{\pi π}{π}
+\Add_symbol{\rho ρ}{ρ}
 \Add_symbol{\sigma σ}{σ}
 \Add_symbol{\varsigma ς}{ς}
-\Add_symbol{\pi π}{π}
+\Add_symbol{\tau τ}{τ}
+\Add_symbol{\upsilon υ}{υ}
+\Add_symbol{\phi φ}{φ}
+\Add_symbol{\varphi ϕ}{ϕ}
+\Add_symbol{\chi χ}{χ}
+\Add_symbol{\psi ψ}{ψ}
+\Add_symbol{\omega ω}{ω}
 
-\Add_symbol{\infty ∞}{∞}
+== Uppercase Greek letters ==
+
+\Add_symbol{\Alpha Α}{Α}
+\Add_symbol{\Beta Β}{Β}
+\Add_symbol{\Gamma Γ}{Γ}
+\Add_symbol{\Delta Δ}{Δ}
+\Add_symbol{\Epsilon Ε}{Ε}
+\Add_symbol{\Zeta Ζ}{Ζ}
+\Add_symbol{\Eta Η}{Η}
+\Add_symbol{\Theta Θ}{Θ}
+\Add_symbol{\Iota Ι}{Ι}
+\Add_symbol{\Kappa Κ}{Κ}
+\Add_symbol{\Lambda Λ}{Λ}
+\Add_symbol{\Mu Μ}{Μ}
+\Add_symbol{\Nu Ν}{Ν}
+\Add_symbol{\Xi Ξ}{Ξ}
+\Add_symbol{\Omicron Ο}{Ο}
+\Add_symbol{\Pi π}{Π}
+\Add_symbol{\Rho Ρ}{Ρ}
+\Add_symbol{\Sigma Σ}{Σ}
+\Add_symbol{\Tau Τ}{Τ}
+\Add_symbol{\Upsilon Υ}{Υ}
+\Add_symbol{\Phi Φ}{Φ}
+\Add_symbol{\Chi Χ}{Χ}
+\Add_symbol{\Psi Ψ}{Ψ}
+\Add_symbol{\Omega Ω}{Ω}
 
 (*
-\Add_symbol{\}{}
-\Add_symbol{\}{}
-\Add_symbol{\}{}
-\Add_symbol{\}{}
-\Add_symbol{\}{}
-\Add_symbol{\}{}
 \Add_symbol{\}{}
 *)
 
 == Other symbols ==
 
 \Add_symbol{\int}{int}
+\Add_symbol{\infty ∞}{∞}
 
 \Save_Grammar{texprimeDefault}
 
-Fin
+
