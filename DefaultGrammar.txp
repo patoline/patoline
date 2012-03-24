@@ -149,8 +149,19 @@ Symboles de TeX'
 (*
 \Add_symbol{\}{}
 *)
+
+== Other symbols ==
+
+\Add_symbol{∑}{∑}
+\Add_symbol{\sum}{sum}
+\Add_symbol{∏}{∏}
+\Add_symbol{\prod}{prod}
+\Add_symbol{∐}{∐}
+\Add_symbol{\coprod}{coprod}
+\Add_symbol{∫}{∫}
 \Add_symbol{\int}{int}
 \Add_symbol{\infty ∞}{∞}
+
 
 \Save_Grammar{texprimeDefault}
 
