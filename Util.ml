@@ -23,6 +23,10 @@ type line= {
   max_width:float
 }
 
+let uselessLine=
+  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
+    lastFigure=(-1); height= 0.;paragraph_height= -1; page_line=0; page=0;
+    min_width=0.;nom_width=0.;max_width=0. }
 
 
 type parameters={ measure:float;
@@ -84,6 +88,24 @@ let drawing ?offset:(offset=0.) cont=
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
+let drawing_blit a x0 y0 b=
+  let w0=max a.drawing_min_width (x0+.b.drawing_min_width) in
+  let w1=max a.drawing_max_width (x0+.b.drawing_max_width) in
+    { drawing_min_width = w0;
+      drawing_nominal_width = max a.drawing_nominal_width (x0+.b.drawing_nominal_width);
+      drawing_max_width = w0;
+      drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
+      drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
+      drawing_badness=(fun w->
+                         let fact=w/.(w1-.w0) in
+                           a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)
+                           +.b.drawing_badness ((b.drawing_max_width-.b.drawing_min_width)*.fact));
+      drawing_contents=(fun w->
+                          let fact=w/.(w1-.w0) in
+                          let ca=a.drawing_contents ((a.drawing_max_width-.a.drawing_min_width)*.fact) in
+                          let cb=b.drawing_contents ((b.drawing_max_width-.b.drawing_min_width)*.fact) in
+                            (List.map (translate x0 y0) cb)@ca)
+    }
 type error_log=
     Overfull_line of line
   | Widow of line

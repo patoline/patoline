@@ -439,18 +439,15 @@ module Make=functor (User:User)->(
             )
       )
     in
-    let first_line={ paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-                     lastFigure=(-1); height= 0.;paragraph_height= -1; page_line=0; page=0;
-                     min_width=0.;nom_width=0.;max_width=0. } in
-    let first_parameters=parameters.(0) paragraphs figures default_params UMap.empty first_line in
+    let first_parameters=parameters.(0) paragraphs figures default_params UMap.empty uselessLine in
 
-    let todo0=LineMap.singleton first_line (0., first_parameters, UMap.empty) in
+    let todo0=LineMap.singleton uselessLine (0., first_parameters, UMap.empty) in
     let last_failure=ref LineMap.empty in
     let rec really_break allow_impossible todo demerits=
       let demerits'=break allow_impossible todo demerits in
         if LineMap.cardinal demerits' = 0 then (
           try
-            let _=LineMap.find first_line !last_failure in
+            let _=LineMap.find uselessLine !last_failure in
               print_graph "graph" paragraphs demerits [];
               if Array.length paragraphs>0 && Array.length figures > 0 then
                 Printf.printf "No solution, incomplete document. Please report\n";
@@ -459,7 +456,7 @@ module Make=functor (User:User)->(
           with
               Not_found->(
                 if Array.length paragraphs>0  && Array.length figures > 0 then (
-                  last_failure:=LineMap.add first_line first_parameters !last_failure;
+                  last_failure:=LineMap.add uselessLine first_parameters !last_failure;
                   really_break true todo0 demerits'
                 ) else LineMap.empty
               )

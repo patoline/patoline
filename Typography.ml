@@ -101,13 +101,11 @@ type user=
     NamedCitation of string
   | FigureRef of int
   | Pageref of string
-  | Structure of (int list*string)
+  | Structure of int list
   | Figure of int
 
-let print_user=function
-    Structure (l,str)->print_string str
-  |_->()
 
+let names=ref StrMap.empty
 
 module TS=Typeset.Make (struct
                           type t=user
@@ -154,10 +152,8 @@ and 'a environment={
  hyphenate:string->(string*string) array;
  substitutions:glyph_id list -> glyph_id list;
  positioning:glyph_ids list -> glyph_ids list;
-
  counters:(int list) StrMap.t;
  user_positions:Util.line TS.UMap.t;
- figure_names:int StrMap.t;
  mutable fixable:bool
 }
 
@@ -203,30 +199,29 @@ let defaultEnv:user environment=
                       drawing_nominal_width= fsize/.3.;
                       drawing_contents=(fun _->[]);
                       drawing_badness=knuth_h_badness (fsize/.3.) }];
-      hyphenate=(fun _->[||]);(*
-                                fun str->
-                              let hyphenation_dict=
-                              let i=open_in "dict_en" in
-                              let inp=input_value i in
-                              close_in i;
-                              inp
-                              in
-                              let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
-                              let pos=Array.make (List.length hyphenated-1) ("","") in
-                              let rec hyph l i cur=match l with
-                              []->()
-                              | h::s->(
-                              pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-                              hyph s (i+1) (cur^h)
-                              )
-                              in
-                              match hyphenated with
-                              []->[||]
-                              | h::s->(hyph s 0 h; pos)
-                            *)
+      hyphenate=
+        (fun str->
+           let hyphenation_dict=
+             let i=open_in "dict_en" in
+             let inp=input_value i in
+               close_in i;
+               inp
+           in
+           let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
+           let pos=Array.make (List.length hyphenated-1) ("","") in
+           let rec hyph l i cur=match l with
+               []->()
+             | h::s->(
+                 pos.(i)<-(cur^"-", List.fold_left (^) "" l);
+                 hyph s (i+1) (cur^h)
+               )
+           in
+             match hyphenated with
+                 []->[||]
+               | h::s->(hyph s 0 h; pos));
+
       counters=StrMap.singleton "structure" [0];
       user_positions=TS.UMap.empty;
-      figure_names=StrMap.empty;
       fixable=false
     }
 
@@ -494,7 +489,7 @@ let newStruct ?label displayname =
                  }),
             B (fun env->
                  let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
-                 [User (Structure (path, name))])::
+                 [User (Structure path)])::
               [C (fun env->
                     let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
                       T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))) ::
@@ -561,9 +556,6 @@ let newStruct' ?label displayname =
                  { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                      size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
                  }),
-            B (fun env->
-                 let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
-                   [User (Structure (path, name))])::
               displayname
            )
   ] in
@@ -689,7 +681,7 @@ let flatten env0 str=
         Paragraph p -> add_paragraph env p
       | FigureDef (name, f, p) -> (
           let n=IntMap.cardinal !figures in
-            figure_names:=StrMap.add name n !figure_names;
+            names := StrMap.add name (Figure n,"",uselessLine) !names;
             fig_param:=IntMap.add n p !fig_param;
             figures:=IntMap.add n (f env) !figures
         )
@@ -721,7 +713,9 @@ let flatten env0 str=
     flatten env0 str;
     let figures_resolved=
       List.map (Array.map (function
-                               User (NamedCitation s) -> User (FigureRef (StrMap.find s !figure_names))
+                               User (NamedCitation s) -> User (match StrMap.find s !names with
+                                                                   (Figure n,_,_)->FigureRef n
+                                                                 | _->raise Not_found)
                              | x -> x)) !paragraphs
     in
     let params=Array.make (IntMap.cardinal !figures) center in
@@ -730,7 +724,6 @@ let flatten env0 str=
        Array.of_list (List.rev !param),
        Array.of_list (List.rev !compl),
        Array.of_list (List.rev figures_resolved),
-       !figure_names,
        Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 
@@ -788,7 +781,7 @@ let table_of_contents tree max_level=
                 let count=drop 1 (try StrMap.find "structure" (env0.counters) with _->[]) in
                   if s.in_toc && count<>[] then (
                     try
-                      let page=(1+(TS.UMap.find (Structure (count,s.name)) env0.user_positions).Util.page) in
+                      let page=(1+(TS.UMap.find (Structure count) env0.user_positions).Util.page) in
                       let fenv env={ env with
                                        substitutions=(fun glyphs->
                                                         List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
@@ -830,21 +823,62 @@ let table_of_contents tree max_level=
     )]
 
 
+let update_names user=
+  (* TS.UMap.iter(fun k a->(match k with *)
+  (*                            Structure l->(Printf.printf "->Structure ";List.iter (Printf.printf "%d ") l;Printf.printf "\n") *)
+  (*                          | _->()); *)
+  (*                print_line a *)
+  (*              ) user; *)
+
+
+  StrMap.iter (fun k (a,b,c)->try
+                 (* Printf.printf "update : %s\n" k; print_line c; *)
+                 (* (match a with *)
+                 (*      Structure l->(Printf.printf "Structure ";List.iter (Printf.printf "%d ") l;Printf.printf "\n") *)
+                 (*    | _->()); *)
+                 names:=StrMap.add k (a,b,TS.UMap.find a user) !names;
+               with Not_found -> Printf.printf "not found\n"
+              ) !names
+
 let pageref x=
   [CFix (fun env->try
-          let name=Binary.StrMap.find x env.figure_names in
-            [T (string_of_int (1+(TS.UMap.find (Figure name) env.user_positions).Util.page))]
-        with Not_found -> []
-       )]
+           let (_,_,node)=StrMap.find x !names in
+             [T (string_of_int (1+node.page))]
+         with Not_found -> []
+        )]
 
-let names=ref StrMap.empty
 let label name=
-  [B (fun env -> names:=StrMap.add name (StrMap.find "structure" env.counters) !names; [])]
+  [B (fun env ->
+        names:=StrMap.add name (Structure (drop 1 (StrMap.find "structure" env.counters)),
+                                "",uselessLine) !names;
+        let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+          [User (Structure path)])
+  ]
 
 let sectref name=
   [ CFix (fun env->try
-            [T (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                     (List.rev  (drop 1  (StrMap.find name !names)))))]
+            match StrMap.find name !names with
+                (Structure num,_,_)->
+                  [T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                           (List.rev num)))]
+              | _->[]
           with
               Not_found -> []
          )]
+
+
+let minipage env c=
+  let t,cxt= !str in
+    str:=(match cxt with
+              []->(t,cxt)
+            | (a,b)::s->(b,s));
+    let fig_params,params,compl,pars,figures=flatten env t in
+    let (_,pages,user')=TS.typeset
+      ~completeLine:compl
+      ~figure_parameters:fig_params
+      ~figures:figures
+      ~parameters:params
+      ~badness:(Badness.badness pars)
+      pars
+    in
+      OutputDrawing.output pars figures env pages

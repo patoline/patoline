@@ -14,6 +14,7 @@ type line = {
   nom_width : float;
   max_width : float;
 }
+val uselessLine : line
 type parameters = {
   measure : float;
   page_height : float;
@@ -78,6 +79,7 @@ and 'a box =
   | User of 'a
   | Empty
 val drawing : ?offset:float -> OutputCommon.contents list -> drawingBox
+val drawing_blit : drawingBox -> float -> float -> drawingBox -> drawingBox
 type error_log = Overfull_line of line | Widow of line | Orphan of line
 val print_line : line -> unit
 val print_box : 'a box -> unit
