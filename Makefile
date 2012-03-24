@@ -6,8 +6,11 @@ FONTS=$(FONTS0) Fonts.mli Fonts.ml
 DRIVERS=Output/OutputPaper.ml Output/Drivers/Pdf.ml
 
 SOURCES0 = $(BASE) $(FONTS) Output/OutputCommon.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Parameters.ml Typography.ml $(DRIVERS) Diag.ml Maths.ml
-SOURCES_EXEC=$(SOURCES0) Parser.dyp Texprime.ml
-SOURCES_LIBS=$(SOURCES0) DefaultFormat.ml
+SOURCES1 = Parser.ml Texprime.ml
+SOURCES2 = DefaultFormat.ml
+SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
+SOURCES_LIBS=$(SOURCES0) $(SOURCES2)
+SOURCES_ALL=$(SOURCES0) $(SOURCES1) $(SOURCES2)
 DOC=Bezier.mli Output/OutputCommon.ml Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Typography.ml
 
 EXEC = texprime
@@ -50,15 +53,13 @@ opt : $(EXEC).opt $(LIBS:.cma=.cmxa) Doc.opt.pdf
 #ocamlc -custom other options unix.cma other files -cclib -lunix
 #ocamlc -custom other options dbm.cma other files -cclib -lmldbm -cclib -lndbm
 
-SMLIY = $(SOURCES_EXEC:.mly=.ml)
-SMLIYL = $(SMLIY:.mll=.ml)
-SMLDYP = $(SMLIYL:.dyp=.ml)
-SMLYL = $(filter %.ml,$(SMLDYP))
-OBJS = $(SMLYL:.ml=.cmo)
+
+OBJS = $(SOURCES_EXEC:.ml=.cmo)
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
-TEST = $(filter %.ml, $(SOURCES0))
-TESTOBJ = $(TEST:.ml=.cmx)
+TEST = $(filter %.ml, $(SOURCES_LIBS))
+TESTOBJS = $(TEST:.ml=.cmo)
+TESTOPTOBJS = $(TEST:.ml=.cmx)
 
 LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 
@@ -70,20 +71,20 @@ $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
 
-typography.cma: $(TEST:.ml=.cmo) Typography.cmo
-	$(CAMLC) -a -o typography.cma $(TEST:.ml=.cmo) Typography.cmo
+typography.cma: $(TESTOBJS)
+	$(CAMLC) -a -o typography.cma $(TESTOBJS) Typography.cmo
 
-maths: $(TESTOBJ) tests/test_maths.ml
-	$(CAMLOPT) -o maths $(TESTOBJ) tests/test_maths.ml
+maths: $(TESTOTPOBJS) tests/test_maths.ml
+	$(CAMLOPT) -o maths $(TESTOPTOBJS) tests/test_maths.ml
 
-proof: $(TESTOBJ:.cmx=.cmo) tests/proof.ml
+proof: $(TESTOBJOBJS:.cmx=.cmo) tests/proof.ml
 	$(CAMLC) -o proof $(TESTOBJ:.cmx=.cmo) tests/proof.ml
 
 
-test: $(TESTOBJ:.cmx=.cmo) Typography.cmo Diag.cmx tests/document.ml
-	$(CAMLC) -o test $(TESTOBJ:.cmx=.cmo) tests/document.ml
-test2: $(TESTOBJ) Typography.cmx Diag.cmx tests/document2.ml
-	$(CAMLOPT) -o test2 $(TESTOBJ) tests/document2.ml
+test: $(TESTOBJS) tests/document.ml
+	$(CAMLC) -o test $(TESTOBJS) tests/document.ml
+test2: $(TESTOPTOBJS) tests/document2.ml
+	$(CAMLOPT) -o test2 $(TESTOPTOBJS) tests/document2.ml
 
 ot: $(filter %.cmo, $(FONTS:.ml=.cmo)) $(filter %.cmo, $(BASE:.ml=.cmo)) tests/test_opentype.ml
 	$(CAMLC) -o ot $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo)) tests/test_opentype.ml
@@ -108,8 +109,8 @@ graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
 graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml
 
-collisions: tests/collisions.ml $(TESTOBJ:.cmx=.cmo)
-	$(CAMLC) $(TESTOBJ:.cmx=.cmo) graphics.cma -o collisions tests/collisions.ml
+collisions: tests/collisions.ml $(TESTOBJS)
+	$(CAMLC) $(TESTOBJS) graphics.cma -o collisions tests/collisions.ml
 
 pdf_test: tests/pdf.ml $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers.cmo
 	$(CAMLC) -o pdf_test $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) Drivers.cmo tests/pdf.ml
@@ -141,18 +142,16 @@ texprimeDefault.tgx: DefaultGrammar.opt.pdf
 top:
 	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
 
-.SUFFIXES: .ml .mli .cmo .cmi .cmx .mll .mly .dyp
-
-.dyp.ml:
+%.ml: %.dyp
 	dypgen --no-mli $<
 
-.ml.cmo:
+%.cmo: %.ml
 	$(CAMLC) -c -o $@ $<
 
-.mli.cmi:
+%.cmi: %.mli
 	$(CAMLC) -c $<
 
-.ml.cmx:
+%.cmx: %.ml
 	$(CAMLOPT) -c -o $@ $<
 
 clean:
@@ -162,9 +161,9 @@ clean:
 	rm -f Parser.ml
 	rm -Rf doc
 
-.depend.input: Makefile
+.depend.input: Makefile Parser.ml
 	@echo -n '--Checking Ocaml input files: '
-	@(ls $(SMLIY) $(SMLIY:.ml=.mli) DefaultFormat.ml 2>/dev/null || true) \
+	@(ls $(SOURCES_ALL)  $(SOURCES_ALL:.ml=.mli) 2>/dev/null || true) \
 	     >  .depend.new
 	@diff .depend.new .depend.input 2>/dev/null 1>/dev/null && \
 	    (echo 'unchanged'; rm -f .depend.new) || \
@@ -172,9 +171,9 @@ clean:
 
 depend : .depend
 
-.depend : $(SMLIY) .depend.input
+.depend: $(SMLIY) .depend.input Parser.ml
 	@echo '--Re-building dependencies'
-	$(CAMLDEP) $(SMLIY) $(SMLIY:.ml=.mli) Maths.ml DefaultFormat.ml > .depend
+	$(CAMLDEP)  $(SOURCES_ALL)  $(SOURCES_ALL:.ml=.mli) > .depend
 
 
 include .depend
