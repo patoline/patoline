@@ -9,6 +9,21 @@ Relation symbols
 
 \Add_relation{\eq =}{=}
 \Add_relation{\in ∈}{∈}
+\Add_relation{\notin ∉}{∉}
+\Add_relation{\ni ∋}{∋}
+\Add_relation{\notni ∌}{∌}
+
+\Add_relation{\subseteq ⊆}{⊆}
+\Add_relation{\supseteq ⊇}{⊇}
+\Add_relation{\nosubseteq ⊈}{⊈}
+\Add_relation{\nosupseteq ⊉}{⊉}
+\Add_relation{\subset ⊂}{⊂}
+\Add_relation{\supset ⊃}{⊃}
+\Add_relation{\subset ⊄}{⊄}
+\Add_relation{\supset ⊅}{⊅}
+\Add_relation{\subsetneq ⊊}{⊊}
+\Add_relation{\supsetneq ⊋}{⊋}
+
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
 
@@ -17,6 +32,9 @@ Addition like symbols
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
 \Add_addition_like{-}{-}
+\Add_addition_like{\pm}{±}
+\Add_addition_like{\mp}{∓}
+
 
 \Add_product_like{\dot .}{.}
 \Add_product_like{\times * ×}{×}
@@ -24,6 +42,9 @@ Addition like symbols
 \Add_product_like{/}{/}
 \Add_product_like{\divide ÷}{÷}
 \Add_product_like{\otimes ⊗}{⊗}
+\Add_product_like{\bullet ∙}{∙}
+\Add_product_like{\circ ∘}{∘}
+
 
 \Add_connector{\land && ∧}{∧}
 \Add_connector{\lor || ∨}{∨}
@@ -34,6 +55,13 @@ Addition like symbols
 \Add_arrow{<- \impliedBy \leftarrow ←}{←}
 \Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
+\Add_arrow{|-> \mapsto ↦}{↦}
+\Add_arrow{<-| \mapsfrom ↤}{↤}
+\Add_arrow{\epi ->> ↠}{↠}
+\Add_arrow{\mono >-> ↣}{↣}
+\Add_arrow{\inj ↪}{↪}
+\Add_arrow{\jni ↩}{↩}
+
 
 \Add_punctuation{,}{,}
 \Add_punctuation{;}{;}
@@ -49,7 +77,8 @@ Addition like symbols
 \Add_symbol{\beta β}{β}
 \Add_symbol{\gamma γ}{γ}
 \Add_symbol{\delta δ}{δ}
-\Add_symbol{\epsilon ε}{ε}
+\Add_symbol{\epsilon ϵ}{ϵ}
+\Add_symbol{\varepsilon ε}{ε}
 \Add_symbol{\chi χ}{χ}
 \Add_symbol{\rho ρ}{ρ}
 \Add_symbol{\theta θ}{θ}
@@ -63,6 +92,9 @@ Addition like symbols
 \Add_symbol{\sigma σ}{σ}
 \Add_symbol{\varsigma ς}{ς}
 \Add_symbol{\pi π}{π}
+
+\Add_symbol{\infty ∞}{∞}
+
 (*
 \Add_symbol{\}{}
 \Add_symbol{\}{}
