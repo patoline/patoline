@@ -346,7 +346,7 @@ symbol_name:
 
 atomelt:
   /* Section */
-  | newline - (("="|"-")">")<o> ['_']?<num> newline? paragraph<title> [newline]* text<content> [newline]* (("="|"-")">")<c>
+  | newline - (("="|"-")">")<o> ['_']?<num> newline? paragraph<title> [newline]* text<content> [newline]* (("="|"-")"<")<c>
     { if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }

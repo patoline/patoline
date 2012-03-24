@@ -105,11 +105,11 @@ TeX' est un logiciel permettant de produire des documents de haute qualité. Il 
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
 \End{abstract}
 
-=> Table des matieres
+-> Table des matieres
 
 {{ table_of_contents !str 1 }}
 
-=<
+-<
 
 => Introduction
 
