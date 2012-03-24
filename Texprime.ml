@@ -219,8 +219,15 @@ let _=
 			  | Some(inst) ->
 			    Printf.printf "institute true %a;;\n\n" (print_contents op) inst
 		  end;
-		  let rec output_list docs = List.iter output_doc docs
-		  and output_doc = function
+		  let rec output_list lvl docs = 
+		    match docs with
+		      [] -> 
+			for i = 0 to lvl - 1 do
+			  Printf.printf "str:=up !str;;\n\n"
+			done;
+		    | doc::docs -> 
+		      let lvl = ref lvl in 
+		    (match doc with
 		    | Paragraph p ->
 		      Printf.printf "newPar ~environment:(fun x->x) textWidth parameters %a;;\n" 
 			(print_contents op) p
@@ -229,10 +236,21 @@ let _=
 		      let buf=String.create size in
 		      let _= seek_in op s; input op buf 0 size in
 		      Printf.printf "%s;;\n\n" buf
-		    | Struct(title, docs) ->
-		      Printf.printf "newStruct %a;;\n\n" (print_contents op) title;
-		      output_list docs;
-		      Printf.printf "str:=up !str;;\n\n"
+		    | Struct(title, numbered, docs) ->
+		      let num = if numbered then "" else "'" in
+		      (match docs with
+			Relative docs ->
+			  Printf.printf "newStruct%s %a;;\n\n" num (print_contents op) title;
+			  output_list (!lvl + 1) docs;
+			  Printf.printf "str:=up !str;;\n\n"
+		      | Absolute l ->
+			  if l > !lvl + 1 then failwith "Illegal level skip";
+			  for i = 0 to !lvl - l do
+			    Printf.printf "str:=up !str;;\n\n"
+			  done;
+			  Printf.printf "newStruct%s %a;;\n\n" num (print_contents op) title;
+			  lvl := l
+		      )
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
@@ -253,10 +271,10 @@ let _=
 			  "newPar ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
-		      Printf.printf "end;;\n\n"
-		      
+		      Printf.printf "end;;\n\n");
+		    output_list !lvl docs
 		  in
-		  output_list docs;
+		  output_list 0 docs;
 		  close_in op;
 		  Printf.printf postambule (Filename.chop_extension h)
 	    with

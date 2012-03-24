@@ -123,6 +123,7 @@ module C=Parameters.Completion (TS)
 type 'a node={
   name:string;
   displayname:'a content list;
+  in_toc : bool;
   children:'a tree IntMap.t;
   node_env:'a environment -> 'a environment;
   node_post_env:'a environment -> 'a environment;
@@ -239,7 +240,7 @@ let defaultEnv:user environment=
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty : user node={ name="";
+let empty : user node={ name=""; in_toc = true;
                         displayname = []; children=IntMap.empty;
                         node_env=(fun x->x);
                         node_post_env=(fun x->x);
@@ -529,6 +530,7 @@ let newStruct' ?label displayname =
     empty with
       name=name;
       displayname =displayname;
+      in_toc = false;
       node_env=(
         fun env->
           { env with
@@ -589,7 +591,7 @@ let title ?label displayname =
   let (t0,_)=top !str in
   let t0'=
     match t0 with
-        Paragraph _ | FigureDef _->Node { name=name;
+        Paragraph _ | FigureDef _->Node { name=name; in_toc = false;
                                           displayname = displayname; 
 				          children=IntMap.singleton 1 t0;
                                           node_env=(fun x->x);
@@ -666,7 +668,6 @@ let rec boxify env=function
 
 
 let flatten env0 str=
-  let lead=5. in
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
   let figure_names=ref StrMap.empty in
@@ -694,7 +695,6 @@ let flatten env0 str=
         )
       | Node s-> (
           s.tree_paragraph <- !n;
-          let count=drop 1 (try StrMap.find "structure" (env.counters) with _->[]) in
             let rec flat_children indent env'= function
                 []->()
               | (_, (Paragraph p))::s->(
@@ -786,7 +786,7 @@ let table_of_contents tree max_level=
                 let chi=flat_children env0 (IntMap.bindings s.children) in
 
                 let count=drop 1 (try StrMap.find "structure" (env0.counters) with _->[]) in
-                  if count<>[] then (
+                  if s.in_toc && count<>[] then (
                     try
                       let page=(1+(TS.UMap.find (Structure (count,s.name)) env0.user_positions).Util.page) in
                       let fenv env={ env with
@@ -796,10 +796,7 @@ let table_of_contents tree max_level=
                                    }
                       in
                       let env'=fenv env0 in
-                      let name=
-                        boxify env' [T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev count)));
-                                     B (fun env->env.stdGlue); T s.name]
-                      in
+                      let name= boxify env' s.displayname in
                       let x0=75. in
                       let spacing=1. in
                       let orn_size=1. in

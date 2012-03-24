@@ -5,7 +5,11 @@ Symboles de TeX'
 
 \Verbose_Changes
 
-Relation symbols
+-- Table des matieres --
+
+{{ table_of_contents !str 1 }}
+
+== Relation symbols ==
 
 \Add_relation{\eq =}{=}
 \Add_relation{\in ∈}{∈}
@@ -27,7 +31,7 @@ Relation symbols
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
 
-Addition like symbols
+== Addition like symbols ==
 
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
@@ -35,6 +39,8 @@ Addition like symbols
 \Add_addition_like{\pm}{±}
 \Add_addition_like{\mp}{∓}
 
+
+== Product like symbols ==
 
 \Add_product_like{\dot .}{.}
 \Add_product_like{\times * ×}{×}
@@ -46,8 +52,12 @@ Addition like symbols
 \Add_product_like{\circ ∘}{∘}
 
 
+== Connector symbols ==
+
 \Add_connector{\land && ∧}{∧}
 \Add_connector{\lor || ∨}{∨}
+
+== Arrow symbols ==
 
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
 \Add_arrow{-> \imply \rightarrow →}{→}
@@ -63,15 +73,23 @@ Addition like symbols
 \Add_arrow{\jni ↩}{↩}
 
 
+== Punctuation symbols ==
+
 \Add_punctuation{,}{,}
 \Add_punctuation{;}{;}
+
+== Prefix symbols ==
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
 \Add_prefix{\forall ∀}{∀}
 \Add_prefix{\exists ∃}{∃}
 
+== Postfix symbols ==
+
 \Add_postfix{!}{!}
+
+== Greek letters ==
 
 \Add_symbol{\alpha α}{α}
 \Add_symbol{\beta β}{β}
@@ -104,6 +122,9 @@ Addition like symbols
 \Add_symbol{\}{}
 \Add_symbol{\}{}
 *)
+
+== Other symbols ==
+
 \Add_symbol{\int}{int}
 
 \Save_Grammar{texprimeDefault}

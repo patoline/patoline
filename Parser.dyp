@@ -32,11 +32,13 @@ and indices = { up_right : math option;
     up_left : math option;
     down_left : math option }
 
-type doc =
+type structType = Absolute of int | Relative of doc list
+
+and doc =
      Paragraph of content list
    | Verbatim of (string option * string list)
    | Caml of int * int
-   | Struct of content list * doc list
+   | Struct of content list * bool * structType
    | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
    | Math of math  
    | Ignore
@@ -57,7 +59,7 @@ let pop_caml' lexbuf =
       raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Splitted end of caml code"))
 
 let concat words =
-    let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"  ] in
+    let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"; "-"  ] in
     let rec fn acc last = function
       [] -> acc
     | (w::l) ->
@@ -147,7 +149,7 @@ let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
 %lexer
 
 let utf8_char =
-    ['\033' '\035' '\037'-'\039' '\042'-'\060' '\062'-'\090' '\096'-'\122' '\124''\126''\127']
+    ['\033' '\035' '\037'-'\039' '\042'-'\044' '\046'-'\060' '\062'-'\090' '\096'-'\122' '\124''\126''\127']
   | ['\194'-'\223']['\129'-'\191']
   | ['\224'-'\238']['\129'-'\191']['\129'-'\191']
   | '\239'['\129'-'\159']['\129'-'\191']
@@ -165,7 +167,7 @@ let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9']*
 
 let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 
-let word = utf8_char+ | '(' | ')' | '[' | ']' | '"' | "="
+let word = utf8_char+ | '(' | ')' | '[' | ']' | '"' | "=" | '-'
 
 let line = word (" "+ word)*
 
@@ -344,8 +346,15 @@ symbol_name:
 
 atomelt:
   /* Section */
-  | newline - "=>" newline? paragraph<title> [newline]* text<content> [newline]* "=<"
-    { [Struct(title, List.rev content)] }
+  | newline - (("="|"-")">")<o> ['_']?<num> newline? paragraph<title> [newline]* text<content> [newline]* (("="|"-")">")<c>
+    { if o.[0] <> c.[0] then raise Giveup;
+      [Struct(title, o.[0] = '=', Relative (List.rev content))]
+    }
+  | newline - (("=""="+)|("-""-"+))<o> ['_']?<num> newline? paragraph<title> newline? 
+              (("=""="+)|("-""-"+))<c>
+    { let level = String.length o in
+      if c <> o then raise Giveup;
+      [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
   /* Code Caml */
   | newline - CAML<s,e>
     { [Caml(s,e)] }
