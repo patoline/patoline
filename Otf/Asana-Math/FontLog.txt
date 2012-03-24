@@ -1,0 +1,36 @@
+000.930 Added some more experimental horizontal variants.
+
+000.931 Added some Spacing Modifier Letters.
+
+000.934 Adde3d accent circumflex.
+
+000.935 Modified glyphs uni2257,uni2258, uni2259, uni225A, uni225B, uni225C, uni225D, uni225E, and uni225F.
+
+000.936 Modified glyphs uni22A7, uni22A8, and uni22AD.
+
+000.937 NUL character was visible!
+
+000.938 Added glyphs for characters uni27CE and
+        uni27CF.
+
+000.939 Added glyphs uni2B51, uni27EE, uni27EF, uni27EC, and uni27EF.
+
+000.940 Modified hinting info and italic
+        correction.
+
+000.941 Added certain punctuation symbols.
+
+000.942 Added Cherokee "letters".
+
+000.943 Fixed math kern information for omega.
+
+000.944 Fixed math kern information for math script letters.
+
+000.945 Value of constant DisplayOperatorMinHeight
+ has been adjusted. Thanks to Mateus Araújo for
+ finding what caused the problem of big display
+ operatos.
+
+000.946 Fixed math kern information for math script letters. Thanks again to Mateus Araújo for sorting this out.
+
+000.947 Math kern information removed due to a bug. Added the six die symbols.
