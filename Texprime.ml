@@ -38,8 +38,7 @@ let postambule : ('a, 'b, 'c) format = "
        ~badness:(Badness.badness pars)
        pars
      in
-     update_names user';
-     if (user<>user') && !fixable  then (
+     if (update_names user') && !fixable  then (
        resolve (i+1) env' user'
      ) else Out.output (fst (top !str)) pars figures env pages filename
   in

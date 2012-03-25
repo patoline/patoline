@@ -4,31 +4,28 @@ open Fonts.FTypes
 
 
 let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line) list array)=
-  let par=ref (-1) in
-
   let draw_page i p=
     let pageContents=ref [] in
     let y0=ref infinity in
+    let y0'=ref infinity in
     let y1=ref (-.infinity) in
-    let w_final=ref 0. in
+    let x0=ref infinity in
+    let x1=ref (-.infinity) in
       List.iter (
         fun (param,line)->
           let y=270.0-.line.height in
-          let (yy0,yy1)=line_height paragraphs line in
-
-
             if line.isFigure then (
               let fig=figures.(line.lastFigure) in
                 y1:=max !y1 y;
+                y0':=min !y0' (y-.fig.drawing_y1+.fig.drawing_y0);
                 y0:=min !y0 (y-.fig.drawing_y1+.fig.drawing_y0);
                 pageContents := (List.map (translate param.left_margin (y-.fig.drawing_y1))
                                    (fig.drawing_contents fig.drawing_nominal_width)) @ !pageContents
             ) else if line.paragraph<Array.length paragraphs then (
-              if yy1 > !y1 then y1:=yy1;
-              if yy0 < !y0 then y0:=yy0;
-              if line.paragraph<> !par then (
-                par:=line.paragraph;
-              );
+              let (yy0,yy1)=line_height paragraphs line in
+                y1:=max (y+.yy1) !y1;
+                y0:=min y !y0;
+                y0':=min (y+.yy0) !y0';
               let comp=compression paragraphs (param,line) in
               let rec draw_box x y=function
                   Kerning kbox ->(
@@ -54,16 +51,17 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
                   )
                 | b->box_width comp b
               in
-                w_final:=max !w_final (fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line)
+                x0:=min !x0 param.left_margin;
+                x1:=max !x1 (fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line)
             )
       ) p;
-        { drawing_min_width= !w_final;
-          drawing_nominal_width= !w_final;
-          drawing_max_width= !w_final;
-          drawing_y0= !y0;
-          drawing_y1= !y1;
-          drawing_badness=(fun _->0.);
-          drawing_contents=(fun _-> !pageContents) }
-
+      pageContents:=List.map (translate (-. !x0) (-. !y0')) !pageContents;
+      { drawing_min_width= !x1-. !x0;
+        drawing_nominal_width= !x1-. !x0;
+        drawing_max_width= !x1-. !x0;
+        drawing_y0= !y0-. !y0';
+        drawing_y1= env.Typography.normalLead *. (ceil ((!y1-. !y0')/.env.Typography.normalLead));
+        drawing_badness=(fun _->0.);
+        drawing_contents=(fun _-> !pageContents) }
   in
     Array.mapi draw_page opt_pages

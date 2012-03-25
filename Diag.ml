@@ -455,7 +455,7 @@ module Node = struct
     let anchor = spec.anchor in
     let at = spec.at in
     (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Util.draw_boxes (boxify { defaultEnv with size = 4. } spec.contents_spec)) in
+    let contents = (Util.draw_boxes (boxify_scoped { defaultEnv with size = 4. } spec.contents_spec)) in
     let bb_boot =  OutputCommon.bounding_box contents in
     (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
     (* But computing anchor needs make_anchor bb.  *)

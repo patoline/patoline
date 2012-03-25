@@ -5,7 +5,7 @@ FONTS=$(FONTS0) Fonts.mli Fonts.ml
 
 DRIVERS=Output/OutputPaper.ml Output/Drivers/Pdf.ml
 
-SOURCES0 = $(BASE) $(FONTS) Output/OutputCommon.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Parameters.ml Output/OutputDrawing.ml Typography.ml $(DRIVERS) Diag.ml Maths.ml
+SOURCES0 = $(BASE) $(FONTS) Output/OutputCommon.ml Hyphenate.ml Util.mli Util.ml Badness.mli Badness.ml Typeset.mli Typeset.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Typography.ml $(DRIVERS) Diag.ml Maths.ml
 SOURCES1 = Parser.ml Texprime.ml
 SOURCES2 = DefaultFormat.ml
 SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
