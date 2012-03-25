@@ -1,11 +1,3 @@
-val print_graph :
-  string ->
-  'a ->
-  (float * 'b * Util.LineMap.key * 'c) Util.LineMap.t ->
-  ('d * Util.LineMap.key) list -> unit
-val print_simple_graph :
-  string -> 'a -> (float * 'b * Util.LineMap.key * 'c) Util.LineMap.t -> unit
-val is_last : 'a Util.box array -> int -> bool
 module type User =
   sig
     type t

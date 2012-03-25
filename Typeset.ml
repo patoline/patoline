@@ -13,7 +13,7 @@ let rec print_graph file paragraphs graph path=
     | (_,h)::(a,h')::s->(p1=h && p2=h') || make_path p1 p2 ((a,h')::s)
   in
     Printf.fprintf f "digraph {\n";
-    LineMap.iter (fun k (b,_,a,_)->
+    LineMap.iter (fun k (b,_,_,a,_)->
                     Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d : %d, %d, %d\"];\n"
                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
@@ -21,7 +21,7 @@ let rec print_graph file paragraphs graph path=
 
                       k.paragraph k.lineStart k.lineEnd k.hyphenEnd;
 
-                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"%F\"]\n"
+                    Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"\"]\n"
                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
                       (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x")
@@ -32,7 +32,7 @@ let rec print_graph file paragraphs graph path=
 
                       (if k.lastFigure<>a.lastFigure then "green" else
                          if make_path a k path then "blue" else "black")
-                      b(*k.height-a.height*)
+                      (*b k.height-a.height*)
                  ) graph;
     Printf.fprintf f "};\n";
     close_out f
@@ -138,6 +138,11 @@ module Make=functor (User:User)->(
   struct
     module User=User
   module UMap=New_map.Make(User)
+  module ColMap=New_map.Make (
+    struct
+      type t=float*float*line*float*float*line
+      let compare=compare
+    end)
 
   let haut=ref (Array.make 100 Empty)
   let max_haut=ref 0
@@ -154,7 +159,7 @@ module Make=functor (User:User)->(
 
   let readBox arr i= !arr.(i)
 
-  let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
+  let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=try
 
     let collide line_haut params_i comp_i line_bas params_j comp_j=
 
@@ -209,13 +214,13 @@ module Make=functor (User:User)->(
 
     let misses=ref 0 in
 
-    let cleanup demerits0 todo0=if !misses>=500 then (
+    let cleanup demerits0 todo0=if !misses>=50000 then (
       misses:=0;
       let rec clean demerits todo=match todo with
           []->demerits
         | h::s->
             try
-              let (_,_,ant,_) as hh=LineMap.find h demerits0 in
+              let (_,_,_,ant,_) as hh=LineMap.find h demerits0 in
                 clean (LineMap.add h hh demerits) (ant::s)
             with
                 Not_found->clean demerits s
@@ -226,18 +231,19 @@ module Make=functor (User:User)->(
     in
 
     let log=ref [] in
+    let colision_cache=ref ColMap.empty in
 
     let rec break allow_impossible todo demerits=
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
-        let node,(lastBadness,lastParameters,lastUser)=LineMap.min_binding todo in
+        let node,(lastBadness,lastParameters,comp0,lastUser)=LineMap.min_binding todo in
 
         let todo'=ref (LineMap.remove node todo) in
           if node.paragraph >= Array.length paragraphs then break false !todo' demerits else
             (
               (* On commence par chercher la première vraie boite après node *)
               let demerits'=ref demerits in
-              let register node nextNode badness next_params=
+              let register node nextNode badness next_params comp=
                 demerits':=cleanup !demerits' !todo';
                 let reallyAdd ()=
                   let nextUser=Util.fold_left_line paragraphs (fun u box->match box with
@@ -247,11 +253,11 @@ module Make=functor (User:User)->(
                   let nextNextUser=if nextNode.isFigure then UMap.add (User.figure nextNode.lastFigure) nextNode nextUser
                   else nextUser
                   in
-                    todo':=LineMap.add nextNode (badness,next_params,nextNextUser) !todo';
-                    demerits':=LineMap.add nextNode (badness,next_params,node,nextNextUser) !demerits'
+                    todo':=LineMap.add nextNode (badness,next_params,comp,nextNextUser) !todo';
+                    demerits':=LineMap.add nextNode (badness,next_params,comp,node,nextNextUser) !demerits'
                 in
                   try
-                    let bad,_,_,_=LineMap.find nextNode !demerits' in
+                    let bad,_,_,_,_=LineMap.find nextNode !demerits' in
                       if bad >= badness then reallyAdd () else incr misses
                   with
                       Not_found->reallyAdd ()
@@ -285,6 +291,7 @@ module Make=functor (User:User)->(
                                    node !haut 0 lastParameters 0.
                                    nextNode !bas 0 params 0.)
                                 params
+                                0.
                         done
                     with
                         Not_found -> ()
@@ -295,7 +302,7 @@ module Make=functor (User:User)->(
                   let endNode={paragraph=pi;lastFigure=node.lastFigure;hyphenStart= -1;hyphenEnd= -1; isFigure=false;
                                height=node.height; lineStart= -1; lineEnd= -1; paragraph_height= -1;
                                page_line=node.page_line+1; page=node.page; min_width=0.;nom_width=0.;max_width=0. } in
-                    register node endNode lastBadness lastParameters;
+                    register node endNode lastBadness lastParameters 0.;
                 ) else (
                   let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else (node.page, node.height) in
                   let r_nextNode={
@@ -323,26 +330,33 @@ module Make=functor (User:User)->(
 
                       let make_next_node nextNode=
                         r_params:=parameters.(pi) paragraphs figures lastParameters lastUser nextNode;
-                        let comp0=ref 0. in
                         let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                         let height'=
                           if page=node.page then (
                             let rec v_distance node0 parameters=
-                              comp0:=comp paragraphs parameters.measure node0.paragraph node0.lineStart
-                                node0.hyphenStart node0.lineEnd node0.hyphenEnd;
                               if node0.isFigure then (
-                                let dist=collide node0 parameters !comp0 nextNode !r_params comp1 in
+                                let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
                                   if dist < infinity then node0.height+. (ceil (-.dist)) else (
                                     try
-                                      let ((_,_,ant,_))=LineMap.find node0 !demerits' in
-                                      let ((_,params,_,_))=LineMap.find ant !demerits' in
+                                      let ((_,_,_,ant,_))=LineMap.find node0 !demerits' in
+                                      let ((_,params,_,_,_))=LineMap.find ant !demerits' in
                                         v_distance ant params
                                     with
                                         Not_found -> node0.height
                                   )
                               ) else (
-                                let dist=collide node0 parameters !comp0 nextNode !r_params comp1 in
-                                  node0.height+. (ceil (-.dist))
+                                node0.height+.
+                                  ceil (try
+                                          ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                       !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                        with
+                                            Not_found -> (
+                                              let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                                colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                              !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
+                                                -.dist
+                                            )
+                                       )
                               )
                             in
                               v_distance node lastParameters
@@ -362,18 +376,18 @@ module Make=functor (User:User)->(
                               if not allow_orphan && allow_widow then (
                                 if allow_impossible then (
                                   log:=(Orphan node)::(!log);
-                                  let _,_,last_ant,_=LineMap.find node !demerits' in
-                                  let ant_bad, ant_par, ant_ant,ant_user=LineMap.find last_ant !demerits' in
-                                    extreme_solutions:=(ant_ant,last_ant,ant_bad, { ant_par with page_height=node.height },
+                                  let _,_,_,last_ant,_=LineMap.find node !demerits' in
+                                  let ant_bad, ant_par, ant_comp, ant_ant,ant_user=LineMap.find last_ant !demerits' in
+                                    extreme_solutions:=(ant_ant,last_ant,ant_bad, { ant_par with page_height=node.height },ant_comp,
                                                         ant_user)::(!extreme_solutions);
                                     solutions_exist:=true;
                                 )
                               ) else if not allow_widow && allow_orphan then (
                                 if allow_impossible then (
                                   log:=(Widow nextNode)::(!log);
-                                  let _,_, last_ant,_=LineMap.find node !demerits' in
-                                  let ant_bad, ant_par, ant_ant, ant_user=LineMap.find last_ant !demerits' in
-                                    extreme_solutions:=(ant_ant,last_ant,ant_bad, { ant_par with page_height=node.height },
+                                  let _,_,_,last_ant,_=LineMap.find node !demerits' in
+                                  let ant_bad, ant_par, ant_comp,ant_ant, ant_user=LineMap.find last_ant !demerits' in
+                                    extreme_solutions:=(ant_ant,last_ant,ant_bad, { ant_par with page_height=node.height },ant_comp,
                                                         ant_user)::(!extreme_solutions);
                                     solutions_exist:=true;
                                 )
@@ -383,17 +397,17 @@ module Make=functor (User:User)->(
                                 solutions_exist:=true;
                                 let nextUser=lastUser in
                                 let bad=(lastBadness+.
-                                           badness node !haut !max_haut lastParameters !comp0
+                                           badness node !haut !max_haut lastParameters comp0
                                            nextNode !bas !max_bas !r_params comp1) in
-                                  local_opt:=(node,nextNode,bad,!r_params,nextUser)::(!local_opt);
+                                  local_opt:=(node,nextNode,bad,!r_params,comp1,nextUser)::(!local_opt);
                                   (* register node nextNode bad (!r_params) *)
                               ) else (
                                 solutions_exist:=true;
                                 let nextUser=lastUser in
                                 let bad=(lastBadness+.
-                                           badness node !haut !max_haut lastParameters !comp0
+                                           badness node !haut !max_haut lastParameters comp0
                                            nextNode !bas !max_bas !r_params comp1) in
-                                  local_opt:=(node,nextNode,bad,!r_params,nextUser)::(!local_opt);
+                                  local_opt:=(node,nextNode,bad,!r_params,comp1,nextUser)::(!local_opt);
                                   (* register node nextNode bad (!r_params) *)
                               )
                           )
@@ -407,7 +421,7 @@ module Make=functor (User:User)->(
                        fix node.page (lastParameters.next_acceptable_height node node.height);
 
                        if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
-                         List.iter (fun (node,nextNode,bad,params,user)->
+                         List.iter (fun (node,nextNode,bad,params,comp,user)->
                                       let a,_,_=LineMap.split nextNode !demerits' in
                                       let b,_,_=LineMap.split nextNode !todo' in
                                         demerits':=a;
@@ -415,16 +429,15 @@ module Make=functor (User:User)->(
                                    ) !extreme_solutions;
                          local_opt:= !extreme_solutions
                        );
-
                        if !local_opt <> [] then (
-                         let l0=List.sort (fun (_,_,b0,_,_) (_,_,b1,_,_)->compare b0 b1) !local_opt in
-                         let deg=List.fold_left (fun m (_,_,_,p,_)->max m p.local_optimization) 0 l0 in
+                         let l0=List.sort (fun (_,_,b0,_,_,_) (_,_,b1,_,_,_)->compare b0 b1) !local_opt in
+                         let deg=List.fold_left (fun m (_,_,_,p,_,_)->max m p.local_optimization) 0 l0 in
                          let rec register_list i l=
                            if i>0 || deg<=0 then (
                              match l with
                                  []->()
-                               | (node,nextNode,bad,params,user)::s->(
-                                   register node nextNode bad params;
+                               | (node,nextNode,bad,params,comp,user)::s->(
+                                   register node nextNode bad params comp;
                                    register_list (i-1) s
                                  )
                            )
@@ -440,8 +453,7 @@ module Make=functor (User:User)->(
       )
     in
     let first_parameters=parameters.(0) paragraphs figures default_params UMap.empty uselessLine in
-
-    let todo0=LineMap.singleton uselessLine (0., first_parameters, UMap.empty) in
+    let todo0=LineMap.singleton uselessLine (0., first_parameters, 0.,UMap.empty) in
     let last_failure=ref LineMap.empty in
     let rec really_break allow_impossible todo demerits=
       let demerits'=break allow_impossible todo demerits in
@@ -461,17 +473,17 @@ module Make=functor (User:User)->(
                 ) else LineMap.empty
               )
         ) else (
-          let (b,(bad,param,_,user))= LineMap.max_binding demerits' in
+          let (b,(bad,param,comp,_,user))= LineMap.max_binding demerits' in
             if b.paragraph < Array.length paragraphs then (
               try
                 let _=LineMap.find b !last_failure in
-                    print_graph "graph" paragraphs demerits [];
-                    Printf.printf "No solution, incomplete document. Please report\n";
-                    demerits'
+                  print_graph "graph" paragraphs demerits [];
+                  Printf.printf "No solution, incomplete document. Please report\n";
+                  demerits'
               with
                   Not_found->(
                     last_failure:=LineMap.add b param !last_failure;
-                    really_break true (LineMap.singleton b (bad,param,user)) demerits'
+                    really_break true (LineMap.singleton b (bad,param,comp,user)) demerits'
                   )
             ) else
               demerits'
@@ -480,7 +492,7 @@ module Make=functor (User:User)->(
     let demerits=really_break false todo0 LineMap.empty in
 
     let rec find_last demerits0 b0 bad0 b_params0 b_user0=
-      let (b,(bad,b_params,_,user))=LineMap.max_binding demerits0 in
+      let (b,(bad,b_params,_,_,user))=LineMap.max_binding demerits0 in
         if b.paragraph=b0.paragraph && b.lastFigure=b0.lastFigure then (
           if bad<bad0 then find_last (LineMap.remove b demerits0) b bad b_params user
           else find_last (LineMap.remove b demerits0) b0 bad0 b_params0 b_user0
@@ -488,12 +500,12 @@ module Make=functor (User:User)->(
     in
 
       try
-        let (b0,(bad0,b_params0,_,user0))=LineMap.max_binding demerits in
+        let (b0,(bad0,b_params0,_,_,user0))=LineMap.max_binding demerits in
         let (b,b_params,b_user)=find_last demerits b0 bad0 b_params0 user0 in
 
         let rec makeParagraphs node result=
           try
-            let _,params',next,_=LineMap.find node demerits in
+            let _,params',_,next,_=LineMap.find node demerits in
               makeParagraphs next ((params',node)::result)
           with
               Not_found->result
@@ -509,8 +521,8 @@ module Make=functor (User:User)->(
             )
         in
         let ln=(makeParagraphs b []) in
-          print_graph "graph" paragraphs demerits ln;
-          Printf.printf "Le graphe a %d nœuds\n" (LineMap.cardinal demerits);
+          (* print_graph "graph" paragraphs demerits ln; *)
+          (* Printf.printf "Le graphe a %d nœuds\n" (LineMap.cardinal demerits); *)
           makePages ln;
           (!log, pages,b_user)
       with
@@ -518,4 +530,7 @@ module Make=functor (User:User)->(
             Printf.printf "Incomplete document, please report\n";
             [],[||],UMap.empty
           )
+
+  with
+      Invalid_argument _->[],[||],UMap.empty
   end)
