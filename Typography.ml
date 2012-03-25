@@ -774,10 +774,16 @@ let table_of_contents tree max_level=
   newPar ~environment:(fun x->{x with par_indent=[]}) (C.normal 150.) parameters [
     BFix (
       fun env->
-        let orn=
-          glyphCache (Fonts.loadFont "ACaslonPro-Regular.otf") {empty_glyph with glyph_index=509}
+        let x0=75. in
+        let spacing=1. in
+        let r=0.3 in
+        let x_height=
+          let x=Fonts.loadGlyph env.font ({empty_glyph with glyph_index=Fonts.glyph_of_char env.font 'x'}) in
+            (Fonts.glyph_y1 x)/.1000.
         in
-
+        let orn=translate x0 (env.size*.x_height/.2.-.r) (Path ({default with fillColor=Some black;strokingColor=None }, [circle r])) in
+        let (orn_x0,_,orn_x1,_)=bounding_box [orn] in
+        let y=orn_x1-.orn_x0 in
         let rec toc env0 level tree=
           match tree with
               Paragraph p -> []
@@ -807,14 +813,10 @@ let table_of_contents tree max_level=
                       in
                       let env'=fenv env0 in
                       let name= boxify_scoped env' s.displayname in
-                      let x0=75. in
-                      let spacing=1. in
-                      let orn_size=1. in
                       let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
-                      let y=Fonts.glyphWidth orn.glyph*.orn_size/.1000. in
                       let cont=
                         (List.map (translate (x0-.w-.spacing) 0.) (draw_boxes name))@
-                          Glyph { orn with glyph_size=orn_size; glyph_x=x0;glyph_y=0.5 }::
+                          orn::
                           List.map (translate (x0+.y+.spacing) 0.)
                           (draw_boxes (boxify_scoped (fenv (envItalic true env0)) [T (Printf.sprintf "page %d" page)]))
                       in

@@ -77,7 +77,12 @@ let bounding_box l=
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
-
+let circle r=
+  let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in
+    [| [|0.;0.;r-.lambda;r|], [|r;r+.lambda;2.*.r;2.*.r|];
+       [|r;r+.lambda;2.*.r;2.*.r|], [|2.*.r;2.*.r;r+.lambda;r|];
+       [|2.*.r;2.*.r;r+.lambda;r|], [|r;r-.lambda;0.;0.|];
+       [|r;r-.lambda;0.;0.|], [|0.;0.;r-.lambda;r|] |]
 type structure= { mutable name:string;
 		  mutable displayname:contents list;
                   mutable page:int;
