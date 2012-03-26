@@ -65,7 +65,7 @@ let glyph_of_uchar font char0=
         let char=UChar.code char0 in
         let (a,b)=tableLookup "cmap" file offset0 in
           seek_in file (a+2);
-          let numTables=readInt4 file in
+          let numTables=readInt2 file in
           let table=ref 0 in
           let cid=ref 0 in
 
