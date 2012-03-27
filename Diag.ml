@@ -1,6 +1,7 @@
 open Typography
 module Drivers = OutputCommon
 
+
 let pi = 3.14159
 let one_third = 1. /. 3.
 let half_pi = pi /. 2.
@@ -26,6 +27,28 @@ module Point = struct
   let (+) (x0,y0) (x1,y1) = (x0 +. x1), (y0 +. y1)
   let (-) (x0,y0) (x1,y1) = (x0 -. x1), (y0 -. y1)
   let (/) (x0,y0) r = (x0 /. r, y0 /.r)
+end
+
+
+module Vector = struct
+  type t = Point.t 
+  let of_points p q = ((Point.proj q -. Point.proj p),
+		       (Point.proj' q -. Point.proj' p))
+  let scal_mul r (x,y) = (x *. r, y *. r)
+  let (+) (x,y) (x',y') = (x +. x', y +. y')
+  let (-) (x,y) (x',y') = (x -. x', y -. y')
+  let minus (x,y) = (-. x,-. y)
+  let translate p vec = (p + vec)
+  let rotate angle (x,y) = (* Angle en radians *)
+    (x *. cos angle -. y *. sin angle,
+     x *. sin angle +. y *. cos angle)
+  let norm (x,y) = sqrt (x ** 2. +. y ** 2.)
+  let normalise ?norm:(norm'=1.0) vec = 
+    let l = norm vec in
+    if l == 0. then failwith "Can't normalise the 0 vector." else
+    scal_mul (norm' /. l) vec
+  let turn_left (x,y) = (-. y,x)
+  let turn_right (x,y) = (y, -. x)
 end
 
 module Curve = struct
@@ -172,27 +195,21 @@ module Curve = struct
       (Printf.printf ("Warning: split2ion to an empty curve.\n") ;
        [],[],[])
 
-end
 
-module Vector = struct
-  type t = Point.t 
-  let of_points p q = ((Point.proj q -. Point.proj p),
-		       (Point.proj' q -. Point.proj' p))
-  let scal_mul r (x,y) = (x *. r, y *. r)
-  let (+) (x,y) (x',y') = (x +. x', y +. y')
-  let (-) (x,y) (x',y') = (x -. x', y -. y')
-  let minus (x,y) = (-. x,-. y)
-  let translate p vec = (p + vec)
-  let rotate angle (x,y) = (* Angle en radians *)
-    (x *. cos angle -. y *. sin angle,
-     x *. sin angle +. y *. cos angle)
-  let norm (x,y) = sqrt (x ** 2. +. y ** 2.)
-  let normalise ?norm:(norm'=1.0) vec = 
-    let l = norm vec in
-    if l == 0. then failwith "Can't normalise the 0 vector." else
-    scal_mul (norm' /. l) vec
-  let turn_left (x,y) = (-. y,x)
-  let turn_right (x,y) = (y, -. x)
+(*   let curviligne xs ys abs = *)
+(*     let significant, exponent = frexp t in  *)
+(*     let beziers_x = divide xs (2 ** exponent) in *)
+(*     let beziers_y = divide ys (2 ** exponent) in *)
+(*     let epsilon = 2 ** exponent in *)
+(*     let rec scan t_yet abs_yet xs' ys' = *)
+(*       let length =  *)
+(* 	if abs_float (abs -. abs_yet) < epsilon then *)
+(* 	  t_yet *)
+(* ) *)
+(*     (0.,0.) *)
+(*     (List.combine beziers_x beziers_y) *)
+
+
 end
 
 module Rectangle = struct
@@ -498,6 +515,7 @@ module Edge = struct
     | Fore of float
     | ShortenS of float			(* A float between 0 and 1 *)
     | ShortenE of float			(* Idem *)
+    | Double of float * float		(* Space between the two lines, and their common width *)
 
   type t = { curves : (OutputCommon.path_parameters * Curve.t) list ;
 	     head : ArrowTip.t ;
@@ -531,9 +549,10 @@ module Edge = struct
     Vector.translate node1 vec
 
   let squiggle freq angle (xs,ys) = 
-    let beziersx' = Bezier.divide xs freq in 
-    let beziersy' = Bezier.divide ys freq in 
-    let make_handles (xs,ys) =
+    let beziersx' = Bezier.divide xs (2 * freq) in 
+    let beziersy' = Bezier.divide ys (2 * freq) in 
+    let make_handles left_or_right (xs,ys) = 
+      (* Forget the intermediate points, then add two intermediate points, to the left or to the right *)
       let x0 = xs.(0) in
       let x1 = xs.(Array.length xs - 1) in
       let y0 = ys.(0) in
@@ -543,20 +562,29 @@ module Edge = struct
       let cosangle = cos angle in
       let length_factor = if cosangle = 0.0 then one_third else 0.25 /. cosangle
       in
+      let angle = if left_or_right then angle else (-. angle) in
       let hx1,hy1 = Vector.translate p0
 	(Vector.scal_mul length_factor
 	   (Vector.rotate angle 
 	      (Vector.of_points p0 p1)))
       in
       let hx2,hy2 = Vector.translate p1
-	(Vector.scal_mul (-. length_factor)
-	   (Vector.rotate angle
-	      (Vector.of_points p0 p1)))
+	(Vector.scal_mul length_factor
+	   (Vector.rotate (-. angle)
+	      (Vector.of_points p1 p0)))
       in
       [|x0;hx1;hx2;x1|],
       [|y0;hy1;hy2;y1|]
     in
-    List.map make_handles (List.combine beziersx' beziersy')
+    let res,_ = 
+      List.fold_left 
+	(fun (res,left_or_right) bezier ->
+	  ((make_handles left_or_right bezier) :: res,
+	   not left_or_right))
+	([],true)
+	(List.combine beziersx' beziersy')
+    in List.rev res
+
 
   let rec pre_of_transfo_spec = function
     | BendLeft(angle) -> begin fun paths -> 
@@ -602,6 +630,27 @@ module Edge = struct
       let white_paths = post_of_transfo_spec (ShortenS 0.1) white_paths in
       let white_paths = post_of_transfo_spec (ShortenE 0.1) white_paths in
       white_paths @ paths
+      end
+    | Double (margin,linewidth) -> begin fun paths -> 
+      let black_paths = List.map (fun (params, curve) -> 
+	{ params with 
+	  Drivers.lineWidth = margin +. 2.0 *. linewidth },
+	 curve)
+	paths
+      in
+      let white_paths = List.map (fun (params, curve) -> 
+	{ params with 
+	  Drivers.strokingColor = Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+	  Drivers.lineWidth = margin },
+	 curve)
+	paths
+      in
+      let delta = 0.02 in
+      let white_paths = post_of_transfo_spec (ShortenS delta) white_paths in
+      let white_paths = post_of_transfo_spec (ShortenE delta) white_paths in
+      let black_paths = post_of_transfo_spec (ShortenS delta) black_paths in
+      let black_paths = post_of_transfo_spec (ShortenE delta) black_paths in
+      black_paths @ white_paths
       end
     | ShortenS a -> begin fun paths -> match paths with
 	| [] -> []
@@ -685,6 +734,5 @@ module Edge = struct
       let edge = make spec node1 node2 
       in 
       edge, (l @ (draw edge))
-
 
 end

@@ -81,17 +81,21 @@ let fig2 env=
     a c
   in
   let cb, state = Edge.make_draw state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } }
+    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } ;
+    Edge.transfo_specs = [Edge.Double (2.,1.)] }
     c b
   in
   let ca, state = Edge.make_draw state { Edge.default with
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.transfo_specs = [Edge.BendLeft 60.0 ; Edge.Squiggle (10,1.0)] }
+    Edge.transfo_specs = [Edge.BendLeft 60.0 ; Edge.Squiggle (10,1.0); Edge.Double (2.,0.2)] }
     c a
   in
   let ea, state = Edge.make_draw state { Edge.default with
+    Edge.head_spec = (fun ?parameters:(params=OutputCommon.default) curve ->
+      ArrowTip.simple ~parameters:params curve) ;
     Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.transfo_specs = [Edge.Fore 2.] }
+    Edge.transfo_specs = [Edge.Double (2.,0.2); Edge.Fore 0.2] ;
+  }
     e a
   in
   drawing ~offset:(-10.) (List.rev state)
@@ -241,4 +245,6 @@ Prefix : $+a$ $-a$
 Postfix : $a!$
 
 =<
+
 =< 
+
