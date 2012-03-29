@@ -9,8 +9,8 @@ LAMA UMR 5127, Université de Savoie
 {{
 open Diag
 module Env_abstract = struct
-  let parameters a b c d line =
-    let par=parameters a b c d line in
+  let parameters a b c d e line =
+    let par=parameters a b c d e line in
       { par with
           measure=120.;
           left_margin=par.left_margin +. (par.measure-.120.)/.2. }
@@ -120,6 +120,16 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 \large{TeX' c'est bien mieux que TeX. Un point c'est tout.
   \italic{eeeet \alternative{{Bold}}{ouais !}} } \figRef
 
+\Begin{itemize}
+
+{{item ()}}
+TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih 
+
+TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih 
+{{item ()}}
+et aussi
+
+\End{itemize}
 
 =<
 

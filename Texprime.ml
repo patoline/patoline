@@ -44,7 +44,7 @@ let postambule : ('a, 'b, 'c) format = "
   in
      resolve 0 defaultEnv defaultEnv.user_positions
 "
-
+let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
 let split_ind indices =
@@ -156,7 +156,8 @@ let rec print_macro ch op mtype name args =
       in
       let modname = 
 	if mtype = `Begin then begin
-	  Printf.fprintf ch "module TEMP = struct\n";
+          incr moduleCounter;
+	  Printf.fprintf ch "module TEMP%d = struct\n" !moduleCounter;
 	  "Env_"^name
 	end
 	else name
@@ -229,7 +230,7 @@ let _=
 		      let lvl = ref lvl in 
 		    (match doc with
 		    | Paragraph p ->
-		      Printf.printf "newPar ~environment:(fun x->x) textWidth parameters %a;;\n" 
+		      Printf.printf "newPar ~structure:str ~environment:(fun x->x) textWidth parameters %a;;\n" 
 			(print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
@@ -255,7 +256,7 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf ";;\n\n" 
 		    | Math m ->
-		      Printf.printf "newPar ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
+		      Printf.printf "newPar ~structure:str ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m
                     | Ignore -> ()
 		    | Verbatim(lang, lines) ->
@@ -268,7 +269,7 @@ let _=
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "newPar ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
+			  "newPar ~structure:str ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end;;\n\n");

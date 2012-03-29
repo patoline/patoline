@@ -125,20 +125,21 @@ type 'a node={
   in_toc : bool;
   children:'a tree IntMap.t;
   node_env:'a environment -> 'a environment;
-  node_post_env:'a environment -> 'a environment;
+  node_post_env:'a environment -> 'a environment -> 'a environment;
   mutable tree_paragraph:int;
 }
 and 'a paragraph={
   par_contents:'a content list;
   par_env:'a environment -> 'a environment;
-  parameters:'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
+  par_post_env:'a environment -> 'a environment -> 'a environment;
+  parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
   completeLine:'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
 }
 and 'a tree=
     Node of 'a node
   | Paragraph of 'a paragraph
   | FigureDef of string*('a environment -> drawingBox)*
-      ('a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters)
+      ('a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters)
 
 and 'a environment={
  fontFamily:fontFamily;
@@ -246,7 +247,7 @@ let defaultEnv:user environment=
 let empty : user node={ name=""; in_toc = true;
                         displayname = []; children=IntMap.empty;
                         node_env=(fun x->x);
-                        node_post_env=(fun x->x);
+                        node_post_env=(fun x _->x);
                         tree_paragraph= (-1) }
 
 type 'a cxt=(int*'a tree) list
@@ -389,7 +390,7 @@ let features f t=
 
 
 
-let parameters paragraphs figures last_parameters last_users (line:Util.line)=
+let parameters env paragraphs figures last_parameters last_users (line:Util.line)=
   let lead=5. in
   let mes0=150. in
   let measure=ref mes0 in
@@ -423,8 +424,8 @@ let parameters paragraphs figures last_parameters last_users (line:Util.line)=
       }
 
 
-let center paragraphs figures last_parameters lastUsers l=
-  let param=parameters paragraphs figures last_parameters lastUsers l in
+let center env paragraphs figures last_parameters lastUsers l=
+  let param=parameters env paragraphs figures last_parameters lastUsers l in
   let b=l.nom_width in
     if param.measure >= b then
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
@@ -443,7 +444,10 @@ let figure ?(name="") ?(parameters=center) drawing=
 
 
 let newPar ?(structure=str) ?(environment=(fun x->x)) complete parameters par=
-  let para=Paragraph {par_contents=par; par_env=environment; parameters=parameters; completeLine=complete } in
+  let para=Paragraph {par_contents=par; par_env=environment;
+                      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
+                      parameters=parameters; completeLine=complete }
+  in
     structure:=up (newChild !structure para)
 
 
@@ -476,16 +480,16 @@ let newStruct ?(structure=str)  ?label displayname =
               ) env.counters }
       );
       node_post_env=(
-        fun env->
+        fun env env'->
           { env with
               counters=StrMap.add "structure" (
                 try
-                  match StrMap.find "structure" env.counters with
+                  match StrMap.find "structure" env'.counters with
                       _::h::s->(h+1)::s
                     | _ -> [0]
                 with
                     Not_found -> [0]
-              ) env.counters }
+              ) env'.counters }
       );
   }
   in
@@ -511,9 +515,10 @@ let newStruct ?(structure=str)  ?label displayname =
     let par={
       par_contents=section_name;
       par_env=(fun x->{ x with par_indent=[]});
+      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
       parameters=
-        (fun a b c d e ->
-           { (parameters a b c d e) with
+        (fun a b c d e f->
+           { (parameters a b c d e f) with
                next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
       completeLine=C.normal (fst a4) }
     in
@@ -545,16 +550,16 @@ let newStruct' ?(structure=str) ?label displayname =
               ) env.counters }
       );
       node_post_env=(
-        fun env->
+        fun env env'->
           { env with
               counters=StrMap.add "structure" (
                 try
-                  match StrMap.find "structure" env.counters with
+                  match StrMap.find "structure" env'.counters with
                       _::s->s
                     | [] -> [0]
                 with
                     Not_found -> [0]
-              ) env.counters }
+              ) env'.counters }
       );
   }
   in
@@ -572,9 +577,10 @@ let newStruct' ?(structure=str) ?label displayname =
     let par={
       par_contents=section_name;
       par_env=(fun x->{ x with par_indent=[]});
+      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
       parameters=
-        (fun a b c d e ->
-           { (parameters a b c d e) with
+        (fun a b c d e f->
+           { (parameters a b c d e f) with
                next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
       completeLine=C.normal (fst a4) }
     in
@@ -595,7 +601,7 @@ let title ?label displayname =
                                           displayname = displayname; 
 				          children=IntMap.singleton 1 t0;
                                           node_env=(fun x->x);
-                                          node_post_env=(fun x->x);
+                                          node_post_env=(fun x _->x);
                                           tree_paragraph=0 }
       | Node n -> Node { n with name=name; displayname = displayname }
   in
@@ -686,7 +692,7 @@ let flatten env0 str=
     let u,v=boxify (p.par_env env) p.par_contents in
     paragraphs:=(Array.of_list u)::(!paragraphs);
     compl:=(p.completeLine)::(!compl);
-    param:=(p.parameters)::(!param);
+    param:=(p.parameters env)::(!param);
     incr n;
     v
   in
@@ -698,7 +704,7 @@ let flatten env0 str=
           let n=IntMap.cardinal !figures in
           let w=try let (_,_,w)=StrMap.find name !names in w with Not_found -> uselessLine in
             names := StrMap.add name (Figure n,"",w) !names;
-            fig_param:=IntMap.add n p !fig_param;
+            fig_param:=IntMap.add n (p env) !fig_param;
             figures:=IntMap.add n (f env) !figures;
             env
         )
@@ -711,7 +717,7 @@ let flatten env0 str=
                     Paragraph { p with par_contents=
                         (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                   ) in
-                    flat_children true env2 s
+                    flat_children true (p.par_post_env env1 env2) s
                 )
               | (_,(FigureDef _ as h))::s->(
                   let env2=flatten env1 h in
@@ -720,7 +726,7 @@ let flatten env0 str=
               | (_, (Node h as tr))::s->(
                   let env2=h.node_env env1 in
                   let env3=flatten env2 tr in
-                    flat_children false (h.node_post_env env3) s
+                    flat_children false (h.node_post_env env1 env3) s
                 )
             in
               flat_children false env (IntMap.bindings s.children)
@@ -735,7 +741,7 @@ let flatten env0 str=
                                                                  | _->raise Not_found)
                              | x -> x)) !paragraphs
     in
-    let params=Array.make (IntMap.cardinal !figures) center in
+    let params=Array.make (IntMap.cardinal !figures) (center env0) in
       IntMap.iter (fun n p->params.(n)<-p) !fig_param;
       (params,
        Array.of_list (List.rev !param),
@@ -796,7 +802,7 @@ let table_of_contents tree max_level=
                   | (_,(Node h as tr))::s->(
                       let env'=h.node_env env1 in
                         (toc env' (level+1) tr)@
-                          flat_children (h.node_post_env env') s
+                          flat_children (h.node_post_env env1 env') s
                     )
                 in
                 let chi=flat_children env0 (IntMap.bindings s.children) in
