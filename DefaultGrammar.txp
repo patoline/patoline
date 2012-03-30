@@ -51,7 +51,6 @@ Symboles de TeX'
 \Add_product_like{\bullet ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
 
-
 == Connector symbols ==
 
 \Add_connector{\land && ∧}{∧}

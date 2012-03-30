@@ -13,7 +13,7 @@ let set_newline nb dyplexbuf =
 (* very important to allow using regexp for special combination of characteres *)
 (* let dypgen_choose_token = `all *)
 
-let dyp_merge = keep_one
+let dyp_merge = keep_all
 
 type math =
      Var of string
@@ -179,20 +179,28 @@ and caml = parse
   | _ { caml lexbuf }
 
 main lexer =
+  space ->
   newline -> { set_newline 1 lexbuf }
-  space -> 
   (space* newline space* (newline space*)+) -> 
      PARSKIP { let r = ref 0 in
                let s = Dyp.lexeme lexbuf in
                for i = 0 to String.length s - 1 do
                   if s.[i] = '\n' then incr r
                done; set_newline !r lexbuf; "" }
-  (space|newline)+ ->
-     SPACE { let r = ref 0 in
+/*  (space* (newline space*)?) -> 
+     NOSKIP { let r = ref 0 in
+               let s = Dyp.lexeme lexbuf in
+               for i = 0 to String.length s - 1 do
+                  if s.[i] = '\n' then incr r
+               done; set_newline !r lexbuf; "" }*/
+  (space|newline)* -> /* in context where PARSKIP is possible, must allow SPACE manually */
+     SPACES { let r = ref 0 in
                let s = Dyp.lexeme lexbuf in
                for i = 0 to String.length s - 1 do
                   if s.[i] = '\n' then incr r
                done; set_newline !r lexbuf; "" }
+  space* newline space* ->
+     NEWLINE { set_newline 1 lexbuf; "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' lident
@@ -258,8 +266,6 @@ leftind:
       { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
 
 rightind:
-    /* empty */
-      { (fun i -> i) }
   | "^" - math(<=atom)<m1> - "_" - math(<=atom)<m2>
       { fun i -> { i with up_right = Some m1; down_right = Some m2 } }
   | "_" - math(<=atom)<m1> - "^" - math(<=atom)<m2>
@@ -268,9 +274,6 @@ rightind:
       { fun i -> { i with up_right = Some m1 } }
   | "_" - math(<=atom)<m1>
       { fun i -> { i with down_right = Some m1 } }
-
-funmath:
-    math(<=fun)<m> { m, has_space dyp }
 
 promath:
     math(<=prod)<m> { m, has_space dyp }
@@ -286,14 +289,14 @@ math:
       { Delim(op,a,cl) } atom 
   | "{" math<a> "}" 
       { a } atom 
-  | leftind<i> - math(<ind)<m> - rightind<fi>
-      { Indices(fi i, m) } ind
-  | funmath<m,sp> rightind<fi>
-      { if sp then raise Giveup; 
-        let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
+  | leftind<i> - math(<ind)<m> [- rightind]?<fi>
+      { let fi = match fi with None -> (fun x -> x) | Some f -> f in
+        Indices(fi i, m) } ind
+  | math(<=fun)<m> - rightind<fi>
+      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
-  | funmath<a,sp> math(<fun)<b>
-      { if sp then raise Giveup; Apply(a, b) } fun
+  | math(<=fun)<a> - math(<fun)<b>
+      { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | prefix<op> math(<sum)<b> 
@@ -302,7 +305,7 @@ math:
       { Postfix(3,b,true,op) } sum
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
-  | promath<a,sp> math(<prod)<b>
+  | promath<a, sp> math(<prod)<b>
       { if not sp then raise Giveup; Binary(3, a, false, "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, "", false, b) } prod
@@ -332,8 +335,8 @@ atomelt:
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
-  | "'''" [ lident|uident ]?<lang> newline*
-    [ - (verbatim_line)<l> - newline {l}]*<ls>
+  | "'''" [ lident|uident ]?<lang> NEWLINE
+    [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
     "'''"
     { [Verbatim(lang, ls)] }
   /* Code Caml */
@@ -382,7 +385,8 @@ atomelt:
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
 
 atomeltp:
-    atomelt<e> newline* @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+    atomelt<e> SPACES @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+/*  | eparagraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
   | pparagraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
 
 title:
@@ -390,7 +394,7 @@ title:
     eparagraph<title> 
      [PARSKIP eparagraph<author>
       [PARSKIP eparagraph]?<institute> {author, institute} ]?<at>
-  ("=========="('='*))
+  ("=========="('='*)) [SPACES]* 
   { title,None }
 
 text:
@@ -419,6 +423,6 @@ grammar: grammar_aux<g>
       (), action }
 
 main:
-  | grammar newline* [title]?<p> newline* text<t> eof
+  | SPACES grammar SPACES [title]?<p> SPACES text<t> eof
     { (p, List.rev t) }
   
