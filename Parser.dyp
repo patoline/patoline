@@ -158,9 +158,11 @@ let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 
 let filename = ['a'-'z''A'-'Z''0'-'9' '.' '-']*
 
-let word = utf8_char+ | '(' | ')' | '[' | ']' | '"' | "=" | '-'
+let sword = '(' | ')' | '[' | ']' | '"' | "=" | '-'
 
-let line = word (" "+ word)*
+let word = utf8_char+
+
+let line = sword | (word (space+ word)*)
 
 rule comment = parse
     '*' ')' {  if pop_comment () then () else comment lexbuf }
@@ -185,8 +187,8 @@ main lexer =
   space ->
   newline -> { set_newline 1 lexbuf }
   newline -> NEWLINE { set_newline 1 lexbuf; "" }
-  newline space* newline -> { set_newline 2 lexbuf; "" }
-  newline space* newline -> PARSKIP { set_newline 2 lexbuf; "" }
+  newline (space* newline)+ -> { set_newline 2 lexbuf; "" }
+  newline (space* newline)+ -> PARSKIP { set_newline 2 lexbuf; "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' lident
@@ -205,20 +207,27 @@ main lexer =
 parelt:
    parmacro<m> { m, has_space dyp }
   | "$" math<m> "$" { FC(false,m), has_space dyp  }
-  | word<w> { TC w, has_space dyp  }
+  | line<w> { TC w, has_space dyp  }
 
 
-pparagraph:
-  | parelt<e,_>[ PARSKIP | eof ]
-    { [e] }
-  | parelt<e,sp> pparagraph<p> 
-    { e::(if sp && p <> [] then GC::p else p) }
-
-eparagraph:
+paragraph:
   | 
-    { [] }
-  | parelt<e,sp> eparagraph<p> 
-    { e::(if sp && p <> [] then GC::p else p) }
+    { [], false }
+  | paragraph<p,sp> parelt<e,sp'> 
+    { e::(if sp then GC::p else p), sp' }
+
+eparagraph: 
+   paragraph<p,_> { List.rev p }
+
+nparagraph:
+  | parelt<e,sp> 
+    { [e], sp }
+  | nparagraph<p,sp> parelt<e,sp'> 
+    { e::(if sp then GC::p else p), sp' }
+
+pparagraph: 
+   nparagraph<p,_> [ PARSKIP | eof ] 
+   { List.rev p }
 
 args:
   /* empty */
