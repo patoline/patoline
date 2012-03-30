@@ -112,7 +112,7 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 -> Table des matieres
 
-{{ table_of_contents !str 1 }}
+{{ let _ = table_of_contents !str 1 }}
 
 -<
 
@@ -123,12 +123,12 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 \Begin{itemize}
 
-{{item ()}}
+\item
 TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih 
 
 TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih 
 
-{{item ()}}
+\item
 et aussi
 
 \End{itemize}
@@ -174,21 +174,21 @@ Otf/lmmonolt10-regular.otf      Otf/lmmonoproplt10-regular.otf      Otf/lmromand
 
 \Begin{itemize}
 
-{{item ()}}
+\item
 \family{{lmroman}}{\alternative{{Regular}}{Test latin modern roman regular et \italic{Test italic}}}
 
 Un paragraphe avec \label{{"truc"}}
 
-{{item ()}}
+\item
 \family{{lmroman}}{\alternative{{Caps}}{Test latin modern roman caps et \italic{Test italic}}}
 
-{{item ()}}
+\item
 \family{{lmroman}}{\alternative{{Demi}}{Test latin modern roman demi et \italic{Test italic}}}
 
 \End{itemize}
 
 {{
-figure ~name:"figure de Tom" fig2
+let _ = figure ~name:"figure de Tom" fig2
 }}
 
 =<
@@ -197,16 +197,16 @@ figure ~name:"figure de Tom" fig2
 
 \Begin{itemize}
 
-{{item ()}}
+\item
 \family{{lmmono}}{\alternative{{Regular}}{Test latin modern mono regular et \italic{Test italic}}}
 
-{{item ()}}
+\item
 \family{{lmmono}}{\alternative{{Bold}}{Test latin modern mono bold et \italic{Test italic}}}
 
-{{item ()}}
+\item
 \family{{lmmono}}{\alternative{{Caps}}{Test latin modern mono caps et \italic{Test italic}}}
 
-{{item ()}}
+\item
 \family{{lmmono}}{\alternative{{Demi}}{Test latin modern mono demi et \italic{Test italic}}}
 
 \End{itemize}
@@ -224,7 +224,7 @@ figure ~name:"figure de Tom" fig2
 
 => Math en display \label{{"maths"}}
 
-$$ 2 + a $$
+$$2 + a$$
 
 $$ {2} $$
 
@@ -259,23 +259,23 @@ Un beau paragraphe avec des maths : $2 \over 3$, $2/3$, $cos(t)$, $x(t)$, $t^^j
 
 \Begin{itemize}
 
-{{item ()}} Symboles : $\alpha$ $\int$
+\item Symboles : $\alpha$ $\int$
 
-{{item ()}} Addition like : $a + b$ $a - b$
+\item Addition like : $a + b$ $a - b$
 
-{{item ()}} Product like : $a . b$ $a * b$ $a / b$ $a \divide b$ $a \over b$ $a - b$
+\item Product like : $a . b$ $a * b$ $a / b$ $a \divide b$ $a \over b$ $a - b$
 
-{{item ()}} Relations : $a = b$ $a <= b$ $a >= b$ $a \in b$
+\item Relations : $a = b$ $a <= b$ $a >= b$ $a \in b$
 
-{{item ()}} Connecteurs : $a \land b$ $a \lor b$
+\item Connecteurs : $a \land b$ $a \lor b$
 
-{{item ()}} Arrows : $a -> b$ $a => b$ $a <-> b$ $a <=> b$ $a <- b$ $a \Leftarrow b$
+\item Arrows : $a -> b$ $a => b$ $a <-> b$ $a <=> b$ $a <- b$ $a \Leftarrow b$
 
-{{item ()}} Prefix : $+a$ $-a$
+\item Prefix : $+a$ $-a$
 
-{{item ()}} Postfix : $a!$
+\item Postfix : $a!$
 
-{{item ()}} Punctuation : $a, b$ $a; b$ 
+\item Punctuation : $a, b$ $a; b$ 
 
 \End{itemize}
 

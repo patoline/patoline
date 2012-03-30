@@ -127,7 +127,7 @@ module Env_itemize = struct
     stack := !str::!stack;
     str := Node empty, []
 
-  let item ()=str:=newChild (top !str) (Node empty)
+  let item ()=str:=newChild (top !str) (Node empty); []
   let addon = [ T "–"; B (fun env->[glue env.size env.size env.size]) ]
 
 

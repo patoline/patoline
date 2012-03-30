@@ -11,7 +11,7 @@ let set_newline nb dyplexbuf =
   l.lex_curr_p <- npos
 
 (* very important to allow using regexp for special combination of characteres *)
-(* let dypgen_choose_token = `all *)
+let dypgen_choose_token = `all
 
 let dyp_merge = keep_all
 
@@ -121,6 +121,9 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   elt, [Add_rules[rule, action]; Local_data local_data]
 
 let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
+
+let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar";
+    	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
 }
 
 %start main
@@ -181,26 +184,9 @@ and caml = parse
 main lexer =
   space ->
   newline -> { set_newline 1 lexbuf }
-  (space* newline space* (newline space*)+) -> 
-     PARSKIP { let r = ref 0 in
-               let s = Dyp.lexeme lexbuf in
-               for i = 0 to String.length s - 1 do
-                  if s.[i] = '\n' then incr r
-               done; set_newline !r lexbuf; "" }
-/*  (space* (newline space*)?) -> 
-     NOSKIP { let r = ref 0 in
-               let s = Dyp.lexeme lexbuf in
-               for i = 0 to String.length s - 1 do
-                  if s.[i] = '\n' then incr r
-               done; set_newline !r lexbuf; "" }*/
-  (space|newline)* -> /* in context where PARSKIP is possible, must allow SPACE manually */
-     SPACES { let r = ref 0 in
-               let s = Dyp.lexeme lexbuf in
-               for i = 0 to String.length s - 1 do
-                  if s.[i] = '\n' then incr r
-               done; set_newline !r lexbuf; "" }
-  space* newline space* ->
-     NEWLINE { set_newline 1 lexbuf; "" }
+  newline -> NEWLINE { set_newline 1 lexbuf; "" }
+  newline space* newline -> { set_newline 2 lexbuf; "" }
+  newline space* newline -> PARSKIP { set_newline 2 lexbuf; "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' lident
@@ -237,9 +223,9 @@ eparagraph:
 args:
   /* empty */
     { [] }
-  | args<a> "{" eparagraph<p> "}" 
+  | args<a> - "{" eparagraph<p> "}" 
     { Paragraph (p)::a }
-  | args<a> CAML<s,e>
+  | args<a> - CAML<s,e>
     { Caml(s,e) :: a }
 
 topmacro:
@@ -248,7 +234,8 @@ topmacro:
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
       { Macro(`End, name, List.rev a) }
   | TMACRO<name> args<a>
-      { Macro(`Module, name, List.rev a) }
+      { if List.mem name reserved then raise Giveup;
+        Macro(`Module, name, List.rev a) }
 
 
 parmacro:
@@ -385,7 +372,7 @@ atomelt:
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
 
 atomeltp:
-    atomelt<e> SPACES @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+    atomelt<e> [NEWLINE]* @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
 /*  | eparagraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
   | pparagraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
 
@@ -394,7 +381,7 @@ title:
     eparagraph<title> 
      [PARSKIP eparagraph<author>
       [PARSKIP eparagraph]?<institute> {author, institute} ]?<at>
-  ("=========="('='*)) [SPACES]* 
+  ("=========="('='*))
   { title,at }
 
 text:
@@ -423,6 +410,6 @@ grammar: grammar_aux<g>
       (), action }
 
 main:
-  | SPACES grammar SPACES [title]?<p> SPACES text<t> eof
+  | grammar [title]?<p> text<t> eof
     { (p, List.rev t) }
   
