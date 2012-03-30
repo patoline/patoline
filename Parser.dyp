@@ -207,7 +207,7 @@ main lexer =
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  '(' '*' -> { push_comment (); comment lexbuf }
+  (space|newline)* '(' '*' -> { push_comment (); comment lexbuf }
   '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
 		    let start = l.lex_start_p.pos_cnum + 2 in 
 		    push_caml (); push_caml (); caml lexbuf;
@@ -395,7 +395,7 @@ title:
      [PARSKIP eparagraph<author>
       [PARSKIP eparagraph]?<institute> {author, institute} ]?<at>
   ("=========="('='*)) [SPACES]* 
-  { title,None }
+  { title,at }
 
 text:
   | { [] }

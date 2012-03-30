@@ -1,3 +1,9 @@
+
+(* test *)
+
+
+(* test *)
+
 ====================================================
 Documentation de TeX'
 
@@ -5,6 +11,10 @@ Pierre-Etienne Meunier et al.
 
 LAMA UMR 5127, Université de Savoie
 ====================================================
+
+
+(* test *)
+
 
 {{
 open Diag
