@@ -288,27 +288,34 @@ let output ?(structure:structure={name="";displayname=[];
             (match params.fillColor with
                  None->()
                | Some col -> change_non_stroking_color col);
-            List.iter (fun path->
-                         let (x0,y0)=path.(0) in
-                           Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
-                           Array.iter (
-                             fun (x,y)->
-                               if Array.length x=2 && Array.length y=2 then (
-                                 let x1=if Array.length x=2 then x.(1) else x.(0) in
-                                 let y1=if Array.length y=2 then y.(1) else y.(0) in
-                                   Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
-                               ) else if Array.length x=3 && Array.length y=3 then (
-                                 Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                           (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
-                                                           (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
-                                                           (pt_of_mm x.(2)) (pt_of_mm y.(2)));
-                               ) else if Array.length x=4 && Array.length y=4 then (
-                                 Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                           (pt_of_mm x.(1)) (pt_of_mm y.(1))
-                                                           (pt_of_mm x.(2)) (pt_of_mm y.(2))
-                                                           (pt_of_mm x.(3)) (pt_of_mm y.(3)));
-                               )
-                           ) path;
+            let rec are_valid x i=
+              if i>=Array.length x then true else
+                if x.(i) < infinity && x.(i)> -.infinity then are_valid x (i+1) else false
+            in
+              List.iter (fun path->
+                           let (x0,y0)=path.(0) in
+                             if are_valid x0 0 && are_valid y0 0 then (
+                               Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+                               Array.iter (
+                                 fun (x,y)->if are_valid x 0 && are_valid y 0 then (
+                                   if Array.length x=2 && Array.length y=2 then (
+                                     let x1=if Array.length x=2 then x.(1) else x.(0) in
+                                     let y1=if Array.length y=2 then y.(1) else y.(0) in
+                                       Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
+                                   ) else if Array.length x=3 && Array.length y=3 then (
+                                     Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                               (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
+                                                               (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
+                                                               (pt_of_mm x.(2)) (pt_of_mm y.(2)));
+                                   ) else if Array.length x=4 && Array.length y=4 then (
+                                     Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                               (pt_of_mm x.(1)) (pt_of_mm y.(1))
+                                                               (pt_of_mm x.(2)) (pt_of_mm y.(2))
+                                                               (pt_of_mm x.(3)) (pt_of_mm y.(3)));
+                                   )
+                                 )
+                               ) path
+                             )
                       ) paths;
             match params.fillColor, params.strokingColor with
                 None, None->()
