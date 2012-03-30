@@ -268,14 +268,14 @@ let _=
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
 		      Printf.printf "let verbEnv x = { (envFamily defaultMono x)
-                                                     with par_indent = [] };;\n\n";
+                                                     with normalMeasure=infinity; par_indent = [] };;\n\n";
 		      let lang = match lang with
 			  None -> "T"
 			 | Some s -> s
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "newPar ~structure:str ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
+			  "newPar ~structure:str ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end;;\n\n";

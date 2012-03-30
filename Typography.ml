@@ -133,7 +133,7 @@ and 'a paragraph={
   par_env:'a environment -> 'a environment;
   par_post_env:'a environment -> 'a environment -> 'a environment;
   parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
-  completeLine:'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
+  completeLine:float -> 'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
 }
 and 'a tree=
     Node of 'a node
@@ -247,7 +247,9 @@ let defaultEnv:user environment=
 let empty : user node={ name=""; in_toc = true;
                         displayname = []; children=IntMap.empty;
                         node_env=(fun x->x);
-                        node_post_env=(fun x _->x);
+                        node_post_env=(fun x y->{ x with
+                                                    counters=y.counters;
+                                                    user_positions=y.user_positions });
                         tree_paragraph= (-1) }
 
 type 'a cxt=(int*'a tree) list
@@ -302,8 +304,11 @@ let doc_graph out t0=
        | _->());
     Printf.fprintf out "}\n"
 
-
-
+let change_env t fenv=match t with
+    (Node n,l)->(Node { n with node_env=fun x->fenv (n.node_env x) }, l)
+  | (Paragraph n,l)->(Paragraph { n with par_env=fun x->fenv (n.par_env x) }, l)
+  | (FigureDef (a,b,c), l)->
+      FigureDef (a, (fun x->b (fenv x)), (fun x->c (fenv x))), l
 (****************************************************************)
 
 
@@ -392,8 +397,8 @@ let features f t=
 
 let parameters env paragraphs figures last_parameters last_users (line:Util.line)=
   let lead=5. in
-  let mes0=150. in
-  let measure=ref mes0 in
+  let mes0=env.normalMeasure in
+  let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
     TS.UMap.iter (fun k a->
                     if a.isFigure then (
@@ -416,7 +421,7 @@ let parameters env paragraphs figures last_parameters last_users (line:Util.line
       { measure= !measure;
         page_height=(if line.page_line <= 0 then 45.*.lead else last_parameters.page_height)
         -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.2.*.lead) else footnote_h);
-        left_margin=(fst a4-.150.)/.2.;
+        left_margin=env.normalLeftMargin;
         local_optimization=0;
         min_page_diff=0;
         next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
@@ -520,7 +525,7 @@ let newStruct ?(structure=str)  ?label displayname =
         (fun a b c d e f->
            { (parameters a b c d e f) with
                next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-      completeLine=C.normal (fst a4) }
+      completeLine=C.normal }
     in
       structure:=up (newChild !structure (Paragraph par))
 
@@ -582,7 +587,7 @@ let newStruct' ?(structure=str) ?label displayname =
         (fun a b c d e f->
            { (parameters a b c d e f) with
                next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-      completeLine=C.normal (fst a4) }
+      completeLine=C.normal }
     in
       structure:=up (newChild !structure (Paragraph par))
 
@@ -689,9 +694,9 @@ let flatten env0 str=
 
 
   let add_paragraph env p=
-    let u,v=boxify (p.par_env env) p.par_contents in
+    let u,v=boxify env p.par_contents in
     paragraphs:=(Array.of_list u)::(!paragraphs);
-    compl:=(p.completeLine)::(!compl);
+    compl:=(p.completeLine env.normalMeasure)::(!compl);
     param:=(p.parameters env)::(!param);
     incr n;
     v
@@ -713,7 +718,7 @@ let flatten env0 str=
             let rec flat_children indent env1= function
                 []->env1
               | (_, (Paragraph p))::s->(
-                  let env2=flatten env1 (
+                  let env2=flatten (p.par_env env1) (
                     Paragraph { p with par_contents=
                         (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                   ) in
@@ -732,8 +737,12 @@ let flatten env0 str=
               flat_children false env (IntMap.bindings s.children)
         )
   in
-
-    flatten env0 str;
+  let env1=match str with
+      Node n->n.node_env env0
+    | Paragraph n->n.par_env env0
+    | _->env0
+  in
+    flatten env1 str;
     let figures_resolved=
       List.map (Array.map (function
                                User (NamedCitation s) -> User (match StrMap.find s !names with
@@ -777,7 +786,7 @@ let rec make_struct positions tree=
 
 
 let table_of_contents tree max_level=
-  newPar ~environment:(fun x->{x with par_indent=[]}) (C.normal 150.) parameters [
+  newPar ~environment:(fun x->{x with par_indent=[]}) C.normal parameters [
     BFix (
       fun env->
         let x0=75. in

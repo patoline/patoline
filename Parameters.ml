@@ -2,7 +2,7 @@ open Util
 open Binary
 module Completion (T:Typeset.Typeset)= struct
 
-type 'a completion='a Util.box array array ->
+type 'a completion=float->'a Util.box array array ->
          Util.drawingBox array ->
          Util.line T.UMap.t -> Util.line -> bool -> Util.line list
 

@@ -32,14 +32,14 @@ let title is_last str =
         min_height_before=0.;
         next_acceptable_height=(fun node h->max (node.height+.20.) (h+.5.)) }
   in
-  newPar (Typography.C.normal 150.) mcenter [size 10. str ]
+  newPar (Typography.C.normal) mcenter [size 10. str ]
 
 let author is_last str =
   let mcenter a b c d e l =
     { (center a b c d e l) with
         next_acceptable_height=(fun node h->max (node.height) (h+.5.)) }
   in
-  newPar (Typography.C.normal 150.) mcenter [size 6. str ]
+  newPar (Typography.C.normal) mcenter [size 6. str ]
 
 let institute is_last str =
   let mcenter a b c d e l =
@@ -47,9 +47,9 @@ let institute is_last str =
         min_height_before=11.;
         next_acceptable_height=(fun node h->max (node.height+.10.) (h+.5.)) }
   in
-  newPar (Typography.C.normal 150.) mcenter [size 4. str ]
+  newPar (Typography.C.normal) mcenter [size 4. str ]
 
-let textWidth : Typography.user Typography.C.completion= Typography.C.normal 150.
+let textWidth= Typography.C.normal
 
 let lang_OCaml s = [T s]
 
@@ -123,7 +123,7 @@ let stack = ref []
 
 module Env_itemize = struct
 
-  let do_begin_itemize ()= 
+  let do_begin_itemize ()=
     stack := !str::!stack;
     str := Node empty, []
 
@@ -164,7 +164,7 @@ module Env_itemize = struct
     in
     let rec tirets=function
         Node n as t ->
-          (try 
+          (try
 	    let chi=IntMap.map paragraphs n.children in
             let k,a=IntMap.min_binding n.children in
             Node { n with children=IntMap.add k
@@ -185,9 +185,22 @@ module Env_itemize = struct
     match !stack with [] -> assert false
     | st::s ->
 	str := newChild st (paragraphs avec_tirets);
-	stack := s;
-	let o=open_out ("graph"^string_of_int !graph) in
-        incr graph;
-        doc_graph o (fst st);
-        close_out o
+	stack := s
+end
+
+module Env_abstract = struct
+
+  let do_begin_abstract ()=
+    stack := !str::!stack;
+    str := Node empty, []
+  let do_end_abstract () =
+    match !stack with
+        [] -> assert false
+      | st::s ->
+	  str := up (newChild st (fst (change_env !str
+                                         (fun x->{ x with
+                                                     normalLeftMargin=(x.normalLeftMargin
+                                                                       +.(x.normalMeasure-.120.)/.2.);
+                                                     normalMeasure=120. }))));
+	  stack := s;
 end

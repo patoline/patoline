@@ -77,8 +77,8 @@ typography.cma: $(TESTOBJS)
 maths: $(TESTOTPOBJS) tests/test_maths.ml
 	$(CAMLOPT) -o maths $(TESTOPTOBJS) tests/test_maths.ml
 
-proof: $(TESTOBJOBJS:.cmx=.cmo) tests/proof.ml
-	$(CAMLC) -o proof $(TESTOBJ:.cmx=.cmo) tests/proof.ml
+proof: $(TESTOBJS) tests/proof.ml
+	$(CAMLC) -o proof $(TESTOBJS) tests/proof.ml
 
 
 test: $(TESTOBJS) tests/document.ml
