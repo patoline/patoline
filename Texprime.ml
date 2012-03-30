@@ -125,7 +125,7 @@ let rec print_macro ch op mtype name args =
     | `Single -> 
       Printf.fprintf ch "%s" name;
       List.iter (function
-        Paragraph p -> Printf.fprintf ch " %a" (print_contents op) p
+        Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
       | Caml(s,e) ->
 	let size = e - s in
 	let buf=String.create size in
@@ -141,7 +141,7 @@ let rec print_macro ch op mtype name args =
 	  let num = ref 1 in
 	  Printf.fprintf ch "module Args = struct\n";
 	  List.iter (function
-            Paragraph p -> Printf.fprintf ch "arg%d = %a;;" !num (print_contents op) p;
+            Paragraph(p) -> Printf.fprintf ch "arg%d = %a;;" !num (print_contents op) p;
 	      incr num
 	  | Caml(s,e) ->
 	    let size = e - s in
@@ -182,9 +182,9 @@ and print_contents op ch l =
       print_macro ch op mtype name args;
       Printf.fprintf ch ")@";
       fn l
-    | FC m :: l ->
+    | FC(b,m) :: l ->
       Printf.fprintf ch "(";
-      print_math ch false m;
+      print_math ch b m;
       Printf.fprintf ch ")@";
       fn l
     end;
@@ -220,7 +220,7 @@ let _=
 			  | Some(inst) ->
 			    Printf.printf "institute true %a;;\n\n" (print_contents op) inst
 		  end;
-		  let rec output_list lvl docs = 
+		  let rec output_list no_indent lvl docs = 
 		    match docs with
 		      [] -> 
 			for i = 0 to lvl - 1 do
@@ -228,10 +228,14 @@ let _=
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
+		      let next_no_indent = ref false in
 		    (match doc with
 		    | Paragraph p ->
-		      Printf.printf "newPar ~structure:str ~environment:(fun x->x) textWidth parameters %a;;\n" 
-			(print_contents op) p
+		      let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
+			else "(fun x -> x)"
+		      in
+		      Printf.printf "newPar ~environment:%s textWidth parameters %a;;\n" 
+			env (print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
 		      let buf=String.create size in
@@ -242,7 +246,7 @@ let _=
 		      (match docs with
 			Relative docs ->
 			  Printf.printf "newStruct%s %a;;\n\n" num (print_contents op) title;
-			  output_list (!lvl + 1) docs;
+			  output_list true (!lvl + 1) docs;
 			  Printf.printf "str:=up !str;;\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
@@ -257,8 +261,10 @@ let _=
 		      Printf.printf ";;\n\n" 
 		    | Math m ->
 		      Printf.printf "newPar ~structure:str ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
-		        (fun ch -> print_math ch true) m
-                    | Ignore -> ()
+		        (fun ch -> print_math ch true) m;
+		      next_no_indent := true
+                    | Ignore -> 
+		      next_no_indent := no_indent
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
 		      Printf.printf "let verbEnv x = { (envFamily defaultMono x)
@@ -272,10 +278,12 @@ let _=
 			  "newPar ~structure:str ~environment:verbEnv (C.normal 1e100) ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
-		      Printf.printf "end;;\n\n");
-		    output_list !lvl docs
+		      Printf.printf "end;;\n\n";
+		      next_no_indent := true
+		    );
+		    output_list !next_no_indent !lvl docs
 		  in
-		  output_list 0 docs;
+		  output_list true 0 docs;
 		  close_in op;
 		  Printf.printf postambule (Filename.chop_extension h)
 	    with

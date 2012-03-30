@@ -721,7 +721,7 @@ let flatten env0 str=
                 )
               | (_,(FigureDef _ as h))::s->(
                   let env2=flatten env1 h in
-                    flat_children true env2 s
+                    flat_children indent env2 s
                 )
               | (_, (Node h as tr))::s->(
                   let env2=h.node_env env1 in

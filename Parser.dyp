@@ -4,10 +4,10 @@ open Dyp
 
 exception Syntax_Error of Lexing.position * string
 
-let set_newline dyplexbuf =
+let set_newline nb dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
   let pos = l.lex_curr_p in
-  let npos = { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum } in
+  let npos = { pos with pos_lnum = pos.pos_lnum + nb; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
 
 (* very important to allow using regexp for special combination of characteres *)
@@ -36,16 +36,16 @@ type structType = Absolute of int | Relative of doc list
 
 and doc =
      Paragraph of content list
-   | Verbatim of (string option * string list)
    | Caml of int * int
+   | Math of math
+   | Verbatim of string option * string list
    | Struct of content list * bool * structType
    | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
-   | Math of math  
    | Ignore
 
 and content =
      TC of string
-   | FC of math
+   | FC of bool * math
    | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
    | GC
 
@@ -58,6 +58,14 @@ let pop_caml' lexbuf =
      if !caml_depth = 0	then
       raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Splitted end of caml code"))
 
+let has_space dyp =
+    let next = dyp.next_lexeme () in
+    match next with
+      [] -> false
+    | s::_ when s<>"" && (s.[0] = ' ' or s.[0] = '\t') -> true
+    | [_] -> false
+    | _ -> true 
+
 let concat words =
     let non_word  = [  "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"; "-"  ] in
     let rec fn acc last = function
@@ -67,27 +75,6 @@ let concat words =
        let acc = if last' || last then w ^ acc else w ^" "^acc in
        fn acc last' l
     in fn "" true (List.rev words) 
-
-let has_space dyp =
-    let next = dyp.next_lexeme () in
-    match next with
-      [] -> false
-    | s::_ when s<>"" && (s.[0] = ' ' or s.[0] = '\t') -> true
-    | [_] -> false
-    | _ -> true 
-
-let layout_info dyp a b =
-    let a = dyp.rhs_end_pos a in
-    let b = dyp.rhs_start_pos b in
-    let cdiff = b.pos_cnum - a.pos_cnum in
-    let ldiff = b.pos_lnum - a.pos_lnum in
-    cdiff, ldiff
-
-let layout_newline dyp a b =
-    snd (layout_info dyp a b) > 0
-
-let layout_empty dyp a b =
-    fst (layout_info dyp a b) = 0
 
 module Str = struct
   type t = string
@@ -125,7 +112,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   in
   let elt = if local_data.verbose then [Ignore] else
     [Ignore; Paragraph
-      [FC (Binary(0, Symbol symbol_value, false, "⇐", false,
+      [FC (false, Binary(0, Symbol symbol_value, false, "⇐", false,
       List.fold_right (fun s acc -> 
         let elt = Symbol (String.escaped s) in
         if acc = Var "" then elt else
@@ -137,14 +124,10 @@ let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
 }
 
 %start main
-%start math 
-%start paragraph
 
 %relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
-
-%layout [ ' ' '\t' ]
 
 %lexer
 
@@ -155,6 +138,9 @@ let utf8_char =
   | '\239'['\129'-'\159']['\129'-'\191']
   | ['\240'-'\243']['\129'-'\191']['\129'-'\191']['\129'-'\191']
   | '\244'['\129'-'\143']['\129'-'\191']['\129'-'\191']
+
+let space = [' ' '\t' '\r']
+let newline = '\n'
 
 let string = '"' ([^'"'] | "\\\"")* '"'
 
@@ -167,6 +153,8 @@ let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9']*
 
 let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 
+let filename = ['a'-'z''A'-'Z''0'-'9' '.' '-']*
+
 let word = utf8_char+ | '(' | ')' | '[' | ']' | '"' | "=" | '-'
 
 let line = word (" "+ word)*
@@ -175,7 +163,7 @@ rule comment = parse
     '*' ')' {  if pop_comment () then () else comment lexbuf }
   | '(' '*' {  push_comment (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
-  | '\n' {  set_newline lexbuf; comment lexbuf }
+  | newline {  set_newline 1 lexbuf; comment lexbuf }
   | string {  comment lexbuf }
   | _ {  comment lexbuf }
 
@@ -186,83 +174,64 @@ and caml = parse
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml lexbuf } 
   | '{' { push_caml (); caml lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
-  | '\n' { set_newline lexbuf; caml lexbuf }
+  | newline { set_newline 1 lexbuf; caml lexbuf }
   | string { caml lexbuf }
   | _ { caml lexbuf }
 
 main lexer =
-  '(' '*' -> { push_comment (); comment lexbuf }
-  '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
-		    let start = l.lex_start_p.pos_cnum + 2 in 
-		    push_caml (); push_caml (); caml lexbuf;
-		    start, l.lex_start_p.pos_cnum
-		  }
-  '\n' -> NEWL { set_newline lexbuf }
+  newline -> { set_newline 1 lexbuf }
+  space -> 
+  (space* newline space* (newline space*)+) -> 
+     PARSKIP { let r = ref 0 in
+               let s = Dyp.lexeme lexbuf in
+               for i = 0 to String.length s - 1 do
+                  if s.[i] = '\n' then incr r
+               done; set_newline !r lexbuf; "" }
+  (space|newline)+ ->
+     SPACE { let r = ref 0 in
+               let s = Dyp.lexeme lexbuf in
+               for i = 0 to String.length s - 1 do
+                  if s.[i] = '\n' then incr r
+               done; set_newline !r lexbuf; "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' lident
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '\\' uident
     -> TMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  '(' '*' -> { push_comment (); comment lexbuf }
+  '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
+		    let start = l.lex_start_p.pos_cnum + 2 in 
+		    push_caml (); push_caml (); caml lexbuf;
+		    start, l.lex_start_p.pos_cnum
+		  }
   
 %parser
 
-newline:
-  NEWL { () }
-
 parelt:
-    parmacro<m> { m, has_space dyp }
-  | "$" math<m> "$" { FC m, has_space dyp }
-  | word<w> { TC (w), has_space dyp }
+   parmacro<m> { m, has_space dyp }
+  | "$" math<m> "$" { FC(false,m), has_space dyp  }
+  | word<w> { TC w, has_space dyp  }
 
-nparagraph:
-  | parelt<e,sp>   
-    { [e], sp }
-  | nparagraph<p,sp> [newline]? parelt<e,sp'> 
-    { (e :: if sp && p <> [] then GC::p else p), sp' }
 
-paragraph:
-    nparagraph<p,_> { List.rev p }
+pparagraph:
+  | parelt<e,_>[ PARSKIP | eof ]
+    { [e] }
+  | parelt<e,sp> pparagraph<p> 
+    { e::(if sp && p <> [] then GC::p else p) }
 
 eparagraph:
-    { [] } | nparagraph<p,_> { List.rev p }
-
-starttitle: ("=========="('='*))
-
-title:
-  starttitle 
-    [newline]+ paragraph<title> [newline]*
-    [newline newline paragraph<author> [newline]* 
-    [newline newline paragraph]?<institute> [newline]* {author, institute} ]?<at> 
-  starttitle 
-  { (title,at) }
-
-grammar_aux:
-    { Some "texprimeDefault" }
-  |  [newline]* - "\\Use_Grammar{" [^'}']*<name> "}"
-    { Printf.fprintf stderr "Some\n"; Some name }
-  |  [newline]* - "\\No_Grammar"
-    { Printf.fprintf stderr "None\n"; None }
-
-grammar: grammar_aux<g>
-  @{ let action = match g with None -> [] |
-        Some filename -> 
-	  try 
-	  let ic = open_in (filename ^ gram_ext) in
-	  let local_data, grammar = input_value ic in
-	  close_in ic;
-	  Printf.fprintf stderr "Grammar Loaded.\n";
-	  [ Local_data local_data; Parser grammar ] 
-          with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []
-       in
-      (), action }
+  | 
+    { [] }
+  | parelt<e,sp> eparagraph<p> 
+    { e::(if sp && p <> [] then GC::p else p) }
 
 args:
-    /* empty */
+  /* empty */
     { [] }
-  | args<a> newline? "{" eparagraph<p> [newline]* "}" 
-    { Paragraph p::a }
-  | args<a> newline? CAML<s,e>
+  | args<a> "{" eparagraph<p> "}" 
+    { Paragraph (p)::a }
+  | args<a> CAML<s,e>
     { Caml(s,e) :: a }
 
 topmacro:
@@ -272,6 +241,7 @@ topmacro:
       { Macro(`End, name, List.rev a) }
   | TMACRO<name> args<a>
       { Macro(`Module, name, List.rev a) }
+
 
 parmacro:
   | PMACRO<name> args<a>
@@ -299,8 +269,11 @@ rightind:
   | "_" - math(<=atom)<m1>
       { fun i -> { i with down_right = Some m1 } }
 
-spaces:
-    { if not (has_space dyp) then raise Giveup }
+funmath:
+    math(<=fun)<m> { m, has_space dyp }
+
+promath:
+    math(<=prod)<m> { m, has_space dyp }
 
 math:
     (['a'-'z''A'-'Z'])<name>
@@ -315,11 +288,12 @@ math:
       { a } atom 
   | leftind<i> - math(<ind)<m> - rightind<fi>
       { Indices(fi i, m) } ind
-  | math(<=fun)<m> - rightind<fi>
-      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
+  | funmath<m,sp> rightind<fi>
+      { if sp then raise Giveup; 
+        let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
-  | math(<=fun)<a> - math(<fun)<b>
-      { Apply(a, b) } fun
+  | funmath<a,sp> math(<fun)<b>
+      { if sp then raise Giveup; Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | prefix<op> math(<sum)<b> 
@@ -328,7 +302,9 @@ math:
       { Postfix(3,b,true,op) } sum
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
-  | math(<=prod)<a> - spaces math(<prod)<b>
+  | promath<a,sp> math(<prod)<b>
+      { if not sp then raise Giveup; Binary(3, a, false, "", false, b) } prod
+  | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
       { Binary(1, a, false, op, false, b) } rel
@@ -342,33 +318,30 @@ math:
       { Symbol(name) } atom
 
 symbol_name:
-	([^' ''{''}''\t''\n''\r']+) { $1 }
+	([^' ''{''}''\t''\n''\r''\\']+) { $1 }
 
 atomelt:
   /* Section */
-  | newline - (("="|"-")">")<o> ['_']?<num> newline? paragraph<title> [newline]* text<content> [newline]* (("="|"-")"<")<c>
+  | (("="|"-")">")<o> ['_']?<num> eparagraph<title> PARSKIP text<content> (("="|"-")"<")<c>
     { if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }
-  | newline - (("=""="+)|("-""-"+))<o> ['_']?<num> newline? paragraph<title> newline? 
-              (("=""="+)|("-""-"+))<c>
+  | (("=""="+)|("-""-"+))<o> eparagraph<title>
+      (("=""="+)|("-""-"+))<c>
     { let level = String.length o in
+      if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
-  /* Code Caml */
-  | newline - CAML<s,e>
-    { [Caml(s,e)] }
-  /* verbatim / source code */
-  | newline - "'''" [ lident|uident ]?<lang> newline
+  | "'''" [ lident|uident ]?<lang> newline*
     [ - (verbatim_line)<l> - newline {l}]*<ls>
-    - "'''"
+    "'''"
     { [Verbatim(lang, ls)] }
+  /* Code Caml */
+  | CAML<s,e>
+    { [Caml(s,e)] }
   /* Top level macros \Begin or \Ident */
-  | newline - topmacro<m>
+  | topmacro<m>
     { [m] }
-  /* Math en display style */
-  | "$$" math<m> "$$"
-    { [Math m] }
   /* Symbol extension */
   | "\\Add_relation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
@@ -404,58 +377,48 @@ atomelt:
       close_out oc;
       [Ignore]
     } 
+  | "$$" math<m> "$$" { [Math(m)] }
   | "\\Verbose_Changes" 
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
-  | paragraph<p> { [Paragraph p] }
-     
 
-/* BUG + TOO SLOW 
-partext:
-  | partext<t> newline [newline]+ paragraph<p> 
-    @{ (Paragraph p::t), [ Keep_grammar; Local_data dyp.local_data ]}
-  | text<t> [newline]* paragraph<p> 
-    @{ (Paragraph p::t), [ Keep_grammar; Local_data dyp.local_data ]}
+atomeltp:
+    atomelt<e> newline* @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+  | pparagraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
 
-text:
-  | { [] }
-  | partext<t> [newline]* atomelt<p> 
-   @{ (p::t), [ Keep_grammar; Local_data dyp.local_data ]}
-  | text<t> [newline]* atomelt<p> 
-   @{ (p::t), [ Keep_grammar; Local_data dyp.local_data ]}
-
-main:
-  | grammar [ [newline]* title ]?<p> text<t> [newline]* eof
-    { (p, List.rev t) }
-  | grammar [ [newline]* title ]?<p> partext<t> [newline]* eof
-    { (p, List.rev t) }
-  
-*/
-
-/* BUG + TOO SLOW TOO 
-text:
-  | { [] } endatom
-  | text<t> [newline]* atomelt<p> 
-   @{ (p::t), [ Keep_grammar; Local_data dyp.local_data ]} endatom
-  | text(=endatom)<t> [newline]* paragraph<p> 
-    @{ (Paragraph p::t), [ Keep_grammar; Local_data dyp.local_data ]} endpar
-  | text(=endpar)<t> newline [newline]+ paragraph<p> 
-    @{ (Paragraph p::t), [ Keep_grammar; Local_data dyp.local_data ]} endpar
-
-main:
-  | grammar [ [newline]* title ]?<p> text<t> [newline]* eof
-    { (p, List.rev t) }
-*/
+title:
+  ("=========="('='*))
+    eparagraph<title> 
+     [PARSKIP eparagraph<author>
+      [PARSKIP eparagraph]?<institute> {author, institute} ]?<at>
+  ("=========="('='*))
+  { title,None }
 
 text:
   | { [] }
-  | text<t> [newline]*<ln> atomelt<p> 
-   @{ begin match t, p, ln with
-        (Paragraph _ :: _), (Paragraph _::_), ([] | [_]) -> raise Giveup
-      | _ -> ()
-      end;
-      (p @ t), [ Keep_grammar; Local_data dyp.local_data ]}
+  | text<t> atomeltp<p>
+   @{ p@t, [ Keep_grammar; Local_data dyp.local_data ]}
+
+grammar_aux:
+    { Some "texprimeDefault" }
+  | "\\Use_Grammar{" filename<name> "}"
+    { Printf.fprintf stderr "Some\n"; Some name }
+  | "\\No_Grammar"
+    { Printf.fprintf stderr "None\n"; None }
+
+grammar: grammar_aux<g>
+  @{ let action = match g with None -> [] |
+        Some filename -> 
+	  try 
+	  let ic = open_in (filename ^ gram_ext) in
+	  let local_data, grammar = input_value ic in
+	  close_in ic;
+	  Printf.fprintf stderr "Grammar Loaded.\n";
+	  [ Local_data local_data; Parser grammar ] 
+          with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []
+       in
+      (), action }
 
 main:
-  | grammar [ [newline]* title ]?<p> text<t> [newline]* eof
+  | grammar newline* [title]?<p> newline* text<t> eof
     { (p, List.rev t) }
   

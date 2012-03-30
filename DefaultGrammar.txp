@@ -43,7 +43,7 @@ Symboles de TeX'
 == Product like symbols ==
 
 \Add_product_like{\dot .}{.}
-\Add_product_like{\times * ×}{×}
+\Add_product_like{\times ×}{×}
 \Add_product_like{\over}{over} (* Donne une barre de fraction *)
 \Add_product_like{/}{/}
 \Add_product_like{\divide ÷}{÷}

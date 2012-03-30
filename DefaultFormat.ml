@@ -119,20 +119,23 @@ let footnote l=
           )]
 let graph=ref 0
 
+let stack = ref []
+
 module Env_itemize = struct
-  let do_begin_itemize ()=()
-  let str0=str
-  let str=initTree ()
+
+  let do_begin_itemize ()= 
+    stack := !str::!stack;
+    str := Node empty, []
 
   let item ()=str:=newChild (top !str) (Node empty)
-  let addon = [ T "-"; B (fun env->[glue env.size env.size env.size]) ]
+  let addon = [ T "–"; B (fun env->[glue env.size env.size env.size]) ]
 
 
   let do_end_itemize ()=
     let params params0 a b c d e f=
       let p=(params0 a b c d e f) in
       let boxes=boxify_scoped a addon in
-      let w=List.fold_left (fun w0 b->w0+.(let _,w,_=box_interval b in w)) 0. boxes in
+      let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
         { p with
             left_margin=p.left_margin +. w;
             measure=p.measure-.w
@@ -142,7 +145,7 @@ module Env_itemize = struct
       let p=params0 a b c d e f in
         if f.lineStart>0 then (
           let boxes=boxify_scoped a addon in
-          let w=List.fold_left (fun w0 b->w0+.(let _,w,_=box_interval b in w)) 0. boxes in
+          let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
             { p with
                 left_margin=p.left_margin+.w;
                 measure=p.measure-.w
@@ -160,26 +163,31 @@ module Env_itemize = struct
         | _ -> t
     in
     let rec tirets=function
-        Node n ->
-          let chi=IntMap.map paragraphs n.children in
-          let k,a=IntMap.min_binding n.children in
+        Node n as t ->
+          (try 
+	    let chi=IntMap.map paragraphs n.children in
+            let k,a=IntMap.min_binding n.children in
             Node { n with children=IntMap.add k
                 (match a with
-                   | Paragraph p ->
-                       Paragraph { p with
-                                     par_contents=addon@p.par_contents;
-                                     parameters=params1 p.parameters
-                                 }
-                   | t -> t) chi }
+                | Paragraph p ->
+                  Paragraph { p with
+                    par_contents=addon@p.par_contents;
+                    parameters=params1 p.parameters
+                  }
+                | t -> t) chi }
+	  with Not_found -> t)
       | t->t
     in
     let avec_tirets = match fst (top !str) with
         Node n->Node { n with children=IntMap.map tirets n.children }
       | x->x
     in
-      str0 := newChild !str0 (paragraphs avec_tirets);
-      let o=open_out ("graph"^string_of_int !graph) in
+    match !stack with [] -> assert false
+    | st::s ->
+	str := newChild st (paragraphs avec_tirets);
+	stack := s;
+	let o=open_out ("graph"^string_of_int !graph) in
         incr graph;
-        doc_graph o (fst !str0);
+        doc_graph o (fst st);
         close_out o
 end
