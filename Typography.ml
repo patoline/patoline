@@ -98,14 +98,12 @@ let selectFont fam alt it =
 
 
 type user=
-    NamedCitation of string
+    Label of string
   | FigureRef of int
   | Pageref of string
   | Structure of int list
   | Figure of int
   | Footnote of int*drawingBox
-
-let names=ref StrMap.empty
 let user_count=ref 0
 
 module TS=Typeset.Make (struct
@@ -135,31 +133,37 @@ and 'a paragraph={
   parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
   completeLine:float -> 'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
 }
+and 'a figuredef={
+  fig_contents:'a environment->drawingBox;
+  fig_env:'a environment -> 'a environment;
+  fig_post_env:'a environment -> 'a environment -> 'a environment;
+  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters
+}
 and 'a tree=
     Node of 'a node
   | Paragraph of 'a paragraph
-  | FigureDef of string*('a environment -> drawingBox)*
-      ('a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters)
+  | FigureDef of 'a figuredef
 
 and 'a environment={
- fontFamily:fontFamily;
- fontItalic:bool;
- fontAlternative:fontAlternative;
- fontFeatures:string list;
- fontColor:OutputCommon.color;
- font:font;
- size:float;
- normalMeasure:float;
- normalLead:float;
- normalLeftMargin:float;
- par_indent:'a box list;
- stdGlue:'a box list;
- hyphenate:string->(string*string) array;
- substitutions:glyph_id list -> glyph_id list;
- positioning:glyph_ids list -> glyph_ids list;
- counters:(int list) StrMap.t;
- user_positions:Util.line TS.UMap.t;
- mutable fixable:bool
+  fontFamily:fontFamily;
+  fontItalic:bool;
+  fontAlternative:fontAlternative;
+  fontFeatures:string list;
+  fontColor:OutputCommon.color;
+  font:font;
+  size:float;
+  normalMeasure:float;
+  normalLead:float;
+  normalLeftMargin:float;
+  par_indent:'a box list;
+  stdGlue:'a box list;
+  hyphenate:string->(string*string) array;
+  substitutions:glyph_id list -> glyph_id list;
+  positioning:glyph_ids list -> glyph_ids list;
+  counters:(int*int list) StrMap.t;
+  names:((int*int list) StrMap.t * string * line) StrMap.t;
+  user_positions:Util.line TS.UMap.t;
+  mutable fixable:bool
 }
 
 (* Type du contenu. B est une boîte quelconque. Les espaces dans T
@@ -230,6 +234,7 @@ let defaultEnv:user environment=
                | h::s->(hyph s 0 h; pos));
 
       counters=StrMap.singleton "structure" (-1,[0]);
+      names=StrMap.empty;
       user_positions=TS.UMap.empty;
       fixable=false
     }
@@ -266,6 +271,7 @@ let empty : user node={ name=""; in_toc = true;
                         node_env=(fun x->x);
                         node_post_env=(fun x y->{ x with
                                                     counters=y.counters;
+                                                    names=y.names;
                                                     user_positions=y.user_positions });
                         tree_paragraph= (-1) }
 
@@ -324,8 +330,8 @@ let doc_graph out t0=
 let change_env t fenv=match t with
     (Node n,l)->(Node { n with node_env=fun x->fenv (n.node_env x) }, l)
   | (Paragraph n,l)->(Paragraph { n with par_env=fun x->fenv (n.par_env x) }, l)
-  | (FigureDef (a,b,c), l)->
-      FigureDef (a, (fun x->b (fenv x)), (fun x->c (fenv x))), l
+  | (FigureDef f, l)->
+      FigureDef {f with fig_env=fun x->fenv (f.fig_env x) }, l
 (****************************************************************)
 
 
@@ -455,9 +461,20 @@ let center env paragraphs figures last_parameters lastUsers l=
       param
 
 
-let figure ?(name="") ?(parameters=center) drawing=
-  str:=up (newChild !str
-             (FigureDef (name,drawing,parameters)))
+let figure ?(parameters=center) ?(name="") drawing=
+  str:=up (newChild !str (FigureDef { fig_contents=drawing;
+                                      fig_env=(fun x->
+                                                 let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
+                                                 let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                                   { x with
+                                                       names=if name="" then x.names else (
+                                                         let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
+                                                           StrMap.add name (cou', "figure", w) x.names
+                                                       );
+                                                       counters=cou'
+                                                   });
+                                      fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                                      fig_parameters=parameters }))
 
 
 (****************************************************************)
@@ -467,7 +484,7 @@ let figure ?(name="") ?(parameters=center) drawing=
 
 let newPar ?(structure=str) ?(environment=(fun x->x)) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment;
-                      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
+                      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
                       parameters=parameters; completeLine=complete }
   in
     structure:=up (newChild !structure para)
@@ -505,6 +522,8 @@ let newStruct ?(structure=str)  ?label displayname =
       node_post_env=(
         fun env env'->
           { env with
+              names=env'.names;
+              user_positions=env'.user_positions;
               counters=StrMap.add "structure" (
                 try
                   let a,b=StrMap.find "structure" env'.counters in
@@ -542,7 +561,7 @@ let newStruct ?(structure=str)  ?label displayname =
     let par={
       par_contents=section_name;
       par_env=(fun x->{ x with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
+      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
       parameters=
         (fun a b c d e f->
            { (parameters a b c d e f) with
@@ -580,6 +599,7 @@ let newStruct' ?(structure=str) ?label displayname =
       node_post_env=(
         fun env env'->
           { env with
+              names=env'.names;
               counters=StrMap.add "structure" (
                 try
                   let a,b=StrMap.find "structure" env'.counters in
@@ -607,7 +627,7 @@ let newStruct' ?(structure=str) ?label displayname =
     let par={
       par_contents=section_name;
       par_env=(fun x->{ x with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with counters=env2.counters; user_positions=env2.user_positions });
+      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
       parameters=
         (fun a b c d e f->
            { (parameters a b c d e f) with
@@ -631,7 +651,7 @@ let title ?label displayname =
                                           displayname = displayname; 
 				          children=IntMap.singleton 1 t0;
                                           node_env=(fun x->x);
-                                          node_post_env=(fun x _->x);
+                                          node_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
                                           tree_paragraph=0 }
       | Node n -> Node { n with name=name; displayname = displayname }
   in
@@ -711,7 +731,6 @@ let boxify_scoped env x=fst (boxify env x)
 let flatten env0 str=
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
-  let figure_names=ref StrMap.empty in
   let fig_param=ref IntMap.empty in
   let param=ref [] in
   let compl=ref [] in
@@ -730,13 +749,12 @@ let flatten env0 str=
   let rec flatten env level tree=
     match tree with
         Paragraph p -> add_paragraph env p
-      | FigureDef (name, f, p) -> (
+      | FigureDef f -> (
+          let env1=f.fig_env env in
           let n=IntMap.cardinal !figures in
-          let w=try let (_,_,w)=StrMap.find name !names in w with Not_found -> uselessLine in
-            names := StrMap.add name (Figure n,"",w) !names;
-            fig_param:=IntMap.add n (p env) !fig_param;
-            figures:=IntMap.add n (f env) !figures;
-            env
+            fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
+            figures:=IntMap.add n (f.fig_contents env1) !figures;
+            f.fig_post_env env env1
         )
       | Node s-> (
           s.tree_paragraph <- !n;
@@ -768,22 +786,14 @@ let flatten env0 str=
     | Paragraph n->n.par_env env0
     | _->env0
   in
-    flatten env1 0 str;
-    let figures_resolved=
-      List.map (Array.map (function
-                               User (NamedCitation s) -> User (match StrMap.find s !names with
-                                                                   (Figure n,_,_)->FigureRef n
-                                                                 | _->raise Not_found)
-                             | x -> x)) !paragraphs
-    in
-    let params=Array.make (IntMap.cardinal !figures) (center env0) in
-      IntMap.iter (fun n p->params.(n)<-p) !fig_param;
-      (params,
-       Array.of_list (List.rev !param),
-       Array.of_list (List.rev !compl),
-       Array.of_list (List.rev figures_resolved),
-       Array.of_list (List.map snd (IntMap.bindings !figures)))
-
+  let env2=flatten env1 0 str in
+  let params=Array.make (IntMap.cardinal !figures) (center env0) in
+    IntMap.iter (fun n p->params.(n)<-p) !fig_param;
+    (env2, params,
+     Array.of_list (List.rev !param),
+     Array.of_list (List.rev !compl),
+     Array.of_list (List.rev !paragraphs),
+     Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 let rec make_struct positions tree=
   match tree with
@@ -828,7 +838,7 @@ let table_of_contents tree max_level=
         let rec toc env0 level tree=
           match tree with
               Paragraph p -> []
-            | FigureDef (name, f, p) -> []
+            | FigureDef f -> []
             | Node s when level <= max_level-> (
                 let rec flat_children env1=function
                     []->[]
@@ -883,49 +893,45 @@ let table_of_contents tree max_level=
     )]
 
 
-let update_names user=
-  (* TS.UMap.iter(fun k a->(match k with *)
-  (*                            Structure l->(Printf.printf "->Structure ";List.iter (Printf.printf "%d ") l;Printf.printf "\n") *)
-  (*                          | _->()); *)
-  (*                print_line a *)
-  (*              ) user; *)
-
+let update_names env user=
   let needs_reboot=ref false in
-    StrMap.iter (fun k (a,b,c)->try
-                   (* Printf.printf "update : %s\n" k; print_line c; *)
-                   (* (match a with *)
-                   (*      Structure l->(Printf.printf "Structure ";List.iter (Printf.printf "%d ") l;Printf.printf "\n") *)
-                   (*    | _->()); *)
-                   let pos=TS.UMap.find a user in
-                     (* if pos<>c then (print_line pos;print_line c;Printf.printf "\n");flush stdout; *)
-                     needs_reboot:= !needs_reboot || (pos<>c);
-                     names:=StrMap.add k (a,b,pos) !names;
-                 with Not_found -> needs_reboot:=true
-                ) !names;
-    !needs_reboot
+  let env'={ env with user_positions=user; counters=defaultEnv.counters; names=
+      StrMap.fold (fun k (a,b,c) m->try
+                     let query=if b="figure" then Figure (List.hd (snd (StrMap.find "figures" a))) else Label k in
+                     let pos=TS.UMap.find query user in
+                       needs_reboot:= !needs_reboot || (pos<>c);
+                       StrMap.add k (a,b,pos) m
+                   with Not_found -> (Printf.printf "not found\n"; m)
+                  ) env.names env.names
+           }
+  in
+    env',!needs_reboot
 
 let pageref x=
   [CFix (fun env->try
-           let (_,_,node)=StrMap.find x !names in
+           let (_,_,node)=StrMap.find x env.names in
              [T (string_of_int (1+node.page))]
          with Not_found -> []
         )]
 
-let label name=
-  [B (fun env ->
-        let w=try let (_,_,w)=StrMap.find name !names in w with Not_found -> uselessLine in
-        let a,b=(StrMap.find "structure" env.counters) in
-          names:=StrMap.add name (Structure (drop 1 b), "",w) !names;
-          let path=drop 1 b in
-            [User (Structure path)])
+let label ?(labelType="structure") name=
+  [Env (fun env->
+          let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
+            { env with names=StrMap.add name (env.counters, labelType, w) env.names });
+
+   B (fun env ->
+        let _,b=(StrMap.find "structure" env.counters) in
+        let path=drop 1 b in
+          [User (Label name)])
   ]
 
 let sectref name=
   [ CFix (fun env->try
-            match StrMap.find name !names with
-                (Structure num,_,_)->
-                  [T (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                           (List.rev num)))]
+            match StrMap.find name env.names with
+                (nums,_,_)->
+                  let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
+                    [T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                             (List.rev (drop 1 num))))]
               | _->[]
           with
               Not_found -> []

@@ -20,7 +20,9 @@ LAMA UMR 5127, Université de Savoie
 open Diag
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
-let figRef ()= [B (fun _->[User (NamedCitation "figure de Tom")])]
+let figRef ()= [B (fun env->
+    let i=try match snd (Binary.StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
+     [User (FigureRef i)])]
 let large text = [size 10. text]
 
 let fig2 env=
@@ -103,7 +105,7 @@ let fig2 env=
 }}
 
 \Begin{abstract}
-TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih antogntj pnont a,. ntqhjk\footnote{Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.} \color{{red}}{La figure de Tom est sur la page \pageref{{"figure de Tom"}}}. La section sur les maths est la \sectref{{"maths"}}\footnote{C'est vrai}
+TeX' est un logiciel permettant de produire des documents de haute qualité. aoeunt a nth, nthn,.pn anh aoesntih antogntj pnont a,. ntqhjk\footnote{Il utilise un langage plus moderne que TeX pour la programmation : OCaml, une technologie plus évoluée pour l'analyse grammaticale : dypgen et on vise une qualité typographique supérieure.} \color{{red}}{La figure de Tom est sur la page \pageref{{"figure de Tom"}}}. La section sur les maths est la \sectref{{"maths"}}, page \pageref{{"maths"}}\footnote{C'est vrai}
 
 \Italic
 Pour l'instant le logiciel est en cours de développement et on est loin d'avoir atteint tous les objectifs !
@@ -136,6 +138,7 @@ et aussi
 
 \Begin{theorem}
 Ce théorème est le premier théorème
+\label{{"joli théorème"}}
 
 \End{theorem}
 \Begin{theorem}
@@ -236,7 +239,9 @@ let _ = figure ~name:"figure de Tom" fig2
 
 => Math
 
-=> Math en display \label{{"maths"}}
+=> Math en display
+
+\label{{"maths"}}
 
 $$2 + a$$
 

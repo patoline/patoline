@@ -24,13 +24,10 @@ let postambule : ('a, 'b, 'c) format = "
   module Out=OutputPaper.Output(Pdf)
   let _ = 
     let filename=\"%s.pdf\" in
-    let rec resolve i env user=
+    let rec resolve i env0=
 
-     let env'={ env with user_positions=user }
-     in
-     let o=open_out \"doc\" in doc_graph o (fst (top !str)); close_out o;
      fixable:=false;
-     let fig_params,params,compl,pars,figures=flatten env' (fst (top !str)) in
+     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top !str)) in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -39,11 +36,12 @@ let postambule : ('a, 'b, 'c) format = "
        ~badness:(Badness.badness pars)
        pars
      in
-     if (update_names user') && !fixable  then (
-       resolve (i+1) env' user'
-     ) else Out.output (fst (top !str)) pars figures env pages filename
+     let env2, reboot=update_names env1 user' in
+     if reboot && !fixable  then (
+       resolve (i+1) env2
+     ) else Out.output (fst (top !str)) pars figures env2 pages filename
   in
-     resolve 0 defaultEnv defaultEnv.user_positions
+     resolve 0 defaultEnv
 "
 let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }

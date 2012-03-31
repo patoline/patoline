@@ -56,7 +56,7 @@ let lang_OCaml s = [T s]
 
 
 let minipage env str=
-  let fig_params,params,compl,pars,figures=flatten env (fst str) in
+  let env',fig_params,params,compl,pars,figures=flatten env (fst str) in
     let (_,pages,user')=TS.typeset
       ~completeLine:compl
       ~figure_parameters:fig_params
@@ -65,7 +65,7 @@ let minipage env str=
       ~badness:(Badness.badness pars)
       pars
     in
-      OutputDrawing.output pars figures env pages
+      OutputDrawing.output pars figures env' pages
 
 let footnote l=
     [Env (fun env->
