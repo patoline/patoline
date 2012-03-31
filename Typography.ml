@@ -901,7 +901,7 @@ let update_names env user=
                      let pos=TS.UMap.find query user in
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
-                   with Not_found -> (Printf.printf "not found\n"; m)
+                   with Not_found -> (needs_reboot:=true; m)
                   ) env.names env.names
            }
   in
