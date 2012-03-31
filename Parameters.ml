@@ -49,15 +49,28 @@ let normal mes0 paragraphs figures last_users line allow_impossible=
           match paragraphs.(line.paragraph).(j) with
 
               Glue _ when (sum_min <= measure || allow_impossible) && j>line.lineStart ->
-                break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
-                  ({ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                       nom_width=sum_nom; max_width=sum_max
-                   }::(if allow_impossible then [] else result0))
-
+                let rec zero_width ii=
+                  let (_,_,c')=box_interval paragraphs.(line.paragraph).(ii) in
+                    if c'=0. then
+                      zero_width (ii+1)
+                    else
+                      break_next (ii+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
+                        ({ line with lineEnd=ii; hyphenEnd=(-1); min_width=sum_min;
+                             nom_width=sum_nom; max_width=sum_max
+                         }::(if allow_impossible then [] else result0))
+                in
+                  zero_width j
             | Glue _ when allow_impossible && result0=[] && j>line.lineStart ->
-                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                     nom_width=sum_nom; max_width=sum_max
-                 }]
+                let rec zero_width ii=
+                  let (_,_,c')=box_interval paragraphs.(line.paragraph).(ii) in
+                    if c'=0. then
+                      zero_width (ii+1)
+                    else
+                      [{ line with lineEnd=ii; hyphenEnd=(-1); min_width=sum_min;
+                           nom_width=sum_nom; max_width=sum_max
+                       }]
+                in
+                  zero_width j
 
             | _ when sum_min<=measure || (allow_impossible && result0=[]) ->
                 break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c) result0
