@@ -69,13 +69,14 @@ let minipage env str=
 
 let footnote l=
     [Env (fun env->
-            let next=match try StrMap.find "footnotes" env.counters with Not_found -> [] with
+            let next=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
                 []->0
               | h::_->h
             in
-              { env with counters=StrMap.add "footnotes" [next+1] env.counters });
-     BFix (fun env->
-             let count=match try StrMap.find "footnotes" env.counters with Not_found -> [] with
+              { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters });
+     BFix (fun env0->
+             let env= { env0 with normalMeasure=150.; normalLeftMargin=(fst a4-.150.)/.2. } in
+             let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
                  []->0
                | h::_->h
              in
@@ -158,7 +159,14 @@ module Env_itemize = struct
           Node n -> Node { n with children=IntMap.map paragraphs n.children }
         | Paragraph p ->
             Paragraph { p with
-                          par_env=(fun x->{(p.par_env x) with par_indent=[]});
+                          par_env=(fun x->
+                                     let boxes=boxify_scoped x addon in
+                                     let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
+                                     let env=(p.par_env x) in
+                                       { env with
+                                           normalMeasure=env.normalMeasure -. w;
+                                           par_indent=[]
+                                       });
                           parameters=params p.parameters }
         | _ -> t
     in
@@ -203,4 +211,36 @@ module Env_abstract = struct
                                                                        +.(x.normalMeasure-.120.)/.2.);
                                                      normalMeasure=120. }))));
 	  stack := s;
+end
+
+module Env_theorem=struct
+  let do_begin_theorem ()=
+    stack := !str::!stack;
+    str := Node empty, []
+  let do_end_theorem ()=
+    match !stack with
+        [] -> assert false
+      | st::s ->
+          let success=ref false in
+          let rec first_par=function
+              Paragraph p->
+                success:=true;
+                Paragraph { p with par_contents=
+                    Env (fun env->incr_counter ~level:1 env "theorem")::
+                      C (fun env->
+                           let lvl,num=(StrMap.find "theorem" env.counters) in
+                           let _,str_counter=StrMap.find "structure" env.counters in
+                           let sect_num=drop (List.length str_counter - lvl) str_counter in
+                             alternative Bold [T "Theorem"; B (fun env->env.stdGlue); T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
+                        )::
+                      B (fun env->env.stdGlue)::
+                      p.par_contents
+                          }
+            | Node n->Node { n with children=IntMap.map (fun x->if !success then x else first_par x) n.children }
+            | x -> x
+          in
+	    str := up (newChild st (first_par (fst !str)));
+	    stack := s;
+  module Env_Proof=struct
+  end
 end

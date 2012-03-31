@@ -229,11 +229,28 @@ let defaultEnv:user environment=
                  []->[||]
                | h::s->(hyph s 0 h; pos));
 
-      counters=StrMap.singleton "structure" [0];
+      counters=StrMap.singleton "structure" (-1,[0]);
       user_positions=TS.UMap.empty;
       fixable=false
     }
 
+let incr_counter ?(level= -1) env name=
+  { env with counters=
+      StrMap.add name (try let a,b=StrMap.find name env.counters in
+                         match b with
+                             h::s -> (a,(h+1)::s)
+                           | _->a,[]
+                       with
+                           Not_found -> level, [0]
+                      ) env.counters }
+
+let pop_counter env name=
+  { env with counters=
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
+
+let push_counter env name=
+  { env with counters=
+      StrMap.add name (let a,b=StrMap.find name env.counters in (a,0::b)) env.counters }
 
 
 (****************************************************************)
@@ -479,9 +496,10 @@ let newStruct ?(structure=str)  ?label displayname =
           { env with
               counters=StrMap.add "structure" (
                 try
-                  0::(StrMap.find "structure" env.counters)
+                  let (a,b)=StrMap.find "structure" env.counters in
+                    a,0::b
                 with
-                    Not_found -> [0]
+                    Not_found -> (-1,[0])
               ) env.counters }
       );
       node_post_env=(
@@ -489,26 +507,30 @@ let newStruct ?(structure=str)  ?label displayname =
           { env with
               counters=StrMap.add "structure" (
                 try
-                  match StrMap.find "structure" env'.counters with
-                      _::h::s->(h+1)::s
-                    | _ -> [0]
+                  let a,b=StrMap.find "structure" env'.counters in
+                  match b with
+                      _::h::s->a,(h+1)::s
+                    | _ -> a, [0]
                 with
-                    Not_found -> [0]
+                    Not_found -> -1,[0]
               ) env'.counters }
       );
   }
   in
   let section_name=[
     Scoped ((fun env->
-               let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+               let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+               let path=drop 1 b in
                  { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                      size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
                  }),
             B (fun env->
-                 let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                 let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                 let path=drop 1 b in
                  [User (Structure path)])::
               [C (fun env->
-                    let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+                    let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                    let path=drop 1 b in
                       T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))) ::
                         (B (fun env->env.stdGlue))::
                         displayname
@@ -549,9 +571,10 @@ let newStruct' ?(structure=str) ?label displayname =
           { env with
               counters=StrMap.add "structure" (
                 try
-                  0::(StrMap.find "structure" env.counters)
+                  let a,b=(try StrMap.find "structure" env.counters with Not_found -> -1,[]) in
+                    a,0::b
                 with
-                    Not_found -> [0]
+                    Not_found -> -1,[0]
               ) env.counters }
       );
       node_post_env=(
@@ -559,18 +582,20 @@ let newStruct' ?(structure=str) ?label displayname =
           { env with
               counters=StrMap.add "structure" (
                 try
-                  match StrMap.find "structure" env'.counters with
-                      _::s->s
-                    | [] -> [0]
+                  let a,b=StrMap.find "structure" env'.counters in
+                    match b with
+                      _::s->a,s
+                    | [] -> a,[0]
                 with
-                    Not_found -> [0]
+                    Not_found -> -1,[0]
               ) env'.counters }
       );
   }
   in
   let section_name=[
     Scoped ((fun env->
-               let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+               let a,b=(try StrMap.find "structure" env.counters with Not_found -> -1,[]) in
+               let path=drop 1 b in
                  { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                      size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size
                  }),
@@ -702,7 +727,7 @@ let flatten env0 str=
     v
   in
 
-  let rec flatten env tree=
+  let rec flatten env level tree=
     match tree with
         Paragraph p -> add_paragraph env p
       | FigureDef (name, f, p) -> (
@@ -718,19 +743,20 @@ let flatten env0 str=
             let rec flat_children indent env1= function
                 []->env1
               | (_, (Paragraph p))::s->(
-                  let env2=flatten (p.par_env env1) (
+                  let env2=flatten (p.par_env env1) (level+1) (
                     Paragraph { p with par_contents=
                         (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                   ) in
                     flat_children true (p.par_post_env env1 env2) s
                 )
               | (_,(FigureDef _ as h))::s->(
-                  let env2=flatten env1 h in
+                  let env2=flatten env1 (level+1) h in
                     flat_children indent env2 s
                 )
               | (_, (Node h as tr))::s->(
                   let env2=h.node_env env1 in
-                  let env3=flatten env2 tr in
+                  let env2'={ env2 with counters=StrMap.filter (fun _ (a,b)->level>a) env2.counters } in
+                  let env3=flatten env2' (level+1) tr in
                     flat_children false (h.node_post_env env1 env3) s
                 )
             in
@@ -742,7 +768,7 @@ let flatten env0 str=
     | Paragraph n->n.par_env env0
     | _->env0
   in
-    flatten env1 str;
+    flatten env1 0 str;
     let figures_resolved=
       List.map (Array.map (function
                                User (NamedCitation s) -> User (match StrMap.find s !names with
@@ -815,8 +841,8 @@ let table_of_contents tree max_level=
                     )
                 in
                 let chi=flat_children env0 (IntMap.bindings s.children) in
-
-                let count=drop 1 (try StrMap.find "structure" (env0.counters) with _->[]) in
+                let a,b=(try StrMap.find "structure" (env0.counters) with _-> -1,[]) in
+                let count=drop 1 b in
                   if s.in_toc && count<>[] then (
                     try
                       let page=(1+(TS.UMap.find (Structure count) env0.user_positions).Util.page) in
@@ -852,7 +878,7 @@ let table_of_contents tree max_level=
               )
             | Node _->[]
         in
-          toc { env with counters=StrMap.add "structure" [0] env.counters }
+          toc { env with counters=StrMap.add "structure" (-1,[0]) env.counters }
             0 (fst (top !str))
     )]
 
@@ -888,9 +914,9 @@ let pageref x=
 let label name=
   [B (fun env ->
         let w=try let (_,_,w)=StrMap.find name !names in w with Not_found -> uselessLine in
-          names:=StrMap.add name (Structure (drop 1 (StrMap.find "structure" env.counters)),
-                                  "",w) !names;
-          let path=drop 1 (try StrMap.find "structure" env.counters with Not_found -> []) in
+        let a,b=(StrMap.find "structure" env.counters) in
+          names:=StrMap.add name (Structure (drop 1 b), "",w) !names;
+          let path=drop 1 b in
             [User (Structure path)])
   ]
 

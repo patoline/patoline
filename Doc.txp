@@ -133,6 +133,15 @@ et aussi
 
 \End{itemize}
 
+
+\Begin{theorem}
+Ce théorème est le premier théorème
+
+\End{theorem}
+\Begin{theorem}
+Ce théorème est le premier théorème
+
+\End{theorem}
 =<
 
 => Quick start
@@ -140,6 +149,11 @@ et aussi
 => Mon premier Document
 
 Pour faire un titre on utilise =>
+
+\Begin{theorem}
+Ce théorème est le premier théorème
+
+\End{theorem}
 
 =<
 
