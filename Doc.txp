@@ -167,10 +167,10 @@ Ce théorème est le premier théorème
 
 Voici un programme écrit dans ce merveilleux language qu'est \alternative{{Caps}}{OCaml} :
 
-''' OCaml
+""" OCaml
 let f x = x
 let g x = f (f x)
-'''
+"""
 
 =<
 

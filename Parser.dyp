@@ -162,7 +162,7 @@ let sword = '(' | ')' | '[' | ']' | '"' | "=" | '-'
 
 let word = utf8_char+
 
-let line = sword | (word (space+ word)*)
+let line = sword | (word ((space+ | space* newline space*) word)*)
 
 rule comment = parse
     '*' ')' {  if pop_comment () then () else comment lexbuf }
@@ -331,9 +331,9 @@ atomelt:
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
-  | "'''" [ lident|uident ]?<lang> NEWLINE
+  | "\"\"\"" [ lident|uident ]?<lang> NEWLINE
     [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
-    "'''"
+    "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
   | CAML<s,e>
