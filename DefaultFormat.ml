@@ -213,6 +213,7 @@ module Env_abstract = struct
 	  stack := s;
 end
 
+let theoremRef name=Typography.generalRef ~refType:"theorem" "th0"
 module Env_theorem=struct
   let do_begin_theorem ()=
     stack := !str::!stack;

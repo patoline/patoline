@@ -936,3 +936,17 @@ let sectref name=
           with
               Not_found -> []
          )]
+
+let generalRef ?(refType="structure") name=
+  [ CFix (fun env->try
+            match StrMap.find name env.names with
+                (nums,_,_)->
+                  let counters,_,_=StrMap.find name env.names in
+                  let lvl,num=(StrMap.find refType counters) in
+                  let _,str_counter=StrMap.find "structure" counters in
+                  let sect_num=drop (List.length str_counter - lvl) str_counter in
+                    [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
+              | _->[]
+          with
+              Not_found -> []
+         )]
