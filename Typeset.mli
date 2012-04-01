@@ -4,6 +4,8 @@ module type User =
     val compare : t -> t -> int
     val figureRef : int -> t
     val figure : int -> t
+    val beginFigure : t -> int
+    val flushedFigure : t -> int
     val isFigure : t -> bool
     val figureNumber : t -> int
   end
@@ -41,12 +43,6 @@ module type Typeset =
         val map : ('a -> 'b) -> 'a t -> 'b t
         val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
       end
-    val haut : UMap.key Util.box array ref
-    val max_haut : int ref
-    val bas : UMap.key Util.box array ref
-    val max_bas : int ref
-    val writeBox : 'a Util.box array ref -> int -> 'a Util.box -> unit
-    val readBox : 'a array ref -> int -> 'a
     val typeset :
       completeLine:(UMap.key Util.box array array ->
                     Util.drawingBox array ->
@@ -87,6 +83,8 @@ module Make :
           val compare : t -> t -> int
           val figureRef : int -> t
           val figure : int -> t
+          val beginFigure : t -> int
+          val flushedFigure : t -> int
           val isFigure : t -> bool
           val figureNumber : t -> int
         end
@@ -121,12 +119,6 @@ module Make :
           val map : ('a -> 'b) -> 'a t -> 'b t
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
-      val haut : UMap.key Util.box array ref
-      val max_haut : int ref
-      val bas : UMap.key Util.box array ref
-      val max_bas : int ref
-      val writeBox : 'a Util.box array ref -> int -> 'a Util.box -> unit
-      val readBox : 'a array ref -> int -> 'a
       val typeset :
         completeLine:(UMap.key Util.box array array ->
                       Util.drawingBox array ->

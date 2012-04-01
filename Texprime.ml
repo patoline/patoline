@@ -37,7 +37,7 @@ let postambule : ('a, 'b, 'c) format = "
        pars
      in
      let env2, reboot=update_names env1 user' in
-     if reboot && !fixable  then (
+     if reboot && !fixable then (
        resolve (i+1) env2
      ) else Out.output (fst (top !str)) pars figures env2 pages filename
   in

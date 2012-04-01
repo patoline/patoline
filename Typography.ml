@@ -103,6 +103,8 @@ type user=
   | Pageref of string
   | Structure of int list
   | Figure of int
+  | BeginFigure of int
+  | FlushFigure of int
   | Footnote of int*drawingBox
 let user_count=ref 0
 
@@ -111,6 +113,8 @@ module TS=Typeset.Make (struct
                           let compare=compare
                           let figureRef x=FigureRef x
                           let figure x=Figure x
+                          let flushedFigure=function FlushFigure x -> x |_-> -1
+                          let beginFigure=function BeginFigure x -> x |_-> -1
                           let isFigure=function Figure _->true | _->false
                           let figureNumber=function Figure x->x | _-> -1
                         end)
@@ -476,6 +480,24 @@ let figure ?(parameters=center) ?(name="") drawing=
                                       fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
                                       fig_parameters=parameters }))
 
+let flush_figure name=
+  [BFix (fun env->
+        try
+          match StrMap.find "figures" env.counters with
+              _,h::_->[User (FlushFigure h)]
+            | _->[]
+        with
+            Not_found -> []
+     )]
+let begin_figure name=
+  [BFix (fun env->
+        try
+          match StrMap.find "figures" env.counters with
+              _,h::_->[User (BeginFigure h)]
+            | _->[]
+        with
+            Not_found -> []
+     )]
 
 (****************************************************************)
 
@@ -739,7 +761,7 @@ let flatten env0 str=
 
   let add_paragraph env p=
     let u,v=boxify env p.par_contents in
-    paragraphs:=(Array.of_list u)::(!paragraphs);
+    paragraphs:=u::(!paragraphs);
     compl:=(p.completeLine env.normalMeasure)::(!compl);
     param:=(p.parameters env)::(!param);
     incr n;
@@ -754,31 +776,40 @@ let flatten env0 str=
           let n=IntMap.cardinal !figures in
             fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
             figures:=IntMap.add n (f.fig_contents env1) !figures;
+            paragraphs:=(match !paragraphs with
+                             []->[]
+                           | h::s->(h@[User (BeginFigure n)])::s);
             f.fig_post_env env env1
         )
       | Node s-> (
           s.tree_paragraph <- !n;
-            let rec flat_children indent env1= function
-                []->env1
-              | (_, (Paragraph p))::s->(
-                  let env2=flatten (p.par_env env1) (level+1) (
-                    Paragraph { p with par_contents=
-                        (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
-                  ) in
-                    flat_children true (p.par_post_env env1 env2) s
-                )
-              | (_,(FigureDef _ as h))::s->(
-                  let env2=flatten env1 (level+1) h in
-                    flat_children indent env2 s
-                )
-              | (_, (Node h as tr))::s->(
-                  let env2=h.node_env env1 in
-                  let env2'={ env2 with counters=StrMap.filter (fun _ (a,b)->level>a) env2.counters } in
-                  let env3=flatten env2' (level+1) tr in
-                    flat_children false (h.node_post_env env1 env3) s
-                )
-            in
-              flat_children false env (IntMap.bindings s.children)
+          let flushes=ref [] in
+          let rec flat_children indent env1= function
+              []->env1
+            | (_, (Paragraph p))::s->(
+                let env2=flatten (p.par_env env1) (level+1) (
+                  Paragraph { p with par_contents=
+                      (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
+                ) in
+                  flat_children true (p.par_post_env env1 env2) s
+              )
+            | (_,(FigureDef _ as h))::s->(
+                let env2=flatten env1 (level+1) h in
+                  flushes:=(IntMap.cardinal !figures)::(!flushes);
+                  flat_children indent env2 s
+              )
+            | (_, (Node h as tr))::s->(
+                let env2=h.node_env env1 in
+                let env2'={ env2 with counters=StrMap.filter (fun _ (a,b)->level>a) env2.counters } in
+                let env3=flatten env2' (level+1) tr in
+                  flat_children false (h.node_post_env env1 env3) s
+              )
+          in
+          let env2=flat_children false env (IntMap.bindings s.children) in
+            paragraphs:=(match !paragraphs with
+                             []->[]
+                           | h::s->(h@(List.map (fun x->User (FlushFigure x)) !flushes))::s);
+            env2
         )
   in
   let env1=match str with
@@ -792,7 +823,7 @@ let flatten env0 str=
     (env2, params,
      Array.of_list (List.rev !param),
      Array.of_list (List.rev !compl),
-     Array.of_list (List.rev !paragraphs),
+     Array.of_list (List.rev (List.map Array.of_list !paragraphs)),
      Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 let rec make_struct positions tree=
@@ -897,8 +928,10 @@ let update_names env user=
   let needs_reboot=ref false in
   let env'={ env with user_positions=user; counters=defaultEnv.counters; names=
       StrMap.fold (fun k (a,b,c) m->try
+                     (* Printf.printf "%s\n" k; *)
                      let query=if b="figure" then Figure (List.hd (snd (StrMap.find "figures" a))) else Label k in
                      let pos=TS.UMap.find query user in
+                       (* if pos<>c then (Printf.printf "diff\n";print_line pos;print_line c); *)
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (needs_reboot:=true; m)
@@ -920,33 +953,26 @@ let label ?(labelType="structure") name=
             { env with names=StrMap.add name (env.counters, labelType, w) env.names });
 
    B (fun env ->
-        let _,b=(StrMap.find "structure" env.counters) in
-        let path=drop 1 b in
           [User (Label name)])
   ]
 
 let sectref name=
   [ CFix (fun env->try
-            match StrMap.find name env.names with
-                (nums,_,_)->
-                  let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
-                    [T (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                             (List.rev (drop 1 num))))]
-              | _->[]
+            let (nums,_,_)=StrMap.find name env.names in
+            let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
+              [T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                       (List.rev (drop 1 num))))]
           with
               Not_found -> []
          )]
 
 let generalRef ?(refType="structure") name=
   [ CFix (fun env->try
-            match StrMap.find name env.names with
-                (nums,_,_)->
-                  let counters,_,_=StrMap.find name env.names in
-                  let lvl,num=(StrMap.find refType counters) in
-                  let _,str_counter=StrMap.find "structure" counters in
-                  let sect_num=drop (List.length str_counter - lvl) str_counter in
-                    [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
-              | _->[]
+            let counters,_,_=StrMap.find name env.names in
+            let lvl,num=(StrMap.find refType counters) in
+            let _,str_counter=StrMap.find "structure" counters in
+            let sect_num=drop (List.length str_counter - lvl) str_counter in
+              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
           with
               Not_found -> []
          )]
