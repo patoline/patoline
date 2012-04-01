@@ -183,7 +183,7 @@ module Make=functor (User:User)->(
         let wj=box_width comp_j box_j in
           if !xi +.wi < !xj+. wj && i < !max_haut then (
             let yi=lower_y box_i wi in
-            let yj=if !xi+.wi < !xj then -.infinity else
+            let yj=if !xi+.wi < !xj then 0.(* -.infinity *) else
               if upper_y box_j wj > -.infinity then upper_y box_j wj else 0.
             in
               (* let x0=if !xi+.wi < !xj then !xi else max !xi !xj in *)
@@ -193,7 +193,7 @@ module Make=functor (User:User)->(
               xi:= !xi+.wi;
               collide (i+1) j (min max_col (yi-.yj))
           ) else if j < !max_bas then (
-            let yi=if !xj +. wj < !xi then infinity else
+            let yi=if !xj +. wj < !xi then 0.(* infinity *) else
               if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
 
             let yj=upper_y box_j wj in
