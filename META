@@ -1,0 +1,6 @@
+name="texprime"
+version="1.0"
+description="Typography library"
+requires="camomile, dyp"
+archive(byte)="texprime.cma"
+archive(native)="texprime.cmxa"

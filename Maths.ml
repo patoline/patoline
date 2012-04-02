@@ -52,7 +52,7 @@ type mathsEnvironment={
 
 let default_env=
     {
-      mathsFont=Fonts.loadFont "Otf/euler.otf";
+      mathsFont=Fonts.loadFont (findFont "euler.otf");
       (*
       mathsFont=Fonts.loadFont "Otf/euler.otf";
       mathsFont=Fonts.loadFont "Otf/Asana-Math/Asana-Math.otf";

@@ -47,15 +47,6 @@ let default_params={ measure=0.;
                      min_page_diff=0
                    }
 
-module Line=struct
-  type t=line
-  let compare line0 line1=
-    compare line0 line1
-end
-module LineMap=New_map.Make(Line)
-
-
-
 type 'a kerningBox='a Fonts.FTypes.kerningBox
 
 type drawingBox = { drawing_min_width:float; drawing_nominal_width:float;

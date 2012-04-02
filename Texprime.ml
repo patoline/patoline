@@ -209,21 +209,21 @@ let _=
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "let _ = title %b %a\n\n" (at = None) (print_contents op) title;
+		      Printf.printf "let _ = title %b %a;;\n\n" (at = None) (print_contents op) title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.printf "let _ = author %b %a\n\n" (inst = None) (print_contents op) auth;
+			Printf.printf "let _ = author %b %a;;\n\n" (inst = None) (print_contents op) auth;
 			  match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.printf "let _ = institute true %a\n\n" (print_contents op) inst
+			    Printf.printf "let _ = institute true %a;;\n\n" (print_contents op) inst
 		  end;
 		  let rec output_list no_indent lvl docs = 
 		    match docs with
 		      [] -> 
 			for i = 0 to lvl - 1 do
-			  Printf.printf "let _ = str:=up !str\n\n"
+			  Printf.printf "let _ = str:=up !str;;\n\n"
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
@@ -233,7 +233,7 @@ let _=
 		      let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 			else "(fun x -> x)"
 		      in
-		      Printf.printf "let _ = newPar ~environment:%s textWidth parameters %a\n" 
+		      Printf.printf "let _ = newPar ~environment:%s textWidth parameters %a;;\n" 
 			env (print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
@@ -244,22 +244,22 @@ let _=
 		      let num = if numbered then "" else "'" in
 		      (match docs with
 			Relative docs ->
-			  Printf.printf "let _ = newStruct%s %a\n\n" num (print_contents op) title;
+			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
 			  output_list true (!lvl + 1) docs;
-			  Printf.printf "let _ = str:=up !str\n\n"
+			  Printf.printf "let _ = str:=up !str;;\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
 			  for i = 0 to !lvl - l do
-			    Printf.printf "let _ = str:=up !str\n\n"
+			    Printf.printf "let _ = str:=up !str;;\n\n"
 			  done;
-			  Printf.printf "let _ = newStruct%s %a\n\n" num (print_contents op) title;
+			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
 			  lvl := l
 		      )
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf "\n\n" 
 		    | Math m ->
-		      Printf.printf "let _ = newPar ~structure:str ~environment:(fun x->{x with par_indent = []}) textWidth center %a\n" 
+		      Printf.printf "let _ = newPar ~structure:str ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m;
 		      next_no_indent := true
                     | Ignore -> 
@@ -274,7 +274,7 @@ let _=
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "let _ = newPar ~structure:str ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\")\n"
+			  "let _ = newPar ~structure:str ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end\n\n";

@@ -1,3 +1,4 @@
+BINDIR=/usr/bin
 BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
@@ -25,11 +26,11 @@ LIBS=fonts.cma texprime.cma
 
 
 INCL= -I Fonts -I Output -I Output/Drivers
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(INCL) -pp "cpp -w" -g # graphics.cma
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(INCL) -pp "cpp -w" -g str.cma
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(INCL) -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts $(INCL) -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp $(INCL) -g -pp "cpp -w"
-CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(INCL) -g -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(INCL) -g -pp "cpp -w" str.cmxa
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 
@@ -42,9 +43,9 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 ################ Nothing to set up or fix here
 ##############################################################
 
-all : $(EXEC) $(LIBS) Doc.pdf
+all : config META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
 
-opt : $(EXEC).opt $(LIBS:.cma=.cmxa) Doc.opt.pdf
+opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
 
 #ocamlc -custom other options graphics.cma other files -cclib -lgraphics -cclib -lX11
 #ocamlc -thread -custom other options threads.cma other files -cclib -lthreads
@@ -63,6 +64,7 @@ TESTOPTOBJS = $(TEST:.ml=.cmx)
 
 LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 
+
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) dynlink.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 	cp $(EXEC).opt $(EXEC)
@@ -70,6 +72,19 @@ $(EXEC).opt: $(OPTOBJS)
 $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
+config:Constants.ml Config.ml
+	ocamlc -o config str.cma Constants.ml Config.ml
+
+install:config META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
+	ocamlfind remove texprime
+	ocamlfind install texprime META texprime.cma texprime.cmxa texprime.cmi
+	mkdir -p $(shell ./config)
+	install -m 755 $(EXEC) $(shell ./config)/$(EXEC)
+	cp -R Otf $(shell ./config)
+	chmod -R 755 $(shell ./config)/Otf
+	install -m 644 texprimeDefault.tgx $(shell ./config)/Grammars
+	rm -f $(BINDIR)/$(EXEC)
+	ln -s $(shell ./config)/$(EXEC) $(BINDIR)
 
 typography.cma: $(TESTOBJS)
 	$(CAMLC) -a -o typography.cma $(TESTOBJS) Typography.cmo
@@ -123,6 +138,7 @@ doc:Makefile $(SOURCES0:.ml=.cmo)
 	mkdir -p doc_html
 	$(CAMLDOC) -d doc_html $(DOC)
 
+
 texprimeDefault.tgo: DefaultGrammar.pdf
 	true
 
@@ -134,7 +150,7 @@ texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
 	./$*.tmx
 
-%.opt.pdf: texprime.opt texprime.cmxa texprimeDefault.tgx %.txp
+%.opt.pdf: texprime.opt texprime.cmxa %.txp #texprimeDefault.tgx
 	./texprime.opt $*.txp > $*.tml
 	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
 	./$*.tmx

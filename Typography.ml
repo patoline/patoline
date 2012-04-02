@@ -1,5 +1,5 @@
 (** La "classe" de documents par defaut. *)
-
+open Config
 open Binary
 open Constants
 open Fonts
@@ -20,71 +20,71 @@ type fontFamily = (fontAlternative * (font Lazy.t * font Lazy.t)) list
 let lmroman =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernRoman/lmroman10-regular.otf"),
+	 loadFont (findFont "LatinModernRoman/lmroman10-regular.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernRoman/lmroman10-italic.otf"));
+	 loadFont (findFont "LatinModernRoman/lmroman10-italic.otf")));
     Bold, (
+      Lazy.lazy_from_fun (fun () -> 
+	 loadFont (findFont "LatinModernRoman/lmroman10-bold.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernRoman/lmroman10-bold.otf"),
-       Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernRoman/lmroman10-bolditalic.otf"));
+	 loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf")));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernRoman/lmromancaps10-regular.otf"),
+	loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernRoman/lmromancaps10-oblique.otf"));
+	loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf")));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernRoman/lmromandemi10-regular.otf"),
+	loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernRoman/lmromandemi10-oblique.otf"));
+	loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf")));
   ]
 
 let lmmono =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernMono/lmmonolt10-regular.otf"),
+	 loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernMono/lmmonolt10-oblique.otf"));
+	 loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf")));
     Bold, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernMono/lmmonolt10-bold.otf"),
+	 loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/LatinModernMono/lmmonolt10-boldoblique.otf"));
+	 loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf")));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernMono/lmmonocaps10-regular.otf"),
+	loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernMono/lmmonocaps10-oblique.otf"));
+	loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf")));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernMono/lmmonoltcond10-regular.otf"),
+	loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/LatinModernMono/lmmonoltcond10-oblique.otf"));
+	loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf")));
   ]
 
 (* Alegreya raises : Opentype.Table_not_found *)
 let alegreya =
   [ Regular, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya/Alegreya-Regular.otf"),
+	 loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya/Alegreya-Italic.otf"));
+	 loadFont (findFont "Alegreya/Alegreya-Italic.otf")));
     Bold, (
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya/Alegreya-Bold.otf"),
+	 loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
        Lazy.lazy_from_fun (fun () -> 
-	 loadFont "Otf/Alegreya/Alegreya-BoldItalic.otf"));
+	 loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")));
     Caps, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya/AlegreyaSC-Regular.otf"),
+	loadFont (findFont "Alegreya/AlegreyaSC-Regular.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya/AlegreyaSC-Italic.otf"));
+	loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
     Demi, (
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya/Alegreya-Black.otf"),
+	loadFont (findFont "Alegreya/Alegreya-Black.otf")),
       Lazy.lazy_from_fun (fun () -> 
-	loadFont "Otf/Alegreya/Alegreya-BlackItalic.otf"));
+	loadFont (findFont "Alegreya/Alegreya-BlackItalic.otf")));
   ]
 
 let selectFont fam alt it =
@@ -108,16 +108,21 @@ type user=
   | Footnote of int*drawingBox
 let user_count=ref 0
 
-module TS=Typeset.Make (struct
-                          type t=user
-                          let compare=compare
-                          let figureRef x=FigureRef x
-                          let figure x=Figure x
-                          let flushedFigure=function FlushFigure x -> x |_-> -1
-                          let beginFigure=function BeginFigure x -> x |_-> -1
-                          let isFigure=function Figure _->true | _->false
-                          let figureNumber=function Figure x->x | _-> -1
-                        end)
+module TS=Typeset.Make
+  (struct
+     type t=line
+     let compare=compare
+   end)
+  (struct
+     type t=user
+     let compare=compare
+     let figureRef x=FigureRef x
+     let figure x=Figure x
+     let flushedFigure=function FlushFigure x -> x |_-> -1
+     let beginFigure=function BeginFigure x -> x |_-> -1
+     let isFigure=function Figure _->true | _->false
+     let figureNumber=function Figure x->x | _-> -1
+   end)
 
 module C=Parameters.Completion (TS)
 
@@ -187,6 +192,12 @@ let defaultFam= lmroman
 let defaultMono= lmmono
 let defaultEnv:user environment=
   let f=selectFont lmroman Regular false in
+  let hyphenation_dict=
+    let i=open_in "dict_en" in
+    let inp=input_value i in
+      close_in i;
+      inp
+  in
   let fsize=5. in
     {
       fontFamily=lmroman;
@@ -218,12 +229,6 @@ let defaultEnv:user environment=
                       drawing_badness=knuth_h_badness (fsize/.3.) }];
       hyphenate=
         (fun str->
-           let hyphenation_dict=
-             let i=open_in "dict_en" in
-             let inp=input_value i in
-               close_in i;
-               inp
-           in
            let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
            let pos=Array.make (List.length hyphenated-1) ("","") in
            let rec hyph l i cur=match l with
