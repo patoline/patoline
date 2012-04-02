@@ -161,6 +161,7 @@ and 'a environment={
   fontColor:OutputCommon.color;
   font:font;
   size:float;
+  footnote_y:float;
   normalMeasure:float;
   normalLead:float;
   normalLeftMargin:float;
@@ -211,6 +212,7 @@ let defaultEnv:user environment=
            Fonts.select_features f [ Opentype.standardLigatures ]
          ));
       positioning=positioning f;
+      footnote_y=10.;
       size=4.;
       normalMeasure=150.;
       normalLead=5.;
@@ -428,7 +430,7 @@ let features f t=
 
 
 let parameters env paragraphs figures last_parameters last_users (line:Util.line)=
-  let lead=5. in
+  let lead=env.normalLead in
   let mes0=env.normalMeasure in
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
@@ -452,7 +454,7 @@ let parameters env paragraphs figures last_parameters last_users (line:Util.line
     in
       { measure= !measure;
         page_height=(if line.page_line <= 0 then 45.*.lead else last_parameters.page_height)
-        -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.2.*.lead) else footnote_h);
+        -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
         left_margin=env.normalLeftMargin;
         local_optimization=0;
         min_page_diff=0;

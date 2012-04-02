@@ -84,7 +84,7 @@ module Output=functor(M:Driver)->struct
         ignore (
           List.fold_left (
             fun y footnote->
-              page.pageContents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1))
+              page.pageContents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1-.env.footnote_y))
                                      (footnote.drawing_contents footnote.drawing_nominal_width)) @ page.pageContents;
               y-.(footnote.drawing_y1-.footnote.drawing_y0)
           ) !footnote_y !footnotes
@@ -92,8 +92,8 @@ module Output=functor(M:Driver)->struct
         if !footnotes<>[] then (
           page.pageContents<- (Path ({OutputCommon.default with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
                                                                     env.normalLeftMargin+.env.normalMeasure*.(2.-.phi) |],
-                                                                 [| !footnote_y;
-                                                                    !footnote_y |] |] ]))::page.pageContents
+                                                                 [| !footnote_y-.env.footnote_y;
+                                                                    !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
         );
         let pnum=glyph_of_string env.substitutions env.positioning env.font env.size env.fontColor (string_of_int (i+1)) in
         let (_,w,_)=boxes_interval (Array.of_list pnum) in
