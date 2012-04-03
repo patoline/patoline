@@ -1,1 +1,2 @@
-let _=Printf.printf "%s\n" Constants.destdir
+let bindir="/usr/local/bin"
+let destdir="/usr/local/share/texprime"

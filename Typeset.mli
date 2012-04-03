@@ -72,7 +72,7 @@ module type Typeset =
       Util.line UMap.t
   end
 module Make :
-  functor (Line : sig type t = Util.line val compare : t -> t -> int end) ->
+  functor (Line : sig type t = Util.line val hash:t->int val compare : t -> t -> int end) ->
     functor (User : User) ->
       sig
         module User :

@@ -1,5 +1,8 @@
-BINDIR=/usr/bin
-BASE=Bezier.ml new_map.mli new_map.ml Constants.ml Binary.ml
+PREFIX=/usr/local
+BINDIR=$(PREFIX)/bin
+DESTDIR=$(PREFIX)/share/texprime
+
+BASE=Bezier.ml new_map.mli new_map.ml Config.ml Constants.ml Binary.ml
 
 FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
@@ -72,19 +75,25 @@ $(EXEC).opt: $(OPTOBJS)
 $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
-config:Constants.ml Config.ml
-	ocamlc -o config str.cma Constants.ml Config.ml
+Config.ml: Makefile
+	echo "let bindir=\"$(BINDIR)\"" > Config.ml
+	echo "let destdir=\"$(DESTDIR)\"" >> Config.ml
 
-install:config META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
+Constants.ml:Config.ml
+
+install: #config META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
 	ocamlfind remove texprime
 	ocamlfind install texprime META texprime.cma texprime.cmxa texprime.cmi
-	mkdir -p $(shell ./config)
-	install -m 755 $(EXEC) $(shell ./config)/$(EXEC)
-	cp -R Otf $(shell ./config)
-	chmod -R 755 $(shell ./config)/Otf
-	install -m 644 texprimeDefault.tgx $(shell ./config)/Grammars
+	install -d -m 755 $(DESTDIR)
+	install -m 755 $(EXEC) $(DESTDIR)/$(EXEC)
+
+	$(shell find Otf -type d -exec install -d -m 755 {} $(DESTDIR)/{} \;)
+	$(shell find Otf -name "*.otf" -exec install -m 644 {} $(DESTDIR)/{} \;)
+
+	install -m 644 texprimeDefault.tgx $(DESTDIR)/Grammars
+	install -m 644 dict_en $(DESTDIR)
 	rm -f $(BINDIR)/$(EXEC)
-	ln -s $(shell ./config)/$(EXEC) $(BINDIR)
+	ln -s $(DESTDIR)/$(EXEC) $(BINDIR)
 
 typography.cma: $(TESTOBJS)
 	$(CAMLC) -a -o typography.cma $(TESTOBJS) Typography.cmo

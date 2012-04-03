@@ -111,6 +111,7 @@ let user_count=ref 0
 module TS=Typeset.Make
   (struct
      type t=line
+     let hash=Hashtbl.hash
      let compare=compare
    end)
   (struct
@@ -194,7 +195,7 @@ let defaultMono= lmmono
 let defaultEnv:user environment=
   let f=selectFont lmroman Regular false in
   let hyphenation_dict=
-    let i=open_in "dict_en" in
+    let i=open_in (findHyph "dict_en") in
     let inp=input_value i in
       close_in i;
       inp
