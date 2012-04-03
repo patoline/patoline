@@ -154,15 +154,16 @@ texprimeDefault.tgo: DefaultGrammar.pdf
 texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	true
 
-texprimeDefault.pdf: texprime texprime.cma %.txp
-	./texprime $*.txp > $*.tml
-	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
-	./$*.tmx
+DefaultGrammar.pdf: texprime texprime.cma DefaultGrammar.txp
+	./texprime DefaultGrammar.txp > DefaultGrammar.tml
+	$(CAMLC)  -o DefaultGrammar.tmx texprime.cma -impl DefaultGrammar.tml
+	./DefaultGrammar.tmx
 
-texprimeDefault.opt.pdf: texprime.opt texprime.cmxa %.txp
-	./texprime.opt $*.txp > $*.tml
-	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
-	./$*.tmx
+DefaultGrammar.opt.pdf: texprime.opt texprime.cmxa DefaultGrammar.txp
+	./texprime.opt DefaultGrammar.txp > DefaultGrammar.tml
+	$(CAMLOPT)  -o DefaultGrammar.tmx texprime.cmxa -impl DefaultGrammar.tml
+	./DefaultGrammar.tmx
+	cp DefaultGrammar.pdf DefaultGrammar.opt.pdf 
 
 %.pdf: texprime texprime.cma texprimeDefault.tgo %.txp
 	./texprime $*.txp > $*.tml
@@ -173,6 +174,7 @@ texprimeDefault.opt.pdf: texprime.opt texprime.cmxa %.txp
 	./texprime.opt $*.txp > $*.tml
 	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
 	./$*.tmx
+	cp $*.pdf $*.opt.pdf 
 
 top:
 	 ocamlfind ocamlmktop -package camomile -pp cpp -o ftop -linkpkg -I Fonts Binary.ml Bezier.ml Fonts/FontsTypes.ml Fonts/FontCFF.ml Fonts/FontOpentype.ml Fonts.ml
