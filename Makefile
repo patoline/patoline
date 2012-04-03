@@ -154,12 +154,22 @@ texprimeDefault.tgo: DefaultGrammar.pdf
 texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	true
 
+texprimeDefault.pdf: texprime texprime.cma %.txp
+	./texprime $*.txp > $*.tml
+	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
+	./$*.tmx
+
+texprimeDefault.opt.pdf: texprime.opt texprime.cmxa %.txp
+	./texprime.opt $*.txp > $*.tml
+	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
+	./$*.tmx
+
 %.pdf: texprime texprime.cma texprimeDefault.tgo %.txp
 	./texprime $*.txp > $*.tml
 	$(CAMLC)  -o $*.tmx texprime.cma -impl $*.tml
 	./$*.tmx
 
-%.opt.pdf: texprime.opt texprime.cmxa %.txp #texprimeDefault.tgx
+%.opt.pdf: texprime.opt texprime.cmxa texprimeDefault.tgx %.txp
 	./texprime.opt $*.txp > $*.tml
 	$(CAMLOPT)  -o $*.tmx texprime.cmxa -impl $*.tml
 	./$*.tmx

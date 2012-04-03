@@ -25,7 +25,7 @@ let postambule : ('a, 'b, 'c) format = "
   let _ = 
     let filename=\"%s.pdf\" in
     let rec resolve i env0=
-
+     Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      fixable:=false;
      let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top !str)) in
      let (_,pages,user')=TS.typeset
