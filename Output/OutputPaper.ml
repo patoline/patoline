@@ -101,7 +101,7 @@ module Output=functor(M:Driver)->struct
         let _=List.fold_left (fun x0 b->match b with
                                   (GlyphBox a)->(
                                     let (_,w,_)=box_interval b in
-                                      page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x;glyph_y=20. })
+                                      page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x0;glyph_y=20. })
                                       :: page.pageContents;
                                       x0+.w
                                   )
