@@ -46,7 +46,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 ################ Nothing to set up or fix here
 ##############################################################
 
-all : config META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
+all : Config.ml META $(EXEC).opt texprime.cma texprime.cmxa texprimeDefault.tgo texprimeDefault.tgx
 
 opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
 
