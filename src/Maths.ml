@@ -27,7 +27,7 @@ let int_of_style=function
   | ScriptScript'->7
 
 type mathsEnvironment={
-  mathsFont:Fonts.font;
+  mathsFont:Fonts.font Lazy.t;
   mathsSize:float;
   mathsSubst:glyph_id list -> glyph_id list;
   mathsSymbols:int Binary.StrMap.t;
@@ -52,7 +52,7 @@ type mathsEnvironment={
 
 let default_env=
     {
-      mathsFont=Fonts.loadFont (findFont "euler.otf");
+      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "euler.otf"));
       (*
       mathsFont=Fonts.loadFont "Otf/euler.otf";
       mathsFont=Fonts.loadFont "Otf/Asana-Math/Asana-Math.otf";
@@ -238,7 +238,7 @@ let rec draw_maths mathsEnv style mlist=
 
 
                 let x_height=
-                  let x=Fonts.loadGlyph env.mathsFont ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'x'}) in
+                  let x=Fonts.loadGlyph (Lazy.force env.mathsFont) ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env.mathsFont) 'x'}) in
                     (Fonts.glyph_y1 x)/.1000.
                 in
                 let u,v=if contents (last nucleus) <> "" then  0., 0. else
@@ -352,8 +352,8 @@ let rec draw_maths mathsEnv style mlist=
       | (Fraction f)::s->(
 
         let hx =
-          let x=Fonts.loadGlyph env.mathsFont
-	    ({empty_glyph with glyph_index=Fonts.glyph_of_char env.mathsFont 'o'}) in
+          let x=Fonts.loadGlyph (Lazy.force env.mathsFont)
+	    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env.mathsFont) 'o'}) in
           (Fonts.glyph_y1 x)/.2000.
         in
 
@@ -527,7 +527,7 @@ let dist_boxes a b=
 
 
 let glyphs c env st=
-  let font=env.mathsFont in
+  let font=Lazy.force env.mathsFont in
   let s=env.mathsSize in
   let rec make_it idx=
     if UTF8.out_of_range c idx then [] else (
@@ -542,7 +542,7 @@ exception Unknown_symbol of string
 let symbol s env st=
   try
     let s = Binary.StrMap.find s env.mathsSymbols in
-    let font=env.mathsFont in
+    let font=Lazy.force env.mathsFont in
     [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=s }) with glyph_size=env.mathsSize} ]
   with
     Not_found-> glyphs s env st

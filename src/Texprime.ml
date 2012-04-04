@@ -1,3 +1,8 @@
+open Config
+let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")]
+let filename=ref []
+let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :"
+
 open Binary
 open Constants
 open Lexing
@@ -6,9 +11,9 @@ open Fonts
 open Fonts.FTypes
 open Parser
 
-let spec = []
 
 let preambule = "
+  open Config
   open Typography
   open Parameters
   open Fonts.FTypes
@@ -22,6 +27,7 @@ let preambule = "
 
 let postambule : ('a, 'b, 'c) format = "
   module Out=OutputPaper.Output(Pdf)
+
   let _ = 
     let filename=\"%s.pdf\" in
     let rec resolve i env0=
@@ -191,8 +197,6 @@ and print_contents op ch l =
   Printf.fprintf ch ")"
 
 let _=
-  let filename=ref [] in
-    Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :";
     try
       match !filename with
           []-> Printf.printf "no input files\n"

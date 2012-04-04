@@ -1,4 +1,5 @@
 {
+  open Constants
 open Lexing
 open Dyp
 
@@ -409,7 +410,7 @@ grammar: grammar_aux<g>
   @{ let action = match g with None -> [] |
         Some filename -> 
 	  try 
-	  let ic = open_in (filename ^ gram_ext) in
+	  let ic = open_in (findGrammar (filename ^ gram_ext)) in
 	  let local_data, grammar = input_value ic in
 	  close_in ic;
 	  Printf.fprintf stderr "Grammar Loaded.\n";

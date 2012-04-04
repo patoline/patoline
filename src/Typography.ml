@@ -1,5 +1,8 @@
 (** La "classe" de documents par defaut. *)
 open Config
+let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")]
+let _=Arg.parse spec ignore "Usage :"
+
 open Binary
 open Constants
 open Fonts
@@ -13,7 +16,7 @@ open Util
    bas, pour les scopes) *)
 
 type fontAlternative = Regular | Bold | Caps | Demi
- 
+
 (* Italic is second *)
 type fontFamily = (fontAlternative * (font Lazy.t * font Lazy.t)) list
 
@@ -195,7 +198,7 @@ let defaultMono= lmmono
 let defaultEnv:user environment=
   let f=selectFont lmroman Regular false in
   let hyphenation_dict=
-    let i=open_in (findHyph "dict_en") in
+    let i=open_in (findHyph "en.hdict") in
     let inp=input_value i in
       close_in i;
       inp
