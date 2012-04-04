@@ -5,7 +5,7 @@ let rec findPath f path=function
     []->(
       Printf.fprintf stderr "%s : Not found. Path :\n" f;
       List.iter (Printf.fprintf stderr "\t%s\n") path;
-      exit 1
+      raise Not_found
     )
   | h::s when Sys.file_exists (Filename.concat h f)->(Filename.concat h f)
   | h::s -> (findPath f path s)
