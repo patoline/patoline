@@ -57,7 +57,7 @@ let hyphenate tree a0=
   if String.length a0<=4 then [a0] else
 
     let a=String.create (String.length a0+2) in
-    String.blit a0 0 a 1 (String.length a0);
+      String.blit a0 0 a 1 (String.length a0);
       a.[0]<-'.';
       a.[String.length a-1]<-'.';
       let breaks=Array.create (String.length a+1) '0' in
@@ -88,7 +88,7 @@ let hyphenate tree a0=
 
         let rec make_hyphens i j=
           if j>=String.length a-2 then [String.sub a i (j-i+1)] else
-            if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 then
+            if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 && j>=3 && j<String.length a0-2 then
               (String.sub a i (j-i+1)) :: make_hyphens (j+1) (j+1)
             else
               make_hyphens i (j+1)
