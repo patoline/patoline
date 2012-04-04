@@ -90,15 +90,15 @@ texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	true
 
 DefaultGrammar.pdf: texprime texprime.cma DefaultGrammar.txp
-	./texprime DefaultGrammar.txp > DefaultGrammar.tml
+	./texprime --extra-fonts-dir ../Otf DefaultGrammar.txp > DefaultGrammar.tml
 	$(CAMLC)  -o DefaultGrammar.tmx texprime.cma -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx
+	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
 
 DefaultGrammar.opt.pdf: texprime.opt texprime.cmxa DefaultGrammar.txp
-	./texprime.opt DefaultGrammar.txp > DefaultGrammar.tml
+	./texprime.opt --extra-fonts-dir ../Otf DefaultGrammar.txp > DefaultGrammar.tml
 	$(CAMLOPT)  -o DefaultGrammar.tmx texprime.cmxa -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx
-	cp DefaultGrammar.pdf DefaultGrammar.opt.pdf 
+	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
+	cp DefaultGrammar.pdf DefaultGrammar.opt.pdf
 
 %.pdf: texprime texprime.cma texprimeDefault.tgo %.txp
 	./texprime --extra-fonts-dir ../Otf $*.txp > $*.tml
