@@ -197,11 +197,25 @@ let defaultFam= lmroman
 let defaultMono= lmmono
 let defaultEnv:user environment=
   let f=selectFont lmroman Regular false in
-  let hyphenation_dict=
+  let hyphenate=try
     let i=open_in (findHyph "en.hdict") in
     let inp=input_value i in
       close_in i;
-      inp
+      (fun str->
+         let hyphenated=Hyphenate.hyphenate inp str in
+         let pos=Array.make (List.length hyphenated-1) ("","") in
+         let rec hyph l i cur=match l with
+             []->()
+           | h::s->(
+               pos.(i)<-(cur^"-", List.fold_left (^) "" l);
+               hyph s (i+1) (cur^h)
+             )
+         in
+           match hyphenated with
+               []->[||]
+             | h::s->(hyph s 0 h; pos));
+  with
+      Not_found -> (fun x->[||])
   in
   let fsize=5. in
     {
@@ -233,20 +247,7 @@ let defaultEnv:user environment=
                       drawing_nominal_width= fsize/.3.;
                       drawing_contents=(fun _->[]);
                       drawing_badness=knuth_h_badness (fsize/.3.) }];
-      hyphenate=
-        (fun str->
-           let hyphenated=Hyphenate.hyphenate hyphenation_dict str in
-           let pos=Array.make (List.length hyphenated-1) ("","") in
-           let rec hyph l i cur=match l with
-               []->()
-             | h::s->(
-                 pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-                 hyph s (i+1) (cur^h)
-               )
-           in
-             match hyphenated with
-                 []->[||]
-               | h::s->(hyph s 0 h; pos));
+      hyphenate=hyphenate;
 
       counters=StrMap.singleton "structure" (-1,[0]);
       names=StrMap.empty;
