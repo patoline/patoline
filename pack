@@ -1,0 +1,20 @@
+#!/bin/sh
+
+init_dir=$(pwd)
+version=$(grep version src/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
+darcs dist -d texprime
+mv texprime.tar.gz /tmp
+cd /tmp
+tar -xzf texprime.tar.gz
+cd texprime
+ocamlc -o configure configure.ml
+rm -f *.cmo *.cmi
+rm -Rf _darcs
+rm -f pack
+cd ..
+rm -Rf texprime-$version
+mv texprime texprime-$version
+tar -cvf texprime-$version.tar texprime-$version
+gzip texprime-$version.tar
+mv texprime-$version.tar.gz $init_dir
+cd $init_dir
