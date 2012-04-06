@@ -94,20 +94,20 @@ let footnote l=
                                  | _->()
                             ) env.user_positions;
                (* Insertion d'une footnote *)
-               let str'=ref (Node empty,[]) in
-                 let params a b c d e f=
-                   let p=(parameters a b c d e f) in
-                   let lead=env.normalLead *. (phi-.1.) in
-                     { p with
-                         next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
-                     }
-                 in
-                   newPar ~structure:str' ~environment:(fun x->x) textWidth params
+               str:=(Node empty,[]):: !str;
+               let params a b c d e f=
+                 let p=(parameters a b c d e f) in
+                 let lead=env.normalLead *. (phi-.1.) in
+                   { p with
+                       next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
+                   }
+               in
+                   newPar ~environment:(fun x->x) textWidth params
                      (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
                    let pages=minipage { env with
                                           normalLead=env.normalLead*.(phi-.1.);
                                           size=env.size*.(phi-.1.) }
-                     (top !str') in
+                     (top (List.hd !str)) in
                      if Array.length pages>0 then
                        [User (Footnote (count, pages.(0)));
                         Drawing (drawing ~offset:(env.size/.2.)
@@ -120,16 +120,17 @@ let footnote l=
           )]
 let graph=ref 0
 
-let stack = ref []
 
 module Env_itemize = struct
 
   let do_begin_itemize ()=
-    stack := !str::!stack;
-    str := Node empty, []
+    str := (Node empty, []):: !str
 
-  let item ()=str:=newChild (top !str) (Node empty); []
-  let addon = [ T "–"; B (fun env->[glue env.size env.size env.size]) ]
+  let item ()=
+    let str0,str1=match !str with []->(Node empty,[]),[] | h::s->h,s in
+      str:=newChild (top str0) (Node empty)::str1
+
+  let addon = [ T "–"; B (fun env->[glue env.size env.size env.size])]
 
 
   let do_end_itemize ()=
@@ -186,42 +187,41 @@ module Env_itemize = struct
 	  with Not_found -> t)
       | t->t
     in
-    let avec_tirets = match fst (top !str) with
-        Node n->Node { n with children=IntMap.map tirets n.children }
-      | x->x
-    in
-    match !stack with [] -> assert false
-    | st::s ->
-	str := newChild st (paragraphs avec_tirets);
-	stack := s
+    match !str with
+        h0::h1::s ->
+          let avec_tirets = match fst (top h0) with
+              Node n->Node { n with children=IntMap.map tirets n.children }
+            | x->x
+          in
+	    str := newChild h1 (paragraphs avec_tirets)::s
+      | _->assert false
 end
 
 module Env_abstract = struct
 
   let do_begin_abstract ()=
-    stack := !str::!stack;
-    str := Node empty, []
+    str := (Node empty, []):: !str
+
   let do_end_abstract () =
-    match !stack with
-        [] -> assert false
-      | st::s ->
-	  str := up (newChild st (fst (change_env !str
+    match !str with
+        h0::h1::s ->
+	  str := up (newChild h1 (fst (change_env h0
                                          (fun x->{ x with
                                                      normalLeftMargin=(x.normalLeftMargin
                                                                        +.(x.normalMeasure-.120.)/.2.);
-                                                     normalMeasure=120. }))));
-	  stack := s;
+                                                     normalMeasure=120. })))) :: s
+      |_ -> assert false
+
 end
 
 let theoremRef name=Typography.generalRef ~refType:"theorem" "th0"
 module Env_theorem=struct
   let do_begin_theorem ()=
-    stack := !str::!stack;
-    str := Node empty, []
+    str := (Node empty, []):: !str
+
   let do_end_theorem ()=
-    match !stack with
-        [] -> assert false
-      | st::s ->
+    match !str with
+        h0::h1::s ->
           let success=ref false in
           let rec first_par=function
               Paragraph p->
@@ -240,8 +240,9 @@ module Env_theorem=struct
             | Node n->Node { n with children=IntMap.map (fun x->if !success then x else first_par x) n.children }
             | x -> x
           in
-	    str := up (newChild st (first_par (fst !str)));
-	    stack := s;
+	    str := up (newChild h0 (first_par (fst h1))) :: s
+      |_ -> assert false
+
   module Env_Proof=struct
   end
 end

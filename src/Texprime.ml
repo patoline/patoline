@@ -33,7 +33,7 @@ let postambule : ('a, 'b, 'c) format = "
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      fixable:=false;
-     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top !str)) in
+     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top (List.hd !str))) in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -45,7 +45,7 @@ let postambule : ('a, 'b, 'c) format = "
      let env2, reboot=update_names env1 user' in
      if reboot && !fixable then (
        resolve (i+1) env2
-     ) else Out.output (fst (top !str)) pars figures env2 pages filename
+     ) else Out.output (fst (top (List.hd !str))) pars figures env2 pages filename
   in
      resolve 0 defaultEnv
 "
@@ -227,7 +227,7 @@ let _=
 		    match docs with
 		      [] -> 
 			for i = 0 to lvl - 1 do
-			  Printf.printf "let _ = str:=up !str;;\n\n"
+			  Printf.printf "let _ = go_up str;;\n\n"
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
@@ -250,11 +250,11 @@ let _=
 			Relative docs ->
 			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
 			  output_list true (!lvl + 1) docs;
-			  Printf.printf "let _ = str:=up !str;;\n\n"
+			  Printf.printf "let _ = go_up str;;\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
 			  for i = 0 to !lvl - l do
-			    Printf.printf "let _ = str:=up !str;;\n\n"
+			    Printf.printf "let _ = go_up str;;\n\n"
 			  done;
 			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
 			  lvl := l

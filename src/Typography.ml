@@ -311,6 +311,10 @@ let up (t,cxt) = match cxt with
     []->(t,cxt)
   | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
   | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
+let go_up str=
+  str:=match !str with
+      []->[]
+    | h::s->(up h)::s
 
 let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 
@@ -320,7 +324,7 @@ let rec follow t l=match l with
 
 (* La structure actuelle *)
 let initTree ()=ref (Node empty, [])
-let str=initTree ()
+let str=ref []
 (* Le chemin vers le noeud courant *)
 
 let fixable=ref false
@@ -478,19 +482,23 @@ let center env paragraphs figures last_parameters lastUsers l=
 
 
 let figure ?(parameters=center) ?(name="") drawing=
-  str:=up (newChild !str (FigureDef { fig_contents=drawing;
-                                      fig_env=(fun x->
-                                                 let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
-                                                 let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                                                   { x with
-                                                       names=if name="" then x.names else (
-                                                         let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                                           StrMap.add name (cou', "figure", w) x.names
-                                                       );
-                                                       counters=cou'
-                                                   });
-                                      fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
-                                      fig_parameters=parameters }))
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
+    str:=up (newChild str0 (FigureDef { fig_contents=drawing;
+                                        fig_env=(fun x->
+                                                   let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
+                                                   let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                                     { x with
+                                                         names=if name="" then x.names else (
+                                                           let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
+                                                             StrMap.add name (cou', "figure", w) x.names
+                                                         );
+                                                         counters=cou'
+                                                     });
+                                        fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                                        fig_parameters=parameters })) :: str1
 
 let flush_figure name=
   [BFix (fun env->
@@ -516,12 +524,16 @@ let begin_figure name=
 
 
 
-let newPar ?(structure=str) ?(environment=(fun x->x)) complete parameters par=
+let newPar ?(environment=(fun x->x)) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment;
                       par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
                       parameters=parameters; completeLine=complete }
   in
-    structure:=up (newChild !structure para)
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
+    str:=up (newChild str0 para) :: str1
 
 
 let string_of_contents l =
@@ -532,7 +544,7 @@ let string_of_contents l =
   | _ -> ()) l;
   !s
 
-let newStruct ?(structure=str)  ?label displayname =
+let newStruct ?label displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
@@ -590,31 +602,34 @@ let newStruct ?(structure=str)  ?label displayname =
                  )]
            )
   ] in
-    structure:=newChild !structure para;
-    let lead = 5. in
-    let par={
-      par_contents=section_name;
-      par_env=(fun x->{ x with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
-      parameters=
-        (fun a b c d e f->
-           { (parameters a b c d e f) with
-               next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-      completeLine=C.normal }
-    in
-      structure:=up (newChild !structure (Paragraph par))
+  let lead = 5. in
+  let par={
+    par_contents=section_name;
+    par_env=(fun x->{ x with par_indent=[]});
+    par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+    parameters=
+      (fun a b c d e f->
+         { (parameters a b c d e f) with
+             next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+    completeLine=C.normal }
+  in
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
+    str:=up (newChild (newChild str0 para) (Paragraph par))::str1
 
 
 
 
 
-let newStruct' ?(structure=str) ?label displayname =
+let newStruct' ?label displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
   in
 
-  let para=Node { 
+  let para=Node {
     empty with
       name=name;
       displayname =displayname;
@@ -656,29 +671,37 @@ let newStruct' ?(structure=str) ?label displayname =
               displayname
            )
   ] in
-    structure:=newChild !structure para;
-    let lead = 5. in
-    let par={
-      par_contents=section_name;
-      par_env=(fun x->{ x with par_indent=[]});
-      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
-      parameters=
-        (fun a b c d e f->
-           { (parameters a b c d e f) with
-               next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
-      completeLine=C.normal }
-    in
-      structure:=up (newChild !structure (Paragraph par))
+  let lead = 5. in
+  let par={
+    par_contents=section_name;
+    par_env=(fun x->{ x with par_indent=[]});
+    par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+    parameters=
+      (fun a b c d e f->
+         { (parameters a b c d e f) with
+             next_acceptable_height=(fun _ h->h+.lead*.2.); min_height_before=2.*.lead });
+    completeLine=C.normal }
+  in
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
+    str:=up (newChild (newChild str0 para) (Paragraph par))::str1
+
 
 
 
 let title ?label displayname =
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
   in
-  let (t,path)= !str in
-  let (t0,_)=top !str in
+  let (t,path)= str0 in
+  let (t0,_)=top str0 in
   let t0'=
     match t0 with
         Paragraph _ | FigureDef _->Node { name=name; in_toc = false;
@@ -689,7 +712,7 @@ let title ?label displayname =
                                           tree_paragraph=0 }
       | Node n -> Node { n with name=name; displayname = displayname }
   in
-    str:=follow (t0',[]) path
+    str:=(follow (t0',[]) path)::str1
 
 
 
@@ -864,7 +887,7 @@ let rec make_struct positions tree=
       )
 
 
-let table_of_contents tree max_level=
+let table_of_contents str tree max_level=
   newPar ~environment:(fun x->{x with par_indent=[]}) C.normal parameters [
     BFix (
       fun env->
@@ -932,7 +955,7 @@ let table_of_contents tree max_level=
             | Node _->[]
         in
           toc { env with counters=StrMap.add "structure" (-1,[0]) env.counters }
-            0 (fst (top !str))
+            0 (fst (top str))
     )]
 
 
