@@ -53,7 +53,7 @@ let _=
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat grammars_dir x)) (escape (List.hd !grammars_prefix))
-              ) (Array.to_list (Sys.readdir grammars_dir));
+              ) ("texprimeDefault.tgo"::"texprimeDefault.tgx"::Array.to_list (Sys.readdir grammars_dir));
 
     (* Hyphenation *)
     Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape (List.hd !hyphen_prefix));
