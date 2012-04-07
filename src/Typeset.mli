@@ -68,11 +68,11 @@ module type Typeset =
                UMap.key Util.box array ->
                int -> Util.parameters -> float -> float) ->
       UMap.key Util.box array array ->
-      Util.error_log list * (Util.parameters * Util.line) list array *
+      Log.error_log list * (Util.parameters * Util.line) list array *
       Util.line UMap.t
   end
 module Make :
-  functor (Line : sig type t = Util.line val hash:t->int val compare : t -> t -> int end) ->
+  functor (Line : sig type t = Util.line val compare : t -> t -> int end) ->
     functor (User : User) ->
       sig
         module User :
@@ -144,6 +144,6 @@ module Make :
                    UMap.key Util.box array ->
                    int -> Util.parameters -> float -> float) ->
           UMap.key Util.box array array ->
-          Util.error_log list * (Util.parameters * Util.line) list array *
+          Log.error_log list * (Util.parameters * Util.line) list array *
           Util.line UMap.t
       end

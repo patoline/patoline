@@ -97,14 +97,12 @@ let drawing_blit a x0 y0 b=
                           let cb=b.drawing_contents ((b.drawing_max_width-.b.drawing_min_width)*.fact) in
                             (List.map (translate x0 y0) cb)@ca)
     }
-type error_log=
-    Overfull_line of line
-  | Widow of line
-  | Orphan of line
 
-let print_line l=
-  Printf.printf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
+let print_linef out l=
+  Printf.fprintf out "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
     l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
+let print_line l=print_linef stdout l
+
 let rec print_box=function
     Glue _->Printf.printf " "
   | GlyphBox x->Printf.printf "%s" (Fonts.glyphContents x.glyph)

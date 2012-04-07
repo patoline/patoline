@@ -49,7 +49,7 @@ and 'a box =
   | Empty
 val drawing : ?offset:float -> OutputCommon.contents list -> drawingBox
 val drawing_blit : drawingBox -> float -> float -> drawingBox -> drawingBox
-type error_log = Overfull_line of line | Widow of line | Orphan of line
+val print_linef : out_channel -> line -> unit
 val print_line : line -> unit
 val print_box : 'a box -> unit
 val print_box_type : 'a box -> unit
