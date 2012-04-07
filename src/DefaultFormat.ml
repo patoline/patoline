@@ -102,21 +102,27 @@ let footnote l=
                        next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
                    }
                in
-                   newPar ~environment:(fun x->x) textWidth params
-                     (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
-                   let pages=minipage { env with
-                                          normalLead=env.normalLead*.(phi-.1.);
-                                          size=env.size*.(phi-.1.) }
-                     (top (List.hd !str)) in
-                     if Array.length pages>0 then
-                       [User (Footnote (count, pages.(0)));
-                        Drawing (drawing ~offset:(env.size/.2.)
-                                   (draw_boxes (boxify_scoped { env with size=env.size/.phi }
-                                                  [T (string_of_int !page_footnotes)])
-                                   ))
-                       ]
-                     else
-                       []
+                 newPar ~environment:(fun x->x) textWidth params
+                   (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
+                 match !str with
+                     []->assert false
+                   | h::s->(
+                       str:=s;
+                       let pages=minipage { env with
+                                              normalLead=env.normalLead*.(phi-.1.);
+                                              size=env.size*.(phi-.1.) }
+                         (top h)
+                       in
+                         if Array.length pages>0 then
+                           [User (Footnote (count, pages.(0)));
+                            Drawing (drawing ~offset:(env.size/.2.)
+                                       (draw_boxes (boxify_scoped { env with size=env.size/.phi }
+                                                      [T (string_of_int !page_footnotes)])
+                                       ))
+                           ]
+                         else
+                           []
+                     )
           )]
 let graph=ref 0
 
@@ -223,25 +229,38 @@ module Env_theorem=struct
   let do_end_theorem ()=
     match !str with
         h0::h1::s ->
-          let success=ref false in
           let rec first_par=function
               Paragraph p->
-                success:=true;
                 Paragraph { p with par_contents=
                     Env (fun env->incr_counter ~level:1 env "theorem")::
-                      C (fun env->
-                           let lvl,num=(StrMap.find "theorem" env.counters) in
-                           let _,str_counter=StrMap.find "structure" env.counters in
-                           let sect_num=drop (List.length str_counter - lvl) str_counter in
-                             alternative Bold [T "Theorem"; B (fun env->env.stdGlue); T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
-                        )::
+                      CFix (fun env->
+                              let lvl,num=(StrMap.find "theorem" env.counters) in
+                              let _,str_counter=StrMap.find "structure" env.counters in
+                              let sect_num=drop (List.length str_counter - lvl) str_counter in
+                                alternative Bold [T "Theorem"; B (fun env->env.stdGlue); T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
+                           )::
                       B (fun env->env.stdGlue)::
                       p.par_contents
                           }
-            | Node n->Node { n with children=IntMap.map (fun x->if !success then x else first_par x) n.children }
+            | Node n->
+                let k0,_=IntMap.min_binding n.children in
+                let paragraph=IntMap.singleton k0
+                  (first_par (Paragraph
+                                { par_contents=[]; par_env=(fun x->x);
+                                  par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+                                  parameters=parameters; completeLine=textWidth
+                                }))
+                in
+                  Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b) n.children paragraph }
             | x -> x
           in
-	    str := up (newChild h0 (first_par (fst h1))) :: s
+          let stru=match fst h0 with
+              Node n->
+                let a,b=IntMap.min_binding n.children in
+                  Node { n with children = IntMap.add a (first_par b) n.children }
+            | x->first_par x
+          in
+	    str := up (newChild h1 stru) :: s
       |_ -> assert false
 
   module Env_Proof=struct

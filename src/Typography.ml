@@ -819,28 +819,27 @@ let flatten env0 str=
       | Node s-> (
           s.tree_paragraph <- !n;
           let flushes=ref [] in
-          let rec flat_children indent env1= function
-              []->env1
-            | (_, (Paragraph p))::s->(
+          let flat_children _ a (indent, env1)=match a with
+            | (Paragraph p)->(
                 let env2=flatten (p.par_env env1) (level+1) (
                   Paragraph { p with par_contents=
                       (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                 ) in
-                  flat_children true (p.par_post_env env1 env2) s
+                  true, p.par_post_env env1 env2
               )
-            | (_,(FigureDef _ as h))::s->(
+            | FigureDef _ as h->(
                 let env2=flatten env1 (level+1) h in
                   flushes:=(IntMap.cardinal !figures)::(!flushes);
-                  flat_children indent env2 s
+                  indent,env2
               )
-            | (_, (Node h as tr))::s->(
+            | Node h as tr->(
                 let env2=h.node_env env1 in
                 let env2'={ env2 with counters=StrMap.filter (fun _ (a,b)->level>a) env2.counters } in
                 let env3=flatten env2' (level+1) tr in
-                  flat_children false (h.node_post_env env1 env3) s
+                  false, h.node_post_env env1 env3
               )
           in
-          let env2=flat_children false env (IntMap.bindings s.children) in
+          let _,env2=IntMap.fold flat_children s.children (false,env) in
             paragraphs:=(match !paragraphs with
                              []->[]
                            | h::s->(h@(List.map (fun x->User (FlushFigure x)) !flushes))::s);
@@ -988,7 +987,7 @@ let label ?(labelType="structure") name=
             { env with names=StrMap.add name (env.counters, labelType, w) env.names });
 
    B (fun env ->
-          [User (Label name)])
+        [User (Label name)])
   ]
 
 let sectref name=
