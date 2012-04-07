@@ -1,12 +1,8 @@
 open Config
 
-
+exception File_not_found of (string*string list)
 let rec findPath f path=function
-    []->(
-      Printf.fprintf stderr "%s : Not found. Path :\n" f;
-      List.iter (Printf.fprintf stderr "\t%s\n") path;
-      raise Not_found
-    )
+    []->raise (File_not_found (f,path))
   | h::s when Sys.file_exists (Filename.concat h f)->(Filename.concat h f)
   | h::s -> (findPath f path s)
 

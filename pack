@@ -16,9 +16,9 @@ rm -Rf texprime-$version
 mv texprime texprime-$version
 tar -cvf texprime-$version.tar texprime-$version
 gzip texprime-$version.tar
-mv texprime-$version.tar.gz $init_dir
 cat /Users/pe/Projects/ports/ml/texprime/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 texprime-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
 mv Portfile /Users/pe/Projects/ports/ml/texprime/
+mv texprime-$version.tar.gz $init_dir
 cd $init_dir
 
 #scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime

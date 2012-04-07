@@ -215,7 +215,7 @@ let defaultEnv:user environment=
                []->[||]
              | h::s->(hyph s 0 h; pos));
   with
-      Not_found -> (fun x->[||])
+      File_not_found _-> (fun x->[||])
   in
   let fsize=5. in
     {

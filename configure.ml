@@ -68,7 +68,7 @@ let _=
     Printf.fprintf out "\tinstall -m 644 src/texprime.cma src/texprime.cmxa $(shell ocamlfind ocamlc -where)\n";
     Printf.fprintf out "\tinstall -m 644 src/META src/texprime.cma src/texprime.cmxa $(shell ocamlfind ocamlc -where)/site-lib/texprime\n";
 
-    Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [\"%s\"]\nlet hyphendir=ref [\"%s\"]\n"
+    Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"
       (String.concat ";" (List.map (fun s->"\""^s^"\"") !fonts_dir))
       !bin_prefix
       (String.concat ";" (List.map (fun s->"\""^s^"\"") !grammars_prefix))
