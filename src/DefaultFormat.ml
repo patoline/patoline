@@ -128,7 +128,8 @@ module Env_itemize = struct
 
   let item ()=
     let str0,str1=match !str with []->(Node empty,[]),[] | h::s->h,s in
-      str:=newChild (top str0) (Node empty)::str1
+      str:=newChild (top str0) (Node empty)::str1;
+      []
 
   let addon = [ T "–"; B (fun env->[glue env.size env.size env.size])]
 

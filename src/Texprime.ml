@@ -70,7 +70,7 @@ let print_math ch display m =
 	let elt = "Maths.symbol \""^name^"\"" in
 	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
     | Fun name ->
-	let elt = "fun env -> Maths.glyphs \""^name^"\" { env with Maths.mathsFont=env0.font }" in
+	let elt = "fun env -> Maths.glyphs \""^name^"\" { env with Maths.mathsFont=Lazy.lazy_from_val env0.font }" in
 	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
     | Indices(ind', m) ->
       fn ind' ch m 
@@ -263,7 +263,7 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf "\n\n" 
 		    | Math m ->
-		      Printf.printf "let _ = newPar ~structure:str ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
+		      Printf.printf "let _ = newPar ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
 		        (fun ch -> print_math ch true) m;
 		      next_no_indent := true
                     | Ignore -> 
@@ -278,7 +278,7 @@ let _=
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "let _ = newPar ~structure:str ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
+			  "let _ = newPar ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end\n\n";

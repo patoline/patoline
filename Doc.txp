@@ -114,7 +114,7 @@ Pour l'instant le logiciel est en cours de développement et on est loin d'avoir
 
 -> Table des matieres
 
-{{ let _ = table_of_contents !str 1 }}
+{{ let _ = table_of_contents (top (List.hd !str)) 1 }}
 
 -<
 
