@@ -21,4 +21,4 @@ cat /Users/pe/Projects/ports/ml/texprime/Portfile | sed -e "s/sha256[ ]*\([^ ]*\
 mv Portfile /Users/pe/Projects/ports/ml/texprime/
 cd $init_dir
 
-scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime
+#scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime
