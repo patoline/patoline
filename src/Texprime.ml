@@ -1,7 +1,7 @@
 open Config
 let fugue=ref true
 let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path");
-            ("--no-implicit-fugue",Arg.Unit (fun ()->fugue:=false), "Adds directories to the font search path");
+            ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately");
            ]
 let filename=ref []
 let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :"
@@ -10,14 +10,18 @@ open Lexing
 open Parser
 
 
-let preambule = "
+let preambule= "
   open Typography
   open Util
   open Config
   open Document
   open Typography.Output.Common
-  open DefaultFormat
-"
+"^(if !fugue then
+     "module D=(struct let structure=ref [Node empty,[]] end:DocumentStructure)\n"
+   else "module Document=functor(D:DocumentStructure)->struct\n")
+  ^
+  "module Format=DefaultFormat.DefaultFormat(D);;\nopen Format;;\n"
+
 
 let postambule : ('a, 'b, 'c) format = "
   module Out=Output.Paper.Pdf
@@ -26,9 +30,9 @@ let postambule : ('a, 'b, 'c) format = "
     let filename=\"%s.pdf\" in
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
-     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !str)); close_out o;
+     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
      fixable:=false;
-     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top (List.hd !str))) in
+     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top (List.hd !D.structure ))) in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -40,7 +44,7 @@ let postambule : ('a, 'b, 'c) format = "
      let env2, reboot=update_names env1 user' in
      if reboot && !fixable then (
        resolve (i+1) env2
-     ) else Out.output (fst (top (List.hd !str))) pars figures env2 pages filename
+     ) else Out.output (fst (top (List.hd !D.structure ))) pars figures env2 pages filename
   in
      resolve 0 defaultEnv
 "
@@ -166,7 +170,11 @@ let rec print_macro ch op mtype name args =
     | `End -> Printf.fprintf ch "let _ = do_end_%s()\nend" name
     | `Include ->
         incr moduleCounter;
-        Printf.fprintf ch "let _=str:=(Node empty,[])::(!str);;\nmodule TEMP%d=%s\nopen TEMP%d\nlet _=match !str with h0::h1::s->str:=newChild h1 (fst h0)::s | _->();;" !moduleCounter name !moduleCounter
+        Printf.fprintf ch
+          "let _=D.structure:=(Node empty,[])::(!D.structure);;\nmodule TEMP%d=%s.Document(D);;
+           module TEMP%d=struct open TEMP%d end
+           let _=match !D.structure with h0::h1::s->D.structure:=newChild h1 (fst h0)::s | _->();;" !moduleCounter name (!moduleCounter+1) !moduleCounter;
+        incr moduleCounter
   end
 
 and print_contents op ch l = 
@@ -211,7 +219,7 @@ let _=
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "let _ = title %b %a;;\n\n" (at = None) (print_contents op) title;
+		      Printf.printf "let _ = title D.structure %b %a;;\n\n" (at = None) (print_contents op) title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
@@ -225,7 +233,7 @@ let _=
 		    match docs with
 		      [] -> 
 			for i = 0 to lvl - 1 do
-			  Printf.printf "let _ = go_up str;;\n\n"
+			  Printf.printf "let _ = go_up D.structure;;\n\n"
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
@@ -235,7 +243,7 @@ let _=
 		      let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 			else "(fun x -> x)"
 		      in
-		      Printf.printf "let _ = newPar ~environment:%s Document.C.normal parameters %a;;\n" 
+		      Printf.printf "let _ = newPar D.structure ~environment:%s Document.C.normal parameters %a;;\n" 
 			env (print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
@@ -246,22 +254,22 @@ let _=
 		      let num = if numbered then "" else "'" in
 		      (match docs with
 			Relative docs ->
-			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
+			  Printf.printf "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents op) title;
 			  output_list true (!lvl + 1) docs;
-			  Printf.printf "let _ = go_up str;;\n\n"
+			  Printf.printf "let _ = go_up D.structure ;;\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
 			  for i = 0 to !lvl - l do
-			    Printf.printf "let _ = go_up str;;\n\n"
+			    Printf.printf "let _ = go_up D.structure ;;\n\n"
 			  done;
-			  Printf.printf "let _ = newStruct%s %a;;\n\n" num (print_contents op) title;
+			  Printf.printf "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents op) title;
 			  lvl := l
 		      )
 		    | Macro(mtype, name, args) ->
 		      print_macro stdout op mtype name args;
 		      Printf.printf "\n\n" 
 		    | Math m ->
-		      Printf.printf "let _ = newPar ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
+		      Printf.printf "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
 		        (fun ch -> print_math ch true) m;
 		      next_no_indent := true
                     | Ignore -> 
@@ -276,7 +284,7 @@ let _=
 		      in
 		      List.iter (fun l ->
 			Printf.printf
-			  "let _ = newPar ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
+			  "let _ = newPar D.structure ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
 		      Printf.printf "end\n\n";
@@ -288,6 +296,8 @@ let _=
 		  close_in op;
                   if !fugue then
 		    Printf.printf postambule (Filename.chop_extension h)
+                  else
+		    Printf.printf "\nend\n"
 	    with
 	    | Dyp.Syntax_error ->
 	      raise

@@ -192,7 +192,9 @@ and 'a content=
   | FileRef of (string*int*int)
   | Env of ('a environment -> 'a environment)
   | Scoped of ('a environment->'a environment)*('a content list)
-
+module type DocumentStructure=sig
+  val structure:(user tree*(int*user tree) list) list ref
+end
 let defaultFam= lmroman
 let defaultMono= lmmono
 let defaultEnv:user environment=
@@ -323,7 +325,7 @@ let rec follow t l=match l with
   | (a,_)::s->follow (child t a) s
 
 (* La structure actuelle *)
-let str=Printf.printf "str : init\n";ref [(Node empty,[])]
+(* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
 (* Le chemin vers le noeud courant *)
 
 let fixable=ref false
@@ -496,7 +498,7 @@ let in_text_figure a b c d e line=
     next_acceptable_height=(fun node h->h+.5.) }
 
 
-let figure ?(parameters=center) ?(name="") drawing=
+let figure str ?(parameters=center) ?(name="") drawing=
   let str0,str1=match !str with
       []->(Node empty,[]),[]
     | h::s->h,s
@@ -539,7 +541,7 @@ let begin_figure name=
 
 
 
-let newPar ?(environment=(fun x->x)) complete parameters par=
+let newPar str ?(environment=(fun x->x)) complete parameters par=
   let para=Paragraph {par_contents=par; par_env=environment;
                       par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
                       par_parameters=parameters; par_completeLine=complete }
@@ -559,7 +561,7 @@ let string_of_contents l =
   | _ -> ()) l;
   !s
 
-let newStruct ?label displayname =
+let newStruct str ?label displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
@@ -638,7 +640,7 @@ let newStruct ?label displayname =
 
 
 
-let newStruct' ?label displayname =
+let newStruct' str ?label displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
@@ -713,7 +715,7 @@ let newStruct' ?label displayname =
 (*         next_acceptable_height=(fun node h->max (node.height+.20.) (h+.5.)) } *)
 (*   in *)
 (*   newPar (C.normal) mcenter [size 10. str ] *)
-let title ?label is_last displayname =Printf.printf "title : %d\n" (List.length !str);
+let title str ?label is_last displayname =Printf.printf "title : %d\n" (List.length !str);
   let (t,path),str1=match !str with
       []->(Node empty,[]),[]
     | h::s->h,s
@@ -907,7 +909,7 @@ let rec make_struct positions tree=
 
 
 let table_of_contents str tree max_level=
-  newPar ~environment:(fun x->{x with par_indent=[]}) C.normal parameters [
+  newPar str ~environment:(fun x->{x with par_indent=[]}) C.normal parameters [
     BFix (
       fun env->
         let x0=75. in
@@ -974,7 +976,7 @@ let table_of_contents str tree max_level=
             | Node _->[]
         in
           toc { env with counters=StrMap.add "structure" (-1,[0]) env.counters }
-            0 (fst (top str))
+            0 (fst (top (List.hd !str)))
     )]
 
 
