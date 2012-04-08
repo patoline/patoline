@@ -1,37 +1,32 @@
 open Config
-let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")]
+let fugue=ref true
+let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path");
+            ("--no-implicit-fugue",Arg.Unit (fun ()->fugue:=false), "Adds directories to the font search path");
+           ]
 let filename=ref []
 let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :"
 
-open Binary
-open Constants
 open Lexing
-open Util
-open Fonts
-open Fonts.FTypes
 open Parser
 
 
 let preambule = "
-  open Config
   open Typography
-  open Parameters
-  open Fonts.FTypes
   open Util
-  open Fonts
-  open OutputCommon
-  open OutputPaper
+  open Config
+  open Document
+  open Typography.Output.Common
   open DefaultFormat
-
 "
 
 let postambule : ('a, 'b, 'c) format = "
-  module Out=OutputPaper.Output(Pdf)
+  module Out=Output.Paper.Pdf
 
   let _ = 
     let filename=\"%s.pdf\" in
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
+     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !str)); close_out o;
      fixable:=false;
      let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top (List.hd !str))) in
      let (_,pages,user')=TS.typeset
@@ -58,7 +53,7 @@ let split_ind indices =
 
 let print_math ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
-  Printf.fprintf ch 
+  Printf.fprintf ch
     "[B (fun env0 -> List.map (fun b -> Util.resize env0.size b) (let style = %s and _env = Maths.default.(Maths.int_of_style %s) in Maths.draw_maths Maths.default style ("
     style style;
   let rec fn indices ch m =
@@ -169,6 +164,9 @@ let rec print_macro ch op mtype name args =
       in
       Printf.fprintf ch "open %s%s\n let _ = do_begin_%s()" modname end_open name
     | `End -> Printf.fprintf ch "let _ = do_end_%s()\nend" name
+    | `Include ->
+        incr moduleCounter;
+        Printf.fprintf ch "let _=str:=(Node empty,[])::(!str);;\nmodule TEMP%d=%s\nopen TEMP%d\nlet _=match !str with h0::h1::s->str:=newChild h1 (fst h0)::s | _->();;" !moduleCounter name !moduleCounter
   end
 
 and print_contents op ch l = 
@@ -237,7 +235,7 @@ let _=
 		      let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 			else "(fun x -> x)"
 		      in
-		      Printf.printf "let _ = newPar ~environment:%s textWidth parameters %a;;\n" 
+		      Printf.printf "let _ = newPar ~environment:%s Document.C.normal parameters %a;;\n" 
 			env (print_contents op) p
 		    | Caml(s,e) ->
 		      let size = e - s in
@@ -263,7 +261,7 @@ let _=
 		      print_macro stdout op mtype name args;
 		      Printf.printf "\n\n" 
 		    | Math m ->
-		      Printf.printf "let _ = newPar ~environment:(fun x->{x with par_indent = []}) textWidth center %a;;\n" 
+		      Printf.printf "let _ = newPar ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
 		        (fun ch -> print_math ch true) m;
 		      next_no_indent := true
                     | Ignore -> 
@@ -288,7 +286,8 @@ let _=
 		  in
 		  output_list true 0 docs;
 		  close_in op;
-		  Printf.printf postambule (Filename.chop_extension h)
+                  if !fugue then
+		    Printf.printf postambule (Filename.chop_extension h)
 	    with
 	    | Dyp.Syntax_error ->
 	      raise

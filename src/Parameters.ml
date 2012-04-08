@@ -1,6 +1,6 @@
 open Util
 open Binary
-module Completion (T:Typeset.Typeset)= struct
+module Completion (T:Break.Typeset)= struct
 
 type 'a completion=float->'a Util.box array array ->
          Util.drawingBox array ->

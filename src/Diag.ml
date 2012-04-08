@@ -1,4 +1,4 @@
-open Typography
+open Document
 module Drivers = OutputCommon
 
 
@@ -457,7 +457,7 @@ module Node = struct
   let center node = node.make_anchor Anchor.Center
 
   type spec = { at : Point.t ;
-		contents_spec : (Typography.user Typography.content) list ;
+		contents_spec : (Document.user Document.content) list ;
 		shape : NodeShape.t ;
 		anchor: Anchor.spec }
   let default = { 

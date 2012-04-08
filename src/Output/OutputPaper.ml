@@ -5,7 +5,7 @@ open Constants
 open Fonts.FTypes
 open OutputCommon
 open Util
-open Typography
+open Document
 
 module Buf=UTF8.Buf
 

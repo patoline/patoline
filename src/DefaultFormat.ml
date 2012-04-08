@@ -1,4 +1,4 @@
-open Typography
+open Document
 open Parameters
 open Fonts.FTypes
 open Util
@@ -9,37 +9,13 @@ open Binary
 
 let _=Random.self_init ()
 
-let ragged_left a b c d e line=
-  let par=parameters a b c d e line in
-  { par with measure=line.nom_width }
-
-let ragged_right a b c d e line=
-  let par=parameters a b c d e line in
-  { par with
-    measure=line.nom_width;
-    left_margin=par.left_margin+.par.measure-.line.nom_width }
-
-let in_text_figure a b c d e line=
-  let par=parameters a b c d e line in
-  { par with
-    measure=line.nom_width;
-    left_margin=par.left_margin+.par.measure-.line.nom_width;
-    next_acceptable_height=(fun node h->h+.5.) }
-
-let title is_last str =
-  let mcenter a b c d e l =
-    { (center a b c d e l) with
-        min_height_before=0.;
-        next_acceptable_height=(fun node h->max (node.height+.20.) (h+.5.)) }
-  in
-  newPar (Typography.C.normal) mcenter [size 10. str ]
 
 let author is_last str =
   let mcenter a b c d e l =
     { (center a b c d e l) with
         next_acceptable_height=(fun node h->max (node.height) (h+.5.)) }
   in
-  newPar (Typography.C.normal) mcenter [size 6. str ]
+  newPar (Document.C.normal) mcenter [size 6. str ]
 
 let institute is_last str =
   let mcenter a b c d e l =
@@ -47,9 +23,7 @@ let institute is_last str =
         min_height_before=11.;
         next_acceptable_height=(fun node h->max (node.height+.10.) (h+.5.)) }
   in
-  newPar (Typography.C.normal) mcenter [size 4. str ]
-
-let textWidth= Typography.C.normal
+  newPar (Document.C.normal) mcenter [size 4. str ]
 
 let lang_OCaml s = [T s]
 
@@ -102,7 +76,7 @@ let footnote l=
                        next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
                    }
                in
-                 newPar ~environment:(fun x->x) textWidth params
+                 newPar ~environment:(fun x->x) C.normal params
                    (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
                  match !str with
                      []->assert false
@@ -175,7 +149,7 @@ module Env_itemize = struct
                                            normalMeasure=env.normalMeasure -. w;
                                            par_indent=[]
                                        });
-                          parameters=params p.parameters }
+                          par_parameters=params p.par_parameters }
         | _ -> t
     in
     let rec tirets=function
@@ -187,8 +161,8 @@ module Env_itemize = struct
                 (match a with
                 | Paragraph p ->
                   Paragraph { p with
-                    par_contents=addon@p.par_contents;
-                    parameters=params1 p.parameters
+                                par_contents=addon@p.par_contents;
+                                par_parameters=params1 p.par_parameters
                   }
                 | t -> t) chi }
 	  with Not_found -> t)
@@ -221,7 +195,7 @@ module Env_abstract = struct
 
 end
 
-let theoremRef name=Typography.generalRef ~refType:"theorem" "th0"
+let theoremRef name=Document.generalRef ~refType:"theorem" "th0"
 module Env_theorem=struct
   let do_begin_theorem ()=
     str := (Node empty, []):: !str
@@ -248,7 +222,7 @@ module Env_theorem=struct
                   (first_par (Paragraph
                                 { par_contents=[]; par_env=(fun x->x);
                                   par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
-                                  parameters=parameters; completeLine=textWidth
+                                  par_parameters=parameters; par_completeLine=C.normal
                                 }))
                 in
                   Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b) n.children paragraph }

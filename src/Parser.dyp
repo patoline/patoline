@@ -41,13 +41,13 @@ and doc =
    | Math of math
    | Verbatim of string option * string list
    | Struct of content list * bool * structType
-   | Macro of [ `Single | `Module | `Begin | `End ] * string * doc list
+   | Macro of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
    | Ignore
 
 and content =
      TC of string
    | FC of bool * math
-   | MC of [ `Single | `Module | `Begin | `End ] * string * doc list
+   | MC of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
    | GC
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
@@ -123,7 +123,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
 
 let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
 
-let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar";
+let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include";
     	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
 }
 
@@ -192,6 +192,7 @@ main lexer =
   newline (space* newline)+ -> PARSKIP { set_newline 2 lexbuf; "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
+  '\\' "Include" -> INCLUDE
   '\\' lident
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '\\' uident
@@ -243,6 +244,8 @@ topmacro:
       { Macro(`Begin, name, List.rev a) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
       { Macro(`End, name, List.rev a) }
+  | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
+      { Macro(`Include,name,[]) }
   | TMACRO<name> args<a>
       { if List.mem name reserved then raise Giveup;
         Macro(`Module, name, List.rev a) }

@@ -1,5 +1,4 @@
 open FTypes
-open Constants
 open Binary
 open CFF
 open CamomileLibrary

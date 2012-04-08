@@ -1,6 +1,6 @@
 open CamomileLibrary
 open Binary
-open Typography
+open Document
 open OutputCommon
 open Util
 open Constants

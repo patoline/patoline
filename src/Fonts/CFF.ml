@@ -1,8 +1,9 @@
 open CamomileLibrary
 open Binary
 open Bezier
-open Constants
 open FTypes
+let pt_of_mm x=(72.*.x)/.25.4
+let mm_of_pt x=(25.4*.x)/.72.
 
 type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
