@@ -20,7 +20,7 @@ let preambule= "
      "module D=(struct let structure=ref [Node empty,[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
-  "module Format=DefaultFormat.DefaultFormat(D);;\nopen Format;;\n"
+  "module Format=DefaultFormat(D);;\nopen Format;;\n"
 
 
 let postambule : ('a, 'b, 'c) format = "

@@ -65,6 +65,7 @@ let _=
     Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_prefix);
 
     Printf.fprintf out "\tinstall -m 755 -d $(shell ocamlfind ocamlc -where)/site-lib/texprime\n";
+    Printf.fprintf out "\tinstall -m 755 -d $(shell ocamlfind ocamlc -where)/site-lib/stublibs\n";
     Printf.fprintf out "\tinstall -m 644 src/typography.cma src/typography.cmxa $(shell ocamlfind ocamlc -where)\n";
     Printf.fprintf out "\tinstall -m 644 src/META src/typography.cma src/typography.cmxa src/typography.a $(shell ocamlfind ocamlc -where)/site-lib/texprime\n";
     Printf.fprintf out "\tinstall -m 644 src/Typography.cmi $(shell ocamlfind ocamlc -where)/site-lib/texprime/typography.cmi\n";
