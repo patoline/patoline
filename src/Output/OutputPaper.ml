@@ -43,7 +43,7 @@ module Output=functor(M:Driver)->struct
 
                 if line.paragraph<> !par then (
                   par:=line.paragraph;
-                  positions.(!par)<-(i,0., y +. snd (line_height paragraphs line))
+                  positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs line))
                 );
 
                 let comp=compression paragraphs (param,line) in
@@ -110,30 +110,5 @@ module Output=functor(M:Driver)->struct
         in
           { page with pageContents=List.rev page.pageContents }
     in
-    let rec make_struct tree=
-      match tree with
-          Paragraph _ | FigureDef _->
-            { OutputCommon.name="";
-              OutputCommon.displayname=[];
-              OutputCommon.page=0;
-              OutputCommon.struct_x=0.;
-              OutputCommon.struct_y=0.;
-              OutputCommon.substructures=[||] }
-        | Node s-> (
-            let (p,x,y)=positions.(s.tree_paragraph) in
-            let rec make=function
-                []->[]
-              | (_,Node u)::s -> (make_struct (Node u))::(make s)
-              | _ :: s ->make s
-            in
-            let a=Array.of_list (make (IntMap.bindings s.children)) in
-              { OutputCommon.name=s.name;
-                OutputCommon.displayname=[] (* FIXME boxify ?env [T s.name] *);
-                OutputCommon.page=p;
-                OutputCommon.struct_x=x;
-                OutputCommon.struct_y=y;
-                OutputCommon.substructures=a }
-          )
-    in
-      M.output ~structure:(make_struct structure) (Array.mapi draw_page opt_pages) file
+      M.output ~structure:(make_struct positions structure) (Array.mapi draw_page opt_pages) file
 end

@@ -1,4 +1,6 @@
 module Config=Config
+module IntMap=Binary.IntMap
+module StrMap=Binary.StrMap
 module Fonts=Fonts
 module Util=Util
 module Break=Break

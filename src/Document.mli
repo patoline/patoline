@@ -102,11 +102,12 @@ module C :
       Util.drawingBox array ->
       Util.line TS.UMap.t -> Util.line -> bool -> Util.line list
   end
+type tag=[`InTOC]
 type 'a node = {
   name : string;
   displayname : 'a content list;
-  in_toc : bool;
   children : 'a tree Binary.IntMap.t;
+  tags : tag list;
   node_env : 'a environment -> 'a environment;
   node_post_env : 'a environment -> 'a environment -> 'a environment;
   mutable tree_paragraph : int;

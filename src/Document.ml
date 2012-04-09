@@ -129,12 +129,15 @@ module TS=Break.Make
    end)
 
 module C=Parameters.Completion (TS)
-
+type tag=
+    [
+      `InTOC
+    ]
 type 'a node={
   name:string;
   displayname:'a content list;
-  in_toc : bool;
   children:'a tree IntMap.t;
+  tags:tag list;
   node_env:'a environment -> 'a environment;
   node_post_env:'a environment -> 'a environment -> 'a environment;
   mutable tree_paragraph:int;
@@ -284,14 +287,15 @@ let push_counter env name=
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty : user node={ name=""; in_toc = true;
+let empty : user node={ name="";
+                        tags=[];
                         displayname = []; children=IntMap.empty;
                         node_env=(fun x->x);
                         node_post_env=(fun x y->{ x with
                                                     counters=y.counters;
                                                     names=y.names;
                                                     user_positions=y.user_positions });
-                        tree_paragraph= (-1) }
+                        tree_paragraph=0 }
 
 type 'a cxt=(int*'a tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
@@ -571,6 +575,7 @@ let newStruct str ?label displayname =
     empty with
       name=name;
       displayname =displayname;
+      tags=[`InTOC];
       node_env=(
         fun env->
           { env with
@@ -650,7 +655,7 @@ let newStruct' str ?label displayname =
     empty with
       name=name;
       displayname =displayname;
-      in_toc = false;
+      tags=[`InTOC];
       node_env=(
         fun env->
           { env with
@@ -726,7 +731,8 @@ let title str ?label is_last displayname =Printf.printf "title : %d\n" (List.len
   in
   let t0'=
     match t with
-        Paragraph _ | FigureDef _->Node { name=name; in_toc = false;
+        Paragraph _ | FigureDef _->Node { name=name;
+                                          tags=[];
                                           displayname = displayname;
 				          children=IntMap.singleton 1 t;
                                           node_env=(fun x->x);
@@ -839,7 +845,7 @@ let flatten env0 str=
             f.fig_post_env env env1
         )
       | Node s-> (
-          s.tree_paragraph <- !n;
+          s.tree_paragraph <- List.length !paragraphs;
           let flushes=ref [] in
           let flat_children _ a (indent, env1)=match a with
             | (Paragraph p)->(
@@ -892,7 +898,7 @@ let rec make_struct positions tree=
             OutputCommon.struct_y=0.;
             OutputCommon.substructures=[||] }
     | Node s-> (
-        let (p,x,y)=positions.(s.tree_paragraph) in
+        let (p,x,y)=try positions.(s.tree_paragraph) with _->(0,0.,0.) in
         let rec make=function
             []->[]
           | (_,Paragraph _) :: s | (_,FigureDef _) :: s->make s
@@ -940,7 +946,8 @@ let table_of_contents str tree max_level=
                 let chi=flat_children env0 (IntMap.bindings s.children) in
                 let a,b=(try StrMap.find "structure" (env0.counters) with _-> -1,[]) in
                 let count=drop 1 b in
-                  if s.in_toc && count<>[] then (
+                let in_toc=List.fold_left (fun a b->match b with `InTOC->true | _->a) false s.tags in
+                  if in_toc && count<>[] then (
                     try
                       let page=(1+(TS.UMap.find (Structure count) env0.user_positions).Util.page) in
                       let fenv env={ env with
