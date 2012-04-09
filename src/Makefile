@@ -31,7 +31,7 @@ LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 ########## Compilers ##########
 
 OPTS= -I Fonts -I Output -I Output/Drivers
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" str.cma
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" -g str.cma
 CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" str.cmxa
 CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp $(OPTS) -pp "cpp -w"
 
@@ -132,8 +132,8 @@ DefaultGrammar.opt.pdf: texprime.opt typography.cmxa DefaultGrammar.txp
 
 clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
-	rm -f Fonts/*.cm[ioxa] Fonts/*.cmxa Fonts/*.o Fonts/*~ Fonts/*.*~ Fonts/\#*\#
-	rm -f Output/*.cm[ioxa] Output/*.cmxa Output/*.o Output/*~ Output/*.*~ Output/\#*\#
+	make -C Fonts clean
+	make -C Output clean
 	rm -f Parser.ml
 	rm -f *.tml *.tmx *.tgo *.tgx
 	rm -Rf doc
