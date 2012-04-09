@@ -16,8 +16,8 @@ rm -Rf texprime-$version
 mv texprime texprime-$version
 tar -cvf texprime-$version.tar texprime-$version
 gzip texprime-$version.tar
-cat /Users/pe/Projects/ports/ml/texprime/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 texprime-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projects/ports/ml/texprime/
+cat /Users/pe/Projets/ports/ml/texprime/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 texprime-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
+mv Portfile /Users/pe/Projets/ports/ml/texprime/
 mv texprime-$version.tar.gz $init_dir
 cd $init_dir
 
