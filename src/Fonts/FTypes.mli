@@ -15,9 +15,9 @@ val glyph_id_utf8 : glyph_ids -> CamomileLibrary.UTF8.t
 
 type subst = { original_glyphs : int array; subst_glyphs : int array; }
 type chain = {
-  before : Binary.IntSet.t array;
-  input : Binary.IntSet.t array;
-  after : Binary.IntSet.t array;
+  before : int list array;
+  input : int list array;
+  after : int list array;
 }
 type substitution =
     Alternative of int array

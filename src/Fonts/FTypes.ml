@@ -24,7 +24,7 @@ let rec glyph_id_utf8=function
 
 
 type subst= { original_glyphs:int array; subst_glyphs:int array }
-type chain= { before:IntSet.t array; input:IntSet.t array; after:IntSet.t array }
+type chain= { before:(int list) array; input:(int list) array; after:(int list) array }
 type substitution=
     Alternative of int array
   | Subst of subst

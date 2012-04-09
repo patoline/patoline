@@ -413,27 +413,27 @@ let rec readLookup file gsubOff i=
 
                 ) else if format=3 then (
                   let backCount=readInt2 file in
-                  let back_arr=Array.make backCount IntSet.empty in
+                  let back_arr=Array.make backCount [] in
                     for i=1 to backCount do
                       let covOff=seek_in file (offset1+2+i*2); readInt2 file in
                       let cov=readCoverageIndex file (offset1+covOff) in
-                        List.iter (fun (a,_)->back_arr.(backCount-i)<-IntSet.add a back_arr.(backCount-i)) cov
+                        List.iter (fun (a,_)->back_arr.(backCount-i)<-a::back_arr.(backCount-i)) cov
                     done;
                     let offset2=offset1+4+backCount*2 in
                     let inputCount=seek_in file offset2; readInt2 file in
-                    let input_arr=Array.make inputCount IntSet.empty in
+                    let input_arr=Array.make inputCount [] in
                       for i=0 to inputCount-1 do
                         let covOff=seek_in file (offset2+2+i*2); readInt2 file in
                         let cov=readCoverageIndex file (offset1+covOff) in
-                          List.iter (fun (a,_)->input_arr.(i)<-IntSet.add a input_arr.(i)) cov
+                          List.iter (fun (a,_)->input_arr.(i)<-a::input_arr.(i)) cov
                       done;
                       let offset3=offset2+2+inputCount*2 in
                       let aheadCount=seek_in file offset3; readInt2 file in
-                      let ahead_arr=Array.make aheadCount IntSet.empty in
+                      let ahead_arr=Array.make aheadCount [] in
                         for i=0 to aheadCount-1 do
                           let covOff=seek_in file (offset3+2+i*2); readInt2 file in
                           let cov=readCoverageIndex file (offset1+covOff) in
-                            List.iter (fun (a,_)->ahead_arr.(i)<-IntSet.add a ahead_arr.(i)) cov
+                            List.iter (fun (a,_)->ahead_arr.(i)<-a::ahead_arr.(i)) cov
                         done;
                         subst:=(Chain {before=back_arr; input=input_arr; after=ahead_arr})::(!subst)
                 );
@@ -498,7 +498,7 @@ let select_features font feature_tags=try
         let lookupCount=seek_in file (gsubOff+features+lookupOff+2); readInt2 file in
         let rec read lookup s=
           if lookup>=lookupCount then s else (
-            let l=readInt2 file in read (lookup+1) (IntSet.add l s)
+            let l=readInt2 file in read (lookup+1) (l::s)
           )
         in
           if List.mem feature_tag feature_tags then
@@ -507,7 +507,7 @@ let select_features font feature_tags=try
             select (i+1) result
     )
   in
-    List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (IntSet.elements (select 0 IntSet.empty)))
+    List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (select 0 []))
 
 with Table_not_found _->[]
 

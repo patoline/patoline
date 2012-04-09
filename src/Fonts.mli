@@ -30,9 +30,9 @@ module FTypes :
     }
     type chain =
       FTypes.chain = {
-      before : Binary.IntSet.t array;
-      input : Binary.IntSet.t array;
-      after : Binary.IntSet.t array;
+      before : int list array;
+      input : int list array;
+      after : int list array;
     }
     type substitution =
       FTypes.substitution =
