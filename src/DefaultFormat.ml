@@ -92,6 +92,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
         positioning=positioning f;
         footnote_y=10.;
         size=fsize;
+        lead=fsize*.5./.4.;
         normalMeasure=150.;
         normalLead=fsize*.5./.4.;
         normalLeftMargin=(fst a4-.150.)/.2.;
@@ -230,7 +231,8 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                    | h::s->(
                        str:=s;
                        let pages=minipage { env with
-                                              normalLead=env.normalLead*.(phi-.1.);
+                                              normalLead=env.lead*.(phi-.1.);
+                                              lead=env.lead*.(phi-.1.);
                                               size=env.size*.(phi-.1.) }
                          (top h)
                        in

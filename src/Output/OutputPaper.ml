@@ -70,9 +70,9 @@ module Output=functor(M:Driver)->struct
                         w
                     )
                   | User (Footnote (_,g))->(
-                        footnotes:= g::(!footnotes);
-                        footnote_y:=max !footnote_y (270.-.param.page_height);
-                        0.
+                      footnotes:= g::(!footnotes);
+                      footnote_y:=max !footnote_y (270.-.param.page_height);
+                      0.
                     )
                   | b->box_width comp b
                 in

@@ -102,6 +102,7 @@ and 'a environment={
   fontColor:OutputCommon.color;
   font:font;
   size:float;
+  lead:float;
   footnote_y:float;
   normalMeasure:float;
   normalLead:float;
@@ -302,7 +303,7 @@ let family fam t =
 let resize_env fsize env=
   { env with
       size=fsize;
-      normalLead=env.normalLead*.fsize/.env.size;
+      lead=env.normalLead*.fsize/.env.size;
       stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }
 
 (* Changer de taille dans un scope *)
@@ -328,7 +329,6 @@ let features f t=
 
 
 let parameters env paragraphs figures last_parameters last_users (line:Util.line)=
-  let lead=env.normalLead in
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
     TS.UMap.iter (fun k a->
@@ -350,7 +350,7 @@ let parameters env paragraphs figures last_parameters last_users (line:Util.line
                                                 | _->fn) 0. line
     in
       { measure= !measure;
-        page_height=(if line.page_line <= 0 then 45.*.lead else last_parameters.page_height)
+        page_height=(if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
         -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
         left_margin=env.normalLeftMargin;
         local_optimization=0;
@@ -359,17 +359,17 @@ let parameters env paragraphs figures last_parameters last_users (line:Util.line
         next_acceptable_height=(fun node params nextNode nextParams->
                                   if node==nextNode then
                                     let min_height=node.height+.params.min_height_after in
-                                      lead*.(ceil (min_height/.lead))
+                                      env.lead*.(ceil (min_height/.env.lead))
                                   else
                                     if node.page=nextNode.page then
-                                      let min_height=max (nextNode.height+.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
-                                        lead*.(ceil (min_height/.lead))
+                                      let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
+                                        env.lead*.(ceil (min_height/.env.lead))
                                     else
-                                      let min_height=nextNode.height+.max nextParams.min_height_before lead in
-                                        lead*.(ceil (min_height/.lead))
+                                      let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
+                                        env.lead*.(ceil (min_height/.env.lead))
                                );
-        min_height_before=env.normalLead;
-        min_height_after=env.normalLead;
+        min_height_before=env.lead;
+        min_height_after=env.lead;
       }
 
 
