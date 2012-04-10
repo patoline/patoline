@@ -20,9 +20,11 @@ type parameters = {
   page_height : float;
   left_margin : float;
   local_optimization : int;
-  next_acceptable_height : line -> float -> float;
+  next_acceptable_height : line -> parameters->line->parameters-> float;
   min_height_before : float;
-  min_page_diff : int;
+  min_height_after : float;
+  min_page_before : int;
+  min_page_after : int;
 }
 val default_params : parameters
 type 'a kerningBox = 'a Fonts.FTypes.kerningBox

@@ -4,10 +4,11 @@ FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
 
 DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Output/Drivers/Pdf.ml
+FORMATS=Format/TableOfContents.ml
 
 SOURCES0 = Config.ml Constants.ml
 SOURCES1 = Parser.ml Texprime.ml
-SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) Diag.ml Maths.ml DefaultFormat.ml Typography.ml
+SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) $(FORMATS) Diag.ml Maths.ml DefaultFormat.ml Typography.ml
 SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
 SOURCES_LIBS=$(SOURCES0) $(SOURCES2)
 SOURCES_ALL=$(SOURCES0) $(SOURCES1) $(SOURCES2)
@@ -30,9 +31,9 @@ LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 
 ########## Compilers ##########
 
-OPTS= -I Fonts -I Output -I Output/Drivers
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" -g str.cma
-CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" str.cmxa
+OPTS= -I Fonts -I Output -I Output/Drivers -I Format
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" -g
+CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(OPTS) -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp $(OPTS) -pp "cpp -w"
 
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(OPTS) -pp "cpp -w"

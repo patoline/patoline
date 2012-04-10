@@ -467,12 +467,12 @@ module Node = struct
       ~parameters:NodeShape.default () ;
       anchor = Anchor.Center }
 
-  let make spec =
+  let make env spec =
     let shape = spec.shape in
     let anchor = spec.anchor in
     let at = spec.at in
     (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Util.draw_boxes (boxify_scoped { defaultEnv with size = 4. } spec.contents_spec)) in
+    let contents = (Util.draw_boxes (boxify_scoped env spec.contents_spec)) in
     let bb_boot =  OutputCommon.bounding_box contents in
     (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
     (* But computing anchor needs make_anchor bb.  *)
@@ -495,8 +495,8 @@ module Node = struct
     in 
     node.contents @ shape_curve
 
-  let make_draw l spec =
-    let node = make spec in
+  let make_draw env l spec =
+    let node = make env spec in
     node, (l @ (draw node))
 end	    
 
@@ -539,8 +539,8 @@ module Edge = struct
     transfo_specs = []
   }
 
-  let label_of_spec curve { pos = pos ; node_spec = spec } =
-    Node.make { spec with Node.at = Curve.eval curve pos }
+  let label_of_spec env curve { pos = pos ; node_spec = spec } =
+    Node.make env { spec with Node.at = Curve.eval curve pos }
 
   let bend ?angle:(angle=30.) node1 node2 = 
     let angle = (angle) *. pi /. 180. in
@@ -689,7 +689,7 @@ module Edge = struct
     end in
     Curve.restrict curve start finish 
 
-  let make spec node1 node2 =
+  let make env spec node1 node2 =
     let parameters = spec.parameters_spec in
     let controls = spec.controls in
     let head = spec.head_spec in
@@ -712,13 +712,13 @@ module Edge = struct
 	{ curves = [parameters, underlying_curve] ;
 	  head = head ~parameters:parameters underlying_curve ; 
 	  tail = tail ~parameters:parameters underlying_curve ;
-	  labels = (List.map (label_of_spec underlying_curve) labels) 
+	  labels = (List.map (label_of_spec env underlying_curve) labels) 
 	}
       | (params, curve) :: _ ->
 	{ curves = curves ;
 	  head = head ~parameters:params curve ; 
 	  tail = tail ~parameters:params curve ;
-	  labels = (List.map (label_of_spec curve) labels) 
+	  labels = (List.map (label_of_spec env curve) labels) 
 	}
 
   let draw edge =
@@ -730,8 +730,8 @@ module Edge = struct
 	  (fun (params, curve) -> Curve.draw ~parameters:params curve) edge.curves)) 
 
 
-    let make_draw l spec node1 node2 =
-      let edge = make spec node1 node2 
+    let make_draw env l spec node1 node2 =
+      let edge = make env spec node1 node2 
       in 
       edge, (l @ (draw edge))
 

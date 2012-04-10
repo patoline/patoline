@@ -33,18 +33,22 @@ type parameters={ measure:float;
                   page_height:float;
                   left_margin:float;
                   local_optimization:int;
-                  next_acceptable_height:line->float->float;
+                  next_acceptable_height:line->parameters->line->parameters->float;
                   min_height_before:float;
-                  min_page_diff:int
+                  min_height_after:float;
+                  min_page_before:int;
+                  min_page_after:int
                 }
 
 let default_params={ measure=0.;
                      page_height=0.;
                      left_margin=0.;
                      local_optimization=0;
-                     next_acceptable_height=(fun _ h->h);
+                     next_acceptable_height=(fun _ _ h _ ->h.height);
                      min_height_before=0.;
-                     min_page_diff=0
+                     min_height_after=0.;
+                     min_page_before=0;
+                     min_page_after=0
                    }
 
 type 'a kerningBox='a Fonts.FTypes.kerningBox

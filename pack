@@ -21,4 +21,5 @@ mv Portfile /Users/pe/Projets/ports/ml/texprime/
 mv texprime-$version.tar.gz $init_dir
 cd $init_dir
 
+sudo port uninstall texprime && sudo port clean --all texprime && sudo port install texprime
 #scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime

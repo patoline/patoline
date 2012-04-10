@@ -17,7 +17,7 @@ let preambule= "
   open Document
   open Typography.Output.Common
 "^(if !fugue then
-     "module D=(struct let structure=ref [Node empty,[]] end:DocumentStructure)\n"
+     "module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
   "module Format=DefaultFormat(D);;\nopen Format;;\n"
@@ -32,7 +32,8 @@ let postambule : ('a, 'b, 'c) format = "
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
      fixable:=false;
-     let env1,fig_params,params,compl,pars,figures=flatten env0 (fst (top (List.hd !D.structure ))) in
+     let env1,fig_params,params,compl,pars,figures=flatten env0
+           (postprocess_tree (fst (top (List.hd !D.structure )))) in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -42,7 +43,7 @@ let postambule : ('a, 'b, 'c) format = "
        pars
      in
      let env2, reboot=update_names env1 user' in
-     if reboot && !fixable then (
+     if i<10 && reboot && !fixable then (
        resolve (i+1) env2
      ) else Out.output (fst (top (List.hd !D.structure ))) pars figures env2 pages filename
   in
@@ -173,7 +174,7 @@ let rec print_macro ch op mtype name args =
         Printf.fprintf ch
           "let _=D.structure:=(Node empty,[])::(!D.structure);;\nmodule TEMP%d=%s.Document(D);;
            module TEMP%d=struct open TEMP%d end
-           let _=match !D.structure with h0::h1::s->D.structure:=newChild h1 (fst h0)::s | _->();;" !moduleCounter name (!moduleCounter+1) !moduleCounter;
+           let _=match !D.structure with h0::h1::s->D.structure:=newChildAfter h1 (fst h0)::s | _->();;" !moduleCounter name (!moduleCounter+1) !moduleCounter;
         incr moduleCounter
   end
 
@@ -219,15 +220,15 @@ let _=
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "let _ = title D.structure %b %a;;\n\n" (at = None) (print_contents op) title;
+		      Printf.printf "let _ = title D.structure %S;;\n\n" title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.printf "let _ = author %b %a;;\n\n" (inst = None) (print_contents op) auth;
+			Printf.printf "let _ = author %S;;\n\n" auth;
 			  match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.printf "let _ = institute true %a;;\n\n" (print_contents op) inst
+			      Printf.printf "let _ = institute %S;;\n\n" inst
 		  end;
 		  let rec output_list no_indent lvl docs = 
 		    match docs with
@@ -249,9 +250,9 @@ let _=
 		      let size = e - s in
 		      let buf=String.create size in
 		      let _= seek_in op s; input op buf 0 size in
-		      Printf.printf "%s\n\n" buf
+		      Printf.printf "%s;;\n\n" buf
 		    | Struct(title, numbered, docs) ->
-		      let num = if numbered then "" else "'" in
+		      let num = if numbered then "" else " ~numbered:false" in
 		      (match docs with
 			Relative docs ->
 			  Printf.printf "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents op) title;
@@ -276,7 +277,7 @@ let _=
 		      next_no_indent := no_indent
 		    | Verbatim(lang, lines) ->
 		      Printf.printf "module VERB = struct\n\n";
-		      Printf.printf "let verbEnv x = { (envFamily defaultMono x)
+		      Printf.printf "let verbEnv x = { (envFamily lmmono x)
                                                      with normalMeasure=infinity; par_indent = [] }\n\n";
 		      let lang = match lang with
 			  None -> "T"

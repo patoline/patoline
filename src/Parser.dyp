@@ -391,9 +391,9 @@ atomeltp:
 
 title:
   ("=========="('='*))
-    eparagraph<title> 
-     [PARSKIP eparagraph<author>
-      [PARSKIP eparagraph]?<institute> {author, institute} ]?<at>
+    line+<title>
+     [PARSKIP line+<author>
+      [PARSKIP line+]?<institute> {author, institute} ]?<at>
   ("=========="('='*))
   { title,at }
 

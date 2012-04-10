@@ -3,33 +3,182 @@ open Parameters
 open Fonts.FTypes
 open Util
 open Fonts
-open OutputCommon
 open Constants
 open Binary
 
 let _=Random.self_init ()
 
 module DefaultFormat=functor (D:DocumentStructure)->struct
-  let author is_last str =
-    let mcenter a b c d e l =
-      { (center a b c d e l) with
-          next_acceptable_height=(fun node h->max (node.height) (h+.5.)) }
+  let lmroman =
+    [ Regular, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmroman10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmroman10-italic.otf")));
+      Bold, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmroman10-bold.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf")));
+      Caps, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf")));
+      Demi, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf")));
+    ]
+
+  let lmmono =
+    [ Regular, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf")));
+      Bold, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf")));
+      Caps, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf")));
+      Demi, (
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf")),
+        Lazy.lazy_from_fun (fun () ->
+	                      loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf")));
+    ]
+
+  let defaultEnv:user environment=
+    let f=selectFont lmroman Regular false in
+    let hyphenate=try
+      let i=open_in (findHyph "en.hdict") in
+      let inp=input_value i in
+        close_in i;
+        (fun str->
+           let hyphenated=Hyphenate.hyphenate inp str in
+           let pos=Array.make (List.length hyphenated-1) ("","") in
+           let rec hyph l i cur=match l with
+               []->()
+             | h::s->(
+                 pos.(i)<-(cur^"-", List.fold_left (^) "" l);
+                 hyph s (i+1) (cur^h)
+               )
+           in
+             match hyphenated with
+                 []->[||]
+               | h::s->(hyph s 0 h; pos));
+    with
+        File_not_found _-> (fun x->[||])
     in
-      newPar D.structure (Document.C.normal) mcenter [size 6. str ]
+    let fsize=4. in
+      {
+        fontFamily=lmroman;
+        fontItalic=false;
+        fontAlternative=Regular;
+        fontFeatures= [ Opentype.standardLigatures ];
+        fontColor=OutputCommon.black;
+        font=f;
+        substitutions=
+          (fun glyphs -> List.fold_left apply glyphs (
+             Fonts.select_features f [ Opentype.standardLigatures ]
+           ));
+        positioning=positioning f;
+        footnote_y=10.;
+        size=fsize;
+        normalMeasure=150.;
+        normalLead=fsize*.5./.4.;
+        normalLeftMargin=(fst a4-.150.)/.2.;
+        par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
+                                drawing_max_width= 4.0 *. phi;
+                                drawing_y0=0.;drawing_y1=0.;
+                                drawing_nominal_width= 4.0 *. phi;
+                                drawing_contents=(fun _->[]);
+                                drawing_badness=fun _-> 0. }];
+        stdGlue=[Glue { drawing_min_width= 2.*. fsize/.9.;
+                        drawing_max_width= fsize/.2.;
+                        drawing_y0=0.; drawing_y1=0.;
+                        drawing_nominal_width= fsize/.3.;
+                        drawing_contents=(fun _->[]);
+                        drawing_badness=knuth_h_badness (fsize/.3.) }];
+        hyphenate=hyphenate;
 
-  let institute is_last str =
-    let mcenter a b c d e l =
-      { (center a b c d e l) with
-          min_height_before=11.;
-          next_acceptable_height=(fun node h->max (node.height+.10.) (h+.5.)) }
+        counters=StrMap.singleton "structure" (-1,[0]);
+        names=StrMap.empty;
+        user_positions=TS.UMap.empty;
+        fixable=false
+      }
+
+  let title str ?label ?displayname name =
+    let (t,path),str1=match !str with
+        []->(Node empty,[]),[]
+      | h::s->h,s
     in
-      newPar D.structure (Document.C.normal) mcenter [size 4. str ]
+    let t0'=
+      match t with
+          Node n -> Node { n with Document.name=name;
+                             Document.displayname = match displayname with
+                                 None->[T name]
+                               | Some a->a }
+        | _->Node { Document.name=name;
+                    node_tags=[];
+                    displayname=(match displayname with
+                                     Some a->a
+                                   | None->[T name]);
+		    children=IntMap.singleton 1 t;
+                    node_env=(fun x->x);
+                    node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
+                                                user_positions=y.user_positions });
+                    tree_paragraph=0 }
+    in
+      str:=(t0',path)::str1
+  let author str =
+    D.structure:=match !D.structure with
+        (Node h0,h1)::s->(Node { h0 with node_tags=(Author str)::
+                              (List.filter (function Author _->false | _->true) h0.node_tags)
+                               }, h1)::s
+      | (h0,h1)::s->newChildAfter (
+          Node { empty with
+                   node_tags=(Author str)::
+              (List.filter (function Author _->false | _->true) empty.node_tags)
+               }, h1) h0::s
+          (*     let mcenter a b c d e l = *)
+          (*       { (center a b c d e l) with *)
+          (*           next_acceptable_height=(fun node h->max (node.height) (h+.5.)) } *)
+          (*     in *)
+          (*       newPar D.structure (Document.C.normal) mcenter [size 6. str ] *)
+      | _->
+          [Node { empty with
+                    node_tags=(Author str)::(List.filter (function Author _->false | _->true)
+                                               empty.node_tags)
+                }, []]
+  let institute str =
+    D.structure:=match !D.structure with
+        (Node h0,h1)::s->(Node { h0 with node_tags=(Institute str)::
+                              (List.filter (function Institute _->false | _->true) h0.node_tags)
+                               }, h1)::s
+      | (h0,h1)::s->newChildAfter (Node { empty with
+                                            node_tags=(Institute str)::
+                                       (List.filter (function Institute _->false | _->true)
+                                          empty.node_tags)
+                                        }, h1) h0::s
+      | _->
+          [Node { empty with
+                    node_tags=(Author str)::
+               (List.filter (function Author _->false | _->true) empty.node_tags)
+                }, []]
 
-  let lang_OCaml s = [T s]
+  let table_of_contents=TableOfContents.centered
 
+  let lang_OCaml s=[T s]
 
-
-  let minipage env str=
+  let minipage (env:user environment) str=
     let env',fig_params,params,compl,pars,figures=flatten env (fst str) in
     let (_,pages,user')=TS.typeset
       ~completeLine:compl
@@ -39,7 +188,10 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
       ~badness:(Badness.badness pars)
       pars
     in
-      OutputDrawing.output pars figures env' pages
+      OutputDrawing.output pars figures
+        (env':user environment)
+        pages
+
 
   let footnote l=
     [Env (fun env->
@@ -64,7 +216,8 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                (* Y a-t-il deja des footnotes sur cette page ? *)
                TS.UMap.iter (fun k a->
                                match k with
-                                   Footnote (i,_) when a.Util.page= !foot_num && i< count -> incr page_footnotes
+                                   Footnote (i,_) when a.Util.page= !foot_num && i< count ->
+                                     incr page_footnotes
                                  | _->()
                             ) env.user_positions;
                (* Insertion d'une footnote *)
@@ -72,9 +225,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                let params a b c d e f=
                  let p=(parameters a b c d e f) in
                  let lead=env.normalLead *. (phi-.1.) in
-                   { p with
-                       next_acceptable_height=(fun _ h->lead*.(1.+.ceil (h/.lead)));
-                   }
+                   { p with min_height_after=lead }
                in
                  newPar str ~environment:(fun x->x) C.normal params
                    (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
@@ -98,7 +249,6 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                            []
                      )
           )]
-  let graph=ref 0
 
 
   module Env_itemize = struct
@@ -108,7 +258,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
 
     let item ()=
       let str0,str1=match !D.structure with []->(Node empty,[]),[] | h::s->h,s in
-        D.structure:=newChild (top str0) (Node empty)::str1;
+        D.structure:=newChildAfter (top str0) (Node empty)::str1;
         []
 
     let addon = [ T "–"; B (fun env->[glue env.size env.size env.size])]
@@ -174,7 +324,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                   Node n->Node { n with children=IntMap.map tirets n.children }
                 | x->x
               in
-	        D.structure := newChild h1 (paragraphs avec_tirets)::s
+	        D.structure := newChildAfter h1 (paragraphs avec_tirets)::s
           | _->assert false
   end
 
@@ -186,11 +336,13 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
     let do_end_abstract () =
       match !D.structure with
           h0::h1::s ->
-	    D.structure := up (newChild h1 (fst (change_env h0
-                                                   (fun x->{ x with
-                                                               normalLeftMargin=(x.normalLeftMargin
-                                                                                 +.(x.normalMeasure-.120.)/.2.);
-                                                               normalMeasure=120. })))) :: s
+	    D.structure :=
+              up (newChildAfter h1
+                    (fst (change_env h0
+                            (fun x->{ x with
+                                        normalLeftMargin=(x.normalLeftMargin
+                                                          +.(x.normalMeasure-.120.)/.2.);
+                                        normalMeasure=120. })))) :: s
         |_ -> assert false
 
   end
@@ -211,7 +363,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                                 let lvl,num=(StrMap.find "theorem" env.counters) in
                                 let _,str_counter=StrMap.find "structure" env.counters in
                                 let sect_num=drop (List.length str_counter - lvl) str_counter in
-                                  alternative Bold [T "Theorem"; B (fun env->env.stdGlue); T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
+                                  alternative Bold [T "Theorem"; B (fun env->env.stdGlue);T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
                              )::
                         B (fun env->env.stdGlue)::
                         p.par_contents
@@ -221,11 +373,15 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                   let paragraph=IntMap.singleton k0
                     (first_par (Paragraph
                                   { par_contents=[]; par_env=(fun x->x);
-                                    par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+                                    par_post_env=
+                                      (fun env1 env2 -> { env1 with names=env2.names;
+                                                            counters=env2.counters;
+                                                            user_positions=env2.user_positions });
                                     par_parameters=parameters; par_completeLine=C.normal
                                   }))
                   in
-                    Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b) n.children paragraph }
+                    Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)
+                        n.children paragraph }
               | x -> x
             in
             let stru=match fst h0 with
@@ -234,10 +390,81 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                     Node { n with children = IntMap.add a (first_par b) n.children }
               | x->first_par x
             in
-	      D.structure := up (newChild h1 stru) :: s
+	      D.structure := up (newChildAfter h1 stru) :: s
         |_ -> assert false
 
     module Env_Proof=struct
     end
   end
+
+  let postprocess_tree tree=
+    let with_title=match tree with
+        Node n->
+          let par=Paragraph {
+            par_contents=n.displayname;
+            par_env=(fun env->env);
+            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
+                                               user_positions=env2.user_positions });
+            par_parameters=
+              (fun a b c d e f->
+                 { (center a b c d e f) with
+                     min_height_after=2.*.a.normalLead;
+                     min_height_before=2.*.a.normalLead });
+            par_completeLine=C.normal }
+          in
+            fst (up (newChildBefore (tree,[]) par))
+      | _->tree
+    in
+    let make_chapter=function
+        Node n->
+          let numbering=List.mem Numbered n.node_tags in
+          let section_name=
+            if numbering then
+              [C (fun env->
+                    let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                    let path=drop 1 b in
+                      B (fun _->[User (Structure path)])::
+                        T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))) ::
+                        (B (fun env->env.stdGlue))::
+                        n.displayname
+                 )]
+            else
+              n.displayname
+          in
+          let par=Paragraph {
+            par_contents=section_name;
+            par_env=(fun env->
+                       let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                       let path=drop 1 b in
+                         { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                             size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size;
+                         });
+            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
+                                               user_positions=env2.user_positions });
+            par_parameters=
+              (fun a b c d e f->
+                 { (center a b c d e f) with
+                     min_page_before=
+                       if f.lineStart=0 then 1 else 0;
+                     min_height_after=2.*.a.normalLead;
+                     min_height_before=2.*.a.normalLead });
+            par_completeLine=C.normal }
+          in
+            fst (up (newChildBefore (Node n,[]) par))
+      | a->a
+    in
+    let with_chapters=match tree with
+        Node n->Node { n with children=IntMap.map make_chapter n.children }
+      | _->with_title
+    in
+      with_chapters
+
+
+  let newStruct str ?label ?(numbered=true) displayname=
+    let str0,str1=match !str with
+        []->(Node empty,[]),[]
+      | h::s->h,s
+    in
+      str:=newStruct str0 ~numbered:numbered displayname::str1
+    (* newStruct_section str label numbering displayname *)
 end
