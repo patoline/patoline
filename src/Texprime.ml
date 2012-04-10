@@ -32,8 +32,8 @@ let postambule : ('a, 'b, 'c) format = "
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
      fixable:=false;
-     let env1,fig_params,params,compl,pars,figures=flatten env0
-           (postprocess_tree (fst (top (List.hd !D.structure )))) in
+     let tree=postprocess_tree (fst (top (List.hd !D.structure))) in
+     let env1,fig_params,params,compl,pars,figures=flatten env0 tree in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -45,7 +45,7 @@ let postambule : ('a, 'b, 'c) format = "
      let env2, reboot=update_names env1 user' in
      if i<10 && reboot && !fixable then (
        resolve (i+1) env2
-     ) else Out.output (fst (top (List.hd !D.structure ))) pars figures env2 pages filename
+     ) else Out.output tree pars figures env2 pages filename
   in
      resolve 0 defaultEnv
 "
