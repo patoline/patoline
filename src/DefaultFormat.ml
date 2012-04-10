@@ -8,7 +8,9 @@ open Binary
 
 let _=Random.self_init ()
 
-module DefaultFormat=functor (D:DocumentStructure)->struct
+module DefaultFormat=functor (D:DocumentStructure)->(
+  struct
+    type user=Document.user
   let lmroman =
     [ Regular, (
         Lazy.lazy_from_fun (fun () ->
@@ -394,4 +396,4 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
     module Env_Proof=struct
     end
   end
-end
+end)

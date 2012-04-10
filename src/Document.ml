@@ -130,8 +130,14 @@ and 'a content=
   | FileRef of (string*int*int)
   | Env of ('a environment -> 'a environment)
   | Scoped of ('a environment->'a environment)*('a content list)
+
 module type DocumentStructure=sig
   val structure:(user tree*(int*user tree) list) list ref
+end
+module type Format=sig
+  type user
+  val defaultEnv:user environment
+  val postprocess_tree:user tree->user tree
 end
 
 let incr_counter ?(level= -1) env name=

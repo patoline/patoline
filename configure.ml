@@ -1,6 +1,7 @@
 let prefix=ref "/usr/local"
 let bin_prefix=ref ""
 let fonts_prefix=ref ""
+let ocaml_prefix=ref ""
 let fonts_dir=ref []
 let grammars_prefix=ref []
 let hyphen_prefix=ref []
@@ -18,6 +19,7 @@ let _=
   parse [
     ("--prefix", Set_string prefix, "prefix");
     ("--bin-prefix", Set_string bin_prefix, "prefix for the binaries");
+    ("--ocaml-libs", Set_string ocaml_prefix, "prefix for the caml libraries (use ocamlc -where)");
     ("--fonts-prefix", Set_string fonts_prefix, "prefix for the fonts");
     ("--fonts-dir", String (fun pref->fonts_dir:=pref:: !fonts_dir), "prefix for the fonts");
     ("--grammars-prefix", String (fun pref->grammars_prefix:=pref:: !grammars_prefix), "prefix for the grammars");
@@ -25,6 +27,7 @@ let _=
   ] ignore "Usage :";
   if !bin_prefix="" then bin_prefix:=Filename.concat !prefix "bin";
   if !fonts_prefix="" then fonts_prefix:=Filename.concat !prefix "share/texprime/fonts";
+  if !ocaml_prefix="" then ocaml_prefix:=Filename.concat !prefix "lib/ocaml";
   fonts_dir:=List.rev (!fonts_prefix :: !fonts_dir);
   grammars_prefix:=List.rev ((Filename.concat !prefix "share/texprime/grammars"):: !grammars_prefix);
   hyphen_prefix:=List.rev ((Filename.concat !prefix "share/texprime/hyphenation"):: !hyphen_prefix);
@@ -64,11 +67,11 @@ let _=
     (* binaries *)
     Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_prefix);
 
-    Printf.fprintf out "\tinstall -m 755 -d $(shell ocamlfind ocamlc -where)/site-lib/texprime\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(shell ocamlfind ocamlc -where)/site-lib/stublibs\n";
-    Printf.fprintf out "\tinstall -m 644 src/Typography.cma src/Typography.cmxa $(shell ocamlfind ocamlc -where)\n";
-    Printf.fprintf out "\tinstall -m 644 src/META src/Typography.cma src/Typography.cmxa src/Typography.a $(shell ocamlfind ocamlc -where)/site-lib/texprime\n";
-    Printf.fprintf out "\tinstall -m 644 src/Typography.cmi $(shell ocamlfind ocamlc -where)/site-lib/texprime/Typography.cmi\n";
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/site-lib/texprime\n" (escape !ocaml_prefix);
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/site-lib/stublibs\n" (escape !ocaml_prefix);
+    Printf.fprintf out "\tinstall -m 644 src/Typography.cma src/Typography.cmxa $(DESTDIR)/%s\n" (escape !ocaml_prefix);
+    Printf.fprintf out "\tinstall -m 644 src/META src/Typography.cma src/Typography.cmxa src/Typography.a $(DESTDIR)/%s/site-lib/texprime\n" (escape !ocaml_prefix);
+    Printf.fprintf out "\tinstall -m 644 src/Typography.cmi $(DESTDIR)/%s/site-lib/texprime/Typography.cmi\n" (escape !ocaml_prefix);
 
     Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"
       (String.concat ";" (List.map (fun s->"\""^s^"\"") !fonts_dir))

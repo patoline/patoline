@@ -20,7 +20,7 @@ let preambule fugue = "
      "module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
-  "module Format=DefaultFormat(D);;\nopen Format;;\n"
+  "module Format=DefaultFormat.DefaultFormat(D);;\nopen Format;;\n"
 
 
 let postambule outfile = Printf.sprintf "

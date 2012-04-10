@@ -4,14 +4,16 @@ FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
 
 DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Output/Drivers/Pdf.ml
-FORMATS=Format/TableOfContents.ml Format/Sections.ml
+FORMATS=Format/TableOfContents.ml Format/Sections.ml DefaultFormat.ml
 
 SOURCES0 = Config.ml Constants.ml
 SOURCES1 = Parser.ml Texprime.ml Main.ml
-SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) $(FORMATS) Diag.ml Maths.ml DefaultFormat.ml Typography.ml
+SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) Diag.ml Maths.ml Typography.ml
+SOURCES3 = $(FORMATS)
+
 SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
 SOURCES_LIBS=$(SOURCES0) $(SOURCES2)
-SOURCES_ALL=$(SOURCES0) $(SOURCES1) $(SOURCES2)
+SOURCES_ALL=$(SOURCES0) $(SOURCES1) $(SOURCES2) $(SOURCES3)
 DOC=Bezier.mli Output/OutputCommon.ml Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Document.ml
 
 EXEC = texprime
@@ -28,6 +30,7 @@ TESTOBJS = $(TEST:.ml=.cmo)
 TESTOPTOBJS = $(TEST:.ml=.cmx)
 
 LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
+FORMATS_ML=$(filter %.ml, $(SOURCES3))
 
 ########## Compilers ##########
 
@@ -78,6 +81,12 @@ Typography.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
 Typography.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 	$(CAMLOPTA) -a -o Typography.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 
+DefaultFormat.cma: Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+	$(CAMLC) -a -o DefaultFormat.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+
+DefaultFormat.cmxa: Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o DefaultFormat.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
 	$(CAMLC) -o graphics_font graphics.cma $(BASE:.ml=.cmo) $(FONTS:.ml=.cmo) tests/graphics_font.ml
@@ -106,16 +115,16 @@ DefaultGrammar.opt.pdf: texprime.opt Typography.cmxa DefaultGrammar.txp
 	./texprime.opt --pdf --extra-fonts-dir ../Otf DefaultGrammar.txp
 	# $(CAMLOPT)  -o DefaultGrammar.tmx Typography.cmxa -impl DefaultGrammar.tml
 	# ./DefaultGrammar.tmx --extra-fonts-dir ../Otf
-	cp DefaultGrammar.pdf DefaultGrammar.opt.pdf
+	#cp DefaultGrammar.pdf DefaultGrammar.opt.pdf
 
-%.pdf: texprime Typography.cma texprimeDefault.tgo %.txp
+%.pdf: texprime Typography.cma DefaultFormat.cma texprimeDefault.tgo %.txp
 	./texprime --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLC)  -o $*.tmx Typography.cma -impl $*.tml
+	$(CAMLC)  -o $*.tmx Typography.cma DefaultFormat.cma -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 
-%.opt.pdf: texprime.opt fonts.cmxa Typography.cmxa texprimeDefault.tgx %.txp
+%.opt.pdf: texprime.opt Typography.cmxa DefaultFormat.cmxa texprimeDefault.tgx %.txp
 	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLOPT)  -o $*.tmx Typography.cmxa -impl $*.tml
+	$(CAMLOPT)  -o $*.tmx Typography.cmxa DefaultFormat.cmxa -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 	cp $*.pdf $*.opt.pdf
 
