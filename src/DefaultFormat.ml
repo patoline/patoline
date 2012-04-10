@@ -148,11 +148,6 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                    node_tags=(Author str)::
               (List.filter (function Author _->false | _->true) empty.node_tags)
                }, h1) h0::s
-          (*     let mcenter a b c d e l = *)
-          (*       { (center a b c d e l) with *)
-          (*           next_acceptable_height=(fun node h->max (node.height) (h+.5.)) } *)
-          (*     in *)
-          (*       newPar D.structure (Document.C.normal) mcenter [size 6. str ] *)
       | _->
           [Node { empty with
                     node_tags=(Author str)::(List.filter (function Author _->false | _->true)
@@ -175,6 +170,7 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
                 }, []]
 
   let table_of_contents=TableOfContents.centered
+  let postprocess_tree=Sections.postprocess_tree
 
   let lang_OCaml s=[T s]
 
@@ -397,74 +393,11 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
     end
   end
 
-  let postprocess_tree tree=
-    let with_title=match tree with
-        Node n->
-          let par=Paragraph {
-            par_contents=n.displayname;
-            par_env=(fun env->env);
-            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                               user_positions=env2.user_positions });
-            par_parameters=
-              (fun a b c d e f->
-                 { (center a b c d e f) with
-                     min_height_after=2.*.a.normalLead;
-                     min_height_before=2.*.a.normalLead });
-            par_completeLine=C.normal }
-          in
-            fst (up (newChildBefore (tree,[]) par))
-      | _->tree
-    in
-    let make_chapter=function
-        Node n->
-          let numbering=List.mem Numbered n.node_tags in
-          let section_name=
-            if numbering then
-              [C (fun env->
-                    let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
-                    let path=drop 1 b in
-                      B (fun _->[User (Structure path)])::
-                        T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path))) ::
-                        (B (fun env->env.stdGlue))::
-                        n.displayname
-                 )]
-            else
-              n.displayname
-          in
-          let par=Paragraph {
-            par_contents=section_name;
-            par_env=(fun env->
-                       let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
-                       let path=drop 1 b in
-                         { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
-                             size=(if List.length path = 1 then sqrt phi else sqrt (sqrt phi))*.env.size;
-                         });
-            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                               user_positions=env2.user_positions });
-            par_parameters=
-              (fun a b c d e f->
-                 { (center a b c d e f) with
-                     min_page_before=
-                       if f.lineStart=0 then 1 else 0;
-                     min_height_after=2.*.a.normalLead;
-                     min_height_before=2.*.a.normalLead });
-            par_completeLine=C.normal }
-          in
-            fst (up (newChildBefore (Node n,[]) par))
-      | a->a
-    in
-    let with_chapters=match tree with
-        Node n->Node { n with children=IntMap.map make_chapter n.children }
-      | _->with_title
-    in
-      with_chapters
-
-
   let newStruct str ?label ?(numbered=true) displayname=
     let str0,str1=match !str with
         []->(Node empty,[]),[]
       | h::s->h,s
     in
       str:=newStruct str0 ~numbered:numbered displayname::str1
-    (* newStruct_section str label numbering displayname *)
+
 end

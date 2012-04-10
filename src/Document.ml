@@ -65,6 +65,7 @@ type tag=
   | Author of string
   | Institute of string
   | Numbered
+  | Structural
 
 type 'a node={
   name:string;
@@ -298,13 +299,15 @@ let envFamily fam env =
 let family fam t =
   [Scoped ((fun env -> envFamily fam env), t)]
 
+let resize_env fsize env=
+  { env with
+      size=fsize;
+      normalLead=env.normalLead*.fsize/.env.size;
+      stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }
+
 (* Changer de taille dans un scope *)
 let size fsize t=
-  Scoped ((fun env ->
-             { env with
-                 size=fsize;
-                 normalLead=env.normalLead*.fsize/.env.size;
-                 stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }), t)
+  Scoped (resize_env fsize, t)
 
 (* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
    qui existe *)
@@ -467,7 +470,7 @@ let newStruct str ?label ?(numbered=true) displayname =
     empty with
       name=name;
       displayname =displayname;
-      node_tags=[InTOC]@(if numbered then [Numbered] else []);
+      node_tags=[InTOC;Structural]@(if numbered then [Numbered] else []);
       node_env=(
         fun env->
           { env with

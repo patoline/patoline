@@ -4,7 +4,7 @@ FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
 FONTS=$(FONTS0) Fonts.mli Fonts.ml
 
 DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Output/Drivers/Pdf.ml
-FORMATS=Format/TableOfContents.ml
+FORMATS=Format/TableOfContents.ml Format/Sections.ml
 
 SOURCES0 = Config.ml Constants.ml
 SOURCES1 = Parser.ml Texprime.ml
