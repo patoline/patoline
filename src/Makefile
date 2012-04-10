@@ -7,7 +7,7 @@ DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Outp
 FORMATS=Format/TableOfContents.ml Format/Sections.ml
 
 SOURCES0 = Config.ml Constants.ml
-SOURCES1 = Parser.ml Texprime.ml
+SOURCES1 = Parser.ml Texprime.ml Main.ml
 SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) $(FORMATS) Diag.ml Maths.ml DefaultFormat.ml Typography.ml
 SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
 SOURCES_LIBS=$(SOURCES0) $(SOURCES2)
@@ -16,7 +16,7 @@ DOC=Bezier.mli Output/OutputCommon.ml Fonts/FTypes.ml Fonts.mli Hyphenate.mli Ut
 
 EXEC = texprime
 
-LIBS=fonts.cma typography.cma
+LIBS=Fonts.cma Typography.cma
 
 ########## Targets ##########
 
@@ -43,7 +43,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 ###############################
 
-all : $(EXEC).opt bezier.cma bezier.cmxa fonts.cma fonts.cmxa typography.cma typography.cmxa texprimeDefault.tgo texprimeDefault.tgx
+all : $(EXEC).opt Bezier.cma Bezier.cmxa Fonts.cma Fonts.cmxa Typography.cma Typography.cmxa texprimeDefault.tgo texprimeDefault.tgx
 
 opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
 
@@ -58,25 +58,25 @@ $(EXEC): $(OBJS)
 proof: $(TESTOBJS) tests/proof.ml
 	$(CAMLC) -o proof $(TESTOBJS) tests/proof.ml
 
-fonts.cma: bezier.cma $(filter %.cmo, $(FONTS:.ml=.cmo))
+Fonts.cma: Bezier.cma $(filter %.cmo, $(FONTS:.ml=.cmo))
 	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(FONTS:.ml=.cmo))
 
-fonts.cmxa: bezier.cmxa $(filter %.cmx, $(FONTS:.ml=.cmx))
+Fonts.cmxa: Bezier.cmxa $(filter %.cmx, $(FONTS:.ml=.cmx))
 	$(CAMLOPTA) -a -o fonts.cmxa $(filter %.cmx, $(FONTS:.ml=.cmx))
 
 
-bezier.cma:$(BEZIER:.ml=.cmo)
-	$(CAMLC) -a -o bezier.cma $(BEZIER:.ml=.cmo)
+Bezier.cma:$(BEZIER:.ml=.cmo)
+	$(CAMLC) -a -o Bezier.cma $(BEZIER:.ml=.cmo)
 
-bezier.cmxa:$(BEZIER:.ml=.cmx)
-	$(CAMLOPTA) -a -o bezier.cmxa $(BEZIER:.ml=.cmx)
+Bezier.cmxa:$(BEZIER:.ml=.cmx)
+	$(CAMLOPTA) -a -o Bezier.cmxa $(BEZIER:.ml=.cmx)
 
 
-typography.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
-	$(CAMLC) -a -o typography.cma $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
+Typography.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
+	$(CAMLC) -a -o Typography.cma $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
 
-typography.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
-	$(CAMLOPTA) -a -o typography.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
+Typography.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o Typography.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
@@ -97,25 +97,25 @@ texprimeDefault.tgo: DefaultGrammar.pdf
 texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	true
 
-DefaultGrammar.pdf: texprime typography.cma DefaultGrammar.txp
-	./texprime --extra-fonts-dir ../Otf DefaultGrammar.txp > DefaultGrammar.tml
-	$(CAMLC)  -o DefaultGrammar.tmx typography.cma -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
+DefaultGrammar.pdf: texprime Typography.cma DefaultGrammar.txp
+	./texprime --pdf --extra-fonts-dir ../Otf DefaultGrammar.txp
+	# $(CAMLC)  -o DefaultGrammar.tmx Typography.cma -impl DefaultGrammar.tml
+	# ./DefaultGrammar.tmx --extra-fonts-dir ../Otf
 
-DefaultGrammar.opt.pdf: texprime.opt typography.cmxa DefaultGrammar.txp
-	./texprime.opt --extra-fonts-dir ../Otf DefaultGrammar.txp > DefaultGrammar.tml
-	$(CAMLOPT)  -o DefaultGrammar.tmx typography.cmxa -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
+DefaultGrammar.opt.pdf: texprime.opt Typography.cmxa DefaultGrammar.txp
+	./texprime.opt --pdf --extra-fonts-dir ../Otf DefaultGrammar.txp
+	# $(CAMLOPT)  -o DefaultGrammar.tmx Typography.cmxa -impl DefaultGrammar.tml
+	# ./DefaultGrammar.tmx --extra-fonts-dir ../Otf
 	cp DefaultGrammar.pdf DefaultGrammar.opt.pdf
 
-%.pdf: texprime typography.cma texprimeDefault.tgo %.txp
+%.pdf: texprime Typography.cma texprimeDefault.tgo %.txp
 	./texprime --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLC)  -o $*.tmx typography.cma -impl $*.tml
+	$(CAMLC)  -o $*.tmx Typography.cma -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 
-%.opt.pdf: texprime.opt fonts.cmxa typography.cmxa texprimeDefault.tgx %.txp
+%.opt.pdf: texprime.opt fonts.cmxa Typography.cmxa texprimeDefault.tgx %.txp
 	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLOPT)  -o $*.tmx typography.cmxa -impl $*.tml
+	$(CAMLOPT)  -o $*.tmx Typography.cmxa -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 	cp $*.pdf $*.opt.pdf
 

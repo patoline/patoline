@@ -1,33 +1,33 @@
 open Config
-let fugue=ref true
-let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path");
-            ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately");
-           ]
-let filename=ref []
-let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :"
+(* let fugue=ref true *)
+(* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
+(*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
+(*            ] *)
+(* let filename=ref [] *)
+(* let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :" *)
 
 open Lexing
 open Parser
 
 
-let preambule= "
+let preambule fugue = "
   open Typography
   open Util
   open Config
   open Document
   open Typography.Output.Common
-"^(if !fugue then
+"^(if fugue then
      "module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
   "module Format=DefaultFormat(D);;\nopen Format;;\n"
 
 
-let postambule : ('a, 'b, 'c) format = "
+let postambule outfile = Printf.sprintf "
   module Out=Output.Paper.Pdf
 
   let _ = 
-    let filename=\"%s.pdf\" in
+    let filename=\"%s\" in
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
@@ -48,7 +48,8 @@ let postambule : ('a, 'b, 'c) format = "
      ) else Out.output tree pars figures env2 pages filename
   in
      resolve 0 defaultEnv
-"
+" outfile
+
 let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
@@ -203,38 +204,38 @@ and print_contents op ch l =
   in fn l;
   Printf.fprintf ch ")"
 
-let _=
+let gen_ml fugue from where pdfname =
     try
-      match !filename with
-          []-> Printf.printf "no input files\n"
-        | h::_->
-            let op=open_in h in
-            let lexbuf = Dyp.from_channel (Parser.pp ()) op in
+      (* match filename with *)
+      (*     []-> Printf.fprintf stderr "no input files\n" *)
+      (*   | h::_-> *)
+            (* let op=open_in h in *)
+            let lexbuf = Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
 	      Printf.fprintf stderr "Fin du parsing (%d trees)\n" (List.length docs); flush stderr;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
-		  Printf.printf "%s" preambule;
+		  Printf.fprintf where "%s" (preambule fugue);
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.printf "let _ = title D.structure %S;;\n\n" title;
+		      Printf.fprintf where "let _ = title D.structure %S;;\n\n" title;
 		      match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.printf "let _ = author %S;;\n\n" auth;
+			Printf.fprintf where "let _ = author %S;;\n\n" auth;
 			  match inst with
 			    None -> ()
 			  | Some(inst) ->
-			      Printf.printf "let _ = institute %S;;\n\n" inst
+			      Printf.fprintf where "let _ = institute %S;;\n\n" inst
 		  end;
 		  let rec output_list no_indent lvl docs = 
 		    match docs with
 		      [] -> 
 			for i = 0 to lvl - 1 do
-			  Printf.printf "let _ = go_up D.structure;;\n\n"
+			  Printf.fprintf where "let _ = go_up D.structure;;\n\n"
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
@@ -244,61 +245,61 @@ let _=
 		      let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 			else "(fun x -> x)"
 		      in
-		      Printf.printf "let _ = newPar D.structure ~environment:%s Document.C.normal parameters %a;;\n" 
-			env (print_contents op) p
+		      Printf.fprintf where "let _ = newPar D.structure ~environment:%s Document.C.normal parameters %a;;\n" 
+			env (print_contents from) p
 		    | Caml(s,e) ->
 		      let size = e - s in
 		      let buf=String.create size in
-		      let _= seek_in op s; input op buf 0 size in
-		      Printf.printf "%s;;\n\n" buf
+		      let _= seek_in from s; input from buf 0 size in
+		      Printf.fprintf where "%s;;\n\n" buf
 		    | Struct(title, numbered, docs) ->
 		      let num = if numbered then "" else " ~numbered:false" in
 		      (match docs with
 			Relative docs ->
-			  Printf.printf "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents op) title;
+			  Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 			  output_list true (!lvl + 1) docs;
-			  Printf.printf "let _ = go_up D.structure ;;\n\n"
+			  Printf.fprintf where "let _ = go_up D.structure ;;\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
 			  for i = 0 to !lvl - l do
-			    Printf.printf "let _ = go_up D.structure ;;\n\n"
+			    Printf.fprintf where "let _ = go_up D.structure ;;\n\n"
 			  done;
-			  Printf.printf "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents op) title;
+			  Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 			  lvl := l
 		      )
 		    | Macro(mtype, name, args) ->
-		      print_macro stdout op mtype name args;
-		      Printf.printf "\n\n" 
+		      print_macro where from mtype name args;
+		      Printf.fprintf where "\n\n" 
 		    | Math m ->
-		      Printf.printf "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
+		      Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
 		        (fun ch -> print_math ch true) m;
 		      next_no_indent := true
                     | Ignore -> 
 		      next_no_indent := no_indent
 		    | Verbatim(lang, lines) ->
-		      Printf.printf "module VERB = struct\n\n";
-		      Printf.printf "let verbEnv x = { (envFamily lmmono x)
+		      Printf.fprintf where "module VERB = struct\n\n";
+		      Printf.fprintf where "let verbEnv x = { (envFamily lmmono x)
                                                      with normalMeasure=infinity; par_indent = [] }\n\n";
 		      let lang = match lang with
 			  None -> "T"
 			 | Some s -> s
 		      in
 		      List.iter (fun l ->
-			Printf.printf
+			Printf.fprintf where
 			  "let _ = newPar D.structure ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
 			  lang l)
 			lines;
-		      Printf.printf "end\n\n";
+		      Printf.fprintf where "end\n\n";
 		      next_no_indent := true
 		    );
 		    output_list !next_no_indent !lvl docs
 		  in
 		  output_list true 0 docs;
-		  close_in op;
-                  if !fugue then
-		    Printf.printf postambule (Filename.chop_extension h)
+		  (* close_in op; *)
+                  if fugue then
+		    output_string where (postambule pdfname)
                   else
-		    Printf.printf "\nend\n"
+		    Printf.fprintf where "\nend\n"
 	    with
 	    | Dyp.Syntax_error ->
 	      raise
