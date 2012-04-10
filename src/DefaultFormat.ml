@@ -394,12 +394,4 @@ module DefaultFormat=functor (D:DocumentStructure)->struct
     module Env_Proof=struct
     end
   end
-
-  let newStruct str ?label ?(numbered=true) displayname=
-    let str0,str1=match !str with
-        []->(Node empty,[]),[]
-      | h::s->h,s
-    in
-      str:=newStruct str0 ~numbered:numbered displayname::str1
-
 end

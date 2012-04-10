@@ -499,7 +499,12 @@ let newStruct str ?label ?(numbered=true) displayname =
       );
   }
   in
-    newChildAfter str para
+
+  let str0,str1=match !str with
+      []->(Node empty,[]),[]
+    | h::s->h,s
+  in
+    str:=newChildAfter str0 para::str1
 
 
 (* Fonctions auxiliaires qui produisent un document optimisable à
@@ -644,12 +649,12 @@ let flatten env0 str=
 
 let rec make_struct positions tree=
   match tree with
-      Node s when List.mem InTOC s.node_tags-> (
+      Node s -> (
         let (p,x,y)=try positions.(s.tree_paragraph) with _->(0,0.,0.) in
         let rec make=function
             []->[]
-          | (_,Paragraph _) :: s | (_,FigureDef _) :: s->make s
-          | (_,Node u)::s -> (make_struct positions (Node u))::(make s)
+          | (_,Node u)::s when List.mem InTOC u.node_tags -> (make_struct positions (Node u))::(make s)
+          | _ :: s->make s
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
           { OutputCommon.name=s.name;
