@@ -35,7 +35,7 @@ $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) dynlink.cmxa Typography.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 
 $(EXEC): $(OBJS)
-	$(CAMLC) dynlink.cma Typography.cma $(CUSTOM) -o $(EXEC).opt $(OBJS)
+	$(CAMLC) dynlink.cma Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
 
 
