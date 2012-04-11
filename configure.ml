@@ -1,10 +1,13 @@
-let prefix=ref "/usr/local"
-let bin_prefix=ref ""
-let fonts_prefix=ref ""
-let ocaml_prefix=ref ""
-let fonts_dir=ref []
-let grammars_prefix=ref []
-let hyphen_prefix=ref []
+let prefix=ref "/usr/local/"
+let bin_dir=ref ""
+let fonts_dir=ref ""
+let grammars_dir=ref ""
+let hyphen_dir=ref ""
+let ocaml_lib_dir=ref ""
+let fonts_dirs=ref []
+let grammars_dirs=ref []
+let hyphen_dirs=ref []
+let opt_only=ref false
 
 open Arg
 let rec escape s=
@@ -17,20 +20,28 @@ let rec escape s=
 
 let _=
   parse [
-    ("--prefix", Set_string prefix, "prefix");
-    ("--bin-prefix", Set_string bin_prefix, "prefix for the binaries");
-    ("--ocaml-libs", Set_string ocaml_prefix, "prefix for the caml libraries (use ocamlc -where)");
-    ("--fonts-prefix", Set_string fonts_prefix, "prefix for the fonts");
-    ("--fonts-dir", String (fun pref->fonts_dir:=pref:: !fonts_dir), "prefix for the fonts");
-    ("--grammars-prefix", String (fun pref->grammars_prefix:=pref:: !grammars_prefix), "prefix for the grammars");
-    ("--hyphenation-prefix", String (fun pref->hyphen_prefix:=pref:: !hyphen_prefix), "prefix for the hyphenation dictionaries")
-  ] ignore "Usage :";
-  if !bin_prefix="" then bin_prefix:=Filename.concat !prefix "bin";
-  if !fonts_prefix="" then fonts_prefix:=Filename.concat !prefix "share/texprime/fonts";
-  if !ocaml_prefix="" then ocaml_prefix:=Filename.concat !prefix "lib/ocaml";
-  fonts_dir:=List.rev (!fonts_prefix :: !fonts_dir);
-  grammars_prefix:=List.rev ((Filename.concat !prefix "share/texprime/grammars"):: !grammars_prefix);
-  hyphen_prefix:=List.rev ((Filename.concat !prefix "share/texprime/hyphenation"):: !hyphen_prefix);
+    ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
+    ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
+    ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
+    ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/texprime/fonts/ by default)");
+    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/share/texprime/grammars/ by default)");
+    ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/texprime/hyphen/ by default)");
+    ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
+    ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
+    ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories texprime should scan for hyphenation dictionaries");
+    ("--opt-only", Unit (fun ()->opt_only:=true), "  native version only (both native and bytecode are compiled by default)")
+  ] ignore "Usage:";
+  if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
+  if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
+
+  if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/texprime/fonts";
+  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "share/texprime/grammars";
+  if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/texprime/hyphen";
+
+  fonts_dirs:= !fonts_dir ::(List.rev !fonts_dirs);
+  grammars_dirs:= !grammars_dir ::(List.rev !grammars_dirs);
+  hyphen_dirs:= !hyphen_dir ::(List.rev !hyphen_dirs);
+
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
 
@@ -61,18 +72,18 @@ let _=
 
     (* Grammars *)
     Printf.fprintf out "\t#grammars\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape (List.hd !grammars_dirs));
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape !grammars_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
-              ) ((*"texprimeDefault.tgo"::"texprimeDefault.tgx"::*)Array.to_list (Sys.readdir grammars_src_dir));
+              ) ("texprimeDefault.tgx"::(if !opt_only then [] else ["texprimeDefault.tgo"])@Array.to_list (Sys.readdir grammars_src_dir));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape (List.hd !hyphen_dirs));
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape !hyphen_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".hdict" then
-                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape (List.hd !hyphen_dirs))
+                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
@@ -86,20 +97,24 @@ let _=
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
 
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
+
+
+      (* Installation pour ocamlfind (casse la chaine de compilation de Guillaume sans ça) *)
       (*Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/stublibs\n" * (escape !ocaml_lib_dir);*)
-      Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/site-lib/Typography\n" (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)/%s/site-lib/Typography\n" sources (escape !ocaml_lib_dir);
 
 
 
       (* proof *)
-      Printf.fprintf out "\tmake -C proof install DESTDIR=$(DESTDIR) PREFIX=%s\n" (escape !bin_prefix);
+      Printf.fprintf out "\tmake -C proof install DESTDIR=$(DESTDIR) PREFIX=%s\n" (escape !bin_dir);
 
 
     Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") !fonts_dirs))
+      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!fonts_dirs)))
       !bin_dir
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") !grammars_dirs))
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") !hyphen_dirs));
+      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!grammars_dirs)))
+      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!hyphen_dirs)));
     Printf.fprintf out "clean:\n\tmake -C src clean\n";
     close_out out;
     close_out config;
