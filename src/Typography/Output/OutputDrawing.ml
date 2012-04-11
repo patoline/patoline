@@ -1,3 +1,4 @@
+open Document
 open Util
 open OutputCommon
 open Fonts.FTypes
@@ -60,7 +61,7 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
         drawing_nominal_width= !x1-. !x0;
         drawing_max_width= !x1-. !x0;
         drawing_y0= !y0-. !y0';
-        drawing_y1= env.Document.normalLead *. (ceil ((!y1-. !y0')/.env.Document.normalLead));
+        drawing_y1= env.normalLead *. (ceil ((!y1-. !y0')/.env.normalLead));
         drawing_badness=(fun _->0.);
         drawing_contents=(fun _-> !pageContents) }
   in

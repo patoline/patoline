@@ -1,3 +1,4 @@
+open Typography
 open Document
 open Fonts.FTypes
 open Binary

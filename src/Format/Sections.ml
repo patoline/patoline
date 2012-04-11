@@ -1,3 +1,4 @@
+open Typography
 open Document
 open Util
 open Binary

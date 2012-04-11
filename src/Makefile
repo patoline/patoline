@@ -1,43 +1,24 @@
-BEZIER=Bezier.mli Bezier.ml new_map.mli new_map.ml Binary.ml
-
-FONTS0=Fonts/FTypes.mli Fonts/FTypes.ml Fonts/CFF.ml Fonts/Opentype.ml
-FONTS=$(FONTS0) Fonts.mli Fonts.ml
-
-DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Output/Drivers/Pdf.ml
-FORMATS=Format/TableOfContents.ml Format/Sections.ml DefaultFormat.ml
-
-SOURCES0 = Config.ml Constants.ml
 SOURCES1 = Parser.ml Texprime.ml Main.ml
-SOURCES2 = $(BEZIER) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) Diag.ml Maths.ml Typography.ml
-SOURCES3 = $(FORMATS)
+SOURCES3 = Format/TableOfContents.ml Format/Sections.ml DefaultFormat.ml
 
-SOURCES_EXEC=$(SOURCES0) $(SOURCES1)
-SOURCES_LIBS=$(SOURCES0) $(SOURCES2)
-SOURCES_ALL=$(SOURCES0) $(SOURCES1) $(SOURCES2) $(SOURCES3)
-DOC=Bezier.mli Output/OutputCommon.ml Fonts/FTypes.ml Fonts.mli Hyphenate.mli Util.mli Typeset.mli Document.ml
+SOURCES_EXEC=$(SOURCES1)
+SOURCES_ALL=$(SOURCES1) $(SOURCES3)
 
 EXEC = texprime
-
-LIBS=Fonts.cma Typography.cma
 
 ########## Targets ##########
 
 OBJS = $(filter %.cmo, $(SOURCES_EXEC:.ml=.cmo))
 OPTOBJS = $(OBJS:.cmo=.cmx)
 
-TEST = $(filter %.ml, $(SOURCES_LIBS))
-TESTOBJS = $(TEST:.ml=.cmo)
-TESTOPTOBJS = $(TEST:.ml=.cmx)
-
-LIBS_ML=$(filter %.ml, $(SOURCES_LIBS))
 FORMATS_ML=$(filter %.ml, $(SOURCES3))
 
 ########## Compilers ##########
 
-OPTS= -I Fonts -I Output -I Output/Drivers -I Format
+OPTS=-I Typography -I Format
 CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" -g
-CAMLOPT = ocamlfind ocamlopt -package bigarray,camomile,dyp -linkpkg $(OPTS) -pp "cpp -w"
-CAMLOPTA = ocamlfind ocamlopt -package bigarray,camomile,dyp $(OPTS) -pp "cpp -w"
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w"
+CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp $(OPTS) -pp "cpp -w"
 
 CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(OPTS) -pp "cpp -w"
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts $(OPTS) -pp "cpp -w"
@@ -46,46 +27,43 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
 ###############################
 
-all : $(EXEC).opt Bezier.cma Bezier.cmxa Fonts.cma Fonts.cmxa Typography.cma Typography.cmxa texprimeDefault.tgo texprimeDefault.tgx
-
-opt : $(EXEC).opt $(LIBS:.cma=.cmxa)
+all : $(EXEC) $(EXEC).opt Typography/Typography.cma Typography/Typography.cmxa DefaultFormat.cma DefaultFormat.cmxa texprimeDefault.tgo texprimeDefault.tgx
+	cp $(EXEC).opt $(EXEC)
 
 
 $(EXEC).opt: $(OPTOBJS)
-	$(CAMLOPT) dynlink.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
-	cp $(EXEC).opt $(EXEC)
+	$(CAMLOPT) dynlink.cmxa Typography.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 
 $(EXEC): $(OBJS)
-	$(CAMLC) dynlink.cma $(CUSTOM) -o $(EXEC) $(OBJS)
+	$(CAMLC) dynlink.cma Typography.cma $(CUSTOM) -o $(EXEC).opt $(OBJS)
+
+
 
 proof: $(TESTOBJS) tests/proof.ml
 	$(CAMLC) -o proof $(TESTOBJS) tests/proof.ml
 
-Fonts.cma: Bezier.cma $(filter %.cmo, $(FONTS:.ml=.cmo))
-	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(FONTS:.ml=.cmo))
+Fonts.cma: $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo))
+	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo))
 
-Fonts.cmxa: Bezier.cmxa $(filter %.cmx, $(FONTS:.ml=.cmx))
-	$(CAMLOPTA) -a -o fonts.cmxa $(filter %.cmx, $(FONTS:.ml=.cmx))
-
-
-Bezier.cma:$(BEZIER:.ml=.cmo)
-	$(CAMLC) -a -o Bezier.cma $(BEZIER:.ml=.cmo)
-
-Bezier.cmxa:$(BEZIER:.ml=.cmx)
-	$(CAMLOPTA) -a -o Bezier.cmxa $(BEZIER:.ml=.cmx)
+Fonts.cmxa: $(filter %.cmx, $(FONTS:.ml=.cmx))
+	$(CAMLOPTA) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS:.ml=.cmx))
 
 
-Typography.cma: $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
-	$(CAMLC) -a -o Typography.cma $(filter %.cmo, $(LIBS_ML:.ml=.cmo))
+Typography/Typography.cma:
+	make -C Typography Typography.cma
+Typography/Typography.cmxa:
+	make -C Typography Typography.cmxa
 
-Typography.cmxa: $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
-	$(CAMLOPTA) -a -o Typography.cmxa $(filter %.cmx, $(LIBS_ML:.ml=.cmx))
 
-DefaultFormat.cma: Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
-	$(CAMLC) -a -o DefaultFormat.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
 
-DefaultFormat.cmxa: Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
-	$(CAMLOPTA) -a -o DefaultFormat.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+DefaultFormat.mli:
+	$(CAMLC) -i DefaultFormat.ml > DefaultFormat.mli
+
+DefaultFormat.cma: Typography/Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+	$(CAMLC) -a -o DefaultFormat.cma -I Typography Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+
+DefaultFormat.cmxa: Typography/Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o DefaultFormat.cmxa -I Typography $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
@@ -106,44 +84,45 @@ texprimeDefault.tgo: DefaultGrammar.pdf
 texprimeDefault.tgx: DefaultGrammar.opt.pdf
 	true
 
-DefaultGrammar.pdf: texprime Typography.cma DefaultGrammar.txp
-	./texprime --pdf --extra-fonts-dir ../Otf DefaultGrammar.txp
-	# $(CAMLC)  -o DefaultGrammar.tmx Typography.cma -impl DefaultGrammar.tml
-	# ./DefaultGrammar.tmx --extra-fonts-dir ../Otf
+DefaultGrammar.pdf: texprime DefaultFormat.cmx Typography/Typography.cma DefaultGrammar.txp
+	./texprime --ml --extra-fonts-dir ../Otf DefaultGrammar.txp
+	$(CAMLC)  -o DefaultGrammar.tmx Typography/Typography.cma DefaultFormat.cma -impl DefaultGrammar.tml
+	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
 
-DefaultGrammar.opt.pdf: texprime.opt Typography.cmxa DefaultGrammar.txp
-	./texprime.opt --pdf --extra-fonts-dir ../Otf DefaultGrammar.txp
-	# $(CAMLOPT)  -o DefaultGrammar.tmx Typography.cmxa -impl DefaultGrammar.tml
-	# ./DefaultGrammar.tmx --extra-fonts-dir ../Otf
-	#cp DefaultGrammar.pdf DefaultGrammar.opt.pdf
+DefaultGrammar.opt.pdf: texprime.opt DefaultFormat.cmxa Typography/Typography.cmxa DefaultGrammar.txp
+	./texprime.opt --ml --extra-fonts-dir ../Otf DefaultGrammar.txp
+	$(CAMLOPT)  -o DefaultGrammar.tmx Typography/Typography.cmxa DefaultFormat.cmxa  -impl DefaultGrammar.tml
+	./DefaultGrammar.tmx --extra-fonts-dir ../Otf
+	mv DefaultGrammar.pdf DefaultGrammar.opt.pdf
 
-%.pdf: texprime Typography.cma DefaultFormat.cma texprimeDefault.tgo %.txp
-	./texprime --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLC)  -o $*.tmx Typography.cma DefaultFormat.cma -impl $*.tml
+%.pdf: texprime Typography/Typography.cma DefaultFormat.cma texprimeDefault.tgo %.txp
+	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
+	$(CAMLC)  -o $*.tmx Typography/Typography.cma DefaultFormat.cma -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 
-%.opt.pdf: texprime.opt Typography.cmxa DefaultFormat.cmxa texprimeDefault.tgx %.txp
+%.opt.pdf: texprime.opt Typography/Typography.cmxa DefaultFormat.cmxa texprimeDefault.tgx %.txp
 	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLOPT)  -o $*.tmx Typography.cmxa DefaultFormat.cmxa -impl $*.tml
+	$(CAMLOPT)  -o $*.tmx Typography/Typography.cmxa DefaultFormat.cmxa -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 	cp $*.pdf $*.opt.pdf
 
 %.ml: %.dyp
 	dypgen --no-mli $<
 
-%.cmo: %.ml
-	$(CAMLC) -c -o $@ $<
+%.cmo: %.ml Typography/Typography.cma
+	$(CAMLC) -c Typography/Typography.cma -o $@ $<
 
 %.cmi: %.mli
 	$(CAMLC) -c $<
 
-%.cmx: %.ml
-	$(CAMLOPT) -c -o $@ $<
+%.cmx: %.ml Typography/Typography.cmxa
+	$(CAMLOPT) -c Typography/Typography.cmxa $<
+
 
 clean:
-	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
-	make -C Fonts clean
-	make -C Output clean
+	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\# DefaultFormat.mli
+	make -C Typography clean
+	make -C Format clean
 	rm -f Parser.ml
 	rm -f *.tml *.tmx *.tgo *.tgx
 	rm -Rf doc
@@ -158,9 +137,9 @@ clean:
 
 depend : .depend
 
-.depend: $(FONTS) $(BEZIER) $(SOURCES_ALL) .depend.input Parser.ml
+.depend: $(SOURCES_ALL) .depend.input Parser.ml
 	@echo '--Re-building dependencies'
-	$(CAMLDEP)  $(BEZIER) $(FONTS)  $(SOURCES_ALL) > .depend
+	$(CAMLDEP)  $(SOURCES_ALL) > .depend
 
 
 include .depend

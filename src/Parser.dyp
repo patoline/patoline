@@ -1,5 +1,5 @@
 {
-  open Constants
+  open Typography.Constants
 open Lexing
 open Dyp
 

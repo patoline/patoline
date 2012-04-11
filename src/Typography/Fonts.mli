@@ -191,8 +191,6 @@ module CFF :
     val select_features : 'a -> 'b -> 'c list
     val positioning : 'a -> 'b -> 'b
   end
-module Opentype_ : Font
-module CFF_ : Font
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
 val loadFont : ?offset:int -> ?size:int -> string -> font

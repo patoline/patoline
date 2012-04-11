@@ -1,4 +1,4 @@
-open Config
+open Typography.Config
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -12,19 +12,22 @@ open Parser
 
 let preambule fugue = "
   open Typography
-  open Util
-  open Config
-  open Document
-  open Typography.Output.Common
+  open Typography.Util
+  open Typography.Config
+  open Typography.Document
+  open Typography.OutputCommon
 "^(if fugue then
-     "module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
+     "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)), \"\
+Adds directories to the font search path\")];;
+let _=Arg.parse spec ignore \"Usage :\";;
+     module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
   "module Format=DefaultFormat.DefaultFormat(D);;\nopen Format;;\n"
 
 
 let postambule outfile = Printf.sprintf "
-  module Out=Output.Paper.Pdf
+  module Out=OutputPaper.Output(Pdf)
 
   let _ = 
     let filename=\"%s\" in

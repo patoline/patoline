@@ -1,7 +1,7 @@
 #!/bin/sh
 
 init_dir=$(pwd)
-version=$(grep version src/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
+version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
 darcs dist -d texprime
 mv texprime.tar.gz /tmp
 cd /tmp

@@ -1,7 +1,7 @@
 (** La "classe" de documents par defaut. *)
 open Config
-let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")]
-let _=Arg.parse spec ignore "Usage :"
+(* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")] *)
+(* let _=Arg.parse spec ignore "Usage :" *)
 
 open Binary
 open Constants
