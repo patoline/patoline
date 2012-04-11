@@ -176,9 +176,7 @@ let rec print_macro ch op mtype name args =
     | `Include ->
         incr moduleCounter;
         Printf.fprintf ch
-          "let _=D.structure:=(Node empty,[])::(!D.structure);;\nmodule TEMP%d=%s.Document(D);;
-           module TEMP%d=struct open TEMP%d end
-           let _=match !D.structure with h0::h1::s->D.structure:=newChildAfter h1 (fst h0)::s | _->();;" !moduleCounter name (!moduleCounter+1) !moduleCounter;
+          "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
         incr moduleCounter
   end
 

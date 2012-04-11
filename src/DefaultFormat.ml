@@ -128,11 +128,12 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       match t with
           Node n -> Node { n with
                              name=name;
+                             node_tags=Structural::InTOC::n.node_tags;
                              displayname = match displayname with
                                  None->[T name]
                                | Some a->a }
         | _->Node { name=name;
-                    node_tags=[];
+                    node_tags=[Structural;InTOC];
                     displayname=(match displayname with
                                      Some a->a
                                    | None->[T name]);
