@@ -52,7 +52,7 @@ type mathsEnvironment={
 
 let default_env=
     {
-      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "euler.otf"));
+      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "Euler/euler.otf"));
       (*
       mathsFont=Fonts.loadFont "Otf/euler.otf";
       mathsFont=Fonts.loadFont "Otf/Asana-Math/Asana-Math.otf";
