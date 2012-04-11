@@ -96,6 +96,10 @@ let _=
 
 
 
+      (* proof *)
+      Printf.fprintf out "\tmake -C proof install DESTDIR=$(DESTDIR) PREFIX=%s\n" (escape !bin_prefix);
+
+
     Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"
       (String.concat ";" (List.map (fun s->"\""^s^"\"") !fonts_dirs))
       !bin_dir

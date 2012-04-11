@@ -6,6 +6,7 @@ SOURCES_ALL=$(SOURCES1) $(SOURCES3)
 
 EXEC = texprime
 
+DOC=Typography/Fonts.mli
 ########## Targets ##########
 
 OBJS = $(filter %.cmo, $(SOURCES_EXEC:.ml=.cmo))
@@ -24,7 +25,7 @@ CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(OPTS)
 CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts $(OPTS) -pp "cpp -w"
 CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 
-
+.PHONY:Typography/Typography.cma Typography/Typography.cmxa
 ###############################
 
 all : $(EXEC) $(EXEC).opt Typography/Typography.cma Typography/Typography.cmxa DefaultFormat.cma DefaultFormat.cmxa texprimeDefault.tgo texprimeDefault.tgx
@@ -36,17 +37,6 @@ $(EXEC).opt: $(OPTOBJS)
 
 $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma Typography/Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
-
-
-
-proof: $(TESTOBJS) tests/proof.ml
-	$(CAMLC) -o proof $(TESTOBJS) tests/proof.ml
-
-Fonts.cma: $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo))
-	$(CAMLC) -a -o fonts.cma $(filter %.cmo, $(BASE:.ml=.cmo)) $(filter %.cmo, $(FONTS:.ml=.cmo))
-
-Fonts.cmxa: $(filter %.cmx, $(FONTS:.ml=.cmx))
-	$(CAMLOPTA) -a -o fonts.cmxa $(filter %.cmx, $(BASE:.ml=.cmx)) $(filter %.cmx, $(FONTS:.ml=.cmx))
 
 
 Typography/Typography.cma:
@@ -77,7 +67,7 @@ graphics.opt: tests/graphics_font.ml $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx)
 	$(CAMLOPT) graphics.cmxa -o graphics.opt $(BASE:.ml=.cmx) $(FONTS:.ml=.cmx) tests/graphics_font.ml
 
 
-doc:Makefile $(SOURCES0:.ml=.cmo)
+doc:Makefile $(filter %.cmo, $(DOC:.ml=.cmo)) $(filter %.cmi, $(DOC:.mli=.cmi))
 	mkdir -p doc_html
 	$(CAMLDOC) -d doc_html $(DOC)
 

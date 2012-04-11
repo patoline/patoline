@@ -11,54 +11,55 @@ let _=Random.self_init ()
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
-  let lmroman =
-    [ Regular, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmroman10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmroman10-italic.otf")));
+    let lmroman =
+      [ Regular,(
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-italic.otf"))));
       Bold, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmroman10-bold.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-bold.otf"))),
+        Lazy.lazy_from_fun (
+          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf"))));
+
       Caps, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf"))));
       Demi, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf"))))
     ]
 
   let lmmono =
     [ Regular, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf"))));
       Bold, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf"))),
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf"))));
       Caps, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf"))));
       Demi, (
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf")),
-        Lazy.lazy_from_fun (fun () ->
-	                      loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf")));
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf"))),
+        Lazy.lazy_from_fun (
+          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf"))));
     ]
 
   let defaultEnv:user environment=
-    let f=selectFont lmroman Regular false in
+    let f,str,subst,pos=selectFont lmroman Regular false in
     let hyphenate=try
       let i=open_in (findHyph "en.hdict") in
       let inp=input_value i in
@@ -80,18 +81,18 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         File_not_found _-> (fun x->[||])
     in
     let fsize=4. in
+    let feat= [ Opentype.standardLigatures ] in
+    let loaded_feat=Typography.Fonts.select_features f [ Opentype.standardLigatures ] in
       {
         fontFamily=lmroman;
         fontItalic=false;
         fontAlternative=Regular;
-        fontFeatures= [ Opentype.standardLigatures ];
+        fontFeatures=feat;
         fontColor=Typography.OutputCommon.black;
         font=f;
-        substitutions=
-          (fun glyphs -> List.fold_left apply glyphs (
-             Typography.Fonts.select_features f [ Opentype.standardLigatures ]
-           ));
-        positioning=positioning f;
+        word_substitutions=str;
+        substitutions=(fun glyphs -> List.fold_left apply (subst glyphs) loaded_feat);
+        positioning=(fun x->pos (positioning f x));
         footnote_y=10.;
         size=fsize;
         lead=fsize*.5./.4.;

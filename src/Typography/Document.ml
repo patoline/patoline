@@ -17,8 +17,13 @@ open Util
 
 type fontAlternative = Regular | Bold | Caps | Demi
 
+(* font, substitutions, positioning *)
+
+let simpleFamilyMember:font->font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list) =
+  fun a->(a,(fun x->x),(fun x->x),(fun x->x))
+
 (* Italic is second *)
-type fontFamily = (fontAlternative * (font Lazy.t * font Lazy.t)) list
+type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
 
 
 let selectFont fam alt it =
@@ -110,6 +115,7 @@ and 'a environment={
   par_indent:'a box list;
   stdGlue:'a box list;
   hyphenate:string->(string*string) array;
+  word_substitutions:string->string;
   substitutions:glyph_id list -> glyph_id list;
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;
@@ -138,6 +144,13 @@ module type Format=sig
   type user
   val defaultEnv:user environment
   val postprocess_tree:user tree->user tree
+  val title:
+    (user tree * (user tree) list) list ref ->
+    ?label:string ->
+    ?displayname:user content list ->
+    string -> unit
+  val author:string->unit
+  val institute:string->unit
 end
 
 let incr_counter ?(level= -1) env name=
@@ -250,24 +263,23 @@ let change_env t fenv=match t with
 
 (* Quelques Exemples d'environnement *)
 
-let updateFont env font =
-     { env with
-       font=font;
-       substitutions=
-         (fun glyphs -> List.fold_left apply glyphs (
-           Fonts.select_features font env.fontFeatures
-          ));
-       positioning=positioning font }
+let updateFont env font str subst pos=
+  let feat=Fonts.select_features font env.fontFeatures in
+    { env with
+        font=font;
+        word_substitutions=str;
+        substitutions=(fun glyphs -> List.fold_left apply (subst glyphs) feat);
+        positioning=(fun x->pos (positioning font x)) }
 
 (* Changer de font dans un scope, ignore la famille, attention, à éviter en direct *)
 let font f t=
   let font=loadFont f in
-    [Scoped ((fun env-> updateFont env font), t)]
+    [Scoped ((fun env-> updateFont env font (fun x->x) (fun x->x) (fun x->x)), t)]
 
 let envItalic b env =
-  let font = selectFont env.fontFamily env.fontAlternative b in
+  let font, str,subst, pos= selectFont env.fontFamily env.fontAlternative b in
   let env = { env with fontItalic = b } in
-  updateFont env font
+    updateFont env font str subst pos
 
 let italic t = [ Scoped(envItalic true, t) ]
 
@@ -286,9 +298,9 @@ let toggleItalic t =
   [Scoped ((fun env -> envItalic (not env.fontItalic) env), t)]
  
 let envAlternative features alt env =
-  let font = selectFont env.fontFamily alt env.fontItalic in
+  let font,str,subs,pos = selectFont env.fontFamily alt env.fontItalic in
   let env = { env with fontAlternative = alt } in
-  updateFont env font
+  updateFont env font str subs pos
  
 let alternative ?features alt t =
   [Scoped ((fun env -> 
@@ -299,9 +311,9 @@ let alternative ?features alt t =
     envAlternative features alt env), t)]
 
 let envFamily fam env =
-  let font = selectFont fam env.fontAlternative env.fontItalic in
+  let font,str,subs,pos = selectFont fam env.fontAlternative env.fontItalic in
   let env = { env with fontFamily = fam } in
-  updateFont env font
+  updateFont env font str subs pos
 
 let family fam t =
   [Scoped ((fun env -> envFamily fam env), t)]
@@ -535,9 +547,9 @@ let rec boxify env=function
           if result<>[] then
             result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
                                         env.fontColor
-                                        (String.sub t i0 (i-i0))))
+                                        (env.word_substitutions (String.sub t i0 (i-i0)))))
           else
-            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (String.sub t i0 (i-i0))
+            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (env.word_substitutions (String.sub t i0 (i-i0)))
         ) else result
       ) else (
         if is_space t.[i] then
@@ -545,9 +557,9 @@ let rec boxify env=function
             if i0<>i then (
               if result<>[] then
                 result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
-                                            (String.sub t i0 (i-i0))))
+                                           (env.word_substitutions (String.sub t i0 (i-i0)))))
               else
-                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (String.sub t i0 (i-i0))
+                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (env.word_substitutions (String.sub t i0 (i-i0)))
             ) else result
           )
         else (
