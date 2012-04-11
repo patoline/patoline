@@ -1,12 +1,10 @@
-let prefix=ref "/usr/local/"
-let bin_dir=ref ""
-let fonts_dir=ref ""
-let grammars_dir=ref ""
-let hyphen_dir=ref ""
-let ocaml_lib_dir=ref ""
-let fonts_dirs=ref []
-let grammars_dirs=ref []
-let hyphen_dirs=ref []
+let prefix=ref "/usr/local"
+let bin_prefix=ref ""
+let fonts_prefix=ref ""
+let ocaml_prefix=ref ""
+let fonts_dir=ref []
+let grammars_prefix=ref []
+let hyphen_prefix=ref []
 
 open Arg
 let rec escape s=
@@ -19,27 +17,20 @@ let rec escape s=
 
 let _=
   parse [
-    ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
-    ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
-    ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
-    ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/texprime/fonts/ by default)");
-    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/share/texprime/grammars/ by default)");
-    ("--hypen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/texprime/hyphen/ by default)");
-    ("--fonts-dirs", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
-    ("--grammars-dirs", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
-    ("--hyphen-dirs", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories texprime should scan for hyphenation dictionaries")
-  ] ignore "Usage:";
-  if !bin_dir="" then bin_dir:=Filename.concat !prefix "/bin/";
-  if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
-
-  if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/texprime/fonts";
-  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "share/texprime/grammars";
-  if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/texprime/hyphen";
-
-  fonts_dirs:=!fonts_dir ::(List.rev !fonts_dirs);
-  grammars_dirs:=!grammars_dir ::(List.rev !grammars_dirs);
-  hyphen_dirs:=!hyphen_dir ::(List.rev !hyphen_dirs);
-
+    ("--prefix", Set_string prefix, "prefix");
+    ("--bin-prefix", Set_string bin_prefix, "prefix for the binaries");
+    ("--ocaml-libs", Set_string ocaml_prefix, "prefix for the caml libraries (use ocamlc -where)");
+    ("--fonts-prefix", Set_string fonts_prefix, "prefix for the fonts");
+    ("--fonts-dir", String (fun pref->fonts_dir:=pref:: !fonts_dir), "prefix for the fonts");
+    ("--grammars-prefix", String (fun pref->grammars_prefix:=pref:: !grammars_prefix), "prefix for the grammars");
+    ("--hyphenation-prefix", String (fun pref->hyphen_prefix:=pref:: !hyphen_prefix), "prefix for the hyphenation dictionaries")
+  ] ignore "Usage :";
+  if !bin_prefix="" then bin_prefix:=Filename.concat !prefix "bin";
+  if !fonts_prefix="" then fonts_prefix:=Filename.concat !prefix "share/texprime/fonts";
+  if !ocaml_prefix="" then ocaml_prefix:=Filename.concat !prefix "lib/ocaml";
+  fonts_dir:=List.rev (!fonts_prefix :: !fonts_dir);
+  grammars_prefix:=List.rev ((Filename.concat !prefix "share/texprime/grammars"):: !grammars_prefix);
+  hyphen_prefix:=List.rev ((Filename.concat !prefix "share/texprime/hyphenation"):: !hyphen_prefix);
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
 
@@ -47,7 +38,7 @@ let _=
   let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
 
-    Printf.fprintf out "all:\n\tmake -C src all\n";
+    Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "opt" else "all");
 
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
@@ -86,7 +77,11 @@ let _=
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_dir);
-    let sources="src/Typography/Typography.cma src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi src/DefaultFormat.cma src/DefaultFormat.cmxa src/DefaultFormat.a src/DefaultFormat.cmi"  in
+    let sources=
+      "src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi "^
+        "src/DefaultFormat.cmxa src/DefaultFormat.a src/DefaultFormat.cmi "^
+        (if not !opt_only then "src/Typography/Typography.cma  src/DefaultFormat.cma " else "")
+    in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
 

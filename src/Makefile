@@ -31,6 +31,8 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 all : $(EXEC) $(EXEC).opt Typography/Typography.cma Typography/Typography.cmxa DefaultFormat.cma DefaultFormat.cmxa texprimeDefault.tgo texprimeDefault.tgx
 	cp $(EXEC).opt $(EXEC)
 
+opt : $(EXEC).opt Typography/Typography.cmxa DefaultFormat.cmxa texprimeDefault.tgx
+	cp $(EXEC).opt $(EXEC)
 
 $(EXEC).opt: $(OPTOBJS)
 	$(CAMLOPT) dynlink.cmxa Typography/Typography.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
