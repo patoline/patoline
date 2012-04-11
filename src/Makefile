@@ -1,5 +1,5 @@
 SOURCES1 = Parser.ml Texprime.ml Main.ml
-SOURCES3 = Format/TableOfContents.ml Format/Sections.ml DefaultFormat.ml
+SOURCES3 = Format/TableOfContents.ml Format/Sections.ml OutputDrawing.ml DefaultFormat.ml
 
 SOURCES_EXEC=$(SOURCES1)
 SOURCES_ALL=$(SOURCES1) $(SOURCES3)
@@ -15,7 +15,7 @@ FORMATS_ML=$(filter %.ml, $(SOURCES3))
 
 ########## Compilers ##########
 
-OPTS=-I Typography -I Format
+OPTS=-I Format
 CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w" -g
 CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp $(OPTS) -pp "cpp -w"
@@ -32,10 +32,10 @@ all : $(EXEC) $(EXEC).opt Typography/Typography.cma Typography/Typography.cmxa D
 
 
 $(EXEC).opt: $(OPTOBJS)
-	$(CAMLOPT) dynlink.cmxa Typography.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
+	$(CAMLOPT) dynlink.cmxa Typography/Typography.cmxa $(CUSTOM) -o $(EXEC).opt $(OPTOBJS)
 
 $(EXEC): $(OBJS)
-	$(CAMLC) dynlink.cma Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
+	$(CAMLC) dynlink.cma Typography/Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
 
 
@@ -51,8 +51,12 @@ Fonts.cmxa: $(filter %.cmx, $(FONTS:.ml=.cmx))
 
 Typography/Typography.cma:
 	make -C Typography Typography.cma
+	cp Typography/Typography.cmi .
+	cp Typography/Typography.cma .
 Typography/Typography.cmxa:
 	make -C Typography Typography.cmxa
+	cp Typography/Typography.cmi .
+	cp Typography/Typography.cmxa .
 
 
 
@@ -60,10 +64,10 @@ DefaultFormat.mli:
 	$(CAMLC) -i DefaultFormat.ml > DefaultFormat.mli
 
 DefaultFormat.cma: Typography/Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
-	$(CAMLC) -a -o DefaultFormat.cma -I Typography Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+	$(CAMLC) -a -o DefaultFormat.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
 
 DefaultFormat.cmxa: Typography/Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
-	$(CAMLOPTA) -a -o DefaultFormat.cmxa -I Typography $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o DefaultFormat.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml

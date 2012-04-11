@@ -1,15 +1,14 @@
-open Typography
-open Document
-open Parameters
-open Fonts.FTypes
-open Util
-open Fonts
-open Constants
-open Binary
+open Typography.Document
+open Typography.Parameters
+open Typography.Fonts.FTypes
+open Typography.Util
+open Typography.Fonts
+open Typography.Constants
+open Typography.Binary
 
 let _=Random.self_init ()
 
-module DefaultFormat=functor (D:DocumentStructure)->(
+module DefaultFormat=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
   let lmroman =
@@ -65,7 +64,7 @@ module DefaultFormat=functor (D:DocumentStructure)->(
       let inp=input_value i in
         close_in i;
         (fun str->
-           let hyphenated=Hyphenate.hyphenate inp str in
+           let hyphenated=Typography.Hyphenate.hyphenate inp str in
            let pos=Array.make (List.length hyphenated-1) ("","") in
            let rec hyph l i cur=match l with
                []->()
@@ -86,11 +85,11 @@ module DefaultFormat=functor (D:DocumentStructure)->(
         fontItalic=false;
         fontAlternative=Regular;
         fontFeatures= [ Opentype.standardLigatures ];
-        fontColor=OutputCommon.black;
+        fontColor=Typography.OutputCommon.black;
         font=f;
         substitutions=
           (fun glyphs -> List.fold_left apply glyphs (
-             Fonts.select_features f [ Opentype.standardLigatures ]
+             Typography.Fonts.select_features f [ Opentype.standardLigatures ]
            ));
         positioning=positioning f;
         footnote_y=10.;
@@ -126,11 +125,12 @@ module DefaultFormat=functor (D:DocumentStructure)->(
     in
     let t0'=
       match t with
-          Node n -> Node { n with Document.name=name;
-                             Document.displayname = match displayname with
+          Node n -> Node { n with
+                             name=name;
+                             displayname = match displayname with
                                  None->[T name]
                                | Some a->a }
-        | _->Node { Document.name=name;
+        | _->Node { name=name;
                     node_tags=[];
                     displayname=(match displayname with
                                      Some a->a
@@ -178,78 +178,78 @@ module DefaultFormat=functor (D:DocumentStructure)->(
 
   let lang_OCaml s=[T s]
 
-  (* let minipage (env:Typography.Document.user Typography.Document.environment) str= *)
-  (*   let env',fig_params,params,compl,pars,figures=flatten env (fst str) in *)
-  (*   let (_,pages,user')=TS.typeset *)
-  (*     ~completeLine:compl *)
-  (*     ~figure_parameters:fig_params *)
-  (*     ~figures:figures *)
-  (*     ~parameters:params *)
-  (*     ~badness:(Badness.badness pars) *)
-  (*     pars *)
-  (*   in *)
-  (*     Typography.OutputDrawing.output pars figures *)
-  (*       (env':Typography.Document.user Typography.Document.environment) *)
-  (*       pages *)
+  let minipage (env) str=
+    let env',fig_params,params,compl,pars,figures=flatten env (fst str) in
+    let (_,pages,user')=TS.typeset
+      ~completeLine:compl
+      ~figure_parameters:fig_params
+      ~figures:figures
+      ~parameters:params
+      ~badness:(Typography.Badness.badness pars)
+      pars
+    in
+      OutputDrawing.output pars figures
+        env'
+        pages
 
 
-  (* let footnote l= *)
-  (*   [Env (fun env-> *)
-  (*           let next=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with *)
-  (*               []->0 *)
-  (*             | h::_->h *)
-  (*           in *)
-  (*             { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters }); *)
-  (*    BFix (fun env0-> *)
-  (*            let env= { env0 with normalMeasure=150.; normalLeftMargin=(fst a4-.150.)/.2. } in *)
-  (*            let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with *)
-  (*                []->0 *)
-  (*              | h::_->h *)
-  (*            in *)
-  (*            let foot_num=ref (-1) in *)
-  (*            let page_footnotes=ref 1 in *)
-  (*              TS.UMap.iter (fun k a-> *)
-  (*                              match k with *)
-  (*                                  Footnote (i,_) when i= count -> foot_num:=a.Util.page *)
-  (*                                | _->() *)
-  (*                           ) env.user_positions; *)
-  (*              (\* Y a-t-il deja des footnotes sur cette page ? *\) *)
-  (*              TS.UMap.iter (fun k a-> *)
-  (*                              match k with *)
-  (*                                  Footnote (i,_) when a.Util.page= !foot_num && i< count -> *)
-  (*                                    incr page_footnotes *)
-  (*                                | _->() *)
-  (*                           ) env.user_positions; *)
-  (*              (\* Insertion d'une footnote *\) *)
-  (*              let str=ref [Node empty,[]] in *)
-  (*              let params a b c d e f= *)
-  (*                let p=(parameters a b c d e f) in *)
-  (*                let lead=env.normalLead *. (phi-.1.) in *)
-  (*                  { p with min_height_after=lead } *)
-  (*              in *)
-  (*                newPar str ~environment:(fun x->x) C.normal params *)
-  (*                  (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l); *)
-  (*                match !str with *)
-  (*                    []->assert false *)
-  (*                  | h::s->( *)
-  (*                      str:=s; *)
-  (*                      let pages=minipage { env with *)
-  (*                                             normalLead=env.lead*.(phi-.1.); *)
-  (*                                             lead=env.lead*.(phi-.1.); *)
-  (*                                             size=env.size*.(phi-.1.) } *)
-  (*                        (top h) *)
-  (*                      in *)
-  (*                        if Array.length pages>0 then *)
-  (*                          [User (Footnote (count, pages.(0))); *)
-  (*                           Drawing (drawing ~offset:(env.size/.2.) *)
-  (*                                      (draw_boxes (boxify_scoped { env with size=env.size/.phi } *)
-  (*                                                     [T (string_of_int !page_footnotes)]) *)
-  (*                                      )) *)
-  (*                          ] *)
-  (*                        else *)
-  (*                          [] *)
-  (*                    ) *)
-  (*         )] *)
+  let footnote l=
+    [Env (fun env->
+            let next=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
+                []->0
+              | h::_->h
+            in
+              { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters });
+     BFix (fun env0->
+             let env= { env0 with normalMeasure=150.; normalLeftMargin=(fst a4-.150.)/.2. } in
+             let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
+                 []->0
+               | h::_->h
+             in
+             let foot_num=ref (-1) in
+             let page_footnotes=ref 1 in
+               TS.UMap.iter (fun k a->
+                               match k with
+                                   Footnote (i,_) when i= count -> foot_num:=a.page
+                                 | _->()
+                            ) env.user_positions;
+               (* Y a-t-il deja des footnotes sur cette page ? *)
+               TS.UMap.iter (fun k a->
+                               match k with
+                                   Footnote (i,_) when a.page= !foot_num && i< count ->
+                                     incr page_footnotes
+                                 | _->()
+                            ) env.user_positions;
+               (* Insertion d'une footnote *)
+               let str=ref [Node empty,[]] in
+               let params a b c d e f=
+                 let p=(parameters a b c d e f) in
+                 let lead=env.normalLead *. (phi-.1.) in
+                   { p with min_height_after=lead }
+               in
+                 newPar str ~environment:(fun x->x) C.normal params
+                   (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
+                 match !str with
+                     []->assert false
+                   | h::s->(
+                       str:=s;
+                       let pages=minipage { env with
+                                              normalLead=env.lead*.(phi-.1.);
+                                              lead=env.lead*.(phi-.1.);
+                                              size=env.size*.(phi-.1.) }
+                         (top h)
+                       in
+                         if Array.length pages>0 then
+                           [User (Footnote (count, pages.(0)));
+                            Drawing (drawing ~offset:(env.size/.2.)
+                                       (draw_boxes (boxify_scoped { env with size=env.size/.phi }
+                                                      [T (string_of_int !page_footnotes)])
+                                       ))
+                           ]
+                         else
+                           []
+                     )
+          )]
 
 
   module Env_itemize = struct
@@ -348,7 +348,7 @@ module DefaultFormat=functor (D:DocumentStructure)->(
 
   end
 
-  let theoremRef name=Document.generalRef ~refType:"theorem" "th0"
+  let theoremRef name=generalRef ~refType:"theorem" "th0"
   module Env_theorem=struct
     let do_begin_theorem ()=
       D.structure := (Node empty, []):: !D.structure

@@ -7,7 +7,7 @@ DRIVERS=Output/OutputPaper.mli Output/Drivers/Pdf.mli Output/OutputPaper.ml Outp
 FORMATS=Format/TableOfContents.ml Format/Sections.ml DefaultFormat.ml
 
 SOURCES0 = Config.ml Constants.ml
-SOURCES2 = $(BASE) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Log.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.mli Output/OutputDrawing.ml Document.ml $(DRIVERS) Diag.ml Maths.ml
+SOURCES2 = $(BASE) $(FONTS) Hyphenate.ml Output/OutputCommon.ml Output/OutputCommon.mli Util.mli Util.ml Badness.mli Badness.ml Log.ml Break.mli Break.ml Parameters.ml Output/OutputDrawing.ml Document.ml $(DRIVERS) Diag.ml Maths.ml
 
 SOURCES_ALL=$(SOURCES0) $(SOURCES2)
 
