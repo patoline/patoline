@@ -20,7 +20,7 @@ let preambule format fugue = "
      "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)), \"\
 Adds directories to the font search path\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
-     module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
+     module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] let fixable=ref false end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
   "module Format="^format^".Format(D);;\nopen Format;;\n"
@@ -34,9 +34,9 @@ let postambule outfile = Printf.sprintf "
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
      let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
-     fixable:=false;
+     D.fixable:=false;
      let tree=postprocess_tree (fst (top (List.hd !D.structure))) in
-     let env1,fig_params,params,compl,pars,figures=flatten env0 tree in
+     let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
@@ -46,7 +46,7 @@ let postambule outfile = Printf.sprintf "
        pars
      in
      let env2, reboot=update_names env1 user' in
-     if i<10 && reboot && !fixable then (
+     if i<10 && reboot && !D.fixable then (
        resolve (i+1) env2
      ) else Out.output tree pars figures env2 pages filename
   in

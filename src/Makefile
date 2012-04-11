@@ -116,7 +116,7 @@ DefaultGrammar.opt.pdf: texprime.opt DefaultFormat.cmxa Typography/Typography.cm
 
 
 clean:
-	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\# DefaultFormat.mli
+	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# DefaultFormat.mli
 	make -C Typography clean
 	make -C Format clean
 	rm -f Parser.ml

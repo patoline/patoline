@@ -37,7 +37,11 @@ let postprocess_tree tree=
                     ::n.displayname
                )]
           else
-            n.displayname
+            B (fun env->
+                 let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                 let path=drop 1 b in
+                   [User (Structure path)])::
+              n.displayname
         in
         let par=Paragraph {
           par_contents=section_name;

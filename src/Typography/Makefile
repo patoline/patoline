@@ -47,7 +47,7 @@ Typography.cmxa: $(filter %.cmx, $(SOURCES_ALL:.ml=.cmx))
 	$(CAMLOPT) -c -for-pack Typography $<
 
 clean:
-	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\# DefaultFormat.mli
+	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# DefaultFormat.mli
 	make -C Fonts clean
 	make -C Output clean
 	rm -f *.tml *.tmx *.tgo *.tgx

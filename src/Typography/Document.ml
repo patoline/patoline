@@ -139,6 +139,7 @@ and 'a content=
 
 module type DocumentStructure=sig
   val structure:(user tree*(int*user tree) list) list ref
+  val fixable:bool ref
 end
 module type Format=sig
   type user
@@ -234,8 +235,6 @@ let rec follow t l=match l with
 (* La structure actuelle *)
 (* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
 (* Le chemin vers le noeud courant *)
-
-let fixable=ref false
 
 (* Sortie en dot de la structure du document *)
 let doc_graph out t0=
@@ -511,7 +510,8 @@ let newStruct str ?label ?(numbered=true) displayname =
                 try
                   let a,b=StrMap.find "structure" env'.counters in
                   match b with
-                      _::h::s->a,(h+1)::s
+                      _::h::s when numbered ->a,(h+1)::s
+                    | _::h::s ->a,h::s
                     | _ -> a, [0]
                 with
                     Not_found -> -1,[0]
@@ -535,13 +535,13 @@ let newStruct str ?label ?(numbered=true) displayname =
 let is_space c=c=' ' || c='\n' || c='\t'
 let sources=ref StrMap.empty
 
-let rec boxify env=function
+let rec boxify fixable env=function
     []->([], env)
-  | (B b)::s->let u,v=boxify env s in (b env@u, v)
-  | (C b)::s->(boxify env ((b env)@s))
-  | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
-  | (BFix b)::s->(fixable:=true; let u,v=boxify env s in (b env)@u,v)
-  | Env f::s->boxify (f env) s
+  | (B b)::s->let u,v=boxify fixable env s in (b env@u, v)
+  | (C b)::s->(boxify fixable env ((b env)@s))
+  | (CFix b)::s->(fixable:=true; boxify fixable env ((b env)@s))
+  | (BFix b)::s->(fixable:=true; let u,v=boxify fixable env s in (b env)@u,v)
+  | Env f::s->boxify fixable (f env) s
   | (T t)::s->(
     let rec cut_str i0 i result=
       if i>=String.length t then (
@@ -570,7 +570,7 @@ let rec boxify env=function
       )
     in
     let c=cut_str 0 0 [] in
-    let u,v=boxify env s in
+    let u,v=boxify fixable env s in
       c@u, v
   )
   | FileRef (file,off,size)::s -> (
@@ -580,19 +580,19 @@ let rec boxify env=function
     in
     let buf=String.create size in
     let _=seek_in i off; input i buf 0 size in
-      boxify env (T buf::s)
+      boxify fixable env (T buf::s)
   )
   | Scoped (fenv, p)::s->(
       let env'=fenv env in
-      let b,_=boxify env' p in
-      let u,v=boxify env s in
+      let b,_=boxify fixable env' p in
+      let u,v=boxify fixable env s in
         b@u, v
   )
 
 
-let boxify_scoped env x=fst (boxify env x)
+let boxify_scoped env x=fst (boxify (ref false) env x)
 
-let flatten env0 str=
+let flatten env0 fixable str=
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
   let fig_param=ref IntMap.empty in
@@ -602,7 +602,7 @@ let flatten env0 str=
 
 
   let add_paragraph env p=
-    let u,v=boxify env p.par_contents in
+    let u,v=boxify fixable env p.par_contents in
       paragraphs:=u::(!paragraphs);
       compl:=(p.par_completeLine env.normalMeasure)::(!compl);
       param:=(p.par_parameters env)::(!param);
@@ -696,13 +696,13 @@ let rec make_struct positions tree=
 
 
 let update_names env user=
-  let needs_reboot=ref false in
+  let needs_reboot=ref (user<>env.user_positions) in
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try
                      (* Printf.printf "%s\n" k; *)
                      let query=if b="figure" then Figure (List.hd (snd (StrMap.find "figures" a))) else Label k in
                      let pos=TS.UMap.find query user in
-                       (* if pos<>c then (Printf.printf "diff\n";print_line pos;print_line c); *)
+                       Printf.printf "diff\n";print_line pos;print_line c;
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (needs_reboot:=true; m)
