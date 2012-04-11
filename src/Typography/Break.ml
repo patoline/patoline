@@ -420,13 +420,13 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                     in
                       List.iter make_next_node (completeLine.(pi) paragraphs figures lastUser r_nextNode allow_impossible);
                       if (not !solutions_exist) && page<=node.page+1 then (
-                        let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params in
+                        let next_h=(lastParameters).next_acceptable_height node lastParameters r_nextNode !r_params in
                           fix page (if next_h=node.height then node.height+.1. else next_h)
                       )
                   )
                 in
                   (try
-                     fix node.page lastParameters.min_height_after;
+                     fix node.page (node.height+.lastParameters.min_height_after);
                      if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                        List.iter (fun (node,nextNode,bad,log,params,comp,user)->
                                     let a,_,_=LineMap.split nextNode !demerits' in

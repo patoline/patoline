@@ -323,7 +323,7 @@ let family fam t =
 let resize_env fsize env=
   { env with
       size=fsize;
-      lead=env.normalLead*.fsize/.env.size;
+      lead=env.lead*.fsize/.env.size;
       stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }
 
 (* Changer de taille dans un scope *)
