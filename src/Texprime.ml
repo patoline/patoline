@@ -10,7 +10,7 @@ open Lexing
 open Parser
 
 
-let preambule fugue = "
+let preambule format fugue = "
   open Typography
   open Typography.Util
   open Typography.Config
@@ -23,7 +23,7 @@ let _=Arg.parse spec ignore \"Usage :\";;
      module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
-  "module Format=DefaultFormat.DefaultFormat(D);;\nopen Format;;\n"
+  "module Format="^format^".Format(D);;\nopen Format;;\n"
 
 
 let postambule outfile = Printf.sprintf "
@@ -207,7 +207,7 @@ and print_contents op ch l =
   in fn l;
   Printf.fprintf ch ")"
 
-let gen_ml fugue from where pdfname =
+let gen_ml format fugue from where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
@@ -220,7 +220,7 @@ let gen_ml fugue from where pdfname =
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
-		  Printf.fprintf where "%s" (preambule fugue);
+		  Printf.fprintf where "%s" (preambule format fugue);
 		  begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 

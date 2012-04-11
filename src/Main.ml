@@ -3,9 +3,10 @@ let files=ref []
 let compile = ref false
 let run = ref false
 let cmd_line = ref []
-
+let format=ref "DefaultFormat"
 
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
+            ("--format",Arg.Set_string format, "Change the default document format");
             ("-c",Arg.Unit (fun ()->fugue:=false), "Compile separately");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
@@ -23,7 +24,7 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
     Printf.fprintf stderr "Generating OCaml code...\n";
-    Texprime.gen_ml !fugue fread where_ml (pdfname_of f);
+    Texprime.gen_ml !format !fugue fread where_ml (pdfname_of f);
     close_out where_ml;
     close_in fread;
     Printf.fprintf stderr "File %s generated.\n" (mlname_of f);

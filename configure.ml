@@ -86,7 +86,7 @@ let _=
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_dir);
-    let sources="src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi src/DefaultFormat.cmxa src/DefaultFormat.a src/DefaultFormat.cmi"  in
+    let sources="src/Typography/Typography.cma src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi src/DefaultFormat.cma src/DefaultFormat.cmxa src/DefaultFormat.a src/DefaultFormat.cmi"  in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
 

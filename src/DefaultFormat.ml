@@ -8,7 +8,7 @@ open Typography.Binary
 
 let _=Random.self_init ()
 
-module DefaultFormat=functor (D:Typography.Document.DocumentStructure)->(
+module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
   let lmroman =
