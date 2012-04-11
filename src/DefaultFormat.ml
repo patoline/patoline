@@ -374,8 +374,6 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                 let lvl,num=(StrMap.find Th.counter env.counters) in
                                 let _,str_counter=StrMap.find "structure" env.counters in
                                 let sect_num=drop (List.length str_counter - lvl) str_counter in
-                                  (* alternative Bold [Th.display; B (fun env->env.stdGlue); *)
-                                  (*                   T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))] *)
                                   Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))
                              )::
                         B (fun env->env.stdGlue)::

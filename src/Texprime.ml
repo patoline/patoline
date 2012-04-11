@@ -235,8 +235,8 @@ let gen_ml format fugue from where pdfname =
 		  let rec output_list no_indent lvl docs = 
 		    match docs with
 		      [] -> 
-			for i = 0 to lvl - 1 do
-			  Printf.fprintf where "let _ = go_up D.structure;;\n\n"
+			for i = 1 to lvl - 1 do
+			  Printf.fprintf where "let _ = go_up D.structure;;(* 1 *)\n\n"
 			done;
 		    | doc::docs -> 
 		      let lvl = ref lvl in 
@@ -259,11 +259,11 @@ let gen_ml format fugue from where pdfname =
 			Relative docs ->
 			  Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 			  output_list true (!lvl + 1) docs;
-			  Printf.fprintf where "let _ = go_up D.structure ;;\n\n"
+			  Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
 		      | Absolute l ->
 			  if l > !lvl + 1 then failwith "Illegal level skip";
-			  for i = 0 to !lvl - l do
-			    Printf.fprintf where "let _ = go_up D.structure ;;\n\n"
+			  for i = 1 to !lvl - l do
+			    Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"
 			  done;
 			  Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 			  lvl := l

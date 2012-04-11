@@ -221,7 +221,9 @@ let up (t,cxt) = match cxt with
 let go_up str=
   str:=match !str with
       []->[]
-    | h::s->(up h)::s
+    | h::s->
+        (if snd h=[] then Printf.fprintf stderr "Warning : go_up\n");
+        (up h)::s
 
 let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 
