@@ -350,8 +350,16 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
   end
 
-  let theoremRef name=generalRef ~refType:"theorem" "th0"
-  module Env_theorem=struct
+  module type Theorem=sig
+    val refType:string
+    val counter:string
+    val counterLevel:int
+    val display:string->user content list
+  end
+  module Make_theorem=functor (Th:Theorem)->struct
+
+    let reference name=generalRef ~refType:Th.refType name
+
     let do_begin_theorem ()=
       D.structure := (Node empty, []):: !D.structure
 
@@ -361,12 +369,14 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             let rec first_par=function
                 Paragraph p->
                   Paragraph { p with par_contents=
-                      Env (fun env->incr_counter ~level:1 env "theorem")::
+                      Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
                         CFix (fun env->
-                                let lvl,num=(StrMap.find "theorem" env.counters) in
+                                let lvl,num=(StrMap.find Th.counter env.counters) in
                                 let _,str_counter=StrMap.find "structure" env.counters in
                                 let sect_num=drop (List.length str_counter - lvl) str_counter in
-                                  alternative Bold [T "Theorem"; B (fun env->env.stdGlue);T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))]
+                                  (* alternative Bold [Th.display; B (fun env->env.stdGlue); *)
+                                  (*                   T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))] *)
+                                  Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))
                              )::
                         B (fun env->env.stdGlue)::
                         p.par_contents
@@ -395,8 +405,5 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             in
 	      D.structure := up (newChildAfter h1 stru) :: s
         |_ -> assert false
-
-    module Env_Proof=struct
-    end
   end
 end)
