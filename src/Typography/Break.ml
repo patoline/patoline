@@ -467,13 +467,13 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
         if LineMap.cardinal demerits' = 0 then (
           try
             let _=LineMap.find uselessLine !last_failure in
-              if Array.length paragraphs>0 && Array.length figures > 0 then
+              if Array.length paragraphs>0 || Array.length figures > 0 then
                 Printf.printf "No solution, incomplete document. Please report\n";
-              demerits';
+              demerits'
               (* raise No_solution *)
           with
               Not_found->(
-                if Array.length paragraphs>0  && Array.length figures > 0 then (
+                if Array.length paragraphs>0 || Array.length figures > 0 then (
                   last_failure:=LineMap.add uselessLine first_parameters !last_failure;
                   really_break true todo0 demerits'
                 ) else LineMap.empty
@@ -497,9 +497,11 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
     let demerits=really_break false todo0 LineMap.empty in
     let _,node0,user0=
       match !endNode with
-          None->
-            let (b,(bad,_,_,_,_,user))= LineMap.max_binding demerits in
-              (bad,b,user)
+          None->(try
+                   let (b,(bad,_,_,_,_,user))= LineMap.max_binding demerits in
+                     (bad,b,user)
+                 with
+                     Not_found -> (0.,uselessLine,UMap.empty))
         | Some x->x
     in
       try
