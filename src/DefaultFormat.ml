@@ -360,10 +360,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
     let reference name=generalRef ~refType:Th.refType name
 
-    let do_begin_theorem ()=
+    let do_begin_env ()=
       D.structure := (Node empty, []):: !D.structure
 
-    let do_end_theorem ()=
+    let do_end_env ()=
       match !D.structure with
           h0::h1::s ->
             let rec first_par=function

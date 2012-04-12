@@ -171,8 +171,8 @@ let rec print_macro ch op mtype name args =
 	end
 	else name
       in
-      Printf.fprintf ch "open %s%s\n let _ = do_begin_%s()" modname end_open name
-    | `End -> Printf.fprintf ch "let _ = do_end_%s()\nend" name
+      Printf.fprintf ch "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
+    | `End -> Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
     | `Include ->
         incr moduleCounter;
         Printf.fprintf ch
