@@ -240,7 +240,10 @@ let rec follow t l=match l with
 let doc_graph out t0=
   Printf.fprintf out "digraph {\n";
   let rec do_it path t=
-    Printf.fprintf out "%s [label=\"%s\"];\n" path t.name;
+    let col=
+      if List.mem Structural t.node_tags then
+        if List.mem Numbered t.node_tags then "blue" else "red" else "black" in
+    Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
     List.iter (fun (i,x)->match x with
                    Paragraph _
                  | FigureDef _-> ()
@@ -499,7 +502,7 @@ let newStruct str ?label ?(numbered=true) displayname =
                   let (a,b)=StrMap.find "structure" env.counters in
                     a,0::b
                 with
-                    Not_found -> (-1,[0])
+                    Not_found -> (-1,[0;0])
               ) env.counters }
       );
       node_post_env=(
