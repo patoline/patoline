@@ -2,6 +2,7 @@ type lineCap = Butt_cap | Round_cap | Proj_square_cap
 type lineJoin = Miter_join | Round_join | Bevel_join
 type rgb = { red : float; green : float; blue : float; }
 type color = RGB of rgb
+val rgb:float->float->float->color
 val black : color
 type path_parameters = {
   close : bool;

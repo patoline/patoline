@@ -2,9 +2,9 @@ type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
 
 type rgb={ red:float; green:float; blue:float }
-
 type color=
     RGB of rgb
+let rgb a b c=RGB { red=a;green=b;blue=c }
 
 let black=RGB { red=0.;green=0.;blue=0. }
 
