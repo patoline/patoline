@@ -1,7 +1,7 @@
 let fugue=ref true
 let files=ref []
-let compile = ref false
-let run = ref false
+let compile = ref true
+let run = ref true
 let cmd_line = ref []
 let format=ref "DefaultFormat"
 
