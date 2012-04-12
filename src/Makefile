@@ -49,6 +49,7 @@ Typography/Typography.cmxa:
 	make -C Typography Typography.cmxa
 	cp Typography/Typography.cmi .
 	cp Typography/Typography.cmxa .
+	cp Typography/Typography.a .
 
 
 

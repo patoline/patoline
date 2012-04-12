@@ -159,7 +159,7 @@ let incr_counter ?(level= -1) env name=
       StrMap.add name (try let a,b=StrMap.find name env.counters in
                          match b with
                              h::s -> (a,(h+1)::s)
-                           | _->a,[]
+                           | _->a,[0]
                        with
                            Not_found -> level, [0]
                       ) env.counters }
@@ -646,9 +646,15 @@ let flatten env0 fixable str=
               )
             | Node h as tr->(
                 let env2=h.node_env env1 in
-                let env2'={ env2 with counters=
-                    StrMap.filter (fun _ (a,b)->level>a)
-                      (StrMap.add "path" (-1,k::path) env2.counters) }
+                let env2'=
+                  let cou=
+                    StrMap.add "path" (-1,k::path)
+                      (if List.mem Structural h.node_tags then
+                         StrMap.filter (fun _ (a,b)->a<=level) env2.counters
+                       else
+                         env2.counters)
+                  in
+                    {env2 with counters=cou }
                 in
                 let env3=flatten env2' (k::path) tr in
                   false, h.node_post_env env1 env3
@@ -704,13 +710,12 @@ let rec make_struct positions tree=
 
 
 let update_names env user=
-  let needs_reboot=ref (user<>env.user_positions) in
+  let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in
+  let needs_reboot=ref (fil user<>fil env.user_positions) in
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try
-                     (* Printf.printf "%s\n" k; *)
                      let query=if b="figure" then Figure (List.hd (snd (StrMap.find "figures" a))) else Label k in
                      let pos=TS.UMap.find query user in
-                       Printf.printf "diff\n";print_line pos;print_line c;
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (needs_reboot:=true; m)

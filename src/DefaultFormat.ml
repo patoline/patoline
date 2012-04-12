@@ -256,7 +256,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
   module Env_itemize = struct
 
-    let do_begin_itemize ()=
+    let do_begin_env ()=
       D.structure := (Node empty, []):: !D.structure
 
     let item ()=
@@ -267,7 +267,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     let addon = [ T "–"; B (fun env->[glue env.size env.size env.size])]
 
 
-    let do_end_itemize ()=
+    let do_end_env ()=
       let params params0 a b c d e f=
         let p=(params0 a b c d e f) in
         let boxes=boxify_scoped a addon in
@@ -333,10 +333,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
   module Env_abstract = struct
 
-    let do_begin_abstract ()=
+    let do_begin_env ()=
       D.structure := (Node empty, []):: !D.structure
 
-    let do_end_abstract () =
+    let do_end_env () =
       match !D.structure with
           h0::h1::s ->
 	    D.structure :=
@@ -371,16 +371,23 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                   Paragraph { p with par_contents=
                       Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
                         CFix (fun env->
-                                let lvl,num=(StrMap.find Th.counter env.counters) in
-                                let _,str_counter=StrMap.find "structure" env.counters in
-                                let sect_num=drop (List.length str_counter - lvl) str_counter in
-                                  Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num)))
+                                let lvl,num=try (StrMap.find Th.counter env.counters) with
+                                    Not_found -> -1,[0]
+                                in
+                                let _,str_counter=try
+                                  StrMap.find "structure" env.counters
+                                with Not_found -> -1,[0]
+                                in
+                                let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+                                  str_counter
+                                in
+                                  Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
                              )::
                         B (fun env->env.stdGlue)::
                         p.par_contents
                             }
               | Node n->
-                  let k0,_=IntMap.min_binding n.children in
+                  let k0=try fst (IntMap.min_binding n.children) with Not_found->0 in
                   let paragraph=IntMap.singleton k0
                     (first_par (Paragraph
                                   { par_contents=[]; par_env=(fun x->x);
@@ -397,8 +404,11 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             in
             let stru=match fst h0 with
                 Node n->
-                  let a,b=IntMap.min_binding n.children in
-                    Node { n with children = IntMap.add a (first_par b) n.children }
+                  (try
+                     let a,b=IntMap.min_binding n.children in
+                       Node { n with children = IntMap.add a (first_par b) n.children }
+                   with
+                       Not_found->first_par (Node n))
               | x->first_par x
             in
 	      D.structure := up (newChildAfter h1 stru) :: s
