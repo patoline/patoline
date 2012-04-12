@@ -614,7 +614,8 @@ let flatten env0 fixable str=
       v
   in
 
-  let rec flatten env level tree=
+  let rec flatten env path tree=
+    let level=List.length path in
     match tree with
         Paragraph p -> add_paragraph env p
       | FigureDef f -> (
@@ -630,23 +631,26 @@ let flatten env0 fixable str=
       | Node s-> (
           s.tree_paragraph <- List.length !paragraphs;
           let flushes=ref [] in
-          let flat_children _ a (indent, env1)=match a with
+          let flat_children k a (indent, env1)=match a with
             | (Paragraph p)->(
-                let env2=flatten (p.par_env env1) (level+1) (
+                let env2=flatten (p.par_env env1) (k::path) (
                   Paragraph { p with par_contents=
                       (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                 ) in
                   true, p.par_post_env env1 env2
               )
             | FigureDef _ as h->(
-                let env2=flatten env1 (level+1) h in
+                let env2=flatten env1 (k::path) h in
                   flushes:=(IntMap.cardinal !figures)::(!flushes);
                   indent,env2
               )
             | Node h as tr->(
                 let env2=h.node_env env1 in
-                let env2'={ env2 with counters=StrMap.filter (fun _ (a,b)->level>a) env2.counters } in
-                let env3=flatten env2' (level+1) tr in
+                let env2'={ env2 with counters=
+                    StrMap.filter (fun _ (a,b)->level>a)
+                      (StrMap.add "path" (-1,k::path) env2.counters) }
+                in
+                let env3=flatten env2' (k::path) tr in
                   false, h.node_post_env env1 env3
               )
           in
@@ -662,7 +666,7 @@ let flatten env0 fixable str=
     | Paragraph n->n.par_env env0
     | _->env0
   in
-  let env2=flatten env1 0 str in
+  let env2=flatten env1 [] str in
   let params=Array.make (IntMap.cardinal !figures) (center env0) in
     IntMap.iter (fun n p->params.(n)<-p) !fig_param;
     (env2, params,
