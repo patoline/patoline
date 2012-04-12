@@ -331,11 +331,12 @@ let size fsize t=
 
 (* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
    qui existe *)
-let features f t=
-  Scoped ((fun env->
-             { env with substitutions=
-                 (fun glyphs -> List.fold_left apply glyphs
-                    (Fonts.select_features env.font f))}), t)
+let add_features features env=
+  let feat=Fonts.select_features env.font (features@env.fontFeatures) in
+    { env with
+        fontFeatures=features@env.fontFeatures;
+        substitutions=(fun glyphs -> List.fold_left apply (env.substitutions glyphs) feat);
+    }
 
 (****************************************************************)
 

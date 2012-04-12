@@ -49,7 +49,7 @@ let postprocess_tree tree=
                      let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
                      let path=drop 1 b in
                        { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
-                           size=(if List.length path = 1 then sqrt phi else
+                           size=(if List.length path <= 1 then sqrt phi else
                                    sqrt (sqrt phi))*.env.size;
                        });
           par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
