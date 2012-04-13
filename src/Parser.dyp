@@ -26,6 +26,7 @@ type math =
    | Binary of int * math * bool * string * bool * math
    | Indices of indices * math
    | Apply of math * math
+   | MathMacro of string * math list
    | Delim of string * math * string  
 
 and indices = { up_right : math option;
@@ -239,6 +240,14 @@ args:
   | args<a> - CAML<s,e>
     { Caml(s,e) :: a }
 
+mathargs:
+    /* empty */
+    { [] }
+  | "{" math<m> "}" mathargs<a>
+    { m::a }
+  | "{" "}" mathargs<a>
+    { a }
+
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
       { Macro(`Begin, name, List.rev a) }
@@ -299,6 +308,8 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
+  | "\\" [lident|uident]<macro> mathargs<args>
+      { MathMacro (macro,args) }
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
   | math(<sum)<b> postfix<op>

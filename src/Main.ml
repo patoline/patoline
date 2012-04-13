@@ -31,7 +31,7 @@ let rec process_each_file =
     if !compile then (
       Printf.fprintf stderr "Compiling OCaml code...\n";
       flush stderr;
-      let r = Sys.command (Printf.sprintf "ocamlfind ocamlopt -package camomile,dyp,Typography -linkpkg -o %s DefaultFormat.cmxa -impl %s" (binname_of f) (mlname_of f)) in
+      let r = Sys.command (Printf.sprintf "ocamlfind ocamlopt -package camomile,dyp,Typography -linkpkg -o %s -impl %s" (binname_of f) (mlname_of f)) in
       flush stderr;
       if r=0 then (
 	Printf.fprintf stderr "File %s generated.\n" (binname_of f);

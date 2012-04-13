@@ -90,6 +90,13 @@ let print_math ch display m =
     | Apply(f,a) ->
       let ind_left, ind_right = split_ind indices in
       Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
+    | MathMacro (macro, args) ->
+      Printf.fprintf ch "(%s " macro ;
+      List.iter
+	(fun arg ->
+	  Printf.fprintf ch "(%a) " (fn indices) arg)
+	args ;
+      Printf.fprintf ch ")"
     | Delim(op,a,cl) ->
       dn indices op cl ch a
     | Prefix(pr, op, nsp, b) ->

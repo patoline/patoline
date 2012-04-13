@@ -1,5 +1,5 @@
 SOURCES1 = Parser.ml Texprime.ml Main.ml
-SOURCES3 = Format/TableOfContents.ml Format/Sections.ml OutputDrawing.ml DefaultFormat.ml
+SOURCES3 = Format/TableOfContents.ml Format/Sections.ml OutputDrawing.ml DefaultFormat.ml ArticleFormat.ml 
 
 SOURCES_EXEC=$(SOURCES1)
 SOURCES_ALL=$(SOURCES1) $(SOURCES3)
@@ -61,6 +61,15 @@ DefaultFormat.cma: Typography/Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.c
 
 DefaultFormat.cmxa: Typography/Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
 	$(CAMLOPTA) -a -o DefaultFormat.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+
+ArticleFormat.mli:
+	$(CAMLC) -i ArticleFormat.ml > ArticleFormat.mli
+
+ArticleFormat.cma: Typography/Typography.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+	$(CAMLC) -a -o ArticleFormat.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+
+ArticleFormat.cmxa: Typography/Typography.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
+	$(CAMLOPTA) -a -o ArticleFormat.cmxa $(filter %.cmx, $(FORMATS_ML:.ml=.cmx))
 
 
 graphics_font: $(FONTS:.ml=.cmo) $(BASE:.ml=.cmo) tests/graphics_font.ml
