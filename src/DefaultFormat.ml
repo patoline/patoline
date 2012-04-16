@@ -120,61 +120,46 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       }
 
   let title str ?label ?displayname name =
-    let (t,path),str1=match !str with
-        []->(Node empty,[]),[]
-      | h::s->h,s
-    in
-    let t0'=
-      match t with
-          Node n -> Node { n with
+    let t0',path=
+      match top !str with
+          Node n,path -> Node { n with
                              name=name;
                              node_tags=Structural::InTOC::n.node_tags;
                              displayname = match displayname with
                                  None->[T name]
-                               | Some a->a }
-        | _->Node { name=name;
-                    node_tags=[Structural;InTOC];
-                    displayname=(match displayname with
-                                     Some a->a
-                                   | None->[T name]);
-		    children=IntMap.singleton 1 t;
-                    node_env=(fun x->x);
-                    node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
-                                                user_positions=y.user_positions });
-                    tree_paragraph=0 }
+                               | Some a->a },path
+        | t,path->Node { name=name;
+                         node_tags=[Structural;InTOC];
+                         displayname=(match displayname with
+                                          Some a->a
+                                        | None->[T name]);
+		         children=IntMap.singleton 1 t;
+                         node_env=(fun x->x);
+                         node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
+                                                     user_positions=y.user_positions });
+                         tree_paragraph=0 },path
     in
-      str:=(t0',path)::str1
+      str:=follow (t0',[]) (List.rev path)
   let author str =
     D.structure:=match !D.structure with
-        (Node h0,h1)::s->(Node { h0 with node_tags=(Author str)::
-                              (List.filter (function Author _->false | _->true) h0.node_tags)
-                               }, h1)::s
-      | (h0,h1)::s->newChildAfter (
+        (Node h0,h1)->(Node { h0 with node_tags=(Author str)::
+                           (List.filter (function Author _->false | _->true) h0.node_tags)
+                            }, h1)
+      | (h0,h1)->newChildAfter (
           Node { empty with
                    node_tags=(Author str)::
               (List.filter (function Author _->false | _->true) empty.node_tags)
-               }, h1) h0::s
-      | _->
-          [Node { empty with
-                    node_tags=(Author str)::(List.filter (function Author _->false | _->true)
-                                               empty.node_tags)
-                }, []]
+               }, h1) h0
   let institute str =
     D.structure:=match !D.structure with
-        (Node h0,h1)::s->(Node { h0 with node_tags=(Institute str)::
+        (Node h0,h1)->(Node { h0 with node_tags=(Institute str)::
                               (List.filter (function Institute _->false | _->true) h0.node_tags)
-                               }, h1)::s
-      | (h0,h1)::s->newChildAfter (Node { empty with
+                               }, h1)
+      | (h0,h1)->newChildAfter (Node { empty with
                                             node_tags=(Institute str)::
                                        (List.filter (function Institute _->false | _->true)
                                           empty.node_tags)
-                                        }, h1) h0::s
-      | _->
-          [Node { empty with
-                    node_tags=(Author str)::
-               (List.filter (function Author _->false | _->true) empty.node_tags)
-                }, []]
-
+                                        }, h1) h0
   let table_of_contents=TableOfContents.centered
   let postprocess_tree=Sections.postprocess_tree
 
@@ -223,7 +208,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                  | _->()
                             ) env.user_positions;
                (* Insertion d'une footnote *)
-               let str=ref [Node empty,[]] in
+               let str=ref (Node empty,[]) in
                let params a b c d e f=
                  let p=(parameters a b c d e f) in
                  let lead=env.normalLead *. (phi-.1.) in
@@ -231,40 +216,35 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                in
                  newPar str ~environment:(fun x->x) C.normal params
                    (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
-                 match !str with
-                     []->assert false
-                   | h::s->(
-                       str:=s;
-                       let pages=minipage { env with
-                                              normalLead=env.lead*.(phi-.1.);
-                                              lead=env.lead*.(phi-.1.);
-                                              size=env.size*.(phi-.1.) }
-                         (top h)
-                       in
-                         if Array.length pages>0 then
-                           [User (Footnote (count, pages.(0)));
-                            Drawing (drawing ~offset:(env.size/.2.)
-                                       (draw_boxes (boxify_scoped { env with size=env.size/.phi }
-                                                      [T (string_of_int !page_footnotes)])
-                                       ))
-                           ]
-                         else
-                           []
-                     )
+                 let pages=minipage { env with
+                                        normalLead=env.lead*.(phi-.1.);
+                                        lead=env.lead*.(phi-.1.);
+                                        size=env.size*.(phi-.1.) }
+                   (top !str)
+                 in
+                   if Array.length pages>0 then
+                     [User (Footnote (count, pages.(0)));
+                      Drawing (drawing ~offset:(env.size/.2.)
+                                 (draw_boxes (boxify_scoped { env with size=env.size/.phi }
+                                                [T (string_of_int !page_footnotes)])
+                                 ))
+                     ]
+                   else
+                     []
           )]
 
-
+  let env_stack=ref []
   module Env_itemize = struct
 
     let do_begin_env ()=
-      D.structure := (Node empty, []):: !D.structure
+      D.structure:=newChildAfter (!D.structure) (Node empty);
+      env_stack:=snd !D.structure :: !env_stack
 
     let item ()=
-      let str0,str1=match !D.structure with []->(Node empty,[]),[] | h::s->h,s in
-        D.structure:=newChildAfter (top str0) (Node empty)::str1;
-        []
+      D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack))) (Node empty);
+      []
 
-    let addon = [ T "–"; B (fun env->[glue env.size env.size env.size])]
+    let addon = [ T "-"; B (fun env->[glue env.size env.size env.size])]
 
 
     let do_end_env ()=
@@ -321,32 +301,29 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 	     with Not_found -> t)
         | t->t
       in
-        match !D.structure with
-            h0::h1::s ->
-              let avec_tirets = match fst (top h0) with
-                  Node n->Node { n with children=IntMap.map tirets n.children }
-                | x->x
-              in
-	        D.structure := newChildAfter h1 (paragraphs avec_tirets)::s
-          | _->assert false
+      let avec_tirets = match fst (follow (top !D.structure) (List.rev (List.hd !env_stack))) with
+          Node n->Node { n with children=IntMap.map tirets n.children }
+        | x->x
+      in
+        D.structure:=up (avec_tirets, List.hd !env_stack);
+        env_stack:=List.tl !env_stack
   end
 
   module Env_abstract = struct
 
     let do_begin_env ()=
-      D.structure := (Node empty, []):: !D.structure
+      newChildAfter !D.structure (Node empty);
+      env_stack:=snd !D.structure :: !env_stack
+
 
     let do_end_env () =
-      match !D.structure with
-          h0::h1::s ->
-	    D.structure :=
-              up (newChildAfter h1
-                    (fst (change_env h0
-                            (fun x->{ x with
-                                        normalLeftMargin=(x.normalLeftMargin
-                                                          +.(x.normalMeasure-.120.)/.2.);
-                                        normalMeasure=120. })))) :: s
-        |_ -> assert false
+      D.structure :=
+        (fst (change_env (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+                (fun x->{ x with
+                            normalLeftMargin=(x.normalLeftMargin
+                                              +.(x.normalMeasure-.120.)/.2.);
+                            normalMeasure=120. })), List.hd !env_stack);
+      env_stack:=List.tl !env_stack
 
   end
 
@@ -361,57 +338,56 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     let reference name=generalRef ~refType:Th.refType name
 
     let do_begin_env ()=
-      D.structure := (Node empty, []):: !D.structure
+      D.structure:=newChildAfter !D.structure (Node empty);
+      env_stack:=snd !D.structure :: !env_stack
 
     let do_end_env ()=
-      match !D.structure with
-          h0::h1::s ->
-            let rec first_par=function
-                Paragraph p->
-                  Paragraph { p with par_contents=
-                      Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
-                        CFix (fun env->
-                                let lvl,num=try (StrMap.find Th.counter env.counters) with
-                                    Not_found -> -1,[0]
-                                in
-                                let _,str_counter=try
-                                  StrMap.find "structure" env.counters
-                                with Not_found -> -1,[0]
-                                in
-                                let sect_num=drop (max 1 (List.length str_counter - lvl+1))
-                                  str_counter
-                                in
-                                  Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
-                             )::
-                        B (fun env->env.stdGlue)::
-                        p.par_contents
-                            }
-              | Node n->
-                  let k0=try fst (IntMap.min_binding n.children) with Not_found->0 in
-                  let paragraph=IntMap.singleton k0
-                    (first_par (Paragraph
-                                  { par_contents=[]; par_env=(fun x->x);
-                                    par_post_env=
-                                      (fun env1 env2 -> { env1 with names=env2.names;
-                                                            counters=env2.counters;
-                                                            user_positions=env2.user_positions });
-                                    par_parameters=parameters; par_completeLine=C.normal
-                                  }))
-                  in
-                    Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)
-                        n.children paragraph }
-              | x -> x
+      let rec first_par=function
+          Paragraph p->
+            Paragraph { p with par_contents=
+                Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
+                  CFix (fun env->
+                          let lvl,num=try (StrMap.find Th.counter env.counters) with
+                              Not_found -> -1,[0]
+                          in
+                          let _,str_counter=try
+                            StrMap.find "structure" env.counters
+                          with Not_found -> -1,[0]
+                          in
+                          let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+                            str_counter
+                          in
+                            Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
+                       )::
+                  B (fun env->env.stdGlue)::
+                  p.par_contents
+                      }
+        | Node n->
+            let k0=try fst (IntMap.min_binding n.children) with Not_found->0 in
+            let paragraph=IntMap.singleton k0
+              (first_par (Paragraph
+                            { par_contents=[]; par_env=(fun x->x);
+                              par_post_env=
+                                (fun env1 env2 -> { env1 with names=env2.names;
+                                                      counters=env2.counters;
+                                                      user_positions=env2.user_positions });
+                              par_parameters=parameters; par_completeLine=C.normal
+                            }))
             in
-            let stru=match fst h0 with
-                Node n->
-                  (try
-                     let a,b=IntMap.min_binding n.children in
-                       Node { n with children = IntMap.add a (first_par b) n.children }
-                   with
-                       Not_found->first_par (Node n))
-              | x->first_par x
-            in
-	      D.structure := up (newChildAfter h1 stru) :: s
-        |_ -> assert false
+              Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)
+                  n.children paragraph }
+        | x -> x
+      in
+      let stru=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
+          Node n,_->
+            (try
+               let a,b=IntMap.min_binding n.children in
+                 Node { n with children = IntMap.add a (first_par b) n.children }
+             with
+                 Not_found->first_par (Node n))
+        | x,_->first_par x
+      in
+	D.structure := up (stru,List.hd !env_stack);
+        env_stack:=List.tl !env_stack
   end
 end)

@@ -17,90 +17,9 @@ LAMA UMR 5127, Université de Savoie
 
 
 {{
-open Diag
+
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
-let figRef ()= [B (fun env->
-    let i=try match snd (Binary.StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
-     [User (FigureRef i)])]
-let large text = [size 10. text]
-
-let fig2 env=
-  let state = [] in
-  let params = { NodeShape.default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } 
-  in  
-  let a, state = Node.make_draw env state { Node.default with
-    Node.contents_spec = [T "Salut, comment ça miss?"] ;
-    Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:4. ()) }
-  in
-  let b, state = Node.make_draw env state { Node.default with
-    Node.at = (30.,70.) ;
-    Node.contents_spec = [T "J"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:{ params with (* lineWidth=3. ;  *)
-      lineJoin=Round_join} ~inner_sep:2. ()) }
-  in
-  let c, state = Node.make_draw env state { Node.default with
-    Node.at = (90.,30.) ;
-    Node.contents_spec = (alternative Bold [T "Ailllaillaille!"]) ;
-    Node.shape = (NodeShape.flower ~parameters:params ~amplitude:3. ()) }
-  in
-  let d, state = Node.make_draw env state { 
-    Node.at = b.Node.make_anchor Anchor.West ;
-    Node.contents_spec =  (T "Cette figure est sur la page"::(pageref "figure de Tom")) ;
-    Node.anchor = Anchor.East ;
-    Node.shape = (NodeShape.rectangle 
-		    ~parameters:{ params with lineWidth=0.5 ; lineJoin=Round_join} 
-		    ~inner_sep:1. ()) }
-  in
-  let e, state = Node.make_draw env state { Node.default with
-    Node.at = c.Node.make_anchor Anchor.North ;
-    Node.anchor = Anchor.South ;
-    Node.contents_spec = [T "X"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
-  in
-  let ab, state = Edge.make_draw env state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=1.;blue=0. }); lineWidth=0.1 } ;
-    Edge.head_spec = (fun ?parameters:(params=OutputCommon.default) curve ->
-      ArrowTip.simple ~parameters:params curve) ;
-    Edge.label_specs = [ 
-      { Edge.pos = 0.3 ;
-      Edge.node_spec = { Node.default with Node.contents_spec = [T "0.3 à gauche"] ; 
-	anchor = Anchor.East } } ;
-      { Edge.pos = 0.6 ;
-      Edge.node_spec = { Node.default with Node.contents_spec = [T "0.6 à droite"] ; 
-	anchor = Anchor.West } } ;
-    ] }
-    a b
-  in
-  (* let ab', state = Edge.make_draw env state { Edge.default with *)
-  (*   Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.3 } ; *)
-  (*   Edge.transfo_specs = [Edge.BendRight 30.0] } *)
-  (*   a b *)
-  (* in *)
-  let ac, state = Edge.make_draw env state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.7;green=0.7;blue=0.7 }); lineWidth=0.1 } ;
-    Edge.transfo_specs = [Edge.SquiggleFromTo (4,1.0,0.3,0.7)] }
-    a c
-  in
-  let cb, state = Edge.make_draw env state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.;green=0.7;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.transfo_specs = [Edge.Double (2.,1.)] }
-    c b
-  in
-  let ca, state = Edge.make_draw env state { Edge.default with
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.transfo_specs = [Edge.BendLeft 60.0 ; Edge.Squiggle (10,1.0); Edge.Double (2.,0.2)] }
-    c a
-  in
-  let ea, state = Edge.make_draw env state { Edge.default with
-    Edge.head_spec = (fun ?parameters:(params=OutputCommon.default) curve ->
-      ArrowTip.simple ~parameters:params curve) ;
-    Edge.parameters_spec = { default with strokingColor=Some (RGB { red=0.2;green=0.2;blue=0.7 }); lineWidth=0.2 } ;
-    Edge.transfo_specs = [Edge.Double (2.,0.2); Edge.Fore 0.2] ;
-  }
-    e a
-  in
-  drawing ~offset:(-10.) (List.rev state)
 
 }}
 
@@ -113,14 +32,13 @@ TeX' est un logiciel permettant de produire des documents de haute qualité. aoe
 
 -> Table des matieres
 
-{{ let _ = table_of_contents D.structure (top (List.hd !D.structure)) 1 }}
+{{ let _ = table_of_contents D.structure (top (!D.structure)) 1 }}
 
 -<
 
 => Introduction
 
-\large{TeX' c'est bien mieux que TeX. Un point c'est tout.
-  \italic{eeeet \alternative{{Bold}}{ouais !}} } \figRef
+  \italic{eeeet \alternative{{Bold}}{ouais !}}
 
 \Begin{itemize}
 
@@ -190,9 +108,6 @@ Un paragraphe avec \label{{"truc"}}
 
 \End{itemize}
 
-{{
-let _ = figure D.structure ~name:"figure de Tom" fig2
-}}
 
 =<
 

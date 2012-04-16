@@ -138,7 +138,7 @@ and 'a content=
   | Scoped of ('a environment->'a environment)*('a content list)
 
 module type DocumentStructure=sig
-  val structure:(user tree*(int*user tree) list) list ref
+  val structure:(user tree*(int*user tree) list) ref
   val fixable:bool ref
 end
 module type Format=sig
@@ -146,7 +146,7 @@ module type Format=sig
   val defaultEnv:user environment
   val postprocess_tree:user tree->user tree
   val title:
-    (user tree * (user tree) list) list ref ->
+    (user tree * ((user tree) list)) ref ->
     ?label:string ->
     ?displayname:user content list ->
     string -> unit
@@ -220,11 +220,8 @@ let up (t,cxt) = match cxt with
   | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
   | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
 let go_up str=
-  str:=match !str with
-      []->[]
-    | h::s->
-        (if snd h=[] then Printf.fprintf stderr "Warning : go_up\n");
-        (up h)::s
+  (if snd !str=[] then Printf.fprintf stderr "Warning : go_up\n");
+  str:=(up !str)
 
 let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 
@@ -421,11 +418,7 @@ let in_text_figure a b c d e line=
 
 
 let figure str ?(parameters=center) ?(name="") drawing=
-  let str0,str1=match !str with
-      []->(Node empty,[]),[]
-    | h::s->h,s
-  in
-    str:=up (newChildAfter str0 (FigureDef { fig_contents=drawing;
+    str:=up (newChildAfter !str (FigureDef { fig_contents=drawing;
                                         fig_env=(fun x->
                                                    let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
                                                    let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
@@ -437,7 +430,7 @@ let figure str ?(parameters=center) ?(name="") drawing=
                                                          counters=cou'
                                                      });
                                         fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
-                                        fig_parameters=parameters })) :: str1
+                                        fig_parameters=parameters }))
 
 let flush_figure name=
   [BFix (fun env->
@@ -468,11 +461,7 @@ let newPar str ?(environment=(fun x->x)) complete parameters par=
                       par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
                       par_parameters=parameters; par_completeLine=complete }
   in
-  let str0,str1=match !str with
-      []->(Node empty,[]),[]
-    | h::s->h,s
-  in
-    str:=up (newChildAfter str0 para) :: str1
+    str:=up (newChildAfter !str para)
 
 
 let string_of_contents l =
@@ -523,12 +512,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
       );
   }
   in
-
-  let str0,str1=match !str with
-      []->(Node empty,[]),[]
-    | h::s->h,s
-  in
-    str:=newChildAfter str0 para::str1
+    str:=newChildAfter !str para
 
 
 (* Fonctions auxiliaires qui produisent un document optimisable à

@@ -7,7 +7,7 @@ Symboles de TeX'
 
 -- Table des matieres --
 
-{{ let _ = table_of_contents D.structure (List.hd !D.structure) 1 }}
+{{ let _ = table_of_contents D.structure (!D.structure) 1 }}
 
 == Relation symbols ==
 
