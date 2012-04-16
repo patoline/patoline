@@ -312,17 +312,17 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
   module Env_abstract = struct
 
     let do_begin_env ()=
-      newChildAfter !D.structure (Node empty);
+      D.structure:=newChildAfter !D.structure (Node empty);
       env_stack:=snd !D.structure :: !env_stack
 
 
     let do_end_env () =
       D.structure :=
-        (fst (change_env (follow (top !D.structure) (List.rev (List.hd !env_stack)))
-                (fun x->{ x with
-                            normalLeftMargin=(x.normalLeftMargin
-                                              +.(x.normalMeasure-.120.)/.2.);
-                            normalMeasure=120. })), List.hd !env_stack);
+        up (change_env (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+              (fun x->{ x with
+                          normalLeftMargin=(x.normalLeftMargin
+                                            +.(x.normalMeasure-.120.)/.2.);
+                          normalMeasure=120. }));
       env_stack:=List.tl !env_stack
 
   end

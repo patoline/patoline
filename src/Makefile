@@ -91,13 +91,13 @@ DefaultGrammar.opt.pdf: texprime.opt DefaultFormat.cmxa Typography/Typography.cm
 	mv DefaultGrammar.pdf DefaultGrammar.opt.pdf
 
 %.pdf: texprime Typography/Typography.cma DefaultFormat.cma texprimeDefault.tgo %.txp
-	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLC)  -o $*.tmx Typography/Typography.cma DefaultFormat.cma -impl $*.tml
+	./texprime.opt --ml --extra-fonts-dir ../Otf $*.txp
+	$(CAMLC)  -o $*.tmx Typography/Typography.cma DefaultFormat.cma  -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 
 %.opt.pdf: texprime.opt Typography/Typography.cmxa DefaultFormat.cmxa texprimeDefault.tgx %.txp
-	./texprime.opt --extra-fonts-dir ../Otf $*.txp > $*.tml
-	$(CAMLOPT)  -o $*.tmx Typography/Typography.cmxa DefaultFormat.cmxa -impl $*.tml
+	./texprime.opt --ml --extra-fonts-dir ../Otf $*.txp
+	$(CAMLOPT)  -o $*.tmx Typography/Typography.cmxa DefaultFormat.cmxa  -impl $*.tml
 	./$*.tmx --extra-fonts-dir ../Otf
 	cp $*.pdf $*.opt.pdf
 
