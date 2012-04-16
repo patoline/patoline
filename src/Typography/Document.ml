@@ -483,7 +483,7 @@ let string_of_contents l =
   | _ -> ()) l;
   !s
 
-let newStruct str ?label ?(numbered=true) displayname =
+let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
@@ -493,7 +493,7 @@ let newStruct str ?label ?(numbered=true) displayname =
     empty with
       name=name;
       displayname =displayname;
-      node_tags=[InTOC;Structural]@(if numbered then [Numbered] else []);
+      node_tags= (if in_toc then [InTOC] else []) @ [Structural] @(if numbered then [Numbered] else []);
       node_env=(
         fun env->
           { env with

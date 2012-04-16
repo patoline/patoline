@@ -1,4 +1,4 @@
-let prefix=ref "/usr/local/"
+let prefix=ref "/usr/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
 let grammars_dir=ref ""

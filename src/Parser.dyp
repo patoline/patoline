@@ -38,12 +38,14 @@ type structType = Absolute of int | Relative of doc list
 
 and doc =
      Paragraph of content list
-   | Caml of int * int
+   | Caml of int * int * (texprime_section * int * int) list
    | Math of math
    | Verbatim of string option * string list
    | Struct of content list * bool * structType
    | Macro of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
    | Ignore
+
+and texprime_section = TxpMath | TxpText
 
 and content =
      TC of string
@@ -53,8 +55,12 @@ and content =
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
 let caml_depth = ref 0 let push_caml () = incr caml_depth
+let texprime_math_depth = ref 0 let push_texprime_math () = incr texprime_math_depth
+let texprime_text_depth = ref 0 let push_texprime_text () = incr texprime_text_depth
 let pop_comment () = decr comment_depth; !comment_depth = 0
 let pop_caml () = decr caml_depth; !caml_depth = 0
+let pop_texprime_math () = decr texprime_math_depth; !texprime_math_depth = 0
+let pop_texprime_text () = decr texprime_text_depth; !texprime_text_depth = 0
 let pop_caml' lexbuf =
      decr caml_depth; 
      if !caml_depth = 0	then
@@ -128,7 +134,9 @@ let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include";
     	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
 }
 
-%start main
+%start main 
+%start eparagraph
+%start math 
 
 %relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
@@ -174,16 +182,48 @@ rule comment = parse
   | string {  comment lexbuf }
   | _ {  comment lexbuf }
 
-and caml = parse
+and caml txps= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unexpected end of comment")) }
-  | '}' '}' { pop_caml' lexbuf ; if pop_caml () then () else caml lexbuf } 
-  | '}' { pop_caml' lexbuf; caml lexbuf } 
-  | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml lexbuf } 
-  | '{' { push_caml (); caml lexbuf } 
-  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated comment")) }
-  | newline { set_newline 1 lexbuf; caml lexbuf }
-  | string { caml lexbuf }
-  | _ { caml lexbuf }
+  | '}' '}' { pop_caml' lexbuf ; if pop_caml () then txps else caml txps lexbuf } 
+  | '}' { pop_caml' lexbuf; caml txps lexbuf } 
+  | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml txps lexbuf } 
+  | '{' { push_caml (); caml txps lexbuf } 
+  | '<' '$' { let l = Dyp.std_lexbuf lexbuf in 
+	      let start = l.lex_start_p.pos_cnum + 2 in 
+	      push_texprime_math () ; 
+	      flush stdout; 
+	      texprime_math lexbuf; 
+	      caml ((TxpMath, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
+  | '<''<' { let l = Dyp.std_lexbuf lexbuf in 
+	      let start = l.lex_start_p.pos_cnum + 2 in 
+	      push_texprime_text () ; 
+	      flush stdout; 
+	      texprime_text lexbuf; 
+	      caml ((TxpText, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated OCaml section")) }
+  | newline { set_newline 1 lexbuf; caml txps lexbuf }
+  | string { caml txps lexbuf }
+  | _ { caml txps lexbuf }
+
+and texprime_math= parse
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unexpected end of comment")) }
+  | '$' '>' {  if pop_texprime_math () then () else texprime_math lexbuf }
+  | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_math lexbuf } 
+  | '<' '$' {  push_texprime_math (); texprime_math lexbuf } 
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated texprime math section")) }
+  | newline {  set_newline 1 lexbuf; texprime_math lexbuf }
+  | string {  texprime_math lexbuf }
+  | _ {  texprime_math lexbuf }
+
+and texprime_text= parse
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unexpected end of comment")) }
+  | '>''>' {  if pop_texprime_text () then () else texprime_text lexbuf }
+  | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_text lexbuf } 
+  | '<''<' {  push_texprime_text (); texprime_text lexbuf } 
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,"Unterminated texprime text section")) }
+  | newline {  set_newline 1 lexbuf; texprime_text lexbuf }
+  | string {  texprime_text lexbuf }
+  | _ {  texprime_text lexbuf }
 
 main lexer =
   space ->
@@ -201,8 +241,9 @@ main lexer =
   (space|newline)* '(' '*' -> { push_comment (); comment lexbuf }
   '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
 		    let start = l.lex_start_p.pos_cnum + 2 in 
-		    push_caml (); push_caml (); caml lexbuf;
-		    start, l.lex_start_p.pos_cnum
+		    push_caml (); push_caml (); 
+		    let txps= caml [] lexbuf in
+		    start, l.lex_start_p.pos_cnum, List.rev txps
 		  }
   
 %parser
@@ -237,8 +278,8 @@ args:
     { [] }
   | args<a> - "{" eparagraph<p> "}" 
     { Paragraph (p)::a }
-  | args<a> - CAML<s,e>
-    { Caml(s,e) :: a }
+  | args<a> - CAML<s,e,txps>
+    { Caml(s,e,txps) :: a }
 
 mathargs:
     /* empty */
@@ -351,8 +392,8 @@ atomelt:
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
-  | CAML<s,e>
-    { [Caml(s,e)] }
+  | CAML<s,e,txps>
+    { [Caml(s,e,txps)] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
     { [m] }

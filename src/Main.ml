@@ -11,17 +11,17 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 	      (fun f -> 
 		let format_file = Filename.basename f in 
 		let format_dir = Filename.dirname f in 
-		dirs := format_dir :: !dirs ;
+		dirs := (" -I "^format_dir^" ") :: !dirs ;
 		format := format_file
 	      ), "Change the default document format");
             ("-c",Arg.Unit (fun ()->fugue:=false), "Compile separately");
-            ("-I",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given directory to the OCaml search path");
+            ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
 	    ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
            ]
 
-let str_dirs () = "-I " ^ (String.concat " -I " !dirs)
+let str_dirs () = (String.concat " " !dirs)
 
 let pdfname_of f = (Filename.chop_extension f)^".pdf"
 let mlname_of f = (Filename.chop_extension f)^".tml"
@@ -43,7 +43,7 @@ let rec process_each_file =
     in
     if !compile then (
       Printf.fprintf stderr "Compiling OCaml code...\n";
-      Printf.fprintf stderr  "ocamlfind ocamlopt -package camomile,dyp,Typography str.cmxa %s -linkpkg -o %s -impl %s" ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
+      Printf.fprintf stderr  "ocamlfind ocamlopt -package camomile,dyp,Typography str.cmxa %s -linkpkg -o %s -impl %s\n" ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
       flush stderr;
       let r = Sys.command (Printf.sprintf "ocamlfind ocamlopt -package camomile,dyp,Typography str.cmxa %s -linkpkg -o %s -impl %s" ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f)) in
       flush stderr;
