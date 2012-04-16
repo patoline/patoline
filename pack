@@ -12,14 +12,14 @@ rm -f *.cmo *.cmi
 rm -Rf _darcs
 rm -f pack
 cd ..
-rm -Rf texprime-$version
-mv texprime texprime-$version
-tar -cvf texprime-$version.tar texprime-$version
-gzip texprime-$version.tar
-cat /Users/pe/Projets/ports/ml/texprime/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 texprime-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projets/ports/ml/texprime/
-mv texprime-$version.tar.gz $init_dir
+rm -Rf ocaml-typography-$version
+mv texprime ocaml-typography-$version
+tar -cvf ocaml-typography-$version.tar ocaml-typography-$version
+gzip ocaml-typography-$version.tar
+cat /Users/pe/Projets/ports/ml/ocaml-typography/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-typography-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
+mv Portfile /Users/pe/Projets/ports/ml/ocaml-typography/
+mv ocaml-typography-$version.tar.gz $init_dir
 cd $init_dir
 
-sudo port uninstall texprime && sudo port clean --all texprime && sudo port install texprime +native_only
+sudo port uninstall ocaml-typography && sudo port clean --all ocaml-typography && sudo port install ocaml-typography +native_only
 #scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime

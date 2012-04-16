@@ -4,6 +4,7 @@ let fonts_dir=ref ""
 let grammars_dir=ref ""
 let hyphen_dir=ref ""
 let ocaml_lib_dir=ref ""
+let ocamlfind_dir=ref ""
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let hyphen_dirs=ref []
@@ -23,6 +24,7 @@ let _=
     ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
     ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
     ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
+    ("--ocamlfind-dir", Set_string ocamlfind_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/texprime/fonts/ by default)");
     ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/share/texprime/grammars/ by default)");
     ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/texprime/hyphen/ by default)");
@@ -101,10 +103,8 @@ let _=
 
       (* Installation pour ocamlfind (casse la chaine de compilation de Guillaume sans ça) *)
       (*Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/stublibs\n" * (escape !ocaml_lib_dir);*)
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/site-lib/Typography\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)/%s/site-lib/Typography\n" sources (escape !ocaml_lib_dir);
-
-
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+      Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
       Printf.fprintf out "\tmake -C proof install DESTDIR=$(DESTDIR) PREFIX=%s\n" (escape !bin_dir);
