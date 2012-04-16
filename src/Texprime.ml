@@ -272,7 +272,7 @@ and output_list from where no_indent lvl docs =
 	      Relative docs ->
 		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 		output_list from where true (!lvl + 1) docs;
-		
+		Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
 	    | Absolute l ->
 	      if l > !lvl + 1 then failwith "Illegal level skip";
 	      for i = 1 to !lvl - l do
