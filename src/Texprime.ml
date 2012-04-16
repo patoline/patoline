@@ -20,7 +20,7 @@ let preambule format fugue = "
      "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)), \"\
 Adds directories to the font search path\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
-     module D=(struct let structure=ref [Node { empty with node_tags=[InTOC] },[]] let fixable=ref false end:DocumentStructure)\n"
+     module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
   ^
   "module Format="^format^".Format(D);;\nopen Format;;\n"
@@ -33,9 +33,9 @@ let postambule outfile = Printf.sprintf "
     let filename=\"%s\" in
     let rec resolve i env0=
      Printf.printf \"Compilation %%d\\n\" i; flush stdout;
-     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst (List.hd !D.structure )); close_out o;
+     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o;
      D.fixable:=false;
-     let tree=postprocess_tree (fst (top (List.hd !D.structure))) in
+     let tree=postprocess_tree (fst (top (!D.structure))) in
      let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
      let (_,pages,user')=TS.typeset
        ~completeLine:compl
