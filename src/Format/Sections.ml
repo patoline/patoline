@@ -58,8 +58,7 @@ let postprocess_tree tree=
             (fun a b c d e f->
                { (if depth=0 then center a b c d e f else
                     parameters a b c d e f) with
-                   min_page_before=
-                   if depth=0 && f.lineStart=0 then 1 else 0;
+                   min_page_before = (if depth=0 && f.lineStart=0 then 1 else 0);
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
           par_completeLine=C.normal }
