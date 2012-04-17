@@ -35,14 +35,11 @@ $(EXEC).opt: $(OPTOBJS)
 $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma Typography/Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
-Article.mli:
-	$(CAMLC) -i Article.ml > Article.mli
+%.mli: %.ml
+	$(CAMLC) -i $*.ml > $*.mli
 
 Article.cma: 
 	$(CAMLC) -a -o Article.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
-
-Article.cmx: 
-	$(CAMLOPT) Article.ml
 
 Article.cmxa:
 	$(CAMLOPTA) -a -o Article.cmxa Article.cmx
@@ -53,15 +50,15 @@ Article: Article.cmi Article.cmx Article.cmxa
 	dypgen --no-mli $<
 
 %.cmi: %.mli
-	$(CAMLC) $< 
+	$(CAMLC) -c $< 
 
-%.cma: 
+%.cma: %.cmi
 	$(CAMLC) -a -o $*.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
 
-%.cmx: %.ml 
-	$(CAMLOPT) $<
+%.cmx: %.ml %.cmi
+	$(CAMLOPT) -c $<
 
-%.cmxa: %.cmx
+%.cmxa: %.cmx %.cmi
 	$(CAMLOPTA) -a -o $@ $*.cmx
 
 

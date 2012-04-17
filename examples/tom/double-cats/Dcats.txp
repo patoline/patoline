@@ -3,7 +3,7 @@
 
 (* 
    A compiler avec 
-   texprime --format Format/Article --caml Diag.cmx Dcats.txp
+   texprime --format Format/Article --caml Diagram.cmxa Dcats.txp
 *)
 
 (* test *)
@@ -21,6 +21,9 @@ CNRS, Université de Savoie
 
 
 {{
+open Diagram.Diagram
+open Diagram
+
 open Typography.Document
 open Typography.Parameters
 open Typography.Fonts.FTypes
@@ -28,9 +31,9 @@ open Typography.Util
 open Typography.Fonts
 open Typography.Constants
 open Typography.Binary
-open Diag
 
 module DFormat = Format.Default
+open Format
 
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
@@ -44,21 +47,6 @@ let cat = <$C$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$I$>
   let mamacro () = << du texte >>
 
-module Env_definition=DFormat.Make_theorem
-    (struct
-       let refType="definition"
-       let counter="definition"
-       let counterLevel=2
-       let display num=alternative Bold [T ("Definition "^num^"."); B (fun env->env.stdGlue)]
-     end)
-module Env_theorem=DFormat.Make_theorem
-    (struct
-       let refType="theorem"
-       let counter="theorem"
-       let counterLevel=2
-       let display num=alternative Bold [T ("Theorem "^num^"."); B (fun env->env.stdGlue)]
-     end)
-module Env_abstract = DFormat.Env_abstract
 
 }}
 
@@ -101,39 +89,12 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d �
 
 
 {{
-let fig env=
-  let state = [] in
-  let params = NodeShape.default in  
-  let a, state = Node.make_draw env state { Node.default with
-    Node.contents_spec = <<A>>;
-    Node.shape = (NodeShape.circle ~parameters:params ~inner_sep:4. ()) }
-  in
-  let b, state = Node.make_draw env state { Node.default with
-    Node.at = (30.,70.) ;
-    Node.contents_spec = [T "J"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:{ params with (* lineWidth=3. ;  *)
-      lineJoin=Round_join} ~inner_sep:2. ()) }
-  in
-  let c, state = Node.make_draw env state { Node.default with
-    Node.at = (90.,30.) ;
-    Node.contents_spec = (alternative Bold [T "Ailllaillaille!"]) ;
-    Node.shape = (NodeShape.flower ~parameters:params ~amplitude:3. ()) }
-  in
-  let d, state = Node.make_draw env state { 
-    Node.at = b.Node.make_anchor Anchor.West ;
-    Node.contents_spec =  <<$a$>> ;
-    Node.anchor = Anchor.East ;
-    Node.shape = (NodeShape.rectangle 
-		    ~parameters:{ params with lineWidth=0.5 ; lineJoin=Round_join} 
-		    ~inner_sep:1. ()) }
-  in
-  let e, state = Node.make_draw env state { Node.default with
-    Node.at = c.Node.make_anchor Anchor.North ;
-    Node.anchor = Anchor.South ;
-    Node.contents_spec = [T "X"] ;
-    Node.shape = (NodeShape.rectangle ~parameters:params ~inner_sep:4. ()) }
-  in
-  drawing ~offset:(-10.) (List.rev state)
+
+  let fig env=
+    let i, statei = node env [ `Shape `Rectangle ; ] <<$I$>> in
+    let j, statej = node env [ `Shape `Rectangle ; `At (20.,20.) ] <<$J$>>
+    in
+    drawing ~offset:(-10.) (List.rev (statei @ statej))
  let _ = figure D.structure ~name:"figure de Tom" fig
 }}
 

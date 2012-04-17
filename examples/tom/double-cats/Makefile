@@ -38,7 +38,7 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 	$(CAMLOPT)  -o $*.tmx -impl $*.tml
 
 Format:
-	cd Format ; make clean ; make Article ; make Diag.cmx ; cd ..
+	cd Format ; make clean ; make Article ; make Diagram.cmxa ; make Diagram.cmi ; cd ..
 
 clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# 

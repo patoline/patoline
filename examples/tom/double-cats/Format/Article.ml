@@ -133,14 +133,21 @@ let postprocess_tree tree=
   in
     with_chapters
 
-  module Env_definition=Default.Make_theorem
-    (struct
-       let refType="definition"
-       let counter="definition"
-       let counterLevel=3
-       let display num=alternative Bold [T (Printf.sprintf "Définition %s" num);
-                                         B (fun env->env.stdGlue)]
-     end)
+module Env_definition=Default.Make_theorem
+  (struct
+    let refType="definition"
+    let counter="definition"
+    let counterLevel=2
+    let display num=alternative Bold [T ("Definition "^num^"."); B (fun env->env.stdGlue)]
+   end)
+module Env_theorem=Default.Make_theorem
+  (struct
+    let refType="theorem"
+    let counter="theorem"
+    let counterLevel=2
+    let display num=alternative Bold [T ("Theorem "^num^"."); B (fun env->env.stdGlue)]
+   end)
+module Env_abstract = Default.Env_abstract
 
   open Util
   open Binary
