@@ -318,7 +318,7 @@ let output ?(structure:structure={name="";displayname=[];
                              )
                       ) paths;
             match params.fillColor, params.strokingColor with
-                None, None->()
+                None, None-> Buf.add_string pageBuf "n "
               | None, Some col -> (
                   if params.close then Buf.add_string pageBuf "s " else
                     Buf.add_string pageBuf "S "
