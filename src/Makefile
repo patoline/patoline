@@ -132,7 +132,7 @@ clean:
 
 depend : .depend
 
-.depend: $(SOURCES_ALL) .depend.input Parser.ml
+.depend: $(SOURCES_ALL) Parser.ml
 	@echo '--Re-building dependencies'
 	$(CAMLDEP)  $(SOURCES_ALL) > .depend
 

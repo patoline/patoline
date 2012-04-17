@@ -141,7 +141,7 @@ let rec print_macro ch op mtype name args =
   begin
     match mtype with
       | `Single -> 
-	Printf.fprintf ch "%s" name;
+	Printf.fprintf ch "%s " name;
 	List.iter (function
         Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
 	  | Caml(s,e,txps) -> print_caml op ch s e txps
@@ -198,7 +198,7 @@ and print_caml op ch s e txps = match txps with
       | TxpText -> 2
     in
     let size = s' - s - offset in
-    (* Printf.fprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e;  *)
+    (* Printf.fprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e; *)
     let buf=String.create size in
     let _= seek_in op s; really_input op buf 0 size in
     Printf.fprintf ch "%s" buf;
@@ -206,7 +206,7 @@ and print_caml op ch s e txps = match txps with
     let size_txp = e' - s' in
     let buf'=String.create size_txp in
     let _= seek_in op s'; really_input op buf' 0 size_txp in
-    Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (* Debug *)
+    (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin
