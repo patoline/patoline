@@ -45,7 +45,7 @@ type user=
   | BeginFigure of int
   | FlushFigure of int
   | Footnote of int*drawingBox
-
+  | AlignmentMark
 
 module TS=Break.Make
   (struct
