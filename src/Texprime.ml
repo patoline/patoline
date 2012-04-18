@@ -17,8 +17,9 @@ let preambule format fugue = "
   open Typography.Document
   open Typography.OutputCommon
 "^(if fugue then
-     "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)), \"\
-Adds directories to the font search path\")];;
+     "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),
+\"Adds directories to the font search path\");
+(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
      module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")

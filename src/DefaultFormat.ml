@@ -78,7 +78,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                  []->[||]
                | h::s->(hyph s 0 h; pos));
     with
-        File_not_found _-> (fun x->[||])
+        File_not_found (f,p)-> (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f; List.iter (Printf.fprintf stderr "%s\n") p;fun x->[||])
     in
     let fsize=4. in
     let feat= [ Opentype.standardLigatures ] in
