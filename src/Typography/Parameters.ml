@@ -24,7 +24,7 @@ let normal mes0 paragraphs figures last_users line allow_impossible=
   in
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (
-      if sum_min<=measure || allow_impossible then (
+      if sum_min<=measure || (allow_impossible && result=[]) then (
         { line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max }::result
       ) else result
     ) else (

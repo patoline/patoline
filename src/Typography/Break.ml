@@ -128,7 +128,7 @@ module type Typeset=sig
       (Util.parameters * Util.line) list array *
       Util.line UMap.t
 end
-
+type figurePosition=Placed of line | Flushed | Begun
 
 module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
   struct
@@ -216,7 +216,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
           []->demerits
         | h::s->
             try
-              let (_,_,_,_,ant,_) as hh=LineMap.find h demerits0 in
+              let (_,_,_,_,ant,_,_) as hh=LineMap.find h demerits0 in
                 clean (LineMap.add h hh demerits) (ant::s)
             with
                 Not_found->clean demerits s
@@ -231,9 +231,9 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
     let rec break allow_impossible todo demerits=
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
-        let node,(lastBadness,lastParameters,comp0,lastUser)=LineMap.min_binding todo in
+        let node,(lastBadness,lastParameters,comp0,lastFigures,lastUser)=LineMap.min_binding todo in
         let todo'=ref (LineMap.remove node todo) in
-        (* On commence par chercher la première vraie boite après node *)
+          (* On commence par chercher la première vraie boite après node *)
         let demerits'=ref demerits in
         let register node nextNode badness log next_params comp=
           demerits':=cleanup !demerits' !todo';
@@ -242,14 +242,20 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                                                              User uu->UMap.add uu nextNode u
                                                            | _->u) lastUser nextNode
             in
+            let figures'=Util.fold_left_line paragraphs
+              (fun u box->match box with
+                   FlushFigure i->IntMap.add i Flushed u
+                 | BeginFigure i->IntMap.add i Begun u
+                 | _->u) lastFigures nextNode
+            in
             let nextNextUser=if nextNode.isFigure then UMap.add (User.figure nextNode.lastFigure) nextNode nextUser
             else nextUser
             in
-              todo':=LineMap.add nextNode (badness,next_params,comp,nextNextUser) !todo';
-              demerits':=LineMap.add nextNode (badness,log,next_params,comp,node,nextNextUser) !demerits'
+              todo':=LineMap.add nextNode (badness,next_params,comp,figures',nextNextUser) !todo';
+              demerits':=LineMap.add nextNode (badness,log,next_params,comp,node,figures',nextNextUser) !demerits'
           in
             try
-              let bad,_,_,_,_,_=LineMap.find nextNode !demerits' in
+              let bad,_,_,_,_,_,_=LineMap.find nextNode !demerits' in
                 if bad >= badness then reallyAdd () else incr misses
             with
                 Not_found->reallyAdd ()
@@ -284,7 +290,10 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
         let flushed=
           (node.lastFigure+1 < Array.length figures) &&
             (node.paragraph >= Array.length paragraphs ||
-               (UMap.fold (fun k _ l->l || flushedFigure k > node.lastFigure) lastUser false))
+               (try (match IntMap.find (node.lastFigure+1) lastFigures with
+                         Flushed -> true
+                       | _->false)
+                with Not_found -> false))
         in
           if flushed then place_figure () else (
             let i,pi=
@@ -301,9 +310,11 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
               ) else (
                 (* Y a-t-il encore des boites dans ce paragraphe ? *)
                 if pi<>node.paragraph then (
-                  if node.lastFigure < Array.length figures-1 then
-                    if UMap.fold (fun k _ l->l || BeginFigure k > node.lastFigure) lastUser false then
-                      place_figure ();
+                  let placable=
+                    (node.lastFigure+1 < Array.length figures) &&
+                      (IntMap.mem (node.lastFigure+1) lastFigures)
+                  in
+                    if placable then place_figure ();
                 );
 
                 let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else (node.page, node.height+.lastParameters.min_height_after) in
@@ -321,7 +332,6 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastUser r_nextNode) in
                 let local_opt=ref [] in
                 let extreme_solutions=ref [] in
-                let solutions_exist=ref false in
                 let rec fix page height=
                   if height>=(!r_params).page_height then
                     fix (page+1) 0.
@@ -340,8 +350,8 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                               let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
                                 if dist < infinity then node0.height+. (ceil (-.dist)) else (
                                   try
-                                    let _,_,_,_,ant,_=LineMap.find node0 !demerits' in
-                                    let _,_,params,_,_,_=LineMap.find ant !demerits' in
+                                    let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in
+                                    let _,_,params,_,_,_,_=LineMap.find ant !demerits' in
                                       v_distance ant params
                                   with
                                       Not_found -> node0.height
@@ -374,7 +384,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                                 max !r_params.min_height_before lastParameters.min_height_after)
                         then (
                           let allow_orphan=
-                            page=node.page || node.paragraph_height>0
+                            page=node.page || nextNode.paragraph_height>1
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
@@ -385,41 +395,39 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                           in
                             if not allow_orphan && allow_widow then (
                               if allow_impossible then (
-                                let _,_,_,_,last_ant,_=LineMap.find node !demerits' in
-                                let ant_bad,_,ant_par, ant_comp, ant_ant,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Log.Orphan node, { ant_par with page_height=node.height },ant_comp,
+                                let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
+                                let ant_bad,_,ant_par, ant_comp, ant_ant,ant_fig,ant_user=LineMap.find last_ant !demerits' in
+                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Log.Orphan node, { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
                               )
                             ) else if not allow_widow && allow_orphan then (
                               if allow_impossible then (
-                                let _,_,_,_,last_ant,_=LineMap.find node !demerits' in
-                                let ant_bad, ant_log, ant_par, ant_comp,ant_ant, ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Log.Widow last_ant, { ant_par with page_height=node.height },ant_comp,
+                                let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
+                                let ant_bad, ant_log, ant_par, ant_comp,ant_ant, ant_fig,ant_user=LineMap.find last_ant !demerits' in
+                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Log.Widow last_ant, { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
-                                  solutions_exist:=true;
                               )
                             )
                             else if nextNode.min_width > (!r_params).measure then (
-                              solutions_exist:=true;
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Log.Overfull_line nextNode, !r_params,comp1,nextUser)::(!local_opt);
+                                local_opt:=(node,nextNode,bad,Log.Overfull_line nextNode, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
                                 (* register node nextNode bad (!r_params) *)
                             ) else (
-                              solutions_exist:=true;
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Log.Normal, !r_params,comp1,nextUser)::(!local_opt);
+                                local_opt:=(node,nextNode,bad,Log.Normal, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
                                 (* register node nextNode bad (!r_params) *)
                             )
                         )
                     in
-                      List.iter make_next_node (completeLine.(pi) paragraphs figures lastUser r_nextNode allow_impossible);
-                      if (not !solutions_exist) && page<=node.page+1 then (
+                    let compl=completeLine.(pi) paragraphs figures lastUser r_nextNode allow_impossible in
+                      List.iter make_next_node (compl);
+                      if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1 then (
                         let next_h=(lastParameters).next_acceptable_height node lastParameters r_nextNode !r_params in
                           fix page (if next_h=node.height then node.height+.1. else next_h)
                       )
@@ -428,7 +436,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                   (try
                      fix node.page (node.height+.lastParameters.min_height_after);
                      if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
-                       List.iter (fun (node,nextNode,bad,log,params,comp,user)->
+                       List.iter (fun (node,nextNode,bad,log,params,comp,fig,user)->
                                     let a,_,_=LineMap.split nextNode !demerits' in
                                     let b,_,_=LineMap.split nextNode !todo' in
                                       demerits':=a;
@@ -437,13 +445,13 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                        local_opt:= !extreme_solutions
                      );
                      if !local_opt <> [] then (
-                       let l0=List.sort (fun (_,_,b0,_,_,_,_) (_,_,b1,_,_,_,_)->compare b0 b1) !local_opt in
-                       let deg=List.fold_left (fun m (_,_,_,_,p,_,_)->max m p.local_optimization) 0 l0 in
+                       let l0=List.sort (fun (_,_,b0,_,_,_,_,_) (_,_,b1,_,_,_,_,_)->compare b0 b1) !local_opt in
+                       let deg=List.fold_left (fun m (_,_,_,_,p,_,_,_)->max m p.local_optimization) 0 l0 in
                        let rec register_list i l=
                          if i>0 || deg<=0 then (
                            match l with
                                []->()
-                             | (node,nextNode,bad,log,params,comp,user)::s->(
+                             | (node,nextNode,bad,log,params,comp,fig,user)::s->(
                                  register node nextNode bad log params comp;
                                  register_list (i-1) s
                                )
@@ -460,7 +468,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
       )
     in
     let first_parameters=parameters.(0) paragraphs figures default_params UMap.empty uselessLine in
-    let todo0=LineMap.singleton uselessLine (0., first_parameters, 0.,UMap.empty) in
+    let todo0=LineMap.singleton uselessLine (0., first_parameters, 0.,IntMap.empty,UMap.empty) in
     let last_failure=ref LineMap.empty in
     let rec really_break allow_impossible todo demerits=
       let demerits'=break allow_impossible todo demerits in
@@ -468,7 +476,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
           try
             let _=LineMap.find uselessLine !last_failure in
               if Array.length paragraphs>0 || Array.length figures > 0 then
-                Printf.printf "No solution, incomplete document. Please report\n";
+                Printf.printf "No solution, incomplete document. Please report (1)\n";
               demerits'
               (* raise No_solution *)
           with
@@ -480,15 +488,15 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
               )
         ) else (
           if !endNode=None then (
-            let (b,(bad,_,param,comp,_,user))= LineMap.max_binding demerits' in
+            let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding demerits' in
             try
               let _=LineMap.find b !last_failure in
-                Printf.printf "No solution, incomplete document. Please report\n";
+                Printf.printf "No solution, incomplete document. Please report (2)\n";
                 demerits'
             with
                 Not_found->(
                   last_failure:=LineMap.add b param !last_failure;
-                  really_break true (LineMap.singleton b (bad,param,comp,user)) demerits'
+                  really_break true (LineMap.singleton b (bad,param,comp,fig,user)) demerits'
                 )
           ) else
             demerits'
@@ -498,7 +506,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
     let _,node0,user0=
       match !endNode with
           None->(try
-                   let (b,(bad,_,_,_,_,user))= LineMap.max_binding demerits in
+                   let (b,(bad,_,_,_,_,fig,user))= LineMap.max_binding demerits in
                      (bad,b,user)
                  with
                      Not_found -> (0.,uselessLine,UMap.empty))
@@ -507,7 +515,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
       try
         let rec makeParagraphs log node result=
           try
-            let _,log_,params',_,next,_=LineMap.find node demerits in
+            let _,log_,params',_,next,_,_=LineMap.find node demerits in
               makeParagraphs (match log_ with Log.Normal -> log | _->log_::log) next ((params',node)::result)
           with
               Not_found->(log,result)
