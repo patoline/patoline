@@ -68,6 +68,8 @@ and 'a box=
   | Drawing of drawingBox
   | Hyphen of 'a hyphenBox
   | User of 'a
+  | BeginFigure of int
+  | FlushFigure of int
   | Empty
 
 

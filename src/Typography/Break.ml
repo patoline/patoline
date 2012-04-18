@@ -284,7 +284,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
         let flushed=
           (node.lastFigure+1 < Array.length figures) &&
             (node.paragraph >= Array.length paragraphs ||
-               (UMap.fold (fun k _ l->l || User.flushedFigure k > node.lastFigure) lastUser false))
+               (UMap.fold (fun k _ l->l || flushedFigure k > node.lastFigure) lastUser false))
         in
           if flushed then place_figure () else (
             let i,pi=
@@ -302,7 +302,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:User)=(
                 (* Y a-t-il encore des boites dans ce paragraphe ? *)
                 if pi<>node.paragraph then (
                   if node.lastFigure < Array.length figures-1 then
-                    if UMap.fold (fun k _ l->l || User.beginFigure k > node.lastFigure) lastUser false then
+                    if UMap.fold (fun k _ l->l || BeginFigure k > node.lastFigure) lastUser false then
                       place_figure ();
                 );
 
