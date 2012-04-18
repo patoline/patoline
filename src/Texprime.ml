@@ -142,7 +142,7 @@ let rec print_macro ch op mtype name args =
   begin
     match mtype with
       | `Single -> 
-	Printf.fprintf ch "%s" name;
+	Printf.fprintf ch "(%s " name;
 	List.iter (function
         Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
 	  | Caml(s,e,txps) ->
