@@ -7,8 +7,8 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
   let xj=ref params_j.left_margin in
 
   let rec collide i j w_tot col col2=
-    let box_i=haut.(i) in
-    let box_j=bas.(j) in
+    let box_i=if i<max_haut then haut.(i) else Empty in
+    let box_j=if j<max_bas then bas.(j) else Empty in
       (* let _=Graphics.wait_next_event [Graphics.Key_pressed] in *)
     let wi=box_width comp_i box_i in
     let wj=box_width comp_j box_j in
