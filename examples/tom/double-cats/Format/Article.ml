@@ -11,6 +11,38 @@ open Binary
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
+
+exception No_bib of string
+let bib:((string*int*user content list) IntMap.t) ref=ref IntMap.empty
+let bibfile="biblio.bibi"
+
+let raw_cite x=
+  let num a b=try
+    let _,y,_=(IntMap.find a !bib) in y
+  with
+      Not_found->
+        let key=if IntMap.is_empty !bib then 1 else fst (IntMap.min_binding !bib) in
+          bib:=IntMap.add a (bibfile,key, b) !bib;
+          key
+  in
+    match Bibi.bibitem bibfile x with
+        []-> raise (No_bib (Printf.sprintf "Request gave no results : %s\n" x))
+      | [a,b]->[T (Printf.sprintf "[%d]" (num a b))]
+      | (a,b)::_::_->(
+          Printf.fprintf stderr "Warning : more than one result for request : %s\n" x;
+          [T (Printf.sprintf "[%d]" (num a b))]
+        )
+
+let cite ?title:(title="") ?year:(year=None) (authors:string list) =
+  raw_cite ("title like '%" ^ title ^ "%' AND id IN " ^
+    (String.concat " AND id IN " 
+       (List.map
+	  (fun author -> 
+	    ("(SELECT article FROM authors_publications WHERE author IN (SELECT id FROM "^
+		"authors WHERE name like '%" ^ author ^ "%'))"))
+	  authors)))
+
+
 module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
@@ -49,6 +81,7 @@ module Format=functor (D:DocumentStructure)->struct
   let replace_utf8 x y z=
     Str.global_replace x
       (UTF8.init 1 (fun _->UChar.chr y)) z
+
 
   let defaultEnv=
     { (envFamily famille Default.defaultEnv) with
@@ -133,6 +166,22 @@ let postprocess_tree tree=
   in
     with_chapters
 
+let thebibliography ()=
+    List.iter (fun (a,(_,b,c))->
+                 let params env a1 a2 a3 a4 line=
+                   let p=parameters env a1 a2 a3 a4 line in
+                     if line.lineStart=0 then (
+                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" a)] in
+                       let w=List.fold_left (fun w0 b->let (_,w,_)=box_interval b in w0+.w) 0. num in
+                         { p with left_margin=p.left_margin-.w; measure=p.measure+.w }
+                     ) else
+        	       p
+                 in
+                   newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
+                     Document.C.normal params
+                     (T (Printf.sprintf "[%d]" a)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
+
+
 module Env_definition=Default.Make_theorem
   (struct
     let refType="definition"
@@ -151,75 +200,6 @@ module Env_abstract = Default.Env_abstract
 
   open Util
   open Binary
-
-  let table_of_contents str tree max_level=
-
-    newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) C.normal parameters [
-      BFix (
-        fun env->
-          let rec toc env0 path tree=
-            let level=List.length path in
-            match tree with
-                Paragraph p -> []
-              | FigureDef f -> []
-              | Node s when level <= max_level && List.mem InTOC s.node_tags-> (
-                  let rec flat_children env1=function
-                      []->[]
-                    | (_,(FigureDef _))::s
-                    | (_,(Paragraph _))::s->flat_children env1 s
-                    | (k,(Node h as tr))::s->(
-                        let env'=h.node_env env1 in
-                          (toc env' (k::path) tr)@
-                            flat_children (h.node_post_env env1 env') s
-                      )
-                  in
-                  let chi=flat_children env0 (Binary.IntMap.bindings s.children) in
-                  let a,b=(try Binary.StrMap.find "structure" (env0.counters) with _-> -1,[]) in
-                  let count=Binary.drop 1 b in
-                  let spacing=env.size in
-                  let in_toc=List.mem InTOC s.node_tags in
-                  let numbered=List.mem Numbered s.node_tags in
-                    if in_toc && count<>[] then (
-                      try
-                        let page=(1+(TS.UMap.find (Structure path) env0.user_positions).Util.page) in
-                        let env'=add_features [Opentype.oldStyleFigures] env in
-                        let num=boxify_scoped { env' with fontColor=
-                            if level=1 then OutputCommon.rgb 255. 0. 0. else OutputCommon.black }
-                          [T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev count)))] in
-                        let name= boxify_scoped env' s.displayname in
-                        let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
-                        let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
-                        let cont=
-                          (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
-                             (draw_boxes num) else [])@
-                            (List.map (OutputCommon.translate 0. 0.) (draw_boxes name))@
-                            List.map (OutputCommon.translate (w'+.spacing) 0.)
-                            (draw_boxes (boxify_scoped (envItalic true env') [T (string_of_int page)]))
-                        in
-                        let (a,b,c,d)=OutputCommon.bounding_box cont in
-                          Drawing {
-                            drawing_min_width=env.normalMeasure;
-                            drawing_nominal_width=env.normalMeasure;
-                            drawing_max_width=env.normalMeasure;
-                            drawing_y0=b;
-                            drawing_y1=d;
-                            drawing_badness=(fun _->0.);
-                            drawing_contents=
-                              (fun _->
-                                 List.map (OutputCommon.translate
-                                             (spacing*.3.*.(float_of_int (level-1)))
-                                             0.) cont)
-                          }::(glue 0. 0. 0.)::chi
-                      with
-                          Not_found -> chi
-                    )
-                    else chi
-                )
-              | Node _->[]
-          in
-            toc { env with counters=StrMap.add "structure" (-1,[0]) env.counters }
-              [] (fst (top (List.hd !str)))
-      )]
 
   let utf8Char x=[T (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=

@@ -16,15 +16,14 @@ FORMATS_ML=$(filter %.ml, $(SOURCES3))
 
 ########## Compilers ##########
 
-OPTS=
+OPTS= -I +bibi
 CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography -linkpkg $(OPTS) str.cma -pp "cpp -w" -g
 CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography  $(OPTS) -pp "cpp -w"
 
 ###############################
 
-all : $(EXEC) $(EXEC).opt Typography/Typography.cma Typography/Typography.cmxa DefaultFormat.cma DefaultFormat.cmxa ArticleFormat.cma ArticleFormat.cmxa texprimeDefault.tgo texprimeDefault.tgx
-	cp $(EXEC).opt $(EXEC)
+all : Article Diagram
 
 opt : $(EXEC).opt Typography/Typography.cmxa DefaultFormat.cmxa ArticleFormat.cmxa texprimeDefault.tgx
 	cp $(EXEC).opt $(EXEC)
@@ -36,30 +35,26 @@ $(EXEC): $(OBJS)
 	$(CAMLC) dynlink.cma Typography/Typography.cma $(CUSTOM) -o $(EXEC) $(OBJS)
 
 %.mli: %.ml
-	$(CAMLC) -i $*.ml > $*.mli
-
-Article.cma: 
-	$(CAMLC) -a -o Article.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
-
-Article.cmxa:
-	$(CAMLOPTA) -a -o Article.cmxa Article.cmx
+	$(CAMLC) $(OPTS) -i $*.ml > $*.mli
 
 Article: Article.cmi Article.cmx Article.cmxa 
+
+Diagram: Diagram.cmi Diagram.cmx Diagram.cmxa 
 
 %.ml: %.dyp
 	dypgen --no-mli $<
 
 %.cmi: %.mli
-	$(CAMLC) -c $< 
+	$(CAMLC) $(OPTS) -c $< 
 
 %.cma: %.cmi
-	$(CAMLC) -a -o $*.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
+	$(CAMLC) $(OPTS) -a -o $*.cma $(filter %.cmo, $(FORMATS_ML:.ml=.cmo))
 
 %.cmx: %.ml %.cmi
-	$(CAMLOPT) -c $<
+	$(CAMLOPT) $(OPTS) -c $< 
 
 %.cmxa: %.cmx %.cmi
-	$(CAMLOPTA) -a -o $@ $*.cmx
+	$(CAMLOPTA) $(OPTS) -a -o $@ $*.cmx
 
 
 clean:

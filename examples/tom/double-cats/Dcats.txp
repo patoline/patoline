@@ -46,13 +46,13 @@ let emph = toggleItalic
 let cat = <$C$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$I$>
   let mamacro () = << du texte >>
-
+    let cite = Article.cite
 
 }}
 
 
 \Begin{abstract}
-We generalise the construction in previous work of a playground for CCS. New instances are $\pi$ and $\lambda$.
+We generalise the construction in previous work~\cite{{["Hirschowitz"]}} of a playground for CCS. New instances are $\pi$ and $\lambda$.
 
 \End{abstract}
 
@@ -64,11 +64,11 @@ We generalise the construction in previous work of a playground for CCS. New ins
 
 {{
 
-  let _ = newStruct ~in_toc:false ~numbered:false D.structure ((T "Table of contents")::[]);;
+ (*  let _ = newStruct ~in_toc:false ~numbered:false D.structure ((T "Table of contents")::[]);; *)
 
- let _ = table_of_contents D.structure (top (List.hd !D.structure)) 1 ;;
+ (* let _ = Default.table_of_contents D.structure (top (List.hd !D.structure)) 1 ;; *)
  
- let _ = go_up D.structure (* 2 *)
+ (* let _ = go_up D.structure (\* 2 *\) *)
 
 }}
 (* -< *)
@@ -87,22 +87,25 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
   Let us start with a category $\cat$. 
 
-
 {{
 
   let fig env=
-    let i, statei = node env [ `Shape `Rectangle ; ] <<$I$>> in
-    let j, statej = node env [ `Shape `Rectangle ; `At (20.,20.) ] <<$J$>>
-    in
-    drawing ~offset:(-10.) (List.rev (statei @ statej))
+    let i, statei = node env [ `Shape `Rectangle ] <<$I$>> in
+    let j, statej = node env [ `Shape `Rectangle ; `OuterSep 0.3 ; `Draw ; `At (20.,20.) ] <<$J$>> in
+    let ij, stateij = path [`Draw] (j.anchor `West) [[(10.,20.); i.anchor `North]] in
+    drawing ~offset:(-10.) (List.rev (statei @ statej @ stateij))
  let _ = figure D.structure ~name:"figure de Tom" fig
 }}
-
-
 
 =<
 
 
 => The $\lambda$-calculus
+
+=<
+
+=> References
+
+{{ thebibliography () }}
 
 =<
