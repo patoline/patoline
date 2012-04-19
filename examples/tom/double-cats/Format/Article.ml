@@ -108,11 +108,11 @@ let postprocess_tree tree=
           par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
                                              user_positions=env2.user_positions });
           par_parameters=
-            (fun a b c d e f->
-               { (center a b c d e f) with
+            (fun a b c d e f g->
+               { (center a b c d e f g) with
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=C.normal }
+          par_completeLine=Parameters.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
     | _->tree
@@ -148,14 +148,14 @@ let postprocess_tree tree=
           par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
                                              user_positions=env2.user_positions });
           par_parameters=
-            (fun a b c d e f->
-              { (parameters a b c d e f) with
+            (fun a b c d e f g->
+              { (parameters a b c d e f g) with
                    min_page_before= 0;
                    min_page_after= 0;
                    (* if depth=0 && f.lineStart=0 then 1 else 0; *)
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=C.normal }
+          par_completeLine=Parameters.normal }
         in
           fst (up (newChildBefore (
                      Node { n with children=IntMap.map (sectionize (depth+1)) n.children }, []) par
@@ -170,8 +170,8 @@ let postprocess_tree tree=
 
 let thebibliography ()=
     List.iter (fun (a,(_,b,c))->
-                 let params env a1 a2 a3 a4 line=
-                   let p=parameters env a1 a2 a3 a4 line in
+                 let params env a1 a2 a3 a4 a5 line=
+                   let p=parameters env a1 a2 a3 a4 a5 line in
                      if line.lineStart=0 then (
                        let num=boxify_scoped env [T (Printf.sprintf "[%d]" b)] in
                        let w=List.fold_left (fun w0 b->let (_,w,_)=box_interval b in w0+.w) 0. num in
@@ -180,7 +180,7 @@ let thebibliography ()=
         	       p
                  in
                    newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
-                     Document.C.normal params
+                     Parameters.normal params
                      (T (Printf.sprintf "[%d]" b)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
 
 

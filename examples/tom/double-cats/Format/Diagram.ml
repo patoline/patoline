@@ -68,6 +68,11 @@ module Curve = struct
     if curve = [] then [] else
       [OutputCommon.Path (parameters, [Array.of_list curve])]
 
+  let translate (x,y) curves = List.map (fun (xs,ys) ->
+    (Array.map ((+.) x) xs,
+     Array.map ((+.) y) ys))
+    curves
+
   let global_time curve (i,t) = 
     let n = List.length curve in
     (t +. (float_of_int i)) /. (float_of_int n)
@@ -117,16 +122,16 @@ module Curve = struct
     let t = t *. (float_of_int (List.length beziers)) in
     let rec eval_rec beziers t = 
       match beziers with 
-	| [] -> Printf.printf ("Warning: evaluating an empty curve. Using (0.,0.)") ; (0.,0.)
+	| [] -> Printf.fprintf stderr ("Warning: evaluating an empty curve. Using (0.,0.)") ; (0.,0.)
 	| bezier :: reste -> 
 	  if t <= 1. then bezier_evaluate bezier t
 	  else eval_rec reste (t -. 1.)
     in eval_rec beziers t
 
-  let restrict curve (i,t) (j,t') = 
+  let internal_restrict curve (i,t) (j,t') = 
 
     let rec restrict_right res curve (j,t') = match curve with
-	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
+	[] -> Printf.fprintf stderr ("Warning: attempt to restrict an empty curve.\n") ; []
       | (xs,ys) as bezier :: rest -> if j = 0 then
 	  let xs' = Bezier.restrict xs 0. t' in
 	  let ys' = Bezier.restrict ys 0. t' in
@@ -135,7 +140,7 @@ module Curve = struct
     in
 
     let rec restrict_left curve (i,t) (j,t') = match curve with
-	[] -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; []
+	[] -> Printf.fprintf stderr ("Warning: attempt to restrict an empty curve.\n") ; []
       | (xs,ys) :: rest -> if i = 0 then begin
 	  if i = j then 
 	  let xs' = Bezier.restrict xs t t' in
@@ -153,15 +158,18 @@ module Curve = struct
     if i <= j then 
     restrict_left curve (i,t) (j,t')
     else 
-      (Printf.printf ("Warning: restriction to an empty curve.\n") ;
+      (Printf.fprintf stderr ("Warning: restriction to an empty curve.\n") ;
        [])
+
+  let restrict curve a b = 
+    internal_restrict curve (local_time curve a) (local_time curve b)
 
   let split2 curve a b =
     let (i,t) = local_time curve a in
     let (j,t') = local_time curve b in
 
     let rec split2_right curve1 res curve (j,t') = match curve with
-	[] -> Printf.printf ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
+	[] -> Printf.fprintf stderr ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
       | (xs,ys) as bezier :: rest -> if j = 0 then
 	  let xs1, xs', xs2 = Bezier.split2 xs 0. t' in
 	  let ys1, ys', ys2 = Bezier.split2 ys 0. t' in
@@ -172,7 +180,7 @@ module Curve = struct
     in
 
     let rec split2_left curve curve1 (i,t) (j,t') = match curve with
-	[] -> Printf.printf ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
+	[] -> Printf.fprintf stderr ("Warning: attempt to split2 an empty curve.\n") ; [],[],[]
       | (xs,ys) :: rest -> if i = 0 then begin
 	if i = j then 
 	  let xs1, xs', xs2 = Bezier.split2 xs t t' in
@@ -193,7 +201,7 @@ module Curve = struct
     if i <= j then 
     split2_left curve [] (i,t) (j,t')
     else 
-      (Printf.printf ("Warning: split2ion to an empty curve.\n") ;
+      (Printf.fprintf stderr ("Warning: split2ion to an empty curve.\n") ;
        [],[],[])
 
 
@@ -309,10 +317,11 @@ module NodeShape = struct
       let y1 = y1 +. inner_sep in
       (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
       (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	  (p1,p2,p3,p4)
-	| _ -> assert false
+      let p1 = (x0,y0) in
+      let p2 = (x1,y0) in
+      let p3 = (x1,y1) in
+      let p4 = (x0,y1) in
+      (p1,p2,p3,p4)
     in
     let make_curve bb =
       let (p1,p2,p3,p4) = extract_points bb in
@@ -326,7 +335,7 @@ module NodeShape = struct
     let make_anchor bb = 
       let (p1,p2,p3,p4) = extract_points bb in
       (* let (x0,y0,x1,y1) = bb in *)
-      (* let _ = Printf.printf ("Rectangle: (%f,%f), (%f,%f)") x0 y0 x1 y1 in *)
+      (* let _ = Printf.fprintf stderr ("Rectangle: (%f,%f), (%f,%f)") x0 y0 x1 y1 in *)
       function
 	| Anchor.Vec v -> v
 	| Anchor.Center -> Point.middle p1 p3
@@ -395,10 +404,11 @@ module NodeShape = struct
       let y1 = y1 +. inner_sep in
       (* let x_center, y_center = Point.middle (x0,y0)( x1,y1) in *)
       (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	  (p1,p2,p3,p4)
-	| _ -> assert false
+      let p1 = (x0,y0) in
+      let p2 = (x1,y0) in
+      let p3 = (x1,y1) in
+      let p4 = (x0,y1) in
+      (p1,p2,p3,p4)
     in
     let make_curve bb =
       let (p1,p2,p3,p4) = extract_points bb in
@@ -654,11 +664,12 @@ module Edge = struct
       end
     | ShortenS a -> begin fun paths -> match paths with
 	| [] -> []
-	| (params, curve) :: rest -> (params, Curve.restrict curve (0,a) (Curve.nb_beziers curve - 1, 1.)) :: rest
+	| (params, curve) :: rest -> (params, Curve.internal_restrict 
+	  curve (0,a) (Curve.nb_beziers curve - 1, 1.)) :: rest
     end
     | ShortenE a -> begin fun paths -> 
       let rev_paths, (params, curve) = list_split_last_rev paths in
-      List.rev ((params, Curve.restrict curve (0,0.) (Curve.nb_beziers curve - 1, 1. -. a)) :: rev_paths)
+      List.rev ((params, Curve.internal_restrict curve (0,0.) (Curve.nb_beziers curve - 1, 1. -. a)) :: rev_paths)
     end
     | SquiggleFromTo (freq,amplitude,a,b) -> begin fun paths -> 
       List.map (fun (params, curve) -> 
@@ -672,7 +683,7 @@ module Edge = struct
     let start = begin
       match Curve.latest_intersection curve node1.Node.curve with
 	| None -> begin
-	  Printf.printf
+	  Printf.fprintf stderr
 	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
 	  (0,0.)
 	end
@@ -681,13 +692,13 @@ module Edge = struct
     let (j,t') as finish = begin 
       match Curve.earliest_intersection curve node2.Node.curve with
 	| None -> begin
-	  Printf.printf
+	  Printf.fprintf stderr
 	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
 	  ((Curve.nb_beziers curve) - 1,1.)
 	end
 	| Some (j, t2) -> (j, t2)
     end in
-    Curve.restrict curve start finish 
+    Curve.internal_restrict curve start finish 
 
   let make env spec node1 node2 =
     let parameters = spec.parameters_spec in
@@ -708,7 +719,8 @@ module Edge = struct
       spec.transfo_specs
     in
     match curves with
-      | [] -> Printf.printf ("Warning: one of your edge transformers has deleted all curves.\n") ;
+      | [] -> Printf.fprintf stderr
+	("Warning: one of your edge transformers has deleted all curves.\n") ;
 	{ curves = [parameters, underlying_curve] ;
 	  head = head ~parameters:parameters underlying_curve ; 
 	  tail = tail ~parameters:parameters underlying_curve ;
@@ -750,6 +762,10 @@ module Diagram = struct
   type anchor = [ `Angle of float 	(* In degrees *)
 	       | `North
 	       | `South
+	       | `NorthEast
+	       | `SouthEast
+	       | `NorthWest
+	       | `SouthWest
 	       | `West
 	       | `East
 	       | `Center
@@ -759,6 +775,11 @@ module Diagram = struct
 	       ]
   type gentity = { curve : Curve.t ;	(* The curve is used to determine the start and end of edges *)
 		   anchor : anchor -> Point.t } (* Anchors are used for relative placement *)
+
+  (* Casting points into gentities *)
+  let coord (x : Point.t) = 
+    { curve = Curve.of_point_lists [[x]] ;
+      anchor = fun a -> x }
 
   (* Two important ways of constructing gentities are nodes and edges between them.  *)
 
@@ -789,7 +810,7 @@ module Diagram = struct
   (* Find a shape specification in a list of style instructions *)
     let rec shape_rec res style_instructions = match style_instructions with
       | [] -> res
-      | `Shape shape :: rest -> shape_rec shape rest
+      | `Rectangle :: rest -> shape_rec `Rectangle rest
       | _ :: rest -> shape_rec res rest
     and shape style_instructions = shape_rec `Rectangle style_instructions
 
@@ -799,6 +820,7 @@ module Diagram = struct
       | `Draw :: rest -> parameters_rec { res with strokingColor = Some black } rest
       | `Fill :: rest -> parameters_rec { res with fillColor = Some black } rest
       | `DrawOf params :: rest -> parameters_rec params rest
+      | `Dashed :: rest -> parameters_rec { res with dashPattern = [0.1;0.2] } rest
       | _ :: rest -> parameters_rec res rest
     and parameters style_instructions = parameters_rec 
       { default with close = true ; strokingColor=None ; lineWidth = 0.1 } 
@@ -832,9 +854,31 @@ module Diagram = struct
       | `Anchor h :: rest -> anchor_rec h rest
       | _ :: rest -> anchor_rec res rest
     and anchor style_instructions = anchor_rec `Center style_instructions
+
+  (* Find arrow head specification in a list of style instructions *)
+    let rec head_rec res style_instructions = match style_instructions with
+      | [] -> res
+      | `Head h :: rest -> head_rec h rest
+      | _ :: rest -> head_rec res rest
+    and head style_instructions = head_rec `None style_instructions
+      
+
+  (* Find matrix placement specification in a list of style instructions *)
+    let rec matrix_placement_rec res style_instructions = match style_instructions with
+      | [] -> res
+      | (`Centers h) as pl :: rest -> matrix_placement_rec pl rest
+      | _ :: rest -> matrix_placement_rec res rest
+    and matrix_placement style_instructions = matrix_placement_rec (`Centers 1.) style_instructions
   end
 
     module BB = struct 
+
+      let points  (x0,y0,x1,y1) =
+	let p1 = (x0,y0) in
+	let p2 = (x1,y0) in
+	let p3 = (x1,y1) in
+	let p4 = (x0,y1) in
+	(p1,p2,p3,p4)
 	
       let outer_points style (x0,y0,x1,y1) =
 	let inner_sep = Style.inner_sep style in
@@ -845,10 +889,7 @@ module Diagram = struct
 	let y0 = y0 -. sep in
 	let x1 = x1 +. sep in
 	let y1 = y1 +. sep in
-	match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-	  | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	    (p1,p2,p3,p4)
-	  | _ -> assert false
+	points (x0,y0,x1,y1)
 
       let mid_points style (x0,y0,x1,y1) =
 	let inner_sep = Style.inner_sep style in
@@ -858,10 +899,7 @@ module Diagram = struct
 	let y0 = y0 -. sep in
 	let x1 = x1 +. sep in
 	let y1 = y1 +. sep in
-	match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-	  | ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	    (p1,p2,p3,p4)
-	  | _ -> assert false
+	points (x0,y0,x1,y1)
 
       let center (x0,y0,x1,y1) =
 	let x1' = (x1 -. x0) *. 0.5 in
@@ -876,12 +914,16 @@ module Diagram = struct
       let (p1,p2,p3,p4) = BB.outer_points style bb in
       match Style.shape style with
 	| `Rectangle -> begin function
-	    | `Vec v -> v
+	    | `Vec v -> Vector.(+) (Point.middle p1 p3) v
 	    | `Center -> Point.middle p1 p3
 	    | `East -> Point.middle p2 p3  
 	    | `West -> Point.middle p1 p4  
 	    | `North -> Point.middle p3 p4
 	    | `South -> Point.middle p1 p2
+	    | `SouthWest -> p1
+	    | `SouthEast -> p2
+	    | `NorthEast -> p3
+	    | `NorthWest -> p4
 	    | _ -> Printf.fprintf stderr "Anchor undefined for a rectangle. Returning the center instead.\n" ; 
 	      Point.middle p1 p3
 	end
@@ -920,17 +962,128 @@ module Diagram = struct
 	  ] 
 	end 
 
-  let node env style contents =
+    module Edge = struct
+
+      let rec transfo curves = function
+	| `Squiggle (freq,amplitude,a,b) -> 
+	  List.map (fun (params, curve) -> 
+	    let curve1,curve,curve2 = Curve.split2 curve a b in
+	    (params, curve1 @ (List.flatten (List.map (Edge.squiggle freq amplitude) curve)) @ curve2))
+	    curves
+	| `BendLeft(angle) -> 
+	  List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
+	      begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+		if Array.length xs = 2 then
+		  let x,y = Edge.bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+		  (params, [ [| xs.(0) ; x ; xs.(1) |], 
+			     [| ys.(0) ; y ; ys.(1) |] ])
+		else
+		  (params, curve)
+	      end
+	    else (params, curve))
+	    curves
+	| `BendRight(angle) -> 
+	  List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
+	      begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+		if Array.length xs = 2 then
+		  let x,y = Edge.bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
+		  (params, [ [| xs.(0) ; x ; xs.(1) |], 
+			     [| ys.(0) ; y ; ys.(1) |] ])
+		else
+		  (params, curve)
+	      end
+	    else (params, curve))
+	    curves
+	| `Fore margin -> 
+	  let white_paths = List.map (fun (params, curve) -> 
+	    { params with 
+	      Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+	      Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
+	    curve)
+	    curves
+	  in
+	  let white_paths = transfo white_paths (`Shorten (0.1,0.1))  in
+	  white_paths @ curves
+	| `Double margin -> 
+	  let black_paths = List.map (fun (params, curve) -> 
+	    (* begin match params.strokingColor with *)
+	    (*   | None -> Printf.fprintf stderr "Couleur: none.\n"  *)
+	    (*   | Some (RGB color) -> Printf.fprintf stderr "Couleur r = %f, g = %f, b = %f.\n"  *)
+	    (* 	color.red *)
+	    (* 	color.green *)
+	    (* 	color.blue end ; *)
+	    (* Printf.fprintf stderr "Largeur: %f.\n" params.lineWidth ; *)
+	    { params with 
+	      (* strokingColor = Some (RGB { red=0.;green=1.;blue=0. });  *)
+	      lineWidth = margin +. 2.0 *. params.lineWidth },
+	    curve)
+	    curves
+	  in
+	  let white_paths = List.map (fun (params, curve) -> 
+	    { params with 
+	      strokingColor = Some (RGB { red=1.;green=1.;blue=1. }); 
+	      lineWidth = margin },
+	    curve)
+	    curves
+	  in
+	  (* let delta = 0.02 in *)
+	  (* let white_paths = transfo white_paths (`Shorten (delta,delta)) in *)
+	  (* let black_paths = transfo black_paths (`Shorten (delta,delta)) in *)
+	  black_paths @ white_paths
+	| `ShortenS a -> transfo curves (`Sorten (a,1.)) 
+	| `ShortenE b -> transfo curves (`Sorten (0.,b)) 
+	| `Shorten (a,b) -> begin match curves with
+	    | [] -> []
+	    | (params, curve) :: rest -> 
+	      (params, Curve.restrict curve a b) :: rest
+	end
+	| _ -> curves
+
+      let draw_curve style curve = 
+	let curve, head_curves = 
+	  match Style.head style with
+	  | `To -> 
+	    curve, [Style.path_parameters style, (ArrowTip.simple curve).ArrowTip.curve]
+	  | `None -> curve, []
+	  | _ -> Printf.fprintf stderr "Arrow head not yet implemented.\n" ;
+	    curve, []
+	in
+	let curves = List.fold_left
+	transfo [(Style.path_parameters style, curve)] style
+	in
+	head_curves @ curves
+
+      let outer_curve style curve = curve
+    end
+
+    (* Place contents according to style, assuming its anchor zero is currently at (0,0). *)
+    (* Returns the translation vector and the translated contents *)
+    let place style contents zero = 
+      let v = Style.at style in
+      let bb_boot =  BB.center (OutputCommon.bounding_box contents) in
+      let a = (Style.anchor style) in
+      let x,y = 
+	Vector.(+) v
+	  (Vector.of_points
+	  (anchor style bb_boot a)
+	  (anchor style bb_boot zero)) 
+      in
+      (x,y), List.map (OutputCommon.translate x y) contents 
+
+    let node env style contents =
     let at = Style.at style in
     let a = Style.anchor style in
     let parameters = Style.parameters style in
     (* Compute the contents a first time to get a bounding box of the right size *)
     let contents = (Util.draw_boxes (boxify_scoped env contents)) in
-    let bb_boot =  BB.center (OutputCommon.bounding_box contents) in
-    (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
-    let x,y = Vector.translate (anchor style bb_boot a) at in
-    (* Now translate the contents by x,y and compute the real bounding box, curve, etc *)
-    let contents = List.map (OutputCommon.translate x y) contents in
+    let v, contents = place style contents `SouthWest in
+    (* let bb_boot =  BB.center (OutputCommon.bounding_box contents) in *)
+    (* (\* Use this to compute the real coordinates, by translating "at" according to anchor. *\) *)
+    (* let x,y = Vector.(-) (Vector.(+) at (anchor style bb_boot `SouthWest)) (anchor style bb_boot a) in *)
+    (* (\* let x,y = Vector.translate (anchor style bb_boot a) at in *\) *)
+    (* (\* (\\* Now translate the contents by x,y and compute the real bounding box, curve, etc *\\) *\) *)
+    (* (\* let x',y' = Vector.(-) (x,y) (anchor style bb_boot `SouthWest) in *\) *)
+    (* let contents = List.map (OutputCommon.translate x y) contents in *)
     let bb =  OutputCommon.bounding_box contents in 
     let anchor a = (anchor style bb a) in
     let outer_curve = curve Outer style bb in
@@ -965,6 +1118,99 @@ module Diagram = struct
   type controls = continue_path_spec * Point.t list (* The last list is treated differently: *)
   (* its endpoint should be provided as a node, see edge below. *)
 
+  let point_lists_of_edge_spec s continues e =
+    let rec point_lists_of_edge_spec_rec res s e continues = 
+      match continues with
+	| [] -> [[s;e]]
+	| [ controls ] -> List.rev (((s :: controls) @ [e]) :: res)
+	| controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (list_last controls) e rest
+    in
+    point_lists_of_edge_spec_rec [] (s.anchor `Center) (e.anchor `Center) continues
+
+  let clip curve node1 node2 = 
+    let start = begin
+      match Curve.latest_intersection curve node1.curve with
+	| None -> begin
+	  Printf.fprintf stderr
+	    "I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ;
+	  (0,0.)
+	end
+	| Some (i, t1) -> (i, t1)
+    end in
+    let (j,t') as finish = begin 
+      match Curve.earliest_intersection curve node2.curve with
+	| None -> begin
+	  Printf.fprintf stderr
+	    "I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ;
+	  ((Curve.nb_beziers curve) - 1,1.)
+	end
+	| Some (j, t2) -> (j, t2)
+    end in
+    Curve.internal_restrict curve start finish 
+
+  let edge style s controls e =
+    let underlying_curve = (Curve.of_point_lists 
+			      (point_lists_of_edge_spec s controls e)) in
+    let curve = clip underlying_curve s e in
+    let outer_curve = Edge.outer_curve style curve in
+    let draw_curve = Edge.draw_curve style curve in
+    let anchor = function
+      | `Temporal pos -> Curve.eval curve pos
+      | `Center -> Curve.eval curve 0.5
+      | _ -> Printf.fprintf stderr "Anchor undefined for a path. Returning the center instead.\n" ; 
+	Curve.eval curve 0.5
+    in
+    ({ anchor = anchor ; curve = outer_curve },
+     List.flatten (List.map (fun (params,curve) -> (Curve.draw ~parameters:params curve))
+		     draw_curve))
+
+  let translate v node =
+    { curve = Curve.translate v node.curve ;
+      anchor = fun a -> Vector.(+) (node.anchor a) v }
+      
+  let matrix env style lines =
+    let width = List.fold_left
+      (fun res line -> max res (List.length line))
+      0
+      lines
+    in
+    let height = List.length lines in
+    (* let bboxes = List.map (fun line -> List.map (fun contents -> OutputCommon.bounding_box contents)) in *)
+    (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son centre en (0,0) *)
+    let placement = match Style.matrix_placement style with
+      | `Centers dist -> begin fun i j -> 
+	  let (x,y) as translation = (float_of_int j *. 10.), -. (float_of_int i *. 10.) in 
+	  Printf.fprintf stderr "Translation %d,%d: %f, %f.\n" i j x y ;
+	[`At (translation) ; `Anchor `Center] end
+      | _ -> Printf.fprintf stderr "Matrix placement specification not yet implemented. Using `Centers 10.\n";
+	begin fun i j -> 
+	  let (x,y) as translation = (float_of_int j *. 10.), -. (float_of_int i *. 10.) in 
+	  Printf.fprintf stderr "Translation %d,%d: %f, %f.\n" i j x y ;
+	  [`At (translation) ; `Anchor (`Center)] end
+    in
+    let res = Array.make_matrix height width (fst (node env [] [])) in
+    let i = ref 0 in
+    let j = ref 0 in
+    let state = ref [] in
+    List.iter (fun line -> 
+      List.iter (fun (style', contents) -> 
+	let mij,stateij = node env (style @ (placement !i !j) @ style') contents in
+	res.(!i).(!j) <- mij ;
+	Printf.fprintf stderr "Indices: %d, %d.\n" !i !j ;	
+	state := stateij @ !state ;
+	incr j)
+	line ;
+      incr i ; j := 0)
+      lines ;
+    (* Now we have an array res of nodes and a list states of pdf instructions to draw them. 
+       We translate this to match the constraint placement of the matrix. *)
+    let contents = !state in
+    let x0,y0,x1,y1 = OutputCommon.bounding_box contents in
+    let zero = `Vec (Vector.of_points (Point.middle (x0,y0) (x1,y1)) (0.,0.)) in
+    let (x,y) as v, contents = place style contents zero in
+    Printf.fprintf stderr "Translation: %f, %f.\n" x y ;
+    let res' = Array.map (Array.map (translate v)) res in
+    res', contents
 
 end
 
