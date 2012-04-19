@@ -1,7 +1,7 @@
-all:native byte proof.native
+all:native byte
 
-native:Main.native texprimeDefault.tgx
-byte:Main.byte texprimeDefault.tgo
+native:Main.native texprimeDefault.tgx proof.native
+byte:Main.byte texprimeDefault.tgo proof.byte
 
 Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
 	ocamlbuild Texprime/Main.native

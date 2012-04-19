@@ -41,9 +41,6 @@ type user=
   | FigureRef of int
   | Pageref of string
   | Structure of int list
-  | Figure of int
-  | BeginFigure of int
-  | FlushFigure of int
   | Footnote of int*drawingBox
   | AlignmentMark
 
@@ -56,12 +53,6 @@ module TS=Break.Make
   (struct
      type t=user
      let compare=compare
-     let figureRef x=FigureRef x
-     let figure x=Figure x
-     let flushedFigure=function FlushFigure x -> x |_-> -1
-     let beginFigure=function BeginFigure x -> x |_-> -1
-     let isFigure=function Figure _->true | _->false
-     let figureNumber=function Figure x->x | _-> -1
    end)
 
 type tag=
@@ -438,7 +429,7 @@ let flush_figure name=
   [BFix (fun env->
         try
           match StrMap.find "figures" env.counters with
-              _,h::_->[User (FlushFigure h)]
+              _,h::_->[FlushFigure h]
             | _->[]
         with
             Not_found -> []
@@ -447,7 +438,7 @@ let begin_figure name=
   [BFix (fun env->
         try
           match StrMap.find "figures" env.counters with
-              _,h::_->[User (BeginFigure h)]
+              _,h::_->[BeginFigure h]
             | _->[]
         with
             Not_found -> []
@@ -611,7 +602,7 @@ let flatten env0 fixable str=
             figures:=IntMap.add n (f.fig_contents env1) !figures;
             paragraphs:=(match !paragraphs with
                              []->[]
-                           | h::s->(h@[User (BeginFigure n)])::s);
+                           | h::s->(h@[(BeginFigure n)])::s);
             f.fig_post_env env env1
         )
       | Node s-> (
@@ -649,7 +640,7 @@ let flatten env0 fixable str=
           let _,env2=IntMap.fold flat_children s.children (false,env) in
             paragraphs:=(match !paragraphs with
                              []->[]
-                           | h::s->(h@(List.map (fun x->User (FlushFigure x)) !flushes))::s);
+                           | h::s->(h@(List.map (fun x->(FlushFigure x)) !flushes))::s);
             env2
         )
   in
@@ -659,8 +650,10 @@ let flatten env0 fixable str=
     | _->env0
   in
   let env2=flatten env1 [] str in
-  let params=Array.make (IntMap.cardinal !figures) (center env0) in
-    IntMap.iter (fun n p->params.(n)<-p) !fig_param;
+  let params=Array.init
+    (IntMap.cardinal !figures)
+    (fun i->IntMap.find i !fig_param)
+  in
     (env2, params,
      Array.of_list (List.rev !param),
      Array.of_list (List.rev !compl),
@@ -700,7 +693,6 @@ let update_names env figs user=
   let needs_reboot=ref (fil user<>fil env.user_positions) in
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try
-                     Printf.printf "%s %s %d %d\n" k b (IntMap.cardinal figs) ((List.hd (snd (StrMap.find "figures" a))));
                      let pos=
                        if b="figure" then
                          match IntMap.find (List.hd (snd (StrMap.find "figures" a))) figs with
@@ -711,7 +703,7 @@ let update_names env figs user=
                      in
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
-                   with Not_found -> (Printf.printf "not found\n";needs_reboot:=true; m)
+                   with Not_found -> (needs_reboot:=true; m)
                   ) env.names env.names
            }
   in

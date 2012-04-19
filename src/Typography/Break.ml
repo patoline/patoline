@@ -6,43 +6,6 @@ open Util
 open Fonts.FTypes
 
 
-(* let rec print_graph file paragraphs graph path= *)
-(*   let f=open_out file in *)
-(*   let rec make_path p1 p2=function *)
-(*       [] | [_]->false *)
-(*     | (_,h)::(a,h')::s->(p1=h && p2=h') || make_path p1 p2 ((a,h')::s) *)
-(*   in *)
-(*     Printf.fprintf f "digraph {\n"; *)
-(*     LineMap.iter (fun k (b,_,_,a,_)-> *)
-(*                     Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d : %d, %d, %d\"];\n" *)
-(*                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x") *)
-(*                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x") *)
-(*                       (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x") *)
-
-(*                       k.paragraph k.lineStart k.lineEnd k.hyphenEnd; *)
-
-(*                     Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"\"]\n" *)
-(*                       a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x") *)
-(*                       (if a.lineEnd>=0 then string_of_int a.lineEnd else "x") *)
-(*                       (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x") *)
-
-(*                       k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x") *)
-(*                       (if k.lineEnd>=0 then string_of_int k.lineEnd else "x") *)
-(*                       (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x") *)
-
-(*                       (if k.lastFigure<>a.lastFigure then "green" else *)
-(*                          if make_path a k path then "blue" else "black") *)
-(*                       (\*b k.height-a.height*\) *)
-(*                  ) graph; *)
-(*     Printf.fprintf f "};\n"; *)
-(*     close_out f *)
-
-(* let print_simple_graph file paragraphs graph= *)
-(*   print_graph file paragraphs ( *)
-(*     LineMap.fold (fun k->LineMap.add { k with height=0.; page=0 }) LineMap.empty graph *)
-(*   ) [] *)
-
-
 let is_last paragraph j=
   let rec is_last i=
     (i>=Array.length paragraph ||
@@ -79,6 +42,37 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
     !arr.(i)<-b
 
   let readBox arr i= !arr.(i)
+
+  let rec print_graph file paragraphs graph path=
+    let f=open_out file in
+    let rec make_path p1 p2=function
+        [] | [_]->false
+      | (_,h)::(a,h')::s->(p1=h && p2=h') || make_path p1 p2 ((a,h')::s)
+    in
+      Printf.fprintf f "digraph {\n";
+      LineMap.iter (fun k (b,_,_,_,a,_,_)->
+                      Printf.fprintf f "node_%d_%s_%s_%s [label=\"%d : %d, %d, %d\"];\n"
+                        k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
+                        (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+                        (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
+
+                        k.paragraph k.lineStart k.lineEnd k.hyphenEnd;
+
+                      Printf.fprintf f "node_%d_%s_%s_%s -> node_%d_%s_%s_%s[color=%s, label=\"\"]\n"
+                        a.paragraph (if a.lineStart>=0 then string_of_int a.lineStart else "x")
+                        (if a.lineEnd>=0 then string_of_int a.lineEnd else "x")
+                        (if a.hyphenEnd>=0 then string_of_int a.hyphenEnd else "x")
+
+                        k.paragraph (if k.lineStart>=0 then string_of_int k.lineStart else "x")
+                        (if k.lineEnd>=0 then string_of_int k.lineEnd else "x")
+                        (if k.hyphenEnd>=0 then string_of_int k.hyphenEnd else "x")
+
+                        (if k.lastFigure<>a.lastFigure then "green" else
+                           if make_path a k path then "blue" else "black")
+                        (*b k.height-a.height*)
+                   ) graph;
+      Printf.fprintf f "};\n";
+      close_out f
 
   let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
     let collide line_haut params_i comp_i line_bas params_j comp_j=
@@ -194,7 +188,7 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
             for h'=0 to 0 do
               if node.height+.h +. float_of_int h'+.fig_height <= lastParameters.page_height then (
                 let nextNode={
-                  paragraph=node.paragraph; lastFigure=node.lastFigure+1; isFigure=true;
+                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
                   hyphenStart= -1; hyphenEnd= -1;
                   height=node.height+.h+. float_of_int h';
                   lineStart= -1; lineEnd= -1; paragraph_height= -1;
@@ -226,21 +220,23 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
                 (0,min (node.paragraph+1) (Array.length paragraphs))
               else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else (node.lineEnd, node.paragraph)
             in
+              (* Y a-t-il encore des boites dans ce paragraphe ? *)
+              if pi<>node.paragraph then (
+                let placable=
+                  (node.lastFigure+1 < Array.length figures) &&
+                    ((pi>=Array.length paragraphs) ||
+                       (IntMap.mem (node.lastFigure+1) lastFigures))
+                in
+                  if placable then place_figure ();
+              );
+
               if pi >= Array.length paragraphs then (
-                if pi>node.paragraph then
+                if pi>node.paragraph && node.lastFigure+1>=Array.length figures then
                     match !endNode with
-                        Some (b,_,_) when b<lastBadness->()
+                        Some (b,_,_,_) when b<lastBadness->()
                       | None
-                      | Some _->endNode:=Some (lastBadness, node, lastUser)
+                      | Some _->endNode:=Some (lastBadness, node, lastFigures,lastUser)
               ) else (
-                (* Y a-t-il encore des boites dans ce paragraphe ? *)
-                if pi<>node.paragraph then (
-                  let placable=
-                    (node.lastFigure+1 < Array.length figures) &&
-                      (IntMap.mem (node.lastFigure+1) lastFigures)
-                  in
-                    if placable then place_figure ();
-                );
 
                 let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else (node.page, node.height+.lastParameters.min_height_after) in
                 let r_nextNode={
@@ -428,13 +424,13 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
         )
     in
     let demerits=really_break false todo0 LineMap.empty in
-    let _,node0,user0=
+    let _,node0,figs0,user0=
       match !endNode with
           None->(try
                    let (b,(bad,_,_,_,_,fig,user))= LineMap.max_binding demerits in
-                     (bad,b,user)
+                     (bad,b,fig,user)
                  with
-                     Not_found -> (0.,uselessLine,UMap.empty))
+                     Not_found -> (0.,uselessLine,IntMap.empty,UMap.empty))
         | Some x->x
     in
       try
@@ -454,13 +450,13 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
             )
         in
         let log,ln=makeParagraphs [] node0 [] in
-          (* print_graph "graph" paragraphs demerits ln; *)
+          print_graph "graph_opt" paragraphs demerits ln;
           (* Printf.printf "Le graphe a %d nœuds\n" (LineMap.cardinal demerits); *)
           makePages ln;
-          (log, pages, user0)
+          (log, pages, figs0,user0)
       with
-          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],UMap.empty) else (
+          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UMap.empty) else (
             Printf.printf "Incomplete document, please report\n";
-            [],[||],UMap.empty
+            [],[||],IntMap.empty,UMap.empty
           )
   end)
