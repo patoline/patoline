@@ -173,7 +173,7 @@ let thebibliography ()=
                  let params env a1 a2 a3 a4 a5 line=
                    let p=parameters env a1 a2 a3 a4 a5 line in
                      if line.lineStart=0 then (
-                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" b)] in
+                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" b);B(fun env->env.stdGlue)] in
                        let w=List.fold_left (fun w0 b->let (_,w,_)=box_interval b in w0+.w) 0. num in
                          { p with left_margin=p.left_margin-.w; measure=p.measure+.w }
                      ) else

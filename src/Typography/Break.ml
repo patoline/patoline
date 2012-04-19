@@ -268,15 +268,18 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
                         if page=node.page then (
                           let rec v_distance node0 parameters=
                             if node0.isFigure then (
-                              let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                if dist < infinity then node0.height+. (ceil (-.dist)) else (
-                                  try
-                                    let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in
-                                    let _,_,params,_,_,_,_=LineMap.find ant !demerits' in
-                                      v_distance ant params
-                                  with
-                                      Not_found -> node0.height
-                                )
+                              let fig=figures.(node0.lastFigure) in
+                              let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
+                                node0.height+.ceil (snd (line_height paragraphs nextNode))+.fig_height
+                              (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
+                              (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
+                              (*     try *)
+                              (*       let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in *)
+                              (*       let _,_,params,_,_,_,_=LineMap.find ant !demerits' in *)
+                              (*         v_distance ant params *)
+                              (*     with *)
+                              (*         Not_found -> node0.height *)
+                              (*   ) *)
                             ) else (
                               node0.height+.
                                 ceil (try

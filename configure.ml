@@ -107,7 +107,7 @@ let _=
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
-      Printf.fprintf out "\tinstall -m 755 src/proof.native $(DESTDIR)%s\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -m 755 src/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
 
     Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"

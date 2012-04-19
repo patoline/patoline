@@ -411,19 +411,20 @@ let in_text_figure a b c d e f line=
 
 
 let figure str ?(parameters=center) ?(name="") drawing=
-    str:=up (newChildAfter !str (FigureDef { fig_contents=drawing;
-                                        fig_env=(fun x->
-                                                   let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
-                                                   let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                                                     { x with
-                                                         names=if name="" then x.names else (
-                                                           let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                                             StrMap.add name (cou', "figure", w) x.names
-                                                         );
-                                                         counters=cou'
-                                                     });
-                                        fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
-                                        fig_parameters=parameters }))
+    str:=up (newChildAfter !str (
+               FigureDef { fig_contents=drawing;
+                           fig_env=(fun x->
+                                      let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
+                                      let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                        { x with
+                                            names=if name="" then x.names else (
+                                              let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
+                                                StrMap.add name (cou', "figure", w) x.names
+                                            );
+                                            counters=cou'
+                                        });
+                           fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                           fig_parameters=parameters }))
 
 let flush_figure name=
   [BFix (fun env->

@@ -45,7 +45,7 @@ let emph = toggleItalic
 let cat = <$C$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$I$>
   let mamacro () = << du texte >>
-
+open Article
 }}
 
 
