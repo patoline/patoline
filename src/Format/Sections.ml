@@ -15,11 +15,11 @@ let postprocess_tree tree=
           par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
                                              user_positions=env2.user_positions });
           par_parameters=
-            (fun a b c d e f->
-               { (center a b c d e f) with
+            (fun a b c d e f g->
+               { (center a b c d e f g) with
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=C.normal }
+          par_completeLine=Parameters.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
     | _->tree
@@ -55,13 +55,13 @@ let postprocess_tree tree=
           par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
                                              user_positions=env2.user_positions });
           par_parameters=
-            (fun a b c d e f->
-               { (if depth=0 then center a b c d e f else
-                    parameters a b c d e f) with
+            (fun a b c d e f g->
+               { (if depth=0 then center a b c d e f g else
+                    parameters a b c d e f g) with
                    min_page_before = 0;(* (if depth=0 && f.lineStart=0 then 1 else 0); *)
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=C.normal }
+          par_completeLine=Parameters.normal }
         in
           fst (up (newChildBefore (
                      Node { n with children=IntMap.map (sectionize (depth+1)) n.children }, []) par

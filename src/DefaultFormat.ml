@@ -209,12 +209,12 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                             ) env.user_positions;
                (* Insertion d'une footnote *)
                let str=ref (Node empty,[]) in
-               let params a b c d e f=
-                 let p=(parameters a b c d e f) in
+               let params a b c d e f g=
+                 let p=(parameters a b c d e f g) in
                  let lead=env.normalLead *. (phi-.1.) in
                    { p with min_height_after=lead }
                in
-                 newPar str ~environment:(fun x->x) C.normal params
+                 newPar str ~environment:(fun x->x) normal params
                    (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
                  let pages=minipage { env with
                                         normalLead=env.lead*.(phi-.1.);
@@ -248,8 +248,8 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
 
     let do_end_env ()=
-      let params params0 a b c d e f=
-        let p=(params0 a b c d e f) in
+      let params params0 a b c d e f g=
+        let p=(params0 a b c d e f g) in
         let boxes=boxify_scoped a addon in
         let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
           { p with
@@ -257,9 +257,9 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
               measure=p.measure-.w
           }
       in
-      let params1 params0 a b c d e f=
-        let p=params0 a b c d e f in
-          if f.lineStart>0 then (
+      let params1 params0 a b c d e f g=
+        let p=params0 a b c d e f g in
+          if g.lineStart>0 then (
             let boxes=boxify_scoped a addon in
             let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
               { p with
@@ -371,7 +371,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                 (fun env1 env2 -> { env1 with names=env2.names;
                                                       counters=env2.counters;
                                                       user_positions=env2.user_positions });
-                              par_parameters=parameters; par_completeLine=C.normal
+                              par_parameters=parameters; par_completeLine=normal
                             }))
             in
               Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)

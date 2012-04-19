@@ -268,7 +268,7 @@ and output_list from where no_indent lvl docs =
 	  let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 	    else "(fun x -> x)"
 	  in
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Document.C.normal parameters %a;;\n" 
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Parameters.normal parameters %a;;\n" 
 	    env (print_contents from) p
 	| Caml(s,e,txps) -> print_caml from where s e txps
 	| Struct(title, numbered, docs) ->
@@ -290,7 +290,7 @@ and output_list from where no_indent lvl docs =
 	  print_macro where from mtype name args;
 	  Printf.fprintf where "\n\n" 
 	| Math m ->
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Document.C.normal center %a;;\n" 
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Parameters.normal center %a;;\n" 
 	    (fun ch -> print_math_par ch true) m;
 	  next_no_indent := true
         | Ignore -> 

@@ -64,7 +64,6 @@ module TS=Break.Make
      let figureNumber=function Figure x->x | _-> -1
    end)
 
-module C=Parameters.Completion (TS)
 type tag=
     InTOC
   | Author of string
@@ -85,14 +84,14 @@ and 'a paragraph={
   par_contents:'a content list;
   par_env:'a environment -> 'a environment;
   par_post_env:'a environment -> 'a environment -> 'a environment;
-  par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters;
-  par_completeLine:float -> 'a box array array -> drawingBox array -> line TS.UMap.t -> line -> bool -> line list
+  par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
+  par_completeLine:float -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list
 }
 and 'a figuredef={
   fig_contents:'a environment->drawingBox;
   fig_env:'a environment -> 'a environment;
   fig_post_env:'a environment -> 'a environment -> 'a environment;
-  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> line TS.UMap.t -> line -> parameters
+  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> parameters
 }
 and 'a tree=
     Node of 'a node
@@ -348,23 +347,26 @@ let add_features features env=
 
 
 
-let parameters env paragraphs figures last_parameters last_users (line:Util.line)=
+let parameters env paragraphs figures last_parameters last_figures last_users (line:Util.line)=
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
+    IntMap.iter (fun i aa->match aa with
+                     Break.Placed a->
+                       if line.page=a.page &&
+                         line.height<=
+                         a.height +.
+                           (ceil ((figures.(i)).drawing_y1-.
+                                    figures.(i).drawing_y0))
+                       then
+                         measure:=env.normalMeasure -. figures.(i).drawing_nominal_width -. 1.
+                   | _->()
+                ) last_figures;
+
     TS.UMap.iter (fun k a->
-                    if a.isFigure then (
-                      if line.page=a.page &&
-                        line.height<=
-                        a.height +.
-                          (ceil ((figures.(TS.User.figureNumber k)).drawing_y1-.
-                                   figures.(TS.User.figureNumber k).drawing_y0))
-                      then
-                        measure:=env.normalMeasure -. figures.(TS.User.figureNumber k).drawing_nominal_width -. 1.
-                    ) else (
-                      match k with
-                          Footnote _ when a.page=line.page -> incr page_footnotes
-                        | _->()
-                    )) last_users;
+                    match k with
+                        Footnote _ when a.page=line.page -> incr page_footnotes
+                      | _->()
+                 ) last_users;
     let footnote_h=fold_left_line paragraphs (fun fn box->match box with
                                                   User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
                                                 | _->fn) 0. line
@@ -393,25 +395,25 @@ let parameters env paragraphs figures last_parameters last_users (line:Util.line
       }
 
 
-let center env paragraphs figures last_parameters lastUsers l=
-  let param=parameters env paragraphs figures last_parameters lastUsers l in
+let center env paragraphs figures last_parameters lastFigures lastUsers l=
+  let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
   let b=l.nom_width in
     if param.measure >= b then
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
     else
       param
-let ragged_left a b c d e line=
-  let par=parameters a b c d e line in
+let ragged_left a b c d e f line=
+  let par=parameters a b c d e f line in
   { par with measure=line.nom_width }
 
-let ragged_right a b c d e line=
-  let par=parameters a b c d e line in
+let ragged_right a b c d e f line=
+  let par=parameters a b c d e f line in
   { par with
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
 
-let in_text_figure a b c d e line=
-  let par=parameters a b c d e line in
+let in_text_figure a b c d e f line=
+  let par=parameters a b c d e f line in
   { par with
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }

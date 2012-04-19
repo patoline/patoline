@@ -1,26 +1,21 @@
 open Util
 open Binary
-module Completion (T:Break.Typeset)= struct
+open Break
 
-type 'a completion=float->'a Util.box array array ->
-         Util.drawingBox array ->
-         Util.line T.UMap.t -> Util.line -> bool -> Util.line list
-
-let normal mes0 paragraphs figures last_users line allow_impossible=
+let normal mes0 paragraphs figures last_figures last_users line allow_impossible=
   let measure=
-    let f=T.UMap.filter (fun k _->T.User.isFigure k) last_users in
-      if not (T.UMap.is_empty f) then
-        let fig_,fig_line=T.UMap.max_binding f in
-        let fig=T.User.figureNumber fig_ in
-          if line.page=fig_line.page &&
-            line.height<=
-            fig_line.height +.
-              (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
-                mes0 -. figures.(fig).drawing_nominal_width -. 1.
-          else
-            mes0
-      else
-        mes0
+    let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in
+    if not (IntMap.is_empty figures_) then
+      let fig,Placed fig_line=IntMap.max_binding figures_ in
+        if line.page=fig_line.page &&
+          line.height<=
+          fig_line.height +.
+            (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
+              mes0 -. figures.(fig).drawing_nominal_width -. 1.
+        else
+          mes0
+    else
+      mes0
   in
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (
@@ -72,5 +67,3 @@ let normal mes0 paragraphs figures last_users line allow_impossible=
             break_next (line.lineStart+1) a b c []
         | _->break_next line.lineStart 0. 0. 0. []
     ) else break_next line.lineStart 0. 0. 0. []
-
-end

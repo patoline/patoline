@@ -6,7 +6,7 @@ open Util
 
 
 let centered str tree max_level=
-  newPar str ~environment:(fun x->{x with par_indent=[]}) C.normal parameters [
+  newPar str ~environment:(fun x->{x with par_indent=[]}) Parameters.normal parameters [
     BFix (
       fun env->
         let x0=75. in
