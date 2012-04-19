@@ -168,7 +168,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
   let minipage env str=
     let env',fig_params,params,compl,pars,figures=flatten env D.fixable (fst str) in
-    let (_,pages,user')=TS.typeset
+    let (_,pages,fig',user')=TS.typeset
       ~completeLine:compl
       ~figure_parameters:fig_params
       ~figures:figures

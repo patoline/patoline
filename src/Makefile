@@ -52,3 +52,4 @@ clean:
 	make -C Typography clean
 	make -C Format clean
 	make -C Texprime clean
+	make -C proof clean

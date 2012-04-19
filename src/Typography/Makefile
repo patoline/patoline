@@ -9,4 +9,4 @@ Typography.cmxa:
 	ocamlbuild Typography.cmxa
 
 clean:
-	rm -Rf _build
+	rm -Rf _build *~

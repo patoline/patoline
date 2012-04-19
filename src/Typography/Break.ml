@@ -81,7 +81,6 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
   let readBox arr i= !arr.(i)
 
   let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
-
     let collide line_haut params_i comp_i line_bas params_j comp_j=
 
       max_haut:=

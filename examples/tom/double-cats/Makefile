@@ -1,35 +1,26 @@
-SOURCES1 = Parser.ml Texprime.ml Main.ml
-SOURCES3 = DefaultFormat.ml 
+OPTS=-I Format -I /Users/pe/Projets/texprime/src/Typography/_build -I /Users/pe/Projets/texprime/src/_build/Format
+CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) Typography.cma DefaultFormat.cma -pp "cpp -w" -g
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) Typography.cmxa DefaultFormat.cmxa -pp "cpp -w" -g str.cmxa
 
-SOURCES_EXEC=$(SOURCES1)
-SOURCES_ALL=$(SOURCES1) $(SOURCES3)
+TEXPRIME=/Users/pe/Projets/texprime/src/texprime --extra-grammars-dir /Users/pe/Projets/texprime/src/
 
-EXEC = texprime
+Dcats.pdf:Dcats.tmx
+	./Dcats.tmx --extra-fonts-dir /Users/pe/Projets/texprime/Otf --extra-hyph-dir /Users/pe/Projets/texprime/Hyphenation
 
-DOC=Typography/Fonts.mli
-########## Targets ##########
+Dcats.tmx:Dcats.tml Format/Article.cmxa Format/Diagrams.cmxa
+	$(CAMLOPT) -o Dcats.tmx Format/Diagrams.cmxa Format/Article.cmxa -impl Dcats.tml
+Dcats.tml:Dcats.txp
+	$(TEXPRIME) --ml --format Format/Article Dcats.txp
 
-OBJS = $(filter %.cmo, $(SOURCES_EXEC:.ml=.cmo))
-OPTOBJS = $(OBJS:.cmo=.cmx)
-
-FORMATS_ML=$(filter %.ml, $(SOURCES3))
-
-########## Compilers ##########
-
-OPTS=-I Format
-CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography -linkpkg $(OPTS) -pp "cpp -w" -g
-CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography -linkpkg $(OPTS) str.cmxa FormatThese.cmxa -pp "cpp -w"
-CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography  $(OPTS) -pp "cpp -w"
-
-CAMLMKTOP = ocamlfind ocamlmktop -package camomile -package dyp -linkpkg $(OPTS) -pp "cpp -w"
-CAMLDOC = ocamlfind ocamldoc -package camomile -package dyp -html -I Fonts $(OPTS) -pp "cpp -w"
-CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
-
-.PHONY:Format Typography/Typography.cma Typography/Typography.cmxa
-###############################
-
-Format:
-	cd Format ; make clean ; make Article ; make Diagram.cmxa ; make Diagram.cmi ; cd ..
+Format/Article.cma:
+	make -C Format Article.cma
+Format/Article.cmxa:
+	make -C Format Article.cmxa
+Format/Diagrams.cma:
+	make -C Format Diagrams.cma
+Format/Diagrams.cmxa:
+	make -C Format Diagrams.cmxa
 
 clean:
-	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# 
+	make -C Format clean
+	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# *.tml

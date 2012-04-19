@@ -38,7 +38,7 @@ let postambule outfile = Printf.sprintf "
      D.fixable:=false;
      let tree=postprocess_tree (fst (top (!D.structure))) in
      let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
-     let (_,pages,user')=TS.typeset
+     let (_,pages,figs',user')=TS.typeset
        ~completeLine:compl
        ~figure_parameters:fig_params
        ~figures:figures
@@ -46,7 +46,7 @@ let postambule outfile = Printf.sprintf "
        ~badness:(Badness.badness pars)
        pars
      in
-     let env2, reboot=update_names env1 user' in
+     let env2, reboot=update_names env1 figs' user' in
      if i<10 && reboot && !D.fixable then (
        resolve (i+1) env2
      ) else Out.output tree pars figures env2 pages filename

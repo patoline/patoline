@@ -695,16 +695,23 @@ let rec make_struct positions tree=
 
 
 
-let update_names env user=
+let update_names env figs user=
   let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in
   let needs_reboot=ref (fil user<>fil env.user_positions) in
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try
-                     let query=if b="figure" then Figure (List.hd (snd (StrMap.find "figures" a))) else Label k in
-                     let pos=TS.UMap.find query user in
+                     Printf.printf "%s %s %d %d\n" k b (IntMap.cardinal figs) ((List.hd (snd (StrMap.find "figures" a))));
+                     let pos=
+                       if b="figure" then
+                         match IntMap.find (List.hd (snd (StrMap.find "figures" a))) figs with
+                             Break.Placed l->l
+                           | _->raise Not_found
+                       else
+                         TS.UMap.find (Label k) user
+                     in
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
-                   with Not_found -> (needs_reboot:=true; m)
+                   with Not_found -> (Printf.printf "not found\n";needs_reboot:=true; m)
                   ) env.names env.names
            }
   in

@@ -135,5 +135,5 @@ module Make :
                    int -> Util.parameters -> float -> float) ->
           UMap.key Util.box array array ->
           Log.error_log list * (Util.parameters * LineMap.key) list array *
-          LineMap.key UMap.t
+          figurePosition Binary.IntMap.t * LineMap.key UMap.t
       end

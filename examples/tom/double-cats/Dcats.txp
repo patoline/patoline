@@ -21,9 +21,8 @@ CNRS, Université de Savoie
 
 
 {{
-open Diagram.Diagram
-open Diagram
-
+open Diagrams.Diagram
+open Diagrams
 open Typography.Document
 open Typography.Parameters
 open Typography.Fonts.FTypes
@@ -46,7 +45,6 @@ let emph = toggleItalic
 let cat = <$C$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$I$>
   let mamacro () = << du texte >>
-    let cite = Article.cite
 
 }}
 
