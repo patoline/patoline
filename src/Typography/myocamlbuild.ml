@@ -32,6 +32,12 @@ let find_syntaxes () = ["camlp4o"; "camlp4r"]
 
 (* ocamlfind command *)
 let ocamlfind x = S[A"ocamlfind"; x]
+let ocamldoc =
+  S[A"ocamlfind";
+    A"ocamldoc";
+    A"-colorize-code";
+    A"-g";A"custom_doc.cmo"
+  ];;
 
 let _ = dispatch begin function
   | Before_options ->
@@ -42,7 +48,7 @@ let _ = dispatch begin function
        Options.ocamlc     := ocamlfind & A"ocamlc";
        Options.ocamlopt   := ocamlfind & A"ocamlopt";
        Options.ocamldep   := ocamlfind & A"ocamldep";
-       Options.ocamldoc   := ocamlfind & A"ocamldoc";
+       Options.ocamldoc   := ocamldoc;
        Options.ocamlmktop := ocamlfind & A"ocamlmktop"
 
   | After_rules ->
