@@ -1,12 +1,12 @@
-OPTS=-I Format -I /Users/pe/Projets/texprime/src/Typography/_build -I /Users/pe/Projets/texprime/src/_build/Format
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) str.cma -pp "cpp -w" -g
-CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
-CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp  $(OPTS) -pp "cpp -w"
+#OPTS=-I Format -I /Users/pe/Projets/texprime/src/Typography/_build -I /Users/pe/Projets/texprime/src/_build/Format
+#CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) str.cma -pp "cpp -w" -g
+#CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
+#CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp  $(OPTS) -pp "cpp -w"
+OPTS=-I Format
+CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,bibi -linkpkg $(OPTS) str.cma -pp "cpp -w" -g
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,bibi -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
+CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,bibi  $(OPTS) -pp "cpp -w"
 
-
-Article: Article.cmi Article.cmx Article.cmxa
-
-Diagram: Diagram.cmi Diagram.cmx Diagram.cmxa
 
 %.mli: %.ml
 	$(CAMLC) $(OPTS) -i $*.ml > $*.mli

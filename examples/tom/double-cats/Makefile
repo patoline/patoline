@@ -1,6 +1,9 @@
-OPTS=-I Format -I /Users/pe/Projets/texprime/src/Typography/_build -I /Users/pe/Projets/texprime/src/_build/Format
-CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) Typography.cma DefaultFormat.cma -pp "cpp -w" -g
-CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) Typography.cmxa DefaultFormat.cmxa -pp "cpp -w" -g str.cmxa
+#OPTS=-I Format -I /Users/pe/Projets/texprime/src/Typography/_build -I /Users/pe/Projets/texprime/src/_build/Format
+#CAMLC = ocamlfind ocamlc -package camomile,dyp -linkpkg $(OPTS) Typography.cma DefaultFormat.cma -pp "cpp -w" -g
+#CAMLOPT = ocamlfind ocamlopt -package camomile,dyp -linkpkg $(OPTS) Typography.cmxa DefaultFormat.cmxa -pp "cpp -w" -g str.cmxa
+OPTS=-I Format
+CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,bibi -linkpkg $(OPTS) -pp "cpp -w" -g str.cma
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,bibi -linkpkg $(OPTS) -pp "cpp -w" -g str.cmxa
 
 TEXPRIME=/Users/pe/Projets/texprime/src/texprime --extra-grammars-dir /Users/pe/Projets/texprime/src/
 
