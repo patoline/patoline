@@ -51,7 +51,7 @@ let _=
   let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
 
-    Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "opt" else "all");
+    Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "native" else "all");
 
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
@@ -91,9 +91,9 @@ let _=
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_dir);
     let sources=
-      "src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi "^
-        "src/DefaultFormat.cmxa src/DefaultFormat.a src/DefaultFormat.cmi "^
-        (if not !opt_only then "src/Typography/Typography.cma  src/DefaultFormat.cma " else "")
+      "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
+        "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
+        (if not !opt_only then "src/Typography/_build/Typography.cma  src/_build/Format/DefaultFormat.cma " else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -107,7 +107,7 @@ let _=
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
-      Printf.fprintf out "\tmake -C proof install DESTDIR=$(DESTDIR) PREFIX=%s\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -m 755 src/proof.native $(DESTDIR)%s\n" (escape !bin_dir);
 
 
     Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"

@@ -5,17 +5,20 @@ open Break
 let normal mes0 paragraphs figures last_figures last_users line allow_impossible=
   let measure=
     let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in
-    if not (IntMap.is_empty figures_) then
-      let fig,Placed fig_line=IntMap.max_binding figures_ in
-        if line.page=fig_line.page &&
-          line.height<=
-          fig_line.height +.
-            (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
-              mes0 -. figures.(fig).drawing_nominal_width -. 1.
-        else
-          mes0
-    else
-      mes0
+      if not (IntMap.is_empty figures_) then
+        match IntMap.max_binding figures_ with
+            (fig,Placed fig_line)->(
+              if line.page=fig_line.page &&
+                line.height<=
+                fig_line.height +.
+                  (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
+                    mes0 -. figures.(fig).drawing_nominal_width -. 1.
+              else
+                mes0
+            )
+          | _->assert false
+      else
+        mes0
   in
   let rec break_next j sum_min sum_nom sum_max result=
     if j>=Array.length paragraphs.(line.paragraph) then (

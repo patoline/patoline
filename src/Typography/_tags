@@ -1,0 +1,3 @@
+<**/*.ml> or <**/*.mli> : package(camomile),pp(cpp)
+<**/*.cmx>:for-pack(Typography)
+<Fonts> or <Output> or <Output/Drivers>:include

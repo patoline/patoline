@@ -1,3 +1,4 @@
+open Typography
 open Typography.Document
 open Typography.Parameters
 open Typography.Fonts.FTypes

@@ -1,4 +1,6 @@
+.PHONY:DefaultFormat.cma DefaultFormat.cmxa
+
 all:
 
 clean:
-	rm -f *.cm[ioxa] *.cmxa *.o *~ \#*\#
+	rm -Rf _build
