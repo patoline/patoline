@@ -3,10 +3,10 @@
 all : Typography.cma Typography.cmxa
 
 Typography.cma:
-	ocamlbuild -use-ocamlfind Typography.cma
+	ocamlbuild Typography.cma
 
 Typography.cmxa:
-	ocamlbuild -use-ocamlfind Typography.cmxa
+	ocamlbuild Typography.cmxa
 
 clean:
 	rm -Rf _build

@@ -4,20 +4,20 @@ native:Main.native texprimeDefault.tgx
 byte:Main.byte texprimeDefault.tgo
 
 Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
-	ocamlbuild -use-ocamlfind Texprime/Main.native
+	ocamlbuild Texprime/Main.native
 	cp Main.native texprime
 Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
-	ocamlbuild -use-ocamlfind Texprime/Main.byte
+	ocamlbuild Texprime/Main.byte
 	cp Main.byte texprime
 proof.native:Typography/Typography.cmxa
-	ocamlbuild -use-ocamlfind proof/proof.native
+	ocamlbuild proof/proof.native
 proof.byte:Typography/Typography.cma
-	ocamlbuild -use-ocamlfind proof/proof.byte
+	ocamlbuild proof/proof.byte
 
 Format/DefaultFormat.cmxa:Typography/Typography.cmxa
-	ocamlbuild -use-ocamlfind Format/DefaultFormat.cmxa
+	ocamlbuild Format/DefaultFormat.cmxa
 Format/DefaultFormat.cma:Typography/Typography.cma
-	ocamlbuild -use-ocamlfind Format/DefaultFormat.cma
+	ocamlbuild Format/DefaultFormat.cma
 
 Texprime/Parser.ml:Texprime/Parser.dyp
 	dypgen --no-mli Texprime/Parser.dyp
