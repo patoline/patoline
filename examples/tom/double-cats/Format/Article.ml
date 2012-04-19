@@ -11,17 +11,19 @@ open Binary
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
-
+open Bibi
 exception No_bib of string
 let bib:((string*int*user content list) IntMap.t) ref=ref IntMap.empty
 let bibfile="biblio.bibi"
-
 let raw_cite x=
   let num a b=try
     let _,y,_=(IntMap.find a !bib) in y
   with
       Not_found->
-        let key=if IntMap.is_empty !bib then 1 else fst (IntMap.min_binding !bib) in
+        let key=if IntMap.is_empty !bib then 1 else
+          (let _,(_,b,_)=IntMap.max_binding !bib in
+             b+1)
+        in
           bib:=IntMap.add a (bibfile,key, b) !bib;
           key
   in
@@ -171,7 +173,7 @@ let thebibliography ()=
                  let params env a1 a2 a3 a4 line=
                    let p=parameters env a1 a2 a3 a4 line in
                      if line.lineStart=0 then (
-                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" a)] in
+                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" b)] in
                        let w=List.fold_left (fun w0 b->let (_,w,_)=box_interval b in w0+.w) 0. num in
                          { p with left_margin=p.left_margin-.w; measure=p.measure+.w }
                      ) else
@@ -179,7 +181,7 @@ let thebibliography ()=
                  in
                    newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
                      Document.C.normal params
-                     (T (Printf.sprintf "[%d]" a)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
+                     (T (Printf.sprintf "[%d]" b)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
 
 
 module Env_definition=Default.Make_theorem

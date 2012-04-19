@@ -3,7 +3,7 @@
 
 (* 
    A compiler avec 
-   texprime --format Format/Article --caml Diagram.cmxa Dcats.txp
+   texprime --caml "-I +bibi -I +sqlite3 Diagram.cmxa sqlite3.cmxa bibi.cmxa" --format Format/Article Dcats.txp
 *)
 
 (* test *)
@@ -52,7 +52,7 @@ let indiv = <$I$>
 
 
 \Begin{abstract}
-We generalise the construction in previous work~\cite{{["Hirschowitz"]}} of a playground for CCS. New instances are $\pi$ and $\lambda$.
+We generalise the construction in previous work~\cite{{~title:"presheaves" ["Hirschowitz"]}} of a playground for CCS. New instances are $\pi$ and $\lambda$.
 
 \End{abstract}
 
