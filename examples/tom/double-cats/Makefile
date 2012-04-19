@@ -28,15 +28,6 @@ CAMLDEP = ocamlfind ocamldep -pp "cpp -w"
 .PHONY:Format Typography/Typography.cma Typography/Typography.cmxa
 ###############################
 
-%.pdf: %.txp
-	/usr/bin/texprime --format FormatThese $*.txp
-
-%.tml: %.txp
-	/usr/bin/texprime --format FormatThese --ml $*.txp
-
-%.tmx: %.tml
-	$(CAMLOPT)  -o $*.tmx -impl $*.tml
-
 Format:
 	cd Format ; make clean ; make Article ; make Diagram.cmxa ; make Diagram.cmi ; cd ..
 
