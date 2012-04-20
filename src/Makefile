@@ -8,9 +8,10 @@ Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
 	cp Main.native texprime
 Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
 	ocamlbuild Texprime/Main.byte
-	cp Main.byte texprime
+	cp Main.byte texprime.byte
 proof.native:Typography/Typography.cmxa
 	ocamlbuild proof/proof.native
+	cp proof.native proof
 proof.byte:Typography/Typography.cma
 	ocamlbuild proof/proof.byte
 

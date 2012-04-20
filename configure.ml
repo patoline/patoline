@@ -1,4 +1,4 @@
-let prefix=ref "/usr/"
+let prefix=ref "/usr/local/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
 let grammars_dir=ref ""
@@ -89,7 +89,7 @@ let _=
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
-    Printf.fprintf out "\tinstall -m 755 src/texprime $(DESTDIR)/%s\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)/%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
         "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
@@ -107,7 +107,7 @@ let _=
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
-      Printf.fprintf out "\tinstall -m 755 src/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
 
     Printf.fprintf config "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%S]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%S]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%S]\n"
