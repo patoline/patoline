@@ -110,11 +110,11 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
 
-    Printf.fprintf config "let fontsdir=ref [%s]\nlet bindir=ref [\"%s\"]\nlet grammarsdir=ref [%s]\nlet hyphendir=ref [%s]\n"
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!fonts_dirs)))
+    Printf.fprintf config "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%S]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%S]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%S]\n"
+      (String.concat ";" ((!fonts_dirs)))
       !bin_dir
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!grammars_dirs)))
-      (String.concat ";" (List.map (fun s->"\""^s^"\"") (!hyphen_dirs)));
+      (String.concat ";" ((!grammars_dirs)))
+      (String.concat ";" ((!hyphen_dirs)));
     Printf.fprintf out "clean:\n\tmake -C src clean\n";
     close_out out;
     close_out config;
