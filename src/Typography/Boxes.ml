@@ -424,18 +424,26 @@ let hyphenate hyph subs kern font fsize fcolor str=
 
 
 let rec print_box=function
-    Glue _->Printf.printf " "
-  | GlyphBox x->Printf.printf "%s" (Fonts.glyphContents x.glyph)
+    GlyphBox x->Printf.printf "%s" (Fonts.glyphContents x.glyph)
   | Kerning x->print_box x.kern_contents
+  | Glue _->Printf.printf " "
+  | Drawing _->Printf.printf "[Drawing]"
   | Hyphen x->Array.iter print_box x.hyphen_normal
-  | _->Printf.printf "[]"
+  | User _->Printf.printf "[User]"
+  | BeginFigure _->Printf.printf "[BeginFigure]"
+  | FlushFigure _->Printf.printf "[FlushFigure]"
+  | Empty ->()
 
 let rec print_box_type=function
-    Glue _->Printf.printf "Glue "
-  | GlyphBox _->Printf.printf "GlyphBox "
-  | Kerning x->Printf.printf "Kerning "
-  | Hyphen x->Printf.printf "Hyphen "
-  | _->Printf.printf "[]"
+    GlyphBox _->Printf.printf "GlyphBox "
+  | Kerning _->Printf.printf "Kerning "
+  | Glue _->Printf.printf "Glue "
+  | Drawing _->Printf.printf "Drawing "
+  | Hyphen _->Printf.printf "Hyphen "
+  | User _->Printf.printf "User "
+  | BeginFigure _->Printf.printf "BeginFigure "
+  | FlushFigure _->Printf.printf "FlushFigure "
+  | Empty ->Printf.printf "Empty "
 
 let print_linef out l=
   Printf.fprintf out "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
