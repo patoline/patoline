@@ -1,3 +1,4 @@
+open CamomileLibrary
 open Typography
 open Document
 open Util
@@ -32,7 +33,7 @@ let postprocess_tree tree=
                   let path=drop 1 b in
                     B (fun _->[User (Structure path')])
                     ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
-                    ::(B (fun env->env.stdGlue))
+                    ::T " "
                     ::n.displayname
                )]
           else

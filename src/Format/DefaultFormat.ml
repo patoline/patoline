@@ -105,12 +105,6 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                 drawing_nominal_width= 4.0 *. phi;
                                 drawing_contents=(fun _->[]);
                                 drawing_badness=fun _-> 0. }];
-        stdGlue=[Glue { drawing_min_width= 2.*. fsize/.9.;
-                        drawing_max_width= fsize/.2.;
-                        drawing_y0=0.; drawing_y1=0.;
-                        drawing_nominal_width= fsize/.3.;
-                        drawing_contents=(fun _->[]);
-                        drawing_badness=knuth_h_badness (fsize/.3.) }];
         hyphenate=hyphenate;
 
         counters=StrMap.singleton "structure" (-1,[0]);
@@ -215,7 +209,9 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                    { p with min_height_after=lead }
                in
                  newPar str ~environment:(fun x->x) normal params
-                   (T (string_of_int !page_footnotes)::(B (fun env->env.stdGlue))::l);
+                   (T (string_of_int !page_footnotes)
+                    ::T " "
+                    ::l);
                  let pages=minipage { env with
                                         normalLead=env.lead*.(phi-.1.);
                                         lead=env.lead*.(phi-.1.);
@@ -359,7 +355,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                           in
                             Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
                        )::
-                  B (fun env->env.stdGlue)::
+                  T " "::
                   p.par_contents
                       }
         | Node n->

@@ -149,6 +149,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters,comp0,lastFigures,lastUser)=LineMap.min_binding todo in
+          (* print_text_line paragraphs node; *)
         let todo'=ref (LineMap.remove node todo) in
           (* On commence par chercher la première vraie boite après node *)
         let demerits'=ref demerits in

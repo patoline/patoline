@@ -237,7 +237,7 @@ and print_contents op ch l =
       Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
       fn l
     | GC :: l -> 
-      Printf.fprintf ch "(B (fun env -> env.stdGlue))::";
+      Printf.fprintf ch "T \" \"::";
       fn l
     | MC(mtype, name, args) :: l -> 
       Printf.fprintf ch "(";

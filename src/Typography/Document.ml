@@ -89,7 +89,6 @@ and 'a environment={
   normalLead:float;
   normalLeftMargin:float;
   par_indent:'a box list;
-  stdGlue:'a box list;
   hyphenate:string->(string*string) array;
   word_substitutions:string->string;
   substitutions:glyph_id list -> glyph_id list;
@@ -287,8 +286,7 @@ let family fam t =
 let resize_env fsize env=
   { env with
       size=fsize;
-      lead=env.lead*.fsize/.env.size;
-      stdGlue=List.map (resize (fsize/.env.size)) env.stdGlue }
+      lead=env.lead*.fsize/.env.size }
 
 (* Changer de taille dans un scope *)
 let size fsize t=
@@ -524,63 +522,136 @@ let generalRef ?(refType="structure") name=
 
 (** Comment on cache des trucs à ocamldoc mais pas à caml ? Ça pourrait être utilisé ici *)
 let sources=ref StrMap.empty
+let rStdGlue:(float*user box) ref=ref (0.,glue 0. 0. 0.)
 
-let rec boxify fixable env=function
-    []->([], env)
-  | (B b)::s->let u,v=boxify fixable env s in (b env@u, v)
-  | (C b)::s->(boxify fixable env ((b env)@s))
-  | (CFix b)::s->(fixable:=true; boxify fixable env ((b env)@s))
-  | (BFix b)::s->(fixable:=true; let u,v=boxify fixable env s in (b env)@u,v)
-  | Env f::s->boxify fixable (f env) s
-  | (T t)::s->(
-    let rec cut_str i0 i result=
-      if i>=UTF8.length t then (
-        if i0<>i then (
-          if result<>[] then
-            result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
-                                        env.fontColor
-                                        (env.word_substitutions (String.sub t i0 (i-i0)))))
-          else
-            hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (env.word_substitutions (String.sub t i0 (i-i0)))
-        ) else result
-      ) else (
-        if is_space (UTF8.get t i) then
-          cut_str (i+1) (i+1) (
-            if i0<>i then (
-              if result<>[] then
-                result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
-                                           (env.word_substitutions (String.sub t i0 (i-i0)))))
-              else
-                hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (env.word_substitutions (String.sub t i0 (i-i0)))
-            ) else result
+(* let ambientBuf=ref ([||],0) *)
+
+let boxify fixable env0 l=
+  let buf=ref ([||],0) in
+  let append buf x=
+    let i=snd !buf in
+    let arr=
+      let arr0,i= !buf in
+        if i>=Array.length arr0 then
+          Array.init (max 1 (2*Array.length arr0)) (fun j->if j<i then arr0.(j) else Empty)
+        else arr0
+    in
+      arr.(i)<-x;
+      buf:=(arr,i+1)
+  in
+  let reset buf=buf:=(fst !buf,0) in
+  let rec boxify env=function
+      []->env
+    | (B b)::s->(List.iter (append buf) (b env); boxify env s)
+    | (C b)::s->(boxify env ((b env)@s))
+    | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
+    | (BFix b)::s->(fixable:=true; List.iter (append buf) (b env); boxify env s)
+    | Env f::s->boxify (f env) s
+    | (T t)::s->(
+        let rec cut_str i0 i=
+          if i>=String.length t then (
+            if i0<>i then
+              List.iter (append buf)
+                (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
+                   env.fontColor
+                   (env.word_substitutions (String.sub t i0 (i-i0))))
+          ) else (
+            if t.[i]=' ' || t.[i]='\t' || t.[i]='\n' then (
+              let stdGlue=
+                (if fst !rStdGlue <> env.size then (rStdGlue:=(env.size, glue (2.*.env.size/.9.) (env.size/.3.) (env.size/.2.))));
+                snd !rStdGlue
+              in
+                if i0<>i || (UTF8.next t 0>=String.length t) then (
+                  List.iter (append buf)
+                    (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
+                       (env.word_substitutions (String.sub t i0 (UTF8.next t i-i0))));
+                  if UTF8.next t i<String.length t || (i=0) then append buf stdGlue;
+                );
+                cut_str (UTF8.next t i) (UTF8.next t i)
+            ) else
+              (* if is_space (UTF8.get t i) then ( *)
+              (*   let stdGlue= *)
+              (*     (if fst !rStdGlue <> env.size then rStdGlue:=(env.size, glue (2.*.env.size/.9.) (env.size/.3.) (env.size/.2.))); *)
+              (*     snd !rStdGlue *)
+              (*   in *)
+              (*   let x0=UChar.uint_code (UTF8.get t i) in *)
+              (*   let sp=if (x0>=0x0009 && x0<=0x000d) || x0=0x0020 then stdGlue else *)
+              (*     match x0 with *)
+              (*         0x00a0->(match stdGlue with *)
+              (*                      Glue y->Drawing y *)
+              (*                    | y->y) *)
+              (*       | 0x1680->stdGlue *)
+              (*       | 0x180e->(glue 0. 0. 0.) *)
+              (*       | 0x2000->let w=env.size/.2. in (glue w w w) *)
+              (*       | 0x2001->let w=env.size in (glue w w w) *)
+              (*       | 0x2002->let w=env.size/.2. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x2003->let w=env.size in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x2004->let w=env.size/.3. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x2005->let w=env.size/.4. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x2006->let w=env.size/.6. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x2007->( *)
+              (*           let w0= *)
+              (*             glyph_of_string env.substitutions env.positioning env.font env.size *)
+              (*               env.fontColor *)
+              (*               "0" *)
+              (*           in *)
+              (*           let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*         ) *)
+              (*       | 0x2008->( *)
+              (*           let w0= *)
+              (*             glyph_of_string env.substitutions env.positioning env.font env.size *)
+              (*               env.fontColor *)
+              (*               "." *)
+              (*           in *)
+              (*           let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*         ) *)
+              (*       | 0x2009->let w=env.size/.5. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x200a->let w=env.size/.8. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0x202f-> *)
+              (*           let w=env.size/.5. in *)
+              (*             (match glue (w*.2./.3.) w (w*.3./.2.) with *)
+              (*                  Glue y->Drawing y *)
+              (*                | y->y) *)
+              (*       | 0x205f->let w=env.size*.4./.18. in (glue (w*.2./.3.) w (w*.3./.2.)) *)
+              (*       | 0xfeff->(glue 0. 0. 0.) *)
+              (*       | _->stdGlue *)
+              (*   in *)
+              (*   let next=cut_str (UTF8.next t i) (UTF8.next t i) in *)
+              (*     if i0<>i then ( *)
+              (*       (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor *)
+              (*          (env.word_substitutions (String.sub t i0 (UTF8.next t i-i0)))) *)
+              (*       @ (if next=[] || UTF8.length t=1 then next else sp::next) *)
+              (*     ) else *)
+              (*       next *)
+              (* ) else *)
+              cut_str i0 (UTF8.next t i)
           )
-        else (
-          cut_str i0 (UTF8.next t i) result
-        )
+        in
+          cut_str (UTF8.first t) (UTF8.first t);
+          boxify env s
       )
-    in
-    let c=cut_str 0 0 [] in
-    let u,v=boxify fixable env s in
-      c@u, v
-  )
-  | FileRef (file,off,size)::s -> (
-    let i=try 
-	    StrMap.find file !sources 
-      with _-> (let i=open_in file in sources:= StrMap.add file i !sources; i) 
-    in
-    let buf=String.create size in
-    let _=seek_in i off; input i buf 0 size in
-      boxify fixable env (T buf::s)
-  )
-  | Scoped (fenv, p)::s->(
-      let env'=fenv env in
-      let b,_=boxify fixable env' p in
-      let u,v=boxify fixable env s in
-        b@u, v
-  )
+    | FileRef (file,off,size)::s -> (
+        let i=try 
+	  StrMap.find file !sources 
+        with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i) 
+        in
+        let buffer=String.create size in
+        let _=seek_in i off; really_input i buffer 0 size in
+          boxify env (T buffer::s)
+      )
+    | Scoped (fenv, p)::s->(
+        let env'=fenv env in
+        let _=boxify env' p in
+          boxify env s
+      )
+  in
+    reset buf;
+    let env1=boxify env0 l in
+    let (arr,i)= !buf in
+      (Array.sub arr 0 i,env1)
 
-
-let boxify_scoped env x=fst (boxify (ref false) env x)
+let boxify_scoped env x=
+  Array.to_list (fst (boxify (ref false) env x))
 
 
 
@@ -631,7 +702,7 @@ let flatten env0 fixable str=
             figures:=IntMap.add n (f.fig_contents env1) !figures;
             paragraphs:=(match !paragraphs with
                              []->[]
-                           | h::s->(h@[(BeginFigure n)])::s);
+                           | h::s->Array.append h [|BeginFigure n|]::s);
             f.fig_post_env env env1
         )
       | Node s-> (
@@ -647,7 +718,7 @@ let flatten env0 fixable str=
               )
             | FigureDef _ as h->(
                 let env2=flatten env1 (k::path) h in
-                  flushes:=(IntMap.cardinal !figures)::(!flushes);
+                  flushes:=(FlushFigure (IntMap.cardinal !figures))::(!flushes);
                   indent,env2
               )
             | Node h as tr->(
@@ -669,7 +740,7 @@ let flatten env0 fixable str=
           let _,env2=IntMap.fold flat_children s.children (false,env) in
             paragraphs:=(match !paragraphs with
                              []->[]
-                           | h::s->(h@(List.map (fun x->(FlushFigure x)) !flushes))::s);
+                           | h::s->Array.append h (Array.of_list !flushes)::s);
             env2
         )
   in
@@ -686,7 +757,7 @@ let flatten env0 fixable str=
     (env2, params,
      Array.of_list (List.rev !param),
      Array.of_list (List.rev !compl),
-     Array.of_list (List.rev (List.map Array.of_list !paragraphs)),
+     Array.of_list (List.rev !paragraphs),
      Array.of_list (List.map snd (IntMap.bindings !figures)))
 
 let rec make_struct positions tree=
