@@ -39,6 +39,9 @@ val is_glyph : 'a box -> bool
 val is_glue : 'a box -> bool
 val is_hyphen : 'a box -> bool
 
+(** Taille de l'em de cette boîte *)
+val box_size : 'a box -> float
+
 (** Largeur d'une boîte, pour une compression donnée *)
 val box_width : float -> 'a box -> float
 

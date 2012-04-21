@@ -23,9 +23,9 @@ Format/DefaultFormat.cma:Typography/Typography.cma
 Texprime/Parser.ml:Texprime/Parser.dyp
 	dypgen --no-mli Texprime/Parser.dyp
 Typography/Typography.cmxa:
-	make -C Typography Typography.cmxa
+	ocamlbuild Typography/Typography.cmxa
 Typography/Typography.cma:
-	make -C Typography Typography.cma
+	ocamlbuild Typography/Typography.cma
 
 
 texprimeDefault.tgo: Main.byte DefaultGrammar.txp

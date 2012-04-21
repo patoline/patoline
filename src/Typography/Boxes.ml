@@ -78,11 +78,20 @@ let rec box_width comp=function
   | _->0.
 
 
+let rec box_size=function
+    GlyphBox x->x.glyph_size
+  | Kerning x->box_size x.kern_contents
+  | Hyphen x when Array.length x.hyphen_normal>0 -> box_size x.hyphen_normal.(0)
+  | _->0.
+
 let rec box_interval=function
     GlyphBox x->let y=Fonts.glyphWidth x.glyph*.x.glyph_size/.1000. in (y,y,y)
   | Glue x
   | Drawing x->x.drawing_min_width, x.drawing_nominal_width, x.drawing_max_width
-  | Kerning x->let (a,b,c)=box_interval x.kern_contents in (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
+  | Kerning x->
+      let (a,b,c)=box_interval x.kern_contents in
+      let sz=box_size x.kern_contents in
+        (a +. x.advance_width*.sz/.1000., b +. x.advance_width*.sz/.1000., c+. x.advance_width*.sz/.1000.)
   | Hyphen x->boxes_interval x.hyphen_normal
   | _->(0.,0.,0.)
 and boxes_interval boxes=
