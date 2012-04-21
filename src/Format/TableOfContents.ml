@@ -1,12 +1,12 @@
 open Typography
 open Document
 open Fonts.FTypes
-open Binary
+open Boxes
 open Util
 
 
 let centered str tree max_level=
-  newPar str ~environment:(fun x->{x with par_indent=[]}) Parameters.normal parameters [
+  newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
     BFix (
       fun env->
         let x0=75. in
@@ -40,7 +40,7 @@ let centered str tree max_level=
                 let in_toc=List.fold_left (fun a b->match b with InTOC->true | _->a) false s.node_tags in
                   if in_toc && count<>[] then (
                     try
-                      let page=(1+(TS.UMap.find (Structure count) env0.user_positions).Util.page) in
+                      let page=(1+(TS.UMap.find (Structure count) env0.user_positions).page) in
                       let fenv env={ env with
                                        substitutions=(fun glyphs->
                                                         List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)

@@ -1,9 +1,8 @@
 open CamomileLibrary
-open Binary
+open Util
 open Document
 open OutputCommon
-open Util
-open Constants
+open Boxes
 open Fonts.FTypes
 
 type style=
@@ -30,7 +29,7 @@ type mathsEnvironment={
   mathsFont:Fonts.font Lazy.t;
   mathsSize:float;
   mathsSubst:glyph_id list -> glyph_id list;
-  mathsSymbols:int Binary.StrMap.t;
+  mathsSymbols:int StrMap.t;
   numerator_spacing:float;
   denominator_spacing:float;
   sub1:float;
@@ -61,7 +60,7 @@ let default_env=
       *)
       mathsSubst=(fun x->x);
       mathsSize=1.;
-      mathsSymbols=List.fold_left (fun m (a,b)->Binary.StrMap.add a b m) Binary.StrMap.empty [
+      mathsSymbols=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty [
         (*
         "leftarrow", 232;
         "uparrow", 233;
@@ -541,7 +540,7 @@ exception Unknown_symbol of string
 
 let symbol s env st=
   try
-    let s = Binary.StrMap.find s env.mathsSymbols in
+    let s = StrMap.find s env.mathsSymbols in
     let font=Lazy.force env.mathsFont in
     [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=s }) with glyph_size=env.mathsSize} ]
   with

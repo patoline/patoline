@@ -1,7 +1,14 @@
+(** Complétion de lignes de l'optimisation
+
+L'optimisation a besoin d'une fonction pour connaître tous les
+découpages possibles, à chaque ligne.
+*)
+open Boxes
 open Util
-open Binary
 open Break
 
+(** {[normal]} measure paragraphs figures {already placed figures} {already placed user boxes}
+{beginning of line to complete} {is this a desperate try ?} *)
 let normal mes0 paragraphs figures last_figures last_users line allow_impossible=
   let measure=
     let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in

@@ -1,4 +1,4 @@
-open Util
+open Boxes
 
 type error_log=
     Overfull_line of line

@@ -1,10 +1,3 @@
-(** Font types. Only supported right now : OpenType and CFF.
-
-    Here is how to load glyphs from a char :
-    [let font=loadFont file in loadGlyph font (glyph_of_char font char)]
- *)
-
-open Binary
 open Bezier
 open FTypes
 open CamomileLibrary
@@ -18,13 +11,7 @@ module type Font=FTypes.Font
 module Opentype=Opentype
 module CFF=CFF
 
-(** This module is not to be used. It is here to enforce correct
-    typing of interface Opentype, while leaving all its interface
-    exported by module Opentype above *)
 module Opentype_=(Opentype:Font)
-(** This module is not to be used. It is here to enforce correct
-    typing of interface CFF, while leaving all its interface
-    exported by module CFF above *)
 module CFF_=(CFF:Font)
 
 (** loadFont pretends it can recognize font file types, but it

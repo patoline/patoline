@@ -1,6 +1,6 @@
 (** All common types used for fonts, as well as helpers for "font features" *)
 open CamomileLibrary
-open Binary
+open Util
 open Bezier
 
 type 'a kerningBox= { advance_height:float; advance_width:float; kern_x0:float; kern_y0:float; kern_contents:'a }

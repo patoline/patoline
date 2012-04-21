@@ -1,3 +1,4 @@
+(** Types des dessins, de la structure du document,… La bonne méthode pour dessiner dans un document est d'utiliser {!Boxes.drawing} sur une liste de {!contents} *)
 type lineCap = Butt_cap | Round_cap | Proj_square_cap
 type lineJoin = Miter_join | Round_join | Bevel_join
 type rgb = { red : float; green : float; blue : float; }

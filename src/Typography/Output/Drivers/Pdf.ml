@@ -1,7 +1,6 @@
 open CamomileLibrary
 open Printf
-open Binary
-open Constants
+open Util
 open Fonts.FTypes
 open OutputCommon
 open OutputPaper

@@ -1,3 +1,10 @@
+(** Font types. Only supported right now : OpenType and CFF.
+
+    Here is how to load glyphs from a char :
+    [let font=loadFont file in loadGlyph font { glyph_utf8=""; glyph_index=glyph_of_char font char }]
+ *)
+
+(** {3 Fonts} *)
 exception Not_supported
 module FTypes :
   sig
@@ -193,19 +200,50 @@ module CFF :
   end
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
+
+(** loadFont pretends it can recognize font file types, but it
+    actually only looks at the extension in the file name *)
 val loadFont : ?offset:int -> ?size:int -> string -> font
-val glyph_of_uchar : font -> CamomileLibrary.UChar.t -> int
-val glyph_of_char : font -> char -> int
-val loadGlyph : font -> FTypes.glyph_id -> glyph
-val cardinal : font -> int
-val outlines : glyph -> (float array * float array) list list
-val glyphFont : glyph -> font
-val glyphContents : glyph -> CamomileLibrary.UTF8.t
-val glyphNumber : glyph -> FTypes.glyph_id
-val glyphWidth : glyph -> float
-val glyph_y0 : glyph -> float
-val glyph_y1 : glyph -> float
+
+
 val fontName : font -> string
+(** number of glyphs in a font *)
+val cardinal : font -> int
 val select_features : font -> string list -> FTypes.substitution list
 val fontFeatures : font -> string list
 val positioning : font -> FTypes.glyph_ids list -> FTypes.glyph_ids list
+
+
+(** {3 Manipulation of the glyphs} *)
+(** Returns glyph index from unicode character *)
+val glyph_of_uchar : font -> CamomileLibrary.UChar.t -> int
+
+(** Returns glyph index from ascii character *)
+val glyph_of_char : font -> char -> int
+
+(** loads a glyph *)
+val loadGlyph : font -> FTypes.glyph_id -> glyph
+
+(** Bezier curves of the outlines of a glyph *)
+val outlines : glyph -> (float array * float array) list list
+
+
+(** {3 Recovering information about a glyph} *)
+
+(** The font a glyph belongs to *)
+val glyphFont : glyph -> font
+
+(** The "meaning" of a glyph, if applicable, i.e the characters it represents *)
+val glyphContents : glyph -> CamomileLibrary.UTF8.t
+
+(** The glyph index of a glyph *)
+val glyphNumber : glyph -> FTypes.glyph_id
+
+(** The glyph width *)
+val glyphWidth : glyph -> float
+
+(** lower y-coordinate *)
+val glyph_y0 : glyph -> float
+
+(** upper y-coordinate *)
+val glyph_y1 : glyph -> float

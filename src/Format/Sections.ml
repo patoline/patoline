@@ -1,9 +1,7 @@
 open Typography
 open Document
 open Util
-open Binary
-open Constants
-
+open Boxes
 
 
 let postprocess_tree tree=
@@ -19,7 +17,7 @@ let postprocess_tree tree=
                { (center a b c d e f g) with
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=Parameters.normal }
+          par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
     | _->tree
@@ -61,7 +59,7 @@ let postprocess_tree tree=
                    min_page_before = 0;(* (if depth=0 && f.lineStart=0 then 1 else 0); *)
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=Parameters.normal }
+          par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (
                      Node { n with children=IntMap.map (sectionize (depth+1)) n.children }, []) par

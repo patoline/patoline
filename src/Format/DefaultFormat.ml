@@ -1,11 +1,10 @@
 open Typography
 open Typography.Document
-open Typography.Parameters
+open Typography.Complete
 open Typography.Fonts.FTypes
 open Typography.Util
 open Typography.Fonts
-open Typography.Constants
-open Typography.Binary
+open Typography.Boxes
 
 let _=Random.self_init ()
 

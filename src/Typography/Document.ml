@@ -1,19 +1,11 @@
-(** La "classe" de documents par defaut. *)
+(** Le type du contenu, et comment on le transforme en boîtes. *)
 open Config
-(* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path")] *)
-(* let _=Arg.parse spec ignore "Usage :" *)
-
-open Binary
-open Constants
+open Util
 open Fonts
 open Fonts.FTypes
 open OutputCommon
-open Util
-
-(** Pour choisir la police, et d'autres paramètres, on a un
-   environnement. On peut tout modifier de manière uniforme sur tout
-   le document à partir de n'importe où (voir le type content, plus
-   bas, pour les scopes) *)
+open Boxes
+open CamomileLibrary
 
 type fontAlternative = Regular | Bold | Caps | Demi
 
@@ -25,17 +17,7 @@ let simpleFamilyMember:font->font*(string->string)*(glyph_id list -> glyph_id li
 (* Italic is second *)
 type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
 
-
-let selectFont fam alt it =
-  try
-    let r, i = List.assoc alt fam in
-    Lazy.force (if it then i else r)
-  with Not_found ->
-    (* FIXME: keep the font name and print a better message *)
-    Printf.fprintf stderr "Font not found in family.\n";
-    exit 1
-
-
+(** C'est là qu'on veut des variants polymorphes, mais caml ne veut pas de mon module TS polymorphe en user *)
 type user=
     Label of string
   | FigureRef of int
@@ -43,7 +25,17 @@ type user=
   | Structure of int list
   | Footnote of int*drawingBox
   | AlignmentMark
+(** Tags des nœuds de l'arbre *)
+type tag=
+    InTOC
+  | Author of string
+  | Institute of string
+  | Numbered
+  | Structural
 
+(** Module de typesetting Ce module contient une map des boîtes
+    user, mais ne fait aucune hypothèse de plus sur le type
+    user.*)
 module TS=Break.Make
   (struct
      type t=line
@@ -55,20 +47,14 @@ module TS=Break.Make
      let compare=compare
    end)
 
-type tag=
-    InTOC
-  | Author of string
-  | Institute of string
-  | Numbered
-  | Structural
-
-type 'a node={
+(** Structure du document. Un [node] est un nœud interne de l'arbre. *)
+type ('a,'b) node={
   name:string;
   displayname:'a content list;
-  children:'a tree IntMap.t;
-  node_tags:tag list;
-  node_env:'a environment -> 'a environment;
-  node_post_env:'a environment -> 'a environment -> 'a environment;
+  children:('a,'b) tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
+  node_tags:'b list;
+  node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
+  node_post_env:'a environment -> 'a environment -> 'a environment;(** Changement d'environnement quand on en sort *)
   mutable tree_paragraph:int;
 }
 and 'a paragraph={
@@ -84,8 +70,8 @@ and 'a figuredef={
   fig_post_env:'a environment -> 'a environment -> 'a environment;
   fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> parameters
 }
-and 'a tree=
-    Node of 'a node
+and ('a,'b) tree=
+    Node of ('a,'b) node
   | Paragraph of 'a paragraph
   | FigureDef of 'a figuredef
 
@@ -110,39 +96,22 @@ and 'a environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;
   names:((int*int list) StrMap.t * string * line) StrMap.t;
-  user_positions:Util.line TS.UMap.t;
+  user_positions:Boxes.line TS.UMap.t;
   mutable fixable:bool
 }
 
-(* Type du contenu. B est une boîte quelconque. Les espaces dans T
-   seront transformés en la boîte stdGlue de l'environnement, qui
-   n'est pas nécessairement une GlueBox *)
-and 'a content=
-    B of ('a environment->'a box list)
-  | BFix of ('a environment->'a box list)
-  | C of ('a environment->'a content list)
-  | CFix of ('a environment->'a content list)
-  | T of string
-  | FileRef of (string*int*int)
-  | Env of ('a environment -> 'a environment)
-  | Scoped of ('a environment->'a environment)*('a content list)
+(** {3 Contenu} *)
 
-module type DocumentStructure=sig
-  val structure:(user tree*(int*user tree) list) ref
-  val fixable:bool ref
-end
-module type Format=sig
-  type user
-  val defaultEnv:user environment
-  val postprocess_tree:user tree->user tree
-  val title:
-    (user tree * ((user tree) list)) ref ->
-    ?label:string ->
-    ?displayname:user content list ->
-    string -> unit
-  val author:string->unit
-  val institute:string->unit
-end
+and 'a content=
+    B of ('a environment->'a box list)        (** Une liste de boîtes, dépendante de l'environnement *)
+  | BFix of ('a environment->'a box list)     (** Une liste de boîtes dépendante des positions des boîtes [User] *)
+  | C of ('a environment->'a content list)    (** Le symmétrique de [C] pour [BFix]. On peut implémenter la paresse avec ça, par exemple. *)
+  | CFix of ('a environment->'a content list) (** Pareil que [BFix], mais avec du contenu au lieu des boîtes *)
+  | T of string                               (** Un texte simple *)
+  | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution *)
+  | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
+  | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
+
 
 let incr_counter ?(level= -1) env name=
   { env with counters=
@@ -173,17 +142,17 @@ let tags=function
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty : user node={ name="";
-                        node_tags=[];
-                        displayname = []; children=IntMap.empty;
-                        node_env=(fun x->x);
-                        node_post_env=(fun x y->{ x with
-                                                    counters=y.counters;
-                                                    names=y.names;
-                                                    user_positions=y.user_positions });
-                        tree_paragraph=0 }
+let empty={ name="";
+            node_tags=[];
+            displayname = []; children=IntMap.empty;
+            node_env=(fun x->x);
+            node_post_env=(fun x y->{ x with
+                                        counters=y.counters;
+                                        names=y.names;
+                                        user_positions=y.user_positions });
+            tree_paragraph=0 }
 
-type 'a cxt=(int*'a tree) list
+type ('a,'b) cxt=(int*('a,'b) tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
@@ -249,10 +218,16 @@ let change_env t fenv=match t with
   | (Paragraph n,l)->(Paragraph { n with par_env=fun x->fenv (n.par_env x) }, l)
   | (FigureDef f, l)->
       FigureDef {f with fig_env=fun x->fenv (f.fig_env x) }, l
-(****************************************************************)
 
 
-(* Quelques Exemples d'environnement *)
+let selectFont fam alt it =
+  try
+    let r, i = List.assoc alt fam in
+    Lazy.force (if it then i else r)
+  with Not_found ->
+    (* FIXME: keep the font name and print a better message *)
+    Printf.fprintf stderr "Font not found in family.\n";
+    exit 1
 
 let updateFont env font str subst pos=
   let feat=Fonts.select_features font env.fontFeatures in
@@ -338,7 +313,7 @@ let add_features features env=
 
 
 
-let parameters env paragraphs figures last_parameters last_figures last_users (line:Util.line)=
+let parameters env paragraphs figures last_parameters last_figures last_users (line:Boxes.line)=
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
     IntMap.iter (fun i aa->match aa with
@@ -508,13 +483,46 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   in
     str:=newChildAfter !str para
 
+let pageref x=
+  [CFix (fun env->try
+           let (_,_,node)=StrMap.find x env.names in
+             [T (string_of_int (1+node.page))]
+         with Not_found -> []
+        )]
 
-(* Fonctions auxiliaires qui produisent un document optimisable à
-   partir de l'arbre *)
+let label ?(labelType="structure") name=
+  [Env (fun env->
+          let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
+            { env with names=StrMap.add name (env.counters, labelType, w) env.names });
 
+   B (fun env ->
+        [User (Label name)])
+  ]
 
+let sectref name=
+  [ CFix (fun env->try
+            let (nums,_,_)=StrMap.find name env.names in
+            let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
+              [T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                       (List.rev (drop 1 num))))]
+          with
+              Not_found -> []
+         )]
 
-let is_space c=c=' ' || c='\n' || c='\t'
+let generalRef ?(refType="structure") name=
+  [ CFix (fun env->try
+            let counters,_,_=StrMap.find name env.names in
+            let lvl,num=(StrMap.find refType counters) in
+            let _,str_counter=StrMap.find "structure" counters in
+            let sect_num=drop (List.length str_counter - lvl) str_counter in
+              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
+          with
+              Not_found -> []
+         )]
+
+(** {3 Boitification et "classes" de documents}*)
+
+(** Comment on cache des trucs à ocamldoc mais pas à caml ? Ça pourrait être utilisé ici *)
 let sources=ref StrMap.empty
 
 let rec boxify fixable env=function
@@ -526,7 +534,7 @@ let rec boxify fixable env=function
   | Env f::s->boxify fixable (f env) s
   | (T t)::s->(
     let rec cut_str i0 i result=
-      if i>=String.length t then (
+      if i>=UTF8.length t then (
         if i0<>i then (
           if result<>[] then
             result @ (env.stdGlue @ (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
@@ -536,7 +544,7 @@ let rec boxify fixable env=function
             hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor (env.word_substitutions (String.sub t i0 (i-i0)))
         ) else result
       ) else (
-        if is_space t.[i] then
+        if is_space (UTF8.get t i) then
           cut_str (i+1) (i+1) (
             if i0<>i then (
               if result<>[] then
@@ -547,7 +555,7 @@ let rec boxify fixable env=function
             ) else result
           )
         else (
-          cut_str i0 (i+1) result
+          cut_str i0 (UTF8.next t i) result
         )
       )
     in
@@ -573,6 +581,26 @@ let rec boxify fixable env=function
 
 
 let boxify_scoped env x=fst (boxify (ref false) env x)
+
+
+
+module type DocumentStructure=sig
+  val structure:((user,tag) tree*(int*(user,tag) tree) list) ref
+  val fixable:bool ref
+end
+module type Format=sig
+  type user
+  val defaultEnv:user environment
+  val postprocess_tree:(user,tag) tree->(user,tag) tree
+  val title:
+    ((user,tag) tree * (((user,tag) tree) list)) ref ->
+    ?label:string ->
+    ?displayname:user content list ->
+    string -> unit
+  val author:string->unit
+  val institute:string->unit
+end
+
 
 let flatten env0 fixable str=
   let paragraphs=ref [] in
@@ -710,39 +738,3 @@ let update_names env figs user=
   in
     env',!needs_reboot
 
-let pageref x=
-  [CFix (fun env->try
-           let (_,_,node)=StrMap.find x env.names in
-             [T (string_of_int (1+node.page))]
-         with Not_found -> []
-        )]
-
-let label ?(labelType="structure") name=
-  [Env (fun env->
-          let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
-            { env with names=StrMap.add name (env.counters, labelType, w) env.names });
-
-   B (fun env ->
-        [User (Label name)])
-  ]
-
-let sectref name=
-  [ CFix (fun env->try
-            let (nums,_,_)=StrMap.find name env.names in
-            let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
-              [T (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                       (List.rev (drop 1 num))))]
-          with
-              Not_found -> []
-         )]
-
-let generalRef ?(refType="structure") name=
-  [ CFix (fun env->try
-            let counters,_,_=StrMap.find name env.names in
-            let lvl,num=(StrMap.find refType counters) in
-            let _,str_counter=StrMap.find "structure" counters in
-            let sect_num=drop (List.length str_counter - lvl) str_counter in
-              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
-          with
-              Not_found -> []
-         )]

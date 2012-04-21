@@ -1,5 +1,9 @@
+(** Sortie réutilisable directement dans le contenu. Dans le
+vocabulaire du code source de TeX, ceci serait… On comprend pourquoi
+ça n'existe pas. *)
+
 open Document
-open Util
+open Boxes
 open OutputCommon
 open Fonts.FTypes
 
@@ -27,7 +31,7 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
                 y1:=max (y+.yy1) !y1;
                 y0:=min y !y0;
                 y0':=min (y+.yy0) !y0';
-              let comp=compression paragraphs (param,line) in
+              let comp=compression paragraphs param line in
               let rec draw_box x y=function
                   Kerning kbox ->(
                     let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) kbox.kern_contents in

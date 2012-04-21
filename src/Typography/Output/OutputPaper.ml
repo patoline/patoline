@@ -1,12 +1,10 @@
 open CamomileLibrary
 open Printf
-open Binary
-open Constants
 open Fonts.FTypes
 open OutputCommon
-open Util
+open Boxes
 open Document
-
+open Util
 module Buf=UTF8.Buf
 
 
@@ -46,7 +44,7 @@ module Output=functor(M:Driver)->struct
                   positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs line))
                 );
 
-                let comp=compression paragraphs (param,line) in
+                let comp=compression paragraphs param line in
                 let rec draw_box x y=function
                     Kerning kbox ->(
                       let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) kbox.kern_contents in
@@ -77,7 +75,7 @@ module Output=functor(M:Driver)->struct
                   | b->box_width comp b
                 in
                   ignore (
-                    Util.fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line
+                    fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line
                   )
               )
         ) p;

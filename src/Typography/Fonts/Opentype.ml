@@ -1,5 +1,5 @@
 open FTypes
-open Binary
+open Util
 open CFF
 open CamomileLibrary
 let offsetTable=12

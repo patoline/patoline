@@ -1,8 +1,7 @@
 open OutputCommon
-open Binary
-open Constants
-open CamomileLibrary
 open Util
+open CamomileLibrary
+open Boxes
 open Fonts.FTypes
 
 
@@ -18,7 +17,7 @@ let is_last paragraph j=
 
 type figurePosition=Placed of line | Flushed | Begun
 
-module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedType)=(
+module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedType)=(
   struct
     module User=User
     module UMap=New_map.Make(User)
@@ -156,11 +155,11 @@ module Make (Line:New_map.OrderedType with type t=Util.line) (User:Map.OrderedTy
         let register node nextNode badness log next_params comp=
           demerits':=cleanup !demerits' !todo';
           let reallyAdd ()=
-            let nextUser=Util.fold_left_line paragraphs (fun u box->match box with
+            let nextUser=fold_left_line paragraphs (fun u box->match box with
                                                              User uu->UMap.add uu nextNode u
                                                            | _->u) lastUser nextNode
             in
-            let figures1=Util.fold_left_line paragraphs
+            let figures1=fold_left_line paragraphs
               (fun u box->match box with
                    FlushFigure i->IntMap.add i Flushed u
                  | BeginFigure i->IntMap.add i Begun u

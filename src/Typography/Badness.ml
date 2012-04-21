@@ -1,4 +1,4 @@
-open Util
+open Boxes
 
 
 let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
@@ -60,8 +60,18 @@ let h_badness paragraphs node comp=
     !bad
 
 
-
-let badness paragraphs ?figures:(figures=[||])
+(** Un exemple de fonction de poids. L'ordre des arguments est : tous
+    les paragraphes, les figures, puis deux fois (une ligne, le
+    tableau de boîtes correspondant, l'indice maximal dans ce tableau,
+    les paramètres de la ligne, la compression entre 0. et 1.).
+    
+    L'idée est de factoriser au maximum le calcul de la compression et
+    du tableau de boîtes (où les césures sont toutes expansées à leur
+    apparence définitive).
+*)
+let badness
+    paragraphs
+    ?figures:(figures=[||])
     node_i line_i max_i params_i comp_i
     node_j line_j max_j params_j comp_j=
 

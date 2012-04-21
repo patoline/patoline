@@ -1,3 +1,4 @@
+(** Sortie avec des pages, des numéros, etc, pour du papier ou assimilés *)
 type page = {
   mutable pageFormat : float * float;
   mutable pageContents : OutputCommon.contents list;
@@ -12,9 +13,9 @@ module Output :
   functor (M : Driver) ->
     sig
       val output :
-        'a Document.tree ->
-        Document.user Util.box array array ->
-        Util.drawingBox array ->
-        'b Document.environment ->
-        (Util.parameters * Util.line) list array -> string -> unit
+        ('a,Document.tag) Document.tree ->
+        Document.user Boxes.box array array ->
+        Boxes.drawingBox array ->
+        'a Document.environment ->
+        (Boxes.parameters * Boxes.line) list array -> string -> unit
     end
