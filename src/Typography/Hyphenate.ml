@@ -53,48 +53,59 @@ let insert_exception tree a0=
 
 exception Exp of (string list)
 
+let rec dash_hyphen s=if String.length s=0 then [] else
+  try
+    let i=String.index s '-' in
+    let s0=String.sub s 0 (i+1) in
+    let next=(dash_hyphen (String.sub s (i+1) (String.length s-i-2))) in
+      if String.length s0=0 then next else s0::next
+  with
+      Not_found->if String.length s=0 then [] else [s]
+
 let hyphenate tree a0=
   if String.length a0<=4 then [a0] else
+    match dash_hyphen a0 with
+        _::_::_ as l->l
+      | _->(
+          let a=String.create (String.length a0+2) in
+            String.blit a0 0 a 1 (String.length a0);
+            a.[0]<-'.';
+            a.[String.length a-1]<-'.';
+            let breaks=Array.create (String.length a+1) '0' in
+            let rec hyphenate i j t=if j>=String.length a then () else match t with
+              | Exception (x,_) when i=0 && j=String.length a-1->raise (Exp x)
+              | Exception (_,t)->
+                  (
+                    try
+                      let t'=C.find a.[j] t in
+                        hyphenate i (j+1) t'
+                    with
+                        Not_found->())
+              | Node (x,t) -> (
+                  if Array.length x>0 then (
+                    for k=0 to Array.length x-1 do
+                      breaks.(i+k)<-max breaks.(i+k) x.(k)
+                    done);
+                  try
+                    let t'=C.find a.[j] t in
+                      hyphenate i (j+1) t'
+                  with
+                      Not_found->()
+                )
+            in
+              for i=0 to String.length a-1 do
+                hyphenate i i tree;
+              done;
 
-    let a=String.create (String.length a0+2) in
-      String.blit a0 0 a 1 (String.length a0);
-      a.[0]<-'.';
-      a.[String.length a-1]<-'.';
-      let breaks=Array.create (String.length a+1) '0' in
-      let rec hyphenate i j t=if j>=String.length a then () else match t with
-        | Exception (x,_) when i=0 && j=String.length a-1->raise (Exp x)
-        | Exception (_,t)->
-            (
-             try
-               let t'=C.find a.[j] t in
-                 hyphenate i (j+1) t'
-             with
-                 Not_found->())
-        | Node (x,t) -> (
-            if Array.length x>0 then (
-              for k=0 to Array.length x-1 do
-                breaks.(i+k)<-max breaks.(i+k) x.(k)
-              done);
-            try
-              let t'=C.find a.[j] t in
-                hyphenate i (j+1) t'
-            with
-                Not_found->()
-          )
-      in
-        for i=0 to String.length a-1 do
-          hyphenate i i tree;
-        done;
-
-        let rec make_hyphens i j=
-          if j>=String.length a-2 then [String.sub a i (j-i+1)] else
-            if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 && j>=3 && j<String.length a0-2 then
-              (String.sub a i (j-i+1)) :: make_hyphens (j+1) (j+1)
-            else
-              make_hyphens i (j+1)
-        in
-          make_hyphens 1 1
-
+              let rec make_hyphens i j=
+                if j>=String.length a-2 then [String.sub a i (j-i+1)] else
+                  if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 && j>=3 && j<String.length a0-2 then
+                    (String.sub a i (j-i+1)) :: make_hyphens (j+1) (j+1)
+                  else
+                    make_hyphens i (j+1)
+              in
+                make_hyphens 1 1
+        )
 let empty=Node ([||], C.empty)
 
 (* let patterns= *)

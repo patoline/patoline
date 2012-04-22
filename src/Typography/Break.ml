@@ -149,7 +149,6 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters,comp0,lastFigures,lastUser)=LineMap.min_binding todo in
-          (* print_text_line paragraphs node; *)
         let todo'=ref (LineMap.remove node todo) in
           (* On commence par chercher la première vraie boite après node *)
         let demerits'=ref demerits in
@@ -179,7 +178,6 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
             with
                 Not_found->reallyAdd ()
         in
-
         let place_figure ()=
           let fig=figures.(node.lastFigure+1) in
           let vspace,_=line_height paragraphs node in
@@ -210,9 +208,10 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
           (node.lastFigure+1 < Array.length figures) &&
             (node.paragraph >= Array.length paragraphs ||
                (try (match IntMap.find (node.lastFigure+1) lastFigures with
-                         Flushed -> true
-                       | _->false)
-                with Not_found -> false))
+                         Flushed ->true
+                       | _ ->false)
+                with
+                    Not_found ->false))
         in
           if flushed then place_figure () else (
             let i,pi=
@@ -229,7 +228,6 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                 in
                   if placable then place_figure ();
               );
-
               if pi >= Array.length paragraphs then (
                 if pi>node.paragraph && node.lastFigure+1>=Array.length figures then
                     match !endNode with
@@ -238,7 +236,8 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                       | Some _->endNode:=Some (lastBadness, node, lastFigures,lastUser)
               ) else (
 
-                let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else (node.page, node.height+.lastParameters.min_height_after) in
+                let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else
+                  (node.page, node.height+.lastParameters.min_height_after) in
                 let r_nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
                   hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
@@ -400,7 +399,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
           try
             let _=LineMap.find uselessLine !last_failure in
               if Array.length paragraphs>0 || Array.length figures > 0 then
-                Printf.printf "No solution, incomplete document. Please report (1)\n";
+                Printf.fprintf stderr "No solution, incomplete document. Please report (1)\n";
               demerits'
               (* raise No_solution *)
           with
@@ -415,7 +414,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
             let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding demerits' in
             try
               let _=LineMap.find b !last_failure in
-                Printf.printf "No solution, incomplete document. Please report (2)\n";
+                Printf.fprintf stderr "No solution, incomplete document. Please report (2)\n";
                 demerits'
             with
                 Not_found->(

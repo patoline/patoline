@@ -23,10 +23,12 @@ let centered str tree max_level=
           match tree with
               Paragraph p -> []
             | FigureDef f -> []
+            | Free _ -> []
             | Node s when level <= max_level-> (
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
+                  | (_,(Free _))::s
                   | (_,(Paragraph _))::s->flat_children env1 s
                   | (_,(Node h as tr))::s->(
                       let env'=h.node_env env1 in
