@@ -226,7 +226,7 @@ let findDict f a b key=
     dict' []
 
 let loadFont ?offset:(off=0) ?size:(size=0) file=
-  let f=open_in file in
+  let f=open_in_bin file in
     seek_in f (off+2);
     let hdrSize=input_byte f in
     let offSize=input_byte f in

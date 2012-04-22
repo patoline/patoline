@@ -109,7 +109,7 @@ let hyphenate tree a0=
 let empty=Node ([||], C.empty)
 
 (* let patterns= *)
-(*   let i=open_in "patterns" in *)
+(*   let i=open_in_bin "patterns" in *)
 (*   let str=String.create (in_channel_length i) in *)
 (*     really_input i str 0 (in_channel_length i); *)
 (*     let s=split (regexp "[\n\t ]") str in *)
@@ -130,7 +130,7 @@ let empty=Node ([||], C.empty)
 (*     close_out o *)
 
 (* let tree= *)
-(*   let i=open_in "dict_en" in *)
+(*   let i=open_in_bin "dict_en" in *)
 (*   let inp=input_value i in *)
 (*     close_in i; *)
 (*     inp *)

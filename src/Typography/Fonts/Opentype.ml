@@ -41,7 +41,7 @@ let tableList file off=
     getTables (off+dirSize*(numTables-1)+offsetTable) []
 type font = CFF of (CFF.font*int)
 let loadFont ?offset:(off=0) ?size:(_=0) file=
-  let f=open_in file in
+  let f=open_in_bin file in
   let typ=String.create 4 in
     seek_in f off;
     really_input f typ 0 4;

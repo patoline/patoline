@@ -61,7 +61,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
   let defaultEnv:user environment=
     let f,str,subst,pos=selectFont lmroman Regular false in
     let hyphenate=try
-      let i=open_in (findHyph "en.hdict") in
+      let i=open_in_bin (findHyph "en.hdict") in
       let inp=input_value i in
         close_in i;
         (fun str->

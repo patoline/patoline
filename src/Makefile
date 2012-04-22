@@ -1,31 +1,33 @@
+OCAMLBUILD=ocamlbuild
+
 all:native byte
 
 native:Main.native texprimeDefault.tgx proof.native
 byte:Main.byte texprimeDefault.tgo proof.byte
 
 Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
-	ocamlbuild Texprime/Main.native
+	$(OCAMLBUILD) Texprime/Main.native
 	cp Main.native texprime
 Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
-	ocamlbuild Texprime/Main.byte
+	$(OCAMLBUILD) Texprime/Main.byte
 	cp Main.byte texprime.byte
 proof.native:Typography/Typography.cmxa
-	ocamlbuild proof/proof.native
+	$(OCAMLBUILD) proof/proof.native
 	cp proof.native proof
 proof.byte:Typography/Typography.cma
-	ocamlbuild proof/proof.byte
+	$(OCAMLBUILD) proof/proof.byte
 
 Format/DefaultFormat.cmxa:Typography/Typography.cmxa
-	ocamlbuild Format/DefaultFormat.cmxa
+	$(OCAMLBUILD) Format/DefaultFormat.cmxa
 Format/DefaultFormat.cma:Typography/Typography.cma
-	ocamlbuild Format/DefaultFormat.cma
+	$(OCAMLBUILD) Format/DefaultFormat.cma
 
 Texprime/Parser.ml:Texprime/Parser.dyp
 	dypgen --no-mli Texprime/Parser.dyp
 Typography/Typography.cmxa:
-	ocamlbuild Typography/Typography.cmxa
+	$(OCAMLBUILD) Typography/Typography.cmxa
 Typography/Typography.cma:
-	ocamlbuild Typography/Typography.cma
+	$(OCAMLBUILD) Typography/Typography.cma
 
 
 texprimeDefault.tgo: Main.byte DefaultGrammar.txp

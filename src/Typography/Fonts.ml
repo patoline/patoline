@@ -19,7 +19,7 @@ module CFF_=(CFF:Font)
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
 let loadFont ?offset:(off=0) ?size:(_=0) f=
-  let size=let i=open_in f in let l=in_channel_length i in close_in i; l in
+  let size=let i=open_in_bin f in let l=in_channel_length i in close_in i; l in
     if Filename.check_suffix f ".otf" then
       Opentype (Opentype.loadFont ~offset:off f ~size:size)
     else

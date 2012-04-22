@@ -56,13 +56,13 @@ let _=
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
     let rec read_fonts dir =
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape (Filename.concat !fonts_dir dir));
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape (Filename.concat !fonts_dir dir));
       List.iter (fun f->
         let f = Filename.concat dir f in
         if Sys.is_directory f
         then read_fonts f
         else if Filename.check_suffix f ".otf" then
-          Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n"
+          Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n"
             (escape (Filename.concat fonts_src_dir f))
             (escape (Filename.concat !fonts_dir f))
             ) (Array.to_list (Sys.readdir dir))
@@ -74,35 +74,36 @@ let _=
 
     (* Grammars *)
     Printf.fprintf out "\t#grammars\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape !grammars_dir);
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !grammars_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
-                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
+                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
               ) ("texprimeDefault.tgx"::(if !opt_only then [] else ["texprimeDefault.tgo"])@Array.to_list (Sys.readdir grammars_src_dir));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s\n" (escape !hyphen_dir);
+    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !hyphen_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".hdict" then
-                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
+                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
-    Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)/%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
+
     let sources=
       "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
         "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
         (if not !opt_only then "src/_build/Typography/Typography.cma  src/_build/Format/DefaultFormat.cma " else "")
     in
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)/%s/Typography\n" sources (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
 
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/Typography\n" (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
 
 
       (* Installation pour ocamlfind (casse la chaine de compilation de Guillaume sans ça) *)
-      (*Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)/%s/stublibs\n" * (escape !ocaml_lib_dir);*)
+      (*Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/stublibs\n" * (escape !ocaml_lib_dir);*)
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
