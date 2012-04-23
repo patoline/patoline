@@ -138,7 +138,7 @@ let print_math ch m =
 let print_math_par ch display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.fprintf ch
-    "[B (fun env0 -> List.map (fun b -> Util.resize env0.size b) (let style = %s and _env = Maths.default.(Maths.int_of_style %s) in Maths.draw_maths Maths.default style ("
+    "[B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (let style = %s and _env = (Maths.env_style Maths.default %s) in Maths.draw_maths Maths.default style ("
     style style;
   print_math ch m;
   Printf.fprintf ch ")))] "
