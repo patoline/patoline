@@ -90,6 +90,7 @@ let _=
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
+    Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
 
     let sources=

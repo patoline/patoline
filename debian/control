@@ -1,0 +1,11 @@
+Source: ocaml-typography
+Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
+Section: ocaml
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: debhelper, libcamomile-ocaml-dev, ocaml-findlib, ocaml
+
+Package: ocaml-typography
+Architecture: any
+Depends: ${shlibs:Depends}, libcamomile-ocaml-dev, ocaml-findlib, ocaml
+Description: An ocaml library for typography
