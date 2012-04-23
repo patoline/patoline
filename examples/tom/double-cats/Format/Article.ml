@@ -4,10 +4,11 @@
 open Typography
 open Typography.Fonts
 open Typography.Fonts.FTypes
-open Typography.Constants
+(* open Typography.Constants *)
 open Typography.Document
 open Util
-open Binary
+open Boxes
+(* open Binary *)
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
@@ -112,7 +113,7 @@ let postprocess_tree tree=
                { (center a b c d e f g) with
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=Parameters.normal }
+          par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
     | _->tree
@@ -155,7 +156,7 @@ let postprocess_tree tree=
                    (* if depth=0 && f.lineStart=0 then 1 else 0; *)
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });
-          par_completeLine=Parameters.normal }
+          par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (
                      Node { n with children=IntMap.map (sectionize (depth+1)) n.children }, []) par
@@ -180,7 +181,7 @@ let thebibliography ()=
         	       p
                  in
                    newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
-                     Parameters.normal params
+                     Complete.normal params
                      (T (Printf.sprintf "[%d]" b)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
 
 
@@ -201,13 +202,13 @@ module Env_theorem=Default.Make_theorem
 module Env_abstract = Default.Env_abstract
 
   open Util
-  open Binary
+  (* open Binary *)
 
   let utf8Char x=[T (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=
     B (fun env->
          let code={glyph_utf8=""; glyph_index=x } in
-           [GlyphBox { (Util.glyphCache env.font code) with
+           [GlyphBox { (Boxes.glyphCache env.font code) with
                          OutputCommon.glyph_color=env.fontColor;
                          OutputCommon.glyph_size=env.size
                      }]

@@ -24,12 +24,13 @@ CNRS, Université de Savoie
 open Diagrams.Diagram
 open Diagrams
 open Typography.Document
-open Typography.Parameters
+open Typography.Complete
 open Typography.Fonts.FTypes
 open Typography.Util
+open Typography.Boxes
 open Typography.Fonts
-open Typography.Constants
-open Typography.Binary
+(* open Typography.Constants *)
+(* open Typography.Binary *)
 
 module DFormat = Format.Default
 open Format
@@ -37,7 +38,7 @@ open Format
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
 let figRef ()= [B (fun env->
-    let i=try match snd (Binary.StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
+    let i=try match snd (StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
      [User (FigureRef i)])]
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]

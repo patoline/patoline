@@ -482,7 +482,7 @@ module Node = struct
     let anchor = spec.anchor in
     let at = spec.at in
     (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Util.draw_boxes (boxify_scoped env spec.contents_spec)) in
+    let contents = (Boxes.draw_boxes (boxify_scoped env spec.contents_spec)) in
     let bb_boot =  OutputCommon.bounding_box contents in
     (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
     (* But computing anchor needs make_anchor bb.  *)
@@ -1075,7 +1075,7 @@ module Diagram = struct
     let a = Style.anchor style in
     let parameters = Style.parameters style in
     (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Util.draw_boxes (boxify_scoped env contents)) in
+    let contents = (Boxes.draw_boxes (boxify_scoped env contents)) in
     let v, contents = place style contents `SouthWest in
     (* let bb_boot =  BB.center (OutputCommon.bounding_box contents) in *)
     (* (\* Use this to compute the real coordinates, by translating "at" according to anchor. *\) *)
