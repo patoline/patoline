@@ -46,7 +46,7 @@ let _=
                  ))
           )
         in
-        let l,y0,y1=make_line i0 (i0+10) 0. infinity (-.infinity) [] in
+        let l,y0,y1=make_line i0 (i0+10) 0. 0. 0. [] in
           if l=[] then [{ pageFormat=a4;
                           pageContents=p}] else (
             if line<max_line (* y -. (y1-.y0)*.size/.1000. >= bot *) then (
