@@ -1,11 +1,18 @@
 Source: ocaml-typography
-Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
 Section: ocaml
-Priority: optional
-Standards-Version: 3.9.2
-Build-Depends: debhelper, libcamomile-ocaml-dev, ocaml-findlib, ocaml
+Priority: extra
+Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
+Build-Depends: debhelper (>= 7.0.50~), cdbs, dh-ocaml, ocaml-base-nox, ocaml-findlib, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
+Standards-Version: 3.8.4
+Homepage: http://www.lama.univ-savoie.fr/~meunier/texprime
 
-Package: ocaml-typography
+Package: texprime
 Architecture: any
-Depends: ${shlibs:Depends}, libcamomile-ocaml-dev, ocaml-findlib, ocaml
-Description: An ocaml library for typography
+Depends: ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
+Description: A preprocessor of txp files
+
+
+Package: libtypography-ocaml-dev
+Architecture: any
+Depends:  ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
+Description: A library of typographic primitives for ocaml

@@ -26,7 +26,7 @@ let _=
     ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
     ("--ocamlfind-dir", Set_string ocamlfind_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/texprime/fonts/ by default)");
-    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/share/texprime/grammars/ by default)");
+    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/texprime/grammars/ by default)");
     ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/texprime/hyphen/ by default)");
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
@@ -37,7 +37,7 @@ let _=
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
 
   if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/texprime/fonts";
-  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "share/texprime/grammars";
+  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/texprime/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/texprime/hyphen";
 
   fonts_dirs:= !fonts_dir ::(List.rev !fonts_dirs);

@@ -1,5 +1,5 @@
-ocaml-typography (1.0-1) UNRELEASED; urgency=low
+ocaml-typography (1.0-1) unstable; urgency=low
 
-  * Initial release. (Closes: #XXXXXX)
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
 
- -- pierreetienne.meunier@gmail.com <pierreetienne.meunier@gmail.com>  Mon, 23 Apr 2012 10:00:06 +0200
+ -- Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>  Mon, 23 Apr 2012 20:37:28 +0200
