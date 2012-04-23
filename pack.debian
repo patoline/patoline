@@ -1,0 +1,14 @@
+#!/bin/sh
+
+init_dir=$(pwd)
+version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
+rm -Rf /tmp/ocaml-typography_$version
+rm -f /tmp/ocaml-typography_*.deb
+darcs put /tmp/ocaml-typography_$version
+cd /tmp/ocaml-typography_$version
+darcs dist
+mv ocaml-typography_$version.tar.gz ../ocaml-typography_$version.orig.tar.gz
+ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml
+
+debuild -us -uc
+cp /tmp/ocaml-typography_*.deb .
