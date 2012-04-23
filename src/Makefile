@@ -55,3 +55,4 @@ clean:
 	make -C Typography clean
 	rm -f Texprime/Parser.ml
 	rm -f texprime texprime.byte proof.native proof/proof.native proof.byte proof/proof.byte
+	rm -f *.tml
