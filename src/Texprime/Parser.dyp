@@ -28,7 +28,7 @@ type math =
    | Apply of math * math
    | MathMacro of string * math list
    | Delim of string * math * string  
-
+   | MScope of math list
 and indices = { up_right : math option;
     down_right : math option; 
     up_left : math option;
@@ -335,7 +335,7 @@ math:
       { Fun(name) } atom
   | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
-  | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "}" | ">"]<cl> 
+  | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "\\}" | ">"]<cl> 
       { Delim(op,a,cl) } atom 
   | "{" math<a> "}" 
       { a } atom 
@@ -350,7 +350,7 @@ math:
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | "\\" [lident|uident]<macro> mathargs<args>
-      { MathMacro (macro,args) }
+      { MathMacro (macro,args) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
   | math(<sum)<b> postfix<op>
@@ -462,19 +462,23 @@ grammar_aux:
     { Printf.fprintf stderr "None\n"; None }
 
 grammar: grammar_aux<g>
-  @{ let action = match g with None -> [] |
-        Some filename -> 
-	  try 
+    @{ let action = match g with
+           (* Patch temporaire : on ne charge pas de grammaire s'il n'y a pas de chemin,
+              pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
+        Some filename when !Typography.Config.grammarsdir <> []-> (
+	  try
 	  let ic = open_in (findGrammar (filename ^ gram_ext)) in
 	  let local_data, grammar = input_value ic in
 	  close_in ic;
 	  Printf.fprintf stderr "Grammar Loaded.\n";
-	  [ Local_data local_data; Parser grammar ] 
+	  [ Local_data local_data; Parser grammar ]
           with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []
-       in
-      (), action }
+        )
+       | _->[]
+     in
+       (), action
+   }
 
 main:
   | grammar [title]?<p> text<t> eof
     { (p, List.rev t) }
-  

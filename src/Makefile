@@ -31,10 +31,12 @@ Typography/Typography.cma:
 
 
 texprimeDefault.tgo: Main.byte DefaultGrammar.txp
-	./Main.byte --ml --extra-fonts-dir ../Otf DefaultGrammar.txp
+	rm -f texprimeDefault.tgo
+	./Main.byte --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
 
 texprimeDefault.tgx: Main.native DefaultGrammar.txp
-	./Main.native --ml --extra-fonts-dir ../Otf DefaultGrammar.txp
+	rm -f texprimeDefault.tgo
+	./Main.native --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
 
 
 %.pdf: texprime Typography/Typography.cma Format/DefaultFormat.cma texprimeDefault.tgo %.txp

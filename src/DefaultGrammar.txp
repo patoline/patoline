@@ -5,10 +5,6 @@ Symboles de TeX'
 
 \Verbose_Changes
 
--- Table des matieres --
-
-{{ let _ = table_of_contents D.structure (!D.structure) 1 }}
-
 == Relation symbols ==
 
 \Add_relation{\eq =}{=}

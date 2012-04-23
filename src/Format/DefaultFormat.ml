@@ -90,6 +90,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         fontFeatures=feat;
         fontColor=Typography.OutputCommon.black;
         font=f;
+        mathsEnvironment=Maths.default;
         word_substitutions=str;
         substitutions=(fun glyphs -> List.fold_left apply (subst glyphs) loaded_feat);
         positioning=(fun x->pos (positioning f x));

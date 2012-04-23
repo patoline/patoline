@@ -83,6 +83,7 @@ and 'a environment={
   fontFeatures:string list;
   fontColor:OutputCommon.color;
   font:font;
+  mathsEnvironment:Maths.environment;
   size:float;
   lead:float;
   footnote_y:float;

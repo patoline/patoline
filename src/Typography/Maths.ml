@@ -1,6 +1,5 @@
 open CamomileLibrary
 open Util
-open Document
 open OutputCommon
 open Boxes
 open Fonts.FTypes
@@ -15,17 +14,8 @@ type style=
   | ScriptScript
   | ScriptScript'
 
-let int_of_style=function
-    Display->0
-  | Display'->1
-  | Text->2
-  | Text'->3
-  | Script->4
-  | Script'->5
-  | ScriptScript->6
-  | ScriptScript'->7
 
-type mathsEnvironment={
+type environmentPart={
   mathsFont:Fonts.font Lazy.t;
   mathsSize:float;
   mathsSubst:glyph_id list -> glyph_id list;
@@ -49,29 +39,22 @@ type mathsEnvironment={
   kerning:bool
 }
 
+type environment=
+    (environmentPart*
+       environmentPart*
+       environmentPart*
+       environmentPart*
+       environmentPart*
+       environmentPart*
+       environmentPart*
+       environmentPart)
+
 let default_env=
     {
       mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "Euler/euler.otf"));
-      (*
-      mathsFont=Fonts.loadFont "Otf/euler.otf";
-      mathsFont=Fonts.loadFont "Otf/Asana-Math/Asana-Math.otf";
-      mathsFont=Fonts.loadFont "Otf/xits-1.104/xits-regular.otf";
-      mathsFont=Fonts.loadFont "Otf/xits-1.104/xits-math.otf";
-      *)
       mathsSubst=(fun x->x);
       mathsSize=1.;
       mathsSymbols=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty [
-        (*
-        "leftarrow", 232;
-        "uparrow", 233;
-        "rightarrow", 234;
-        "downarrow", 235;
-        "leftrightarrow",236;
-        "updownarrow",237;
-        "forall", 263;
-        "exists", 265;
-        "notexists", 266;
-        *)
         "sum",702;
         "prod",703;
         "coprod",704;
@@ -96,18 +79,28 @@ let default_env=
       kerning=true
     }
 
-let default=[|
-  default_env;
-  default_env;
-  default_env;
-  default_env;
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=4./.9. };
+let default=
+  default_env,
+  default_env,
+  default_env,
+  default_env,
+  { default_env with mathsSize=2./.3. },
+  { default_env with mathsSize=2./.3. },
+  { default_env with mathsSize=4./.9. },
   { default_env with mathsSize=4./.9. }
-|]
 
-type 'a noad= { mutable nucleus: mathsEnvironment -> style ->  'a box list;
+
+let env_style env style=match env,style with
+    (a,_,_,_,_,_,_,_),Display->a
+  | (_,a,_,_,_,_,_,_),Display'->a
+  | (_,_,a,_,_,_,_,_),Text->a
+  | (_,_,_,a,_,_,_,_),Text'->a
+  | (_,_,_,_,a,_,_,_),Script->a
+  | (_,_,_,_,_,a,_,_),Script'->a
+  | (_,_,_,_,_,_,a,_),ScriptScript->a
+  | (_,_,_,_,_,_,_,a),ScriptScript'->a
+
+type 'a noad= { mutable nucleus: environmentPart -> style ->  'a box list;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
                 mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
@@ -120,10 +113,14 @@ and 'a fraction= { numerator:'a math list; denominator:'a math list; line:Output
 and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of 'a noad
+  | Glue of float
+  | Env of (environment->environment)
+  | Style of style
+  | Scope of 'a math list
   | Binary of 'a binary
   | Fraction of 'a fraction
   | Operator of 'a operator
-  | Decoration of (mathsEnvironment -> style -> 'a box list -> 'a box list)*('a math list)
+  | Decoration of (environmentPart -> style -> 'a box list -> 'a box list)*('a math list)
 
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
@@ -211,11 +208,27 @@ let rec contents=function
 
 
 let rec draw_maths mathsEnv style mlist=
-  let env=mathsEnv.(int_of_style style) in
+  let env=env_style mathsEnv style in
 
     match mlist with
 
         []->[]
+      | h::Glue x::Glue y::s->draw_maths mathsEnv style (h::Glue (x+.y)::s)
+      | Glue _::s->draw_maths mathsEnv style s
+      | h::Glue x::s->(
+          let left=draw_maths mathsEnv style [h] in
+            (match List.rev left with
+                 []->[]
+               | h0::s0->List.rev (Kerning { (Fonts.FTypes.empty_kern h0) with Fonts.FTypes.advance_width=x }::s0))
+              @ (draw_maths mathsEnv style s)
+        )
+      | Scope l::s->(
+          (draw_maths mathsEnv style l)@(draw_maths mathsEnv style s)
+        )
+      | Env f::s->
+          draw_maths (f mathsEnv) style s
+      | Style st::s->
+          draw_maths mathsEnv st s
       | Ordinary n::s->(
           (* attacher les indices et les exposants n'est pas
              complètement trivial. on utilise la règle de Knuth pour
@@ -226,7 +239,7 @@ let rec draw_maths mathsEnv style mlist=
              cas. *)
 
 
-	    let nucleus = n.nucleus env style in
+	  let nucleus = n.nucleus env style in
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
