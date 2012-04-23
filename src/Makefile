@@ -35,7 +35,7 @@ texprimeDefault.tgo: Main.byte DefaultGrammar.txp
 	./Main.byte --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
 
 texprimeDefault.tgx: Main.native DefaultGrammar.txp
-	rm -f texprimeDefault.tgo
+	rm -f texprimeDefault.tgx
 	./Main.native --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
 
 
