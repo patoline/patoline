@@ -128,7 +128,7 @@ let postprocess_tree tree=
                   let path=drop 1 b in
                     B (fun _->[User (Structure path')])
                     ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
-                    ::(B (fun env->env.stdGlue))
+                    :: T " "
                     ::n.displayname
                )]
           else
@@ -174,7 +174,7 @@ let thebibliography ()=
                  let params env a1 a2 a3 a4 a5 line=
                    let p=parameters env a1 a2 a3 a4 a5 line in
                      if line.lineStart=0 then (
-                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" b);B(fun env->env.stdGlue)] in
+                       let num=boxify_scoped env [T (Printf.sprintf "[%d]" b); (T " ")] in
                        let w=List.fold_left (fun w0 b->let (_,w,_)=box_interval b in w0+.w) 0. num in
                          { p with left_margin=p.left_margin-.w; measure=p.measure+.w }
                      ) else
@@ -182,7 +182,7 @@ let thebibliography ()=
                  in
                    newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
                      Complete.normal params
-                     (T (Printf.sprintf "[%d]" b)::B(fun env->env.stdGlue)::c)) (IntMap.bindings !bib)
+                     (T (Printf.sprintf "[%d]" b)::(T " ")::c)) (IntMap.bindings !bib)
 
 
 module Env_definition=Default.Make_theorem
@@ -190,14 +190,14 @@ module Env_definition=Default.Make_theorem
     let refType="definition"
     let counter="definition"
     let counterLevel=2
-    let display num=alternative Bold [T ("Definition "^num^"."); B (fun env->env.stdGlue)]
+    let display num=alternative Bold [T ("Definition "^num^"."); (T " ")]
    end)
 module Env_theorem=Default.Make_theorem
   (struct
     let refType="theorem"
     let counter="theorem"
     let counterLevel=2
-    let display num=alternative Bold [T ("Theorem "^num^"."); B (fun env->env.stdGlue)]
+    let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
 module Env_abstract = Default.Env_abstract
 

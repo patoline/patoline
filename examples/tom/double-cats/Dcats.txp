@@ -3,7 +3,7 @@
 
 (* 
    A compiler avec 
-   texprime --caml "-I +bibi -I +sqlite3 Diagram.cmxa sqlite3.cmxa bibi.cmxa" --format Format/Article Dcats.txp
+texprime --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --format Format/Article Dcats.txp
 *)
 
 (* test *)
@@ -23,12 +23,8 @@ CNRS, Université de Savoie
 {{
 open Diagrams.Diagram
 open Diagrams
-open Typography.Document
 open Typography.Complete
 open Typography.Fonts.FTypes
-open Typography.Util
-open Typography.Boxes
-open Typography.Fonts
 (* open Typography.Constants *)
 (* open Typography.Binary *)
 

@@ -1071,8 +1071,6 @@ module Diagram = struct
       (x,y), List.map (OutputCommon.translate x y) contents 
 
     let node env style contents =
-    let at = Style.at style in
-    let a = Style.anchor style in
     let parameters = Style.parameters style in
     (* Compute the contents a first time to get a bounding box of the right size *)
     let contents = (Boxes.draw_boxes (boxify_scoped env contents)) in

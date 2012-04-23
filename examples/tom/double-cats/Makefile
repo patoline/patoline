@@ -1,6 +1,27 @@
-OPTS=-I Format
-CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) -pp "cpp -w" -g str.cma
-CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) -pp "cpp -w" -g str.cmxa
+OPTS=-I Format -I /usr/local/lib/ocaml
+CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) str.cma -pp "cpp -w" -g
+CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
+CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(OPTS) -pp "cpp -w"
+
+
+%.mli: %.ml
+	$(CAMLC) $(OPTS) -i $*.ml > $*.mli
+
+%.cmi: %.mli
+	$(CAMLC) $(OPTS) -c $<
+
+%.cma: %.ml
+	$(CAMLC) $(OPTS) -a -o $@ $<
+
+%.cmx: %.ml %.cmi
+	$(CAMLOPT) $(OPTS) -c $<
+
+%.cmxa: %.ml
+	$(CAMLOPTA) $(OPTS) -a -o $@ $<
+
+%.tmx: %.tml
+	cp $*.tml $*.ml
+	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa $*.ml
 
 formats:
 	make -C Format Diagrams.cmxa Article.cmxa
