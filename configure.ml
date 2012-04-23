@@ -8,7 +8,7 @@ let ocamlfind_dir=ref ""
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let hyphen_dirs=ref []
-let opt_only=ref false
+let opt_only=ref true
 
 open Arg
 let rec escape s=
@@ -31,7 +31,7 @@ let _=
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories texprime should scan for hyphenation dictionaries");
-    ("--opt-only", Unit (fun ()->opt_only:=true), "  native version only (both native and bytecode are compiled by default)")
+    ("--byte", Unit (fun ()->opt_only:=false), "  compile bytecode version (only native code is compiled by default)")
   ] ignore "Usage:";
   if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
@@ -52,6 +52,7 @@ let _=
   let hyphen_src_dir="Hyphenation" in
 
     Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "native" else "all");
+    Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc:\n\tmake -C src/Typography doc\n";
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";

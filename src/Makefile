@@ -53,7 +53,5 @@ clean:
 	rm -f *~ \#*\# *.tgo *.tgx
 	rm -Rf _build
 	make -C Typography clean
-	make -C Format clean
-#	make -C Texprime clean
 	rm -f Texprime/Parser.ml
-	make -C proof clean
+	rm -f texprime texprime.byte proof.native proof/proof.native proof.byte proof/proof.byte
