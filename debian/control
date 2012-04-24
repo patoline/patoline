@@ -8,10 +8,10 @@ Homepage: http://www.lama.univ-savoie.fr/~meunier/texprime
 
 Package: texprime
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
+Depends: ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox | ocaml-base, libdypgen-ocaml-dev, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib, texprime-fonts, libtypography-ocaml-dev
 Description: A preprocessor of txp files
 
-Package: ocaml-typography-fonts
+Package: texprime-fonts
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Fonts for ocaml-typography
@@ -19,5 +19,5 @@ Description: Fonts for ocaml-typography
 
 Package: libtypography-ocaml-dev
 Architecture: any
-Depends:  ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
+Depends:  ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox | ocaml, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib
 Description: A library of typographic primitives for ocaml
