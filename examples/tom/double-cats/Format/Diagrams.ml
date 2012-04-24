@@ -816,6 +816,7 @@ module Diagram = struct
   (* Edge modifiers *)
   | `Dashed
   | `Dotted
+  | `Bend of float
   | `BendRight of float
   | `BendLeft of float
   | `Squiggle of int * float * float * float 
@@ -914,6 +915,11 @@ module Diagram = struct
     let head = make 
       (fun instr res -> match instr with `Head h -> h | _ -> res)
       `None
+
+  (* Find arrow style specification in a list of style instructions *)
+    let double = make 
+      (fun instr res -> match instr with `Double _ -> true | _ -> res)
+      false
       
   (* Find matrix placement specification in a list of style instructions *)
     let matrix_placement matrix = make 
@@ -1065,36 +1071,17 @@ module Diagram = struct
 
     module Edge = struct
 
-      let rec transfo curves = function
+      type info = { tip_line_width : float ; is_double : bool }
+      let default_info = { tip_line_width = 0.1 ; is_double = false }
+
+      let rec transfo style (info, params, underlying_curve, curves) = match style with
 	| `Squiggle (freq,amplitude,a,b) -> 
-	  List.map (fun (params, curve) -> 
+	  let squiggle (params, curve) =
 	    let curve1,curve,curve2 = Curve.split2 curve a b in
-	    (params, curve1 @ (List.flatten (List.map (Edge.squiggle freq amplitude) curve)) @ curve2))
-	    curves
-	| `BendLeft(angle) -> 
-	  List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
-	      begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-		if Array.length xs = 2 then
-		  let x,y = Edge.bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-		  (params, [ [| xs.(0) ; x ; xs.(1) |], 
-			     [| ys.(0) ; y ; ys.(1) |] ])
-		else
-		  (params, curve)
-	      end
-	    else (params, curve))
-	    curves
-	| `BendRight(angle) -> 
-	  List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
-	      begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-		if Array.length xs = 2 then
-		  let x,y = Edge.bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-		  (params, [ [| xs.(0) ; x ; xs.(1) |], 
-			     [| ys.(0) ; y ; ys.(1) |] ])
-		else
-		  (params, curve)
-	      end
-	    else (params, curve))
-	    curves
+	    (params, curve1 @ (List.flatten (List.map (Edge.squiggle freq amplitude) curve)) @ curve2)
+	  in
+	  let params', u_curve = squiggle (params, underlying_curve) in
+	  (info, params', u_curve, List.map squiggle curves)
 	| `Fore margin -> 
 	  let white_paths = List.map (fun (params, curve) -> 
 	    { params with 
@@ -1103,8 +1090,9 @@ module Diagram = struct
 	    curve)
 	    curves
 	  in
-	  let white_paths = transfo white_paths (`Shorten (0.1,0.1))  in
-	  white_paths @ curves
+	  let _, _, _, white_paths = 
+	    transfo (`Shorten (0.1,0.1)) (info, params, underlying_curve, white_paths)   in
+	  info, params, underlying_curve, (white_paths @ curves)
 	| `Double margin -> 
 	  let black_paths = List.map (fun (params, curve) -> 
 	    (* begin match params.strokingColor with *)
@@ -1128,31 +1116,93 @@ module Diagram = struct
 	    curves
 	  in
 	  (* let delta = 0.02 in *)
-	  (* let white_paths = transfo white_paths (`Shorten (delta,delta)) in *)
-	  (* let black_paths = transfo black_paths (`Shorten (delta,delta)) in *)
-	  black_paths @ white_paths
-	| `ShortenS a -> transfo curves (`Shorten (a,1.)) 
-	| `ShortenE b -> transfo curves (`Shorten (0.,b)) 
-	| `Shorten (a,b) -> begin match curves with
-	    | [] -> []
-	    | (params, curve) :: rest -> 
-	      (params, Curve.restrict curve a b) :: rest
-	end
-	| _ -> curves
+	  (* let white_paths = transfo info white_paths (`Shorten (delta,delta)) in *)
+	  (* let black_paths = transfo info black_paths (`Shorten (delta,delta)) in *)
+	  { info with tip_line_width = margin +. 2.0 *. params.lineWidth }, 
+	  params,
+	  underlying_curve,
+	  (black_paths @ white_paths)
+	| `ShortenS a -> transfo (`Shorten (a,1.)) (info, params, underlying_curve, curves) 
+	| `ShortenE b -> transfo (`Shorten (0.,b)) (info, params, underlying_curve, curves) 
+	| `Shorten (a,b) -> 
+	  let shorten (params',curve') = params', Curve.restrict curve' a b in
+	  let params', u_curve = shorten (params, underlying_curve) in
+	  info, params', u_curve, List.map shorten curves
+	| `Head `To -> 
+	  let _, _, curve0, curves = 
+	    transfo (`Shorten (0.,0.9)) (info, params, underlying_curve, curves) in
+	  let (xe,ye) as e = Curve.eval underlying_curve 1. in
+	  let (xe0,ye0) as e0 = Curve.eval curve0 1. in
+	  let angle = 20. in
+	  (* Left part *)
+	  let l = Vector.(+) e0 (Vector.rotate 90. ((Vector.normalise ~norm:(info.tip_line_width /. 2.)
+						       (Vector.of_points e0 e)))) 
+	  in
+	  let vl = Vector.rotate (-. angle)
+	    (Vector.scal_mul (0.5 /. (cos (to_rad angle)))
+	       (Vector.of_points l e))
+	  in 
+	  let vl' = Vector.scal_mul (-. 0.5) vl in
+	  let ml = Vector.(+) l vl in
+	  let ml' = Vector.(+) l vl' in
+	  let ll = Vector.(+) ml' 
+	    (Vector.scal_mul 1. (Vector.rotate (-. angle) (Vector.of_points l ml')))
+	  in
+	  let left_moustache = (params, Curve.of_point_lists [[l;ml';ll]]) in
+	  (* Right part *)
+	  let r = Vector.(+) e0 (Vector.rotate (-. 90.) ((Vector.normalise ~norm:(info.tip_line_width /. 2.)
+						       (Vector.of_points e0 e)))) 
+	  in
+	  let vr = Vector.rotate angle
+	    (Vector.scal_mul (0.5 /. (cos (to_rad angle)))
+	       (Vector.of_points r e))
+	  in 
+	  let vr' = Vector.scal_mul (-. 0.5) vr in
+	  let mr = Vector.(+) r vr in
+	  let mr' = Vector.(+) r vr' in
+	  let rr = Vector.(+) mr' 
+	    (Vector.scal_mul 1. (Vector.rotate (angle) (Vector.of_points r mr')))
+	  in
+	  let right_moustache = (params, Curve.of_point_lists [[r;mr';rr]]) in
+	  let tip = if info.is_double then
+	      ({ params with close = false ; fillColor = None }, 
+	       Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ])
+	    else
+	      ({ params with close = true ; fillColor = params.strokingColor }, 
+	       Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ])
+	  in
+	  (info, params, underlying_curve, (tip :: left_moustache :: right_moustache :: curves))
+	| _ -> (info, params, underlying_curve, curves)
+
+      let rec pretransfo style curve = match style with
+	| `Bend (angle) -> if Curve.nb_beziers curve = 1 then
+	    begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
+	      if Array.length xs = 2 then
+		let s = (xs.(0),ys.(0)) in
+		let e = (xs.(1),ys.(1)) in
+		let vec = Vector.scal_mul (0.5 /. (cos (to_rad angle))) (Vector.of_points s e) in
+		let vec = Vector.rotate angle vec in
+		let x,y = Vector.translate s vec in
+		[ [| xs.(0) ; x ; xs.(1) |], 
+		  [| ys.(0) ; y ; ys.(1) |] ]
+	      else
+		curve
+	    end
+	  else curve
+	| `BendLeft angle -> pretransfo (`Bend angle) curve
+	| `BendRight angle -> pretransfo (`Bend (-. angle)) curve
+	| _ -> curve
+
+      let pretransfos styles curve = List.fold_right
+	pretransfo styles curve
 
       let draw_curve style curve = 
-	let curve, head_curves = 
-	  match Style.head style with
-	    | `To -> 
-	      curve, [Style.path_parameters style, (ArrowTip.simple curve).ArrowTip.curve]
-	    | `None -> curve, []
-	    | _ -> Printf.fprintf stderr "Arrow head not yet implemented.\n" ;
-	      curve, []
+	let info = { tip_line_width = Style.line_width style ;
+		     is_double = Style.double style } in
+	let _, params', u_curve, curves = List.fold_right
+	  transfo style (info, (Style.path_parameters style), curve, [(Style.path_parameters style, curve)]) 
 	in
-	let curves = List.fold_left
-	  transfo [(Style.path_parameters style, curve)] style
-	in
-	head_curves @ curves
+	curves
 
       let outer_curve style curve = curve
     end
@@ -1272,15 +1322,14 @@ module Diagram = struct
       Printf.fprintf stderr "\n")
       point_lists;
     let underlying_curve = Curve.of_point_lists point_lists in
-    Printf.fprintf stderr "Je clippe. \n" ; flush stderr ;
+    let underlying_curve = Edge.pretransfos style underlying_curve in
     let curve = clip underlying_curve s e in
-    Printf.fprintf stderr "J'ai fini de clipper. \n" ; flush stderr ;
     let outer_curve = Edge.outer_curve style curve in
     let draw_curve = Edge.draw_curve style curve in
     let anchor = function
       | `Temporal pos -> Curve.eval curve pos
       | `Center -> Curve.eval curve 0.5
-      | _ -> Printf.fprintf stderr "Anchor undefined for a path. Returning the center instead.\n" ; 
+      | _ -> Printf.fprintf stderr "Anchor undefined for an edge. Returning the center instead.\n" ; 
 	Curve.eval curve 0.5
     in
     { anchor = anchor ; curve = outer_curve ; contents = 

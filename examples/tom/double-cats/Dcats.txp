@@ -47,7 +47,7 @@ open Article
 
 
 \Begin{abstract}
-We generalise the construction in previous work (* \cite{{["Hirschowitz"]}}  *) of a playground for CCS. New instances are $\pi$ and $\lambda$.
+We generalise the construction in previous work \cite{{["Hirschowitz"]}} of a playground for CCS. New instances are $\pi$ and $\lambda$.
 
 \End{abstract}
 
@@ -86,12 +86,11 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
 {{
 
-
  module MaFigure  (X : sig val env : user environment end) = struct
    module Lib = Fig (struct let str = D.structure let env = X.env end)
    include Lib
    
-   let m,ms = matrix  [ `At (20.,0.); `Anchor `Base ] [
+   let m,ms = matrix  [] [
       [ ([],<<$a$>>) ; ([],<<$b$>>) ; ([],<<$p$>>) ] ;
       [ ([],<<$c$>>) ]
    ] 
@@ -101,7 +100,7 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
    let a = ms.(0).(0)
 
-   let cb = edge [`Head `To ; `Draw;`Double 0.5] ms.(1).(0) [] ms.(0).(1)
+   let cb = edge [`Head `To ; `Draw;`Double 0.5 ; `BendLeft 20.] ms.(1).(0) [] ms.(0).(1)
    
 
  end
@@ -117,8 +116,8 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
 =<
 
-(* => References *)
+=> References
 
-(* {{ thebibliography () }} *)
+{{ thebibliography () }}
 
-(* =< *)
+=<
