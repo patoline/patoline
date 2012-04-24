@@ -92,12 +92,12 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
    include Lib
    
    let m,ms = matrix  [ `At (20.,0.); `Anchor `Base ] [
-      [ ([`Rectangle;`Draw],<<$a$>>) ; ([`Rectangle;`Draw],<<$b$>>) ] ;
+      [ ([],<<$a$>>) ; ([],<<$b$>>) ; ([],<<$p$>>) ] ;
       [ ([],<<$c$>>) ]
    ] 
    
-   let _ = node [`At (ms.(0).(0).anchor `Base);`Anchor `Center;`Circle;`Fill] ([])
-   let _ = node [`At (ms.(0).(1).anchor `Base);`Anchor `Center;`Circle;`Fill] ([])
+   (* let _ = node [`At (ms.(0).(0).anchor `Base);`Anchor `Center;`Circle;`Fill] ([]) *)
+   (* let _ = node [`At (ms.(0).(1).anchor `Base);`Anchor `Center;`Circle;`Fill] ([]) *)
 
    let a = ms.(0).(0)
 

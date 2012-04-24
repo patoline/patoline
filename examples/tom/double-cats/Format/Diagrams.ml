@@ -1178,10 +1178,13 @@ module Diagram = struct
     let node_boxified env style contents =
       let parameters = Style.parameters style in
     (* Compute the gentity a first time, centered *)
-      let (x0,y0,_,_) as bb = match contents with
+      let (x0,y0,_,y1) as bb = match contents with
 	| [] -> (0.,0.,0.,0.)
 	| _ -> OutputCommon.bounding_box contents 
       in
+      let text_depth = -. y0 in
+      let text_height = y1 in
+      let style = style @ [ `TextDepth text_depth ; `TextHeight text_height ] in
       let (x0',y0',_,_) as bb_boot = BB.center bb in
       let xt,yt = Vector.of_points (x0,y0) (x0',y0') in
       let contents = List.map (OutputCommon.translate xt yt) contents in (* Center the contents *)
