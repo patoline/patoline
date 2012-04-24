@@ -16,8 +16,8 @@ let postprocess_tree tree=
           par_parameters=
             (fun a b c d e f g->
                { (center a b c d e f g) with
-                   min_height_after=2.*.a.normalLead;
-                   min_height_before=2.*.a.normalLead });
+                   min_height_after=5.*.a.normalLead;
+                   min_height_before=3.*.a.normalLead });
           par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
@@ -55,8 +55,7 @@ let postprocess_tree tree=
                                              user_positions=env2.user_positions });
           par_parameters=
             (fun a b c d e f g->
-               { (if depth=0 then center a b c d e f g else
-                    parameters a b c d e f g) with
+               { (parameters a b c d e f g) with
                    min_page_before = 0;(* (if depth=0 && f.lineStart=0 then 1 else 0); *)
                    min_height_after=2.*.a.normalLead;
                    min_height_before=2.*.a.normalLead });

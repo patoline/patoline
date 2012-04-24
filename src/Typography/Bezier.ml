@@ -40,14 +40,14 @@ let restrict f0 a b=
   match Array.length f0 with
     | 0 -> Printf.printf ("Warning: attempt to restrict an empty curve.\n") ; [||]
     | 1 -> Printf.printf ("Warning: attempt to restrict a trivial curve.\n") ; [|f0.(0)|]
-    | 2 -> 
+    | 2 ->
       let x = f0.(0) in
 	   let y = f0.(1) in
 	   let xy = y -. x in
 	   [| x +. a *. xy ;
 	      y -. (1. -. b) *. xy
 	   |]
-    | _ -> 
+    | _ ->
       let f=Array.copy f0 in
       casteljau_left (casteljau_right f a) ((b-.a)/.(1.-.a))
 
@@ -61,7 +61,7 @@ let split2 f0 a b=
   f1,f2,f3
 
 let divide f0 n = (* n > 0 *)
-  let rec divide_rec res f0 n = 	
+  let rec divide_rec res f0 n =
     if n = 1 then List.rev res else
       let time_step = 1. /. (float_of_int n) in
       let left = casteljau_left (Array.copy f0) time_step in
@@ -418,10 +418,11 @@ let elevate f r=
   if r<=0 then f else (
     let g=Array.make (Array.length f+r) 0. in
     let n=Array.length f-1 in
-    let bin=binom (n+r) in
-      for i=0 to Array.length f-1 do
+    let bin=binom (n+r+1) in
+      for i=0 to n do
         for j=i to i+r do
-          g.(j)<-g.(j)+. (float_of_int (bin.(i).(n)*bin.(j-i).(r))) /. (float_of_int bin.(j).(n+r)) *. f.(i)
+          g.(j)<-g.(j)+. (float_of_int (bin.(i).(n)*bin.(j-i).(r))) /.
+            (float_of_int bin.(j).(n+r)) *. f.(i)
         done
       done;
       g)
@@ -626,7 +627,7 @@ let plus f g=
   let ff=elevate f (max n m - n) in
   let gg=elevate g (max n m - m) in
   let h=Array.make (max n m) 0. in
-    for i=0 to Array.length ff do
+    for i=0 to Array.length ff-1 do
       h.(i)<-ff.(i)+.gg.(i)
     done;
     h
@@ -637,7 +638,7 @@ let minus f g=
   let ff=elevate f (max n m - n) in
   let gg=elevate g (max n m - m) in
   let h=Array.make (max n m) 0. in
-    for i=0 to Array.length ff do
+    for i=0 to Array.length ff-1 do
       h.(i)<-ff.(i)-.gg.(i)
     done;
     h
@@ -647,7 +648,7 @@ let times f g=
   let m=Array.length f-1 in
   let n=Array.length g-1 in
   let h=Array.make (m+n+1) 0. in
-  let bin=binom (m+n) in
+  let bin=binom (m+n+1) in
     for i=0 to m+n do
       for j=max 0 (i-n) to min m i do
         h.(i)<-h.(i)+. (float_of_int (bin.(j).(m)*bin.(i-j).(n))) /. (float_of_int bin.(i).(m+n)) *. f.(j) *. g.(i-j)
