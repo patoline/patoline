@@ -1374,55 +1374,6 @@ module Diagram = struct
     let res_matrix = Array.map (Array.map (translate v)) res' in
     { res_node with contents = [] }, res_matrix
 
-
-  (* Utilities to draw figures more easily *)
-  type str = ((user,tag) tree*(int*(user,tag) tree) list) ref
-
-  module Fig (X : sig val str : str
-		      val env : user environment end) = struct
-    let stack = ref []
-    include X
-
-    let node style contents = 
-      let a = node env style contents in
-      stack := a :: !stack ;
-      a
-
-    let coordinate p = 
-      let a = coordinate env p in
-      let _ = stack := a :: !stack in
-      a
-
-    let edge style a controls b =
-      let e = edge style a controls b in
-      stack := e :: !stack ;
-      e
-
-    let matrix style lines = 
-      let node, m = matrix env style lines in
-      stack := node :: ((List.flatten (Array.to_list (Array.map Array.to_list m))) @ !stack) ;
-      node, m
-
-    let make () = 
-      let fig = Boxes.drawing ~offset:(-10.) 
-	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
-	   []
-	   !stack)
-      in
-      stack := [] ; fig
-
-  end
-
-  module MakeFig (F : functor (X : sig val env : user environment end) -> 
-    sig val make : unit -> Typography.Boxes.drawingBox end) 
-    (D : DocumentStructure) 
-    (X : sig val name : string end) = 
-   struct 
-     figure D.structure ~name:X.name (fun env ->
-       let module X = F (struct let env = env end) in
-       X.make ())
-   end
-
 end
 
 

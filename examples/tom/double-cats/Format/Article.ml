@@ -201,6 +201,43 @@ module Env_theorem=Default.Make_theorem
    end)
 module Env_abstract = Default.Env_abstract	
 
+module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user environment end) = struct
+  open Diagrams.Diagram
+    let stack = ref []
+    let env = Args'.env
+
+    let node style contents = 
+      let a = node env style contents in
+      stack := a :: !stack ;
+      a
+
+    let coordinate p = 
+      let a = coordinate env p in
+      let _ = stack := a :: !stack in
+      a
+
+    let edge style a controls b =
+      let e = edge style a controls b in
+      stack := e :: !stack ;
+      e
+
+    let matrix style lines = 
+      let node, m = matrix env style lines in
+      stack := node :: ((List.flatten (Array.to_list (Array.map Array.to_list m))) @ !stack) ;
+      node, m
+
+    let make () = 
+      let fig = Boxes.drawing ~offset:(-10.) 
+	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
+	   []
+	   !stack)
+      in
+      stack := [] ; fig
+
+  end
+
+
+
   open Util
   (* open Binary *)
 

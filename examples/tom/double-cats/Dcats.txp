@@ -81,33 +81,31 @@ In any individuality category $\cat$, an \emph{interface} is an object $X$ such 
 category $C/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
 
   Let us start with a category $\cat$. 
+      
+
+\Begin{Diagram}
+{{     let m,ms = matrix  [] [[ 
+  ([],<<$J$>>) ; ([],<<$Y$>>) ];[
+  ([],<<$K$>>) ; ];[
+  ([],<<$I$>>) ; ([],<<$X$>>) ];[
+        ]]
+       
+     let j = ms.(0).(0)
+     let i = ms.(2).(0)
+     let k = ms.(1).(0)
+     let x = ms.(2).(1)
+     let y = ms.(0).(1)
+
+     let ix = edge [`Head `To;`Draw] i [] x
+     let jy = edge [`Head `To] j [] y
+     let ik = edge [`Head `To] i [] k
+     let jk = edge [`Head `To] j [] k
+
+ }}
+\End{Diagram}
 
 
 
-{{
-
- module MaFigure  (X : sig val env : user environment end) = struct
-   module Lib = Fig (struct let str = D.structure let env = X.env end)
-   include Lib
-   
-   let m,ms = matrix  [] [
-      [ ([],<<$a$>>) ; ([],<<$b$>>) ; ([],<<$p$>>) ] ;
-      [ ([],<<$c$>>) ]
-   ] 
-   
-   (* let _ = node [`At (ms.(0).(0).anchor `Base);`Anchor `Center;`Circle;`Fill] ([]) *)
-   (* let _ = node [`At (ms.(0).(1).anchor `Base);`Anchor `Center;`Circle;`Fill] ([]) *)
-
-   let a = ms.(0).(0)
-
-   let cb = edge [`Head `To ; `Draw;`Double 0.5 ; `BendLeft 20.] ms.(1).(0) [] ms.(0).(1)
-   
-
- end
-
- module Rien = MakeFig (MaFigure) (D) (struct let name = "fig1" end)
-
-}}
 
 =<
 

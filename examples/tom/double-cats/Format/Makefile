@@ -23,7 +23,7 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,bibi  $(OPTS) -pp
 %.cmxa: %.ml
 	$(CAMLOPTA) $(OPTS) -a -o $@ $<
 
-
+all: Diagrams.cmxa Article.cmxa
 
 clean:
 	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# Article.mli
