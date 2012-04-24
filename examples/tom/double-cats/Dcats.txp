@@ -47,7 +47,7 @@ open Article
 
 
 \Begin{abstract}
-We generalise the construction in previous work \cite{{["Hirschowitz"]}} of a playground for CCS. New instances are $\pi$ and $\lambda$.
+We generalise the construction in previous work (* \cite{{["Hirschowitz"]}}  *) of a playground for CCS. New instances are $\pi$ and $\lambda$.
 
 \End{abstract}
 
@@ -82,23 +82,32 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
   Let us start with a category $\cat$. 
 
+
+
 {{
 
-  let fig env=
-    let i, statei = node env [ `Shape `Rectangle ] <<$I$>> in
-    let j, statej = node env [ `Shape `Rectangle ; `OuterSep 0.3 ; `Draw ; `At (20.,20.) ] <<$J$>> in
-    let ij, stateij = edge [`Draw; `Head `To] j [[(10.,20.)]] i in
-    let k,statek = node env [ `At (ij.anchor (`Temporal 0.5)) ; `Anchor `SouthEast] <<$K$>> in
-    let m,statem = matrix env [`At (20.,0.); `Anchor `NorthWest ] [
-      [ ([],<<$a$>>) ; ([`Shape `Rectangle;`Draw],<<$b$>>) ] ;
-      [ ([],<<$c$>>) ]
-    ] in
-    let a = m.(0).(0) in
-    let ka, stateka = edge [`Draw; `Head `To] k [] a in
-    let _, statecb = edge [`Draw;`Double 0.5] m.(1).(0) [] m.(0).(1) in
-   drawing ~offset:(-10.) (List.rev (statecb @ stateka @ statem @ statek @ statei @ statej @ stateij))
 
- let _ = figure D.structure ~name:"figure de Tom" fig
+ module MaFigure  (X : sig val env : user environment end) = struct
+   module Lib = Fig (struct let str = D.structure let env = X.env end)
+   include Lib
+   
+   let m,ms = matrix  [ `At (20.,0.); `Anchor `Base ] [
+      [ ([`Rectangle;`Draw],<<$a$>>) ; ([`Rectangle;`Draw],<<$b$>>) ] ;
+      [ ([],<<$c$>>) ]
+   ] 
+   
+   let _ = node [`At (ms.(0).(0).anchor `Base);`Anchor `Center;`Circle;`Fill] ([])
+   let _ = node [`At (ms.(0).(1).anchor `Base);`Anchor `Center;`Circle;`Fill] ([])
+
+   let a = ms.(0).(0)
+
+   let cb = edge [`Head `To ; `Draw;`Double 0.5] ms.(1).(0) [] ms.(0).(1)
+   
+
+ end
+
+ module Rien = MakeFig (MaFigure) (D) (struct let name = "fig1" end)
+
 }}
 
 =<
@@ -108,8 +117,8 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
 
 =<
 
-=> References
+(* => References *)
 
-{{ thebibliography () }}
+(* {{ thebibliography () }} *)
 
-=<
+(* =< *)

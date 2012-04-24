@@ -199,7 +199,7 @@ module Env_theorem=Default.Make_theorem
     let counterLevel=2
     let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
-module Env_abstract = Default.Env_abstract
+module Env_abstract = Default.Env_abstract	
 
   open Util
   (* open Binary *)
