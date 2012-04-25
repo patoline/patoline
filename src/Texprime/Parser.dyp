@@ -349,7 +349,9 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | "\\" [lident|uident]<macro> mathargs<args>
+  | "\\" [lident|uident]<macro> '{' mathargs<args> '}'
+      { MathMacro (macro,args) } atom
+  | "\\" [lident|uident]<macro> '{' math*<args> '}'
       { MathMacro (macro,args) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
