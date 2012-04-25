@@ -62,7 +62,7 @@ let print_subst=function
 
 
 
-let apply_ligature glyphs0 lig=
+let apply_ligature lig glyphs0=
   let rec apply_lig i buffer glyphs=
     if i>=Array.length lig.original_glyphs then (
       { glyph_utf8=UTF8.Buf.contents buffer; glyph_index=lig.subst_glyphs.(0) }::glyphs
@@ -88,7 +88,7 @@ let apply_ligature glyphs0 lig=
     apply_all (UTF8.Buf.create 2) glyphs0
 
 
-let apply_subst glyphs0 x=
+let apply_subst x glyphs0=
   if Array.length x.original_glyphs = Array.length x.subst_glyphs then (
     let rec replace a i=
       if i>=Array.length x.subst_glyphs then a else
@@ -108,7 +108,7 @@ let apply_subst glyphs0 x=
       | h::s->h::(apply_all s)
     in
       apply_all glyphs0
-  ) else if Array.length x.subst_glyphs=1 then apply_ligature glyphs0 x else (
+  ) else if Array.length x.subst_glyphs=1 then apply_ligature x glyphs0 else (
     let rec matches a i=
       if i>=Array.length x.original_glyphs then (
         (Array.to_list (Array.map (fun u->{ glyph_utf8=""; glyph_index=u }) x.subst_glyphs))@a
@@ -133,11 +133,11 @@ let apply_subst glyphs0 x=
 
 
 
-let apply_alternative glyphs0 alt i=List.map (fun x->if x.glyph_index=alt.(0) then { x with glyph_index=alt.(i) } else x) glyphs0
+let apply_alternative alt i glyphs0=List.map (fun x->if x.glyph_index=alt.(0) then { x with glyph_index=alt.(i) } else x) glyphs0
 
-let apply glyphs0 subst=match subst with
+let apply subst glyphs0=match subst with
     Alternative x -> glyphs0
-  | Subst x -> apply_subst glyphs0 x
+  | Subst x -> apply_subst x glyphs0
   | _->glyphs0
 
 
@@ -193,7 +193,7 @@ module type Font=(
     (** Converts a given list of features into a list of corresponding substitutions *)
     val select_features:font->string list->substitution list
 
-    (** Applies the available positioning information to a glyph
+    (** Appiles the available positioning information to a glyph
         list. This can be used for kerning, but not only *)
     val positioning:font->glyph_ids list->glyph_ids list
   end)

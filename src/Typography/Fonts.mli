@@ -50,11 +50,11 @@ module FTypes :
     val print_int_array : int array -> unit
     val print_int_list : int list -> unit
     val print_subst : substitution -> unit
-    val apply_ligature : glyph_id list -> subst -> glyph_id list
-    val apply_subst : glyph_id list -> subst -> glyph_id list
+    val apply_ligature : subst -> glyph_id list -> glyph_id list
+    val apply_subst : subst -> glyph_id list -> glyph_id list
     val apply_alternative :
-      glyph_id list -> int array -> int -> glyph_id list
-    val apply : glyph_id list -> substitution -> glyph_id list
+      int array -> int -> glyph_id list -> glyph_id list
+    val apply : substitution -> glyph_id list -> glyph_id list
     module type Font =
       sig
         type font

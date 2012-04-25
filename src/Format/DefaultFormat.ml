@@ -13,49 +13,33 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     type user=Typography.Document.user
     let lmroman =
       [ Regular,(
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-italic.otf"))));
+          simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmroman10-regular.otf")),
+          simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmroman10-italic.otf")));
       Bold, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-bold.otf"))),
-        Lazy.lazy_from_fun (
-          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf"))));
+          simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmroman10-bold.otf")),
+          simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmroman10-bolditalic.otf")));
 
       Caps, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun ()->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf"))));
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmromancaps10-regular.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmromancaps10-oblique.otf")));
       Demi, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf"))))
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmromandemi10-regular.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernRoman/lmromandemi10-oblique.otf")))
     ]
 
   let lmmono =
     [ Regular, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf"))));
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonolt10-regular.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonolt10-oblique.otf")));
       Bold, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf"))),
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf"))));
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonolt10-bold.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonolt10-boldoblique.otf")));
       Caps, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf"))));
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonocaps10-regular.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonocaps10-oblique.otf")));
       Demi, (
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf"))),
-        Lazy.lazy_from_fun (
-          fun () ->simpleFamilyMember (loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf"))));
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonoltcond10-regular.otf")),
+        simpleFamilyMember (fun ()->loadFont (findFont "LatinModernMono/lmmonoltcond10-oblique.otf")));
     ]
 
   let defaultEnv:user environment=
@@ -92,7 +76,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         font=f;
         mathsEnvironment=Maths.default;
         word_substitutions=str;
-        substitutions=(fun glyphs -> List.fold_left apply (subst glyphs) loaded_feat);
+        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) loaded_feat);
         positioning=(fun x->pos (positioning f x));
         footnote_y=10.;
         size=fsize;

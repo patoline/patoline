@@ -44,9 +44,11 @@ let centered str tree max_level=
                     try
                       let page=(1+(TS.UMap.find (Structure count) env0.user_positions).page) in
                       let fenv env={ env with
-                                       substitutions=(fun glyphs->
-                                                        List.fold_left Fonts.FTypes.apply (env.substitutions glyphs)
-                                                          (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
+                                       substitutions=
+                          (fun glyphs->
+                             List.fold_left (fun a b->Fonts.FTypes.apply b a)
+                               (env.substitutions glyphs)
+                               (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
                                    }
                       in
                       let env'=fenv env0 in

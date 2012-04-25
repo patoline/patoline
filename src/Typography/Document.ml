@@ -11,11 +11,12 @@ type fontAlternative = Regular | Bold | Caps | Demi
 
 (* font, substitutions, positioning *)
 
-let simpleFamilyMember:font->font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list) =
-  fun a->(a,(fun x->x),(fun x->x),(fun x->x))
+let simpleFamilyMember:(unit->font)->(font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
+  fun a->Lazy.lazy_from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
 
 (* Italic is second *)
 type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
+
 
 (** C'est là qu'on veut des variants polymorphes, mais caml ne veut pas de mon module TS polymorphe en user *)
 type user=
@@ -237,7 +238,7 @@ let updateFont env font str subst pos=
     { env with
         font=font;
         word_substitutions=str;
-        substitutions=(fun glyphs -> List.fold_left apply (subst glyphs) feat);
+        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) feat);
         positioning=(fun x->pos (positioning font x)) }
 
 (* Changer de font dans un scope, ignore la famille, attention, à éviter en direct *)
@@ -302,7 +303,8 @@ let add_features features env=
   let feat=Fonts.select_features env.font (features@env.fontFeatures) in
     { env with
         fontFeatures=features@env.fontFeatures;
-        substitutions=(fun glyphs -> List.fold_left apply (env.substitutions glyphs) feat);
+        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a)
+                         (env.substitutions glyphs) feat);
     }
 
 (****************************************************************)
@@ -809,7 +811,7 @@ let rec make_struct positions tree=
 
 
 let update_names env figs user=
-  let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in
+  (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
   let needs_reboot=ref (user<>env.user_positions) in
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try

@@ -11,8 +11,8 @@ let _=
   let left_margin=25. in
   let right_margin=5. in
   let lead=5. in
-  let bezier_au_lieu_des_glyphs=true in
-  let max_line=10 in
+  let bezier_au_lieu_des_glyphs=false in
+  let max_line=20 in
 
     for i=1 to Array.length Sys.argv-1 do
       let f = Sys.argv.(i) in
