@@ -3,11 +3,18 @@ open Document
 module Drivers = OutputCommon
 open OutputCommon
 
+let swap (x,y) = (y,x)
 let pi = 3.14159
 let one_third = 1. /. 3.
 let half_pi = pi /. 2.
 let to_deg angle = angle *. 180. /. pi
 let to_rad angle = angle *. pi /. 180.
+let ex env = 
+  let l = boxify_scoped env [T "x"] in
+  let x = List.find
+    (function Boxes.GlyphBox x -> true | _ -> false)
+    l
+  in (Boxes.upper_y x 0. -. Boxes.lower_y x 0.) /. 2.
 
 let rec list_last = function
   [] -> assert false
@@ -41,6 +48,7 @@ module Vector = struct
   let scal_mul r (x,y) = (x *. r, y *. r)
   let (+) (x,y) (x',y') = (x +. x', y +. y')
   let (-) (x,y) (x',y') = (x -. x', y -. y')
+  let (<>) (x,y) (x',y') = x *. x' +. y *. y'
   let minus (x,y) = (-. x,-. y)
   let translate p vec = (p + vec)
   let rotate angle (x,y) = (* Angle en degres *)
@@ -55,6 +63,58 @@ module Vector = struct
   let turn_left (x,y) = (-. y,x)
   let turn_right (x,y) = (y, -. x)
   let unit angle = rotate angle (1.,0.) 
+  let angle v = 
+    let x,y = normalise v in
+    to_deg (atan2 y x)
+  let rec pipi angle = 
+    if angle <= 180. then
+      if angle >= -. 180. then angle 
+      else pipi (angle +. 360.) 
+    else pipi (angle -. 360.) 
+
+  let rec zeropi angle = 
+    if angle <= 360. then
+      if angle >= 0. then angle 
+      else pipi (angle +. 360.) 
+    else pipi (angle -. 360.) 
+
+
+  let sector v v' = zeropi (angle v' -. angle v)
+
+end
+
+module Affine = struct
+
+  type droite = float * float * float
+
+  let of_vect_point (x,y) p0 = 
+    let (a,b) = Vector.rotate 90. (x,y) in
+    let c = Vector.(<>) (a,b) p0 in
+    (a,b, -. c)
+
+  let of_points p q = 
+    let v = Vector.of_points p q in
+    of_vect_point v p
+
+  let intersect (a,b,c) (a',b',c') = 
+    let det = a *. b' -. a' *. b in
+    if det = 0.0 then
+      let _ = Printf.fprintf stderr "Non existent intersection. Picking (0,0) instead.\n" in
+      (0.,0.)
+    else
+      let x = (c' *. b -. c *. b') /. det in
+      let y = (c *. a' -. c' *. a) /. det in
+      (x,y)
+
+  let mediatrice p q = 
+    let (a,b) as v = Vector.of_points p q in
+    let m = Point.middle p q in
+    let c = Vector.(<>) v m in
+    (a,b, -. c)
+
+  let normal e (a,b,c) =
+    let v' = Vector.turn_left (a,b) in
+    of_vect_point v' e
 
 end
 
@@ -134,6 +194,9 @@ module Curve = struct
 	  else eval_rec reste (t -. 1.)
     in eval_rec beziers t
 
+  let gradient curve =
+    List.map (fun (xs,ys) -> (Bezier.derivee xs, Bezier.derivee ys)) curve
+
   let internal_restrict curve (i,t) (j,t') = 
 
     let rec restrict_right res curve (j,t') = match curve with
@@ -210,21 +273,69 @@ module Curve = struct
       (Printf.fprintf stderr ("Warning: split2ion to an empty curve.\n") ;
        [],[],[])
 
+  let bezier_linear_length bezier = 
+    let s = bezier_evaluate bezier 0. in
+    let t = bezier_evaluate bezier 1. in
+    Point.distance s t 
 
-(*   let curviligne xs ys abs = *)
-(*     let significant, exponent = frexp t in  *)
-(*     let beziers_x = divide xs (2 ** exponent) in *)
-(*     let beziers_y = divide ys (2 ** exponent) in *)
-(*     let epsilon = 2 ** exponent in *)
-(*     let rec scan t_yet abs_yet xs' ys' = *)
-(*       let length =  *)
-(* 	if abs_float (abs -. abs_yet) < epsilon then *)
-(* 	  t_yet *)
-(* ) *)
-(*     (0.,0.) *)
-(*     (List.combine beziers_x beziers_y) *)
+  let linear_length = List.fold_left
+    (fun res ((xs,ys) as bezier) -> res +. bezier_linear_length bezier)
+    0.
 
+  let length n curve = 
+    let beziers = List.concat
+      (List.map (fun (xs, ys) -> 
+	let beziers_x = Bezier.divide xs n in
+	let beziers_y = Bezier.divide ys n in
+	List.combine beziers_x beziers_y)
+	 curve)
+    in
+    linear_length beziers
 
+  let curvilinear curve z =
+    (* Printf.fprintf stderr "Entering curvilinear %f.\n" z ; *)
+    let n = 1000 in
+    let time_unit = 1. /. (float_of_int n) in
+    let beziers = List.concat
+      (List.map (fun (xs, ys) -> 
+	let beziers_x = Bezier.divide xs n in
+	let beziers_y = Bezier.divide ys n in
+	List.combine beziers_x beziers_y)
+	 curve)
+    in
+    let rec scan z n_yet t_yet z_yet l = 
+      (* let _ = Printf.fprintf stderr "Scanning n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
+      match l with
+      | [] -> let _ = 
+		Printf.fprintf stderr 
+		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
+	      in 0.
+      | (xs', ys') as bezier :: l' -> 
+	let length = bezier_linear_length bezier in
+	let z_restant = z -. z_yet in
+	if z_restant > length then
+	  scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
+	else time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
+    in
+    let rec backwards_scan z n_yet t_yet z_yet l = 
+      (* let _ = Printf.fprintf stderr "Scanning backwards n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
+      match l with
+      | [] -> let _ = 
+		Printf.fprintf stderr 
+		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
+	      in 0.
+      | (xs', ys') as bezier :: l' -> 
+	let length = bezier_linear_length bezier in
+	let z_restant = z -. z_yet in
+	if z_restant > length then
+	  backwards_scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
+	else 1. -. time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
+    in
+    if z < 0. then
+      backwards_scan (-. z) 0 0. 0. (List.rev beziers)
+    else 
+      scan z 0 0. 0. beziers
+	
 end
 
 module Rectangle = struct
@@ -780,6 +891,8 @@ module Diagram = struct
 	       | `West
 	       | `East
 	       | `Center
+	       | `Main			(* The anchor used to draw edges between gentities by default; 
+					   Will be `Center by default. *)
 	       | `Base
 	       | `Vec of Vector.t
 	       | `Curvilinear of float	(* Between 0. and 1. (for paths) *)
@@ -802,7 +915,8 @@ module Diagram = struct
   type style = [ 			
   (* Placement of nodes *)
   | `At of Point.t
-  | `Anchor of anchor
+  | `Anchor of anchor 			(* Anchor used for placement *)
+  | `MainAnchor of anchor		(* Anchor used by default for drawing edges between gentities *)
   (* Contents of nodes *)
   | `InnerSep of float
   | `OuterSep of float
@@ -877,6 +991,7 @@ module Diagram = struct
       (fun instr res -> match instr with
       | `Draw -> { res with strokingColor = Some black } 
       | `Fill -> { res with close = true ; fillColor = Some black } 
+      | `LineWidth w -> { res with lineWidth = w } 
       | `DrawOf params -> params 
       | `Dashed -> { res with dashPattern = [0.1;0.2] }
       | _ -> res)
@@ -897,6 +1012,11 @@ module Diagram = struct
     let text_depth = make
       (fun instr res -> match instr with `TextDepth h -> h | _ -> res)
       0.
+
+  (* Find main anchor specification in a list of style instructions *)
+    let main_anchor = make
+      (fun instr res -> match instr with `MainAnchor a -> a | _ -> res)
+      `Center
 
   (* Find line width specification in a list of style instructions *)
     let line_width = make
@@ -946,8 +1066,8 @@ module Diagram = struct
       let outer_points style (x0,y0,x1,y1) =
 	let inner_sep = Style.inner_sep style in
 	let outer_sep = Style.outer_sep style in
-	let line_width = Style.line_width style in
-	let sep = inner_sep +. outer_sep +. line_width in
+	(* let line_width = Style.line_width style in *)
+	let sep = inner_sep +. outer_sep (* +. line_width *) in
 	let x0 = x0 -. sep in
 	let y0 = y0 -. sep in
 	let x1 = x1 +. sep in
@@ -973,24 +1093,28 @@ module Diagram = struct
 
     end
 
-    let anchor style outer_curve mid_curve bb = 	
+    let rec anchor env style outer_curve mid_curve bb = 	
       let (p1,p2,p3,p4) = BB.outer_points style bb in
       let text_depth = Style.text_depth style in 
       let inner_sep = Style.inner_sep style in 
+      let outer_sep = Style.outer_sep style in 
+      (* let line_width = Style.line_width style in *)
+      let south = Point.middle p1 p2 in
+      let ex = ex env in
+      let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in
+      let main = Style.main_anchor style in
       match Style.shape style with
 	| `Coordinate -> begin       let at = Style.at style in
 				     function _ -> at end
 	| `Rectangle -> begin function
 	    | `Vec v -> Vector.(+) (Point.middle p1 p3) v
 	    | `Center -> Point.middle p1 p3
-	    | `Base -> begin
-	      let south = Point.middle p1 p2 in
-	      Vector.(+) south (0.,inner_sep +. text_depth)
-	    end
+	    | `Main -> anchor env style outer_curve mid_curve bb main
+	    | `Base -> base
 	    | `East -> Point.middle p2 p3  
 	    | `West -> Point.middle p1 p4  
 	    | `North -> Point.middle p3 p4
-	    | `South -> Point.middle p1 p2
+	    | `South -> south
 	    | `SouthWest -> p1
 	    | `SouthEast -> p2
 	    | `NorthEast -> p3
@@ -1003,18 +1127,15 @@ module Diagram = struct
 		     let anchor_of_angle angle = 			 
 		       Vector.(+) center (Vector.normalise ~norm:radius (Vector.unit angle))
 		     in
-		     let south = anchor_of_angle (-. 90.) in
-		     let south_text = Point.middle p1 p2 in
 		     begin function
 		       | `Vec v -> Vector.(+) center v
 		       | `Center -> center
-		       | `Base -> begin
-			 Vector.(+) south_text (0.,inner_sep +. text_depth)
-		       end
+		       | `Base -> base
+		       | `Main -> anchor env style outer_curve mid_curve bb main
 		       | `East -> anchor_of_angle 0.
 		       | `West -> anchor_of_angle 180.
 		       | `North -> anchor_of_angle 90.
-		       | `South -> south
+		       | `South -> anchor_of_angle (-. 90.) 
 		       | `SouthWest -> p1
 		       | `SouthEast -> p2
 		       | `NorthEast -> p3
@@ -1074,6 +1195,31 @@ module Diagram = struct
       type info = { tip_line_width : float ; is_double : bool }
       let default_info = { tip_line_width = 0.1 ; is_double = false }
 
+      let make_quadratic e l ll =
+      	let alpha = Vector.sector (Vector.of_points l ll) (Vector.of_points l e) in
+	let do_make_quadratic alpha e l ll = 
+	  let beta = 0.5 *. (180. -. alpha) in
+	  let le = Vector.of_points l e in
+	  let lll = Vector.of_points l ll in
+	  let vl = Vector.normalise
+	    ~norm:((Vector.norm le) /. (2. *. (cos (to_rad beta)))) 
+	    (Vector.rotate beta le)
+	  in
+	  let xl = Vector.(+) l vl in
+	  let vr = Vector.normalise
+	    ~norm:((Vector.norm lll) /. (2. *. (cos (to_rad beta)))) 
+	    (Vector.rotate (-. beta) lll)
+	  in
+	  let xr = Vector.(+) l vr in
+	  xl, xr
+	in
+	let xl,xr = 
+	  if alpha <= 180. then 
+	    do_make_quadratic alpha e l ll 
+	  else swap (do_make_quadratic (360. -. alpha) ll l e)
+	in
+	[[e;xl;l];[l;xr;ll]]	
+
       let rec transfo style (info, params, underlying_curve, curves) = match style with
 	| `Squiggle (freq,amplitude,a,b) -> 
 	  let squiggle (params, curve) =
@@ -1125,53 +1271,50 @@ module Diagram = struct
 	| `ShortenS a -> transfo (`Shorten (a,1.)) (info, params, underlying_curve, curves) 
 	| `ShortenE b -> transfo (`Shorten (0.,b)) (info, params, underlying_curve, curves) 
 	| `Shorten (a,b) -> 
-	  let shorten (params',curve') = params', Curve.restrict curve' a b in
+	  let shorten (params',curve') = 
+	    let ta = Curve.curvilinear curve' a in
+	    let tb = Curve.curvilinear curve' (-. b) in
+	    params', Curve.restrict curve' ta tb
+	  in
 	  let params', u_curve = shorten (params, underlying_curve) in
 	  info, params', u_curve, List.map shorten curves
 	| `Head `To -> 
+	  let short = max (info.tip_line_width /. 2.) 0.1 in
 	  let _, _, curve0, curves = 
-	    transfo (`Shorten (0.,0.9)) (info, params, underlying_curve, curves) in
+	    transfo (`Shorten (0.,short)) (info, params, underlying_curve, curves) in
 	  let (xe,ye) as e = Curve.eval underlying_curve 1. in
-	  let (xe0,ye0) as e0 = Curve.eval curve0 1. in
-	  let angle = 20. in
-	  (* Left part *)
-	  let l = Vector.(+) e0 (Vector.rotate 90. ((Vector.normalise ~norm:(info.tip_line_width /. 2.)
-						       (Vector.of_points e0 e)))) 
+	  let e0 = Curve.eval curve0 1. in
+	  let altitude = max short 0.3 in
+	  let e1 = Vector.(+) e (Vector.normalise ~norm:altitude (Vector.of_points e e0)) in
+	  let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
+	  (* Left intersection of the arrow head with the edge *)
+	  let l = Vector.(+) e0 (Vector.rotate 90. ((Vector.normalise ~norm:(info.tip_line_width /. 2.) grad))) in
+	  (* Right intersection of the arrow head with the edge *)
+	  let r = Vector.(+) e0 (Vector.rotate (-. 90.) 
+				   ((Vector.normalise ~norm:(info.tip_line_width /. 2.) grad))) in
+	  let dtip = 0.5 +. (max info.tip_line_width altitude)  in (* distance to the tips *)
+	  let normale = Vector.normalise ~norm:dtip (Vector.rotate 90. grad) in
+	  let ee1 = Vector.of_points e e1 in
+	  let ll = Vector.(+) e1 (Vector.(+) (Vector.normalise ~norm:altitude ee1) normale) in
+	  let rr = Vector.(+) e1 (Vector.(+) (Vector.normalise ~norm:altitude ee1) (Vector.minus normale)) in
+	  let h = altitude -. altitude *. info.tip_line_width /. 2. /. dtip in
+	  let l' = Vector.(+) l (Vector.normalise ~norm:h ee1) in 
+	  let r' = Vector.(+) r (Vector.normalise ~norm:h ee1) in 
+	  let tip = Curve.of_point_lists ((make_quadratic e l ll) 
+					  @ (make_quadratic ll l' e1) 
+					  @ (make_quadratic e1 r' rr) 
+					  @ (make_quadratic rr r e)) 
 	  in
-	  let vl = Vector.rotate (-. angle)
-	    (Vector.scal_mul (0.5 /. (cos (to_rad angle)))
-	       (Vector.of_points l e))
-	  in 
-	  let vl' = Vector.scal_mul (-. 0.5) vl in
-	  let ml = Vector.(+) l vl in
-	  let ml' = Vector.(+) l vl' in
-	  let ll = Vector.(+) ml' 
-	    (Vector.scal_mul 1. (Vector.rotate (-. angle) (Vector.of_points l ml')))
-	  in
-	  let left_moustache = (params, Curve.of_point_lists [[l;ml';ll]]) in
-	  (* Right part *)
-	  let r = Vector.(+) e0 (Vector.rotate (-. 90.) ((Vector.normalise ~norm:(info.tip_line_width /. 2.)
-						       (Vector.of_points e0 e)))) 
-	  in
-	  let vr = Vector.rotate angle
-	    (Vector.scal_mul (0.5 /. (cos (to_rad angle)))
-	       (Vector.of_points r e))
-	  in 
-	  let vr' = Vector.scal_mul (-. 0.5) vr in
-	  let mr = Vector.(+) r vr in
-	  let mr' = Vector.(+) r vr' in
-	  let rr = Vector.(+) mr' 
-	    (Vector.scal_mul 1. (Vector.rotate (angle) (Vector.of_points r mr')))
-	  in
-	  let right_moustache = (params, Curve.of_point_lists [[r;mr';rr]]) in
-	  let tip = if info.is_double then
-	      ({ params with close = false ; fillColor = None }, 
-	       Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ])
-	    else
-	      ({ params with close = true ; fillColor = params.strokingColor }, 
-	       Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ])
-	  in
-	  (info, params, underlying_curve, (tip :: left_moustache :: right_moustache :: curves))
+	  (* (\* Put everything together *\) *)
+	  (* let curves = if info.is_double then *)
+	  (*     ({ params with close = false ; fillColor = None },  *)
+	  (*      Curve.of_point_lists [ [ll;ml';l] ; [l;ml;e] ; [e;mr;r] ; [r;mr';rr] ]) :: curves *)
+	  (*   else *)
+	  (*     ({ params with close = true ; fillColor = params.strokingColor ; lineWidth = 0.1 },  *)
+	  (*      Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ]) :: left_moustache :: right_moustache :: curves *)
+	  (* in *)
+	  (info, params, underlying_curve, 
+	   ({ params with close = true ; fillColor = params.strokingColor ; lineWidth = 0.01 }, tip) :: curves)
 	| _ -> (info, params, underlying_curve, curves)
 
       let rec pretransfo style curve = match style with
@@ -1240,7 +1383,7 @@ module Diagram = struct
       let contents = List.map (OutputCommon.translate xt yt) contents in (* Center the contents *)
       let outer_curve = curve Outer style bb_boot in (* The curve for calculating anchors *)
       let mid_curve = curve Mid style bb_boot in     (* The drawn curve *)
-      let anchor = anchor style outer_curve mid_curve bb_boot in
+      let anchor = anchor env style outer_curve mid_curve bb_boot in
       let centered_res = { curve = mid_curve ; 
 			   anchor = anchor ; 
 			   contents = contents @ (Curve.draw ~parameters:parameters mid_curve) } 
@@ -1286,7 +1429,7 @@ module Diagram = struct
 	| [ controls ] -> List.rev (((s :: controls) @ [e]) :: res)
 	| controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (list_last controls) e rest
     in
-    point_lists_of_edge_spec_rec [] (s.anchor `Center) (e.anchor `Center) continues
+    point_lists_of_edge_spec_rec [] (s.anchor `Main) (e.anchor `Main) continues
 
   let clip curve node1 node2 = 
     let start = begin
@@ -1317,10 +1460,10 @@ module Diagram = struct
 
   let edge style s controls e =
     let point_lists = point_lists_of_edge_spec s controls e in
-    List.iter (fun curve -> 
-      List.iter (fun (x,y) -> Printf.fprintf stderr "(%f,%f) .. " x y) curve ;
-      Printf.fprintf stderr "\n")
-      point_lists;
+    (* List.iter (fun curve ->  *)
+    (*   List.iter (fun (x,y) -> Printf.fprintf stderr "(%f,%f) .. " x y) curve ; *)
+    (*   Printf.fprintf stderr "\n") *)
+    (*   point_lists; *)
     let underlying_curve = Curve.of_point_lists point_lists in
     let underlying_curve = Edge.pretransfos style underlying_curve in
     let curve = clip underlying_curve s e in
@@ -1336,6 +1479,9 @@ module Diagram = struct
 	List.flatten (List.map (fun (params,curve) -> (Curve.draw ~parameters:params curve))
 			draw_curve) }
 
+  let edges style edge_list = 
+    List.map (fun (style',s,controls,e) -> edge (style' @ style) s controls e) edge_list
+
   let matrix env style lines =
     let width = List.fold_left
       (fun res line -> max res (List.length line))
@@ -1350,7 +1496,7 @@ module Diagram = struct
     let j = ref 0 in
     List.iter (fun line -> 
       List.iter (fun (style', contents) -> 
-	let mij = node env (style' @ (Style.pop style) @ [`Anchor `Base]) contents in
+	let mij = node env (style' @ (Style.pop style) @ [`Anchor `Base;`MainAnchor `Base]) contents in
 	res.(!i).(!j) <- mij ;
 	(* state := mij.contents @ !state ; *)
 	incr j)

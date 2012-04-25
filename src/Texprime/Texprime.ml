@@ -159,7 +159,13 @@ let rec print_macro ch op mtype name args =
       | `Module | `Begin -> 
 	let end_open =
 	  if args = [] then 
-	    ""
+	    if mtype = `Begin && name = "Diagram" then begin
+	      Printf.fprintf ch
+		"module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
+	      "(Args)"
+	    end
+	    else 
+	      ""
 	  else begin
 	    let num = ref 1 in
 	    Printf.fprintf ch "module Args = struct\n";
@@ -185,8 +191,21 @@ let rec print_macro ch op mtype name args =
 	  end
 	  else name
 	in
+	if mtype = `Begin && name = "Diagram" then begin
+	  (* Printf.fprintf ch "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
+	  Printf.fprintf ch 
+	    ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
+	  Printf.fprintf ch "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
+	end
+	else begin
 	Printf.fprintf ch "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
-      | `End -> Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
+	end
+      | `End -> if name = "Diagram" then begin
+	  Printf.fprintf ch "\n end \n" (* name *) ;
+	Printf.fprintf ch "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
+	Printf.fprintf ch "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
+	Printf.fprintf ch "   Res.make ())\n end \n " end
+	else Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
       | `Include ->
         incr moduleCounter;
         Printf.fprintf ch

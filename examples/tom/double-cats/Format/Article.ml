@@ -221,6 +221,11 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       stack := e :: !stack ;
       e
 
+    let edges style edge_list = 
+      let l = edges style edge_list in
+      stack := l @ !stack ;
+      l
+
     let matrix style lines = 
       let node, m = matrix env style lines in
       stack := node :: ((List.flatten (Array.to_list (Array.map Array.to_list m))) @ !stack) ;
