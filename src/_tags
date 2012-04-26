@@ -1,4 +1,0 @@
-<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_dyp,pp(cpp -w)
-<Texprime/Main.{byte,native}>: use_Typography,use_DefaultFormat,use_dynlink,pp(cpp),pkg_camomile,pkg_dyp
-<proof/proof.{byte,native}>: pkg_camomile,use_Typography
-"Typography" or "Format":include

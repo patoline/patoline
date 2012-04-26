@@ -9,6 +9,21 @@ let fonts_dirs=ref []
 let grammars_dirs=ref []
 let hyphen_dirs=ref []
 let opt_only=ref true
+let lang=ref "FR"
+
+let avail_lang=
+  let f=open_in "src/Typography/Language.ml" in
+  let buf=String.create (in_channel_length f) in
+    really_input f buf 0 (in_channel_length f);
+    close_in f;
+    let rec make_str i res=
+      if i>String.length buf-7 then res else
+        make_str (i+1)
+          (if String.sub buf i 5="LANG_" then
+             String.sub buf (i+5) 2::res
+           else res)
+    in
+      make_str 0 []
 
 open Arg
 let rec escape s=
@@ -31,7 +46,9 @@ let _=
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories texprime should scan for hyphenation dictionaries");
-    ("--byte", Unit (fun ()->opt_only:=false), "  compile bytecode version (only native code is compiled by default)")
+    ("--byte", Unit (fun ()->opt_only:=false), "  compile bytecode version (only native code is compiled by default)");
+    ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
+       (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
   if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
@@ -88,6 +105,15 @@ let _=
                  if Filename.check_suffix x ".hdict" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
+
+    let tags=open_out "src/_tags" in
+      Printf.fprintf tags
+"<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_dyp,pp(cpp -w -DLANG_%s)
+<Texprime/Main.{byte,native}>: use_Typography,use_DefaultFormat,use_dynlink,pp(cpp),pkg_camomile,pkg_dyp
+<proof/proof.{byte,native}>: pkg_camomile,use_Typography
+\"Typography\" or \"Format\":include\n"
+        (String.uppercase !lang);
+      close_out tags;
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);

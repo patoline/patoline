@@ -410,7 +410,7 @@ and output_list from where no_indent lvl docs =
       );
       output_list from where !next_no_indent !lvl docs
 
-let gen_ml format fugue filename from where pdfname =
+let gen_ml format fugue filename from wherename where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
@@ -419,7 +419,7 @@ let gen_ml format fugue filename from where pdfname =
             let lexbuf = Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
-	      Printf.fprintf stderr "%s" (Language.message (End_of_parsing (List.length docs))); flush stderr;
+	      Printf.fprintf stderr "%s\n" (Language.message (End_of_parsing (List.length docs))); flush stderr;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -454,6 +454,7 @@ let gen_ml format fugue filename from where pdfname =
 			              Unexpected_char))
     with
         Syntax_Error(pos,msg) ->
-	  Printf.fprintf stderr "%s"
+          Sys.remove wherename;
+	  Printf.fprintf stderr "%s\n"
             (Language.message (Syntax_error (filename, pos, msg)));
 	  exit 1
