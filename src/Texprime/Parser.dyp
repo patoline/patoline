@@ -43,6 +43,7 @@ and doc =
    | Verbatim of string option * string list
    | Struct of content list * bool * structType
    | Macro of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
+   | Preproc of string
    | Ignore
 
 and texprime_section = TxpMath | TxpText
@@ -52,6 +53,12 @@ and content =
    | FC of bool * math
    | MC of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
    | GC
+
+module StrMap=Typography.Util.StrMap
+
+let par_macros:(string->content) StrMap.t ref=ref StrMap.empty
+let macros:(string->string) StrMap.t ref=ref StrMap.empty
+
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
 let caml_depth = ref 0 let push_caml () = incr caml_depth
@@ -299,11 +306,33 @@ topmacro:
   | TMACRO<name> args<a>
       { if List.mem name reserved then raise Giveup;
         Macro(`Module, name, List.rev a) }
+  | "#" [uident]<preproc> '{' preproc<text> '}'
+      { try
+          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.ml" preproc));
+          let f=StrMap.find preproc !macros in
+          let t=String.concat "" text in
+            Preproc (f t)
+        with
+            Not_found ->Printf.fprintf stderr "Error while dynlinking %s\n" preproc;raise Not_found
+      }
+preproc:
+  | {[]}
+  | '{' preproc<a> '}' preproc<b> { ("{"::a)@("}"::b) }
+  | (utf8_char | space)*<a> preproc<b> {a::b}
 
 
 parmacro:
   | PMACRO<name> args<a>
       { MC(`Single, name, List.rev a) }
+  | "#" [lident]<preproc> '{' preproc<text> '}'
+      { try
+          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.ml" preproc));
+          let f=StrMap.find preproc !par_macros in
+          let t=String.concat "" text in
+            f t
+        with
+            Not_found ->Printf.fprintf stderr "Error while dynlinking %s\n" preproc;raise Not_found
+      }
 
 leftind:
   | math(<=atom)<m1> - "^^" - math(<=atom)<m2> - "__" 

@@ -312,6 +312,8 @@ and output_list from where no_indent lvl docs =
 	| Macro(mtype, name, args) ->
 	  print_macro where from mtype name args;
 	  Printf.fprintf where "\n\n" 
+	| Preproc t ->
+	    Printf.fprintf where "%s\n\n" t
 	| Math m ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal center %a;;\n" 
 	    (fun ch -> print_math_par ch true) m;
