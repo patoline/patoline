@@ -3,7 +3,7 @@
 
 (* 
    A compiler avec 
-texprime --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --format Format/Article Dcats.txp
+texprime --caml "-I /usr/local/lib/ocaml Diagrams.cmxa Euler.cmxa" --format Format/Article Dcats.txp
 *)
 
 (* test *)
@@ -39,7 +39,14 @@ let figRef ()= [B (fun env->
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
 let emph = toggleItalic
-let cat = <$C$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let displaystyle=[Maths.Style Maths.Display]
+let scriptstyle s _=Maths.Style Maths.Script::s
+let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
+let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
+let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
+let bold a=alternative Bold a
+
+let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$I$>
   let mamacro () = << du texte >>
 open Article
@@ -73,17 +80,19 @@ We generalise the construction in previous work \cite{{["Hirschowitz"]}} of a pl
 
 \Begin{definition}
 
- An \emph{individuality} category is a category $\cat$ equipped with a subcategory $\indiv{}$ 
+ An \emph{individuality} category is a category $\cat{}$ equipped with a subcategory $\indiv{}$ 
      of \emph{individuals}, which is discrete.
 
 \End{definition}
-In any individuality category $\cat$, an \emph{interface} is an object $X$ such that the slice
-category $C/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
 
-  Let us start with a category $\cat$. 
+In any individuality category $\cat{}$, an \emph{interface} is an object $X$ such that the slice
+category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
+
+  Let us start with a category $\cat{}$. 
       
 
 \Begin{Diagram}
+
 {{     let m,ms = matrix  [] [[ 
   ([],<<$J$>>) ; ([],<<$Y$>>) ];[
   ([],<<$K$>>) ; ];[
@@ -137,6 +146,7 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d �
      (* let _ = node [`Circle;`Fill;`At (i.anchor `Base)] ([]) *)
 
  }}
+
 \End{Diagram}
 
 
