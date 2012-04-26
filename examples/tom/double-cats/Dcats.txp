@@ -96,15 +96,38 @@ category $C/X$ is empty, and a \emph{player} is a morphism $d â†’ X$, with $d âˆ
      let x = ms.(2).(1)
      let y = ms.(0).(1)
 
-     let l = edges [`Head `To;`Draw] [
+     open Diagrams
+
+     let head info params = 
+       let _ = begin 
+	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n"
+	   params.lineWidth info.tip_line_width ;
+	 flush stderr
+       end in
+       if info.is_double then
+	 let short = max (params.lineWidth /. 2.) 0.6 in
+	 let thickness = params.lineWidth in
+       let height = max (1.6 *. short) 0.8 in
+       let width = max info.tip_line_width 1. in
+       (short, thickness, height, width, 0.01)
+
+       else
+
+	let short = max (0.6 *. params.lineWidth) 0.2 in
+	let thickness = max (0.7 *. params.lineWidth) 0.2 in
+	let height = max (2. *. short) 0.8 in
+	let width = max (1.3 *. info.tip_line_width) 1. in
+	(short, thickness, height, width, 0.01)
+
+     let l = edges [`To;`Draw] [
        ([`LineWidth 1.], i, [], x) ;
-       ([],j,[],y) ;
+       ([`Double 0.5],j,[],y) ;
        ([],i,[],k) ;
-       ([],j,[],k) ]
+       ([],j,[],k)
+     ]
 
      (* let ik = List.nth l 2 *)
 
-     (* open Diagrams *)
 
      (* let grad = Curve.eval (Curve.gradient ik.curve) 1.  *)
      (* let e = ik.anchor (`Temporal 1.) *)

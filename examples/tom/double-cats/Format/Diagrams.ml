@@ -9,6 +9,7 @@ let one_third = 1. /. 3.
 let half_pi = pi /. 2.
 let to_deg angle = angle *. 180. /. pi
 let to_rad angle = angle *. pi /. 180.
+let default_line_width = ref 0.2
 let ex env = 
   let l = boxify_scoped env [T "x"] in
   let x = List.find
@@ -150,6 +151,47 @@ module Curve = struct
     let i = int_of_float i_float in
     let t = a' -. i_float in
     (i, t)
+
+
+      let make_quadratic e l ll =
+	begin Printf.fprintf stderr "Entering make_quadratic with e = (%f,%f), l = (%f,%f), ll = (%f,%f).\n"
+	    (fst e) (snd e)
+	    (fst l) (snd l)
+	    (fst ll) (snd ll) ;
+	  flush stderr
+	end; 
+      	let alpha = Vector.sector (Vector.of_points l ll) (Vector.of_points l e) in
+	let do_make_quadratic alpha e l ll = 
+	  let beta = 0.5 *. (180. -. alpha) in
+	  let le = Vector.of_points l e in
+	  let lll = Vector.of_points l ll in
+	  let vl = Vector.normalise
+	    ~norm:((Vector.norm le) /. (2. *. (cos (to_rad beta)))) 
+	    (Vector.rotate beta le)
+	  in
+	  let xl = Vector.(+) l vl in
+	  let vr = Vector.normalise
+	    ~norm:((Vector.norm lll) /. (2. *. (cos (to_rad beta)))) 
+	    (Vector.rotate (-. beta) lll)
+	  in
+	  let xr = Vector.(+) l vr in
+	  xl, xr
+	in
+	let xl,xr = 
+	  if alpha <= 180. then 
+	    do_make_quadratic alpha e l ll 
+	  else swap (do_make_quadratic (360. -. alpha) ll l e)
+	in
+	begin Printf.fprintf stderr "Returning [[e;xl;l];[l;xr;ll]] = " ;
+	  Printf.fprintf stderr "[[(%f,%f);(%f,%f);(%f,%f)];[(%f,%f);(%f,%f);(%f,%f)]].\n" 
+	    (fst e) (snd e)
+	    (fst xl) (snd xl)
+	    (fst l) (snd l)
+	    (fst l) (snd l)
+	    (fst xr) (snd xr)
+	    (fst ll) (snd ll)
+	end ;
+	[[e;xl;l];[l;xr;ll]]	
 
   let intersections bezier1 beziers2 = 
     let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
@@ -948,9 +990,14 @@ module Diagram = struct
   (* Matrix specification *)
   | `Centers of float
   | `AllNodes of style_instructions
+  | `ToOf of tip_info -> path_parameters -> (float * float * float * float * float)
+  | `To
+  | `Moustache
   ]
-  and arrow_head = [ `To | `None ]
+  and arrow_head = [ `To | `Moustache | `None ]
   and style_instructions = style list
+  and tip_info = { tip_line_width : float ; is_double : bool }
+
 
   let between_centers dist i j =
     (float_of_int j *. dist), -. (float_of_int i *. dist) 
@@ -995,8 +1042,11 @@ module Diagram = struct
       | `DrawOf params -> params 
       | `Dashed -> { res with dashPattern = [0.1;0.2] }
       | _ -> res)
-    let parameters = make parameters_rec { default with close = true ; strokingColor=None ; lineWidth = 0.1 } 
-    let path_parameters = make parameters_rec { default with close = false ; strokingColor=None ; lineWidth = 0.1 } 
+    let parameters = make parameters_rec { default with close = true ; 
+      strokingColor=None ; 
+      lineWidth = !default_line_width } 
+    let path_parameters = make parameters_rec { default with close = false ; strokingColor=None ; 
+      lineWidth = !default_line_width } 
 
   (* Find outer_sep specification in a list of style instructions *)
     let outer_sep = make
@@ -1024,7 +1074,7 @@ module Diagram = struct
       | `DrawOf params -> params.lineWidth
       | `LineWidth w -> w
       | _ -> res)
-      0.1
+      !default_line_width
 
   (* Find anchor specification in a list of style instructions *)
     let anchor = make
@@ -1038,8 +1088,8 @@ module Diagram = struct
 
   (* Find arrow style specification in a list of style instructions *)
     let double = make 
-      (fun instr res -> match instr with `Double _ -> true | _ -> res)
-      false
+      (fun instr res -> match instr with `Double margin -> Some margin | _ -> res)
+      None
       
   (* Find matrix placement specification in a list of style instructions *)
     let matrix_placement matrix = make 
@@ -1192,33 +1242,28 @@ module Diagram = struct
 
     module Edge = struct
 
-      type info = { tip_line_width : float ; is_double : bool }
-      let default_info = { tip_line_width = 0.1 ; is_double = false }
+      let default_info = { tip_line_width = !default_line_width ; is_double = false }
 
-      let make_quadratic e l ll =
-      	let alpha = Vector.sector (Vector.of_points l ll) (Vector.of_points l e) in
-	let do_make_quadratic alpha e l ll = 
-	  let beta = 0.5 *. (180. -. alpha) in
-	  let le = Vector.of_points l e in
-	  let lll = Vector.of_points l ll in
-	  let vl = Vector.normalise
-	    ~norm:((Vector.norm le) /. (2. *. (cos (to_rad beta)))) 
-	    (Vector.rotate beta le)
-	  in
-	  let xl = Vector.(+) l vl in
-	  let vr = Vector.normalise
-	    ~norm:((Vector.norm lll) /. (2. *. (cos (to_rad beta)))) 
-	    (Vector.rotate (-. beta) lll)
-	  in
-	  let xr = Vector.(+) l vr in
-	  xl, xr
-	in
-	let xl,xr = 
-	  if alpha <= 180. then 
-	    do_make_quadratic alpha e l ll 
-	  else swap (do_make_quadratic (360. -. alpha) ll l e)
-	in
-	[[e;xl;l];[l;xr;ll]]	
+      let head_moustache info params = 
+       let _ = begin 
+	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n"
+	   params.lineWidth info.tip_line_width ;
+	 flush stderr
+       end in
+       if info.is_double then
+	 let short = max (params.lineWidth /. 2.) 0.6 in
+	 let thickness = params.lineWidth in
+       let height = max (1.6 *. short) 0.8 in
+       let width = max info.tip_line_width 1. in
+       (short, thickness, height, width, 0.01)
+
+       else
+
+	let short = max (0.6 *. params.lineWidth) 0.2 in
+	let thickness = max (0.7 *. params.lineWidth) 0.2 in
+	let height = max (2. *. short) 0.8 in
+	let width = max (1.3 *. info.tip_line_width) 1. in
+	(short, thickness, height, width, 0.01)
 
       let rec transfo style (info, params, underlying_curve, curves) = match style with
 	| `Squiggle (freq,amplitude,a,b) -> 
@@ -1250,7 +1295,7 @@ module Diagram = struct
 	    (* Printf.fprintf stderr "Largeur: %f.\n" params.lineWidth ; *)
 	    { params with 
 	      (* strokingColor = Some (RGB { red=0.;green=1.;blue=0. });  *)
-	      lineWidth = margin +. 2.0 *. params.lineWidth },
+	      lineWidth = margin +. 2. *. params.lineWidth },
 	    curve)
 	    curves
 	  in
@@ -1274,47 +1319,58 @@ module Diagram = struct
 	  let shorten (params',curve') = 
 	    let ta = Curve.curvilinear curve' a in
 	    let tb = Curve.curvilinear curve' (-. b) in
+	    let _ = Printf.fprintf stderr "Restricting to %f,%f.\n" ta tb ; flush stderr in
 	    params', Curve.restrict curve' ta tb
 	  in
 	  let params', u_curve = shorten (params, underlying_curve) in
 	  info, params', u_curve, List.map shorten curves
-	| `Head `To -> 
-	  let short = max (info.tip_line_width /. 2.) 0.1 in
+	| _ -> (info, params, underlying_curve, curves)
+
+      let rec posttransfo style (info, params, underlying_curve, curves) = match style with
+	| (`Head `To | `To) -> posttransfo (`ToOf head_moustache) (info, params, underlying_curve, curves)
+	| ((`Head `Moustache) | `Moustache) -> 
+	  posttransfo (`ToOf head_moustache) (info, params, underlying_curve, curves)
+	| `ToOf head_params -> 
+	  let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
+	  let short, thickness, height, width, lw = head_params info params in
+	  let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
+
+	  (* Control points on the curve *)
+	  let (xe,ye) as e = Curve.eval underlying_curve 1. in
+	  let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in
 	  let _, _, curve0, curves = 
 	    transfo (`Shorten (0.,short)) (info, params, underlying_curve, curves) in
-	  let (xe,ye) as e = Curve.eval underlying_curve 1. in
+	  let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in
 	  let e0 = Curve.eval curve0 1. in
-	  let altitude = max short 0.3 in
-	  let e1 = Vector.(+) e (Vector.normalise ~norm:altitude (Vector.of_points e e0)) in
-	  let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
-	  (* Left intersection of the arrow head with the edge *)
-	  let l = Vector.(+) e0 (Vector.rotate 90. ((Vector.normalise ~norm:(info.tip_line_width /. 2.) grad))) in
-	  (* Right intersection of the arrow head with the edge *)
-	  let r = Vector.(+) e0 (Vector.rotate (-. 90.) 
-				   ((Vector.normalise ~norm:(info.tip_line_width /. 2.) grad))) in
-	  let dtip = 0.5 +. (max info.tip_line_width altitude)  in (* distance to the tips *)
-	  let normale = Vector.normalise ~norm:dtip (Vector.rotate 90. grad) in
-	  let ee1 = Vector.of_points e e1 in
-	  let ll = Vector.(+) e1 (Vector.(+) (Vector.normalise ~norm:altitude ee1) normale) in
-	  let rr = Vector.(+) e1 (Vector.(+) (Vector.normalise ~norm:altitude ee1) (Vector.minus normale)) in
-	  let h = altitude -. altitude *. info.tip_line_width /. 2. /. dtip in
-	  let l' = Vector.(+) l (Vector.normalise ~norm:h ee1) in 
-	  let r' = Vector.(+) r (Vector.normalise ~norm:h ee1) in 
-	  let tip = Curve.of_point_lists ((make_quadratic e l ll) 
-					  @ (make_quadratic ll l' e1) 
-					  @ (make_quadratic e1 r' rr) 
-					  @ (make_quadratic rr r e)) 
+	  let ee0 = Vector.of_points e e0 in
+	  let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
+	  let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
+
+	  let lnormale = Vector.rotate 90. (Vector.normalise grad) in
+	  let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
+
+	  (* Left control points *)
+	  let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
+	  let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
+	  let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
+
+	  (* Right control points *)
+	  let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
+	  let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
+	  let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
+
+	  (* Put everything together *)
+	  let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
+					  @ (Curve.make_quadratic ll l' e1) 
+					  @ (Curve.make_quadratic e1 r' rr) 
+					  @ (Curve.make_quadratic rr r e)) 
 	  in
-	  (* (\* Put everything together *\) *)
-	  (* let curves = if info.is_double then *)
-	  (*     ({ params with close = false ; fillColor = None },  *)
-	  (*      Curve.of_point_lists [ [ll;ml';l] ; [l;ml;e] ; [e;mr;r] ; [r;mr';rr] ]) :: curves *)
-	  (*   else *)
-	  (*     ({ params with close = true ; fillColor = params.strokingColor ; lineWidth = 0.1 },  *)
-	  (*      Curve.of_point_lists [ [l;ml;e]; [e;mr;r] ]) :: left_moustache :: right_moustache :: curves *)
-	  (* in *)
 	  (info, params, underlying_curve, 
-	   ({ params with close = true ; fillColor = params.strokingColor ; lineWidth = 0.01 }, tip) :: curves)
+	   curves @ [({ params with 
+	     close = true ; 
+	     fillColor = params.strokingColor ; 
+	     lineWidth = lw }, tip)])
+
 	| _ -> (info, params, underlying_curve, curves)
 
       let rec pretransfo style curve = match style with
@@ -1340,10 +1396,18 @@ module Diagram = struct
 	pretransfo styles curve
 
       let draw_curve style curve = 
-	let info = { tip_line_width = Style.line_width style ;
-		     is_double = Style.double style } in
-	let _, params', u_curve, curves = List.fold_right
+	let info =
+	  match Style.double style with
+	    | Some margin -> { tip_line_width = margin +. 2. *. Style.line_width style ;
+			       is_double = true }
+	    | None -> { tip_line_width = Style.line_width style ;
+			is_double = false }
+	in
+	let info', params', u_curve, curves = List.fold_right
 	  transfo style (info, (Style.path_parameters style), curve, [(Style.path_parameters style, curve)]) 
+	in
+	let _, params', u_curve, curves = List.fold_right
+	  posttransfo style (info', (Style.path_parameters style), u_curve, curves)
 	in
 	curves
 
