@@ -423,27 +423,27 @@ let hyphenate hyph subs kern font fsize fcolor str=
 
 
 
-let rec print_box=function
-    GlyphBox x->Printf.printf "%s" (Fonts.glyphContents x.glyph)
-  | Kerning x->print_box x.kern_contents
-  | Glue _->Printf.printf " "
-  | Drawing _->Printf.printf "[Drawing]"
-  | Hyphen x->Array.iter print_box x.hyphen_normal
-  | User _->Printf.printf "[User]"
-  | BeginFigure _->Printf.printf "[BeginFigure]"
-  | FlushFigure _->Printf.printf "[FlushFigure]"
+let rec print_box chan=function
+    GlyphBox x->Printf.fprintf chan "%s" (Fonts.glyphContents x.glyph)
+  | Kerning x->print_box chan x.kern_contents
+  | Glue _->Printf.fprintf chan " "
+  | Drawing _->Printf.fprintf chan "[Drawing]"
+  | Hyphen x->Array.iter (print_box chan) x.hyphen_normal
+  | User _->Printf.fprintf chan "[User]"
+  | BeginFigure _->Printf.fprintf chan "[BeginFigure]"
+  | FlushFigure _->Printf.fprintf chan "[FlushFigure]"
   | Empty ->()
 
-let rec print_box_type=function
-    GlyphBox _->Printf.printf "GlyphBox "
-  | Kerning _->Printf.printf "Kerning "
-  | Glue _->Printf.printf "Glue "
-  | Drawing _->Printf.printf "Drawing "
-  | Hyphen _->Printf.printf "Hyphen "
-  | User _->Printf.printf "User "
-  | BeginFigure _->Printf.printf "BeginFigure "
-  | FlushFigure _->Printf.printf "FlushFigure "
-  | Empty ->Printf.printf "Empty "
+let rec print_box_type chan=function
+    GlyphBox _->Printf.fprintf chan "GlyphBox "
+  | Kerning _->Printf.fprintf chan "Kerning "
+  | Glue _->Printf.fprintf chan "Glue "
+  | Drawing _->Printf.fprintf chan "Drawing "
+  | Hyphen _->Printf.fprintf chan "Hyphen "
+  | User _->Printf.fprintf chan "User "
+  | BeginFigure _->Printf.fprintf chan "BeginFigure "
+  | FlushFigure _->Printf.fprintf chan "FlushFigure "
+  | Empty ->Printf.fprintf chan "Empty "
 
 let print_linef out l=
   Printf.fprintf out "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
@@ -452,6 +452,24 @@ let print_line l=print_linef stdout l
 let print_text_line lines node=
   print_line node;
   for i=node.lineStart to node.lineEnd-1 do
-    print_box (lines.(node.paragraph).(i))
+    print_box stderr (lines.(node.paragraph).(i))
   done;
   print_newline()
+
+let rec text_box=function
+    GlyphBox x->(Fonts.glyphContents x.glyph)
+  | Kerning x->text_box x.kern_contents
+  | Glue _->" "
+  | Drawing _->"[Drawing]"
+  | Hyphen x->String.concat "" (List.map (text_box) (Array.to_list x.hyphen_normal))
+  | User _->"[User]"
+  | BeginFigure _->"[BeginFigure]"
+  | FlushFigure _->"[FlushFigure]"
+  | Empty ->""
+
+let text_line lines node=
+  let rec text i=
+    if i>=node.lineEnd then [] else
+      text_box (lines.(node.paragraph).(i)) :: text (i+1)
+  in
+    String.concat "" (text node.lineStart)

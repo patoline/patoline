@@ -36,7 +36,7 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
     Printf.fprintf stderr "Generating OCaml code...\n";
-    Texprime.gen_ml !format !fugue fread where_ml (pdfname_of f);
+    Texprime.gen_ml !format !fugue f fread where_ml (pdfname_of f);
     close_out where_ml;
     close_in fread;
     Printf.fprintf stderr "File %s generated.\n" (mlname_of f);

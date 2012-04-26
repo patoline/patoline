@@ -9,7 +9,7 @@ open Typography.Syntax
 
 open Lexing
 open Parser
-
+open Language
 
 let preambule format fugue = "
   open Typography
@@ -344,7 +344,7 @@ and output_list from where no_indent lvl docs =
       );
       output_list from where !next_no_indent !lvl docs
 
-let gen_ml format fugue from where pdfname =
+let gen_ml format fugue filename from where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
@@ -353,7 +353,7 @@ let gen_ml format fugue from where pdfname =
             let lexbuf = Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
-	      Printf.fprintf stderr "Fin du parsing (%d trees)\n" (List.length docs); flush stderr;
+	      Printf.fprintf stderr "%s" (Language.message (End_of_parsing (List.length docs))); flush stderr;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -380,14 +380,14 @@ let gen_ml format fugue from where pdfname =
 	    with
 	    | Dyp.Syntax_error ->
 	      raise
-	        (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			       "parsing error"))
+	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+			              Language.Parse_error))
 	    | Failure("lexing: empty token") ->
 	      raise
-	        (Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			       "unexpected char"))
+	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+			              Unexpected_char))
     with
         Syntax_Error(pos,msg) ->
-	  Printf.fprintf stderr "%s:%d,%d %s\n" 
-	    pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msg;
+	  Printf.fprintf stderr "%s"
+            (Language.message (Syntax_error (filename, pos, msg)));
 	  exit 1

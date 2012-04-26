@@ -152,8 +152,11 @@ val hyphenate :
 
 (** {3 Fonctions de démouchage} *)
 
-val print_box : 'a box -> unit
-val print_box_type : 'a box -> unit
+val print_box : out_channel -> 'a box -> unit
+val print_box_type : out_channel -> 'a box -> unit
 val print_linef : out_channel -> line -> unit
 val print_line : line -> unit
 val print_text_line : 'a box array array -> line -> unit
+
+val text_box : 'a box -> string
+val text_line : 'a box array array -> line -> string

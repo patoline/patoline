@@ -399,7 +399,8 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
           try
             let _=LineMap.find uselessLine !last_failure in
               if Array.length paragraphs>0 || Array.length figures > 0 then
-                Printf.fprintf stderr "No solution, incomplete document. Please report (1)\n";
+                Printf.fprintf stderr "%s\n"
+                  (Language.message (Language.No_solution ""));
               demerits'
               (* raise No_solution *)
           with
@@ -414,7 +415,8 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
             let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding demerits' in
             try
               let _=LineMap.find b !last_failure in
-                Printf.fprintf stderr "No solution, incomplete document. Please report (2)\n";
+                Printf.fprintf stderr "%s\n" (
+                  Language.message (Language.No_solution (text_line paragraphs uselessLine)));
                 demerits'
             with
                 Not_found->(
@@ -453,12 +455,11 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
         in
         let log,ln=makeParagraphs [] node0 [] in
           print_graph "graph_opt" paragraphs demerits ln;
-          (* Printf.printf "Le graphe a %d nœuds\n" (LineMap.cardinal demerits); *)
           makePages ln;
           (log, pages, figs0,user0)
       with
           Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UMap.empty) else (
-            Printf.printf "Incomplete document, please report\n";
+            Printf.fprintf stderr "%s" (Language.message (Language.No_solution ""));
             [],[||],IntMap.empty,UMap.empty
           )
   end)
