@@ -148,70 +148,75 @@ let rec print_macro ch op mtype name args =
   begin
     match mtype with
       | `Single -> 
-	  Printf.fprintf ch "%s " name;
-	  List.iter (function
-        Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
+	begin
+	Printf.fprintf ch " (%s " name;
+	List.iter (function
+          | Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
 	  | Caml(s,e,txps) ->
-              Printf.fprintf ch "(";
-              print_caml op ch s e txps;
-              Printf.fprintf ch ")";
+            Printf.fprintf ch "(";
+            print_caml op ch s e txps;
+            Printf.fprintf ch ")";
 	  | _ -> assert false) args;
 	if args = [] then Printf.fprintf ch " ()";
-      | `Module | `Begin -> 
-	let end_open =
-	  if args = [] then 
-	    if mtype = `Begin && name = "Diagram" then begin
-	      Printf.fprintf ch
-		"module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
-	      "(Args)"
-	    end
-	    else 
-	      ""
-	  else begin
-	    let num = ref 1 in
-	    Printf.fprintf ch "module Args = struct\n";
-	    List.iter (function
-            Paragraph(p) -> Printf.fprintf ch "let arg%d = %a" !num (print_contents op) p;
-	      incr num
-	      | Caml(s,e,txps) -> begin
-		Printf.fprintf ch "let arg%d = begin " !num;
-		print_caml op ch s e txps;
-		Printf.fprintf ch " end ";
-		incr num
-	      end
-	      | _ -> assert false) args;
-	    Printf.fprintf ch "end\n";
+	end ;
+	Printf.fprintf ch ") ";
+  | `Module | `Begin -> 
+      let end_open =
+	if args = [] then 
+	  if mtype = `Begin && name = "Diagram" then begin
+	    Printf.fprintf ch
+	      "module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
 	    "(Args)"
 	  end
-	in
-	let modname = 
-	  if mtype = `Begin then begin
-            incr moduleCounter;
-	    Printf.fprintf ch "module TEMP%d = struct\n" !moduleCounter;
-	    "Env_"^name
-	  end
-	  else name
-	in
-	if mtype = `Begin && name = "Diagram" then begin
-	  (* Printf.fprintf ch "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
-	  Printf.fprintf ch 
-	    ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
-	  Printf.fprintf ch "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
-	end
+	  else 
+	    ""
 	else begin
-	Printf.fprintf ch "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
+	  let num = ref 1 in
+	  Printf.fprintf ch "module Args = struct\n";
+	  List.iter (function
+          Paragraph(p) -> Printf.fprintf ch "let arg%d = %a" !num (print_contents op) p;
+	    incr num
+	    | Caml(s,e,txps) -> begin
+	      Printf.fprintf ch "let arg%d = begin " !num;
+	      print_caml op ch s e txps;
+	      Printf.fprintf ch " end ";
+	      incr num
+	    end
+	    | _ -> assert false) args;
+	  Printf.fprintf ch "end\n";
+	  "(Args)"
 	end
-      | `End -> if name = "Diagram" then begin
-	  Printf.fprintf ch "\n end \n" (* name *) ;
-	Printf.fprintf ch "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
-	Printf.fprintf ch "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
-	Printf.fprintf ch "   Res.make ())\n end \n " end
-	else Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
-      | `Include ->
-        incr moduleCounter;
-        Printf.fprintf ch
-          "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
-        incr moduleCounter
+      in
+      let modname = 
+	if mtype = `Begin then begin
+          incr moduleCounter;
+	  Printf.fprintf ch "module TEMP%d = struct\n" !moduleCounter;
+	  "Env_"^name
+	end
+	else name
+      in
+      if mtype = `Begin && name = "Diagram" then begin
+      (* Printf.fprintf ch "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
+	Printf.fprintf ch 
+	  ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
+	Printf.fprintf ch "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
+      end
+      else begin
+	Printf.fprintf ch "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
+      end
+  | `End -> 
+
+    if name = "Diagram" then begin
+    Printf.fprintf ch "\n end \n" (* name *) ;
+    Printf.fprintf ch "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
+    Printf.fprintf ch "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
+    Printf.fprintf ch "   Res.make ())\n end \n " end
+    else Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
+  | `Include ->
+    incr moduleCounter;
+    Printf.fprintf ch
+      "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
+    incr moduleCounter
   end
 
 and print_caml op ch s e txps = match txps with
@@ -265,9 +270,9 @@ and print_contents op ch l =
       Printf.fprintf ch "T \" \"::";
       fn l
     | MC(mtype, name, args) :: l -> 
-      Printf.fprintf ch "(";
+      Printf.fprintf ch " (";
       print_macro ch op mtype name args;
-      Printf.fprintf ch ")@";
+      Printf.fprintf ch ")@ ";
       fn l
     | FC(b,m) :: l ->
       Printf.fprintf ch "(";
