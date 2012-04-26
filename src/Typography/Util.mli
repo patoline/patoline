@@ -130,3 +130,5 @@ module IntSet :
     val choose : t -> elt
     val split : elt -> t -> t * bool * t
   end
+
+val compose : ('b->'c)->('a->'b)->'a->'c

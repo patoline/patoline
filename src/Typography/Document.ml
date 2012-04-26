@@ -14,6 +14,24 @@ type fontAlternative = Regular | Bold | Caps | Demi
 let simpleFamilyMember:(unit->font)->(font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t =
   fun a->Lazy.lazy_from_fun (fun ()->(a (),(fun x->x),(fun x->x),(fun x->x)))
 
+let make_ligature l gl x=
+  let rec match_lig l x=match (l,x) with
+      [],[]->Some []
+    | _::_,[]->None
+    | [],_->Some x
+    | h1::s1, h2::s2 when h1=h2.glyph_index-> match_lig s1 s2
+    | _::_,_::_->None
+  in
+  let rec make_ligature x=match x with
+      []->[]
+    | h::s->(
+        match match_lig l x with
+            None->h::make_ligature s
+          | Some g->gl::make_ligature g
+      )
+  in
+    make_ligature x
+
 (* Italic is second *)
 type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
 
@@ -246,6 +264,18 @@ let font f t=
   let font=loadFont f in
     [Scoped ((fun env-> updateFont env font (fun x->x) (fun x->x) (fun x->x)), t)]
 
+
+(* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
+   qui existe *)
+let add_features features env=
+  let feat=Fonts.select_features env.font (features@env.fontFeatures) in
+    { env with
+        fontFeatures=features@env.fontFeatures;
+        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a)
+                         (env.substitutions glyphs) feat);
+    }
+
+
 let envItalic b env =
   let font, str,subst, pos= selectFont env.fontFamily env.fontAlternative b in
   let env = { env with fontItalic = b } in
@@ -266,14 +296,14 @@ let notItalic t =
 
 let toggleItalic t =
   [Scoped ((fun env -> envItalic (not env.fontItalic) env), t)]
- 
+
 let envAlternative features alt env =
   let font,str,subs,pos = selectFont env.fontFamily alt env.fontItalic in
   let env = { env with fontAlternative = alt } in
   updateFont env font str subs pos
- 
+
 let alternative ?features alt t =
-  [Scoped ((fun env -> 
+  [Scoped ((fun env ->
     let features = match features with
 	None -> env.fontFeatures
       | Some f -> f
@@ -297,15 +327,6 @@ let resize_env fsize env=
 let size fsize t=
   Scoped (resize_env fsize, t)
 
-(* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
-   qui existe *)
-let add_features features env=
-  let feat=Fonts.select_features env.font (features@env.fontFeatures) in
-    { env with
-        fontFeatures=features@env.fontFeatures;
-        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a)
-                         (env.substitutions glyphs) feat);
-    }
 
 (****************************************************************)
 

@@ -488,7 +488,6 @@ let select_features font feature_tags=try
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
-
   let feature_tag=String.create 4 in
   let rec select i result=
     if i>=featureCount then result else (
@@ -514,6 +513,7 @@ with Table_not_found _->[]
 let font_features font=try
   let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
+
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
   let buf=String.create 4 in

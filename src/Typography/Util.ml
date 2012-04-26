@@ -119,6 +119,8 @@ let unspace s=
   in
     rem (UTF8.first s) (UTF8.last s)
 
+let compose f g x=f (g x)
+
 
 module IntMap=New_map.Make (struct type t=int let compare=compare end)
 module StrMap=New_map.Make (String)

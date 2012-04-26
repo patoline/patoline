@@ -329,7 +329,7 @@ let rec draw_maths mathsEnv style mlist=
 					     env.mathsSize*.env.subscript_distance) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
-                  [ Drawing ({ drawing_min_width=x1-.x0;
+                  [ Drawing ({ drawing_min_width=a2-.a0;
                                drawing_nominal_width=a2-.a0;
                                drawing_max_width=a2-.a0;
                                drawing_y0=a1;

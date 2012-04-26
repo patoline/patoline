@@ -12,9 +12,10 @@ Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
 	$(OCAMLBUILD) Texprime/Main.byte
 	cp Main.byte texprime.byte
 proof.native:Typography/Typography.cmxa
+	rm -Rf proof.native _build/proof
 	$(OCAMLBUILD) proof/proof.native
-	cp proof.native proof
 proof.byte:Typography/Typography.cma
+	rm -Rf proof.byte _build/proof
 	$(OCAMLBUILD) proof/proof.byte
 
 Format/DefaultFormat.cmxa:Typography/Typography.cmxa

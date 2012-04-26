@@ -5,6 +5,7 @@ open Typography.Fonts.FTypes
 open Typography.Util
 open Typography.Fonts
 open Typography.Boxes
+open CamomileLibrary
 
 let _=Random.self_init ()
 
@@ -225,28 +226,40 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack))) (Node empty);
       []
 
-    let addon = [ T "-"; B (fun env->[glue env.size env.size env.size])]
-
-
+    let addon =
+        [
+          B (fun env->[Drawing (
+                         let y=env.size/.4. in
+                         let x0=env.size/.phi in
+                         let x1=env.size-.x0 in
+                         { drawing_min_width=env.size;
+                           drawing_nominal_width=env.size;
+                           drawing_max_width=env.size;
+                           drawing_y0=y; drawing_y1=y;
+                           drawing_badness=(fun _->0.);
+                           drawing_contents=(fun _->
+                                               [OutputCommon.Path
+                                                  ({OutputCommon.default with
+                                                      OutputCommon.lineWidth=0.1},
+                                                   [[|[|x0;x1|],[|y;y;|]|]])
+                                               ]) }
+                       )])
+        ]
     let do_end_env ()=
       let params params0 a b c d e f g=
         let p=(params0 a b c d e f g) in
-        let boxes=boxify_scoped a addon in
-        let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
           { p with
-              left_margin=p.left_margin +. w;
-              measure=p.measure-.w
+              left_margin=p.left_margin +. a.size;
+              measure=p.measure-.a.size
           }
       in
       let params1 params0 a b c d e f g=
         let p=params0 a b c d e f g in
           if g.lineStart>0 then (
-            let boxes=boxify_scoped a addon in
-            let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
-              { p with
-                  left_margin=p.left_margin+.w;
-                  measure=p.measure-.w
-              }
+            { p with
+                left_margin=p.left_margin+.a.size;
+                measure=p.measure-.a.size
+            }
           )
           else p
       in
@@ -256,15 +269,18 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           | Paragraph p ->
               Paragraph { p with
                             par_env=(fun x->
-                                       let boxes=boxify_scoped x addon in
-                                       let w=List.fold_left (fun w0 b->w0+.box_width 0. b) 0. boxes in
                                        let env=(p.par_env x) in
                                          { env with
-                                             normalMeasure=env.normalMeasure -. w;
+                                             normalMeasure=env.normalMeasure -. env.size;
                                              par_indent=[]
                                          });
                             par_parameters=params p.par_parameters }
           | _ -> t
+      in
+      let rec remove_glues=function
+          T w::s when UTF8.next w 0>=String.length w
+            && is_space (UTF8.look w 0)->remove_glues s
+        | x->x
       in
       let rec tirets=function
           Node n as t ->
@@ -275,7 +291,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                      (match a with
                         | Paragraph p ->
                             Paragraph { p with
-                                          par_contents=addon@p.par_contents;
+                                          par_contents=addon@remove_glues p.par_contents;
                                           par_parameters=params1 p.par_parameters
                                       }
                         | t -> t) chi }
@@ -325,7 +341,11 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     let do_end_env ()=
       let rec first_par=function
           Paragraph p->
-            Paragraph { p with par_contents=
+            Paragraph { p with
+                          par_parameters=(fun a b c d e f g->
+                                            { (parameters a b c d e f g) with
+                                                min_height_before=2.*.a.lead });
+                          par_contents=
                 Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
                   CFix (fun env->
                           let lvl,num=try (StrMap.find Th.counter env.counters) with

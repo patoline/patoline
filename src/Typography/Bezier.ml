@@ -11,7 +11,7 @@ let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
 let derivee a=
   let b=Array.create (Array.length a-1) 0. in
     for i=0 to Array.length b-1 do
-      b.(i)<-(a.(i+1)-.a.(i)) *. (float_of_int (Array.length a-1))
+      b.(i)<-(a.(i)-.a.(i+1)) *. (float_of_int (Array.length a-1))
     done;
     b
 
