@@ -139,7 +139,7 @@ module Format=functor (D:DocumentStructure)->struct
 
 
   let defaultEnv=
-    { (envFamily alegreya Default.defaultEnv) with
+    { (envFamily famille Default.defaultEnv) with
         word_substitutions=
         (fun x->List.fold_left (fun y f->f y) x
            [

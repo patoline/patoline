@@ -45,11 +45,18 @@ let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
 let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
 let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
 let bold a=alternative Bold a
+let math arg = [B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (* math <$lala$> *)
+  (let style = Maths.Text and _env = (Maths.env_style Maths.default Maths.Text) in 
+   Maths.draw_maths Maths.default style ((arg ))))]
 
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let rs = <$\mathcal{R}$>
+let rulescat () = <<$R_{\cat{}}$>>
+let rules c = <<$R_{ {{ c }} }$>>
 let indiv = <$I$>
   let mamacro () = << du texte >>
 open Article
+     
 }}
 
 
@@ -91,65 +98,90 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
   Let us start with a category $\cat{}$. 
       
 
-\Begin{Diagram}
+  \Begin{definition}
 
-{{     let m,ms = matrix  [] [[ 
-  ([],<<$J$>>) ; ([],<<$Y$>>) ];[
-  ([],<<$K$>>) ; ];[
-  ([],<<$I$>>) ; ([],<<$X$>>) ];[
-        ]]
-       
-     let j = ms.(0).(0)
-     let i = ms.(2).(0)
-     let k = ms.(1).(0)
-     let x = ms.(2).(1)
-     let y = ms.(0).(1)
-
-     open Diagrams
-
-     let head info params = 
-       let _ = begin 
-	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n"
-	   params.lineWidth info.tip_line_width ;
-	 flush stderr
-       end in
-       if info.is_double then
-	 let short = max (params.lineWidth /. 2.) 0.6 in
-	 let thickness = params.lineWidth in
-       let height = max (1.6 *. short) 0.8 in
-       let width = max info.tip_line_width 1. in
-       (short, thickness, height, width, 0.01)
-
-       else
-
-	let short = max (0.6 *. params.lineWidth) 0.2 in
-	let thickness = max (0.7 *. params.lineWidth) 0.2 in
-	let height = max (2. *. short) 0.8 in
-	let width = max (1.3 *. info.tip_line_width) 1. in
-	(short, thickness, height, width, 0.01)
-
-     let l = edges [`To;`Draw] [
-       ([`LineWidth 1.], i, [], x) ;
-       ([`Double 0.5],j,[],y) ;
-       ([],i,[],k) ;
-       ([],j,[],k)
-     ]
-
-     (* let ik = List.nth l 2 *)
+  A \emph{rule shape} is a diagram of the shape below in $\cat{}$, such that $I$,$J$, and $K$ are interfaces:
 
 
-     (* let grad = Curve.eval (Curve.gradient ik.curve) 1.  *)
-     (* let e = ik.anchor (`Temporal 1.) *)
+    \Begin{Diagram}{{"rule shape"}}
 
-     (* let _ = edge [`Head `To;`Draw] (coordinate e) [] (coordinate (Vector.(+) e grad)) *)
+    {{
 
-     (* let _ = node [`Circle;`Fill;`At (i.anchor `Base)] ([]) *)
+      let rule_shape x i k j y ix ik jk jy = let m,ms = matrix [] [[
+	([],j) ; ([],y) ];[ ([],k) ; ];[ ([],i) ; ([],x) ];[ ]] in let
+	  j = ms.(0).(0) in let i = ms.(2).(0) in let k = ms.(1).(0) in
+						  let x = ms.(2).(1) in let y = ms.(0).(1) in let l = edges
+												[`To;`Draw] [ ([], i, [], x) ; ([],j,[],y) ; ([],i,[],k) ;
+													      ([],j,[],k) ] in x
 
- }}
+     let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
+       ([]) ([])
 
-\End{Diagram}
+        let x = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
+    }}
 
+    \End{Diagram}
 
+  \End{definition}
+
+Letting $\rs{}$ be the base category for this diagram, we may consider the set of isomorphism classes
+of rule shapes, as objects of the functor category $[\rs{},\cat{}]$. Call this set \rulescat . 
+For each $ρ \in R_{\cat{}}$, the process of adding a formal colimit to $ρ$ is implemented categorically
+by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
+
+    \Begin{Diagram}{{"rule shape"}}
+
+    {{
+
+      let label e style pos contents = 
+	node  ((`At (e.anchor (`Temporal pos))) :: style) (math (Maths.Style Maths.Script :: contents))
+
+     let labela e contents = label e [`Anchor `South] 0.5 contents
+     let labelb e contents = label e [`Anchor `North] 0.5 contents
+     let labell e contents = label e [`Anchor `East] 0.5 contents
+     let labelr e contents = label e [`Anchor `West] 0.5 contents
+     let labelbr e contents = label e [`Anchor `NorthWest] 0.5 contents
+     let labelbl e contents = label e [`Anchor `NorthEast] 0.5 contents
+     let labelar e contents = label e [`Anchor `SouthWest] 0.5 contents
+     let labelal e contents = label e [`Anchor `SouthEast] 0.5 contents
+
+     let double_cell  a b c d h u v l alpha = 
+       let m, ms = matrix [] [[
+	 ([], math a) ; ([], math b) ];[
+	 ([], math c) ; ([], math d)
+       ]]
+       in
+       let a = ms.(0).(0) in 
+       let b = ms.(0).(1) in 
+       let c = ms.(1).(0) in 
+       let d = ms.(1).(1) in 
+       let es = edges [`To;`Draw] 
+	 [
+	   ([], a, [], b) ;
+	   ([], a, [], c) ;
+	   ([], b, [], d) ;
+	   ([], c, [], d) ;
+	 ]
+       in
+       match es with
+	 | [ ab;ac;bd;cd ] ->
+	   let _ = labela ab h in
+	   let _ = labell ac u in
+	   let _ = labelr bd v in
+	   let _ = labelb cd l in
+	   let ealpha = edge [`Double 0.5 ; `BendRight 30.;`Shorten (0.1,0.1);`To;`Draw] 
+	     (coordinate (ac.anchor (`Temporal 0.3))) []
+	     (coordinate (ab.anchor (`Temporal 0.3)))
+	   in
+	   let _ = labelbr ealpha alpha in
+	   ()
+	 | _ -> assert false
+
+      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$\mathcal{C}(p).$> <$a$> <$p$> ([]) ([]) <$x$> ;;
+	    
+    }}
+
+    \End{Diagram}
 
 
 =<
