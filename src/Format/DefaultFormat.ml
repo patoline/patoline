@@ -344,7 +344,8 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             Paragraph { p with
                           par_parameters=(fun a b c d e f g->
                                             { (parameters a b c d e f g) with
-                                                min_height_before=2.*.a.lead });
+                                                min_height_before=
+                                                if g.lineStart=0 then 2.*.a.lead else a.lead });
                           par_contents=
                 Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
                   CFix (fun env->
