@@ -101,6 +101,7 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
   \Begin{definition}
 
   A \emph{rule shape} is a diagram of the shape
+
     #diagram{{
 
       let rule_shape x i k j y ix ik jk jy = let m,ms = matrix [] [[
@@ -116,6 +117,7 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
         let x = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
 }}
+
   in $\cat{}$, such that $I$,$J$, and $K$ are interfaces.
 
   \End{definition}

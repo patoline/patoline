@@ -16,12 +16,15 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(O
 %.cmx: %.ml %.cmi
 	$(CAMLOPT) $(OPTS) -c $<
 
+%.cmxs: %.ml %.cmi
+	$(CAMLOPT) -shared $(OPTS) -o $@ $<
+
 %.cmxa: %.ml
 	$(CAMLOPTA) $(OPTS) -a -o $@ $<
 
 %.tmx: %.tml
 	cp $*.tml $*.ml
-	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa $*.ml
+	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa Euler.cmxa $*.ml
 
 formats:
 	make -C Format Diagrams.cmxa Article.cmxa
