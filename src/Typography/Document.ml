@@ -176,6 +176,10 @@ type ('a,'b) cxt=(int*('a,'b) tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
+let rec map_paragraphs f = function
+  | Node n -> Node  { n with children=IntMap.map (map_paragraphs f) n.children }
+  | Paragraph p -> Paragraph (f p)
+  | x -> x
 
 let child (t,cxt) i=try
   match t with
@@ -386,13 +390,22 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
       }
 
 
-let center env paragraphs figures last_parameters lastFigures lastUsers l=
+let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
   let b=l.nom_width in
     if param.measure >= b then
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
     else
       param
+let center = do_center parameters
+(* let center env paragraphs figures last_parameters lastFigures lastUsers l= *)
+(*   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in *)
+(*   let b=l.nom_width in *)
+(*     if param.measure >= b then *)
+(*       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. } *)
+(*     else *)
+(*       param *)
+
 let ragged_left a b c d e f line=
   let par=parameters a b c d e f line in
   { par with measure=line.nom_width }

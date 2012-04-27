@@ -1,6 +1,8 @@
+open Typography
 open Typography.Config
 open Typography.Util
 open Typography.Syntax
+open Typography.Boxes
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -8,9 +10,25 @@ open Typography.Syntax
 (* let filename=ref [] *)
 (* let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :" *)
 
+
+let math arg = [Document.B (fun env0 -> List.map (fun b -> Boxes.resize env0.Document.size b) (* math <$lala$> *)
+  (let style = Maths.Text and _env = (Maths.env_style Maths.default Maths.Text) in 
+   Maths.draw_maths Maths.default style ((arg ))))]
+
+let _=macros:=StrMap.add "diagram" (fun x-> begin
+  " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
+    "module Lib = Env_Diagram (struct let arg1 = \"\" end) (Arg) \n open Lib \n" ^
+    x ^
+    "end in \n" ^
+    "[B (fun env -> \n" ^
+    "let module Res = MaFigure (struct let env = env end) in \n" ^
+    "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
+
+
 open Lexing
 open Parser
 open Language
+
 
 let preambule format fugue = "
   open Typography

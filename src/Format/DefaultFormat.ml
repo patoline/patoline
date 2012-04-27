@@ -216,6 +216,20 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           )]
 
   let env_stack=ref []
+  module Env_center = struct
+
+    let do_begin_env ()=
+      D.structure:=newChildAfter (!D.structure) (Node empty);
+      env_stack:=snd !D.structure :: !env_stack
+
+    let do_end_env ()=
+      let center p = { p with par_parameters=Document.do_center p.par_parameters } in
+      let res = map_paragraphs center (fst (follow (top !D.structure) (List.rev (List.hd !env_stack)))) in 
+      D.structure:=up (res, List.hd !env_stack);
+      env_stack:=List.tl !env_stack
+  end
+
+
   module Env_itemize = struct
 
     let do_begin_env ()=

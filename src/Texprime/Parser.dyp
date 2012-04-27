@@ -291,14 +291,7 @@ parmacro:
   | PMACRO<name> args<a>
       { [MC(`Single, name, List.rev a)] }
   | PPRE<preproc> - CAML<s,e,txps>
-      { try
-          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.cmxs" preproc));
-          [MC (`Preproc, preproc, [Caml (s,e,txps)])]
-        with
-            Not_found ->Printf.fprintf stderr "Error while dynlinking toplevel macro %s\n" preproc;
-	      flush stderr ; raise Not_found
-          | Dynlink.Error x as e->(Printf.fprintf stderr
-                                     "Dynlink error : %s\n" (Dynlink.error_message x);raise e)
+      { [MC (`Preproc, preproc, [Caml (s,e,txps)])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
 
