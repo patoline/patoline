@@ -26,7 +26,7 @@ and doc =
    | Math of math
    | Verbatim of string option * string list
    | Struct of content list * bool * structType
-   | Macro of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
+   | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * doc list
    | Preproc of string
    | Ignore
 
@@ -35,7 +35,7 @@ and texprime_section = TxpMath | TxpText
 and content =
      TC of string
    | FC of bool * math
-   | MC of [ `Single | `Module | `Begin | `End | `Include ] * string * doc list
+   | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * doc list
    | GC
 
 let par_macros:(string->content list) StrMap.t ref=ref StrMap.empty

@@ -7,7 +7,7 @@ let math arg = [B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (* m
   (let style = Maths.Text and _env = (Maths.env_style Maths.default Maths.Text) in 
    Maths.draw_maths Maths.default style ((arg ))))]
 
-let _=macros:=StrMap.add "diagram" (fun x-> begin
+let _=macros:=StrMap.add "Diagram" (fun x-> begin
   " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
     "module Lib = Env_Diagram (struct let name = \"\" end) (Arg) \n include Lib \n" ^
     x ^

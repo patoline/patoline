@@ -271,7 +271,7 @@ topmacro:
         Macro(`Module, name, List.rev a) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
-          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.ml" preproc));
+          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.cmxs" preproc));
           let f=StrMap.find preproc !macros in
           let t=String.concat "" text in
             Preproc (f t)
@@ -289,6 +289,15 @@ preproc:
 parmacro:
   | PMACRO<name> args<a>
       { [MC(`Single, name, List.rev a)] }
+  | PPRE<preproc> - CAML<s,e,txps>
+      { try
+          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.cmxs" preproc));
+          [MC (`Preproc, preproc, [Caml (s,e,txps)])]
+        with
+            Not_found ->Printf.fprintf stderr "Error while dynlinking toplevel macro %s\n" preproc;raise Not_found
+          | Dynlink.Error x as e->(Printf.fprintf stderr
+                                     "Dynlink error : %s\n" (Dynlink.error_message x);raise e)
+      }
   | PPRE<preproc> '{' preproc<text> '}'
 
       { try

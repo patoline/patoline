@@ -1,4 +1,5 @@
 open Typography.Config
+open Typography.Util
 open Typography.Syntax
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
@@ -63,168 +64,201 @@ let split_ind indices =
   { no_ind with up_left = indices.up_left; down_left = indices.down_left; },
   { no_ind with up_right = indices.up_right; down_right = indices.down_right; }
 
-let print_math ch m = 
-  let rec fn indices ch m =
+let print_math_buf buf m = 
+  let rec fn indices buf m =
     match m with
 	Var name | Num name ->
 	  let elt = "Maths.glyphs \""^name^"\"" in
-	  Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
+	  Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Symbol name ->
 	let elt = "Maths.symbol \""^name^"\"" in
-	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
+	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Fun name ->
 	let elt = "fun env -> Maths.glyphs \""^name^"\" { env with Maths.mathsFont=Lazy.lazy_from_val env0.font }" in
-	Printf.fprintf ch "[Maths.Ordinary %a ]" (hn elt) indices
+	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Indices(ind', m) ->
-	fn ind' ch m 
+	fn ind' buf m 
       | Binary(_, a, _,"over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
-	Printf.fprintf ch "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
       | Binary(pr, a, _,"",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
-	Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
       | Binary(pr,a,nsl,op,nsr,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
-	Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (Maths.glyphs \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (Maths.glyphs \"%s\"), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl op nsr (fn indices) a (fn indices) b
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
-	Printf.fprintf ch "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
+	Printf.bprintf buf "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
       | MathMacro (macro, args) ->
-	Printf.fprintf ch "(%s " macro ;
+	Printf.bprintf buf "(%s " macro ;
 	List.iter
 	  (fun arg ->
-	    Printf.fprintf ch "(%a) " (fn indices) arg)
+	    Printf.bprintf buf "(%a) " (fn indices) arg)
 	  args ;
-	Printf.fprintf ch ")"
+	Printf.bprintf buf ")"
       | Delim(op,a,cl) ->
-	dn indices op cl ch a
+	dn indices op cl buf a
       | Prefix(pr, op, nsp, b) ->
 	let ind_left, ind_right = split_ind indices in
 	let elt = "Maths.glyphs \""^op^"\"" in
-	Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (hn elt) ind_left (fn ind_right) b
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (hn elt) ind_left (fn ind_right) b
       | Postfix(pr, a, nsp, op) ->
 	let ind_left, ind_right = split_ind indices in
 	let elt = "Maths.glyphs \""^op^"\"" in
-	Printf.fprintf ch "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (hn elt) ind_right nsp (fn ind_left) a
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (hn elt) ind_right nsp (fn ind_left) a
       | MScope a->
-	  Printf.fprintf ch "[Maths.Scope (";
-          List.iter (fn indices ch) a;
-          Printf.fprintf ch ")]";
-  and gn ch name ind =
+	  Printf.bprintf buf "[Maths.Scope (";
+          List.iter (fn indices buf) a;
+          Printf.bprintf buf ")]";
+  and gn buf name ind =
     match ind with 
 	None -> assert false
       | Some m ->
-	Printf.fprintf ch "%s = (%a);" name (fn no_ind) m
-  and hn elt ch ind =
+	Printf.bprintf buf "%s = (%a);" name (fn no_ind) m
+  and hn elt buf ind =
     if ind = no_ind then
-      Printf.fprintf ch "(Maths.noad (%s))" elt
+      Printf.bprintf buf "(Maths.noad (%s))" elt
     else begin
-      Printf.fprintf ch "{ (Maths.noad (%s)) with " elt;
-      if ind.up_right <> None then gn ch "Maths.superscript_right" ind.up_right;
-      if ind.up_left <> None then gn ch "Maths.superscript_left" ind.up_left;
-      if ind.down_right <> None then gn ch "Maths.subscript_right" ind.down_right;
-      if ind.down_left <> None then gn ch "Maths.subscript_left" ind.down_left;
-      Printf.fprintf ch "}"
+      Printf.bprintf buf "{ (Maths.noad (%s)) with " elt;
+      if ind.up_right <> None then gn buf "Maths.superscript_right" ind.up_right;
+      if ind.up_left <> None then gn buf "Maths.superscript_left" ind.up_left;
+      if ind.down_right <> None then gn buf "Maths.subscript_right" ind.down_right;
+      if ind.down_left <> None then gn buf "Maths.subscript_left" ind.down_left;
+      Printf.bprintf buf "}"
     end
-  and dn ind op cl ch m =
+  and dn ind op cl buf m =
     if ind = no_ind then
-      Printf.fprintf ch 
+      Printf.bprintf buf 
 	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" _env style) (Maths.glyphs \"%s\" _env style), %a)]"
 	op cl (fn no_ind) m
     else
       (* FIXME: indice sur les délimiteurs *)
-      Printf.fprintf ch "[]"
-  in fn no_ind ch m
+      Printf.bprintf buf "[]"
+  in fn no_ind buf m
 
-let print_math_par ch display m =
+let print_math ch m = begin
+  let buf = Buffer.create 80 in
+  print_math_buf buf m ;
+  output_string ch (Buffer.contents buf) ;
+end
+
+let print_math_par_buf buf display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
-  Printf.fprintf ch
+  Printf.bprintf buf
     "[B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (let style = %s and _env = (Maths.env_style Maths.default %s) in Maths.draw_maths Maths.default style ("
     style style;
-  print_math ch m;
-  Printf.fprintf ch ")))] "
+  print_math_buf buf m;
+  Printf.bprintf buf ")))] "
 
-let rec print_macro ch op mtype name args =
+let print_math_par ch display m = begin 
+  let buf = Buffer.create 80 in
+  print_math_par_buf buf display m ;
+  output_string ch (Buffer.contents buf) 
+end
+
+let rec print_macro_buf buf op mtype name args =
   begin
     match mtype with
       | `Single -> 
 	begin
-	Printf.fprintf ch " (%s " name;
-	List.iter (function
-          | Paragraph(p) -> Printf.fprintf ch " %a" (print_contents op) p
-	  | Caml(s,e,txps) ->
-            Printf.fprintf ch "(";
-            print_caml op ch s e txps;
-            Printf.fprintf ch ")";
-	  | _ -> assert false) args;
-	if args = [] then Printf.fprintf ch " ()";
+	  Printf.bprintf buf " (%s " name;
+	  List.iter (function
+            | Paragraph(p) -> Printf.bprintf buf " %a" (print_contents_buf op) p
+	    | Caml(s,e,txps) ->
+              Printf.bprintf buf "(";
+              print_caml_buf op buf s e txps;
+              Printf.bprintf buf ")";
+	    | _ -> assert false) args;
+	  if args = [] then Printf.bprintf buf " ()";
 	end ;
-	Printf.fprintf ch ") ";
-  | `Module | `Begin -> 
-      let end_open =
-	if args = [] then 
-	  if mtype = `Begin && name = "Diagram" then begin
-	    Printf.fprintf ch
-	      "module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
+	Printf.bprintf buf ") ";
+      | `Preproc -> 
+	begin
+	  match args with 
+	    | Caml (s,e,txps) :: _ -> begin
+	      let buf' = Buffer.create 80 in
+              print_caml_buf op buf' s e txps;
+	      let s = Buffer.contents buf' in 
+              let f=StrMap.find name !macros in
+	      let s' = f s in
+	      Printf.fprintf stderr "Started from : \n %s \n" s ;
+	      Printf.fprintf stderr "Printed : \n %s \n" s' ;
+	      Printf.bprintf buf " ( %s ) " s'
+	    end
+	    | _ -> assert false
+	end
+      | `Module | `Begin -> 
+	let end_open =
+	  if args = [] then 
+	    if mtype = `Begin && name = "Diagram" then begin
+	      Printf.bprintf buf
+		"module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
+	      "(Args)"
+	    end
+	    else 
+	      ""
+	  else begin
+	    let num = ref 1 in
+	    Printf.bprintf buf "module Args = struct\n";
+	    List.iter (function
+            Paragraph(p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf op) p;
+	      incr num
+	      | Caml(s,e,txps) -> begin
+		Printf.bprintf buf "let arg%d = begin " !num;
+		print_caml_buf op buf s e txps;
+		Printf.bprintf buf " end ";
+		incr num
+	      end
+	      | _ -> assert false) args;
+	    Printf.bprintf buf "end\n";
 	    "(Args)"
 	  end
-	  else 
-	    ""
+	in
+	let modname = 
+	  if mtype = `Begin then begin
+            incr moduleCounter;
+	    Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
+	    "Env_"^name
+	  end
+	  else name
+	in
+	if mtype = `Begin && name = "Diagram" then begin
+	(* Printf.bprintf buf "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
+	  Printf.bprintf buf 
+	    ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
+	  Printf.bprintf buf "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
+	end
 	else begin
-	  let num = ref 1 in
-	  Printf.fprintf ch "module Args = struct\n";
-	  List.iter (function
-          Paragraph(p) -> Printf.fprintf ch "let arg%d = %a" !num (print_contents op) p;
-	    incr num
-	    | Caml(s,e,txps) -> begin
-	      Printf.fprintf ch "let arg%d = begin " !num;
-	      print_caml op ch s e txps;
-	      Printf.fprintf ch " end ";
-	      incr num
-	    end
-	    | _ -> assert false) args;
-	  Printf.fprintf ch "end\n";
-	  "(Args)"
+	  Printf.bprintf buf "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
 	end
-      in
-      let modname = 
-	if mtype = `Begin then begin
-          incr moduleCounter;
-	  Printf.fprintf ch "module TEMP%d = struct\n" !moduleCounter;
-	  "Env_"^name
-	end
-	else name
-      in
-      if mtype = `Begin && name = "Diagram" then begin
-      (* Printf.fprintf ch "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
-	Printf.fprintf ch 
-	  ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
-	Printf.fprintf ch "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
-      end
-      else begin
-	Printf.fprintf ch "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
-      end
-  | `End -> 
+      | `End -> 
 
-    if name = "Diagram" then begin
-    Printf.fprintf ch "\n end \n" (* name *) ;
-    Printf.fprintf ch "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
-    Printf.fprintf ch "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
-    Printf.fprintf ch "   Res.make ())\n end \n " end
-    else Printf.fprintf ch "let _ = do_end_env()\nend" (* name *)
-  | `Include ->
-    incr moduleCounter;
-    Printf.fprintf ch
-      "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
-    incr moduleCounter
+	if name = "Diagram" then begin
+	  Printf.bprintf buf "\n end \n" (* name *) ;
+	  Printf.bprintf buf "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
+	  Printf.bprintf buf "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
+	  Printf.bprintf buf "   Res.make ())\n end \n " end
+	else Printf.bprintf buf "let _ = do_end_env()\nend" (* name *)
+      | `Include ->
+	incr moduleCounter;
+	Printf.bprintf buf
+	  "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
+	incr moduleCounter
   end
 
-and print_caml op ch s e txps = match txps with
+and print_macro ch op mtype name args = begin
+  let buf = Buffer.create 80 in
+  print_macro_buf buf op mtype name args ;
+  output_string ch (Buffer.contents buf) 
+end
+
+and print_caml_buf op buf s e txps = match txps with
   | [] -> 
     let size = e - s in
-    let buf=String.create size in
-    let _= seek_in op s; really_input op buf 0 size in
-    Printf.fprintf ch "%s" buf
+    let buf'=String.create size in
+    let _= seek_in op s; really_input op buf' 0 size in
+    Printf.bprintf buf "%s" buf'
   | (style, s',e') :: txps' -> begin
     (* On imprime du caml avant le premier "<<" *)
     let offset = match style with
@@ -232,56 +266,68 @@ and print_caml op ch s e txps = match txps with
       | TxpText -> 2
     in
     let size = s' - s - offset in
-    (* Printf.fprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e; *)
-    let buf=String.create size in
-    let _= seek_in op s; really_input op buf 0 size in
-    Printf.fprintf ch "%s" buf;
+    (* Printf.bprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e; *)
+    let buf'=String.create size in
+    let _= seek_in op s; really_input op buf' 0 size in
+    Printf.bprintf buf "%s" buf';
     (* On imprime la premiere section texprime *)
     let size_txp = e' - s' in
     let buf'=String.create size_txp in
     let _= seek_in op s'; really_input op buf' 0 size_txp in
-    (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
+    (* Printf.bprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin
 	let txp = Parser.math lexbuf_txp in
 	match txp with
 	  | [] -> assert false
-	  | (docs, _) :: _ -> print_math ch docs
+	  | (docs, _) :: _ -> print_math_buf buf docs
       end
       | TxpText -> 
 	let txp = Parser.eparagraph lexbuf_txp in
 	match txp with
 	  | [] -> assert false
-	  | (docs, _) :: _ -> print_contents op ch docs
+	  | (docs, _) :: _ -> print_contents_buf op buf docs
     end ;
-    print_caml op ch (e' + offset) e txps'
+    print_caml_buf op buf (e' + offset) e txps'
   end
 
-and print_contents op ch l = 
-  Printf.fprintf ch "(";
+and print_caml op (ch : out_channel) s e txps = begin
+  let buf = Buffer.create 80 in
+  print_caml_buf op buf s e txps;
+  output_string ch (Buffer.contents buf) 
+end
+
+and print_contents_buf op buf l = 
+  Printf.bprintf buf "(";
   let rec fn l = 
     begin match l with
-      [] ->  Printf.fprintf ch "[]";
+      [] ->  Printf.bprintf buf "[]";
     | TC s :: l -> 
-      Printf.fprintf ch "(T \"%s\")::" (String.escaped s);
+      Printf.bprintf buf "(T \"%s\")::" (String.escaped s);
       fn l
     | GC :: l -> 
-      Printf.fprintf ch "T \" \"::";
+      Printf.bprintf buf "T \" \"::";
       fn l
     | MC(mtype, name, args) :: l -> 
-      Printf.fprintf ch " (";
-      print_macro ch op mtype name args;
-      Printf.fprintf ch ")@ ";
+      Printf.bprintf buf " (";
+      print_macro_buf buf op mtype name args;
+      Printf.bprintf buf ")@ ";
       fn l
     | FC(b,m) :: l ->
-      Printf.fprintf ch "(";
-      print_math_par ch b m;
-      Printf.fprintf ch ")@";
+      Printf.bprintf buf "(";
+      print_math_par_buf buf b m;
+      Printf.bprintf buf ")@";
       fn l
     end;
   in fn l;
-  Printf.fprintf ch ")"
+  Printf.bprintf buf ")"
+
+and print_contents op (ch : out_channel) l = begin
+  let buf = Buffer.create 80 in
+  print_contents_buf op buf l;
+  output_string ch (Buffer.contents buf) 
+end
 
 and output_list from where no_indent lvl docs = 
   match docs with
@@ -318,8 +364,10 @@ and output_list from where no_indent lvl docs =
 	| Macro(mtype, name, args) ->
 	  print_macro where from mtype name args;
 	  Printf.fprintf where "\n\n" 
-	| Preproc t ->
-	    Printf.fprintf where "%s\n\n" t
+	| Preproc t -> begin
+	  Printf.fprintf where "%s\n\n" t ;
+	  Printf.fprintf stderr "Printed : \n %s \n" t ;
+	end
 	| Math m ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal center %a;;\n" 
 	    (fun ch -> print_math_par ch true) m;
