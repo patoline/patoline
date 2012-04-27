@@ -102,21 +102,26 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
 
   A \emph{rule shape} is a diagram of the shape
 
+
+\Begin{center}
+
     #diagram{{
 
-      let rule_shape x i k j y ix ik jk jy = let m,ms = matrix [] [[
-	([],j) ; ([],y) ];[ ([],k) ; ];[ ([],i) ; ([],x) ];[ ]] in let
-	  j = ms.(0).(0) in let i = ms.(2).(0) in let k = ms.(1).(0) in
-						  let x = ms.(2).(1) in let y = ms.(0).(1) in let l = edges
-												[`To;`Draw] [ ([], i, [], x) ; ([],j,[],y) ; ([],i,[],k) ;
-													      ([],j,[],k) ] in x
+        let rule_shape x i k j y ix ik jk jy = let m,ms = matrix [] [[
+        ([],j) ; ([],y) ];[ ([],k) ; ];[ ([],i) ; ([],x) ];[ ]] in let
+        j = ms.(0).(0) in let i = ms.(2).(0) in let k = ms.(1).(0) in
+        let x = ms.(2).(1) in let y = ms.(0).(1) in let l = edges
+        [`To;`Draw] [ ([], i, [], x) ; ([],j,[],y) ; ([],i,[],k) ;
+        ([],j,[],k) ] in x
 
-     let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
-       ([]) ([])
+        let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
+        ([]) ([])
 
         let x = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
-}}
+      }}
+
+\End{center}
 
   in $\cat{}$, such that $I$,$J$, and $K$ are interfaces.
 

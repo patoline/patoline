@@ -252,6 +252,8 @@ module Env_theorem=Default.Make_theorem
     let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
 module Env_abstract = Default.Env_abstract	
+module Env_center = Default.Env_center	
+
 
 module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user environment end) = struct
   open Diagrams.Diagram
@@ -284,7 +286,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       node, m
 
     let make () = 
-      let fig = Boxes.drawing ~offset:(-10.) 
+      let fig = Boxes.drawing ~offset:(0.) 
 	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
 	   []
 	   !stack)

@@ -27,8 +27,8 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(O
 	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa Euler.cmxa $*.ml
 
 formats:
-	make -C Format Diagrams.cmxa Article.cmxa
+	make -C Format Diagrams.cmxa Article.cmxa Euler.cmxa
 
 clean:
 	make -C Format clean
-	rm -f *.cm[ioxa] *.cmxa *.o *.a *~ \#*\# *.tml
+	rm -f *.cm[ioxa] *.cmxa *.cmxs *.o *.a *~ \#*\# *.tml
