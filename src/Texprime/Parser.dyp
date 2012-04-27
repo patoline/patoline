@@ -102,8 +102,8 @@ let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include";
 }
 
 %start main 
-%start eparagraph
-%start math 
+%start allparagraph
+%start allmath 
 
 %relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
@@ -233,6 +233,9 @@ paragraph:
 eparagraph: 
    paragraph<p,_> { List.rev p }
 
+allparagraph:
+   eparagraph<p> eof { p }
+
 nparagraph:
   | parelt<e,sp> 
     { e, sp }
@@ -329,6 +332,9 @@ rightind:
 
 promath:
     math(<=prod)<m> { m, has_space dyp }
+
+allmath:
+   math<m> eof { m }
 
 math:
     (['a'-'z''A'-'Z'])<name>

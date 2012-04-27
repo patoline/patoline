@@ -296,13 +296,13 @@ and print_caml_buf op buf s e txps = match txps with
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin
-	let txp = Parser.math lexbuf_txp in
+	let txp = Parser.allmath lexbuf_txp in
 	match txp with
 	  | [] -> assert false
 	  | (docs, _) :: _ -> print_math_buf buf docs
       end
       | TxpText -> 
-	let txp = Parser.eparagraph lexbuf_txp in
+	let txp = Parser.allparagraph lexbuf_txp in
 	match txp with
 	  | [] -> assert false
 	  | (docs, _) :: _ -> print_contents_buf op buf docs

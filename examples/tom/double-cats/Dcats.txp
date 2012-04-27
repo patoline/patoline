@@ -56,6 +56,7 @@ let rulescat () = <<$R_{\cat{}}$>>
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 
 let indiv = <$I$>
+let test = <$ I p $>
   let mamacro () = << du texte >>
 open Article
      
