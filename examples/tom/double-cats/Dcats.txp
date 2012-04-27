@@ -199,7 +199,7 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 
     #diagram{{
 
-      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$\cat{}  p $> <$a$> <$p$> ([]) ([]) <$x$> ;;
+      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$\cat{}_{p}$> <$a$> <$p$> ([]) ([]) <$x$> ;;
 	    
     }}
 
