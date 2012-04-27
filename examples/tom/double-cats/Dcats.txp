@@ -53,13 +53,83 @@ let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] 
 let rs = <$\mathcal{R}$>
 let rulescat () = <<$R_{\cat{}}$>>
 
-let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
+(* let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ] *)
+let rules c = <$R_{\c{}}$>
 
 let indiv = <$I$>
-let test = <$ I p $>
   let mamacro () = << du texte >>
 open Article
-     
+
+
+module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user environment end) = struct
+  include Env_Diagram (Arg) (Arg')
+
+        let rule_shape x i k j y ix ik jk jy = 
+	  let m,ms = matrix [] [[
+            ([],j) ; ([],y) ];[ 
+	    ([],k) ; ];[ 
+	    ([],i) ; ([],x) ];[ 
+	  ]] in 
+	  let j = ms.(0).(0) in 
+	  let i = ms.(2).(0) in 
+	  let k = ms.(1).(0) in
+          let x = ms.(2).(1) in 
+	  let y = ms.(0).(1) in 
+	  let l = edges [`To;`Draw] [ 
+	    ([], i, [], x) ; 
+	    ([],j,[],y) ; 
+	    ([],i,[],k) ;
+            ([],j,[],k) ] 
+	  in x
+
+        let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
+        ([]) ([])
+
+      let label e style pos contents = 
+	node  ((`At (e.anchor (`Temporal pos))) :: style) (math (Maths.Style Maths.Script :: contents))
+
+     let labela e contents = label e [`Anchor `South] 0.5 contents
+     let labelb e contents = label e [`Anchor `North] 0.5 contents
+     let labell e contents = label e [`Anchor `East] 0.5 contents
+     let labelr e contents = label e [`Anchor `West] 0.5 contents
+     let labelbr e contents = label e [`Anchor `NorthWest] 0.5 contents
+     let labelbl e contents = label e [`Anchor `NorthEast] 0.5 contents
+     let labelar e contents = label e [`Anchor `SouthWest] 0.5 contents
+     let labelal e contents = label e [`Anchor `SouthEast] 0.5 contents
+
+     let double_cell  a b c d h u v l alpha = 
+       let m, ms = matrix [] [[
+	 ([], math a) ; ([], math b) ];[
+	 ([], math c) ; ([], math d)
+       ]]
+       in
+       let a = ms.(0).(0) in 
+       let b = ms.(0).(1) in 
+       let c = ms.(1).(0) in 
+       let d = ms.(1).(1) in 
+       let es = edges [`To;`Draw] 
+	 [
+	   ([], a, [], b) ;
+	   ([], a, [], c) ;
+	   ([], b, [], d) ;
+	   ([], c, [], d) ;
+	 ]
+       in
+       match es with
+	 | [ ab;ac;bd;cd ] ->
+	   let _ = labela ab h in
+	   let _ = labell ac u in
+	   let _ = labelr bd v in
+	   let _ = labelb cd l in
+	   let ealpha = edge [`Double 0.5 ; `BendRight 30.;`Shorten (0.1,0.1);`To;`Draw] 
+	     (coordinate (ac.anchor (`Temporal 0.3))) []
+	     (coordinate (ab.anchor (`Temporal 0.3)))
+	   in
+	   let _ = labelbr ealpha alpha in
+	   ()
+	 | _ -> assert false
+
+end     
 }}
 
 
@@ -110,16 +180,6 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
 
     #diagram{{
 
-        let rule_shape x i k j y ix ik jk jy = let m,ms = matrix [] [[
-        ([],j) ; ([],y) ];[ ([],k) ; ];[ ([],i) ; ([],x) ];[ ]] in let
-        j = ms.(0).(0) in let i = ms.(2).(0) in let k = ms.(1).(0) in
-        let x = ms.(2).(1) in let y = ms.(0).(1) in let l = edges
-        [`To;`Draw] [ ([], i, [], x) ; ([],j,[],y) ; ([],i,[],k) ;
-        ([],j,[],k) ] in x
-
-        let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
-        ([]) ([])
-
         let x = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
       }}
@@ -139,58 +199,13 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 
     #diagram{{
 
-      let label e style pos contents = 
-	node  ((`At (e.anchor (`Temporal pos))) :: style) (math (Maths.Style Maths.Script :: contents))
-
-     let labela e contents = label e [`Anchor `South] 0.5 contents
-     let labelb e contents = label e [`Anchor `North] 0.5 contents
-     let labell e contents = label e [`Anchor `East] 0.5 contents
-     let labelr e contents = label e [`Anchor `West] 0.5 contents
-     let labelbr e contents = label e [`Anchor `NorthWest] 0.5 contents
-     let labelbl e contents = label e [`Anchor `NorthEast] 0.5 contents
-     let labelar e contents = label e [`Anchor `SouthWest] 0.5 contents
-     let labelal e contents = label e [`Anchor `SouthEast] 0.5 contents
-
-     let double_cell  a b c d h u v l alpha = 
-       let m, ms = matrix [] [[
-	 ([], math a) ; ([], math b) ];[
-	 ([], math c) ; ([], math d)
-       ]]
-       in
-       let a = ms.(0).(0) in 
-       let b = ms.(0).(1) in 
-       let c = ms.(1).(0) in 
-       let d = ms.(1).(1) in 
-       let es = edges [`To;`Draw] 
-	 [
-	   ([], a, [], b) ;
-	   ([], a, [], c) ;
-	   ([], b, [], d) ;
-	   ([], c, [], d) ;
-	 ]
-       in
-       match es with
-	 | [ ab;ac;bd;cd ] ->
-	   let _ = labela ab h in
-	   let _ = labell ac u in
-	   let _ = labelr bd v in
-	   let _ = labelb cd l in
-	   let ealpha = edge [`Double 0.5 ; `BendRight 30.;`Shorten (0.1,0.1);`To;`Draw] 
-	     (coordinate (ac.anchor (`Temporal 0.3))) []
-	     (coordinate (ab.anchor (`Temporal 0.3)))
-	   in
-	   let _ = labelbr ealpha alpha in
-	   ()
-	 | _ -> assert false
-
-      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$C p$> <$a$> <$p$> ([]) ([]) <$x$> ;;
+      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$\cat{}  p $> <$a$> <$p$> ([]) ([]) <$x$> ;;
 	    
     }}
 
     \End{center}
 
 
-      Et $\rules{\cat{}}$
 
 =<
 
