@@ -52,7 +52,9 @@ let math arg = [B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (* m
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let rs = <$\mathcal{R}$>
 let rulescat () = <<$R_{\cat{}}$>>
-let rules c = <<$R_{ {{ c }} }$>>
+
+let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
+
 let indiv = <$I$>
   let mamacro () = << du texte >>
 open Article
@@ -132,9 +134,9 @@ of rule shapes, as objects of the functor category $[\rs{},\cat{}]$. Call this s
 For each $ρ \in R_{\cat{}}$, the process of adding a formal colimit to $ρ$ is implemented categorically
 by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 
-    \Begin{Diagram}{{"rule shape"}}
+    \Begin{center}
 
-    {{
+    #diagram{{
 
       let label e style pos contents = 
 	node  ((`At (e.anchor (`Temporal pos))) :: style) (math (Maths.Style Maths.Script :: contents))
@@ -180,12 +182,14 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 	   ()
 	 | _ -> assert false
 
-      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$\mathcal{C}(p).$> <$a$> <$p$> ([]) ([]) <$x$> ;;
+      let _ = double_cell <$\rs{}$> <$1$> <$\cat{}$> <$C p$> <$a$> <$p$> ([]) ([]) <$x$> ;;
 	    
     }}
 
-    \End{Diagram}
+    \End{center}
 
+
+      Et $\rules{\cat{}}$
 
 =<
 

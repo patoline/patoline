@@ -154,12 +154,12 @@ module Curve = struct
 
 
       let make_quadratic e l ll =
-	begin Printf.fprintf stderr "Entering make_quadratic with e = (%f,%f), l = (%f,%f), ll = (%f,%f).\n"
-	    (fst e) (snd e)
-	    (fst l) (snd l)
-	    (fst ll) (snd ll) ;
-	  flush stderr
-	end; 
+	(* begin Printf.fprintf stderr "Entering make_quadratic with e = (%f,%f), l = (%f,%f), ll = (%f,%f).\n" *)
+	(*     (fst e) (snd e) *)
+	(*     (fst l) (snd l) *)
+	(*     (fst ll) (snd ll) ; *)
+	(*   flush stderr *)
+	(* end;  *)
       	let alpha = Vector.sector (Vector.of_points l ll) (Vector.of_points l e) in
 	let do_make_quadratic alpha e l ll = 
 	  let beta = 0.5 *. (180. -. alpha) in
@@ -182,15 +182,15 @@ module Curve = struct
 	    do_make_quadratic alpha e l ll 
 	  else swap (do_make_quadratic (360. -. alpha) ll l e)
 	in
-	begin Printf.fprintf stderr "Returning [[e;xl;l];[l;xr;ll]] = " ;
-	  Printf.fprintf stderr "[[(%f,%f);(%f,%f);(%f,%f)];[(%f,%f);(%f,%f);(%f,%f)]].\n" 
-	    (fst e) (snd e)
-	    (fst xl) (snd xl)
-	    (fst l) (snd l)
-	    (fst l) (snd l)
-	    (fst xr) (snd xr)
-	    (fst ll) (snd ll)
-	end ;
+	(* begin Printf.fprintf stderr "Returning [[e;xl;l];[l;xr;ll]] = " ; *)
+	(*   Printf.fprintf stderr "[[(%f,%f);(%f,%f);(%f,%f)];[(%f,%f);(%f,%f);(%f,%f)]].\n"  *)
+	(*     (fst e) (snd e) *)
+	(*     (fst xl) (snd xl) *)
+	(*     (fst l) (snd l) *)
+	(*     (fst l) (snd l) *)
+	(*     (fst xr) (snd xr) *)
+	(*     (fst ll) (snd ll) *)
+	(* end ; *)
 	[[e;xl;l];[l;xr;ll]]	
 
   let intersections bezier1 beziers2 = 
@@ -1245,11 +1245,11 @@ module Diagram = struct
       let default_info = { tip_line_width = !default_line_width ; is_double = false }
 
       let head_moustache info params = 
-       let _ = begin 
-	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n"
-	   params.lineWidth info.tip_line_width ;
-	 flush stderr
-       end in
+       (* let _ = begin  *)
+       (* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
+       (* 	   params.lineWidth info.tip_line_width ; *)
+       (* 	 flush stderr *)
+       (* end in *)
        if info.is_double then
 	 let short = max (params.lineWidth /. 2.) 0.6 in
 	 let thickness = params.lineWidth in
@@ -1319,7 +1319,7 @@ module Diagram = struct
 	  let shorten (params',curve') = 
 	    let ta = Curve.curvilinear curve' a in
 	    let tb = Curve.curvilinear curve' (-. b) in
-	    let _ = Printf.fprintf stderr "Restricting to %f,%f.\n" ta tb ; flush stderr in
+	    (* let _ = Printf.fprintf stderr "Restricting to %f,%f.\n" ta tb ; flush stderr in *)
 	    params', Curve.restrict curve' ta tb
 	  in
 	  let params', u_curve = shorten (params, underlying_curve) in
@@ -1337,10 +1337,10 @@ module Diagram = struct
 
 	  (* Control points on the curve *)
 	  let (xe,ye) as e = Curve.eval underlying_curve 1. in
-	  let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in
+	  (* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
 	  let _, _, curve0, curves = 
 	    transfo (`Shorten (0.,short)) (info, params, underlying_curve, curves) in
-	  let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in
+	  (* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
 	  let e0 = Curve.eval curve0 1. in
 	  let ee0 = Vector.of_points e e0 in
 	  let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in

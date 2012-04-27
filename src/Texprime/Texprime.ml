@@ -200,8 +200,8 @@ let rec print_macro_buf buf op mtype name args =
 	      let s = Buffer.contents buf' in 
               let f=StrMap.find name !macros in
 	      let s' = f s in
-	      Printf.fprintf stderr "Started from : \n %s \n" s ;
-	      Printf.fprintf stderr "Printed : \n %s \n" s' ;
+	      (* Printf.fprintf stderr "Started from : \n %s \n" s ; *)
+	      (* Printf.fprintf stderr "Printed : \n %s \n" s' ; *)
 	      Printf.bprintf buf " ( %s ) " s'
 	    end
 	    | _ -> assert false
@@ -292,7 +292,7 @@ and print_caml_buf op buf s e txps = match txps with
     let size_txp = e' - s' in
     let buf'=String.create size_txp in
     let _= seek_in op s'; really_input op buf' 0 size_txp in
-    (* Printf.bprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
+    (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin

@@ -88,7 +88,7 @@ let rec drop x l=
 let rec last=function
     [h]->h
   | _::s->last s
-  | _->raise Not_found
+  | _-> raise Not_found
 
 let rec init=function
     [_] | [] ->[]
