@@ -201,6 +201,23 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                     Log.Normal
                     params
                     0.
+              ) else if allow_impossible then (
+                let nextNode={
+                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                  hyphenStart= -1; hyphenEnd= -1;
+                  height=0.;
+                  lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                  page_line=node.page_line+1; page=node.page+1;
+                  min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
+                in
+                let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+                  register node nextNode
+                    (lastBadness+.badness
+                       node !haut 0 lastParameters 0.
+                       nextNode !bas 0 params 0.)
+                    Log.Normal
+                    params
+                    0.
               )
             done
         in
