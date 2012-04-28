@@ -159,10 +159,17 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                                                              User uu->UMap.add uu nextNode u
                                                            | _->u) lastUser nextNode
             in
+            let add_fig k a m=try
+              match IntMap.find k m with
+                  Placed _->m
+                | _->IntMap.add k a m
+            with
+                Not_found -> IntMap.add k a m
+            in
             let figures1=fold_left_line paragraphs
               (fun u box->match box with
-                   FlushFigure i->IntMap.add i Flushed u
-                 | BeginFigure i->IntMap.add i Begun u
+                   FlushFigure i->add_fig i Flushed u
+                 | BeginFigure i->add_fig i Begun u
                  | _->u) lastFigures nextNode
             in
             let figures2=if nextNode.isFigure then
