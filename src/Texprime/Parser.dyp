@@ -274,7 +274,7 @@ topmacro:
         Macro(`Module, name, List.rev a) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
-          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.cmxs" preproc));
+          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.ml" preproc));
           let f=StrMap.find preproc !macros in
           let t=String.concat "" text in
             Preproc (f t)
@@ -344,7 +344,9 @@ math:
   | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
   | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "\\}" | ">"]<cl> 
-      { Delim(op,a,cl) } atom 
+      { Delim((if op="\\{" then "{" else op),
+              a,
+              (if cl="\\}" then "}" else cl)) } atom 
   | "{" math<a> "}" 
       { a } atom 
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>

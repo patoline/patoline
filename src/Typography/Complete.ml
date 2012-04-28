@@ -3,7 +3,8 @@
 L'optimisation a besoin d'une fonction pour connaître tous les
 découpages possibles, à chaque ligne.
 *)
-open Boxes
+open Box
+open Line
 open Util
 open Break
 

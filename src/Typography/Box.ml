@@ -25,6 +25,7 @@ and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
 
 and 'a hyphenBox= { hyphen_normal:'a box array; hyphenated:('a box array* 'a box array) array }
 
+open Line
 
 let drawing ?offset:(offset=0.) cont=
   let (a,b,c,d)=OutputCommon.bounding_box cont in
@@ -186,54 +187,6 @@ let rec resize l=function
                            kern_y0 = l*.x.kern_y0;
                            kern_contents=resize l x.kern_contents }
   | x->x
-
-
-
-type line= {
-  paragraph:int;                        (** L'indice du paragraphe dans le tableau *)
-  lastFigure:int;                       (** La dernière figure placée, initialement -1 *)
-  lineStart:int;                        (** Le numéro de la boite de début dans le paragraphe *)
-  lineEnd:int;                          (** Le numéro de la boite suivant la dernière boite de la ligne, ou, si la ligne est césurée, le numéro de la boite contenant la césure *)
-  hyphenStart:int;
-  hyphenEnd:int;
-  isFigure:bool;
-  mutable height:float;
-  paragraph_height:int;
-  mutable page_line:int;
-  mutable page:int;
-  min_width:float;
-  nom_width:float;
-  max_width:float
-}
-
-let uselessLine=
-  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= 0.;paragraph_height= -1; page_line=0; page=0;
-    min_width=0.;nom_width=0.;max_width=0. }
-
-
-type parameters={ measure:float;
-                  page_height:float;
-                  left_margin:float;
-                  local_optimization:int;
-                  next_acceptable_height:line->parameters->line->parameters->float;
-                  min_height_before:float;
-                  min_height_after:float;
-                  min_page_before:int;
-                  min_page_after:int
-                }
-
-let default_params={ measure=0.;
-                     page_height=0.;
-                     left_margin=0.;
-                     local_optimization=0;
-                     next_acceptable_height=(fun _ _ h _ ->h.height);
-                     min_height_before=0.;
-                     min_height_after=0.;
-                     min_page_before=0;
-                     min_page_after=0
-                   }
-
 
 
 let fold_left_line paragraphs f x0 line=
@@ -445,16 +398,12 @@ let rec print_box_type chan=function
   | FlushFigure _->Printf.fprintf chan "FlushFigure "
   | Empty ->Printf.fprintf chan "Empty "
 
-let print_linef out l=
-  Printf.fprintf out "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }\n"
-    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
-let print_line l=print_linef stdout l
 let print_text_line lines node=
-  print_line node;
+  print_linef stderr node;
   for i=node.lineStart to node.lineEnd-1 do
     print_box stderr (lines.(node.paragraph).(i))
   done;
-  print_newline()
+  Printf.fprintf stderr "\n"
 
 let rec text_box=function
     GlyphBox x->(Fonts.glyphContents x.glyph)

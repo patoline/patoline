@@ -394,6 +394,19 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                   n.children paragraph }
         | x -> x
       in
+      let rec last_par=function
+          Paragraph p->
+            Paragraph { p with
+                          par_parameters=(fun a b c d e f g->
+                                            { (parameters a b c d e f g) with
+                                                min_height_after=
+                                                if g.lineEnd>=Array.length b.(g.paragraph) then 2.*.a.lead else a.lead });
+                      }
+        | Node n->
+            let k0,a0=IntMap.max_binding n.children in
+              Node { n with children=IntMap.add k0 (last_par a0) n.children }
+        | x -> x
+      in
       let stru=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
           Node n,_->
             (try
@@ -403,7 +416,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                  Not_found->first_par (Node n))
         | x,_->first_par x
       in
-	D.structure := up (stru,List.hd !env_stack);
+	D.structure := up (last_par stru,List.hd !env_stack);
         env_stack:=List.tl !env_stack
   end
 end)

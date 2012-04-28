@@ -2,7 +2,8 @@ open CamomileLibrary
 open Printf
 open Fonts.FTypes
 open OutputCommon
-open Boxes
+open Box
+open Line
 open Document
 open Util
 module Buf=UTF8.Buf

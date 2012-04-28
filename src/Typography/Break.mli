@@ -1,7 +1,7 @@
-val is_last : 'a Boxes.box array -> int -> bool
-type figurePosition = Placed of Boxes.line | Flushed | Begun
+val is_last : 'a Box.box array -> int -> bool
+type figurePosition = Placed of Line.line | Flushed | Begun
 module Make :
-  functor (Line : sig type t = Boxes.line val compare : t -> t -> int end) ->
+  functor (L : sig type t = Line.line val compare : t -> t -> int end) ->
     functor (User : Map.OrderedType) ->
       sig
         module User : sig type t = User.t val compare : t -> t -> int end
@@ -37,35 +37,35 @@ module Make :
             val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
           end
         val typeset :
-          completeLine:(UMap.key Boxes.box array array ->
-                        Boxes.drawingBox array ->
+          completeLine:(UMap.key Box.box array array ->
+                        Box.drawingBox array ->
                         figurePosition Util.IntMap.t ->
-                        Boxes.line UMap.t ->
-                        Boxes.line -> bool -> Boxes.line list)
+                        Line.line UMap.t ->
+                        Line.line -> bool -> Line.line list)
                        array ->
-          figures:Boxes.drawingBox array ->
-          figure_parameters:(UMap.key Boxes.box array array ->
-                             Boxes.drawingBox array ->
-                             Boxes.parameters ->
+          figures:Box.drawingBox array ->
+          figure_parameters:(UMap.key Box.box array array ->
+                             Box.drawingBox array ->
+                             Line.parameters ->
                              figurePosition Util.IntMap.t ->
-                             Boxes.line UMap.t ->
-                             Boxes.line -> Boxes.parameters)
+                             Line.line UMap.t ->
+                             Line.line -> Line.parameters)
                             array ->
-          parameters:(UMap.key Boxes.box array array ->
-                      Boxes.drawingBox array ->
-                      Boxes.parameters ->
+          parameters:(UMap.key Box.box array array ->
+                      Box.drawingBox array ->
+                      Line.parameters ->
                       figurePosition Util.IntMap.t ->
-                      Boxes.line UMap.t -> Boxes.line -> Boxes.parameters)
+                      Line.line UMap.t -> Line.line -> Line.parameters)
                      array ->
-          badness:(Boxes.line ->
-                   UMap.key Boxes.box array ->
+          badness:(Line.line ->
+                   UMap.key Box.box array ->
                    int ->
-                   Boxes.parameters ->
+                   Line.parameters ->
                    float ->
-                   Boxes.line ->
-                   UMap.key Boxes.box array ->
-                   int -> Boxes.parameters -> float -> float) ->
-          UMap.key Boxes.box array array ->
-          Log.error_log list * (Boxes.parameters * Boxes.line) list array *
-          figurePosition Util.IntMap.t * Boxes.line UMap.t
+                   Line.line ->
+                   UMap.key Box.box array ->
+                   int -> Line.parameters -> float -> float) ->
+          UMap.key Box.box array array ->
+          Language.optimization_error list * (Line.parameters * Line.line) list array *
+          figurePosition Util.IntMap.t * Line.line UMap.t
       end

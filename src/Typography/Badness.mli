@@ -11,11 +11,11 @@
     apparence définitive).
 *)
 val badness :
-  'a Boxes.box array array ->
+  'a Box.box array array ->
   ?figures:'b array ->
-  Boxes.line ->
-  'c Boxes.box array ->
+  Line.line ->
+  'c Box.box array ->
   int ->
-  Boxes.parameters ->
+  Line.parameters ->
   float ->
-  Boxes.line -> 'd Boxes.box array -> int -> Boxes.parameters -> float -> float
+  Line.line -> 'd Box.box array -> int -> Line.parameters -> float -> float

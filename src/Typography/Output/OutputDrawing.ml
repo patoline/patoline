@@ -3,7 +3,8 @@ vocabulaire du code source de TeX, ceci serait… On comprend pourquoi
 ça n'existe pas. *)
 
 open Document
-open Boxes
+open Box
+open Line
 open OutputCommon
 open Fonts.FTypes
 

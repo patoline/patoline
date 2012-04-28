@@ -14,8 +14,8 @@ module Output :
     sig
       val output :
         ('a,Document.tag) Document.tree ->
-        Document.user Boxes.box array array ->
-        Boxes.drawingBox array ->
+        Document.user Box.box array array ->
+        Box.drawingBox array ->
         'a Document.environment ->
-        (Boxes.parameters * Boxes.line) list array -> string -> unit
+        (Line.parameters * Line.line) list array -> string -> unit
     end

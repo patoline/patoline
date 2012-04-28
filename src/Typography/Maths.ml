@@ -1,7 +1,7 @@
 open CamomileLibrary
 open Util
 open OutputCommon
-open Boxes
+open Box
 open Fonts.FTypes
 
 type style=

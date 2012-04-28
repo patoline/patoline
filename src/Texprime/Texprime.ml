@@ -349,10 +349,10 @@ end
 
 and output_list from where no_indent lvl docs = 
   match docs with
-      [] -> 
-	for i = 1 to lvl - 1 do
-	  Printf.fprintf where "let _ = go_up D.structure;;(* 1 *)\n\n"
-	done;
+      [] -> ()
+	(* for i = 1 to lvl - 1 do *)
+	(*   Printf.fprintf where "let _ = go_up D.structure;;(\* 1 *\)\n\n" *)
+	(* done; *)
     | doc::docs -> 
       let lvl = ref lvl in 
       let next_no_indent = ref false in
@@ -371,7 +371,7 @@ and output_list from where no_indent lvl docs =
 		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
 		output_list from where true (!lvl + 1) docs;
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
-	    | Absolute l ->
+	     | Absolute l ->
 	      if l > !lvl + 1 then failwith "Illegal level skip";
 	      for i = 1 to !lvl - l do
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"

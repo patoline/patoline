@@ -1,3 +1,4 @@
+open Line
 (** Le type des boîtes, des lignes, et des fonctions de manipulation *)
 
 (** {3 Boîtes} *)
@@ -69,42 +70,6 @@ val knuth_h_badness : float->float->float
 (** Redimensionner une boîte *)
 val resize : float -> 'a box -> 'a box
 
-(** {3 Lignes} *)
-(** Le type des lignes, essentiellement passé en paramètres depuis la
-fonction d'optimisation pour décrire une position courante dans le
-graphe *)
-type line = {
-  paragraph : int;
-  lastFigure : int;
-  lineStart : int;
-  lineEnd : int;
-  hyphenStart : int;
-  hyphenEnd : int;
-  isFigure : bool;
-  mutable height : float;
-  paragraph_height : int;
-  mutable page_line : int;
-  mutable page : int;
-  min_width : float;
-  nom_width : float;
-  max_width : float;
-}
-val uselessLine : line
-
-(** Le type de formatage d'une ligne *)
-type parameters = {
-  measure : float;
-  page_height : float;
-  left_margin : float;
-  local_optimization : int;
-  next_acceptable_height : line -> parameters -> line -> parameters -> float;
-  min_height_before : float;
-  min_height_after : float;
-  min_page_before : int;
-  min_page_after : int;
-}
-val default_params : parameters
-
 (** Un fold_left sur les lignes. Le premier paramètre est le tableau
 global des paragraphes dans le document. Les césures sont
 transparentes pour la fonction passée en paramètres. *)
@@ -154,8 +119,6 @@ val hyphenate :
 
 val print_box : out_channel -> 'a box -> unit
 val print_box_type : out_channel -> 'a box -> unit
-val print_linef : out_channel -> line -> unit
-val print_line : line -> unit
 val print_text_line : 'a box array array -> line -> unit
 
 val text_box : 'a box -> string

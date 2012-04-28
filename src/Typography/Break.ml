@@ -1,7 +1,8 @@
 open OutputCommon
 open Util
 open CamomileLibrary
-open Boxes
+open Box
+open Line
 open Fonts.FTypes
 
 
@@ -17,11 +18,11 @@ let is_last paragraph j=
 
 type figurePosition=Placed of line | Flushed | Begun
 
-module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedType)=(
+module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)=(
   struct
     module User=User
     module UMap=New_map.Make(User)
-    module LineMap=New_map.Make (Line)
+    module LineMap=New_map.Make (L)
     module ColMap=New_map.Make (
       struct
         type t=float*float*line*float*float*line
@@ -149,6 +150,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
       (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
       if LineMap.is_empty todo then demerits else (
         let node,(lastBadness,lastParameters,comp0,lastFigures,lastUser)=LineMap.min_binding todo in
+          (* print_text_line paragraphs node; *)
         let todo'=ref (LineMap.remove node todo) in
           (* On commence par chercher la première vraie boite après node *)
         let demerits'=ref demerits in
@@ -205,7 +207,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                     (lastBadness+.badness
                        node !haut 0 lastParameters 0.
                        nextNode !bas 0 params 0.)
-                    Log.Normal
+                    None
                     params
                     0.
               ) else if allow_impossible then (
@@ -222,7 +224,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                     (lastBadness+.badness
                        node !haut 0 lastParameters 0.
                        nextNode !bas 0 params 0.)
-                    Log.Normal
+                    None
                     params
                     0.
               )
@@ -276,7 +278,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
                 let local_opt=ref [] in
                 let extreme_solutions=ref [] in
-                let rec fix page height=
+                let rec fix page height= (* Printf.fprintf stderr "fix : %d %f\n" page height; *)
                   if height>=(!r_params).page_height then
                     fix (page+1) 0.
                   else (
@@ -344,14 +346,14 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                               if allow_impossible then (
                                 let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
                                 let ant_bad,_,ant_par, ant_comp, ant_ant,ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Log.Orphan node, { ant_par with page_height=node.height },ant_comp,ant_fig,
+                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Some (Language.Orphan node), { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
                               )
                             ) else if not allow_widow && allow_orphan then (
                               if allow_impossible then (
                                 let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
                                 let ant_bad, ant_log, ant_par, ant_comp,ant_ant, ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Log.Widow last_ant, { ant_par with page_height=node.height },ant_comp,ant_fig,
+                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Some (Language.Widow last_ant), { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
                               )
                             )
@@ -360,14 +362,14 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Log.Overfull_line nextNode, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
+                                local_opt:=(node,nextNode,bad,Some (Language.Overfull_line nextNode), !r_params,comp1,lastFigures,nextUser)::(!local_opt);
                                 (* register node nextNode bad (!r_params) *)
                             ) else (
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Log.Normal, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
+                                local_opt:=(node,nextNode,bad,None, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
                                 (* register node nextNode bad (!r_params) *)
                             )
                         )
@@ -465,7 +467,7 @@ module Make (Line:New_map.OrderedType with type t=Boxes.line) (User:Map.OrderedT
         let rec makeParagraphs log node result=
           try
             let _,log_,params',_,next,_,_=LineMap.find node demerits in
-              makeParagraphs (match log_ with Log.Normal -> log | _->log_::log) next ((params',node)::result)
+              makeParagraphs (match log_ with None -> log | Some log_->log_::log) next ((params',node)::result)
           with
               Not_found->(log,result)
         in

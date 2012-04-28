@@ -4,7 +4,8 @@ open Util
 open Fonts
 open Fonts.FTypes
 open OutputCommon
-open Boxes
+open Box
+open Line
 open CamomileLibrary
 
 type fontAlternative = Regular | Bold | Caps | Demi
@@ -116,7 +117,7 @@ and 'a environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
-  user_positions:Boxes.line TS.UMap.t;
+  user_positions:Line.line TS.UMap.t;
   mutable fixable:bool
 }
 
@@ -342,7 +343,7 @@ let size fsize t=
 
 
 
-let parameters env paragraphs figures last_parameters last_figures last_users (line:Boxes.line)=
+let parameters env paragraphs figures last_parameters last_figures last_users (line:Line.line)=
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
     IntMap.iter (fun i aa->match aa with
@@ -846,17 +847,18 @@ let rec make_struct positions tree=
 
 let update_names env figs user=
   (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
-  let needs_reboot=ref (user<>env.user_positions) in
+  let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
   let env'={ env with user_positions=user; counters=StrMap.empty; names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
                        if b="figure" then
                          match IntMap.find (List.hd (snd (StrMap.find "figures" a))) figs with
                              Break.Placed l->l
-                           | _->raise Not_found
+                           | _->(Printf.fprintf stderr "artif\n";raise Not_found)
                        else
                          TS.UMap.find (Label k) user
                      in
+                       print_line pos;print_line c;
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (needs_reboot:=true; m)
@@ -864,4 +866,3 @@ let update_names env figs user=
            }
   in
     env',!needs_reboot
-

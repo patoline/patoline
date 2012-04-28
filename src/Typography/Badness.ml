@@ -1,5 +1,5 @@
-open Boxes
-
+open Box
+open Line
 
 let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
 
