@@ -4,7 +4,8 @@ open Typography.Complete
 open Typography.Fonts.FTypes
 open Typography.Util
 open Typography.Fonts
-open Typography.Boxes
+open Typography.Box
+open Line
 open CamomileLibrary
 
 let _=Random.self_init ()

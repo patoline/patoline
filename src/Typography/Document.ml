@@ -1,4 +1,4 @@
-(** Le type du contenu, et comment on le transforme en boîtes. *)
+8(** Le type du contenu, et comment on le transforme en boîtes. *)
 open Config
 open Util
 open Fonts
@@ -858,7 +858,6 @@ let update_names env figs user=
                        else
                          TS.UMap.find (Label k) user
                      in
-                       print_line pos;print_line c;
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (needs_reboot:=true; m)

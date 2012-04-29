@@ -2,7 +2,8 @@ open CamomileLibrary
 open Typography
 open Document
 open Util
-open Boxes
+open Box
+open Line
 
 
 let postprocess_tree tree=

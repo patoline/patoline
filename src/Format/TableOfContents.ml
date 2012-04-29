@@ -1,7 +1,8 @@
 open Typography
 open Document
 open Fonts.FTypes
-open Boxes
+open Box
+open Line
 open Util
 
 

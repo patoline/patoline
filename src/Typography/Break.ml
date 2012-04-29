@@ -346,14 +346,16 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               if allow_impossible then (
                                 let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
                                 let ant_bad,_,ant_par, ant_comp, ant_ant,ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Some (Language.Orphan node), { ant_par with page_height=node.height },ant_comp,ant_fig,
+                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Some (Language.Opt_error (Language.Orphan node)),
+                                                      { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
                               )
                             ) else if not allow_widow && allow_orphan then (
                               if allow_impossible then (
                                 let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
                                 let ant_bad, ant_log, ant_par, ant_comp,ant_ant, ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Some (Language.Widow last_ant), { ant_par with page_height=node.height },ant_comp,ant_fig,
+                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Some (Language.Opt_error (Language.Widow last_ant)),
+                                                      { ant_par with page_height=node.height },ant_comp,ant_fig,
                                                       ant_user)::(!extreme_solutions);
                               )
                             )
@@ -362,7 +364,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Some (Language.Overfull_line nextNode), !r_params,comp1,lastFigures,nextUser)::(!local_opt);
+                                local_opt:=(node,nextNode,bad,Some (Language.Opt_error (Language.Overfull_line nextNode)),
+                                            !r_params,comp1,lastFigures,nextUser)::(!local_opt);
                                 (* register node nextNode bad (!r_params) *)
                             ) else (
                               let nextUser=lastUser in

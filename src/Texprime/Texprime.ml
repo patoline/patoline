@@ -2,7 +2,6 @@ open Typography
 open Typography.Config
 open Typography.Util
 open Typography.Syntax
-open Typography.Boxes
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -27,13 +26,12 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
 
 open Lexing
 open Parser
-open Language
 
 
 let preambule format fugue = "
   open Typography
   open Typography.Util
-  open Typography.Boxes
+  open Typography.Box
   open Typography.Config
   open Typography.Document
   open Typography.OutputCommon
@@ -49,30 +47,33 @@ let _=Arg.parse spec ignore \"Usage :\";;
 
 
 let postambule outfile = Printf.sprintf "
-  module Out=OutputPaper.Output(Pdf)
+module Out=OutputPaper.Output(Pdf)
 
-  let _ = 
-    let filename=\"%s\" in
-    let rec resolve i env0=
-     Printf.printf \"Compilation %%d\\n\" i; flush stdout;
-     let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o;
-     D.fixable:=false;
-     let tree=postprocess_tree (fst (top (!D.structure))) in
-     let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
-     let (_,pages,figs',user')=TS.typeset
-       ~completeLine:compl
-       ~figure_parameters:fig_params
-       ~figures:figures
-       ~parameters:params
-       ~badness:(Badness.badness pars)
-       pars
-     in
-     let env2, reboot=update_names env1 figs' user' in
-     if i<10 && reboot && !D.fixable then (
-       resolve (i+1) env2
-     ) else Out.output tree pars figures env2 pages filename
+let _ = 
+  let filename=\"%s\" in
+  let rec resolve i env0=
+  Printf.printf \"Compilation %%d\\n\" i; flush stdout;
+  let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o;
+  D.fixable:=false;
+  let tree=postprocess_tree (fst (top (!D.structure))) in
+  let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
+  let (logs,pages,figs',user')=TS.typeset
+    ~completeLine:compl
+    ~figure_parameters:fig_params
+    ~figures:figures
+    ~parameters:params
+    ~badness:(Badness.badness pars)
+    pars
   in
-     resolve 0 defaultEnv
+  let env2, reboot=update_names env1 figs' user' in
+  if i<10 && reboot && !D.fixable then (
+    resolve (i+1) env2
+  ) else (
+    List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
+    Out.output tree pars figures env2 pages filename
+  )
+  in
+  resolve 0 defaultEnv
 " outfile
 
 let moduleCounter=ref 0
@@ -164,7 +165,7 @@ end
 let print_math_par_buf buf display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.bprintf buf
-    "[B (fun env0 -> List.map (fun b -> Boxes.resize env0.size b) (let style = %s and _env = (Maths.env_style Maths.default %s) in Maths.draw_maths Maths.default style ("
+    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s and _env = (Maths.env_style Maths.default %s) in Maths.draw_maths Maths.default style ("
     style style;
   print_math_buf buf m;
   Printf.bprintf buf ")))] "
@@ -419,7 +420,7 @@ let gen_ml format fugue filename from wherename where pdfname =
             let lexbuf = Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
-	      Printf.fprintf stderr "%s\n" (Language.message (End_of_parsing (List.length docs))); flush stderr;
+	      Printf.fprintf stderr "%s\n" (Language.message (Language.End_of_parsing (List.length docs))); flush stderr;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -447,14 +448,14 @@ let gen_ml format fugue filename from wherename where pdfname =
 	    | Dyp.Syntax_error ->
 	      raise
 	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			              Language.Parse_error))
+			              Parse_error))
 	    | Failure("lexing: empty token") ->
 	      raise
 	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
 			              Unexpected_char))
     with
-        Syntax_Error(pos,msg) ->
+        Parser.Syntax_Error(pos,msg) ->
           Sys.remove wherename;
 	  Printf.fprintf stderr "%s\n"
-            (Language.message (Syntax_error (filename, pos, msg)));
+            (Language.message (Language.Syntax_error (filename, pos, msg)));
 	  exit 1
