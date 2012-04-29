@@ -2,6 +2,9 @@ open Typography
 open Typography.Config
 open Typography.Util
 open Typography.Syntax
+open Typography.Language
+
+
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -10,7 +13,7 @@ open Typography.Syntax
 (* let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :" *)
 
 
-let math arg = [Document.B (fun env0 -> List.map (fun b -> Boxes.resize env0.Document.size b) (* math <$lala$> *)
+let math arg = [Document.B (fun env0 -> List.map (fun b -> Box.resize env0.Document.size b) (* math <$lala$> *)
   (let style = Maths.Text and _env = (Maths.env_style Maths.default Maths.Text) in 
    Maths.draw_maths Maths.default style ((arg ))))]
 
