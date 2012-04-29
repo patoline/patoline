@@ -22,6 +22,7 @@ and optimization_error=
   | Orphan of line
 
 #ifdef LANG_FR
+let lang=`FR
 let message=function
     End_of_parsing trees->
       sprintf "Fin de l'analyse lexicale (%d arbre%s)" trees (if trees>1 then "s" else "")
@@ -46,6 +47,7 @@ let message=function
 
 #else
 #define LANG_EN
+let lang=`EN
 let message=function
     End_of_parsing trees->
       sprintf "End of parsing (%d tree%s)" trees (if trees>1 then "s" else "")

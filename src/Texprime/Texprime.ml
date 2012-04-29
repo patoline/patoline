@@ -96,7 +96,7 @@ let print_math_buf buf m =
 	let elt = "Maths.symbol \""^name^"\"" in
 	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Fun name ->
-	let elt = "fun env -> Maths.glyphs \""^name^"\" { env with Maths.mathsFont=Lazy.lazy_from_val env0.font }" in
+	let elt = "fun env -> Maths.glyphs \""^name^"\" (Maths.change_fonts env env0.font)" in
 	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Indices(ind', m) ->
 	fn ind' buf m 
@@ -168,8 +168,8 @@ end
 let print_math_par_buf buf display m =
   let style = if display then "Maths.Display" else "Maths.Text" in
   Printf.bprintf buf
-    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s and _env = (Maths.env_style Maths.default %s) in Maths.draw_maths Maths.default style ("
-    style style;
+    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s and _env = Maths.default in Maths.draw_maths Maths.default style ("
+    style;
   print_math_buf buf m;
   Printf.bprintf buf ")))] "
 

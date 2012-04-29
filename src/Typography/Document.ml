@@ -226,7 +226,11 @@ let doc_graph out t0=
         if List.mem Numbered t.node_tags then "blue" else "red" else "black" in
     Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
     List.iter (fun (i,x)->match x with
-                   Paragraph _
+                   Paragraph _->(
+                     let p=path^"_"^(string_of_int i) in
+                       Printf.fprintf out "%s[color=red];\n" p;
+                       Printf.fprintf out "%s -> %s;\n" path p;
+                   )
                  | FigureDef _-> ()
                  | Free _-> ()
                  | Node n->(

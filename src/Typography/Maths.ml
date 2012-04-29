@@ -100,7 +100,7 @@ let env_style env style=match env,style with
   | (_,_,_,_,_,_,a,_),ScriptScript->a
   | (_,_,_,_,_,_,_,a),ScriptScript'->a
 
-type 'a noad= { mutable nucleus: environmentPart -> style ->  'a box list;
+type 'a noad= { mutable nucleus: environment -> style ->  'a box list;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
                 mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
@@ -116,7 +116,7 @@ and 'a math=
   | Glue of float
   | Env of (environment->environment)
   | Style of style
-  | Scope of 'a math list
+  | Scope of (environment->style->'a math list)
   | Binary of 'a binary
   | Fraction of 'a fraction
   | Operator of 'a operator
@@ -223,7 +223,7 @@ let rec draw_maths mathsEnv style mlist=
               @ (draw_maths mathsEnv style s)
         )
       | Scope l::s->(
-          (draw_maths mathsEnv style l)@(draw_maths mathsEnv style s)
+          (draw_maths mathsEnv style (l mathsEnv style))@(draw_maths mathsEnv style s)
         )
       | Env f::s->
           draw_maths (f mathsEnv) style s
@@ -238,8 +238,7 @@ let rec draw_maths mathsEnv style mlist=
              c'est rapide et ça marche bien dans la plupart des
              cas. *)
 
-
-	  let nucleus = n.nucleus env style in
+	  let nucleus = n.nucleus mathsEnv style in
             if n.superscript_right<>[] ||
               n.superscript_left<>[] ||
               n.subscript_right<>[] ||
@@ -538,7 +537,8 @@ let dist_boxes a b=
     List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity lr
 
 
-let glyphs c env st=
+let glyphs c envs st=
+  let env=env_style envs st in
   let font=Lazy.force env.mathsFont in
   let s=env.mathsSize in
   let rec make_it idx=
@@ -551,14 +551,24 @@ let glyphs c env st=
 
 exception Unknown_symbol of string
 
-let symbol s env st=
+let symbol s envs st=
   try
+    let env=env_style envs st in
     let s = StrMap.find s env.mathsSymbols in
     let font=Lazy.force env.mathsFont in
     [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=s }) with glyph_size=env.mathsSize} ]
   with
-    Not_found-> glyphs s env st
+    Not_found-> glyphs s envs st
 
+let change_fonts (a,b,c,d,e,f,g,h) font=
+  ({ a with mathsFont=Lazy.lazy_from_val font},
+   { b with mathsFont=Lazy.lazy_from_val font},
+   { c with mathsFont=Lazy.lazy_from_val font},
+   { d with mathsFont=Lazy.lazy_from_val font},
+   { e with mathsFont=Lazy.lazy_from_val font},
+   { f with mathsFont=Lazy.lazy_from_val font},
+   { g with mathsFont=Lazy.lazy_from_val font},
+   { h with mathsFont=Lazy.lazy_from_val font})
 
 (* let gl_font env st font c= *)
 (*   let _,s=(env.fonts.(int_of_style st)) in *)

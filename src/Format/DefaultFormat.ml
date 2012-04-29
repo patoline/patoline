@@ -399,7 +399,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           Paragraph p->
             Paragraph { p with
                           par_parameters=(fun a b c d e f g->
-                                            { (parameters a b c d e f g) with
+                                            { (p.par_parameters a b c d e f g) with
                                                 min_height_after=
                                                 if g.lineEnd>=Array.length b.(g.paragraph) then 2.*.a.lead else a.lead });
                       }
