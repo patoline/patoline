@@ -29,7 +29,7 @@ val divide : float array -> int -> (float array) list
 val eval : float array -> float -> float
 
 (** Trouve les racines d'un polynôme avec la règle de Descartes *)
-val bernstein_solve : float array -> float list
+val bernstein_solve : float array -> float -> float list
 
 (** Les extremas d'un polynôme *)
 val bernstein_extr : float array -> float * float

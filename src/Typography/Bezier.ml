@@ -11,7 +11,7 @@ let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
 let derivee a=
   let b=Array.create (Array.length a-1) 0. in
     for i=0 to Array.length b-1 do
-      b.(i)<-(a.(i)-.a.(i+1)) *. (float_of_int (Array.length a-1))
+      b.(i)<-(a.(i+1)-.a.(i)) *. (float_of_int (Array.length a-1))
     done;
     b
 
@@ -83,9 +83,7 @@ let descartes x0 x1 epsilon a=
     if has_root x then (
       let m=(t0+.t1)/.2. in
         if t1-.t0 <= epsilon then (
-          let x0=eval x t0 in
-          let x1=eval x t1 in
-            if x0*.x1<=0. then [m] else []
+            if x.(0)*.x.(Array.length x-1)<=0. then [m] else []
         ) else (
           let left=casteljau_left (Array.copy x) 0.5 in
           let right=casteljau_right x 0.5 in
@@ -114,7 +112,7 @@ let bounding_box (a,b)=
       let y0=if ty>=0 && ty<=1 then ty else b.(0) in
 *)
 
-let bernstein_solve f=
+let bernstein_solve f eps=
   if Array.length f<=0 then [] else (
 
     if Array.length f=1 then []
@@ -128,10 +126,12 @@ let bernstein_solve f=
         let c=f.(0) in
         let discr= b*.b -. 4.*.a*.c in
           if discr<0. then [] else
-            if discr=0. then [-.b/.(2.*.a)] else
-              [ (-.b-.sqrt discr)/.(2.*.a); (-.b+.sqrt discr)/.(2.*.a) ]
+            List.filter (fun t->t>=0. && t<=1.) (
+              if discr=0. then [-.b/.(2.*.a)] else
+                [ (-.b-.sqrt discr)/.(2.*.a); (-.b+.sqrt discr)/.(2.*.a) ]
+            )
       ) else (
-        descartes 0. 1. (1e-5) f
+        descartes 0. 1. eps (Array.copy f)
       )
     )
   )
@@ -159,7 +159,7 @@ let bernstein_extr f=
            fmin:=min !fmin f.(0); fmax:=max !fmax f.(0);
            fmin:=min !fmin f.(1); fmax:=max !fmax f.(1);
            List.iter (fun x->if x>=0. && x<=1. then let y=eval f x in (fmin:=min !fmin y; fmax:=max !fmax y))
-             (bernstein_solve (derivee f));
+             (bernstein_solve (derivee f) 1e-5);
            !fmin, !fmax
         )
 
@@ -322,10 +322,10 @@ let intersect (a,b) (c,d)=
   let eps=1e-3 in
   let extr_a=
     List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) @ bernstein_solve (derivee b)))) in
+      ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) eps @ bernstein_solve (derivee b) eps))) in
   let extr_c=
     List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee c) @ bernstein_solve (derivee d)))) in
+      ((List.sort compare (0. :: 1.::bernstein_solve (derivee c) eps @ bernstein_solve (derivee d) eps))) in
   let sort x y=if x<y then (x,y) else (y,x) in
   let rec make_intervals l1 l2=match l1,l2 with
       [],_-> []
@@ -334,7 +334,6 @@ let intersect (a,b) (c,d)=
     | _,[_]->[]
     | h1::h2::s, h1'::h2'::s'-> (h1,h2,h1',h2')::(make_intervals [h1;h2] (h2'::s'))@(make_intervals (h2::s) l2)
   in
-
   let inside x y x0 y0=
     let resultant=Array.make_matrix (Array.length x+Array.length y-2) (Array.length x+Array.length y-2) 0. in
     let ma=monomial x in
@@ -418,11 +417,11 @@ let elevate f r=
   if r<=0 then f else (
     let g=Array.make (Array.length f+r) 0. in
     let n=Array.length f-1 in
-    let bin=binom (n+r+1) in
+    let bin=binom (Array.length f+r) in
       for i=0 to n do
         for j=i to i+r do
-          g.(j)<-g.(j)+. (float_of_int (bin.(i).(n)*bin.(j-i).(r))) /.
-            (float_of_int bin.(j).(n+r)) *. f.(i)
+          g.(j)<-g.(j)+. f.(i)*.(float_of_int (bin.(i).(n)*bin.(j-i).(r))) /.
+            (float_of_int bin.(j).(n+r))
         done
       done;
       g)
