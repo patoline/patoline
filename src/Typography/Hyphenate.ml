@@ -73,7 +73,10 @@ let hyphenate tree a0=
             a.[String.length a-1]<-'.';
             let breaks=Array.create (String.length a+1) '0' in
             let rec hyphenate i j t=if j>=String.length a then () else match t with
-              | Exception (x,_) when i=0 && j=String.length a-1->raise (Exp x)
+              | Exception (x,_) when i=0 && j=String.length a-1->(
+                  (* raise (Exp x) *)
+                  ()
+                )
               | Exception (_,t)->
                   (
                     try

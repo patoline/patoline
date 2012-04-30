@@ -4,7 +4,6 @@ open Typography.Util
 open Typography.Syntax
 open Typography.Language
 
-
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -13,9 +12,9 @@ open Typography.Language
 (* let _=Arg.parse spec (fun x->filename:=x::(!filename)) "Usage :" *)
 
 
-let math arg = [Document.B (fun env0 -> List.map (fun b -> Box.resize env0.Document.size b) (* math <$lala$> *)
-  (let style = Maths.Text and _env = (Maths.env_style Maths.default Maths.Text) in 
-   Maths.draw_maths Maths.default style ((arg ))))]
+(* let math arg = [Document.B (fun env0 -> List.map (fun b -> Box.resize env0.Document.size b) (\* math <$lala$> *\) *)
+(*   (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in  *)
+(*    Maths.draw_maths Maths.default style ((arg ))))] *)
 
 let _=macros:=StrMap.add "diagram" (fun x-> begin
   " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
@@ -96,13 +95,13 @@ let print_math_buf buf m =
 	let elt = "Maths.symbol \""^name^"\"" in
 	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
       | Fun name ->
-	let elt = "fun env -> Maths.glyphs \""^name^"\" (Maths.change_fonts env env0.font)" in
-	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn elt) indices
+	let elt = "fun env -> Maths.glyphs \""^name^"\" env" in
+	Printf.bprintf buf "[Maths.Env (fun env->Maths.change_fonts env env.font); Maths.Ordinary %a ]" (hn elt) indices
       | Indices(ind', m) ->
 	fn ind' buf m 
       | Binary(_, a, _,"over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
-	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = _env.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = env0.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
       | Binary(pr, a, _,"",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
 	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
@@ -152,7 +151,7 @@ let print_math_buf buf m =
   and dn ind op cl buf m =
     if ind = no_ind then
       Printf.bprintf buf 
-	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" _env style) (Maths.glyphs \"%s\" _env style), %a)]"
+	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" env0 style) (Maths.glyphs \"%s\" env0 style), %a)]"
 	op cl (fn no_ind) m
     else
       (* FIXME: indice sur les délimiteurs *)
@@ -166,9 +165,9 @@ let print_math ch m = begin
 end
 
 let print_math_par_buf buf display m =
-  let style = if display then "Maths.Display" else "Maths.Text" in
+  let style = if display then "Mathematical.Display" else "Mathematical.Text" in
   Printf.bprintf buf
-    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s and _env = Maths.default in Maths.draw_maths Maths.default style ("
+    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s in Maths.draw_maths env0 style ("
     style;
   print_math_buf buf m;
   Printf.bprintf buf ")))] "

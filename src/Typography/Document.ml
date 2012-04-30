@@ -1,4 +1,4 @@
-8(** Le type du contenu, et comment on le transforme en boîtes. *)
+(** Le type du contenu, et comment on le transforme en boîtes. *)
 open Config
 open Util
 open Fonts
@@ -67,6 +67,44 @@ module TS=Break.Make
      let compare=compare
    end)
 
+
+module Mathematical=struct
+  type env={
+    mathsFont:Fonts.font Lazy.t;
+    mathsSize:float;
+    mathsSubst:glyph_id list -> glyph_id list;
+    mathsSymbols:int StrMap.t;
+    numerator_spacing:float;
+    denominator_spacing:float;
+    sub1:float;
+    sub2:float;
+    sup1:float;
+    sup2:float;
+    sup3:float;
+    sub_drop:float;
+    sup_drop:float;
+    default_rule_thickness:float;
+    subscript_distance:float;
+    superscript_distance:float;
+    limit_subscript_distance:float;
+    limit_superscript_distance:float;
+    open_dist:float;
+    close_dist:float;
+    kerning:bool
+  }
+  and environment=
+      (env*env*env*env*env*env*env*env)
+  and style=
+      Display
+    | Display'
+    | Text
+    | Text'
+    | Script
+    | Script'
+    | ScriptScript
+    | ScriptScript'
+end
+
 (** Structure du document. Un [node] est un nœud interne de l'arbre. *)
 type ('a,'b) node={
   name:string;
@@ -103,7 +141,7 @@ and 'a environment={
   fontFeatures:string list;
   fontColor:OutputCommon.color;
   font:font;
-  mathsEnvironment:Maths.environment;
+  mathsEnvironment:Mathematical.environment;
   size:float;
   lead:float;
   footnote_y:float;
@@ -309,7 +347,7 @@ let toggleItalic t =
 let envAlternative features alt env =
   let font,str,subs,pos = selectFont env.fontFamily alt env.fontItalic in
   let env = { env with fontAlternative = alt } in
-  updateFont env font str subs pos
+  add_features features (updateFont env font str subs pos)
 
 let alternative ?features alt t =
   [Scoped ((fun env ->
