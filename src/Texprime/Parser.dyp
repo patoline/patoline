@@ -350,12 +350,13 @@ math:
       { Fun(name) } atom
   | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
-  | [ "|" | "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "\\}" | ">" | "|"]<cl> 
-      { Delim((if op="\\{" then "{" else op),
-              a,
-              (if cl="\\}" then "}" else cl)) } atom 
-  | "{" math<a> "}" 
-      { a } atom 
+  | left<op> math<a> right <cl>
+      { Delim(op,a,cl) } atom
+
+  | "\\{" math<a> "\\}"
+      { Delim("{",a,"}") } atom
+  | "{" math<a> "}"
+      { a } atom
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind
@@ -444,6 +445,12 @@ atomelt:
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" "{" symbol_name<value> "}"
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
+  | "\\Add_left" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" symbol_name<value> "}"
+    @{ add_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) names value }
+  | "\\Add_right" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" "{" symbol_name<value> "}"
+    @{ add_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
   | "\\Save_Grammar" "{"  lident<name> "}"
     { let oc = open_out_bin (name ^ gram_ext) in
       let ld = { dyp.local_data with verbose = false } in

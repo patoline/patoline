@@ -98,7 +98,7 @@ let print_math_buf buf m =
 	let elt = "fun env -> Maths.glyphs \""^name^"\" env" in
 	Printf.bprintf buf "[Maths.Env (fun env->Maths.change_fonts env env.font); Maths.Ordinary %a ]" (hn elt) indices
       | Indices(ind', m) ->
-	fn ind' buf m 
+	fn ind' buf m
       | Binary(_, a, _,"over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
 	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = env0.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
@@ -119,7 +119,7 @@ let print_math_buf buf m =
 	  args ;
 	Printf.bprintf buf ")"
       | Delim(op,a,cl) ->
-	dn indices op cl buf a
+	  dn indices op cl buf a
       | Prefix(pr, op, nsp, b) ->
 	let ind_left, ind_right = split_ind indices in
 	let elt = "Maths.glyphs \""^op^"\"" in
@@ -138,9 +138,9 @@ let print_math_buf buf m =
       | Some m ->
 	Printf.bprintf buf "%s = (%a);" name (fn no_ind) m
   and hn elt buf ind =
-    if ind = no_ind then
+    if ind = no_ind then (
       Printf.bprintf buf "(Maths.noad (%s))" elt
-    else begin
+    ) else begin
       Printf.bprintf buf "{ (Maths.noad (%s)) with " elt;
       if ind.up_right <> None then gn buf "Maths.superscript_right" ind.up_right;
       if ind.up_left <> None then gn buf "Maths.superscript_left" ind.up_left;
@@ -153,9 +153,14 @@ let print_math_buf buf m =
       Printf.bprintf buf 
 	"[Maths.Decoration (Maths.open_close (Maths.glyphs \"%s\" env0 style) (Maths.glyphs \"%s\" env0 style), %a)]"
 	op cl (fn no_ind) m
-    else
-      (* FIXME: indice sur les délimiteurs *)
-      Printf.bprintf buf "[]"
+    else (
+      Buffer.add_string buf "[Maths.Ordinary ";
+      let buf'=Buffer.create 100 in
+        Buffer.add_string buf' "fun envs st->Maths.draw_maths envs st ";
+        dn no_ind op cl buf' m;
+        hn (Buffer.contents buf') buf ind;
+        Buffer.add_string buf "]"
+    )
   in fn no_ind buf m
 
 let print_math ch m = begin

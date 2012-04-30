@@ -4,6 +4,21 @@ Symboles de TeX'
 ======================================================================
 \Verbose_Changes
 
+== Delimiters ==
+
+\Add_left{ ( }{ ( }
+\Add_right{ ) }{ ) }
+\Add_left{ [ }{ [ }
+\Add_right{ ] }{ ] }
+\Add_left{ < }{ < }
+\Add_right{ > }{ > }
+\Add_left{ | }{ | }
+\Add_right{ | }{ | }
+\Add_left{\lceil ⌈}{⌈}
+\Add_right{\rceil ⌉}{⌉}
+\Add_left{\lfloor ⌊}{⌊}
+\Add_right{\rfloor ⌋}{⌋}
+
 == Relation symbols ==
 
 \Add_relation{\eq =}{=}
