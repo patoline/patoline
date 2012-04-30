@@ -220,6 +220,12 @@ let fold_left_line paragraphs f x0 line=
         x1
   )
 
+let rec fold_left f x0 boxes=match boxes with
+    []->x0
+  | Hyphen h::s->fold_left f x0 (Array.to_list h.hyphen_normal @ s)
+  | h::s->fold_left f (f x0 h) s
+
+
 let first_line paragraphs line=
   let rec find boxes i=
     match boxes.(i) with

@@ -76,6 +76,11 @@ transparentes pour la fonction passée en paramètres. *)
 val fold_left_line :
   'a box array array -> ('b -> 'a box -> 'b) -> 'b -> line -> 'b
 
+(** Un fold_left sur les listes de boîtes, qui remplace les boîtes de
+    césures par ce qu'il faut. *)
+val fold_left_line :
+  'a box array array -> ('b -> 'a box -> 'b) -> 'b -> line -> 'b
+
 (** Première boîte de la ligne *)
 val first_line : 'a box array array -> line -> 'a box
 

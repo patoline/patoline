@@ -1,13 +1,13 @@
 open Offset
-let to_point x=int_of_float (50.+.x*.50.)
+let to_point x=int_of_float (x*.50.)
 let draw fx fy=
   let n=1000 in
   let fx2=rev fx in
   let fy2=rev fy in
     for i=0 to n do
-      let (x,y),_=eval fx fy (float_of_int i/.float_of_int n) in
-      let (x2,y2),_=eval fx2 fy2 (float_of_int i/.float_of_int n) in
-        Graphics.plot (to_point x) (to_point y);
+      let (x0,y0),(x1,y1)=eval fx fy (float_of_int i/.float_of_int n) in
+      let (x2,y2),(x3,y3)=eval fx2 fy2 (float_of_int i/.float_of_int n) in
+        Graphics.plot (to_point x0) (to_point y0);
         Graphics.plot (to_point x2) (to_point y2)
     done
 
@@ -25,17 +25,23 @@ let _=
      for i=1 to int_of_string Sys.argv.(1) do
        let _=example () in ()
      done);
-  let x=ref 0 in
+  let x=ref (int_of_string Sys.argv.(1)) in
     while true do
       let ex,ey=example () in
-        Printf.printf "%d\n" !x;
         Graphics.open_graph "";
         Graphics.clear_graph ();
         Graphics.set_color Graphics.black;
         draw ex ey;
+        draw_bezier (ex, ey);
         Graphics.set_color Graphics.red;
-        List.iter draw_bezier (approx ex ey);
-        List.iter draw_bezier (approx (rev ex) (rev ey));
-        flush stdout;
-        let _=Graphics.wait_next_event [Graphics.Key_pressed] in incr x
+        let col=ref false in
+          List.iter (fun (x,y)->
+                       if !col then Graphics.set_color Graphics.red else
+                         Graphics.set_color Graphics.blue;
+                       col:= not !col;
+                       draw_bezier (x,y))
+            (approx ex ey);
+          List.iter draw_bezier (approx (rev ex) (rev ey));
+          flush stdout;
+          let _=Graphics.wait_next_event [Graphics.Key_pressed] in incr x
     done

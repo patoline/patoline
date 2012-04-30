@@ -83,7 +83,7 @@ let descartes x0 x1 epsilon a=
     if has_root x then (
       let m=(t0+.t1)/.2. in
         if t1-.t0 <= epsilon then (
-            if x.(0)*.x.(Array.length x-1)<=0. then [m] else []
+            if x.(0)*.x.(Array.length x-1)<=0. then [(t0,t1)] else []
         ) else (
           let left=casteljau_left (Array.copy x) 0.5 in
           let right=casteljau_right x 0.5 in
@@ -112,13 +112,13 @@ let bounding_box (a,b)=
       let y0=if ty>=0 && ty<=1 then ty else b.(0) in
 *)
 
-let bernstein_solve f eps=
+let bernstein_solve_int f eps=
   if Array.length f<=0 then [] else (
 
     if Array.length f=1 then []
     else if Array.length f=2 then (
       let t=f.(0)/.(f.(0)-.f.(1)) in
-        if t>=0. && t<=1. then [t] else []
+        if t>=0. && t<=1. then [t,t] else []
     ) else (
       if Array.length f=3 then (
         let a=f.(0)-.2.*.f.(1)+.f.(2) in
@@ -126,15 +126,23 @@ let bernstein_solve f eps=
         let c=f.(0) in
         let discr= b*.b -. 4.*.a*.c in
           if discr<0. then [] else
-            List.filter (fun t->t>=0. && t<=1.) (
-              if discr=0. then [-.b/.(2.*.a)] else
-                [ (-.b-.sqrt discr)/.(2.*.a); (-.b+.sqrt discr)/.(2.*.a) ]
+            if discr=0. then (
+              let x0= -.b/.(2.*.a) in
+                if x0>=0. && x0<=1. then [x0,x0] else []
+            ) else (
+              let x0=(-.b-.sqrt discr)/.(2.*.a) in
+              let l0=if x0>=0. && x0<=1. then [x0,x0] else [] in
+              let x1=(-.b+.sqrt discr)/.(2.*.a) in
+              let l1=if x1>=0. && x1<=1. then (x1,x1)::l0 else l0 in
+                l1
             )
       ) else (
         descartes 0. 1. eps (Array.copy f)
       )
     )
   )
+
+let bernstein_solve f eps=List.map (fun (a,b)->(a+.b)/.2.) (bernstein_solve_int f eps)
 
 let bernstein_extr f=
   match Array.length f with

@@ -30,7 +30,7 @@ let eval fx fy t=
       else
         eval (eps*.2.) (t-.eps) (t+.eps)
   in
-    eval min_float t t
+    eval (sqrt min_float) t t
 
 let rev a=Array.init (Array.length a) (fun i->a.(Array.length a-i-1))
 
@@ -57,12 +57,12 @@ let cut fx fy=
   let rec filt=function
       []->[]
     | [h]->[h]
-    | h1::h2::s when h2-.h1 < 1e-5 -> filt (h1::s)
+    | h1::h2::s when h2-.h1 < 1e-20 -> filt (h1::s)
     | h1::s->h1::(filt s)
   in
     filt (
-      List.sort compare ((bernstein_solve eq_x 1e-2) @ (bernstein_solve eq_y 1e-2) @
-                           (bernstein_solve fx' 1e-2) @ (bernstein_solve fy' 1e-2))
+      List.sort compare ((bernstein_solve eq_x 1e-5) @ (bernstein_solve eq_y 1e-5) @
+                           (bernstein_solve fx' 1e-5) @ (bernstein_solve fy' 1e-5))
     )
 (* deux courbes, et deux vecteurs de controle *)
 let elem_approx gx gy (ux,uy) (vx,vy)=              (* Moindres carrés *)
@@ -100,7 +100,6 @@ let rec approx_rec fx fy t0 t1=
   let uy=fy.(1)-.fy.(0) in
   let vx=fx.(Array.length fx-2)-.fx.(Array.length fx-1) in
   let vy=fy.(Array.length fy-2)-.fy.(Array.length fy-1) in
-
   let ax,ay=elem_approx
     (fun t->
        fst (if t<0.5 then snd (eval fx fy t)
@@ -116,8 +115,10 @@ let rec approx_rec fx fy t0 t1=
   let rec dist t d xd=
     if t>=1.-.step then d,xd else (
       let (x,y),_=eval fx fy t in
-        bx.(0)<-ax.(0)-.x;
-        by.(0)<-ay.(0)-.y;
+        for i=0 to Array.length ax-1 do
+          bx.(0)<-ax.(0)-.x;
+          by.(0)<-ay.(0)-.y;
+        done;
         let _,d'=bernstein_extr (bx*..bx +.. by*..by) in
           if d'>d then
             dist (t+.step) d' t
@@ -126,7 +127,7 @@ let rec approx_rec fx fy t0 t1=
     )
   in
   let d,xd=dist step 0. 0. in
-    if d<=10. || t1-.t0<0.3 then (
+    if d<=10. || t1-.t0<0.2 then (
       [ax,ay]
     ) else (
       let m=0.5 in
@@ -134,18 +135,40 @@ let rec approx_rec fx fy t0 t1=
         (approx_rec (restrict fx 0. m) (restrict fy 0. m) t0 m')
         @(approx_rec (restrict fx m 1.) (restrict fy m 1.) m' t1)
     )
+let to_point x=int_of_float (x*.50.)
 let approx fx_ fy_=
-  let partial_approx u v=
-    let fx,fy=restrict fx_ u v,restrict fy_ u v in
-      approx_rec fx fy u v
+  let norm=derivee (fx_*..fx_ +.. fy_*..fy_) in
+  let sols=bernstein_solve_int norm 1e-2 in
+  let rec premake_ints x y t0=function
+      []->
+        let fxx=restrict fx_ t0 1. in
+        let fyy=restrict fy_ t0 1. in
+          fxx.(0)<-x;
+          fyy.(0)<-y;
+          [(fxx,fyy)]
+    | (h0,h1)::s->(
+        let fxx=restrict fx_ t0 h0 in
+        let fyy=restrict fy_ t0 h0 in
+          fxx.(0)<-x;
+          fyy.(0)<-y;
+          (fxx,fyy) :: premake_ints (fxx.(Array.length fxx-1)) (fyy.(Array.length fyy-1)) h1 s
+      )
   in
   let rec make_intervals x0 l=match l with
       []->[(x0,1.)]
     | h::s->(x0,h)::make_intervals h s
   in
-  let cucu=make_intervals 0. (cut fx_ fy_) in
-  let morceaux=List.concat (
-    List.map (fun (u,v)->partial_approx u v) cucu
-  )
+  let morceaux=List.concat
+    (List.map
+       (fun (fx,fy)->
+          let cucu=make_intervals 0. (cut fx fy) in
+            List.concat (
+              List.map (fun (u,v)->
+                          let fxx,fyy=restrict fx u v,restrict fy u v in
+                            approx_rec fxx fyy u v
+                       ) cucu
+            )
+       ) (premake_ints fx_.(0) fy_.(0) 0. sols)
+    )
   in
     morceaux
