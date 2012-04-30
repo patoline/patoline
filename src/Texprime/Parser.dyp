@@ -350,7 +350,7 @@ math:
       { Fun(name) } atom
   | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
-  | [ "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "\\}" | ">"]<cl> 
+  | [ "|" | "(" | "[" | "\\{" | "<" ]<op> math<a> [ ")" | "]" | "\\}" | ">" | "|"]<cl> 
       { Delim((if op="\\{" then "{" else op),
               a,
               (if cl="\\}" then "}" else cl)) } atom 
