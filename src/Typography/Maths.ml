@@ -36,26 +36,27 @@ let default_env=
       kerning=true
     }
 
-let default=
-  default_env,
-  default_env,
-  default_env,
-  default_env,
-  { default_env with mathsSize=2./.3. },
-  { default_env with mathsSize=2./.3. },
-  { default_env with mathsSize=4./.9. },
+let default=[|
+  default_env;
+  default_env;
+  default_env;
+  default_env;
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=4./.9. };
   { default_env with mathsSize=4./.9. }
+|]
 
 
-let env_style env style=match env,style with
-    (a,_,_,_,_,_,_,_),Display->a
-  | (_,a,_,_,_,_,_,_),Display'->a
-  | (_,_,a,_,_,_,_,_),Text->a
-  | (_,_,_,a,_,_,_,_),Text'->a
-  | (_,_,_,_,a,_,_,_),Script->a
-  | (_,_,_,_,_,a,_,_),Script'->a
-  | (_,_,_,_,_,_,a,_),ScriptScript->a
-  | (_,_,_,_,_,_,_,a),ScriptScript'->a
+let env_style env style=match style with
+    Display->env.(0)
+  | Display'->env.(1)
+  | Text->env.(2)
+  | Text'->env.(3)
+  | Script->env.(4)
+  | Script'->env.(5)
+  | ScriptScript->env.(6)
+  | ScriptScript'->env.(7)
 
 type 'a noad= { mutable nucleus: 'a Document.environment -> Mathematical.style ->  'a box list;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
@@ -312,7 +313,7 @@ let rec draw_maths env style mlist=
 	    match b.bin_drawing with
 	        Invisible ->
                   (draw_maths env style b.bin_left)@
-                    (resize mathsEnv.mathsSize gl)::
+                    (resize mathsEnv.mathsSize gl')::
                     (draw_maths env style b.bin_right)
 	      | Normal(no_sp_left, op, no_sp_right) ->
                   (draw_maths env style b.bin_left)@
@@ -523,17 +524,9 @@ let symbol s envs st=
     Not_found-> glyphs s envs st
 
 let change_fonts env font=
-  let (a,b,c,d,e,f,g,h)=env.mathsEnvironment in
     { env with
-        mathsEnvironment=
-        ({ a with mathsFont=Lazy.lazy_from_val font},
-         { b with mathsFont=Lazy.lazy_from_val font},
-         { c with mathsFont=Lazy.lazy_from_val font},
-         { d with mathsFont=Lazy.lazy_from_val font},
-         { e with mathsFont=Lazy.lazy_from_val font},
-         { f with mathsFont=Lazy.lazy_from_val font},
-         { g with mathsFont=Lazy.lazy_from_val font},
-         { h with mathsFont=Lazy.lazy_from_val font}) }
+        mathsEnvironment=Array.map (fun x->{x with mathsFont=Lazy.lazy_from_val font}) env.mathsEnvironment }
+
 
 (* let gl_font env st font c= *)
 (*   let _,s=(env.fonts.(int_of_style st)) in *)

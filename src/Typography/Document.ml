@@ -92,8 +92,7 @@ module Mathematical=struct
     close_dist:float;
     kerning:bool
   }
-  and environment=
-      (env*env*env*env*env*env*env*env)
+  and environment=env array             (* doit etre de taille 8 *)
   and style=
       Display
     | Display'
