@@ -21,11 +21,14 @@ let draw_bezier (fx,fy)=
 
 let _=
   Random.init 200;
-  (if Array.length Sys.argv>1 then
-     for i=1 to int_of_string Sys.argv.(1) do
-       let _=example () in ()
-     done);
-  let x=ref (int_of_string Sys.argv.(1)) in
+  let x=ref
+    (if Array.length Sys.argv>1 then (
+       for i=1 to int_of_string Sys.argv.(1) do
+         let _=example () in ()
+       done;
+       int_of_string Sys.argv.(1))
+     else 0)
+  in
     while true do
       let ex,ey=example () in
         Graphics.open_graph "";
@@ -41,7 +44,13 @@ let _=
                        col:= not !col;
                        draw_bezier (x,y))
             (approx ex ey);
-          List.iter draw_bezier (approx (rev ex) (rev ey));
+          List.iter (fun (x,y)->
+                       if !col then Graphics.set_color Graphics.red else
+                         Graphics.set_color Graphics.blue;
+                       col:= not !col;
+                       draw_bezier (x,y))
+            (approx (rev ex) (rev ey));
+          Printf.printf "%d\n" !x;
           flush stdout;
           let _=Graphics.wait_next_event [Graphics.Key_pressed] in incr x
     done
