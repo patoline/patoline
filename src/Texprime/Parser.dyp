@@ -250,16 +250,8 @@ args:
     { [] }
   | args<a> - "{" eparagraph<p> "}" 
     { Paragraph (p)::a }
-  | args<a> - CAML<s,e,txps>
-    { Caml(s,e,txps) :: a }
-
-mathargs:
-    /* empty */
-    { [] }
-  | "{" math<m> "}" mathargs<a>
-    { m::a }
-  | "{" "}" mathargs<a>
-    { a }
+  | args<a> - obrace<ld,gr> - CAML<s,e,txps>
+    { Caml(ld,gr,s,e,txps) :: a }
 
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
