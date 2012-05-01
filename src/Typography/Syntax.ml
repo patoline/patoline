@@ -18,11 +18,21 @@ and indices = { up_right : math option;
     up_left : math option;
     down_left : math option }
 
+module Str = struct
+  type t = string
+  let compare = compare
+end
+
+module StrSet = Set.Make(Str)
+
+type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
+
 type structType = Absolute of int | Relative of doc list
 
 and doc =
      Paragraph of content list
-   | Caml of int * int * (texprime_section * int * int) list
+   (* FIXME : construct the type of the parsing device instead of Obj.t *)
+   | Caml of local_data * Obj.t * int * int * (texprime_section * int * int) list
    | Math of math
    | Verbatim of string option * string list
    | Struct of content list * bool * structType

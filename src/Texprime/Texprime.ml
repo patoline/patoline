@@ -191,9 +191,9 @@ let rec print_macro_buf buf op mtype name args =
 	  Printf.bprintf buf " (%s " name;
 	  List.iter (function
             | Paragraph(p) -> Printf.bprintf buf " %a" (print_contents_buf op) p
-	    | Caml(s,e,txps) ->
+	    | Caml(ld,gr,s,e,txps) ->
               Printf.bprintf buf "(";
-              print_caml_buf op buf s e txps;
+              print_caml_buf ld gr op buf s e txps;
               Printf.bprintf buf ")";
 	    | _ -> assert false) args;
 	  if args = [] then Printf.bprintf buf " ()";
@@ -202,9 +202,9 @@ let rec print_macro_buf buf op mtype name args =
       | `Preproc -> 
 	begin
 	  match args with 
-	    | Caml (s,e,txps) :: _ -> begin
+	    | Caml (ld,gr,s,e,txps) :: _ -> begin
 	      let buf' = Buffer.create 80 in
-              print_caml_buf op buf' s e txps;
+              print_caml_buf ld gr op buf' s e txps;
 	      let s = Buffer.contents buf' in 
               let f=StrMap.find name !macros in
 	      let s' = f s in
@@ -230,9 +230,9 @@ let rec print_macro_buf buf op mtype name args =
 	    List.iter (function
             Paragraph(p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf op) p;
 	      incr num
-	      | Caml(s,e,txps) -> begin
+	      | Caml(ld,gr,s,e,txps) -> begin
 		Printf.bprintf buf "let arg%d = begin " !num;
-		print_caml_buf op buf s e txps;
+		print_caml_buf ld gr op buf s e txps;
 		Printf.bprintf buf " end ";
 		incr num
 	      end
@@ -279,7 +279,7 @@ and print_macro ch op mtype name args = begin
   output_string ch (Buffer.contents buf) 
 end
 
-and print_caml_buf op buf s e txps = match txps with
+and print_caml_buf ld gr op buf s e txps = match txps with
   | [] -> 
     let size = e - s in
     let buf'=String.create size in
@@ -304,10 +304,11 @@ and print_caml_buf op buf s e txps = match txps with
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin
-	let txp = Parser.allmath lexbuf_txp in
+	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
 	match txp with
-	  | [] -> assert false
-	  | (docs, _) :: _ -> print_math_buf buf docs
+	  | (Obj_allmath docs, _) :: _ -> print_math_buf buf docs
+	  | _ -> assert false
       end
       | TxpText -> 
 	let txp = Parser.allparagraph lexbuf_txp in
@@ -315,12 +316,12 @@ and print_caml_buf op buf s e txps = match txps with
 	  | [] -> assert false
 	  | (docs, _) :: _ -> print_contents_buf op buf docs
     end ;
-    print_caml_buf op buf (e' + offset) e txps'
+    print_caml_buf ld gr op buf (e' + offset) e txps'
   end
 
-and print_caml op (ch : out_channel) s e txps = begin
+and print_caml ld gr op (ch : out_channel) s e txps = begin
   let buf = Buffer.create 80 in
-  print_caml_buf op buf s e txps;
+  print_caml_buf ld gr op buf s e txps;
   output_string ch (Buffer.contents buf) 
 end
 
@@ -371,7 +372,7 @@ and output_list from where no_indent lvl docs =
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal parameters %a;;\n" 
 	    env (print_contents from) p
-	| Caml(s,e,txps) -> print_caml from where s e txps
+	| Caml(ld,gr,s,e,txps) -> print_caml ld gr from where s e txps
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered then "" else " ~numbered:false" in
 	  (match docs with

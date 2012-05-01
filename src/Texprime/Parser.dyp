@@ -51,14 +51,6 @@ let concat words =
        fn acc last' l
     in fn "" true (List.rev words) 
 
-module Str = struct
-  type t = string
-  let compare = compare
-end
-
-module StrSet = Set.Make(Str)
-
-type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
 
 let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
 
@@ -208,8 +200,8 @@ main lexer =
     -> PPRE { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '#' uident
     -> TPRE { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  (space|newline)* '(' '*' -> { push_comment (); comment lexbuf }
-  '{' '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
+  '(' '*' -> { push_comment (); comment lexbuf }
+  '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
 		    let start = l.lex_start_p.pos_cnum + 2 in 
 		    push_caml (); push_caml (); 
 		    let txps= caml [] lexbuf in
@@ -245,6 +237,13 @@ nparagraph:
 pparagraph: 
    nparagraph<p,_> [ PARSKIP | eof ] 
    { List.rev p }
+
+obrace: 
+  "{" { 
+        let ld = { dyp.local_data with verbose = false } in
+        let gr = dyp.parser_pilot.pp_dev in
+	ld, Obj.repr gr
+     }
 
 args:
   /* empty */
@@ -300,8 +299,8 @@ preproc:
 parmacro:
   | PMACRO<name> args<a>
       { [MC(`Single, name, List.rev a)] }
-  | PPRE<preproc> - CAML<s,e,txps>
-      { [MC (`Preproc, preproc, [Caml (s,e,txps)])]
+  | PPRE<preproc> - obrace<ld,gr> - CAML<s,e,txps>
+      { [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
 
@@ -412,8 +411,8 @@ atomelt:
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
-  | CAML<s,e,txps>
-    { [Caml(s,e,txps)] }
+  | obrace<ld,gr> - CAML<s,e,txps>
+    { [Caml(ld,gr,s,e,txps)] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
     { [m] }
