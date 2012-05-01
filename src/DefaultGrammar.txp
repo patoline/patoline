@@ -42,6 +42,7 @@ Symboles de TeX'
 
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
+\Add_relation{..}{..}
 
 == Addition like symbols ==
 
@@ -99,6 +100,7 @@ Symboles de TeX'
 == Postfix symbols ==
 
 \Add_postfix{!}{!}
+\Add_postfix{*}{*}
 
 == Lowercase Greek letters ==
 

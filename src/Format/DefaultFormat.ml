@@ -241,15 +241,16 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack))) (Node empty);
       []
 
-    let addon =
-        [
-          B (fun env->[Drawing (
-                         let y=env.size/.4. in
-                         let x0=env.size/.phi in
-                         let x1=env.size-.x0 in
-                         { drawing_min_width=env.size;
-                           drawing_nominal_width=env.size;
-                           drawing_max_width=env.size;
+    let tiret_w env=2.*.env.size
+    let tiret =
+      [
+        B (fun env->[Drawing (
+                       let y=env.size/.4. in
+                       let x0=tiret_w env/.phi in
+                       let x1=tiret_w env-.x0 in
+                         { drawing_min_width=tiret_w env;
+                           drawing_nominal_width=tiret_w env;
+                           drawing_max_width=tiret_w env;
                            drawing_y0=y; drawing_y1=y;
                            drawing_badness=(fun _->0.);
                            drawing_contents=(fun _->
@@ -258,25 +259,34 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                                       OutputCommon.lineWidth=0.1},
                                                    [[|[|x0;x1|],[|y;y;|]|]])
                                                ]) }
-                       )])
-        ]
+                     )])
+      ]
     let do_end_env ()=
       let params params0 a b c d e f g=
         let p=(params0 a b c d e f g) in
           { p with
-              left_margin=p.left_margin +. a.size;
-              measure=p.measure-.a.size
+              left_margin=p.left_margin +. tiret_w a;
+              measure=p.measure-.tiret_w a
           }
       in
       let params1 params0 a b c d e f g=
         let p=params0 a b c d e f g in
           if g.lineStart>0 then (
             { p with
-                left_margin=p.left_margin+.a.size;
-                measure=p.measure-.a.size
+                left_margin=p.left_margin+.tiret_w a;
+                measure=p.measure-.tiret_w a
             }
           )
           else p
+      in
+      let comp mes a1 a2 a3 a4 line a6=
+        Complete.normal { mes with normalMeasure=(mes.normalMeasure-.tiret_w mes) } a1 a2 a3 a4 line a6
+      in
+      let comp1 mes a1 a2 a3 a4 line a6=
+        if line.lineStart>0 then
+          Complete.normal { mes with normalMeasure=(mes.normalMeasure-.tiret_w mes) } a1 a2 a3 a4 line a6
+        else
+          Complete.normal mes a1 a2 a3 a4 line a6
       in
       let rec paragraphs t=
         match t with
@@ -286,9 +296,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                             par_env=(fun x->
                                        let env=(p.par_env x) in
                                          { env with
-                                             normalMeasure=env.normalMeasure -. env.size;
+                                             normalMeasure=env.normalMeasure -. tiret_w env;
                                              par_indent=[]
                                          });
+                            par_completeLine=comp;
                             par_parameters=params p.par_parameters }
           | _ -> t
       in
@@ -306,8 +317,9 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                      (match a with
                         | Paragraph p ->
                             Paragraph { p with
-                                          par_contents=addon@remove_glues p.par_contents;
-                                          par_parameters=params1 p.par_parameters
+                                          par_contents=tiret@remove_glues p.par_contents;
+                                          par_parameters=params1 p.par_parameters;
+                                          par_completeLine=comp1;
                                       }
                         | t -> t) chi }
 	     with Not_found -> t)
@@ -345,9 +357,38 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     val counterLevel:int
     val display:string->user content list
   end
+  module Proof=struct
+    let do_begin_env ()=
+      newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal Document.parameters
+        (italic [T "Proof.";B (fun env->let w=env.size in [glue w w w])]);
+      D.structure:=lastChild !D.structure
+    let do_end_env ()=
+      D.structure:=(try
+                      prev (function Paragraph _->true | _->false) (top !D.structure)
+                    with Not_found -> lastChild !D.structure);
+
+      newPar D.structure Complete.normal Document.parameters
+        [B (fun env->
+              let w=env.size/.phi in
+              let gl=match glue 0. (env.normalMeasure) (env.normalMeasure) with
+                  Glue g->Drawing { g with drawing_badness=(fun _->0.) }
+                | x->x
+              in
+                (glue env.size env.size env.size)
+                ::gl
+                ::(Drawing (
+                     drawing [OutputCommon.Path ({ OutputCommon.default with
+                                                     OutputCommon.close=true;
+                                                     OutputCommon.lineWidth=0.1 },
+                                                 [OutputCommon.rectangle (0.,0.) (w,w)]
+                                                )])
+                  )::[]
+           )]
+  end
+
   module Make_theorem=functor (Th:Theorem)->struct
 
-    let reference name=generalRef ~refType:Th.refType name
+    let reference name=generalRef Th.refType name
 
     let do_begin_env ()=
       D.structure:=newChildAfter !D.structure (Node empty);

@@ -39,6 +39,7 @@ val translate : float -> float -> contents -> contents
 val resize : float -> contents -> contents
 val bounding_box : contents list -> float * float * float * float
 val circle : float -> (float array * float array) array
+val rectangle : (float*float) -> (float*float)->(float array * float array) array
 type structure = {
   mutable name : string;
   mutable displayname : contents list;

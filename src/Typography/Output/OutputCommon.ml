@@ -77,6 +77,12 @@ let bounding_box l=
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
+
+let rectangle (xa,ya) (xb,yb)=
+  [|[|xa;xa|],[|ya;yb|];
+    [|xa;xb|],[|yb;yb|];
+    [|xb;xb|],[|yb;ya|]|]
+
 let circle r=
   let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in
     [| [|0.;0.;r-.lambda;r|], [|r;r+.lambda;2.*.r;2.*.r|];

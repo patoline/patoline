@@ -19,15 +19,15 @@ let default_env=
       ];
       numerator_spacing=0.08;
       denominator_spacing=0.08;
-      sub1= 0.1;
-      sub2= 0.1;
+      sub1= 0.2;
+      sub2= 0.2;
       sup1=0.5;
       sup2=0.5;
       sup3=0.5;
-      sub_drop=0.1;
+      sub_drop=0.2;
       sup_drop=0.2;
       default_rule_thickness=0.05;
-      subscript_distance= 0.15;
+      subscript_distance= 0.2;
       superscript_distance= 0.2;
       limit_subscript_distance= 0.12;
       limit_superscript_distance= 0.12;
@@ -305,6 +305,10 @@ let rec draw_maths env style mlist=
 	    | 2 ->  glue (2./.9.) (2./.9.) (5./.18.)
 	    | _ ->  glue (1./.9.) (1./.9.) (3./.18.)
           in
+          let gl'=match gl with
+              Box.Glue x->Drawing x
+            | _->gl
+          in
 	    match b.bin_drawing with
 	        Invisible ->
                   (draw_maths env style b.bin_left)@
@@ -312,7 +316,7 @@ let rec draw_maths env style mlist=
                     (draw_maths env style b.bin_right)
 	      | Normal(no_sp_left, op, no_sp_right) ->
                   (draw_maths env style b.bin_left)@
-                    (if no_sp_left then [] else [resize mathsEnv.mathsSize gl])@
+                    (if no_sp_left then [] else [resize mathsEnv.mathsSize gl'])@
                     (draw_maths env style [Ordinary op])@
                     (if no_sp_right then [] else [resize mathsEnv.mathsSize gl])@
                     (draw_maths env style b.bin_right)

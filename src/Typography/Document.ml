@@ -120,7 +120,7 @@ and 'a paragraph={
   par_env:'a environment -> 'a environment;
   par_post_env:'a environment -> 'a environment -> 'a environment;
   par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
-  par_completeLine:float -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list
+  par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list
 }
 and 'a figuredef={
   fig_contents:'a environment->drawingBox;
@@ -227,20 +227,48 @@ let child (t,cxt) i=try
 with
     Not_found -> (Node empty, (i,t)::cxt)
 
+let lastChild (t,cxt)=try
+  match t with
+      Node x->(
+        let i,t'=IntMap.max_binding x.children in
+          t', (i,t)::cxt
+      )
+    | _->(t,cxt)
+with
+    Not_found -> (t,cxt)
+
 let newChildAfter (t,cxt) chi=
   match t with
       Node x->(chi, (next_key x.children,t)::cxt)
-    | _->(chi, (0,Node empty)::cxt)
+    | _->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
 
 let newChildBefore (t,cxt) chi=
   match t with
       Node x->(chi, (prev_key x.children,t)::cxt)
-    | _->(chi, (0,Node empty)::cxt)
+    | _->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
+
+let rec prev f (t,cxt) =
+  if f t then (t,cxt) else (
+    match t with
+        Node nt->
+          let bin=List.rev (IntMap.bindings nt.children) in
+          let rec prevs=function
+              []->raise Not_found
+            | (h,ht)::s->
+                try
+                  prev f (ht, (h,t)::cxt)
+                with
+                    Not_found->prevs s
+          in
+            prevs bin
+      | _->raise Not_found
+  )
 
 let up (t,cxt) = match cxt with
     []->(t,cxt)
   | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
   | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
+
 let go_up str=
   (if snd !str=[] then Printf.fprintf stderr "Warning : go_up\n");
   str:=(up !str)
@@ -513,11 +541,15 @@ let addFree str boxes=
 
 
 let newPar str ?(environment=(fun x->x)) complete parameters par=
-  let para=Paragraph {par_contents=par; par_env=environment;
-                      par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
-                      par_parameters=parameters; par_completeLine=complete }
-  in
-    str:=up (newChildAfter !str para)
+  match !str with
+      Paragraph p,path->
+        str:=Paragraph {p with par_contents=p.par_contents@par}, path
+    | _->
+        let para=Paragraph {par_contents=par; par_env=environment;
+                            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+                            par_parameters=parameters; par_completeLine=complete }
+        in
+          str:=up (newChildAfter !str para)
 
 
 let string_of_contents l =
@@ -586,26 +618,20 @@ let label ?(labelType="structure") name=
         [User (Label name)])
   ]
 
-let sectref name=
-  [ CFix (fun env->try
-            let (nums,_,_)=StrMap.find name env.names in
-            let _,num=try StrMap.find "structure" nums with Not_found -> -1, [] in
-              [T (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                       (List.rev (drop 1 num))))]
-          with
-              Not_found -> []
-         )]
 
-let generalRef ?(refType="structure") name=
+
+let generalRef refType name=
   [ CFix (fun env->try
             let counters,_,_=StrMap.find name env.names in
             let lvl,num=(StrMap.find refType counters) in
             let _,str_counter=StrMap.find "structure" counters in
-            let sect_num=drop (List.length str_counter - lvl) str_counter in
-              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (sect_num@num))) ]
+            let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
           with
               Not_found -> []
          )]
+
+let sectref x=generalRef "structure" x
 
 (** {3 Boitification et "classes" de documents}*)
 
@@ -769,7 +795,7 @@ let flatten env0 fixable str=
   let add_paragraph env p=
     let u,v=boxify fixable env p.par_contents in
       paragraphs:=(match !frees with []->u | l->Array.append u (Array.of_list l))::(!paragraphs);
-      compl:=(p.par_completeLine env.normalMeasure)::(!compl);
+      compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
       incr n;
       frees:=[];
@@ -826,7 +852,7 @@ let flatten env0 fixable str=
                     let cou=
                       StrMap.add "path" (-1,k::path)
                         (if List.mem Structural h.node_tags then
-                           StrMap.filter (fun _ (a,b)->a<=level) env2.counters
+                           StrMap.filter (fun _ (a,b)->a<=level+1) env2.counters
                          else
                            env2.counters)
                     in
