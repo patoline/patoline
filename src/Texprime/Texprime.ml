@@ -72,10 +72,22 @@ let _ =
     resolve (i+1) env2
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
+    let tmp=Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^filename))) in
+    let f=open_out tmp in
+    output_value f env2.names;
+    close_out f;
     Out.output tree pars figures env2 pages filename
   )
   in
-  resolve 0 defaultEnv
+  let env0=
+    let tmp=Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^filename))) in
+    if Sys.file_exists tmp then (
+      let f=open_in tmp in
+      let env={ defaultEnv with names=input_value f } in
+      close_in f; env
+    ) else defaultEnv
+  in
+  resolve 0 env0
 " outfile
 
 let moduleCounter=ref 0
