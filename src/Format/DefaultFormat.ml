@@ -371,7 +371,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         [B (fun env->
               let w=env.size/.phi in
               let gl=match glue 0. (env.normalMeasure) (env.normalMeasure) with
-                  Glue g->Drawing { g with drawing_badness=(fun _->0.) }
+                  Glue g->Drawing g
                 | x->x
               in
                 (glue env.size env.size env.size)

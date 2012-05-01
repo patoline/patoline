@@ -65,7 +65,7 @@ module Output=functor(M:Driver)->struct
                     )
                   | Glue g
                   | Drawing g ->(
-                      let w=g.drawing_min_width+.comp*.(min param.measure g.drawing_max_width-.max (-.param.measure) g.drawing_min_width) in
+                      let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                         page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
                         w
                     )
