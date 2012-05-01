@@ -11,6 +11,28 @@ let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 
 type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
                 mutable fontGlyphs:Fonts.glyph IntMap.t }
+
+#ifdef CAMLZIP
+let stream str=
+  let tmp0=Filename.temp_file "txp_" "" in
+  let tmp1=Filename.temp_file "txp_" "" in
+  let f0=open_out_bin tmp0 in
+    output_string f0 str;
+    close_out f0;
+    let ic = open_in_bin tmp0
+    and oc = open_out_bin tmp1 in
+      Zlib.compress (fun buf -> input ic buf 0 (String.length buf))
+        (fun buf len -> output oc buf 0 len);
+      close_in ic;
+      close_out oc;
+      let f=open_in_bin tmp1 in
+      let buf=String.create (in_channel_length f) in
+        really_input f buf 0 (in_channel_length f);
+        "/Filter [/FlateDecode]", buf
+#else
+  let stream str="",str
+#endif
+
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
@@ -61,8 +83,9 @@ let output ?(structure:structure={name="";displayname=[];
                       really_input x.CFF.file buf 0 x.CFF.size;
                       buf) in
                   let fontFile=beginObject () in
-                    fprintf outChan ("<< /Length %d /Subtype /CIDFontType0C >>\nstream\n%s\nendstream\n")
-                      (String.length program) program;
+                  let filt, data=stream program in
+                    fprintf outChan "<< /Length %d /Subtype /CIDFontType0C %s>>\nstream\n%s\nendstream"
+                      (String.length data) filt data;
                     endObject();
 
                     (* Font descriptor -- A completer*)
@@ -335,8 +358,9 @@ let output ?(structure:structure={name="";displayname=[];
         (* Objets de la page *)
         let contentObj=beginObject () in
         let contStr=Buf.contents pageBuf in
-          fprintf outChan "<< /Length %d >>\nstream\n%s\nendstream"
-            (String.length contStr) contStr;
+        let filt, data=stream contStr in
+          fprintf outChan "<< /Length %d %s>>\nstream\n%s\nendstream"
+            (String.length data) filt data;
           endObject ();
           resumeObject pageObjects.(page);
           let w,h=pages.(page).pageFormat in
@@ -478,10 +502,10 @@ let output ?(structure:structure={name="";displayname=[];
 
 
                            resumeObject x.fontToUnicode;
-                           fprintf outChan "<< /Length %d >>\nstream\n%s\nendstream"
-                             (String.length (Buf.contents buf)) (Buf.contents buf);
-
-                           endObject ()
+                           let filt, data=stream (Buf.contents buf) in
+                             fprintf outChan "<< /Length %d %s>>\nstream\n%s\nendstream"
+                               (String.length data) filt data;
+                             endObject ()
                 ) !fonts;
     (* Toutes les largeurs des polices *)
     StrMap.iter (fun _ x->

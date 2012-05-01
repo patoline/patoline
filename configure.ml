@@ -9,6 +9,7 @@ let fonts_dirs=ref []
 let grammars_dirs=ref []
 let hyphen_dirs=ref []
 let opt_only=ref true
+let camlzip=ref false
 let lang=ref "FR"
 
 let avail_lang=
@@ -61,6 +62,7 @@ let _=
   grammars_dirs:= !grammars_dir ::(List.rev !grammars_dirs);
   hyphen_dirs:= !hyphen_dir ::(List.rev !hyphen_dirs);
 
+  camlzip:=Sys.command "ocamlfind query camlzip" = 0;
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
 
@@ -108,11 +110,12 @@ let _=
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-"<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_dyp,pp(cpp -w -DLANG_%s)
-<Texprime/Main.{byte,native}>: use_Typography,use_DefaultFormat,use_dynlink,pp(cpp),pkg_camomile,pkg_dyp
-<proof/proof.{byte,native}>: pkg_camomile,use_Typography
+"<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_camlzip,pkg_dyp,pp(cpp -w %s%s)
+<Texprime/Main.{byte,native}>: use_Typography,use_DefaultFormat,use_dynlink,pp(cpp),pkg_camomile,pkg_dyp,pkg_camlzip
+<proof/proof.{byte,native}>: pkg_camomile,use_Typography,pkg_camlzip
 \"Typography\" or \"Format\":include\n"
-        (String.uppercase !lang);
+        (if !camlzip then "-DCAMLZIP " else "")
+        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
