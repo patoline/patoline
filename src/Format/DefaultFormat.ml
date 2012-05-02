@@ -112,9 +112,9 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           positioning=(fun x->pos (positioning f x));
           footnote_y=10.;
           size=fsize;
-          lead=sqrt phi*.fsize;
+          lead=13./.10.*.fsize;
           normalMeasure=150.;
-          normalLead=sqrt phi*.fsize;
+          normalLead=13./.10.*.fsize;
           normalLeftMargin=(fst a4-.150.)/.2.;
           par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                                   drawing_max_width= 4.0 *. phi;
