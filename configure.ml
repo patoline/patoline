@@ -115,10 +115,9 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: pkg_camomile%s,pkg_dyp,pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
+        "<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_camlzip,pkg_dyp,pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
 <**/*.{cmx,cmo}> and not <Typography.cmx> :pkg_camomile,for-pack(Typography)\n"
-        (if !camlzip <> "" then ",pkg_"^(!camlzip) else "")
-        (if !camlzip <> "" then "-DCAMLZIP " else "")
+        (if !camlzip then "-DCAMLZIP " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
 
