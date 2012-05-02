@@ -29,6 +29,7 @@ open Typography.Fonts.FTypes
 (* open Typography.Constants *)
 (* open Typography.Binary *)
 
+module Euler = Article.Euler
 module DFormat = Format.Default
 open Format
 

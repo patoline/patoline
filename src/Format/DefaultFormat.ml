@@ -9,10 +9,15 @@ open Line
 open CamomileLibrary
 
 let _=Random.self_init ()
-module Euler=Euler
+
+module Euler = Euler
+
+
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
+
+
 
     let alegreya=
       [ Regular,

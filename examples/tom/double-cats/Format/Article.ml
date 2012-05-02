@@ -46,11 +46,13 @@ let cite ?title:(title="") ?year:(year=None) (authors:string list) =
 		"authors WHERE name like '%" ^ author ^ "%'))"))
 	  authors)))
 
+module Euler=DefaultFormat.Euler
+
+
+
 module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
-
-  module Euler=Default.Euler
 
   let defaultEnv=Default.defaultEnv
   let title=Default.title
