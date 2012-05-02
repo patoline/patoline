@@ -442,7 +442,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
         local_optimization=0;
         min_page_before=0;
         min_page_after=0;
-        next_acceptable_height=(fun node params nextNode nextParams->
+        next_acceptable_height=(fun node params nextNode nextParams height->
                                   if node==nextNode then
                                     let min_height=node.height+.params.min_height_after in
                                       env.lead*.(ceil (min_height/.env.lead))

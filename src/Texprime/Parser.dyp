@@ -143,7 +143,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
       [ Lexeme_matched _ ] -> rule_constr symbol_value, []
     | _ -> assert false
   in
-  let elt = if local_data.verbose then [Ignore] else
+  let elt = if not local_data.verbose then [Ignore] else
     [Ignore; Paragraph
       [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc -> 

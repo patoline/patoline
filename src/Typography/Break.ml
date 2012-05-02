@@ -285,7 +285,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                     r_nextNode.height<-height;
                     r_nextNode.page<-page;
                     r_nextNode.page_line<-if page=node.page then node.page_line+1 else 0;
-
+                    let minimal_tried_height=ref infinity in
                     let make_next_node nextNode=
                       r_params:=parameters.(pi) paragraphs figures lastParameters lastFigures lastUser nextNode;
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
@@ -307,24 +307,25 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               (*   ) *)
                             ) else (
                               node0.height+.
-                                ceil (try
-                                        ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
-                                                     !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
-                                      with
-                                          Not_found -> (
-                                            let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                              colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
-                                                                            !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
-                                              -.dist
-                                          )
+                                (try
+                                   ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                 with
+                                     Not_found -> (
+                                       let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                         colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                       !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
+                                         -.dist
                                      )
+                                )
                             )
                           in
                             v_distance node lastParameters
                         ) else (
-                          ceil (snd (line_height paragraphs nextNode))
+                          (snd (line_height paragraphs nextNode))
                         )
                       in
+                        minimal_tried_height:=min !minimal_tried_height height';
                         if height>=height'
                           && (page >= node.page +
                                 max !r_params.min_page_before lastParameters.min_page_after)
@@ -380,7 +381,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                     let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
                       List.iter make_next_node (compl);
                       if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1 then (
-                        let next_h=(lastParameters).next_acceptable_height node lastParameters r_nextNode !r_params in
+                        let next_h=(lastParameters).next_acceptable_height node lastParameters r_nextNode !r_params
+                          !minimal_tried_height in
                           fix page (if next_h=node.height then node.height+.1. else next_h)
                       )
                   )
