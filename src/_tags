@@ -1,3 +1,0 @@
-<Format/*>: pp(cpp -w),pkg_camomile,pkg_dyp,pkg_camlzip
-<proof/proof.{byte,native}>: pkg_camomile,pkg_camlzip
-"Typography":include
