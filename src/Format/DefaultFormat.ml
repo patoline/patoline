@@ -9,7 +9,7 @@ open Line
 open CamomileLibrary
 
 let _=Random.self_init ()
-
+module Euler=Euler
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
@@ -66,11 +66,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
          simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
       ]
 
-    let replace_utf8 x y z=
-      Str.global_replace x
-        (UTF8.init 1 (fun _->UChar.chr y)) z
+    (* let replace_utf8 x y z= *)
+    (*   Str.global_replace x *)
+    (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
 
-    include Euler
     let defaultEnv:user environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=try
@@ -108,14 +107,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           mathsEnvironment=
             Array.map (fun x->{x with Mathematical.kerning=false })
               Maths.default;
-          word_substitutions=
-            (fun x->List.fold_left (fun y f->f y) x
-               [
-                 str;
-                 replace_utf8 (Str.regexp_string "``") 8220;
-                 replace_utf8 (Str.regexp_string "''") 8221
-               ]
-            );
+          word_substitutions=(fun x->x);
           substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) loaded_feat);
           positioning=(fun x->pos (positioning f x));
           footnote_y=10.;

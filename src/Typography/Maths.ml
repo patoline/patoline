@@ -543,13 +543,13 @@ let change_fonts env font=
 let open_close left right env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize in
-  let left=draw_boxes left in
+  let left=draw_boxes (left env_ style) in
   let bezier_left=bezier_of_boxes left in
 
   let mid=draw_boxes box in
   let bezier_mid=bezier_of_boxes mid in
 
-  let right=draw_boxes right in
+  let right=draw_boxes (right env_ style) in
   let bezier_right=bezier_of_boxes right in
 
   let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
