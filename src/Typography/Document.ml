@@ -292,7 +292,7 @@ let doc_graph out t0=
     List.iter (fun (i,x)->match x with
                    Paragraph _->(
                      let p=path^"_"^(string_of_int i) in
-                       Printf.fprintf out "%s[color=red];\n" p;
+                       Printf.fprintf out "%s[color=green];\n" p;
                        Printf.fprintf out "%s -> %s;\n" path p;
                    )
                  | FigureDef _-> ()

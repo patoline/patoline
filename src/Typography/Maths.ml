@@ -511,6 +511,17 @@ let change_fonts env font=
     { env with
         mathsEnvironment=Array.map (fun x->{x with mathsFont=Lazy.lazy_from_val font}) env.mathsEnvironment }
 
+let symbol ?name:(name="") font n envs st=
+  let env=env_style envs.mathsEnvironment st in
+  let s=env.mathsSize in
+  let rec make_it=function
+      []->[]
+    | h::s->
+        { glyph_utf8="";
+          glyph_index=h } :: make_it s
+  in
+    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (make_it n)
+
 
 (* let gl_font env st font c= *)
 (*   let _,s=(env.fonts.(int_of_style st)) in *)
