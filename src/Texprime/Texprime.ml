@@ -23,19 +23,22 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
     "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
 
 
+let hashed="(Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^Sys.executable_name))))"
 
-
-let preambule format fugue = "
-  open Typography
-  open Typography.Util
-  open Typography.Box
-  open Typography.Config
-  open Typography.Document
-  open Typography.OutputCommon
+let preambule format fugue filename= "
+open Typography
+open Typography.Util
+open Typography.Box
+open Typography.Config
+open Typography.Document
+open Typography.OutputCommon
 "^(if fugue then
-     "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),
+     "let clean=ref false
+let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),
 \"Adds directories to the font search path\");
-(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\")];;
+(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
+(\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in
+if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
      module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
    else "module Document=functor(D:DocumentStructure)->struct\n")
@@ -68,22 +71,22 @@ let _ =
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
     let tmp=Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^filename))) in
-    let f=open_out tmp in
-    output_value f env2.names;
+    let f=open_out %s in
+    output_value f (env2.names,env2.user_positions);
     close_out f;
     Out.output tree pars figures env2 pages filename
   )
   in
   let env0=
-    let tmp=Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^filename))) in
-    if Sys.file_exists tmp then (
-      let f=open_in tmp in
-      let env={ defaultEnv with names=input_value f } in
+    if Sys.file_exists %s then (
+      let f=open_in %s in
+      let u,v=input_value f in
+      let env={ defaultEnv with names=u;user_positions=v } in
       close_in f; env
     ) else defaultEnv
   in
   resolve 0 env0
-" outfile
+" outfile hashed hashed hashed
 
 let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
@@ -451,7 +454,7 @@ let gen_ml format fugue filename from wherename where pdfname =
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
-		Printf.fprintf where "%s" (preambule format fugue);
+		Printf.fprintf where "%s" (preambule format fugue filename);
 		begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
