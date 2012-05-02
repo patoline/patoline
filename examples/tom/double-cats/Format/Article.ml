@@ -7,11 +7,12 @@ open Typography.Fonts.FTypes
 (* open Typography.Constants *)
 open Typography.Document
 open Util
-open Boxes
+open Box
+open Line
 (* open Binary *)
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
-
+module Euler=DefaultFormat.Euler
 open Bibi
 exception No_bib of string
 let bib:((string*int*user content list) IntMap.t) ref=ref IntMap.empty
@@ -45,11 +46,9 @@ let cite ?title:(title="") ?year:(year=None) (authors:string list) =
 		"authors WHERE name like '%" ^ author ^ "%'))"))
 	  authors)))
 
-
 module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
-  let famille=Default.lmroman
     (* [ Regular, ( *)
     (*     Lazy.lazy_from_fun ( *)
     (*       fun () ->simpleFamilyMember (Fonts.loadFont (findFont "BemboStd.otf"))), *)
@@ -139,7 +138,7 @@ module Format=functor (D:DocumentStructure)->struct
 
 
   let defaultEnv=
-    { (envFamily famille Default.defaultEnv) with
+    { Default.defaultEnv with
         word_substitutions=
         (fun x->List.fold_left (fun y f->f y) x
            [
@@ -286,7 +285,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       node, m
 
     let make () = 
-      let fig = Boxes.drawing ~offset:(0.) 
+      let fig = Box.drawing ~offset:(0.) 
 	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
 	   []
 	   !stack)
@@ -305,7 +304,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
   let glyph x=
     B (fun env->
          let code={glyph_utf8=""; glyph_index=x } in
-           [GlyphBox { (Boxes.glyphCache env.font code) with
+           [GlyphBox { (Box.glyphCache env.font code) with
                          OutputCommon.glyph_color=env.fontColor;
                          OutputCommon.glyph_size=env.size
                      }]

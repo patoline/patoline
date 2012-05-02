@@ -13,9 +13,9 @@ let default_line_width = ref 0.2
 let ex env = 
   let l = boxify_scoped env [T "x"] in
   let x = List.find
-    (function Boxes.GlyphBox x -> true | _ -> false)
+    (function Box.GlyphBox x -> true | _ -> false)
     l
-  in (Boxes.upper_y x 0. -. Boxes.lower_y x 0.) /. 2.
+  in (Box.upper_y x 0. -. Box.lower_y x 0.) /. 2.
 
 let rec list_last = function
   [] -> assert false
@@ -641,7 +641,7 @@ module Node = struct
     let anchor = spec.anchor in
     let at = spec.at in
     (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Boxes.draw_boxes (boxify_scoped env spec.contents_spec)) in
+    let contents = (Box.draw_boxes (boxify_scoped env spec.contents_spec)) in
     let bb_boot =  OutputCommon.bounding_box contents in
     (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
     (* But computing anchor needs make_anchor bb.  *)
@@ -1457,7 +1457,7 @@ module Diagram = struct
       (translate v centered_res), v 		(* Return the translated gentity, and the translation *)
       
     let node env style contents = fst (node_boxified env style
-					 (Boxes.draw_boxes (boxify_scoped env contents)))      
+					 (Box.draw_boxes (boxify_scoped env contents)))      
 
     let coordinate env (x,y) = node env [`Coordinate; `At (x,y)] []
 

@@ -24,10 +24,10 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(O
 
 %.tmx: %.tml
 	cp $*.tml $*.ml
-	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa Euler.cmxa $*.ml
+	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa $*.ml
 
 formats:
-	make -C Format Diagrams.cmxa Article.cmxa Euler.cmxa
+	make -C Format Diagrams.cmxa Article.cmxa
 
 clean:
 	make -C Format clean
