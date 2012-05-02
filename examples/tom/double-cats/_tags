@@ -1,0 +1,3 @@
+<Format/*.ml>: package(Typography),package(bibi)
+<*.{ml,cmxa,cmx,cmo,native}>: package(Typography),package(bibi)
+"Format":include

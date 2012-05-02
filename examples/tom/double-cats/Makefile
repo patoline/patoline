@@ -3,6 +3,10 @@ CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,sqlite3,bibi -linkpkg 
 CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(OPTS) -pp "cpp -w"
 
+all: 
+	texprime --ml --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --format Format/Article Dcats.txp
+	ocamlbuild -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/ Dcats.native
+	./Dcats.native
 
 %.mli: %.ml
 	$(CAMLC) $(OPTS) -i $*.ml > $*.mli
@@ -27,7 +31,7 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(O
 	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa $*.ml
 
 formats:
-	make -C Format Diagrams.cmxa Article.cmxa
+	make -C Format Diagrams.cmxa Article.cmxa 
 
 clean:
 	make -C Format clean
