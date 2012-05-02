@@ -12,7 +12,7 @@ open Line
 (* open Binary *)
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
-module Euler=DefaultFormat.Euler
+
 open Bibi
 exception No_bib of string
 let bib:((string*int*user content list) IntMap.t) ref=ref IntMap.empty
@@ -49,6 +49,8 @@ let cite ?title:(title="") ?year:(year=None) (authors:string list) =
 module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
+
+  module Euler=Default.Euler
 
   let defaultEnv=Default.defaultEnv
   let title=Default.title

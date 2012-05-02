@@ -409,9 +409,7 @@ mathargs:
       { a :: args }
 
 math:
-    /* empty */
-      { MScope [] }
-  | (['a'-'z''A'-'Z'])<name>
+   (['a'-'z''A'-'Z'])<name>
       { Var(name) } atom
   | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
       { Fun(name) } atom

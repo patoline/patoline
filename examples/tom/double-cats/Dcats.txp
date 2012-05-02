@@ -42,9 +42,9 @@ let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
 let emph = toggleItalic
 let displaystyle=[Maths.Style Mathematical.Display]
 let scriptstyle s _=Maths.Style Mathematical.Script::s
-let mathcal a=DefaultFormat.Euler.changeFont [DefaultFormat.Euler.Font `Cal] :: a
-let fraktur a=DefaultFormat.Euler.changeFont [DefaultFormat.Euler.Font `Fraktur] :: a
-let bf a=DefaultFormat.Euler.changeFont [DefaultFormat.Euler.Graisse `Gras] :: a
+let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
+let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
+let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
 let bold a=alternative Bold a
 
 let math arg = [B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (* math <$lala$> *)
@@ -55,9 +55,9 @@ let script_style = Env (fun env -> { env with size = env.size *. 2. /. 3. })
 
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{ {C} }$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let rulescat () = <<$R_{ \cat{} }$>>
+let rulescat _ = <<$R_{ \cat{} }$>>
 let indiv = <$\mathcal{ {I} }$>
-let rs = <$\mathcal{ {R} }$>
+let rs =  <$\mathcal{ {R} }$>
 let rules c = <$R_{ \c{} }$>
 
 open Article

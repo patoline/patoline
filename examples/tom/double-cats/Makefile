@@ -5,6 +5,7 @@ CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(O
 
 all: 
 	texprime --ml --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --format Format/Article Dcats.txp
+	cp Dcats.tml Dcats.ml
 	ocamlbuild -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/ Dcats.native
 	./Dcats.native
 
