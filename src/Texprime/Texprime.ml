@@ -314,7 +314,7 @@ and print_caml_buf ld gr op buf s e txps = match txps with
     let size_txp = e' - s' in
     let buf'=String.create size_txp in
     let _= seek_in op s'; really_input op buf' 0 size_txp in
-    (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
+    Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (* Debug *)
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin

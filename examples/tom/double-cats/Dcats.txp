@@ -88,7 +88,7 @@ module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user e
 	    ([],j,[],y) ; 
 	    ([],i,[],k) ;
             ([],j,[],k) ] 
-	  in x
+	  in m,ms,l
 
         let rule_shape0 x i k j y = rule_shape x i k j y ([]) ([])
         ([]) ([])
@@ -196,7 +196,7 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
 \Begin{center}
     #diagram{{
 
-        let x = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
+        let _ = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
       }}
 
@@ -281,7 +281,32 @@ is the diagram
     \End{center}
 of categories and functors, where $2$ is the free category on the graph $0 → 1$.
 
-  Let $\catplus{}$ be any weighted colimit $F ⋆ W$.
+  Let $\catplus{}$ be any weighted colimit $F ⋆ W$. Concretely, for any isomorphism class
+      $ρ$ of rule shapes, $\catplus{}$ has an object, say just $[\rho]$, which is a colimit 
+of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
+
+\Begin{center}
+
+#diagram{{
+  let m,ms,es = rule_shape0  <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
+    
+    let j = ms.(0).(0) 
+    let i = ms.(2).(0) 
+    let k = ms.(1).(0) 
+    let x = ms.(2).(1) 
+    let y = ms.(0).(1) 
+    
+    let rho = node [`At (ms.(1).(1).anchor `Center)] <<$[ρ]$>>
+
+    let colimiting_cone = edges [`To;`Draw] [
+      ([], k, [], rho) ;
+      ([], x, [], rho) ;
+      ([], y, [], rho) ;
+    ]
+}}
+
+\End{center}
+
 
 =<
 
