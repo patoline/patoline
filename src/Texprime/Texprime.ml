@@ -24,6 +24,7 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
 
 
 
+
 let preambule format fugue = "
   open Typography
   open Typography.Util
@@ -324,12 +325,15 @@ and print_caml_buf ld gr op buf s e txps = match txps with
 	match txp with
 	  | (Obj_allmath docs, _) :: _ -> print_math_buf op buf docs
 	  | _ -> assert false
+
       end
-      | TxpText -> 
-	let txp = Parser.allparagraph lexbuf_txp in
+      | TxpText -> begin
+	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	let txp = Dyp.lexparse parser_pilot "allparagraph" lexbuf_txp in
 	match txp with
-	  | [] -> assert false
-	  | (docs, _) :: _ -> print_contents_buf op buf docs
+	  | (Obj_allparagraph docs, _) :: _ -> print_contents_buf op buf docs
+	  | _ -> assert false
+      end
     end ;
     print_caml_buf ld gr op buf (e' + offset) e txps'
   end
@@ -447,38 +451,38 @@ let gen_ml format fugue filename from wherename where pdfname =
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
-		  Printf.fprintf where "%s" (preambule format fugue);
-		  begin match pre with
+		Printf.fprintf where "%s" (preambule format fugue);
+		begin match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		      Printf.fprintf where "let _ = title D.structure %S;;\n\n" title;
-		      match at with
+		    Printf.fprintf where "let _ = title D.structure %S;;\n\n" title;
+		    match at with
 			None -> ()
 		      | Some(auth,inst) ->
 			Printf.fprintf where "let _ = author %S;;\n\n" auth;
-			  match inst with
+			match inst with
 			    None -> ()
 			  | Some(inst) ->
-			      Printf.fprintf where "let _ = institute %S;;\n\n" inst
-		  end;
-		  output_list from where true 0 docs;
+			    Printf.fprintf where "let _ = institute %S;;\n\n" inst
+		end;
+		output_list from where true 0 docs;
 		  (* close_in op; *)
-                  if fugue then
-		    output_string where (postambule pdfname)
-                  else
-		    Printf.fprintf where "\nend\n"
+                if fugue then
+		  output_string where (postambule pdfname)
+                else
+		  Printf.fprintf where "\nend\n"
 	    with
-	    | Dyp.Syntax_error ->
-	      raise
-	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			              Language.Parse_error))
-	    | Failure("lexing: empty token") ->
-	      raise
-	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			              Unexpected_char))
-    with
-        Parser.Syntax_Error(pos,msg) ->
-          Sys.remove wherename;
-	  Printf.fprintf stderr "%s\n"
-            (Language.message (Language.Syntax_error (filename, pos, msg)));
-	  exit 1
+	      | Dyp.Syntax_error ->
+		raise
+	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+					Parse_error))
+	      | Failure("lexing: empty token") ->
+		raise
+	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+					Unexpected_char))
+	      with
+		  Parser.Syntax_Error(pos,msg) ->
+		    Sys.remove wherename;
+		    Printf.fprintf stderr "%s\n"
+		      (Language.message (Language.Syntax_error (filename, pos, msg)));
+		    exit 1

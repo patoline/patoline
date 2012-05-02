@@ -400,8 +400,18 @@ promath:
 allmath:
    math<m> eof { m }
 
+mathargs:
+    /* empty */
+      { [] }
+  | math<a>
+      { [a] }
+  | '{' math<a> '}' mathargs<args>
+      { a :: args }
+
 math:
-    (['a'-'z''A'-'Z'])<name>
+    /* empty */
+      { MScope [] }
+  | (['a'-'z''A'-'Z'])<name>
       { Var(name) } atom
   | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
       { Fun(name) } atom
@@ -425,8 +435,6 @@ math:
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | "\\" [lident|uident]<macro> '{' mathargs<args> '}'
-      { MathMacro (macro,args) } atom
-  | "\\" [lident|uident]<macro> '{' math*<args> '}'
       { MathMacro (macro,args) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
@@ -554,18 +562,19 @@ grammar: grammar_aux<g>
               pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
         Some filename when !Config.grammarsdir <> []-> (
 	  try
-	  let ic = open_in (findGrammar (filename ^ gram_ext)) in
-	  let local_data, grammar = input_value ic in
-	  close_in ic;
-	  Printf.fprintf stderr "Grammar Loaded.\n";
-	  [ Local_data local_data; Parser grammar ]
+	    let grammar_name = findGrammar (filename ^ gram_ext) in
+	    let ic = open_in grammar_name in
+	    let local_data, grammar = input_value ic in
+	    close_in ic;
+	    Printf.fprintf stderr "Grammar: %s.\n" grammar_name ;
+	    [ Local_data local_data; Parser grammar ]
           with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []
         )
-       | _->[]
-     in
+      | _->[]
+       in
        (), action
-   }
-
+    }
+      
 main:
   | grammar [title]?<p> text<t> eof
     { (p, List.rev t) }
