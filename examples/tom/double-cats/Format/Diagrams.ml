@@ -987,8 +987,9 @@ module Diagram = struct
   | `Fill
   | `DrawOf of path_parameters
   | `LineWidth of float 	
+  | `Rotate 
   (* Matrix specification *)
-  | `Centers of float
+  | `Centers of float * float
   | `AllNodes of style_instructions
   | `ToOf of tip_info -> path_parameters -> (float * float * float * float * float)
   | `To
@@ -999,8 +1000,8 @@ module Diagram = struct
   and tip_info = { tip_line_width : float ; is_double : bool }
 
 
-  let between_centers dist i j =
-    (float_of_int j *. dist), -. (float_of_int i *. dist) 
+  let between_centers disty distx i j =
+    (float_of_int j *. distx), -. (float_of_int i *. disty) 
 
   module Style = struct
 
@@ -1093,8 +1094,8 @@ module Diagram = struct
       
   (* Find matrix placement specification in a list of style instructions *)
     let matrix_placement matrix = make 
-      (fun instr res -> match instr with `Centers dist -> (between_centers dist) | _ -> res)
-      (between_centers 10.) 
+      (fun instr res -> match instr with `Centers (distx,disty) -> (between_centers distx disty) | _ -> res)
+      (between_centers 10. 10.) 
 
     (* Search 'style' for instruction on 'all nodes' of a matrix *)
     let pop style = 
