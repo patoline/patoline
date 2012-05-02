@@ -171,3 +171,13 @@ let _=
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
         close_out out;
         close_out config;
+
+        let meta=open_out "src/Typography/META" in
+          Printf.fprintf meta
+            "name=\"Typography\"
+version=\"1.0\"
+description=\"Typography library\"
+requires=\"camomile%s\"
+archive(byte)=\"Typography.cma, DefaultFormat.cma\"
+archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"" (if !camlzip="" then "" else (","^(!camlzip)));
+          close_out meta
