@@ -1,7 +1,0 @@
-<**/*.ml> or <**/*.mli> : pkg_camomile, pp(cpp -w)
-<**/*.{cmx,cmo}> and not <Typography.cmx> :pkg_camomile,for-pack(Typography)
-<*.{byte,native}>:use_graphics
-<Fonts> or <Output> or <Output/Drivers>:include
-<**/*.ml> or <**/*.mli> : pkg_camomile
-<**/*.{cmx,cmo}> and not <Typography.cmx> :pkg_camomile,for-pack(Typography)
-<Fonts> or <Output> or <Output/Drivers>:include

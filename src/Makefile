@@ -7,11 +7,11 @@ native:Main.native texprimeDefault.tgx proof.native
 byte:Main.byte texprimeDefault.tgo proof.byte
 
 Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
-	$(OCAMLBUILD) Texprime/Main.native
-	cp Main.native texprime
+	cd Texprime; $(OCAMLBUILD) Main.native
+	cp Texprime/Main.native texprime
 Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
-	$(OCAMLBUILD) Texprime/Main.byte
-	cp Main.byte texprime.byte
+	cd Texprime; $(OCAMLBUILD) Main.byte
+	cp Texprime/Main.byte texprime.byte
 proof.native:Typography/Typography.cmxa
 	rm -Rf proof.native _build/proof
 	$(OCAMLBUILD) proof/proof.native
@@ -27,18 +27,19 @@ Format/DefaultFormat.cma:Typography/Typography.cma
 Texprime/Parser.ml:Texprime/Parser.dyp
 	dypgen --no-mli Texprime/Parser.dyp
 Typography/Typography.cmxa:
-	$(OCAMLBUILD) Typography/Typography.cmxa
+	make -C Typography Typography.cmxa
 Typography/Typography.cma:
-	$(OCAMLBUILD) Typography/Typography.cma
+	make -C Typography Typography.cma
+
 
 
 texprimeDefault.tgo: Main.byte DefaultGrammar.txp
 	rm -f texprimeDefault.tgo
-	./Main.byte --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
+	Texprime/Main.byte --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 texprimeDefault.tgx: Main.native DefaultGrammar.txp
 	rm -f texprimeDefault.tgx
-	./Main.native --ml --no-grammar --extra-fonts-dir ../Otf DefaultGrammar.txp
+	Texprime/Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 
 %.pdf: Typography/Typography.cmxa Format/DefaultFormat.cmxa texprimeDefault.tgx %.tml

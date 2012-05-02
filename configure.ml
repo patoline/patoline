@@ -65,8 +65,9 @@ let _=
   camlzip:=Sys.command "ocamlfind query camlzip" = 0;
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
+  let config'=open_out "src/Texprime/Config.ml" in
 
-  let fonts_src_dir="Otf" in
+  let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
 
@@ -108,24 +109,27 @@ let _=
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
 
-    let tags=open_out "src/_tags" in
+    let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-"<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_camlzip,pkg_dyp,pp(cpp -w %s%s)
-<Texprime/Main.{byte,native}>: use_Typography,use_DefaultFormat,use_dynlink,pp(cpp),pkg_camomile,pkg_dyp,pkg_camlzip
-<proof/proof.{byte,native}>: pkg_camomile,use_Typography,pkg_camlzip
-\"Typography\" or \"Format\":include\n"
+        "<**/*.ml> or <**/*.mli>: pkg_camomile,pkg_camlzip,pkg_dyp,pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
+<**/*.{cmx,cmo}> and not <Typography.cmx> :pkg_camomile,for-pack(Typography)\n"
         (if !camlzip then "-DCAMLZIP " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
+
+    let tags'=open_out "src/Texprime/_tags" in
+      Printf.fprintf tags' "<*>: pkg_camomile,pkg_dyp,pp(cpp -w %s),use_dynlink\n"
+        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
+      close_out tags';
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
 
     let sources=
-      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
+      "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
         "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
-        (if not !opt_only then "src/_build/Typography/Typography.cma  src/_build/Format/DefaultFormat.cma " else "")
+        (if not !opt_only then "src/Typography/_build/Typography.cma  src/_build/Format/DefaultFormat.cma " else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -142,11 +146,14 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
 
-    Printf.fprintf config "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%S]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%S]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%S]\n"
-      (String.concat ";" ((!fonts_dirs)))
-      !bin_dir
-      (String.concat ";" ((!grammars_dirs)))
-      (String.concat ";" ((!hyphen_dirs)));
-    Printf.fprintf out "clean:\n\tmake -C src clean\n";
-    close_out out;
-    close_out config;
+      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%S]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%S]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%S]\n"
+        (String.concat ";" ((!fonts_dirs)))
+        !bin_dir
+        (String.concat ";" ((!grammars_dirs)))
+        (String.concat ";" ((!hyphen_dirs)))
+      in
+        Printf.fprintf config "%s" conf;
+        Printf.fprintf config' "%s" conf;
+        Printf.fprintf out "clean:\n\tmake -C src clean\n";
+        close_out out;
+        close_out config;

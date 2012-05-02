@@ -1,9 +1,6 @@
-open Typography
-open Typography.Config
-open Typography.Util
-open Typography.Syntax
-open Typography.Language
-
+open Lexing
+open Parser
+open Language
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -25,9 +22,6 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
     "let module Res = MaFigure (struct let env = env end) in \n" ^
     "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
 
-
-open Lexing
-open Parser
 
 
 let preambule format fugue = "
@@ -468,7 +462,7 @@ let gen_ml format fugue filename from wherename where pdfname =
 	    | Dyp.Syntax_error ->
 	      raise
 	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-			              Parse_error))
+			              Language.Parse_error))
 	    | Failure("lexing: empty token") ->
 	      raise
 	        (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,

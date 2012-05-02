@@ -46,8 +46,6 @@ let _ = dispatch begin function
        Options.ocamlmktop := ocamlfind & A"ocamlmktop"
 
   | After_rules ->
-      ocaml_lib "Typography/Typography";
-      ocaml_lib "Format/DefaultFormat";
 
        (* When one link an OCaml library/binary/package, one should use -linkpkg *)
        flag ["ocaml"; "link"; "program"] & A"-linkpkg";

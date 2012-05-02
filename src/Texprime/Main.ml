@@ -7,8 +7,8 @@ let format=ref "DefaultFormat"
 let dirs = ref []
 let no_grammar=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
-            ("--extra-grammars-dir",Arg.String (fun x->Typography.Config.grammarsdir:=x::(!Typography.Config.grammarsdir)), "Adds directories to the font search path");
-            ("--no-grammar",Arg.Unit (fun ()->Typography.Config.grammarsdir:=[]), "Adds directories to the font search path");
+            ("--extra-grammars-dir",Arg.String (fun x->Config.grammarsdir:=x::(!Config.grammarsdir)), "Adds directories to the font search path");
+            ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Adds directories to the font search path");
             ("--format",Arg.String
 	      (fun f -> 
 		let format_file = Filename.basename f in 
