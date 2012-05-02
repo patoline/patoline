@@ -27,25 +27,6 @@ let findPath f path=
 let findGrammar f=findPath f ("." :: (!grammarsdir))
 
 
-
-type math =
-     Var of string
-   | Symbol of string
-   | Fun of string
-   | Num of string   
-   | Prefix of int * string * bool * math
-   | Postfix of int * math * bool * string
-   | Binary of int * math * bool * string * bool * math
-   | Indices of indices * math
-   | Apply of math * math
-   | MathMacro of string * math list
-   | Delim of string * math * string  
-   | MScope of math list
-and indices = { up_right : math option;
-    down_right : math option; 
-    up_left : math option;
-    down_left : math option }
-
 module Str = struct
   type t = string
   let compare = compare
@@ -53,10 +34,34 @@ end
 
 module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
-
 type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
 
-type structType = Absolute of int | Relative of doc list
+
+type math =
+     Var of string
+   | Symbol of symbol
+   | Fun of string
+   | Num of string
+   | Prefix of int * symbol * bool * math
+   | Postfix of int * math * bool * symbol
+   | Binary of int * math * bool * symbol * bool * math
+   | Indices of indices * math
+   | Apply of math * math
+   | MathMacro of string * math list
+   | Delim of symbol * math * symbol
+   | MScope of math list
+and indices = { up_right : math option;
+    down_right : math option;
+    up_left : math option;
+    down_left : math option }
+and symbol=
+    SimpleSym of string
+  | Over
+  | RawCamlSym of string
+  | CamlSym of local_data * Obj.t * int * int * (texprime_section * int * int) list
+
+
+and structType = Absolute of int | Relative of doc list
 
 and doc =
      Paragraph of content list
@@ -76,7 +81,6 @@ and content =
    | FC of bool * math
    | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * doc list
    | GC
-
 let par_macros:(string->content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
@@ -116,7 +120,7 @@ let concat words =
 
 let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
 
-let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
+let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbol) =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"] in
   let adef = if noinfix then 
     local_data.other_symbols else local_data.infixes
@@ -141,11 +145,11 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   in
   let elt = if local_data.verbose then [Ignore] else
     [Ignore; Paragraph
-      [FC (false, Binary(0, Symbol symbol_value, false, "⇐", false,
+      [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc -> 
-        let elt = Symbol (String.escaped s) in
+        let elt = Symbol (SimpleSym (String.escaped s)) in
         if acc = Var "" then elt else
-	Binary(0, elt, true, ",", false, acc)) symbols (Var "")))]] 
+	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]] 
   in
   elt, [Add_rules[rule, action]; Local_data local_data]
 
@@ -407,7 +411,7 @@ math:
       { Delim(op,a,cl) } atom
 
   | "\\{" math<a> "\\}"
-      { Delim("{",a,"}") } atom
+      { Delim(SimpleSym "{",a,SimpleSym "}") } atom
   | "{" math<a> "}"
       { a } atom
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
@@ -431,9 +435,9 @@ math:
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
   | promath<a, sp> math(<prod)<b>
-      { if not sp then raise Giveup; Binary(3, a, false, "", false, b) } prod
+      { if not sp then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
-      { Binary(3, a, false, "", false, b) } prod
+      { Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
       { Binary(1, a, false, op, false, b) } rel
   | math(<=conj)<a> connector<op> math(<conj)<b> 
@@ -446,7 +450,11 @@ math:
       { Symbol(name) } atom
 
 symbol_name:
-	([^' ''{''}''\t''\n''\r''\\''#']+) { $1 }
+    ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
+
+symbol_def:
+    obrace<ld,gr> - CAML<s,e,txps> { CamlSym (ld,gr,s,e,txps) }
+  | '{' symbol_name<sym> '}' { SimpleSym sym }
 
 atomelt:
   /* Section */
@@ -472,37 +480,37 @@ atomelt:
     { [m] }
   /* Symbol extension */
   | "\\Add_relation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "relation" (fun x -> Obj_relation x) names value }
   | "\\Add_addition_like" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+      "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "addition_like" (fun x -> Obj_addition_like x) names value }
   | "\\Add_product_like" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "product_like" (fun x -> Obj_product_like x) names value }
   | "\\Add_connector" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "connector" (fun x -> Obj_connector x) names value }
   | "\\Add_arrow" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "arrow" (fun x -> Obj_arrow x) names value }
   | "\\Add_punctuation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "punctuation" (fun x -> Obj_punctuation x) names value }
   | "\\Add_prefix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "prefix" (fun x -> Obj_prefix x) names value }
   | "\\Add_postfix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
   | "\\Add_left" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) names value }
   | "\\Add_right" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" "{" symbol_name<value> "}"
+    "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
   | "\\Save_Grammar" "{"  lident<name> "}"
     { let oc = open_out_bin (name ^ gram_ext) in

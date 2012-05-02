@@ -73,7 +73,6 @@ module Mathematical=struct
     mathsFont:Fonts.font Lazy.t;
     mathsSize:float;
     mathsSubst:glyph_id list -> glyph_id list;
-    mathsSymbols:int StrMap.t;
     numerator_spacing:float;
     denominator_spacing:float;
     sub1:float;

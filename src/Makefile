@@ -1,5 +1,5 @@
 OCAMLBUILD=ocamlbuild
-CAMLOPT=ocamlfind ocamlopt -package camomile -linkpkg
+CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip -linkpkg
 
 all:native byte
 
@@ -33,22 +33,21 @@ Typography/Typography.cma:
 
 
 
-texprimeDefault.tgo: Main.byte DefaultGrammar.txp
+texprimeDefault.tgo: Texprime/Main.byte DefaultGrammar.txp
 	rm -f texprimeDefault.tgo
 	Texprime/Main.byte --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-texprimeDefault.tgx: Main.native DefaultGrammar.txp
+texprimeDefault.tgx: Texprime/Main.native DefaultGrammar.txp
 	rm -f texprimeDefault.tgx
 	Texprime/Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 
-%.pdf: Typography/Typography.cmxa Format/DefaultFormat.cmxa texprimeDefault.tgx %.tml
+%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa texprimeDefault.tgx %.txp
+	cp $*.txp _build
+	cd _build; ../texprime --ml --extra-fonts-dir ../../Fonts  $*.txp
 
-	$(CAMLOPT) -o $*.tmx -I _build/Typography -I _build/Format _build/Typography/Typography.cmxa _build/Format/DefaultFormat.cmxa  -impl $*.tml
-	./$*.tmx --extra-fonts-dir ../Otf
-
-%.tml:texprime.native %.txp
-	./texprime.native --ml --extra-fonts-dir ../Otf $*.txp
+	cd _build; $(CAMLOPT) -o $*.tmx -I ../Typography/_build -I Format ../Typography/_build/Typography.cmxa Format/DefaultFormat.cmxa  -impl $*.tml
+	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts
 
 
 clean:

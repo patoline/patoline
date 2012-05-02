@@ -11,12 +11,6 @@ let default_env=
       mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "Euler/euler.otf"));
       mathsSubst=(fun x->x);
       mathsSize=1.;
-      mathsSymbols=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty [
-        "sum",702;
-        "prod",703;
-        "coprod",704;
-        "int",783;
-      ];
       numerator_spacing=0.08;
       denominator_spacing=0.08;
       sub1= 0.2;
@@ -512,16 +506,6 @@ let glyphs c envs st=
   in
     List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
 
-exception Unknown_symbol of string
-
-let symbol s envs st=
-  try
-    let env=env_style envs.mathsEnvironment st in
-    let s = StrMap.find s env.mathsSymbols in
-    let font=Lazy.force env.mathsFont in
-    [ GlyphBox { (glyphCache font { empty_glyph with glyph_index=s }) with glyph_size=env.mathsSize} ]
-  with
-    Not_found-> glyphs s envs st
 
 let change_fonts env font=
     { env with
