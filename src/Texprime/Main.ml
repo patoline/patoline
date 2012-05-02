@@ -1,4 +1,4 @@
-let fugue=ref true
+let amble=ref Texprime.Main
 let files=ref []
 let compile = ref true
 let run = ref true
@@ -10,13 +10,14 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("--extra-grammars-dir",Arg.String (fun x->Config.grammarsdir:=x::(!Config.grammarsdir)), "Adds directories to the font search path");
             ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Adds directories to the font search path");
             ("--format",Arg.String
-	      (fun f -> 
-		let format_file = Filename.basename f in 
-		let format_dir = Filename.dirname f in 
+	      (fun f ->
+		let format_file = Filename.basename f in
+		let format_dir = Filename.dirname f in
 		dirs := (" -I "^format_dir^" ") :: !dirs ;
 		format := format_file
 	      ), "Change the default document format");
-            ("-c",Arg.Unit (fun ()->fugue:=false), "Compile separately");
+            ("-c",Arg.Unit (fun ()->amble:=Texprime.Separate), "Compile separately");
+            ("--noamble",Arg.Unit (fun ()->amble:=Texprime.Noamble), "Compile separately");
             ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
@@ -36,7 +37,7 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
     Printf.fprintf stderr "Generating OCaml code...\n";
-    Texprime.gen_ml !format !fugue f fread (mlname_of f) where_ml (pdfname_of f);
+    Texprime.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
     close_out where_ml;
     close_in fread;
     Printf.fprintf stderr "File %s generated.\n" (mlname_of f);

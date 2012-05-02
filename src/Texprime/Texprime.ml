@@ -13,6 +13,8 @@ open Language
 (*   (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in  *)
 (*    Maths.draw_maths Maths.default style ((arg ))))] *)
 
+type amble=Noamble | Separate | Main
+
 let _=macros:=StrMap.add "diagram" (fun x-> begin
   " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
     "module Lib = Env_Diagram (struct let arg1 = \"\" end) (Arg) \n open Lib \n" ^
@@ -25,26 +27,23 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
 
 let hashed="(Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^Sys.executable_name))))"
 
-let preambule format fugue filename= "
-open Typography
-open Typography.Util
-open Typography.Box
-open Typography.Config
-open Typography.Document
-open Typography.OutputCommon
-"^(if fugue then
-     "let clean=ref false
-let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),
-\"Adds directories to the font search path\");
+let preambule format amble filename=
+  match amble with
+      Noamble->""
+    | _->(
+        "open Typography\nopen Typography.Util\nopen Typography.Box\n"^
+        "open Typography.Config\nopen Typography.Document\nopen Typography.OutputCommon\n"^
+          (match amble with
+               Main->
+                 "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),\"Adds directories to the font search path\");
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
-(\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in
-if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
+(\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
-     module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
-   else "module Document=functor(D:DocumentStructure)->struct\n")
-  ^
-  "module Format="^format^".Format(D);;\nopen Format;;\n"
-
+module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
+             | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
+             | _->"")^
+          "module Format="^format^".Format(D);;\nopen Format;;\n"
+      )
 
 let postambule outfile = Printf.sprintf "
 module Out=OutputPaper.Output(Pdf)
@@ -100,14 +99,14 @@ let rec print_math_buf op buf m =
     match m with
 	Var name | Num name ->
 	  let elt = "Maths.glyphs \""^name^"\"" in
-	  Printf.bprintf buf "[Maths.Ordinary %a ]" (hn (RawCamlSym elt)) indices
+	  Printf.bprintf buf "[Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
       | Symbol name ->
 	(* let elt = "Maths.symbol \""^name^"\"" in *)
 	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn name) indices
 
       | Fun name ->
 	let elt = "fun env -> Maths.glyphs \""^name^"\" env" in
-	Printf.bprintf buf "[Maths.Env (fun env->Maths.change_fonts env env.font); Maths.Ordinary %a ]" (hn (RawCamlSym elt)) indices
+	Printf.bprintf buf "[Maths.Env (fun env->Maths.change_fonts env env.font); Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
       | Indices(ind', m) ->
 	fn ind' buf m
       | Binary(_, a, _,Over,_,b) ->
@@ -168,18 +167,14 @@ let rec print_math_buf op buf m =
       let buf'=Buffer.create 100 in
         Buffer.add_string buf' "fun envs st->Maths.draw_maths envs st ";
         dn no_ind op cl buf' m;
-        hn (RawCamlSym (Buffer.contents buf')) buf ind;
+        hn (CamlSym (Buffer.contents buf')) buf ind;
         Buffer.add_string buf "]"
     )
   and sn buf sym=
     match sym with
         SimpleSym s->Printf.bprintf buf "Maths.glyphs \"%s\"" s
-      | RawCamlSym s->Printf.bprintf buf "%s" s
+      | CamlSym s->Printf.bprintf buf "(%s)" s
       | Over -> assert false
-      | CamlSym (ld,gr,s,e,txps)->
-          Printf.bprintf buf "(";
-          print_caml_buf ld gr op buf s e txps;
-          Printf.bprintf buf ")";
   in fn no_ind buf m
 
 and print_math op ch m = begin
@@ -441,12 +436,12 @@ and output_list from where no_indent lvl docs =
       );
       output_list from where !next_no_indent !lvl docs
 
-let gen_ml format fugue filename from wherename where pdfname =
+let gen_ml format amble filename from wherename where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
       (*   | h::_-> *)
-            (* let op=open_in h in *)
+      (* let op=open_in h in *)
             let lexbuf = Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
@@ -454,8 +449,9 @@ let gen_ml format fugue filename from wherename where pdfname =
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
-		Printf.fprintf where "%s" (preambule format fugue filename);
-		begin match pre with
+		  begin
+                    Printf.fprintf where "%s" (preambule format amble filename);
+                    match pre with
 		    None -> ()
 		  | Some(title, at) -> 
 		    Printf.fprintf where "let _ = title D.structure %S;;\n\n" title;
@@ -470,10 +466,10 @@ let gen_ml format fugue filename from wherename where pdfname =
 		end;
 		output_list from where true 0 docs;
 		  (* close_in op; *)
-                if fugue then
-		  output_string where (postambule pdfname)
-                else
-		  Printf.fprintf where "\nend\n"
+                match amble with
+                    Main->output_string where (postambule pdfname)
+                  | Noamble->()
+                  | Separate->Printf.fprintf where "\nend\n"
 	    with
 	      | Dyp.Syntax_error ->
 		raise

@@ -57,8 +57,7 @@ and indices = { up_right : math option;
 and symbol=
     SimpleSym of string
   | Over
-  | RawCamlSym of string
-  | CamlSym of local_data * Obj.t * int * int * (texprime_section * int * int) list
+  | CamlSym of string
 
 
 and structType = Absolute of int | Relative of doc list
@@ -271,7 +270,7 @@ main lexer =
 		    let start = l.lex_start_p.pos_cnum + 1 in 
 		    push_caml (); push_caml (); 
 		    let txps= caml [] lexbuf in
-		    start, l.lex_start_p.pos_cnum, List.rev txps
+		    l.lex_buffer,start, l.lex_start_p.pos_cnum, List.rev txps
 		  }
   
 %parser
@@ -316,7 +315,7 @@ args:
     { [] }
   | args<a> - "{" eparagraph<p> "}" 
     { Paragraph (p)::a }
-  | args<a> - obrace<ld,gr> - CAML<s,e,txps>
+  | args<a> - obrace<ld,gr> - CAML<_,s,e,txps>
     { Caml(ld,gr,s,e,txps) :: a }
 
 topmacro:
@@ -357,7 +356,7 @@ preproc:
 parmacro:
   | PMACRO<name> args<a>
       { [MC(`Single, name, List.rev a)] }
-  | PPRE<preproc> - obrace<ld,gr> - CAML<s,e,txps>
+  | PPRE<preproc> - obrace<ld,gr> - CAML<_,s,e,txps>
       { [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
@@ -459,7 +458,9 @@ symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
 
 symbol_def:
-    obrace<ld,gr> - CAML<s,e,txps> { CamlSym (ld,gr,s,e,txps) }
+    obrace<ld,gr> - CAML<buf,s,e,txps> {
+      CamlSym (String.sub buf s (e-s))
+    }
   | '{' symbol_name<sym> '}' { SimpleSym sym }
 
 atomelt:
@@ -479,7 +480,7 @@ atomelt:
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
-  | obrace<ld,gr> - CAML<s,e,txps>
+  | obrace<ld,gr> - CAML<_,s,e,txps>
     { [Caml(ld,gr,s,e,txps)] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
@@ -572,7 +573,7 @@ grammar: grammar_aux<g>
        in
        (), action
     }
-      
+
 main:
   | grammar [title]?<p> text<t> eof
     { (p, List.rev t) }

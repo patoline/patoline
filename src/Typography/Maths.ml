@@ -520,7 +520,11 @@ let symbol ?name:(name="") font n envs st=
         { glyph_utf8="";
           glyph_index=h } :: make_it s
   in
-    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (make_it n)
+  let gls=match make_it n with
+      []->[]
+    | h::s->{ h with glyph_utf8=name^" " }::s
+  in
+    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) gls
 
 
 (* let gl_font env st font c= *)
