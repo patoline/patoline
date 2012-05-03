@@ -28,7 +28,7 @@ Symboles de TeX'
 \Add_relation{\notin ∉}{∉}
 \Add_relation{\ni ∋}{∋}
 \Add_relation{\notni ∌}{∌}
-\Add_relation{\caml}{{ Maths.glyphs "caml" }}
+\Add_relation{\caml}( Maths.glyphs "caml" )
 \Add_relation{\subseteq ⊆}{⊆}
 \Add_relation{\supseteq ⊇}{⊇}
 \Add_relation{\nosubseteq ⊈}{⊈}
@@ -166,13 +166,13 @@ Symboles de TeX'
 == Other symbols ==
 
 \Add_symbol{∑}{∑}
-\Add_symbol{\sum}{sum}
+\Add_symbol{\sum}(sum)
 \Add_symbol{∏}{∏}
-\Add_symbol{\prod}{prod}
+\Add_symbol{\prod}(prod)
 \Add_symbol{∐}{∐}
-\Add_symbol{\coprod}{coprod}
+\Add_symbol{\coprod}(coprod)
 \Add_symbol{∫}{∫}
-\Add_symbol{\int}{int}
+\Add_symbol{\int}(int)
 \Add_symbol{\infty ∞}{∞}
 
 

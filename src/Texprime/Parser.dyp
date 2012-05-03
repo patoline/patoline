@@ -90,13 +90,9 @@ let caml_depth = ref 0 let push_caml () = incr caml_depth
 let texprime_math_depth = ref 0 let push_texprime_math () = incr texprime_math_depth
 let texprime_text_depth = ref 0 let push_texprime_text () = incr texprime_text_depth
 let pop_comment () = decr comment_depth; !comment_depth = 0
-let pop_caml () = decr caml_depth; !caml_depth = 0
+let pop_caml () = decr caml_depth; !caml_depth
 let pop_texprime_math () = decr texprime_math_depth; !texprime_math_depth = 0
 let pop_texprime_text () = decr texprime_text_depth; !texprime_text_depth = 0
-let pop_caml' lexbuf =
-     decr caml_depth; 
-     if !caml_depth = 0	then
-      raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Splitted_end_of_caml_code))
 
 let has_space dyp =
     let next = dyp.next_lexeme () in
@@ -154,8 +150,11 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
 
 let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
 
-let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include";
+let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
     	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
+
+let fprint_caml_buf = ref (Obj.repr (fun _ -> assert false))
+
 }
 
 %start main 
@@ -208,36 +207,36 @@ rule comment = parse
 
 and caml txps= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
-  | '}' '}' { pop_caml' lexbuf ; if pop_caml () then txps else caml txps lexbuf } 
-  | '}' { pop_caml' lexbuf; caml txps lexbuf } 
+  | ')' { if pop_caml () <= 0 then txps else caml txps lexbuf } 
+  | '"' ([^'"'] | "\\\"")* '"' { caml txps lexbuf }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml txps lexbuf } 
-  | '{' { push_caml (); caml txps lexbuf } 
+  | '(' { push_caml (); caml txps lexbuf } 
   | '<' '$' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
 	      push_texprime_math () ; 
 	      flush stdout; 
 	      texprime_math lexbuf; 
 	      caml ((TxpMath, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
-  | '<''<' { let l = Dyp.std_lexbuf lexbuf in 
+  | '<' '<' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
 	      push_texprime_text () ; 
 	      flush stdout; 
 	      texprime_text lexbuf; 
 	      caml ((TxpText, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
-  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_ocaml)) }
+  | eof { [] }
   | newline { set_newline 1 lexbuf; caml txps lexbuf }
   | string { caml txps lexbuf }
   | _ { caml txps lexbuf }
 
 and texprime_math= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
-  | '$' '>' {  if pop_texprime_math () then () else texprime_math lexbuf }
+  | '$' '>' { if pop_texprime_math () then () else texprime_math lexbuf }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_math lexbuf } 
-  | '<' '$' {  push_texprime_math (); texprime_math lexbuf } 
+  | '<' '$' { push_texprime_math (); texprime_math lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_math)) }
-  | newline {  set_newline 1 lexbuf; texprime_math lexbuf }
-  | string {  texprime_math lexbuf }
-  | _ {  texprime_math lexbuf }
+  | newline { set_newline 1 lexbuf; texprime_math lexbuf }
+  | string { texprime_math lexbuf }
+  | _ { texprime_math lexbuf }
 
 and texprime_text= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
@@ -266,11 +265,13 @@ main lexer =
   '#' uident
     -> TPRE { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '(' '*' -> { push_comment (); comment lexbuf }
-  '{' -> CAML { let l = Dyp.std_lexbuf lexbuf in 
+  '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
-		    push_caml (); push_caml (); 
+		    push_caml ();
 		    let txps= caml [] lexbuf in
-		    l.lex_buffer,start, l.lex_start_p.pos_cnum, List.rev txps
+		    print_int start; print_string ", ";
+		    print_int l.lex_start_p.pos_cnum; print_newline ();
+		    start, l.lex_start_p.pos_cnum, List.rev txps
 		  }
   
 %parser
@@ -303,8 +304,8 @@ pparagraph:
    nparagraph<p,_> [ PARSKIP | eof ] 
    { List.rev p }
 
-obrace: 
-  "{" { 
+memo_grammar: 
+     { 
         let ld = { dyp.local_data with verbose = false } in
         let gr = dyp.parser_pilot.pp_dev in
 	ld, Obj.repr gr
@@ -312,22 +313,25 @@ obrace:
 
 args:
   /* empty */
-    { [] }
+    { (fun ld gr  -> []) }
+  | "()"
+    { (fun ld gr  -> []) }
   | args<a> - "{" eparagraph<p> "}" 
-    { Paragraph (p)::a }
-  | args<a> - obrace<ld,gr> - CAML<_,s,e,txps>
-    { Caml(ld,gr,s,e,txps) :: a }
+    { (fun ld gr -> Paragraph (p)::a ld gr) }
+  | args<a> - CAML<s,e,txps>
+    { if e - s <= 2 then raise Giveup; 
+      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
-      { Macro(`Begin, name, List.rev a) }
-  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
-      { Macro(`End, name, List.rev a) }
+    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" memo_grammar<ld,gr> args<a>
+      { Macro(`Begin, name, List.rev (a ld gr)) }
+  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" memo_grammar<ld,gr> args<a>
+      { Macro(`End, name, List.rev (a ld gr)) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[]) }
-  | TMACRO<name> args<a>
+  | TMACRO<name> - memo_grammar<ld,gr> - args<a>
       { if List.mem name reserved then raise Giveup;
-        Macro(`Module, name, List.rev a) }
+        Macro(`Module, name, List.rev (a ld gr)) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
           let name=
@@ -354,9 +358,9 @@ preproc:
 
 
 parmacro:
-  | PMACRO<name> args<a>
-      { [MC(`Single, name, List.rev a)] }
-  | PPRE<preproc> - obrace<ld,gr> - CAML<_,s,e,txps>
+  | PMACRO<name> - memo_grammar<ld,gr> - args<a>
+      { [MC(`Single, name, List.rev (a ld gr))] }
+  | PPRE<preproc> - memo_grammar<ld,gr> - CAML<s,e,txps>
       { [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
@@ -400,12 +404,15 @@ allmath:
    math<m> eof { m }
 
 mathargs:
-    /* empty */
-      { [] }
-  | math<a>
-      { [a] }
-  | '{' math<a> '}' mathargs<args>
-      { a :: args }
+  /* empty */
+    { (fun ld gr  -> []) }
+  | "()"
+    { (fun ld gr  -> []) }
+  | mathargs<a> - "{" math<m> "}" 
+    { (fun ld gr -> m::a ld gr) }
+/*  | mathargs<a> - CAML<s,e,txps>
+    { if e - s <= 2 then raise Giveup; 
+      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } */
 
 math:
    (['a'-'z''A'-'Z'])<name>
@@ -416,7 +423,6 @@ math:
       {Num num } atom
   | left<op> math<a> right <cl>
       { Delim(op,a,cl) } atom
-
   | "\\{" math<a> "\\}"
       { Delim(SimpleSym "{",a,SimpleSym "}") } atom
   | "{" math<a> "}"
@@ -431,8 +437,8 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | "\\" [lident|uident]<macro> '{' mathargs<args> '}'
-      { MathMacro (macro,args) } atom
+  | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - mathargs<args> 
+      { MathMacro (macro,args ld gr) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
   | math(<sum)<b> postfix<op>
@@ -458,8 +464,10 @@ symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
 
 symbol_def:
-    obrace<ld,gr> - CAML<buf,s,e,txps> {
-      CamlSym (String.sub buf s (e-s))
+    memo_grammar<ld,gr> CAML<s,e,txps> {
+      let buf = Buffer.create 80 in  
+      Obj.magic !fprint_caml_buf ld gr buf s e txps;
+      CamlSym(Buffer.contents buf)
     }
   | '{' symbol_name<sym> '}' { SimpleSym sym }
 
@@ -480,7 +488,7 @@ atomelt:
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
-  | obrace<ld,gr> - CAML<_,s,e,txps>
+  | "\\Caml" memo_grammar<ld,gr> CAML<s,e,txps>
     { [Caml(ld,gr,s,e,txps)] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>

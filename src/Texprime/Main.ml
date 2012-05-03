@@ -37,6 +37,11 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
     Printf.fprintf stderr "Generating OCaml code...\n";
+    Parser.fprint_caml_buf := Obj.repr
+      (fun ld gr buf s e txps -> 
+	let pos = pos_in fread in
+	Texprime.print_caml_buf ld gr (Texprime.Source.of_in_channel fread) buf s e txps;
+        seek_in fread pos);
     Texprime.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
     close_out where_ml;
     close_in fread;
