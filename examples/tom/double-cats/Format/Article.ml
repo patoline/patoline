@@ -148,19 +148,101 @@ module Env_definition=Default.Make_theorem
   (struct
     let refType="definition"
     let counter="definition"
-    let counterLevel=2
+    let counterLevel=0
     let display num=alternative Bold [T ("Definition "^num^"."); (T " ")]
    end)
 module Env_theorem=Default.Make_theorem
   (struct
     let refType="theorem"
     let counter="theorem"
-    let counterLevel=2
+    let counterLevel=0
     let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
 module Env_abstract = Default.Env_abstract	
 module Env_center = Default.Env_center	
 
+
+    module Env_equation = struct
+
+      let refType = "equation"
+      let counter = "equation"
+      let counterLevel=0
+      let display num=[T ("("^num^")")]
+
+      let reference name=generalRef refType name
+
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node empty);
+        Default.env_stack:=snd !D.structure :: !Default.env_stack
+
+      let do_end_env ()=
+        let rec first_par=function
+            Paragraph p->
+              Paragraph { p with
+                            par_parameters=(fun a b c d e f g->
+                                              { (parameters a b c d e f g) with
+                                                  min_height_before=
+                                                  if g.lineStart=0 then 2.*.a.lead else a.lead });
+                            par_contents=
+                  Env (fun env->incr_counter ~level:counterLevel env counter)::
+                    CFix (fun env->
+                            let lvl,num=try (StrMap.find counter env.counters) with
+                                Not_found -> -1,[0]
+                            in
+                            let _,str_counter=try
+                              StrMap.find "structure" env.counters
+                            with Not_found -> -1,[0]
+                            in
+                            let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+                              str_counter
+                            in
+                              display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
+                         )::
+                    T " "::
+                    p.par_contents
+                        }
+          | Node n->
+              let k0=try fst (IntMap.min_binding n.children) with Not_found->0 in
+              let paragraph=IntMap.singleton k0
+                (first_par (Paragraph
+                              { par_contents=[]; par_env=(fun x->x);
+                                par_post_env=
+                                  (fun env1 env2 -> { env1 with names=env2.names;
+                                                        counters=env2.counters;
+                                                        user_positions=env2.user_positions });
+                                par_parameters=parameters; par_completeLine=Complete.normal
+                              }))
+              in
+                Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)
+                    n.children paragraph }
+          | x -> x
+        in
+        let rec last_par=function
+            Paragraph p->
+              Paragraph { p with
+                            par_parameters=(fun a b c d e f g->
+                                              { (p.par_parameters a b c d e f g) with
+                                                  min_height_after=
+                                                  if g.lineEnd>=Array.length b.(g.paragraph) then 2.*.a.lead else a.lead });
+                        }
+          | Node n->
+              let k0,a0=IntMap.max_binding n.children in
+                Node { n with children=IntMap.add k0 (last_par a0) n.children }
+          | x -> x
+        in
+        let stru=match follow (top !D.structure) (List.rev (List.hd !Default.env_stack)) with
+            Node n,_->
+              (try
+                 let a,b=IntMap.min_binding n.children in
+                   Node { n with children = IntMap.add a (first_par b) n.children }
+               with
+                   Not_found->first_par (Node n))
+          | x,_->first_par x
+        in
+        let center p = { p with par_parameters=Document.do_center p.par_parameters } in
+	  D.structure := up (map_paragraphs center (last_par stru),List.hd !Default.env_stack);
+        Default.env_stack:=List.tl !Default.env_stack
+    end
 
 module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user environment end) = struct
   open Diagrams.Diagram

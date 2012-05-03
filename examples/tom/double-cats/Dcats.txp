@@ -1,9 +1,5 @@
 (* test *)
 
-(* 
-   A compiler avec 
-texprime --caml "-I /usr/local/lib/ocaml Diagrams.cmxa Euler.cmxa" --format Format/Article Dcats.txp
-*)
 
 (* test *)
 
@@ -48,14 +44,16 @@ module Euler = Article.Euler
 module DFormat = Format.Default
 open Format
 
+let id x = x
+let emph = toggleItalic
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
 let red=RGB {red=1.;green=0.;blue=0.}
 let figRef ()= [B (fun env->
     let i=try match snd (StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
      [User (FigureRef i)])]
+let eqref name = <<\emph{(\id{{generalRef "equation" name}})}>>
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
-let emph = toggleItalic
 let displaystyle=[Maths.Style Mathematical.Display]
 let scriptstyle s _=Maths.Style Mathematical.Script::s
 let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
@@ -82,7 +80,6 @@ let rulescatb = rulesb <$\cat{}$>
 let op c = <$\c{}^{op}$>
 let card c = <$|\c{}|$>
 let players c = <$Pl(\c{})$>
-let id x = x
 
 
 open Article
@@ -212,16 +209,16 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
 
   A \emph{rule shape} is a diagram of the shape
 
-\Begin{center}
+\Begin{equation}
     #diagram{{
 
         let _ = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
       }}
 
-\label{{"diagram: rule shape"}}
+\label{{"equation: rule shape"}}
 
-\End{center}
+\End{equation}
   in $\cat{}$, such that $I$,$J$, and $K$ are interfaces.
 
   \End{definition}
@@ -243,7 +240,7 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 
       We now want to do this at once for a whole part $\rulescat{}$. Namely, let 
 	  $\rulescatb{}$ be the set of isomorphism classes of rule shapes admitting a representative
-of the form \id{{generalRef "center" "diagram: rule shape"}} with $X ∈ \indiv{}$ and 
+of the form \eqref{{"equation: rule shape"}} with $X ∈ \indiv{}$ and 
 $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \emph{basic}.
 
     To formally add colimits for such rule shapes to $\cat{}$, we will take a more sophisticated lax 
@@ -274,7 +271,7 @@ $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \e
 
     \End{center}
 with a row for each $ρ ∈ \rulescatb{}$.
-The \emph{weigth} $W : J^{op} → \categories{}$
+Our weight $W : J^{op} → \categories{}$
 is the diagram
 
     \Begin{center}
@@ -332,7 +329,7 @@ of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \End{center}
 
-Eeeet ouais. C'est super fastoche.
+
 
 =<
 
