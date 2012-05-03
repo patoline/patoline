@@ -87,6 +87,37 @@ let _ =
   resolve 0 env0
 " outfile hashed hashed hashed
 
+module Source = struct
+  type t = { seek_in : int -> unit ; input : string -> int -> int -> unit}
+
+
+  let of_string s =
+    let state = ref 0 in
+    let input (destination : string) pos size =
+      let n = !state in
+      let _ = state := n + size in 
+      String.blit s n destination pos size
+    in
+    { seek_in = (fun n -> state := n) ;
+      input = input  }
+
+  let of_in_channel ch = 
+    { seek_in = seek_in ch ; 
+      input = fun dest pos size -> really_input ch dest pos size }
+
+  let of_buffer buf =
+    let state = ref 0 in
+    let input buf' pos size =
+      let n = !state in
+      let _ = state := n + size in 
+      Buffer.blit buf n buf' pos size
+    in
+    { seek_in = (fun n -> state := n) ;
+      input = input }
+
+end
+
+
 let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
@@ -297,7 +328,7 @@ and print_caml_buf ld gr op buf s e txps = match txps with
   | [] -> 
     let size = e - s in
     let buf'=String.create size in
-    let _= seek_in op s; really_input op buf' 0 size in
+    let _= op.Source.seek_in  s; op.Source.input buf' 0 size in
     Printf.bprintf buf "%s" buf'
   | (style, s',e') :: txps' -> begin
     (* On imprime du caml avant le premier "<<" *)
@@ -308,12 +339,12 @@ and print_caml_buf ld gr op buf s e txps = match txps with
     let size = s' - s - offset in
     (* Printf.bprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e; *)
     let buf'=String.create size in
-    let _= seek_in op s; really_input op buf' 0 size in
+    let _= op.Source.seek_in s; op.Source.input buf' 0 size in
     Printf.bprintf buf "%s" buf';
     (* On imprime la premiere section texprime *)
     let size_txp = e' - s' in
     let buf'=String.create size_txp in
-    let _= seek_in op s'; really_input op buf' 0 size_txp in
+    let _= op.Source.seek_in s'; op.Source.input buf' 0 size_txp in
     (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
     let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
@@ -321,7 +352,7 @@ and print_caml_buf ld gr op buf s e txps = match txps with
 	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
 	match txp with
-	  | (Obj_allmath docs, _) :: _ -> print_math_buf op buf docs
+	  | (Obj_allmath docs, _) :: _ -> print_math_buf (Source.of_string buf') buf docs
 	  | _ -> assert false
 
       end
@@ -329,7 +360,7 @@ and print_caml_buf ld gr op buf s e txps = match txps with
 	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allparagraph" lexbuf_txp in
 	match txp with
-	  | (Obj_allparagraph docs, _) :: _ -> print_contents_buf op buf docs
+	  | (Obj_allparagraph docs, _) :: _ -> print_contents_buf (Source.of_string buf') buf docs
 	  | _ -> assert false
       end
     end ;
@@ -339,7 +370,7 @@ and print_caml_buf ld gr op buf s e txps = match txps with
 and print_caml ld gr op (ch : out_channel) s e txps = begin
   let buf = Buffer.create 80 in
   print_caml_buf ld gr op buf s e txps;
-  output_string ch (Buffer.contents buf) 
+  Buffer.output_buffer ch buf
 end
 
 and print_contents_buf op buf l = 
@@ -464,7 +495,8 @@ let gen_ml format amble filename from wherename where pdfname =
 			  | Some(inst) ->
 			    Printf.fprintf where "let _ = institute %S;;\n\n" inst
 		end;
-		output_list from where true 0 docs;
+		let source = Source.of_in_channel from in
+		output_list source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
                     Main->output_string where (postambule pdfname)

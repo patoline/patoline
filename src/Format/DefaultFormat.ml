@@ -252,6 +252,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             )]
 
     let env_stack=ref []
+
     module Env_center = struct
 
       let do_begin_env ()=
@@ -263,8 +264,8 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         let res = map_paragraphs center (fst (follow (top !D.structure) (List.rev (List.hd !env_stack)))) in 
           D.structure:=up (res, List.hd !env_stack);
           env_stack:=List.tl !env_stack
-    end
 
+    end
 
     module Env_itemize = struct
 
