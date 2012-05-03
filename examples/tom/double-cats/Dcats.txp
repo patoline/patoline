@@ -1,4 +1,3 @@
-
 (* test *)
 
 (* 
@@ -19,8 +18,22 @@ CNRS, Université de Savoie
 
 (* test *)
 
-
 \Add_relation{\wcolim ⋆}{⋆}
+
+\Add_left{ ( }{ ( }
+\Add_right{ ) }{ ) }
+\Add_left{ [ }{ [ }
+\Add_right{ ] }{ ] }
+\Add_left{ < }{ < }
+\Add_right{ > }{ > }
+\Add_left{ | }{ | }
+\Add_right{ | }{ | }
+\Add_left{\lceil ⌈}{⌈}
+\Add_right{\rceil ⌉}{⌉}
+\Add_left{\lfloor ⌊}{⌊}
+\Add_right{\rfloor ⌋}{⌋}
+\Add_left{\langle 〈}{〈}
+\Add_right{\rangle 〉}{〉}
 
 {{
 
@@ -58,13 +71,19 @@ let script_style = Env (fun env -> { env with size = env.size *. 2. /. 3. })
 
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let catplus = <$\mathcal{C}^{a}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let catplusb = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let categories = <$Cat$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv = <$\mathcal{I}$>
 let rs =  <$\mathcal{R}$>
 let rules c = <$R_{\c{}}$>
+let rulesb c = <$R^{b}_{\c{}}$>
 let rulescat = rules <$\cat{}$>
-  let op c = <$\c{}^{op}$>
+let rulescatb = rulesb <$\cat{}$>
+let op c = <$\c{}^{op}$>
+let card c = <$|\c{}|$>
+let players c = <$Pl(\c{})$>
+let id x = x
+
 
 open Article
 
@@ -76,7 +95,7 @@ module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user e
 	  let m,ms = matrix [] [[
             ([],j) ; ([],y) ];[ 
 	    ([],k) ; ];[ 
-	    ([],i) ; ([],x) ];[ 
+	    ([],i) ; ([],x)  
 	  ]] in 
 	  let j = ms.(0).(0) in 
 	  let i = ms.(2).(0) in 
@@ -200,6 +219,8 @@ category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with 
 
       }}
 
+\label{{"diagram: rule shape"}}
+
 \End{center}
   in $\cat{}$, such that $I$,$J$, and $K$ are interfaces.
 
@@ -220,8 +241,13 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
 
     \End{center}
 
-      We now want to do this at once for the whole of $\rulescat{}$.
-      So, we will take a more sophisticated lax colimit, which requires to use the 
+      We now want to do this at once for a whole part $\rulescat{}$. Namely, let 
+	  $\rulescatb{}$ be the set of isomorphism classes of rule shapes admitting a representative
+of the form \id{{generalRef "center" "diagram: rule shape"}} with $X ∈ \indiv{}$ and 
+$\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \emph{basic}.
+
+    To formally add colimits for such rule shapes to $\cat{}$, we will take a more sophisticated lax 
+      colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
     \Begin{center}
@@ -247,8 +273,7 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in
     }}
 
     \End{center}
-
-with a row for each $ρ ∈ \rulescat{}$.
+with a row for each $ρ ∈ \rulescatb{}$.
 The \emph{weigth} $W : J^{op} → \categories{}$
 is the diagram
 
@@ -281,8 +306,8 @@ is the diagram
     \End{center}
 of categories and functors, where $2$ is the free category on the graph $0 → 1$.
 
-  Let $\catplus{}$ be any weighted colimit $F ⋆ W$. Concretely, for any isomorphism class
-      $ρ$ of rule shapes, $\catplus{}$ has an object, say just $[\rho]$, which is a colimit 
+  Let $\catplusb{}$ be any weighted colimit $F ⋆ W$. Concretely, for any basic rule shape $ρ$, 
+$\catplusb{}$ has an object, say just $[\rho]$, which is a colimit 
 of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \Begin{center}
@@ -307,6 +332,7 @@ of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \End{center}
 
+Eeeet ouais. C'est super fastoche.
 
 =<
 

@@ -3,11 +3,23 @@ CAMLC = ocamlfind ocamlc -package camomile,dyp,Typography,sqlite3,bibi -linkpkg 
 CAMLOPT = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi -linkpkg $(OPTS) str.cmxa -pp "cpp -w"
 CAMLOPTA = ocamlfind ocamlopt -package camomile,dyp,Typography,sqlite3,bibi  $(OPTS) -pp "cpp -w"
 
-all: 
-	texprime --ml --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --format Format/Article Dcats.txp
+LIBS=Format/Asana.cmx Format/Diagrams.cmxa
+
+all: Format/Diagrams.cmxa asana.tgx
+	texprime --ml --caml "-I /usr/local/lib/ocaml Diagrams.cmxa" --extra-fonts-dir Format --format Format/Article Dcats.txp
 	cp Dcats.tml Dcats.ml
-	ocamlbuild -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/ Dcats.native
+	ocamlbuild -no-hygiene -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/ Dcats.native
 	./Dcats.native
+
+asana.tgx:
+	make -C Format Asana.cmx
+	cp Format/asana.tgx .
+
+%.pdf: %.txp $(LIBS)
+	texprime --ml --caml "-I /usr/local/lib/ocaml" --format Format/Article $*.txp
+	cp $*.tml $*.ml
+	ocamlbuild -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/ $*.native
+	./$*.native
 
 %.mli: %.ml
 	$(CAMLC) $(OPTS) -i $*.ml > $*.mli
@@ -27,9 +39,10 @@ all:
 %.cmxa: %.ml
 	$(CAMLOPTA) $(OPTS) -a -o $@ $<
 
-%.tmx: %.tml
+%.cmx: $(LIBS) %.txp
+	texprime --ml --caml "-I /usr/local/lib/ocaml" --format Format/Article $*.txp
 	cp $*.tml $*.ml
-	$(CAMLOPT) $(OPTS) -o $@ Diagrams.cmxa Article.cmxa $*.ml
+	ocamlbuild -use-ocamlfind -cflags -I,/usr/local/lib/ocaml/,-I,Format $*.cmx
 
 formats:
 	make -C Format Diagrams.cmxa Article.cmxa 
