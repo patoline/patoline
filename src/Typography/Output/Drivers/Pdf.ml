@@ -14,6 +14,8 @@ type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicod
                 mutable fontGlyphs:(int*Fonts.glyph) IntMap.t;
                 mutable revFontGlyphs:(int*Fonts.glyph) IntMap.t }
 
+
+(* Ce flag sert essentiellement au démouchage des sous-ensembles de polices *)
 #define SUBSET
 
 #ifdef CAMLZIP
@@ -114,8 +116,8 @@ let output ?(structure:structure={name="";displayname=[];
                           let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
                                        fontFile=fontFile;
                                        fontToUnicode=toUnicode;
-                                       fontGlyphs=IntMap.empty;
-                                       revFontGlyphs=IntMap.empty } in
+                                       fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
+                                       revFontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
                             fonts:=StrMap.add (Fonts.fontName font) result !fonts;
                             result
                 )
@@ -265,7 +267,7 @@ let output ?(structure:structure={name="";displayname=[];
               let pdfFont=StrMap.find (Fonts.fontName fnt) !fonts in
               let num=
 #ifdef SUBSET
-                let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
+            let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
                   (try
                      fst (IntMap.find num0 pdfFont.fontGlyphs)
                    with
@@ -280,10 +282,9 @@ let output ?(structure:structure={name="";displayname=[];
                   )
 #else
   let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
-let num1=IntMap.cardinal pdfFont.fontGlyphs in
   pdfFont.fontGlyphs<-IntMap.add num0
-    (num1,gl.glyph) pdfFont.fontGlyphs;
-  pdfFont.revFontGlyphs<-IntMap.add num1
+    (num0,gl.glyph) pdfFont.fontGlyphs;
+  pdfFont.revFontGlyphs<-IntMap.add num0
     (num0,gl.glyph) pdfFont.revFontGlyphs;
   num0
 #endif
@@ -425,6 +426,7 @@ let num1=IntMap.cardinal pdfFont.fontGlyphs in
                        if not (IntMap.is_empty glyphs) then (
                          (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
                          let m0,(_,g0)=IntMap.min_binding glyphs in
+                           Printf.printf "cmap : %d\n" m0;
                            if UTF8.length (Fonts.glyphNumber g0).glyph_utf8 <= 0 then
                              make_cmap (IntMap.remove m0 glyphs)
                            else (
@@ -436,19 +438,19 @@ let num1=IntMap.cardinal pdfFont.fontGlyphs in
                              in
                              let rec unicode_diff a0=
                                if not (IntMap.is_empty a0) then (
-                                 let _,(_,m0)=IntMap.min_binding a0 in
+                                 let idx0,(_,m0)=IntMap.min_binding a0 in
                                  let num0=Fonts.glyphNumber m0 in
                                  let u,v=IntMap.partition (fun _ (_,x)->let num=Fonts.glyphNumber x in
                                                              num.glyph_index-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
                                                                num0.glyph_index-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
                                                           ) a0
                                  in
-                                 let _,(_,m1)=IntMap.max_binding u in
+                                 let num1,(_,m1)=IntMap.max_binding u in
                                    if IntMap.cardinal u > 1 then (
-                                     range:=(num0.glyph_index,(Fonts.glyphNumber m1).glyph_index,
+                                     range:=(num0.glyph_index,num1,
                                              (UTF8.get num0.glyph_utf8 0))::(!range)
                                    ) else (
-                                     one:=(num0.glyph_index, num0.glyph_utf8)::(!one)
+                                     one:=(idx0, num0.glyph_utf8)::(!one)
                                    );
                                    unicode_diff v
                                )
@@ -484,7 +486,7 @@ let num1=IntMap.cardinal pdfFont.fontGlyphs in
                            )
                        )
                      in
-                       make_cmap x.fontGlyphs;
+                       make_cmap x.revFontGlyphs;
                        let rec print_utf8 utf idx=
                          try
                            Buf.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
@@ -555,8 +557,8 @@ let num1=IntMap.cardinal pdfFont.fontGlyphs in
 #ifdef SUBSET
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))->(
-                         CFF.subset y (Array.of_list (List.map (fun (_,(a,_))->a)
-                                                        (IntMap.bindings x.revFontGlyphs)))
+                         CFF.subset y (Array.of_list ((List.map (fun (_,(a,_))->a)
+                                                         (IntMap.bindings x.revFontGlyphs))))
                        )
                      | _->raise Fonts.Not_supported
                    in
