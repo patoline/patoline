@@ -228,6 +228,7 @@ let readDict f a b=
               else
                 b0
             in
+              Printf.printf "readDict : op : %d\n" op;
               dict' [] ((op,stack)::l)
   in
     seek_in f a;
@@ -262,17 +263,6 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
     let nameIndex=index f (off+hdrSize) in
     let dictIndex=index f (nameIndex.(Array.length nameIndex-1)) in
     let stringIndex=index f (dictIndex.(Array.length dictIndex-1)) in
-      (try
-        let enc=int_of_num (List.hd (findDict f dictIndex.(0) dictIndex.(1) 15)) in
-          Printf.printf "enc : %d\n" enc
-      with _->());
-      (try
-        let enc=int_of_num (List.hd (findDict f dictIndex.(0) dictIndex.(1) 16)) in
-          Printf.printf "char : %d\n" enc
-      with _->());
-
-
-
     let subrIndex=
       let subrs=Array.create (Array.length dictIndex-1) [||] in
         for idx=0 to Array.length dictIndex-2 do
@@ -282,6 +272,10 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
               match privOffset with
                   offset::size::_->(
                     try
+                      let _=readDict f (off+int_of_num offset)
+                        (off+int_of_num offset+int_of_num size)
+                      in
+
                       let subrsOffset=int_of_num (List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 19)) in
                         Printf.printf "====subrsOffset %d %d %d\n" (int_of_num offset) (int_of_num size) subrsOffset;flush stdout;
                         subrs.(idx) <- strIndex f (off+int_of_num offset+subrsOffset);
@@ -546,7 +540,8 @@ let outlines_ gl onlyWidth=
                  if Array.length gl.subrs < 1240 then 107 else
                    if Array.length gl.subrs < 33900 then 1131 else 32768
                in
-                 execute (gl.subrs.(subrBias + (int_of_float (pop ()))));
+               let subr=((subrBias + (int_of_float (pop ())))) in
+                 execute gl.subrs.(subr);
                  incr pc)
           | SHORTINT->
               (let a=int_of_char (program.[!pc+1]) in
@@ -921,10 +916,13 @@ let rec writeDict buf=function
       writeDict buf s
     )
   | (op,stack)::s->(
-      List.iter (fun x->writeCFFInt buf (int_of_num x)) (List.rev stack);
-      if op>0xff then Buffer.add_char buf (char_of_int (op lsr 8));
-      Buffer.add_char buf (char_of_int (op land 0xff));
-      writeDict buf s
+      try
+        List.iter (fun x->writeCFFInt buf (int_of_num x)) (List.rev stack);
+        if op>0xff then Buffer.add_char buf (char_of_int (op lsr 8));
+        Buffer.add_char buf (char_of_int (op land 0xff));
+        writeDict buf s
+      with
+          _->writeDict buf s
     )
 
 let readIndex f idx_off=
@@ -1018,26 +1016,41 @@ let subset font gls=
         match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
             offset::size::_->(
               try
-                let buf=String.create (int_of_num size) in
-                  seek_in f (font.offset+int_of_num offset);
-                  really_input f buf 0 (int_of_num size);
-                  let subr=try (
-                    match findDict f (font.offset+int_of_num offset) (font.offset+int_of_num offset+int_of_num size) 19 with
-                        offset_::_->(
-                          seek_in f (font.offset+int_of_num offset+int_of_num offset_);
-                          copyIndex f
-                        )
-                      | _->let bubu=Buffer.create 2 in writeIndex bubu [||];Buffer.contents bubu
-                  ) with
-                      Not_found
-                    | CFFNum _-> ""
-                  in
-                    buf,subr
+                let priv=readDict f (font.offset+int_of_num offset) (font.offset+int_of_num offset+int_of_num size) in
+                let subr=try (
+                  match findDict f (font.offset+int_of_num offset) (font.offset+int_of_num offset+int_of_num size) 19 with
+                      offset_::_->(
+                        seek_in f (font.offset+int_of_num offset+int_of_num offset_);
+                        copyIndex f
+                      )
+                    | _->let bubu=Buffer.create 2 in writeIndex bubu [||];Buffer.contents bubu
+                ) with
+                    Not_found
+                  | CFFNum _-> ""
+                in
+                  priv,subr
               with
-                  Not_found | CFFNum _-> "",""
+                  Not_found | CFFNum _-> [],""
             )
-          | _->"",""
+          | _->[],""
       in
+
+      let privDict=Buffer.create 16 in
+      let priv0=
+        if List.mem_assoc 19 priv then
+          (19, [CFFInt 0])::
+            List.remove_assoc 19 priv
+        else priv
+      in
+        writeDict privDict priv0;
+        let privLength=Buffer.length privDict in
+          Buffer.reset privDict;
+
+          writeDict privDict
+            (if List.mem_assoc 19 priv then
+               (19, [CFFInt privLength])::
+                 List.remove_assoc 19 priv
+             else priv);
 
       let topDict0=
         if List.mem_assoc 17 topDict then
@@ -1048,14 +1061,13 @@ let subset font gls=
       in
       let topDict1=
         if List.mem_assoc 18 topDict0 then
-          (18, [CFFInt (String.length priv);
+          (18, [CFFInt (Buffer.length privDict);
                 CFFInt (Buffer.length buf + Buffer.length topDictBuf + String.length strIndex +
                           String.length gsubr + Buffer.length charStrings)
                 ])::
             List.remove_assoc 18 topDict0
         else topDict0
       in
-
         Buffer.reset topDictBuf_;
         writeDict topDictBuf_ topDict1;     (* Premiere tentative pour connaitre la taille *)
         Buffer.reset topDictBuf;
@@ -1065,6 +1077,6 @@ let subset font gls=
         Buffer.add_string buf strIndex;
         Buffer.add_string buf gsubr;
         Buffer.add_buffer buf charStrings;
-        Buffer.add_string buf priv;
+        Buffer.add_buffer buf privDict;
         Buffer.add_string buf lsubr;
         Buffer.contents buf

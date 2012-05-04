@@ -426,7 +426,6 @@ let output ?(structure:structure={name="";displayname=[];
                        if not (IntMap.is_empty glyphs) then (
                          (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
                          let m0,(_,g0)=IntMap.min_binding glyphs in
-                           Printf.printf "cmap : %d\n" m0;
                            if UTF8.length (Fonts.glyphNumber g0).glyph_utf8 <= 0 then
                              make_cmap (IntMap.remove m0 glyphs)
                            else (
