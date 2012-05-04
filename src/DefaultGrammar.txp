@@ -176,4 +176,4 @@ Symboles de TeX'
 \Add_symbol{\infty ∞}{∞}
 
 
-\Save_Grammar{texprimeDefault}
+\Save_Grammar{patolineDefault}

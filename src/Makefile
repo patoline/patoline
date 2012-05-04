@@ -3,15 +3,15 @@ CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip -linkpkg
 
 all:native byte
 
-native:Main.native texprimeDefault.tgx proof.native
-byte:Main.byte texprimeDefault.tgo proof.byte
+native:Main.native patolineDefault.tgx proof.native
+byte:Main.byte patolineDefault.tgo proof.byte
 
-Main.native:Format/DefaultFormat.cmxa Texprime/Parser.ml
-	cd Texprime; $(OCAMLBUILD) Main.native
-	cp Texprime/Main.native texprime
-Main.byte:Format/DefaultFormat.cma Texprime/Parser.ml
-	cd Texprime; $(OCAMLBUILD) Main.byte
-	cp Texprime/Main.byte texprime.byte
+Main.native:Format/DefaultFormat.cmxa Patoline/Parser.ml
+	cd Patoline; $(OCAMLBUILD) Main.native
+	cp Patoline/Main.native patoline
+Main.byte:Format/DefaultFormat.cma Patoline/Parser.ml
+	cd Patoline; $(OCAMLBUILD) Main.byte
+	cp Patoline/Main.byte patoline.byte
 proof.native:Typography/Typography.cmxa
 	rm -Rf proof.native _build/proof
 	$(OCAMLBUILD) proof/proof.native
@@ -24,8 +24,8 @@ Format/DefaultFormat.cmxa:Typography/Typography.cmxa
 Format/DefaultFormat.cma:Typography/Typography.cma
 	$(OCAMLBUILD) Format/DefaultFormat.cma
 
-Texprime/Parser.ml:Texprime/Parser.dyp
-	dypgen --no-mli Texprime/Parser.dyp
+Patoline/Parser.ml:Patoline/Parser.dyp
+	dypgen --no-mli Patoline/Parser.dyp
 Typography/Typography.cmxa:
 	make -C Typography Typography.cmxa
 Typography/Typography.cma:
@@ -33,18 +33,18 @@ Typography/Typography.cma:
 
 
 
-texprimeDefault.tgo: Texprime/Main.byte DefaultGrammar.txp
-	rm -f texprimeDefault.tgo
-	Texprime/Main.byte --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+patolineDefault.tgo: Patoline/Main.byte DefaultGrammar.txp
+	rm -f patolineDefault.tgo
+	Patoline/Main.byte --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-texprimeDefault.tgx: Texprime/Main.native DefaultGrammar.txp
-	rm -f texprimeDefault.tgx
-	Texprime/Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+patolineDefault.tgx: Patoline/Main.native DefaultGrammar.txp
+	rm -f patolineDefault.tgx
+	Patoline/Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 
-%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa texprimeDefault.tgx %.txp
+%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa patolineDefault.tgx %.txp
 	cp $*.txp _build
-	cd _build; ../texprime --ml --extra-fonts-dir ../../Fonts  $*.txp
+	cd _build; ../patoline --ml --extra-fonts-dir ../../Fonts  $*.txp
 
 	cd _build; $(CAMLOPT) -o $*.tmx -I ../Typography/_build -I Format ../Typography/_build/Typography.cmxa Format/DefaultFormat.cmxa  -impl $*.tml
 	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts
@@ -54,6 +54,6 @@ clean:
 	rm -f *~ \#*\# *.tgo *.tgx
 	rm -Rf _build
 	make -C Typography clean
-	rm -f Texprime/Parser.ml
-	rm -f texprime texprime.byte proof.native proof/proof.native proof.byte proof/proof.byte
+	rm -f Patoline/Parser.ml
+	rm -f patoline patoline.byte proof.native proof/proof.native proof.byte proof/proof.byte
 	rm -f *.tml

@@ -36,7 +36,6 @@ module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
 type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
 
-
 type math =
      Var of string
    | Symbol of symbol
@@ -557,7 +556,7 @@ text:
    @{ p@t, [ Keep_grammar; Local_data dyp.local_data ]}
 
 grammar_aux:
-    { Some "texprimeDefault" }
+    { Some "patolineDefault" }
   | "\\Use_Grammar{" filename<name> "}"
     { Printf.fprintf stderr "Some\n"; Some name }
   | "\\No_Grammar"

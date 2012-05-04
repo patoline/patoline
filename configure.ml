@@ -41,12 +41,12 @@ let _=
     ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
     ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
     ("--ocamlfind-dir", Set_string ocamlfind_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
-    ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/texprime/fonts/ by default)");
-    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/texprime/grammars/ by default)");
-    ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/texprime/hyphen/ by default)");
-    ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories texprime should scan for fonts");
-    ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories texprime should scan for grammars");
-    ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories texprime should scan for hyphenation dictionaries");
+    ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
+    ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
+    ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/patoline/hyphen/ by default)");
+    ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
+    ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
+    ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--byte", Unit (fun ()->opt_only:=false), "  compile bytecode version (only native code is compiled by default)");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
@@ -54,9 +54,9 @@ let _=
   if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
 
-  if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/texprime/fonts";
-  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/texprime/grammars";
-  if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/texprime/hyphen";
+  if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/patoline/fonts";
+  if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
+  if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
 
   fonts_dirs:= !fonts_dir ::(List.rev !fonts_dirs);
   grammars_dirs:= !grammars_dir ::(List.rev !grammars_dirs);
@@ -69,7 +69,7 @@ let _=
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Texprime/Config.ml" in
+  let config'=open_out "src/Patoline/Config.ml" in
 
   let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
@@ -103,7 +103,7 @@ let _=
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
-              ) ("texprimeDefault.tgx"::(if !opt_only then [] else ["texprimeDefault.tgo"])@Array.to_list (Sys.readdir grammars_src_dir));
+              ) ("patolineDefault.tgx"::(if !opt_only then [] else ["patolineDefault.tgo"])@Array.to_list (Sys.readdir grammars_src_dir));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
@@ -131,14 +131,14 @@ let _=
         (if !camlzip <> "" then ",pkg_"^(!camlzip) else "");
       close_out tags;
 
-    let tags'=open_out "src/Texprime/_tags" in
+    let tags'=open_out "src/Patoline/_tags" in
       Printf.fprintf tags' "<*>: pkg_camomile,pkg_dyp,pp(cpp -w %s),use_dynlink\n"
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags';
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/texprime %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/texprime.byte") (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/patoline %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/patoline.byte") (escape !bin_dir);
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^

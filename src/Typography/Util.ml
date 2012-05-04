@@ -41,6 +41,12 @@ let readInt2 f=
   let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
     d
 
+let buf2="  "
+let writeInt2 f x=
+  buf2.[0]<-char_of_int (x lsr 8);
+  buf2.[1]<-char_of_int (x land 8);
+  output_string f buf2
+
 let readInt4 f=
   really_input f buf 0 4;
   let a=(int_of_char buf.[0]) lsl 8 in

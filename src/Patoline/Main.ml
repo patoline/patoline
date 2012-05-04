@@ -1,4 +1,4 @@
-let amble=ref Texprime.Main
+let amble=ref Generateur.Main
 let files=ref []
 let compile = ref true
 let run = ref true
@@ -16,8 +16,8 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 		dirs := (" -I "^format_dir^" ") :: !dirs ;
 		format := format_file
 	      ), "Change the default document format");
-            ("-c",Arg.Unit (fun ()->amble:=Texprime.Separate), "Compile separately");
-            ("--noamble",Arg.Unit (fun ()->amble:=Texprime.Noamble), "Compile separately");
+            ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
+            ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
             ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
@@ -37,12 +37,12 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
     Printf.fprintf stderr "Generating OCaml code...\n";
-    Parser.fprint_caml_buf := Obj.repr
+      Parser.fprint_caml_buf := Obj.repr
       (fun ld gr buf s e txps -> 
 	let pos = pos_in fread in
-	Texprime.print_caml_buf ld gr (Texprime.Source.of_in_channel fread) buf s e txps;
+	  Generateur.print_caml_buf ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
         seek_in fread pos);
-    Texprime.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
+      Generateur.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
     close_out where_ml;
     close_in fread;
     Printf.fprintf stderr "File %s generated.\n" (mlname_of f);

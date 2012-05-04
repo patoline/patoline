@@ -473,7 +473,7 @@ let gen_ml format amble filename from wherename where pdfname =
       (*     []-> Printf.fprintf stderr "no input files\n" *)
       (*   | h::_-> *)
       (* let op=open_in h in *)
-            let lexbuf = Dyp.from_channel (Parser.pp ()) from in
+      let lexbuf=Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
 	      Printf.fprintf stderr "%s\n" (Language.message (Language.End_of_parsing (List.length docs))); flush stderr;
