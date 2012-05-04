@@ -90,6 +90,15 @@ let showStack st stc=
 exception Index
 exception Type2Int of int
 
+type cff_num=CFFFloat of float | CFFInt of int
+exception CFFNum of cff_num
+let int_of_num=function
+    CFFInt x->x
+  | x ->raise (CFFNum x)
+let float_of_num=function
+    CFFFloat x->x
+  | x ->raise (CFFNum x)
+
 let readCFFInt f=
   let b0=input_byte f in
     if b0<28 || b0==31 then
@@ -131,40 +140,57 @@ let readCFFInt f=
             else
               (0.,b1)
         in
-          (a0+.a1) *. (10. ** a2)
+          CFFFloat ((a0+.a1) *. (10. ** a2))
       else
-        float_of_int (
+        CFFInt (
           if b0>=32 then
-            if b0<=246 then b0-139 else
+            if b0<=246 then (
+              (* Printf.printf "cas 1 : %d\n" (b0-139); *)
+              b0-139
+            ) else
               let b1=input_byte f in
-                if b0<=250 then
-                  (((b0-247) lsl 8) lor b1) + 108
-                else
-                  - ((((b0-251) lsl 8) lor b1) + 108)
+                if b0<=250 then (
+                  let x=(((b0-247) lsl 8) lor b1) + 108 in
+                    (* Printf.printf "cas 2 : %d\n" x; *)
+                    x
+                ) else (
+                  let x= - ((((b0-251) lsl 8) lor b1) + 108) in
+                    (* Printf.printf "cas 3 : %d\n" x; *)
+                    x
+                )
           else
             (let b1=input_byte f in
              let b2=input_byte f in
-               if b0=28 then
-                 (b1 lsl 8) lor b2
-               else
+               if b0=28 then (
+                 let x=((b1 lsl 8) lor b2) in
+                   (* Printf.printf "cas 4 : %d\n" x; *)
+                   if x >= 32768 then x - 65536 else x
+               ) else (
                  let b3=input_byte f in
                  let b4=input_byte f in
-                   (((((b1 lsl 8) lor b2) lsl 8) lor b3) lsl 8) lor b4
+                 let x=(((((b1 lsl 8) lor b2) lsl 8) lor b3) lsl 8) lor b4 in
+                   (* Printf.printf "cas 5 : %d\n" x; *)
+                   if x>=(1 lsl 31) then x-(1 lsl 31) else x
+               )
             )
         )
 
-
+(* renvoit les offsets dans le fichier des donnees de l'index, à
+   partir de la position 0 du fichier *)
 let index f idx_off=
   seek_in f idx_off;
   let count=readInt f 2 in
-  let idx_offSize=input_byte f in
-  let idx_arr=Array.make (count+1) 0 in
-    for i=0 to count do
-      idx_arr.(i) <- idx_off+2+(count+1)*idx_offSize + (readInt f idx_offSize);
-    done;
-    idx_arr
+    if count=0 then [|idx_off+2|] else (
+      let idx_offSize=input_byte f in
+      let idx_arr=Array.make (count+1) 0 in
+        for i=0 to count do
+          idx_arr.(i) <- idx_off+2+(count+1)*idx_offSize + (readInt f idx_offSize);
+        done;
+        idx_arr
+    )
 
 let strIndex f idx_off=
+  (* Printf.printf "strIndex : %d\n" idx_off;flush stdout; *)
   let off=index f idx_off in
   let str=Array.create (Array.length off-1) "" in
     for i=0 to Array.length off-2 do
@@ -187,7 +213,7 @@ let indexGet f idx_off idx=
            really_input f buf 0 (off1-off0);
            buf
       )
-let dict f a b=
+let readDict f a b=
   let rec dict' stack l=
     if pos_in f >= b then l else
       try
@@ -208,6 +234,7 @@ let dict f a b=
     dict' [] []
 
 let findDict f a b key=
+  (* Printf.printf "findDict : %d %d %d\n" a b (in_channel_length f);flush stdout; *)
   let rec dict' stack=
     if pos_in f >= b then raise Not_found else
       try
@@ -220,6 +247,7 @@ let findDict f a b key=
               else
                 b0
             in
+              (* Printf.printf "op : %d\n" op;flush stdout; *)
               if op=key then stack else dict' []
   in
     seek_in f a;
@@ -228,21 +256,36 @@ let findDict f a b key=
 let loadFont ?offset:(off=0) ?size:(size=0) file=
   let f=open_in_bin file in
     seek_in f (off+2);
+    (* Printf.printf "=========================\n";flush stdout; *)
     let hdrSize=input_byte f in
     let offSize=input_byte f in
     let nameIndex=index f (off+hdrSize) in
     let dictIndex=index f (nameIndex.(Array.length nameIndex-1)) in
     let stringIndex=index f (dictIndex.(Array.length dictIndex-1)) in
+      (try
+        let enc=int_of_num (List.hd (findDict f dictIndex.(0) dictIndex.(1) 15)) in
+          Printf.printf "enc : %d\n" enc
+      with _->());
+      (try
+        let enc=int_of_num (List.hd (findDict f dictIndex.(0) dictIndex.(1) 16)) in
+          Printf.printf "char : %d\n" enc
+      with _->());
+
+
+
     let subrIndex=
       let subrs=Array.create (Array.length dictIndex-1) [||] in
         for idx=0 to Array.length dictIndex-2 do
           try
+            (* Printf.printf "====privOffset\n";flush stdout; *)
             let privOffset=findDict f (dictIndex.(idx)) (dictIndex.(idx+1)) 18 in
               match privOffset with
                   offset::size::_->(
                     try
-                      let subrsOffset=int_of_float (List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 19)) in
-                        subrs.(idx) <- strIndex f (off+int_of_float offset+subrsOffset)
+                      let subrsOffset=int_of_num (List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 19)) in
+                        Printf.printf "====subrsOffset %d %d %d\n" (int_of_num offset) (int_of_num size) subrsOffset;flush stdout;
+                        subrs.(idx) <- strIndex f (off+int_of_num offset+subrsOffset);
+                        Printf.printf "subrs : %d\n" (Array.length subrs.(idx));
                     with
                         Not_found -> ()
                   )
@@ -252,6 +295,7 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
         done;
         subrs
     in
+      (* Printf.printf "stringIndex=%d\n" (Array.length stringIndex); *)
     let gsubrIndex=
       let offIndex=index f (stringIndex.(Array.length stringIndex-1)) in
       let gsubr=Array.create (Array.length offIndex-1) "" in
@@ -262,6 +306,7 @@ let loadFont ?offset:(off=0) ?size:(size=0) file=
         done;
         gsubr
     in
+      (* Printf.printf "read : gsubr=%d\n" (Array.length gsubrIndex); *)
       { file=f; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
         stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex }
 
@@ -269,12 +314,15 @@ let glyph_of_uchar _ _=0
 let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
 
 let loadGlyph font ?index:(idx=0) gl=
-  let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
   let fontMatrix=
     try
-      findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 3079
+      List.map (function
+                    CFFFloat x->x
+                  | x->raise (CFFNum x))
+        (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 3079)
     with
-        Not_found->[0.001;0.;0.;0.001]
+        Not_found | CFFNum _->[0.001;0.;0.;0.001]
   in
     { glyphFont=font;
       glyphNumber=gl;
@@ -289,7 +337,7 @@ let loadGlyph font ?index:(idx=0) gl=
 
 let cardinal font=
   let idx=0 in
-  let charStrings=int_of_float (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
     seek_in font.file (font.offset+charStrings);
     readInt2 font.file
 
@@ -315,24 +363,24 @@ let outlines_ gl onlyWidth=
     opened:=true;
     let h,s = match !resultat with []->[],[] | h::s-> h,s in
       resultat:= (([| !x; x1 |],[| !y; y1 |])::h)::s;
-    x:=x1;
-    y:=y1
+      x:=x1;
+      y:=y1
   in
   let curveto x1 y1 x2 y2 x3 y3=
     opened:=true;
     let h,s = match !resultat with []->[],[] | h::s-> h,s in
 
-    resultat:=(([| !x;x1;x2;x3 |],
-                [| !y;y1;y2;y3 |])::h)::s;
-    x:=x3;
-    y:=y3
+      resultat:=(([| !x;x1;x2;x3 |],
+                  [| !y;y1;y2;y3 |])::h)::s;
+      x:=x3;
+      y:=y3
   in
   let moveto x1 y1=
     if !opened && (!x <> !x0 || !y <> !y0) then lineto !x0 !y0;
     x:=x1; y:=y1;
     x0:=x1; y0:=y1;
     match !resultat with (_::_)::_ ->resultat:=([]::(!resultat)) | _-> ();
-    opened:=false;
+      opened:=false;
   in
   let rec hlineto c=
     if c <= !stackC-1 then
@@ -692,7 +740,9 @@ let glyphWidth glyph=
                let off=glyph.glyphFont.offset in
                let privOffset=findDict f (glyph.glyphFont.dictIndex.(0)) (glyph.glyphFont.dictIndex.(1)) 18 in
                  match privOffset with
-                     offset::size::_->List.hd (findDict f (off+int_of_float offset) (off+int_of_float (offset+.size)) 21)
+                     offset::size::_->float_of_num (
+                       List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 21)
+                     )
                    | _->0.
              with
                  _->0.)+.x
@@ -733,14 +783,14 @@ let fontName ?index:(idx=0) font=
 let fontBBox ?index:(idx=0) font=
   try
     match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
-        (a::b::c::d::_)->(int_of_float d,int_of_float c,int_of_float b,int_of_float a)
+        (a::b::c::d::_)->(int_of_num d,int_of_num c,int_of_num b,int_of_num a)
       | _->(0,0,0,0)
   with
       Not_found->(0,0,0,0)
 let italicAngle ?index:(idx=0) font=
   try
     match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
-        h::_->h
+        h::_->float_of_num h
       | _->0.
   with
       Not_found->0.
@@ -749,3 +799,272 @@ let italicAngle ?index:(idx=0) font=
 let font_features _ =[]
 let select_features _ _=[]
 let positioning _ x=x
+
+(* type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array; *)
+(*              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array; *)
+(*              gsubrIndex:string array *)
+(*            } *)
+
+(* Ça ne marche pas du tout, les offsets sont foireux, il faut récrire
+   toute la police pour que ça marche *)
+
+let writeIndex buf data=
+  let dataSize=Array.fold_left (fun s str->s+String.length str) 0 data in
+  let rec offSize_ i res=if i=0 then res else offSize_ (i lsr 8) (res+1) in
+  let offSize=if Array.length data=0 then 1 else offSize_ dataSize 0 in
+  let count0=(Array.length data) lsr 8 in
+  let count1=(Array.length data) land 0xff in
+    Buffer.add_char buf (char_of_int count0);
+    Buffer.add_char buf (char_of_int count1);
+    Buffer.add_char buf (char_of_int offSize);
+    let dat=Buffer.create 100 in
+    let offsets=Array.make (1+Array.length data) 1 in
+      for i=1 to Array.length offsets-1 do
+        Buffer.add_string dat data.(i-1);
+        offsets.(i)<-offsets.(i-1)+(String.length data.(i-1));
+      done;
+      for i=0 to Array.length offsets-1 do
+        if offSize=1 then
+          Buffer.add_char buf (char_of_int offsets.(i))
+        else if offSize=2 then (
+          let a=offsets.(i) in
+          let b=a lsr 8 in
+            Buffer.add_char buf (char_of_int (b land 0xff));
+            Buffer.add_char buf (char_of_int (a land 0xff))
+        ) else if offSize=3 then (
+          let a=offsets.(i) in
+          let b=a lsr 8 in
+          let c=b lsr 8 in
+            Buffer.add_char buf (char_of_int (c land 0xff));
+            Buffer.add_char buf (char_of_int (b land 0xff));
+            Buffer.add_char buf (char_of_int (a land 0xff))
+        ) else if offSize=4 then (
+          let a=offsets.(i) in
+          let b=a lsr 8 in
+          let c=b lsr 8 in
+          let d=c lsr 8 in
+            Buffer.add_char buf (char_of_int (d land 0xff));
+            Buffer.add_char buf (char_of_int (c land 0xff));
+            Buffer.add_char buf (char_of_int (b land 0xff));
+            Buffer.add_char buf (char_of_int (a land 0xff))
+        )
+      done;
+      Buffer.add_buffer buf dat
+
+let writeCFFInt buf x=
+  if x>=(-107) && x<107 then (
+    let y=(char_of_int (x+139)) in
+      (* Printf.printf ">cas 1 : %d\n" x; *)
+      Buffer.add_char buf y
+  ) else if x>=108 && x<=1131 then (
+    let b1=(x-108) in
+    let b0=(b1/256)+247 in
+      (* Printf.printf ">cas 2 : %d\n" x; *)
+      Buffer.add_char buf (char_of_int (b0 land 0xff));
+      Buffer.add_char buf (char_of_int (b1 land 0xff))
+  ) else if x>=(-1131) && x<=(-108) then (
+      (* Printf.printf ">cas 3 : %d\n" x; *)
+    let b1=(-x-108) in
+    let b0=(b1/256)+251 in
+      Buffer.add_char buf (char_of_int (b0 land 0xff));
+      Buffer.add_char buf (char_of_int (b1 land 0xff))
+  ) else if x>=(-32768) && x<=32767 then (
+      (* Printf.printf ">cas 4 : %d\n" x; *)
+    Buffer.add_char buf (char_of_int 28);
+    let y=if x>=0 then x else x+65536 in
+      Buffer.add_char buf (char_of_int ((y lsr 8) land 0xff));
+      Buffer.add_char buf (char_of_int (y land 0xff));
+  ) else if x>=(-(1 lsl 31)) && x<=(1 lsl 31)-1 then (
+      (* Printf.printf ">cas 5 : %d\n" x; *)
+    Buffer.add_char buf (char_of_int 29);
+    let y=if x>=0 then x else x+(1 lsl 32) in
+      Buffer.add_char buf (char_of_int ((y lsr 24) land 0xff));
+      Buffer.add_char buf (char_of_int ((y lsr 16) land 0xff));
+      Buffer.add_char buf (char_of_int ((y lsr 8) land 0xff));
+      Buffer.add_char buf (char_of_int (y land 0xff))
+  )
+
+(* let dict f a b= *)
+(*   let rec dict' stack l= *)
+(*     if pos_in f >= b then l else *)
+(*       try *)
+(*         let op=readCFFInt f in *)
+(*           dict' (op::stack) l *)
+(*       with *)
+(*           (Type2Int b0)-> *)
+(*             let op= *)
+(*               if b0=12 then *)
+(*                 let next=input_byte f in *)
+(*                   (12 lsl 8) lor next *)
+(*               else *)
+(*                 b0 *)
+(*             in *)
+(*               dict' [] ((op,stack)::l) *)
+(*   in *)
+(*     seek_in f a; *)
+(*     dict' [] [] *)
+
+
+let rec writeDict buf=function
+    []->()
+  | (op,stack)::s when op=17 || op=18->(
+      let l=List.rev stack in
+        List.iter (fun x->
+                     Buffer.add_char buf (char_of_int 29);
+                     let y=int_of_num x in
+                       Buffer.add_char buf (char_of_int ((y lsr 24) land 0xff));
+                       Buffer.add_char buf (char_of_int ((y lsr 16) land 0xff));
+                       Buffer.add_char buf (char_of_int ((y lsr 8) land 0xff));
+                       Buffer.add_char buf (char_of_int (y land 0xff)))
+          stack;
+      Buffer.add_char buf (char_of_int (op land 0xff));
+      writeDict buf s
+    )
+  | (op,stack)::s->(
+      List.iter (fun x->writeCFFInt buf (int_of_num x)) (List.rev stack);
+      if op>0xff then Buffer.add_char buf (char_of_int (op lsr 8));
+      Buffer.add_char buf (char_of_int (op land 0xff));
+      writeDict buf s
+    )
+
+let readIndex f idx_off=
+  seek_in f idx_off;
+  let count=readInt f 2 in
+  let idx_offSize=input_byte f in
+  let last_idx=ref 1 in
+  let idx_arr=Array.make count "" in
+    for i=1 to count do
+      seek_in f (idx_off+3+i*idx_offSize);
+      let idx=readInt f idx_offSize in
+        idx_arr.(i-1)<-String.create (idx - !last_idx);
+        seek_in f (idx_off+2+(count+1)*idx_offSize+ !last_idx);
+        really_input f (idx_arr.(i-1)) 0 (idx - !last_idx);
+        last_idx:=idx;
+    done;
+    idx_arr
+
+(* type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array; *)
+(*              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array; *)
+(*              gsubrIndex:string array *)
+(*            } *)
+
+let skipIndex f=
+  let idx_off=pos_in f in
+  let count=readInt f 2 in
+  let idx_offSize=input_byte f in
+    seek_in f (idx_off+3+count*idx_offSize);
+    let off=readInt f idx_offSize in
+      seek_in f (idx_off+2+(count+1)*idx_offSize+off)
+
+let copyIndex f=
+  let idx_off=pos_in f in
+  let count=readInt f 2 in
+    if count=0 then (
+      seek_in f idx_off;
+      let buf=String.create 2 in
+        really_input f buf 0 2;
+        buf
+    ) else (
+      let idx_offSize=input_byte f in
+        seek_in f (idx_off+3+count*idx_offSize);
+        let off=readInt f idx_offSize in
+        let buf=String.create (2+(count+1)*idx_offSize+off) in
+          seek_in f idx_off;
+          really_input f buf 0 (String.length buf);
+          buf
+    )
+
+let subset font gls=
+  let buf=Buffer.create 100 in
+  let f=font.file in
+    seek_in f (font.offset+2);
+    let headersize=input_byte f in
+      seek_in f font.offset;
+      Buffer.add_channel buf f headersize;
+  let name=
+    let buf_=String.create (font.nameIndex.(1)-(font.offset+headersize)) in
+      seek_in f (font.offset+headersize);
+      really_input f buf_ 0 (String.length buf_);
+      buf_
+  in
+    Buffer.add_string buf name;
+
+
+    let topDict=
+      List.remove_assoc 15 (
+        List.remove_assoc 16 (
+          readDict font.file font.dictIndex.(0) font.dictIndex.(1)
+        ))
+    in
+
+    let topDictBuf_=Buffer.create 16 in
+      writeDict topDictBuf_ topDict;     (* Premiere tentative pour connaitre la taille *)
+      let topDictBuf=Buffer.create 16 in
+        writeIndex topDictBuf [|Buffer.contents topDictBuf_|];
+
+
+      seek_in font.file (font.dictIndex.(Array.length font.dictIndex-1));
+      let strIndex=copyIndex f in
+        seek_in font.file (font.stringIndex.(Array.length font.stringIndex-1));
+      let gsubr=copyIndex f in
+      let charStrings=
+        let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 17)) in
+        let progs=Array.map (fun x->indexGet font.file (font.offset+charStrings) x) gls in
+        let buf=Buffer.create 100 in
+          writeIndex buf progs;
+          buf
+      in
+      let priv,lsubr=
+        match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
+            offset::size::_->(
+              try
+                let buf=String.create (int_of_num size) in
+                  seek_in f (font.offset+int_of_num offset);
+                  really_input f buf 0 (int_of_num size);
+                  let subr=try (
+                    match findDict f (font.offset+int_of_num offset) (font.offset+int_of_num offset+int_of_num size) 19 with
+                        offset_::_->(
+                          seek_in f (font.offset+int_of_num offset+int_of_num offset_);
+                          copyIndex f
+                        )
+                      | _->let bubu=Buffer.create 2 in writeIndex bubu [||];Buffer.contents bubu
+                  ) with
+                      Not_found
+                    | CFFNum _-> ""
+                  in
+                    buf,subr
+              with
+                  Not_found | CFFNum _-> "",""
+            )
+          | _->"",""
+      in
+
+      let topDict0=
+        if List.mem_assoc 17 topDict then
+          (17, [CFFInt (Buffer.length buf + Buffer.length topDictBuf +
+                          String.length strIndex + String.length gsubr)])::
+            List.remove_assoc 17 topDict
+        else topDict
+      in
+      let topDict1=
+        if List.mem_assoc 18 topDict0 then
+          (18, [CFFInt (String.length priv);
+                CFFInt (Buffer.length buf + Buffer.length topDictBuf + String.length strIndex +
+                          String.length gsubr + Buffer.length charStrings)
+                ])::
+            List.remove_assoc 18 topDict0
+        else topDict0
+      in
+
+        Buffer.reset topDictBuf_;
+        writeDict topDictBuf_ topDict1;     (* Premiere tentative pour connaitre la taille *)
+        Buffer.reset topDictBuf;
+        writeIndex topDictBuf [|Buffer.contents topDictBuf_|];
+
+        Buffer.add_buffer buf topDictBuf;
+        Buffer.add_string buf strIndex;
+        Buffer.add_string buf gsubr;
+        Buffer.add_buffer buf charStrings;
+        Buffer.add_string buf priv;
+        Buffer.add_string buf lsubr;
+        Buffer.contents buf
