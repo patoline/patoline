@@ -36,13 +36,19 @@ let rec process_each_file =
   let doit f = 
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
-    Printf.fprintf stderr "Generating OCaml code...\n";
+    Printf.fprintf stderr "Generating OCaml code ";
+    if Filename.check_suffix f "txt" then (
+      Printf.fprintf stderr "from simple text file...\n ";
+      SimpleGenerateur.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);   
+    ) else (
+      Printf.fprintf stderr "from Patoline file...\n ";
       Parser.fprint_caml_buf := Obj.repr
-      (fun ld gr buf s e txps -> 
+	(fun ld gr buf s e txps -> 
 	let pos = pos_in fread in
-	  Generateur.print_caml_buf ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
+	Generateur.print_caml_buf ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
         seek_in fread pos);
       Generateur.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
+    );
     close_out where_ml;
     close_in fread;
     Printf.fprintf stderr "File %s generated.\n" (mlname_of f);

@@ -1,0 +1,25 @@
+{
+exception Syntax_Error of Lexing.position * Language.syntax_error
+}
+
+%start main
+
+%lexer
+
+let space = [' ' '\t' '\r']
+let newline = '\n'
+let contents = [^'\n']+
+
+main lexer =
+  newline (space* newline)* -> PARSKIP
+
+%parser
+
+paragraphs:	
+| contents<t> {[t]}
+| contents<t> PARSKIP paragraphs<q> { t::q }	
+
+main: 
+ | {[]}
+ | newline? paragraphs<result> PARSKIP? eof { result }
+

@@ -6,10 +6,10 @@ all:native byte
 native:Main.native patolineDefault.tgx proof.native
 byte:Main.byte patolineDefault.tgo proof.byte
 
-Main.native:Format/DefaultFormat.cmxa Patoline/Parser.ml
+Main.native:Format/DefaultFormat.cmxa Patoline/Parser.ml Patoline/SimpleParser.ml
 	cd Patoline; $(OCAMLBUILD) Main.native
 	cp Patoline/Main.native patoline
-Main.byte:Format/DefaultFormat.cma Patoline/Parser.ml
+Main.byte:Format/DefaultFormat.cma Patoline/Parser.ml Patoline/SimpleParser.ml
 	cd Patoline; $(OCAMLBUILD) Main.byte
 	cp Patoline/Main.byte patoline.byte
 proof.native:Typography/Typography.cmxa
@@ -26,6 +26,8 @@ Format/DefaultFormat.cma:Typography/Typography.cma
 
 Patoline/Parser.ml:Patoline/Parser.dyp
 	dypgen --no-mli Patoline/Parser.dyp
+Patoline/SimpleParser.ml:Patoline/SimpleParser.dyp
+	dypgen --no-mli Patoline/SimpleParser.dyp
 Typography/Typography.cmxa:
 	make -C Typography Typography.cmxa
 Typography/Typography.cma:
