@@ -12,7 +12,7 @@ let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
                 fontFile:int;
                 mutable fontGlyphs:(int*Fonts.glyph) IntMap.t;
-                mutable revFontGlyphs:(int*Fonts.glyph) IntMap.t }
+                mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
 
 
 (* Ce flag sert essentiellement au démouchage des sous-ensembles de polices *)
@@ -117,7 +117,7 @@ let output ?(structure:structure={name="";displayname=[];
                                        fontFile=fontFile;
                                        fontToUnicode=toUnicode;
                                        fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
-                                       revFontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
+                                       revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
                             fonts:=StrMap.add (Fonts.fontName font) result !fonts;
                             result
                 )
@@ -276,7 +276,7 @@ let output ?(structure:structure={name="";displayname=[];
                            pdfFont.fontGlyphs<-IntMap.add num0
                              (num1,gl.glyph) pdfFont.fontGlyphs;
                            pdfFont.revFontGlyphs<-IntMap.add num1
-                             (num0,gl.glyph) pdfFont.revFontGlyphs;
+                             (gl.glyph) pdfFont.revFontGlyphs;
                            num1
                        )
                   )
@@ -285,7 +285,7 @@ let output ?(structure:structure={name="";displayname=[];
   pdfFont.fontGlyphs<-IntMap.add num0
     (num0,gl.glyph) pdfFont.fontGlyphs;
   pdfFont.revFontGlyphs<-IntMap.add num0
-    (num0,gl.glyph) pdfFont.revFontGlyphs;
+    (gl.glyph) pdfFont.revFontGlyphs;
   num0
 #endif
               in
@@ -425,7 +425,7 @@ let output ?(structure:structure={name="";displayname=[];
                      let rec make_cmap glyphs=
                        if not (IntMap.is_empty glyphs) then (
                          (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
-                         let m0,(_,g0)=IntMap.min_binding glyphs in
+                         let m0,(g0)=IntMap.min_binding glyphs in
                            if UTF8.length (Fonts.glyphNumber g0).glyph_utf8 <= 0 then
                              make_cmap (IntMap.remove m0 glyphs)
                            else (
@@ -433,18 +433,18 @@ let output ?(structure:structure={name="";displayname=[];
                                let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
                                  (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
                              in
-                             let one_char, mult_char=IntMap.partition (fun _ (_,gl)->UTF8.length ((Fonts.glyphNumber gl).glyph_utf8) = 1) a
+                             let one_char, mult_char=IntMap.partition (fun _ (gl)->UTF8.length ((Fonts.glyphNumber gl).glyph_utf8) = 1) a
                              in
                              let rec unicode_diff a0=
                                if not (IntMap.is_empty a0) then (
-                                 let idx0,(_,m0)=IntMap.min_binding a0 in
+                                 let idx0,(m0)=IntMap.min_binding a0 in
                                  let num0=Fonts.glyphNumber m0 in
-                                 let u,v=IntMap.partition (fun _ (_,x)->let num=Fonts.glyphNumber x in
+                                 let u,v=IntMap.partition (fun _ (x)->let num=Fonts.glyphNumber x in
                                                              num.glyph_index-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
                                                                num0.glyph_index-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
                                                           ) a0
                                  in
-                                 let num1,(_,m1)=IntMap.max_binding u in
+                                 let num1,(m1)=IntMap.max_binding u in
                                    if IntMap.cardinal u > 1 then (
                                      range:=(num0.glyph_index,num1,
                                              (UTF8.get num0.glyph_utf8 0))::(!range)
@@ -456,11 +456,11 @@ let output ?(structure:structure={name="";displayname=[];
                              in
                                unicode_diff one_char;
                                if not (IntMap.is_empty mult_char) then (
-                                 let _,(_,m0)=IntMap.min_binding mult_char in
+                                 let _,(m0)=IntMap.min_binding mult_char in
                                  let first=ref ((Fonts.glyphNumber m0).glyph_index) in
                                  let last=ref ((Fonts.glyphNumber m0).glyph_index-1) in
                                  let cur=ref [] in
-                                   IntMap.iter (fun _ (_,a)->
+                                   IntMap.iter (fun _ (a)->
                                                   let num=Fonts.glyphNumber a in
                                                     if num.glyph_index > (!last)+1 then (
                                                       (match !cur with
@@ -535,7 +535,7 @@ let output ?(structure:structure={name="";displayname=[];
                    resumeObject x.fontWidthsObj;
 #ifdef SUBSET
                    fprintf outChan "[ 0 [ ";
-                   IntMap.fold (fun i (_,gl) _->
+                   IntMap.fold (fun i (gl) _->
                                   let w=Fonts.glyphWidth gl in
                                     fprintf outChan "%d " (round w)) x.revFontGlyphs ();
                    fprintf outChan "]]";
@@ -555,15 +555,17 @@ let output ?(structure:structure={name="";displayname=[];
                    resumeObject x.fontFile;
 #ifdef SUBSET
                    let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF (y,_))->(
-                         CFF.subset y (Array.of_list ((List.map (fun (_,(a,_))->a)
+                       Fonts.Opentype (Opentype.CFF (y,_))
+                     | Fonts.CFF y->(
+                         CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
                                                          (IntMap.bindings x.revFontGlyphs))))
                        )
                      | _->raise Fonts.Not_supported
                    in
 #else
                    let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF (y,_))->(
+                       Fonts.Opentype (Opentype.CFF (y,_))
+                     | Fonts.CFF y->(
                          let buf=String.create (y.CFF.size) in
                            seek_in y.CFF.file y.CFF.offset;
                            really_input y.CFF.file buf 0 y.CFF.size;

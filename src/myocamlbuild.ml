@@ -39,7 +39,7 @@ let _ = dispatch begin function
        (* on the contrary using After_options will guarantee to have the higher priority *)
 
        (* override default commands by ocamlfind ones *)
-       Options.ocamlc     := ocamlfind & A"ocamlc";
+       Options.ocamlc     := ocamlfind & S[A"ocamlc";A"-g"];
        Options.ocamlopt   := ocamlfind & A"ocamlopt";
        Options.ocamldep   := ocamlfind & A"ocamldep";
        Options.ocamldoc   := ocamlfind & A"ocamldoc";
