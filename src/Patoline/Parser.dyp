@@ -160,7 +160,7 @@ let fprint_caml_buf = ref (Obj.repr (fun _ -> assert false))
 %start allparagraph
 %start allmath 
 
-%relation atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
+%relation args < atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
 
@@ -321,6 +321,20 @@ args:
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
 
+neargs:
+  | "()"
+    { (fun ld gr  -> []) }
+  | "{" eparagraph<p> "}" 
+    { (fun ld gr -> [Paragraph (p)]) }
+  | CAML<s,e,txps>
+    { if e - s <= 2 then raise Giveup; 
+      (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
+  | neargs<a> - "{" eparagraph<p> "}" 
+    { (fun ld gr -> Paragraph (p)::a ld gr) }
+  | neargs<a> - CAML<s,e,txps>
+    { if e - s <= 2 then raise Giveup; 
+      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
+
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" memo_grammar<ld,gr> args<a>
       { Macro(`Begin, name, List.rev (a ld gr)) }
@@ -357,8 +371,10 @@ preproc:
 
 
 parmacro:
-  | PMACRO<name> - memo_grammar<ld,gr> - args<a>
-      { [MC(`Single, name, List.rev (a ld gr))] }
+  | PMACRO<name> - memo_grammar<ld,gr> - neargs<a>
+      { [MC(`Single, name, List.rev (a ld gr))] }  macro
+  | PMACRO<name> space+
+      { [MC(`Single, name, [])] } args
   | PPRE<preproc> - memo_grammar<ld,gr> - CAML<s,e,txps>
       { [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
       }
@@ -404,14 +420,22 @@ allmath:
 
 mathargs:
   /* empty */
-    { (fun ld gr  -> []) }
+    { (fun ld gr  -> []) } atom
   | "()"
-    { (fun ld gr  -> []) }
-  | mathargs<a> - "{" math<m> "}" 
-    { (fun ld gr -> m::a ld gr) }
+    { (fun ld gr  -> []) } args
+  | mathargs<a> - "{" math<m> "}"
+    { (fun ld gr -> m::a ld gr) }  args
 /*  | mathargs<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } */
+nemathargs:
+    "()"
+    { (fun ld gr  -> []) } args
+  | "{" math<m> "}"
+    { (fun ld gr ->[ m]) }  args
+  | nemathargs<a> - "{" math<m> "}"
+    { (fun ld gr -> m::a ld gr) }  args
+
 
 math:
    (['a'-'z''A'-'Z'])<name>
@@ -436,7 +460,9 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - mathargs<args> 
+  | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - nemathargs<args> 
+      { MathMacro (macro,args ld gr) } args
+  | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - mathargs<args> space+
       { MathMacro (macro,args ld gr) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
