@@ -1,4 +1,5 @@
 {
+open Dyp
 exception Syntax_Error of Lexing.position * Language.syntax_error
 }
 
@@ -11,13 +12,17 @@ let newline = '\n'
 let contents = [^'\n']+
 
 main lexer =
-  newline (space* newline)* -> PARSKIP
+  newline space* newline -> PARSKIP
 
 %parser
 
-paragraphs:	
-| contents<t> {[t]}
-| contents<t> PARSKIP paragraphs<q> { t::q }	
+paragraph:
+| contents<c> {c}
+
+paragraphs:
+| {[]}
+| paragraph<t> newline? paragraphs<q> { q }	
+| paragraph<t> PARSKIP paragraphs<q> { t::q }	
 
 main: 
  | {[]}

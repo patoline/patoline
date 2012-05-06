@@ -132,7 +132,7 @@ let _=
       close_out tags;
 
     let tags'=open_out "src/Patoline/_tags" in
-      Printf.fprintf tags' "<*>: pkg_camomile,pkg_dyp,pp(cpp -w %s),use_dynlink\n"
+      Printf.fprintf tags' "<*>: pkg_camomile,pkg_str,pkg_dyp,pp(cpp -w %s),use_dynlink\n"
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags';
     (* binaries *)
