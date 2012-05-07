@@ -31,8 +31,7 @@ CNRS, Université de Savoie
 \Add_left{\langle 〈}{〈}
 \Add_right{\rangle 〉}{〉}
 
-{{
-
+\Caml(
 open Diagrams.Diagram
 open Diagrams
 open Typography.Complete
@@ -44,6 +43,8 @@ module Euler = Article.Euler
 module DFormat = Format.Default
 open Format
 
+type math_macro = user Typography.Maths.math list
+
 let id x = x
 let emph = toggleItalic
 let color x b = [Scoped ((fun env -> { env with fontColor = x }), b)]
@@ -51,11 +52,11 @@ let red=RGB {red=1.;green=0.;blue=0.}
 let figRef ()= [B (fun env->
     let i=try match snd (StrMap.find "figures" env.counters) with []->0 | h::_->h with Not_found -> 0 in
      [User (FigureRef i)])]
-let eqref name = <<\emph{(\id{{generalRef "equation" name}})}>>
+let eqref name = <<\emph{(\caml(generalRef "equation" name))}>>
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
-let displaystyle=[Maths.Style Mathematical.Display]
-let scriptstyle s _=Maths.Style Mathematical.Script::s
+let displaystyle : math_macro =[Maths.Style Mathematical.Display]
+let scriptstyle s _=(Maths.Style Mathematical.Script::s : math_macro)
 let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
 let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
 let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
@@ -69,18 +70,17 @@ let script_style = Env (fun env -> { env with size = env.size *. 2. /. 3. })
 
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let catplusb = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let categories = <$Cat$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let indiv = <$\mathcal{I}$>
-let rs =  <$\mathcal{R}$>
-let rules c = <$R_{\c{}}$>
-let rulesb c = <$R^{b}_{\c{}}$>
-let rulescat = rules <$\cat{}$>
-let rulescatb = rulesb <$\cat{}$>
-let op c = <$\c{}^{op}$>
-let card c = <$|\c{}|$>
-let players c = <$Pl(\c{})$>
-
+let catplusb : math_macro = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let categories : math_macro = <$Cat$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let indiv : math_macro = <$\mathcal{I}$>
+let rs : math_macro =  <$\mathcal{R}$>
+let rules c = <$R_{\c}$>
+let rulesb c = <$R^{b}_{\c}$>
+let rulescat : math_macro = rules <$\cat$>
+let rulescatb : math_macro = rulesb <$\cat$>
+let op c = <$\c^{op}$>
+let card c = <$|\c|$>
+let players c = <$Pl(\c)$>
 
 open Article
 
@@ -163,97 +163,78 @@ module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user e
 
 end     
 
-}}
-
+)
 
 \Begin{abstract}
 
-We generalise the construction in previous work \cite{{["Hirschowitz"]}} of a playground for CCS. New instances are $π$ and $λ$.
+We generalise the construction in previous work \cite(["Hirschowitz"]) of a playground for CCS. New instances are $π$ and $λ$.
 
 \End{abstract}
-
-
-
-(* -> Table of contents *)
-
-(* {{ let _ = tableOfContents D.structure (top (List.hd !D.structure)) 1 }} *)
-
-{{
-
- (*  let _ = newStruct ~in_toc:false ~numbered:false D.structure ((T "Table of contents")::[]);; *)
-
- (* let _ = Default.table_of_contents D.structure (top (List.hd !D.structure)) 1 ;; *)
- 
- (* let _ = go_up D.structure (\* 2 *\) *)
-
-}}
-(* -< *)
 
 
 => Signatures for playgrounds
 
 \Begin{definition}
 
- An \emph{individuality} category is a category $\cat{}$ equipped with a subcategory $\indiv{}$ 
+ An \emph{individuality} category is a category $\cat$ equipped with a subcategory $\indiv$ 
      of \emph{individuals}, which is discrete.
 
 \End{definition}
 
-In any individuality category $\cat{}$, an \emph{interface} is an object $X$ such that the slice
-category $\cat{}/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
+In any individuality category $\cat$, an \emph{interface} is an object $X$ such that the slice
+category $\cat/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
 
-  Let us start with a category $\cat{}$. 
-      
+  Let us start with a category $\cat$. 
 
   \Begin{definition}
 
   A \emph{rule shape} is a diagram of the shape
 
 \Begin{equation}
-    #diagram{{
+    #diagram(
 
         let _ = rule_shape0 <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
 
-      }}
+    )
 
-\label{{"equation: rule shape"}}
+\label("equation: rule shape") 
 
 \End{equation}
-  in $\cat{}$, such that $I$,$J$, and $K$ are interfaces.
+  in $\cat$, such that $I$,$J$, and $K$ are interfaces.
 
   \End{definition}
 
-Letting $\rs{}$ be the base category for this diagram, we may consider the set of isomorphism classes
-of rule shapes, as objects of the functor category $[\rs{},\cat{}]$. Call this set $\rulescat{}$. 
-For each $ρ \in R_{ \cat{} }$, the process of adding a formal colimit to $ρ$ is implemented categorically
-by taking a lax pushout of $ρ$ along the unique functor $\cat{} → 1$, as in 
+Letting $\rs$ be the base category for this diagram, we may consider the set of isomorphism classes
+of rule shapes, as objects of the functor category $[\rs,\cat]$. Call this set $\rulescat$. 
+For each $ρ \in R_{\cat}$, the process of adding a formal colimit to $ρ$ is implemented categorically
+by taking a lax pushout of $ρ$ along the unique functor $\cat → 1$, as in 
 
     \Begin{center}
 
-    #diagram{{
+    #diagram(
 
-      let _ = double_cell <<$\rs{}$>> <<$1$>> <<$\cat{}$>> <<$\cat{}[ρ]$.>> <<$a$>> <<$ρ$>> ([]) ([]) <<$x$>> ;;
+      let _ = double_cell <<$\rs$>> <<$1$>> <<$\cat$>> <<$\cat[ρ]$.>> <<$a$>> <<$ρ$>> ([]) ([]) <<$x$>> ;;
 	    
-    }}
+    )
 
     \End{center}
 
-      We now want to do this at once for a whole part $\rulescat{}$. Namely, let 
-	  $\rulescatb{}$ be the set of isomorphism classes of rule shapes admitting a representative
-of the form \eqref{{"equation: rule shape"}} with $X ∈ \indiv{}$ and 
+      We now want to do this at once for a whole part $\rulescat$. Namely, let 
+	  $\rulescatb$ be the set of isomorphism classes of rule shapes admitting a representative
+of the form \eqref("equation: rule shape") with $X ∈ \indiv$ and 
 $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \emph{basic}.
 
-    To formally add colimits for such rule shapes to $\cat{}$, we will take a more sophisticated lax 
+    To formally add colimits for such rule shapes to $\cat$, we will take a more sophisticated lax 
       colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
     \Begin{center}
 
-    #diagram{{
+    #diagram(
 
       let m,ms = matrix [`Centers (10.,20.)] [[
 	([], []); ([], <<$ρ$>>) ; ([], <<$1$>>) ];[
-	([], <<$\cat{}$>>); ([], []) ; ([], []) ];[
+	([], <<$\cat$>>); ([], []) ; ([], []) ];[
 	([], []); ([], <<$ρ_{1}$>>) ; ([], <<$1$,>>) 
       ]]
 
@@ -267,16 +248,16 @@ $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \e
 	     let _ = dots ms.(0).(1) ms.(2).(1)
 	     let _ = dots ms.(0).(2) ms.(2).(2)
 	    
-    }}
+    )
 
     \End{center}
-with a row for each $ρ ∈ \rulescatb{}$.
-Our weight $W : J^{op} → \categories{}$
+with a row for each $ρ ∈ \rulescatb$.
+Our weight $W : J^{op} → \categories$
 is the diagram
 
     \Begin{center}
 
-    #diagram{{
+    #diagram(
 
       let m,ms = matrix [`Centers (10.,20.)] [[
 	([], []); ([], <<$2$>>) ; ([], <<$1$>>) ];[
@@ -298,18 +279,18 @@ is the diagram
 	     let _ = dots ms.(0).(1) ms.(2).(1)
 	     let _ = dots ms.(0).(2) ms.(2).(2)
 	    
-    }}
+    )
 
     \End{center}
 of categories and functors, where $2$ is the free category on the graph $0 → 1$.
 
-  Let $\catplusb{}$ be any weighted colimit $F ⋆ W$. Concretely, for any basic rule shape $ρ$, 
-$\catplusb{}$ has an object, say just $[\rho]$, which is a colimit 
+  Let $\catplusb$ be any weighted colimit $F ⋆ W$. Concretely, for any basic rule shape $ρ$, 
+$\catplusb$ has an object, say just $[\rho]$, which is a colimit 
 of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \Begin{center}
 
-#diagram{{
+#diagram(
   let m,ms,es = rule_shape0  <<$X$.>> <<$I$>> <<$K$>> <<$J$>> <<$Y$>>
     
     let j = ms.(0).(0) 
@@ -325,21 +306,21 @@ of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
       ([], x, [], rho) ;
       ([], y, [], rho) ;
     ]
-}}
+)
 
 \End{center}
 
-
-
 =<
 
+=> The $λ$-calculus
 
-=> The $\lambda$-calculus
+
 
 =<
 
 => References
 
-{{ let _ = thebibliography () ;; }}
+\Caml( let a = thebibliography () )
+
 
 =<
