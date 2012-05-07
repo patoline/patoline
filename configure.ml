@@ -171,6 +171,7 @@ let _=
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
         close_out out;
         close_out config;
+        close_out config';
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta

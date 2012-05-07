@@ -136,8 +136,8 @@ let rec print_math_buf op buf m =
 	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn name) indices
 
       | Fun name ->
-	let elt = "fun env -> Maths.glyphs \""^name^"\" env" in
-	Printf.bprintf buf "[Maths.Env (fun env->Maths.change_fonts env env.font); Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
+	let elt = "fun env -> Maths.glyphs \""^name^"\" (Maths.change_fonts env env.font)" in
+	Printf.bprintf buf "[ Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
       | Indices(ind', m) ->
 	fn ind' buf m
       | Binary(_, a, _,Over,_,b) ->

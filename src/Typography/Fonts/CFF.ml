@@ -198,10 +198,11 @@ let strIndex f idx_off=
     done;
     str
 
+exception CFF_Not_found of (int*int)
 let indexGet f idx_off idx=
   seek_in f idx_off;
   let count=readInt f 2 in
-    if idx>=count || idx<0 then raise Not_found else
+    if idx>=count || idx<0 then raise (CFF_Not_found (idx,count)) else
       (let idx_offSize=input_byte f in
          seek_in f (idx_off+3+idx*idx_offSize);
          let off0=readInt f idx_offSize in
