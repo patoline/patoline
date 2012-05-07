@@ -1,1 +1,0 @@
-<*>: pkg_camomile,pkg_dyp,pp(cpp -w -DLANG_FR),use_dynlink,use_str
