@@ -311,15 +311,15 @@ memo_grammar:
      }
 
 args:
-  /* empty */
-    { (fun ld gr  -> []) }
+    /* empty */
+     { (fun ld gr  -> []) } 
   | "()"
-    { (fun ld gr  -> []) }
+    { (fun ld gr  -> []) } 
   | args<a> - "{" eparagraph<p> "}" 
-    { (fun ld gr -> Paragraph (p)::a ld gr) }
+    { (fun ld gr -> Paragraph (p)::a ld gr) } 
   | args<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
-      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
+      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
 
 neargs:
   | "()"

@@ -1,7 +1,7 @@
 open Ocamlbuild_plugin;;
 open Command;;
 
-let texprime = A"texprime";;
+let patoline = A"patoline";;
 let mmml = Sh" --ml"
 let noamble = Sh"--noamble";;
 
@@ -35,7 +35,7 @@ let _ = dispatch begin function
       ocaml_lib ~dir:"/usr/local/lib/ocaml" "Typography/Typography";
       ocaml_lib ~dir:"/usr/local/lib/ocaml" "Format/DefaultFormat";
 
-      rule "texprime: txp -> ml"
+      rule "patoline: txp -> ml"
         ~prods:["%.ml"]
         ~deps:["%.txp"]
       begin fun env _build ->
@@ -57,17 +57,17 @@ let _ = dispatch begin function
 	  end
 	in
 	let _ = print_info txp in
-        Seq[Cmd(S[texprime;mmml; 
+        Seq[Cmd(S[patoline;mmml; 
 		  A"--format";A format;
 		  P(env "%.txp")]);
 	    cp (env "%.tml") (env "%.ml") ]
       end ;
 
-      rule "texprime: txp -> tgx"
+      rule "patoline: txp -> tgx"
         ~prods:["%.tgx"]
         ~dep:"%.txp"
       begin fun env _build ->
-        Cmd(S[texprime;noamble;mmml; P(env "%.txp")])
+        Cmd(S[patoline;noamble;mmml; P(env "%.txp")])
       end ;
 
       rule "ocaml: native -> pdf"

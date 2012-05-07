@@ -48,8 +48,6 @@ let cite ?title:(title="") ?year:(year=None) (authors:string list) =
 
 module Euler=DefaultFormat.Euler
 
-
-
 module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
@@ -58,6 +56,8 @@ module Format=functor (D:DocumentStructure)->struct
   let title=Default.title
   let author=Default.author
   let institute=Default.institute
+
+  let caml x = x
 
 let postprocess_tree tree=
   let with_title=match tree with
