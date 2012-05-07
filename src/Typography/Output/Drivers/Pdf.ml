@@ -433,21 +433,23 @@ let output ?(structure:structure={name="";displayname=[];
                                let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
                                  (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
                              in
-                             let one_char, mult_char=IntMap.partition (fun _ (gl)->UTF8.length ((Fonts.glyphNumber gl).glyph_utf8) = 1) a
+                             let one_char, mult_char=IntMap.partition (fun _ gl->
+                                                                         let utf8=(Fonts.glyphNumber gl).glyph_utf8 in
+                                                                           UTF8.next utf8 0 > String.length utf8) a
                              in
+                               (* recuperer les intervalles et singletons *)
                              let rec unicode_diff a0=
                                if not (IntMap.is_empty a0) then (
-                                 let idx0,(m0)=IntMap.min_binding a0 in
+                                 let idx0,m0=IntMap.min_binding a0 in
                                  let num0=Fonts.glyphNumber m0 in
-                                 let u,v=IntMap.partition (fun _ (x)->let num=Fonts.glyphNumber x in
-                                                             num.glyph_index-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
-                                                               num0.glyph_index-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
+                                 let u,v=IntMap.partition (fun idx x->let num=Fonts.glyphNumber x in
+                                                             idx-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
+                                                               idx0-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
                                                           ) a0
                                  in
-                                 let num1,(m1)=IntMap.max_binding u in
+                                 let idx1,m1=IntMap.max_binding u in
                                    if IntMap.cardinal u > 1 then (
-                                     range:=(num0.glyph_index,num1,
-                                             (UTF8.get num0.glyph_utf8 0))::(!range)
+                                     range:=(idx0,idx1,UTF8.get num0.glyph_utf8 0)::(!range)
                                    ) else (
                                      one:=(idx0, num0.glyph_utf8)::(!one)
                                    );
@@ -456,13 +458,13 @@ let output ?(structure:structure={name="";displayname=[];
                              in
                                unicode_diff one_char;
                                if not (IntMap.is_empty mult_char) then (
-                                 let _,(m0)=IntMap.min_binding mult_char in
-                                 let first=ref ((Fonts.glyphNumber m0).glyph_index) in
-                                 let last=ref ((Fonts.glyphNumber m0).glyph_index-1) in
+                                 let idx0,m0=IntMap.min_binding mult_char in
+                                 let first=ref idx0 in
+                                 let last=ref (idx0-1) in
                                  let cur=ref [] in
-                                   IntMap.iter (fun _ (a)->
+                                   IntMap.iter (fun idx (a)->
                                                   let num=Fonts.glyphNumber a in
-                                                    if num.glyph_index > (!last)+1 then (
+                                                    if idx > (!last)+1 then (
                                                       (match !cur with
                                                            _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
                                                          | [h]->one:=(!first, h)::(!one)
@@ -470,9 +472,9 @@ let output ?(structure:structure={name="";displayname=[];
                                                       cur:=[]
                                                     );
                                                     if !cur=[] then
-                                                      first:=num.glyph_index;
+                                                      first:=idx;
                                                     cur:=num.glyph_utf8::(!cur);
-                                                    last:=num.glyph_index
+                                                    last:=idx
                                                ) mult_char;
 
                                    match !cur with

@@ -2,24 +2,24 @@
 
 init_dir=$(pwd)
 version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
-darcs dist -d texprime
-mv texprime.tar.gz /tmp
+darcs dist -d patoline
+mv patoline.tar.gz /tmp
 cd /tmp
-tar -xzf texprime.tar.gz
-cd texprime
+tar -xzf patoline.tar.gz
+cd patoline
 ocamlc -o configure configure.ml
 rm -f *.cmo *.cmi
 rm -Rf _darcs
 rm -f pack
 cd ..
-rm -Rf ocaml-typography-$version
-mv texprime ocaml-typography-$version
-tar -cvf ocaml-typography-$version.tar ocaml-typography-$version
-gzip ocaml-typography-$version.tar
-cat /Users/pe/Projets/ports/ml/ocaml-typography/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-typography-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projets/ports/ml/ocaml-typography/
-mv ocaml-typography-$version.tar.gz $init_dir
+rm -Rf ocaml-patoline-$version
+mv patoline ocaml-patoline-$version
+tar -cvf ocaml-patoline-$version.tar ocaml-patoline-$version
+gzip ocaml-patoline-$version.tar
+cat /Users/pe/Projets/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
+mv Portfile /Users/pe/Projets/ports/ml/ocaml-patoline/
+mv ocaml-patoline-$version.tar.gz $init_dir
 cd $init_dir
 
-sudo port uninstall ocaml-bibi && sudo port uninstall ocaml-typography && sudo port clean --all ocaml-typography && sudo port install ocaml-typography +native_only && sudo port install ocaml-bibi +native_only
+sudo port uninstall ocaml-bibi && sudo port uninstall ocaml-patoline && sudo port clean --all ocaml-patoline && sudo port install ocaml-patoline +native_only && sudo port install ocaml-bibi +native_only
 #scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime
