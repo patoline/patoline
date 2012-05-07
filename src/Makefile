@@ -45,12 +45,12 @@ patolineDefault.tgx: Patoline/Main.native DefaultGrammar.txp
 
 
 %.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa patolineDefault.tgx %.txp
-	cp $*.txp _build
+	cp $*.txp patolineDefault.tgx _build
 	cd _build; ../patoline --ml --extra-fonts-dir ../../Fonts  $*.txp
 
 	cd _build; $(CAMLOPT) -o $*.tmx -I ../Typography/_build -I Format ../Typography/_build/Typography.cmxa Format/DefaultFormat.cmxa  -impl $*.tml
 	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts
-
+	ln -sf _build/$*.pdf .
 
 clean:
 	rm -f *~ \#*\# *.tgo *.tgx
