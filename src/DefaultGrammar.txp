@@ -101,6 +101,7 @@ Symboles de TeX'
 
 \Add_postfix{!}{!}
 \Add_postfix{*}{*}
+\Add_postfix{'}{'}
 
 == Lowercase Greek letters ==
 

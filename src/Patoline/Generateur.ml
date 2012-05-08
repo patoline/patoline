@@ -25,7 +25,7 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
     "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
 
 
-let hashed="(Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^Sys.executable_name))))"
+let hashed="(Digest.to_hex (Digest.string ((Sys.getcwd ())^Sys.executable_name)))"
 
 let preambule format amble filename=
   match amble with
@@ -69,7 +69,6 @@ let _ =
     resolve (i+1) env2
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
-    let tmp=Filename.concat Filename.temp_dir_name (Digest.to_hex (Digest.string ((Sys.getcwd ())^filename))) in
     let f=open_out %s in
     output_value f (env2.names,env2.user_positions);
     close_out f;
@@ -140,9 +139,9 @@ let rec print_math_buf op buf m =
 	Printf.bprintf buf "[ Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
       | Indices(ind', m) ->
 	fn ind' buf m
-      | Binary(_, a, _,Over,_,b) ->
+      | Binary(_, a, _,SimpleSym "over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
-	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line={OutputCommon.default with lineWidth = env0.Maths.default_rule_thickness }}]" (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line=(fun env style->{OutputCommon.default with lineWidth = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness }) }]" (fn indices) a (fn indices) b
       | Binary(pr, a, _,SimpleSym "",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
 	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b

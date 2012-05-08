@@ -129,8 +129,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                   drawing_contents=(fun _->[]);
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate;
-
-          counters=StrMap.singleton "structure" (-1,[0]);
+          counters=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty
+            ["_structure",(-1,[0]);
+             "_figure",(-1,[0]);
+             "figure",(2,[0])];
           names=StrMap.empty;
           user_positions=TS.UMap.empty;
           fixable=false
@@ -446,7 +448,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                 Not_found -> -1,[0]
                             in
                             let _,str_counter=try
-                              StrMap.find "structure" env.counters
+                              StrMap.find "_structure" env.counters
                             with Not_found -> -1,[0]
                             in
                             let sect_num=drop (max 1 (List.length str_counter - lvl+1))

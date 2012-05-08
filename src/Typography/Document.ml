@@ -497,14 +497,16 @@ let figure str ?(parameters=center) ?(name="") drawing=
     str:=up (newChildAfter !str (
                FigureDef { fig_contents=drawing;
                            fig_env=(fun x->
-                                      let l,cou=try StrMap.find "figures" x.counters with Not_found -> -1, [-1] in
-                                      let cou'=StrMap.add "figures" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                      let l,cou=try StrMap.find "_figure" x.counters with Not_found -> -1, [-1] in
+                                      let l0,cou0=try StrMap.find "figure" x.counters with Not_found -> -1, [-1] in
+                                      let counters'=StrMap.add "_figure" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                      let counters''=StrMap.add "figure" (l0,match cou0 with []->[0] | h::_->[h+1]) counters' in
                                         { x with
                                             names=if name="" then x.names else (
                                               let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                                StrMap.add name (cou', "figure", w) x.names
+                                                StrMap.add name (counters'', "_figure", w) x.names
                                             );
-                                            counters=cou'
+                                            counters=counters''
                                         });
                            fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
                            fig_parameters=parameters }))
@@ -513,9 +515,9 @@ let flushFigure name=
   [CFix (fun env->
         try
           let (counters,_,_)=StrMap.find name env.names in
-            match StrMap.find "figures" counters with
+            match StrMap.find "_figure" counters with
                 _,h::_->[B (fun _->[FlushFigure h])]
-              | _->[Env (fun env->incr_counter env "figures")]
+              | _->[Env (fun env->incr_counter env "_figure")]
         with
             Not_found ->[]
      )]
@@ -525,9 +527,9 @@ let beginFigure name=
   [CFix (fun env->
         try
           let (counters,_,_)=StrMap.find name env.names in
-            match StrMap.find "figures" counters with
+            match StrMap.find "_figure" counters with
                 _,h::_->[B (fun _->[BeginFigure h])]
-              | _->[Env (fun env->incr_counter env "figures")]
+              | _->[Env (fun env->incr_counter env "_figure")]
         with
             Not_found ->[]
      )]
@@ -573,9 +575,9 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
       node_env=(
         fun env->
           { env with
-              counters=StrMap.add "structure" (
+              counters=StrMap.add "_structure" (
                 try
-                  let (a,b)=StrMap.find "structure" env.counters in
+                  let (a,b)=StrMap.find "_structure" env.counters in
                     a,0::b
                 with
                     Not_found -> (-1,[0;0])
@@ -586,9 +588,9 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
           { env with
               names=env'.names;
               user_positions=env'.user_positions;
-              counters=StrMap.add "structure" (
+              counters=StrMap.add "_structure" (
                 try
-                  let a,b=StrMap.find "structure" env'.counters in
+                  let a,b=StrMap.find "_structure" env'.counters in
                   match b with
                       _::h::s when numbered ->a,(h+1)::s
                     | _::h::s ->a,h::s
@@ -608,7 +610,7 @@ let pageref x=
          with Not_found -> []
         )]
 
-let label ?(labelType="structure") name=
+let label ?(labelType="_structure") name=
   [Env (fun env->
           let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
             { env with names=StrMap.add name (env.counters, labelType, w) env.names });
@@ -623,14 +625,14 @@ let generalRef refType name=
   [ CFix (fun env->try
             let counters,_,_=StrMap.find name env.names in
             let lvl,num=(StrMap.find refType counters) in
-            let _,str_counter=StrMap.find "structure" counters in
+            let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
               [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
           with
               Not_found -> []
          )]
 
-let sectref x=generalRef "structure" x
+let sectref x=generalRef "_structure" x
 
 (** {3 Boitification et "classes" de documents}*)
 
@@ -836,7 +838,7 @@ let flatten env0 fixable str=
               | FigureDef f as h->(
                   let env2=flatten flushes' env1 (k::path) h in
                   let num=try
-                    match StrMap.find "figures" env2.counters with
+                    match StrMap.find "_figure" env2.counters with
                         _,h::_->h
                       | _->0
                   with
@@ -849,9 +851,9 @@ let flatten env0 fixable str=
                   let env2=h.node_env env1 in
                   let env2'=
                     let cou=
-                      StrMap.add "path" (-1,k::path)
+                      StrMap.add "_path" (-1,k::path)
                         (if List.mem Structural h.node_tags then
-                           StrMap.filter (fun _ (a,b)->a<=level+1) env2.counters
+                           StrMap.map (fun (a,b)->if a<=level+1 then (a,b) else (a,[])) env2.counters
                          else
                            env2.counters)
                     in
@@ -915,20 +917,23 @@ let rec make_struct positions tree=
 let update_names env figs user=
   (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
-  let env'={ env with user_positions=user; counters=StrMap.empty; names=
+  let env'={ env with user_positions=user; counters=StrMap.map (fun (l,_)->l,[]) env.counters; names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
-                       if b="figure" then
-                         match IntMap.find (List.hd (snd (StrMap.find "figures" a))) figs with
+                       if b="_figure" then
+                         match IntMap.find (List.hd (snd (StrMap.find "_figure" a))) figs with
                              Break.Placed l->l
-                           | _->(Printf.fprintf stderr "artif\n";raise Not_found)
+                           | _->raise Not_found
                        else
                          TS.UMap.find (Label k) user
                      in
+                       if pos<>c then
+                         Printf.fprintf stderr "reboot : position of %S changed\n" k;
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
-                   with Not_found -> (needs_reboot:=true; m)
+                   with Not_found -> (Printf.fprintf stderr "reboot : position of %S not found\n" k;needs_reboot:=true; m)
                   ) env.names env.names
            }
   in
+    flush stderr;
     env',!needs_reboot

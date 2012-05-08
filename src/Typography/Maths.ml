@@ -61,7 +61,7 @@ and 'a binary_type =
   | Normal of bool * 'a noad * bool (* the boolean remove spacing at left or right when true *)
 
 and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
-and 'a fraction= { numerator:'a math list; denominator:'a math list; line:OutputCommon.path_parameters }
+and 'a fraction= { numerator:'a math list; denominator:'a math list; line: 'a Document.environment->style->OutputCommon.path_parameters }
 and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of 'a noad
@@ -342,18 +342,19 @@ let rec draw env_stack mlist=
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
           let w=max wa wb in
+          let ln=f.line env style in
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
                        drawing_max_width=w;
-                       drawing_y0=y0b-.y1b-.mathsEnv.mathsSize*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.);
-                       drawing_y1=y1a-.y0a+.mathsEnv.mathsSize*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.);
+                       drawing_y0=y0b-.y1b-.mathsEnv.mathsSize*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.);
+                       drawing_y1=y1a-.y0a+.mathsEnv.mathsSize*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.);
                        drawing_badness=(fun _->0.);
                        drawing_contents=(fun _->
-                                           (if f.line.lineWidth = 0. then [] else
-                                              [Path ({f.line with lineWidth=f.line.lineWidth*.mathsEnv.mathsSize},
+                                           (if ln.lineWidth = 0. then [] else
+                                              [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize},
                                                      [ [|line (0.,hx) (w,hx)|] ]) ])@
-                                             (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.mathsEnv.mathsSize*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
-                                             (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.mathsEnv.mathsSize*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
+                                             (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.mathsEnv.mathsSize*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
+                                             (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.mathsEnv.mathsSize*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
                                         ) }) :: (draw env_stack s)
         )
       | Operator op::s ->(
