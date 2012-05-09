@@ -210,9 +210,11 @@ let rec draw env_stack mlist=
 
 
                 let x_height=
-                  let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
+                  let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
                     ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'x'}) in
                     (Fonts.glyph_y1 x)/.1000.
+                  in
+                    if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
                 in
                 let u,v=if contents (last nucleus) <> "" then  0., 0. else
                   y1 -. mathsEnv.sup_drop*.mathsEnv.mathsSize, -.y0+. mathsEnv.sub_drop*.mathsEnv.mathsSize

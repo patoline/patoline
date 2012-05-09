@@ -3,7 +3,7 @@
 all : Typography.cma Typography.cmxa
 
 Typography.cma:
-	ocamlbuild Typography.cma
+	ocamlbuild -cflag -g -lflag -g Typography.cma
 
 Typography.cmxa:
 	ocamlbuild Typography.cmxa

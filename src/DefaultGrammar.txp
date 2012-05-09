@@ -28,7 +28,6 @@ Symboles de TeX'
 \Add_relation{\notin ∉}{∉}
 \Add_relation{\ni ∋}{∋}
 \Add_relation{\notni ∌}{∌}
-\Add_relation{\caml}( Maths.glyphs "caml" )
 \Add_relation{\subseteq ⊆}{⊆}
 \Add_relation{\supseteq ⊇}{⊇}
 \Add_relation{\nosubseteq ⊈}{⊈}
@@ -51,7 +50,8 @@ Symboles de TeX'
 \Add_addition_like{-}{-}
 \Add_addition_like{\pm}{±}
 \Add_addition_like{\mp}{∓}
-
+\Add_addition_like{\union ⋃}{⋃}
+\Add_addition_like{\inter ⋂}{⋂}
 
 == Product like symbols ==
 

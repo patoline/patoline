@@ -81,7 +81,7 @@ let _ =
       let u,v=input_value f in
       let env={ defaultEnv with names=u;user_positions=v } in
       close_in f; env
-    ) else defaultEnv
+    ) else (Printf.printf \"from stratch\\n\"; defaultEnv)
   in
   resolve 0 env0
 " outfile hashed hashed hashed
