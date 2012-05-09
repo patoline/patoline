@@ -624,7 +624,8 @@ let label ?(labelType="_structure") name=
 let generalRef refType name=
   [ CFix (fun env->try
             let counters,_,_=StrMap.find name env.names in
-            let lvl,num=(StrMap.find refType counters) in
+            let lvl,num_=(StrMap.find refType counters) in
+            let num=if refType="_structure" then drop 1 num_ else num_ in
             let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
               [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
