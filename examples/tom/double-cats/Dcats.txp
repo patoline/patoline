@@ -182,7 +182,7 @@ We generalise the construction in previous work \cite(["Hirschowitz"]) of a play
 \End{definition}
 
 In any individuality category $\cat$, an \emph{interface} is an object $X$ such that the slice
-category $\cat/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ I$.
+category $\cat/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d ∈ \indiv$.
 
   Let us start with a category $\cat$. 
 
