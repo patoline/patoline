@@ -55,7 +55,6 @@ and indices = { up_right : math option;
     down_left : math option }
 and symbol=
     SimpleSym of string
-  | Over
   | CamlSym of string
 
 
@@ -471,6 +470,16 @@ math:
       { Delim(SimpleSym "{",a,SimpleSym "}") } atom
   | "{" math<a> "}"
       { a } atom
+
+  | "{" addition_like<op> "}"
+      { Symbol op } atom
+  | "{" product_like<op> "}"
+      { Symbol op } atom
+  | "{" connector<op> "}"
+      { Symbol op } atom
+  | "{" relation<op> "}"
+      { Symbol op } atom
+
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind

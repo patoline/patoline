@@ -204,7 +204,6 @@ let rec print_math_buf op buf m =
     match sym with
         SimpleSym s->Printf.bprintf buf "Maths.glyphs \"%s\"" s
       | CamlSym s->Printf.bprintf buf "(%s)" s
-      | Over -> assert false
   in fn no_ind buf m
 
 and print_math op ch m = begin
