@@ -367,7 +367,9 @@ and print_caml_buf ld gr op buf s e txps = match txps with
 
 and print_caml ld gr op (ch : out_channel) s e txps = begin
   let buf = Buffer.create 80 in
+  Printf.bprintf buf " ";
   print_caml_buf ld gr op buf s e txps;
+  Printf.bprintf buf " ";
   Buffer.output_buffer ch buf
 end
 

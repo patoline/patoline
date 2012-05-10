@@ -67,6 +67,7 @@ module Output=functor(M:Driver)->struct
                   | Drawing g ->(
                       let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                         page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+                        (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
                         w
                     )
                   | User (Footnote (_,g))->(

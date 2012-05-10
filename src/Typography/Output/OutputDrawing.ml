@@ -17,9 +17,10 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
     let y1=ref (-.infinity) in
     let x0=ref infinity in
     let x1=ref (-.infinity) in
+    let first_y=List.fold_left (fun m (_,l)->min m l.height) infinity p in
       List.iter (
         fun (param,line)->
-          let y=270.0-.line.height in
+          let y= first_y-.line.height in
             if line.isFigure then (
               let fig=figures.(line.lastFigure) in
                 y1:=max !y1 y;
@@ -30,7 +31,7 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
             ) else if line.paragraph<Array.length paragraphs then (
               let (yy0,yy1)=line_height paragraphs line in
                 y1:=max (y+.yy1) !y1;
-                y0:=min y !y0;
+                y0:=min (y+.yy0) !y0;
                 y0':=min (y+.yy0) !y0';
               let comp=compression paragraphs param line in
               let rec draw_box x y=function
@@ -62,12 +63,12 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
                 x1:=max !x1 (fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line)
             )
       ) p;
-      pageContents:=List.map (translate (-. !x0) (-. !y0')) !pageContents;
+      pageContents:=List.map (translate (-. !x0) 0.) !pageContents;
       { drawing_min_width= !x1-. !x0;
         drawing_nominal_width= !x1-. !x0;
         drawing_max_width= !x1-. !x0;
-        drawing_y0= !y0-. !y0';
-        drawing_y1= env.normalLead *. (ceil ((!y1-. !y0')/.env.normalLead));
+        drawing_y0= !y0;
+        drawing_y1= max env.normalLead !y1;
         drawing_badness=(fun _->0.);
         drawing_contents=(fun _-> !pageContents) }
   in

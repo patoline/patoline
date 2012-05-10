@@ -29,8 +29,8 @@ let postprocess_tree tree=
         let section_name=
           if List.mem Numbered n.node_tags  then
             [C (fun env->
-                  let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
-                  let _,path'=try StrMap.find "path" env.counters with Not_found -> -1,[] in
+                  let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
+                  let _,path'=try StrMap.find "_path" env.counters with Not_found -> -1,[] in
                   let path=drop 1 b in
                     B (fun _->[User (Structure path')])
                     ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
@@ -39,14 +39,14 @@ let postprocess_tree tree=
                )]
           else
             B (fun env->
-                 let _,path=try StrMap.find "path" env.counters with Not_found -> -1,[] in
+                 let _,path=try StrMap.find "_path" env.counters with Not_found -> -1,[] in
                    [User (Structure path)])::
               n.displayname
         in
         let par=Paragraph {
           par_contents=section_name;
           par_env=(fun env->
-                     let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
+                     let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
                      let path=drop 1 b in
                        { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                            size=(if List.length path <= 1 then sqrt phi else
