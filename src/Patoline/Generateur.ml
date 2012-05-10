@@ -196,7 +196,7 @@ let rec print_math_buf op buf m =
     ) else (
       Buffer.add_string buf "[Maths.Ordinary ";
       let buf'=Buffer.create 100 in
-        Buffer.add_string buf' "fun envs st->Maths.draw_maths [envs] st ";
+        Buffer.add_string buf' "fun envs st->Maths.draw [envs] ";
         dn no_ind op cl buf' m;
         hn (CamlSym (Buffer.contents buf')) buf ind;
         Buffer.add_string buf "]"
@@ -215,10 +215,10 @@ and print_math op ch m = begin
 end
 
 and print_math_par_buf op buf display m =
-  let style = if display then "Mathematical.Display" else "Mathematical.Text" in
+  let style = if display then "Mathematical.Display" else "env0.mathStyle" in
   Printf.bprintf buf
-    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (let style = %s in Maths.draw_maths [env0] style ("
-    style;
+    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (Maths.draw [ { env0 with mathStyle = %s } ] ("
+    style ;
   print_math_buf op buf m;
   Printf.bprintf buf ")))] "
 

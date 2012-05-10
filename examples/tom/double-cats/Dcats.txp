@@ -44,6 +44,7 @@ module DFormat = Format.Default
 open Format
 
 type math_macro = user Typography.Maths.math list
+type math_token = user Typography.Maths.math 
 
 let id x = x
 let emph = toggleItalic
@@ -55,18 +56,14 @@ let figRef ()= [B (fun env->
 let eqref name = <<\emph{(\caml(generalRef "equation" name))}>>
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
-let displaystyle : math_macro =[Maths.Style Mathematical.Display]
-let scriptstyle s _=(Maths.Style Mathematical.Script::s : math_macro)
 let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
 let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
 let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
 let bold a=alternative Bold a
 
-let math arg = [B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (* math <$lala$> *)
-  (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in 
-   Maths.draw_maths [env0] style ((arg ))))]
-
-let script_style = Env (fun env -> { env with size = env.size *. 2. /. 3. }) 
+let style s a = [Scoped ((fun env -> { env with mathStyle = s }), a)]
+let scriptstyle x = style Mathematical.Script x
+let displaystyle x = style Mathematical.Display x
 
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
@@ -113,7 +110,8 @@ module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user e
         ([]) ([])
 
       let label e style pos contents = 
-	node  ((`At (e.anchor (`Temporal pos))) :: style) (script_style :: contents)
+	node  ((`At (e.anchor (`Temporal pos))) :: style) 
+	  (scriptstyle contents)
 
      let labela e contents = label e [`Anchor `South] 0.5 contents
      let labelb e contents = label e [`Anchor `North] 0.5 contents
@@ -231,6 +229,9 @@ We call such (isomorphism classes of) rule shapes \emph{full}.
       colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
+\Add_postfix{'}{'}
+
+
     \Begin{center}
 
     #diagram(
@@ -238,7 +239,7 @@ We call such (isomorphism classes of) rule shapes \emph{full}.
       let m,ms = matrix [`Centers (10.,20.)] [[
 	([], []); ([], <<$ρ$>>) ; ([], <<$1$>>) ];[
 	([], <<$\cat$>>); ([], []) ; ([], []) ];[
-	([], []); ([], <<$ρ_1$>>) ; ([], <<$1$,>>) 
+	([], []); ([], <<$ρ'$>>) ; ([], <<$1$,>>) 
       ]]
 
 	     let [rc;_;r'c;_] = edges [`To;`Draw] [
