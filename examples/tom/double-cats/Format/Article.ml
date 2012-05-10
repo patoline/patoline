@@ -159,6 +159,7 @@ module Env_theorem=Default.Make_theorem
     let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
 module Env_abstract = Default.Env_abstract	
+module Env_itemize = Default.Env_itemize	
 module Env_center = Default.Env_center	
 
 

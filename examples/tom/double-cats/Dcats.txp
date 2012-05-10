@@ -64,20 +64,23 @@ let bold a=alternative Bold a
 
 let math arg = [B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (* math <$lala$> *)
   (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in 
-   Maths.draw_maths env0 style ((arg ))))]
+   Maths.draw_maths [env0] style ((arg ))))]
 
 let script_style = Env (fun env -> { env with size = env.size *. 2. /. 3. }) 
 
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let catplusb : math_macro = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let catplusf : math_macro = <$\mathcal{C}^{f}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let categories : math_macro = <$Cat$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv : math_macro = <$\mathcal{I}$>
 let rs : math_macro =  <$\mathcal{R}$>
 let rules c = <$R_{\c}$>
 let rulesb c = <$R^{b}_{\c}$>
+let rulesf c = <$R^{f}_{\c}$>
 let rulescat : math_macro = rules <$\cat$>
 let rulescatb : math_macro = rulesb <$\cat$>
+let rulescatf : math_macro = rulesf <$\cat$>
 let op c = <$\c^{op}$>
 let card c = <$|\c|$>
 let players c = <$Pl(\c)$>
@@ -219,12 +222,12 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat → 1$, as in
 
     \End{center}
 
-      We now want to do this at once for a whole part $\rulescat$. Namely, let 
-	  $\rulescatb$ be the set of isomorphism classes of rule shapes admitting a representative
-of the form \eqref("equation: rule shape") with $X ∈ \indiv$ and 
-$\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \emph{basic}.
+      We now want to do this at once for a whole part of $\rulescat$. Namely, let 
+	  $\rulescatf$ be the set of isomorphism classes of rule shapes admitting a representative
+of the form \eqref("equation: rule shape") with $X ∈ \indiv$. 
+We call such (isomorphism classes of) rule shapes \emph{full}. 
 
-    To formally add colimits for such rule shapes to $\cat$, we will take a more sophisticated lax 
+    To formally add colimits for all full rule shapes to $\cat$, we will take a more sophisticated lax 
       colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
@@ -235,7 +238,7 @@ $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \e
       let m,ms = matrix [`Centers (10.,20.)] [[
 	([], []); ([], <<$ρ$>>) ; ([], <<$1$>>) ];[
 	([], <<$\cat$>>); ([], []) ; ([], []) ];[
-	([], []); ([], <<$ρ_{1}$>>) ; ([], <<$1$,>>) 
+	([], []); ([], <<$ρ_1$>>) ; ([], <<$1$,>>) 
       ]]
 
 	     let [rc;_;r'c;_] = edges [`To;`Draw] [
@@ -251,7 +254,7 @@ $\card{\players{Y}} ≤ 1$. We call such (isomorphism classes of) rule shapes \e
     )
 
     \End{center}
-with a row for each $ρ ∈ \rulescatb$.
+with a row for each $ρ ∈ \rulescatf$.
 Our weight $W : J^{op} → \categories$
 is the diagram
 
@@ -284,8 +287,8 @@ is the diagram
     \End{center}
 of categories and functors, where $2$ is the free category on the graph $0 → 1$.
 
-  Let $\catplusb$ be any weighted colimit $F ⋆ W$. Concretely, for any basic rule shape $ρ$, 
-$\catplusb$ has an object, say just $[\rho]$, which is a colimit 
+  Let $\catplusf$ be any weighted colimit $F ⋆ W$. Concretely, for any full rule shape $ρ$, 
+$\catplusf$ has an object, say just $[\rho]$, which is a colimit 
 of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \Begin{center}
@@ -309,6 +312,26 @@ of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 )
 
 \End{center}
+
+These full rules $[\rho]$ are analogous to `shapes of' syntactic constructs in calculi like CCS, 
+$\pi$, or $\lambda$.
+We will need \emph{branches} for such rules, which will be used to define views: these will be defined later.
+What we need to specify is how such rules interact - and this is delicate.
+
+As for full rule shapes, we specify an initial and a final position, resp. $X$ and $Y$. 
+    Let furthermore, for each natural number $n ≥ 2$, $S_n$ be the free category on the graph with:
+
+\Begin{itemize}
+
+\item  $n + {n (n-1)} / 2$ objects, denoted by $1, n$ and then $(i,j) ∈ A$, $C^2_n$
+
+\item morphisms $i ← (i,j) → j$ for all $i = j$.
+
+\End{itemize}
+
+Furthermore, for each player $x : d → X$ of $X$, we specify a full rule shape $ρ_x : d → Y_{x}$, plus a morphism
+$y_x : Y_x → Y$. We want
+
 
 =<
 
