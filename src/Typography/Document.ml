@@ -140,6 +140,7 @@ and 'a environment={
   fontColor:OutputCommon.color;
   font:font;
   mathsEnvironment:Mathematical.environment;
+  mathStyle:Mathematical.style;
   size:float;
   lead:float;
   footnote_y:float;

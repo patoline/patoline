@@ -67,7 +67,6 @@ and 'a math=
     Ordinary of 'a noad
   | Glue of float
   | Env of ('a Document.environment->'a Document.environment)
-  | Style of Mathematical.style
   | Scope of ('a Document.environment->Mathematical.style->'a math list)
   | Binary of 'a binary
   | Fraction of 'a fraction
@@ -77,6 +76,7 @@ and 'a math=
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
 
+let style x = Env (fun env -> { env with mathStyle = x })
 
 
 (* let symbol font size c= *)
@@ -115,8 +115,17 @@ let scriptStyle=function
   | Script'
   | ScriptScript'-> ScriptScript'
 
-let superStyle x=scriptStyle x
-let subStyle x=cramp (scriptStyle x)
+let apply_head f envs = match envs with
+  | [] -> []
+  | env :: rest -> (f env) :: rest
+let superStyle x = apply_head (fun env -> { env with mathStyle = scriptStyle x })
+let subStyle x = apply_head (fun env -> { env with mathStyle = cramp (scriptStyle x) })
+let numeratorStyle x = apply_head (fun env -> { env with mathStyle = 
+					      (match x with
+                                                      Display -> Text | Display' -> Text'
+                                                    | _ -> scriptStyle x) })
+let denominatorStyle = numeratorStyle
+
 
 let rec last=function
     []->raise Not_found
@@ -159,29 +168,28 @@ let rec contents=function
   | _->""
 
 
-let rec draw_maths env_stack style mlist=
+let rec draw env_stack mlist=
   let env=match env_stack with []->assert false | h::s->h in
+  let style = env.mathStyle in
   let mathsEnv=env_style env.mathsEnvironment style in
 
     match mlist with
 
         []->[]
-      | h::Glue x::Glue y::s->draw_maths env_stack style (h::Glue (x+.y)::s)
-      | Glue _::s->draw_maths env_stack style s
+      | h::Glue x::Glue y::s->draw env_stack (h::Glue (x+.y)::s)
+      | Glue _::s->draw env_stack s
       | h::Glue x::s->(
-          let left=draw_maths env_stack style [h] in
+          let left=draw env_stack [h] in
             (match List.rev left with
                  []->[]
                | h0::s0->List.rev (Kerning { (Fonts.FTypes.empty_kern h0) with Fonts.FTypes.advance_width=x }::s0))
-              @ (draw_maths env_stack style s)
+              @ (draw env_stack s)
         )
       | Scope l::s->(
-          (draw_maths env_stack style (l env style))@(draw_maths env_stack style s)
+          (draw env_stack (l env style))@(draw env_stack s)
         )
       | Env f::s->
-          draw_maths (f (List.hd env_stack)::env_stack) style s
-      | Style st::s->
-          draw_maths env_stack st s
+          draw (f (List.hd env_stack)::env_stack) s
       | Ordinary n::s->(
           (* attacher les indices et les exposants n'est pas
              complètement trivial. on utilise la règle de Knuth pour
@@ -211,10 +219,10 @@ let rec draw_maths env_stack style mlist=
                 in
 
                 let sub_env=drop (List.length env_stack-1) env_stack in
-                let a=draw_boxes (draw_maths sub_env (superStyle style) n.superscript_right) in
-                let b=draw_boxes (draw_maths sub_env (superStyle style) n.superscript_left) in
-                let c=draw_boxes (draw_maths sub_env (subStyle style) n.subscript_right) in
-                let d=draw_boxes (draw_maths sub_env (subStyle style) n.subscript_left) in
+                let a=draw_boxes (draw (superStyle style sub_env) n.superscript_right) in
+                let b=draw_boxes (draw (superStyle style sub_env) n.superscript_left) in
+                let c=draw_boxes (draw (subStyle style sub_env) n.subscript_right) in
+                let d=draw_boxes (draw (subStyle style sub_env) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
                 let bb=Array.map (fun l->bounding_box [Path (OutputCommon.default, [Array.of_list l])]) bezier in
 
@@ -292,7 +300,7 @@ let rec draw_maths env_stack style mlist=
                                drawing_contents=(fun _->dr) }) ]
               ) else
                 nucleus
-        )@(draw_maths env_stack style s)
+        )@(draw env_stack s)
 
       | Binary b::s->(
           let gl=
@@ -308,16 +316,16 @@ let rec draw_maths env_stack style mlist=
           in
 	    match b.bin_drawing with
 	        Invisible ->
-                  (draw_maths env_stack style b.bin_left)@
+                  (draw env_stack b.bin_left)@
                     (resize mathsEnv.mathsSize gl')::
-                    (draw_maths env_stack style b.bin_right)
+                    (draw env_stack b.bin_right)
 	      | Normal(no_sp_left, op, no_sp_right) ->
-                  (draw_maths env_stack style b.bin_left)@
+                  (draw env_stack b.bin_left)@
                     (if no_sp_left then [] else [resize mathsEnv.mathsSize gl'])@
-                    (draw_maths env_stack style [Ordinary op])@
+                    (draw env_stack [Ordinary op])@
                     (if no_sp_right then [] else [resize mathsEnv.mathsSize gl])@
-                    (draw_maths env_stack style b.bin_right)
-        )@(draw_maths env_stack style s)
+                    (draw env_stack b.bin_right)
+        )@(draw env_stack s)
 
       | (Fraction f)::s->(
 
@@ -327,14 +335,8 @@ let rec draw_maths env_stack style mlist=
           (Fonts.glyph_y1 x)/.2000.
         in
 
-        let ba=draw_boxes (draw_maths env_stack (match style with
-                                                      Display -> Text | Display' -> Text'
-                                                    | _ -> superStyle style)
-                               f.numerator) in
-          let bb=draw_boxes (draw_maths env_stack (match style with
-                                                      Display -> Text | Display' -> Text'
-                                                    | _ -> superStyle style)
-                               f.denominator) in
+        let ba=draw_boxes (draw (numeratorStyle style env_stack) f.numerator) in
+        let bb=draw_boxes (draw (denominatorStyle style env_stack) f.denominator) in
           let x0a,y0a,x1a,y1a=bounding_box ba in
           let x0b,y0b,x1b,y1b=bounding_box bb in
           let wa=x1a-.x0a in
@@ -352,7 +354,7 @@ let rec draw_maths env_stack style mlist=
                                                      [ [|line (0.,hx) (w,hx)|] ]) ])@
                                              (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.mathsEnv.mathsSize*.(mathsEnv.numerator_spacing+.f.line.lineWidth/.2.))) ba)@
                                              (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.mathsEnv.mathsSize*.(mathsEnv.denominator_spacing+.f.line.lineWidth/.2.))) bb)
-                                        ) }) :: (draw_maths env_stack style s)
+                                        ) }) :: (draw env_stack s)
         )
       | Operator op::s ->(
 
@@ -379,10 +381,10 @@ let rec draw_maths env_stack style mlist=
                 else
                   op', []
               in
-              let drawn_op=draw_boxes (draw_maths env_stack style [Ordinary op'']) in
+              let drawn_op=draw_boxes (draw env_stack [Ordinary op'']) in
 
-              let ba=draw_boxes (draw_maths env_stack (superStyle style) sup) in
-              let bb=draw_boxes (draw_maths env_stack (subStyle style) sub) in
+              let ba=draw_boxes (draw (superStyle style env_stack) sup) in
+              let bb=draw_boxes (draw (subStyle style env_stack) sub) in
               let x0,y0,x1,y1=bounding_box drawn_op in
               let x0a,y0a,x1a,y1a=bounding_box ba in
               let x0b,y0b,x1b,y1b=bounding_box bb in
@@ -426,11 +428,11 @@ let rec draw_maths env_stack style mlist=
 
                            ))]
 
-            ) else draw_maths env_stack style [Ordinary op.op_noad]
+            ) else draw env_stack [Ordinary op.op_noad]
           in
-          let left=draw_boxes (draw_maths env_stack style op.op_left_contents) in
+          let left=draw_boxes (draw env_stack op.op_left_contents) in
           let bezier_left=bezier_of_boxes left in
-          let right=draw_boxes (draw_maths env_stack style op.op_right_contents) in
+          let right=draw_boxes (draw env_stack op.op_right_contents) in
           let bezier_right=bezier_of_boxes right in
           let bezier_op=bezier_of_boxes (draw_boxes op_noad) in
           let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
@@ -477,12 +479,11 @@ let rec draw_maths env_stack style mlist=
                  drawing_y1=y1_l;
                  drawing_badness=(fun _->0.);
                  drawing_contents=(fun _->right)})::
-              (draw_maths env_stack style s)
+              (draw env_stack s)
         )
       | Decoration (rebox, inside) :: s ->(
-          (rebox env style ((draw_maths env_stack style inside))) @ (draw_maths env_stack style s)
+          (rebox env style ((draw env_stack inside))) @ (draw env_stack s)
         )
-
 
 
 let dist_boxes a b=
