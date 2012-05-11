@@ -122,6 +122,7 @@ let unspace s=
           rem i (UTF8.prev s j)
         else
           String.sub s i (j-i+1)
+
   in
     rem (UTF8.first s) (UTF8.last s)
 

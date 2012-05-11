@@ -69,9 +69,7 @@ let par_split from =
   let space = Str.regexp "^[ \t\r]*$" in
   let decide_newpar = Str.regexp "^[ \t]+" in
   let remove = Str.regexp "[\r]*" in
-    (* FIXME *)
-  let uggly = Str.regexp "--" in
-  let cleanup s = String.escaped (Str.global_replace uggly "-" (Str.global_replace remove "" s)) in
+  let cleanup s = String.escaped (Str.global_replace remove "" s) in
   let rec doit parlist textlist =
     try 
       let s = input_line from in

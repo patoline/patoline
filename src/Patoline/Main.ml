@@ -5,11 +5,11 @@ let run = ref true
 let cmd_line = ref []
 let format=ref "DefaultFormat"
 let dirs = ref []
-let package_list = ref ["camomile"; "dyp"; "Typography"; "sqlite3"; "bibi"]
+let package_list = ref ["camomile"; "dyp"; "Typography"; "bibi"]
 let no_grammar=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
-            ("--extra-grammars-dir",Arg.String (fun x->Config.grammarsdir:=x::(!Config.grammarsdir)), "Adds directories to the font search path");
-            ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Adds directories to the font search path");
+            ("--extra-grammars-dir",Arg.String (fun x->Config.grammarsdir:=x::(!Config.grammarsdir)), "Adds directories to the grammar search path");
+            ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Empty grammar search path");
             ("--format",Arg.String
 	      (fun f ->
 		let format_file = Filename.basename f in
@@ -19,7 +19,8 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 	      ), "Change the default document format");
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
-            ("--nobibi",Arg.Unit (fun ()-> package_list:= List.filter (fun x -> x<>"bibi") !package_list), "Don't use 'bibi' package when compiling");
+            ("--no",Arg.String (fun s-> package_list:= List.filter (fun x -> x<>s) !package_list), "Don't use package given as argument when compiling");
+            ("-I",Arg.String (fun x-> dirs := (" -I "^x^" ") :: !dirs), "Add directory to the compilation command line");
             ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
