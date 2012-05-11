@@ -276,7 +276,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       node, m
 
     let make () = 
-      let fig = Box.drawing ~offset:(0.) 
+      let fig = Box.drawing_inline ~offset:(0.) 
 	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
 	   []
 	   !stack)

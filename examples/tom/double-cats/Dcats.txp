@@ -15,7 +15,13 @@ CNRS, Université de Savoie
 (* test *)
 
 \Add_relation{\wcolim ⋆}{⋆}
+\Add_relation{\neq ≠}{≠}
 
+\Add_postfix{'}{'}
+\Add_prefix{!}{!}
+\Add_symbol{!}{!}
+\Add_symbol{ ⌜ \ulcorner}{ ⌜ }
+\Add_symbol{ ⌝ \urcorner}{ ⌝ }
 \Add_left{ ( }{ ( }
 \Add_right{ ) }{ ) }
 \Add_left{ [ }{ [ }
@@ -65,10 +71,16 @@ let style s a = [Scoped ((fun env -> { env with mathStyle = s }), a)]
 let scriptstyle x = style Mathematical.Script x
 let displaystyle x = style Mathematical.Display x
 
+let name x = <$⌜\x⌝$>
+let cospan x = <$Cospan(\x)$>
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let catD = <$\mathcal{D}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let catDh : math_macro = <$\mathcal{D}_h$>
+let catDH : math_macro = <$\mathcal{D}_H$> 		(* <$\catD_H$> marche pas *)
 let catplusb : math_macro = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let catplusf : math_macro = <$\mathcal{C}^{f}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
+let catplusw : math_macro = <$\mathcal{C}^{w}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let categories : math_macro = <$Cat$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let indiv : math_macro = <$\mathcal{I}$>
 let rs : math_macro =  <$\mathcal{R}$>
@@ -81,6 +93,8 @@ let rulescatf : math_macro = rulesf <$\cat$>
 let op c = <$\c^{op}$>
 let card c = <$|\c|$>
 let players c = <$Pl(\c)$>
+
+
 
 open Article
 
@@ -164,7 +178,32 @@ module Env_Diagram (Arg : sig val arg1 : string end)(Arg' : sig val env : user e
 
 end     
 
+
+
+	let widehat maths = [Maths.Ordinary (Maths.noad (fun env style -> boxify_scoped env (<<#diagram(
+
+	  let boxes = Maths.draw [{ env with mathStyle = style }] maths
+	  let a,_ = node_boxified env 
+	    [`Anchor `Pdf;`LineWidth 0.;`InnerSep 0.;`OuterSep 0.] 
+	    (Box.draw_boxes boxes) ;;
+          let _ = (stack := a :: !stack)
+	  let h = 0.3 *. (Diagrams.ex env) 
+	  let delta_h = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness 
+
+	  let p1 = a.anchor `NorthWest 
+	  let p2 = a.anchor `NorthEast 
+	  let p_haut = Vector.(+) (Point.middle p1 p2) (0.,h) 
+	  let p_bas = Vector.(+) (Point.middle p1 p2) (0.,(h +. delta_h))
+	  let hat = path [`Fill;`LineWidth 0.03] p1 [[p_haut];[p2];[p_bas]] 
+          let _ = (stack := hat :: !stack)	  
+
+	)>>)))]
+
+
+
 )
+
+
 
 \Begin{abstract}
 
@@ -207,7 +246,8 @@ category $\cat/X$ is empty, and a \emph{player} is a morphism $d → X$, with $d
 
 Letting $\rs$ be the base category for this diagram, we may consider the set of isomorphism classes
 of rule shapes, as objects of the functor category $[\rs,\cat]$. Call this set $\rulescat$. 
-For each $ρ \in R_{\cat}$, the process of adding a formal colimit to $ρ$ is implemented categorically
+For each $ρ \in R_{\cat}$, the process of formally adding to $\cat$ an object representing  $ρ$ is implemented 
+categorically
 by taking a lax pushout of $ρ$ along the unique functor $\cat → 1$, as in 
 
     \Begin{center}
@@ -225,11 +265,11 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat → 1$, as in
 of the form \eqref("equation: rule shape") with $X ∈ \indiv$. 
 We call such (isomorphism classes of) rule shapes \emph{full}. 
 
-    To formally add colimits for all full rule shapes to $\cat$, we will take a more sophisticated lax 
+    To formally add objects for all full rule shapes to $\cat$, we will take a more sophisticated lax 
       colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
-\Add_postfix{'}{'}
+
 
 
     \Begin{center}
@@ -314,25 +354,108 @@ of $ρ$ \emph{qua} diagram, i.e., we have a colimiting cone
 
 \End{center}
 
-These full rules $[\rho]$ are analogous to `shapes of' syntactic constructs in calculi like CCS, 
+These full rule shapes $[\rho]$ are analogous to `shapes of' syntactic constructs in calculi like CCS, 
 $\pi$, or $\lambda$.
 We will need \emph{branches} for such rules, which will be used to define views: these will be defined later.
 What we need to specify is how such rules interact - and this is delicate.
 
-As for full rule shapes, we specify an initial and a final position, resp. $X$ and $Y$. 
-    Let furthermore, for each natural number $n ≥ 2$, $S_n$ be the free category on the graph with:
+The description of such an interaction will come in three parts: 
 
 \Begin{itemize}
-
-\item  $n + {n (n-1)} / 2$ objects, denoted by $1, n$ and then $(i,j) ∈ A$, $C^2_n$
-
-\item morphisms $i ← (i,j) → j$ for all $i = j$.
+\item  the initial and final positions, first, say $X$ and $Y$, plus a cospan $Y → K ← X$ of positions (i.e., in $\cat$); 
+\item  then a local description for each involved player;
+\item  and finally a specification of how the local descriptions should fit together.
 
 \End{itemize}
 
-Furthermore, for each player $x : d → X$ of $X$, we specify a full rule shape $ρ_x : d → Y_{x}$, plus a morphism
-$y_x : Y_x → Y$. We want
+Local descriptions will be given as follows.
+First, consider the pseudo-double category $\catD$ with horizontal category  $\cat$, vertical category given 
+by the full subcategory of $\cospan{\widehat{\catplusf}}$ consisting of positions, and as double cells 
+commuting diagrams of the shape
 
+\Begin{center}
+
+#diagram(
+
+  let m, [|[|x;x'|];[|k;k'|];[|y;y'|]|] = matrix [] [[
+    ([], <<$X$>>) ; ([], <<$X'$>>) ];[
+    ([], <<$K$>>) ; ([], <<$K'$>>) ];[
+    ([], <<$Y$>>) ; ([], <<$Y'$>>) 
+  ]]
+
+	let es = edges [`To;`Draw] [
+	  ([],x,[],x') ;
+	  ([],y,[],y') ;
+	  ([],k,[],k') ;
+	  ([],x,[],k) ;
+	  ([],y,[],k) ;
+	  ([],x',[],k') ;
+	  ([],y',[],k') 
+	]
+
+	let _ = node [`At (y'.anchor `LineEast)] <<.>>
+
+)
+
+\End{center}
+
+    In particular, the cospan $Y → K ← X$ is a vertical morphism $Y → X$ in $\catD$, say $M$.
+
+Let furthermore, for each natural number $n ≥ 2$, $S_n$ be the free category on the graph with:
+
+\Begin{itemize}
+
+\item  $n + C^2_n$ objects, denoted by $1, n$ and then $(i,j) ∈ A$, 
+
+\item morphisms $i ← (i,j) → j$ for all $i ≠ j$.
+
+\End{itemize}
+
+A family of local descriptions for an interaction is then given at once by a 
+functor $shape : S_n → \catDH$, such that 
+ for all $i ≠ j$, $shape$ maps both morphisms $i ← (i,j) → j$ to full rule shapes.
+
+Finally, a specification of how local interactions should fit together is given by a natural transformation
+
+\Begin{center}
+#diagram(
+
+  let m,ms = matrix [] [[
+    ([], <<$S_n$>>) ; ([],[]); ([], <<$1$>>) ];[
+    ([],[]) ; ([], <<$\catDH$,>>) ; ([],[])
+  ]]
+
+	let [u;l;r] = edges [`To;`Draw] [
+	  ([], ms.(0).(0), [], ms.(0).(2)) ;
+	  ([], ms.(0).(0), [], ms.(1).(1)) ;
+	  ([], ms.(0).(2), [], ms.(1).(1)) 
+	]
+
+	let _ = labela u <<$!$>>
+	  let _ = labelbl l <<$shape$>>
+	  let _ = labelbr r <<$\name{M}$>>
+
+	   let ealpha = edge [`Double 0.5 ; `BendRight 30.;`Shorten (0.1,0.1);`To;`Draw] 
+	     (coordinate (l.anchor (`Temporal 0.3))) []
+	     (coordinate (u.anchor (`Temporal 0.3)))
+
+	let _ = labelbr ealpha <<$α$>>
+
+)
+
+\End{center}
+   in other words, a cocone from $shape$ to $M$.
+
+Any such cocone $α$ forms in particular a diagram in $\widehat{\catplusf}$, say 
+$[α]$. Proceeding as we did to define $\catplusf$:
+
+\Begin{definition}
+
+Let $\catplusw$ be the result of formally 
+adding to $\catplusf$ objects representing these diagrams. So we have embeddings
+$\cat ↪ \catplusf ↪ \catplusw$ of categories.
+
+\End{definition}
 
 =<
 

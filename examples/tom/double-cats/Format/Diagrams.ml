@@ -936,7 +936,13 @@ module Diagram = struct
 	       | `Main			(* The anchor used to draw edges between gentities by default; 
 					   Will be `Center by default. *)
 	       | `Base
+	       | `BaseWest
+	       | `BaseEast
+	       | `Line
+	       | `LineWest
+	       | `LineEast
 	       | `Vec of Vector.t
+	       | `Pdf		       (* The origin when typesetting the contents *)
 	       | `Curvilinear of float	(* Between 0. and 1. (for paths) *)
 	       | `Temporal of float	(* Between 0. and 1. (for paths) *)
 	       ]
@@ -1144,7 +1150,7 @@ module Diagram = struct
 
     end
 
-    let rec anchor env style outer_curve mid_curve bb = 	
+    let rec anchor env style outer_curve mid_curve bb pdf_anchor = 	
       let (p1,p2,p3,p4) = BB.outer_points style bb in
       let text_depth = Style.text_depth style in 
       let inner_sep = Style.inner_sep style in 
@@ -1160,8 +1166,13 @@ module Diagram = struct
 	| `Rectangle -> begin function
 	    | `Vec v -> Vector.(+) (Point.middle p1 p3) v
 	    | `Center -> Point.middle p1 p3
-	    | `Main -> anchor env style outer_curve mid_curve bb main
+	    | `Main -> anchor env style outer_curve mid_curve bb pdf_anchor main
 	    | `Base -> base
+	    | `BaseEast -> (fst (Point.middle p2 p3),snd base)
+	    | `BaseWest -> (fst (Point.middle p1 p4),snd base)
+	    | `Line -> (fst base, (snd base -. ex))
+	    | `LineEast -> (fst (Point.middle p2 p3),(snd (Vector.(+) (Point.middle p1 p3) pdf_anchor)))
+	    | `LineWest -> (fst (Point.middle p1 p4), snd (Vector.(+) (Point.middle p1 p3) pdf_anchor))
 	    | `East -> Point.middle p2 p3  
 	    | `West -> Point.middle p1 p4  
 	    | `North -> Point.middle p3 p4
@@ -1170,6 +1181,7 @@ module Diagram = struct
 	    | `SouthEast -> p2
 	    | `NorthEast -> p3
 	    | `NorthWest -> p4
+	    | `Pdf -> anchor env style outer_curve mid_curve bb pdf_anchor (`Vec pdf_anchor)
 	    | _ -> Printf.fprintf stderr "Anchor undefined for a rectangle. Returning the center instead.\n" ; 
 	      Point.middle p1 p3
 	end
@@ -1182,7 +1194,7 @@ module Diagram = struct
 		       | `Vec v -> Vector.(+) center v
 		       | `Center -> center
 		       | `Base -> base
-		       | `Main -> anchor env style outer_curve mid_curve bb main
+		       | `Main -> anchor env style outer_curve mid_curve bb pdf_anchor main
 		       | `East -> anchor_of_angle 0.
 		       | `West -> anchor_of_angle 180.
 		       | `North -> anchor_of_angle 90.
@@ -1192,6 +1204,7 @@ module Diagram = struct
 		       | `NorthEast -> p3
 		       | `NorthWest -> p4
 		       | `Angle angle -> anchor_of_angle angle
+		       | `Pdf -> anchor env style outer_curve mid_curve bb pdf_anchor (`Vec pdf_anchor)
 		       | _ -> Printf.fprintf stderr "Anchor undefined for a circle. Returning the center instead.\n" ; 
 			 center
 		     end 
@@ -1435,25 +1448,27 @@ module Diagram = struct
     (* Creates a node from boxified contents. Recenters if south west of contents not at (0,0). *)
     let node_boxified env style contents =
       let parameters = Style.parameters style in
-    (* Compute the gentity a first time, centered *)
-      let (x0,y0,_,y1) as bb = match contents with
+      (* Compute the gentity a first time, centered *)
+      let (x0,y0,x1,y1) as bb = match contents with
 	| [] -> (0.,0.,0.,0.)
 	| _ -> OutputCommon.bounding_box contents 
       in
       let text_depth = -. y0 in
       let text_height = y1 in
       let style = style @ [ `TextDepth text_depth ; `TextHeight text_height ] in
+      (* Keep the coordinate of (0,0) relative to the center *)
+      let pdf_anchor = Vector.minus (Point.middle (x0,y0) (x1,y1)) in 
       let (x0',y0',_,_) as bb_boot = BB.center bb in
       let xt,yt = Vector.of_points (x0,y0) (x0',y0') in
       let contents = List.map (OutputCommon.translate xt yt) contents in (* Center the contents *)
       let outer_curve = curve Outer style bb_boot in (* The curve for calculating anchors *)
       let mid_curve = curve Mid style bb_boot in     (* The drawn curve *)
-      let anchor = anchor env style outer_curve mid_curve bb_boot in
+      let anchor = anchor env style outer_curve mid_curve bb_boot pdf_anchor in
       let centered_res = { curve = mid_curve ; 
 			   anchor = anchor ; 
 			   contents = contents @ (Curve.draw ~parameters:parameters mid_curve) } 
       in
-    (* Compute the translation *)
+      (* Compute the translation *)
       let v = translation style centered_res in
       (translate v centered_res), v 		(* Return the translated gentity, and the translation *)
       
