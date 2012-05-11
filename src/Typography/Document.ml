@@ -8,7 +8,7 @@ open Box
 open Line
 open CamomileLibrary
 
-type fontAlternative = Regular | Bold | Caps | Demi
+type fontAlternative = Regular | Bold | Caps | Demi | Monospaced
 
 (* font, substitutions, positioning *)
 
@@ -455,8 +455,8 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                                       let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
                                         env.lead*.(ceil (min_height/.env.lead))
                                );
-        min_height_before=env.lead;
-        min_height_after=env.lead;
+        min_height_before=0.;
+        min_height_after=0.;
       }
 
 

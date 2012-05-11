@@ -71,6 +71,12 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
          simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
       ]
 
+    let inconsolata=[
+      Monospaced,
+      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Inconsolata.otf")),
+       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Inconsolata.otf")));
+    ]
+
     (* let replace_utf8 x y z= *)
     (*   Str.global_replace x *)
     (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
@@ -103,7 +109,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Typography.Fonts.select_features f [ Opentype.standardLigatures ] in
         {
-          fontFamily=alegreya;
+          fontFamily=alegreya @ inconsolata;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;
@@ -231,7 +237,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                  let params a b c d e f g=
                    let p=(parameters a b c d e f g) in
                    let lead=env.normalLead *. (phi-.1.) in
-                     { p with min_height_after=lead }
+                     { p with min_height_after=0. }
                  in
                    newPar str ~environment:(fun x->x) normal params
                      (T (string_of_int !page_footnotes)
@@ -440,7 +446,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                             par_parameters=(fun a b c d e f g->
                                               { (parameters a b c d e f g) with
                                                   min_height_before=
-                                                  if g.lineStart=0 then 2.*.a.lead else a.lead });
+                                                  if g.lineStart=0 then a.lead else 0. });
                             par_contents=
                   Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
                     CFix (fun env->
@@ -481,7 +487,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                             par_parameters=(fun a b c d e f g->
                                               { (p.par_parameters a b c d e f g) with
                                                   min_height_after=
-                                                  if g.lineEnd>=Array.length b.(g.paragraph) then 2.*.a.lead else a.lead });
+                                                  if g.lineEnd>=Array.length b.(g.paragraph) then a.lead else 0. });
                         }
           | Node n->
               let k0,a0=IntMap.max_binding n.children in

@@ -326,12 +326,10 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                         )
                       in
                         minimal_tried_height:=min !minimal_tried_height height';
-                        if height>=height'
+                        if (page>node.page || height>=height' +. max !r_params.min_height_before lastParameters.min_height_after)
                           && (page >= node.page +
                                 max !r_params.min_page_before lastParameters.min_page_after)
-                          && (page > node.page ||
-                                height>=node.height +.
-                                max !r_params.min_height_before lastParameters.min_height_after)
+
                         then (
                           let allow_orphan=
                             page=node.page || nextNode.paragraph_height>1

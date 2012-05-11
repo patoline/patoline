@@ -451,7 +451,7 @@ and output_list from where no_indent lvl docs =
 	  next_no_indent := no_indent
 	| Verbatim(lang, lines) ->
 	  Printf.fprintf where "module VERB = struct\n\n";
-	  Printf.fprintf where "let verbEnv x = { (envFamily lmmono x)
+	  Printf.fprintf where "let verbEnv x = { (envAlternative [] Monospaced x)
                                                      with normalMeasure=infinity; par_indent = [] }\n\n";
 	  let lang = match lang with
 	      None -> "T"
@@ -459,7 +459,7 @@ and output_list from where no_indent lvl docs =
 	  in
 	  List.iter (fun l ->
 	    Printf.fprintf where
-	      "let _ = newPar D.structure ~environment:verbEnv C.normal ragged_left (lang_%s \"%s\");;\n"
+	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (lang_%s \"%s\");;\n"
 	      lang l)
 	    lines;
 	  Printf.fprintf where "end\n\n";
