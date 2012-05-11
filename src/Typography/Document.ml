@@ -448,12 +448,17 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                                     let min_height=node.height+.params.min_height_after in
                                       env.lead*.(ceil (min_height/.env.lead))
                                   else
-                                    if node.page=nextNode.page then
+                                    if node.page=nextNode.page then (
                                       let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
-                                        env.lead*.(ceil (min_height/.env.lead))
-                                    else
+                                      let h0=min_height/.env.lead in
+                                      let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
+                                        env.lead*.ceil h0
+                                      in
+                                        h
+                                    ) else (
                                       let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
                                         env.lead*.(ceil (min_height/.env.lead))
+                                    )
                                );
         min_height_before=0.;
         min_height_after=0.;

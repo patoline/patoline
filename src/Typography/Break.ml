@@ -379,9 +379,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                     let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
                       List.iter make_next_node (compl);
                       if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1 then (
-                        let next_h=(lastParameters).next_acceptable_height node lastParameters r_nextNode !r_params
-                          !minimal_tried_height in
-                          fix page (if next_h=node.height then node.height+.1. else next_h)
+                        let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
+                          fix page (if next_h=height then height+.1. else next_h)
                       )
                   )
                 in
