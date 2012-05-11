@@ -32,6 +32,9 @@ and 'a hyphenBox = {
 paramètre offset correspond à la "profondeur" en TeX *)
 val drawing : ?offset:float -> OutputCommon.contents list -> drawingBox
 
+(* La même, en alignant sur l'origine du contenu plutôt que sur le sud ouest de la bounding box *)
+val drawing_inline : ?offset:float -> OutputCommon.contents list -> drawingBox
+
 (** Colle un dessin à une position dans un autre dessin, en ajustant
 les tailles des boîtes si besoin *)
 val drawing_blit : drawingBox -> float -> float -> drawingBox -> drawingBox

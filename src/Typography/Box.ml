@@ -39,6 +39,18 @@ let drawing ?offset:(offset=0.) cont=
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
+let drawing_inline ?offset:(offset=0.) cont=
+  let (a,b,c,d)=OutputCommon.bounding_box cont in
+    {
+      drawing_min_width=c-.a;
+      drawing_nominal_width=c-.a;
+      drawing_max_width=c-.a;
+      drawing_y0=offset+.b;
+      drawing_y1=offset+.d;
+      drawing_badness=(fun _->0.);
+      drawing_contents=(fun _->cont)
+    }
+
 let drawing_blit a x0 y0 b=
   let w0=max a.drawing_min_width (x0+.b.drawing_min_width) in
   let w1=max a.drawing_max_width (x0+.b.drawing_max_width) in
