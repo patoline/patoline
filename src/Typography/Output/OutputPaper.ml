@@ -28,6 +28,7 @@ module Output=functor(M:Driver)->struct
       let page= { pageFormat=a4 ; pageContents=[] } in
       let footnotes=ref [] in
       let footnote_y=ref (-.infinity) in
+      let links=ref None in
         List.iter (
           fun (param,line)->
             let y=270.0-.line.height in
@@ -46,42 +47,75 @@ module Output=functor(M:Driver)->struct
                 );
 
                 let comp=compression paragraphs param line in
-                let rec draw_box x y=function
-                    Kerning kbox ->(
-                      let fact=(box_size kbox.kern_contents/.1000.) in
-                      let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
-                        w+.kbox.advance_width*.fact
-                    )
-                  | Hyphen h->(
-                      (Array.fold_left (fun x' box->
-                                          let w=draw_box (x+.x') y box in
-                                            x'+.w) 0. h.hyphen_normal)
-                    )
-                  | GlyphBox a->(
-                      page.pageContents<-
-                        (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                      :: page.pageContents;
-                      a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
-                    )
-                  | Glue g
-                  | Drawing g ->(
-                      let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                        page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
-                        (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
-                        w
-                    )
-                  | User (Footnote (_,g))->(
-                      footnotes:= g::(!footnotes);
-                      footnote_y:=max !footnote_y (270.-.param.page_height);
-                      0.
-                    )
-                  | b->box_width comp b
+                let rec draw_box x y box=
+                  (match !links with
+                       None->()
+                     | Some h->(
+                         h.link_y0<-min h.link_y0 (y+.lower_y box 0.);
+                         h.link_y1<-max h.link_y1 (y+.upper_y box 0.)
+                       ));
+                  match box with
+                      Kerning kbox ->(
+                        let fact=(box_size kbox.kern_contents/.1000.) in
+                        let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
+                          w+.kbox.advance_width*.fact
+                      )
+                    | Hyphen h->(
+                        (Array.fold_left (fun x' box->
+                                            let w=draw_box (x+.x') y box in
+                                              x'+.w) 0. h.hyphen_normal)
+                      )
+                    | GlyphBox a->(
+                        page.pageContents<-
+                          (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
+                        :: page.pageContents;
+                        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+                      )
+                    | Glue g
+                    | Drawing g ->(
+                        let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
+                          page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+                          (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
+                          w
+                      )
+                    | User (BeginURILink l)->(
+                        links:=Some { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                      dest_page=0;dest_x=0.;dest_y=0. };
+                        0.
+                      )
+                    | User EndLink->(
+                        (match !links with
+                             None->()
+                           | Some h->(
+                               h.link_x1<-x;
+                               page.pageContents<-Link h::page.pageContents
+                             )
+                        );
+                        links:=None;
+                        0.
+                      )
+                    | User (Footnote (_,g))->(
+                        footnotes:= g::(!footnotes);
+                        footnote_y:=max !footnote_y (270.-.param.page_height);
+                        0.
+                      )
+                    | b->box_width comp b
                 in
-                  ignore (
-                    fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line
-                  )
+                  links:=(match !links with
+                              None->None
+                            | Some h->
+                                page.pageContents<-Link h::page.pageContents;
+                                Some { h with link_x0=param.left_margin;link_x1=param.left_margin;
+                                         link_y0=y;link_y1=y });
+                  let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                    match !links with
+                        None->()
+                      | Some h->h.link_x1<-x1
               )
         ) p;
+        (match !links with
+             None->()
+           | Some h->page.pageContents<-Link h::page.pageContents; links:=None);
         ignore (
           List.fold_left (
             fun y footnote->

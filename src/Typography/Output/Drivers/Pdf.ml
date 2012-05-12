@@ -399,11 +399,19 @@ let output ?(structure:structure={name="";displayname=[];
 
             if !pageLinks <> [] then (
               fprintf outChan "/Annots [ ";
-              List.iter (fun l->fprintf outChan
-                           "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
-                           (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
-                           (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(l.dest_page)
-                           (pt_of_mm l.dest_x) (pt_of_mm l.dest_y)
+              List.iter (fun l->
+                             if l.uri="" then
+                               fprintf outChan
+                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+                                 (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+                                 (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(l.dest_page)
+                                 (pt_of_mm l.dest_x) (pt_of_mm l.dest_y)
+                             else
+                               fprintf outChan
+                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /A <</Type /Action /S /URI /URI (%s) >> /Border [0 0 0]  >> "
+                                 (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+                                 (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
+                                 l.uri
                         ) !pageLinks;
               fprintf outChan "]";
             );

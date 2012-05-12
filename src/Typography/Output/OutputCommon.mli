@@ -23,10 +23,11 @@ type glyph = {
   glyph : Fonts.glyph;
 }
 type link = {
-  link_x0 : float;
-  link_y0 : float;
-  link_x1 : float;
-  link_y1 : float;
+  mutable link_x0 : float;
+  mutable link_y0 : float;
+  mutable link_x1 : float;
+  mutable link_y1 : float;
+  uri:string;
   dest_page : int;
   dest_x : float;
   dest_y : float;

@@ -44,6 +44,9 @@ type user=
   | Pageref of string
   | Structure of int list
   | Footnote of int*drawingBox
+  | BeginURILink of string
+  | BeginLink of string
+  | EndLink
   | AlignmentMark
 (** Tags des nœuds de l'arbre *)
 type tag=

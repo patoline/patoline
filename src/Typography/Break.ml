@@ -484,7 +484,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
         let log,ln=makeParagraphs [] node0 [] in
           print_graph "graph_opt" paragraphs demerits ln;
           makePages ln;
-          (log, pages, figs0,user0)
+          (log, Array.map (List.rev) pages, figs0,user0)
       with
           Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UMap.empty) else (
             Printf.fprintf stderr "%s" (Language.message (Language.No_solution ""));
