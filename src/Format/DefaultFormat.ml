@@ -12,74 +12,71 @@ let _=Random.self_init ()
 
 module Euler = Euler
 
+let alegreya=
+  [ Regular,
+    (Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+             ]),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "Alegreya/Alegreya-Italic.otf")),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+             ]),
+          (fun x->x)));
+    Bold,
+    (Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+             ]),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+             ]),
+          (fun x->x)));
+    Caps,
+    (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Regular.otf")),
+     simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
+  ]
+
+let notCourierSans=[
+  Regular,
+  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")),
+   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")));
+  Bold,
+  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")),
+   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")))
+]
+
 
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
-
-
-
-    let alegreya=
-      [ Regular,
-        (Lazy.lazy_from_fun
-           (fun ()->
-              (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
-              (fun x->x),
-              (fun x->List.fold_left (fun a f->f a) x
-                 [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-                  make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-                  make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-                  make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-                 ]),
-              (fun x->x)),
-         Lazy.lazy_from_fun
-           (fun ()->
-              (Fonts.loadFont (findFont "Alegreya/Alegreya-Italic.otf")),
-              (fun x->x),
-              (fun x->List.fold_left (fun a f->f a) x
-                 [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-                  make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-                  make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-                  make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-                 ]),
-              (fun x->x)));
-        Bold,
-        (Lazy.lazy_from_fun
-           (fun ()->
-              (Fonts.loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
-              (fun x->x),
-              (fun x->List.fold_left (fun a f->f a) x
-                 [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-                  make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-                  make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-                  make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-                 ]),
-              (fun x->x)),
-         Lazy.lazy_from_fun
-           (fun ()->
-              (Fonts.loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")),
-              (fun x->x),
-              (fun x->List.fold_left (fun a f->f a) x
-                 [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-                  make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-                  make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-                  make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-                 ]),
-              (fun x->x)));
-        Caps,
-        (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Regular.otf")),
-         simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
-      ]
-
-    let notCourierSans=[
-      Regular,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")));
-      Bold,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")))
-    ]
-
     (* let replace_utf8 x y z= *)
     (*   Str.global_replace x *)
     (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
