@@ -71,10 +71,13 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
          simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
       ]
 
-    let inconsolata=[
-      Monospaced,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Inconsolata.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Inconsolata.otf")));
+    let notCourierSans=[
+      Regular,
+      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")),
+       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")));
+      Bold,
+      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")),
+       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")))
     ]
 
     (* let replace_utf8 x y z= *)
@@ -109,7 +112,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Typography.Fonts.select_features f [ Opentype.standardLigatures ] in
         {
-          fontFamily=alegreya @ inconsolata;
+          fontFamily=alegreya;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;
@@ -236,7 +239,6 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                  let str=ref (Node empty,[]) in
                  let params a b c d e f g=
                    let p=(parameters a b c d e f g) in
-                   let lead=env.normalLead *. (phi-.1.) in
                      { p with min_height_after=0. }
                  in
                    newPar str ~environment:(fun x->x) normal params

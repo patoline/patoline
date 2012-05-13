@@ -570,7 +570,7 @@ let output ?(structure:structure={name="";displayname=[];
                          CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
                                                          (IntMap.bindings x.revFontGlyphs))))
                        )
-                     | _->raise Fonts.Not_supported
+                     (* | _->raise Fonts.Not_supported *)
                    in
 #else
                    let program=match x.font with
@@ -580,7 +580,7 @@ let output ?(structure:structure={name="";displayname=[];
                            seek_in y.CFF.file y.CFF.offset;
                            really_input y.CFF.file buf 0 y.CFF.size;
                            buf)
-                     | _->raise Fonts.Not_supported
+                     (* | _->raise Fonts.Not_supported *)
                    in
 #endif
                    let filt, data=stream program in

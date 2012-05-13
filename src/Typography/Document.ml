@@ -8,7 +8,7 @@ open Box
 open Line
 open CamomileLibrary
 
-type fontAlternative = Regular | Bold | Caps | Demi | Monospaced
+type fontAlternative = Regular | Bold | Caps | Demi
 
 (* font, substitutions, positioning *)
 
