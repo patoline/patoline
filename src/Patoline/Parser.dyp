@@ -25,7 +25,8 @@ let findPath f path=
   in
     findPath f path
 let findGrammar f=findPath f ("." :: (!grammarsdir))
-
+let deps_only=ref None
+let used_grammars=ref []
 
 module Str = struct
   type t = string
@@ -206,7 +207,7 @@ let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9']*
 
 let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 
-let filename = ['a'-'z''A'-'Z''0'-'9' '.' '-']*
+let filename = ['a'-'z''A'-'Z''0'-'9''.''-']*
 
 let sword = '(' | ')' | '[' | ']' | '"' | "=" | '-'
 
@@ -612,14 +613,24 @@ text:
    @{ p@t, [ Keep_grammar; Local_data dyp.local_data ]}
 
 grammar_aux:
-    { Some "patolineDefault" }
+    { Some "defaultGrammar" }
   | "\\Use_Grammar{" filename<name> "}"
     { Printf.fprintf stderr "Some\n"; Some name }
   | "\\No_Grammar"
     { Printf.fprintf stderr "None\n"; None }
 
 grammar: grammar_aux<g>
-    @{ let action = match g with
+    @{(match g, !deps_only with
+           Some filename,Some f->(
+             let i=open_out_gen [Open_append] 0644 f in
+               Printf.fprintf i "%s\n" (filename^gram_ext);
+               close_out i;
+           )
+         | _,Some _->()
+         | _->()
+      );
+
+      let action = match g with
            (* Patch temporaire : on ne charge pas de grammaire s'il n'y a pas de chemin,
               pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
         Some filename when !Config.grammarsdir <> []-> (
@@ -627,7 +638,8 @@ grammar: grammar_aux<g>
 	    let grammar_name = findGrammar (filename ^ gram_ext) in
 	    let ic = open_in grammar_name in
 	    let local_data, grammar = input_value ic in
-	    close_in ic;
+	      close_in ic;
+              used_grammars:=filename::(!used_grammars);
 	    Printf.fprintf stderr "Grammar: %s.\n" grammar_name ;
 	    [ Local_data local_data; Parser grammar ]
           with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []

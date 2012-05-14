@@ -7,6 +7,7 @@ let format=ref "DefaultFormat"
 let dirs = ref []
 let package_list = ref ["camomile"; "dyp"; "Typography"; "bibi"]
 let no_grammar=ref false
+let deps_only=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
             ("--extra-grammars-dir",Arg.String (fun x->Config.grammarsdir:=x::(!Config.grammarsdir)), "Adds directories to the grammar search path");
             ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Empty grammar search path");
@@ -18,6 +19,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 		format := format_file
 	      ), "Change the default document format");
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
+            ("--deps", Arg.Unit(fun ()->compile:=false;run:=false;deps_only:=true), "Outputs dependencies in file <file>.dep");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
             ("--no",Arg.String (fun s-> package_list:= List.filter (fun x -> x<>s) !package_list), "Don't use package given as argument when compiling");
             ("-I",Arg.String (fun x-> dirs := (" -I "^x^" ") :: !dirs), "Add directory to the compilation command line");
@@ -30,7 +32,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 let str_dirs () = (String.concat " " !dirs)
 
 let pdfname_of f = (Filename.chop_extension f)^".pdf"
-let mlname_of f = (Filename.chop_extension f)^".tml"
+let mlname_of f = (Filename.chop_extension f)^".ml"
 let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 
@@ -40,6 +42,8 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
       Printf.fprintf stderr "Generating OCaml code ";
+      if !deps_only then Parser.deps_only:=Some (f^".deps");
+      let o=open_out (f^".deps") in close_out o;
       if Filename.check_suffix f "txt" then (
 	Printf.fprintf stderr "from simple text file...\n ";
 	SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (pdfname_of f);   

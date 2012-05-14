@@ -1,10 +1,12 @@
 \No_Grammar
+(*
 ======================================================================
 Symboles de TeX'
 ======================================================================
+*)
 \Verbose_Changes
 
-== Delimiters ==
+(* == Delimiters == *)
 
 \Add_left{ ( }{ ( }
 \Add_right{ ) }{ ) }
@@ -21,7 +23,7 @@ Symboles de TeX'
 \Add_left{\lfloor ⌊}{⌊}
 \Add_right{\rfloor ⌋}{⌋}
 
-== Relation symbols ==
+(* == Relation symbols == *)
 
 \Add_relation{\eq =}{=}
 \Add_relation{\st |}{|}
@@ -45,7 +47,7 @@ Symboles de TeX'
 \Add_relation{\geq >= ≥}{≥}
 \Add_relation{..}{..}
 
-== Addition like symbols ==
+(* == Addition like symbols == *)
 
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
@@ -55,7 +57,7 @@ Symboles de TeX'
 \Add_addition_like{\union ⋃}{⋃}
 \Add_addition_like{\inter ⋂}{⋂}
 
-== Product like symbols ==
+(* == Product like symbols == *)
 
 \Add_product_like{\dot .}{.}
 \Add_product_like{\times ×}{×}
@@ -66,12 +68,12 @@ Symboles de TeX'
 \Add_product_like{\bullet ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
 
-== Connector symbols ==
+(* == Connector symbols == *)
 
 \Add_connector{\land && ∧}{∧}
 \Add_connector{\lor || ∨}{∨}
 
-== Arrow symbols ==
+(* == Arrow symbols == *)
 
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
 \Add_arrow{-> \imply \rightarrow →}{→}
@@ -87,25 +89,25 @@ Symboles de TeX'
 \Add_arrow{\jni ↩}{↩}
 
 
-== Punctuation symbols ==
+(* == Punctuation symbols == *)
 
 \Add_punctuation{,}{,}
 \Add_punctuation{;}{;}
 
-== Prefix symbols ==
+(* == Prefix symbols == *)
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
 \Add_prefix{\forall ∀}{∀}
 \Add_prefix{\exists ∃}{∃}
 
-== Postfix symbols ==
+(* == Postfix symbols == *)
 
 \Add_postfix{!}{!}
 \Add_postfix{*}{*}
 \Add_postfix{'}{'}
 
-== Lowercase Greek letters ==
+(* == Lowercase Greek letters == *)
 
 \Add_symbol{\alpha α}{α}
 \Add_symbol{\beta β}{β}
@@ -135,7 +137,7 @@ Symboles de TeX'
 \Add_symbol{\psi ψ}{ψ}
 \Add_symbol{\omega ω}{ω}
 
-== Uppercase Greek letters ==
+(* == Uppercase Greek letters == *)
 
 \Add_symbol{\Alpha Α}{Α}
 \Add_symbol{\Beta Β}{Β}
@@ -166,7 +168,7 @@ Symboles de TeX'
 \Add_symbol{\}{}
 *)
 
-== Other symbols ==
+(* == Other symbols == *)
 
 \Add_symbol{∑}{∑}
 \Add_symbol{\sum}(sum)
@@ -179,4 +181,4 @@ Symboles de TeX'
 \Add_symbol{\infty ∞}{∞}
 
 
-\Save_Grammar{patolineDefault}
+\Save_Grammar{defaultGrammar}

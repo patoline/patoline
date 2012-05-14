@@ -103,7 +103,7 @@ let _=
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
-              ) ("patolineDefault.tgx"::(if !opt_only then [] else ["patolineDefault.tgo"])@Array.to_list (Sys.readdir grammars_src_dir));
+              ) ("defaultGrammar.tgx"::(if !opt_only then [] else ["defaultGrammar.tgo"]));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
@@ -126,7 +126,7 @@ let _=
       Printf.fprintf tags
       "<Format/*>: pp(cpp -w),pkg_camomile,pkg_dyp%s
 <proof/proof.{byte,native}>: pkg_camomile%s
-\"Typography\":include"
+\"Typography\" or \"Format\":include"
         (if !camlzip <> "" then ",pkg_"^(!camlzip) else "")
         (if !camlzip <> "" then ",pkg_"^(!camlzip) else "");
       close_out tags;
@@ -143,7 +143,8 @@ let _=
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
         "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
-        (if not !opt_only then "src/Typography/_build/Typography.cma  src/_build/Format/DefaultFormat.cma " else "")
+        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi "^
+        (if not !opt_only then "src/Typography/_build/DefaultGrammar.cmo " else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);

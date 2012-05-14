@@ -3,8 +3,8 @@ CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip -linkpkg
 
 all:native byte
 
-native:Main.native patolineDefault.tgx proof.native
-byte:Main.byte patolineDefault.tgo proof.byte
+native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
+byte:Main.byte DefaultGrammar.tgo proof.byte DefaultGrammar.cmo
 
 Main.native:Format/DefaultFormat.cmxa Patoline/Parser.ml
 	cd Patoline; $(OCAMLBUILD) Main.native
@@ -32,15 +32,21 @@ Typography/Typography.cma:
 	make -C Typography Typography.cma
 
 
+DefaultGrammar.ml:DefaultGrammar.tgx
 
-patolineDefault.tgo: Patoline/Main.byte DefaultGrammar.txp
+DefaultGrammar.tgo: Main.byte DefaultGrammar.txp
 	rm -f patolineDefault.tgo
-	Patoline/Main.byte --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+	Patoline/Main.byte --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-patolineDefault.tgx: Patoline/Main.native DefaultGrammar.txp
+DefaultGrammar.tgx: Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
-	Patoline/Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+	Patoline/Main.native --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
+
+%.cmx:%.ml
+	$(OCAMLBUILD) $@
+%.cmo:%.ml
+	$(OCAMLBUILD) $@
 
 %.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa patolineDefault.tgx %.txp
 	cp $*.txp patolineDefault.tgx _build
