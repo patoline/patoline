@@ -160,11 +160,11 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
 
-      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%S]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%S]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%S]\n"
-        (String.concat ";" ((!fonts_dirs)))
+      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
+        (String.concat ";" (List.map (Printf.sprintf "%S") !fonts_dirs))
         !bin_dir
-        (String.concat ";" ((!grammars_dirs)))
-        (String.concat ";" ((!hyphen_dirs)))
+        (String.concat ";" (List.map (Printf.sprintf "%S") !grammars_dirs))
+        (String.concat ";" (List.map (Printf.sprintf "%S") !hyphen_dirs))
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;

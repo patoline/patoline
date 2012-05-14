@@ -108,7 +108,7 @@ let hyphenate tree a0=
                     make_hyphens i (j+1)
 
               in
-                make_hyphens 1 4
+                make_hyphens 1 3
         )
 let empty=Node ([||], C.empty)
 
