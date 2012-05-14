@@ -125,86 +125,94 @@ let split_ind indices =
   { no_ind with up_right = indices.up_right; down_right = indices.down_right; }
 
 let rec print_math_buf op buf m = 
-  let rec fn indices buf m =
+  let rec print_math_expr indices buf m =
     match m with
 	Var name | Num name ->
 	  let elt = "Maths.glyphs \""^name^"\"" in
-	  Printf.bprintf buf "[Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
+	  Printf.bprintf buf "[Maths.Ordinary %a ]" (print_math_deco (CamlSym elt)) indices
       | Symbol name ->
 	(* let elt = "Maths.symbol \""^name^"\"" in *)
-	Printf.bprintf buf "[Maths.Ordinary %a ]" (hn name) indices
+	Printf.bprintf buf "[Maths.Ordinary %a ]" (print_math_deco name) indices
 
       | Fun name ->
 	let elt = "fun env -> Maths.glyphs \""^name^"\" (Maths.change_fonts env env.font)" in
-	Printf.bprintf buf "[ Maths.Ordinary %a ]" (hn (CamlSym elt)) indices
+	Printf.bprintf buf "[ Maths.Ordinary %a ]" (print_math_deco (CamlSym elt)) indices
       | Indices(ind', m) ->
-	fn ind' buf m
+	print_math_expr ind' buf m
       | Binary(_, a, _,SimpleSym "over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
-	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line=(fun env style->{OutputCommon.default with lineWidth = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness }) }]" (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line=(fun env style->{OutputCommon.default with lineWidth = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness }) }]" (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr, a, _,SimpleSym "",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
-	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (fn indices) a (fn indices) b
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr,a,nsl,op,nsr,b) ->
 	if (indices <> no_ind) then failwith "Indices on binary.";
 	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (" pr nsl;
-        sn buf op;
-	Printf.bprintf buf "), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" nsr (fn indices) a (fn indices) b
+        print_math_symbol buf op;
+	Printf.bprintf buf "), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" nsr (print_math_expr indices) a (print_math_expr indices) b
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
-	Printf.bprintf buf "(%a)@(%a)" (fn ind_left) f (fn ind_right) a 
+	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a 
       | MathMacro (macro, args) ->
-	Printf.bprintf buf "(%s " macro ;
-	List.iter
-	  (fun arg ->
-	    Printf.bprintf buf "(%a) " (fn indices) arg)
-	  args ;
-	Printf.bprintf buf ")"
+	wrap_deco_math_default buf indices
+	  (fun buf ->
+	  Printf.bprintf buf "(%s " macro ;
+	  List.iter
+	    (fun arg ->
+	      Printf.bprintf buf "(%a) " (print_math_expr no_ind) arg)
+	    args ;
+	  Printf.bprintf buf ")"
+	)
       | Delim(op,a,cl) ->
-	  dn indices op cl buf a
+	wrap_deco_math_default buf indices
+	  (fun buf ->
+	    Printf.bprintf buf "[Maths.Decoration (Maths.open_close (%a) (%a), %a)]"
+	      print_math_symbol op print_math_symbol cl (print_math_expr no_ind) a)
       | Prefix(pr, op, nsp, b) ->
 	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (hn op) ind_left (fn ind_right) b
+	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (print_math_deco op) ind_left (print_math_expr ind_right) b
       | Postfix(pr, a, nsp, op) ->
 	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (hn op) ind_right nsp (fn ind_left) a
+	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (print_math_deco op) ind_right nsp (print_math_expr ind_left) a
       | MScope a->
 	  Printf.bprintf buf "[Maths.Scope (";
-          List.iter (fn indices buf) a;
+          List.iter (print_math_expr indices buf) a;
           Printf.bprintf buf ")]";
-  and gn buf name ind =
-    match ind with 
-	None -> assert false
-      | Some m ->
-	Printf.bprintf buf "%s = (%a);" name (fn no_ind) m
-  and hn elt buf ind =
+  and print_math_deco elt buf ind =
+    let gn name ind =
+      match ind with 
+	  None -> assert false
+	| Some m ->
+	  Printf.bprintf buf "%s = (%a);" name (print_math_expr no_ind) m
+    in
     if ind = no_ind then (
-      Printf.bprintf buf "(Maths.noad (%a))" sn elt
+      Printf.bprintf buf "(Maths.noad (%a))" print_math_symbol elt
     ) else begin
-      Printf.bprintf buf "{ (Maths.noad (%a)) with " sn elt;
-      if ind.up_right <> None then gn buf "Maths.superscript_right" ind.up_right;
-      if ind.up_left <> None then gn buf "Maths.superscript_left" ind.up_left;
-      if ind.down_right <> None then gn buf "Maths.subscript_right" ind.down_right;
-      if ind.down_left <> None then gn buf "Maths.subscript_left" ind.down_left;
+      Printf.bprintf buf "{ (Maths.noad (%a)) with " print_math_symbol elt;
+      if ind.up_right <> None then gn "Maths.superscript_right" ind.up_right;
+      if ind.up_left <> None then gn "Maths.superscript_left" ind.up_left;
+      if ind.down_right <> None then gn "Maths.subscript_right" ind.down_right;
+      if ind.down_left <> None then gn "Maths.subscript_left" ind.down_left;
       Printf.bprintf buf "}"
     end
-  and dn ind op cl buf m =
-    if ind = no_ind then (
-      Printf.bprintf buf "[Maths.Decoration (Maths.open_close (%a) (%a), %a)]"
-      sn op sn cl (fn no_ind) m
-    ) else (
+
+  and wrap_deco_math_default buf deco print_my_math =
+    if deco = no_ind then
+      print_my_math buf
+    else (
       Buffer.add_string buf "[Maths.Ordinary ";
       let buf'=Buffer.create 100 in
         Buffer.add_string buf' "fun envs st->Maths.draw [envs] ";
-        dn no_ind op cl buf' m;
-        hn (CamlSym (Buffer.contents buf')) buf ind;
+        print_my_math buf';
+        print_math_deco (CamlSym (Buffer.contents buf')) buf deco;
         Buffer.add_string buf "]"
     )
-  and sn buf sym=
+
+  and print_math_symbol buf sym=
     match sym with
         SimpleSym s->Printf.bprintf buf "Maths.glyphs \"%s\"" s
       | CamlSym s->Printf.bprintf buf "(%s)" s
-  in fn no_ind buf m
+  in print_math_expr no_ind buf m
 
 and print_math op ch m = begin
   let buf = Buffer.create 80 in
