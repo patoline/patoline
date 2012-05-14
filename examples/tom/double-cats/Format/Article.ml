@@ -52,7 +52,7 @@ module Format=functor (D:DocumentStructure)->struct
   type user=Document.user
   module Default=DefaultFormat.Format(D)
 
-  let defaultEnv=Default.defaultEnv
+  let defaultEnv={ Default.defaultEnv with mathsEnvironment = Maths.default }
   let title=Default.title
   let author=Default.author
   let institute=Default.institute

@@ -4,7 +4,7 @@
 (* test *)
 
 ====================================================
-Generating playgrounds
+A format for playgrounds
 
 Tom Hirschowitz
 
@@ -71,13 +71,13 @@ let style s a = [Scoped ((fun env -> { env with mathStyle = s }), a)]
 let scriptstyle x = style Mathematical.Script x
 let displaystyle x = style Mathematical.Display x
 
-let name x = <$⌜\x⌝$>
+let name x = <$\x$>
 let cospan x = <$Cospan(\x)$>
 let rules c = [Maths.Ordinary { (Maths.noad (Maths.glyphs "R")) with Maths.subscript_right = c } ]
 let cat = <$\mathcal{C}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let catD = <$\mathcal{D}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
-let catDh : math_macro = <$\mathcal{D}_h$>
-let catDH : math_macro = <$\mathcal{D}_H$> 		(* <$\catD_H$> marche pas *)
+let catDh : math_macro = <$\catD_h$>
+let catDH : math_macro = <$\catD_H$> 		(* <$\catD_H$> marche pas *)
 let catplusb : math_macro = <$\mathcal{C}^{b}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let catplusf : math_macro = <$\mathcal{C}^{f}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
 let catplusw : math_macro = <$\mathcal{C}^{w}$> (* [ Maths.Ordinary (Maths.noad (Maths.glyphs "C")) ] *)
