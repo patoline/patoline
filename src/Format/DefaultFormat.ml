@@ -261,6 +261,11 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
     let env_stack=ref []
 
+    let displayedFormula a b c d e f g=
+      { (center a b c d e f g) with
+          min_height_before=a.lead/.2.;
+          min_height_after=a.lead/.2. }
+
     module Env_center = struct
 
       let do_begin_env ()=

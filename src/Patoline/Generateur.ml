@@ -452,7 +452,7 @@ and output_list from where no_indent lvl docs =
 	  Printf.fprintf stderr "Printed : \n %s \n" t ;
 	end
 	| Math m ->
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal center %a;;\n" 
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
 	    (fun ch -> print_math_par from ch true) m;
 	  next_no_indent := true
         | Ignore -> 
