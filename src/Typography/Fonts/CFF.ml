@@ -278,6 +278,35 @@ let readEncoding f off=
     enc,supl
 
 
+let readCharset f nGlyphs off=
+  seek_in f off;
+  let format=input_byte f in
+    if format =0 then (
+      let arr=Array.make nGlyphs 0 in
+        for i=1 to nGlyphs-1 do
+          arr.(i)<-readInt2 f
+        done;
+        arr
+    ) else (
+      let gls=ref 1 in
+      let arr=Array.make nGlyphs 0 in
+        try
+          while !gls<nGlyphs do
+            let sid=readInt2 f in
+            let nLeft=readInt f format in
+              arr.(!gls)<-sid;
+              incr gls;
+              for i=1 to nLeft-1 do
+                arr.(!gls)<-sid+i;
+                incr gls
+              done;
+          done;
+          arr
+        with
+            Invalid_argument _->arr
+    )
+
+
 
 let loadFont ?offset:(off=0) ?size file=
   let f=open_in_bin file in
@@ -705,7 +734,7 @@ let outlines_ gl onlyWidth=
                        pc:= !pc+2)
                   | 0 -> incr pc        (* dotsection (deprecated operator) *)
                   | op->(
-                      Printf.printf "Type 2 : undefined operator %d\n" op;
+                      Printf.fprintf stderr "Type 2 : undefined operator %d\n" op;
                       pc:= !pc+1
                     )
                 )
@@ -735,7 +764,7 @@ let outlines_ gl onlyWidth=
                        )
                 )
           | op->(
-              Printf.printf "Type 2 : undefined operator %d\n" op;
+              Printf.fprintf stderr "Type 2 : undefined operator %d\n" op;
               pc:= !pc+1
             )
       done
@@ -997,7 +1026,19 @@ let subset font gls=
       with
           Not_found -> StdEncoding 0, 0
       in
-      let charset=String.make (2*Array.length gls - 1) (char_of_int 0) in
+      let charset=try
+        let set=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 15)) in
+        let charset=readCharset f (cardinal font) (font.offset+set) in
+        let str=String.make (2*Array.length gls-1) (char_of_int 0) in
+          for i=1 to Array.length gls-1 do
+            str.[2*i-1]<-char_of_int (charset.(i) lsr 8);
+            str.[2*i]<-char_of_int (charset.(i) land 0xff)
+          done;
+          str
+      with
+          Not_found -> String.make (2*Array.length gls-1) (char_of_int 0)
+      in
+
 
       let charStrings=
         let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 17)) in
