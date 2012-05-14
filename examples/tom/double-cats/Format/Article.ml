@@ -58,7 +58,7 @@ module Format=functor (D:DocumentStructure)->struct
   let institute=Default.institute
 
   let caml x = x
-
+  let displayedFormula=Default.displayedFormula
 let postprocess_tree tree=
   let with_title=match tree with
       Node n->
