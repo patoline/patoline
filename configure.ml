@@ -5,9 +5,9 @@ let grammars_dir=ref ""
 let hyphen_dir=ref ""
 let ocaml_lib_dir=ref ""
 let ocamlfind_dir=ref ""
-let fonts_dirs=ref []
-let grammars_dirs=ref []
-let hyphen_dirs=ref []
+let fonts_dirs=ref ["."]
+let grammars_dirs=ref ["."]
+let hyphen_dirs=ref ["."]
 let opt_only=ref true
 let camlzip=ref ""
 let lang=ref "FR"
@@ -103,7 +103,7 @@ let _=
     List.iter (fun x->
                  if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
                    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
-              ) ("defaultGrammar.tgx"::(if !opt_only then [] else ["defaultGrammar.tgo"]));
+              ) ("DefaultGrammar.tgx"::(if !opt_only then [] else ["DefaultGrammar.tgo"]));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
@@ -176,10 +176,7 @@ let _=
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
-            "name=\"Typography\"
-version=\"1.0\"
-description=\"Typography library\"
-requires=\"camomile%s\"
-archive(byte)=\"Typography.cma, DefaultFormat.cma\"
-archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"" (if !camlzip="" then "" else (","^(!camlzip)));
+            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"camomile%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)));
+          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
+          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
           close_out meta

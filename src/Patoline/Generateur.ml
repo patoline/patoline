@@ -25,7 +25,7 @@ let _=macros:=StrMap.add "diagram" (fun x-> begin
     "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
 
 
-let hashed="(Digest.to_hex (Digest.string ((Sys.getcwd ())^Sys.executable_name)))"
+let hashed="(Sys.executable_name^\".aux\")"
 
 let preambule format amble filename=
   match amble with
@@ -449,7 +449,7 @@ and output_list from where no_indent lvl docs =
 	  Printf.fprintf where "\n\n" 
 	| Preproc t -> begin
 	  Printf.fprintf where "%s\n\n" t ;
-	  Printf.fprintf stderr "Printed : \n %s \n" t ;
+	  (* Printf.fprintf stderr "Printed : \n %s \n" t ; *)
 	end
 	| Math m ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
@@ -484,7 +484,7 @@ let gen_ml format amble filename from wherename where pdfname =
       let lexbuf=Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
-	      Printf.fprintf stderr "%s\n" (Language.message (Language.End_of_parsing (List.length docs))); flush stderr;
+	      (* Printf.fprintf stderr "%s\n" (Language.message (Language.End_of_parsing (List.length docs))); flush stderr; *)
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -511,17 +511,21 @@ let gen_ml format amble filename from wherename where pdfname =
                   | Noamble->()
                   | Separate->Printf.fprintf where "\nend\n"
 	    with
-	      | Dyp.Syntax_error ->
+	      | Dyp.Syntax_error when !Parser.deps_only=None ->
 		raise
 	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
 					Parse_error))
-	      | Failure("lexing: empty token") ->
+	      | Failure("lexing: empty token") when !Parser.deps_only=None ->
 		raise
 	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
 					Unexpected_char))
+              | Dyp.Syntax_error -> exit 0
+	      | Failure("lexing: empty token") -> exit 0
+
 	      with
-		  Parser.Syntax_Error(pos,msg) ->
+		  Parser.Syntax_Error(pos,msg) when !Parser.deps_only=None ->
 		    Sys.remove wherename;
 		    Printf.fprintf stderr "%s\n"
 		      (Language.message (Language.Syntax_error (filename, pos, msg)));
 		    exit 1
+                | Parser.Syntax_Error _ -> exit 0

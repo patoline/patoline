@@ -33,7 +33,7 @@ Typography/Typography.cma:
 
 
 DefaultGrammar.ml:DefaultGrammar.tgx
-
+	cp DefaultGrammar.tml DefaultGrammar.ml
 DefaultGrammar.tgo: Main.byte DefaultGrammar.txp
 	rm -f patolineDefault.tgo
 	Patoline/Main.byte --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp

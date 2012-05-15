@@ -26,6 +26,7 @@ let findPath f path=
     findPath f path
 let findGrammar f=findPath f ("." :: (!grammarsdir))
 let deps_only=ref None
+let out_grammar_name=ref ""
 let used_grammars=ref []
 
 module Str = struct
@@ -287,8 +288,7 @@ main lexer =
 		    let start = l.lex_start_p.pos_cnum + 1 in 
 		    push_caml ();
 		    let txps= caml [] lexbuf in
-		    print_int start; print_string ", ";
-		    print_int l.lex_start_p.pos_cnum; print_newline ();
+		      (* Printf.fprintf stderr "%d, %d\n" start l.lex_start_p.pos_cnum; *)
 		    start, l.lex_start_p.pos_cnum, List.rev txps
 		  }
   
@@ -583,8 +583,8 @@ atomelt:
   | "\\Add_right" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
-  | "\\Save_Grammar" "{"  lident<name> "}"
-    { let oc = open_out_bin (name ^ gram_ext) in
+  | "\\Save_Grammar"
+    { let oc = open_out_bin (!out_grammar_name^gram_ext) in
       let ld = { dyp.local_data with verbose = false } in
       Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
       close_out oc;
@@ -613,11 +613,11 @@ text:
    @{ p@t, [ Keep_grammar; Local_data dyp.local_data ]}
 
 grammar_aux:
-    { Some "defaultGrammar" }
+    { Some "DefaultGrammar" }
   | "\\Use_Grammar{" filename<name> "}"
-    { Printf.fprintf stderr "Some\n"; Some name }
+    { (* Printf.fprintf stderr "Some\n"; *) Some name }
   | "\\No_Grammar"
-    { Printf.fprintf stderr "None\n"; None }
+    { (* Printf.fprintf stderr "None\n"; *) None }
 
 grammar: grammar_aux<g>
     @{(match g, !deps_only with
@@ -640,9 +640,9 @@ grammar: grammar_aux<g>
 	    let local_data, grammar = input_value ic in
 	      close_in ic;
               used_grammars:=filename::(!used_grammars);
-	    Printf.fprintf stderr "Grammar: %s.\n" grammar_name ;
-	    [ Local_data local_data; Parser grammar ]
-          with e -> Printf.fprintf stderr "No Grammar Loaded (%s).\n" (Printexc.to_string e); []
+	      (* Printf.fprintf stderr "Grammar: %s.\n" grammar_name ; *)
+	      [ Local_data local_data; Parser grammar ]
+          with e -> (* Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); *) []
         )
       | _->[]
        in

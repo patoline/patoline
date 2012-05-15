@@ -936,8 +936,9 @@ let update_names env figs user=
                        else
                          TS.UMap.find (Label k) user
                      in
-                       if pos<>c then
-                         Printf.fprintf stderr "reboot : position of %S changed\n" k;
+                       if pos<>c then (
+                         Printf.fprintf stderr "reboot : position of %S changed\n" k
+                       );
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (Printf.fprintf stderr "reboot : position of %S not found\n" k;needs_reboot:=true; m)

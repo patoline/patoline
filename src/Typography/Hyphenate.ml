@@ -102,7 +102,7 @@ let hyphenate tree a0=
 
               let rec make_hyphens i j=
                 if j>=String.length a-2 then [String.sub a i (j-i+1)] else
-                  if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 && j>=3 && j<String.length a0-2 then
+                  if (int_of_char breaks.(j+1)-int_of_char '0') mod 2 = 1 && j>=3 && j<String.length a0-3 then
                     (String.sub a i (j-i+1)) :: make_hyphens (j+1) (j+1)
                   else
                     make_hyphens i (j+1)

@@ -66,11 +66,14 @@ let alegreya=
 
 let notCourierSans=[
   Regular,
-  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")),
-   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")));
-  Bold,
-  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")),
-   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")))
+  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "DejaVuSans/DejaVuSansMono.otf")),
+   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "DejaVuSans/DejaVuSansMono.otf")));
+  (* Regular, *)
+  (* (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")), *)
+  (*  simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf"))); *)
+  (* Bold, *)
+  (* (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")), *)
+  (*  simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf"))) *)
 ]
 
 
