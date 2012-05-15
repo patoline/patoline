@@ -65,11 +65,22 @@ let _ =
 " outfile hashed hashed hashed
 
 
+type contenu =
+    Txt of string
+  | Spc
+  | FromFile of int*int
+
+let get_interval =
+  let pos = ref 0 in
+  (fun f -> let d = !pos in pos := pos_in f; (d, (!pos-d)))
+
 let par_split from =
   let space = Str.regexp "^[ \t\r]*$" in
   let decide_newpar = Str.regexp "^[ \t]+" in
-  let remove = Str.regexp "[\r]*" in
-  let cleanup s = String.escaped (Str.global_replace remove "" s) in
+  let remove = Str.regexp "[\r]+" in
+  let cleanup s =  let a,b= (get_interval from) in FromFile (a,b)
+(* (String.escaped (Str.global_replace remove "" s))  *)
+  in
   let rec doit parlist textlist =
     try 
       let s = input_line from in
@@ -77,7 +88,7 @@ let par_split from =
 	  doit (if List.length textlist = 0 then parlist else ((List.rev textlist)::parlist)) []
 	else if Str.string_match decide_newpar s 0 then 
 	  doit (if List.length textlist = 0 then parlist else ((List.rev textlist)::parlist)) [cleanup s]
-	else doit parlist ((cleanup s)::textlist)
+	else doit parlist (Spc::(cleanup s)::textlist)
     with End_of_file -> List.rev ((List.rev textlist)::parlist)
   in
     doit [] []
@@ -87,7 +98,11 @@ let gen_ml format amble filename from wherename where pdfname =
   Printf.fprintf where "%s" (preambule format amble filename);
   List.iter (fun unpar ->
 	       Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x -> { x with par_indent = [] }) Complete.normal parameters [\n";
-	       List.iter (fun txt -> Printf.fprintf where "T \"%s\"; " txt) unpar;
+	       List.iter (function 
+		 | Txt txt -> Printf.fprintf where "T \"%s\"; " txt
+		 | Spc -> Printf.fprintf where "T \" \"; "
+		 | FromFile (d,e) -> Printf.fprintf where "FileRef (\"%s\",%d,%d); " filename d e
+	       ) unpar;
 	       Printf.fprintf where "]\n\n"
 	    ) (par_split from);
   match amble with

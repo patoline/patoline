@@ -169,7 +169,7 @@ and 'a content=
   | C of ('a environment->'a content list)    (** Le symmétrique de [C] pour [BFix]. On peut implémenter la paresse avec ça, par exemple. *)
   | CFix of ('a environment->'a content list) (** Pareil que [BFix], mais avec du contenu au lieu des boîtes *)
   | T of string                               (** Un texte simple *)
-  | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution *)
+  | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
   | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
   | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
 
