@@ -69,9 +69,9 @@ let _ =
     resolve (i+1) env2
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
-    let f=open_out %s in
+    try let f=open_out %s in
     output_value f (env2.names,env2.user_positions);
-    close_out f;
+    close_out f with _->(Sys.remove %s);
     Out.output tree pars figures env2 pages filename
   )
   in
@@ -84,7 +84,7 @@ let _ =
     ) else (Printf.printf \"from stratch\\n\"; defaultEnv)
   in
   resolve 0 env0
-" outfile hashed hashed hashed
+" outfile hashed hashed hashed hashed
 
 module Source = struct
   type t = { seek_in : int -> unit ; input : string -> int -> int -> unit}
