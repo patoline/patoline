@@ -255,7 +255,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                      if Array.length pages>0 then
                        [User (Footnote (count, pages.(0)));
                         Drawing (drawing ~offset:(env.size/.2.)
-                                   (draw_boxes (boxify_scoped { env with size=env.size/.phi }
+                                   (draw_boxes (boxify_scoped { env with size=env.size/.(sqrt phi) }
                                                   [T (string_of_int !page_footnotes)])
                                    ))
                        ]
