@@ -6,42 +6,6 @@ open Fonts.FTypes
 open Document
 open Document.Mathematical
 
-let default_env=
-    {
-      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "Euler/euler.otf"));
-      mathsSubst=(fun x->x);
-      mathsSize=1.;
-      numerator_spacing=0.08;
-      denominator_spacing=0.08;
-      sub1= 0.2;
-      sub2= 0.2;
-      sup1=0.5;
-      sup2=0.5;
-      sup3=0.5;
-      sub_drop=0.2;
-      sup_drop=0.2;
-      default_rule_thickness=0.05;
-      subscript_distance= 0.2;
-      superscript_distance= 0.2;
-      limit_subscript_distance= 0.12;
-      limit_superscript_distance= 0.12;
-      open_dist=0.2;
-      close_dist=0.2;
-      kerning=true
-    }
-
-let default=[|
-  default_env;
-  default_env;
-  default_env;
-  default_env;
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=4./.9. };
-  { default_env with mathsSize=4./.9. }
-|]
-
-
 let env_style env style=match style with
     Display->env.(0)
   | Display'->env.(1)
@@ -368,6 +332,7 @@ let rec draw env_stack mlist=
              qu'il y a des indices des deux côtés, ils ne sont
              positionnés en-dessous que du côté où c'est possible *)
 
+          let check_inf x=if x= -.infinity || x=infinity then 0. else x in
           let op_noad=
             if op.op_limits then (
               let op', sup=
@@ -389,9 +354,10 @@ let rec draw env_stack mlist=
               let ba=draw_boxes (draw (superStyle style env_stack) sup) in
               let bb=draw_boxes (draw (subStyle style env_stack) sub) in
               let x0,y0,x1,y1=bounding_box drawn_op in
-              let x0a,y0a,x1a,y1a=bounding_box ba in
-              let x0b,y0b,x1b,y1b=bounding_box bb in
-
+              let x0a_,y0a_,x1a_,y1a_=bounding_box ba in
+              let x0b_,y0b_,x1b_,y1b_=bounding_box bb in
+              let x0a,y0a,x1a,y1a=(check_inf x0a_,check_inf y0a_,check_inf x1a_,check_inf y1a_) in
+              let x0b,y0b,x1b,y1b=(check_inf x0b_,check_inf y0b_,check_inf x1b_,check_inf y1b_) in
               let collide y=
                 let line=[|x0;x1|], [|y;y|] in
                 let rec make_ints area x=function
@@ -406,30 +372,40 @@ let rec draw env_stack mlist=
                     List.sort compare (List.concat (List.map (Bezier.intersect line) (bezier_of_boxes drawn_op)))
                   )
               in
-              let n=5 in
-              let rec center i y weight x=
-                if i>n then
-                  if weight=0. then
-                    (x0+.x1)/.2.          (* solution naive s'il n'y a aucune collision *)
-                  else
-                    x/.weight
-                else
-                  let x',w=collide (y+.(float_of_int i)*.(y1-.y0)/.(10.*.float_of_int n)) in
-                    center (i+1) y (weight+.w) (x +. x')
+              let xsup,xsub=
+                if mathsEnv.kerning then (
+                  let n=5 in
+                  let rec center i y weight x=
+                    if i>n then
+                      if weight=0. then
+                        (x0+.x1)/.2.          (* solution naive s'il n'y a aucune collision *)
+                      else
+                        x/.weight
+                    else
+                      let x',w=collide (y+.(float_of_int i)*.(y1-.y0)/.(10.*.float_of_int n)) in
+                        center (i+1) y (weight+.w) (x +. x')
+                  in
+                    (center 1 (y1-.(y1-.y0)/.10.) 0. 0.,
+                     center 1 y0 0. 0.)
+                ) else (
+                  (x1+.x0)/.2.,(x1+.x0)/.2.
+                )
               in
-              let xsup=center 1 (y1-.(y1-.y0)/.10.) 0. 0. in
-              let xsub=center 1 y0 0. 0. in
-
-              let yoff=
-                y0-.y1a-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize -. y0a
-              in
-                [ Drawing (drawing ~offset:(yoff) (
-
-                             drawn_op @
-                               (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize)) ba)@
-                               (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1a-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize)) bb)
-
-                           ))]
+              let miny=y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize +. y0b in
+              let maxy=y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize +. y1a in
+                [ Drawing {
+                    drawing_min_width=(x1-.x0);
+                    drawing_nominal_width=(x1-.x0);
+                    drawing_max_width=(x1-.x0);
+                    drawing_y0=miny;
+                    drawing_y1=maxy;
+                    drawing_badness=(fun _->0.);
+                    drawing_contents=
+                      (fun _->
+                         drawn_op @
+                           (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize)) ba)@
+                           (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize)) bb)
+                      ) }]
 
             ) else draw env_stack [Ordinary op.op_noad]
           in
@@ -438,8 +414,19 @@ let rec draw env_stack mlist=
           let right=draw_boxes (draw env_stack op.op_right_contents) in
           let bezier_right=bezier_of_boxes right in
           let bezier_op=bezier_of_boxes (draw_boxes op_noad) in
-          let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
-          let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
+          let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
+          let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
+                                     check_inf y0_r_,
+                                     check_inf x1_r_,
+                                     check_inf y1_r_)
+          in
+          let (x0_l_,y0_l_,x1_l_,y1_l_)=bounding_box left in
+          let (x0_l,y0_l,x1_l,y1_l)=(check_inf x0_l_,
+                                     check_inf y0_l_,
+                                     check_inf x1_l_,
+                                     check_inf y1_l_)
+          in
+
           let (x0_op,y0_op,x1_op,y1_op)=bounding_box (draw_boxes op_noad) in
 
           let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_r) x, y) bezier_right in
@@ -453,10 +440,12 @@ let rec draw env_stack mlist=
             List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity bezier_op
           else 0.
           in
-
           let x_op=if left=[] then 0. else (x1_l-.dist_l+.op.op_left_spacing) in
           let x_right=x_op+.x1_op-.x0_r -. dist_r+.(if right=[] then 0. else op.op_right_spacing) in
-
+          let gl=match glue (4./.9.) (4./.9.) (9./.18.) with
+              Box.Glue x->Drawing x
+            | x->x
+          in
             (Drawing {
                drawing_min_width=x_op;
                drawing_nominal_width=x_op;
@@ -464,25 +453,26 @@ let rec draw env_stack mlist=
                drawing_y0=y0_l;
                drawing_y1=y1_l;
                drawing_badness=(fun _->0.);
-               drawing_contents=(fun _->left)})::
-
-              (Drawing {
+               drawing_contents=(fun _->left)})
+              ::(if left<>[] then [gl] else [])
+              @[Drawing {
                  drawing_min_width=x_right-.x_op;
                  drawing_nominal_width=x_right-.x_op;
                  drawing_max_width=x_right-.x_op;
                  drawing_y0=y0_op;
                  drawing_y1=y1_op;
                  drawing_badness=(fun _->0.);
-                 drawing_contents=(fun _->draw_boxes op_noad)})::
-              (Drawing {
+                 drawing_contents=(fun _->draw_boxes op_noad)}]
+              @(if right<>[] then [gl] else [])
+              @[Drawing {
                  drawing_min_width=x1_r-.x0_r;
                  drawing_nominal_width=x1_r-.x0_r;
                  drawing_max_width=x1_r-.x0_r;
                  drawing_y0=y0_l;
                  drawing_y1=y1_l;
                  drawing_badness=(fun _->0.);
-                 drawing_contents=(fun _->right)})::
-              (draw env_stack s)
+                 drawing_contents=(fun _->right)}]
+              @(draw env_stack s)
         )
       | Decoration (rebox, inside) :: s ->(
           (rebox env style ((draw env_stack inside))) @ (draw env_stack s)

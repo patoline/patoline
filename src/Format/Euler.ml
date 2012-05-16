@@ -105,8 +105,56 @@ let subst l cs=List.map (fun c->{ c with glyph_index=make_subst l c.glyph_index 
 open Typography.Document
 open Typography.Document.Mathematical
 open Typography.Maths
+open Typography.Util
+open Typography
+
 let compose f g x=f(g x)
 let changeFont l env=
   { env with mathsEnvironment=
       Array.map (fun x->{ x with mathsSubst=compose (subst l) x.mathsSubst })
         env.mathsEnvironment }
+let default_env=
+    {
+      mathsFont=Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont "Euler/euler.otf"));
+      mathsSubst=(fun x->(* List.iter (fun x->Printf.printf "normal : %d\n" x.glyph_index) x; *) x);
+      mathsSize=1.;
+      numerator_spacing=0.08;
+      denominator_spacing=0.08;
+      sub1= 0.2;
+      sub2= 0.2;
+      sup1=0.5;
+      sup2=0.5;
+      sup3=0.5;
+      sub_drop=0.2;
+      sup_drop=0.2;
+      default_rule_thickness=0.05;
+      subscript_distance= 0.2;
+      superscript_distance= 0.2;
+      limit_subscript_distance= 0.2;
+      limit_superscript_distance= 0.2;
+      open_dist=0.2;
+      close_dist=0.2;
+      kerning=true
+    }
+let msubst m x=List.map (fun x->try
+                           { x with glyph_index=IntMap.find x.glyph_index m }
+                         with
+                             Not_found->x) x
+
+let displaySubst=Lazy.lazy_from_fun
+  (fun ()->
+     List.fold_left (fun m (a,b)->IntMap.add a b m) IntMap.empty
+       [(* Sum operators *)
+         778,779;
+         275,779])
+
+let default=[|
+  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
+  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
+  default_env;
+  default_env;
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=2./.3. };
+  { default_env with mathsSize=4./.9. };
+  { default_env with mathsSize=4./.9. }
+|]

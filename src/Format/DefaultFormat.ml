@@ -120,7 +120,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           font=f;
           mathsEnvironment=
             Array.map (fun x->{x with Mathematical.kerning=false })
-              Maths.default;
+              Euler.default;
 	  mathStyle=Mathematical.Text;
           word_substitutions=(fun x->x);
           substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) loaded_feat);

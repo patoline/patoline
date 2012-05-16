@@ -48,6 +48,7 @@ type math =
    | Postfix of int * math * bool * symbol
    | Binary of int * math * bool * symbol * bool * math
    | Indices of indices * math
+   | Limits of math
    | Apply of math * math
    | MathMacro of string * math list
    | MathCaml of local_data * Obj.t * int * int * (texprime_section * int * int) list
@@ -84,7 +85,6 @@ and content =
    | GC
 let par_macros:(string->content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
-
 
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
@@ -182,7 +182,7 @@ let next_lexeme_paren l =
 %start allparagraph
 %start allmath 
 
-%relation macro < args < atom < fun < bigop < ind < prod < sum < operator < rel < neg < conj < impl < punc
+%relation macro < args < atom < fun < operator < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
 
@@ -471,6 +471,9 @@ math:
       { Delim(op,a,cl) } atom
   | "\\{" math<a> "\\}"
       { Delim(SimpleSym "{",a,SimpleSym "}") } atom
+
+  | "\\limits" math(<=operator)<m> {Limits m}
+
   | "{" math<a> "}"
       { a } atom
 
@@ -489,6 +492,16 @@ math:
   | math(<=fun)<m> - rightind<fi>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
+
+  | leftind<i> - operator<m> [- rightind]?<fi> math(<=sum)<b>
+      { let fi = match fi with None -> (fun x -> x) | Some f -> f in
+        Indices(fi i, Operator(m,b)) } ind
+  | operator<m> - rightind<fi> math(<=sum)<b>
+      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
+          Indices(fi d, Operator (m,b)) } ind
+  | operator<m> math(<=sum)<b>
+      { Operator (m,b) } operator
+
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
@@ -499,6 +512,7 @@ math:
       else MathMacro (macro,args ld gr) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
+
   | math(<sum)<b> postfix<op>
       { Postfix(3,b,true,op) } sum
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
@@ -515,9 +529,6 @@ math:
       { Binary(0, a, false, op, false, b) } impl
   | math(<=punc)<a> punctuation<op> math(<punc)<b> 
       { Binary(2, a, true, op, false, b) } punc
-
-  | operator(<=bigop)<op> math(<bigop)<a>
-      { Operator(op, a) } operator
   | symbol<name>
       { Symbol(name) } atom
 
