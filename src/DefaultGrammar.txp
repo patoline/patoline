@@ -171,15 +171,11 @@ Symboles de TeX'
 
 (* == Other symbols == *)
 
-\Add_symbol{∑}{∑}
-\Add_symbol{\sum}(sum)
-\Add_symbol{∏}{∏}
-\Add_symbol{\prod}(prod)
-\Add_symbol{∐}{∐}
-\Add_symbol{\coprod}(coprod)
-\Add_symbol{∫}{∫}
-\Add_symbol{\int}(int)
-\Add_symbol{\infty ∞}{∞}
+\Add_operator{∑ \sum}{∑}
+\Add_operator{∏ \prod}{∏}
+\Add_operator{∐ \coprod}{∐}
+\Add_operator{∫ \int}{∫}
+\Add_operator{\infty ∞}{∞}
 
 
 \Save_Grammar

@@ -163,6 +163,12 @@ let rec print_math_buf op buf m =
 	    args ;
 	  Printf.bprintf buf ")"
 	)
+      | MathCaml (ld,gr,s,e,txps) -> begin
+	  let buf' = Buffer.create 80 in
+            print_caml_buf ld gr op buf' s e txps;
+	    let s = Buffer.contents buf' in
+	      Printf.bprintf buf " ( %s ) " s
+	end
       | Delim(op,a,cl) ->
 	wrap_deco_math_default buf indices
 	  (fun buf ->
@@ -174,6 +180,10 @@ let rec print_math_buf op buf m =
       | Postfix(pr, a, nsp, op) ->
 	let ind_left, ind_right = split_ind indices in
 	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (print_math_deco op) ind_right nsp (print_math_expr ind_left) a
+
+      | Operator(op, a) ->
+	let ind_left, ind_right = split_ind indices in
+	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=false; Maths.op_left_spacing=0.;Maths.op_right_spacing=0.; Maths.op_left_contents=%a; Maths.op_right_contents=[] }]" (print_math_deco op) indices (print_math_expr no_ind) a
       | MScope a->
 	  Printf.bprintf buf "[Maths.Scope (";
           List.iter (print_math_expr indices buf) a;

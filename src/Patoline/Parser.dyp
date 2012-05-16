@@ -44,11 +44,13 @@ type math =
    | Fun of string
    | Num of string
    | Prefix of int * symbol * bool * math
+   | Operator of symbol * math
    | Postfix of int * math * bool * symbol
    | Binary of int * math * bool * symbol * bool * math
    | Indices of indices * math
    | Apply of math * math
    | MathMacro of string * math list
+   | MathCaml of local_data * Obj.t * int * int * (texprime_section * int * int) list
    | Delim of symbol * math * symbol
    | MScope of math list
 and indices = { up_right : math option;
@@ -180,7 +182,7 @@ let next_lexeme_paren l =
 %start allparagraph
 %start allmath 
 
-%relation macro < args < atom < fun < ind < prod < sum < rel < neg < conj < impl < punc
+%relation macro < args < atom < fun < bigop < ind < prod < sum < operator < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
 
@@ -446,9 +448,9 @@ mathargs:
     { (fun ld gr  -> []) } args
   | mathargs<a> - "{" math<m> "}"
     { (fun ld gr -> m::a ld gr) }  args
-/*  | mathargs<a> - CAML<s,e,txps>
-    { if e - s <= 2 then raise Giveup; 
-      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } */
+  | mathargs<a> - CAML<s,e,txps>
+    { if e - s <= 2 then raise Giveup;
+      (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 nemathargs:
     "()"
     { (fun ld gr  -> []) } args
@@ -513,6 +515,9 @@ math:
       { Binary(0, a, false, op, false, b) } impl
   | math(<=punc)<a> punctuation<op> math(<punc)<b> 
       { Binary(2, a, true, op, false, b) } punc
+
+  | operator(<=bigop)<op> math(<bigop)<a>
+      { Operator(op, a) } operator
   | symbol<name>
       { Symbol(name) } atom
 
@@ -574,6 +579,9 @@ atomelt:
   | "\\Add_postfix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }
+  | "\\Add_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" symbol_def<value>
+    @{ add_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
