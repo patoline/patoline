@@ -153,14 +153,15 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             Node n,path -> Node { n with
                                     name=name;
                                     node_tags=Structural::InTOC::n.node_tags;
-                                    displayname = match displayname with
-                                        None->[T name]
-                                      | Some a->a },path
+                                    displayname = match n.displayname, displayname with
+                                        [],None->[T name]
+                                      | [],Some a->a
+                                      | l,_->l },path
           | t,path->Node { name=name;
                            node_tags=[Structural;InTOC];
                            displayname=(match displayname with
-                                            Some a->a
-                                          | None->[T name]);
+                                            None->[T name]
+                                          | Some a->a);
 		           children=IntMap.singleton 1 t;
                            node_env=(fun x->x);
                            node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
