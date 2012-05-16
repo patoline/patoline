@@ -46,12 +46,16 @@ Symboles de TeX'
 
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
+\Add_relation{\lt <}{<}
+\Add_relation{\gt >}{>}
 \Add_relation{..}{..}
 
 (* == Addition like symbols == *)
 
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
+\Add_addition_like{\ominus ⊖}{⊖}
+\Add_addition_like{\otimes ⊗}{⊗}
 \Add_addition_like{-}{-}
 \Add_addition_like{\pm}{±}
 \Add_addition_like{\mp}{∓}
