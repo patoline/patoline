@@ -106,9 +106,7 @@ open Typography.Document
 open Typography.Document.Mathematical
 open Typography.Maths
 let compose f g x=f(g x)
-let changeFont l=
-  Env (fun env->
-         { env with mathsEnvironment=
-             Array.map (fun x->{ x with mathsSubst=compose (subst l) x.mathsSubst })
-               env.mathsEnvironment }
-      )
+let changeFont l env=
+  { env with mathsEnvironment=
+      Array.map (fun x->{ x with mathsSubst=compose (subst l) x.mathsSubst })
+        env.mathsEnvironment }
