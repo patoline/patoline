@@ -332,30 +332,43 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
 
                         then (
                           let allow_orphan=
-                            page=node.page || nextNode.paragraph_height>1
+                            page=node.page
+                            || node.lineStart>0
+                            || node.lineEnd >= Array.length (paragraphs.(node.paragraph))
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
                           let allow_widow=
-                            page=node.page || (not (is_last paragraphs.(nextNode.paragraph) nextNode.lineEnd))
+                            page=node.page
+                            || nextNode.lineEnd < Array.length (paragraphs.(nextNode.paragraph))
+                            || nextNode.lineStart<=0
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
                             if not allow_orphan && allow_widow then (
                               if allow_impossible then (
-                                let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
-                                let ant_bad,_,ant_par, ant_comp, ant_ant,ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant,last_ant,ant_bad,Some (Language.Opt_error (Language.Orphan node)),
-                                                      { ant_par with page_height=node.height },ant_comp,ant_fig,
-                                                      ant_user)::(!extreme_solutions);
+                                let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
+                                let a,b,c,d,e,f,g=LineMap.find prec !demerits' in
+                                  extreme_solutions:=(prec,a,Some (Language.Opt_error (Language.Orphan prec)),
+                                                      { c with min_page_after=1 },
+                                                      d,e,f,g)::(!extreme_solutions)
                               )
                             ) else if not allow_widow && allow_orphan then (
                               if allow_impossible then (
-                                let _,_,_,_,last_ant,_,_=LineMap.find node !demerits' in
-                                let ant_bad, ant_log, ant_par, ant_comp,ant_ant, ant_fig,ant_user=LineMap.find last_ant !demerits' in
-                                  extreme_solutions:=(ant_ant, last_ant,ant_bad, Some (Language.Opt_error (Language.Widow last_ant)),
-                                                      { ant_par with page_height=node.height },ant_comp,ant_fig,
-                                                      ant_user)::(!extreme_solutions);
+                                let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
+                                let a,b,c,d,e,f,g=LineMap.find prec !demerits' in
+                                  if e.lineStart>0 then (* On ne veut pas résoudre une veuve pour rajouter un orphelin *)
+                                    extreme_solutions:=(prec,a,Some (Language.Opt_error (Language.Widow prec)),
+                                                        { c with min_page_after=2 },
+                                                        d,e,f,g)::(!extreme_solutions)
+                                  else
+                                    let nextUser=lastUser in
+                                    let bad=(lastBadness+.
+                                               badness node !haut !max_haut lastParameters comp0
+                                               nextNode !bas !max_bas !r_params comp1) in
+                                      extreme_solutions:=(nextNode,bad,None,
+                                                          !r_params,comp1,node,lastFigures,nextUser)::(!extreme_solutions)
+
                               )
                             )
                             else if nextNode.min_width > (!r_params).measure then (
@@ -363,16 +376,15 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,Some (Language.Opt_error (Language.Overfull_line nextNode)),
-                                            !r_params,comp1,lastFigures,nextUser)::(!local_opt);
-                                (* register node nextNode bad (!r_params) *)
+                                local_opt:=(nextNode,bad,Some (Language.Opt_error (Language.Overfull_line nextNode)),
+                                            !r_params,comp1,node,lastFigures,nextUser)::(!local_opt)
                             ) else (
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
                                          badness node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
-                                local_opt:=(node,nextNode,bad,None, !r_params,comp1,lastFigures,nextUser)::(!local_opt);
-                                (* register node nextNode bad (!r_params) *)
+                                local_opt:=(nextNode,bad,None,
+                                            !r_params,comp1,node,lastFigures,nextUser)::(!local_opt)
                             )
                         )
                     in
@@ -387,7 +399,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   (try
                      fix node.page (node.height+.lastParameters.min_height_after);
                      if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
-                       List.iter (fun (node,nextNode,bad,log,params,comp,fig,user)->
+                       List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
                                     let a,_,_=LineMap.split nextNode !demerits' in
                                     let b,_,_=LineMap.split nextNode !todo' in
                                       demerits':=a;
@@ -397,12 +409,12 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                      );
                      if !local_opt <> [] then (
                        let l0=List.sort (fun (_,_,b0,_,_,_,_,_) (_,_,b1,_,_,_,_,_)->compare b0 b1) !local_opt in
-                       let deg=List.fold_left (fun m (_,_,_,_,p,_,_,_)->max m p.local_optimization) 0 l0 in
+                       let deg=List.fold_left (fun m (_,_,_,p,_,_,_,_)->max m p.local_optimization) 0 l0 in
                        let rec register_list i l=
                          if i>0 || deg<=0 then (
                            match l with
                                []->()
-                             | (node,nextNode,bad,log,params,comp,fig,user)::s->(
+                             | (nextNode,bad,log,params,comp,node,fig,user)::s->(
                                  register node nextNode bad log params comp;
                                  register_list (i-1) s
                                )
