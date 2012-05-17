@@ -333,8 +333,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                         then (
                           let allow_orphan=
                             page=node.page
-                            || node.lineStart>0
-                            || node.lineEnd >= Array.length (paragraphs.(node.paragraph))
+                            || node.lineStart > 0
+                            || Array.length paragraphs <= pi+1
+                            (* || node.lineEnd >= Array.length (paragraphs.(node.paragraph)) *)
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
