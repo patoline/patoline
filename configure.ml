@@ -161,7 +161,7 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
       let path_var="PATOLINE_PATH" in
-      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=Sys.get_env %S\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
+      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=Sys.getenv %S\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
         path_var
         (String.concat ";" ((List.map (Printf.sprintf "%S") (List.rev !fonts_dirs))@["path"]))
         !bin_dir
