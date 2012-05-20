@@ -56,11 +56,11 @@ let _ = dispatch begin function
 	  * compiling, computing dependencies, generating documentation and
 	* * linking. *)
        List.iter begin fun pkg ->
-         flag ["ocaml"; "compile";  "pkg_"^pkg] & S[A"-package"; A pkg];
-         flag ["ocaml"; "ocamldep"; "pkg_"^pkg] & S[A"-package"; A pkg];
-         flag ["ocaml"; "doc";      "pkg_"^pkg] & S[A"-package"; A pkg];
-         flag ["ocaml"; "link";     "pkg_"^pkg] & S[A"-package"; A pkg];
-         flag ["ocaml"; "infer_interface"; "pkg_"^pkg] & S[A"-package"; A pkg];
+         flag ["ocaml"; "compile";  "package("^pkg^")"] & S[A"-package"; A pkg];
+         flag ["ocaml"; "ocamldep"; "package("^pkg^")"] & S[A"-package"; A pkg];
+         flag ["ocaml"; "doc";      "package("^pkg^")"] & S[A"-package"; A pkg];
+         flag ["ocaml"; "link";     "package("^pkg^")"] & S[A"-package"; A pkg];
+         flag ["ocaml"; "infer_interface"; "package("^pkg^")"] & S[A"-package"; A pkg];
        end (find_packages ());
 
        (* Like -package but for extensions syntax. Morover -syntax is useless
@@ -71,18 +71,6 @@ let _ = dispatch begin function
          flag ["ocaml"; "doc";      "syntax_"^syntax] & S[A"-syntax"; A syntax];
          flag ["ocaml"; "infer_interface"; "syntax_"^syntax] & S[A"-syntax"; A syntax];
        end (find_syntaxes ());
-
-       (* The default "thread" tag is not compatible with ocamlfind.
-          Indeed, the default rules add the "threads.cma" or "threads.cmxa"
-          options when using this tag. When using the "-linkpkg" option with
-          ocamlfind, this module will then be added twice on the command line.
-       
-          To solve this, one approach is to add the "-thread" option when using
-          the "threads" package using the previous plugin.
-       *)
-       flag ["ocaml"; "pkg_threads"; "compile"] (S[A "-thread"]);
-       flag ["ocaml"; "pkg_threads"; "link"] (S[A "-thread"]);
-       flag ["ocaml"; "pkg_threads"; "infer_interface"] (S[A "-thread"])
 
   | _ -> ()
 end

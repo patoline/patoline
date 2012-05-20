@@ -5,7 +5,7 @@ let run = ref true
 let cmd_line = ref []
 let format=ref "DefaultFormat"
 let dirs = ref []
-let package_list = ref ["camomile"; "dyp"; "Typography"; "bibi"]
+let package_list = ref ["Typography"]
 let no_grammar=ref false
 let deps_only=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
@@ -19,7 +19,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
             ("--deps", Arg.Unit(fun ()->compile:=false;run:=false;deps_only:=true), "Outputs dependencies in file <file>.dep");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
-            ("--no",Arg.String (fun s-> package_list:= List.filter (fun x -> x<>s) !package_list), "Don't use package given as argument when compiling");
+            ("-package",Arg.String (fun s-> package_list:= s::(!package_list)), "Use package given as argument when compiling");
             ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
 	    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
 	    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
@@ -64,7 +64,7 @@ let rec process_each_file =
 	if !compile then (
 	  let lespackages = String.concat "," !package_list in
 	    Printf.fprintf stderr "Compiling OCaml code...\n";
-	    Printf.fprintf stderr  "ocamlfind ocamlopt -package %s str.cmxa %s -linkpkg -o %s -impl %s\n" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
+	    Printf.fprintf stderr  "ocamlfind ocamlopt -package %s %s -linkpkg -o %s -impl %s\n" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
 	    flush stderr;
 	    let r = Sys.command (Printf.sprintf "ocamlfind ocamlopt -package %s str.cmxa %s -linkpkg -o %s -impl %s" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f)) in
 	      flush stderr;

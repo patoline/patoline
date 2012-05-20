@@ -5,9 +5,9 @@ let grammars_dir=ref ""
 let hyphen_dir=ref ""
 let ocaml_lib_dir=ref ""
 let ocamlfind_dir=ref ""
-let fonts_dirs=ref ["."]
-let grammars_dirs=ref ["."]
-let hyphen_dirs=ref ["."]
+let fonts_dirs=ref []
+let grammars_dirs=ref []
+let hyphen_dirs=ref []
 let opt_only=ref true
 let camlzip=ref ""
 let lang=ref "FR"
@@ -53,7 +53,6 @@ let _=
   ] ignore "Usage:";
   if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
-
   if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/patoline/fonts";
   if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
@@ -160,13 +159,12 @@ let _=
       (* proof *)
       Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
-      let path_var="PATOLINE_PATH" in
-      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=Sys.getenv %S\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
-        path_var
-        (String.concat ";" ((List.map (Printf.sprintf "%S") (List.rev !fonts_dirs))@["path"]))
+
+      let conf=Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable TeX' *)\nlet bindir=ref [%S]\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
+        (String.concat ";" (List.map (Printf.sprintf "%S") !fonts_dirs))
         !bin_dir
-        (String.concat ";" ((List.map (Printf.sprintf "%S") (List.rev !grammars_dirs))@["path"]))
-        (String.concat ";" ((List.map (Printf.sprintf "%S") (List.rev !hyphen_dirs))@["path"]))
+        (String.concat ";" (List.map (Printf.sprintf "%S") !grammars_dirs))
+        (String.concat ";" (List.map (Printf.sprintf "%S") !hyphen_dirs))
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
