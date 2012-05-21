@@ -1,3 +1,4 @@
+exception Glyph_not_found of (string*string)
 type 'a kerningBox = {
   advance_height : float;
   advance_width : float;

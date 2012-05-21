@@ -355,11 +355,10 @@ let glyphCache cur_font gl=
 
 let glyph_of_string substitution_ positioning_ font fsize fcolor str =
   let rec make_codes idx codes=
-    try
+    if idx>=String.length str then List.rev codes else (
       let c=Fonts.glyph_of_uchar font (UTF8.look str idx) in
         make_codes (UTF8.next str idx) ({glyph_utf8=UTF8.init 1 (fun _->UTF8.look str idx); glyph_index=c}::codes)
-    with
-        _->List.rev codes
+    )
   in
   let codes=substitution_ (make_codes (UTF8.first str) []) in
   let kerns=positioning_ (List.map (fun x->GlyphID x) codes) in

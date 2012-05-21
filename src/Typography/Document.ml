@@ -318,15 +318,13 @@ let change_env t fenv=match t with
   | (FigureDef f, l)->
       FigureDef {f with fig_env=fun x->fenv (f.fig_env x) }, l
 
+exception Not_found_in_family
 
 let selectFont fam alt it =
   try
-    let r, i = List.assoc alt fam in
+    let r,i = List.assoc alt fam in
     Lazy.force (if it then i else r)
-  with Not_found ->
-    (* FIXME: keep the font name and print a better message *)
-    Printf.fprintf stderr "Font not found in family.\n";
-    exit 1
+  with Not_found -> raise Not_found_in_family
 
 let updateFont env font str subst pos=
   let feat=Fonts.select_features font env.fontFeatures in
@@ -354,7 +352,7 @@ let add_features features env=
 
 
 let envItalic b env =
-  let font, str,subst, pos= selectFont env.fontFamily env.fontAlternative b in
+  let font, str, subst, pos= selectFont env.fontFamily env.fontAlternative b in
   let env = { env with fontItalic = b } in
     updateFont env font str subst pos
 
@@ -698,6 +696,23 @@ let makeGlue env x0=
         | _->stdGlue
 
 
+let rec gl_of_str env string=
+  try
+    hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
+      env.fontColor
+      (env.word_substitutions string)
+  with
+      Glyph_not_found g ->(
+        let family'=List.remove_assoc env.fontAlternative env.fontFamily in
+          try
+            let font, str, subst, pos= selectFont family' env.fontAlternative env.fontItalic in
+            let env'=updateFont env font str subst pos in
+              gl_of_str env' string
+          with
+              Not_found_in_family->[](* raise (Glyph_not_found g) *)
+      )
+
+
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
@@ -730,17 +745,14 @@ let boxify fixable env0 l=
             if i0<>i then (
               if needs_glue then append buf gl;
               List.iter (append buf)
-                (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
-                   env.fontColor
-                   (env.word_substitutions (String.sub t i0 (i-i0))))
+                (gl_of_str env (String.sub t i0 (i-i0)))
             )
           ) else (
             if is_space (UTF8.look t i) then (
               let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
                 if i0<>i && needs_glue then append buf gl;
                 List.iter (append buf)
-                  (hyphenate env.hyphenate env.substitutions env.positioning env.font env.size env.fontColor
-                     (env.word_substitutions (String.sub t i0 (i-i0))));
+                  (gl_of_str env (String.sub t i0 (i-i0)));
                 cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
             ) else (
               cut_str false needs_glue gl i0 (UTF8.next t i)

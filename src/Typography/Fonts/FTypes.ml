@@ -3,6 +3,8 @@ open CamomileLibrary
 open Util
 open Bezier
 
+exception Glyph_not_found of (string*string)
+
 type 'a kerningBox= { advance_height:float; advance_width:float; kern_x0:float; kern_y0:float; kern_contents:'a }
 
 let empty_kern a={ advance_height=0.; advance_width=0.; kern_x0=0.; kern_y0=0.; kern_contents=a }

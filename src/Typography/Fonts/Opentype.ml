@@ -51,14 +51,18 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
             CFF (CFF.loadFont file ~offset:(off+a) ~size:b, off)
       | _->failwith ("OpenType : format non reconnu : "^typ)
 
+let fontName ?index:(idx=0) f =
+  match f with
+      CFF (x,_)->CFF.fontName x ~index:idx
+
 let cardinal=function
     CFF (f,_)->CFF.cardinal f
 
 
 type glyph = CFFGlyph of (font*CFF.glyph)
 
-let glyph_of_uchar font char0=
-  match font with
+let glyph_of_uchar font0 char0=
+  match font0 with
       CFF (font,offset0)->
         let file=font.file in
         let char=UChar.code char0 in
@@ -129,7 +133,7 @@ let glyph_of_uchar font char0=
                   );
                   incr table
             done;
-            !cid
+            if !cid = 0 then raise (Glyph_not_found (fontName font0, UTF8.init 1 (fun _->char0))) else !cid
 
 let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
@@ -166,9 +170,6 @@ let glyphWidth gl=
              x.glyphWidth<-w;
              w
         )
-let fontName ?index:(idx=0) f =
-  match f with
-      CFF (x,_)->CFF.fontName x ~index:idx
 
 let otype_file font=match font with
     CFF (font,offset0)->font.file, offset0
