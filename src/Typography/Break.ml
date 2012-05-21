@@ -101,8 +101,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
         let wj=box_width comp_j box_j in
           if !xi +.wi < !xj+. wj && i < !max_haut then (
             let yi=lower_y box_i wi in
-            let yj=if !xi+.wi < !xj then 0.(* -.infinity *) else
-              if upper_y box_j wj > -.infinity then upper_y box_j wj else 0.
+            let yj=if !xi+.wi < !xj then -.infinity else
+              upper_y box_j wj
             in
               (* let x0=if !xi+.wi < !xj then !xi else max !xi !xj in *)
               (* let w0= !xi +. wi -. x0 in *)
@@ -111,9 +111,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
               xi:= !xi+.wi;
               collide (i+1) j (min max_col (yi-.yj))
           ) else if j < !max_bas then (
-            let yi=if !xj +. wj < !xi then 0.(* infinity *) else
-              if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
-
+            let yi=if !xj +. wj < !xi then infinity else
+              lower_y box_i wi
+            in
             let yj=upper_y box_j wj in
               (* let x0=if !xj+.wj < !xi then !xj else max !xi !xj in *)
               (* let w0= !xj +. wj -. x0 in *)
@@ -299,25 +299,36 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
                               (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
                               (*     try *)
-                              (*       let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in *)
+                                  (*       let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in *)
                               (*       let _,_,params,_,_,_,_=LineMap.find ant !demerits' in *)
                               (*         v_distance ant params *)
                               (*     with *)
                               (*         Not_found -> node0.height *)
                               (*   ) *)
                             ) else (
-                              node0.height+.
-                                (try
-                                   ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
-                                                !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
-                                 with
-                                     Not_found -> (
-                                       let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                         colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
-                                                                       !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
-                                         -.dist
-                                     )
-                                )
+                              let d=
+                                node0.height+.
+                                  (try
+                                     ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                  !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                   with
+                                       Not_found -> (
+                                         let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                           colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                         !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
+                                           -.dist
+                                       )
+                                  )
+                              in
+                                if d=infinity || d = -.infinity then
+                                  (try
+                                     let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
+                                     let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
+                                       v_distance prec params
+                                   with
+                                       Not_found->0.
+                                  )
+                                else d
                             )
                           in
                             v_distance node lastParameters
@@ -331,7 +342,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                 max !r_params.min_page_before lastParameters.min_page_after)
 
                         then (
-                          let allow_orphan=
+                          let allow_orphan= (* allow_orphan = node n'est pas un orphelin *)
                             page=node.page
                             || node.lineStart > 0
                             || Array.length paragraphs <= pi+1
@@ -339,14 +350,14 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
-                          let allow_widow=
+                          let allow_widow= (* allow_widow = nextNode n'est pas une veuve *)
                             page=node.page
                             || nextNode.lineEnd < Array.length (paragraphs.(nextNode.paragraph))
                             || nextNode.lineStart<=0
                             || lastParameters.min_page_after>0
                             || !r_params.min_page_before>0
                           in
-                            if not allow_orphan && allow_widow then (
+                            if not allow_orphan then (
                               if allow_impossible then (
                                 let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
                                 let a,b,c,d,e,f,g=LineMap.find prec !demerits' in
@@ -354,7 +365,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                                       { c with min_page_after=1 },
                                                       d,e,f,g)::(!extreme_solutions)
                               )
-                            ) else if not allow_widow && allow_orphan then (
+                            ) else if not allow_widow then (
                               if allow_impossible then (
                                 let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
                                 let a,b,c,d,e,f,g=LineMap.find prec !demerits' in

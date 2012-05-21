@@ -153,6 +153,7 @@ let rec lower_y x w=match x with
   | Glue y
   | Drawing y->y.drawing_y0
   | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
+  | Empty->infinity
   | _->0.
 
 let rec upper_y x w=match x with
@@ -160,13 +161,14 @@ let rec upper_y x w=match x with
   | Glue y
   | Drawing y->y.drawing_y1
   | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
+  | Empty-> -.infinity
   | _-> 0.
 
 let knuth_h_badness w1 w = 100.*.(abs_float (w-.w1)) ** 3.
 let glue a b c=
   Glue { drawing_min_width= a;
          drawing_max_width= c;
-         drawing_y0=0.; drawing_y1=0.;
+         drawing_y0=infinity; drawing_y1= -.infinity;
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
          drawing_badness=knuth_h_badness b }
