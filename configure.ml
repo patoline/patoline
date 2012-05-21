@@ -114,24 +114,24 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: pkg_camomile%s,pkg_dyp,pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
-<**/*.{cmx,cmo}> and not <Typography.cmx> :pkg_camomile,for-pack(Typography)\n"
-        (if !camlzip <> "" then ",pkg_"^(!camlzip) else "")
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s,package(dyp),pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
+<**/*.{cmx,cmo}> and not <Typography.cmx> :package(camomile),for-pack(Typography)\n"
+        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-      "<Format/*>: pp(cpp -w),pkg_camomile,pkg_dyp%s
-<proof/proof.{byte,native}>: pkg_camomile%s
+      "<Format/*>: pp(cpp -w),package(camomile),package(dyp)%s
+<proof/proof.{byte,native}>: package(camomile)%s
 \"Typography\" or \"Format\":include"
-        (if !camlzip <> "" then ",pkg_"^(!camlzip) else "")
-        (if !camlzip <> "" then ",pkg_"^(!camlzip) else "");
+        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
+        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "");
       close_out tags;
 
     let tags'=open_out "src/Patoline/_tags" in
-      Printf.fprintf tags' "<*>: pkg_camomile,pkg_str,pkg_dyp,pp(cpp -w %s),use_dynlink\n"
+      Printf.fprintf tags' "<*>: package(camomile),package(dyp),pp(cpp -w %s),use_str,use_dynlink\n"
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags';
     (* binaries *)
