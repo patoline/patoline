@@ -9,13 +9,3 @@ module type Driver =
     val output :
       ?structure:OutputCommon.structure -> page array -> string -> unit
   end
-module Output :
-  functor (M : Driver) ->
-    sig
-      val output :
-        ('a,Document.tag) Document.tree ->
-        Document.user Box.box array array ->
-        Box.drawingBox array ->
-        'a Document.environment ->
-        (Line.parameters * Line.line) list array -> string -> unit
-    end

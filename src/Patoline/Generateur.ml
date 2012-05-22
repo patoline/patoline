@@ -45,8 +45,8 @@ module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) le
           "module Format="^format^".Format(D);;\nopen Format;;\n"
       )
 
-let postambule outfile = Printf.sprintf "
-module Out=OutputPaper.Output(Pdf)
+let postambule format outfile = Printf.sprintf "
+module Out=%s.Output(Pdf)
 
 let _ = 
   let filename=\"%s\" in
@@ -74,7 +74,7 @@ let _ =
   in
   let env0=defaultEnv in
   resolve 0 env0
-" outfile
+" format outfile
 
 module Source = struct
   type t = { seek_in : int -> unit ; input : string -> int -> int -> unit}
@@ -508,7 +508,7 @@ let gen_ml format amble filename from wherename where pdfname =
 		output_list source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
-                    Main->output_string where (postambule pdfname)
+                    Main->output_string where (postambule format pdfname)
                   | Noamble->()
                   | Separate->Printf.fprintf where "\nend\n"
 	    with
