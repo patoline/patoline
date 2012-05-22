@@ -319,7 +319,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           let p=(params0 a b c d e f g) in
             { p with
                 left_margin=p.left_margin +. tiret_w a;
-                measure=p.measure-.tiret_w a
+                measure=p.measure
             }
         in
         let params1 params0 a b c d e f g=
@@ -333,7 +333,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             else p
         in
         let comp mes a1 a2 a3 a4 line a6=
-          Complete.normal { mes with normalMeasure=(mes.normalMeasure-.tiret_w mes) } a1 a2 a3 a4 line a6
+          Complete.normal mes a1 a2 a3 a4 line a6
         in
         let comp1 mes a1 a2 a3 a4 line a6=
           if line.lineStart>0 then
