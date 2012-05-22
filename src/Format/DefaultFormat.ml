@@ -412,13 +412,12 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     end
     module Proof=struct
       let do_begin_env ()=
-        newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal Document.parameters
+        let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
+        newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
           (italic [T "Proof.";B (fun env->let w=env.size in [glue w w w])]);
         D.structure:=lastChild !D.structure
       let do_end_env ()=
-        D.structure:=(try
-                        prev (function Paragraph _->true | _->false) (top !D.structure)
-                      with Not_found -> lastChild !D.structure);
+        D.structure:=lastChild !D.structure;
 
         newPar D.structure Complete.normal Document.parameters
           [B (fun env->

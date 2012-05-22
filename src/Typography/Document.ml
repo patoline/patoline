@@ -550,7 +550,7 @@ let addFree str boxes=
 let newPar str ?(environment=(fun x->x)) complete parameters par=
   match !str with
       Paragraph p,path->
-        str:=Paragraph {p with par_contents=p.par_contents@par}, path
+        str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
