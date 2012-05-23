@@ -636,6 +636,38 @@ let generalRef refType name=
 
 let sectref x=generalRef "_structure" x
 
+#ifdef CAMLIMAGES
+let includeGraphics ?scale:(scale=1.) imageFile=
+  [B (fun env->
+        let image=(OImages.load imageFile []) in
+        let w,h=Images.size image#image in
+        let fw=float_of_int w in
+        let fh=float_of_int h in
+        let i={image_file=imageFile;
+               image_width=fw*.scale;
+               image_height=fh*.scale;
+               image_x=0.;
+               image_y=0.
+              }
+        in
+        let img=Drawing {
+          drawing_min_width=fw*.scale;
+          drawing_max_width=fw*.scale;
+          drawing_nominal_width=fw*.scale;
+          drawing_y0=0.;
+          drawing_y1=fh*.scale;
+          drawing_badness=(fun _->0.);
+          drawing_contents=(fun _->[OutputCommon.Image i])
+        }
+        in
+          image#destroy;
+          [img]
+     )]
+#else
+  let includeGraphics _=[]
+
+#endif
+
 (** {3 Boitification et "classes" de documents}*)
 
 (** Comment on cache des trucs à ocamldoc mais pas à caml ? Ça pourrait être utilisé ici *)

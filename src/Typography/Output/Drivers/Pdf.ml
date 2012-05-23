@@ -440,6 +440,7 @@ let output ?(structure:structure={name="";displayname=[];
             if !pageImages<>[] then (
               List.iter (fun (obj,_,i)->
                            resumeObject obj;
+#ifdef CAMLIMAGES
                            let image=(OImages.load i.image_file []) in
                            let w,h=Images.size image#image in
                              (match image#image_class with
@@ -476,6 +477,7 @@ let output ?(structure:structure={name="";displayname=[];
                                 | _->()
                              );
                              image#destroy;
+#endif
                              endObject ()
                         ) actual_pageImages
             )
