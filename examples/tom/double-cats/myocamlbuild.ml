@@ -57,6 +57,8 @@ let _ = dispatch begin function
       ocaml_lib "Typography/Typography";
       ocaml_lib "Format/DefaultFormat";
 
+
+
       rule "patoline: txp -> dep"
         ~prods:["%.txp.deps"]
         ~deps:["%.txp"]
@@ -64,8 +66,15 @@ let _ = dispatch begin function
 	let txp = env "%.txp" in
           Seq[Cmd(S([patoline;A"--deps";A"--ml";P(env "%.txp")]))]
         end;
-      rule "patoline: txp -> ml"
+      rule "patoline: tml -> ml"
         ~prods:["%.ml"]
+        ~deps:["%.tml"]
+      begin fun env _build ->
+        cp (env "%.tml") (env "%.ml")
+      end;
+
+      rule "patoline: txp -> ml"
+        ~prods:["%.tml"]
         ~deps:["%.txp";"%.txp.deps"]
       begin fun env _build ->
 	let txp = env "%.txp" in
