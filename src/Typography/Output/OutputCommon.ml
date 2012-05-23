@@ -30,16 +30,20 @@ type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;m
              uri:string;
              dest_page:int; dest_x:float; dest_y:float }
 
+type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
+
 type contents=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
+  | Image of image
 
 let translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
   | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)
   | Link l -> Link { l with link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
                        link_x1=l.link_x1+.x; link_y1=l.link_y1+.y }
+  | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
 
 let resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
@@ -47,7 +51,8 @@ let resize alpha=function
                        List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
   | Link l -> Link { l with link_x0=l.link_x0*.alpha; link_y0=l.link_y0*.alpha;
                        link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha }
-
+  | Image i->Image { i with image_width=i.image_width*.alpha;
+                       image_height=i.image_height*.alpha }
 
 let bounding_box l=
   let rec bb x0 y0 x1 y1=function
@@ -74,6 +79,10 @@ let bounding_box l=
                        done) ps;
           bb !x0' !y0' !x1' !y1' s
       )
+    | Image i::s->
+        bb (min x0 i.image_x) (min y0 i.image_y)
+          (max x1 (i.image_x+.i.image_width))
+          (max y1 (i.image_y+.i.image_height)) s
     | _::s -> bb x0 y0 x1 y1 s
   in
     bb infinity infinity (-.infinity) (-.infinity) l

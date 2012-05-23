@@ -10,6 +10,7 @@ let grammars_dirs=ref []
 let hyphen_dirs=ref []
 let opt_only=ref true
 let camlzip=ref ""
+let camlimages=ref ""
 let lang=ref "FR"
 
 let avail_lang=
@@ -66,6 +67,9 @@ let _=
   else if Sys.command "ocamlfind query camlzip" = 0
   then camlzip := "camlzip";
 
+  if Sys.command "ocamlfind query camlimages" = 0
+  then camlimages := "camlimages.all_formats";
+
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config.ml" in
@@ -114,20 +118,24 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s,package(dyp),pp(cpp -w %s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,package(dyp),pp(cpp -w %s%s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
 <**/*.{cmx,cmo}> and not <Typography.cmx> :package(camomile),for-pack(Typography)\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
+        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
+        (if !camlimages <> "" then "-DCAMLIMAGES " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-      "<Format/*>: pp(cpp -w),package(camomile),package(dyp)%s
-<proof/proof.{byte,native}>: package(camomile)%s
+      "<Format/*>: pp(cpp -w),package(camomile),package(dyp)%s%s
+<proof/proof.{byte,native}>: package(camomile)%s%s
 \"Typography\" or \"Format\":include"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
-        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "");
+        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
+        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
+        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "");
       close_out tags;
 
     let tags'=open_out "src/Patoline/_tags" in
@@ -175,7 +183,8 @@ let _=
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
-            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"camomile%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)));
+            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"camomile%s%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)))
+            (if !camlimages="" then "" else (","^(!camlimages)));
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
           close_out meta
