@@ -131,6 +131,7 @@ let output ?(structure:structure={name="";displayname=[];
     for page=0 to Array.length pages-1 do
       Buf.clear pageBuf;
       let pageLinks=ref [] in
+      let pageImages=ref [] in
       let pageFonts=ref StrMap.empty in
       let currentFont=ref (-1) in
       let currentSize=ref (-1.) in
@@ -377,47 +378,11 @@ let output ?(structure:structure={name="";displayname=[];
         | Link l->pageLinks:= l:: !pageLinks
         | Image i->(
 #ifdef CAMLIMAGES
-            Printf.bprintf pageBuf "q %f 0 0 %f %f %f cm\n"
+            pageImages:=i::(!pageImages);
+            let num=List.length !pageImages in
+            Printf.bprintf pageBuf "q %f 0 0 %f %f %f cm /Im%d Do Q "
               (pt_of_mm i.image_width) (pt_of_mm i.image_height)
-              (pt_of_mm i.image_x) (pt_of_mm i.image_y);
-            let image=(OImages.load i.image_file []) in
-            let w,h=Images.size image#image in
-              (match image#image_class with
-                   OImages.ClassRgb24->(
-                     let src=OImages.rgb24 image in
-                     let img_buf=Buffer.create (w*h*3) in
-                       for j=0 to h-1 do
-                         for i=0 to w-1 do
-                           let rgb = src#get i j in
-                             Buffer.add_char img_buf (char_of_int rgb.Images.r);
-                             Buffer.add_char img_buf (char_of_int rgb.Images.g);
-                             Buffer.add_char img_buf (char_of_int rgb.Images.b);
-                         done
-                       done;
-                       Printf.bprintf pageBuf "BI\n";
-                       Printf.bprintf pageBuf "/W %d /H %d /CS /RGB /BPC 8\n"
-                         w h;
-                       Printf.bprintf pageBuf "ID\n%sEI\nQ\n" (Buffer.contents img_buf)
-                   )
-                 | OImages.ClassRgba32->(
-                     let src=OImages.rgba32 image in
-                     let img_buf=Buffer.create (w*h*3) in
-                       for j=0 to h-1 do
-                         for i=0 to w-1 do
-                           let rgb = src#get i j in
-                             Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.r);
-                             Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.g);
-                             Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
-                         done
-                       done;
-                       Printf.bprintf pageBuf "BI\n";
-                       Printf.bprintf pageBuf "/W %d /H %d /CS /RGB /BPC 8\n"
-                         w h;
-                       Printf.bprintf pageBuf "ID\n%sEI\nQ\n" (Buffer.contents img_buf)
-                   )
-                 | _->()
-              );
-              image#destroy;
+              (pt_of_mm i.image_x) (pt_of_mm i.image_y) num;
 #endif
 )
       in
@@ -433,8 +398,17 @@ let output ?(structure:structure={name="";displayname=[];
           resumeObject pageObjects.(page);
           let w,h=pages.(page).pageFormat in
             fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
-            fprintf outChan "/Resources << /ProcSet [/PDF /Text] ";
-
+            fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
+              (if !pageImages=[] then "" else " /ImageB");
+            if !pageImages<>[] then fprintf outChan " /XObject << ";
+            let ii=ref 1 in
+            let actual_pageImages=
+              List.map (fun i->
+                          let obj=futureObject () in
+                          fprintf outChan "/Im%d %d 0 R" !ii obj;
+                          (obj, !ii, i)) !pageImages
+            in
+            if !pageImages<>[] then fprintf outChan ">>";
             if StrMap.cardinal !pageFonts >0 then (
               fprintf outChan " /Font << ";
               StrMap.iter (fun _ (a,b)->fprintf outChan "/F%d %d 0 R " a b) !pageFonts;
@@ -460,9 +434,51 @@ let output ?(structure:structure={name="";displayname=[];
                         ) !pageLinks;
               fprintf outChan "]";
             );
-
             fprintf outChan ">> ";
             endObject ();
+
+            if !pageImages<>[] then (
+              List.iter (fun (obj,_,i)->
+                           resumeObject obj;
+                           let image=(OImages.load i.image_file []) in
+                           let w,h=Images.size image#image in
+                             (match image#image_class with
+                                  OImages.ClassRgb24->(
+                                    let src=OImages.rgb24 image in
+                                    let img_buf=Buffer.create (w*h*3) in
+                                      for j=0 to h-1 do
+                                        for i=0 to w-1 do
+                                          let rgb = src#get i j in
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.r);
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.g);
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.b);
+                                        done
+                                      done;
+                                      let a,b=stream (Buffer.contents img_buf) in
+                                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n%s\nendstream\n"
+                                          w h (String.length b) a b;
+                                  )
+                                | OImages.ClassRgba32->(
+                                    let src=OImages.rgba32 image in
+                                    let img_buf=Buffer.create (w*h*3) in
+                                      for j=0 to h-1 do
+                                        for i=0 to w-1 do
+                                          let rgb = src#get i j in
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.r);
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.g);
+                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
+                                        done
+                                      done;
+                                      let a,b=stream (Buffer.contents img_buf) in
+                                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n%s\nendstream\n"
+                                          w h (String.length b) a b;
+                                  )
+                                | _->()
+                             );
+                             image#destroy;
+                             endObject ()
+                        ) actual_pageImages
+            )
     done;
 
     (* Tous les dictionnaires de unicode mapping *)
@@ -690,7 +706,6 @@ let output ?(structure:structure={name="";displayname=[];
           fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R >>" outlines;
           endObject ()
       );
-      endObject ();
 
       (* Ecriture de xref *)
       flush outChan;
