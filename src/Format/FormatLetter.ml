@@ -12,8 +12,9 @@ let id x=x
 let emph x=toggleItalic x
 
 module Format=functor (D:DocumentStructure)->struct
-  type user=Document.user
+
   module Default=DefaultFormat.Format(D)
+  include Default
   let lang_T x=[T x]
 
   let node l=Document.Node {Document.empty with Document.children=List.fold_left (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l}, []
@@ -188,7 +189,6 @@ module Format=functor (D:DocumentStructure)->struct
   let dear x=(vspaceBefore 13.)@(vspaceAfter 3.)@x
   let subject x=(toggleItalic [T"Subject:";T" "]) @ x
 
-  module Env_itemize=Default.Env_itemize
 
   let utf8Char x=[T (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=

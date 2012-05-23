@@ -380,6 +380,7 @@ let output ?(structure:structure={name="";displayname=[];
 #ifdef CAMLIMAGES
             pageImages:=i::(!pageImages);
             let num=List.length !pageImages in
+            close_text ();
             Printf.bprintf pageBuf "q %f 0 0 %f %f %f cm /Im%d Do Q "
               (pt_of_mm i.image_width) (pt_of_mm i.image_height)
               (pt_of_mm i.image_x) (pt_of_mm i.image_y) num;

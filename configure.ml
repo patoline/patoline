@@ -145,13 +145,15 @@ let _=
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/patoline %s $(DESTDIR)%s\n" (if !opt_only then "" else "src/patoline.byte") (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/patoline $(DESTDIR)%s\n" (escape !bin_dir);
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
-        "src/_build/Format/DefaultFormat.cmxa src/_build/Format/DefaultFormat.a src/_build/Format/DefaultFormat.cmi "^
-        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi "^
-        (if not !opt_only then "src/Typography/_build/DefaultGrammar.cmo " else "")
+        "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
+        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi"^
+        (if not !opt_only then
+           "src/Typography/_build/Typography.cma src/_build/Format/*Format*.cma"
+         else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);

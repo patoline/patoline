@@ -637,7 +637,7 @@ let generalRef refType name=
 let sectref x=generalRef "_structure" x
 
 #ifdef CAMLIMAGES
-let includeGraphics ?scale:(scale=1.) imageFile=
+let includeGraphics ?scale:(scale=0.1) imageFile=
   [B (fun env->
         let image=(OImages.load imageFile []) in
         let w,h=Images.size image#image in
@@ -664,7 +664,7 @@ let includeGraphics ?scale:(scale=1.) imageFile=
           [img]
      )]
 #else
-  let includeGraphics _=[]
+  let includeGraphics ?scale _=[]
 
 #endif
 

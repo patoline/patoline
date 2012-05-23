@@ -70,6 +70,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     (* let replace_utf8 x y z= *)
     (*   Str.global_replace x *)
     (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
+    let id x=x
 
     let defaultEnv:user environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
@@ -267,6 +268,34 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         let center p = { p with par_parameters=Document.do_center p.par_parameters } in
         let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
         let res = map_paragraphs center res0 in
+          D.structure:=up (res, path0);
+          env_stack:=List.tl !env_stack
+
+    end
+    module Env_raggedRight = struct
+
+      let do_begin_env ()=
+        D.structure:=newChildAfter (!D.structure) (Node empty);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let rag p = { p with par_parameters=Document.ragged_right } in
+        let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
+        let res = map_paragraphs rag res0 in
+          D.structure:=up (res, path0);
+          env_stack:=List.tl !env_stack
+
+    end
+    module Env_raggedLeft = struct
+
+      let do_begin_env ()=
+        D.structure:=newChildAfter (!D.structure) (Node empty);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let rag p = { p with par_parameters=Document.ragged_left } in
+        let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
+        let res = map_paragraphs rag res0 in
           D.structure:=up (res, path0);
           env_stack:=List.tl !env_stack
 

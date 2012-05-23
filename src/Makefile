@@ -1,15 +1,18 @@
 OCAMLBUILD=ocamlbuild
 CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip -linkpkg
 
-all:native byte
+FORMAT=$(shell ls Format/*Format*.ml)
+
+all:native
 
 native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
 byte:Main.byte DefaultGrammar.tgo proof.byte DefaultGrammar.cmo
 
-Main.native:Format/DefaultFormat.cmxa Patoline/Parser.ml
+Main.native: Patoline/Parser.ml $(FORMAT:.ml=.cmxa)
 	cd Patoline; $(OCAMLBUILD) Main.native
 	cp Patoline/Main.native patoline
-Main.byte:Format/DefaultFormat.cma Patoline/Parser.ml
+
+Main.byte: Patoline/Parser.ml $(FORMAT:.ml=.cma)
 	cd Patoline; $(OCAMLBUILD) Main.byte
 	cp Patoline/Main.byte patoline.byte
 proof.native:Typography/Typography.cmxa
@@ -19,10 +22,10 @@ proof.byte:Typography/Typography.cma
 	rm -Rf proof.byte _build/proof
 	$(OCAMLBUILD) proof/proof.byte
 
-Format/DefaultFormat.cmxa:Typography/Typography.cmxa
-	$(OCAMLBUILD) Format/DefaultFormat.cmxa
-Format/DefaultFormat.cma:Typography/Typography.cma
-	$(OCAMLBUILD) Format/DefaultFormat.cma
+Format/%.cmxa:Typography/Typography.cmxa
+	$(OCAMLBUILD) Format/$*.cmxa
+Format/%.cma:Typography/Typography.cma
+	$(OCAMLBUILD) Format/$*.cma
 
 Patoline/Parser.ml:Patoline/Parser.dyp
 	dypgen --no-mli Patoline/Parser.dyp
@@ -34,11 +37,11 @@ Typography/Typography.cma:
 
 DefaultGrammar.ml:DefaultGrammar.tgx
 	cp DefaultGrammar.tml DefaultGrammar.ml
-DefaultGrammar.tgo: Main.byte DefaultGrammar.txp
+DefaultGrammar.tgo: Patoline/_build/Main.byte DefaultGrammar.txp
 	rm -f patolineDefault.tgo
 	Patoline/Main.byte --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-DefaultGrammar.tgx: Main.native DefaultGrammar.txp
+DefaultGrammar.tgx: Patoline/_build/Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
 	Patoline/Main.native --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
