@@ -345,12 +345,11 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                 max !r_params.min_page_before lastParameters.min_page_after)
 
                         then (
-                          let allow_orphan= (* allow_orphan = node n'est pas un orphelin *)
-                            page=node.page
-                            || node.lineStart>0
-                            || node.lineEnd >= Array.length (paragraphs.(node.paragraph))
-                            || lastParameters.min_page_after>0
-                            || !r_params.min_page_before>0
+                          let node_is_orphan=
+                            page<>node.page
+                            && node.lineStart <= 0
+                            && node.lineEnd < Array.length (paragraphs.(node.paragraph))
+                            && !r_params.min_page_before<=0
                           in
                           let nextNode_is_widow=
                             page<>node.page
