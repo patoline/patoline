@@ -64,19 +64,6 @@ let alegreya=
      simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
   ]
 
-let notCourierSans=[
-  Regular,
-  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "DejaVuSans/DejaVuSansMono.otf")),
-   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "DejaVuSans/DejaVuSansMono.otf")));
-  (* Regular, *)
-  (* (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf")), *)
-  (*  simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans.otf"))); *)
-  (* Bold, *)
-  (* (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf")), *)
-  (*  simpleFamilyMember (fun ()->Fonts.loadFont (findFont "NotCourierSans/NotCourierSans-Bold.otf"))) *)
-]
-
-
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
@@ -152,13 +139,13 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         match top !str with
             Node n,path -> Node { n with
                                     name=name;
-                                    node_tags=Structural::InTOC::n.node_tags;
+                                    node_tags=("Structural","")::("InTOC","")::n.node_tags;
                                     displayname = match n.displayname, displayname with
                                         [],None->[T name]
                                       | [],Some a->a
                                       | l,_->l },path
           | t,path->Node { name=name;
-                           node_tags=[Structural;InTOC];
+                           node_tags=["Structural","";"InTOC",""];
                            displayname=(match displayname with
                                             None->[T name]
                                           | Some a->a);
@@ -168,25 +155,25 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                                        user_positions=y.user_positions });
                            tree_paragraph=0 },path
       in
-        str:=follow (t0',[]) (List.rev path)
+        str:=follow (t0',[]) (List.map fst (List.rev path))
     let author str =
       D.structure:=match !D.structure with
-          (Node h0,h1)->(Node { h0 with node_tags=(Author str)::
-                             (List.filter (function Author _->false | _->true) h0.node_tags)
+          (Node h0,h1)->(Node { h0 with node_tags=("Author", str)::
+                             (List.filter (function "Author", _->false | _->true) h0.node_tags)
                               }, h1)
         | (h0,h1)->newChildAfter (
             Node { empty with
-                     node_tags=(Author str)::
-                (List.filter (function Author _->false | _->true) empty.node_tags)
+                     node_tags=("Author", str)::
+                (List.filter (function "Author", _->false | _->true) empty.node_tags)
                  }, h1) h0
     let institute str =
       D.structure:=match !D.structure with
-          (Node h0,h1)->(Node { h0 with node_tags=(Institute str)::
-                             (List.filter (function Institute _->false | _->true) h0.node_tags)
+          (Node h0,h1)->(Node { h0 with node_tags=("Institute", str)::
+                             (List.filter (function "Institute", _->false | _->true) h0.node_tags)
                               }, h1)
         | (h0,h1)->newChildAfter (Node { empty with
-                                           node_tags=(Institute str)::
-                                      (List.filter (function Institute _->false | _->true)
+                                           node_tags=("Institute", str)::
+                                      (List.filter (function "Institute", _->false | _->true)
                                          empty.node_tags)
                                        }, h1) h0
     let table_of_contents=TableOfContents.centered
@@ -274,12 +261,13 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
       let do_begin_env ()=
         D.structure:=newChildAfter (!D.structure) (Node empty);
-        env_stack:=snd !D.structure :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
         let center p = { p with par_parameters=Document.do_center p.par_parameters } in
-        let res = map_paragraphs center (fst (follow (top !D.structure) (List.rev (List.hd !env_stack)))) in 
-          D.structure:=up (res, List.hd !env_stack);
+        let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
+        let res = map_paragraphs center res0 in
+          D.structure:=up (res, path0);
           env_stack:=List.tl !env_stack
 
     end
@@ -288,7 +276,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
       let do_begin_env ()=
         D.structure:=newChildAfter (!D.structure) (Node empty);
-        env_stack:=snd !D.structure :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let item ()=
         D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack))) (Node empty);
@@ -378,11 +366,12 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 	       with Not_found -> t)
           | t->t
         in
-        let avec_tirets = match fst (follow (top !D.structure) (List.rev (List.hd !env_stack))) with
+        let a,b=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+        let avec_tirets = match a with
             Node n->Node { n with children=IntMap.map tirets n.children }
           | x->x
         in
-          D.structure:=up (avec_tirets, List.hd !env_stack);
+          D.structure:=up (avec_tirets, b);
           env_stack:=List.tl !env_stack
     end
 
@@ -390,7 +379,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
-        env_stack:=snd !D.structure :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
 
       let do_end_env () =
@@ -444,7 +433,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
-        env_stack:=snd !D.structure :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
         let rec first_par=function
@@ -501,16 +490,16 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                 Node { n with children=IntMap.add k0 (last_par a0) n.children }
           | x -> x
         in
-        let stru=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
-            Node n,_->
+        let stru,path=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
+            Node n,x->
               (try
                  let a,b=IntMap.min_binding n.children in
                    Node { n with children = IntMap.add a (first_par b) n.children }
                with
-                   Not_found->first_par (Node n))
-          | x,_->first_par x
+                   Not_found->first_par (Node n)), x
+          | x,y->(first_par x), y
         in
-	  D.structure := up (last_par stru,List.hd !env_stack);
+	  D.structure := up (last_par stru,path);
           env_stack:=List.tl !env_stack
     end
   end)

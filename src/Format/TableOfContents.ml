@@ -40,7 +40,7 @@ let centered str tree max_level=
                 let chi=flat_children env0 (IntMap.bindings s.children) in
                 let a,b=(try StrMap.find "structure" (env0.counters) with _-> -1,[]) in
                 let count=drop 1 b in
-                let in_toc=List.fold_left (fun a b->match b with InTOC->true | _->a) false s.node_tags in
+                let in_toc=List.mem_assoc "InTOC" s.node_tags in
                   if in_toc && count<>[] then (
                     try
                       let page=(1+(TS.UMap.find (Structure count) env0.user_positions).page) in

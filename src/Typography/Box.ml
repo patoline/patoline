@@ -13,6 +13,7 @@ type 'a box=
   | User of 'a
   | BeginFigure of int
   | FlushFigure of int
+  | Parameters of (Line.parameters->Line.parameters)
   | Empty
 
 and 'a kerningBox='a Fonts.FTypes.kerningBox
@@ -404,6 +405,7 @@ let rec print_box chan=function
   | User _->Printf.fprintf chan "[User]"
   | BeginFigure _->Printf.fprintf chan "[BeginFigure]"
   | FlushFigure _->Printf.fprintf chan "[FlushFigure]"
+  | Parameters _ ->Printf.fprintf chan "[Parameters]"
   | Empty ->()
 
 let rec print_box_type chan=function
@@ -415,6 +417,7 @@ let rec print_box_type chan=function
   | User _->Printf.fprintf chan "User "
   | BeginFigure _->Printf.fprintf chan "BeginFigure "
   | FlushFigure _->Printf.fprintf chan "FlushFigure "
+  | Parameters _ ->Printf.fprintf chan "Parameters"
   | Empty ->Printf.fprintf chan "Empty "
 
 let print_text_line lines node=
@@ -433,6 +436,7 @@ let rec text_box=function
   | User _->"[User]"
   | BeginFigure _->"[BeginFigure]"
   | FlushFigure _->"[FlushFigure]"
+  | Parameters _ ->"[Parameters]"
   | Empty ->""
 
 let text_line lines node=

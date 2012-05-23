@@ -48,13 +48,6 @@ type user=
   | BeginLink of string
   | EndLink
   | AlignmentMark
-(** Tags des nœuds de l'arbre *)
-type tag=
-    InTOC
-  | Author of string
-  | Institute of string
-  | Numbered
-  | Structural
 
 (** Module de typesetting Ce module contient une map des boîtes
     user, mais ne fait aucune hypothèse de plus sur le type
@@ -107,11 +100,11 @@ module Mathematical=struct
 end
 
 (** Structure du document. Un [node] est un nœud interne de l'arbre. *)
-type ('a,'b) node={
+type 'a node={
   name:string;
   displayname:'a content list;
-  children:('a,'b) tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
-  node_tags:'b list;
+  children:'a tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
+  node_tags:(string*string) list;
   node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
   node_post_env:'a environment -> 'a environment -> 'a environment;(** Changement d'environnement quand on en sort *)
   mutable tree_paragraph:int;
@@ -129,8 +122,8 @@ and 'a figuredef={
   fig_post_env:'a environment -> 'a environment -> 'a environment;
   fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> parameters
 }
-and ('a,'b) tree=
-    Node of ('a,'b) node
+and ('a) tree=
+    Node of ('a) node
   | Paragraph of 'a paragraph
   | FigureDef of 'a figuredef
   | Free of 'a box list
@@ -213,7 +206,7 @@ let empty={ name="";
                                         user_positions=y.user_positions });
             tree_paragraph=0 }
 
-type ('a,'b) cxt=(int*('a,'b) tree) list
+type ('a) cxt=(int*('a) tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
@@ -279,7 +272,7 @@ let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 
 let rec follow t l=match l with
     []->t
-  | (a,_)::s->follow (child t a) s
+  | a::s->follow (child t a) s
 
 (* La structure actuelle *)
 (* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
@@ -290,8 +283,8 @@ let doc_graph out t0=
   Printf.fprintf out "digraph {\n";
   let rec do_it path t=
     let col=
-      if List.mem Structural t.node_tags then
-        if List.mem Numbered t.node_tags then "blue" else "red" else "black" in
+      if List.mem_assoc "Structural" t.node_tags then
+        if List.mem_assoc "Numbered" t.node_tags then "blue" else "red" else "black" in
     Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
     List.iter (fun (i,x)->match x with
                    Paragraph _->(
@@ -465,6 +458,8 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
         min_height_after=0.;
       }
 
+let vspaceBefore x=[B (fun _->[Parameters (fun p->{ p with min_height_before=p.min_height_before+.x })])]
+let vspaceAfter x=[B (fun _->[Parameters (fun p->{ p with min_height_after=p.min_height_after+.x })])]
 
 let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
@@ -577,7 +572,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
     empty with
       name=name;
       displayname =displayname;
-      node_tags= (if in_toc then [InTOC] else []) @ [Structural] @(if numbered then [Numbered] else []);
+      node_tags= (if in_toc then ["InTOC",""] else []) @ ["Structural",""] @(if numbered then ["Numbered",""] else []);
       node_env=(
         fun env->
           { env with
@@ -788,15 +783,15 @@ let boxify_scoped env x=
 
 
 module type DocumentStructure=sig
-  val structure:((user,tag) tree*(int*(user,tag) tree) list) ref
+  val structure:((user) tree*(int*(user) tree) list) ref
   val fixable:bool ref
 end
 module type Format=sig
   type user
   val defaultEnv:user environment
-  val postprocess_tree:(user,tag) tree->(user,tag) tree
+  val postprocess_tree:(user) tree->(user) tree
   val title:
-    ((user,tag) tree * (((user,tag) tree) list)) ref ->
+    ((user) tree * (((user) tree) list)) ref ->
     ?label:string ->
     ?displayname:user content list ->
     string -> unit
@@ -873,7 +868,7 @@ let flatten env0 fixable str=
                   let env2'=
                     let cou=
                       StrMap.add "_path" (-1,k::path)
-                        (if List.mem Structural h.node_tags then
+                        (if List.mem_assoc "Structural" h.node_tags then
                            StrMap.map (fun (a,b)->if a<=level+1 then (a,b) else (a,[])) env2.counters
                          else
                            env2.counters)
@@ -913,7 +908,7 @@ let rec make_struct positions tree=
         let (p,x,y)=try positions.(s.tree_paragraph) with _->(0,0.,0.) in
         let rec make=function
             []->[]
-          | (_,Node u)::s when List.mem InTOC u.node_tags -> (make_struct positions (Node u))::(make s)
+          | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)
           | _ :: s->make s
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
@@ -932,7 +927,10 @@ let rec make_struct positions tree=
           OutputCommon.struct_y=0.;
           OutputCommon.substructures=[||] }
 
-
+let tag str tags=
+  match str with
+      Node n->Node { n with node_tags=tags@n.node_tags }
+    | _->Node { empty with node_tags=tags; children=IntMap.singleton 0 str }
 
 
 let update_names env figs user=

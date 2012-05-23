@@ -12,6 +12,7 @@ type 'a box =
   | User of 'a
   | BeginFigure of int
   | FlushFigure of int
+  | Parameters of (Line.parameters->Line.parameters)
   | Empty
 and 'a kerningBox = 'a Fonts.FTypes.kerningBox
 and drawingBox = {

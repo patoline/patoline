@@ -39,7 +39,7 @@ let preambule format amble filename=
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
 (\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
-module D=(struct let structure=ref (Node { empty with node_tags=[InTOC] },[]) let fixable=ref false end:DocumentStructure)\n"
+module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)\n"
              | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
              | _->"")^
           "module Format="^format^".Format(D);;\nopen Format;;\n"

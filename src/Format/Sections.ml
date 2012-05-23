@@ -26,9 +26,9 @@ let postprocess_tree tree=
     | _->tree
   in
   let rec sectionize depth=function
-      Node n when List.mem Structural n.node_tags ->
+      Node n when List.mem_assoc "Structural" n.node_tags ->
         let section_name=
-          if List.mem Numbered n.node_tags  then
+          if List.mem_assoc "Numbered" n.node_tags  then
             [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
                   let _,path'=try StrMap.find "_path" env.counters with Not_found -> -1,[] in
