@@ -72,6 +72,30 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
     let id x=x
 
+    let node l=
+      Document.Node
+        {Document.empty with
+           Document.children=List.fold_left
+            (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
+      []
+
+    let paragraph cont=
+      (Paragraph {par_contents=cont; par_env=(fun x->x);
+                  par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
+                                                     counters=env2.counters;
+                                                     user_positions=env2.user_positions });
+                  par_parameters=parameters; par_completeLine=Typography.Complete.normal }, [])
+
+    module Env_Noindent=struct
+      let do_begin_env ()=()
+      let do_end_env ()=()
+      let newPar str ~environment complete params contents=
+        Document.newPar str ~environment:(fun x->{x with par_indent = []})
+          complete params contents
+    end
+
+    let extLink a b=B (fun _->[User (BeginURILink a)])::b@[B (fun _->[User EndLink])]
+
     let defaultEnv:user environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=try
@@ -196,6 +220,62 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           env'
           pages
 
+    type 'a tableParams={ widths:'a environment->float array; h_spacing:float; v_spacing:float }
+
+    let table params tab=
+      [ B (fun env->
+             let widths0=params.widths env in
+             let widths=Array.make (Array.length widths0) 0. in
+             let heights=Array.make (Array.length tab) 0. in
+             let tab_formatted=Array.mapi
+               (fun i x->
+                  Array.mapi (fun j y->
+                                let minip=(minipage
+                                             { env with normalMeasure=widths0.(j) } y).(0) in
+                                  widths.(j)<-max widths.(j) (minip.drawing_max_width);
+                                  heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
+                                  minip
+                             ) x
+               )
+               tab
+             in
+             let contents=ref [] in
+             let x=ref 0. in
+             let y=ref 0. in
+             let y'=ref 0. in
+             let max_y=ref (-.infinity) in
+             let min_y=ref infinity in
+             let ymin=ref 0. in
+             let ymax=ref 0. in
+               for i=0 to Array.length tab_formatted-1 do
+                 x:=0.;
+                 ymin:=0.;
+                 ymax:= -.infinity;
+                 let conts=ref [] in
+                   for j=0 to Array.length tab_formatted.(i)-1 do
+                     let cont=tab_formatted.(i).(j) in
+                       conts:=(List.map (OutputCommon.translate !x 0.)
+                                 (cont.drawing_contents (widths.(j)))) @ (!conts);
+                       ymin := min !ymin cont.drawing_y0;
+                       ymax := max !ymax cont.drawing_y1;
+                       x:= !x +. widths.(j) +. params.h_spacing
+                   done;
+                   contents:=(List.map (OutputCommon.translate 0. !y) !conts)@(!contents);
+                   max_y:=max !max_y (!y+. !ymax);
+                   min_y:=min !min_y (!y+. !ymin);
+                   y:=(!y)-. !ymax +. !ymin;
+               done;
+
+               [Drawing {
+                  drawing_min_width= !x;
+                  drawing_max_width= !x;
+                  drawing_nominal_width= !x;
+                  drawing_y0= !min_y;
+                  drawing_y1= !max_y;
+                  drawing_badness=(fun _->0.);
+                  drawing_contents=(fun _-> List.map (OutputCommon.translate 0. 0.) !contents)
+                }]
+          )]
 
     let footnote l=
       [Env (fun env->
