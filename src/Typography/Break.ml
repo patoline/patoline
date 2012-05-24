@@ -359,9 +359,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                           in
                             if node_is_orphan then (
                               if allow_impossible then (
-                                let _,b0,c0,_,prec,_,_=LineMap.find node !demerits' in
+                                let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
                                 let a,b,c,d,e,f,g=LineMap.find prec !demerits' in
-                                  if b=None then (
+                                  if node.paragraph=nextNode.paragraph then (
                                     extreme_solutions:=(prec,a,Some (Language.Opt_error (Language.Orphan (node, text_line paragraphs node))),
                                                         { c with min_page_after=1 },
                                                         d,e,f,g)::(!extreme_solutions)
@@ -376,19 +376,20 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               )
                             ) else if nextNode_is_widow then (
                               if allow_impossible then (
-                                let _,b0,_,_,prec,_,_=LineMap.find node !demerits' in
+                                let _,_,_,_,prec,_,_=LineMap.find node !demerits' in
                                 let a,b,c,d,e,f,g=LineMap.find prec !demerits' in
-                                  if b=None && node.paragraph=nextNode.paragraph then
+                                  if node.paragraph=nextNode.paragraph then (
                                     extreme_solutions:=(prec,a,Some (Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
                                                         { c with min_page_after=1 },
                                                         d,e,f,g)::(!extreme_solutions)
-                                  else
+                                  ) else (
                                     let nextUser=lastUser in
                                     let bad=(lastBadness+.
                                                badness node !haut !max_haut lastParameters comp0
                                                nextNode !bas !max_bas !r_params comp1) in
                                       extreme_solutions:=(nextNode,bad,Some (Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
                                                           !r_params,comp1,node,lastFigures,nextUser)::(!extreme_solutions)
+                                  )
 
                               )
                             )
