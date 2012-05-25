@@ -508,7 +508,7 @@ math:
       { Binary(2, a, false, op, false, b) } sum
   | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - mathargs<args> 
     { if next_lexeme_paren (dyp.next_lexeme ()) then begin
-	(* Printf.fprintf stderr "Giving up.\n" ; flush stderr ;  *) raise Giveup end
+      Printf.fprintf stderr "Giving up.\n" ; flush stderr ;   raise Giveup end
       else MathMacro (macro,args ld gr) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum

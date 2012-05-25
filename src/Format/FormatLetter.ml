@@ -16,6 +16,8 @@ module Format=functor (D:DocumentStructure)->struct
   module Default=DefaultFormat.Format(D)
   include Default
 
+  let subject_text: user content list ref = ref (toggleItalic [T "Subject:";T" "]) 
+
   let rec lines s=try
     let idx=String.index s '\n' in
       String.sub s 0 idx::lines (String.sub s (idx+1) (String.length s-idx-1))
@@ -90,12 +92,15 @@ module Format=functor (D:DocumentStructure)->struct
       (List.map fst (snd !D.structure))
 
   open Unix
-  let date x=
-    let date=Printf.sprintf "%d/%d/%d" x.tm_mday x.tm_mon x.tm_year in
+  let lieu_date_text  = ref (fun lieu x -> 
+    (Printf.sprintf "%s, le %d/%d/%d" lieu x.tm_mday x.tm_mon (1900 + x.tm_year)))
+
+
+  let lieu_date lieu x =
       newPar D.structure Complete.normal ragged_right
-        ((vspaceBefore 10.) @ [T date])
+        ((vspaceBefore 10.) @ [T (!lieu_date_text lieu x)])
   let dear x=(vspaceBefore 13.)@(vspaceAfter 3.)@x
-  let subject x=(toggleItalic [T"Subject:";T" "]) @ x
+  let subject x= !subject_text @ x
 
 end
 
