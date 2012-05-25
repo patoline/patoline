@@ -347,15 +347,20 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                         then (
                           let node_is_orphan=
                             page<>node.page
-                            && node.lineStart <= 0
-                            && node.lineEnd < Array.length (paragraphs.(node.paragraph))
-                            && !r_params.min_page_before<=0
+                            &&
+                              ((node.lineStart <= 0
+                                && node.lineEnd < Array.length (paragraphs.(node.paragraph))
+                                && !r_params.min_page_before<=0)
+                              || lastParameters.not_last_line)
+
                           in
                           let nextNode_is_widow=
                             page<>node.page
-                            && nextNode.lineStart > 0
-                            && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph))
-                            && !r_params.min_page_before<=0
+                            &&
+                              ((nextNode.lineStart > 0
+                                && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph))
+                                && !r_params.min_page_before<=0)
+                              || !r_params.not_first_line)
                           in
                             if node_is_orphan then (
                               if allow_impossible then (

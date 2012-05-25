@@ -35,7 +35,9 @@ type parameters={ measure:float;
                   min_height_before:float;
                   min_height_after:float;
                   min_page_before:int;
-                  min_page_after:int
+                  min_page_after:int;
+                  not_last_line:bool;
+                  not_first_line:bool
                 }
 
 let default_params={ measure=0.;
@@ -46,5 +48,7 @@ let default_params={ measure=0.;
                      min_height_before=0.;
                      min_height_after=0.;
                      min_page_before=0;
-                     min_page_after=0
+                     min_page_after=0;
+                     not_last_line=false;
+                     not_first_line=false
                    }
