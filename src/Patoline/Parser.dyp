@@ -1,9 +1,9 @@
 {
 open Lexing
 open Dyp
-open Config
+open PatolineConfig
 
-exception Syntax_Error of Lexing.position * Language.syntax_error
+exception Syntax_Error of Lexing.position * PatolineLanguage.syntax_error
 
 let set_newline nb dyplexbuf =
   let l = Dyp.std_lexbuf dyplexbuf in
@@ -221,13 +221,13 @@ let line = sword | (word (space+ word)*)
 rule comment = parse
     '*' ')' {  if pop_comment () then () else comment lexbuf }
   | '(' '*' {  push_comment (); comment lexbuf } 
-  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_comment)) }
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_comment)) }
   | newline {  set_newline 1 lexbuf; comment lexbuf }
   | string {  comment lexbuf }
   | _ {  comment lexbuf }
 
 and caml txps= parse
-    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unexpected_end_of_comment)) }
   | ')' { if pop_caml () <= 0 then txps else caml txps lexbuf } 
   | '"' ([^'"'] | "\\\"")* '"' { caml txps lexbuf }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml txps lexbuf } 
@@ -250,21 +250,21 @@ and caml txps= parse
   | _ { caml txps lexbuf }
 
 and texprime_math= parse
-    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unexpected_end_of_comment)) }
   | '$' '>' { if pop_texprime_math () then () else texprime_math lexbuf }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_math lexbuf } 
   | '<' '$' { push_texprime_math (); texprime_math lexbuf } 
-  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_math)) }
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_math)) }
   | newline { set_newline 1 lexbuf; texprime_math lexbuf }
   | string { texprime_math lexbuf }
   | _ { texprime_math lexbuf }
 
 and texprime_text= parse
-    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
+    '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unexpected_end_of_comment)) }
   | '>''>' {  if pop_texprime_text () then () else texprime_text lexbuf }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_text lexbuf } 
   | '<''<' {  push_texprime_text (); texprime_text lexbuf } 
-  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_text)) }
+  | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_text)) }
   | newline {  set_newline 1 lexbuf; texprime_text lexbuf }
   | string {  texprime_text lexbuf }
   | _ {  texprime_text lexbuf }
@@ -652,7 +652,7 @@ grammar: grammar_aux<g>
       let action = match g with
            (* Patch temporaire : on ne charge pas de grammaire s'il n'y a pas de chemin,
               pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
-        Some filename when !Config.grammarsdir <> []-> (
+        Some filename when !PatolineConfig.grammarsdir <> []-> (
 	  try
 	    let grammar_name = findGrammar (filename ^ gram_ext) in
 	    let ic = open_in grammar_name in

@@ -72,7 +72,7 @@ let _=
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Patoline/Config.ml" in
+  let config'=open_out "src/Patoline/PatolineConfig.ml" in
 
   let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
@@ -118,8 +118,9 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,package(dyp),pp(cpp -w %s%s%s)\n<Fonts> or <Output> or <Output/Drivers>:include
-<**/*.{cmx,cmo}> and not <Typography.cmx> :package(camomile),for-pack(Typography)\n"
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s),Typography
+<Fonts> or <Output> or <Output/Drivers>:include
+<**/*.{cmx,cmo}>:package(camomile)\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
@@ -129,30 +130,29 @@ let _=
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-      "<Format/*>: pp(cpp -w),package(camomile),package(dyp)%s%s
+      "<Format/*>: pp(cpp -w),package(camomile)%s%s
 <proof/proof.{byte,native}>: package(camomile)%s%s
-\"Typography\" or \"Format\":include"
+<Patoline/*>:pp(cpp -w %s),package(dyp),use_str,use_dynlink
+\"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
-        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "");
+        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
+        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
+
       close_out tags;
 
-    let tags'=open_out "src/Patoline/_tags" in
-      Printf.fprintf tags' "<*>: package(camomile),package(dyp),pp(cpp -w %s),use_str,use_dynlink\n"
-        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-      close_out tags';
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/patoline $(DESTDIR)%s\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
 
     let sources=
-      "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
+      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
         "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
         "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi"^
         (if not !opt_only then
-           "src/Typography/_build/Typography.cma src/_build/Format/*Format*.cma"
+           "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
          else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
@@ -161,8 +161,6 @@ let _=
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
 
 
-      (* Installation pour ocamlfind (casse la chaine de compilation de Guillaume sans ça) *)
-      (*Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/stublibs\n" * (escape !ocaml_lib_dir);*)
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 

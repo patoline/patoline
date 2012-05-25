@@ -39,7 +39,7 @@ let _ = dispatch begin function
        (* on the contrary using After_options will guarantee to have the higher priority *)
 
        (* override default commands by ocamlfind ones *)
-       Options.ocamlc     := ocamlfind & S[A"ocamlc";A"-g"];
+       Options.ocamlc     := ocamlfind & A"ocamlc";
        Options.ocamlopt   := ocamlfind & A"ocamlopt";
        Options.ocamldep   := ocamlfind & A"ocamldep";
        Options.ocamldoc   := ocamlfind & A"ocamldoc";
@@ -47,30 +47,42 @@ let _ = dispatch begin function
 
   | After_rules ->
       ocaml_lib "Typography/Typography";
-      ocaml_lib "Format/DefaultFormat";
 
-       (* When one link an OCaml library/binary/package, one should use -linkpkg *)
-       flag ["ocaml"; "link"; "program"] & A"-linkpkg";
+      (* When one link an OCaml library/binary/package, one should use -linkpkg *)
+      flag ["ocaml"; "link"; "program"] & A"-linkpkg";
 
-       (* For each ocamlfind package one inject the -package option when
-	  * compiling, computing dependencies, generating documentation and
-	* * linking. *)
-       List.iter begin fun pkg ->
-         flag ["ocaml"; "compile";  "package("^pkg^")"] & S[A"-package"; A pkg];
-         flag ["ocaml"; "ocamldep"; "package("^pkg^")"] & S[A"-package"; A pkg];
-         flag ["ocaml"; "doc";      "package("^pkg^")"] & S[A"-package"; A pkg];
-         flag ["ocaml"; "link";     "package("^pkg^")"] & S[A"-package"; A pkg];
-         flag ["ocaml"; "infer_interface"; "package("^pkg^")"] & S[A"-package"; A pkg];
-       end (find_packages ());
+      flag ["ocaml"; "compile";  "Typography"] & S[A"-I"; A"Typography"];
+      flag ["ocaml"; "ocamldep"; "Typography"] & S[A"-I"; A"Typography"];
+      flag ["ocaml"; "doc";      "Typography"] & S[A"-I"; A"Typography"];
+      flag ["ocaml"; "link";     "Typography"] & S[A"-I"; A"Typography"];
+      flag ["ocaml"; "infer_interface"; "Typography"] & S[A"-I"; A"Typography"];
 
-       (* Like -package but for extensions syntax. Morover -syntax is useless
-	* when linking. *)
-       List.iter begin fun syntax ->
-         flag ["ocaml"; "compile";  "syntax_"^syntax] & S[A"-syntax"; A syntax];
-         flag ["ocaml"; "ocamldep"; "syntax_"^syntax] & S[A"-syntax"; A syntax];
-         flag ["ocaml"; "doc";      "syntax_"^syntax] & S[A"-syntax"; A syntax];
-         flag ["ocaml"; "infer_interface"; "syntax_"^syntax] & S[A"-syntax"; A syntax];
-       end (find_syntaxes ());
+      (* For each ocamlfind package one inject the -package option when
+       * compiling, computing dependencies, generating documentation and
+       * * linking. *)
+      List.iter begin fun pkg ->
+        flag ["ocaml"; "compile";  "package("^pkg^")"] & S[A"-package"; A pkg];
+        flag ["ocaml"; "ocamldep"; "package("^pkg^")"] & S[A"-package"; A pkg];
+        flag ["ocaml"; "doc";      "package("^pkg^")"] & S[A"-package"; A pkg];
+        flag ["ocaml"; "link";     "package("^pkg^")"] & S[A"-package"; A pkg];
+        flag ["ocaml"; "infer_interface"; "package("^pkg^")"] & S[A"-package"; A pkg];
+      end (find_packages ());
+
+      (* Like -package but for extensions syntax. Morover -syntax is useless
+       * when linking. *)
+      List.iter begin fun syntax ->
+        flag ["ocaml"; "compile";  "syntax_"^syntax] & S[A"-syntax"; A syntax];
+        flag ["ocaml"; "ocamldep"; "syntax_"^syntax] & S[A"-syntax"; A syntax];
+        flag ["ocaml"; "doc";      "syntax_"^syntax] & S[A"-syntax"; A syntax];
+        flag ["ocaml"; "infer_interface"; "syntax_"^syntax] & S[A"-syntax"; A syntax];
+      end (find_syntaxes ());
+
+      rule "dypgen:dyp->ml"
+	~prods:["%.ml"]
+	~deps:["%.dyp"]
+	begin fun env _->
+          Seq[Cmd(S([A"dypgen";A"--no-mli";P(env "%.dyp")]))]
+	end;
 
   | _ -> ()
 end

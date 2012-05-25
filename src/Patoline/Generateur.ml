@@ -1,6 +1,6 @@
 open Lexing
 open Parser
-open Language
+open PatolineLanguage
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -527,6 +527,6 @@ let gen_ml format amble filename from wherename where pdfname =
 		  Parser.Syntax_Error(pos,msg) when !Parser.deps_only=None ->
 		    Sys.remove wherename;
 		    Printf.fprintf stderr "%s\n"
-		      (Language.message (Language.Syntax_error (filename, pos, msg)));
+		      (PatolineLanguage.message (PatolineLanguage.Syntax_error (filename, pos, msg)));
 		    exit 1
                 | Parser.Syntax_Error _ -> exit 0

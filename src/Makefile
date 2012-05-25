@@ -6,51 +6,38 @@ FORMAT=$(shell ls Format/*Format*.ml)
 all:native
 
 native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
-byte:Main.byte DefaultGrammar.tgo proof.byte DefaultGrammar.cmo
+byte:Typography/Typography.cma
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.ml=.p.cmxa)
 
-Main.native: Patoline/Parser.ml $(FORMAT:.ml=.cmxa)
-	cd Patoline; $(OCAMLBUILD) Main.native
-	cp Patoline/Main.native patoline
+Main.native: $(FORMAT:.ml=.cmxa)
+	$(OCAMLBUILD) -I Typography Patoline/Main.native
 
-Main.byte: Patoline/Parser.ml $(FORMAT:.ml=.cma)
-	cd Patoline; $(OCAMLBUILD) Main.byte
-	cp Patoline/Main.byte patoline.byte
 proof.native:Typography/Typography.cmxa
-	rm -Rf proof.native _build/proof
 	$(OCAMLBUILD) proof/proof.native
-proof.byte:Typography/Typography.cma
-	rm -Rf proof.byte _build/proof
-	$(OCAMLBUILD) proof/proof.byte
 
 Format/%.cmxa:Typography/Typography.cmxa
 	$(OCAMLBUILD) Format/$*.cmxa
 Format/%.cma:Typography/Typography.cma
 	$(OCAMLBUILD) Format/$*.cma
 
-Patoline/Parser.ml:Patoline/Parser.dyp
-	dypgen --no-mli Patoline/Parser.dyp
 Typography/Typography.cmxa:
-	$(OCAMLBUILD) Typography/Typography.cmxa
+	$(OCAMLBUILD) -I Typography Typography/Typography.cmxa
 Typography/Typography.cma:
-	$(OCAMLBUILD) Typography/Typography.cma
+	$(OCAMLBUILD) -I Typography Typography/Typography.cma
 
 Typography/Typography.p.cmxa:
-	$(OCAMLBUILD) Typography/Typography.p.cmxa
+	$(OCAMLBUILD) -I Typography Typography/Typography.p.cmxa
 Typography/Typography.p.cma:
-	$(OCAMLBUILD) Typography/Typography.p.cma
+	$(OCAMLBUILD) -I Typography Typography/Typography.p.cma
 
 
 DefaultGrammar.ml:DefaultGrammar.tgx
 	cp DefaultGrammar.tml DefaultGrammar.ml
-DefaultGrammar.tgo: Patoline/_build/Main.byte DefaultGrammar.txp
-	rm -f patolineDefault.tgo
-	Patoline/Main.byte --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-DefaultGrammar.tgx: Patoline/_build/Main.native DefaultGrammar.txp
+DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
-	Patoline/Main.native --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+	./Main.native --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 
 %.cmx:%.ml
@@ -69,8 +56,4 @@ DefaultGrammar.tgx: Patoline/_build/Main.native DefaultGrammar.txp
 clean:
 	rm -f *~ \#*\# *.tgo *.tgx
 	rm -Rf _build
-	rm -Rf Patoline/_build
-	make -C Typography clean
-	rm -f Patoline/Parser.ml
-	rm -f patoline patoline.byte proof.native proof/proof.native proof.byte proof/proof.byte
 	rm -f *.tml
