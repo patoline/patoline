@@ -93,7 +93,7 @@ module Format=functor (D:DocumentStructure)->struct
 
   open Unix
   let lieu_date_text  = ref (fun lieu x -> 
-    (Printf.sprintf "%s, le %d/%d/%d" lieu x.tm_mday x.tm_mon (1900 + x.tm_year)))
+    (Printf.sprintf "%s, le %d/%d/%d" lieu x.tm_mday (x.tm_mon + 1) (1900 + x.tm_year)))
 
 
   let lieu_date lieu x =
