@@ -8,6 +8,8 @@ all:native
 native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
 byte:Main.byte DefaultGrammar.tgo proof.byte DefaultGrammar.cmo
 
+prof:Typography/Typography.p.cmxa $(FORMAT:.ml=.p.cmxa)
+
 Main.native: Patoline/Parser.ml $(FORMAT:.ml=.cmxa)
 	cd Patoline; $(OCAMLBUILD) Main.native
 	cp Patoline/Main.native patoline
@@ -30,9 +32,14 @@ Format/%.cma:Typography/Typography.cma
 Patoline/Parser.ml:Patoline/Parser.dyp
 	dypgen --no-mli Patoline/Parser.dyp
 Typography/Typography.cmxa:
-	make -C Typography Typography.cmxa
+	$(OCAMLBUILD) Typography/Typography.cmxa
 Typography/Typography.cma:
-	make -C Typography Typography.cma
+	$(OCAMLBUILD) Typography/Typography.cma
+
+Typography/Typography.p.cmxa:
+	$(OCAMLBUILD) Typography/Typography.p.cmxa
+Typography/Typography.p.cma:
+	$(OCAMLBUILD) Typography/Typography.p.cma
 
 
 DefaultGrammar.ml:DefaultGrammar.tgx
