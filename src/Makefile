@@ -1,5 +1,5 @@
 OCAMLBUILD=ocamlbuild
-CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip -linkpkg
+CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg
 
 FORMAT=$(shell ls Format/*Format*.ml)
 
@@ -48,12 +48,12 @@ DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 %.cmo:%.ml
 	$(OCAMLBUILD) $@
 
-%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa patolineDefault.tgx %.txp
-	cp $*.txp patolineDefault.tgx _build
-	cd _build; ../patoline --ml --extra-fonts-dir ../../Fonts  $*.txp
+%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.tgx %.txp
+	cp $*.txp _build
+	cd _build; Patoline/Main.native --ml --extra-fonts-dir ../../Fonts  $*.txp
 
-	cd _build; $(CAMLOPT) -o $*.tmx -I ../Typography/_build -I Format ../Typography/_build/Typography.cmxa Format/DefaultFormat.cmxa  -impl $*.tml
-	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts
+	cd _build; $(CAMLOPT) -o $*.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl $*.tml
+	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
 	ln -sf _build/$*.pdf .
 
 clean:

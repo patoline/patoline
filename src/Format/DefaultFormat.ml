@@ -381,108 +381,116 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
     end
 
-    module Env_itemize = struct
+    let tiret_w env=2.*.env.size
 
+    module type Enumeration=sig
+      val from_int:int->user content list
+    end
+    module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
-        D.structure:=newChildAfter (!D.structure) (Node empty);
+        D.structure:=newChildAfter (!D.structure)
+          (Node { empty with node_env=
+               (fun env->
+                  let lvl,cou=try StrMap.find "enumerate" env.counters with Not_found-> -1,[] in
+                    { env with
+                        normalMeasure=env.normalMeasure-.tiret_w env;
+                        normalLeftMargin=env.normalLeftMargin+.tiret_w env;
+                        counters=StrMap.add "enumerate" (lvl,0::cou) env.counters }
+               );
+                    node_post_env=
+               (fun env0 env1->
+                  let cou=try
+                    let lvl,enum=StrMap.find "enumerate" env1.counters in
+                      StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
+                  with Not_found-> env1.counters
+                  in
+                    { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou })
+                });
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let item ()=
-        D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack))) (Node empty);
+        D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+          (Node { empty with node_env=(fun env->incr_counter env "enumerate") });
+        newPar D.structure ~environment:(fun x -> x) Complete.normal parameters
+          [B (fun env->
+                let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
+                let bb=boxify_scoped env (M.from_int (List.hd enum)) in
+                let fix g={ g with drawing_min_width=g.drawing_nominal_width;
+                              drawing_max_width=g.drawing_nominal_width }
+                in
+                let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
+                  boxes@[User AlignmentMark])
+          ];
+        D.structure:=lastChild !D.structure;
         []
 
-      let tiret_w env=2.*.env.size
-      let tiret =
-        [
-          B (fun env->[Drawing (
-                         let y=env.size/.4. in
-                         let x0=tiret_w env/.phi in
-                         let x1=tiret_w env-.x0 in
-                           { drawing_min_width=tiret_w env;
-                             drawing_nominal_width=tiret_w env;
-                             drawing_max_width=tiret_w env;
-                             drawing_y0=y; drawing_y1=y;
-                             drawing_badness=(fun _->0.);
-                             drawing_contents=(fun _->
-                                                 [OutputCommon.Path
-                                                    ({OutputCommon.default with
-                                                        OutputCommon.lineWidth=0.1},
-                                                     [[|[|x0;x1|],[|y;y;|]|]])
-                                                 ]) }
-                       )])
-        ]
+
       let do_end_env ()=
-        let params params0 a b c d e f g=
-          let p=(params0 a b c d e f g) in
-            { p with
-                left_margin=p.left_margin +. tiret_w a;
-                measure=p.measure
-            }
+        let params parameters env a1 a2 a3 a4 a5 line=
+          let p=parameters env a1 a2 a3 a4 a5 line in
+            if line.lineStart=0 then (
+              let rec findMark w j=
+                if j>=line.lineEnd then 0. else
+                  if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                    let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
+                      findMark (w+.ww) (j+1)
+              in
+              let w=findMark 0. 0 in
+                { p with
+                    left_margin=p.left_margin-.w;
+                    measure=p.measure+.w }
+            ) else
+              p
         in
-        let params1 params0 a b c d e f g=
-          let p=params0 a b c d e f g in
-            if g.lineStart>0 then (
-              { p with
-                  left_margin=p.left_margin+.tiret_w a;
-                  measure=p.measure-.tiret_w a
-              }
-            )
-            else p
+        let comp complete mes a1 a2 a3 a4 line a6=
+          if line.lineStart>0 then Complete.normal mes a1 a2 a3 a4 line a6 else (
+            let rec findMark w j=
+              if j>=Array.length a1.(line.paragraph) then 0. else
+                if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                  let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
+                    findMark (w+.ww) (j+1)
+            in
+              complete { mes with normalMeasure=mes.normalMeasure+.findMark 0. 0 } a1 a2 a3 a4 line a6
+          )
         in
-        let comp mes a1 a2 a3 a4 line a6=
-          Complete.normal mes a1 a2 a3 a4 line a6
-        in
-        let comp1 mes a1 a2 a3 a4 line a6=
-          if line.lineStart>0 then
-            Complete.normal { mes with normalMeasure=(mes.normalMeasure-.tiret_w mes) } a1 a2 a3 a4 line a6
-          else
-            Complete.normal mes a1 a2 a3 a4 line a6
-        in
-        let rec paragraphs t=
-          match t with
-              Node n -> Node { n with children=IntMap.map paragraphs n.children }
-            | Paragraph p ->
-                Paragraph { p with
-                              par_env=(fun x->
-                                         let env=(p.par_env x) in
-                                           { env with
-                                               normalMeasure=env.normalMeasure -. tiret_w env;
-                                               par_indent=[]
-                                           });
-                              par_completeLine=comp;
-                              par_parameters=params p.par_parameters }
-            | _ -> t
-        in
-        let rec remove_glues=function
-            T w::s when UTF8.next w 0>=String.length w
-              && is_space (UTF8.look w 0)->remove_glues s
+
+        let rec replaceParams=function
+            Node n->Node { n with children=IntMap.map replaceParams n.children }
+          | Paragraph p->
+              Paragraph { p with
+                            par_parameters=params p.par_parameters;
+                            par_completeLine=comp p.par_completeLine;
+                        }
           | x->x
         in
-        let rec tirets=function
-            Node n as t ->
-              (try
-	         let chi=IntMap.map paragraphs n.children in
-                 let k,a=IntMap.min_binding n.children in
-                   Node { n with children=IntMap.add k
-                       (match a with
-                          | Paragraph p ->
-                              Paragraph { p with
-                                            par_contents=tiret@remove_glues p.par_contents;
-                                            par_parameters=params1 p.par_parameters;
-                                            par_completeLine=comp1;
-                                        }
-                          | t -> t) chi }
-	       with Not_found -> t)
-          | t->t
-        in
-        let a,b=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
-        let avec_tirets = match a with
-            Node n->Node { n with children=IntMap.map tirets n.children }
-          | x->x
-        in
-          D.structure:=up (avec_tirets, b);
+          D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+          D.structure:=replaceParams (fst !D.structure), snd !D.structure;
+          D.structure:=up !D.structure;
           env_stack:=List.tl !env_stack
     end
+
+    module Env_itemize =
+      Enumerate(struct
+                  let from_int _ =
+                    [
+                      B (fun env->[Drawing (
+                                     let y=env.size/.4. in
+                                     let x0=tiret_w env/.phi in
+                                     let x1=tiret_w env-.x0 in
+                                       { drawing_min_width=tiret_w env;
+                                         drawing_nominal_width=tiret_w env;
+                                         drawing_max_width=tiret_w env;
+                                         drawing_y0=y; drawing_y1=y;
+                                         drawing_badness=(fun _->0.);
+                                         drawing_contents=(fun _->
+                                                             [OutputCommon.Path
+                                                                ({OutputCommon.default with
+                                                                    OutputCommon.lineWidth=0.1},
+                                                                 [[|[|x0;x1|],[|y;y;|]|]])
+                                                             ]) }
+                                   )])
+                    ]
+                end)
 
     module Env_abstract = struct
 
