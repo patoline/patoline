@@ -115,10 +115,10 @@ let is_space x0=
 let unspace s=
   let rec rem i j=
     if i>j then "" else
-      if is_space (UTF8.get s i) then
+      if is_space (UTF8.look s i) then
         rem (UTF8.next s i) j
       else
-        if is_space (UTF8.get s j) then
+        if is_space (UTF8.look s j) then
           rem i (UTF8.prev s j)
         else
           String.sub s i (j-i+1)
