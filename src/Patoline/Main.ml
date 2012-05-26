@@ -9,6 +9,7 @@ let package_list = ref ["Typography"]
 let no_grammar=ref false
 let deps_only=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
+            ("--extra-grammars-dir",Arg.String (fun x->PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir)), "Adds directories to the font search path");
             ("-I",Arg.String (fun x->
                                 Config.grammarsdir:=x::(!Config.grammarsdir);
                                 dirs := (" -I "^x^" ") :: !dirs
