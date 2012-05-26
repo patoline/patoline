@@ -10,6 +10,9 @@ byte:Typography/Typography.cma
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.ml=.p.cmxa)
 
+doc:
+	$(OCAMLBUILD) Typography/Typography.docdir/index.html
+
 Main.native: $(FORMAT:.ml=.cmxa)
 	$(OCAMLBUILD) -I Typography Patoline/Main.native
 

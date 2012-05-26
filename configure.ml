@@ -80,7 +80,7 @@ let _=
 
     Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "native" else "all");
     Printf.fprintf out "binary:all\nbuild:all\n";
-    Printf.fprintf out "doc:\n\tmake -C src/Typography doc\n";
+    Printf.fprintf out "doc:\n\tmake -C src doc\n";
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
     let rec read_fonts dir =
