@@ -173,6 +173,9 @@ Symboles de TeX'
 \Add_symbol{\}{}
 *)
 \Add_symbol{\infty ∞}{∞}
+\Add_symbol{\top ⊤}{⊤}
+\Add_symbol{\bottom ⊥}{⊥}
+\Add_symbol{\emptyset ∅}{∅}
 
 (* == Other symbols == *)
 

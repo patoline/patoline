@@ -481,6 +481,8 @@ math:
       { Symbol op } atom
   | "{" product_like<op> "}"
       { Symbol op } atom
+  | "{" arrow<op> "}"
+      { Symbol op } atom
   | "{" connector<op> "}"
       { Symbol op } atom
   | "{" relation<op> "}"
