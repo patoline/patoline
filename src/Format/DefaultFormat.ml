@@ -440,7 +440,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
       let item ()=
         D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
-          (Node { empty with node_env=(fun env->incr_counter env "enumerate") });
+          (Node { empty with node_env=(incr_counter "enumerate") });
         [B (fun env->
               let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
               let bb=boxify_scoped env (M.from_int (List.hd enum)) in
@@ -587,7 +587,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                                   min_height_before=
                                                   if g.lineStart=0 then a.lead else 0. });
                             par_contents=
-                  Env (fun env->incr_counter ~level:Th.counterLevel env Th.counter)::
+                  Env (incr_counter ~level:Th.counterLevel Th.counter)::
                     CFix (fun env->
                             let lvl,num=try (StrMap.find Th.counter env.counters) with
                                 Not_found -> -1,[0]

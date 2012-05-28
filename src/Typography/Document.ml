@@ -167,7 +167,7 @@ and 'a content=
   | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
 
 
-let incr_counter ?(level= -1) env name=
+let incr_counter ?(level= -1) name env=
   { env with counters=
       StrMap.add name (try let a,b=StrMap.find name env.counters in
                          match b with
@@ -177,11 +177,11 @@ let incr_counter ?(level= -1) env name=
                            Not_found -> level, [0]
                       ) env.counters }
 
-let pop_counter env name=
+let pop_counter name env=
   { env with counters=
       StrMap.add name (let a,b=StrMap.find name env.counters in (a,drop 1 b)) env.counters }
 
-let push_counter env name=
+let push_counter name env=
   { env with counters=
       StrMap.add name (let a,b=StrMap.find name env.counters in (a,0::b)) env.counters }
 
@@ -520,7 +520,7 @@ let flushFigure name=
           let (counters,_,_)=StrMap.find name env.names in
             match StrMap.find "_figure" counters with
                 _,h::_->[B (fun _->[FlushFigure h])]
-              | _->[Env (fun env->incr_counter env "_figure")]
+              | _->[Env (incr_counter "_figure")]
         with
             Not_found ->[]
      )]
@@ -532,7 +532,7 @@ let beginFigure name=
           let (counters,_,_)=StrMap.find name env.names in
             match StrMap.find "_figure" counters with
                 _,h::_->[B (fun _->[BeginFigure h])]
-              | _->[Env (fun env->incr_counter env "_figure")]
+              | _->[Env (incr_counter "_figure")]
         with
             Not_found ->[]
      )]
