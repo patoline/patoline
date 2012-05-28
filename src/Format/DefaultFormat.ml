@@ -441,19 +441,15 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       let item ()=
         D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
           (Node { empty with node_env=(fun env->incr_counter env "enumerate") });
-        newPar D.structure ~environment:(fun x -> x) Complete.normal parameters
-          [B (fun env->
-                let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
-                let bb=boxify_scoped env (M.from_int (List.hd enum)) in
-                let fix g={ g with drawing_min_width=g.drawing_nominal_width;
-                              drawing_max_width=g.drawing_nominal_width }
-                in
-                let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
-                  boxes@[User AlignmentMark])
-          ];
-        D.structure:=lastChild !D.structure;
-        []
-
+        [B (fun env->
+              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
+              let bb=boxify_scoped env (M.from_int (List.hd enum)) in
+              let fix g={ g with drawing_min_width=g.drawing_nominal_width;
+                            drawing_max_width=g.drawing_nominal_width }
+              in
+              let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
+                boxes@[User AlignmentMark])
+        ]
 
       let do_end_env ()=
         let params parameters env a1 a2 a3 a4 a5 line=
@@ -473,7 +469,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
               p
         in
         let comp complete mes a1 a2 a3 a4 line a6=
-          if line.lineStart>0 then Complete.normal mes a1 a2 a3 a4 line a6 else (
+          if line.lineStart>0 then complete mes a1 a2 a3 a4 line a6 else (
             let rec findMark w j=
               if j>=Array.length a1.(line.paragraph) then 0. else
                 if a1.(line.paragraph).(j) = User AlignmentMark then w else
@@ -484,8 +480,8 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           )
         in
 
-        let rec replaceParams=function
-            Node n->Node { n with children=IntMap.map replaceParams n.children }
+        let rec replaceParams level=function
+            Node n when level<=1 -> Node { n with children=IntMap.map (replaceParams (level+1)) n.children }
           | Paragraph p->
               Paragraph { p with
                             par_parameters=params p.par_parameters;
@@ -494,7 +490,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           | x->x
         in
           D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
-          D.structure:=replaceParams (fst !D.structure), snd !D.structure;
+          D.structure:=replaceParams 0 (fst !D.structure), snd !D.structure;
           D.structure:=up !D.structure;
           env_stack:=List.tl !env_stack
     end
