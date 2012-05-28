@@ -411,10 +411,10 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
     end
 
-    let tiret_w env=2.*.env.size
+    let tiret_w env=phi*.env.size
 
     module type Enumeration=sig
-      val from_int:int->user content list
+      val from_counter:int list->user content list
     end
     module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
@@ -443,7 +443,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
           (Node { empty with node_env=(incr_counter "enumerate") });
         [B (fun env->
               let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
-              let bb=boxify_scoped env (M.from_int (List.hd enum)) in
+              let bb=boxify_scoped env (M.from_counter enum) in
               let fix g={ g with drawing_min_width=g.drawing_nominal_width;
                             drawing_max_width=g.drawing_nominal_width }
               in
@@ -497,7 +497,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
     module Env_itemize =
       Enumerate(struct
-                  let from_int _ =
+                  let from_counter _ =
                     [
                       B (fun env->[Drawing (
                                      let y=env.size/.4. in
