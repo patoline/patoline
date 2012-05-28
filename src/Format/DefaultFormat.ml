@@ -67,9 +67,7 @@ let alegreya=
 module Format=functor (D:Typography.Document.DocumentStructure)->(
   struct
     type user=Typography.Document.user
-    (* let replace_utf8 x y z= *)
-    (*   Str.global_replace x *)
-    (*     (UTF8.init 1 (fun _->UChar.chr y)) z *)
+
     let id x=x
 
     let node l=
@@ -120,6 +118,32 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                                   List.iter (Printf.fprintf stderr "%s\n") p;
                                   fun x->[||])
       in
+      let replace_utf8 x y z=if String.length x>0 then (
+        let buf=Buffer.create (String.length x) in
+        let repl=UTF8.init 1 (fun _->UChar.chr y) in
+        let rec add_it i=
+          if not (UTF8.out_of_range z i) then (
+            try
+              let rec comp j=
+                if UTF8.out_of_range x j then j else
+                  if UTF8.out_of_range z (i+j) then raise Not_found else
+                    if UTF8.look z (i+j) <> UTF8.look x j then raise Not_found else
+                      comp (UTF8.next x j)
+              in
+              let j=comp 0 in
+                Buffer.add_string buf repl;
+                add_it (i+j)
+            with
+                Not_found->(
+                  Buffer.add_string buf (String.sub z i (UTF8.next z i-i));
+                  add_it (UTF8.next z i)
+                )
+          )
+        in
+          add_it 0;
+          Buffer.contents buf
+      ) else z
+      in
       let fsize=3.8 in
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Typography.Fonts.select_features f [ Opentype.standardLigatures ] in
@@ -134,7 +158,13 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
             Array.map (fun x->{x with Mathematical.kerning=false })
               Euler.default;
 	  mathStyle=Mathematical.Text;
-          word_substitutions=(fun x->x);
+          word_substitutions=
+            (fun x->List.fold_left (fun y f->f y) x
+               [
+                 replace_utf8 ("``") 8220;
+                 replace_utf8 ("''") 8221
+               ]
+            );
           substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) loaded_feat);
           positioning=(fun x->pos (positioning f x));
           footnote_y=10.;
