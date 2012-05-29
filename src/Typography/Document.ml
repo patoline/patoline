@@ -215,6 +215,11 @@ let rec map_paragraphs f = function
   | Paragraph p -> Paragraph (f p)
   | x -> x
 
+let up (t,cxt) = match cxt with
+    []->(t,cxt)
+  | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
+  | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
+
 let child (t,cxt) i=try
   match t with
       Node x->(IntMap.find i x.children, (i,t)::cxt)
@@ -232,15 +237,18 @@ let lastChild (t,cxt)=try
 with
     Not_found -> (t,cxt)
 
-let newChildAfter (t,cxt) chi=
+let rec newChildAfter (t,cxt) chi=
   match t with
       Node x->(chi, (next_key x.children,t)::cxt)
-    | _->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
+    | _ when cxt=[]->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
+    | _->newChildAfter (up (t,cxt)) chi
 
-let newChildBefore (t,cxt) chi=
+let rec newChildBefore (t,cxt) chi=
   match t with
       Node x->(chi, (prev_key x.children,t)::cxt)
-    | _->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
+    | _ when cxt=[]->(chi, (1,Node { empty with children=IntMap.singleton 0 t })::cxt)
+    | _->newChildBefore (up (t,cxt)) chi
+
 
 let rec prev f (t,cxt) =
   if f t then (t,cxt) else (
@@ -259,10 +267,6 @@ let rec prev f (t,cxt) =
       | _->raise Not_found
   )
 
-let up (t,cxt) = match cxt with
-    []->(t,cxt)
-  | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
-  | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
 
 let go_up str=
   (if snd !str=[] then Printf.fprintf stderr "Warning : go_up\n");

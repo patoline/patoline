@@ -418,6 +418,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
     end
     module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
+        D.structure:=newChildAfter (!D.structure) (Node empty);
         D.structure:=newChildAfter (!D.structure)
           (Node { empty with node_env=
                (fun env->
@@ -441,6 +442,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       let item ()=
         D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
           (Node { empty with node_env=(incr_counter "enumerate") });
+        D.structure:=lastChild !D.structure;
         [B (fun env->
               let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
               let bb=boxify_scoped env (M.from_counter enum) in
@@ -482,7 +484,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
         let rec replaceParams level=function
             Node n when level<=1 -> Node { n with children=IntMap.map (replaceParams (level+1)) n.children }
-          | Paragraph p->
+          | Paragraph p when level=2->
               Paragraph { p with
                             par_parameters=params p.par_parameters;
                             par_completeLine=comp p.par_completeLine;
@@ -491,7 +493,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         in
           D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
           D.structure:=replaceParams 0 (fst !D.structure), snd !D.structure;
-          D.structure:=up !D.structure;
+          D.structure:=up (up !D.structure);
           env_stack:=List.tl !env_stack
     end
 
