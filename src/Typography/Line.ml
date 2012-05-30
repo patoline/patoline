@@ -6,10 +6,10 @@ type line= {
   hyphenStart:int;
   hyphenEnd:int;
   isFigure:bool;
-  mutable height:float;
+  height:float;
   paragraph_height:int;
-  mutable page_line:int;
-  mutable page:int;
+  page_line:int;
+  page:int;
   min_width:float;
   nom_width:float;
   max_width:float

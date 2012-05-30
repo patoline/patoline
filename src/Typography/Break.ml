@@ -264,27 +264,25 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
 
                 let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else
                   (node.page, node.height+.lastParameters.min_height_after) in
-                let r_nextNode={
-                  paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
-                  hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
-                  height = h0;
-                  lineStart= i; lineEnd= i;
-                  paragraph_height=if i=0 then 0 else node.paragraph_height+1;
-                  page_line=if page0=node.page then node.page_line+1 else 0;
-                  page=page0;
-                  min_width=0.;nom_width=0.;max_width=0. }
-                in
-
-                let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
                 let local_opt=ref [] in
                 let extreme_solutions=ref [] in
                 let rec fix page height= (* Printf.fprintf stderr "fix : %d %f\n" page height; *)
+                  let r_nextNode={
+                    paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
+                    hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
+                    height = height;
+                    lineStart= i; lineEnd= i;
+                    paragraph_height=if i=0 then 0 else node.paragraph_height+1;
+                    page_line=if page=node.page then node.page_line+1 else 0;
+                    page=page;
+                    min_width=0.;nom_width=0.;max_width=0. }
+                in
+
+                let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
+
                   if height>=(!r_params).page_height then
                     fix (page+1) 0.
                   else (
-                    r_nextNode.height<-height;
-                    r_nextNode.page<-page;
-                    r_nextNode.page_line<-if page=node.page then node.page_line+1 else 0;
                     let minimal_tried_height=ref infinity in
                     let make_next_node nextNode=
                       r_params:=parameters.(pi) paragraphs figures lastParameters lastFigures lastUser nextNode;
