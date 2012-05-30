@@ -130,8 +130,10 @@ let _=
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-      "<Format/*>: pp(cpp -w),package(camomile)%s%s
+        "<**/*>: pp(cpp -w),package(camomile)%s%s
+<Format/*.{ml,mli}>: use_Typography
 <proof/proof.{byte,native}>: package(camomile)%s%s
+<Typography/**/*.{ml,mli}>: for-pack(Typography)
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,use_dynlink
 \"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
