@@ -55,8 +55,34 @@ type user=
 module TS=Break.Make
   (struct
      type t=line
-     let hash=Hashtbl.hash
-     let compare=compare
+     let compare a b=
+       if a.paragraph<b.paragraph then -1 else
+         if a.paragraph>b.paragraph then 1 else
+
+           if a.lastFigure<b.lastFigure then -1 else
+             if a.lastFigure>b.lastFigure then 1 else
+
+           if a.isFigure<b.isFigure then -1 else
+             if a.isFigure>b.isFigure then 1 else
+
+           if a.lineStart<b.lineStart then -1 else
+             if a.lineStart>b.lineStart then 1 else
+
+           if a.lineEnd<b.lineEnd then -1 else
+             if a.lineEnd>b.lineEnd then 1 else
+
+           if a.hyphenStart<b.hyphenStart then -1 else
+             if a.hyphenStart>b.hyphenStart then 1 else
+
+           if a.hyphenEnd<b.hyphenEnd then -1 else
+             if a.hyphenEnd>b.hyphenEnd then 1 else
+
+           (* if a.page<b.page then -1 else *)
+           (*   if a.page>b.page then 1 else *)
+
+           (* if a.height<b.height then -1 else *)
+           (*   if a.height>b.height then 1 else *)
+               0
    end)
   (struct
      type t=user
@@ -150,7 +176,7 @@ and 'a environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
-  user_positions:Line.line TS.UMap.t;
+  user_positions:line TS.UMap.t;
   mutable fixable:bool
 }
 
@@ -409,8 +435,7 @@ let size fsize t=
 
 
 
-
-let parameters env paragraphs figures last_parameters last_figures last_users (line:Line.line)=
+let parameters env paragraphs figures last_parameters last_figures last_users (line:line)=
   let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
     IntMap.iter (fun i aa->match aa with
@@ -498,7 +523,6 @@ let in_text_figure a b c d e f line=
   { par with
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
-
 
 let figure str ?(parameters=center) ?(name="") drawing=
     str:=up (newChildAfter !str (

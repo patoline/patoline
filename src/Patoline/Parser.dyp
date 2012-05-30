@@ -551,7 +551,7 @@ atomelt:
       if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }
-  | (("=""="+)|("-""-"+))<o> oparagraph<title>
+  | (("=""="+)|("-""-"+))<o> paragraph<title>
       (("=""="+)|("-""-"+))<c>
     { let level = String.length o in
       if level >= 10 then raise Giveup;
