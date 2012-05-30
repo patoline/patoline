@@ -546,10 +546,8 @@ symbol_def:
 
 atomelt:
   /* Section */
-  | (("="|"-")">")<o> ['_']?<num> oparagraph<title> text<content> (("="|"-")"<")<c>
-    { if not (layout_parskip dyp 3 4) then raise Giveup;
-      if layout_parskip dyp 1 3 then raise Giveup;	
-      if o.[0] <> c.[0] then raise Giveup;
+  | (("="|"-")">")<o> ['_']?<num> paragraph<title> text<content> (("="|"-")"<")<c>
+    { if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }
   | (("=""="+)|("-""-"+))<o> oparagraph<title>
