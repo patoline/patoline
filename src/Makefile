@@ -1,19 +1,19 @@
 OCAMLBUILD=ocamlbuild
 CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg
 
-FORMAT=$(shell ls Format/*Format*.ml)
+FORMAT=$(shell ls Format/*.mllib)
 
 all:native
 
 native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
 byte:Typography/Typography.cma
 
-prof:Typography/Typography.p.cmxa $(FORMAT:.ml=.p.cmxa)
+prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
 doc:
 	$(OCAMLBUILD) Typography/Typography.docdir/index.html
 
-Main.native: $(FORMAT:.ml=.cmxa)
+Main.native: $(FORMAT:.mllib=.cmxa)
 	$(OCAMLBUILD) -I Typography Patoline/Main.native
 
 proof.native:Typography/Typography.cmxa
