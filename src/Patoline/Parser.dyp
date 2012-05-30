@@ -174,7 +174,7 @@ let layout_info dyp a b =
     let b = dyp.rhs_start_pos b in
     let cdiff = b.pos_cnum - a.pos_cnum in
     let ldiff = b.pos_lnum - a.pos_lnum in
-    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum;
+(*    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum; *)
     cdiff, ldiff
 
 let layout_parskip dyp a b =
