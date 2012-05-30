@@ -92,6 +92,10 @@ Symboles de TeX'
 \Add_arrow{\mono >-> ↣}{↣}
 \Add_arrow{\inj ↪}{↪}
 \Add_arrow{\jni ↩}{↩}
+\Add_arrow{\ulharpoon ↼}{↼}
+\Add_arrow{\urharpoon ⇀}{⇀}
+\Add_arrow{\dlharpoon ↽}{↽}
+\Add_arrow{\drharpoon ⇁}{⇁}
 
 
 (* == Punctuation symbols == *)
