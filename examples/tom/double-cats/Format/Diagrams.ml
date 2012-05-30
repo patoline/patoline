@@ -1,4 +1,3 @@
-open Typography
 open Document
 module Drivers = OutputCommon
 open OutputCommon
@@ -948,7 +947,7 @@ module Diagram = struct
 	       ]
   type gentity = { curve : Curve.t ;	(* The curve is used to determine the start and end of edges *)
 		   anchor : anchor -> Point.t ; (* Anchors are used for relative placement *)
-		   contents : Typography.OutputCommon.contents list (* What's needed to actually draw the node *)
+		   contents : OutputCommon.contents list (* What's needed to actually draw the node *)
 		 } 
 
   (* Casting points into gentities *)

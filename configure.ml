@@ -103,10 +103,9 @@ let _=
     (* Grammars *)
     Printf.fprintf out "\t#grammars\n";
     Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !grammars_dir);
-    List.iter (fun x->
-                 if Filename.check_suffix x ".tgo" || Filename.check_suffix x ".tgx" then
-                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat grammars_src_dir x)) (escape (List.hd !grammars_dirs))
-              ) ("DefaultGrammar.tgx"::(if !opt_only then [] else ["DefaultGrammar.tgo"]));
+    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" 
+      (escape (Filename.concat grammars_src_dir "DefaultGrammar.tgx")) 
+      (escape (List.hd !grammars_dirs));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
@@ -133,7 +132,6 @@ let _=
         "<**/*>: pp(cpp -w),package(camomile)%s%s
 <Format/*.{ml,mli}>: use_Typography
 <proof/proof.{byte,native}>: package(camomile)%s%s
-<Typography/**/*.{ml,mli}>: for-pack(Typography)
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,use_dynlink
 \"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
@@ -150,9 +148,9 @@ let _=
     Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
 
     let sources=
-      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
+      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a "^
         "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
-        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi"^
+        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi "^
         (if not !opt_only then
            "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
          else "")

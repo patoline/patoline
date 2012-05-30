@@ -1,4 +1,3 @@
-open Typography
 open Fonts.FTypes
 open Fonts
 open Bezier

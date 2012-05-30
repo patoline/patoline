@@ -1,4 +1,4 @@
 <*.txp>:format(Article),bibi(biblio.bibi)
-<Format/*.ml>: package(Typography),package(bibi)
-<*.{ml,cmxa,cmx,cmo,native}>: package(Typography),package(bibi)
+<Format/*>: package(Typography),package(bibi),use_Typography
+<*.*>: package(Typography),package(bibi)
 "Format":include

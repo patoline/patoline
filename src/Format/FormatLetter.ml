@@ -1,11 +1,10 @@
-open Typography
-open Typography.Fonts
-open Typography.Fonts.FTypes
-open Typography.Document
-open Typography.Util
+open Fonts
+open Fonts.FTypes
+open Document
+open Util
 open CamomileLibrary
-open Typography.Box
-open Typography.Line
+open Box
+open Line
 open Printf
 
 let id x=x
@@ -105,8 +104,8 @@ module Format=functor (D:DocumentStructure)->struct
 end
 
 
-open Typography.OutputPaper
-open Typography.OutputCommon
+open OutputPaper
+open OutputCommon
 
 module Output=functor(M:Driver)->struct
   let output structure paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line) list array) file=

@@ -14,7 +14,7 @@ CNRS, Université de Savoie
 
 (* test *)
 
-\Add_relation{\wcolim ⋆}{⋆}
+\Add_relation{\wcolim ⋆}{*}
 \Add_relation{\neq ≠}{≠}
 
 \Add_postfix{'}{'}
@@ -62,8 +62,12 @@ let figRef ()= [B (fun env->
 let eqref name = <<\emph{(\caml(generalRef "equation" name))}>>
 let large text = [size 10. text]
 let bb x = [Scoped ((fun env -> { env with fontAlternative = Bold }), x)]
-let mathcal a=Euler.changeFont [Euler.Font `Cal] :: a
-let fraktur a=Euler.changeFont [Euler.Font `Fraktur] :: a
+
+
+let mathbb a=[Maths.Scope (fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `BB])::a)]
+let mathcal a=[Maths.Scope (fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Cal])::a)]
+let mathfrak a=[Maths.Scope (fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Fraktur])::a)]
+
 let bf a=Euler.changeFont [Euler.Graisse `Gras] :: a
 let bold a=alternative Bold a
 
@@ -265,7 +269,8 @@ by taking a lax pushout of $ρ$ along the unique functor $\cat → 1$, as in
 of the form \eqref("equation: rule shape") with $X ∈ \indiv$. 
 We call such (isomorphism classes of) rule shapes \emph{full}. 
 
-    To formally add objects for all full rule shapes to $\cat$, we will take a more sophisticated lax 
+Observe that lax pushouts are a particular case of category-enriched colimits \cite(["Kelly"]).
+    To formally add objects for all full rule shapes to $\cat$, we  will take a more sophisticated lax 
       colimit, which requires to use the 
 	  full definition. Our diagram shape, say $J$, is the free category on the graph
 
@@ -456,6 +461,9 @@ adding to $\catplusf$ objects representing these diagrams. So we have embeddings
 $\cat ↪ \catplusf ↪ \catplusw$ of categories.
 
 \End{definition}
+
+
+But...
 
 =<
 

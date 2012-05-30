@@ -49,84 +49,17 @@ let cite ?title:(title="") ?year:(year=None) (authors:string list) =
 module Euler=DefaultFormat.Euler
 
 module Format=functor (D:DocumentStructure)->struct
-  type user=Document.user
-  module Default=DefaultFormat.Format(D)
 
-  let defaultEnv={ Default.defaultEnv with mathsEnvironment = Maths.default }
+  module Default=DefaultFormat.Format(D)
+  include Default
+
   let title=Default.title
   let author=Default.author
   let institute=Default.institute
 
   let caml x = x
   let displayedFormula=Default.displayedFormula
-let postprocess_tree tree=
-  let with_title=match tree with
-      Node n->
-        let par=Paragraph {
-          par_contents=n.displayname;
-          par_env=resize_env 8.;
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
-          par_parameters=
-            (fun a b c d e f g->
-               { (center a b c d e f g) with
-                   min_height_after=2.*.a.normalLead;
-                   min_height_before=2.*.a.normalLead });
-          par_completeLine=Complete.normal }
-        in
-          fst (up (newChildBefore (tree,[]) par))
-    | _->tree
-  in
-  let rec sectionize depth=function
-      Node n when List.mem Structural n.node_tags ->
-        let section_name=
-          if List.mem Numbered n.node_tags  then
-            [C (fun env->
-                  let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
-                  let _,path'=try StrMap.find "path" env.counters with Not_found -> -1,[] in
-                  let path=drop 1 b in
-                    B (fun _->[User (Structure path')])
-                    ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
-                    :: T " "
-                    ::n.displayname
-               )]
-          else
-            B (fun env->
-                 let _,path=try StrMap.find "path" env.counters with Not_found -> -1,[] in
-                   [User (Structure path)])::
-              n.displayname
-        in
-        let par=Paragraph {
-          par_contents=section_name;
-          par_env=(fun env->
-                     let a,b=try StrMap.find "structure" env.counters with Not_found -> -1,[] in
-                     let path=drop 1 b in
-                       { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
-                           size=(if List.length path <= 1 then sqrt phi else
-                                   sqrt (sqrt phi))*.env.size;
-                       });
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
-          par_parameters=
-            (fun a b c d e f g->
-              { (parameters a b c d e f g) with
-                   min_page_before= 0;
-                   min_page_after= 0;
-                   (* if depth=0 && f.lineStart=0 then 1 else 0; *)
-                   min_height_after=2.*.a.normalLead;
-                   min_height_before=2.*.a.normalLead });
-          par_completeLine=Complete.normal }
-        in
-          fst (up (newChildBefore (
-                     Node { n with children=IntMap.map (sectionize (depth+1)) n.children }, []) par
-                  ))
-    | a->a
-  in
-  let with_chapters=match with_title with
-      Node n->Node { n with children=IntMap.map (sectionize 0) n.children }
-    | _->with_title
-  in
-    with_chapters
+
 
 let thebibliography ()=
     List.iter (fun (a,(_,b,c))->
@@ -158,10 +91,6 @@ module Env_theorem=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
    end)
-module Env_abstract = Default.Env_abstract	
-module Env_itemize = Default.Env_itemize	
-module Env_center = Default.Env_center	
-
 
     module Env_equation = struct
 
@@ -174,7 +103,7 @@ module Env_center = Default.Env_center
 
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
-        Default.env_stack:=snd !D.structure :: !Default.env_stack
+        Default.env_stack:=(List.map fst (snd !D.structure)) :: !Default.env_stack
 
       let do_end_env ()=
         let rec first_par=function
@@ -231,17 +160,17 @@ module Env_center = Default.Env_center
                 Node { n with children=IntMap.add k0 (last_par a0) n.children }
           | x -> x
         in
-        let stru=match follow (top !D.structure) (List.rev (List.hd !Default.env_stack)) with
-            Node n,_->
+        let stru,path=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
+            Node n,x->
               (try
                  let a,b=IntMap.min_binding n.children in
                    Node { n with children = IntMap.add a (first_par b) n.children }
                with
-                   Not_found->first_par (Node n))
-          | x,_->first_par x
+                   Not_found->first_par (Node n)), x
+          | x,y->(first_par x), y
         in
         let center p = { p with par_parameters=Document.do_center p.par_parameters } in
-	  D.structure := up (map_paragraphs center (last_par stru),List.hd !Default.env_stack);
+	  D.structure := up (map_paragraphs center (last_par stru),path);
         Default.env_stack:=List.tl !Default.env_stack
     end
 
@@ -304,3 +233,5 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
   let qq _=utf8Char 8221
 
 end
+
+module Output = DefaultFormat.Output

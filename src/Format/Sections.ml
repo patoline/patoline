@@ -1,5 +1,4 @@
 open CamomileLibrary
-open Typography
 open Document
 open Util
 open Box

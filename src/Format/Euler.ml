@@ -100,13 +100,13 @@ let make_subst l c=
           ) with
               Not_found -> c
       )
-open Typography.Fonts.FTypes
+open Fonts.FTypes
 let subst l cs=List.map (fun c->{ c with glyph_index=make_subst l c.glyph_index }) cs
-open Typography.Document
-open Typography.Document.Mathematical
-open Typography.Maths
-open Typography.Util
-open Typography
+open Document
+open Document.Mathematical
+open Maths
+open Util
+
 
 let compose f g x=f(g x)
 let changeFont l env=

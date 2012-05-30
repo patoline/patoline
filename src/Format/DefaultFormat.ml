@@ -1,10 +1,9 @@
-open Typography
-open Typography.Document
-open Typography.Complete
-open Typography.Fonts.FTypes
-open Typography.Util
-open Typography.Fonts
-open Typography.Box
+open Document
+open Complete
+open Fonts.FTypes
+open Util
+open Fonts
+open Box
 open Line
 open CamomileLibrary
 
@@ -64,9 +63,9 @@ let alegreya=
      simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
   ]
 
-module Format=functor (D:Typography.Document.DocumentStructure)->(
+module Format=functor (D:Document.DocumentStructure)->(
   struct
-    type user=Typography.Document.user
+    type user=Document.user
 
     let id x=x
 
@@ -82,7 +81,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
                   par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
                                                      counters=env2.counters;
                                                      user_positions=env2.user_positions });
-                  par_parameters=parameters; par_completeLine=Typography.Complete.normal }, [])
+                  par_parameters=parameters; par_completeLine=Complete.normal }, [])
 
     module Env_Noindent=struct
       let do_begin_env ()=()
@@ -101,7 +100,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         let inp=input_value i in
           close_in i;
           (fun str->
-             let hyphenated=Typography.Hyphenate.hyphenate inp str in
+             let hyphenated=Hyphenate.hyphenate inp str in
              let pos=Array.make (List.length hyphenated-1) ("","") in
              let rec hyph l i cur=match l with
                  []->()
@@ -146,13 +145,13 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
       in
       let fsize=3.8 in
       let feat= [ Opentype.standardLigatures ] in
-      let loaded_feat=Typography.Fonts.select_features f [ Opentype.standardLigatures ] in
+      let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
         {
           fontFamily=alegreya;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;
-          fontColor=Typography.OutputCommon.black;
+          fontColor=OutputCommon.black;
           font=f;
           mathsEnvironment=
             Array.map (fun x->{x with Mathematical.kerning=false })
@@ -243,7 +242,7 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
-        ~badness:(Typography.Badness.badness pars)
+        ~badness:(Badness.badness pars)
         pars
       in
         OutputDrawing.output pars figures
@@ -651,8 +650,8 @@ module Format=functor (D:Typography.Document.DocumentStructure)->(
 
 
 (** Output routines. An output routine is just a functor taking a driver module *)
-open Typography.OutputPaper
-open Typography.OutputCommon
+open OutputPaper
+open OutputCommon
 
 module Output=functor(M:Driver)->struct
   let output structure paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line) list array) file=
