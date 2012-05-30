@@ -1,8 +1,9 @@
+open Typography
 open CamomileLibrary
-open Document
-open Util
-open Box
-open Line
+open Typography.Document
+open Typography.Util
+open Typography.Box
+open Typography.Line
 
 
 let postprocess_tree tree=

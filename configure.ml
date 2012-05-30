@@ -117,9 +117,9 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s),Typography
-<Fonts> or <Output> or <Output/Drivers>:include
-<**/*.{cmx,cmo}>:package(camomile)\n"
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s)
+<**/*.{cmo,cmx}> and not <Typography.*>:for-pack(Typography)
+<Fonts> or <Output> or <Output/Drivers>:include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
@@ -148,11 +148,11 @@ let _=
     Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
 
     let sources=
-      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a "^
+      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
         "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
-        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi "^
+        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi"^
         (if not !opt_only then
-           "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
+           " src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
          else "")
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);

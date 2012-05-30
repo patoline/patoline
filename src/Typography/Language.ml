@@ -23,10 +23,10 @@ let message=function
 #define LANG_EN
 let lang=`EN
 let message=function
-  | No_solution str when String.length str>0->sprintf "No solution, incomplete document. Last printed line:\n%s" str
-  | No_solution str->"No solution, empty document."
-  | Opt_error (Widow line)->"Widow: "^sprint_linef line
-  | Opt_error (Orphan line)->"Orphan: "^sprint_linef line
-  | Opt_error (Overfull_line line)->"Overfull line: "^sprint_linef line
+  | No_solution str when String.length str>0->sprintf "Pas de solution, document incomplet. Dernière ligne:\n%s" str
+  | No_solution str->"Pas de solution, document vide"
+  | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine \n\t%s\n\t%s" (sprint_linef line) s
 
 #endif

@@ -1,8 +1,9 @@
-open Document
-open Fonts.FTypes
-open Box
-open Line
-open Util
+open Typography
+open Typography.Document
+open Typography.Fonts.FTypes
+open Typography.Box
+open Typography.Line
+open Typography.Util
 
 
 let centered str tree max_level=

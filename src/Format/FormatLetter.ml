@@ -1,10 +1,11 @@
-open Fonts
-open Fonts.FTypes
-open Document
-open Util
+open Typography
+open Typography.Fonts
+open Typography.Fonts.FTypes
+open Typography.Document
+open Typography.Util
+open Typography.Box
+open Typography.Line
 open CamomileLibrary
-open Box
-open Line
 open Printf
 
 let id x=x

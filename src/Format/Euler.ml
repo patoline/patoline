@@ -1,3 +1,5 @@
+open Typography
+
 type 'a spec=
     Alpha of 'a
   | Font of 'a

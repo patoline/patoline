@@ -1,10 +1,11 @@
-open Document
-open Complete
-open Fonts.FTypes
-open Util
-open Fonts
-open Box
-open Line
+open Typography
+open Typography.Document
+open Typography.Complete
+open Typography.Fonts.FTypes
+open Typography.Util
+open Typography.Fonts
+open Typography.Box
+open Typography.Line
 open CamomileLibrary
 
 let _=Random.self_init ()
@@ -156,7 +157,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           mathsEnvironment=
             Array.map (fun x->{x with Mathematical.kerning=false })
               Euler.default;
-	  mathStyle=Mathematical.Text;
+	  mathStyle=Document.Mathematical.Text;
           word_substitutions=
             (fun x->List.fold_left (fun y f->f y) x
                [
