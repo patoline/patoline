@@ -5,8 +5,7 @@ open PatolineConfig
 
 exception Syntax_Error of Lexing.position * PatolineLanguage.syntax_error
 
-let set_newline nb dyplexbuf =
-  let l = Dyp.std_lexbuf dyplexbuf in
+let set_newline nb l =
   let pos = l.lex_curr_p in
   let npos = { pos with pos_lnum = pos.pos_lnum + nb; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
@@ -96,14 +95,6 @@ let pop_caml () = decr caml_depth; !caml_depth
 let pop_texprime_math () = decr texprime_math_depth; !texprime_math_depth = 0
 let pop_texprime_text () = decr texprime_text_depth; !texprime_text_depth = 0
 
-let has_space dyp =
-    let next = dyp.next_lexeme () in
-    match next with
-      [] -> false
-    | s::_ when s<>"" && (s.[0]='\n' or s.[0] = ' ' or s.[0] = '\t') -> true
-    | [_] -> false
-    | _ -> true 
-
 let concat words =
     let non_word  = [  "#"; "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"; "-"  ] in
     let rec fn acc last = function
@@ -176,6 +167,19 @@ let next_lexeme_paren l =
 	  List.mem last arg_paren
 	end
 
+let layout_info dyp a b =
+    let a' = dyp.rhs_start_pos a in
+    let b' = dyp.rhs_end_pos b in
+    let a = dyp.rhs_end_pos a in
+    let b = dyp.rhs_start_pos b in
+    let cdiff = b.pos_cnum - a.pos_cnum in
+    let ldiff = b.pos_lnum - a.pos_lnum in
+    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum;
+    cdiff, ldiff
+
+let layout_parskip dyp a b =
+    snd (layout_info dyp a b) > 1
+
 }
 
 %start main 
@@ -185,6 +189,9 @@ let next_lexeme_paren l =
 %relation macro < args < atom < fun < operator < ind < prod < sum < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
+
+%layout [' ' '\t' '\r']
+%layout '\n' { set_newline 1 (std_lexbuf lexbuf) }
 
 %lexer
 
@@ -222,7 +229,7 @@ rule comment = parse
     '*' ')' {  if pop_comment () then () else comment lexbuf }
   | '(' '*' {  push_comment (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_comment)) }
-  | newline {  set_newline 1 lexbuf; comment lexbuf }
+  | newline {  set_newline 1 (std_lexbuf lexbuf); comment lexbuf }
   | string {  comment lexbuf }
   | _ {  comment lexbuf }
 
@@ -245,7 +252,7 @@ and caml txps= parse
 	      texprime_text lexbuf; 
 	      caml ((TxpText, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
   | eof { [] }
-  | newline { set_newline 1 lexbuf; caml txps lexbuf }
+  | newline { set_newline 1 (std_lexbuf lexbuf); caml txps lexbuf }
   | string { caml txps lexbuf }
   | _ { caml txps lexbuf }
 
@@ -255,7 +262,7 @@ and texprime_math= parse
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_math lexbuf } 
   | '<' '$' { push_texprime_math (); texprime_math lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_math)) }
-  | newline { set_newline 1 lexbuf; texprime_math lexbuf }
+  | newline { set_newline 1 (std_lexbuf lexbuf); texprime_math lexbuf }
   | string { texprime_math lexbuf }
   | _ { texprime_math lexbuf }
 
@@ -265,15 +272,12 @@ and texprime_text= parse
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_text lexbuf } 
   | '<''<' {  push_texprime_text (); texprime_text lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_text)) }
-  | newline {  set_newline 1 lexbuf; texprime_text lexbuf }
+  | newline {  set_newline 1 (std_lexbuf lexbuf); texprime_text lexbuf }
   | string {  texprime_text lexbuf }
   | _ {  texprime_text lexbuf }
 
 main lexer =
-  space ->
-  newline -> { set_newline 1 lexbuf }
-  newline -> NEWLINE { set_newline 1 lexbuf; "" }
-  newline (space* newline) -> PARSKIP { set_newline 2 lexbuf; "" }
+  newline -> NEWLINE { set_newline 1 (std_lexbuf lexbuf); "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' "Include" -> INCLUDE
@@ -297,32 +301,27 @@ main lexer =
 %parser
 
 parelt:
-   parmacro<m> { m, has_space dyp }
-  | "$" math<m> "$" { [FC(false,m)], has_space dyp  }
-  | line<w> { [TC w], has_space dyp  }
+   parmacro<m> { m }
+  | "$" math<m> "$" { [FC(false,m)] }
+  | line<w> { [TC w] }
 
 
-paragraph:
-  | 
-    { [], false }
-  | paragraph<p,sp> parelt<e,sp'> 
-    { e@(if sp then GC::p else p), sp' }
+paragraph_aux:
+  | parelt<e>
+    { e }
+  | paragraph_aux<p> parelt<e>   
+    { 
+      let c,l = layout_info dyp 1 2 in
+      if p <> [] && l > 1 then raise Giveup;
+      e@(if c > 0 then GC::p else p) }
 
-eparagraph: 
-   paragraph<p,_> { List.rev p }
+paragraph: 
+   paragraph_aux<p> { List.rev p }
+
+oparagraph: {[]} | paragraph<p> {p}
 
 allparagraph:
-   eparagraph<p> eof { p }
-
-nparagraph:
-  | parelt<e,sp> 
-    { e, sp }
-  | nparagraph<p,sp> parelt<e,sp'> 
-    { e@(if sp then GC::p else p), sp' }
-
-pparagraph: 
-   nparagraph<p,_> [ PARSKIP | eof ] 
-   { List.rev p }
+   paragraph<p> eof { p }
 
 memo_grammar: 
      { 
@@ -336,7 +335,7 @@ args:
      { (fun ld gr  -> []) } 
   | "()"
     { (fun ld gr  -> []) } 
-  | args<a> - "{" eparagraph<p> "}" 
+  | args<a> - "{" oparagraph<p> "}" 
     { (fun ld gr -> Paragraph (p)::a ld gr) } 
   | args<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
@@ -345,12 +344,12 @@ args:
 neargs:
   | "()"
     { (fun ld gr  -> []) }
-  | "{" eparagraph<p> "}" 
+  | "{" oparagraph<p> "}" 
     { (fun ld gr -> [Paragraph (p)]) }
   | CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
-  | neargs<a> - "{" eparagraph<p> "}" 
+  | neargs<a> - "{" oparagraph<p> "}" 
     { (fun ld gr -> Paragraph (p)::a ld gr) }
   | neargs<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
@@ -436,7 +435,7 @@ rightind:
       { fun i -> { i with down_right = Some m1 } }
 
 promath:
-    math(<=prod)<m> { m, has_space dyp }
+    math(<=prod)<m> { m }
 
 allmath:
    math<m> eof { m }
@@ -519,8 +518,8 @@ math:
       { Postfix(3,b,true,op) } sum
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
-  | promath<a, sp> math(<prod)<b>
-      { if not sp then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
+  | promath<a> math(<prod)<b>
+      { if false (* FIXME *) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
@@ -547,11 +546,13 @@ symbol_def:
 
 atomelt:
   /* Section */
-  | (("="|"-")">")<o> ['_']?<num> eparagraph<title> PARSKIP text<content> (("="|"-")"<")<c>
-    { if o.[0] <> c.[0] then raise Giveup;
+  | (("="|"-")">")<o> ['_']?<num> oparagraph<title> text<content> (("="|"-")"<")<c>
+    { if not (layout_parskip dyp 3 4) then raise Giveup;
+      if layout_parskip dyp 1 3 then raise Giveup;	
+      if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }
-  | (("=""="+)|("-""-"+))<o> eparagraph<title>
+  | (("=""="+)|("-""-"+))<o> oparagraph<title>
       (("=""="+)|("-""-"+))<c>
     { let level = String.length o in
       if level >= 10 then raise Giveup;
@@ -616,22 +617,27 @@ atomelt:
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
 
 atomeltp:
-    atomelt<e> [NEWLINE]* @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
-/*  | eparagraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
-  | pparagraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
+    atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+/*  | paragraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
+  | paragraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
 
 title:
   ("=========="('='*))
     line+<title>
-     [PARSKIP line+<author>
-      [PARSKIP line+]?<institute> {author, institute} ]?<at>
+     [NEWLINE NEWLINE+ line+<author>
+      [NEWLINE NEWLINE+ line+]?<institute> {author, institute} ]?<at>
   ("=========="('='*))
   { title,at }
 
 text:
   | { [] }
   | text<t> atomeltp<p>
-   @{ p@t, [ Keep_grammar; Local_data dyp.local_data ]}
+   @{ 
+      (match t, p with 
+        (Paragraph _::_), (Paragraph _::_) ->
+	  if not (layout_parskip dyp 1 2) then raise Giveup
+       | _ -> ()); 
+      p@t, [ Keep_grammar; Local_data dyp.local_data ]}
 
 grammar_aux:
     { Some "DefaultGrammar" }
