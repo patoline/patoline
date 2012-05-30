@@ -613,7 +613,9 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
 let pageref x=
   [CFix (fun env->try
            let (_,_,node)=StrMap.find x env.names in
-             [T (string_of_int (1+node.page))]
+             [B (fun _->[User (BeginLink x)]);
+              T (string_of_int (1+node.page));
+              B (fun _->[User EndLink])]
          with Not_found -> []
         )]
 
@@ -638,7 +640,10 @@ let generalRef refType name=
             let num=if refType="_structure" then drop 1 num_ else num_ in
             let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-              [ T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
+              [B (fun _->[User (BeginLink name)]);
+               T (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                       (List.rev (num@sect_num))));
+               B (fun _->[User EndLink])]
           with
               Not_found -> []
          )]
@@ -883,15 +888,25 @@ let flatten env0 fixable str=
         | Node s-> (
             s.tree_paragraph <- List.length !paragraphs;
             let flushes'=ref [] in
-            let flat_children k a (indent, env1)=match a with
+            let flat_children k a (is_first,indent, env1)=match a with
               | (Paragraph p)->(
                   let env2=flatten flushes' (p.par_env env1) (k::path) (
                     Paragraph { p with par_contents=
+                        (if is_first then (
+                           let name=String.concat "_" ("_"::List.map string_of_int path) in
+                             [Env (fun env->
+                                     let w=try let (_,_,w)=StrMap.find name env.names in w with
+                                         Not_found -> uselessLine in
+                                       { env with names=StrMap.add name (env.counters, "_", w)
+                                           env.names });
+                              B (fun _->[User (Label name)])
+                             ]
+                         ) else [])@
                         (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
                   ) in
-                    true, p.par_post_env env1 env2
+                    false,true, p.par_post_env env1 env2
                 )
-              | Free f as h->indent,flatten flushes' env (k::path) h
+              | Free f as h->is_first,indent,flatten flushes' env (k::path) h
               | FigureDef f as h->(
                   let env2=flatten flushes' env1 (k::path) h in
                   let num=try
@@ -902,7 +917,7 @@ let flatten env0 fixable str=
                       Not_found ->0
                   in
                     flushes':=FlushFigure num::(!flushes');
-                    indent,env2
+                    is_first,indent,env2
                 )
               | Node h as tr->(
                   let env2=h.node_env env1 in
@@ -917,10 +932,10 @@ let flatten env0 fixable str=
                       {env2 with counters=cou }
                   in
                   let env3=flatten flushes' env2' (k::path) tr in
-                    false, h.node_post_env env1 env3
+                    is_first,false, h.node_post_env env1 env3
                 )
             in
-            let _,env2=IntMap.fold flat_children s.children (false,env) in
+            let _,_,env2=IntMap.fold flat_children s.children (true,false,env) in
               paragraphs:=(match !paragraphs with
                                []->[]
                              | h::s->Array.append h (Array.of_list !flushes')::s);
@@ -987,7 +1002,7 @@ let update_names env figs user=
                        else
                          TS.UMap.find (Label k) user
                      in
-                       if pos<>c then (
+                       if pos<>c && b<>"_" then (
                          Printf.fprintf stderr "reboot : position of %S changed\n" k
                        );
                        needs_reboot:= !needs_reboot || (pos<>c);
