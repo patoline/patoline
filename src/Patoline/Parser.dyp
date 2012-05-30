@@ -547,7 +547,8 @@ symbol_def:
 atomelt:
   /* Section */
   | (("="|"-")">")<o> ['_']?<num> paragraph<title> text<content> (("="|"-")"<")<c>
-    { if o.[0] <> c.[0] then raise Giveup;
+    { if content <> [] && not (layout_parskip dyp 3 4) then raise Giveup;
+      if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative (List.rev content))]
     }
   | (("=""="+)|("-""-"+))<o> oparagraph<title>
@@ -627,15 +628,18 @@ title:
   ("=========="('='*))
   { title,at }
 
-text:
-  | { [] }
-  | text<t> atomeltp<p>
+text: { [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.local_data ]}
+
+ntext:
+  | atomeltp<p> 
+   @{ p, [ Keep_grammar; Local_data dyp.local_data ] }
+  | ntext<t> atomeltp<p>
    @{ 
       (match t, p with 
         (Paragraph _::_), (Paragraph _::_) ->
 	  if not (layout_parskip dyp 1 2) then raise Giveup
        | _ -> ()); 
-      p@t, [ Keep_grammar; Local_data dyp.local_data ]}
+      (p@t), [ Keep_grammar; Local_data dyp.local_data ]}
 
 grammar_aux:
     { Some "DefaultGrammar" }
