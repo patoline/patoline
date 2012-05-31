@@ -321,8 +321,7 @@ and print_macro_buf buf op mtype name args =
       | `Include ->
 	incr moduleCounter;
 	Printf.bprintf buf
-	  "module TEMP%d=%s.Document(D);;\nmodule TEMP%d=struct open TEMP%d end\n" !moduleCounter name (!moduleCounter+1) !moduleCounter;
-	incr moduleCounter
+	  "module TEMP%d=%s.Document(D);;\n open TEMP%d \n" !moduleCounter name !moduleCounter
   end
 
 and print_macro ch op mtype name args = begin

@@ -67,7 +67,7 @@ let alegreya=
 let mathcal a=Maths.Env (Euler.changeFont [Euler.Font `Cal]) :: a
 let cal a=mathcal a
 let fraktur a=Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a
-let bf a=Maths.Env (Euler.changeFont [Euler.Graisse `Gras]) :: a
+let mathbf a=Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative [] Bold env)) :: a
 let bold a=alternative Bold a
 let sc a=alternative Caps a
 let mathsc a=
@@ -78,9 +78,10 @@ let mathsc a=
               )]
 
 let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont (findFont "AMS/ams.otf"))
-let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts env (Lazy.force bbFont))::a)]
+let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts 
+  (change_font (Lazy.force bbFont) env) (Lazy.force bbFont))::a)]
 
-let rm a=[Maths.Scope(
+let mathrm a=[Maths.Scope(
             fun _ _->Maths.Env (fun env->Maths.change_fonts env env.font)::a
           )]
 

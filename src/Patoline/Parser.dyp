@@ -671,9 +671,9 @@ grammar: grammar_aux<g>
               used_grammars:=filename::(!used_grammars);
 	      (* Printf.fprintf stderr "Grammar: %s.\n" grammar_name ; *)
 	      [ Local_data local_data; Parser grammar ]
-          with e -> (* Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); *) []
+          with e -> Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); []
         )
-      | _->[]
+      | _-> []
        in
        (), action
     }

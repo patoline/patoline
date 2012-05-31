@@ -357,11 +357,11 @@ let updateFont env font str subst pos=
         substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) feat);
         positioning=(fun x->pos (positioning font x)) }
 
+let change_font f env = updateFont env f (fun x->x) (fun x->x) (fun x->x)
+
 (* Changer de font dans un scope, ignore la famille, attention, à éviter en direct *)
 let font f t=
-  let font=loadFont f in
-    [Scoped ((fun env-> updateFont env font (fun x->x) (fun x->x) (fun x->x)), t)]
-
+    [Scoped (change_font f, t)]
 
 (* Rajouter une liste de features, voir Fonts.FTypes pour savoir ce
    qui existe *)

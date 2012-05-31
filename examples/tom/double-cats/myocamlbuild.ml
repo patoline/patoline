@@ -1,10 +1,6 @@
 open Ocamlbuild_plugin;;
 open Command;;
 
-let patoline = A"patoline";;
-let mmml = A"--ml"
-let noamble = A"--noamble";;
-
 let bibfile = ref []
 let main=ref None
 
@@ -63,8 +59,8 @@ let _ = dispatch begin function
         ~prods:["%.txp.deps"]
         ~deps:["%.txp"]
         begin fun env _build->
-	let txp = env "%.txp" in
-          Seq[Cmd(S([patoline;A"--deps";A"--ml";P(env "%.txp")]))]
+          Seq[Cmd(S([A"patoline";A"--deps";A"--ml";P(env "%.txp")]));
+              Cmd(S[A"rm";P(env "%.tml")])]
         end;
       rule "patoline: tml -> ml"
         ~prods:["%.ml"]
@@ -110,7 +106,8 @@ let _ = dispatch begin function
                 List.iter (fun bibfilename->tag_file (env "%.pdf") [ "bibi("^bibfilename^")" ]) l
               )
           in
-            Seq[Cmd(S([patoline;mmml;
+            Seq[Cmd(S([A"patoline";
+                       A"--ml";
 		       A"--format";A format]@
                         (if is_main then [] else [A"-c"])@
 		       [P(env "%.txp")]));
@@ -118,10 +115,10 @@ let _ = dispatch begin function
       end ;
 
       rule "patoline: txp -> tgx"
-        ~prods:["%.tgx"]
+        ~prods:["%.tgx";"%.tml"]
         ~dep:"%.txp"
       begin fun env _build ->
-        Cmd(S[patoline;noamble;mmml; P(env "%.txp")])
+        Cmd(S[A"patoline";A"--noamble";A"--ml"; P(env "%.txp")])
       end ;
 
       rule "ocaml: native -> pdf"
@@ -129,7 +126,7 @@ let _ = dispatch begin function
         ~dep:"%.native"
       begin fun env _build ->
 	let _ = _build [!bibfile] in
-        let cmd=Seq[Cmd(S[A"exec";A(env (".."/"_build"/"%.native"))]);
+        let cmd=Seq[Cmd(S[A"exec";A(env (".."/"_build"/"%.native"));A"--extra-fonts-dir";A".."]);
 	            ln_s(env ("_build" / "%.pdf")) (env "../%.pdf")]
         in
           cmd
