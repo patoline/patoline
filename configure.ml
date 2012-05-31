@@ -8,7 +8,6 @@ let ocamlfind_dir=ref ""
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let hyphen_dirs=ref []
-let opt_only=ref true
 let camlzip=ref ""
 let camlimages=ref ""
 let lang=ref "FR"
@@ -57,7 +56,6 @@ let _=
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
-    ("--byte", Unit (fun ()->opt_only:=false), "  compile bytecode version (only native code is compiled by default)");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
@@ -87,7 +85,7 @@ let _=
   let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
 
-    Printf.fprintf out "all:\n\tmake -C src %s\n" (if !opt_only then "native" else "all");
+    Printf.fprintf out "all:\n\tmake -C src all\n";
     Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc:\n\tmake -C src doc\n";
     Printf.fprintf out "install:\n";
@@ -159,10 +157,8 @@ let _=
     let sources=
       "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
         "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
-        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi"^
-        (if not !opt_only then
-           " src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
-         else "")
+        "src/_build/DefaultGrammar.cmx src/_build/DefaultGrammar.cmi "^
+        "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
