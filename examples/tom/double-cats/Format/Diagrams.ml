@@ -1,3 +1,4 @@
+open Typography
 open Document
 module Drivers = OutputCommon
 open OutputCommon
