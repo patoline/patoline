@@ -35,6 +35,15 @@ let rec escape s=
   with
       Not_found -> s
 
+exception Found
+let is_substring s1 s0=
+  let rec sub i j=
+    if i>String.length s0-String.length s1 then false else
+      if j>=String.length s1 then true else
+        if s0.[i+j]=s1.[j] then sub i (j+1) else
+          sub (i+1) 0
+  in
+    sub 0 0
 
 let _=
   parse [
@@ -197,4 +206,15 @@ let _=
             (if !camlimages="" then "" else (","^(!camlimages)));
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
+          Array.iter (fun x->
+                        if Filename.check_suffix x ".ml" && is_substring "Format" x
+                          && x<>"DefaultFormat.ml"
+                        then (
+                          Printf.fprintf meta "package \"%s\" (\n" (Filename.chop_extension x);
+                          Printf.fprintf meta "archive(native)=\"%s\"\n"
+                            ((Filename.chop_extension x)^".cmxa");
+                          Printf.fprintf meta "archive(byte)=\"%s\"\n)\n"
+                            ((Filename.chop_extension x)^".cma")
+                        )
+                     ) (Sys.readdir "src/Format");
           close_out meta
