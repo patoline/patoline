@@ -64,6 +64,153 @@ let alegreya=
      simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
   ]
 
+let mathcal a=Maths.Env (Euler.changeFont [Euler.Font `Cal]) :: a
+let cal a=mathcal a
+let fraktur a=Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a
+let bf a=Maths.Env (Euler.changeFont [Euler.Graisse `Gras]) :: a
+let bold a=alternative Bold a
+let sc a=alternative Caps a
+let mathsc a=
+  [Maths.Scope(fun _ _->
+                 Maths.Env (fun env->envAlternative [] Caps env)::
+                   Maths.Env (fun env->Maths.change_fonts env env.font)::
+                   a
+              )]
+
+let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont (findFont "AMS/ams.otf"))
+let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts env (Lazy.force bbFont))::a)]
+
+let rm a=[Maths.Scope(
+            fun _ _->Maths.Env (fun env->Maths.change_fonts env env.font)::a
+          )]
+
+let overline a=
+  [Maths.Ordinary
+     (Maths.noad
+        (fun envs st->
+           let dr=draw_boxes (Maths.draw [envs] a) in
+           let env=Maths.env_style envs.mathsEnvironment st in
+           let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
+           let drawn=(drawing ~offset:y0 dr) in
+           let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize in
+             [Box.Drawing {
+                drawn with
+                  drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
+                  drawing_contents=
+                  (fun w->
+                     OutputCommon.Path ({OutputCommon.default with OutputCommon.lineWidth=rul},
+                                        [[|[|x0;x1|],
+                                           [|y1*.sqrt phi+.2.*.rul;y1*.sqrt phi+.2.*.rul|]|]])
+                     ::drawn.drawing_contents w)
+              }]
+        ))]
+
+(* Une chirurgie esthétique de glyphs. Ce n'est sans doute pas très
+   bien fait, et il faut kerner en haut. Un truc generique pour
+   allonger toutes les flêches est à réfléchir *)
+
+let oRightArrow a=
+  [Maths.Ordinary
+     (Maths.noad
+        (fun envs st->
+           let boxes=(Maths.draw [envs] a) in
+           let boxes_w=
+             (List.fold_left (fun w x->
+                                let _,w_x,_=box_interval x in
+                                  w+.w_x) 0. boxes)
+           in
+           let dr=draw_boxes boxes in
+           let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
+
+           let env=Maths.env_style envs.mathsEnvironment st in
+           let font=Lazy.force (env.Mathematical.mathsFont) in
+           let utf8_arr={glyph_index=(Fonts.glyph_of_uchar font (UChar.chr 0x2192));
+                         glyph_utf8="\033\146"} in
+           let gl_arr=Fonts.loadGlyph font utf8_arr in
+           let arr=Fonts.outlines gl_arr in
+           let w1=List.fold_left (List.fold_left (fun y (v,_)->max y (max v.(0) v.(Array.length v-1)))) 0. arr in
+           let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
+                                                       let a,b=Bezier.bernstein_extr v in
+                                                         min yy0 a, max yy1 b)) (0.,0.) arr in
+           let size=env.Mathematical.mathsSize/.(1000.*.phi) in
+           let space=env.Mathematical.default_rule_thickness in
+           let arr'=
+             List.map (fun x->
+                         Array.of_list (List.map (fun (u,v)->
+                                                    Array.map (fun y->if y>=w1/.4. then (y*.size)+.(max 0. (x1_-.w1*.size)) else y*.size) u,
+                                                    Array.map (fun y->y*.size-.y0+.y1_+.space) v
+                                                 ) (List.rev x))) arr
+           in
+             [Box.Drawing {
+                drawing_nominal_width=max (w1*.size) boxes_w;
+                drawing_min_width=max (w1*.size) boxes_w;
+                drawing_max_width=max (w1*.size) boxes_w;
+
+                drawing_y0=y0_;
+                drawing_y1=y1_+.space-.(y0+.y1)*.size;
+                drawing_badness=(fun _->0.);
+                drawing_contents=
+                  (fun w->
+                     OutputCommon.Path ({OutputCommon.default with
+                                           OutputCommon.strokingColor=None;
+                                           OutputCommon.fillColor=Some OutputCommon.black
+                                        },arr')
+                     ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
+              }]
+        ))]
+
+let oLeftArrow a=
+  [Maths.Ordinary
+     (Maths.noad
+        (fun envs st->
+           let boxes=(Maths.draw [envs] a) in
+           let boxes_w=
+             (List.fold_left (fun w x->
+                                let _,w_x,_=box_interval x in
+                                  w+.w_x) 0. boxes)
+           in
+           let dr=draw_boxes boxes in
+           let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
+
+           let env=Maths.env_style envs.mathsEnvironment st in
+           let font=Lazy.force (env.Mathematical.mathsFont) in
+           let utf8_arr={glyph_index=(Fonts.glyph_of_uchar font (UChar.chr 0x2190));
+                         glyph_utf8="\033\144"} in
+           let gl_arr=Fonts.loadGlyph font utf8_arr in
+           let arr=Fonts.outlines gl_arr in
+           let w1=List.fold_left (List.fold_left (fun y (v,_)->max y (max v.(0) v.(Array.length v-1)))) 0. arr in
+           let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
+                                                       let a,b=Bezier.bernstein_extr v in
+                                                         min yy0 a, max yy1 b)) (0.,0.) arr in
+           let size=env.Mathematical.mathsSize/.(1000.*.phi) in
+           let space=env.Mathematical.default_rule_thickness in
+           let arr'=
+             List.map (fun x->
+                         Array.of_list (List.map (fun (u,v)->
+                                                    Array.map (fun y->if y>=w1*.0.75 then (y*.size)+.(max 0. (x1_-.w1*.size)) else y*.size) u,
+                                                    Array.map (fun y->y*.size-.y0+.y1_+.space) v
+                                                 ) (List.rev x))) arr
+           in
+             [Box.Drawing {
+                drawing_nominal_width=max (w1*.size) boxes_w;
+                drawing_min_width=max (w1*.size) boxes_w;
+                drawing_max_width=max (w1*.size) boxes_w;
+
+                drawing_y0=y0_;
+                drawing_y1=y1_+.space-.(y0+.y1)*.size;
+                drawing_badness=(fun _->0.);
+                drawing_contents=
+                  (fun w->
+                     OutputCommon.Path ({OutputCommon.default with
+                                           OutputCommon.strokingColor=None;
+                                           OutputCommon.fillColor=Some OutputCommon.black
+                                        },arr')
+                     ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
+              }]
+        ))]
+    (*******************************************************)
+
+
 module Format=functor (D:Document.DocumentStructure)->(
   struct
     type user=Document.user
