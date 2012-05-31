@@ -484,7 +484,12 @@ let gen_ml format amble filename from wherename where pdfname =
       let lexbuf=Dyp.from_channel (Parser.pp ()) from in
             try
 	      let docs = Parser.main lexbuf in
-	      (* Printf.fprintf stderr "%s\n" (Language.message (Language.End_of_parsing (List.length docs))); flush stderr; *)
+	      let nbdocs = List.length docs in
+	      if nbdocs > 1 then begin
+		Printf.fprintf stderr "%s\n" 
+		  (PatolineLanguage.message (PatolineLanguage.End_of_parsing nbdocs));
+		flush stderr;
+	      end;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->

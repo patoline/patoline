@@ -174,11 +174,14 @@ let layout_info dyp a b =
     let b = dyp.rhs_start_pos b in
     let cdiff = b.pos_cnum - a.pos_cnum in
     let ldiff = b.pos_lnum - a.pos_lnum in
-(*    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum; *)
+(*    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum;*)
     cdiff, ldiff
 
 let layout_parskip dyp a b =
     snd (layout_info dyp a b) > 1
+
+let layout_space dyp a b =
+    fst (layout_info dyp a b) > 0
 
 }
 
@@ -277,7 +280,6 @@ and texprime_text= parse
   | _ {  texprime_text lexbuf }
 
 main lexer =
-  newline -> NEWLINE { set_newline 1 (std_lexbuf lexbuf); "" }
   '\\' "Begin" -> BEGIN
   '\\' "End" -> END
   '\\' "Include" -> INCLUDE
@@ -294,7 +296,7 @@ main lexer =
 		    let start = l.lex_start_p.pos_cnum + 1 in 
 		    push_caml ();
 		    let txps= caml [] lexbuf in
-		      (* Printf.fprintf stderr "%d, %d\n" start l.lex_start_p.pos_cnum; *)
+(*		    Printf.fprintf stderr "%d, %d\n" start l.lex_start_p.pos_cnum;*)
 		    start, l.lex_start_p.pos_cnum, List.rev txps
 		  }
   
@@ -519,7 +521,7 @@ math:
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
   | promath<a> math(<prod)<b>
-      { if false (* FIXME *) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
+      { if not (layout_space dyp 1 2) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
@@ -547,9 +549,13 @@ symbol_def:
 atomelt:
   /* Section */
   | (("="|"-")">")<o> ['_']?<num> paragraph<title> text<content> (("="|"-")"<")<c>
-    { if content <> [] && not (layout_parskip dyp 3 4) then raise Giveup;
+    { let content = List.rev content in
+
+      (match content with 
+        Paragraph _:: _ -> if not (layout_parskip dyp 3 4) then raise Giveup
+      | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
-      [Struct(title, o.[0] = '=', Relative (List.rev content))]
+      [Struct(title, o.[0] = '=', Relative content)]
     }
   | (("=""="+)|("-""-"+))<o> paragraph<title>
       (("=""="+)|("-""-"+))<c>
@@ -557,8 +563,8 @@ atomelt:
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
-  | "\"\"\"" [ lident|uident ]?<lang> NEWLINE
-    [ - (verbatim_line)<l> - NEWLINE {l}]*<ls>
+  | "\"\"\"" [ lident|uident ]?<lang> "\n"
+    [ - (verbatim_line)<l> - "\n" {l}]*<ls>
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
@@ -623,8 +629,8 @@ atomeltp:
 title:
   ("=========="('='*))
     line+<title>
-     [NEWLINE NEWLINE+ line+<author>
-      [NEWLINE NEWLINE+ line+]?<institute> {author, institute} ]?<at>
+     [("----------"('-'*)) line+<author>
+      [("----------"('-'*)) line+]?<institute> {author, institute} ]?<at>
   ("=========="('='*))
   { title,at }
 
