@@ -127,3 +127,19 @@ let _ = dispatch begin function
 
   | _ -> ()
 end
+
+let _=
+  let rec find i=
+    if i>=Array.length Sys.argv then [] else
+      if Filename.check_suffix Sys.argv.(i) ".pdf" then
+        Sys.argv.(i)::(find (i+1))
+      else
+        find (i+1)
+  in
+  let targets=find 0 in
+    List.iter (fun x->
+                 if Sys.os_type<>"Win32" then (
+                   if Sys.file_exists x then Unix.unlink x;
+                   Unix.symlink (Filename.concat "_build" x) x
+                 )
+              ) targets
