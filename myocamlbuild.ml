@@ -1,7 +1,6 @@
 open Ocamlbuild_plugin;;
 open Command;;
 
-let bibfile = ref []
 let main=ref None
 
 let print_info f =
@@ -116,30 +115,14 @@ let _ = dispatch begin function
       end ;
 
       rule "ocaml: native -> pdf"
-        ~prods:["%.pdf"]
+        ~prod:"%.pdf"
         ~dep:"%.native"
       begin fun env _build ->
-	let _ = _build [!bibfile] in
-        let cmd=Seq[Cmd(S[A"exec";A(env (".."/"_build"/"%.native"));A"--extra-fonts-dir";A".."])]
+        let cmd=Seq[Cmd(S[A"exec";A(env (".."/"_build"/"%.native"));
+                          A"--extra-fonts-dir";A".."])]
         in
           cmd
       end ;
 
   | _ -> ()
 end
-
-let _=
-  let rec find i=
-    if i>=Array.length Sys.argv then [] else
-      if Filename.check_suffix Sys.argv.(i) ".pdf" then
-        Sys.argv.(i)::(find (i+1))
-      else
-        find (i+1)
-  in
-  let targets=find 0 in
-    List.iter (fun x->
-                 if Sys.os_type<>"Win32" then (
-                   if Sys.file_exists x then Unix.unlink x;
-                   Unix.symlink (Filename.concat "_build" x) x
-                 )
-              ) targets
