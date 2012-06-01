@@ -1,6 +1,0 @@
-"Format":include
-<Format/*>: package(Typography),package(bibi),format(Article)
-<Format/Preamble.*>: package(Typography),package(bibi),use_Article
-<*.txp>:format(Article),bibi(biblio.bibi)
-<*.*>: package(Typography),package(bibi),format(Article)
-
