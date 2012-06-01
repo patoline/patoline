@@ -1,0 +1,12 @@
+
+
+\Caml(
+
+  open DefaultFormat
+  open MathsFormat
+
+  let view x = <$\mathbf{v}()(x)$>
+
+)
+
+$\view{x}$
