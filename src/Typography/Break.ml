@@ -261,7 +261,6 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                       | None
                       | Some _->endNode:=Some (lastBadness, node, lastFigures,lastUser)
               ) else (
-
                 let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else
                   (node.page, node.height+.lastParameters.min_height_after) in
                 let local_opt=ref [] in
@@ -424,8 +423,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   )
                 in
                   (try
-                     fix (node.page+lastParameters.min_page_after)
-                       (if lastParameters.min_page_after=0 then node.height+.lastParameters.min_height_after else 0.);
+                     fix page0 h0;
                      if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                        List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
                                     let a,_,_=LineMap.split nextNode !demerits' in
@@ -459,44 +457,54 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
       )
     in
     let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty uselessLine in
-    let todo0=LineMap.singleton uselessLine (0., first_parameters, 0.,IntMap.empty,UMap.empty) in
     let last_failure=ref LineMap.empty in
-    let rec really_break allow_impossible todo demerits=
-      let demerits'=break allow_impossible todo demerits in
-        if LineMap.cardinal demerits' = 0 then (
-          try
-            let _=LineMap.find uselessLine !last_failure in
-              if Array.length paragraphs>0 || Array.length figures > 0 then
-                Printf.fprintf stderr "%s\n"
-                  (Language.message (Language.No_solution ""));
-              demerits'
-              (* raise No_solution *)
-          with
-              Not_found->(
-                if Array.length paragraphs>0 || Array.length figures > 0 then (
-                  last_failure:=LineMap.add uselessLine first_parameters !last_failure;
-                  really_break true todo0 demerits'
-                ) else LineMap.empty
+
+    let r_demerits=ref LineMap.empty in
+    let todo0= (LineMap.singleton uselessLine
+                    (0., first_parameters, 0.,IntMap.empty,UMap.empty))
+    in
+    let r_todo=ref todo0
+    in
+    let finished=ref false in
+    let allow_impossible=ref false in
+      while not !finished do
+        r_demerits:=break !allow_impossible !r_todo !r_demerits;
+        if LineMap.cardinal !r_demerits = 0 then (
+            try
+              let _=LineMap.find uselessLine !last_failure in
+                if Array.length paragraphs>0 || Array.length figures > 0 then
+                  Printf.fprintf stderr "%s\n"
+                    (Language.message (Language.No_solution ""));
+                finished:=true
+            with
+                Not_found->(
+                  if Array.length paragraphs>0 || Array.length figures > 0 then (
+                    last_failure:=LineMap.add uselessLine first_parameters !last_failure;
+                    allow_impossible:=true;
+                    r_todo:=todo0
+                  ) else (
+                    finished:=true
+                  )
               )
         ) else (
           if !endNode=None then (
-            let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding demerits' in
-            try
-              let param0=LineMap.find b !last_failure in
-                if param0.min_page_after<>param.min_page_after then raise Not_found;
-                Printf.fprintf stderr "%s\n" (
-                  Language.message (Language.No_solution (text_line paragraphs uselessLine)));
-                demerits'
-            with
-                Not_found->(
-                  last_failure:=LineMap.add b param !last_failure;
-                  really_break true (LineMap.singleton b (bad,param,comp,fig,user)) demerits'
-                )
-          ) else
-            demerits'
+            let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding !r_demerits in
+              try
+                let param0=LineMap.find b !last_failure in
+                  if param0.min_page_after<>param.min_page_after then raise Not_found;
+                  Printf.fprintf stderr "%s\n" (
+                    Language.message (Language.No_solution (text_line paragraphs uselessLine)));
+                  finished:=true
+              with
+                  Not_found->(
+                    last_failure:=LineMap.add b param !last_failure;
+                    r_todo:=LineMap.singleton b (bad,param,comp,fig,user);
+                    allow_impossible:=true;
+                  )
+          ) else finished:=true
         )
-    in
-    let demerits=really_break false todo0 LineMap.empty in
+      done;
+      let demerits= !r_demerits in
     let _,node0,figs0,user0=
       match !endNode with
           None->(try
