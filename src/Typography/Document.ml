@@ -111,7 +111,9 @@ module Mathematical=struct
     limit_superscript_distance:float;
     open_dist:float;
     close_dist:float;
-    kerning:bool
+    kerning:bool;
+    priorities:float array;
+    priority_unit:float
   }
   and environment=env array             (* doit etre de taille 8 *)
   and style=

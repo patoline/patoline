@@ -269,27 +269,37 @@ let rec draw env_stack mlist=
         )@(draw env_stack s)
 
       | Binary b::s->(
-          let gl=
-	    match b.bin_priority with
-	      0->  glue (4./.9.) (4./.9.) (9./.18.)
-	    | 1 ->  glue (3./.9.) (3./.9.) (7./.18.)
-	    | 2 ->  glue (2./.9.) (2./.9.) (5./.18.)
-	    | _ ->  glue (1./.9.) (1./.9.) (3./.18.)
+
+          let rec find_priority=function
+              Binary b0->
+                List.fold_left (fun p x->min p (find_priority x))
+                  (List.fold_left (fun p x->min p (find_priority x)) b0.bin_priority b0.bin_left)
+                  (b0.bin_right)
+            | Operator op->Array.length mathsEnv.priorities - 1
+            | _->Array.length mathsEnv.priorities - 1
           in
-          let gl'=match gl with
+          let priorities=mathsEnv.priorities in
+          let prio=find_priority (Binary b) in
+          let fact=
+              (priorities.(prio) -. priorities.(b.bin_priority))
+              /.priorities.(b.bin_priority)
+          in
+          let gl=(1.+.fact*.fact) *. priorities.(b.bin_priority) *. mathsEnv.priority_unit in
+          let gl0=glue gl gl gl in
+          let gl1=match gl0 with
               Box.Glue x->Drawing x
-            | _->gl
+            | x->x
           in
 	    match b.bin_drawing with
 	        Invisible ->
                   (draw env_stack b.bin_left)@
-                    (resize mathsEnv.mathsSize gl')::
+                    (resize mathsEnv.mathsSize gl1)::
                     (draw env_stack b.bin_right)
 	      | Normal(no_sp_left, op, no_sp_right) ->
                   (draw env_stack b.bin_left)@
-                    (if no_sp_left then [] else [resize mathsEnv.mathsSize gl'])@
+                    (if no_sp_left then [] else [resize mathsEnv.mathsSize gl0])@
                     (draw env_stack [Ordinary op])@
-                    (if no_sp_right then [] else [resize mathsEnv.mathsSize gl])@
+                    (if no_sp_right then [] else [resize mathsEnv.mathsSize gl1])@
                     (draw env_stack b.bin_right)
         )@(draw env_stack s)
 

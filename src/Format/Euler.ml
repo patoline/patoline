@@ -136,7 +136,9 @@ let default_env=
       limit_superscript_distance= 0.2;
       open_dist=0.2;
       close_dist=0.2;
-      kerning=true
+      kerning=true;
+      priorities=[| 4.;3.;2.;1. |];
+      priority_unit=1./.9.
     }
 let msubst m x=List.map (fun x->try
                            { x with glyph_index=IntMap.find x.glyph_index m }
