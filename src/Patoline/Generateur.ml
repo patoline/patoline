@@ -56,6 +56,7 @@ let _ =
   D.fixable:=false;
   let tree=postprocess_tree (fst (top (!D.structure))) in
   let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
+  Printf.fprintf stderr \"Début de l'optimisation : %%f s\n\" (Sys.time ());
   let (logs,pages,figs',user')=TS.typeset
     ~completeLine:compl
     ~figure_parameters:fig_params
@@ -64,6 +65,7 @@ let _ =
     ~badness:(Badness.badness pars)
     pars
   in
+  Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());
   let env2, reboot=update_names env1 figs' user' in
   if i<10 && reboot && !D.fixable then (
     resolve (i+1) env2
