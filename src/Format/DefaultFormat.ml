@@ -364,7 +364,8 @@ module Format=functor (D:Document.DocumentStructure)->(
     let displayedFormula a b c d e f g=
       { (center a b c d e f g) with
           min_height_before=a.lead/.2.;
-          min_height_after=a.lead/.2. }
+          min_height_after=a.lead/.2.;
+          not_first_line=true }
 
     module Env_center = struct
 
