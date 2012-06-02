@@ -11,6 +11,7 @@ let hyphen_dirs=ref []
 let camlzip=ref ""
 let camlimages=ref ""
 let lang=ref "FR"
+let ban_comic_sans=ref false
 
 let avail_lang=
   let f=open_in "src/Typography/Language.ml" in
@@ -34,7 +35,6 @@ let rec escape s=
   with
       Not_found -> s
 
-exception Found
 let is_substring s1 s0=
   let rec sub i j=
     if i>String.length s0-String.length s1 then false else
@@ -56,6 +56,7 @@ let _=
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
+    ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
@@ -124,13 +125,14 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s)
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s%s)
 <**/*.{cmo,cmx}> and not <Typography.*>:for-pack(Typography)
 <Fonts> or <Output> or <Output/Drivers>:include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
         (if !camlimages <> "" then "-DCAMLIMAGES " else "")
+        (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
       close_out tags;
 

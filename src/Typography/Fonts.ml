@@ -18,13 +18,34 @@ module CFF_=(CFF:Font)
     actually only looks at the extension in the file name *)
 type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
+
+
+let fontName f=
+  match f with
+      CFF x->CFF.fontName x
+    | Opentype x->Opentype.fontName x
+
+#ifdef BAN_COMIC_SANS
+exception Comic_sans
+#endif
+
 let loadFont ?offset:(off=0) ?size:(_=0) f=
   let size=let i=open_in_bin f in let l=in_channel_length i in close_in i; l in
-    if Filename.check_suffix f ".otf" then
-      Opentype (Opentype.loadFont ~offset:off f ~size:size)
-    else
-      raise Not_supported
-
+  let font=if Filename.check_suffix f ".otf" then
+    Opentype (Opentype.loadFont ~offset:off f ~size:size)
+  else
+    raise Not_supported
+  in
+#ifdef BAN_COMIC_SANS
+  let low=(String.lowercase (fontName font)) in
+  let comic=Util.is_substring "comic" low 0 in
+    if comic<0 then font else
+      let sans=Util.is_substring "sans" low comic in
+        if sans<0 then font else
+          raise Comic_sans
+#else
+    font
+#endif
 
 let glyph_of_uchar f c=
   match f with
@@ -77,11 +98,6 @@ let glyph_y1 gl=
   match gl with
       CFFGlyph x->CFF.glyph_y1 x
     | OpentypeGlyph x->Opentype.glyph_y1 x
-
-let fontName f=
-  match f with
-      CFF x->CFF.fontName x
-    | Opentype x->Opentype.fontName x
 
 let select_features a b=match a with
     CFF x->CFF.select_features x b
