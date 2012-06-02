@@ -386,11 +386,11 @@ and print_contents_buf op buf l =
   let rec fn l = 
     begin match l with
       [] ->  Printf.bprintf buf "[]";
-    | TC s :: l -> 
-      Printf.bprintf buf "(T \"%s\")::" (String.escaped s);
-      fn l
+    | (TC _ :: _ ) as l -> 
+      Printf.bprintf buf "(T \"";
+      gn l
     | GC :: l -> 
-      Printf.bprintf buf "T \" \"::";
+      Printf.bprintf buf "(T \" \")::";
       fn l
     | MC(mtype, name, args) :: l -> 
       Printf.bprintf buf " (";
@@ -403,7 +403,20 @@ and print_contents_buf op buf l =
       Printf.bprintf buf ")@";
       fn l
     end;
-  in fn l;
+  and gn l =
+    begin match l with
+    | TC s :: l -> 
+      Printf.bprintf buf "%s" (String.escaped s);
+      gn l
+    | GC :: ((TC _ :: _) as l) -> 
+      Printf.bprintf buf " ";
+      gn l
+    | l ->
+      Printf.bprintf buf "\")::" ;
+      fn l
+    end
+  in 
+  fn l;
   Printf.bprintf buf ")"
 
 and print_contents op (ch : out_channel) l = begin

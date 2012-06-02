@@ -174,7 +174,7 @@ let layout_info dyp a b =
     let b = dyp.rhs_start_pos b in
     let cdiff = b.pos_cnum - a.pos_cnum in
     let ldiff = b.pos_lnum - a.pos_lnum in
-(*    Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum;*)
+    (*Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum; *)
     cdiff, ldiff
 
 let layout_parskip dyp a b =
@@ -303,22 +303,23 @@ main lexer =
 %parser
 
 parelt:
-   parmacro<m> { m }
-  | "$" math<m> "$" { [FC(false,m)] }
-  | line<w> { [TC w] }
+   parmacro<m> { m, false }
+  | "$" math<m> "$" { [FC(false,m)], false }
+  | line<w> { [TC w], false }
+  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [Paragraph(List.rev p)])], true }
 
 
 paragraph_aux:
-  | parelt<e>
-    { e }
-  | paragraph_aux<p> parelt<e>   
+  | parelt<e, b>
+    { e, b }
+  | paragraph_aux<p, b> parelt<e, b'>   
     { 
       let c,l = layout_info dyp 1 2 in
       if p <> [] && l > 1 then raise Giveup;
-      e@(if c > 0 then GC::p else p) }
+      (e@(if c > 0 then GC::p else p)), b or b' }
 
 paragraph: 
-   paragraph_aux<p> { List.rev p }
+   paragraph_aux<p, _> { List.rev p }
 
 oparagraph: {[]} | paragraph<p> {p}
 
@@ -548,11 +549,10 @@ symbol_def:
 
 atomelt:
   /* Section */
-  | (("="|"-")">")<o> ['_']?<num> paragraph<title> text<content> (("="|"-")"<")<c>
+  | (("="|"-")">")<o> paragraph<title> text<content> (("="|"-")"<")<c>
     { let content = List.rev content in
-
       (match content with 
-        Paragraph _:: _ -> if not (layout_parskip dyp 3 4) then raise Giveup
+        Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
       | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
       [Struct(title, o.[0] = '=', Relative content)]
