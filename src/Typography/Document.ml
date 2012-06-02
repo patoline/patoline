@@ -676,6 +676,8 @@ let sectref x=generalRef "_structure" x
 
 let extLink a b=B (fun _->[User (BeginURILink a)])::b@[B (fun _->[User EndLink])]
 let link a b=B (fun _->[User (BeginLink a)])::b@[B (fun _->[User EndLink])]
+let notFirstLine _=B (fun _->[Parameters (fun p->{p with not_first_line=true})])
+let notLastLine _=B (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
 #ifdef CAMLIMAGES
 let includeGraphics ?scale:(scale=0.1) imageFile=
