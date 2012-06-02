@@ -92,8 +92,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           complete params contents
     end
 
-    let extLink a b=B (fun _->[User (BeginURILink a)])::b@[B (fun _->[User EndLink])]
-
     let defaultEnv:user environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=try

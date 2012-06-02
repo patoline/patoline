@@ -674,6 +674,9 @@ let generalRef refType name=
 
 let sectref x=generalRef "_structure" x
 
+let extLink a b=B (fun _->[User (BeginURILink a)])::b@[B (fun _->[User EndLink])]
+let link a b=B (fun _->[User (BeginLink a)])::b@[B (fun _->[User EndLink])]
+
 #ifdef CAMLIMAGES
 let includeGraphics ?scale:(scale=0.1) imageFile=
   [B (fun env->
