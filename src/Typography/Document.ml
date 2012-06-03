@@ -77,11 +77,11 @@ module TS=Break.Make
            if a.hyphenEnd<b.hyphenEnd then -1 else
              if a.hyphenEnd>b.hyphenEnd then 1 else
 
-           (* if a.page<b.page then -1 else *)
-           (*   if a.page>b.page then 1 else *)
+           if a.page<b.page then -1 else
+             if a.page>b.page then 1 else
 
-           (* if a.height<b.height then -1 else *)
-           (*   if a.height>b.height then 1 else *)
+           if a.height<b.height then -1 else
+             if a.height>b.height then 1 else
                0
    end)
   (struct
