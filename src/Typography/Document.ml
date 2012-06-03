@@ -154,7 +154,6 @@ and ('a) tree=
     Node of ('a) node
   | Paragraph of 'a paragraph
   | FigureDef of 'a figuredef
-  | Free of 'a box list
 
 and 'a environment={
   fontFamily:fontFamily;
@@ -179,7 +178,6 @@ and 'a environment={
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   user_positions:line TS.UMap.t;
-  mutable fixable:bool
 }
 
 (** {3 Contenu} *)
@@ -325,7 +323,6 @@ let doc_graph out t0=
                        Printf.fprintf out "%s -> %s;\n" path p;
                    )
                  | FigureDef _-> ()
-                 | Free _-> ()
                  | Node n->(
                      let p=path^"_"^(string_of_int i) in
                        Printf.fprintf out "%s -> %s;\n" path p;
@@ -339,7 +336,6 @@ let doc_graph out t0=
 let change_env t fenv=match t with
     (Node n,l)->(Node { n with node_env=fun x->fenv (n.node_env x) }, l)
   | (Paragraph n,l)->(Paragraph { n with par_env=fun x->fenv (n.par_env x) }, l)
-  | (Free _,_)->t
   | (FigureDef f, l)->
       FigureDef {f with fig_env=fun x->fenv (f.fig_env x) }, l
 
@@ -527,22 +523,22 @@ let in_text_figure a b c d e f line=
     left_margin=par.left_margin+.par.measure-.line.nom_width }
 
 let figure str ?(parameters=center) ?(name="") drawing=
-    str:=up (newChildAfter !str (
-               FigureDef { fig_contents=drawing;
-                           fig_env=(fun x->
-                                      let l,cou=try StrMap.find "_figure" x.counters with Not_found -> -1, [-1] in
-                                      let l0,cou0=try StrMap.find "figure" x.counters with Not_found -> -1, [-1] in
-                                      let counters'=StrMap.add "_figure" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                                      let counters''=StrMap.add "figure" (l0,match cou0 with []->[0] | h::_->[h+1]) counters' in
-                                        { x with
-                                            names=if name="" then x.names else (
-                                              let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                                StrMap.add name (counters'', "_figure", w) x.names
-                                            );
-                                            counters=counters''
-                                        });
-                           fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
-                           fig_parameters=parameters }))
+  str:=up (newChildAfter !str (
+             FigureDef { fig_contents=drawing;
+                         fig_env=(fun x->
+                                    let l,cou=try StrMap.find "_figure" x.counters with Not_found -> -1, [-1] in
+                                    let l0,cou0=try StrMap.find "figure" x.counters with Not_found -> -1, [-1] in
+                                    let counters'=StrMap.add "_figure" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                                    let counters''=StrMap.add "figure" (l0,match cou0 with []->[0] | h::_->[h+1]) counters' in
+                                      { x with
+                                          names=if name="" then x.names else (
+                                            let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
+                                              StrMap.add name (counters'', "_figure", w) x.names
+                                          );
+                                          counters=counters''
+                                      });
+                         fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                         fig_parameters=parameters }))
 
 let flushFigure name=
   [CFix (fun env->
@@ -567,8 +563,6 @@ let beginFigure name=
             Not_found ->[]
      )]
 
-let addFree str boxes=
-  str:=newChildAfter !str (Free boxes)
 (****************************************************************)
 
 
@@ -784,46 +778,43 @@ let rec gl_of_str env string=
               Not_found_in_family->[](* raise (Glyph_not_found g) *)
       )
 
+let append buf nbuf x=
+  let arr=
+    if !nbuf>=Array.length !buf then
+      Array.init (max 1 (2*Array.length !buf)) (fun j->if j< !nbuf then (!buf).(j) else Empty)
+    else !buf
+  in
+    arr.(!nbuf)<-x;
+    buf:=arr;
+    incr nbuf
+
 
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
     consécutifs est pris en compte *)
-let boxify fixable env0 l=
-  let buf=ref ([||],0) in
-  let append buf x=
-    let i=snd !buf in
-    let arr=
-      let arr0,i= !buf in
-        if i>=Array.length arr0 then
-          Array.init (max 1 (2*Array.length arr0)) (fun j->if j<i then arr0.(j) else Empty)
-        else arr0
-    in
-      arr.(i)<-x;
-      buf:=(arr,i+1)
-  in
-  let reset buf=buf:=(fst !buf,0) in
+let boxify buf nbuf fixable env0 l=
   let rec boxify env=function
       []->env
-    | (B b)::s->(List.iter (append buf) (b env); boxify env s)
+    | (B b)::s->(List.iter (append buf nbuf) (b env); boxify env s)
     | (C b)::s->(boxify env ((b env)@s))
     | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
-    | (BFix b)::s->(fixable:=true; List.iter (append buf) (b env); boxify env s)
+    | (BFix b)::s->(fixable:=true; List.iter (append buf nbuf) (b env); boxify env s)
     | Env f::s->boxify (f env) s
     | (T t)::s->(
         let rec cut_str only_spaces needs_glue gl i0 i=
           if i>=String.length t then (
-            if only_spaces then append buf gl;
+            if only_spaces then append buf nbuf gl;
             if i0<>i then (
-              if needs_glue then append buf gl;
-              List.iter (append buf)
+              if needs_glue then append buf nbuf gl;
+              List.iter (append buf nbuf)
                 (gl_of_str env (String.sub t i0 (i-i0)))
             )
           ) else (
             if is_space (UTF8.look t i) then (
               let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
-                if i0<>i && needs_glue then append buf gl;
-                List.iter (append buf)
+                if i0<>i && needs_glue then append buf nbuf gl;
+                List.iter (append buf nbuf)
                   (gl_of_str env (String.sub t i0 (i-i0)));
                 cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
             ) else (
@@ -849,13 +840,13 @@ let boxify fixable env0 l=
           boxify env s
       )
   in
-    reset buf;
-    let env1=boxify env0 l in
-    let (arr,i)= !buf in
-      (Array.sub arr 0 i,env1)
+    boxify env0 l
 
 let boxify_scoped env x=
-  Array.to_list (fst (boxify (ref false) env x))
+  let buf=ref [||] in
+  let nbuf=ref 0 in
+  let _=boxify buf nbuf (ref false) env x in
+    Array.to_list (Array.sub !buf 0 !nbuf)
 
 
 
@@ -885,14 +876,17 @@ let flatten env0 fixable str=
   let compl=ref [] in
   let n=ref 0 in
 
-  let frees=ref [] in
+  let buf=ref [||] in
+  let nbuf=ref 0 in
+  let frees=ref 0 in
   let add_paragraph env p=
-    let u,v=boxify fixable env p.par_contents in
-      paragraphs:=(match !frees with []->u | l->Array.append u (Array.of_list l))::(!paragraphs);
+    nbuf:= !frees;
+    let v=boxify buf nbuf fixable env p.par_contents in
+      paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
       compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
       incr n;
-      frees:=[];
+      frees:=0;
       v
   in
 
@@ -900,27 +894,19 @@ let flatten env0 fixable str=
     let level=List.length path in
       match tree with
           Paragraph p -> add_paragraph env p
-        | Free boxes -> (
-            (match !paragraphs with
-                 h::s->paragraphs:=Array.append h (Array.of_list boxes)::s
-               | []->frees:=(!frees)@boxes);
-            env
-          )
         | FigureDef f -> (
             let env1=f.fig_env env in
             let n=IntMap.cardinal !figures in
               fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
               figures:=IntMap.add n (f.fig_contents env1) !figures;
-              paragraphs:=(match !paragraphs with
-                               []->[]
-                             | h::s->Array.append h [|BeginFigure n|]::s);
+              append buf frees (BeginFigure n);
               f.fig_post_env env env1
           )
         | Node s-> (
             s.tree_paragraph <- List.length !paragraphs;
             let flushes'=ref [] in
             let flat_children k a (is_first,indent, env1)=match a with
-              | (Paragraph p)->(
+                Paragraph p->(
                   let env2=flatten flushes' (p.par_env env1) (k::path) (
                     Paragraph { p with par_contents=
                         (if is_first then (
@@ -933,11 +919,11 @@ let flatten env0 fixable str=
                               B (fun _->[User (Label name)])
                              ]
                          ) else [])@
-                        (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents }
+                          (if indent then [B (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
+                              }
                   ) in
                     false,true, p.par_post_env env1 env2
                 )
-              | Free f as h->is_first,indent,flatten flushes' env (k::path) h
               | FigureDef f as h->(
                   let env2=flatten flushes' env1 (k::path) h in
                   let num=try

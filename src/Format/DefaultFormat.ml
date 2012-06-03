@@ -183,8 +183,7 @@ module Format=functor (D:Document.DocumentStructure)->(
              "_figure",(-1,[0]);
              "figure",(2,[0])];
           names=StrMap.empty;
-          user_positions=TS.UMap.empty;
-          fixable=false
+          user_positions=TS.UMap.empty
         }
 
     let title str ?label ?displayname name =
