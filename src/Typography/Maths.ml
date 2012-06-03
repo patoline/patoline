@@ -578,10 +578,10 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box mid in
 
   let l0 = List.map (fun (x,y)->Array.map (fun x->x+.x1_l-.x0) x, y) bezier_mid in
-  let dist0=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 in
+  let dist0=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 else 0. in
 
   let l1 = List.map (fun (x,y)->Array.map (fun x->x+.x1-.x0_r) x, y) bezier_right in
-  let dist1=List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_mid) infinity l1 in
+  let dist1=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_mid) infinity l1 else 0. in
 
 
     (Drawing {
