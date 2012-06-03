@@ -3,7 +3,7 @@ CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -lin
 
 FORMAT=$(shell ls Format/*.mllib)
 
-all:native byte
+all:native byte prof
 
 native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
 byte:Typography/Typography.cma $(FORMAT:.mllib=.cma)
