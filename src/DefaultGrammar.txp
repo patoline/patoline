@@ -185,9 +185,9 @@ Symboles de TeX'
 
 (* == Other symbols == *)
 
-\Add_operator{∑ \sum}{∑}
-\Add_operator{∏ \prod}{∏}
-\Add_operator{∐ \coprod}{∐}
-\Add_operator{∫ \int}{∫}
+\Add_limits_operator{∑ \sum}{∑}
+\Add_limits_operator{∏ \prod}{∏}
+\Add_limits_operator{∐ \coprod}{∐}
+\Add_limits_operator{∫ \int}{∫}
 
 \Save_Grammar

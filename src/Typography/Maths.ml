@@ -344,7 +344,7 @@ let rec draw env_stack mlist=
 
           let check_inf x=if x= -.infinity || x=infinity then 0. else x in
           let op_noad=
-            if op.op_limits then (
+            if op.op_limits && (style=Display || style=Display') then (
               let op', sup=
                 if op.op_noad.superscript_right=[] || op.op_noad.superscript_left=[] then
                   ({ op.op_noad with superscript_right=[]; superscript_left=[] },

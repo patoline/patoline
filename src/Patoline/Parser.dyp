@@ -44,10 +44,10 @@ type math =
    | Num of string
    | Prefix of int * symbol * bool * math
    | Operator of symbol * math
+   | Limits_operator of symbol * math
    | Postfix of int * math * bool * symbol
    | Binary of int * math * bool * symbol * bool * math
    | Indices of indices * math
-   | Limits of math
    | Apply of math * math
    | MathMacro of string * math list
    | MathCaml of local_data * Obj.t * int * int * (texprime_section * int * int) list
@@ -474,8 +474,6 @@ math:
   | "\\{" math<a> "\\}"
       { Delim(SimpleSym "{",a,SimpleSym "}") } atom
 
-  | "\\limits" math(<=operator)<m> {Limits m}
-
   | "{" math<a> "}"
       { a } atom
 
@@ -505,6 +503,13 @@ math:
           Indices(fi d, Operator (m,b)) } ind
   | operator<m> math(<=sum)<b>
       { Operator (m,b) } operator
+
+  | limits_operator<m> - rightind<fi> math(<=sum)<b>
+      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
+          Indices(fi d, Limits_operator (m,b)) } ind
+  | limits_operator<m> math(<=sum)<b>
+      { Limits_operator (m,b) } operator
+
 
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
@@ -601,6 +606,9 @@ atomelt:
   | "\\Add_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
+  | "\\Add_limits_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" symbol_def<value>
+    @{ add_symbol_rule dyp.local_data "limits_operator" (fun x -> Obj_limits_operator x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
