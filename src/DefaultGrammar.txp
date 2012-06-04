@@ -62,6 +62,7 @@ Symboles de TeX'
 \Add_addition_like{\inter ⋂}{⋂}
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
 \Add_addition_like{\vee ∨}{∨}
+\Add_addition_like{\setminus ∖}{∖}
 
 (* == Product like symbols == *)
 
