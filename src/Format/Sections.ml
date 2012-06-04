@@ -59,8 +59,8 @@ let postprocess_tree tree=
             (fun a b c d e f g->
                { (parameters a b c d e f g) with
                    min_page_before = 0;(* (if depth=0 && f.lineStart=0 then 1 else 0); *)
-                   min_height_after=a.normalLead;
-                   min_height_before=a.normalLead;
+                   min_height_before=if g.lineStart=0 then a.normalLead else 0.;
+                   min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then a.normalLead else 0.;
                    not_last_line=true });
           par_completeLine=Complete.normal }
         in
