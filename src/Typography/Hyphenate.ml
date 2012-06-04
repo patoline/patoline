@@ -56,7 +56,7 @@ exception Exp of (string list)
 let rec dash_hyphen s=if String.length s=0 then [] else
   try
     let i=String.index s '-' in
-    let s0=String.sub s 0 (i+1) in
+    let s0=String.sub s 0 i in
     let next=(dash_hyphen (String.sub s (i+1) (String.length s-i-1))) in
       if String.length s0=0 then next else s0::next
   with
