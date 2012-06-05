@@ -376,50 +376,6 @@ module Curve = struct
       backwards_scan (-. z) 0 0. 0. (List.rev beziers)
     else 
       scan z 0 0. 0. beziers
-
-  let curvilinear_relative curve z =
-    (* Printf.fprintf stderr "Entering curvilinear %f.\n" z ; *)
-    let n = 1000 in
-    let time_unit = 1. /. (float_of_int n) in
-    let beziers = List.concat
-      (List.map (fun (xs, ys) -> 
-	let beziers_x = Bezier.divide xs n in
-	let beziers_y = Bezier.divide ys n in
-	List.combine beziers_x beziers_y)
-	 curve)
-    in
-    let rec scan z n_yet t_yet z_yet l = 
-      (* let _ = Printf.fprintf stderr "Scanning n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
-      match l with
-      | [] -> let _ = 
-		Printf.fprintf stderr 
-		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
-	      in 0.
-      | (xs', ys') as bezier :: l' -> 
-	let length = bezier_linear_length bezier in
-	let z_restant = z -. z_yet in
-	if z_restant > length then
-	  scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
-	else time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
-    in
-    let rec backwards_scan z n_yet t_yet z_yet l = 
-      (* let _ = Printf.fprintf stderr "Scanning backwards n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
-      match l with
-      | [] -> let _ = 
-		Printf.fprintf stderr 
-		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
-	      in 0.
-      | (xs', ys') as bezier :: l' -> 
-	let length = bezier_linear_length bezier in
-	let z_restant = z -. z_yet in
-	if z_restant > length then
-	  backwards_scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
-	else 1. -. time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
-    in
-    if z < 0. then
-      backwards_scan (-. z) 0 0. 0. (List.rev beziers)
-    else 
-      scan z 0 0. 0. beziers
 	
 end
 
@@ -987,6 +943,7 @@ module Diagram = struct
 	       | `Vec of Vector.t
 	       | `Pdf		       (* The origin when typesetting the contents *)
 	       | `Curvilinear of float	(* Between 0. and 1. (for paths) *)
+	       | `CurvilinearFromStart of float	(* Between 0. and 1. (for paths) *)
 	       | `Temporal of float	(* Between 0. and 1. (for paths) *)
 	       | `Start
 	       | `End
@@ -1550,6 +1507,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     let parameters = Style.path_parameters style in
     let anchor = function
       | `Temporal pos -> Curve.eval curve pos
+      | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
       | `Center -> Curve.eval curve 0.5
       | _ -> Printf.fprintf stderr "Anchor undefined for a path. Returning the center instead.\n" ; 
 	Curve.eval curve 0.5
@@ -1608,6 +1566,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     let draw_curve = Edge.draw_curve style curve in
     let anchor = function
       | `Temporal pos -> Curve.eval curve pos
+      | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
+      | `CurvilinearFromStart pos -> Curve.eval underlying_curve (Curve.curvilinear underlying_curve pos)
       | `Start -> s.anchor `Main
       | `End -> e.anchor `Main
       | `Center -> Curve.eval curve 0.5
