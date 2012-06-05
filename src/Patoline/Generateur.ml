@@ -226,10 +226,10 @@ end
 and print_math_par_buf op buf display m =
   let style = if display then "Mathematical.Display" else "env0.mathStyle" in
   Printf.bprintf buf
-    "[B (fun env0 -> List.map (fun b -> Box.resize env0.size b) (Maths.draw [ { env0 with mathStyle = %s } ] ("
+    "[B (fun env0 -> Maths.draw [ { env0 with mathStyle = %s } ] ("
     style ;
   print_math_buf op buf m;
-  Printf.bprintf buf ")))] "
+  Printf.bprintf buf "))] "
 
 and print_math_par op ch display m = begin 
   let buf = Buffer.create 80 in
