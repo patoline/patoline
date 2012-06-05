@@ -583,29 +583,33 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box mid in
 
   let l0 = List.map (fun (x,y)->Array.map (fun x->x+.x1_l-.x0) x, y) bezier_mid in
-  let dist0=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 else 0. in
+  let dist0=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 else 
+      0. 
+  in
 
   let l1 = List.map (fun (x,y)->Array.map (fun x->x+.x1-.x0_r) x, y) bezier_right in
   let dist1=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_mid) infinity l1 else 0. in
 
 
     (Drawing {
-       drawing_min_width=x1_l-.dist0 +. env.open_dist*.s;
-       drawing_nominal_width=x1_l-.dist0 +. env.open_dist*.s;
-       drawing_max_width=x1_l-.dist0 +. env.open_dist*.s;
+       drawing_min_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
+       drawing_nominal_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
+       drawing_max_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
        drawing_y0=y0_l;
        drawing_y1=y1_l;
        drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->left)})::
+       drawing_contents=(fun _->(left  (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
+       (* [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *)))})::
 
     (Drawing {
-       drawing_min_width=x1-.x0-.dist1  +. env.close_dist*.s;
-       drawing_nominal_width=x1-.x0-.dist1  +. env.close_dist*.s;
-       drawing_max_width=x1-.x0-.dist1 +. env.close_dist*.s;
+       drawing_min_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+       drawing_nominal_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+       drawing_max_width=x1-.x0-.dist1 +. if env.kerning then env.close_dist*.s else 0.;
        drawing_y0=y0;
        drawing_y1=y1;
        drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->draw_boxes box)})::
+       drawing_contents=(fun _->(draw_boxes box (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
+       (* [rectangle (x0,y0) (x1,y1)]))] *)))})::
     (Drawing {
        drawing_min_width=x1_r-.x0_r;
        drawing_nominal_width=x1_r-.x0_r;
@@ -613,4 +617,5 @@ let open_close left right env_ style box=
        drawing_y0=y0_r;
        drawing_y1=y1_r;
        drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->right)})::[]
+       drawing_contents=(fun _->(right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
+       (* [rectangle (x0_r,y0_r) (x1_r,y1_r)]))] *)))})::[]

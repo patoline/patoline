@@ -6,3 +6,23 @@ au centre, j'ai dit au centre
 \End{center}
 
 et ben ça remonte.
+
+
+Pire, si on fait une grande ligne comme ça, voilà, on continue un peu, tout ça, puis on fait un truc
+
+
+\Caml(let id x = x)
+
+\Begin{center}
+
+\id(
+[B  (fun env -> [Drawing (
+                       drawing [OutputCommon.Path ({ OutputCommon.default with
+                                                       OutputCommon.close=true;
+                                                       OutputCommon.lineWidth=0.1 },
+                                                   [OutputCommon.rectangle (0.,0.) (30.,100.)]
+                                                  )]) ])]
+)
+\End{center}
+
+et ben apres ça risque de faire des trucs un peu moches.

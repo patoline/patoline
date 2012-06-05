@@ -5,7 +5,7 @@
   open DefaultFormat
   open MathsFormat
 
-  let view x = <$\mathbf{v}()(x)$>
+  let view x = <$\mathbf{v} (x)$>
 
 )
 
