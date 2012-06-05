@@ -39,8 +39,8 @@ Symboles de TeX'
 \Add_relation{\nosupseteq ⊉}{⊉}
 \Add_relation{\subset ⊂}{⊂}
 \Add_relation{\supset ⊃}{⊃}
-\Add_relation{\subset ⊄}{⊄}
-\Add_relation{\supset ⊅}{⊅}
+\Add_relation{\notsubset ⊄}{⊄}
+\Add_relation{\notsupset ⊅}{⊅}
 \Add_relation{\subsetneq ⊊}{⊊}
 \Add_relation{\supsetneq ⊋}{⊋}
 
