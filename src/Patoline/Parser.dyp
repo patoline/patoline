@@ -239,7 +239,12 @@ rule comment = parse
 and caml txps= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unexpected_end_of_comment)) }
   | ')' { if pop_caml () <= 0 then txps else caml txps lexbuf } 
-  | '"' ([^'"'] | "\\\"")* '"' { caml txps lexbuf }
+  | '"' ([^'"'] | "\\\"")* '"' {
+      let s=Dyp.lexeme lexbuf in
+        String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
+          (Dyp.lexeme lexbuf);
+        caml txps lexbuf
+    }
   | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml txps lexbuf } 
   | '(' { push_caml (); caml txps lexbuf } 
   | '<' '$' { let l = Dyp.std_lexbuf lexbuf in 
