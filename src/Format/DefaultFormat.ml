@@ -424,7 +424,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     { env with
                         normalMeasure=env.normalMeasure-.tiret_w env;
                         normalLeftMargin=env.normalLeftMargin+.tiret_w env;
-                        counters=StrMap.add "enumerate" (lvl,0::cou) env.counters }
+                        counters=StrMap.add "enumerate" (lvl,(-1)::cou) env.counters }
                );
                     node_post_env=
                (fun env0 env1->
@@ -442,7 +442,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           (Node { empty with node_env=(incr_counter "enumerate") });
         D.structure:=lastChild !D.structure;
         [B (fun env->
-              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->0,[0] in
+              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
               let bb=boxify_scoped env (M.from_counter enum) in
               let fix g={ g with drawing_min_width=g.drawing_nominal_width;
                             drawing_max_width=g.drawing_nominal_width }
