@@ -1002,6 +1002,8 @@ module Diagram = struct
   | `AllNodes of style_instructions
   | `ToOf of tip_info -> path_parameters -> (float * float * float * float * float)
   | `To
+  | `ModTo
+  | `ModToOf of float * float
   | `Moustache
   ]
   and arrow_head = [ `To | `Moustache | `None ]
@@ -1354,6 +1356,19 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let rec posttransfo style (info, params, underlying_curve, curves) = match style with
 	| (`Head `To | `To) -> posttransfo (`ToOf head_moustache) (info, params, underlying_curve, curves)
+	| `ModTo -> posttransfo (`ModToOf (0.5, 1.)) (info, params, underlying_curve, curves)
+	| (`ModToOf (time,width)) -> 
+	  let info, params, underlying_curve, curves = 
+	    posttransfo (`ToOf head_moustache) (info, params, underlying_curve, curves)
+	  in
+	  let middle = Curve.eval underlying_curve time in
+	  let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) time in
+	  let (la,lb) as l = (-. db, da) in
+	  let (ra,rb) as r = (db, -. da) in
+	  let (la,lb) as l = Vector.normalise ~norm:width l in
+	  let (ra,rb) as r = Vector.normalise ~norm:width r in
+	  let dash = Curve.of_point_lists [[(Vector.(+) l middle);(Vector.(+) r middle)]] in 
+	  (info,params, underlying_curve, curves @ [params, dash])
 	| ((`Head `Moustache) | `Moustache) -> 
 	  posttransfo (`ToOf head_moustache) (info, params, underlying_curve, curves)
 	| `ToOf head_params -> 
@@ -1626,6 +1641,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
   open Diagram
     let stack = ref []
     let env = Args'.env
+    let offset = ref 0.
 
     let node style contents = 
       let a = node env style contents in
@@ -1659,7 +1675,7 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       node, m
 
     let make () = 
-      let fig = Box.drawing_inline ~offset:(0.) 
+      let fig = Box.drawing ~offset:(!offset) 
 	(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
 	   []
 	   !stack)
