@@ -341,10 +341,11 @@ module Format=functor (D:Document.DocumentStructure)->(
                      (T (string_of_int !page_footnotes)
                       ::T " "
                       ::l);
+                   let a=1./.(sqrt phi) in
                    let pages=minipage { env with
-                                          normalLead=env.lead*.(phi-.1.);
-                                          lead=env.lead*.(phi-.1.);
-                                          size=env.size*.(phi-.1.) }
+                                          normalLead=env.lead*.a;
+                                          lead=env.lead*.a;
+                                          size=env.size*.a }
                      (top !str)
                    in
                      if Array.length pages>0 then
