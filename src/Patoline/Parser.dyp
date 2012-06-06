@@ -141,7 +141,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
   in
   elt, [Add_rules[rule, action]; Local_data local_data]
 
-let gram_ext = if Dynlink.is_native then ".tgx" else ".tgo"
+let gram_ext = ".tgx"
 
 let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
     	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
@@ -382,15 +382,12 @@ topmacro:
               (Printf.sprintf "%s%s.cmxs"(String.lowercase (String.sub preproc 0 1))
                  (String.sub preproc 1 (String.length preproc-1)))
           in
-            Dynlink.loadfile (Dynlink.adapt_filename name);
             let f=StrMap.find preproc !macros in
             let t=String.concat "" text in
               Preproc (f t)
         with
-            Not_found ->Printf.fprintf stderr "Error while dynlinking toplevel macro %s\n" preproc;
+            Not_found ->Printf.fprintf stderr "Error in toplevel macro \"%s\"\n" preproc;
 	      flush stderr ; raise Not_found
-          | Dynlink.Error x as e->(Printf.fprintf stderr
-                                     "Dynlink error : %s\n" (Dynlink.error_message x);raise e)
       }
 preproc:
       {[]}
@@ -411,15 +408,12 @@ parmacro:
   | PPRE<preproc> '{' preproc<text> '}'
 
       { try
-          Dynlink.loadfile (Dynlink.adapt_filename (Printf.sprintf "%s.cmo" preproc));
           let f=StrMap.find preproc !par_macros in
           let t=String.concat "" text in
             f t
         with
-            Not_found ->Printf.fprintf stderr "Error while dynlinking %s\n" preproc;
+            Not_found ->Printf.fprintf stderr "Error in macro \"%s\"\n" preproc;
 	      flush stderr ; raise Not_found
-          | Dynlink.Error x as e->(Printf.fprintf stderr
-                                     "Dynlink error : %s\n" (Dynlink.error_message x);raise e)
       }
 
 leftind:
