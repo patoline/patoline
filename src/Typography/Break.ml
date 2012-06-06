@@ -205,6 +205,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                 let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
                   register node nextNode
                     (lastBadness+.badness
+                       lastFigures
                        node !haut 0 lastParameters 0.
                        nextNode !bas 0 params 0.)
                     None
@@ -222,6 +223,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                 let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
                   register node nextNode
                     (lastBadness+.badness
+                       lastFigures
                        node !haut 0 lastParameters 0.
                        nextNode !bas 0 params 0.)
                     None
@@ -371,7 +373,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                   ) else (
                                     let nextUser=lastUser in
                                     let bad=(lastBadness+.
-                                               badness node !haut !max_haut lastParameters comp0
+                                               badness lastFigures node !haut !max_haut lastParameters comp0
                                                nextNode !bas !max_bas !r_params comp1) in
                                       extreme_solutions:=(nextNode,bad,Some (Language.Opt_error (Language.Orphan (node,text_line paragraphs nextNode))),
                                                           !r_params,comp1,node,lastFigures,nextUser)::(!extreme_solutions)
@@ -388,7 +390,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                   ) else (
                                     let nextUser=lastUser in
                                     let bad=(lastBadness+.
-                                               badness node !haut !max_haut lastParameters comp0
+                                               badness lastFigures node !haut !max_haut lastParameters comp0
                                                nextNode !bas !max_bas !r_params comp1) in
                                       extreme_solutions:=(nextNode,bad,Some (Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
                                                           !r_params,comp1,node,lastFigures,nextUser)::(!extreme_solutions)
@@ -399,14 +401,14 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                             else if nextNode.min_width > (!r_params).measure then (
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
-                                         badness node !haut !max_haut lastParameters comp0
+                                         badness lastFigures node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
                                 local_opt:=(nextNode,bad,Some (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
                                             !r_params,comp1,node,lastFigures,nextUser)::(!local_opt)
                             ) else (
                               let nextUser=lastUser in
                               let bad=(lastBadness+.
-                                         badness node !haut !max_haut lastParameters comp0
+                                         badness lastFigures node !haut !max_haut lastParameters comp0
                                          nextNode !bas !max_bas !r_params comp1) in
                                 local_opt:=(nextNode,bad,None,
                                             !r_params,comp1,node,lastFigures,nextUser)::(!local_opt)

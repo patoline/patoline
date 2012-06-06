@@ -240,7 +240,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
-        ~badness:(Badness.badness pars)
+        ~badness:(Badness.badness pars figures)
         pars
       in
         OutputDrawing.output pars figures

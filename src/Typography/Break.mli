@@ -57,7 +57,8 @@ module Make :
                       figurePosition Util.IntMap.t ->
                       Line.line UMap.t -> Line.line -> Line.parameters)
                      array ->
-          badness:(Line.line ->
+          badness:(figurePosition Util.IntMap.t ->
+                   Line.line ->
                    UMap.key Box.box array ->
                    int ->
                    Line.parameters ->

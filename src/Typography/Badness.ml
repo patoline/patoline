@@ -71,7 +71,8 @@ let h_badness paragraphs node comp=
 *)
 let badness
     paragraphs
-    ?figures:(figures=[||])
+    figures
+    figureStates
     node_i line_i max_i params_i comp_i
     node_j line_j max_j params_j comp_j=
 
@@ -92,9 +93,9 @@ let badness
         (* Cesures *)
       +. (if node_j.hyphenEnd >=0 then
             (if node_j.hyphenStart >=0 then
-               1e31
+               1e10
              else
-               10000.)
+               1e8)
           else
             0.)
       +. (1000.*.(abs_float (comp_i-.comp_j)))

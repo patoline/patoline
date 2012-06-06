@@ -12,7 +12,8 @@
 *)
 val badness :
   'a Box.box array array ->
-  ?figures:'b array ->
+  Box.drawingBox array ->
+  Break.figurePosition Util.IntMap.t->
   Line.line ->
   'c Box.box array ->
   int ->
