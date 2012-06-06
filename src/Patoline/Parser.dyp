@@ -500,19 +500,19 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | leftind<i> - operator<m> [- rightind]?<fi> math(<=sum)<b>
+  | leftind<i> - operator<m> [- rightind]?<fi> math(<=atom)<b>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, Operator(m,b)) } ind
-  | operator<m> - rightind<fi> math(<=sum)<b>
+  | operator<m> - rightind<fi> math(<=atom)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Operator (m,b)) } ind
-  | operator<m> math(<=sum)<b>
+  | operator<m> math(<=atom)<b>
       { Operator (m,b) } operator
 
-  | limits_operator<m> - rightind<fi> math(<=sum)<b>
+  | limits_operator<m> - rightind<fi> math(<=atom)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Limits_operator (m,b)) } ind
-  | limits_operator<m> math(<=sum)<b>
+  | limits_operator<m> math(<=atom)<b>
       { Limits_operator (m,b) } operator
 
 
