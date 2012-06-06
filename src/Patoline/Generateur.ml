@@ -62,7 +62,7 @@ let _ =
     ~figure_parameters:fig_params
     ~figures:figures
     ~parameters:params
-    ~badness:(Badness.badness pars)
+    ~badness:(Badness.badness pars figures)
     pars
   in
   Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());
