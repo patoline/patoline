@@ -192,45 +192,43 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
           let vspace,_=line_height paragraphs node in
           let h=ceil (abs_float vspace) in
           let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
-            for h'=0 to 0 do
-              if node.height+.h +. float_of_int h'+.fig_height <= lastParameters.page_height then (
-                let nextNode={
-                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
-                  hyphenStart= -1; hyphenEnd= -1;
-                  height=node.height+.h+. float_of_int h';
-                  lineStart= -1; lineEnd= -1; paragraph_height= -1;
-                  page_line=node.page_line+1; page=node.page;
-                  min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
-                in
-                let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
-                  register node nextNode
-                    (lastBadness+.badness
-                       lastFigures
-                       node !haut 0 lastParameters 0.
-                       nextNode !bas 0 params 0.)
-                    None
-                    params
-                    0.
-              ) else if allow_impossible then (
-                let nextNode={
-                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
-                  hyphenStart= -1; hyphenEnd= -1;
-                  height=0.;
-                  lineStart= -1; lineEnd= -1; paragraph_height= -1;
-                  page_line=node.page_line+1; page=node.page+1;
-                  min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
-                in
-                let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
-                  register node nextNode
-                    (lastBadness+.badness
-                       lastFigures
-                       node !haut 0 lastParameters 0.
-                       nextNode !bas 0 params 0.)
-                    None
-                    params
-                    0.
-              )
-            done
+            if node.height+.h +. fig_height <= lastParameters.page_height then (
+              let nextNode={
+                paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                hyphenStart= -1; hyphenEnd= -1;
+                height=node.height+.h;
+                lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                page_line=node.page_line+1; page=node.page;
+                min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
+              in
+              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+                register node nextNode
+                  (lastBadness+.badness
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.)
+                  None
+                  params
+                  0.
+            ) else if allow_impossible then (
+              let nextNode={
+                paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                hyphenStart= -1; hyphenEnd= -1;
+                height=0.;
+                lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                page_line=node.page_line+1; page=node.page+1;
+                min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
+              in
+              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+                register node nextNode
+                  (lastBadness+.badness
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.)
+                  None
+                  params
+                  0.
+            )
         in
         let flushed=
           (node.lastFigure+1 < Array.length figures) &&
