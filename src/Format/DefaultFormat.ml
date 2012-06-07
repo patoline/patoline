@@ -548,27 +548,23 @@ module Format=functor (D:Document.DocumentStructure)->(
         let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
           (italic [T "Proof.";B (fun env->let w=env.size in [glue w w w])]);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         D.structure:=lastChild !D.structure
-      let do_end_env ()=
-        D.structure:=lastChild !D.structure;
 
-        newPar D.structure Complete.normal Document.parameters
+      let do_end_env ()=
+        D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
+        newPar D.structure Complete.normal Document.ragged_right
           [B (fun env->
                 let w=env.size/.phi in
-                let gl=match glue 0. (env.normalMeasure) (env.normalMeasure) with
-                    Glue g->Drawing g
-                  | x->x
-                in
-                  (glue env.size env.size env.size)
-                  ::gl
-                  ::(Drawing (
-                       drawing [OutputCommon.Path ({ OutputCommon.default with
-                                                       OutputCommon.close=true;
-                                                       OutputCommon.lineWidth=0.1 },
-                                                   [OutputCommon.rectangle (0.,0.) (w,w)]
-                                                  )])
-                    )::[]
-             )]
+                  [Drawing (
+                     drawing [OutputCommon.Path ({ OutputCommon.default with
+                                                     OutputCommon.close=true;
+                                                     OutputCommon.lineWidth=0.1 },
+                                                 [OutputCommon.rectangle (0.,0.) (w,w)]
+                                                )])
+                  ]
+             )];
+        env_stack:=List.tl !env_stack
     end
 
     module Make_theorem=functor (Th:Theorem)->struct

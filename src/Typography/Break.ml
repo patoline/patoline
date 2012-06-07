@@ -319,14 +319,19 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                            -.dist
                                        )
                                   )
+                                +. max !r_params.min_height_before parameters.min_height_after
                               in
                                 if d=infinity || d = -.infinity then
                                   (try
                                      let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
                                      let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
-                                       v_distance prec params
+                                       if prec.page=page then v_distance prec params else
+                                         (node0.height
+                                          +. max !r_params.min_height_before parameters.min_height_after)
                                    with
-                                       Not_found->0.
+                                       Not_found->
+                                         (node0.height
+                                          +. max !r_params.min_height_before parameters.min_height_after)
                                   )
                                 else d
                             )
@@ -337,12 +342,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                         )
                       in
                         minimal_tried_height:=min !minimal_tried_height height';
-                        if (page>node.page || height>=height' +. max !r_params.min_height_before lastParameters.min_height_after)
-                          && (max !r_params.min_height_before lastParameters.min_height_after= 0. ||
-                              height<>node.height)
+                        if (page>node.page || height>=height')
                           && (page >= node.page +
                                 max !r_params.min_page_before lastParameters.min_page_after)
-
                         then (
                           let node_is_orphan=
                             page<>node.page
