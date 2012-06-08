@@ -978,7 +978,7 @@ module Diagram = struct
   | `Circle
   | `Coordinate
   (* Edge modifiers *)
-  | `Dashed
+  | `Dashed of float list
   | `Dotted
   | `Bend of float
   | `BendRight of float
@@ -1052,7 +1052,7 @@ module Diagram = struct
       | `Fill -> { res with close = true ; fillColor = Some black } 
       | `LineWidth w -> { res with lineWidth = w } 
       | `DrawOf params -> params 
-      | `Dashed -> { res with dashPattern = [0.1;0.2] }
+      | `Dashed pattern -> { res with dashPattern = pattern }
       | _ -> res)
     let parameters = make parameters_rec { default with close = true ; 
       strokingColor=None ; 
@@ -1517,8 +1517,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
     in
     point_lists_of_path_spec_rec [] s continues
 
-  let path style s continues = 		
-    let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
+  let path_of_curve style curve = 
     let parameters = Style.path_parameters style in
     let anchor = function
       | `Temporal pos -> Curve.eval curve pos
@@ -1528,6 +1527,10 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	Curve.eval curve 0.5
     in
     { anchor = anchor ; curve = curve ; contents = Curve.draw ~parameters:parameters curve}
+
+  let path style s continues = 		
+    let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
+    path_of_curve style curve
 
   type controls = continue_path_spec * Point.t list (* The last list is treated differently: *)
   (* its endpoint should be provided as a node, see edge below. *)
@@ -1567,6 +1570,25 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | Some (j, t2) -> (j, t2)
     end in
     Curve.internal_restrict curve start finish 
+
+  let edge_of_curve style curve = 
+    let curve = Edge.pretransfos style curve in
+    let underlying_curve = curve in
+    let outer_curve = Edge.outer_curve style curve in
+    let draw_curve = Edge.draw_curve style curve in
+    let rec anchor = function
+      | `Temporal pos -> Curve.eval curve pos
+      | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
+      | `CurvilinearFromStart pos -> Curve.eval underlying_curve (Curve.curvilinear underlying_curve pos)
+      | `Start -> anchor (`Temporal 0.)
+      | `End -> anchor (`Temporal 1.)
+      | `Center -> Curve.eval curve 0.5
+      | _ -> Printf.fprintf stderr "Anchor undefined for an edge. Returning the center instead.\n" ; 
+	Curve.eval curve 0.5
+    in
+    { anchor = anchor ; curve = outer_curve ; contents = 
+	List.flatten (List.map (fun (params,curve) -> (Curve.draw ~parameters:params curve))
+			draw_curve) }
 
   let edge style s controls e =
     let point_lists = point_lists_of_edge_spec s controls e in
@@ -1689,15 +1711,15 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
       let label_anchor e anchor pos contents = 
 	label e [`Anchor anchor] pos contents
 
-     let labela e contents = label e [`Anchor `South] 0.5 contents
-     let labelb e contents = label e [`Anchor `North] 0.5 contents
-     let labell e contents = label e [`Anchor `East] 0.5 contents
-     let labelr e contents = label e [`Anchor `West] 0.5 contents
-     let labelbr e contents = label e [`Anchor `NorthWest] 0.5 contents
-     let labelbl e contents = label e [`Anchor `NorthEast] 0.5 contents
-     let labelar e contents = label e [`Anchor `SouthWest] 0.5 contents
-     let labelal e contents = label e [`Anchor `SouthEast] 0.5 contents
-     let labelc e contents = label e [`Anchor `Main] 0.5 contents
+     let labela ?style:(style=[]) e contents = label e (style @ [`Anchor `South]) 0.5 contents
+     let labelb ?style:(style=[]) e contents = label e (style @ [`Anchor `North]) 0.5 contents
+     let labell ?style:(style=[]) e contents = label e (style @ [`Anchor `East]) 0.5 contents
+     let labelr ?style:(style=[]) e contents = label e (style @ [`Anchor `West]) 0.5 contents
+     let labelbr ?style:(style=[]) e contents = label e (style @ [`Anchor `NorthWest]) 0.5 contents
+     let labelbl ?style:(style=[]) e contents = label e (style @ [`Anchor `NorthEast]) 0.5 contents
+     let labelar ?style:(style=[]) e contents = label e (style @ [`Anchor `SouthWest]) 0.5 contents
+     let labelal ?style:(style=[]) e contents = label e (style @ [`Anchor `SouthEast]) 0.5 contents
+     let labelc ?style:(style=[]) e contents = label e (style @ [`Anchor `Main]) 0.5 contents
 
      let edge_anchor a b style anchor pos contents = 
        let e = edge (`To :: `Draw :: style) a [] b in
@@ -1734,7 +1756,46 @@ open Box
 	       ([`InnerSep 0.;`OuterSep 0.], [])
 	     ]]
 	     in
-	     let e = edge [`Draw;`LineWidth 0.05;`To (* Of head *)] ms.(0).(0) [] ms.(0).(1) in
+	     let e = edge [`Draw;`LineWidth 0.1;`To (* Of head *)] ms.(0).(0) [] ms.(0).(1) in
+	     let l,_ = node_boxified env
+	       [`OuterSep 0.2 ; `InnerSep 0.; `Anchor `South; `At (e.anchor (`Temporal 0.5))] dr 
+	     in
+	     let drawn = 
+	       drawing_inline ~offset:(ex env) 
+		 (List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
+		    []
+		    (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
+	     in 
+	     let width = drawn.drawing_min_width  -. 1.5 *. env.size *. (ex env) in
+	     let drawn = { drawn with
+		   drawing_min_width = width ;
+	       drawing_nominal_width = width ;
+		   drawing_max_width = width }
+	     in
+	     [Box.Drawing drawn])),
+		   true);
+		    Maths.bin_left = [] ; 
+		    Maths.bin_right = [] }
+     ]
+
+
+  let xot ?margin:(margin=2.) a =
+    [Maths.Binary { Maths.bin_priority = 0 ; Maths.bin_drawing = Maths.Normal 
+	(true, 
+        (Maths.noad
+           (fun env st->
+             let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
+	     let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
+	     let m,ms = matrix env
+	       [`Centers (1.,(x1 -. x0 +. 2. *. margin));
+		`Anchor `Pdf;
+		`InnerSep 0. ; `OuterSep 0. ;
+		`At (-. 0.75 *. env.size *. (ex env),0.)] [[
+	       ([`InnerSep 0.;`OuterSep 0.], []) ; 
+	       ([`InnerSep 0.;`OuterSep 0.], [])
+	     ]]
+	     in
+	     let e = edge [`Draw;`LineWidth 0.1;`To (* Of head *)] ms.(0).(1) [] ms.(0).(0) in
 	     let l,_ = node_boxified env
 	       [`OuterSep 0.2 ; `InnerSep 0.; `Anchor `South; `At (e.anchor (`Temporal 0.5))] dr 
 	     in
