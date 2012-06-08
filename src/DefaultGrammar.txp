@@ -12,10 +12,8 @@ Symboles de TeX'
 \Add_right{ ) }{ ) }
 \Add_left{ [ }{ [ }
 \Add_right{ ] }{ ] }
-\Add_left{ \lbracket < }{ ⟨ }
-\Add_right{ \rbracket > }{ ⟩ }
-\Add_left{ \langle }{ < }
-\Add_right{ \rangle }{ > }
+\Add_left{ \langle < 〈}{ ⟨ }
+\Add_right{ \rangle > 〉}{ ⟩ }
 \Add_left{ | }{ | }
 \Add_right{ | }{ | }
 \Add_left{\lceil ⌈}{⌈}
