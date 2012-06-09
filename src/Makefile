@@ -42,6 +42,10 @@ DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
 	./Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
+DefaultGrammar.cmx:DefaultGrammar.ml  Format/DefaultFormat.cmx
+	$(OCAMLBUILD) -I Format -I Typography DefaultGrammar.cmx
+DefaultGrammar.cmo:DefaultGrammar.ml  Format/DefaultFormat.cmo
+	$(OCAMLBUILD) -I Format -I Typography DefaultGrammar.cmo
 
 %.cmx:%.ml
 	$(OCAMLBUILD) $@
