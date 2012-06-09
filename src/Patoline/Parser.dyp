@@ -174,14 +174,15 @@ let layout_info dyp a b =
     let b = dyp.rhs_start_pos b in
     let cdiff = b.pos_cnum - a.pos_cnum in
     let ldiff = b.pos_lnum - a.pos_lnum in
+    let margin = b.pos_cnum - b.pos_bol in
     (*Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum; *)
-    cdiff, ldiff
+    cdiff, ldiff, margin
 
 let layout_parskip dyp a b =
-    snd (layout_info dyp a b) > 1
+    let c,l,m = layout_info dyp a b in l > 1 or (l = 1 && m > 1)
 
 let layout_space dyp a b =
-    fst (layout_info dyp a b) > 0
+    let c,l,m = layout_info dyp a b in c > 0
 
 }
 
@@ -319,8 +320,8 @@ paragraph_aux:
     { e, b }
   | paragraph_aux<p, b> parelt<e, b'>   
     { 
-      let c,l = layout_info dyp 1 2 in
-      if p <> [] && l > 1 then raise Giveup;
+      let c,l,m = layout_info dyp 1 2 in
+      if p <> [] && (l > 1 or (l = 1 && m > 1)) then raise Giveup;
       (e@(if c > 0 then GC::p else p)), b or b' }
 
 paragraph: 
