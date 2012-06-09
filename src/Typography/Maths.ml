@@ -408,18 +408,19 @@ let rec draw env_stack mlist=
               let maxy=y1-.y0a+.mathsEnv.limit_superscript_distance*.
                 mathsEnv.mathsSize*.env.size +. y1a
               in
+              let xoff=min x0 (min (xsup-.(x1a-.x0a)/.2.) (xsub-.(x1b-.x0b)/.2.)) in
                 [ Drawing {
-                    drawing_min_width=(x1-.x0);
-                    drawing_nominal_width=(x1-.x0);
-                    drawing_max_width=(x1-.x0);
+                    drawing_min_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
+                    drawing_nominal_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
+                    drawing_max_width=max (x1-.x0) (max (x1a-.x0a) (x1b-.x0b));
                     drawing_y0=miny;
                     drawing_y1=maxy;
                     drawing_badness=(fun _->0.);
                     drawing_contents=
                       (fun _->
-                         drawn_op @
-                           (List.map (translate (xsup-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
-                           (List.map (translate (xsub-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
+                         List.map (translate (-.xoff) 0.) drawn_op @
+                           (List.map (translate (xsup-.xoff-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
+                           (List.map (translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
             ) else draw env_stack [Ordinary op.op_noad]
