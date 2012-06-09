@@ -1,12 +1,12 @@
 \No_Grammar
-(*
 ======================================================================
-Symboles de TeX'
+Symboles de Patoline
 ======================================================================
-*)
+
+
 \Verbose_Changes
 
-(* == Delimiters == *)
+== Delimiters ==
 
 \Add_left{ ( }{ ( }
 \Add_right{ ) }{ ) }
@@ -21,7 +21,7 @@ Symboles de TeX'
 \Add_left{\lfloor ⌊}{⌊}
 \Add_right{\rfloor ⌋}{⌋}
 
-(* == Relation symbols == *)
+== Relation symbols ==
 
 \Add_relation{\eq =}{=}
 \Add_relation{\neq ≠ /=}{≠}
@@ -48,7 +48,7 @@ Symboles de TeX'
 \Add_relation{\gt >}{>}
 \Add_relation{… ..}{…}
 
-(* == Addition like symbols == *)
+== Addition like symbols ==
 
 \Add_addition_like{+}{+}
 \Add_addition_like{\oplus ⊕}{⊕}
@@ -62,7 +62,7 @@ Symboles de TeX'
 \Add_addition_like{\vee ∨}{∨}
 \Add_addition_like{\setminus ∖}{∖}
 
-(* == Product like symbols == *)
+== Product like symbols ==
 
 \Add_product_like{\dot .}{.}
 \Add_product_like{\times ×}{×}
@@ -74,12 +74,12 @@ Symboles de TeX'
 \Add_product_like{\circ ∘}{∘}
 \Add_product_like{\wedge ∧}{∧}
 
-(* == Connector symbols == *)
+== Connector symbols ==
 
 \Add_connector{\land && ∧}{∧}
 \Add_connector{\lor || ∨}{∨}
 
-(* == Arrow symbols == *)
+== Arrow symbols ==
 
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
 \Add_arrow{-> \imply \rightarrow →}{→}
@@ -89,35 +89,35 @@ Symboles de TeX'
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
 \Add_arrow{|-> \mapsto ↦}{↦}
 \Add_arrow{<-| \mapsfrom ↤}{↤}
-\Add_arrow{\epi ->> ↠}{↠}
-\Add_arrow{\mono >-> ↣}{↣}
+(*\Add_arrow{\epi ->> ↠}{↠}*)
+(*\Add_arrow{\mono >-> ↣}{↣}*)
 \Add_arrow{\inj ↪}{↪}
 \Add_arrow{\jni ↩}{↩}
 \Add_arrow{\ulharpoon ↼}{↼}
 \Add_arrow{\urharpoon ⇀}{⇀}
 \Add_arrow{\dlharpoon ↽}{↽}
 \Add_arrow{\drharpoon ⇁}{⇁}
+(
 
-
-(* == Punctuation symbols == *)
+== Punctuation symbols ==
 
 \Add_punctuation{,}{,}
 \Add_punctuation{;}{;}
 
-(* == Prefix symbols == *)
+== Prefix symbols ==
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
 \Add_prefix{\forall ∀}{∀}
 \Add_prefix{\exists ∃}{∃}
 
-(* == Postfix symbols == *)
+== Postfix symbols ==
 
 \Add_postfix{!}{!}
 \Add_postfix{*}{*}
 \Add_postfix{'}{'}
 
-(* == Lowercase Greek letters == *)
+== Lowercase Greek letters ==
 
 \Add_symbol{\alpha α}{α}
 \Add_symbol{\beta β}{β}
@@ -138,7 +138,7 @@ Symboles de TeX'
 \Add_symbol{\pi π}{π}
 \Add_symbol{\rho ρ}{ρ}
 \Add_symbol{\sigma σ}{σ}
-\Add_symbol{\varsigma ς}{ς}
+(*\Add_symbol{\varsigma ς}{ς}*)
 \Add_symbol{\tau τ}{τ}
 \Add_symbol{\upsilon υ}{υ}
 \Add_symbol{\phi φ}{φ}
@@ -147,7 +147,7 @@ Symboles de TeX'
 \Add_symbol{\psi ψ}{ψ}
 \Add_symbol{\omega ω}{ω}
 
-(* == Uppercase Greek letters == *)
+== Uppercase Greek letters ==
 
 \Add_symbol{\Alpha Α}{Α}
 \Add_symbol{\Beta Β}{Β}
@@ -182,7 +182,7 @@ Symboles de TeX'
 \Add_symbol{\bottom ⊥}{⊥}
 \Add_symbol{\emptyset ∅}{∅}
 
-(* == Other symbols == *)
+== Other symbols ==
 
 \Add_limits_operator{∑ \sum}{∑}
 \Add_limits_operator{∏ \prod}{∏}
@@ -190,3 +190,4 @@ Symboles de TeX'
 \Add_limits_operator{∫ \int}{∫}
 
 \Save_Grammar
+*)

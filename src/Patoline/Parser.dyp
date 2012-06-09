@@ -115,10 +115,10 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
   in  
   let newsyms =
     List.fold_left (fun acc s ->
-       if StrSet.mem s acc then begin
+(*       if StrSet.mem s acc then begin
          Printf.fprintf stderr "Symbol \"%s\" alread y exists.\n" s; 
          exit 1
-       end;
+       end;*)
        StrSet.add s acc) adef symbols
   in
   let local_data = if noinfix then { local_data with other_symbols = newsyms }
@@ -137,7 +137,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
       List.fold_right (fun s acc -> 
         let elt = Symbol (SimpleSym (String.escaped s)) in
         if acc = Var "" then elt else
-	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]] 
+	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]]
   in
   elt, [Add_rules[rule, action]; Local_data local_data]
 
@@ -629,9 +629,9 @@ atomelt:
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
 
 atomeltp:
-    atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.local_data ] }
+    atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.last_local_data ] }
 /*  | paragraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
-  | paragraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.local_data ] }
+  | paragraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
 
 title:
   ("=========="('='*))
@@ -641,18 +641,18 @@ title:
   ("=========="('='*))
   { title,at }
 
-text: { [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.local_data ]}
+text: { [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}
 
 ntext:
   | atomeltp<p> 
-   @{ p, [ Keep_grammar; Local_data dyp.local_data ] }
+   @{ p, [ Keep_grammar; Local_data dyp.last_local_data ] }
   | ntext<t> atomeltp<p>
    @{ 
       (match t, p with 
         (Paragraph _::_), (Paragraph _::_) ->
 	  if not (layout_parskip dyp 1 2) then raise Giveup
        | _ -> ()); 
-      (p@t), [ Keep_grammar; Local_data dyp.local_data ]}
+      (p@t), [ Keep_grammar; Local_data dyp.last_local_data ]}
 
 grammar_aux:
     { Some "DefaultGrammar" }

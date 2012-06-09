@@ -40,7 +40,7 @@ DefaultGrammar.ml:DefaultGrammar.tgx
 
 DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
-	./Main.native --ml --noamble --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
+	./Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
 
 %.cmx:%.ml
