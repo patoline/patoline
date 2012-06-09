@@ -517,11 +517,11 @@ let gen_ml format amble filename from wherename where pdfname =
 		    match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.fprintf where "let _ = author %S;;\n\n" auth;
+			Printf.fprintf where "let _ = author D.structure %S;;\n\n" auth;
 			match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.fprintf where "let _ = institute %S;;\n\n" inst
+			    Printf.fprintf where "let _ = institute D.structure %S;;\n\n" inst
 		end;
 		let source = Source.of_in_channel from in
 		output_list source where true 0 docs;
