@@ -60,6 +60,14 @@ DefaultGrammar.cmo:DefaultGrammar.ml  Format/DefaultFormat.cmo
 	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
 	ln -sf _build/$*.pdf .
 
+DefaultGrammar.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.txp
+	cp DefaultGrammar.txp _build
+	cd _build; Patoline/Main.native --ml --no-grammar --extra-fonts-dir ../../Fonts  DefaultGrammar.txp
+
+	cd _build; $(CAMLOPT) -o DefaultGrammar.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl DefaultGrammar.tml
+	cd _build; ./DefaultGrammar.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
+	ln -sf _build/DefaultGrammar.pdf .
+
 clean:
 	rm -f *~ \#*\# *.tgo *.tgx
 	rm -Rf _build

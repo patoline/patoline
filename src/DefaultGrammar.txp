@@ -125,7 +125,7 @@ include DefaultGrammar
 \Add_prefix{-}{-}
 \Add_prefix{\forall ∀}{∀}
 \Add_prefix{\exists ∃}{∃}
-\Add_prefix{\vdash ⊢}{⊢}
+\Add_prefix{\vdash ⊢ |-}{⊢}
 
 == Postfix symbols ==
 
