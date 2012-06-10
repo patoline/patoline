@@ -244,7 +244,7 @@ and print_macro_buf buf op mtype name args =
 	begin
 	  Printf.bprintf buf " (%s " name;
 	  List.iter (function
-            | Paragraph(p) -> Printf.bprintf buf " %a" (print_contents_buf op) p
+            | Paragraph(_,p) -> Printf.bprintf buf " %a" (print_contents_buf op) p
 	    | Caml(ld,gr,s,e,txps) ->
               Printf.bprintf buf "(";
               print_caml_buf ld gr op buf s e txps;
@@ -282,7 +282,7 @@ and print_macro_buf buf op mtype name args =
 	    let num = ref 1 in
 	    Printf.bprintf buf "module Args = struct\n";
 	    List.iter (function
-            Paragraph(p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf op) p;
+            Paragraph(_,p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf op) p;
 	      incr num
 	      | Caml(ld,gr,s,e,txps) -> begin
 		Printf.bprintf buf "let arg%d = begin " !num;
@@ -437,12 +437,17 @@ and output_list from where no_indent lvl docs =
       let lvl = ref lvl in 
       let next_no_indent = ref false in
       (match doc with
-	| Paragraph p ->
+	| Paragraph(options, p) ->
 	  let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
 	    else "(fun x -> x)"
 	  in
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal parameters %a;;\n" 
-	    env (print_contents from) p
+	  let param = if options.center_paragraph then 
+	      "(Document.do_center parameters)"
+	    else
+	      "parameters"
+	  in
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
+	    env param (print_contents from) p
 	| Caml(ld,gr,s,e,txps) -> print_caml ld gr from where s e txps
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered then "" else " ~numbered:false" in

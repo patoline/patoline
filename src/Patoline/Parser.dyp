@@ -64,8 +64,10 @@ and symbol=
 
 and structType = Absolute of int | Relative of doc list
 
+and paragraph_options = { center_paragraph : bool }
+
 and doc =
-     Paragraph of content list
+     Paragraph of paragraph_options * content list
    (* FIXME : construct the type of the parsing device instead of Obj.t *)
    | Caml of local_data * Obj.t * int * int * (texprime_section * int * int) list
    | Math of math
@@ -85,6 +87,8 @@ and content =
 let par_macros:(string->content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
+let default_paragraph_options = { center_paragraph = false }
+let sParagraph c = Paragraph(default_paragraph_options, c)
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
 let caml_depth = ref 0 let push_caml () = incr caml_depth
@@ -132,7 +136,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
     | _ -> assert false
   in
   let elt = if not local_data.verbose then [Ignore] else
-    [Ignore; Paragraph
+    [Ignore; sParagraph
       [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc -> 
         let elt = Symbol (SimpleSym (String.escaped s)) in
@@ -312,7 +316,7 @@ parelt:
    parmacro<m> { m, false }
   | "$" math<m> "$" { [FC(false,m)], false }
   | line<w> { [TC w], false }
-  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [Paragraph(List.rev p)])], true }
+  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)])], true }
 
 
 paragraph_aux:
@@ -345,7 +349,7 @@ args:
   | "()"
     { (fun ld gr  -> []) } 
   | args<a> - "{" oparagraph<p> "}" 
-    { (fun ld gr -> Paragraph (p)::a ld gr) } 
+    { (fun ld gr -> sParagraph (p)::a ld gr) } 
   | args<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
@@ -354,12 +358,12 @@ neargs:
   | "()"
     { (fun ld gr  -> []) }
   | "{" oparagraph<p> "}" 
-    { (fun ld gr -> [Paragraph (p)]) }
+    { (fun ld gr -> [sParagraph (p)]) }
   | CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
   | neargs<a> - "{" oparagraph<p> "}" 
-    { (fun ld gr -> Paragraph (p)::a ld gr) }
+    { (fun ld gr -> sParagraph (p)::a ld gr) }
   | neargs<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
@@ -631,8 +635,11 @@ atomelt:
 
 atomeltp:
     atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.last_local_data ] }
-/*  | paragraph<p> NOSKIP atomelt<e> @{ Paragraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
-  | paragraph<p> @{ [Paragraph(p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
+/*  | paragraph<p> NOSKIP atomelt<e> @{ sParagraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
+  | paragraph<p> @{ 
+      let _,_,m = layout_info dyp 1 1 in
+      let options = { default_paragraph_options with center_paragraph = m >= 4 } in
+      [Paragraph(options, p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
 
 title:
   ("=========="('='*))
