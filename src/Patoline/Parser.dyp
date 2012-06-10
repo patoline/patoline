@@ -139,8 +139,17 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
       [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
-      List.fold_right (fun s acc -> 
-        let elt = Symbol (SimpleSym (String.escaped s)) in
+      List.fold_right (fun s acc ->
+       let utflen = try CamomileLibrary.UTF8.validate; CamomileLibrary.UTF8.length s
+             with _ -> -1
+       in	     
+        let elt = 
+	  if utflen = 1 && 
+	     (match symbol_value with SimpleSym _ -> false | _ -> true) then
+	    Symbol symbol_value
+	  else	     
+  	    Symbol (SimpleSym (String.escaped s))
+        in
         if acc = Var "" then elt else
 	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]]
   in
@@ -537,6 +546,8 @@ math:
       { Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=rel)<a> relation<op> math(<rel)<b> 
       { Binary(1, a, false, op, false, b) } rel
+  | negation<op> math(<=neg)<b>  
+      { Prefix(0,op,false,b) } neg
   | math(<=conj)<a> connector<op> math(<conj)<b> 
       { Binary(0, a, false, op, false, b) } conj
   | math(<=impl)<a> arrow<op> math(<impl)<b> 
@@ -596,6 +607,9 @@ atomelt:
   | "\\Add_connector" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "connector" (fun x -> Obj_connector x) names value }
+  | "\\Add_negation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" symbol_def<value>
+    @{ add_symbol_rule dyp.local_data "negation" (fun x -> Obj_negation x) names value }
   | "\\Add_arrow" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "arrow" (fun x -> Obj_arrow x) names value }
