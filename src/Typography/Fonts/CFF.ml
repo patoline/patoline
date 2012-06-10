@@ -5,7 +5,7 @@ open FTypes
 let pt_of_mm x=(72.*.x)/.25.4
 let mm_of_pt x=(25.4*.x)/.72.
 
-type font= { file:in_channel; offset:int; size:int; offSize:int; nameIndex:int array;
+type font= { file:string; offset:int; size:int; offSize:int; nameIndex:int array;
              dictIndex:int array; stringIndex:int array; subrIndex:(string array) array;
              gsubrIndex:string array
            }
@@ -349,26 +349,28 @@ let loadFont ?offset:(off=0) ?size file=
         done;
         gsubr
     in
-      { file=f; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
+      { file=file; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
         stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex }
 
 let glyph_of_uchar _ _=0
 let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
 
 let loadGlyph font ?index:(idx=0) gl=
-  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+  let file=open_in font.file in
+  let charStrings=int_of_num (List.hd (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
   let fontMatrix=
     try
       List.map (function
                     CFFFloat x->x
                   | x->raise (CFFNum x))
-        (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 3079)
+        (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 3079)
     with
         Not_found | CFFNum _->[0.001;0.;0.;0.001]
   in
+  let x=
     { glyphFont=font;
       glyphNumber=gl;
-      type2=indexGet font.file (font.offset+charStrings) gl.glyph_index;
+      type2=indexGet file (font.offset+charStrings) gl.glyph_index;
       matrix=Array.of_list fontMatrix;
       subrs=font.subrIndex.(idx);
       gsubrs=font.gsubrIndex;
@@ -376,12 +378,18 @@ let loadGlyph font ?index:(idx=0) gl=
       glyphWidth=infinity;
       glyphX0=infinity; glyphX1= -.infinity;
       glyphY0=infinity; glyphY1= -.infinity }
+  in
+    close_in file;
+    x
 
 let cardinal font=
   let idx=0 in
-  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
-    seek_in font.file (font.offset+charStrings);
-    readInt2 font.file
+  let file=open_in font.file in
+  let charStrings=int_of_num (List.hd (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+    seek_in file (font.offset+charStrings);
+    let x=readInt2 file in
+      close_in file;
+      x
 
 
 exception Found of float
@@ -782,12 +790,12 @@ let outlines_ gl onlyWidth=
 
 let outlines glyph=outlines_ glyph false
 let glyphWidth glyph=
+  let f=open_in glyph.glyphFont.file in
   if glyph.glyphWidth=infinity then
     glyph.glyphWidth<-(
       try let _=outlines_ glyph true in raise (Found 0.) with
           Found x->
             (try
-               let f=glyph.glyphFont.file in
                let off=glyph.glyphFont.offset in
                let privOffset=findDict f (glyph.glyphFont.dictIndex.(0)) (glyph.glyphFont.dictIndex.(1)) 18 in
                  match privOffset with
@@ -799,7 +807,8 @@ let glyphWidth glyph=
              with
                  _->0.)+.x
     );
-  glyph.glyphWidth
+    close_in f;
+    glyph.glyphWidth
 
 
 let glyphContents gl=gl.glyphContents
@@ -828,24 +837,33 @@ let glyphNumber glyph=glyph.glyphNumber
 
 let fontName ?index:(idx=0) font=
   let buf = String.create (font.nameIndex.(idx+1)-font.nameIndex.(idx)) in
-    seek_in font.file (font.nameIndex.(idx));
-    really_input font.file buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));
+  let f=open_in font.file in
+    seek_in f (font.nameIndex.(idx));
+    really_input f buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));
+    close_in f;
     buf
 
 let fontBBox ?index:(idx=0) font=
-  try
-    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
+  let f=open_in font.file in
+  let x=try
+    match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
         (a::b::c::d::_)->(int_of_num d,int_of_num c,int_of_num b,int_of_num a)
       | _->(0,0,0,0)
   with
       Not_found->(0,0,0,0)
+  in
+    close_in f;x
 let italicAngle ?index:(idx=0) font=
-  try
-    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
+  let f=open_in font.file in
+  let x=try
+    match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
         h::_->float_of_num h
       | _->0.
   with
       Not_found->0.
+  in
+    close_in f;
+    x
 
 
 let font_features _ =[]
@@ -997,7 +1015,7 @@ type encoding=
 
 let subset font gls=
   let buf=Buffer.create 100 in
-  let f=font.file in
+  let f=open_in font.file in
     seek_in f (font.offset+2);
     let headersize=input_byte f in
       seek_in f font.offset;
@@ -1012,7 +1030,7 @@ let subset font gls=
 
 
     let topDict=
-      readDict font.file font.dictIndex.(0) font.dictIndex.(1)
+      readDict f font.dictIndex.(0) font.dictIndex.(1)
     in
 
     let topDictBuf_=Buffer.create 16 in
@@ -1021,12 +1039,12 @@ let subset font gls=
         writeIndex topDictBuf [|Buffer.contents topDictBuf_|];
 
 
-      seek_in font.file (font.dictIndex.(Array.length font.dictIndex-1));
+      seek_in f (font.dictIndex.(Array.length font.dictIndex-1));
       let strIndex=copyIndex f in
-        seek_in font.file (font.stringIndex.(Array.length font.stringIndex-1));
+        seek_in f (font.stringIndex.(Array.length font.stringIndex-1));
       let gsubr=copyIndex f in
       let encoding,encodingLength=try
-        let enc=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 16)) in
+        let enc=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 16)) in
           if enc=0 || enc=1 then StdEncoding enc,0 else
             let a,b=readEncoding f enc in
             let encc=a^b in
@@ -1035,7 +1053,7 @@ let subset font gls=
           Not_found -> StdEncoding 0, 0
       in
       let charset=try
-        let set=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 15)) in
+        let set=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 15)) in
         let charset=readCharset f (cardinal font) (font.offset+set) in
         let str=String.make (2*Array.length gls-1) (char_of_int 0) in
           for i=1 to Array.length gls-1 do
@@ -1049,8 +1067,8 @@ let subset font gls=
 
 
       let charStrings=
-        let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(0) font.dictIndex.(1) 17)) in
-        let progs=Array.map (fun x->indexGet font.file (font.offset+charStrings) x) gls in
+        let charStrings=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 17)) in
+        let progs=Array.map (fun x->indexGet f (font.offset+charStrings) x) gls in
         let buf=Buffer.create 100 in
           writeIndex buf progs;
           buf
@@ -1146,4 +1164,5 @@ let subset font gls=
         Buffer.add_buffer buf charStrings;
         Buffer.add_buffer buf privDict;
         Buffer.add_string buf lsubr;
+        close_in f;
         Buffer.contents buf
