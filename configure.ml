@@ -205,8 +205,8 @@ let _=
           Printf.fprintf meta
             "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"camomile%s%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)))
             (if !camlimages="" then "" else (","^(!camlimages)));
-          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
-          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
+          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, DefaultGrammar.cmx\"\n";
+          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, DefaultGrammar.cmo\"\n";
           Array.iter (fun x->
                         if Filename.check_suffix x ".ml" && is_substring "Format" x
                           && x<>"DefaultFormat.ml"

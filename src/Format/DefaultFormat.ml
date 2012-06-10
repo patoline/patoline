@@ -528,7 +528,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       val counterLevel:int
       val display:string->user content list
     end
-    module Proof=struct
+    module Env_proof=struct
       let do_begin_env ()=
         let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
@@ -552,6 +552,7 @@ module Format=functor (D:Document.DocumentStructure)->(
              )];
         env_stack:=List.tl !env_stack
     end
+    module Proof = Env_proof (* probably useless, just for compatibility *)
 
     module Make_theorem=functor (Th:Theorem)->struct
 
