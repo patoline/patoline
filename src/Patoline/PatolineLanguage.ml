@@ -1,3 +1,4 @@
+(*# OPTIONS -pp "cpp -w" #*)
 open Printf
 open Lexing
 

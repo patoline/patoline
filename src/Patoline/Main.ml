@@ -9,16 +9,16 @@ let package_list = ref ["Typography"]
 let no_grammar=ref false
 let deps_only=ref false
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
-            ("--extra-grammars-dir",Arg.String (fun x->PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir)), "Adds directories to the font search path");
+
             ("-I",Arg.String (fun x->
-                                Config.grammarsdir:=x::(!Config.grammarsdir);
-                                dirs := (" -I "^x^" ") :: !dirs
-                             ), "Adds directories to the search path");
-            ("--no-grammar",Arg.Unit (fun ()->Config.grammarsdir:=[]), "Empty grammar search path");
+                                PatolineConfig.local_path:=x::(!PatolineConfig.local_path);
+                                PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir)),
+             "Adds directories to the search path");
+
+            ("--no-grammar",Arg.Unit (fun ()->PatolineConfig.grammarsdir:=[]), "Empty grammar search path");
             ("--format",Arg.String
 	      (fun f ->format := Filename.basename f), "Change the default document format");
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
-            ("--deps", Arg.Unit(fun ()->compile:=false;run:=false;deps_only:=true), "Outputs dependencies in file <file>.dep");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
             ("-package",Arg.String (fun s-> package_list:= s::(!package_list)), "Use package given as argument when compiling");
             ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
@@ -40,17 +40,14 @@ let rec process_each_file =
     let where_ml = open_out (mlname_of f) in
     let fread = open_in f in
       (* Printf.fprintf stderr "Generating OCaml code "; *)
-      if !deps_only then (
-        let o=open_out (f^".deps") in close_out o;Parser.deps_only:=Some (f^".deps")
-      );
       Parser.out_grammar_name:=Filename.chop_extension f;
       if Filename.check_suffix f "txt" then (
 	(* Printf.fprintf stderr "from simple text file...\n "; *)
-	SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (pdfname_of f);   
+	SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (pdfname_of f);
       ) else (
 	(* Printf.fprintf stderr "from Patoline file...\n "; *)
 	Parser.fprint_caml_buf := Obj.repr
-	  (fun ld gr buf s e txps -> 
+	  (fun ld gr buf s e txps ->
 	     let pos = pos_in fread in
 	       Generateur.print_caml_buf ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
                seek_in fread pos);
@@ -59,13 +56,13 @@ let rec process_each_file =
       close_out where_ml;
       close_in fread;
       (* Printf.fprintf stderr "File %s generated.\n" (mlname_of f); *)
-      let format_cline = if !format = "DefaultFormat" then "" else 
+      let format_cline = if !format = "DefaultFormat" then "" else
 	(!format)^".cmxa"
       in
 	if !compile then (
 	  let lespackages = String.concat "," !package_list in
 	    Printf.fprintf stderr "Compiling OCaml code...\n";
-	    Printf.fprintf stderr  "ocamlfind ocamlopt -package %s %s -linkpkg -o %s -impl %s\n" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
+	    Printf.fprintf stderr "ocamlfind ocamlopt -package %s %s -linkpkg -o %s -impl %s\n" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f);
 	    flush stderr;
 	    let r = Sys.command (Printf.sprintf "ocamlfind ocamlopt -package %s str.cmxa %s -linkpkg -o %s -impl %s" lespackages ((str_dirs ()) ^ " " ^ format_cline) (binname_of f) (mlname_of f)) in
 	      flush stderr;

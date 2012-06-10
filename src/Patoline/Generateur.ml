@@ -321,9 +321,9 @@ and print_macro_buf buf op mtype name args =
 	  Printf.bprintf buf "   Res.make ())\n end \n " end
 	else Printf.bprintf buf "let _ = do_end_env()\nend" (* name *)
       | `Include ->
-	incr moduleCounter;
-	Printf.bprintf buf
-	  "module TEMP%d=%s.Document(D);;\n open TEMP%d \n" !moduleCounter name !moduleCounter
+	  incr moduleCounter;
+	  Printf.bprintf buf
+	    "module TEMP%d=%s.Document(D);;\n" !moduleCounter name
   end
 
 and print_macro ch op mtype name args = begin

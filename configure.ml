@@ -187,7 +187,7 @@ let _=
             (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
             (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !hyphen_dirs)))
       ) else (
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
+        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\nlet local_path:string list ref=ref []\n"
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !fonts_dirs)))
           !bin_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !grammars_dirs)))
@@ -218,4 +218,5 @@ let _=
                             ((Filename.chop_extension x)^".cma")
                         )
                      ) (Sys.readdir "src/Format");
-          close_out meta
+          close_out meta;
+          Printf.printf "\nConfigure finished\n\nYou can now build by doing:\n\tmake\n\tmake install\n\n"

@@ -4,6 +4,7 @@ open Dyp
 open PatolineConfig
 
 exception Syntax_Error of Lexing.position * PatolineLanguage.syntax_error
+exception Outdated
 
 let set_newline nb l =
   let pos = l.lex_curr_p in
@@ -685,14 +686,33 @@ grammar: grammar_aux<g>
               pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
         Some filename when !PatolineConfig.grammarsdir <> []-> (
 	  try
-	    let grammar_name = findGrammar (filename ^ gram_ext) in
+	    let grammar_name =
+              let name=try findGrammar (filename ^ gram_ext) with _->"" in
+              let orig=try findGrammar (filename^".txp") with _->"" in
+                if orig<>"" &&
+                  (name="" ||
+                      (Unix.stat orig).Unix.st_mtime > (Unix.stat name).Unix.st_mtime ||
+                      (Unix.stat Sys.executable_name).Unix.st_mtime > (Unix.stat name).Unix.st_mtime
+                  ) then (
+                    let path=String.concat ""
+                      (List.map (Printf.sprintf " -I %s ") !PatolineConfig.grammarsdir)
+                    in
+                    let com=(Printf.sprintf "%s --noamble --ml %s %s" (Sys.argv.(0)) path orig) in
+                      Printf.printf "%s\n" com; flush stdout;
+                    let _=Sys.command com in
+                      findGrammar (filename ^ gram_ext)
+                  )
+                else
+                  name
+            in
 	    let ic = open_in grammar_name in
 	    let local_data, grammar = input_value ic in
 	      close_in ic;
               used_grammars:=filename::(!used_grammars);
 	      (* Printf.fprintf stderr "Grammar: %s.\n" grammar_name ; *)
 	      [ Local_data local_data; Parser grammar ]
-          with e -> Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); []
+          with
+            | e ->(Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); [])
         )
       | _-> []
        in
