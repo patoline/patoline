@@ -3,6 +3,16 @@
 Symboles de Patoline
 ======================================================================
 
+\Caml(
+module DefaultGrammar = struct
+  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Asana-Math/Asana-Math.otf"))
+  let asane code = Maths.symbol ~name:"\\restriction" (Lazy.force asana_font) [code]
+  
+  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Euler/euler.otf"))
+  let euler code = Maths.symbol ~name:"\\restriction" (Lazy.force euler_font) [code]
+end
+include DefaultGrammar
+)
 
 \Verbose_Changes
 
@@ -77,6 +87,8 @@ Symboles de Patoline
 == Connector symbols ==
 
 \Add_connector{\land && ∧}{∧}
+\Add_connector{\restriction}(DefaultGrammar.euler 248)
+
 \Add_connector{\lor || ∨}{∨}
 
 == Arrow symbols ==
