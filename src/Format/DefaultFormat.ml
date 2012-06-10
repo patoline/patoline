@@ -537,8 +537,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
+        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true } in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
-        newPar D.structure Complete.normal Document.ragged_right
+        newPar D.structure Complete.normal par
           [B (fun env->
                 let w=env.size/.phi in
                   [Drawing (
@@ -660,7 +661,7 @@ module MathsFormat=struct
                     fun _ _->Maths.Env (fun env->Maths.change_fonts env env.font)::a
                   )]
 
-    let overline a=
+    let oline a=
       [Maths.Ordinary
          (Maths.noad
             (fun envs st->
