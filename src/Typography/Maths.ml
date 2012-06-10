@@ -601,22 +601,22 @@ let open_close left right env_ style box=
        drawing_badness=(fun _->0.);
        drawing_contents=(fun _->(left  (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
        (* [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *)))})::
-
-    (Drawing {
-       drawing_min_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
-       drawing_nominal_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
-       drawing_max_width=x1-.x0-.dist1 +. if env.kerning then env.close_dist*.s else 0.;
-       drawing_y0=y0;
-       drawing_y1=y1;
-       drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->(draw_boxes box (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
-       (* [rectangle (x0,y0) (x1,y1)]))] *)))})::
-    (Drawing {
-       drawing_min_width=x1_r-.x0_r;
-       drawing_nominal_width=x1_r-.x0_r;
-       drawing_max_width=x1_r-.x0_r;
-       drawing_y0=y0_r;
-       drawing_y1=y1_r;
-       drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->(right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
-       (* [rectangle (x0_r,y0_r) (x1_r,y1_r)]))] *)))})::[]
+      box@
+    (* (Drawing { *)
+    (*    drawing_min_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.; *)
+    (*    drawing_nominal_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.; *)
+    (*    drawing_max_width=x1-.x0-.dist1 +. if env.kerning then env.close_dist*.s else 0.; *)
+    (*    drawing_y0=y0; *)
+    (*    drawing_y1=y1; *)
+    (*    drawing_badness=(fun _->0.); *)
+    (*    drawing_contents=(fun _->(draw_boxes box (\* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *\) *)
+    (*    (\* [rectangle (x0,y0) (x1,y1)]))] *\)))}):: *)
+      [Drawing {
+         drawing_min_width=x1_r-.x0_r;
+         drawing_nominal_width=x1_r-.x0_r;
+         drawing_max_width=x1_r-.x0_r;
+         drawing_y0=y0_r;
+         drawing_y1=y1_r;
+         drawing_badness=(fun _->0.);
+         drawing_contents=(fun _->(right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
+                                     (* [rectangle (x0_r,y0_r) (x1_r,y1_r)]))] *)))}]
