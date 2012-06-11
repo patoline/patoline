@@ -30,7 +30,7 @@ exception Comic_sans
 #endif
 
 let loadFont ?offset:(off=0) ?size:(_=0) f=
-  let size=let i=Util.open_in_bin_cached f in let l=in_channel_length i in close_in i; l in
+  let size=let i=Util.open_in_bin_cached f in in_channel_length i in
   let font=if Filename.check_suffix f ".otf" then
     Opentype (Opentype.loadFont ~offset:off f ~size:size)
   else
