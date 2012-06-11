@@ -23,6 +23,7 @@ let pt_of_mm x=(72.*.x)/.25.4
 (** Convertir en millimètres une longueur en points Adobe *)
 let mm_of_pt x=(25.4*.x)/.72.
 
+
 let a4=(210.,297.)
 let phi=(1.+.(sqrt 5.))/.2.
 
@@ -141,3 +142,31 @@ let is_substring s1 s0 i0=
 module IntMap=New_map.Make (struct type t=int let compare=compare end)
 module StrMap=New_map.Make (String)
 module IntSet=Set.Make (struct type t=int let compare=compare end)
+
+
+let bin_cache:in_channel StrMap.t ref=ref StrMap.empty
+let cache:in_channel StrMap.t ref=ref StrMap.empty
+
+let open_in_bin_cached f=
+  if not (StrMap.mem f !bin_cache) then (
+    if StrMap.mem f !cache then (
+      close_in (StrMap.find f !cache);
+      cache:=StrMap.remove f !cache
+    );
+    bin_cache:=StrMap.add f (open_in_bin f) !bin_cache
+  );
+  StrMap.find f !bin_cache
+
+let open_in_cached f=
+#ifdef WIN32
+  if not (StrMap.mem f !cache) then (
+    if StrMap.mem f !bin_cache then (
+      close_in (StrMap.find f !bin_cache);
+      bin_cache:=StrMap.remove f !bin_cache
+    );
+    cache:=StrMap.add f (open_in f) !cache
+  );
+  StrMap.find f !cache
+#else
+  open_in_bin_cached f
+#endif

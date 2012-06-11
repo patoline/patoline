@@ -41,7 +41,7 @@ let tableList file off=
     getTables (off+dirSize*(numTables-1)+offsetTable) []
 type font = CFF of (CFF.font*int)
 let loadFont ?offset:(off=0) ?size:(_=0) file=
-  let f=open_in_bin file in
+  let f=open_in_bin_cached file in
   let typ=String.create 4 in
     seek_in f off;
     really_input f typ 0 4;
@@ -64,7 +64,7 @@ type glyph = CFFGlyph of (font*CFF.glyph)
 let glyph_of_uchar font0 char0=
   match font0 with
       CFF (font,offset0)->
-        let file=open_in font.file in
+        let file=font.file in
         let char=UChar.code char0 in
         let (a,b)=tableLookup "cmap" file offset0 in
           seek_in file (a+2);
@@ -162,13 +162,12 @@ let glyphWidth gl=
   match gl with
       CFFGlyph (_,x) when x.glyphWidth <> infinity -> x.glyphWidth
     | CFFGlyph (CFF(f, offset),x)->
-        (let file=open_in f.CFF.file in
-         let num=(CFF.glyphNumber x).glyph_index in
-         let (a,_)=tableLookup "hhea" file offset in
-         let nh=(seek_in file (a+34); readInt2 file) in
-         let (b,_)=tableLookup "hmtx" file offset in
-           seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
-           let w=float_of_int (readInt2 file) in
+        (let num=(CFF.glyphNumber x).glyph_index in
+         let (a,_)=tableLookup "hhea" f.CFF.file offset in
+         let nh=(seek_in (f.CFF.file) (a+34); readInt2 f.CFF.file) in
+         let (b,_)=tableLookup "hmtx" f.CFF.file offset in
+           seek_in (f.CFF.file) (if num>=nh then (b+4*(nh-1)) else (b+4*num));
+           let w=float_of_int (readInt2 f.CFF.file) in
              x.glyphWidth<-w;
              close_in file;
              w
@@ -448,8 +447,7 @@ let rec readLookup file gsubOff i=
 
 
 let read_gsub font=
-  let (file_,off0)=otype_file font in
-  let file=open_in file_ in
+  let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let lookup= seek_in file (gsubOff+8); readInt2 file in
   let lookupCount= seek_in file (gsubOff+lookup); readInt2 file in
@@ -462,8 +460,7 @@ let read_gsub font=
     arr
 
 let read_lookup font i=
-  let (file_,off0)=otype_file font in
-  let file=open_in file_ in
+  let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let x=readLookup file gsubOff i in
     close_in file;
@@ -493,8 +490,7 @@ let tabularFigures = "tnum"
 let slashedZero = "zero"
 
 let select_features font feature_tags=try
-  let (file_,off0)=otype_file font in
-  let file=open_in file_ in
+  let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let features=seek_in file (gsubOff+6); readInt2 file in
   let featureCount=seek_in file (gsubOff+features);readInt2 file in
@@ -523,8 +519,7 @@ let select_features font feature_tags=try
 with Table_not_found _->[]
 
 let font_features font=try
-  let (file_,off0)=otype_file font in
-  let file=open_in file_ in
+  let (file,off0)=otype_file font in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
 
   let features=seek_in file (gsubOff+6); readInt2 file in
@@ -537,15 +532,12 @@ let font_features font=try
         make_features (i+1) (String.copy buf::result)
     )
   in
-  let x=(make_features 0 []) in
-    close_in file;
-    x
+    (make_features 0 [])
 with Table_not_found _->[]
 
 
 let read_scripts font=
   let (file,off0)=otype_file font in
-  let file=open_in file in
   let (gsubOff,_)=tableLookup "GSUB" file off0 in
   let scripts=seek_in file (gsubOff+4); readInt2 file in
   let scriptCount=seek_in file (gsubOff+scripts); readInt2 file in
@@ -572,7 +564,6 @@ let read_scripts font=
 
 let rec gpos font glyphs0=
   let (file,off0)=otype_file font in
-  let file=open_in file in
   let (gposOff,_)=tableLookup "GPOS" file off0 in
 
   let lookup= seek_in file (gposOff+8); readInt2 file in

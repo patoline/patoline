@@ -309,7 +309,7 @@ let readCharset f nGlyphs off=
 
 
 let loadFont ?offset:(off=0) ?size file=
-  let f=open_in_bin file in
+  let f=open_in_bin_cached file in
   let size=match size with None->in_channel_length f-off | Some s->s in
     seek_in f (off+2);
     let hdrSize=input_byte f in
@@ -356,8 +356,7 @@ let glyph_of_uchar _ _=0
 let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
 
 let loadGlyph font ?index:(idx=0) gl=
-  let file=open_in font.file in
-  let charStrings=int_of_num (List.hd (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
   let fontMatrix=
     try
       List.map (function
@@ -384,12 +383,9 @@ let loadGlyph font ?index:(idx=0) gl=
 
 let cardinal font=
   let idx=0 in
-  let file=open_in font.file in
-  let charStrings=int_of_num (List.hd (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
-    seek_in file (font.offset+charStrings);
-    let x=readInt2 file in
-      close_in file;
-      x
+  let charStrings=int_of_num (List.hd (findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in
+    seek_in font.file (font.offset+charStrings);
+    readInt2 font.file
 
 
 exception Found of float
@@ -790,7 +786,6 @@ let outlines_ gl onlyWidth=
 
 let outlines glyph=outlines_ glyph false
 let glyphWidth glyph=
-  let f=open_in glyph.glyphFont.file in
   if glyph.glyphWidth=infinity then
     glyph.glyphWidth<-(
       try let _=outlines_ glyph true in raise (Found 0.) with
@@ -807,8 +802,7 @@ let glyphWidth glyph=
              with
                  _->0.)+.x
     );
-    close_in f;
-    glyph.glyphWidth
+  glyph.glyphWidth
 
 
 let glyphContents gl=gl.glyphContents
@@ -837,34 +831,33 @@ let glyphNumber glyph=glyph.glyphNumber
 
 let fontName ?index:(idx=0) font=
   let buf = String.create (font.nameIndex.(idx+1)-font.nameIndex.(idx)) in
-  let f=open_in font.file in
-    seek_in f (font.nameIndex.(idx));
-    really_input f buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));
-    close_in f;
+    seek_in font.file (font.nameIndex.(idx));
+    really_input font.file buf 0 (font.nameIndex.(idx+1)-font.nameIndex.(idx));
     buf
 
 let fontBBox ?index:(idx=0) font=
-  let f=open_in font.file in
-  let x=try
-    match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
+  try
+    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 5 with
         (a::b::c::d::_)->(int_of_num d,int_of_num c,int_of_num b,int_of_num a)
       | _->(0,0,0,0)
   with
       Not_found->(0,0,0,0)
-  in
-    close_in f;x
 let italicAngle ?index:(idx=0) font=
-  let f=open_in font.file in
-  let x=try
-    match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
+  try
+    match findDict font.file font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
         h::_->float_of_num h
       | _->0.
   with
       Not_found->0.
-  in
-    close_in f;
-    x
 
+let italicAngle ?index:(idx=0) font=
+  let f=open_in font.file in
+    try
+      match findDict f font.dictIndex.(idx) font.dictIndex.(idx+1) 0x0c02 with
+          h::_->float_of_num h
+        | _->0.
+    with
+        Not_found->0.
 
 let font_features _ =[]
 let select_features _ _=[]
@@ -1015,7 +1008,7 @@ type encoding=
 
 let subset font gls=
   let buf=Buffer.create 100 in
-  let f=open_in font.file in
+  let f=font.file in
     seek_in f (font.offset+2);
     let headersize=input_byte f in
       seek_in f font.offset;
