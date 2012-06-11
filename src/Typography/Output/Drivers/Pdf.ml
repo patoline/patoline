@@ -87,7 +87,7 @@ let output ?(structure:structure={name="";displayname=[];
 
                     (* Font descriptor -- A completer*)
 
-                    let fontName=CFF.fontName x in
+                    let fontName="PATOLIN+"^(CFF.fontName x) in
                     let descr=beginObject () in
                     let (a,b,c,d)=CFF.fontBBox x in
                       fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
