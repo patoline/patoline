@@ -1,4 +1,10 @@
-ocaml-typography (1.0-1) unstable; urgency=low
+patoline (0~20120610) unstable; urgency=low
+
+  * New upstream release
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Sun, 10 Jun 2012 20:37:28 +0200
+
+patoline (0~20120423) unstable; urgency=low
 
   * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
 

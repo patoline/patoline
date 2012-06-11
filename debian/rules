@@ -10,15 +10,24 @@
 # Modified to make a template file for a multi-binary package with separated
 # build-arch and build-indep targets  by Bill Allombert 2001
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
-
 # This has to be exported to make some magic below work.
 # export DH_OPTIONS
 
+# Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
+
+# Ignore "make check" for the moment, as building DefaultGrammar.pdf may
+# fail.
+export DEB_BUILD_OPTIONS=nocheck
 
 include /usr/share/ocaml/ocamlvars.mk
 
 %:
-	dh $@ 
+	dh $@
+
+get-orig-source:
+	darcs pull
+
+override_dh_auto_configure:
+	ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml --fonts-dir /usr/share/patoline/fonts
+

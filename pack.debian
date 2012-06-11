@@ -9,7 +9,10 @@ version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
 #darcs dist
 #mv ocaml-typography_$version.tar.gz ../ocaml-typography_$version.orig.tar.gz
 
-ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml --fonts-dir /usr/share/patoline/fonts
+#Useless now, has been added to debian/rules,
+#as target override_dh_auto_configure
+#ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml --fonts-dir /usr/share/patoline/fonts
+
 darcs dist -d ../ocaml-typography-$version.orig
 
 #debuild -us -uc

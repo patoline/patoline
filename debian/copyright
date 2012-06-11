@@ -4,34 +4,25 @@ This work was packaged for Debian by:
 
 It was downloaded from:
 
-    <url://example.com>
+    <https://www.lama.univ-savoie.fr/~meunier/patoline/>
 
 Upstream Author(s):
 
-    <put author's name and email here>
-    <likewise for another author>
+    Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
 
 Copyright:
 
-    <Copyright (C) YYYY Firstname Lastname>
-    <likewise for another author>
+    Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
 
 License:
 
-    <Put the license of the package here indented by 4 spaces>
+    Patoline is released under the terms of the GNU General Public
+    License, version 2. The full terms of this license are avalaible
+    in the file "/usr/share/common-licenses/GPL-2".
 
 The Debian packaging is:
 
     Copyright (C) 2012 Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
 
-# Please chose a license for your packaging work. If the program you package
-# uses a mainstream license, using the same license is the safest choice.
-# Please avoid to pick license terms that are more restrictive than the
-# packaged work, as it may make Debian's contributions unacceptable upstream.
-# If you just want it to be GPL version 3, leave the following lines in.
-
-and is licensed under the GPL version 3,
-see "/usr/share/common-licenses/GPL-3".
-
-# Please also look if there are files or directories which have a
-# different copyright/license attached and list them here.
+and is licensed under the GPL version 2,
+see "/usr/share/common-licenses/GPL-2".
