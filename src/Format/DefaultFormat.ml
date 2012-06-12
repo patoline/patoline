@@ -16,7 +16,7 @@ let alegreya=
   [ Regular,
     (Lazy.lazy_from_fun
        (fun ()->
-          (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
+         (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
           (fun x->x),
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
@@ -66,6 +66,8 @@ let alegreya=
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
+
+
     type user=Document.user
 
     let id x=x
@@ -94,7 +96,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let defaultEnv:user environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
-      let hyphenate=try
+      let hyphenate=
+      	try
         let i=open_in_bin (findHyph "en.hdict") in
         let inp=input_value i in
           close_in i;
@@ -112,7 +115,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                    []->[||]
                  | h::s->(hyph s 0 h; pos));
       with
-          File_not_found (f,p)-> (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
+          File_not_found (f,p)->
+	    (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
                                   List.iter (Printf.fprintf stderr "%s\n") p;
                                   fun x->[||])
       in
@@ -185,6 +189,8 @@ module Format=functor (D:Document.DocumentStructure)->(
           names=StrMap.empty;
           user_positions=TS.UMap.empty
         }
+
+
 
     let title str ?label ?displayname name =
       let t0',path=
@@ -629,7 +635,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 	  D.structure := up (last_par stru,path);
           env_stack:=List.tl !env_stack
     end
-
 
 
 

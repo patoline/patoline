@@ -323,7 +323,7 @@ and print_macro_buf buf op mtype name args =
       | `Include ->
 	  incr moduleCounter;
 	  Printf.bprintf buf
-	    "module TEMP%d=%s.Document(D);;\n" !moduleCounter name
+	    "module TEMP%d=%s.Document(D);;\n open TEMP%d" !moduleCounter name !moduleCounter
   end
 
 and print_macro ch op mtype name args = begin

@@ -156,6 +156,7 @@ let open_in_bin_cached f=
     bin_cache:=StrMap.add f (open_in_bin f) !bin_cache
   );
   StrMap.find f !bin_cache
+  
 
 let open_in_cached f=
 #ifdef WIN32
