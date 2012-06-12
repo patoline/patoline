@@ -505,7 +505,7 @@ math:
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind
-  | math(<=fun)<m> - rightind<fi>
+  | math(<=ind)<m> - rightind<fi>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 

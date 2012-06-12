@@ -48,6 +48,9 @@ Symboles de Patoline
 \Add_relation{\gt >}{>}
 \Add_relation{… ..}{…}
 
+\Add_relation{\realize \force ⊩}(MathFonts.asana "force" 1620)
+\Add_relation{\vdash ⊢ |-}{⊢}
+
 == Addition like symbols ==
 
 \Add_addition_like{+}{+}
@@ -73,12 +76,13 @@ Symboles de Patoline
 \Add_product_like{\bullet ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
 \Add_product_like{\wedge ∧}{∧}
+\Add_product_like{\star ∗}{∗}
 
 == Connector symbols ==
 
-\Add_connector{\land && ∧}{∧}
+\Add_connector{\land &&}{∧}
 \Add_connector{\restriction ↾}(MathFonts.euler "restriction" 248)
-\Add_connector{\lor || ∨}{∨}
+\Add_connector{\lor ||}{∨}
 \Add_negation{\neg ¬}{¬}
 
 == Arrow symbols ==
@@ -181,7 +185,9 @@ Symboles de Patoline
 *)
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\top ⊤}{⊤}
-\Add_symbol{\bottom ⊥}{⊥}
+\Add_symbol{\bottom \bot ⊥}{⊥}
+\Add_symbol{\dtop}(MathFonts.asana "dtop" 1626)
+\Add_symbol{\dbottom \dbot}(MathFonts.asana "dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
 
 == Black bold letters ==
