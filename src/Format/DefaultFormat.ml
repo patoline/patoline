@@ -715,7 +715,7 @@ module MathsFormat=struct
                let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
                                                            let a,b=Bezier.bernstein_extr v in
                                                              min yy0 a, max yy1 b)) (0.,0.) arr in
-               let size=env.Mathematical.mathsSize/.(1000.*.phi) in
+               let size=envs.size*.env.Mathematical.mathsSize/.(1000.*.phi) in
                let space=env.Mathematical.default_rule_thickness in
                let arr'=
                  List.map (fun x->
@@ -765,7 +765,7 @@ module MathsFormat=struct
                let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
                                                            let a,b=Bezier.bernstein_extr v in
                                                              min yy0 a, max yy1 b)) (0.,0.) arr in
-               let size=env.Mathematical.mathsSize/.(1000.*.phi) in
+               let size=envs.size*.env.Mathematical.mathsSize/.(1000.*.phi) in
                let space=env.Mathematical.default_rule_thickness in
                let arr'=
                  List.map (fun x->
