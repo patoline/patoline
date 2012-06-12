@@ -1732,8 +1732,90 @@ module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user
      let edges_anchor_mid l = 
        List.map (fun (s,e,style,anchor,contents) -> edge_anchor s e style anchor 0.5 contents) l
 
+     let math_matrix style l = 
+       matrix style (List.map (fun line ->
+	 (List.map (fun (style, math_list) -> 
+	   (style, [B (fun env -> Maths.draw [env] math_list)])) 
+	    line))
+		       l)
 
 
+     module Arr = struct
+
+	   let fun_max ?max:(max=max) f n = 
+    let rec fun_max_rec res f n = 
+      if n = 1 then res else
+	(fun_max_rec (max res (f (n-1))) f (n - 1))
+    in
+    if n <= 1 then f 0
+    else fun_max_rec (f 0) f n
+
+  let node_width node = 
+    fst (node.anchor `East)
+    -. fst (node.anchor `West)
+
+  let base_east style node = 
+    let anchor = Style.anchor style in
+    fst (node.anchor `East)
+    -. fst (node.anchor anchor)
+
+  let west_base style node = 
+    let anchor = Style.anchor style in
+    fst (node.anchor anchor)
+    -. fst (node.anchor `West)
+
+  let rec between_borders style vertically horizontally matrix =
+    let width = Array.length matrix.(0) in
+    let height = Array.length matrix in
+    let widths = Array.make width 0. in
+    let heights = Array.make height 0. in
+    let _ = for j = 1 to width - 1 do 
+	widths.(j) <- 	widths.(j-1)
+	+. (horizontally j)
+	+. (fun_max (fun i -> base_east (style i (j-1)) (matrix.(i).(j-1))) height)
+	+. (fun_max (fun i -> west_base (style i j) (matrix.(i).(j))) height)
+      done ;
+    in
+    let _ = 
+      for i = 1 to height - 1 do 
+	heights.(i) <- begin
+	  (* The height of the previous row *)
+	  heights.(i-1)
+	  (* plus the given vertical space *)
+	  -. (vertically i)
+	  (* plus the least y0 of the previous row *)
+	  +. (fun_max ~max:(fun y y' -> min y y') (fun j -> snd (matrix.(i-1).(j).anchor `South)) width)
+	  (*  minus the greatest y1 of the present row (because we go downwards) *)
+	  -. (fun_max (fun j -> snd (matrix.(i).(j).anchor `North)) width)
+	end ;
+      done ;
+    in fun i j -> (widths.(j), heights.(i))
+
+  let array anchors ?vertical_padding:(vpad=fun _ -> 1.) ?horizontal_padding:(hpad=fun _ -> 1.)
+(* Mettre la valeur par defaut en ex *)
+      lines =
+    let style i j = [`Anchor (List.nth anchors j)] in
+    let lines_contents = List.rev (snd (List.fold_left
+					  (fun (i, reslines) line ->
+					    succ i, 
+					    (let _,_,resline =
+					       (List.fold_left (
+						 fun (i,j,resline) math -> 
+						   let cell = (style i j, math) in
+						   (i, succ j, cell :: resline))
+						  (i,0,[])
+						  line)
+					     in List.rev resline) :: reslines)
+					  (0, [])
+					  lines))
+    in    
+    math_matrix [`Placement (between_borders style vpad hpad);`At (0.,0.);`Anchor `SouthWest] 
+      lines_contents 
+
+
+end
+
+     let array = Arr.array
 
   end
 
