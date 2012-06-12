@@ -5,7 +5,7 @@ FORMAT=$(shell ls Format/*.mllib)
 
 all:native byte prof
 
-native:Main.native DefaultGrammar.tgx proof.native DefaultGrammar.cmx
+native:Main.native DefaultGrammar.tgx proof.native
 byte:Typography/Typography.cma $(FORMAT:.mllib=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
@@ -42,10 +42,6 @@ DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 	rm -f patolineDefault.tgx
 	./Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
 
-DefaultGrammar.cmx:DefaultGrammar.ml  Format/DefaultFormat.cmx
-	$(OCAMLBUILD) -I Format -I Typography DefaultGrammar.cmx
-DefaultGrammar.cmo:DefaultGrammar.ml  Format/DefaultFormat.cmo
-	$(OCAMLBUILD) -I Format -I Typography DefaultGrammar.cmo
 
 %.cmx:%.ml
 	$(OCAMLBUILD) $@
@@ -63,7 +59,6 @@ DefaultGrammar.cmo:DefaultGrammar.ml  Format/DefaultFormat.cmo
 DefaultGrammar.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.txp
 	cp DefaultGrammar.txp _build
 	cd _build; Patoline/Main.native --ml --no-grammar --extra-fonts-dir ../../Fonts  DefaultGrammar.txp
-
 	cd _build; $(CAMLOPT) -o DefaultGrammar.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl DefaultGrammar.tml
 	cd _build; ./DefaultGrammar.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
 	ln -sf _build/DefaultGrammar.pdf .

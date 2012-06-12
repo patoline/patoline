@@ -973,3 +973,15 @@ module Output=functor(M:Driver)->struct
                 ) !crosslinks;
       M.output ~structure:(make_struct positions structure) pages file
 end
+
+module MathFonts = struct
+  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Asana-Math/Asana-Math.otf"))
+  let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
+  
+  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Euler/euler.otf"))
+  let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
+
+  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "AMS/ams.otf"))
+  let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
+end
+

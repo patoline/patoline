@@ -2,20 +2,7 @@
 ======================================================================
 Symboles de Patoline
 ======================================================================
-
-\Caml(
-module DefaultGrammar = struct
-  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Asana-Math/Asana-Math.otf"))
-  let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
-  
-  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Euler/euler.otf"))
-  let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
-
-  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "AMS/ams.otf"))
-  let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
-end
-include DefaultGrammar
-)
+\Caml(open DefaultFormat)
 
 \Verbose_Changes
 
@@ -90,7 +77,7 @@ include DefaultGrammar
 == Connector symbols ==
 
 \Add_connector{\land && ∧}{∧}
-\Add_connector{\restriction ↾}(DefaultGrammar.euler "restriction" 248)
+\Add_connector{\restriction ↾}(MathFonts.euler "restriction" 248)
 \Add_connector{\lor || ∨}{∨}
 \Add_negation{\neg ¬}{¬}
 
@@ -199,32 +186,32 @@ include DefaultGrammar
 
 == Black bold letters ==
 
-\Add_symbol{\bbA}(DefaultGrammar.ams "bbN" 66)
-\Add_symbol{\bbB}(DefaultGrammar.ams "bbB" 67)
-\Add_symbol{\bbC}(DefaultGrammar.ams "bbC" 68)
-\Add_symbol{\bbD}(DefaultGrammar.ams "bbD" 69)
-\Add_symbol{\bbE}(DefaultGrammar.ams "bbE" 70)
-\Add_symbol{\bbF}(DefaultGrammar.ams "bbF" 71)
-\Add_symbol{\bbG}(DefaultGrammar.ams "bbG" 72)
-\Add_symbol{\bbH ℍ}(DefaultGrammar.ams "bbH" 73)
-\Add_symbol{\bbI}(DefaultGrammar.ams "bbI" 74)
-\Add_symbol{\bbJ}(DefaultGrammar.ams "bbJ" 75)
-\Add_symbol{\bbK}(DefaultGrammar.ams "bbK" 76)
-\Add_symbol{\bbL}(DefaultGrammar.ams "bbJ" 77)
-\Add_symbol{\bbM}(DefaultGrammar.ams "bbM" 78)
-\Add_symbol{\bbN ℕ}(DefaultGrammar.ams "bbN" 79)
-\Add_symbol{\bbO}(DefaultGrammar.ams "bbO" 80)
-\Add_symbol{\bbP ℙ}(DefaultGrammar.ams "bbP" 81)
-\Add_symbol{\bbQ ℚ}(DefaultGrammar.ams "bbQ" 82)
-\Add_symbol{\bbR ℝ}(DefaultGrammar.ams "bbR" 83)
-\Add_symbol{\bbS}(DefaultGrammar.ams "bbS" 84)
-\Add_symbol{\bbT}(DefaultGrammar.ams "bbT" 85)
-\Add_symbol{\bbU}(DefaultGrammar.ams "bbU" 86)
-\Add_symbol{\bbV}(DefaultGrammar.ams "bbV" 86)
-\Add_symbol{\bbW}(DefaultGrammar.ams "bbW" 88)
-\Add_symbol{\bbX}(DefaultGrammar.ams "bbX" 89)
-\Add_symbol{\bbY}(DefaultGrammar.ams "bbY" 90)
-\Add_symbol{\bbZ ℤ}(DefaultGrammar.ams "bbZ" 91)
+\Add_symbol{\bbA}(MathFonts.ams "bbA" 66)
+\Add_symbol{\bbB}(MathFonts.ams "bbB" 67)
+\Add_symbol{\bbC ℂ}(MathFonts.ams "bbC" 68)
+\Add_symbol{\bbD}(MathFonts.ams "bbD" 69)
+\Add_symbol{\bbE}(MathFonts.ams "bbE" 70)
+\Add_symbol{\bbF}(MathFonts.ams "bbF" 71)
+\Add_symbol{\bbG}(MathFonts.ams "bbG" 72)
+\Add_symbol{\bbH ℍ}(MathFonts.ams "bbH" 73)
+\Add_symbol{\bbI}(MathFonts.ams "bbI" 74)
+\Add_symbol{\bbJ}(MathFonts.ams "bbJ" 75)
+\Add_symbol{\bbK}(MathFonts.ams "bbK" 76)
+\Add_symbol{\bbL}(MathFonts.ams "bbL" 77)
+\Add_symbol{\bbM}(MathFonts.ams "bbM" 78)
+\Add_symbol{\bbN ℕ}(MathFonts.ams "bbN" 79)
+\Add_symbol{\bbO}(MathFonts.ams "bbO" 80)
+\Add_symbol{\bbP ℙ}(MathFonts.ams "bbP" 81)
+\Add_symbol{\bbQ ℚ}(MathFonts.ams "bbQ" 82)
+\Add_symbol{\bbR ℝ}(MathFonts.ams "bbR" 83)
+\Add_symbol{\bbS}(MathFonts.ams "bbS" 84)
+\Add_symbol{\bbT}(MathFonts.ams "bbT" 85)
+\Add_symbol{\bbU}(MathFonts.ams "bbU" 86)
+\Add_symbol{\bbV}(MathFonts.ams "bbV" 86)
+\Add_symbol{\bbW}(MathFonts.ams "bbW" 88)
+\Add_symbol{\bbX}(MathFonts.ams "bbX" 89)
+\Add_symbol{\bbY}(MathFonts.ams "bbY" 90)
+\Add_symbol{\bbZ ℤ}(MathFonts.ams "bbZ" 91)
 
 == Other symbols ==
 
