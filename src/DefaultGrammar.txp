@@ -113,11 +113,11 @@ Symboles de Patoline
 \Add_prefix{\exists ∃}{∃}
 \Add_prefix{\vdash ⊢ |-}{⊢}
 
-== Postfix symbols ==
+== Postfix and accent symbols ==
 
 \Add_postfix{!}{!}
 \Add_postfix{*}{*}
-\Add_postfix{'}{'}
+\Add_accent{'}{'}
 
 == Lowercase Greek letters ==
 

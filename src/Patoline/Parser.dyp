@@ -114,7 +114,7 @@ let concat words =
 let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
 
 let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbol) =
-  let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"] in
+  let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
   let adef = if noinfix then 
     local_data.other_symbols else local_data.infixes
   in  
@@ -204,7 +204,7 @@ let layout_space dyp a b =
 %start allparagraph
 %start allmath 
 
-%relation macro < args < atom < fun < operator < ind < prod < sum < rel < neg < conj < impl < punc
+%relation macro < args < atom < accent < ind < fun < prod < sum < operator < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
 
@@ -509,21 +509,20 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | leftind<i> - operator<m> [- rightind]?<fi> math(<=atom)<b>
+  | leftind<i> - operator<m> [- rightind]?<fi> math(<=operator)<b>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
-        Indices(fi i, Operator(m,b)) } ind
-  | operator<m> - rightind<fi> math(<=atom)<b>
+        Indices(fi i, Operator(m,b)) } operator
+  | operator<m> - rightind<fi> math(<=operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
-          Indices(fi d, Operator (m,b)) } ind
-  | operator<m> math(<=atom)<b>
+          Indices(fi d, Operator (m,b)) } operator
+  | operator<m> math(<=operator)<b>
       { Operator (m,b) } operator
 
-  | limits_operator<m> - rightind<fi> math(<=atom)<b>
+  | limits_operator<m> - rightind<fi> math(<=operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
-          Indices(fi d, Limits_operator (m,b)) } ind
-  | limits_operator<m> math(<=atom)<b>
+          Indices(fi d, Limits_operator (m,b)) } operator
+  | limits_operator<m> math(<=operator)<b>
       { Limits_operator (m,b) } operator
-
 
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
@@ -538,6 +537,8 @@ math:
 
   | math(<sum)<b> postfix<op>
       { Postfix(3,b,true,op) } sum
+  | math(<=accent)<b> accent<op>
+      { Postfix(3,b,true,op) } accent
   | math(<=prod)<a> product_like<op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
   | promath<a> math(<prod)<b>
@@ -622,6 +623,9 @@ atomelt:
   | "\\Add_postfix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }
+  | "\\Add_accent" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" symbol_def<value>
+    @{ add_symbol_rule dyp.local_data "accent" (fun x -> Obj_accent x) names value }
   | "\\Add_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
