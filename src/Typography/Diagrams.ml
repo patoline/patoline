@@ -996,6 +996,7 @@ module Diagram = struct
   | `DrawOf of path_parameters
   | `LineWidth of float 	
   | `Rotate 
+  | `Color of OutputCommon.color
   (* Matrix specification *)
   | `Centers of float * float
   | `Placement of (gentity array) array -> int -> int -> Point.t
@@ -1048,9 +1049,11 @@ module Diagram = struct
   (* Find path parameters specification in a list of style instructions *)
     let parameters_rec = 
       (fun instr res -> match instr with
-      | `Draw -> { res with strokingColor = Some black } 
-      | `Fill -> { res with close = true ; fillColor = Some black } 
-      | `LineWidth w -> { res with lineWidth = w } 
+         | `Draw when res.strokingColor=None-> { res with strokingColor = Some black }
+         | `Draw -> res
+         | `Fill -> { res with close = true ; fillColor = Some black }
+      | `LineWidth w -> { res with lineWidth = w }
+      | `Color c -> { res with strokingColor=Some c }
       | `DrawOf params -> params 
       | `Dashed pattern -> { res with dashPattern = pattern }
       | _ -> res)

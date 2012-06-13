@@ -6,7 +6,21 @@ type color=
     RGB of rgb
 let rgb a b c=RGB { red=a;green=b;blue=c }
 
+let mix x a b=match a,b with
+    RGB ra, RGB rb->RGB { red=(x*.ra.red+.(100.-.x)*.rb.red)/.100.;
+                          green=(x*.ra.green+.(100.-.x)*.rb.green)/.100.;
+                          blue=(x*.ra.blue+.(100.-.x)*.rb.blue)/.100.
+                        }
+
 let black=RGB { red=0.;green=0.;blue=0. }
+let white=RGB{red=1.;green=1.;blue=1.}
+let black=RGB{red=0.;green=0.;blue=0.}
+let blue=RGB{red=0.;green=0.;blue=1.}
+let green=RGB{red=0.;green=1.;blue=0.}
+let red=RGB{red=1.;green=0.;blue=0.}
+let yellow=RGB{red=1.;green=1.;blue=0.}
+let gray=mix 50. white black
+
 
 type path_parameters= {
   close:bool;
@@ -19,7 +33,7 @@ type path_parameters= {
 }
 
 let default= { close=false;strokingColor=Some black;fillColor=None;
-               lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=1.;
+               lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=0.1;
                dashPattern=[] }
 
 

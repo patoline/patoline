@@ -4,7 +4,16 @@ type lineJoin = Miter_join | Round_join | Bevel_join
 type rgb = { red : float; green : float; blue : float; }
 type color = RGB of rgb
 val rgb:float->float->float->color
+val mix:float->color->color->color
 val black : color
+val white : color
+val black : color
+val blue : color
+val green : color
+val red : color
+val yellow : color
+val gray : color
+
 type path_parameters = {
   close : bool;
   strokingColor : color option;
