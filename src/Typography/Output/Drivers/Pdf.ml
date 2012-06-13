@@ -226,22 +226,13 @@ let output ?(structure:structure={name="";displayname=[];
         if l<> !dashPattern then (
           close_text ();
           dashPattern:=l;
-          let l0=List.map (fun x->round (pt_of_mm x)) l in
-            match l0 with
-                []->(Buf.add_string pageBuf "[] 0 d ")
-              | h::s->(
-                  let rec pgcd a_ b_=if a_=b_ then a_ else
-                    let (a,b)=if a_<b_ then (b_,a_) else (a_,b_) in
-                    let div=a/b in
-                    let rem=a-div*b in
-                      if rem=0 then b else
-                        pgcd b rem
-                  in
-                  let phase=List.fold_left pgcd h s in
-                    Buf.add_string pageBuf " [";
-                    List.iter (fun x->Buf.add_string pageBuf (sprintf "%d " (x/phase))) l0;
-                    Buf.add_string pageBuf (sprintf "] %d d " phase)
-                )
+          match l with
+              []->(Buf.add_string pageBuf "[] 0 d ")
+            | _::_->(
+                Buf.add_string pageBuf " [";
+                List.iter (fun x->Buf.add_string pageBuf (sprintf "%f " x)) l;
+                Buf.add_string pageBuf (sprintf "] 0. d ");
+              )
         )
       in
       let rec output_contents=function
