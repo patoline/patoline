@@ -13,6 +13,7 @@ open PatolineLanguage
 (*   (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in  *)
 (*    Maths.draw_maths Maths.default style ((arg ))))] *)
 
+
 type amble=Noamble | Separate | Main
 
 let _=macros:=StrMap.add "diagram" (fun x-> begin
@@ -79,32 +80,22 @@ let _ =
 " format outfile
 
 module Source = struct
-  type t = { seek_in : int -> unit ; input : string -> int -> int -> unit}
+  type t = int -> string -> int -> int -> unit (* ; *)
+	   (* pos in the source, dest, pos in dest, size *)
 
+  let of_string = String.blit
 
-  let of_string s =
-    let state = ref 0 in
-    let input (destination : string) pos size =
-      let n = !state in
-      let _ = state := n + size in 
-      String.blit s n destination pos size
-    in
-    { seek_in = (fun n -> state := n) ;
-      input = input  }
+  let of_in_channel ch source_pos dest pos size =
+	let n = pos_in ch in
+	let _ = seek_in ch source_pos in
+	let _ = really_input ch dest pos size in
+	let _ = seek_in ch n in
+	()
 
-  let of_in_channel ch = 
-    { seek_in = seek_in ch ; 
-      input = fun dest pos size -> really_input ch dest pos size }
+  let of_buffer = Buffer.blit
 
-  let of_buffer buf =
-    let state = ref 0 in
-    let input buf' pos size =
-      let n = !state in
-      let _ = state := n + size in 
-      Buffer.blit buf n buf' pos size
-    in
-    { seek_in = (fun n -> state := n) ;
-      input = input }
+  let of_function f source_pos dest pos size = 
+    f source_pos dest pos size 
 
 end
 
@@ -116,7 +107,8 @@ let split_ind indices =
   { no_ind with up_left = indices.up_left; down_left = indices.down_left; },
   { no_ind with up_right = indices.up_right; down_right = indices.down_right; }
 
-let rec print_math_buf op buf m = 
+let rec print_math_buf parser_pp op buf m = 
+  (* Printf.fprintf stderr "Entering print_math_buf.\n" ; flush stderr ; *)
   let rec print_math_expr indices buf m =
     match m with
 	Var name | Num name ->
@@ -157,7 +149,7 @@ let rec print_math_buf op buf m =
 	)
       | MathCaml (ld,gr,s,e,txps) -> begin
 	  let buf' = Buffer.create 80 in
-            print_caml_buf ld gr op buf' s e txps;
+            print_caml_buf parser_pp ld gr op buf' s e txps;
 	    let s = Buffer.contents buf' in
 	      Printf.bprintf buf " ( %s ) " s
 	end
@@ -217,37 +209,39 @@ let rec print_math_buf op buf m =
       | CamlSym s->Printf.bprintf buf "(%s)" s
   in print_math_expr no_ind buf m
 
-and print_math op ch m = begin
+and print_math parser_pp op ch m = begin
   let buf = Buffer.create 80 in
-  print_math_buf op buf m ;
+  print_math_buf parser_pp op buf m ;
   output_string ch (Buffer.contents buf) ;
 end
 
-and print_math_par_buf op buf display m =
+and print_math_par_buf parser_pp op buf display m =
+  (* Printf.fprintf stderr "Entering print_math_par_buf.\n" ; flush stderr ; *)
   let style = if display then "Mathematical.Display" else "env0.mathStyle" in
   Printf.bprintf buf
     "[B (fun env0 -> Maths.draw [ { env0 with mathStyle = %s } ] ("
     style ;
-  print_math_buf op buf m;
+  print_math_buf parser_pp op buf m;
   Printf.bprintf buf "))] "
 
-and print_math_par op ch display m = begin 
+and print_math_par parser_pp op ch display m = begin 
   let buf = Buffer.create 80 in
-  print_math_par_buf op buf display m ;
+  print_math_par_buf parser_pp op buf display m ;
   output_string ch (Buffer.contents buf) 
 end
 
-and print_macro_buf buf op mtype name args =
+and print_macro_buf parser_pp buf op mtype name args =
+  (* Printf.fprintf stderr "Entering print_macro_buf.\n" ; flush stderr ; *)
   begin
     match mtype with
       | `Single -> 
 	begin
 	  Printf.bprintf buf " (%s " name;
 	  List.iter (function
-            | Paragraph(_,p) -> Printf.bprintf buf " %a" (print_contents_buf op) p
+            | Paragraph(_,p) -> Printf.bprintf buf " %a" (print_contents_buf parser_pp op) p
 	    | Caml(ld,gr,s,e,txps) ->
               Printf.bprintf buf "(";
-              print_caml_buf ld gr op buf s e txps;
+              print_caml_buf parser_pp ld gr op buf s e txps;
               Printf.bprintf buf ")";
 	    | _ -> assert false) args;
 	  if args = [] then Printf.bprintf buf " ()";
@@ -258,7 +252,7 @@ and print_macro_buf buf op mtype name args =
 	  match args with 
 	    | Caml (ld,gr,s,e,txps) :: _ -> begin
 	      let buf' = Buffer.create 80 in
-              print_caml_buf ld gr op buf' s e txps;
+              print_caml_buf parser_pp ld gr op buf' s e txps;
 	      let s = Buffer.contents buf' in 
               let f=StrMap.find name !macros in
 	      let s' = f s in
@@ -282,11 +276,11 @@ and print_macro_buf buf op mtype name args =
 	    let num = ref 1 in
 	    Printf.bprintf buf "module Args = struct\n";
 	    List.iter (function
-            Paragraph(_,p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf op) p;
+            Paragraph(_,p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf parser_pp op) p;
 	      incr num
 	      | Caml(ld,gr,s,e,txps) -> begin
 		Printf.bprintf buf "let arg%d = begin " !num;
-		print_caml_buf ld gr op buf s e txps;
+		print_caml_buf parser_pp ld gr op buf s e txps;
 		Printf.bprintf buf " end ";
 		incr num
 	      end
@@ -326,17 +320,20 @@ and print_macro_buf buf op mtype name args =
 	    "module TEMP%d=%s.Document(D);;\n open TEMP%d" !moduleCounter name !moduleCounter
   end
 
-and print_macro ch op mtype name args = begin
+and print_macro parser_pp ch op mtype name args = begin
   let buf = Buffer.create 80 in
-  print_macro_buf buf op mtype name args ;
+  print_macro_buf parser_pp buf op mtype name args ;
   output_string ch (Buffer.contents buf) 
 end
 
-and print_caml_buf ld gr op buf s e txps = match txps with
+and print_caml_buf parser_pp ld gr op buf s e txps = 
+  (* Printf.fprintf stderr "Entering print_caml_buf.\n" ; flush stderr ; *)
+  match txps with
   | [] -> 
     let size = e - s in
+    (* let _ = Buffer.add_buffer buf (op.Source.sub_buffer 0 size) in *)
     let buf'=String.create size in
-    let _= op.Source.seek_in  s; op.Source.input buf' 0 size in
+    let _= op s buf' 0 size in
     Printf.bprintf buf "%s" buf'
   | (style, s',e') :: txps' -> begin
     (* On imprime du caml avant le premier "<<" *)
@@ -347,43 +344,69 @@ and print_caml_buf ld gr op buf s e txps = match txps with
     let size = s' - s - offset in
     (* Printf.bprintf stderr "s = %d, s' = %d, e' = %d, e = %d\n" s s' e' e; *)
     let buf'=String.create size in
-    let _= op.Source.seek_in s; op.Source.input buf' 0 size in
+    let _= op s buf' 0 size in
     Printf.bprintf buf "%s" buf';
     (* On imprime la premiere section texprime *)
     let size_txp = e' - s' in
-    let buf'=String.create size_txp in
-    let _= op.Source.seek_in s'; op.Source.input buf' 0 size_txp in
+    let input =
+      let count = ref 0 in
+      let s'' = ref s' in
+      fun s n ->
+    	let n' = min n (size_txp - !count) in
+    	(* Printf.fprintf stderr "Arguments to blit: \"%s\" %d %d.\n" s 0 n' ; *)
+    	(* flush stderr ; *)
+    	let _ = if n' > 0 then op !s'' s !count n' else () in
+    	let _ = (count := n' + !count) in
+    	let _ = (s'' := n' + !s'') in
+    	n'
+    in
+    let lexbuf_txp = Dyp.from_function (parser_pp) input in
+    (* let buf'=String.create size_txp in *)
+    (* let _ = op s' buf' 0 size_txp in *)
+    (* let lexbuf_txp = Dyp.from_string (parser_pp) buf' in *)
     (* Printf.fprintf stderr "Texprime parse dans du Caml: %s\n" buf'; (\* Debug *\) *)
-    let lexbuf_txp = Dyp.from_string (Parser.pp ()) buf' in
     begin match style with
       | TxpMath ->  begin
-	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	(* Printf.fprintf stderr "Calling Dypgen.\n" ; flush stderr ; *)
+	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
+	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with
-	  | (Obj_allmath docs, _) :: _ -> print_math_buf (Source.of_string buf') buf docs
+	  | (Obj_allmath docs, _) :: _ -> 
+	    let sub_input source_pos dest pos size =
+	      op (s' + source_pos) dest pos size
+	    in
+	    print_math_buf parser_pp (Source.of_function sub_input) buf docs
 	  | _ -> assert false
 
       end
       | TxpText -> begin
-	let parser_pilot = { (Parser.pp ()) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	(* Printf.fprintf stderr "Calling Dypgen.\n" ; flush stderr ; *)
+	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allparagraph" lexbuf_txp in
+	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with
-	  | (Obj_allparagraph docs, _) :: _ -> print_contents_buf (Source.of_string buf') buf docs
+	  | (Obj_allparagraph docs, _) :: _ -> 
+	    let sub_input source_pos dest pos size =
+	      op (s' + source_pos) dest pos size
+	    in
+	    print_contents_buf parser_pp (Source.of_function sub_input) buf docs
 	  | _ -> assert false
       end
     end ;
-    print_caml_buf ld gr op buf (e' + offset) e txps'
+    print_caml_buf parser_pp ld gr op buf (e' + offset) e txps'
   end
 
-and print_caml ld gr op (ch : out_channel) s e txps = begin
+and print_caml parser_pp ld gr op (ch : out_channel) s e txps = begin
   let buf = Buffer.create 80 in
   Printf.bprintf buf " ";
-  print_caml_buf ld gr op buf s e txps;
+  print_caml_buf parser_pp ld gr op buf s e txps;
   Printf.bprintf buf " ";
   Buffer.output_buffer ch buf
 end
 
-and print_contents_buf op buf l = 
+and print_contents_buf parser_pp op buf l = 
+  (* Printf.fprintf stderr "Entering print_contents_buf.\n" ; flush stderr ; *)
   Printf.bprintf buf "(";
   let rec fn l = 
     begin match l with
@@ -396,12 +419,12 @@ and print_contents_buf op buf l =
       fn l
     | MC(mtype, name, args) :: l -> 
       Printf.bprintf buf " (";
-      print_macro_buf buf op mtype name args;
+      print_macro_buf parser_pp buf op mtype name args;
       Printf.bprintf buf ")@ ";
       fn l
     | FC(b,m) :: l ->
       Printf.bprintf buf "(";
-      print_math_par_buf op buf b m;
+      print_math_par_buf parser_pp op buf b m;
       Printf.bprintf buf ")@";
       fn l
     end;
@@ -421,13 +444,14 @@ and print_contents_buf op buf l =
   fn l;
   Printf.bprintf buf ")"
 
-and print_contents op (ch : out_channel) l = begin
+and print_contents parser_pp op (ch : out_channel) l = begin
   let buf = Buffer.create 80 in
-  print_contents_buf op buf l;
+  print_contents_buf parser_pp op buf l;
   output_string ch (Buffer.contents buf) 
 end
 
-and output_list from where no_indent lvl docs = 
+and output_list parser_pp from where no_indent lvl docs = 
+  (* Printf.fprintf stderr "Entering output_list.\n" ; flush stderr ; *)
   match docs with
       [] ->()
  	(* for i = 1 to lvl - 1 do *)
@@ -447,25 +471,25 @@ and output_list from where no_indent lvl docs =
 	      "parameters"
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
-	    env param (print_contents from) p
-	| Caml(ld,gr,s,e,txps) -> print_caml ld gr from where s e txps
+	    env param (print_contents parser_pp from) p
+	| Caml(ld,gr,s,e,txps) -> print_caml parser_pp ld gr from where s e txps
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered then "" else " ~numbered:false" in
 	  (match docs with
 	      Relative docs ->
-		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
-		output_list from where true (!lvl + 1) docs;
+		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
+		output_list parser_pp from where true (!lvl + 1) docs;
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
 	     | Absolute l ->
 	      if l > !lvl + 1 then failwith "Illegal level skip";
 	      for i = 0 to !lvl - l do
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"
 	      done;
-	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents from) title;
+	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
 	      lvl := l
 	  )
 	| Macro(mtype, name, args) ->
-	  print_macro where from mtype name args;
+	  print_macro parser_pp where from mtype name args;
 	  Printf.fprintf where "\n\n" 
 	| Preproc t -> begin
 	  Printf.fprintf where "%s\n\n" t ;
@@ -473,7 +497,7 @@ and output_list from where no_indent lvl docs =
 	end
 	| Math m ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
-	    (fun ch -> print_math_par from ch true) m;
+	    (fun ch -> print_math_par parser_pp from ch true) m;
 	  next_no_indent := true
         | Ignore -> 
 	  next_no_indent := no_indent
@@ -493,7 +517,7 @@ and output_list from where no_indent lvl docs =
 	  Printf.fprintf where "end\n\n";
 	  next_no_indent := true
       );
-      output_list from where !next_no_indent !lvl docs
+      output_list parser_pp from where !next_no_indent !lvl docs
 
 let gen_ml format amble filename from wherename where pdfname =
     try
@@ -501,15 +525,14 @@ let gen_ml format amble filename from wherename where pdfname =
       (*     []-> Printf.fprintf stderr "no input files\n" *)
       (*   | h::_-> *)
       (* let op=open_in h in *)
-      let lexbuf=Dyp.from_channel (Parser.pp ()) from in
+      let parser_pp = Parser.pp () in
+      let lexbuf=Dyp.from_channel parser_pp from in
             try
 	      let docs = Parser.main lexbuf in
 	      let nbdocs = List.length docs in
-	      if nbdocs > 1 then begin
 		Printf.fprintf stderr "%s\n" 
 		  (PatolineLanguage.message (PatolineLanguage.End_of_parsing nbdocs));
 		flush stderr;
-	      end;
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -529,7 +552,7 @@ let gen_ml format amble filename from wherename where pdfname =
 			    Printf.fprintf where "let _ = institute D.structure %S;;\n\n" inst
 		end;
 		let source = Source.of_in_channel from in
-		output_list source where true 0 docs;
+		output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
                     Main->output_string where (postambule format pdfname)
