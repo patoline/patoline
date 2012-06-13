@@ -495,6 +495,12 @@ math:
       { Symbol op } atom
   | "{" product_like<op> "}"
       { Symbol op } atom
+  | "{" prefix<op> "}"
+      { Symbol op } atom
+  | "{" postfix<op> "}"
+      { Symbol op } atom
+  | "{" accent<op> "}"
+      { Symbol op } atom
   | "{" arrow<op> "}"
       { Symbol op } atom
   | "{" connector<op> "}"
