@@ -290,7 +290,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                                              | _->p) !r_params nextNode;
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let height'=
-                        if page=node.page then (
+                        if page=node.page && node<>uselessLine then (
                           let rec v_distance node0 parameters=
                             if node0.isFigure then (
                               let fig=figures.(node0.lastFigure) in
@@ -327,11 +327,13 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                      let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
                                        if prec.page=page then v_distance prec params else
                                          (node0.height
-                                          +. max !r_params.min_height_before parameters.min_height_after)
+                                          +. max (snd (line_height paragraphs nextNode))
+                                          (max !r_params.min_height_before parameters.min_height_after))
                                    with
                                        Not_found->
                                          (node0.height
-                                          +. max !r_params.min_height_before parameters.min_height_after)
+                                          +. max (snd (line_height paragraphs nextNode))
+                                          (max !r_params.min_height_before parameters.min_height_after))
                                   )
                                 else d
                             )
@@ -341,8 +343,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                           (snd (line_height paragraphs nextNode))
                         )
                       in
-                        minimal_tried_height:=min !minimal_tried_height height';
-                        if (page>node.page || height>=height')
+                      minimal_tried_height:=min !minimal_tried_height height';
+                        if (height>=height')
                           && (page >= node.page +
                                 max !r_params.min_page_before lastParameters.min_page_after)
                         then (
