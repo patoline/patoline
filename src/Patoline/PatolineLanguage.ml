@@ -20,7 +20,7 @@ and syntax_error=
 let lang=`FR
 let message=function
     End_of_parsing trees->
-      sprintf "Fin de l'analyse lexicale (%d arbre%s)" trees (if trees>1 then "s" else "")
+      sprintf "End of parsing (%d tree%s)" trees (if trees>1 then "s" else "")
   | Syntax_error (file, pos,msg)->
       sprintf "Erreur de syntaxe, file %s, line %d, character %d :\n%s"
         file (* pos.pos_fname *) pos.pos_lnum (pos.pos_cnum - pos.pos_bol)
