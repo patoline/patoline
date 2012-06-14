@@ -83,41 +83,6 @@ module Vector = struct
 
 end
 
-module Affine = struct
-
-  type droite = float * float * float
-
-  let of_vect_point (x,y) p0 = 
-    let (a,b) = Vector.rotate 90. (x,y) in
-    let c = Vector.(<>) (a,b) p0 in
-    (a,b, -. c)
-
-  let of_points p q = 
-    let v = Vector.of_points p q in
-    of_vect_point v p
-
-  let intersect (a,b,c) (a',b',c') = 
-    let det = a *. b' -. a' *. b in
-    if det = 0.0 then
-      let _ = Printf.fprintf stderr "Non existent intersection. Picking (0,0) instead.\n" in
-      (0.,0.)
-    else
-      let x = (c' *. b -. c *. b') /. det in
-      let y = (c *. a' -. c' *. a) /. det in
-      (x,y)
-
-  let mediatrice p q = 
-    let (a,b) as v = Vector.of_points p q in
-    let m = Point.middle p q in
-    let c = Vector.(<>) v m in
-    (a,b, -. c)
-
-  let normal e (a,b,c) =
-    let v' = Vector.turn_left (a,b) in
-    of_vect_point v' e
-
-end
-
 module Curve = struct
   type t =  Bezier.curve list
   let bezier_of_point_list l = 
@@ -377,539 +342,6 @@ module Curve = struct
     else 
       scan z 0 0. 0. beziers
 	
-end
-
-module Rectangle = struct
-  type t = { bottom_left : Point.t ; top_right : Point.t }
-  let curve : t -> Curve.t = fun r ->
-    let x1,y1 = r.bottom_left in
-    let x3,y3 = r.top_right in
-    let x2 = x3 in
-    let y2 = y1 in
-    let x4 = x1 in
-    let y4 = y3 in
-    Curve.of_point_lists [
-      [(x1,y1);(x2,y2)];
-      [(x2,y2);(x3,y3)];
-      [(x3,y3);(x4,y4)];
-      [(x4,y4);(x1,y1)]
-    ]
-  (* let draw ?parameters:(parameters=OutputCommon.default) r:t =  *)
-  (*   Curve.draw ~parameters:parameters (curve r) *)
-  let make x1 y1 x3 y3 = { bottom_left = (x1,y1) ;
-			   top_right = (x3, y3) }
-  let points: t -> Point.t list = fun r ->
-    let x1,y1 = r.bottom_left in
-    let x3,y3 = r.top_right in
-    let x2 = x3 in
-    let y2 = y1 in
-    let x4 = x1 in
-    let y4 = y3 in
-    [(x1,y1);(x2,y2);(x3,y3);(x4,y4)]
-end
-
-module ArrowTip = struct
-  type t = { parameters : OutputCommon.path_parameters ; 
-	     curve : Curve.t }
-
-  let none = { parameters = OutputCommon.default ; curve = Curve.of_point_lists [] }
-
-  let simple ?size:(size=3.0)
-      ?angle:(angle=20.)
-      ?bend:(bend=0.5)
-      ?parameters:(parameters=OutputCommon.default) 
-      curve =
-	let a, b = list_last curve in
-	let da = Bezier.eval (Bezier.derivee a) 1. in
-	let db = Bezier.eval (Bezier.derivee b) 1. in
-	let x = Bezier.eval a 1. in
-	let y = Bezier.eval b 1. in
-	let p = (x,y) in
-	let vec = Vector.normalise ~norm:size (da,db) in
-	let left_vec = Vector.rotate (-. angle) vec in
-	let right_vec = Vector.rotate angle vec in
-	let (xl,yl) as l = Vector.translate (x,y) (Vector.minus left_vec) in
-	let (xr,yr) as r = Vector.translate (x,y) (Vector.minus right_vec) in
-	let ml = Vector.translate (Point.middle p l) (Vector.normalise
-							~norm:bend
-							(Vector.turn_right (Vector.of_points l p)))
-	in
-	let mr = Vector.translate (Point.middle p r) (Vector.normalise
-							~norm:bend
-							(Vector.turn_left (Vector.of_points r p)))
-	in 
-	{ parameters = parameters ;
-	  curve = (Curve.of_point_lists [
-	  [r;mr;p] ;
-	  [p;ml;l]
-	]) }
-
-  let draw tip = Curve.draw ~parameters:tip.parameters tip.curve
-
-end
-
-
-module Anchor = struct
-  type t = Vector.t
-  type spec = Vec of Vector.t | South | Center | East | West | North
-	      | Add of spec * Vector.t  (* To be completed *)
-	      | Angle of float 		(* An angle in radians *)
-  exception Undefined of spec
-end
-
-module NodeShape = struct
-  type bb = float * float * float * float
-  type t = { parameters : OutputCommon.path_parameters ; 
-	     make_curve : bb -> Curve.t ;
-	     make_anchor : bb -> Anchor.spec -> Anchor.t }
-
-  let default = { OutputCommon.default with OutputCommon.close = true ; OutputCommon.lineWidth=0.5 } 
-  let default_inner_sep = 0.5
-
-  let rectangle ?inner_sep:(inner_sep = default_inner_sep) 
-      ?parameters:(parameters=default) () = 
-    let extract_points (x0,y0,x1,y1) =
-      let x0 = x0 -. inner_sep in
-      let y0 = y0 -. inner_sep in
-      let x1 = x1 +. inner_sep in
-      let y1 = y1 +. inner_sep in
-      (* let x_center, y_center = middle (x0,y0)( x1,y1) in *)
-      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-      let p1 = (x0,y0) in
-      let p2 = (x1,y0) in
-      let p3 = (x1,y1) in
-      let p4 = (x0,y1) in
-      (p1,p2,p3,p4)
-    in
-    let make_curve bb =
-      let (p1,p2,p3,p4) = extract_points bb in
-      Curve.of_point_lists [
-	[p1;p2] ;	(* The bottom curve *)
-	[p2;p3] ;	(* The right-hand curve *)
-	[p3;p4] ;	(* The top curve *)
-	[p4;p1] 	(* The left-hand curve *)
-      ]
-    in
-    let make_anchor bb = 
-      let (p1,p2,p3,p4) = extract_points bb in
-      (* let (x0,y0,x1,y1) = bb in *)
-      (* let _ = Printf.fprintf stderr ("Rectangle: (%f,%f), (%f,%f)") x0 y0 x1 y1 in *)
-      function
-	| Anchor.Vec v -> v
-	| Anchor.Center -> Point.middle p1 p3
-	| Anchor.East -> Point.(+) (Point.middle p2 p3)  (0.5 *. parameters.OutputCommon.lineWidth, 0.0)
-	| Anchor.West -> Point.(-) (Point.middle p1 p4)  (0.5 *. parameters.OutputCommon.lineWidth, 0.0)
-	| Anchor.North -> Point.(+) (Point.middle p3 p4)  (0.0, 0.5 *. parameters.OutputCommon.lineWidth)
-	| Anchor.South -> Point.(-) (Point.middle p1 p2)  (0.0, 0.5 *. parameters.OutputCommon.lineWidth)
-	| a -> raise (Anchor.Undefined a)
-    in
-    { parameters = parameters ;
-      make_curve = make_curve ;
-      make_anchor = make_anchor
-    }
-
-
-  let circle ?inner_sep:(inner_sep = default_inner_sep) 
-      ?parameters:(parameters=default) () = 
-    let extract_points (x0,y0,x1,y1) =
-      let x0 = x0 -. inner_sep in
-      let y0 = y0 -. inner_sep in
-      let x1 = x1 +. inner_sep in
-      let y1 = y1 +. inner_sep in
-      (* let x_center, y_center = Point.middle (x0,y0)( x1,y1) in *)
-      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-      match Rectangle.points (Rectangle.make x0 y0 x1 y1) with
-	| ((x1,y1) as p1) :: ((x2,y2) as p2) :: ((x3,y3) as p3) :: ((x4,y4) as p4) :: [] ->
-	  (p1,p2,p3,p4)
-	| _ -> assert false
-    in
-    let make_curve bb =
-      let (p1,p2,p3,p4) = extract_points bb in
-      let control p1 p2 =
-	Vector.translate
-	  (Point.middle p1 p2)
-	  (Vector.scal_mul 0.5 (Vector.rotate (-. 90.) (Vector.of_points p1 p2)));
-      in
-      Curve.of_point_lists [
-	[p1; control p1 p2; p2] ;	(* The bottom curve *)
-	[p2; control p2 p3; p3] ;	(* The right-hand curve *)
-	[p3; control p3 p4; p4] ;	(* The top curve *)
-	[p4; control p4 p1; p1] (* The left-hand curve *)
-      ] 
-    in
-    let make_anchor bb = 
-      let (p1,p2,p3,p4) = extract_points bb in
-      function
-	| Anchor.Vec v -> v
-	| Anchor.South -> Point.middle p1 p2
-	| Anchor.West -> Point.middle p1 p4
-	| Anchor.East -> Point.middle p2 p3
-	| Anchor.North -> Point.middle p3 p4
-	| Anchor.Center -> Point.middle p1 p3
-	| a -> raise (Anchor.Undefined a)
-    in
-    { parameters = parameters ;
-      make_curve = make_curve ;
-      make_anchor = make_anchor
-    }
-
-  let flower  ?inner_sep:(inner_sep = default_inner_sep) ?amplitude:(amplitude=1.0) 
-      ?parameters:(parameters=default) () = 
-    let extract_points (x0,y0,x1,y1) =
-      let x0 = x0 -. inner_sep in
-      let y0 = y0 -. inner_sep in
-      let x1 = x1 +. inner_sep in
-      let y1 = y1 +. inner_sep in
-      (* let x_center, y_center = Point.middle (x0,y0)( x1,y1) in *)
-      (* let radius = 0.5 *. (distance (x0,y0) (x1,y1)) in *)
-      let p1 = (x0,y0) in
-      let p2 = (x1,y0) in
-      let p3 = (x1,y1) in
-      let p4 = (x0,y1) in
-      (p1,p2,p3,p4)
-    in
-    let make_curve bb =
-      let (p1,p2,p3,p4) = extract_points bb in
-	  let control p1 p2 =
-	    Vector.translate
-	      (Point.middle p1 p2)
-	      (Vector.scal_mul amplitude (Vector.rotate (-. 90.) (Vector.of_points p1 p2)));
-	  in
-	  Curve.of_point_lists [
-	    [p1; control p1 p2; p2] ;	(* The bottom curve *)
-	    [p2; control p2 p3; p3] ;	(* The right-hand curve *)
-	    [p3; control p3 p4; p4] ;	(* The top curve *)
-	    [p4; control p4 p1; p1] (* The left-hand curve *)
-	  ] 
-    in
-    let make_anchor bb = 
-      let (p1,p2,p3,p4) = extract_points bb in
-      function
-	| Anchor.Vec v -> v
-	| Anchor.South -> begin match make_curve bb with
-	    | [ south_bezier ; east_bezier ; top_bezier ; west_bezier ] -> 
-	      Curve.bezier_evaluate south_bezier 0.5
-	    | _ -> assert false
-	end 
-	| Anchor.West -> begin match make_curve bb with
-	    | [ _ ; east_bezier ; top_bezier ; west_bezier ] -> 
-	      Curve.bezier_evaluate west_bezier 0.5
-	    | _ -> assert false
-	end 
-	| Anchor.East -> begin match make_curve bb with
-	    | [ _ ; east_bezier ; top_bezier ; _ ] -> 
-	      Curve.bezier_evaluate east_bezier 0.5
-	    | _ -> assert false
-	end 
-	| Anchor.North -> begin match make_curve bb with
-	    | [ _ ; _ ; top_bezier ; _ ] -> 
-	      Curve.bezier_evaluate top_bezier 0.5
-	    | _ -> assert false
-	end 
-	| Anchor.Center -> Point.middle p1 p3
-	| a -> raise (Anchor.Undefined a)
-    in
-    { parameters = parameters ;
-      make_curve = make_curve ;
-      make_anchor = make_anchor
-    }
-
-end
-
-module Node = struct
-  type t = { curve : Curve.t ;
-	     parameters : OutputCommon.path_parameters ;
-	     make_anchor : Anchor.spec -> Point.t ;
-	     contents : OutputCommon.contents list }
-
-  let center node = node.make_anchor Anchor.Center
-
-  type spec = { at : Point.t ;
-		contents_spec : (Document.user Document.content) list ;
-		shape : NodeShape.t ;
-		anchor: Anchor.spec }
-  let default = { 
-    at = (0.,0.) ;
-    contents_spec = [] ;
-    shape = NodeShape.rectangle ~inner_sep:NodeShape.default_inner_sep 
-      ~parameters:NodeShape.default () ;
-      anchor = Anchor.Center }
-
-  let make env spec =
-    let shape = spec.shape in
-    let anchor = spec.anchor in
-    let at = spec.at in
-    (* Compute the contents a first time to get a bounding box of the right size *)
-    let contents = (Box.draw_boxes (boxify_scoped env spec.contents_spec)) in
-    let bb_boot =  OutputCommon.bounding_box contents in
-    (* Use this to compute the real coordinates, by translating "at" according to anchor. *)
-    (* But computing anchor needs make_anchor bb.  *)
-    let x,y = Vector.translate (Vector.minus (shape.NodeShape.make_anchor bb_boot anchor)) at in
-    (* Now translate the contents by x,y and compute the real bounding box, curve, etc *)
-    let contents = List.map (OutputCommon.translate x y) contents in
-    let bb =  OutputCommon.bounding_box contents in
-    let curve = shape.NodeShape.make_curve bb in
-    { curve = curve ; 
-      parameters = shape.NodeShape.parameters ;
-      contents =  contents ; 
-      make_anchor = fun anchor_spec -> (shape.NodeShape.make_anchor bb anchor_spec) }
-
-  (* En fait il faudra vite passer aussi curve a make_anchor... *)
-
-
-  let draw : t -> OutputCommon.contents list = fun node -> 
-    let shape_curve = 
-      Curve.draw ~parameters:node.parameters node.curve
-    in 
-    node.contents @ shape_curve
-
-  let make_draw env l spec =
-    let node = make env spec in
-    node, (l @ (draw node))
-end	    
-
-module Edge = struct
-
-  type label_spec = {
-    pos : float ;			(* A float between 0 and 1 *)
-    node_spec : Node.spec
-  }
-
-  type transfo_spec = 
-    | BendLeft of float
-    | BendRight of float
-    | Squiggle of int * float
-    | SquiggleFromTo of int * float * float * float
-    | Fore of float
-    | ShortenS of float			(* A float between 0 and 1 *)
-    | ShortenE of float			(* Idem *)
-    | Double of float * float		(* Space between the two lines, and their common width *)
-
-  type t = { curves : (OutputCommon.path_parameters * Curve.t) list ;
-	     head : ArrowTip.t ;
-	     tail : ArrowTip.t ;
-	     labels : Node.t list ;
-	   }
-
-  type parameters = { parameters_spec : OutputCommon.path_parameters ;
-		controls : Point.t list ;
-		head_spec : ?parameters:OutputCommon.path_parameters -> Curve.t -> ArrowTip.t ;
-		tail_spec : ?parameters:OutputCommon.path_parameters -> Curve.t -> ArrowTip.t ;
-		label_specs : label_spec list ;
-		transfo_specs : transfo_spec list }
-
-  let default = {
-    parameters_spec = OutputCommon.default ;
-    controls = [] ;
-    head_spec = (fun ?parameters:(parameters = OutputCommon.default) _ -> ArrowTip.none) ;
-    tail_spec = (fun ?parameters:(parameters = OutputCommon.default) _ -> ArrowTip.none) ;
-    label_specs = [] ;
-    transfo_specs = []
-  }
-
-  let label_of_spec env curve { pos = pos ; node_spec = spec } =
-    Node.make env { spec with Node.at = Curve.eval curve pos }
-
-  let bend ?angle:(angle=30.) node1 node2 = 
-    let vec = Vector.scal_mul (0.5 /. (cos angle)) (Vector.of_points node1 node2) in
-    let vec = Vector.rotate (angle) vec in
-    Vector.translate node1 vec
-
-  let squiggle freq angle (xs,ys) = 
-    let beziersx' = Bezier.divide xs (2 * freq) in 
-    let beziersy' = Bezier.divide ys (2 * freq) in 
-    let make_handles left_or_right (xs,ys) = 
-      (* Forget the intermediate points, then add two intermediate points, to the left or to the right *)
-      let x0 = xs.(0) in
-      let x1 = xs.(Array.length xs - 1) in
-      let y0 = ys.(0) in
-      let y1 = ys.(Array.length ys - 1) in
-      let p0 = (x0,y0) in
-      let p1 = (x1,y1) in
-      let cosangle = cos (to_rad angle) in
-      let length_factor = if cosangle = 0.0 then one_third else 0.25 /. cosangle
-      in
-      let angle = if left_or_right then angle else (-. angle) in
-      let hx1,hy1 = Vector.translate p0
-	(Vector.scal_mul length_factor
-	   (Vector.rotate angle 
-	      (Vector.of_points p0 p1)))
-      in
-      let hx2,hy2 = Vector.translate p1
-	(Vector.scal_mul length_factor
-	   (Vector.rotate (-. angle)
-	      (Vector.of_points p1 p0)))
-      in
-      [|x0;hx1;hx2;x1|],
-      [|y0;hy1;hy2;y1|]
-    in
-    let res,_ = 
-      List.fold_left 
-	(fun (res,left_or_right) bezier ->
-	  ((make_handles left_or_right bezier) :: res,
-	   not left_or_right))
-	([],true)
-	(List.combine beziersx' beziersy')
-    in List.rev res
-
-
-  let rec pre_of_transfo_spec = function
-    | BendLeft(angle) -> begin fun paths -> 
-      List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
-	  begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-	    if Array.length xs = 2 then
-	      let x,y = bend ~angle:angle (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-	      (params, [ [| xs.(0) ; x ; xs.(1) |], 
-			 [| ys.(0) ; y ; ys.(1) |] ])
-	    else
-	      (params, curve)
-	  end
-	else (params, curve))
-	paths end
-    | BendRight(angle) -> begin fun paths -> 
-      List.map (fun (params,curve) -> if Curve.nb_beziers curve = 1 then
-	  begin match curve with | [] -> assert false | (xs,ys) :: _ -> 
-	    if Array.length xs = 2 then
-	      let x,y = bend ~angle:(-. angle) (xs.(0),ys.(0)) (xs.(1),ys.(1)) in
-	      (params, [ [| xs.(0) ; x ; xs.(1) |], 
-			 [| ys.(0) ; y ; ys.(1) |] ])
-	    else
-	      (params, curve)
-	  end
-	else (params, curve))
-	paths end
-    | Squiggle (freq, amplitude) -> begin fun paths -> 
-      List.map (fun (params, curve) -> 
-      (params, List.flatten (List.map (squiggle freq amplitude) curve)))
-	paths
-    end
-    | _ -> (fun x -> x)
-
-  let rec post_of_transfo_spec = function
-    | Fore margin -> begin fun paths -> 
-      let white_paths = List.map (fun (params, curve) -> 
-	{ params with 
-	  Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
-	  Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
-	 curve)
-	paths
-      in
-      let white_paths = post_of_transfo_spec (ShortenS 0.1) white_paths in
-      let white_paths = post_of_transfo_spec (ShortenE 0.1) white_paths in
-      white_paths @ paths
-      end
-    | Double (margin,linewidth) -> begin fun paths -> 
-      let black_paths = List.map (fun (params, curve) -> 
-	{ params with 
-	  Drivers.lineWidth = margin +. 2.0 *. linewidth },
-	 curve)
-	paths
-      in
-      let white_paths = List.map (fun (params, curve) -> 
-	{ params with 
-	  Drivers.strokingColor = Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
-	  Drivers.lineWidth = margin },
-	 curve)
-	paths
-      in
-      let delta = 0.02 in
-      let white_paths = post_of_transfo_spec (ShortenS delta) white_paths in
-      let white_paths = post_of_transfo_spec (ShortenE delta) white_paths in
-      let black_paths = post_of_transfo_spec (ShortenS delta) black_paths in
-      let black_paths = post_of_transfo_spec (ShortenE delta) black_paths in
-      black_paths @ white_paths
-      end
-    | ShortenS a -> begin fun paths -> match paths with
-	| [] -> []
-	| (params, curve) :: rest -> (params, Curve.internal_restrict 
-	  curve (0,a) (Curve.nb_beziers curve - 1, 1.)) :: rest
-    end
-    | ShortenE a -> begin fun paths -> 
-      let rev_paths, (params, curve) = list_split_last_rev paths in
-      List.rev ((params, Curve.internal_restrict curve (0,0.) (Curve.nb_beziers curve - 1, 1. -. a)) :: rev_paths)
-    end
-    | SquiggleFromTo (freq,amplitude,a,b) -> begin fun paths -> 
-      List.map (fun (params, curve) -> 
-	let curve1,curve,curve2 = Curve.split2 curve a b in
-	(params, curve1 @ (List.flatten (List.map (squiggle freq amplitude) curve)) @ curve2))
-	paths
-    end
-    | _ -> (fun x -> x)
-
-  let clip curve node1 node2 = 
-    let start = begin
-      match node1.Node.curve with
-	| [a] -> (0,0.)
-	| curve1 ->
-	  match Curve.latest_intersection curve curve1 with
-	    | None -> begin
-	      (* Printf.fprintf stderr *)
-	      (* 	"I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ; *)
-	      (0,0.)
-	    end
-	    | Some (i, t1) -> (i, t1)
-    end in
-    let (j,t') as finish = begin 
-      match node2.Node.curve with
-	| [b] -> ((Curve.nb_beziers curve) - 1,1.)
-	| curve2 ->
-	  match Curve.earliest_intersection curve curve2 with
-	    | None -> begin
-	      (* Printf.fprintf stderr *)
-	      (* 	"I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ; *)
-	      ((Curve.nb_beziers curve) - 1,1.)
-	    end
-	    | Some (j, t2) -> (j, t2)
-    end in
-    Curve.internal_restrict curve start finish 
-
-  let make env spec node1 node2 =
-    let parameters = spec.parameters_spec in
-    let controls = spec.controls in
-    let head = spec.head_spec in
-    let tail = spec.tail_spec in
-    let labels = spec.label_specs in
-    let underlying_curve = (Curve.of_point_lists [(Node.center node1) :: (controls @ [Node.center node2])]) in
-    let curves = List.fold_left
-      (fun curves transfo_spec -> (pre_of_transfo_spec transfo_spec curves))
-      [parameters, underlying_curve]
-      spec.transfo_specs
-    in    
-    let curves = List.map (fun (params, curve) -> (params, clip curve node1 node2)) curves in
-    let curves = List.fold_left 
-      (fun curves transfo_spec -> (post_of_transfo_spec transfo_spec curves))
-      curves
-      spec.transfo_specs
-    in
-    match curves with
-      | [] -> Printf.fprintf stderr
-	("Warning: one of your edge transformers has deleted all curves.\n") ;
-	{ curves = [parameters, underlying_curve] ;
-	  head = head ~parameters:parameters underlying_curve ; 
-	  tail = tail ~parameters:parameters underlying_curve ;
-	  labels = (List.map (label_of_spec env underlying_curve) labels) 
-	}
-      | (params, curve) :: _ ->
-	{ curves = curves ;
-	  head = head ~parameters:params curve ; 
-	  tail = tail ~parameters:params curve ;
-	  labels = (List.map (label_of_spec env curve) labels) 
-	}
-
-  let draw edge =
-    (List.flatten (List.map Node.draw edge.labels))
-    @ ArrowTip.draw edge.head 
-    @ ArrowTip.draw edge.tail 
-    @ (List.flatten
-       (List.map 
-	  (fun (params, curve) -> Curve.draw ~parameters:params curve) edge.curves)) 
-
-
-    let make_draw env l spec node1 node2 =
-      let edge = make env spec node1 node2 
-      in 
-      edge, (l @ (draw edge))
-
 end
 
 module Diagram = struct
@@ -1296,11 +728,49 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	let width = max (1.3 *. info.tip_line_width) 1. in
 	(short, thickness, height, width, 0.01)
 
+      let squiggle freq angle (xs,ys) = 
+	let beziersx' = Bezier.divide xs (2 * freq) in 
+	let beziersy' = Bezier.divide ys (2 * freq) in 
+	let make_handles left_or_right (xs,ys) = 
+      (* Forget the intermediate points, then add two intermediate points, to the left or to the right *)
+	  let x0 = xs.(0) in
+	  let x1 = xs.(Array.length xs - 1) in
+	  let y0 = ys.(0) in
+	  let y1 = ys.(Array.length ys - 1) in
+	  let p0 = (x0,y0) in
+	  let p1 = (x1,y1) in
+	  let cosangle = cos (to_rad angle) in
+	  let length_factor = if cosangle = 0.0 then one_third else 0.25 /. cosangle
+	  in
+	  let angle = if left_or_right then angle else (-. angle) in
+	  let hx1,hy1 = Vector.translate p0
+	    (Vector.scal_mul length_factor
+	       (Vector.rotate angle 
+		  (Vector.of_points p0 p1)))
+	  in
+	  let hx2,hy2 = Vector.translate p1
+	    (Vector.scal_mul length_factor
+	       (Vector.rotate (-. angle)
+		  (Vector.of_points p1 p0)))
+	  in
+	  [|x0;hx1;hx2;x1|],
+	  [|y0;hy1;hy2;y1|]
+	in
+	let res,_ = 
+	  List.fold_left 
+	    (fun (res,left_or_right) bezier ->
+	      ((make_handles left_or_right bezier) :: res,
+	       not left_or_right))
+	    ([],true)
+	    (List.combine beziersx' beziersy')
+	in List.rev res
+
+
       let rec transfo style (info, params, underlying_curve, curves) = match style with
 	| `Squiggle (freq,amplitude,a,b) -> 
 	  let squiggle (params, curve) =
 	    let curve1,curve,curve2 = Curve.split2 curve a b in
-	    (params, curve1 @ (List.flatten (List.map (Edge.squiggle freq amplitude) curve)) @ curve2)
+	    (params, curve1 @ (List.flatten (List.map (squiggle freq amplitude) curve)) @ curve2)
 	  in
 	  let params', u_curve = squiggle (params, underlying_curve) in
 	  (info, params', u_curve, List.map squiggle curves)
