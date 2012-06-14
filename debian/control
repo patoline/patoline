@@ -21,8 +21,9 @@ Description: A digital typography system written in OCaml
  * The global network has changed: today, nobody knows anyone on the net.
 
 Package: patoline-fonts
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Architecture: all
+Section: fonts
+Depends: ${shlibs:Depends}, ${misc:Depends}, fonts-oflb-asana-math | ttf-oflb-asana-math
 Description: Fonts for patoline
  This package contains core OpenType fonts for typesetting texts
  using Patoline.
