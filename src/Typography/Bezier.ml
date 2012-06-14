@@ -7,6 +7,17 @@ let curve (a,b) i=a.(i),b.(i)
 
 let larger ((a,b),(c,d)) ((e,f),(g,h))= (min a e,min b f), (max c g, max d h)
 
+let rev (a,b)=
+  let a'=Array.make (Array.length a) a.(0) in
+  let b'=Array.make (Array.length b) b.(0) in
+  for i=0 to Array.length a'-1 do
+    a'.(i)<-a.(Array.length a'-1-i)
+  done;
+  for i=0 to Array.length b'-1 do
+    b'.(i)<-b.(Array.length b'-1-i)
+  done;
+  a',b'
+
 
 let derivee a=
   let b=Array.create (Array.length a-1) 0. in

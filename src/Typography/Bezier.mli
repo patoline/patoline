@@ -6,6 +6,9 @@ type curve = float array * float array
 (** Coordonée du i-eme point de contrôle *)
 val curve : 'a array * 'b array -> int -> 'a * 'b
 
+(** O(n) Retournement *)
+val rev : 'a array * 'b array -> 'a array * 'b array
+
 (** O(n) Dérivée d'un polynôme de Bernstein *)
 val derivee : float array -> float array
 
