@@ -67,7 +67,7 @@ let postprocess_tree tree=
             (fun a b c d e f g->
                { (center a b c d e f g) with
                    min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
-                     2.*.a.normalLead else 0.;
+                     a.normalLead else 0.;
                    min_height_before=0. });
           par_completeLine=Complete.normal }
         in
