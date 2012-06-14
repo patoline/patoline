@@ -11,7 +11,7 @@ let rev (a,b)=
   let a'=Array.make (Array.length a) a.(0) in
   let b'=Array.make (Array.length b) b.(0) in
   for i=0 to Array.length a'-1 do
-    a'.(i)<-a.(Array.length a'-1-i)
+    a'.(i)<-a.(Array.length a-1-i)
   done;
   for i=0 to Array.length b'-1 do
     b'.(i)<-b.(Array.length b'-1-i)

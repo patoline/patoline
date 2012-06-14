@@ -7,7 +7,56 @@ open Typography.Line
 
 
 let postprocess_tree tree=
-  let with_title=match tree with
+
+  let with_institute=match tree with
+      Node n->(try
+        let cont=[T (List.assoc "Institute" n.node_tags)] in
+        let par=Paragraph {
+          par_contents=cont;
+          par_env=(fun env->env);
+          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
+                                             user_positions=env2.user_positions });
+          par_parameters=
+            (fun a b c d e f g->
+               { (center a b c d e f g) with
+                   min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                     2.*.a.normalLead else 0.;
+                   min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                     2.*.a.normalLead else 0.
+               });
+          par_completeLine=Complete.normal }
+        in
+          fst (up (newChildBefore (tree,[]) par))
+      with
+          Not_found->tree)
+    | _->tree
+  in
+
+  let with_author=match with_institute with
+      Node n->(try
+        let cont=[T (List.assoc "Author" n.node_tags)] in
+        let par=Paragraph {
+          par_contents=cont;
+          par_env=(fun env->env);
+          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
+                                             user_positions=env2.user_positions });
+          par_parameters=
+            (fun a b c d e f g->
+               { (center a b c d e f g) with
+                   min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                     2.*.a.normalLead else 0.;
+                   min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                     2.*.a.normalLead else 0.
+               });
+          par_completeLine=Complete.normal }
+        in
+          fst (up (newChildBefore (with_institute,[]) par))
+      with
+          Not_found->with_institute)
+    | _->with_institute
+  in
+
+  let with_title=match with_author with
       Node n->
         let par=Paragraph {
           par_contents=n.displayname;
@@ -22,9 +71,10 @@ let postprocess_tree tree=
                    min_height_before=0. });
           par_completeLine=Complete.normal }
         in
-          fst (up (newChildBefore (tree,[]) par))
-    | _->tree
+          fst (up (newChildBefore (with_author,[]) par))
+    | _->with_author
   in
+
   let rec sectionize depth=function
       Node n when List.mem_assoc "Structural" n.node_tags ->
         let section_name=

@@ -214,10 +214,28 @@ module Format=functor (D:Document.DocumentStructure)->(
                            tree_paragraph=0 },path
       in
         str:=follow (t0',[]) (List.map fst (List.rev path))
-    let author str name = 
-      newPar str Complete.normal (Document.do_center parameters) [T name]
-    let institute str name = 
-      newPar str Complete.normal (Document.do_center parameters) [T name]
+
+    let author str name =
+      let t0',path=
+        match top !str with
+            Node n,path -> Node { n with node_tags=("Author",name)::n.node_tags }, path
+          | t,path->Node { Document.empty with
+                             node_tags=["Author",name];
+		             children=IntMap.singleton 1 t
+                         },path
+      in
+        str:=follow (t0',[]) (List.map fst (List.rev path))
+
+    let institute str name =
+      let t0',path=
+        match top !str with
+            Node n,path -> Node { n with node_tags=("Institute",name)::n.node_tags }, path
+          | t,path->Node { Document.empty with
+                             node_tags=["Institute",name];
+		             children=IntMap.singleton 1 t
+                         },path
+      in
+        str:=follow (t0',[]) (List.map fst (List.rev path))
 
     let table_of_contents=TableOfContents.centered
     let postprocess_tree=Sections.postprocess_tree
