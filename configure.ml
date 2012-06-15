@@ -196,6 +196,7 @@ let _=
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/PatolineConfig.ml src/Typography/_tags src/_tags src/Typography/META\n";
         close_out out;
         close_out config;
         close_out config';
