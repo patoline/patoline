@@ -144,7 +144,7 @@ let _=
         "<**/*>: pp(cpp -w),package(camomile)%s%s
 <Format/*.{ml,mli}>: use_Typography
 <proof/proof.{byte,native}>: package(camomile)%s%s
-<Patoline/*>:pp(cpp -w %s),package(dyp),use_str
+<Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
 \"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")

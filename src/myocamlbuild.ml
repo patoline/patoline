@@ -57,6 +57,8 @@ let _ = dispatch begin function
       flag ["ocaml"; "link";     "Typography"] & S[A"-I"; A"Typography"];
       flag ["ocaml"; "infer_interface"; "Typography"] & S[A"-I"; A"Typography"];
 
+      flag ["ocaml"; "compile"; "rectypes"] & S[A"-rectypes"];
+
       (* For each ocamlfind package one inject the -package option when
        * compiling, computing dependencies, generating documentation and
        * * linking. *)
