@@ -50,6 +50,9 @@ Symboles de Patoline
 \Add_relation{\gt >}{>}
 \Add_relation{… ..}{…}
 
+\Add_relation{\succ ≻}(MathFonts.asana "force" 937)
+\Add_relation{\pred ≺}(MathFonts.asana "force" 936)
+
 \Add_relation{\realize \force ⊩}(MathFonts.asana "force" 1620)
 \Add_relation{\vdash ⊢ |-}{⊢}
 

@@ -304,7 +304,10 @@ and print_macro_buf parser_pp buf op mtype name args =
 	  Printf.bprintf buf "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
 	end
 	else begin
-	  Printf.bprintf buf "open %s%s\n let _ = do_begin_env()" modname end_open (* name *)
+          incr moduleCounter;
+	  let num = !moduleCounter in
+	  Printf.bprintf buf "module TEMP%d = %s%s\nopen TEMP%d\n let _ = do_begin_env()"
+	    num modname end_open num (* name *)
 	end
       | `End -> 
 
@@ -527,6 +530,8 @@ let gen_ml format amble filename from wherename where pdfname =
       (* let op=open_in h in *)
       let parser_pp = Parser.pp () in
       let lexbuf=Dyp.from_channel parser_pp from in
+      let l = Dyp.std_lexbuf lexbuf in
+      l.lex_curr_p <- { l.lex_curr_p with pos_fname = filename };
             try
 	      let docs = Parser.main lexbuf in
 	      let nbdocs = List.length docs in

@@ -14,7 +14,7 @@ let set_newline nb l =
 (* very important to allow using regexp for special combination of characteres *)
 let dypgen_choose_token = `all
 
-let dyp_merge = keep_all
+let dyp_merge = keep_one
 
 exception File_not_found of (string*string list)
 let findPath f path=

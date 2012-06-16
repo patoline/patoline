@@ -81,7 +81,7 @@ let _ = dispatch begin function
 	~prods:["%.ml"]
 	~deps:["%.dyp"]
 	begin fun env _->
-          Seq[Cmd(S([A"dypgen";A"--no-mli";P(env "%.dyp")]))]
+          Seq[Cmd(S([A"dypgen";A"--no-mli";A"--merge-warning";P(env "%.dyp")]))]
 	end;
 
   | _ -> ()
