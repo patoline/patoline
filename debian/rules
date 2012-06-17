@@ -10,8 +10,7 @@
 # Modified to make a template file for a multi-binary package with separated
 # build-arch and build-indep targets  by Bill Allombert 2001
 
-# This has to be exported to make some magic below work.
-# export DH_OPTIONS
+include /usr/share/ocaml/ocamlvars.mk
 
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
@@ -20,7 +19,9 @@ export DH_VERBOSE=1
 # fail.
 export DEB_BUILD_OPTIONS=nocheck
 
-include /usr/share/ocaml/ocamlvars.mk
+OCAMLABI:=$(shell ocamlc -version)
+BYTECODE =$(shell [ -x /usr/bin/ocamlopt ] || echo yes)
+OCAMLRUN =$(if $(BYTECODE),ocaml-base-nox-$(OCAMLABI))
 
 %:
 	dh $@
@@ -33,3 +34,15 @@ override_dh_auto_configure:
 
 override_dh_install:
 	dh_install -XAsana-Math.otf
+
+build-stamp:
+	dh_testdir
+
+	if [ -x /usr/bin/ocamlopt ]; then \
+		$(MAKE) -C src all; \
+	else \
+		$(MAKE) -C src byte; \
+	fi
+
+override_dh_gencontrol:
+	dh_gencontrol -- -VF:OCamlRun="$(OCAMLRUN)"

@@ -2,23 +2,23 @@ Source: patoline
 Section: ocaml
 Priority: extra
 Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), cdbs, dh-ocaml, ocaml-base-nox, ocaml-findlib, ocaml-base-nox, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
-Standards-Version: 3.8.4
+Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
+Standards-Version: 3.9.3
 Homepage: http://www.lama.univ-savoie.fr/~meunier/patoline
 
 Package: patoline
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox | ocaml-base, libdypgen-ocaml-dev, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
-Description: A digital typography system written in OCaml
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
+Description: Digital typography system written in OCaml
  Patoline is a digital typography system, similar to TeX or Microsoft Word, but
  using an up-to-date language and algorithm, and leveraging the power of
  present-day computers. In particular:
  .
- * The amount of memory we have today is in no way comparable to what Knuth
-   had when he first wrote TeX in the 1970s.
- * Also, the choice of our favourite programming language is no more limited
-   by "what compiles on all machines of the laboratory".
- * The global network has changed: today, nobody knows anyone on the net.
+  * The amount of memory we have today is in no way comparable to what Knuth
+    had when he first wrote TeX in the 1970s.
+  * Also, the choice of our favourite programming language is no more limited
+    by "what compiles on all machines of the laboratory".
+  * The global network has changed: today, nobody knows anyone on the net.
 
 Package: patoline-fonts
 Architecture: all
@@ -30,5 +30,5 @@ Description: Fonts for patoline
 
 Package: libtypography-ocaml-dev
 Architecture: any
-Depends:  ${shlibs:Depends}, ${misc:Depends}, ocaml-base-nox | ocaml, libdypgen-ocaml-dev, libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
-Description: A library of typographic primitives for OCaml
+Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
+Description: Library of typographic primitives for OCaml

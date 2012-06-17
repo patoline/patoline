@@ -1,11 +1,19 @@
+patoline (0~20120615) unstable; urgency=low
+
+  * Sync with upstream.
+  * Build only bytecode when ocamlopt is unavailable.
+  * Try to comply with OCaml Task Force policy.
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Sat, 16 Jun 2012 15:00:53 +0200
+
 patoline (0~20120610) unstable; urgency=low
 
-  * New upstream release
+  * New upstream release.
 
  -- Florian Hatat <florian.hatat@univ-savoie.fr>  Sun, 10 Jun 2012 20:37:28 +0200
 
 patoline (0~20120423) unstable; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+  * Initial release.
 
  -- Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>  Mon, 23 Apr 2012 20:37:28 +0200
