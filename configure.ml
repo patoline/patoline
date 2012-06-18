@@ -160,7 +160,7 @@ let _=
     Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
 
     let sources=
-      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.p.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.cmi "^
+      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.p.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.p.a src/_build/Typography/Typography.cmi "^
         "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
         "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma"
     in
