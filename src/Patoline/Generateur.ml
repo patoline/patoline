@@ -538,6 +538,7 @@ let gen_ml format amble filename from wherename where pdfname =
 		Printf.fprintf stderr "%s\n" 
 		  (PatolineLanguage.message (PatolineLanguage.End_of_parsing nbdocs));
 		flush stderr;
+	      let source = Source.of_in_channel from in
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
@@ -546,17 +547,19 @@ let gen_ml format amble filename from wherename where pdfname =
                     match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		    Printf.fprintf where "let _ = title D.structure %S;;\n\n" title;
+		    Printf.fprintf where "let _ = title D.structure (%a);;\n\n" 
+		      (print_contents parser_pp source) title;
 		    match at with
 			None -> ()
 		      | Some(auth,inst) ->
-			Printf.fprintf where "let _ = author D.structure %S;;\n\n" auth;
+			Printf.fprintf where "let _ = author D.structure (%a);;\n\n" 
+			  (print_contents parser_pp source) auth;
 			match inst with
 			    None -> ()
 			  | Some(inst) ->
-			    Printf.fprintf where "let _ = institute D.structure %S;;\n\n" inst
+			    Printf.fprintf where "let _ = institute D.structure (%a);;\n\n" 
+			      (print_contents parser_pp source) inst
 		end;
-		let source = Source.of_in_channel from in
 		output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with

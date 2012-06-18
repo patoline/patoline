@@ -192,21 +192,17 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
 
-    let title str ?label ?displayname name =
+    let title str ?label displayname =
+      let name = string_of_contents displayname in
       let t0',path=
         match top !str with
             Node n,path -> Node { n with
                                     name=name;
                                     node_tags=("Structural","")::("InTOC","")::n.node_tags;
-                                    displayname = match n.displayname, displayname with
-                                        [],None->[T name]
-                                      | [],Some a->a
-                                      | l,_->l },path
+                                    displayname = displayname},path
           | t,path->Node { name=name;
                            node_tags=["Structural","";"InTOC",""];
-                           displayname=(match displayname with
-                                            None->[T name]
-                                          | Some a->a);
+                           displayname=displayname;
 		           children=IntMap.singleton 1 t;
                            node_env=(fun x->x);
                            node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
@@ -216,6 +212,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         str:=follow (t0',[]) (List.map fst (List.rev path))
 
     let author str name =
+      let name = string_of_contents name in
       let t0',path=
         match top !str with
             Node n,path -> Node { n with node_tags=("Author",name)::n.node_tags }, path
@@ -227,6 +224,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         str:=follow (t0',[]) (List.map fst (List.rev path))
 
     let institute str name =
+      let name = string_of_contents name in
       let t0',path=
         match top !str with
             Node n,path -> Node { n with node_tags=("Institute",name)::n.node_tags }, path

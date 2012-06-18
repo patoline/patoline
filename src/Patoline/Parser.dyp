@@ -663,9 +663,9 @@ atomeltp:
 
 title:
   ("=========="('='*))
-    line+<title>
-     [("----------"('-'*)) line+<author>
-      [("----------"('-'*)) line+]?<institute> {author, institute} ]?<at>
+    paragraph<title>
+     [("----------"('-'*)) paragraph<author>
+      [("----------"('-'*)) paragraph]?<institute> {author, institute} ]?<at>
   ("=========="('='*))
   { title,at }
 
