@@ -511,23 +511,23 @@ math:
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind
-  | math(<=ind)<m> - rightind<fi>
+  | math(<ind)<m> - rightind<fi>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | leftind<i> - operator<m> [- rightind]?<fi> math(<=operator)<b>
+  | leftind<i> - operator<m> [- rightind]?<fi> math(<operator)<b>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, Operator(m,b)) } operator
-  | operator<m> - rightind<fi> math(<=operator)<b>
+  | operator<m> - rightind<fi> math(<operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Operator (m,b)) } operator
-  | operator<m> math(<=operator)<b>
+  | operator<m> math(<operator)<b>
       { Operator (m,b) } operator
 
-  | limits_operator<m> - rightind<fi> math(<=operator)<b>
+  | limits_operator<m> - rightind<fi> math(<operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Limits_operator (m,b)) } operator
-  | limits_operator<m> math(<=operator)<b>
+  | limits_operator<m> math(<operator)<b>
       { Limits_operator (m,b) } operator
 
   | math(<=fun)<a> - math(<fun)<b>
