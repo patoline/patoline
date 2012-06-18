@@ -484,7 +484,8 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
         min_height_before=0.;
         min_height_after=0.;
         not_last_line=false;
-        not_first_line=false
+        not_first_line=false;
+        really_next_line=true
       }
 
 let vspaceBefore x=[B (fun _->[Parameters (fun p->{ p with min_height_before=p.min_height_before+.x })])]
