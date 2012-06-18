@@ -46,7 +46,7 @@ let rec process_each_file =
 	SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (pdfname_of f);
       ) else (
 	(* Printf.fprintf stderr "from Patoline file...\n "; *)
-	Parser.fprint_caml_buf := Obj.repr
+	Parser.fprint_caml_buf :=
 	  (fun ld gr buf s e txps ->
 	     let pos = pos_in fread in
 	       Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps;

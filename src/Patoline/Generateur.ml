@@ -371,7 +371,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps =
     begin match style with
       | TxpMath ->  begin
 	(* Printf.fprintf stderr "Calling Dypgen.\n" ; flush stderr ; *)
-	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
 	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with
@@ -385,7 +385,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps =
       end
       | TxpText -> begin
 	(* Printf.fprintf stderr "Calling Dypgen.\n" ; flush stderr ; *)
-	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = Obj.obj gr;  } in
+	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allparagraph" lexbuf_txp in
 	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with

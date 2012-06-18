@@ -38,57 +38,56 @@ module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
 type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
 
-type math =
+type 'a math =
      Var of string
    | Symbol of symbol
    | Fun of string
    | Num of string
-   | Prefix of int * symbol * bool * math
-   | Operator of symbol * math
-   | Limits_operator of symbol * math
-   | Postfix of int * math * bool * symbol
-   | Binary of int * math * bool * symbol * bool * math
-   | Indices of indices * math
-   | Apply of math * math
-   | MathMacro of string * math list
-   | MathCaml of local_data * Obj.t * int * int * (texprime_section * int * int) list
-   | Delim of symbol * math * symbol
-   | MScope of math list
-and indices = { up_right : math option;
-    down_right : math option;
-    up_left : math option;
-    down_left : math option }
+   | Prefix of int * symbol * bool * 'a math
+   | Operator of symbol * 'a math
+   | Limits_operator of symbol * 'a math
+   | Postfix of int * 'a math * bool * symbol
+   | Binary of int * 'a math * bool * symbol * bool * 'a math
+   | Indices of 'a indices * 'a math
+   | Apply of 'a math * 'a math
+   | MathMacro of string * 'a math list
+   | MathCaml of local_data * 'a * int * int * (texprime_section * int * int) list
+   | Delim of symbol * 'a math * symbol
+   | MScope of 'a math list
+and 'a indices = { up_right : 'a math option;
+    down_right : 'a math option;
+    up_left : 'a math option;
+    down_left : 'a math option }
 and symbol=
     SimpleSym of string
   | CamlSym of string
 
 
-and structType = Absolute of int | Relative of doc list
+and 'a structType = Absolute of int | Relative of 'a doc list
 
-and paragraph_options = { center_paragraph : bool }
+and paragraph_options = { center_paragraph : bool; useless_option : unit }
 
-and doc =
-     Paragraph of paragraph_options * content list
-   (* FIXME : construct the type of the parsing device instead of Obj.t *)
-   | Caml of local_data * Obj.t * int * int * (texprime_section * int * int) list
-   | Math of math
+and 'a doc =
+     Paragraph of paragraph_options * 'a content list
+   | Caml of local_data * 'a * int * int * (texprime_section * int * int) list
+   | Math of 'a math
    | Verbatim of string option * string list
-   | Struct of content list * bool * structType
-   | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * doc list
+   | Struct of 'a content list * bool * 'a structType
+   | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * 'a doc list
    | Preproc of string
    | Ignore
 
 and texprime_section = TxpMath | TxpText
 
-and content =
+and 'a content =
      TC of string
-   | FC of bool * math
-   | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * doc list
+   | FC of bool * 'a math
+   | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * 'a doc list
    | GC
-let par_macros:(string->content list) StrMap.t ref=ref StrMap.empty
+let par_macros:(string->'a content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
-let default_paragraph_options = { center_paragraph = false }
+let default_paragraph_options = { center_paragraph = false; useless_option = (); }
 let sParagraph c = Paragraph(default_paragraph_options, c)
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
@@ -140,7 +139,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
     [Ignore; sParagraph
       [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
-       let utflen = try CamomileLibrary.UTF8.validate; CamomileLibrary.UTF8.length s
+       let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
        in	     
         let elt = 
@@ -160,7 +159,7 @@ let gram_ext = ".tgx"
 let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
     	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
 
-let fprint_caml_buf = ref (Obj.repr (fun _ -> assert false))
+let fprint_caml_buf = ref (fun _ _ _ _ _ _ -> ((assert false):unit))
 
 
 let rec list_last = function
@@ -182,8 +181,8 @@ let next_lexeme_paren l =
 	end
 
 let layout_info dyp a b =
-    let a' = dyp.rhs_start_pos a in
-    let b' = dyp.rhs_end_pos b in
+    (*let a' = dyp.rhs_start_pos a in
+    let b' = dyp.rhs_end_pos b in*)
     let a = dyp.rhs_end_pos a in
     let b = dyp.rhs_start_pos b in
     let cdiff = b.pos_cnum - a.pos_cnum in
@@ -197,6 +196,12 @@ let layout_parskip dyp a b =
 
 let layout_space dyp a b =
     let c,l,m = layout_info dyp a b in c > 0
+
+let get_local_data_and_grammar dyp =
+        let ld = { dyp.local_data with verbose = false } in
+        let gr = dyp.parser_pilot.pp_dev in
+	ld, gr
+
 
 }
 
@@ -255,7 +260,6 @@ and caml txps= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unexpected_end_of_comment)) }
   | ')' { if pop_caml () <= 0 then txps else caml txps lexbuf } 
   | '"' ([^'"'] | "\\\"")* '"' {
-      let s=Dyp.lexeme lexbuf in
         String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
           (Dyp.lexeme lexbuf);
         caml txps lexbuf
@@ -346,18 +350,11 @@ oparagraph: {[]} | paragraph<p> {p}
 allparagraph:
    paragraph<p> eof { p }
 
-memo_grammar: 
-     { 
-        let ld = { dyp.local_data with verbose = false } in
-        let gr = dyp.parser_pilot.pp_dev in
-	ld, Obj.repr gr
-     }
-
 args:
     /* empty */
-     { (fun ld gr  -> []) } 
+     { (fun (ld:local_data) gr  -> []) } 
   | "()"
-    { (fun ld gr  -> []) } 
+    { (fun (ld:local_data) gr  -> []) } 
   | args<a> - "{" oparagraph<p> "}" 
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
   | args<a> - CAML<s,e,txps>
@@ -366,9 +363,9 @@ args:
 
 neargs:
   | "()"
-    { (fun ld gr  -> []) }
+    { (fun (ld:local_data) gr  -> []) }
   | "{" oparagraph<p> "}" 
-    { (fun ld gr -> [sParagraph (p)]) }
+    { (fun (ld:local_data) gr -> [sParagraph (p)]) }
   | CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup; 
       (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
@@ -379,24 +376,25 @@ neargs:
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" memo_grammar<ld,gr> args<a>
-      { Macro(`Begin, name, List.rev (a ld gr)) }
-  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" memo_grammar<ld,gr> args<a>
-      { Macro(`End, name, List.rev (a ld gr)) }
+    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
+      { let ld, gr = get_local_data_and_grammar dyp in
+        Macro(`Begin, name, List.rev (a ld gr)) }
+  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
+      { let ld, gr = get_local_data_and_grammar dyp in
+        Macro(`End, name, List.rev (a ld gr)) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[]) }
-  | TMACRO<name> - memo_grammar<ld,gr> - args<a>
-      { if List.mem name reserved then raise Giveup;
+  | TMACRO<name> - args<a>
+      { let ld, gr = get_local_data_and_grammar dyp in
+        if List.mem name reserved then raise Giveup;
         Macro(`Module, name, List.rev (a ld gr)) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
-          let name=
-            if Sys.file_exists (Printf.sprintf "%s.cmxs" preproc) then
+            (*if Sys.file_exists (Printf.sprintf "%s.cmxs" preproc) then
               (Printf.sprintf "%s.cmxs" preproc)
             else
               (Printf.sprintf "%s%s.cmxs"(String.lowercase (String.sub preproc 0 1))
-                 (String.sub preproc 1 (String.length preproc-1)))
-          in
+                 (String.sub preproc 1 (String.length preproc-1)));*)
             let f=StrMap.find preproc !macros in
             let t=String.concat "" text in
               Preproc (f t)
@@ -411,14 +409,16 @@ preproc:
 
 
 parmacro:
-  | PMACRO<name> - memo_grammar<ld,gr> - neargs<a>
-      { [MC(`Single, name, List.rev (a ld gr))] }  macro
+  | PMACRO<name> - neargs<a>
+      { let ld, gr = get_local_data_and_grammar dyp in
+        [MC(`Single, name, List.rev (a ld gr))] }  macro
   | PMACRO<name>
       { if next_lexeme_paren (dyp.next_lexeme ()) then begin
 	(* Printf.fprintf stderr "Giving up.\n" ; flush stderr ;  *) raise Giveup end
 	else [MC(`Single, name, [])] } args
-  | PPRE<preproc> - memo_grammar<ld,gr> - CAML<s,e,txps>
-      { [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
+  | PPRE<preproc> - CAML<s,e,txps>
+      { let ld, gr = get_local_data_and_grammar dyp in
+        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
 
@@ -459,22 +459,14 @@ allmath:
 
 mathargs:
   /* empty */
-    { (fun ld gr  -> []) } atom
+    { (fun (ld:local_data) gr  -> []) } atom
   | "()"
-    { (fun ld gr  -> []) } args
+    { (fun (ld:local_data) gr  -> []) } args
   | mathargs<a> - "{" math<m> "}"
     { (fun ld gr -> m::a ld gr) }  args
   | mathargs<a> - CAML<s,e,txps>
     { if e - s <= 2 then raise Giveup;
       (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
-nemathargs:
-    "()"
-    { (fun ld gr  -> []) } args
-  | "{" math<m> "}"
-    { (fun ld gr ->[ m]) }  args
-  | nemathargs<a> - "{" math<m> "}"
-    { (fun ld gr -> m::a ld gr) }  args
-
 
 math:
    (['a'-'z''A'-'Z'])<name>
@@ -534,8 +526,9 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | "\\" [lident|uident]<macro> - memo_grammar<ld,gr> - mathargs<args> 
-    { if next_lexeme_paren (dyp.next_lexeme ()) then begin
+  | "\\" [lident|uident]<macro> - mathargs<args> 
+    { let ld, gr = get_local_data_and_grammar dyp in
+      if next_lexeme_paren (dyp.next_lexeme ()) then begin
         (* Printf.fprintf stderr "Giving up.\n" ; flush stderr ; *)   raise Giveup end
       else MathMacro (macro,args ld gr) } atom
   | prefix<op> math(<sum)<b> 
@@ -568,9 +561,10 @@ symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
 
 symbol_def:
-    memo_grammar<ld,gr> CAML<s,e,txps> {
+    CAML<s,e,txps> {
+      let ld, gr = get_local_data_and_grammar dyp in
       let buf = Buffer.create 80 in  
-      Obj.magic !fprint_caml_buf ld gr buf s e txps;
+      !fprint_caml_buf ld gr buf s e txps;
       CamlSym(Buffer.contents buf)
     }
   | '{' symbol_name<sym> '}' { SimpleSym sym }
@@ -596,8 +590,9 @@ atomelt:
     "\"\"\""
     { [Verbatim(lang, ls)] }
   /* Code Caml */
-  | "\\Caml" memo_grammar<ld,gr> CAML<s,e,txps>
-    { [Caml(ld,gr,s,e,txps)] }
+  | "\\Caml" CAML<s,e,txps>
+    { let ld, gr = get_local_data_and_grammar dyp in
+      [Caml(ld,gr,s,e,txps)] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
     { [m] }
