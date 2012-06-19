@@ -712,7 +712,7 @@ end
     let default_params = { OutputCommon.default with close = false ; strokingColor=None ; 
       lineWidth = !default_line_width } 
 
-    let default = { at = (0.,0.) ; node_anchor = `Pdf ;
+    let default = { at = (0.,0.) ; node_anchor = `Center ;
 		    mainAnchor = `Center ; 
 		    center = (0.,0.) ;
 		    pdfAnchor = (0.,0.) ;
