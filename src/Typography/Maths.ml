@@ -116,13 +116,19 @@ let rec cut l n=
 let dist xa ya xb yb=sqrt ((xa-.xb)*.(xa-.xb) +. (ya-.yb)*.(ya-.yb))
 
 let min_dist d (xa,ya) (xb,yb)=
-  let d'=ref infinity in
+  (*let d'=ref infinity in
     for i=0 to Array.length xa-1 do
       for j=0 to Array.length xb-1 do
         d':=min !d' (dist xa.(i) ya.(i) xb.(j) yb.(j))
       done
     done;
-    if !d'<=d then min d (Bezier.distance (xa,ya) (xb,yb)) else d
+    if !d'<=d then*) 
+  let dn = Bezier.distance (xa,ya) (xb,yb) in
+  let d0 = Bezier.distance1 (xa.(0),ya.(0)) (xb,yb) in
+  let d1 = Bezier.distance1 (xa.(Array.length xa-1),ya.(Array.length ya-1)) (xb,yb) in
+  let d2 = Bezier.distance1 (xb.(0),yb.(0)) (xa,ya) in
+  let d3 = Bezier.distance1 (xb.(Array.length xb-1),yb.(Array.length yb-1)) (xa,ya) in
+    min (min d dn) (min (min d0 d1) (min d2 d3))
 
 let line (a,b) (c,d)=[|a;c|], [|b;d|]
 
@@ -599,24 +605,26 @@ let open_close left right env_ style box=
        drawing_y0=y0_l;
        drawing_y1=y1_l;
        drawing_badness=(fun _->0.);
-       drawing_contents=(fun _->(left  (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
-       (* [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *)))})::
-      box@
-    (* (Drawing { *)
-    (*    drawing_min_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.; *)
-    (*    drawing_nominal_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.; *)
-    (*    drawing_max_width=x1-.x0-.dist1 +. if env.kerning then env.close_dist*.s else 0.; *)
-    (*    drawing_y0=y0; *)
-    (*    drawing_y1=y1; *)
-    (*    drawing_badness=(fun _->0.); *)
-    (*    drawing_contents=(fun _->(draw_boxes box (\* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *\) *)
-    (*    (\* [rectangle (x0,y0) (x1,y1)]))] *\)))}):: *)
+       drawing_contents=(fun _->(left (*  @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
+        [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *) ))})::
+      box@ 
+(*
+    (Drawing {
+       drawing_min_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+       drawing_nominal_width=x1-.x0-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+       drawing_max_width=x1-.x0-.dist1 +. if env.kerning then env.close_dist*.s else 0.;
+       drawing_y0=y0;
+       drawing_y1=y1;
+       drawing_badness=(fun _->0.);
+       drawing_contents=(fun _->(draw_boxes box  @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
+        [rectangle (x0,y0) (x1,y1)]))] ))})::
+*)
       [Drawing {
-         drawing_min_width=x1_r-.x0_r;
-         drawing_nominal_width=x1_r-.x0_r;
-         drawing_max_width=x1_r-.x0_r;
+         drawing_min_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+         drawing_nominal_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
+         drawing_max_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
          drawing_y0=y0_r;
          drawing_y1=y1_r;
          drawing_badness=(fun _->0.);
-         drawing_contents=(fun _->(right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  *)
-                                     (* [rectangle (x0_r,y0_r) (x1_r,y1_r)]))] *)))}]
+         drawing_contents=(fun _-> List.map (translate (-. dist1 +. if env.kerning then env.close_dist*.s else 0.) (0.0)) (right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
+                                      [rectangle (x0_r,y0_r) (x1_r,y1_r)]))]*) ))}]

@@ -491,6 +491,18 @@ let restrict2 f u0 u1 v0 v1 =
                  (transpose (Array.map (fun x->restrict x u0 u1) f)))
 
 
+let times f g=
+  let m=Array.length f-1 in
+  let n=Array.length g-1 in
+  let h=Array.make (m+n+1) 0. in
+  let bin=binom (m+n+1) in
+    for i=0 to m+n do
+      for j=max 0 (i-n) to min m i do
+        h.(i)<-h.(i)+. (float_of_int (bin.(j).(m)*bin.(i-j).(n))) /. (float_of_int bin.(i).(m+n)) *. f.(j) *. g.(i-j)
+      done
+    done;
+    h
+
 let times2 f g=
   let af=Array.length f in
   let bf=Array.length f.(0) in
@@ -560,6 +572,7 @@ let promote0 f=[|f|]
 let promote1 f=Array.map (fun x->[|x|]) f
 
 let sq2 f=times2 f f
+let sq f=times f f
 
 exception Found
 
@@ -662,19 +675,6 @@ let minus f g=
     h
 
 
-let times f g=
-  let m=Array.length f-1 in
-  let n=Array.length g-1 in
-  let h=Array.make (m+n+1) 0. in
-  let bin=binom (m+n+1) in
-    for i=0 to m+n do
-      for j=max 0 (i-n) to min m i do
-        h.(i)<-h.(i)+. (float_of_int (bin.(j).(m)*bin.(i-j).(n))) /. (float_of_int bin.(i).(m+n)) *. f.(j) *. g.(i-j)
-      done
-    done;
-    h
-
-
 let distance (xa,ya) (xb,yb)=
   (* On commence par traiter le cas special de deux droites paralleles *)
   (* let xa'=derivee xa in *)
@@ -698,7 +698,6 @@ let distance (xa,ya) (xb,yb)=
                       let y0=(eval ya m1 -. eval yb m2) in
                         min d (sqrt (x0*.x0+.y0*.y0))
                    ) infinity ((0.,0.,0.,0.)::(0.,0.,1.,1.)::(1.,1.,0.,0.)::(1.,1.,1.,1.)::(solve2 d0 d1))
-
 
 
 (* let xa=[|50.;400.;400.;200.|] *)
@@ -730,3 +729,26 @@ let distance (xa,ya) (xb,yb)=
 (*   Graphics.moveto (int_of_float (eval xa s)) (int_of_float (eval ya s)); *)
 (*   Graphics.lineto (int_of_float (eval xb t)) (int_of_float (eval yb t)); *)
 (*   let _=Graphics.wait_next_event [Graphics.Key_pressed] in () *)
+
+
+let distance1 (xa,ya) (xb,yb)=
+  (* On commence par traiter le cas special de deux droites paralleles *)
+  (* let xa'=derivee xa in *)
+  (* let xb'=derivee xb in *)
+  (* let ya'=derivee ya in *)
+  (* let yb'=derivee yb in *)
+
+  (* let droite x'= *)
+  (*   let i=ref 0 in *)
+  (*     while !i< Array.length x' && abs_float (x'.(i) -. x'.(0)) > 1e-12 do incr i done; *)
+  (*     !i>=Array.length x' *)
+  (* in *)
+
+  let xa = [|xa|] and ya = [|ya|] in
+  let dist=plus (sq (minus xb xa)) (sq (minus yb ya)) in
+  let d=derivee dist in
+    List.fold_left (fun d u ->
+      let x = xa.(0) -. eval xb u and y = ya.(0) -. eval yb u in
+      min d (sqrt (x*.x+.y*.y))
+    ) infinity (0.::1.::(bernstein_solve d 1e-3))
+

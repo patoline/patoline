@@ -69,3 +69,6 @@ val solve2 :
   float array array -> float array array -> (float*float*float*float) list
 val distance :
   (float array *float array)-> (float array*float array)-> float
+
+val distance1 :
+  (float *float)-> (float array*float array)-> float
