@@ -156,9 +156,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           fontFeatures=feat;
           fontColor=OutputCommon.black;
           font=f;
-          mathsEnvironment=
-            Array.map (fun x->{x with Mathematical.kerning=false })
-              Euler.default;
+          mathsEnvironment=Euler.default;
 	  mathStyle=Document.Mathematical.Text;
           word_substitutions=
             (fun x->List.fold_left (fun y f->f y) x
