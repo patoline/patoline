@@ -130,6 +130,37 @@ let min_dist d (xa,ya) (xb,yb)=
   let d3 = Bezier.distance1 (xb.(Array.length xb-1),yb.(Array.length yb-1)) (xa,ya) in
     min (min d dn) (min (min d0 d1) (min d2 d3))
 
+let max_array x =
+  Array.fold_left max (-. infinity) x
+
+let min_array x =
+  Array.fold_left min (infinity) x
+
+
+let min_dist_left_right l1 l2 =
+  let l1 = List.map (fun (x,y) -> max_array x, (x, y)) l1 in
+  let l2 = List.map (fun (x,y) -> min_array x, (x, y)) l2 in
+  let l1 = List.sort (fun (x,_) (x',_) -> compare x' x) l1 in
+  let l2 = List.sort (fun (x,_) (x',_) -> compare x x') l2 in
+  let rec fn acc l1 l2 =
+    match l1, l2 with
+      ((x,a)::l1') as l1, (y,b)::l2 ->
+	if (y -. x) >= acc then acc else
+	  let acc = min_dist acc a b in
+	  let rec gn acc l1 =
+	    match l1 with
+	      (x,a)::l1' ->
+		if (y -. x) >= acc then acc else
+		  let acc = min_dist acc a b in
+		  gn acc l1'
+	    | [] -> acc
+	  in
+	  let acc = gn acc l1' in
+	  fn acc l1 l2
+    | _ -> acc
+  in
+  fn infinity l1 l2
+ 
 let line (a,b) (c,d)=[|a;c|], [|b;d|]
 
 let rec contents=function
@@ -243,8 +274,7 @@ let rec draw env_stack mlist=
                                        if mathsEnv.kerning then
                                          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
                                                               Array.map (fun x0->x0 +. yoff.(i)) y) l
-                                         in
-                                           List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity l1
+                                         in min_dist_left_right ll l1 
                                        else
                                          0.
                                     ) bezier
@@ -453,14 +483,14 @@ let rec draw env_stack mlist=
 
           let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_r) x, y) bezier_right in
           let dist_r=if mathsEnv.kerning then
-            List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a lr) infinity bezier_op
+	      min_dist_left_right bezier_op lr
           else 0.
           in
 
           let ll = List.map (fun (x,y)->Array.map (fun x0->x0 -. x1_l+.x0_op) x, y) bezier_left in
           let dist_l=if mathsEnv.kerning then
-            List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a ll) infinity bezier_op
-          else 0.
+	      min_dist_left_right ll bezier_op
+            else 0.
           in
           let x_op=if left=[] then 0. else (x1_l-.dist_l+.op.op_left_spacing) in
           let x_right=x_op+.x1_op-.x0_r -. dist_r+.(if right=[] then 0. else op.op_right_spacing) in
@@ -509,7 +539,7 @@ let dist_boxes a b=
   let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
   let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
   let lr = List.map (fun (x,y)->Array.map (fun x0->x0+.x1_l-.x0_r) x, y) bezier_right in
-    List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity lr
+  min_dist_left_right bezier_left lr
 
 
 let glyphs c envs st=
@@ -590,12 +620,10 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box mid in
 
   let l0 = List.map (fun (x,y)->Array.map (fun x->x+.x1_l-.x0) x, y) bezier_mid in
-  let dist0=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_left) infinity l0 else 
-      0. 
-  in
+  let dist0=if env.kerning then min_dist_left_right bezier_left l0 else 0. in
 
   let l1 = List.map (fun (x,y)->Array.map (fun x->x+.x1-.x0_r) x, y) bezier_right in
-  let dist1=if env.kerning then List.fold_left (fun a b->List.fold_left (fun c d->min_dist c b d) a bezier_mid) infinity l1 else 0. in
+  let dist1=if env.kerning then min_dist_left_right bezier_mid l1 else 0. in
 
 
     (Drawing {
