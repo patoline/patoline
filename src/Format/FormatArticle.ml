@@ -87,40 +87,31 @@ module Env_corollary=Default.Make_theorem
    end)
 (* module Env_proof=Default.Proof *)
 
-
-
-let equation contents = 
-  newPar ~environment:(fun env -> { env with par_indent = [] }) 
-    D.structure Complete.normal parameters 
-    [ Env (fun env ->   Document.incr_counter "equation" env) ;
-      B (fun env ->
-	let boxes,w = boxes_width env contents in 
-	let drawn_boxes = Box.draw_boxes boxes in 
-	let _,x = StrMap.find "equation" env.counters in
-	let num,w' = boxes_width env
-	  (italic [T "(";
-		   T (string_of_int (1 + List.hd x));
-		   T ")" ]) in 
-	let drawn_num = Box.draw_boxes num in 
-	let y0 = boxes_y0 boxes in
-	let y1 = boxes_y1 boxes in
-	let y = 0.5 *. (y0 +. y1) in
-	[Drawing {
-	  drawing_min_width = env.normalMeasure ;
-	  drawing_max_width = env.normalMeasure ;
-	  drawing_nominal_width = env.normalMeasure ;
-	  drawing_badness = (fun _ -> 0.) ;
-	  drawing_y0 = min y0 (boxes_y0 num) ;
-	  drawing_y1 = max y1 (boxes_y1 num) ;
-	  drawing_contents = (fun _ -> 
-	    (List.map (OutputCommon.translate (0.5 *. 
-						 (env.normalMeasure -. w)) 0.) 
-	       drawn_boxes) @
-	      (List.map (OutputCommon.translate (env.normalMeasure -. w') y) drawn_num))
-	}]
-      )] ;
-  D.structure := lastChild !D.structure ;
-  []
+  let equation contents = 
+    let pars a b c d e f g={(parameters a b c d e f g) with
+                              min_height_before=
+        if g.lineStart=0 then a.lead else 0.;
+                              min_height_after=
+        if g.lineEnd>=Array.length b.(g.paragraph) then a.lead else 0.
+                           }
+    in
+    newPar ~environment:(fun env -> { env with par_indent = [] })
+      D.structure Complete.normal pars
+      [ Env (fun env ->Document.incr_counter "equation" env) ;
+        C (fun env ->
+	     let _,w = boxes_width env contents in
+	     let _,x = StrMap.find "equation" env.counters in
+	     let num,w' = boxes_width env
+	       (italic [T "(";
+		        T (string_of_int (1 + List.hd x));
+		        T ")" ]) in
+             let w0=(env.normalMeasure -. w)/.2. in
+             let w1=env.normalMeasure -. w'-.w0-.w in
+             B(fun _->[glue w0 w0 w0])::
+               contents@
+               [B (fun _->glue w1 w1 w1 :: num)]
+	  )];
+    []
 
 (* Default.Make_theorem *)
 (*   (struct *)

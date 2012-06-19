@@ -557,7 +557,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
-        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true } in
+        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=false } in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
         newPar D.structure Complete.normal par
           [B (fun env->
