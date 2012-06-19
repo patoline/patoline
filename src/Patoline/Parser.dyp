@@ -507,19 +507,29 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | leftind<i> - operator<m> [- rightind]?<fi> math(<operator)<b>
+  | quantifier<m> math(<operator)<v> [ relation<r> math(<operator)<e> {r, e} ]?<c> [punctuation]?<p> math(<=operator)<b>
+      { match c, p with
+        | None, None -> Binary(1,Prefix(3,m,false,v),false,SimpleSym "",false,b)
+        | None, Some p -> Binary(0,Prefix(3,m,false,v),true,p,false,b)
+        | Some(r,e), None -> Binary(1,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
+	                         false,SimpleSym "",false,b)
+        | Some(r,e), Some p -> Binary(0,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
+	                         true,p,false,b)
+      } operator
+
+  | leftind<i> - operator<m> [- rightind]?<fi> math(<=operator)<b>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, Operator(m,b)) } operator
-  | operator<m> - rightind<fi> math(<operator)<b>
+  | operator<m> - rightind<fi> math(<=operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Operator (m,b)) } operator
-  | operator<m> math(<operator)<b>
+  | operator<m> math(<=operator)<b>
       { Operator (m,b) } operator
 
-  | limits_operator<m> - rightind<fi> math(<operator)<b>
+  | limits_operator<m> - rightind<fi> math(<=operator)<b>
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
           Indices(fi d, Limits_operator (m,b)) } operator
-  | limits_operator<m> math(<operator)<b>
+  | limits_operator<m> math(<=operator)<b>
       { Limits_operator (m,b) } operator
 
   | math(<=fun)<a> - math(<fun)<b>
@@ -621,6 +631,9 @@ atomelt:
   | "\\Add_prefix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "prefix" (fun x -> Obj_prefix x) names value }
+  | "\\Add_quantifier" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
+    "}" symbol_def<value>
+    @{ add_symbol_rule dyp.local_data "quantifier" (fun x -> Obj_quantifier x) names value }
   | "\\Add_postfix" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "postfix" (fun x -> Obj_postfix x) names value }

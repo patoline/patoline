@@ -118,8 +118,8 @@ Symboles de Patoline
 
 \Add_prefix{+}{+}
 \Add_prefix{-}{-}
-\Add_prefix{\forall ∀}{∀}
-\Add_prefix{\exists ∃}{∃}
+\Add_quantifier{\forall ∀}{∀}
+\Add_quantifier{\exists ∃}{∃}
 \Add_prefix{\vdash ⊢ |-}{⊢}
 
 == Postfix and accent symbols ==
