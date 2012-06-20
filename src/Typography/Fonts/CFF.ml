@@ -828,6 +828,14 @@ let glyph_y1 gl=
   if gl.glyphY1 = -.infinity then compute_bb gl;
   gl.glyphY1
 
+let glyph_x0 gl=
+  if gl.glyphX0 = infinity then compute_bb gl;
+  gl.glyphX0
+
+let glyph_x1 gl=
+  if gl.glyphX1 = -.infinity then compute_bb gl;
+  gl.glyphX1
+
 
 let glyphNumber glyph=glyph.glyphNumber
 

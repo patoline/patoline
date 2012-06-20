@@ -150,6 +150,11 @@ let glyph_y0 gl=match gl with
 let glyph_y1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
 
+let glyph_x0 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_x0 x
+let glyph_x1 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_x1 x
+
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
 

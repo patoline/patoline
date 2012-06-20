@@ -94,10 +94,21 @@ let glyph_y0 gl=
   match gl with
       CFFGlyph x->CFF.glyph_y0 x
     | OpentypeGlyph x->Opentype.glyph_y0 x
+
 let glyph_y1 gl=
   match gl with
       CFFGlyph x->CFF.glyph_y1 x
     | OpentypeGlyph x->Opentype.glyph_y1 x
+
+let glyph_x0 gl=
+  match gl with
+      CFFGlyph x->CFF.glyph_x0 x
+    | OpentypeGlyph x->Opentype.glyph_x0 x
+
+let glyph_x1 gl=
+  match gl with
+      CFFGlyph x->CFF.glyph_x1 x
+    | OpentypeGlyph x->Opentype.glyph_x1 x
 
 let select_features a b=match a with
     CFF x->CFF.select_features x b

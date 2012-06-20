@@ -48,6 +48,8 @@ module type Font =
     val glyphContents : glyph -> CamomileLibrary.UTF8.t
     val glyph_y0 : glyph -> float
     val glyph_y1 : glyph -> float
+    val glyph_x0 : glyph -> float
+    val glyph_x1 : glyph -> float
     val fontName : ?index:int -> font -> string
     val font_features : font -> string list
     val select_features : font -> string list -> substitution list
