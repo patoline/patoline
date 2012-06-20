@@ -274,8 +274,11 @@ let rec draw env_stack mlist=
                                        if mathsEnv.kerning then
                                          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
                                                               Array.map (fun x0->x0 +. yoff.(i)) y) l
-                                         in min_dist_left_right l1 ll
-                                       else
+                                         in if i mod 2 = 0 then 
+					       min_dist_left_right l1 ll
+					   else
+					       min_dist_left_right ll l1
+                                        else
                                          0.
                                     ) bezier
                 in
@@ -330,7 +333,7 @@ let rec draw env_stack mlist=
 	    match b.bin_drawing with
 	        Invisible ->
                   (draw env_stack b.bin_left)@
-                    (resize (mathsEnv.mathsSize*.env.size) gl1)::
+                    (resize (mathsEnv.mathsSize*.env.size*.mathsEnv.invisible_binary_factor) gl1)::
                     (draw env_stack b.bin_right)
 	      | Normal(no_sp_left, op, no_sp_right) ->
                   (draw env_stack b.bin_left)@
@@ -605,7 +608,7 @@ let symbol ?name:(name="") font n envs st=
 
 let open_close left right env_ style box=
   let env=env_style env_.mathsEnvironment style in
-  let s=env.mathsSize in
+  let s=env.mathsSize*.env_.size in
   let left=draw_boxes (left env_ style) in
   let bezier_left=bezier_of_boxes left in
 

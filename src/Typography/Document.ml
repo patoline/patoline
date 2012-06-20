@@ -109,6 +109,7 @@ module Mathematical=struct
     superscript_distance:float;
     limit_subscript_distance:float;
     limit_superscript_distance:float;
+    invisible_binary_factor:float;
     open_dist:float;
     close_dist:float;
     kerning:bool;
