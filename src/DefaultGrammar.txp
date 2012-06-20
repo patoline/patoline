@@ -234,7 +234,7 @@ Symboles de Patoline
 \Add_limits_operator{∑ \sum}{∑}
 \Add_limits_operator{∏ \prod}{∏}
 \Add_limits_operator{∐ \coprod}{∐}
-\Add_limits_operator{∫ \int}{∫}
+\Add_operator{∫ \int}(MathFonts.euler "integral" 783)
 \Add_limits_operator{⋂ \biginter \bigcap}{⋂}
 \Add_limits_operator{⋃ \bigunion \bigcup}{⋃}
 

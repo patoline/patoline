@@ -217,7 +217,14 @@ let rec draw env_stack mlist=
                   in
                     if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
                 in
-                let u,v=if contents (last nucleus) <> "" then  0., 0. else
+		let xx_height =
+                  let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
+                    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'X'}) in
+                    (Fonts.glyph_y1 x)/.1000.
+                  in
+                    if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
+                in
+                let u,v= if y1 < xx_height *. 1.1 then  0., 0. else
                   y1 -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
                   -.y0+. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
                 in
@@ -523,8 +530,8 @@ let rec draw env_stack mlist=
                  drawing_min_width=x1_r-.x0_r;
                  drawing_nominal_width=x1_r-.x0_r;
                  drawing_max_width=x1_r-.x0_r;
-                 drawing_y0=y0_l;
-                 drawing_y1=y1_l;
+                 drawing_y0=y0_r;
+                 drawing_y1=y1_r;
                  drawing_badness=(fun _->0.);
                  drawing_contents=(fun _->right)}]
               @(draw env_stack s)
