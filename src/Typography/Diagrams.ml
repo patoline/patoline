@@ -538,13 +538,13 @@ end
 	let print_node out node = print_pet out node.id
 	let string_of_node node = string_of_pet node.id
 
-	let print_graph g = 
-	  List.iter (fun node -> Printf.fprintf stdout "%a has sons %a \n"
-	    print_node node
-	    (fun out sons -> output_string out (String.concat " ; " 
-	      (List.map (fun node -> string_of_node node) sons)))
-	    node.sons)
-	    g
+	let print_graph g = ()
+	  (* List.iter (fun node -> Printf.fprintf stdout "%a has sons %a \n" *)
+	  (*   print_node node *)
+	  (*   (fun out sons -> output_string out (String.concat " ; "  *)
+	  (*     (List.map (fun node -> string_of_node node) sons))) *)
+	  (*   node.sons) *)
+	  (*   g *)
 
       let compare = 
 	let memo = ref [] in
@@ -556,13 +556,13 @@ end
 	  if !memo = !graph then !memo_res
 	  else
 	    let _ = memo := !graph in
-	    Printf.fprintf stdout "Starting with the graph:\n" ;
+	    (* Printf.fprintf stdout "Starting with the graph:\n" ; *)
 	    let _ = print_graph !graph in 
 	    let pets = total_order !graph in
-	    Printf.fprintf stdout "Sorting, obtaining:\n" ;  
+	    (* Printf.fprintf stdout "Sorting, obtaining:\n" ;   *)
 	    List.iter (fun pet -> print_pet stdout pet ; print_newline ()) pets ;
 	    let nodes,node_of_pet_t,_ = poset_of_list pets in
-	    Printf.fprintf stdout "Obtaining the poset:\n" ;
+	    (* Printf.fprintf stdout "Obtaining the poset:\n" ; *)
 	    let _ = print_graph nodes in
 	    let _ = flush stdout in
 	    let fres x y = 
@@ -571,7 +571,7 @@ end
 	      else 
 		let x' = PetMap.find x node_of_pet_t in 
 		let y' = PetMap.find y node_of_pet_t in 
-		Printf.fprintf stdout "Comparing:\n" ;
+		(* Printf.fprintf stdout "Comparing:\n" ; *)
 		let _ = print_graph [x';y'] in
 		let _ = flush stdout in
 		if List.mem y' x'.sons 
@@ -1499,53 +1499,71 @@ end
 	  { info with tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
 	    curves = (black_paths @ white_paths) }) })
 
-      let arrowOf, arrow_head_pet = 
-	Pet.register ~depends:[double_pet] "arrow head" (fun pet head_params -> 
-	  { pet = pet ; transfo = (fun transfos edge_info -> 
-	    let info = edge_info.tip_info in
-	    let params = edge_info.params in
-	    let underlying_curve = edge_info.underlying_curve in
-	    let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
-	    let short, thickness, height, width, lw = head_params info params in
-	    let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
+      let basic_arrow head_params transfos edge_info=
+	let info = edge_info.tip_info in
+	let params = edge_info.params in
+	let underlying_curve = edge_info.underlying_curve in
+	let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
+	let short, thickness, height, width, lw = head_params info params in
+	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
 
-	    (* Control points on the curve *)
-	    let (xe,ye) as e = Curve.eval underlying_curve 1. in
-	    (* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
-	    let edge_info' = Transfo.transform [shortenE short] edge_info in
-	    let curve0 = edge_info'.underlying_curve in
-	    (* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
-	    let e0 = Curve.eval curve0 1. in
-	    let ee0 = Vector.of_points e e0 in
-	    let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
-	    let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
+	(* Control points on the curve *)
+	let (xe,ye) as e = Curve.eval underlying_curve 1. in
+	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
+	let edge_info' = Transfo.transform [shortenE short] edge_info in
+	let curve0 = edge_info'.underlying_curve in
+	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
+	let e0 = Curve.eval curve0 1. in
+	let ee0 = Vector.of_points e e0 in
+	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
+	let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
 
-	    let lnormale = Vector.rotate 90. (Vector.normalise grad) in
-	    let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
+	let lnormale = Vector.rotate 90. (Vector.normalise grad) in
+	let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
 
-	    (* Left control points *)
-	    let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
-	    let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
-	    let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
+	(* Left control points *)
+	let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
+	let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
+	let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
 
-	    (* Right control points *)
-	    let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
-	    let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
-	    let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
+	(* Right control points *)
+	let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
+	let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
+	let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
 
-	    (* Put everything together *)
-	    let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
-					    @ (Curve.make_quadratic ll l' e1) 
-					    @ (Curve.make_quadratic e1 r' rr) 
-					    @ (Curve.make_quadratic rr r e)) 
-	    in
-	    { edge_info with decorations = edge_info.decorations @
-		[({ params with 
-		  close = true ; 
-		  fillColor = params.strokingColor ; 
-		  lineWidth = lw }, tip)]})})
+	(* Put everything together *)
+	let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll)
+					@ (Curve.make_quadratic ll l' e1)
+					@ (Curve.make_quadratic e1 r' rr)
+					@ (Curve.make_quadratic rr r e))
+	in
+	{ edge_info with decorations = edge_info.decorations @
+	    [({ params with
+		  close = true ;
+		  fillColor = params.strokingColor ;
+		  lineWidth = lw }, tip)]}
+
+      let arrowOf, arrow_head_pet =
+	Pet.register ~depends:[double_pet] "arrow head"
+          (fun pet head_params ->
+	     { pet = pet ; transfo = basic_arrow head_params })
+
+      let backArrowOf, backArrow_head_pet =
+	Pet.register ~depends:[double_pet] "back arrow head"
+          (fun pet head_params ->
+	     { pet = pet ; transfo =
+                 (fun transfos edge_info->
+                    let info=basic_arrow head_params transfos
+                      { edge_info with
+                          underlying_curve=List.map Bezier.rev edge_info.underlying_curve }
+                    in
+                    { edge_info with
+                        decorations=info.decorations }
+                 ) })
+
 
       let arrow = arrowOf head_moustache
+      let arrow' = backArrowOf head_moustache
 
       let modToOf,mod_to_of_pet = Pet.register ~depends:[start_drawing_pet] "mod to"
 	(fun pet time width ->
