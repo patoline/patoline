@@ -16,19 +16,22 @@ let env_style env style=match style with
   | ScriptScript->env.(6)
   | ScriptScript'->env.(7)
 
-type 'a noad= { mutable nucleus: 'a Document.environment -> Mathematical.style ->  'a box list;
+type ('a,'b) noad= { mutable nucleus: 'b;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
                 mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
+and 'a nucleus = 'a Document.environment -> Mathematical.style ->  'a box list
+and 'a nucleuses = ('a Document.environment -> Mathematical.style ->  'a box list) list
+
 and 'a binary_type =
     Invisible
-  | Normal of bool * 'a noad * bool (* the boolean remove spacing at left or right when true *)
+  | Normal of bool * ('a,'a nucleus) noad * bool (* the boolean remove spacing at left or right when true *)
 
 and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
 and 'a fraction= { numerator:'a math list; denominator:'a math list; line: 'a Document.environment->style->OutputCommon.path_parameters }
-and 'a operator= { op_noad:'a noad; op_limits:bool; op_left_spacing:float; op_right_spacing:float; op_left_contents:'a math list; op_right_contents:'a math list }
+and 'a operator= { op_noad:('a,'a nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
-    Ordinary of 'a noad
+    Ordinary of ('a,'a nucleus) noad 
   | Glue of float
   | Env of ('a Document.environment->'a Document.environment)
   | Scope of ('a Document.environment->Mathematical.style->'a math list)
@@ -389,19 +392,59 @@ let rec draw env_stack mlist=
              positionnés en-dessous que du côté où c'est possible *)
 
           let check_inf x=if x= -.infinity || x=infinity then 0. else x in
+
+          let left=draw_boxes (draw env_stack op.op_left_contents) in
+          let bezier_left=bezier_of_boxes left in
+          let right=draw_boxes (draw env_stack op.op_right_contents) in
+          let bezier_right=bezier_of_boxes right in
+          let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
+          let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
+                                     check_inf y0_r_,
+                                     check_inf x1_r_,
+                                     check_inf y1_r_)
+          in
+          let (x0_l_,y0_l_,x1_l_,y1_l_)=bounding_box left in
+          let (x0_l,y0_l,x1_l,y1_l)=(check_inf x0_l_,
+                                     check_inf y0_l_,
+                                     check_inf x1_l_,
+                                     check_inf y1_l_)
+          in
+
+	  let factor = if op.op_limits then
+	      if (style=Display || style=Display') then 1.2 else 1.0
+	    else
+	      if (style=Display || style=Display') then 0.66 else 0.66
+	  in
+	  let op_noad_choice = 
+	    let ll = op.op_noad.nucleus in
+	    let lc = List.map (fun left ->
+	      let left' = left env style in
+	      let left'=draw_boxes left' in
+	      left, bounding_box left') ll
+	    in
+	    let rec fn = function
+	      | [] -> assert false
+	      | [c] -> c
+	      | (left, (x0,y0,x1,y1)) as c :: l ->
+		if (y1 -. y0) *.factor >= y1_l -. y0_l &&  (y1 -. y0) *. factor >= y1_r -. y0_r then c	else
+		  fn  l	      
+	    in
+	    fst (fn lc)
+	  in
+	  let op_noad = { op.op_noad with nucleus = op_noad_choice } in
           let op_noad=
             if op.op_limits && (style=Display || style=Display') then (
               let op', sup=
-                if op.op_noad.superscript_right=[] || op.op_noad.superscript_left=[] then
-                  ({ op.op_noad with superscript_right=[]; superscript_left=[] },
-                   op.op_noad.superscript_right @ op.op_noad.superscript_left)
+                if op_noad.superscript_right=[] || op_noad.superscript_left=[] then
+                  ({ op_noad with superscript_right=[]; superscript_left=[] },
+                   op_noad.superscript_right @ op_noad.superscript_left)
                 else
-                  op.op_noad, []
+                  op_noad, []
               in
               let op'', sub=
-                if op.op_noad.subscript_right=[] || op.op_noad.subscript_left=[] then
+                if op_noad.subscript_right=[] || op_noad.subscript_left=[] then
                   ({ op' with subscript_right=[]; subscript_left=[] },
-                   op.op_noad.subscript_right @ op.op_noad.subscript_left)
+                   op_noad.subscript_right @ op_noad.subscript_left)
                 else
                   op', []
               in
@@ -468,71 +511,52 @@ let rec draw env_stack mlist=
                            (List.map (translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
-            ) else draw env_stack [Ordinary op.op_noad]
-          in
-          let left=draw_boxes (draw env_stack op.op_left_contents) in
-          let bezier_left=bezier_of_boxes left in
-          let right=draw_boxes (draw env_stack op.op_right_contents) in
-          let bezier_right=bezier_of_boxes right in
-          let bezier_op=bezier_of_boxes (draw_boxes op_noad) in
-          let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
-          let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
-                                     check_inf y0_r_,
-                                     check_inf x1_r_,
-                                     check_inf y1_r_)
-          in
-          let (x0_l_,y0_l_,x1_l_,y1_l_)=bounding_box left in
-          let (x0_l,y0_l,x1_l,y1_l)=(check_inf x0_l_,
-                                     check_inf y0_l_,
-                                     check_inf x1_l_,
-                                     check_inf y1_l_)
+            ) else draw env_stack [Ordinary op_noad]
           in
 
+          let bezier_op=bezier_of_boxes (draw_boxes op_noad) in
           let (x0_op,y0_op,x1_op,y1_op)=bounding_box (draw_boxes op_noad) in
 
-          let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_r) x, y) bezier_right in
+          let lr = List.map (fun (x,y)->Array.map (fun x0->x0 +. x1_op-.x0_op) x, y) bezier_right in
           let dist_r=if mathsEnv.kerning then
 	      min_dist_left_right bezier_op lr
           else 0.
           in
 
-          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 -. x1_l+.x0_op) x, y) bezier_left in
+          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 -. x1_op+.x0_op) x, y) bezier_left in
           let dist_l=if mathsEnv.kerning then
 	      min_dist_left_right ll bezier_op
             else 0.
           in
-          let x_op=if left=[] then 0. else (x1_l-.dist_l+.op.op_left_spacing) in
-          let x_right=x_op+.x1_op-.x0_r -. dist_r+.(if right=[] then 0. else op.op_right_spacing) in
-          let gl=match glue (4./.9.) (4./.9.) (9./.18.) with
-              Box.Glue x->Drawing x
-            | x->x
-          in
-            (Drawing {
-               drawing_min_width=x_op;
-               drawing_nominal_width=x_op;
-               drawing_max_width=x_op;
+          let d_op=if left=[] then 0. else (-.dist_l+.mathsEnv.mathsSize*.env.size*.mathsEnv.close_dist) in
+	  let x_op = x1_r +. d_op in
+	  let d_right= if right=[] then 0. else -. dist_r+.mathsEnv.mathsSize*.env.size*.mathsEnv.open_dist in
+          let x_right=x1_op +. d_right in
+
+            (if left = [] then [] else [Drawing {
+               drawing_min_width=x_op-.x0_l;
+               drawing_nominal_width=x_op-.x0_l;
+               drawing_max_width=x_op-.x0_l;
                drawing_y0=y0_l;
                drawing_y1=y1_l;
                drawing_badness=(fun _->0.);
-               drawing_contents=(fun _->left)})
-              ::(if left<>[] then [gl] else [])
+               drawing_contents=(fun _->left)}])
               @[Drawing {
-                 drawing_min_width=x_right-.x_op;
-                 drawing_nominal_width=x_right-.x_op;
-                 drawing_max_width=x_right-.x_op;
+                 drawing_min_width=x_right-.x0_op;
+                 drawing_nominal_width=x_right-.x0_op;
+                 drawing_max_width=x_right-.x0_op;
                  drawing_y0=y0_op;
                  drawing_y1=y1_op;
                  drawing_badness=(fun _->0.);
-                 drawing_contents=(fun _->draw_boxes op_noad)}]
-              @(if right<>[] then [gl] else [])
-              @[Drawing {
+                 drawing_contents=(fun _-> List.map (translate (*d_op*)0.0 0.0) (draw_boxes op_noad))}]
+              @(if right = [] then [] else [Drawing {
                  drawing_min_width=x1_r-.x0_r;
                  drawing_nominal_width=x1_r-.x0_r;
                  drawing_max_width=x1_r-.x0_r;
                  drawing_y0=y0_r;
                  drawing_y1=y1_r;
                  drawing_badness=(fun _->0.);
-                 drawing_contents=(fun _->right)}]
+                 drawing_contents=(fun _-> List.map (translate (*d_right*)0.0 0.0) right)}])
               @(draw env_stack s)
         )
       | Decoration (rebox, inside) :: s ->(

@@ -44,8 +44,8 @@ type 'a math =
    | Fun of string
    | Num of string
    | Prefix of int * symbol * bool * 'a math
-   | Operator of symbol * 'a math
-   | Limits_operator of symbol * 'a math
+   | Operator of string * 'a math
+   | Limits_operator of string * 'a math
    | Postfix of int * 'a math * bool * symbol
    | Binary of int * 'a math * bool * symbol * bool * 'a math
    | Indices of 'a indices * 'a math
@@ -684,11 +684,11 @@ atomelt:
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "accent" (fun x -> Obj_accent x) names value }
   | "\\Add_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" symbol_def<value>
-    @{ add_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
   | "\\Add_limits_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" symbol_def<value>
-    @{ add_symbol_rule dyp.local_data "limits_operator" (fun x -> Obj_limits_operator x) names value }
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "limits_operator" (fun x -> Obj_limits_operator x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }

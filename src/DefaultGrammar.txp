@@ -195,6 +195,7 @@ Symboles de Patoline
 *)
 == Other symbols ==
 
+\Add_symbol{\sharp}(Maths.glyphs "#")
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
@@ -232,11 +233,11 @@ Symboles de Patoline
 \Add_symbol{\bbZ ℤ}(MathFonts.ams "bbZ" 91)
 
 == Operators ==
-\Add_limits_operator{∑ \sum}{∑}
-\Add_limits_operator{∏ \prod}{∏}
-\Add_limits_operator{∐ \coprod}{∐}
-\Add_operator{∫ \int}(MathFonts.euler "integral" 783)
-\Add_limits_operator{⋂ \biginter \bigcap}{⋂}
-\Add_limits_operator{⋃ \bigunion \bigcup}{⋃}
+\Add_limits_operator{∑ \sum}(List.map (MathFonts.euler "sum") [778;779])
+\Add_limits_operator{∏ \prod}(List.map (MathFonts.euler "product") [780;781])
+\Add_limits_operator{∐ \coprod}(List.map (MathFonts.euler "integral") [784;785])
+\Add_operator{∫ \int}(List.map (MathFonts.euler "integral") [782;783])
+\Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "inter") [1766;1768])
+\Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "union") [1765;1767])
 
 \Save_Grammar

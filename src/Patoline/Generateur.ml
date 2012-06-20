@@ -166,9 +166,9 @@ let rec print_math_buf parser_pp op buf m =
 	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (print_math_deco op) ind_right nsp (print_math_expr ind_left) a
 
       | Limits_operator(op, a) ->
-	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=true; Maths.op_left_spacing=0.;Maths.op_right_spacing=0.; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco op) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=true; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
       | Operator(op, a) ->
-	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=false; Maths.op_left_spacing=0.;Maths.op_right_spacing=0.; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco op) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=false; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
       | MScope a->
 	  Printf.bprintf buf "[Maths.Scope (";
           List.iter (print_math_expr indices buf) a;
