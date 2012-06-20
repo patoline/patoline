@@ -303,7 +303,7 @@ let rec draw env_stack mlist=
                                drawing_y0=a1;
                                drawing_y1=a3;
                                drawing_badness=(fun _->0.);
-                               drawing_contents=(fun _->dr) }) ]
+                               drawing_contents=(fun _->List.map (translate (-.a0) 0.) dr) }) ]
               ) else
                 nucleus
         )@(draw env_stack s)
