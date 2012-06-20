@@ -117,14 +117,41 @@ let rec cut l n=
 
 let dist xa ya xb yb=sqrt ((xa-.xb)*.(xa-.xb) +. (ya-.yb)*.(ya-.yb))
 
+let interval_point_dist (xa,ya) (xb,yb) (x,y) =
+  let xv = xb -. xa and yv = yb -. ya in
+  let xw = x -. xa and yw = y -. ya in
+  let u = (xv *. xw +. yv *. yw) /. (xv *. xv +. yv *. yv) in
+  if 0.0 <= u && u <= 1.0 then
+    let xm = xb *. u +. xa *. (1.0 -. u) -. x
+    and ym = yb *. u +. ya *. (1.0 -. u) -. y in
+    sqrt (xm *. xm +. ym *. ym)
+  else if u < 0.0 then 
+    sqrt (xw *. xw +. yw *. yw)
+  else
+    let xm = x -. xb and ym = y -. yb in
+    sqrt (xm *. xm +. ym *. ym)
+
+let interval_interval_dist (xa,ya) (xb,yb) (xa',ya') (xb',yb') =
+  (* We assume the interval do not intersect and therefore, the distance is
+     positive *)
+  min (min (interval_point_dist (xa,ya) (xb,yb) (xa',ya'))
+	 (interval_point_dist (xa,ya) (xb,yb) (xb',yb')))
+    (min (interval_point_dist (xa',ya') (xb',yb') (xa,ya))
+       (interval_point_dist (xa',ya') (xb',yb') (xb,yb)))
+
+let min_dist' d (xa,ya) (xb,yb)=
+  let d'=ref d in
+  for i=0 to Array.length xa-1 do
+    for j=0 to Array.length xb-1 do
+      let pa = if i = Array.length xa-1 then (xa.(0), ya.(0)) else (xa.(i+1), ya.(i+1)) in
+      let pb = if j = Array.length xb-1 then (xb.(0), yb.(0)) else (xb.(j+1), yb.(j+1)) in
+      d':=min !d' (interval_interval_dist  (xa.(i), ya.(i)) pa
+		                           (xb.(j), yb.(j)) pb)
+    done
+  done;
+  !d'
+    
 let min_dist d (xa,ya) (xb,yb)=
-  (*let d'=ref infinity in
-    for i=0 to Array.length xa-1 do
-      for j=0 to Array.length xb-1 do
-        d':=min !d' (dist xa.(i) ya.(i) xb.(j) yb.(j))
-      done
-    done;
-    if !d'<=d then*) 
   let dn = Bezier.distance (xa,ya) (xb,yb) in
   let d0 = Bezier.distance1 (xa.(0),ya.(0)) (xb,yb) in
   let d1 = Bezier.distance1 (xa.(Array.length xa-1),ya.(Array.length ya-1)) (xb,yb) in
@@ -139,11 +166,12 @@ let min_array x =
   Array.fold_left min (infinity) x
 
 
-let min_dist_left_right l1 l2 =
+let min_dist_left_right precise l1 l2 =
   let l1 = List.map (fun (x,y) -> max_array x, (x, y)) l1 in
   let l2 = List.map (fun (x,y) -> min_array x, (x, y)) l2 in
   let l1 = List.sort (fun (x,_) (x',_) -> compare x' x) l1 in
   let l2 = List.sort (fun (x,_) (x',_) -> compare x x') l2 in
+  let min_dist = if precise then min_dist else min_dist' in
   let rec fn acc l1 l2 =
     match l1, l2 with
       ((x,a)::l1') as l1, (y,b)::l2 ->
@@ -175,6 +203,7 @@ let rec draw env_stack mlist=
   let env=match env_stack with []->assert false | h::s->h in
   let style = env.mathStyle in
   let mathsEnv=env_style env.mathsEnvironment style in
+  let min_dist_left_right = min_dist_left_right mathsEnv.precise_kerning in
 
     match mlist with
 
@@ -409,11 +438,11 @@ let rec draw env_stack mlist=
                                      check_inf x1_l_,
                                      check_inf y1_l_)
           in
-
+          (* FIXME : mettre les coefs and mathEnvs *)
 	  let factor = if op.op_limits then
-	      if (style=Display || style=Display') then 1.2 else 1.0
+	      if (style=Display || style=Display') then 0.75 else 0.5
 	    else
-	      if (style=Display || style=Display') then 0.66 else 0.66
+	      if (style=Display || style=Display') then 1.5 else 1.0
 	  in
 	  let op_noad_choice = 
 	    let ll = op.op_noad.nucleus in
@@ -426,7 +455,7 @@ let rec draw env_stack mlist=
 	      | [] -> assert false
 	      | [c] -> c
 	      | (left, (x0,y0,x1,y1)) as c :: l ->
-		if (y1 -. y0) *.factor >= y1_l -. y0_l &&  (y1 -. y0) *. factor >= y1_r -. y0_r then c	else
+		if (y1 -. y0) /.factor >= y1_l -. y0_l &&  (y1 -. y0) /. factor >= y1_r -. y0_r then c	else
 		  fn  l	      
 	    in
 	    fst (fn lc)
@@ -564,7 +593,7 @@ let rec draw env_stack mlist=
         )
 
 
-let dist_boxes a b=
+let dist_boxes precise a b=
   let left=draw_boxes a in
   let bezier_left=bezier_of_boxes left in
   let right=draw_boxes b in
@@ -572,7 +601,7 @@ let dist_boxes a b=
   let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
   let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
   let lr = List.map (fun (x,y)->Array.map (fun x0->x0+.x1_l-.x0_r) x, y) bezier_right in
-  min_dist_left_right bezier_left lr
+  min_dist_left_right precise bezier_left lr
 
 
 let glyphs c envs st=
@@ -641,7 +670,7 @@ let symbol ?name:(name="") font n envs st=
 let open_close left right env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize*.env_.size in
-
+  let min_dist_left_right = min_dist_left_right env.precise_kerning in
   let mid=draw_boxes box in
   let (x0,y0,x1,y1)=bounding_box_delim mid in
   let bezier_mid=bezier_of_boxes mid in
@@ -653,21 +682,13 @@ let open_close left right env_ style box=
       let right=draw_boxes right in
       left, bounding_box left, right, bounding_box right) ll lr
     in
-    let rec fn last = function
+    let rec fn = function
       | [] -> assert false
       | [c] -> c
       | (left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r)) as c :: l ->
-	match last with
-	  None ->
-	    if y1 -. y0 <= y1_l -. y0_l &&  y1 -. y0 <= y1_r -. y0_r then c	else
-              fn (Some(y1_l -. y0_l,y1_r -. y0_r))l
-	| Some (dl,dr) ->
-	  if y1 -. y0 <= (y1_l -. y0_l +. dl)/.2.0 &&  
-	    y1 -. y0 <= (y1_r -. y0_r +. dr)/.2.0 then c	else 
-	    fn (Some(y1_l -. y0_l,y1_r -. y0_r))  l
-	      
+	if y1 -. y0 <= y1_l -. y0_l &&  y1 -. y0 <= y1_r -. y0_r then c	else fn l
     in
-    fn None lc
+    fn lc
   in
   
   let vertical_translation = ((y0_l +. y0_r) /. 2.0 -. y0) /. 2.0 in

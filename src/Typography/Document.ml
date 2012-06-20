@@ -113,6 +113,7 @@ module Mathematical=struct
     open_dist:float;
     close_dist:float;
     kerning:bool;
+    precise_kerning:bool;
     priorities:float array;
     priority_unit:float
   }

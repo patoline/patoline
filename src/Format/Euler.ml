@@ -138,6 +138,7 @@ let default_env=
       open_dist=0.15;
       close_dist=0.15;
       kerning=true;
+      precise_kerning=false;
       priorities=[| 4.;3.;2.;1. |];
       priority_unit=1./.9.
     }
