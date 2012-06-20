@@ -1,3 +1,4 @@
+
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
 
@@ -68,13 +69,24 @@ let resize alpha=function
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
 
-let bounding_box l=
+type bounding_box_opt = {
+  ignore_negative_abcisse : bool;
+  ignore_after_glyphWidth : bool;
+  ignore_under_base_line : bool}
+
+let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
       []->(x0,y0,x1,y1)
     | Glyph g::s->(
-        let x0'=g.glyph_x in
-        let x1'=g.glyph_x +. g.glyph_size*.Fonts.glyphWidth g.glyph/.1000. in
-        let y0'=g.glyph_y +. g.glyph_size*.Fonts.glyph_y0 g.glyph/.1000. in
+        let x0'=g.glyph_x +. 
+	  (if opt.ignore_negative_abcisse then 0.0 else Fonts.glyph_x0 g.glyph) 
+          *. g.glyph_size/.1000. in
+        let x1'=g.glyph_x +.
+	  (if opt.ignore_after_glyphWidth then Fonts.glyphWidth g.glyph else Fonts.glyph_x1 g.glyph)
+	  *. g.glyph_size /.1000. in
+        let y0'=g.glyph_y +. 
+	  (if opt.ignore_under_base_line then 0.0 else Fonts.glyph_y0 g.glyph)
+	  *. g.glyph_size /.1000. in
         let y1'=g.glyph_y +. g.glyph_size*.Fonts.glyph_y1 g.glyph/.1000. in
           bb (min x0 x0') (min y0 y0') (max x1 x1') (max y1 y1') s
       )
@@ -101,6 +113,20 @@ let bounding_box l=
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
+let bounding_box =  bounding_box_opt {
+  ignore_negative_abcisse = true;
+  ignore_after_glyphWidth = true;
+  ignore_under_base_line = false}
+
+let bounding_box_delim =  bounding_box_opt {
+  ignore_negative_abcisse = true;
+  ignore_after_glyphWidth = true;
+  ignore_under_base_line = true}
+
+let bounding_box_full =  bounding_box_opt {
+  ignore_negative_abcisse = false;
+  ignore_after_glyphWidth = false;
+  ignore_under_base_line = false}
 
 let rectangle (xa,ya) (xb,yb)=
   [|[|xa;xa|],[|ya;yb|];

@@ -8,20 +8,22 @@ Symboles de Patoline
 
 == Delimiters ==
 
-\Add_left{ ( }{ ( }
-\Add_right{ ) }{ ) }
-\Add_left{ [ }{ [ }
-\Add_right{ ] }{ ] }
-\Add_left{ \langle < 〈}{ ⟨ }
-\Add_right{ \rangle > 〉}{ ⟩ }
-\Add_left{ | }{ | }
-\Add_right{ | }{ | }
-\Add_left{ || }{ ∥ }
-\Add_right{ || }{ ∥ }
-\Add_left{\lceil ⌈}{⌈}
-\Add_right{\rceil ⌉}{⌉}
-\Add_left{\lfloor ⌊}{⌊}
-\Add_right{\rfloor ⌋}{⌋}
+\Add_left{ ( }(List.map (MathFonts.asana "left_parenthesis") [10;3346;3347;3348])
+\Add_right{ ) }(List.map (MathFonts.asana "right_parenthesis") [11;3349;3350;3351])
+\Add_left{ \{ }(List.map (MathFonts.asana "left_curly_brace") [93;3352;3353;3354])
+\Add_right{ \} }(List.map (MathFonts.asana "left_curly_brace") [95;3355;3356;3357])
+\Add_left{ [ }(List.map (MathFonts.asana "left_square_bracket") [61;3340;3341;3342])
+\Add_right{ ] }(List.map (MathFonts.asana "right_square_bracket") [63;3343;3344;3345])
+\Add_left{ \langle < 〈}(List.map (MathFonts.asana "left_angle") [3239;3240;3341])
+\Add_right{ \rangle > 〉}(List.map (MathFonts.asana "left_angle") [3226;3227;3328])
+\Add_left{ | }(List.map (MathFonts.asana "left_bar") [749;3316;3317;3318;3319])
+\Add_right{ | }(List.map (MathFonts.asana "right_bar") [749;3316;3317;3318;3319])
+\Add_left{ || }(List.map (MathFonts.asana "left_double_bar") [385;3308;3309;3310;3311])
+\Add_right{ || }(List.map (MathFonts.asana "right_double_bar") [385;3308;3309;3310;3311])
+\Add_left{\lceil ⌈}(List.map (MathFonts.asana "left_ceiling") [3328;3329;3330])
+\Add_right{\rceil ⌉}(List.map (MathFonts.asana "right_ceiling") [3331;3332;3333])
+\Add_left{\lfloor ⌊}(List.map (MathFonts.asana "left_floor") [3334;3335;3336])
+\Add_right{\rfloor ⌋}(List.map (MathFonts.asana "right_floor") [3337;3338;3339])
 
 == Relation symbols ==
 
@@ -193,7 +195,6 @@ Symboles de Patoline
 *)
 == Other symbols ==
 
-\Add_symbol{\sharp}(Maths.glyphs "#")
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}

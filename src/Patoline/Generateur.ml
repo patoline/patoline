@@ -157,7 +157,7 @@ let rec print_math_buf parser_pp op buf m =
 	wrap_deco_math_default buf indices
 	  (fun buf ->
 	    Printf.bprintf buf "[Maths.Decoration (Maths.open_close (%a) (%a), %a)]"
-	      print_math_symbol op print_math_symbol cl (print_math_expr no_ind) a)
+	      print_math_multi_symbol op print_math_multi_symbol cl (print_math_expr no_ind) a)
       | Prefix(pr, op, nsp, b) ->
 	let ind_left, ind_right = split_ind indices in
 	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, true); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr nsp (print_math_deco op) ind_left (print_math_expr ind_right) b
@@ -207,6 +207,10 @@ let rec print_math_buf parser_pp op buf m =
     match sym with
         SimpleSym s->Printf.bprintf buf "Maths.glyphs \"%s\"" s
       | CamlSym s->Printf.bprintf buf "(%s)" s
+
+  and print_math_multi_symbol buf  l=
+	Printf.bprintf buf "Maths.multi_glyphs (%s)" l;
+	
   in print_math_expr no_ind buf m
 
 and print_math parser_pp op ch m = begin

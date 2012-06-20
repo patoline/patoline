@@ -51,7 +51,17 @@ type contents =
 
 val translate : float -> float -> contents -> contents
 val resize : float -> contents -> contents
+
+type bounding_box_opt = {
+  ignore_negative_abcisse : bool;
+  ignore_after_glyphWidth : bool;
+  ignore_under_base_line : bool}
+
+val bounding_box_opt : bounding_box_opt -> contents list -> float * float * float * float
 val bounding_box : contents list -> float * float * float * float
+val bounding_box_delim : contents list -> float * float * float * float
+val bounding_box_full : contents list -> float * float * float * float
+
 val circle : float -> (float array * float array) array
 val rectangle : (float*float) -> (float*float)->(float array * float array) array
 type structure = {

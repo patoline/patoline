@@ -52,7 +52,7 @@ type 'a math =
    | Apply of 'a math * 'a math
    | MathMacro of string * 'a math list
    | MathCaml of local_data * 'a * int * int * (texprime_section * int * int) list
-   | Delim of symbol * 'a math * symbol
+   | Delim of string * 'a math * string
    | MScope of 'a math list
 and 'a indices = { up_right : 'a math option;
     down_right : 'a math option;
@@ -61,7 +61,6 @@ and 'a indices = { up_right : 'a math option;
 and symbol=
     SimpleSym of string
   | CamlSym of string
-
 
 and 'a structType = Absolute of int | Relative of 'a doc list
 
@@ -112,7 +111,7 @@ let concat words =
 
 let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
 
-let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbol) =
+let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
   let adef = if noinfix then 
     local_data.other_symbols else local_data.infixes
@@ -147,6 +146,44 @@ let add_symbol_rule local_data rule_name rule_constr symbols (symbol_value:symbo
 	     (match symbol_value with SimpleSym _ -> false | _ -> true) then
 	    Symbol symbol_value
 	  else	     
+  	    Symbol (SimpleSym (String.escaped s))
+        in
+        if acc = Var "" then elt else
+	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]]
+  in
+  elt, [Add_rules[rule, action]; Local_data local_data]
+
+let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value =
+  let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
+  let adef = if noinfix then 
+    local_data.other_symbols else local_data.infixes
+  in  
+  let newsyms =
+    List.fold_left (fun acc s ->
+(*       if StrSet.mem s acc then begin
+         Printf.fprintf stderr "Symbol \"%s\" alread y exists.\n" s; 
+         exit 1
+       end;*)
+       StrSet.add s acc) adef symbols
+  in
+  let local_data = if noinfix then { local_data with other_symbols = newsyms }
+                              else { local_data with infixes = newsyms }
+  in
+  let regexp = RE_Alt (List.map (fun x -> RE_String x) symbols) in 
+  let rule = (rule_name, [ Regexp regexp ], "default_priority", []) in
+  let action dyp l =
+    match l with
+      [ Lexeme_matched _ ] -> rule_constr symbol_value, []
+    | _ -> assert false
+  in
+  let elt = if not local_data.verbose then [Ignore] else
+    [Ignore; sParagraph
+      [FC (false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
+      List.fold_right (fun s acc ->
+       let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
+             with _ -> -1
+       in	     
+        let elt = 
   	    Symbol (SimpleSym (String.escaped s))
         in
         if acc = Var "" then elt else
@@ -475,10 +512,8 @@ math:
       { Fun(name) } atom
   | (['0'-'9']+('.'['0'-'9']+)?) <num> 
       {Num num } atom
-  | left<op> math<a> right <cl>
+  | left<op> math<a> right<cl>
       { Delim(op,a,cl) } atom
-  | "\\{" math<a> "\\}"
-      { Delim(SimpleSym "{",a,SimpleSym "}") } atom
 
   | "{" math<a> "}"
       { a } atom
@@ -579,6 +614,14 @@ symbol_def:
     }
   | '{' symbol_name<sym> '}' { SimpleSym sym }
 
+symbol_defs:
+    CAML<s,e,txps> {
+      let ld, gr = get_local_data_and_grammar dyp in
+      let buf = Buffer.create 80 in  
+      !fprint_caml_buf ld gr buf s e txps;
+      Buffer.contents buf
+    }
+
 atomelt:
   /* Section */
   | (("="|"-")">")<o> paragraph<title> text<content> (("="|"-")"<")<c>
@@ -650,11 +693,17 @@ atomelt:
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
   | "\\Add_left" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" symbol_def<value>
-    @{ add_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) names value }
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) names value }
+  | "\\Add_left" "{" "\\{"<names> 
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) [names] value }
   | "\\Add_right" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
-    "}" symbol_def<value>
-    @{ add_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
+  | "\\Add_right" "{" "\\}"<names> 
+    "}" symbol_defs<value>
+    @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) [names] value }
   | "\\Save_Grammar"
     { let oc = open_out_bin (!out_grammar_name^gram_ext) in
       let ld = { dyp.local_data with verbose = false } in

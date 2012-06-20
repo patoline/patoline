@@ -37,7 +37,6 @@ and 'a math=
   | Operator of 'a operator
   | Decoration of ('a Document.environment -> Mathematical.style -> 'a box list -> 'a box list)*('a math list)
 
-
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
 
 let style x = Env (fun env -> { env with mathStyle = x })
@@ -564,6 +563,8 @@ let glyphs c envs st=
   in
     List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
 
+let multi_glyphs cs envs st =
+  List.map (fun c -> c envs st) cs 
 
 let change_fonts env font=
     { env with
@@ -616,18 +617,40 @@ let symbol ?name:(name="") font n envs st=
 let open_close left right env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize*.env_.size in
-  let left=draw_boxes (left env_ style) in
-  let bezier_left=bezier_of_boxes left in
 
   let mid=draw_boxes box in
+  let (x0,y0,x1,y1)=bounding_box_delim mid in
   let bezier_mid=bezier_of_boxes mid in
 
-  let right=draw_boxes (right env_ style) in
+  let left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r) =
+    let ll = left env_ style and lr = right env_ style in
+    let lc = List.map2 (fun left right ->
+      let left=draw_boxes left in
+      let right=draw_boxes right in
+      left, bounding_box left, right, bounding_box right) ll lr
+    in
+    let rec fn last = function
+      | [] -> assert false
+      | [c] -> c
+      | (left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r)) as c :: l ->
+	match last with
+	  None ->
+	    if y1 -. y0 <= y1_l -. y0_l &&  y1 -. y0 <= y1_r -. y0_r then c	else
+              fn (Some(y1_l -. y0_l,y1_r -. y0_r))l
+	| Some (dl,dr) ->
+	  if y1 -. y0 <= (y1_l -. y0_l +. dl)/.2.0 &&  
+	    y1 -. y0 <= (y1_r -. y0_r +. dr)/.2.0 then c	else 
+	    fn (Some(y1_l -. y0_l,y1_r -. y0_r))  l
+	      
+    in
+    fn None lc
+  in
+  
+  let vertical_translation = ((y0_l +. y0_r) /. 2.0 -. y0) /. 2.0 in
+  let left = List.map (translate 0.0 (-.vertical_translation)) left in
+  let right = List.map (translate 0.0 (-.vertical_translation)) right in
+  let bezier_left=bezier_of_boxes left in
   let bezier_right=bezier_of_boxes right in
-
-  let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
-  let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
-  let (x0,y0,x1,y1)=bounding_box mid in
 
   let l0 = List.map (fun (x,y)->Array.map (fun x->x+.x1_l-.x0) x, y) bezier_mid in
   let dist0=if env.kerning then min_dist_left_right bezier_left l0 else 0. in
@@ -640,8 +663,8 @@ let open_close left right env_ style box=
        drawing_min_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
        drawing_nominal_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
        drawing_max_width=x1_l-.dist0 +. if env.kerning then env.open_dist*.s else 0.;
-       drawing_y0=y0_l;
-       drawing_y1=y1_l;
+       drawing_y0=y0_l-.vertical_translation;
+       drawing_y1=y1_l-.vertical_translation;
        drawing_badness=(fun _->0.);
        drawing_contents=(fun _->(left (*  @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
         [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *) ))})::
@@ -661,8 +684,8 @@ let open_close left right env_ style box=
          drawing_min_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
          drawing_nominal_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
          drawing_max_width=x1_r-.x0_r-.dist1  +. if env.kerning then env.close_dist*.s else 0.;
-         drawing_y0=y0_r;
-         drawing_y1=y1_r;
+         drawing_y0=y0_r-.vertical_translation;
+         drawing_y1=y1_r-.vertical_translation;
          drawing_badness=(fun _->0.);
          drawing_contents=(fun _-> List.map (translate (-. dist1 +. if env.kerning then env.close_dist*.s else 0.) (0.0)) (right (* @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
                                       [rectangle (x0_r,y0_r) (x1_r,y1_r)]))]*) ))}]
