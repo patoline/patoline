@@ -274,7 +274,7 @@ let rec draw env_stack mlist=
                                        if mathsEnv.kerning then
                                          let ll = List.map (fun (x,y)->Array.map (fun x0->x0 +. xoff.(i)) x,
                                                               Array.map (fun x0->x0 +. yoff.(i)) y) l
-                                         in min_dist_left_right ll l1 
+                                         in min_dist_left_right l1 ll
                                        else
                                          0.
                                     ) bezier
