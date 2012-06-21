@@ -76,6 +76,6 @@ let centered str tree max_level=
               )
             | Node _->[]
         in
-          toc { env with counters=StrMap.add "structure" (-1,[0]) env.counters }
+          toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
             0 (fst (top !str))
     )]
