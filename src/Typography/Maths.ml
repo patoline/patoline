@@ -686,7 +686,9 @@ let open_close left right env_ style box=
       | [] -> assert false
       | [c] -> c
       | (left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r)) as c :: l ->
-	if y1 -. y0 <= y1_l -. y0_l &&  y1 -. y0 <= y1_r -. y0_r then c	else fn l
+	(*FIXME: 1.1 coef should be in MathEnvs *)
+	if y1 -. y0 <= (y1_l -. y0_l) *. 1.2 &&  y1 -. y0 <= (y1_r -. y0_r) *. 1.1 then c
+	else fn l
     in
     fn lc
   in
