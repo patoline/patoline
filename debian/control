@@ -2,7 +2,7 @@ Source: patoline
 Section: ocaml
 Priority: extra
 Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
+Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
 Standards-Version: 3.9.3
 Homepage: http://www.lama.univ-savoie.fr/~meunier/patoline
 

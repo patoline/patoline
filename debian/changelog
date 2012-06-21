@@ -1,3 +1,10 @@
+patoline (0~20120621) unstable; urgency=low
+
+  * New upstream with math kerning and a new patofig.
+  * Forgot dypgen in Build-depends.
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Thu, 21 Jun 2012 11:14:16 +0200
+
 patoline (0~20120615) unstable; urgency=low
 
   * Sync with upstream.
