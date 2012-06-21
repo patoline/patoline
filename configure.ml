@@ -142,7 +142,7 @@ let _=
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
         "<**/*>: pp(cpp -w),package(camomile)%s%s
-<Format/*.{ml,mli}>: use_Typography
+<Format/*.{ml,mli}>: use_Typography,use_str
 <proof/proof.{byte,native}>: package(camomile)%s%s
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
 \"Typography\":include\n"

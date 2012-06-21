@@ -362,7 +362,11 @@ let rec draw env_stack mlist=
               (priorities.(prio) -. priorities.(b.bin_priority))
               /.priorities.(b.bin_priority)
           in
-          let gl=(1.+.fact*.fact) *. priorities.(b.bin_priority) *. mathsEnv.priority_unit in
+	  let style_factor = match style with
+	      Display | Display' -> mathsEnv.priority_unit
+	    | _ -> mathsEnv.priority_unit /. 3.0
+	  in
+          let gl=(1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
           let gl0=glue gl gl gl in
           let gl1=match gl0 with
               Box.Glue x->Drawing x
@@ -383,10 +387,11 @@ let rec draw env_stack mlist=
 
       | (Fraction f)::s->(
 
+        let ln=f.line env style in
         let hx =
-          let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
-	    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'o'}) in
-          (Fonts.glyph_y1 x)/.2000.
+          let x= Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
+	    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) '-'}) in
+          mathsEnv.mathsSize*.env.size*.(Fonts.glyph_y1 x +. Fonts.glyph_y0 x +.ln.lineWidth)/.2000.
         in
 
         let ba=draw_boxes (draw (numeratorStyle style env_stack) f.numerator) in
@@ -396,12 +401,12 @@ let rec draw env_stack mlist=
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
           let w=max wa wb in
-          let ln=f.line env style in
+
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
                        drawing_max_width=w;
-                       drawing_y0=y0b-.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.);
-                       drawing_y1=y1a-.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.);
+                       drawing_y0=hx +. y0b-.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.);
+                       drawing_y1=hx +. y1a-.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.);
                        drawing_badness=(fun _->0.);
                        drawing_contents=(fun _->
                                            (if ln.lineWidth = 0. then [] else

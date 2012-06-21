@@ -43,7 +43,7 @@ let _=Arg.parse spec ignore \"Usage :\";;
 module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)\n"
              | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
              | _->"")^
-          "module Format="^format^".Format(D);;\nopen Format;;\n"
+          "module Format="^format^".Format(D);;\nopen Format;;\nopen DefaultFormat.MathsFormat;;\n"
       )
 
 let postambule format outfile = Printf.sprintf "
@@ -267,6 +267,14 @@ and print_macro_buf parser_pp buf op mtype name args =
 	    | _ -> assert false
 	end
       | `Module | `Begin -> 
+	let modname = 
+	  if mtype = `Begin then begin
+            incr moduleCounter;
+	    Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
+	    "Env_"^name
+	  end
+	  else name
+	in
 	let end_open =
 	  if args = [] then 
 	    if mtype = `Begin && name = "Diagram" then begin
@@ -292,14 +300,6 @@ and print_macro_buf parser_pp buf op mtype name args =
 	    Printf.bprintf buf "end\n";
 	    "(Args)"
 	  end
-	in
-	let modname = 
-	  if mtype = `Begin then begin
-            incr moduleCounter;
-	    Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
-	    "Env_"^name
-	  end
-	  else name
 	in
 	if mtype = `Begin && name = "Diagram" then begin
 	(* Printf.bprintf buf "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)

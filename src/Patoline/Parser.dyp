@@ -413,12 +413,11 @@ neargs:
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
+    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" - args<a>
       { let ld, gr = get_local_data_and_grammar dyp in
         Macro(`Begin, name, List.rev (a ld gr)) }
-  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" args<a>
-      { let ld, gr = get_local_data_and_grammar dyp in
-        Macro(`End, name, List.rev (a ld gr)) }
+  | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
+      { Macro(`End, name, []) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[]) }
   | TMACRO<name> - args<a>

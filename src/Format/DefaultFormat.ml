@@ -70,6 +70,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     type user=Document.user
 
+    let bold a=alternative Bold a
+
+    let sc a=alternative Caps a
+
+
     let id x=x
 
     let node l=
@@ -185,7 +190,8 @@ module Format=functor (D:Document.DocumentStructure)->(
              "_figure",(-1,[0]);
              "figure",(2,[0])];
           names=StrMap.empty;
-          user_positions=TS.UMap.empty
+          user_positions=TS.UMap.empty;
+	  show_boxes=false;
         }
 
 
@@ -524,6 +530,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                     ]
                 end)
 
+    module type Enumerate_Pattern = sig
+      val arg1 : string
+    end
+
+    module Env_enumerate = functor (Pat:Enumerate_Pattern) -> 
+      Enumerate(struct
+                  let from_counter x =
+                    [ T(Str.global_replace (Str.regexp_string "1") (string_of_int (List.hd x + 1)) Pat.arg1); T" " ]
+                end)
+
     module Env_abstract = struct
 
       let do_begin_env ()=
@@ -664,8 +680,6 @@ module MathsFormat=struct
     let cal a=mathcal a
     let fraktur a=Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a
     let mathbf a=Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative [] Bold env)) :: a
-    let bold a=alternative Bold a
-    let sc a=alternative Caps a
     let mathsc a=
       [Maths.Scope(fun _ _->
                      Maths.Env (fun env->envAlternative [] Caps env)::
@@ -887,7 +901,8 @@ module Output=functor(M:Driver)->struct
                     | Drawing g ->(
                         let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                           page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
-                          (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
+			if env.show_boxes then
+                          page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w
                       )
                     | User (BeginURILink l)->(

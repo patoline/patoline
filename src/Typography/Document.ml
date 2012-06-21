@@ -180,6 +180,7 @@ and 'a environment={
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   user_positions:line TS.UMap.t;
+  show_boxes:bool;
 }
 
 (** {3 Contenu} *)
