@@ -1,0 +1,521 @@
+
+%                                              ************************************
+%                                              LaTeX macros file - October 31, 2009
+%                                              ************************************
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% English maths environments %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{theorem*}{Theorem} % no number is given
+\newtheorem*{maintheorem}{Main Theorem}
+\newtheorem*{theoremA}{Theorem A}
+\newtheorem*{theoremB}{Theorem B}
+\newtheorem*{theoremC}{Theorem C}
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem*{lemma*}{Lemma} % no number is given
+\newtheorem{corollary}{Corollary}[section]
+\newtheorem*{corollary*}{Corollary} % no number is given
+\newtheorem{consequence}{Consequence}[section]
+\newtheorem*{consequence*}{Consequence} % no number is given
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem*{proposition*}{Proposition} % no number is given
+\newtheorem{conjecture}{Conjecture}[section]
+\newtheorem*{conjecture*}{Conjecture} % no number is given
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem*{definition*}{Definition} % no number is given
+\newtheorem{remark}{Remark}[section]
+\newtheorem*{remark*}{Remark} % (single remark) no number is given
+\newtheorem*{remarks*}{Remarks} % (list of remarks) no number is given
+\newtheorem*{notation}{Notation} % no number is given
+\newtheorem*{notations}{Notations} % no number is given
+\newtheorem{question}{Question}[section]
+\newtheorem*{question*}{Question} % (single question) no number is given
+\newtheorem*{questions*}{Questions} % (list of questions) no number is given
+\newtheorem{example}{Example}[section]
+\newtheorem*{example*}{Example} % (single example) no number is given
+\newtheorem*{examples*}{Examples} % (list of examples) no number is given
+\newtheorem{exercise}{Exercise}[section]
+\newtheorem*{exercise*}{Exercise} % (single exercise) no number is given
+\newtheorem*{exercises*}{Exercises} % (list of exercises) no number is given
+% \newtheorem{figure}{Figure}[section]
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% French maths environments %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\theoremstyle{plain}
+\newtheorem{thm}{Théorème}[section]
+\newtheorem*{thm*}{Théorème} % no number is given
+\newtheorem*{thmbase}{Théorème principal}
+\newtheorem*{thmA}{Théorème A}
+\newtheorem*{thmB}{Théorème B}
+\newtheorem*{thmC}{Théorème C}
+\newtheorem{lemme}{Lemme}[section]
+\newtheorem*{lemme*}{Lemme} % no number is given
+\newtheorem{cor}{Corollaire}[section]
+\newtheorem*{cor*}{Corollaire} % no number is given
+\newtheorem{csq}{Conséquence}[section]
+\newtheorem*{csq*}{Conséquence} % no number is given
+\newtheorem{prop}{Proposition}[section]
+\newtheorem*{prop*}{Proposition} % no number is given
+\newtheorem{conj}{Conjecture}[section]
+\newtheorem*{conj*}{Conjecture} % no number is given
+
+\theoremstyle{definition}
+\newtheorem{déf}{Définition}[section]
+\newtheorem*{déf*}{Définition} % no number is given
+\newtheorem{rem}{Remarque}[section]
+\newtheorem*{rem*}{Remarque} % (single remark) no number is given
+\newtheorem*{rems*}{Remarques} % (list of remarks) no number is given
+\newtheorem{ex}{Exemple}[section]
+\newtheorem*{ex*}{Exemple} % (single example) no number is given
+\newtheorem*{exs*}{Exemples} % (list of examples) no number is given
+\newtheorem{exo}{Exercice}[section]
+\newtheorem*{exo*}{Exercice} % (single exercise) no number is given
+\newtheorem*{exos*}{Exercices} % (list of exercises) no number is given
+
+\theoremstyle{remark}
+\newtheorem*{preuve}{Preuve} % \qed has to be added at the end of the proof
+\newtheorem*{démo}{Démonstration} % \qed has to be added at the end of the proof
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% Environment commands %
+%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\disp}{\displaystyle}
+\newcommand{\hs}{\hspace{\stretch{1}}}
+\newcommand{\vs}{\vspace{\stretch{1}}}
+
+\renewcommand{\.}{{}_{\!}} 
+% on the other hand, {}_{\,} gives almost the same result as \, (so, there is no need for a new command)
+
+
+%%%%%%%%%%%%%%%%%
+% Greek letters %
+%%%%%%%%%%%%%%%%%
+\renewcommand{\a}{\alpha}
+\renewcommand{\b}{\beta}
+\renewcommand{\c}{\gamma}
+\newcommand{\C}{\Gamma}
+\renewcommand{\d}{\delta}
+\newcommand{\D}{\Delta}
+\newcommand{\e}{\varepsilon}
+\newcommand{\f}{\varphi}
+\newcommand{\F}{\Phi}
+\renewcommand{\i}{\iota}
+\renewcommand{\k}{\kappa}
+\renewcommand{\l}{\lambda}
+\renewcommand{\L}{\Lambda}
+\newcommand{\m}{\mu}
+\newcommand{\n}{\nu}
+\newcommand{\om}{\omega}
+\newcommand{\Om}{\Omega}
+\newcommand{\p}{\psi}
+\renewcommand{\P}{\Psi}
+\renewcommand{\r}{\rho}
+\newcommand{\s}{\sigma}
+\renewcommand{\S}{\Sigma}
+\renewcommand{\t}{\theta}
+\newcommand{\T}{\Theta}
+\newcommand{\ups}{\upsilon} % \up is used by the package french in babel!
+\newcommand{\Ups}{\Upsilon} % \U stands for the unitary group (see below)
+\newcommand{\x}{\xi}
+\newcommand{\X}{\Xi}
+\newcommand{\z}{\zeta}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% Calligraphic letters %
+%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cB}{\mathcal{B}}
+\newcommand{\cC}{\mathcal{C}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cE}{\mathcal{E}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\cI}{\mathcal{I}}
+\newcommand{\cJ}{\mathcal{J}}
+\newcommand{\cK}{\mathcal{K}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\cN}{\mathcal{N}}
+\newcommand{\cO}{\mathcal{O}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cQ}{\mathcal{Q}}
+\newcommand{\cR}{\mathcal{R}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cT}{\mathcal{T}}
+\newcommand{\cU}{\mathcal{U}}
+\newcommand{\cV}{\mathcal{V}}
+\newcommand{\cW}{\mathcal{W}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\cZ}{\mathcal{Z}}
+
+
+%%%%%%%%%%%%%%%%%%
+% Gothic letters %
+%%%%%%%%%%%%%%%%%%
+\newcommand{\gA}{\mathfrak{A}}
+\newcommand{\gB}{\mathfrak{B}}
+\newcommand{\gC}{\mathfrak{C}}
+\newcommand{\gD}{\mathfrak{D}}
+\newcommand{\gE}{\mathfrak{E}}
+\newcommand{\gF}{\mathfrak{F}}
+\newcommand{\gG}{\mathfrak{G}}
+\newcommand{\gH}{\mathfrak{H}}
+\newcommand{\gI}{\mathfrak{I}}
+\newcommand{\gJ}{\mathfrak{J}}
+\newcommand{\gK}{\mathfrak{K}}
+\newcommand{\gL}{\mathfrak{L}}
+\newcommand{\gM}{\mathfrak{M}}
+\newcommand{\gN}{\mathfrak{N}}
+\newcommand{\gO}{\mathfrak{O}}
+\newcommand{\gP}{\mathfrak{P}}
+\newcommand{\gQ}{\mathfrak{Q}}
+\newcommand{\gR}{\mathfrak{R}}
+\newcommand{\gS}{\mathfrak{S}}
+\newcommand{\gT}{\mathfrak{T}}
+\newcommand{\gU}{\mathfrak{U}}
+\newcommand{\gV}{\mathfrak{V}}
+\newcommand{\gW}{\mathfrak{W}}
+\newcommand{\gX}{\mathfrak{X}}
+\newcommand{\gY}{\mathfrak{Y}}
+\newcommand{\gZ}{\mathfrak{Z}}
+
+
+%%%%%%%%%
+% Logic %
+%%%%%%%%%
+\newcommand{\as}{\ \mbox{\raisebox{.085ex}{$:$}\!$=$} \ } % direct assignment
+\newcommand{\sa}{\ \mbox{$=$\!\raisebox{.085ex}{$:$}} \ } % reverse assignment
+\newcommand{\imp}{\Longrightarrow} % implication
+\newcommand{\con}{\Longleftarrow} % converse
+% \newcommand{\eq}{\Longleftrightarrow} % equivalence >>> use \iff
+
+% >>> width test: $| connector |$ (example: $| \as |$)
+
+\newcommand{\st}{~|~} % such that
+\newcommand{\St}{~\Big|~} % big such that
+
+\newcommand{\ie}{\emph{i.\,e.}} % id est (= that is)
+\newcommand{\eg}{\emph{e.\,g.}} % exempli gratia (= for example)
+
+
+%%%%%%%%%%%%%%%%
+% General sets %
+%%%%%%%%%%%%%%%%
+\newcommand{\Mor}[2]{\mathrm{Mor} \! \left( #1 , #2 \right)} 
+% category morphisms from object #1 to object #2
+% (>>> replace the argument #1 by \. #1 if #1 is denoted by a capital letter)
+\newcommand{\End}[1]{\mathrm{End} \! \left( #1 \right)} % category endomorphisms of object #1
+\newcommand{\Aut}[1]{\mathrm{Aut} \! \left( #1 \right)} % category automorphisms of object #1 (= group)
+
+\newcommand{\Oset}{\mbox{\large $\varnothing$}} % empty set
+\newcommand{\llist}[3]{#1_{#2} , \ldots , #1_{#3}} % line list = list of elements
+\newcommand{\lset}[3]{\left\{ #1_{#2} , \ldots , #1_{#3} \right\}} % line set = set given by a list
+
+\newcommand{\inc}{\subseteq} % inclusion
+\newcommand{\incneq}{\subsetneq} % strict inclusion
+% \newcommand{\setmin}{\raisebox{2.087335pt}{\scriptsize $\boldsymbol{\setminus}$}}
+\newcommand{\setmin}{\raisebox{0.45ex}{\scriptsize $\smallsetminus$}} % difference between sets
+\newcommand{\cart}{\! \times \!} % Cartesian product
+
+\renewcommand{\to}{\longrightarrow} % [f : E \to F]
+\newcommand{\map}[5]{\begin{array}{rcl} #1 #2 & \to & #3 \\ #4 & \longmapsto & #5 \end{array}} 
+% map (or mapping)
+\newcommand{\gr}[1]{\mathrm{Graph} \! \left( #1 \right)} % graph of the map #1
+\newcommand{\I}[1]{\mathrm{I}_{\scriptscriptstyle #1}} % identity map of the set #1
+\newcommand{\rest}[2]{#1_{\mathbf{|} #2}} % restriction of the map #1 to the subset #2
+\newcommand{\1}[1]{\mathbf{1}_{\scriptscriptstyle \! #1}} % characteristic function of the subset #1
+
+\newcommand{\act}{\! \cdot \!} % action operator
+
+\renewcommand{\fam}[3]{\left( #1_{#2} \right)_{\! #2 \in #3}} 
+% family where the parameter #2 ranges in the set #3
+
+\newcommand{\flowR}[2]{\left( #1^{#2} \right)_{\! #2 \in \RR}} % flow where the parameter #2 ranges in \RR
+\newcommand{\flow}[3]{\left( #1^{#2} \right)_{\! #2 \in #3}} 
+% flow where the parameter #2 ranges in the (semi-)group #3
+
+\newcommand{\seqN}[2]{\left( #1_{#2} \right)_{\! #2 \in \NN}} % sequence where the index #2 ranges in \NN
+\newcommand{\seq}[3]{\left( #1 \right)_{\! #2 \geq #3}} % sequence where the index #2 ranges in [#3 , +\infty)
+
+\newcommand{\serN}[2]{\sum_{#2 \geq 0} #1_{#2}} % series where the index #2 ranges in \NN
+\newcommand{\ser}[3]{\sum_{#2 \geq #3} #1} % series where the index #2 ranges in [#3 , +\infty)
+
+\newcommand{\TserN}[2]{\sum_{#2 \geq 0} #1_{#2} z^{#2}} % Taylor series where the index #2 ranges in \NN
+\newcommand{\Tser}[3]{\sum_{#2 \geq #3} #1 z^{#2}} % Taylor series where the index #2 ranges in [#3 , +\infty)
+
+\newcommand{\card}[1]{\mathrm{card} \! \left( #1 \right)} % cardinal
+
+
+%%%%%%%%%%%%%%%
+% Number sets %
+%%%%%%%%%%%%%%%
+\newcommand{\NN}{\mathbf{N}} % natural integers
+\newcommand{\ZZ}{\mathbf{Z}} % integers
+\newcommand{\DD}{\mathbf{D}} % decimal numbers
+\newcommand{\QQ}{\mathbf{Q}} % rational numbers
+\newcommand{\RR}{\mathbf{R}} % real numbers
+\newcommand{\CC}{\mathbf{C}} % complex numbers
+\newcommand{\HH}{\mathbf{H}} % quaternions
+
+
+%%%%%%%%%%%%%%%%%%
+% Geometric sets %
+%%%%%%%%%%%%%%%%%%
+\newcommand{\Zn}[1]{\mathbf{Z}^{#1 \!}} % standard lattice in R^{#1}
+\newcommand{\Qn}[1]{\mathbf{Q}^{#1 \!}} % 
+\newcommand{\Rn}[1]{\mathbf{R}^{\! #1 \!}} % #1-dimensional real Cartesian space
+\newcommand{\Bn}[1]{\mathbf{B}^{#1 \!}} % canonical Euclidean unit open ball in R^{#1}
+\newcommand{\Sn}[1]{\mathbf{S}^{#1 \!}} % canonical Euclidean unit sphere in R^{#1 + 1}
+\newcommand{\Tn}[1]{\mathbf{T}^{#1 \!}} % #1-dimensional real canonical torus (= R^{#1} / Z^{#1})
+\newcommand{\Cn}[1]{\mathbf{C}^{#1 \!}} % #1-dimensional complex Cartesian space
+\newcommand{\Hn}[1]{\mathbf{H}^{#1 \!}} % #1-dimensional real hyperbolic space
+\newcommand{\Pn}[2]{\mathbf{P}^{#1 \!}(#2)} % #1-dimensional projective space over the field #2 (= P(K^{#1 + 1}))
+
+
+%%%%%%%%%%%%
+% Topology %
+%%%%%%%%%%%%
+\newcommand{\intr}[1]{\overset{\; _{\circ}}{#1}} % interior
+\newcommand{\clos}[1]{\overline{#1}} % closure
+\newcommand{\bd}[1]{\partial #1} % boundary (closure less interior)
+
+
+%%%%%%%%%%%%
+% Analysis %
+%%%%%%%%%%%%
+\renewcommand{\leq}{\leqslant} % less or equal
+\renewcommand{\geq}{\geqslant} % greater or equal
+
+\newcommand{\epi}[1]{\mathrm{Epi} \! \left( #1 \right)} % epigraph of the function #1
+
+\DeclareMathOperator{\acosh}{acosh} % inverse hyperbolic cosine
+\DeclareMathOperator{\asinh}{asinh} % inverse hyperbolic sine
+\DeclareMathOperator{\atanh}{atanh} % inverse hyperbolic tangent
+
+\newcommand{\logb}[2][10]{\log_{#1}{\! \left( #2 \right)}} 
+% logarithm of #2 to the base #1 (10 is the default value)
+
+\let\oldint\int
+\renewcommand{\int}[4]{\oldint_{\! #1}^{#2} \!\!\!\! #3 \mathrm{d} #4} % integral
+% on ne peut pas redéfinir \int en utilisant l'ancien \int, même en passant par une commande intermédiaire
+% (c'est pourquoi, on utilise \let\oldint\int, l'ancien \int étant renommé \oldint)
+
+\newcommand{\dev}[3]{\left[ {}^{\stackrel{{}^{\stackrel{}{}}}{}} 
+{#1}^{\stackrel{{}^{\stackrel{}{}}}{}} \right]_{\! #2}^{\! #3}} 
+% difference of the function #1 evaluated at #2 and #3 (= #1(#3) - #1(#2))
+
+\renewcommand{\iint}[4]{\oldint \!\!\!\! \oldint_{\! #1} \!\! #2 \, \mathrm{d} #3 \mathrm{d} #4} 
+% double integral
+\renewcommand{\iiint}[5]{\oldint \!\!\!\! \oldint \!\!\!\! \oldint_{\! #1} \!\! #2 \, 
+\mathrm{d} #3 \mathrm{d} #4 \mathrm{d} #5} 
+% triple integral
+
+\newcommand{\BB}{\mathrm{B}} % B(X , Y) = bounded functions from X (set) to Y (metric space)
+\renewcommand{\ll}[1]{\ell^{#1 \!}} % l^{#1} property of a family (summability)
+\newcommand{\LL}[1]{\mathrm{L}^{\!\. \mbox{\raisebox{.12ex}{\tiny $#1$}} \!}} 
+% L^{#1} property of a function with respect to Lebesgue integration
+
+\newcommand{\goes}{\rightarrow} % convergence arrow
+\newcommand{\we}{\mathop{\mbox{\large $\rightharpoonup$}}} 
+\newcommand{\weak}{\we_{n \goes +\infty}} % weak convergence arrow [f_{n} \weak f]
+
+\newcommand{\negligible}{\mathop{\textsf{o}}} 
+% \mathop définit un opérateur du type \sum permettant les indices SOUS l'opérateur en mode \displaystyle
+\renewcommand{\neg}[2]{\negligible_{^{#1}} \! \left( #2 \right)} % negligible to the function #2 at the point #1
+\newcommand{\dominated}{\mathop{\textsf{O}}}
+\newcommand{\dom}[2]{\dominated_{^{#1}} \! \left( #2 \right)} % dominated by the function #2 at the point #1
+\newcommand{\equivalent}{\mathop{\thicksim}}
+\newcommand{\equ}[2]{\equivalent_{^{#1}} #2} % equivalent to the function #2 at the point #1
+\newcommand{\DL}[2]{\mathrm{DL}_{#1 \,} \!\! \left( #2 \right)} 
+% finite Taylor expansion of order #1 at the point #2
+
+\newcommand{\DSE}[1]{\mathrm{DSE} \! \left( #1 \right)} % infinite Taylor expansion at the point #1
+
+\newcommand{\E}[1]{\mathrm{E} \! \left( #1 \right)} % partie entière (French for integer part: [3.1415] = 3)
+
+\newcommand{\Res}[2]{\mathrm{Res} \! \left( #1 , #2 \right)} 
+% residue of the meromorphic function #1 at the singularity #2
+
+% >>> use \Cl{\,}(\. E , F) or \Cl{0}(\. E , F) for the set of continuous maps from E to F
+
+\newcommand{\Homeo}[1]{\mathrm{Homeo} \! \left( #1 \right)} % homeomorphism group of #1
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Probability & Statistics %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \newcommand{\PP}[1]{\mathbf{P} \! \left( #1 \right)} 
+% probability of the event #1 (already defined in geometry)
+\newcommand{\EE}[1]{\mathbf{E} \! \left( #1 \right)} % expected value of the random variable #1
+\newcommand{\var}[1]{\mathrm{Var} \! \left( #1 \right)} % variance of the random variable #1
+\newcommand{\sd}[1]{\boldsymbol{\sigma} \! \left( #1 \right)} 
+% standard deviation (écart-type in French) of the random variable #1
+\newcommand{\cov}[2]{\mathrm{Cov} \! \left( #1 , #2 \right)} 
+% covariance of the pair of random variables (#1 , #2)
+
+
+%%%%%%%%%%%%%%%%%%%
+% Complex numbers %
+%%%%%%%%%%%%%%%%%%%
+\renewcommand{\Re}[1]{\mathrm{Re} \! \left( #1 \right)} % real part
+% \renewcommand{\Im}[1]{\mathrm{Im} \! \left( #1 \right)} % imaginary part (already defined in linear algebra)
+\renewcommand{\bar}{\overline} % conjugate
+
+
+%%%%%%%%%%%%%%%%%%
+% Linear algebra %
+%%%%%%%%%%%%%%%%%%
+\renewcommand{\vec}[1]{\overset{\rightarrow \!}{#1}} % small vector arrow
+\newcommand{\vect}[1]{\overrightarrow{#1}} % long vector arrow
+\newcommand{\lvec}[3]{\left( #1_{#2} , \ldots , #1_{#3} \right)} % line vector
+\newcommand{\cvec}[3]{{\mbox{\scriptsize $\begin{pmatrix} #1_{#2} \\ \vdots \\ #1_{#3} \end{pmatrix}$}}} 
+% column vector
+
+\newcommand{\Mat}{\mathrm{Mat}} % Mat(f , B , B')
+
+\newcommand{\Trans}[2]{\mathrm{Trans} \! \left( #1 , #2 \right)} 
+% (English) transformation matrix from basis #1 to basis #2
+\newcommand{\Pass}[2]{\mathrm{Pass} \! \left( #1 , #2 \right)} 
+% (Français) matrice de passage de la base #1 à la base #2
+
+\newcommand{\Ker}[1]{\mathrm{Ker} \! \left( #1 \right)} % kernel
+\newcommand{\Coker}[1]{\mathrm{Coker} \! \left( #1 \right)} % cokernel
+\renewcommand{\Im}[1]{\mathrm{Im} \! \left( #1 \right)} % image
+
+\renewcommand{\dim}[1]{\mathrm{dim} \! \left( #1 \right)} % dimension (without specifying the field)
+\newcommand{\codim}[2]{\mathrm{codim}_{#1 \,} \!\! \left( #2 \right)} % codimension of #2 in #1
+\newcommand{\dimk}[2]{\mathrm{dim}_{#1 \,} \!\! \left( #2 \right)} % dimension of #2 over the field #1
+\newcommand{\rk}[1]{\mathrm{rk} \! \left( #1 \right)} % rank
+\newcommand{\rg}[1]{\mathrm{rg} \! \left( #1 \right)} % rang (French for rank)
+\newcommand{\sign}[1]{\mathrm{sign} \! \left( #1 \right)} % signature of a quadratic form
+ 
+\newcommand{\Vect}[1]{\mathrm{Vect} \! \left( #1 \right)} % spanned vector subspace
+
+\newcommand{\tp}[1]{{}^{\disp \stackrel{\mathrm{t}}{}} \! #1} % transpose
+
+\newcommand{\tr}[1]{\mathrm{tr} \! \left( #1 \right)} % trace
+
+\let\olddet\det
+\renewcommand{\det}[1]{\olddet{\! \left( #1 \right)}} % determinant of an endomorphism or a matrix
+\newcommand{\detb}[2]{\olddet\nolimits_{\! #1 \,}{\!\! #2}} 
+% determinant in the basis #1 of the family of vectors #2
+
+\newcommand{\spe}[2]{\sigma_{\! #1 \,} \!\! \left( #2 \right)} % spectrum of #2 over the field #1
+% >>> use \s(T) for the spectrum of the linear operator T (without specifying the field)
+
+% >>> use \LL{}(E , F) for the set of linear maps from E to F % \L stands for capital lambda (see above)
+
+\newcommand{\A}{\mathrm{A}} % set of affine maps = A(E , F)
+\newcommand{\M}{\mathrm{M}} % set of n x p matrices = M(n x p , A) (or M(n , A) if n = p), where A is a ring
+
+\newcommand{\GL}{\mathrm{GL}} % linear group = GL(n , A) or GL(E)
+\newcommand{\GA}{\mathrm{GA}} % affine group = GA(n , A) or GA(E)
+\newcommand{\PGL}{\mathrm{PGL}} % projective linear group = PGL(n , A) or PGL(E)
+\newcommand{\SL}{\mathrm{SL}} % special linear group = SL(n , A) or SL(E)
+\newcommand{\PSL}{\mathrm{PSL}} % projective special linear group = PSL(n , A) or PSL(E)
+\renewcommand{\O}{\mathrm{O}} % orthogonal group = O(n , R) or O(E) (E Euclidean vector space)
+\newcommand{\SO}{\mathrm{SO}} % special orthogonal group = SO(n , R) or SO(E) (E Euclidean vector space)
+\newcommand{\GO}{\mathrm{GO}} % group of vector similarities = GO(n , A) or GO(E)
+\newcommand{\U}{\mathrm{U}} % unitary group = U(n , C) or U(E) (E Hermitian vector space)
+\newcommand{\SU}{\mathrm{SU}} % special unitary group = SU(n , C) or SU(E) (E Hermitian vector space)
+\newcommand{\Sp}{\mathrm{Sp}} % symplectic group = Sp(2n , R) or Sp(E)
+
+\renewcommand{\deg}[1]{\mathrm{d}^{\circ} \! \left( #1 \right)} % degree of a polynomial
+
+
+%%%%%%%%%%%%
+% Geometry %
+%%%%%%%%%%%%
+\newcommand{\paral}{\diagup \!\!\! \diagup} % parallel
+\newcommand{\nparal}{\diagup \!\!\! \diagup \hspace{-3.75mm} \backslash \,\,} % non-parallel
+
+\newcommand{\Aff}[1]{\mathrm{Aff} \! \left( #1 \right)} % spanned affine subspace
+\newcommand{\Bary}[1]{\mathrm{Bar} \! \left( #1 \right)} % barycenter
+\newcommand{\Conv}[1]{\mathrm{Conv} \! \left( #1 \right)} % convex hull
+
+\newcommand{\PP}[1]{\mathbf{P} \! \left( #1 \right)} % projective space of the vector space #1
+\newcommand{\Proj}[1]{\mathrm{Proj} \! \left( #1 \right)} % spanned projective subspace
+
+\newcommand{\norm}[1]{\left\| #1 \right\|} % norm
+\newcommand{\onenorm}[1]{\left\| #1 \right\|_{_{1}}} % L1-norm
+\newcommand{\twonorm}[1]{\left\| #1 \right\|_{_{2}}} % L2-norm
+\newcommand{\pnorm}[1]{\left\| #1 \right\|_{_{p}}} % Lp-norm
+\newcommand{\supnorm}[1]{\left\| #1 \right\|_{_{\infty}}} % sup-norm (or uniform norm)
+\newcommand{\opnorm}[1]{\left| \! \left| \! \left| #1 \right| \! \right| \! \right|} 
+% operator norm
+
+\newcommand{\<}{\langle} % left bracket
+\renewcommand{\>}{\rangle} % right bracket
+\newcommand{\scal}[2]{\left\langle #1 , #2 \right\rangle} % scalar product
+
+\newcommand{\gmeas}[2]{\sphericalangle (#1 , #2)} 
+% geometric measure (or spherical distance) of the pair of vectors (#1 , #2) 
+% (wrongly called geometric 'angle')
+\newcommand{\oangle}[2]{\widehat{(#1 , #2)}} % oriented angle
+\newcommand{\noangle}[2]{\bar{(#1 , #2)}} % non-oriented angle
+\newcommand{\meas}{\mathrm{meas}} % (English) measure in R/2piZ (R/piZ) of oriented (non-oriented) angles
+\newcommand{\mes}{\mathrm{mes}} % (Français) mesure des angles orientés (non orientés) dans R/2piZ (R/piZ)
+
+\newcommand{\diam}{\mathrm{diam}} % diameter
+\newcommand{\vol}{\mathrm{vol}} % volume
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% Differential geometry %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\der}[2]{\frac{\mathrm{d} #1}{\mathrm{d} #2}} % derivative (Leibniz notation)
+\newcommand{\dern}[3]{\frac{\mathrm{d}^{#3} #1}{\mathrm{d} #2^{#3}}} % nth derivative (Leibniz notation)
+\newcommand{\Tg}[3]{T_{\! #1} #2 \! \cdot \! #3} % tangent linear map
+
+\newcommand{\pder}[2]{\frac{\partial #1}{\partial #2}} % partial derivative
+\newcommand{\ppder}[3]{\frac{\partial^{2} #1}{\partial #2 \partial #3}} % second order partial derivative
+\newcommand{\pppder}[4]{\frac{\partial^{3} #1}{\partial #2 \partial #3 \partial #4}} 
+% third order partial derivative
+\newcommand{\pnder}[3]{\frac{\partial^{#3} #1}{\partial #2_{1} \cdots \partial #2_{#3}}} 
+% partial derivative of order #3
+
+\newcommand{\ed}[1]{\mathrm{d} #1} % exterior differential
+
+\newcommand{\J}[1]{\mathrm{J} \! \left( #1 \right)} % Jacobian matrix of the map #1 (as a map)
+\newcommand{\Jac}[1]{\mathrm{Jac} \! \left( #1 \right)} 
+% Jacobian determinant (or Jacobian) of the map #1 (as a map)
+\renewcommand{\H}[1]{\mathrm{H} \! \left( #1 \right)} % Hessian matrix of the map #1 (as a map)
+\newcommand{\Hes}[1]{\mathrm{Hes} \! \left( #1 \right)} 
+% Hessian determinant (or Hessian) of the map #1 (as a map)
+
+\newcommand{\grad}[1]{\mathrm{grad} \! \left( #1 \right)} % gradient
+\newcommand{\curl}[1]{\mathrm{curl} \! \left( #1 \right)} % curl
+\newcommand{\rot}[1]{\mathrm{rot} \! \left( #1 \right)} % rotationnel (French for curl)
+\renewcommand{\div}[1]{\mathrm{div} \! \left( #1 \right)} % divergence
+
+\newcommand{\Cl}[1]{\mathrm{C}^{#1 \!}} % class C^{#1}
+
+\newcommand{\Diff}[2]{\mathrm{Diff}^{#1 \!} \! \left( #2 \right)} 
+% group of C^#1 diffeomorphisms of the manifold #2
+\newcommand{\Symp}[1]{\mathrm{Symp} \! \left( #1 \right)} 
+% group of smooth symplectomorphisms of the manifold #1
+\newcommand{\Cont}[1]{\mathrm{Cont} \! \left( #1 \right)} 
+% group of smooth contactomorphisms of the manifold #1
+
+
+
+
+
+
+
+
+
+% RÈGLES TYPOGRAPHIQUES : 
+% x + y (avec blancs) , x y (avec blanc) , x \times y (avec blancs) , x / y (avec blancs).
+

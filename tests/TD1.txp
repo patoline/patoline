@@ -1,0 +1,212 @@
+=============================================================
+Exercices de mathématique – Suites et séries numériques
+-------------------------------------------------------------
+LST – S3 – Série n° 1 – 2010/2011
+=============================================================
+
+\Caml(
+open Document.Mathematical
+open Maths
+
+let defaultEnv = { defaultEnv with 
+  par_indent = [];
+  lead=15./.10.*. defaultEnv.size;
+  normalLead=15./.10.*. defaultEnv.size;
+(*  show_boxes = true;*)
+
+  mathsEnvironment = Array.map (fun e -> {
+    e with
+    precise_kerning = true;
+    subscript_distance= 0.1;
+    superscript_distance= 0.1;
+    limit_subscript_distance= 0.1;
+    limit_superscript_distance= 0.1;
+  }) defaultEnv.mathsEnvironment;}
+
+let displayStyle a=[Maths.Scope(
+                    fun _ _->Maths.Env (fun env-> { env with mathStyle
+                      = Display })::a
+                  )]
+
+
+)
+
+\bold{Ex 1.1} – On considère la suite réelle $(u_n)_{n≥1}$ définie par 
+$\displayStyle{u_{n} =  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
+
+
+\Begin{enumerate}("1) "){}
+   \item()Montrer que $(u_n)_{n≥1}$ converge et déterminer sa limite. 
+   
+   \item()Établir que pour tout réel $x > -1$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$. 
+   
+   \item()En déduire que la suite $(u_n)_{n≥1}$ est croissante. 
+\End{enumerate}
+
+ 
+
+\bold{Ex 1.2} – 
+Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 = 2$ 
+et $\displayStyle{u_{n + 1} = {1 \over 2}  (u_{n} + 2 \over u_{n})}$ pour tout $n \in \bbN$. 
+
+\Begin{enumerate}("1) "){}
+   \item()Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
+   
+   \item()En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $2^{1 / 2}$. 
+   
+   \item()Calculer $\displayStyle{ {u_{n + 1} - 2^{1/ 2}} \over
+     {u_{n + 1} + 2^{1/ 2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
+\End{enumerate}
+
+
+
+(*
+\bigskip
+\bigskip
+
+\textbf{Ex 1.3 --} 
+Soit $\seqN{u}{n}$ la suite réelle définie par $u_{0} \as 1$ 
+et $\disp u_{n + 1} = \frac{3 u_{n}}{1 + u_{n}^{2}}$ pour tout $n \in \NN$. 
+
+\Begin{itemize}
+   \item Montrer que pour tout entier $n \geq 0$ on a $1 \leq u_{n} \leq 2$. 
+   
+   \item Dans l'hypothèse où la suite $\seqN{u}{n}$ converge, que peut valoir sa limite $a$~? 
+   
+   \item En considérant la suite $\seqN{v}{n}$ définie par $v_{n} \as u_{n} - a$, 
+   établir qu'on a $\disp |v_{n + 1}| \leq \frac{1}{2} |v_{n}|$ pour tout $n \in \NN$. 
+   
+   \item En déduire que $\seqN{u}{n}$ converge vers $a$. 
+\End{itemize}
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.4 --} 
+\textsf{(Moyenne arithmético-géométrique)} \\ 
+Étant donné des réels $0 < a \leq b$, on considère les suites réelles $\seqN{a}{n}$ et $\seqN{b}{n}$ 
+définies par $a_{0} \as a$, $b_{0} \as b$ ainsi que $a_{n + 1} = \sqrt{a_{n} b_{n}}$ et 
+$\disp b_{n + 1} = \frac{1}{2} (a_{n} + b_{n})$ pour tout $n \in \NN$. 
+
+\begin{enumerate}[1)]
+   \item Montrer que pour tout $n \in \NN$ on a $0 < a_{n} \leq b_{n}$. \\ 
+   \textsf{Indication~:} on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \NN$. 
+   
+   \item Établir que $\seqN{a}{n}$ est croissante et que $\seqN{b}{n}$ est décroissante. 
+   
+   \item En déduire que ces deux suites sont convergentes. 
+   
+   \item Prouver enfin que les limites de $\seqN{a}{n}$ et $\seqN{b}{n}$ sont égales. \\ 
+   \textsf{Indication~:} on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$ 
+   pour tout $n \in \NN$. \\ 
+   \textsf{Remarque~:} cette valeur commune est appelée la moyenne arithmético-géométrique 
+   des nombres $a$ et $b$, notée $M(a , b)$. 
+\end{enumerate}
+
+\pagebreak
+
+%%%%%%%%%%%%%%%%%%%%%
+% Séries numériques %
+%%%%%%%%%%%%%%%%%%%%%
+
+\textbf{Ex 1.5 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\frac{n}{n+1}}{n}{0}~, 
+\quad 
+\ser{\sqrt{n+1} - \sqrt{n}}{n}{0}~, 
+\quad 
+\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}~, 
+\quad 
+\ser{\frac{1}{\sqrt[n]{n!}}}{n}{1}~, 
+\quad 
+\ser{\frac{\ln{\! (1 + 1 / n)}}{n}}{n}{1}~,
+$$ 
+$$
+\ser{\frac{\ln{n}}{n 2^{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{\ln{\! (1 + n)}}{n^{3}}}{n}{1}~, 
+\quad 
+\ser{\sin{\!\! \left(  \! \frac{1}{n} \! \right)}}{n}{1}~, 
+\quad 
+\ser{\frac {1}{n} - \frac {1}{n + \a}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac {1}{n + \a^{n}}}{n}{0} \quad \mbox{avec} \quad \a > 0.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.6 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\! \left( \! \frac{2 n}{3 n + 2} \! \right)^{\!\!\! n}}{n}{0}~, 
+\quad 
+\ser{\frac{1}{n^{n}}}{n}{0}~, 
+\quad 
+\ser{\frac{n!}{n^{n}}}{n}{0}~, 
+\quad 
+\ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0}~,
+$$ 
+$$
+\ser{\frac{(n + 1)2^{n}}{n!}}{n}{0}~, 
+\quad 
+\ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} 
+\quad \mbox{et} \quad 
+\ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}~.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.7 --} 
+Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent~: 
+$$
+\ser{\frac{1}{n (n + 2)}}{n}{1}~, 
+\quad 
+\ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2}~, 
+\quad 
+\ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1}~, 
+\quad 
+\ser{n a^{n}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac{a^{n}}{n}}{n}{1} \quad \mbox{avec} \quad a \in [0 , 1[.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.8 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0}~, 
+\quad 
+\ser{\frac{\sin{\! (\sqrt{n})}}{n \sqrt{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{(-1)^{n}}{n - \ln{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{\cos{n} + (-1)^{n} n^{2}}{n^{3}}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac{\sin{n}}{n}}{n}{1}~.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.9 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\frac{1}{n \ln{n}}}{n}{2}~, 
+\quad
+\ser{\frac{1}{\sqrt[3]{n} \ln{n}}}{n}{2}~, 
+\quad
+\ser{\frac{\ln{n}}{n \sqrt{n}}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\ln{\!\! \left( \!\. 1 + \frac{(-1)^{n}}{\sqrt{n}} \! \right)}}{n}{2}.
+$$ 
+
+
+% Document ends here
+\end{document}
+
+*)

@@ -1,0 +1,250 @@
+
+%   *************************************************************
+%   Exercices de mathématique - LST - S3 - Série n° 1 - 2010/2011
+%   *************************************************************
+
+\documentclass[12pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{amsmath} % AMS-LaTeX core module
+\usepackage{amsfonts} % more maths symbols
+\usepackage{amssymb} % more maths symbols
+\usepackage{amsthm} % extended theorem environment
+\usepackage{amscd} % commutative diagrams
+\usepackage{enumerate}
+\usepackage{graphics}
+\usepackage{epsf}
+\usepackage{psfrag}
+\usepackage{amsopn}
+\numberwithin{equation}{section}
+
+
+% Printer layout
+\setlength{\textwidth}{170mm}
+\setlength{\textheight}{250mm}
+\setlength{\oddsidemargin}{0mm}
+\setlength{\evensidemargin}{0mm}
+\setlength{\topmargin}{-10mm}
+\setlength{\headheight}{0mm}
+\setlength{\headsep}{0mm}
+\setlength{\footskip}{10mm}
+\setlength{\parindent}{0mm}
+
+
+% Input LaTeX-macros file
+\input{LaTeX-macros}
+
+
+% Specific maths environments
+
+
+% Specific macros
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%(50)
+
+
+% Document begins here
+\begin{document}
+\pagestyle{empty}
+
+\begin{bfseries}
+
+\uppercase{Université de Savoie} \hfill{LST -- S3}
+
+\hfill{2010--2011}
+
+\bigskip
+
+\centerline{\large{Mathématique}}
+
+\bigskip
+
+\centerline{Série \no 1 \ --- \ Suites et séries numériques}
+
+\end{bfseries}
+
+\bigskip
+\bigskip
+
+%%%%%%%%%%%%%%%%%%%%%
+% Suites numériques %
+%%%%%%%%%%%%%%%%%%%%%
+
+\textbf{Ex 1.1 --} 
+On considère la suite réelle $\seq{u_{n}}{n}{1}$ définie par 
+$\disp u_{n} \as \!\. \left( \! 1 + \frac{1}{n} \right)^{\!\!\! n} \!$ pour tout entier $n \geq 1$. 
+
+\begin{enumerate}[1)]
+   \item Montrer que $\seq{u_{n}}{n}{1}$ converge et déterminer sa limite. 
+   
+   \item Établir que pour tout réel $x > -1$ on a $\disp \frac{x}{x + 1} \leq \ln{\! (1 + x)} \leq x$. 
+   
+   \item En déduire que la suite $\seq{u_{n}}{n}{1}$ est croissante. 
+\end{enumerate}
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.2 --} 
+Soit $\seqN{u}{n}$ la suite réelle définie par $u_{0} \as 2$ 
+et $\disp u_{n + 1} = \frac{1}{2} \! \left( \! u_{n} + \frac{2}{u_{n}} \! \right) \!$ pour tout $n \in \NN$. 
+
+\begin{enumerate}[1)]
+   \item Montrer que $\seqN{u}{n}$ est bien définie et qu'elle est décroissante. \\ 
+   \textsf{Indication~:} on montrera au préalable que $\sqrt{2} \leq u_{n}$ pour tout $n \in \NN$. 
+   
+   \item En déduire que la suite $\seqN{u}{n}$ converge vers $\sqrt{2}$. 
+   
+   \item Calculer $\disp \frac{u_{n + 1} - \sqrt{2}}{u_{n + 1} + \sqrt{2}}$ en fonction de $u_{n}$ 
+   pour tout $n \in \NN$, puis retrouver le résultat précédent. 
+\end{enumerate}
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.3 --} 
+Soit $\seqN{u}{n}$ la suite réelle définie par $u_{0} \as 1$ 
+et $\disp u_{n + 1} = \frac{3 u_{n}}{1 + u_{n}^{2}}$ pour tout $n \in \NN$. 
+
+\begin{enumerate}[1)]
+   \item Montrer que pour tout entier $n \geq 0$ on a $1 \leq u_{n} \leq 2$. 
+   
+   \item Dans l'hypothèse où la suite $\seqN{u}{n}$ converge, que peut valoir sa limite $a$~? 
+   
+   \item En considérant la suite $\seqN{v}{n}$ définie par $v_{n} \as u_{n} - a$, 
+   établir qu'on a $\disp |v_{n + 1}| \leq \frac{1}{2} |v_{n}|$ pour tout $n \in \NN$. 
+   
+   \item En déduire que $\seqN{u}{n}$ converge vers $a$. 
+\end{enumerate}
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.4 --} 
+\textsf{(Moyenne arithmético-géométrique)} \\ 
+Étant donné des réels $0 < a \leq b$, on considère les suites réelles $\seqN{a}{n}$ et $\seqN{b}{n}$ 
+définies par $a_{0} \as a$, $b_{0} \as b$ ainsi que $a_{n + 1} = \sqrt{a_{n} b_{n}}$ et 
+$\disp b_{n + 1} = \frac{1}{2} (a_{n} + b_{n})$ pour tout $n \in \NN$. 
+
+\begin{enumerate}[1)]
+   \item Montrer que pour tout $n \in \NN$ on a $0 < a_{n} \leq b_{n}$. \\ 
+   \textsf{Indication~:} on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \NN$. 
+   
+   \item Établir que $\seqN{a}{n}$ est croissante et que $\seqN{b}{n}$ est décroissante. 
+   
+   \item En déduire que ces deux suites sont convergentes. 
+   
+   \item Prouver enfin que les limites de $\seqN{a}{n}$ et $\seqN{b}{n}$ sont égales. \\ 
+   \textsf{Indication~:} on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$ 
+   pour tout $n \in \NN$. \\ 
+   \textsf{Remarque~:} cette valeur commune est appelée la moyenne arithmético-géométrique 
+   des nombres $a$ et $b$, notée $M(a , b)$. 
+\end{enumerate}
+
+\pagebreak
+
+%%%%%%%%%%%%%%%%%%%%%
+% Séries numériques %
+%%%%%%%%%%%%%%%%%%%%%
+
+\textbf{Ex 1.5 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\frac{n}{n+1}}{n}{0}~, 
+\quad 
+\ser{\sqrt{n+1} - \sqrt{n}}{n}{0}~, 
+\quad 
+\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}~, 
+\quad 
+\ser{\frac{1}{\sqrt[n]{n!}}}{n}{1}~, 
+\quad 
+\ser{\frac{\ln{\! (1 + 1 / n)}}{n}}{n}{1}~,
+$$ 
+$$
+\ser{\frac{\ln{n}}{n 2^{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{\ln{\! (1 + n)}}{n^{3}}}{n}{1}~, 
+\quad 
+\ser{\sin{\!\! \left(  \! \frac{1}{n} \! \right)}}{n}{1}~, 
+\quad 
+\ser{\frac {1}{n} - \frac {1}{n + \a}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac {1}{n + \a^{n}}}{n}{0} \quad \mbox{avec} \quad \a > 0.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.6 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\! \left( \! \frac{2 n}{3 n + 2} \! \right)^{\!\!\! n}}{n}{0}~, 
+\quad 
+\ser{\frac{1}{n^{n}}}{n}{0}~, 
+\quad 
+\ser{\frac{n!}{n^{n}}}{n}{0}~, 
+\quad 
+\ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0}~,
+$$ 
+$$
+\ser{\frac{(n + 1)2^{n}}{n!}}{n}{0}~, 
+\quad 
+\ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} 
+\quad \mbox{et} \quad 
+\ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}~.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.7 --} 
+Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent~: 
+$$
+\ser{\frac{1}{n (n + 2)}}{n}{1}~, 
+\quad 
+\ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2}~, 
+\quad 
+\ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1}~, 
+\quad 
+\ser{n a^{n}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac{a^{n}}{n}}{n}{1} \quad \mbox{avec} \quad a \in [0 , 1[.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.8 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0}~, 
+\quad 
+\ser{\frac{\sin{\! (\sqrt{n})}}{n \sqrt{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{(-1)^{n}}{n - \ln{n}}}{n}{1}~, 
+\quad 
+\ser{\frac{\cos{n} + (-1)^{n} n^{2}}{n^{3}}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\frac{\sin{n}}{n}}{n}{1}~.
+$$ 
+
+\bigskip
+\bigskip
+
+\textbf{Ex 1.9 --} 
+Déterminer la nature des séries numériques suivantes~: 
+$$
+\ser{\frac{1}{n \ln{n}}}{n}{2}~, 
+\quad
+\ser{\frac{1}{\sqrt[3]{n} \ln{n}}}{n}{2}~, 
+\quad
+\ser{\frac{\ln{n}}{n \sqrt{n}}}{n}{1} 
+\quad \mbox{et} \quad 
+\ser{\ln{\!\! \left( \!\. 1 + \frac{(-1)^{n}}{\sqrt{n}} \! \right)}}{n}{2}.
+$$ 
+
+
+% Document ends here
+\end{document}
+
