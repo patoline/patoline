@@ -235,7 +235,7 @@ Symboles de Patoline
 == Operators ==
 \Add_limits_operator{∑ \sum}(List.map (MathFonts.euler "sum") [778;779])
 \Add_limits_operator{∏ \prod}(List.map (MathFonts.euler "product") [780;781])
-\Add_limits_operator{∐ \coprod}(List.map (MathFonts.euler "integral") [784;785])
+\Add_limits_operator{∐ \coprod}(List.map (MathFonts.euler "coproduct") [784;785])
 \Add_operator{∫ \int}(List.map (MathFonts.euler "integral") [782;783])
 \Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "inter") [1766;1768])
 \Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "union") [1765;1767])
