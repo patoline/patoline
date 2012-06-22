@@ -59,12 +59,6 @@ module TS=Break.Make
        if a.paragraph<b.paragraph then -1 else
          if a.paragraph>b.paragraph then 1 else
 
-           if a.lastFigure<b.lastFigure then -1 else
-             if a.lastFigure>b.lastFigure then 1 else
-
-           if a.isFigure<b.isFigure then -1 else
-             if a.isFigure>b.isFigure then 1 else
-
            if a.lineStart<b.lineStart then -1 else
              if a.lineStart>b.lineStart then 1 else
 
