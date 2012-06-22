@@ -118,7 +118,7 @@ let bounding_box =  bounding_box_opt {
   ignore_after_glyphWidth = true;
   ignore_under_base_line = false}
 
-let bounding_box_delim =  bounding_box_opt {
+let bounding_box_kerning =  bounding_box_opt {
   ignore_negative_abcisse = true;
   ignore_after_glyphWidth = true;
   ignore_under_base_line = true}

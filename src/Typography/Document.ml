@@ -112,8 +112,12 @@ module Mathematical=struct
     invisible_binary_factor:float;
     open_dist:float;
     close_dist:float;
+    left_op_dist:float;
+    right_op_dist:float;
     kerning:bool;
-    precise_kerning:bool;
+  (* None means precise, Some x mean unprecise, but subdivise 
+     Bezier curve until the thickness of the polygon is less than x *)
+    precise_kerning:float option;
     priorities:float array;
     priority_unit:float
   }

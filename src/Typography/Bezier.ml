@@ -752,3 +752,24 @@ let distance1 (xa,ya) (xb,yb)=
       min d (sqrt (x*.x+.y*.y))
     ) infinity (0.::1.::(bernstein_solve d 1e-3))
 
+let thickness (xa,ya) =
+  let l = Array.length xa - 1 in
+  let (xv, yv) = xa.(l) -. xa.(0), ya.(l) -. ya.(0) in
+  let norm = sqrt (xv *. xv +. yv *. yv) in
+  let (xn, yn) = (-. yv /. norm, xv /. norm) in
+  let n = ref 0.0 and p = ref 0.0 in 
+  for i = 1 to l - 1 do
+    let s = ((xa.(i) -. xa.(0)) *. xn +. (ya.(i) -. ya.(0)) *. yn) in
+    if s < !n then n := s;
+    if s > !p then p := s
+  done;
+  !p -. !n
+
+let subdivise thick b =
+  let rec fn acc (xa, ya as b) =
+    if thickness b > thick then
+      let acc =  fn acc (restrict xa 0.0 0.5, restrict ya 0.0 0.5) in
+      fn acc (restrict xa 0.5 1.0, restrict ya 0.5 1.0) 
+  else
+    b::acc
+  in fn [] b

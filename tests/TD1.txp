@@ -16,7 +16,7 @@ let defaultEnv = { defaultEnv with
 
   mathsEnvironment = Array.map (fun e -> {
     e with
-    precise_kerning = true;
+    precise_kerning = Some 1e-2;
     subscript_distance= 0.1;
     superscript_distance= 0.1;
     limit_subscript_distance= 0.1;
@@ -31,34 +31,37 @@ let displayStyle a=[Maths.Scope(
 
 )
 
-\bold{Ex 1.1} – On considère la suite réelle $(u_n)_{n≥1}$ définie par 
-$\displayStyle{u_{n} =  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
+\bold{Ex I} – On considère la suite réelle $(u_n)_{n≥1}$ définie par 
+$\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
 
+\Begin{genumerate}("1) "){}
 
-\Begin{enumerate}("1) "){}
    \item()Montrer que $(u_n)_{n≥1}$ converge et déterminer sa limite. 
-   
-   \item()Établir que pour tout réel $x > -1$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$. 
-   
+)  
+   \item()Établir que pour tout réel $x > {-1}$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$. 
+  
    \item()En déduire que la suite $(u_n)_{n≥1}$ est croissante. 
-\End{enumerate}
+
+\End{genumerate}
 
  
 
-\bold{Ex 1.2} – 
-Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 = 2$ 
-et $\displayStyle{u_{n + 1} = {1 \over 2}  (u_{n} + 2 \over u_{n})}$ pour tout $n \in \bbN$. 
+\bold{Ex II} – 
+Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$ 
+et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + 2 \over u_n)}$ pour tout $n \in \bbN$. 
 
-\Begin{enumerate}("1) "){}
-   \item()Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
+\Begin{genumerate}("1) "){}
+   \item()Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. 
+  _Indication :_ on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
    
    \item()En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $2^{1 / 2}$. 
    
    \item()Calculer $\displayStyle{ {u_{n + 1} - 2^{1/ 2}} \over
      {u_{n + 1} + 2^{1/ 2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
-\End{enumerate}
+\End{genumerate}
 
 
+\sc{Fin}
 
 (*
 \bigskip

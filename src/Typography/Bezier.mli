@@ -72,3 +72,6 @@ val distance :
 
 val distance1 :
   (float *float)-> (float array*float array)-> float
+
+val subdivise :
+  float -> (float array*float array) -> (float array*float array) list

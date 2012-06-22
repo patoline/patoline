@@ -59,7 +59,7 @@ type bounding_box_opt = {
 
 val bounding_box_opt : bounding_box_opt -> contents list -> float * float * float * float
 val bounding_box : contents list -> float * float * float * float
-val bounding_box_delim : contents list -> float * float * float * float
+val bounding_box_kerning : contents list -> float * float * float * float
 val bounding_box_full : contents list -> float * float * float * float
 
 val circle : float -> (float array * float array) array
