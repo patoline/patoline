@@ -1,0 +1,21 @@
+\Caml(
+open Document.Mathematical
+open Maths
+
+let defaultEnv = { defaultEnv with 
+  (*show_boxes = true;*)
+
+  mathsEnvironment = Array.map (fun e -> {
+    e with
+    precise_kerning = None;
+  }) defaultEnv.mathsEnvironment;}
+)
+
+$$a^2 + 2 a b + b^2 = (a+b)^2$$
+$$||a||, |a|, [a], \{a\}, (a)$$
+$$||ν_i||,|ν_i|, [ν_i], \{ν_i\}, (ν_i)$$
+$$i__A_i^t, t^^i__A_i, t^^i__A_i^t, i__V_i^t, t^^i__V_i, t^^i__V_i^t$$
+$$a^i + A^i + (A)^i$$
+    cos cos cos
+$$(∫_a^b {2 t cos(t) d t}), (∫_a^b {2 cos(t) d t})$$
+$$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
