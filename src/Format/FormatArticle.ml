@@ -35,9 +35,8 @@ let boxes_y1 boxes =
 
 module Euler=DefaultFormat.Euler
 
-module Format=functor (D:DocumentStructure)->struct
-
-  module Default=DefaultFormat.Format(D)
+module MakeFormat (D:DocumentStructure)
+  (Default : module type of DefaultFormat.Format(D)) = struct
 
   module MathFonts = DefaultFormat.MathFonts
   include Default
@@ -142,5 +141,8 @@ module Env_corollary=Default.Make_theorem
   let qq _=utf8Char 8221
 
 end
+
+module Format (D : DocumentStructure) =
+  MakeFormat (D) (DefaultFormat.Format(D))
 
 module Output = DefaultFormat.Output
