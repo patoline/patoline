@@ -146,6 +146,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
 
       let colision_cache=ref ColMap.empty in
       let endNode=ref None in
+
+      let last_todo_line=ref (uselessLine,0.,Line.default_params,0.,IntMap.empty,UMap.empty) in
       let rec break allow_impossible todo demerits=
         (* A chaque etape, todo contient le dernier morceau de chemin qu'on a construit dans demerits *)
         if LineMap.is_empty todo then demerits else (
@@ -178,6 +180,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                 IntMap.add nextNode.lastFigure (Placed nextNode) figures1
               else figures1
               in
+              last_todo_line:=(nextNode,badness,next_params,comp,figures2,nextUser);
               todo':=LineMap.add nextNode (badness,next_params,comp,figures2,nextUser) !todo';
               demerits':=LineMap.add nextNode (badness,log,next_params,comp,node,figures2,nextUser) !demerits'
             in
@@ -261,8 +264,11 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   | None
                   | Some _->endNode:=Some (lastBadness, node, lastFigures,lastUser)
             ) else (
-              let page0,h0=if node.height>=lastParameters.page_height then (node.page+1,0.) else
-                (node.page, node.height) in
+              let page0,h0=
+                if lastParameters.min_page_after>0 then (node.page+lastParameters.min_page_after, 0.) else
+                  if node.height>=lastParameters.page_height then (node.page+1,0.) else
+                    (node.page, node.height)
+              in
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
               let rec fix page height= (* Printf.fprintf stderr "fix : %d %f\n" page height; *)
@@ -289,57 +295,59 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                     if not (!r_params.really_next_line) || nextNode.height<>node.height then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let height'=
-                        if page=node.page && node<>uselessLine then (
-                          let rec v_distance node0 parameters=
-                            if node0.isFigure then (
-                              let fig=figures.(node0.lastFigure) in
-                              let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
-                              node0.height+.(snd (line_height paragraphs nextNode))+.fig_height
-                                (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
-                                (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
-                                (*     try *)
-                                (*       let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in *)
-                                (*       let _,_,params,_,_,_,_=LineMap.find ant !demerits' in *)
-                                (*         v_distance ant params *)
-                                (*     with *)
-                                (*         Not_found -> node0.height *)
-                                (*   ) *)
-                            ) else (
-                              let d=
-                                node0.height+.
+                        if lastParameters.min_page_after>0 then 0. else (
+                          if page=node.page && node<>uselessLine then (
+                            let rec v_distance node0 parameters=
+                              if node0.isFigure then (
+                                let fig=figures.(node0.lastFigure) in
+                                let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
+                                node0.height+.(snd (line_height paragraphs nextNode))+.fig_height
+                                  (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
+                                  (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
+                                  (*     try *)
+                                  (*       let _,_,_,_,ant,_,_=LineMap.find node0 !demerits' in *)
+                                  (*       let _,_,params,_,_,_,_=LineMap.find ant !demerits' in *)
+                                  (*         v_distance ant params *)
+                                  (*     with *)
+                                  (*         Not_found -> node0.height *)
+                                  (*   ) *)
+                              ) else (
+                                let d=
+                                  node0.height+.
+                                    (try
+                                       ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                    !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                     with
+                                         Not_found -> (
+                                           let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                           colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                         !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
+                                           -.dist
+                                         )
+                                    )
+                                  +. max !r_params.min_height_before parameters.min_height_after
+                                in
+                                if d=infinity || d = -.infinity then
                                   (try
-                                     ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
-                                                  !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
-                                   with
-                                       Not_found -> (
-                                         let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                         colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
-                                                                       !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
-                                         -.dist
-                                       )
-                                  )
-                                +. max !r_params.min_height_before parameters.min_height_after
-                              in
-                              if d=infinity || d = -.infinity then
-                                (try
-                                   let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
-                                   let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
-                                   if prec.page=page then v_distance prec params else
-                                     (node0.height
-                                      +. max (snd (line_height paragraphs nextNode))
-                                      (max !r_params.min_height_before parameters.min_height_after))
-                                 with
-                                     Not_found->
+                                     let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
+                                     let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
+                                     if prec.page=page then v_distance prec params else
                                        (node0.height
                                         +. max (snd (line_height paragraphs nextNode))
                                         (max !r_params.min_height_before parameters.min_height_after))
-                                )
-                              else d
-                            )
-                          in
-                          v_distance node lastParameters
-                        ) else (
-                          (snd (line_height paragraphs nextNode))
+                                   with
+                                       Not_found->
+                                         (node0.height
+                                          +. max (snd (line_height paragraphs nextNode))
+                                          (max !r_params.min_height_before parameters.min_height_after))
+                                  )
+                                else d
+                              )
+                            in
+                            v_distance node lastParameters
+                          ) else (
+                            (snd (line_height paragraphs nextNode))
+                          )
                         )
                       in
                       minimal_tried_height:=min !minimal_tried_height height';
@@ -354,6 +362,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               && node.lineEnd < Array.length (paragraphs.(node.paragraph)))
                              || lastParameters.not_last_line)
                           && !r_params.min_page_before<=0
+                          && not node.isFigure
                         in
                         let nextNode_is_widow=
                           page<>node.page
@@ -425,34 +434,31 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   )
                 )
               in
-              (try
-                 fix page0 h0;
-                 if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
-                   List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
-                                let a,_,_=LineMap.split nextNode !demerits' in
-                                let b,_,_=LineMap.split nextNode !todo' in
-                                demerits':=a;
-                                todo':=b
-                             ) !extreme_solutions;
-                   local_opt:= !extreme_solutions
-                 );
-                 if !local_opt <> [] then (
-                   let l0=List.sort (fun (_,b0,_,_,_,_,_,_) (_,b1,_,_,_,_,_,_)->compare b0 b1) !local_opt in
-                   let deg=List.fold_left (fun m (_,_,_,p,_,_,_,_)->max m p.local_optimization) 0 l0 in
-                   let rec register_list i l=
-                     if i>0 || deg<=0 then (
-                       match l with
-                           []->()
-                         | (nextNode,bad,log,params,comp,node,fig,user)::s->(
-                             register node nextNode bad log params comp;
-                             register_list (i-1) s
-                           )
-                     )
-                   in
-                   register_list deg l0
-                 )
-               with
-                   Not_found->()
+              (fix page0 h0;
+               if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
+                 List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
+                              let a,_,_=LineMap.split nextNode !demerits' in
+                              let b,_,_=LineMap.split nextNode !todo' in
+                              demerits':=a;
+                              todo':=b
+                           ) !extreme_solutions;
+                 local_opt:= !extreme_solutions
+               );
+               if !local_opt <> [] then (
+                 let l0=List.sort (fun (_,b0,_,_,_,_,_,_) (_,b1,_,_,_,_,_,_)->compare b0 b1) !local_opt in
+                 let deg=List.fold_left (fun m (_,_,_,p,_,_,_,_)->max m p.local_optimization) 0 l0 in
+                 let rec register_list i l=
+                   if i>0 || deg<=0 then (
+                     match l with
+                         []->()
+                       | (nextNode,bad,log,params,comp,node,fig,user)::s->(
+                           register node nextNode bad log params comp;
+                           register_list (i-1) s
+                         )
+                   )
+                 in
+                 register_list deg l0
+               )
               )
             );
           );
@@ -491,12 +497,12 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
               )
         ) else (
           if !endNode=None then (
-            let (b,(bad,_,param,comp,_,fig,user))= LineMap.max_binding !r_demerits in
+            let (b,bad,param,comp,fig,user)= !last_todo_line in
             try
               let param0=LineMap.find b !last_failure in
               if param0.min_page_after<>param.min_page_after then raise Not_found;
               Printf.fprintf stderr "%s\n" (
-                Language.message (Language.No_solution (text_line paragraphs uselessLine)));
+                Language.message (Language.No_solution (text_line paragraphs b)));
               finished:=true
             with
                 Not_found->(

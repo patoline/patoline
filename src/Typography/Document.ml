@@ -71,6 +71,12 @@ module TS=Break.Make
            if a.hyphenEnd<b.hyphenEnd then -1 else
              if a.hyphenEnd>b.hyphenEnd then 1 else
 
+           if a.lastFigure<b.lastFigure then -1 else
+             if a.lastFigure>b.lastFigure then 1 else
+
+           if a.isFigure<b.isFigure then -1 else
+             if a.isFigure>b.isFigure then 1 else
+
            if a.page<b.page then -1 else
              if a.page>b.page then 1 else
 

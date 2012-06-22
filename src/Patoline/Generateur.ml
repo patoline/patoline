@@ -68,7 +68,7 @@ let _ =
   in
   Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());
   let env2, reboot=update_names env1 figs' user' in
-  if i<10 && reboot && !D.fixable then (
+  if i<3 && reboot && !D.fixable then (
     resolve (i+1) env2
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;

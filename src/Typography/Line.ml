@@ -21,8 +21,9 @@ let uselessLine=
     min_width=0.;nom_width=0.;max_width=0. }
 
 let sprint_linef l=
-  Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d }"
+  Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d; isFigure=%b }"
     l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height l.page
+    l.isFigure
 
 let print_linef out l=Printf.fprintf out "%s\n" (sprint_linef l)
 let print_line l=print_linef stderr l
