@@ -39,6 +39,7 @@ module MakeFormat (D:DocumentStructure)
   (Default : module type of DefaultFormat.Format(D)) = struct
 
   module MathFonts = DefaultFormat.MathFonts
+  module Default = Default
   include Default
 
   let title=Default.title
