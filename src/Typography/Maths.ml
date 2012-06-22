@@ -476,14 +476,14 @@ let rec draw env_stack mlist=
 		  end
 		  else dist0, dist1
 		in
-		let gl1=
-		  if bin_right = [] then [] else
-		  match glue dist1 dist1 dist1 with
+		let gl0=
+		  if bin_left = [] then [] else
+		  match glue dist0 dist0 dist0 with
 		    Box.Glue x->[Drawing x]
 		  | x->assert false
 		in           
-		let gl0 =
-		  if bin_right = [] then [] else [glue dist0 dist0 dist0]
+		let gl1 =
+		  if bin_left = [] then [] else [glue dist1 dist1 dist1]
 		in
 
                 bin_left@
