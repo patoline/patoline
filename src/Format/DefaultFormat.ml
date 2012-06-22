@@ -534,10 +534,16 @@ module Format=functor (D:Document.DocumentStructure)->(
       val arg1 : string
     end
 
-    module Env_enumerate = functor (Pat:Enumerate_Pattern) -> 
+    module Env_genumerate = functor (Pat:Enumerate_Pattern) -> 
       Enumerate(struct
                   let from_counter x =
                     [ T(Str.global_replace (Str.regexp_string "1") (string_of_int (List.hd x + 1)) Pat.arg1); T" " ]
+                end)
+
+    module Env_enumerate =
+      Enumerate(struct
+                  let from_counter x =
+                    [ T(string_of_int (List.hd x + 1)) ]
                 end)
 
     module Env_abstract = struct

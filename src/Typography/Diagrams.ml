@@ -970,7 +970,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
     let kappa = 0.5522847498
 
-    let circle env = 
+    let circle =
 	{ pet = shape_pet ; transfo = (fun transfos info -> 
 	  let (_,y0,_,_) as bb = info.bb in
 	  let center = info.center in
@@ -1010,8 +1010,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let inner_sep = info.innerSep  in 
 	  let outer_sep = info.outerSep  in 
 	  let south = Point.middle p1 p2 in
-	  let ex = ex env in
-	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in
+	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. text_depth) in
 	  let main = begin let main = info.mainAnchor 
 			   in (if main = `Main then 
 			       let _ = (Printf.fprintf stderr "Please do not choose `Main as a main anchor; 
