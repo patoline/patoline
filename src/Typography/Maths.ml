@@ -622,7 +622,7 @@ let glyphs c envs st=
     List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
 
 let multi_glyphs cs envs st =
-  List.map (fun c -> c envs st) cs 
+  List.map (fun c -> c envs st) cs
 
 let change_fonts env font=
     { env with
@@ -682,11 +682,16 @@ let open_close left right env_ style box=
 
   let left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r) =
     let ll = left env_ style and lr = right env_ style in
-    let lc = List.map2 (fun left right ->
-      let left=draw_boxes left in
-      let right=draw_boxes right in
-      left, bounding_box left, right, bounding_box right) ll lr
+    let rec boundings l0 l1=match l0,l1 with
+        [],_
+      | _,[]->[]
+      | left::s0, right::s1->(
+          let left=draw_boxes left in
+          let right=draw_boxes right in
+          (left, bounding_box left, right, bounding_box right)::(boundings s0 s1)
+        )
     in
+    let lc=boundings ll lr in
     let rec fn = function
       | [] -> assert false
       | [c] -> c
