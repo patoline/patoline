@@ -31,28 +31,28 @@ let displayStyle a=[Maths.Scope(
 
 )
 
-\bold{Ex I} – On considère la suite réelle $(u_n)_{n≥1}$ définie par 
+\Begin{genumerate}{ Ex &I – }
+
+\item()On considère la suite réelle $(u_n)_{n≥1}$ définie par 
 $\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
 
-\Begin{genumerate}("1) "){}
+\Begin{genumerate}{ &a) }
 
    \item()Montrer que $(u_n)_{n≥1}$ converge et déterminer sa limite. 
-)  
+
    \item()Établir que pour tout réel $x > {-1}$ on a $\displayStyle{{x}\over{x + 1} ≤ ln(1 + x) ≤ x}$. 
   
    \item()En déduire que la suite $(u_n)_{n≥1}$ est croissante. 
 
 \End{genumerate}
 
- 
 
-\bold{Ex II} – 
-Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$ 
+\item()Soit $(u_n)_{n \in \bbN}$ la suite réelle définie par $u_0 := 2$ 
 et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + 2 \over u_n)}$ pour tout $n \in \bbN$. 
 
-\Begin{genumerate}("1) "){}
+\Begin{genumerate}{ &a) }
    \item()Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. 
-  _Indication :_ on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
+  _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
    
    \item()En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $2^{1 / 2}$. 
    
@@ -60,6 +60,7 @@ et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + 2 \over u_n)}$ pour tout $n \i
      {u_{n + 1} + 2^{1/ 2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
 \End{genumerate}
 
+\End{genumerate}
 
 \sc{Fin}
 

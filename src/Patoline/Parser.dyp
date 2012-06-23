@@ -180,7 +180,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
     [Ignore; sParagraph
       [FC (false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
-       let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
+       let _utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
        in	     
         let elt = 
@@ -367,7 +367,7 @@ parelt:
    parmacro<m> { m, false }
   | "$" math<m> "$" { [FC(false,m)], false }
   | line<w> { [TC w], false }
-  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)])], true }
+  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)])], false }
 
 
 paragraph_aux:
@@ -716,7 +716,6 @@ atomelt:
 
 atomeltp:
     atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.last_local_data ] }
-/*  | paragraph<p> NOSKIP atomelt<e> @{ sParagraph(p)::e, [ Keep_grammar; Local_data dyp.local_data ] }*/
   | paragraph<p> @{ 
       let _,_,m = layout_info dyp 1 1 in
       let options = { default_paragraph_options with center_paragraph = m >= 4 } in

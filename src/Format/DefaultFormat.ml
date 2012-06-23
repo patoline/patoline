@@ -11,7 +11,7 @@ open CamomileLibrary
 let _=Random.self_init ()
 
 module Euler = Euler
-
+module Numerals = Numerals
 let alegreya=
   [ Regular,
     (Lazy.lazy_from_fun
@@ -531,14 +531,41 @@ module Format=functor (D:Document.DocumentStructure)->(
                 end)
 
     module type Enumerate_Pattern = sig
-      val arg1 : string
+      val arg1 : user content list
     end
 
     module Env_genumerate = functor (Pat:Enumerate_Pattern) -> 
       Enumerate(struct
-                  let from_counter x =
-                    [ T(Str.global_replace (Str.regexp_string "1") (string_of_int (List.hd x + 1)) Pat.arg1); T" " ]
-                end)
+	let from_counter x = 
+	  let x = List.hd x + 1 in
+	  let rec fn acc = function
+	    | [] -> failwith "bad enumerate pattern"
+	    | (T s as e::r) ->
+	      print_string s; print_newline ();
+	      begin
+		try 
+		  let pos = Str.search_forward (Str.regexp "&\\([1iIaA]\\)") s 0 in
+		  print_string s; print_newline ();
+		  let c = s.[pos+1] in
+		  let f = match c with
+		      '1' -> string_of_int
+		    | 'a' -> Numerals.alphabetic ~capital:false 
+		    | 'A' -> Numerals.alphabetic ~capital:true
+		    | 'i' -> Numerals.roman ~capital:false 
+		    | 'I' -> Numerals.roman ~capital:true
+		    | _ -> failwith (Printf.sprintf "bad enumerate pattern &%c" c)
+		  in
+		  let s' = f x in
+		  List.rev acc@
+		    (T (Str.replace_first (Str.regexp "&[1iIaA]") s' s):: r)
+		with Not_found -> 
+		  fn (e::acc) r
+	      end
+	    | e::r -> 
+	      fn (e::acc) r
+	  in
+	  fn [] Pat.arg1 @ [T" "]
+      end)
 
     module Env_enumerate =
       Enumerate(struct
