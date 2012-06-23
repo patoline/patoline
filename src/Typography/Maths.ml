@@ -207,7 +207,7 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
 
   if not env.kerning then target else
   
-  let epsilon = 1e-2 in
+  let epsilon = 5e-2 in
   let bezier_left = bezier_of_boxes box_left in
   let bezier_right = bezier_of_boxes box_right in
 
