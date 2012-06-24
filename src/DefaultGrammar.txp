@@ -243,4 +243,6 @@ Symboles de Patoline
 \Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "inter") [1766;1768])
 \Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "union") [1765;1767])
 
+\Configure_word_macro{\item}{ eat_right }
+\Configure_environment{genumerate}{ arg_1 = genumerate }
 \Save_Grammar

@@ -280,7 +280,6 @@ module Format=functor (D:Document.DocumentStructure)->(
              let contents=ref [] in
              let x=ref 0. in
              let y=ref 0. in
-             let y'=ref 0. in
              let max_y=ref (-.infinity) in
              let min_y=ref infinity in
              let ymin=ref 0. in
@@ -456,7 +455,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         [B (fun env->
               let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
               let bb=boxify_scoped env (M.from_counter enum) in
-              let fix g={ g with drawing_min_width=g.drawing_nominal_width;
+              let fix g= { g with drawing_min_width=g.drawing_nominal_width;
                             drawing_max_width=g.drawing_nominal_width }
               in
               let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
@@ -531,40 +530,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                 end)
 
     module type Enumerate_Pattern = sig
-      val arg1 : user content list
+      val arg1 : char * (string -> user content list)
     end
 
     module Env_genumerate = functor (Pat:Enumerate_Pattern) -> 
       Enumerate(struct
+	let c, f = Pat.arg1
+	let g = match c with
+	    '1' -> string_of_int
+	  | 'a' -> Numerals.alphabetic ~capital:false 
+	  | 'A' -> Numerals.alphabetic ~capital:true
+	  | 'i' -> Numerals.roman ~capital:false 
+	  | 'I' -> Numerals.roman ~capital:true
+	  | _ -> failwith (Printf.sprintf "bad enumerate pattern &%c" c)
 	let from_counter x = 
 	  let x = List.hd x + 1 in
-	  let rec fn acc = function
-	    | [] -> failwith "bad enumerate pattern"
-	    | (T s as e::r) ->
-	      print_string s; print_newline ();
-	      begin
-		try 
-		  let pos = Str.search_forward (Str.regexp "&\\([1iIaA]\\)") s 0 in
-		  print_string s; print_newline ();
-		  let c = s.[pos+1] in
-		  let f = match c with
-		      '1' -> string_of_int
-		    | 'a' -> Numerals.alphabetic ~capital:false 
-		    | 'A' -> Numerals.alphabetic ~capital:true
-		    | 'i' -> Numerals.roman ~capital:false 
-		    | 'I' -> Numerals.roman ~capital:true
-		    | _ -> failwith (Printf.sprintf "bad enumerate pattern &%c" c)
-		  in
-		  let s' = f x in
-		  List.rev acc@
-		    (T (Str.replace_first (Str.regexp "&[1iIaA]") s' s):: r)
-		with Not_found -> 
-		  fn (e::acc) r
-	      end
-	    | e::r -> 
-	      fn (e::acc) r
-	  in
-	  fn [] Pat.arg1 @ [T" "]
+	  f (g x)
       end)
 
     module Env_enumerate =

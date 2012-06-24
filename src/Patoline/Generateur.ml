@@ -1,3 +1,4 @@
+module StrRegexp=Str
 open Lexing
 open Parser
 open PatolineLanguage
@@ -16,14 +17,32 @@ open PatolineLanguage
 
 type amble=Noamble | Separate | Main
 
-let _=macros:=StrMap.add "diagram" (fun x-> begin
-  " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
-    "module Lib = Env_Diagram (struct let arg1 = \"\" end) (Arg) \n open Lib \n" ^
-    x ^
-    "end in \n" ^
-    "[B (fun env -> \n" ^
-    "let module Res = MaFigure (struct let env = env end) in \n" ^
-    "[ Drawing (Res.Lib.make ()) ])]) " end) !macros
+let apply_options n arg opts = 
+  let rec fn = function
+  [] -> arg
+  | `Arg_pat(i,s)::_ when i = n ->
+    StrMap.find s !macros arg
+  | _::l -> fn l
+  in
+  fn opts
+
+let _= macros:=
+  StrMap.add "diagram" (fun x->
+    " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
+      "module Lib = Env_Diagram (struct let arg1 = \"\" end) (Arg) \n open Lib \n" ^
+      x ^
+      "end in \n" ^
+      "[B (fun env -> \n" ^
+      "let module Res = MaFigure (struct let env = env end) in \n" ^
+      "[ Drawing (Res.Lib.make ()) ])]) ") 
+  (StrMap.add "genumerate" (fun s->
+    let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
+    let c = String.make 1 s.[pos+1] in
+    let prefix = String.sub s 0 pos in
+    let suffix = String.sub s (pos+2) (String.length s - pos - 2) in
+    "('"^c^"',(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))"
+  )
+  !macros)
 
 
 let hashed="(Sys.executable_name^\".aux\")"
@@ -234,20 +253,28 @@ and print_math_par parser_pp op ch display m = begin
   output_string ch (Buffer.contents buf) 
 end
 
-and print_macro_buf parser_pp buf op mtype name args =
+and print_macro_buf parser_pp buf op mtype name args opts =
   (* Printf.fprintf stderr "Entering print_macro_buf.\n" ; flush stderr ; *)
   begin
     match mtype with
       | `Single -> 
 	begin
 	  Printf.bprintf buf " (%s " name;
-	  List.iter (function
-            | Paragraph(_,p) -> Printf.bprintf buf " %a" (print_contents_buf parser_pp op) p
-	    | Caml(ld,gr,s,e,txps) ->
-              Printf.bprintf buf "(";
-              print_caml_buf parser_pp ld gr op buf s e txps;
-              Printf.bprintf buf ")";
-	    | _ -> assert false) args;
+	  let num = ref 0 in
+	  List.iter (function x ->
+	    let main_buf = buf in
+	    let buf = Buffer.create 80 in
+	    (match x with
+              | Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf parser_pp op) p
+	      | Caml(ld,gr,s,e,txps) ->
+		Printf.bprintf buf "(";
+		print_caml_buf parser_pp ld gr op buf s e txps;
+		Printf.bprintf buf ")";
+	      | _ -> assert false);
+	    incr num;
+	    let arg = apply_options !num (Buffer.contents buf) opts in
+	    Printf.bprintf main_buf " %s" arg 
+	  ) args;
 	  if args = [] then Printf.bprintf buf " ()";
 	end ;
 	Printf.bprintf buf ") ";
@@ -287,16 +314,19 @@ and print_macro_buf parser_pp buf op mtype name args =
 	  else begin
 	    let num = ref 1 in
 	    Printf.bprintf buf "module Args = struct\n";
-	    List.iter (function
-            Paragraph(_,p) -> Printf.bprintf buf "let arg%d = %a" !num (print_contents_buf parser_pp op) p;
-	      incr num
-	      | Caml(ld,gr,s,e,txps) -> begin
-		Printf.bprintf buf "let arg%d = begin " !num;
-		print_caml_buf parser_pp ld gr op buf s e txps;
-		Printf.bprintf buf " end ";
-		incr num
-	      end
-	      | _ -> assert false) args;
+	    List.iter (function x ->
+	      let main_buf = buf in
+	      let buf = Buffer.create 80 in
+	      (match x with
+		| Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf parser_pp op) p
+		| Caml(ld,gr,s,e,txps) ->
+		  Printf.bprintf buf "(";
+		  print_caml_buf parser_pp ld gr op buf s e txps;
+		  Printf.bprintf buf ")";
+		| _ -> assert false);
+	      let arg = apply_options !num (Buffer.contents buf) opts in
+	      Printf.bprintf main_buf "let arg%d = begin %s end\n" !num arg;
+	      incr num) args;
 	    Printf.bprintf buf "end\n";
 	    "(Args)"
 	  end
@@ -327,9 +357,9 @@ and print_macro_buf parser_pp buf op mtype name args =
 	    "module TEMP%d=%s.Document(D);;\n open TEMP%d" !moduleCounter name !moduleCounter
   end
 
-and print_macro parser_pp ch op mtype name args = begin
+and print_macro parser_pp ch op mtype name args opts = begin
   let buf = Buffer.create 80 in
-  print_macro_buf parser_pp buf op mtype name args ;
+  print_macro_buf parser_pp buf op mtype name args opts;
   output_string ch (Buffer.contents buf) 
 end
 
@@ -419,16 +449,21 @@ and print_contents_buf parser_pp op buf l =
     begin match l with
       [] ->  Printf.bprintf buf "[]";
     | (TC _ :: _ ) as l -> 
-      Printf.bprintf buf "(T \"";
+      Printf.bprintf buf "(T(\"";
       gn l
+    | GC :: (MC(_,_,_,opts)::_ as l) when List.mem `Eat_left opts -> 
+      fn l
     | GC :: l -> 
       Printf.bprintf buf "(T \" \")::";
       fn l
-    | MC(mtype, name, args) :: l -> 
+    | MC(mtype, name, args, opts) :: l -> 
       Printf.bprintf buf " (";
-      print_macro_buf parser_pp buf op mtype name args;
+      print_macro_buf parser_pp buf op mtype name args opts;
       Printf.bprintf buf ")@ ";
-      fn l
+      (match l with
+	GC :: l when  List.mem `Eat_right opts ->
+	    fn l
+      | l -> fn l)
     | FC(b,m) :: l ->
       Printf.bprintf buf "(";
       print_math_par_buf parser_pp op buf b m;
@@ -444,7 +479,7 @@ and print_contents_buf parser_pp op buf l =
       Printf.bprintf buf " ";
       gn l
     | l ->
-      Printf.bprintf buf "\")::" ;
+      Printf.bprintf buf "\"))::" ;
       fn l
     end
   in 
@@ -495,8 +530,8 @@ and output_list parser_pp from where no_indent lvl docs =
 	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
 	      lvl := l
 	  )
-	| Macro(mtype, name, args) ->
-	  print_macro parser_pp where from mtype name args;
+	| Macro(mtype, name, args,opts) ->
+	  print_macro parser_pp where from mtype name args opts;
 	  Printf.fprintf where "\n\n" 
 	| Preproc t -> begin
 	  Printf.fprintf where "%s\n\n" t ;

@@ -36,7 +36,16 @@ end
 
 module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
-type local_data = { infixes : StrSet.t;  other_symbols : StrSet.t; verbose : bool }
+
+type macro_info = [ `Eat_left | `Eat_right | `Arg_pat of (int * string) ]
+type local_data = { 
+     infixes : StrSet.t;
+     other_symbols : StrSet.t;
+     verbose : bool; 
+     word_macros : (string * macro_info list) list;
+     par_macros : (string * macro_info list) list;
+     env_macros : (string * macro_info list) list;
+}
 
 type 'a math =
      Var of string
@@ -72,7 +81,8 @@ and 'a doc =
    | Math of 'a math
    | Verbatim of string option * string list
    | Struct of 'a content list * bool * 'a structType
-   | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * 'a doc list
+   | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
+     * 'a doc list * macro_info list
    | Preproc of string
    | Ignore
 
@@ -81,7 +91,8 @@ and texprime_section = TxpMath | TxpText
 and 'a content =
      TC of string
    | FC of bool * 'a math
-   | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string * 'a doc list
+   | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
+           * 'a doc list * macro_info list
    | GC
 let par_macros:(string->'a content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
@@ -109,7 +120,14 @@ let concat words =
     in fn "" true (List.rev words) 
 
 
-let local_data = { infixes = StrSet.empty; other_symbols = StrSet.empty; verbose = false }
+let local_data = { 
+    infixes = StrSet.empty;
+    other_symbols = StrSet.empty;
+    verbose = false;
+    word_macros = [];
+    par_macros = [];
+    env_macros = [];
+}
 
 let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
@@ -193,8 +211,8 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
 
 let gram_ext = ".tgx"
 
-let reserved = [ "Begin"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
-    	         "Add_relation"; "Add_addition_like"; "Add_product_like" ]
+let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
+    	         "Add_relation"; "Add_addition_like"; "Add_product_like"; ]
 
 let fprint_caml_buf = ref (fun _ _ _ _ _ _ -> ((assert false):unit))
 
@@ -229,7 +247,7 @@ let layout_info dyp a b =
     cdiff, ldiff, margin
 
 let layout_parskip dyp a b =
-    let c,l,m = layout_info dyp a b in l > 1 or (l = 1 && m > 1)
+    let c,l,m = layout_info dyp a b in l > 1 (* or (l = 1 && m > 1) *)
 
 let layout_space dyp a b =
     let c,l,m = layout_info dyp a b in c > 0
@@ -239,7 +257,14 @@ let get_local_data_and_grammar dyp =
         let gr = dyp.parser_pilot.pp_dev in
 	ld, gr
 
+let get_wminfo dyp name =
+  try List.assoc name dyp.local_data.word_macros with Not_found -> []
 
+let get_pminfo dyp name =
+  try List.assoc name dyp.local_data.par_macros with Not_found -> []
+
+let get_eminfo dyp name =
+  try List.assoc name dyp.local_data.env_macros with Not_found -> []
 }
 
 %start main 
@@ -256,7 +281,7 @@ let get_local_data_and_grammar dyp =
 %lexer
 
 let utf8_char =
-  ['\033' '\037'-'\039' '\042'-'\044' '\046'-'\060' '\062'-'\090' '\096'-'\122' '\124''\126''\127']
+  ['\033' '\037'-'\039' '\042'-'\044' '\046'-'\060' '\062'-'\090' '\096'-'\122' '\124''\127']
   | ['\194'-'\223']['\128'-'\191']
   | ['\224'-'\238']['\128'-'\191']['\128'-'\191']
   | '\239'['\128'-'\159']['\128'-'\191']
@@ -341,8 +366,8 @@ and texprime_text= parse
   | _ {  texprime_text lexbuf }
 
 main lexer =
-  '\\' "Begin" -> BEGIN
-  '\\' "End" -> END
+  '\\' ['B''b'] "egin" -> BEGIN
+  '\\' ['E''e'] "nd" -> END
   '\\' "Include" -> INCLUDE
   '\\' lident
     -> PMACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
@@ -367,7 +392,13 @@ parelt:
    parmacro<m> { m, false }
   | "$" math<m> "$" { [FC(false,m)], false }
   | line<w> { [TC w], false }
-  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)])], false }
+  | "\\{" { [TC "{"], false }
+  | "\\\\"  { [TC "\\"], false }
+  | "\\}"  { [TC "}"], false }
+  | "~"  { [TC " "], false }
+  | "\\_"  { [TC "_"],false }
+  | "\\~"  { [TC "~"], false }
+  | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)], [])], true }
 
 
 paragraph_aux:
@@ -376,7 +407,7 @@ paragraph_aux:
   | paragraph_aux<p, b> parelt<e, b'>   
     { 
       let c,l,m = layout_info dyp 1 2 in
-      if p <> [] && (l > 1 or (l = 1 && m > 1)) then raise Giveup;
+      if p <> [] && (l > 1 (* or (l = 1 && m > 1) *)) then raise Giveup;
       (e@(if c > 0 then GC::p else p)), b or b' }
 
 paragraph: 
@@ -415,15 +446,15 @@ neargs:
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" - args<a>
       { let ld, gr = get_local_data_and_grammar dyp in
-        Macro(`Begin, name, List.rev (a ld gr)) }
+        Macro(`Begin, name, List.rev (a ld gr), get_eminfo dyp name) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
-      { Macro(`End, name, []) }
+      { Macro(`End, name, [], []) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
-      { Macro(`Include,name,[]) }
+      { Macro(`Include,name,[], []) }
   | TMACRO<name> - args<a>
       { let ld, gr = get_local_data_and_grammar dyp in
         if List.mem name reserved then raise Giveup;
-        Macro(`Module, name, List.rev (a ld gr)) }
+        Macro(`Module, name, List.rev (a ld gr), get_pminfo dyp name) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
             (*if Sys.file_exists (Printf.sprintf "%s.cmxs" preproc) then
@@ -447,14 +478,15 @@ preproc:
 parmacro:
   | PMACRO<name> - neargs<a>
       { let ld, gr = get_local_data_and_grammar dyp in
-        [MC(`Single, name, List.rev (a ld gr))] }  macro
+        if List.mem name reserved then raise Giveup;
+        [MC(`Single, name, List.rev (a ld gr), get_wminfo dyp name)] }  macro
   | PMACRO<name>
       { if next_lexeme_paren (dyp.next_lexeme ()) then begin
 	(* Printf.fprintf stderr "Giving up.\n" ; flush stderr ;  *) raise Giveup end
-	else [MC(`Single, name, [])] } args
+	else [MC(`Single, name, [], get_wminfo dyp name)] } args
   | PPRE<preproc> - CAML<s,e,txps>
       { let ld, gr = get_local_data_and_grammar dyp in
-        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)])]
+        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)], [])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
 
@@ -621,6 +653,15 @@ symbol_defs:
       Buffer.contents buf
     }
 
+macro_option:
+  "eat_left" { `Eat_left }
+| "eat_right" { `Eat_right }
+| "arg_" - (['0'-'9']+)<i> "=" ['a'-'z''A'-'Z''0'-'9''_']+<s> { `Arg_pat(int_of_string i, s) }
+	
+macro_options:
+  | { [] }
+  | macro_options<l> macro_option<o> { o::l }
+
 atomelt:
   /* Section */
   | (("="|"-")">")<o> paragraph<title> text<content> (("="|"-")"<")<c>
@@ -703,6 +744,18 @@ atomelt:
   | "\\Add_right" "{" "\\}"<names> 
     "}" symbol_defs<value>
     @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) [names] value }
+  | "\\Configure_word_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
+    @{ [Ignore], 
+       [Local_data { dyp.local_data with word_macros = (w, o)::dyp.local_data.word_macros }]
+     }
+  | "\\Configure_paragraph_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
+    @{ [Ignore], 
+       [Local_data { dyp.local_data with par_macros = (w, o)::dyp.local_data.par_macros }]
+     }
+  | "\\Configure_environment" "{" symbol_name<w> "}" "{" macro_options<o> "}"
+    @{ [Ignore], 
+       [Local_data { dyp.local_data with env_macros = (w, o)::dyp.local_data.env_macros }]
+     }
   | "\\Save_Grammar"
     { let oc = open_out_bin (!out_grammar_name^gram_ext) in
       let ld = { dyp.local_data with verbose = false } in
