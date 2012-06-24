@@ -211,11 +211,22 @@ let _=
                         if Filename.check_suffix x ".ml" && is_substring "Format" x
                           && x<>"DefaultFormat.ml"
                         then (
-                          Printf.fprintf meta "package \"%s\" (\n" (Filename.chop_extension x);
+                          let base_x = Filename.chop_extension x in
+                          Printf.fprintf meta "package \"%s\" (\n" base_x;
+                          Printf.fprintf meta "requires=\"Typography\"\n";
                           Printf.fprintf meta "archive(native)=\"%s\"\n"
-                            ((Filename.chop_extension x)^".cmxa");
-                          Printf.fprintf meta "archive(byte)=\"%s\"\n)\n"
-                            ((Filename.chop_extension x)^".cma")
+                            (base_x^".cmxa");
+                          Printf.fprintf meta "archive(byte)=\"%s\"\n"
+                            (base_x^".cma");
+                          let custom_meta = Filename.concat "src/Format/" (base_x^".META") in
+                          (try
+                            let custom_meta_fd = open_in custom_meta in
+                            let buf = String.create (in_channel_length custom_meta_fd) in
+                            really_input custom_meta_fd buf 0 (in_channel_length custom_meta_fd);
+                            close_in custom_meta_fd;
+                            Printf.fprintf meta "%s\n" buf
+                          with Sys_error _ -> ());
+                          Printf.fprintf meta ")\n";
                         )
                      ) (Sys.readdir "src/Format");
           close_out meta;

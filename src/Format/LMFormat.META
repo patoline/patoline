@@ -1,0 +1,3 @@
+package "LMArticle" (
+requires="Typography,Typography.FormatArticle,Typography.LMFormat"
+)
