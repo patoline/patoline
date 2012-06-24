@@ -49,13 +49,22 @@ module LMMath = struct
 
   open Document.Mathematical
 
+  let italicsubst =
+    List.map (fun x -> {x with glyph_index =
+      if x.glyph_index >= 34 && x.glyph_index <= 49 then
+        x.glyph_index + 3231 - 34 - 100
+      else if x.glyph_index >= 56 && x.glyph_index <= 91 then
+        x.glyph_index + 3263 - 56 - 110
+      else x.glyph_index})
+
   let default_env = { Euler.default_env with
     mathsFont = Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont
-    "lmodern/lmmath.otf")) }
+    "lmodern/lmmath.otf"));
+    mathsSubst = italicsubst }
 
 let default=[|
-  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
-  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
+  default_env;
+  default_env;
   default_env;
   default_env;
   { default_env with mathsSize=2./.3. };
