@@ -29,6 +29,11 @@ let displayStyle a=[Maths.Scope(
                   )]
 
 let disp = displayStyle
+
+let caml x = x
+let ser u n i = <$ \sum_{\caml( n ) ≥ \caml( i )} \caml( u ) $>
+let frac u v = <$ \caml( u ) \over \caml( v ) $>
+let sqrt u = <$ \caml( u )^{1 / 2} $>
 )
 
 \begin{genumerate}{ \bold{Ex &I} –\hspace(0.2) }
@@ -98,40 +103,25 @@ pour tout $n \in \bbN$.
 des nombres $a$ et $b$, notée $M(a , b)$. 
 \end{genumerate}
 
-(*
-\bigskip
-\bigskip
 
-\pagebreak
-
-%%%%%%%%%%%%%%%%%%%%%
-% Séries numériques %
-%%%%%%%%%%%%%%%%%%%%%
-
-\textbf{Ex 1.5 --} 
+\item
 Déterminer la nature des séries numériques suivantes~: 
 $$
-\ser{\frac{n}{n+1}}{n}{0}~, 
-\quad 
-\ser{\sqrt{n+1} - \sqrt{n}}{n}{0}~, 
-\quad 
-\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}~, 
-\quad 
-\ser{\frac{1}{\sqrt[n]{n!}}}{n}{1}~, 
-\quad 
-\ser{\frac{\ln{\! (1 + 1 / n)}}{n}}{n}{1}~,
+\ser{\frac{n}{n+1}}{n}{0},  
+\ser{(n+1)^{1\over 2} - n^{1\over 2}}{n}{0}, 
+\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}, 
+\ser{\frac{1}{{n!}^{1 \over n}}}{n}{1}, 
+\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1}
 $$ 
 $$
-\ser{\frac{\ln{n}}{n 2^{n}}}{n}{1}~, 
-\quad 
-\ser{\frac{\ln{\! (1 + n)}}{n^{3}}}{n}{1}~, 
-\quad 
-\ser{\sin{\!\! \left(  \! \frac{1}{n} \! \right)}}{n}{1}~, 
-\quad 
-\ser{\frac {1}{n} - \frac {1}{n + \a}}{n}{1} 
-\quad \mbox{et} \quad 
-\ser{\frac {1}{n + \a^{n}}}{n}{0} \quad \mbox{avec} \quad \a > 0.
+\ser{\frac{ln(n)}{n 2^n}}{n}{1}, 
+\ser{\frac{ln(1 + n)}{n^3}}{n}{1}, 
+\ser{sin(   \frac{1}{n}  )}{n}{1}, 
+\ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1},
+\ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0} avec \mathrm{a} > 0
 $$ 
+\end{genumerate}
+(*
 
 \bigskip
 \bigskip
@@ -139,7 +129,7 @@ $$
 \textbf{Ex 1.6 --} 
 Déterminer la nature des séries numériques suivantes~: 
 $$
-\ser{\! \left( \! \frac{2 n}{3 n + 2} \! \right)^{\!\!\! n}}{n}{0}~, 
+\ser{ \left(  \frac{2 n}{3 n + 2}  \right)^{ n}}{n}{0}~, 
 \quad 
 \ser{\frac{1}{n^{n}}}{n}{0}~, 
 \quad 
@@ -180,13 +170,13 @@ Déterminer la nature des séries numériques suivantes~:
 $$
 \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0}~, 
 \quad 
-\ser{\frac{\sin{\! (\sqrt{n})}}{n \sqrt{n}}}{n}{1}~, 
+\ser{\frac{sin{ (\sqrt{n})}}{n \sqrt{n}}}{n}{1}~, 
 \quad 
-\ser{\frac{(-1)^{n}}{n - \ln{n}}}{n}{1}~, 
+\ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1}~, 
 \quad 
 \ser{\frac{\cos{n} + (-1)^{n} n^{2}}{n^{3}}}{n}{1} 
 \quad \mbox{et} \quad 
-\ser{\frac{\sin{n}}{n}}{n}{1}~.
+\ser{\frac{sin{n}}{n}}{n}{1}~.
 $$ 
 
 \bigskip
@@ -195,13 +185,13 @@ $$
 \textbf{Ex 1.9 --} 
 Déterminer la nature des séries numériques suivantes~: 
 $$
-\ser{\frac{1}{n \ln{n}}}{n}{2}~, 
+\ser{\frac{1}{n ln{n}}}{n}{2}~, 
 \quad
-\ser{\frac{1}{\sqrt[3]{n} \ln{n}}}{n}{2}~, 
+\ser{\frac{1}{\sqrt[3]{n} ln{n}}}{n}{2}~, 
 \quad
-\ser{\frac{\ln{n}}{n \sqrt{n}}}{n}{1} 
+\ser{\frac{ln{n}}{n \sqrt{n}}}{n}{1} 
 \quad \mbox{et} \quad 
-\ser{\ln{\!\! \left( \!\. 1 + \frac{(-1)^{n}}{\sqrt{n}} \! \right)}}{n}{2}.
+\ser{ln{ \left( \. 1 + \frac{(-1)^{n}}{\sqrt{n}}  \right)}}{n}{2}.
 $$ 
 
 
@@ -210,5 +200,4 @@ $$
 
 *)
 
-\end{genumerate}
 

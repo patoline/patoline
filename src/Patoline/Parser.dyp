@@ -606,7 +606,7 @@ math:
     { let ld, gr = get_local_data_and_grammar dyp in
       if next_lexeme_paren (dyp.next_lexeme ()) then begin
         (* Printf.fprintf stderr "Giving up.\n" ; flush stderr ; *)   raise Giveup end
-      else MathMacro (macro,args ld gr) } atom
+      else MathMacro (macro,List.rev (args ld gr)) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
 
