@@ -34,6 +34,7 @@ let caml x = x
 let ser u n i = <$ \sum_{\caml( n ) ≥ \caml( i )} \caml( u ) $>
 let frac u v = <$ \caml( u ) \over \caml( v ) $>
 let sqrt u = <$ \caml( u )^{1 / 2} $>
+let unit = []
 )
 
 \begin{genumerate}{ \bold{Ex &I} –\hspace(0.2) }
@@ -111,93 +112,76 @@ $$
 \ser{(n+1)^{1\over 2} - n^{1\over 2}}{n}{0}, 
 \ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}, 
 \ser{\frac{1}{{n!}^{1 \over n}}}{n}{1}, 
-\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1}
+\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1}, \unit
 $$ 
 $$
 \ser{\frac{ln(n)}{n 2^n}}{n}{1}, 
 \ser{\frac{ln(1 + n)}{n^3}}{n}{1}, 
-\ser{sin(   \frac{1}{n}  )}{n}{1}, 
+\ser{sin(\frac{1}{n})}{n}{1}, 
 \ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1},
 \ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0} avec \mathrm{a} > 0
 $$ 
-\end{genumerate}
-(*
 
-\bigskip
-\bigskip
 
-\textbf{Ex 1.6 --} 
-Déterminer la nature des séries numériques suivantes~: 
+\item
+Déterminer la nature des séries numériques suivantes: 
 $$
-\ser{ \left(  \frac{2 n}{3 n + 2}  \right)^{ n}}{n}{0}~, 
-\quad 
-\ser{\frac{1}{n^{n}}}{n}{0}~, 
-\quad 
-\ser{\frac{n!}{n^{n}}}{n}{0}~, 
-\quad 
-\ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0}~,
+\ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}, 
+ 
+\ser{\frac{1}{n^{n}}}{n}{0}, 
+ 
+\ser{\frac{n!}{n^{n}}}{n}{0}, 
+ 
+\ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0}, \unit
 $$ 
 $$
-\ser{\frac{(n + 1)2^{n}}{n!}}{n}{0}~, 
-\quad 
+\ser{\frac{(n + 1)2^{n}}{n!}}{n}{0}, 
+ 
 \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} 
-\quad \mbox{et} \quad 
-\ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}~.
+ \mathrm{et}  
+\ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}. \unit
 $$ 
 
-\bigskip
-\bigskip
 
-\textbf{Ex 1.7 --} 
-Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent~: 
+\item
+Calculer les sommes des séries numériques suivantes après avoir montré qu'elles convergent: 
 $$
-\ser{\frac{1}{n (n + 2)}}{n}{1}~, 
-\quad 
-\ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2}~, 
-\quad 
-\ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1}~, 
-\quad 
+\ser{\frac{1}{n (n + 2)}}{n}{1}, 
+ 
+\ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2}, 
+ 
+\ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1}, 
+ 
 \ser{n a^{n}}{n}{1} 
-\quad \mbox{et} \quad 
-\ser{\frac{a^{n}}{n}}{n}{1} \quad \mbox{avec} \quad a \in [0 , 1[.
+ \mathrm{et}  
+\ser{\frac{a^{n}}{n}}{n}{1}  \mathrm{avec}  a \in [0 , 1]. \unit
 $$ 
 
-\bigskip
-\bigskip
-
-\textbf{Ex 1.8 --} 
-Déterminer la nature des séries numériques suivantes~: 
+\item
+Déterminer la nature des séries numériques suivantes: 
 $$
-\ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0}~, 
-\quad 
-\ser{\frac{sin{ (\sqrt{n})}}{n \sqrt{n}}}{n}{1}~, 
-\quad 
-\ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1}~, 
-\quad 
-\ser{\frac{\cos{n} + (-1)^{n} n^{2}}{n^{3}}}{n}{1} 
-\quad \mbox{et} \quad 
-\ser{\frac{sin{n}}{n}}{n}{1}~.
+\ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0}, 
+ 
+\ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1}, 
+ 
+\ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1}, 
+ 
+\ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} 
+ \mathrm{et}  
+\ser{\frac{sin(n)}{n}}{n}{1}. \unit
 $$ 
 
-\bigskip
-\bigskip
-
-\textbf{Ex 1.9 --} 
-Déterminer la nature des séries numériques suivantes~: 
+\item
+Déterminer la nature des séries numériques suivantes: 
 $$
-\ser{\frac{1}{n ln{n}}}{n}{2}~, 
-\quad
-\ser{\frac{1}{\sqrt[3]{n} ln{n}}}{n}{2}~, 
-\quad
-\ser{\frac{ln{n}}{n \sqrt{n}}}{n}{1} 
-\quad \mbox{et} \quad 
-\ser{ln{ \left( \. 1 + \frac{(-1)^{n}}{\sqrt{n}}  \right)}}{n}{2}.
+\ser{\frac{1}{n * ln(n)}}{n}{2}, 
+
+\ser{\frac{1}{n^{1 \over 3} * ln(n)}}{n}{2},
+
+\ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1}
+  \mathrm{et} 
+\ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}. \unit
 $$ 
 
 
-% Document ends here
-\end{document}
-
-*)
-
-
+\end{genumerate}

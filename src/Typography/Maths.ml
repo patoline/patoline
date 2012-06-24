@@ -451,7 +451,9 @@ let rec draw env_stack mlist=
 		let m_op = (x0' -. x1') /. 2. in
 		let dist0 =
 		  if bin_left = [] then 0.0 else
-		  let space, m_r = if no_sp_left then 1.5 *. abs_float(x0 -. x0'), m_l
+		  let space, m_r = if no_sp_left then 
+		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
+			(1.5 *. abs_float(x0 -. x0')), m_l
 		    else space,m_op in
 		  adjust_space mathsEnv space m_r box_left box_op
 		in
