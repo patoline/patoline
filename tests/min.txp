@@ -18,5 +18,5 @@ $$i__A_i^t, t^^i__A_i, t^^i__A_i^t, i__V_i^t, t^^i__V_i, t^^i__V_i^t$$
 $$V^{2i},{2i}^^V$$
 $$a^i + A^i + (A)^i$$
     cos, cos, cos
-$$(∫_a^b {2 t cos(t) d t}), (b^^∫_a {2 cos(t) d t})$$
+$$(∫_a^b {2 t cos(t) \mathrm{d}t}), (b^^∫_a {2 cos(t) \mathrm{d}t})$$
 $$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
