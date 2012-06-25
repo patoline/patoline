@@ -260,7 +260,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
       | `Single -> 
 	begin
 	  Printf.bprintf buf " (%s " name;
-	  let num = ref 0 in
+	  let num = ref 1 in
 	  List.iter (function x ->
 	    let main_buf = buf in
 	    let buf = Buffer.create 80 in
@@ -272,9 +272,9 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 		print_caml_buf parser_pp ld gr op buf s e txps;
 		if use_par then Printf.bprintf buf ")";
 	      | _ -> assert false);
-	    incr num;
 	    let arg = apply_options !num (Buffer.contents buf) opts in
-	    Printf.bprintf main_buf " %s" arg 
+	    Printf.bprintf main_buf " %s" arg ;
+	    incr num
 	  ) args;
 	  if args = [] then Printf.bprintf buf " ()";
 	end ;
