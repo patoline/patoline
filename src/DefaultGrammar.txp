@@ -245,4 +245,7 @@ Symboles de Patoline
 
 \Configure_word_macro{\item}{ eat_right }
 \Configure_environment{genumerate}{ arg_1 = genumerate }
+
+\Configure_word_macro{\diagram}{ arg_1 = diagram arg_1 no_parenthesis }
+
 \Save_Grammar
