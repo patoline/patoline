@@ -5,6 +5,7 @@ LST – S3 – Série n° 1 – 2010/2011
 =============================================================
 
 \Caml(
+open DefaultFormat
 open Document.Mathematical
 open Maths
 

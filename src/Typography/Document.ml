@@ -465,8 +465,8 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                                                 | _->fn) 0. line
     in
       { measure= !measure;
-        page_height=(if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
-        -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
+        page_height=min  250. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
+          -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
         left_margin=env.normalLeftMargin;
         local_optimization=0;
         min_page_before=0;
