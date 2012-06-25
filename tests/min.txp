@@ -22,3 +22,4 @@ $$a^i + A^i + (A)^i$$
     cos, cos, cos
 $$(∫_a^b {2 t cos(t) \mathrm{d}t}), (b^^∫_a {2 cos(t) \mathrm{d}t})$$
 $$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
+$$α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗$$

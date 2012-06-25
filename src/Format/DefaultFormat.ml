@@ -871,6 +871,10 @@ module MathsFormat=struct
                          ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]
             ))]
+
+    let vec = oRightArrow
+
+    let cev = oLeftArrow
         (*******************************************************)
 end
 

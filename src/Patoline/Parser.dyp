@@ -209,6 +209,20 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
   in
   elt, [Add_rules[rule, action]; Local_data local_data]
 
+let add_combining_symbol local_data symbol macro =
+  let rule = ("math", [ Non_ter ("var_or_symbol", No_priority);
+                           Regexp (RE_String symbol)  ], "atom", [No_layout_inside]) in
+  let action dyp l =
+    match l with
+      [ Obj_var_or_symbol x;  Lexeme_matched _;] ->
+      Obj_math (MathMacro(macro, [x])), []
+    | _ -> assert false
+  in
+  let elt = if not local_data.verbose then [Ignore] else
+    [Ignore]
+  in
+  elt, [Add_rules[rule, action]]
+
 let gram_ext = ".tgx"
 
 let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
@@ -301,6 +315,7 @@ let verbatim_line = (''' ''' [^'\n' '\r' '''] [^'\n''\r']*) |
 let ident = ['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9']*
 let uident = ['A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
+let mathvar = ['a'-'z''A'-'Z']
 
 let filename = ['a'-'z''A'-'Z''0'-'9''.''-']*
 
@@ -552,8 +567,14 @@ mathargs:
     { if e - s < 1 then raise Giveup;
       (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 
+var_or_symbol:
+   (mathvar)<name>
+      { Var(name) }
+  | symbol<name>
+      { Symbol(name) }
+
 math:
-   (['a'-'z''A'-'Z'])<name>
+   (mathvar)<name>
       { Var(name) } atom
   | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
       { Fun(name) } atom
@@ -766,6 +787,8 @@ atomelt:
   | "\\Add_right" "{" "\\}"<names> 
     "}" symbol_defs<value>
     @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) [names] value }
+  | "\\Add_combining" "{" (utf8_char)<symbol> "}" "{" MACRO<m> "}"
+    @{ add_combining_symbol dyp.local_data symbol m }
   | "\\Configure_word_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
     @{ [Ignore], 
        [Local_data { dyp.local_data with word_macros = (w, o)::dyp.local_data.word_macros }]
