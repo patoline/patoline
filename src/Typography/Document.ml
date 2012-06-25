@@ -533,21 +533,26 @@ let in_text_figure a b c d e f line=
 
 let figure str ?(parameters=center) ?(name="") drawing=
   str:=up (newChildAfter !str (
-             FigureDef { fig_contents=drawing;
-                         fig_env=(fun x->
-                                    let l,cou=try StrMap.find "_figure" x.counters with Not_found -> -1, [-1] in
-                                    let l0,cou0=try StrMap.find "figure" x.counters with Not_found -> -1, [-1] in
-                                    let counters'=StrMap.add "_figure" (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                                    let counters''=StrMap.add "figure" (l0,match cou0 with []->[0] | h::_->[h+1]) counters' in
-                                      { x with
-                                          names=if name="" then x.names else (
-                                            let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                              StrMap.add name (counters'', "_figure", w) x.names
-                                          );
-                                          counters=counters''
-                                      });
-                         fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
-                         fig_parameters=parameters }))
+             FigureDef
+               { fig_contents=drawing;
+                 fig_env=(fun x->
+                            let l,cou=try StrMap.find "_figure" x.counters with
+                                Not_found -> -1, [0] in
+                            let l0,cou0=try StrMap.find "figure" x.counters with
+                                Not_found -> -1, [0] in
+                            let counters'=StrMap.add "_figure"
+                              (l,match cou with []->[0] | h::_->[h+1]) x.counters in
+                            let counters''=StrMap.add "figure" (l0,match cou0 with []->[0]
+                                                                  | h::_->[h+1]) counters' in
+                            { x with
+                                names=if name="" then x.names else (
+                                  let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
+                                  StrMap.add name (x.counters, "_figure", w) x.names
+                                );
+                                counters=counters''
+                            });
+                 fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                 fig_parameters=parameters }))
 
 let flushFigure name=
   [CFix (fun env->
