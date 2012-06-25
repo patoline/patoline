@@ -259,7 +259,10 @@ and print_macro_buf parser_pp buf op mtype name args opts =
     match mtype with
       | `Single -> 
 	begin
-	  Printf.bprintf buf " (%s " name;
+	  (if List.mem `Is_idt opts then
+	      Printf.bprintf buf " ("
+	  else
+	    Printf.bprintf buf " (%s " name);
 	  let num = ref 1 in
 	  List.iter (function x ->
 	    let main_buf = buf in

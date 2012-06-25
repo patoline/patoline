@@ -1,6 +1,6 @@
 \Caml(open Diagrams)
 
-#diagram(
+\diagram(
 
       let m,ms = Matrix.(matrix [centers 10. 20.] [[
 	([], <<$C$>>); 
