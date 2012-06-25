@@ -441,18 +441,20 @@ let size fsize t=
 
 
 let parameters env paragraphs figures last_parameters last_figures last_users (line:line)=
-  let measure=ref env.normalMeasure in
   let page_footnotes=ref 0 in
-    IntMap.iter (fun i aa->match aa with
-                     Break.Placed a->
-                       if line.page=a.page &&
-                         line.height<=
-                         a.height -.figures.(i).drawing_y0
-                       then
-                         measure:=env.normalMeasure -. figures.(i).drawing_nominal_width -. 1.
-                   | _->()
-                ) last_figures;
-
+  let measure=IntMap.fold (fun i aa m->match aa with
+                               Break.Placed a->
+                                 (if line.page=a.page &&
+                                    line.height<=
+                                    a.height -.figures.(i).drawing_y0
+                                      && line.height>=
+                                      a.height-. figures.(i).drawing_y1
+                                  then
+                                    env.normalMeasure -. figures.(i).drawing_nominal_width
+                                  else m)
+                             | _->m
+                          ) last_figures env.normalMeasure
+  in
     TS.UMap.iter (fun k a->
                     match k with
                         Footnote _ when a.page=line.page -> incr page_footnotes
@@ -462,7 +464,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                                                   User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
                                                 | _->fn) 0. line
     in
-      { measure= !measure;
+      { measure=measure;
         page_height=min  250. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
           -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
         left_margin=env.normalLeftMargin;
@@ -939,7 +941,7 @@ let flatten env0 fixable str=
               | FigureDef f as h->(
                   let env2=flatten flushes' env1 (k::path) h in
                   let num=try
-                    match StrMap.find "_figure" env2.counters with
+                    match StrMap.find "_figure" env1.counters with
                         _,h::_->h
                       | _->0
                   with

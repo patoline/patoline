@@ -19,9 +19,10 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
             (fig,Placed fig_line)->(
               if line.page=fig_line.page &&
                 line.height<=
-                fig_line.height +.
-                  (ceil ((figures.(fig).drawing_y1-.figures.(fig).drawing_y0))) then
-                    mes0 -. figures.(fig).drawing_nominal_width -. 1.
+                fig_line.height -. figures.(fig).drawing_y0
+                && line.height>=fig_line.height -. figures.(fig).drawing_y1
+              then
+                mes0 -. figures.(fig).drawing_nominal_width
               else
                 mes0
             )
