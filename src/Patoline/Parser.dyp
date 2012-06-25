@@ -219,7 +219,9 @@ let add_combining_symbol local_data symbol macro =
     | _ -> assert false
   in
   let elt = if not local_data.verbose then [Ignore] else
-    [Ignore]
+    [Ignore; sParagraph
+      [FC (false, Binary(0, MathMacro(macro, [Var("x")]), false, SimpleSym "⇐", false,
+        	    Symbol (SimpleSym (String.escaped ("\\"^macro)))))]]
   in
   elt, [Add_rules[rule, action]]
 
