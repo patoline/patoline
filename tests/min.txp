@@ -1,3 +1,5 @@
+(* #FORMAT FormatArticle *)
+
 \Caml(
 open Document.Mathematical
 open Maths

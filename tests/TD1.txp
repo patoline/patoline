@@ -1,3 +1,5 @@
+(* #FORMAT FormatArticle *)
+
 =============================================================
 Exercices de mathématique – Suites et séries numériques
 -------------------------------------------------------------
@@ -38,7 +40,7 @@ let sqrt u = <$ \u^{1 / 2} $>
 let unit = []
 )
 
-\begin{genumerate}{ \bold{Ex &I} –\hspace(0.2) }
+\begin{genumerate}{ \bold{Ex &I} –\hspace(0.2)}
 
 \item On considère la suite réelle $(u_n)_{n≥1}$ définie par 
 $\displayStyle{u_{n} :=  (1 + {1}\over{n})^{n}}$ pour tout entier $n ≥ 1$. 
@@ -57,7 +59,8 @@ et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + 2 \over u_n)}$ pour tout $n \i
 
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. 
-  _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
+
+   _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
    
    \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $2^{1 / 2}$. 
    
@@ -90,7 +93,7 @@ $\disp{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$.
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que pour tout $n \in \bbN$ on a $0 < a_{n} \leq b_{n}$.
 
-   _Indication_ : on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \bbN$. 
+   _Indication_ : on pourra regarder $b_{n + 1}^{2} - a_{n + 1}^{2}$ pour tout $n \in \bbN$. 
    
    \item Établir que $(a_n)$ est croissante et que $(b_n)$ est décroissante. 
    
@@ -98,10 +101,10 @@ $\disp{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$.
    
    \item Prouver enfin que les limites de $(a_n)$ et $(b_n)$ sont égales.
 
-   _Indication_ : on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$ 
+   _Indication_ : on pourra comparer $|b_{n + 1} - a_{n + 1}|$ à $|b_{n} - a_{n}|$ 
 pour tout $n \in \bbN$.
 
-   _Remarque_ : cette valeur commune est appelée la moyenne arithmético-géométrique 
+   _Remarque_ : cette valeur commune est appelée la moyenne arithmético-géométrique 
 des nombres $a$ et $b$, notée $M(a , b)$. 
 \end{genumerate}
 
