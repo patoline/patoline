@@ -258,7 +258,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
               if placable then place_figure ();
             );
             if pi >= Array.length paragraphs then (
-              if pi>node.paragraph && node.lastFigure+1>=Array.length figures then
+              if node.lastFigure+1>=Array.length figures then
                 match !endNode with
                     Some (b,_,_,_) when b<lastBadness->()
                   | None

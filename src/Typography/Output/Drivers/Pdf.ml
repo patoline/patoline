@@ -398,6 +398,7 @@ let output ?(structure:structure={name="";displayname=[];
               List.map (fun i->
                           let obj=futureObject () in
                           fprintf outChan "/Im%d %d 0 R" !ii obj;
+                          incr ii;
                           (obj, !ii, i)) !pageImages
             in
             if !pageImages<>[] then fprintf outChan ">>";
