@@ -18,6 +18,7 @@ let roman ?(capital=true) n =
     | 7 -> s.v ^ s.i ^ s.i, 0
     | 8 -> s.v ^ s.i ^ s.i ^ s.i, 0
     | 9 -> s.i, 1
+    | _ -> "", 0
   in
   let rec fn l n = 
     let d, carry = digit s.(l) (n mod 10) in
@@ -31,7 +32,6 @@ let roman ?(capital=true) n =
 
 let alphabetic  ?(capital=true) n = 
   if n <= 0 then raise (Invalid_argument "alphabetic");
-  let n' = abs n in
   let start = (if capital then Char.code 'A' else Char.code 'a') - 1in
   let rec fn n =
     let d = String.make 1 (Char.chr (start + n mod 26)) in
