@@ -32,7 +32,7 @@ let displayStyle a=[Maths.Scope(
 let disp = displayStyle
 
 let caml x = x
-let ser u n i = <$ \sum_{\caml( n ) ≥ \caml( i )} \caml( u ) $>
+let ser u n i = <$ \sum_{\n ≥ \i } \u $>
 let frac u v = <$ \caml( u ) \over \caml( v ) $>
 let sqrt u = <$ \caml( u )^{1 / 2} $>
 let unit = []
