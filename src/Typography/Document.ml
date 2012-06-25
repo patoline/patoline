@@ -447,9 +447,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                      Break.Placed a->
                        if line.page=a.page &&
                          line.height<=
-                         a.height +.
-                           (ceil ((figures.(i)).drawing_y1-.
-                                    figures.(i).drawing_y0))
+                         a.height -.figures.(i).drawing_y0
                        then
                          measure:=env.normalMeasure -. figures.(i).drawing_nominal_width -. 1.
                    | _->()

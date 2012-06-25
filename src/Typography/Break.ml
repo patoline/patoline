@@ -193,18 +193,21 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
           let place_figure ()=
             let fig=figures.(node.lastFigure+1) in
             let vspace,_=line_height paragraphs figures node in
-            let h=ceil (abs_float vspace) in
-            let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
-            if node.height+.h +. fig_height <= lastParameters.page_height then (
-              let nextNode={
-                paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
-                hyphenStart= -1; hyphenEnd= -1;
-                height=node.height+.h;
-                lineStart= -1; lineEnd= -1; paragraph_height= -1;
-                page_line=node.page_line+1; page=node.page;
-                min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
+            if node.height-.vspace +. fig.drawing_y1 -. fig.drawing_y0 <=
+              lastParameters.page_height then (
+                let nextNode={
+                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                  hyphenStart= -1; hyphenEnd= -1;
+                  height=node.height-.vspace+.fig.drawing_y1;
+                  lineStart= -1; lineEnd= -1; paragraph_height= -1;
+                  page_line=node.page_line+1; page=node.page;
+                  min_width=fig.drawing_min_width;
+                  nom_width=fig.drawing_nominal_width;
+                  max_width=fig.drawing_max_width }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+              let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
+              let nextNode={nextNode with height=next_h } in
               register node nextNode
                 (lastBadness+.badness
                    lastFigures
@@ -217,10 +220,12 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
               let nextNode={
                 paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
                 hyphenStart= -1; hyphenEnd= -1;
-                height=0.;
+                height=fig.drawing_y1;
                 lineStart= -1; lineEnd= -1; paragraph_height= -1;
                 page_line=node.page_line+1; page=node.page+1;
-                min_width=fig.drawing_min_width;nom_width=fig.drawing_min_width;max_width=fig.drawing_min_width }
+                min_width=fig.drawing_min_width;
+                nom_width=fig.drawing_nominal_width;
+                max_width=fig.drawing_max_width }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               register node nextNode

@@ -904,7 +904,7 @@ module Output=functor(M:Driver)->struct
 
               if line.isFigure then (
                 let fig=figures.(line.lastFigure) in
-                  page.pageContents<- (List.map (translate param.left_margin (y-.fig.drawing_y1))
+                  page.pageContents<- (List.map (translate param.left_margin y)
                                          (fig.drawing_contents fig.drawing_nominal_width))
                   @ page.pageContents;
 
