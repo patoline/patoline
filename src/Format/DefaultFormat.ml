@@ -551,7 +551,8 @@ module Format=functor (D:Document.DocumentStructure)->(
     module Env_enumerate =
       Enumerate(struct
                   let from_counter x =
-                    [ T(string_of_int (List.hd x + 1)) ]
+                    [ T(string_of_int (List.hd x + 1));
+                      B (fun env->let w=env.size/.phi in [glue w w w])]
                 end)
 
     module Env_abstract = struct
