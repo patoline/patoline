@@ -95,7 +95,7 @@ let _=
     Printf.fprintf out "doc:\n\tmake -C src doc\n";
     Printf.fprintf out "check:\n\tmake -C src DefaultGrammar.pdf\n";
     List.iter (fun txp ->
-      Printf.fprintf out "\tcd tests; patoline --format FormatArticle %s\n" txp) tests;
+      Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
     let rec read_fonts dir =
