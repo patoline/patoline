@@ -347,9 +347,9 @@ let rec draw env_stack mlist=
                   let xc0,_,xc1,_=bb.(2) in
                   let xd0,_,xd1,_=bb.(3) in
                   [| x1 -. xa0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
-		       xb1 -. x0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
+		       -. xb1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.superscript_distance;
 		       x1 -. xc0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance;
-		       xd1 -. x0 +. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance 
+		       -. xd1 +. x0 -. mathsEnv.mathsSize*.env.size*.mathsEnv.subscript_distance 
 		  |]
                 in
 		let xoff =
