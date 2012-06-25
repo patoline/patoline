@@ -37,7 +37,7 @@ end
 module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
 
-type macro_info = [ `Eat_left | `Eat_right | `Arg_pat of (int * string) ]
+type macro_info = [ `Eat_left | `Eat_right | `Arg_pat of (int * string) | `Arg_nopar of int ]
 type local_data = { 
      infixes : StrSet.t;
      other_symbols : StrSet.t;
@@ -657,6 +657,7 @@ macro_option:
   "eat_left" { `Eat_left }
 | "eat_right" { `Eat_right }
 | "arg_" - (['0'-'9']+)<i> "=" ['a'-'z''A'-'Z''0'-'9''_']+<s> { `Arg_pat(int_of_string i, s) }
+| "arg_" - (['0'-'9']+)<i> "no_parenthesis" { `Arg_nopar(int_of_string i) }
 	
 macro_options:
   | { [] }

@@ -264,12 +264,13 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  List.iter (function x ->
 	    let main_buf = buf in
 	    let buf = Buffer.create 80 in
+	    let use_par = not (List.mem (`Arg_nopar !num) opts) in
 	    (match x with
-              | Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf parser_pp op) p
+              | Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf use_par parser_pp op) p
 	      | Caml(ld,gr,s,e,txps) ->
-		Printf.bprintf buf "(";
+		if use_par then Printf.bprintf buf "(";
 		print_caml_buf parser_pp ld gr op buf s e txps;
-		Printf.bprintf buf ")";
+		if use_par then Printf.bprintf buf ")";
 	      | _ -> assert false);
 	    incr num;
 	    let arg = apply_options !num (Buffer.contents buf) opts in
@@ -317,12 +318,13 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    List.iter (function x ->
 	      let main_buf = buf in
 	      let buf = Buffer.create 80 in
+	      let use_par = not (List.mem (`Arg_nopar !num) opts) in
 	      (match x with
-		| Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf parser_pp op) p
+		| Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf use_par parser_pp op) p
 		| Caml(ld,gr,s,e,txps) ->
-		  Printf.bprintf buf "(";
+		  if use_par then Printf.bprintf buf "(";
 		  print_caml_buf parser_pp ld gr op buf s e txps;
-		  Printf.bprintf buf ")";
+		  if use_par then Printf.bprintf buf ")";
 		| _ -> assert false);
 	      let arg = apply_options !num (Buffer.contents buf) opts in
 	      Printf.bprintf main_buf "let arg%d = begin %s end\n" !num arg;
@@ -427,7 +429,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps =
 	    let sub_input source_pos dest pos size =
 	      op (s' + source_pos) dest pos size
 	    in
-	    print_contents_buf parser_pp (Source.of_function sub_input) buf docs
+	    print_contents_buf true parser_pp (Source.of_function sub_input) buf docs
 	  | _ -> assert false
       end
     end ;
@@ -442,9 +444,9 @@ and print_caml parser_pp ld gr op (ch : out_channel) s e txps = begin
   Buffer.output_buffer ch buf
 end
 
-and print_contents_buf parser_pp op buf l = 
+and print_contents_buf use_par parser_pp op buf l = 
   (* Printf.fprintf stderr "Entering print_contents_buf.\n" ; flush stderr ; *)
-  Printf.bprintf buf "(";
+  if use_par then Printf.bprintf buf "(";
   let rec fn l = 
     begin match l with
       [] ->  Printf.bprintf buf "[]";
@@ -484,11 +486,11 @@ and print_contents_buf parser_pp op buf l =
     end
   in 
   fn l;
-  Printf.bprintf buf ")"
+  if use_par then Printf.bprintf buf ")"
 
 and print_contents parser_pp op (ch : out_channel) l = begin
   let buf = Buffer.create 80 in
-  print_contents_buf parser_pp op buf l;
+  print_contents_buf true parser_pp op buf l;
   output_string ch (Buffer.contents buf) 
 end
 
