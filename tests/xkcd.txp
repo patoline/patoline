@@ -1,0 +1,33 @@
+(* #PACKAGES str, netclient *)
+(* #FORMAT FormatArticle *)
+
+===================================
+
+XKCD
+
+===================================
+
+\Caml(
+open Http_client.Convenience
+let raw_text () = http_get "http://www.xkcd.org"
+
+let trouvesy_regexp = Str.regexp "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\""
+
+let content () =  
+  try 
+    let downloaded = Nethtml.decode [Nethtml.Data (raw_text ())] in 
+    let decoded = match downloaded with
+	[Nethtml.Data t] -> t
+      | _ -> "What the fuck ???!"
+    in
+    Str.search_forward trouvesy_regexp decoded 0;
+    let gettheimage = http_get (Str.matched_group 1 decoded) in
+    let tmpname, tmpwrite = Filename.open_temp_file "xkcd" ".png" in
+    let _ = Printf.fprintf tmpwrite "%s" gettheimage; close_out tmpwrite in
+    let _ = prerr_string tmpname; prerr_newline () in
+    (includeGraphics tmpname) @ [T (Str.matched_group 2 decoded)]
+  with _ -> <<Problème de connexion internet !>>
+)
+
+\content
+
