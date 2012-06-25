@@ -9,6 +9,7 @@ let dirs = ref []
 let package_list = ref ["Typography"]
 let no_grammar=ref false
 let deps_only=ref false
+let extras = ref ""
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
 
             ("-I",Arg.String (fun x->
@@ -26,6 +27,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
             ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
             ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
+	    ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), "Remaining arguments are passed to the OCaml executable")
            ]
 
 let str_dirs () = (String.concat " " !dirs)
@@ -90,7 +92,7 @@ let rec process_each_file =
         Printf.fprintf stderr "File %s generated.\n" (binname_of f);
         flush stderr;
         if !run then (
-          let cline = (List.fold_left (fun acc x -> (x^" ")^acc) "" !cmd_line) in
+          let cline = (List.fold_left (fun acc x -> (x^" ")^acc) !extras !cmd_line) in
           Printf.fprintf stderr "Running OCaml code... \n";
           flush stderr;
           let r= Sys.command (Printf.sprintf "%s %s" (execname_of f) cline) in
