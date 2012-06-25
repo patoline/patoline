@@ -1,0 +1,24 @@
+\Caml(open Diagrams)
+
+#diagram(
+
+      let m,ms = Matrix.(matrix [centers 10. 20.] [[
+	([], <<$C$>>); 
+	([], <<$C_1$>>); 
+	([], <<$C_2$>>);
+	([], <<$CD$>>)
+      ]])
+
+
+	     let [delta;pi;sigma] = Edge.(edges [arrow;draw] [
+	       ([], ms.(0).(1), [], ms.(0).(0));
+	       ([], ms.(0).(1), [], ms.(0).(2));
+	       ([], ms.(0).(2), [], ms.(0).(3));
+	     ])
+
+	     let p = labela delta <<$p$>>
+	     let q = labela pi <<$q$>>
+	     let r = labela sigma <<$r$>>
+
+
+)
