@@ -11,9 +11,9 @@ XKCD
 open Http_client.Convenience
 let raw_text () = http_get "http://www.xkcd.org"
 
-let trouvesy_regexp = Str.regexp "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\""
+let trouvesy_regexp = Str.regexp "<img src=\"\\([^\"]*\\)\" title=\"\\([^\"]*\\)\" alt=\"\\([^\"]*\\)\""
 
-let content () =  
+let _ =  
   try 
     let downloaded = Nethtml.decode [Nethtml.Data (raw_text ())] in 
     let decoded = match downloaded with
@@ -22,12 +22,13 @@ let content () =
     in
     Str.search_forward trouvesy_regexp decoded 0;
     let gettheimage = http_get (Str.matched_group 1 decoded) in
+    let title = (Str.matched_group 3 decoded) in
     let tmpname, tmpwrite = Filename.open_temp_file "xkcd" ".png" in
     let _ = Printf.fprintf tmpwrite "%s" gettheimage; close_out tmpwrite in
     let _ = prerr_string tmpname; prerr_newline () in
-    (includeGraphics tmpname) @ [T (Str.matched_group 2 decoded)]
-  with _ -> <<Problème de connexion internet !>>
+    let drawing env=drawing (draw_boxes (boxify_scoped env (includeGraphics ~scale:0.2 tmpname))) in
+    figure ~caption:[T title] drawing;
+    (* newPar D.structure Complete.normal parameters [T (Str.matched_group 2 decoded)] *)
+  with _ ->newPar D.structure Complete.normal center <<Problème de connexion internet !>>
 )
-
-\content
 
