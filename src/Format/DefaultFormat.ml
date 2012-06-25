@@ -274,7 +274,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             draw_boxes (
               boxify_scoped env (
                 [ T "Figure"; T " ";
-                  T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
+                  T (String.concat "." (List.map (fun x->string_of_int x) (List.rev (num@sect_num)))) ]
                 @(if caption=[] then [] else T" "::T"-"::T" "::caption)
               )
             )
