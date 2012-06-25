@@ -92,7 +92,7 @@ val first_line : 'a box array array -> line -> 'a box
 val last_line : 'a box array array -> line -> 'a box
 
 (** Extremas de la hauteur d'une ligne *)
-val line_height : 'a box array array -> line -> float * float
+val line_height : 'a box array array -> drawingBox array -> line -> float * float
 
 (** Compression (entre 0 et 1) nécessaire pour faire tenir la ligne
 dans une ligne de mesure le deuxième argument (version sans record) *)

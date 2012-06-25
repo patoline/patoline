@@ -136,7 +136,7 @@ module Output=functor(M:Driver)->struct
 
                 if line.paragraph<> !par then (
                   par:=line.paragraph;
-                  positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs line))
+                  positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs figures line))
                 );
 
                 let comp=compression paragraphs param line in
@@ -192,7 +192,7 @@ module Output=functor(M:Driver)->struct
                         0.
                       )
                     | User (Label l)->(
-                        let y0,y1=line_height paragraphs line in
+                        let y0,y1=line_height paragraphs figures line in
                           destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
                           0.
                       )

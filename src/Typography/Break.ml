@@ -192,7 +192,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
           in
           let place_figure ()=
             let fig=figures.(node.lastFigure+1) in
-            let vspace,_=line_height paragraphs node in
+            let vspace,_=line_height paragraphs figures node in
             let h=ceil (abs_float vspace) in
             let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
             if node.height+.h +. fig_height <= lastParameters.page_height then (
@@ -301,7 +301,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                               if node0.isFigure then (
                                 let fig=figures.(node0.lastFigure) in
                                 let fig_height=(ceil (fig.drawing_y1-.fig.drawing_y0)) in
-                                node0.height+.(snd (line_height paragraphs nextNode))+.fig_height
+                                node0.height+.(snd (line_height paragraphs figures nextNode))+.fig_height
                                   (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
                                   (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
                                   (*     try *)
@@ -333,12 +333,12 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                      let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
                                      if prec.page=page then v_distance prec params else
                                        (node0.height
-                                        +. max (snd (line_height paragraphs nextNode))
+                                        +. max (snd (line_height paragraphs figures nextNode))
                                         (max !r_params.min_height_before parameters.min_height_after))
                                    with
                                        Not_found->
                                          (node0.height
-                                          +. max (snd (line_height paragraphs nextNode))
+                                          +. max (snd (line_height paragraphs figures nextNode))
                                           (max !r_params.min_height_before parameters.min_height_after))
                                   )
                                 else d
@@ -346,7 +346,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                             in
                             v_distance node lastParameters
                           ) else (
-                            (snd (line_height paragraphs nextNode))
+                            (snd (line_height paragraphs figures nextNode))
                           )
                         )
                       in

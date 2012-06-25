@@ -29,7 +29,7 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
                 pageContents := (List.map (translate param.left_margin (y-.fig.drawing_y1))
                                    (fig.drawing_contents fig.drawing_nominal_width)) @ !pageContents
             ) else if line.paragraph<Array.length paragraphs then (
-              let (yy0,yy1)=line_height paragraphs line in
+              let (yy0,yy1)=line_height paragraphs figures line in
                 y1:=max (y+.yy1) !y1;
                 y0:=min (y+.yy0) !y0;
                 y0':=min (y+.yy0) !y0';

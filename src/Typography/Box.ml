@@ -271,7 +271,11 @@ let last_line paragraphs line=
 
 
 
-let line_height paragraphs node=
+let line_height paragraphs figures node=
+  if node.isFigure then
+    (figures.(node.lastFigure).drawing_y0,
+     figures.(node.lastFigure).drawing_y1)
+  else (
   let rec line_height boxes k maxk min_height max_height=
     if k>=maxk then (min_height,max_height) else (
       match boxes.(k) with
@@ -300,7 +304,7 @@ let line_height paragraphs node=
             line_height hyp 0 (Array.length hyp) a0 b0
         | _->a0,b0
     ) else a0,b0
-
+  )
 let comp paragraphs m p i hi j hj=
   let minLine=ref 0. in
   let maxLine=ref 0. in
