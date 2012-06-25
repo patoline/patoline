@@ -258,6 +258,43 @@ module Format=functor (D:Document.DocumentStructure)->(
           env'
           pages
 
+    let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
+      let drawing' env=
+        let dr_=drawing env in
+        let dr=
+          if scale<>1. then
+            match resize scale (Drawing dr_) with Drawing f->f | _->assert false
+          else dr_
+        in
+        let lvl,num=StrMap.find "figure" env.counters in
+        let _,str_counter=StrMap.find "_structure" env.counters in
+        let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+        let caption=
+          Box.drawing (
+            draw_boxes (
+              boxify_scoped env (
+                [ T "Figure"; T " ";
+                  T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
+                @(if caption=[] then [] else T" "::T"-"::T" "::caption)
+              )
+            )
+          )
+        in
+        let fig=if caption.drawing_nominal_width<=dr.drawing_nominal_width then
+          drawing_blit dr
+            ((dr.drawing_nominal_width-.caption.drawing_nominal_width)/.2.)
+            (dr.drawing_y0-.2.*.caption.drawing_y1) caption
+        else
+          drawing_blit caption
+            ((caption.drawing_nominal_width-.dr.drawing_nominal_width)/.2.)
+            (2.*.caption.drawing_y1-.dr.drawing_y0) dr
+        in
+        { fig with drawing_y0=fig.drawing_y0-.env.lead }
+      in
+      figure ~parameters:parameters ~name:name D.structure drawing'
+
+
+
     type 'a tableParams={ widths:'a environment->float array; h_spacing:float; v_spacing:float }
 
     let table params tab=
