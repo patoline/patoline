@@ -1522,19 +1522,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let shortenS a = shorten a 0.
       let shortenE b = shorten 0. b
 
-      let foreground, foreground_pet = 
-	Pet.register ~depends:[draw_pet;shorten_pet] "foreground" (fun pet margin ->
-	  { pet = pet ; transfo = (fun transfos info -> 
-	    let white_paths = List.map (fun (params, curve) -> 
-	      { info.params with 
-		Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
-		Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
-	      curve)
-	      info.curves
-	    in
-	    let edge_info' = 
-	      Transfo.transform [shorten 0.1 0.1] { info with curves = white_paths }   in
-	    { info with curves = (edge_info'.curves @ info.curves) }) })
 
       let double, double_pet = Pet.register ~depends:[draw_pet] "double" (fun pet margin -> 
 	{ pet = pet ; transfo = (fun transfos info ->
@@ -1693,6 +1680,22 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
 
 
+      let foreground, foreground_pet = 
+	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" (fun pet margin ->
+	  { pet = pet ; transfo = (fun transfos info -> 
+	    let white_paths = List.map (fun (params, curve) -> 
+	      { info.params with 
+		Drivers.dashPattern = [] ;
+		Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+		Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
+	      curve)
+	      info.curves
+	    in
+	    let edge_info' = 
+	      Transfo.transform [shorten 0.1 0.1] { info with curves = white_paths }   in
+	    { info with curves = (edge_info'.curves @ info.curves) }) })
+
+
 
     end
       
@@ -1703,7 +1706,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let stack = ref []
       let env = Args'.env
       let offset = ref 0.
-
 
       let node style contents = 
 	let a = Node.(make env (default_shape env :: style)) contents in
@@ -1737,9 +1739,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let make () = 
 	let fig = Box.drawing ~offset:(!offset) 
-	  (List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
-	     []
-	     !stack)
+	  (List.fold_right (fun gentity res -> List.rev_append gentity.contents res)
+	     !stack
+	     [])
 	in
 	stack := [] ; fig
 
