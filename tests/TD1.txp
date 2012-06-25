@@ -33,8 +33,8 @@ let disp = displayStyle
 
 let caml x = x
 let ser u n i = <$ \sum_{\n ≥ \i } \u $>
-let frac u v = <$ \caml( u ) \over \caml( v ) $>
-let sqrt u = <$ \caml( u )^{1 / 2} $>
+let frac u v = <$ \u \over \v $>
+let sqrt u = <$ \u^{1 / 2} $>
 let unit = []
 )
 

@@ -442,7 +442,7 @@ args:
   | args<a> - "{" oparagraph<p> "}" 
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
   | args<a> - CAML<s,e,txps>
-    { if e - s <= 2 then raise Giveup; 
+    { if e - s < 1 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
 
 neargs:
@@ -451,12 +451,12 @@ neargs:
   | "{" oparagraph<p> "}" 
     { (fun (ld:local_data) gr -> [sParagraph (p)]) }
   | CAML<s,e,txps>
-    { if e - s <= 2 then raise Giveup; 
+    { if e - s < 1 then raise Giveup; 
       (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
   | neargs<a> - "{" oparagraph<p> "}" 
     { (fun ld gr -> sParagraph (p)::a ld gr) }
   | neargs<a> - CAML<s,e,txps>
-    { if e - s <= 2 then raise Giveup; 
+    { if e - s < 1 then raise Giveup; 
       (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:
@@ -549,7 +549,7 @@ mathargs:
   | mathargs<a> - "{" math<m> "}"
     { (fun ld gr -> m::a ld gr) }  args
   | mathargs<a> - CAML<s,e,txps>
-    { if e - s <= 2 then raise Giveup;
+    { if e - s < 1 then raise Giveup;
       (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 
 math:
