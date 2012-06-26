@@ -1135,7 +1135,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
                                              inters:=(x,y)::(!inters)
                                           ) (Bezier.intersect xa xb)
                              ) !curvesb
-                ) !curvesb;
+                ) !curvesa;
       !inters
   end
 
