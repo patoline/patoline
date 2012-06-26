@@ -1,4 +1,3 @@
-(* #FORMAT FormatArticle *)
 
 \Caml(
 open Diagrams
@@ -39,23 +38,13 @@ Alors, comment  ça s'aligne ce \diagram(
   let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
 ) bordel? Et si le paragraphe a plus qu'une ligne, est-ce que ça marche encore?
 
-Et avec une équation?
+Et là
 
-\equation{
+\Begin{center}
 \diagram(
   let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
 )
-}\label("rien de spe")
-comment ça marche, par exemple si la ligne est encore plutôt longue?
-
-\Begin{definition}
-Et à l'intérieur d'une définition?
-
-\equation{
-\diagram(
-  let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
-)
-}\label("rien de spe")
+\End{center}
 comment ça marche?
-\End{definition}
+
 Et si la ligne d'après la def est plutôt longue?
