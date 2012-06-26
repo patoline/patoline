@@ -53,8 +53,8 @@ $[0] \id(xrightarrows <$s,t$>) [1]$
 
 
 \diagram(
-  let m,ms = Matrix.(math_matrix [centers 20. 20.;mainNode [Node.anchor `Pdf];allNodes [Node.draw]] 
-		       [[([],<$[0]$>) ; ([],<$[1]$>) ]])
+  let m,ms = Matrix.(math_matrix [centers 20. 20.;mainNode [Node.anchor `Pdf]] 
+		       [[([],<$asthsth$>) ; ([],<$AAAAA$>) ]])
   let es = edges_anchor_mid [
     (ms.(0).(0),ms.(0).(1),[],`North,[]) ;
     (coord (ms.(0).(0).anchor (`Angle 30.)), coord (ms.(0).(1).anchor (`Angle 150.)),[],`South,<<$s,t$>>) ;

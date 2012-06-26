@@ -1241,20 +1241,24 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	in
 	makeNodes lines'
 
-      let placement,placement_pet = 
-	Pet.register "matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement -> 
+      let placement, placement_pet = 
+	Pet.register "prepare matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement -> 
+	  { pet = pet ; transfo = (fun transfos info -> { info with placement = placement }) })
+
+      let makePlacement,make_placement_pet = 
+	Pet.register "matrix placement" ~depends:[placement_pet;all_nodes_pet;make_nodes_pet] (fun pet -> 
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    (* Printf.fprintf stderr "matrix placement \n" ; flush stderr ; *)
 	      let info' = 
 		{ info with nodes = mapi (fun i j node_info -> 
-		  Node.translate (placement info i j) node_info) info.nodes } 
+		  Node.translate (info.placement info i j) node_info) info.nodes } 
 	      in 
-	      let nodes_contents = nodes_contents info in
+	      let nodes_contents = nodes_contents info' in
 	      let node_info = Node.Transfo.transform
 		[Node.contents_outputcommon nodes_contents]
-		info.mainNode 
+		info'.mainNode 
 	      in
-	      { info' with placement = placement ; mainNode = node_info })})
+	      { info' with mainNode = node_info })})
 
       (* let mainNodeContents,main_node_contents_pet = *)
       (* 	Pet.register "matrix main node contents" ~depends:[placement_pet] (fun pet ->  *)
@@ -1302,6 +1306,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  (contents env lines :: 
 	     mainNode [rectangle env] :: 
 	     (* mainNodeContents :: *)
+	     makePlacement ::
 	     allNodes [] ::
 	     (* wrap :: *)
 	     style) (default env) in
