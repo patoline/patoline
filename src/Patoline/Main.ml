@@ -23,7 +23,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
             ("-package",Arg.String (fun s-> package_list:= s::(!package_list)), "Use package given as argument when compiling");
-            ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
+            ("--caml",Arg.String (fun arg -> (dirs := ("\""^arg^"\"") :: !dirs)), "Add the given arguments to the OCaml command line");
             ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
             ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
             ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
@@ -82,7 +82,7 @@ let rec process_each_file =
       package_list := ("Typography." ^ !format) :: !package_list;
     if !compile then (
       let lespackages = String.concat "," !package_list in
-      let build_command = Printf.sprintf "ocamlfind ocamlopt -package %s %s -linkpkg -o %s -impl %s" lespackages (str_dirs ()) (binname_of f) (mlname_of f)in
+      let build_command = Printf.sprintf "ocamlfind ocamlopt -package %s %s -linkpkg -o \"%s\" -impl \"%s\"" lespackages (str_dirs ()) (binname_of f) (mlname_of f)in
       Printf.fprintf stderr "Compiling OCaml code...\n";
       Printf.fprintf stderr "%s\n" build_command;
       flush stderr;
@@ -92,10 +92,10 @@ let rec process_each_file =
         Printf.fprintf stderr "File %s generated.\n" (binname_of f);
         flush stderr;
         if !run then (
-          let cline = (List.fold_left (fun acc x -> (x^" ")^acc) !extras !cmd_line) in
+          let cline = (List.fold_left (fun acc x -> ("\""^x^"\" ")^acc) !extras !cmd_line) in
           Printf.fprintf stderr "Running OCaml code... \n";
           flush stderr;
-          let r= Sys.command (Printf.sprintf "%s %s" (execname_of f) cline) in
+          let r= Sys.command (Printf.sprintf "\"%s\" %s" (execname_of f) cline) in
           flush stderr;
           if r=0 then Printf.fprintf stderr "File %s generated.\n" (pdfname_of f)
           else Printf.fprintf stderr "Execution returned with exit code %d.\n" r
