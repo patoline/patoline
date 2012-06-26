@@ -53,10 +53,6 @@ module Format=functor (D:DocumentStructure)->struct
                                                               par_indent=[]} pars_sender).(0) in
                        let minip_recip=(Default.minipage { env with normalMeasure=w;
                                                              par_indent=[] } pars_recip).(0) in
-                       let height=max
-                         (minip_sender.drawing_y1-.minip_sender.drawing_y0)
-                         (minip_recip.drawing_y1-.minip_recip.drawing_y0)
-                       in
                        let x0=min 0. (env.normalMeasure/.2.-.minip_sender.drawing_nominal_width) in
                        let x1=max (env.normalMeasure/.2.)
                          (env.normalMeasure-.minip_recip.drawing_nominal_width) in

@@ -77,7 +77,6 @@ let get_interval =
 let par_split from =
   let space = Str.regexp "^[ \t\r]*$" in
   let decide_newpar = Str.regexp "^[ \t]+" in
-  let remove = Str.regexp "[\r]+" in
   let cleanup s =  let a,b= (get_interval from) in FromFile (a,b)
 (* (String.escaped (Str.global_replace remove "" s))  *)
   in

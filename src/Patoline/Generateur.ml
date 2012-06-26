@@ -345,6 +345,8 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	else begin
           incr moduleCounter;
 	  let num = !moduleCounter in
+          let s=String.make 1 modname.[0] in
+          modname.[0]<-(String.uppercase s).[0];
 	  Printf.bprintf buf "module TEMP%d = %s%s\nopen TEMP%d\n let _ = do_begin_env()"
 	    num modname end_open num (* name *)
 	end
