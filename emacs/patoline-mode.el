@@ -135,11 +135,10 @@
 (require 'mmm-mode nil t)
 (require 'tuareg nil t)
 
-(if (and (featurep 'mmm-mode) (featurep 'tuareg-mode))
+(if (and (featurep 'mmm-mode) (featurep 'tuareg))
     (progn 
       (setq mmm-global-mode 'maybe)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-tuareg)
-      (mmm-add-mode-ext-class nil "\\.txp" 'tuareg-patoline)
       (mmm-add-classes
        '((patoline-tuareg
 	  :submode tuareg-mode
