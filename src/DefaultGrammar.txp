@@ -248,6 +248,9 @@ Symboles de Patoline
 \Add_combining{ ⃖ }{\cev}
 
 \Configure_word_macro{\item}{ eat_right }
+\Configure_word_macro{\label}{ eat_right
+                               eat_left }
+
 \Configure_environment{genumerate}{ arg_1 = genumerate }
 
 \Configure_word_macro{\diagram}{ is_identity 
