@@ -6,9 +6,16 @@
 
 (add-to-list 'auto-mode-alist '("\\.txp\\'" . patoline-mode))
 
+
 (defconst patoline-font-lock-keywords
-  (list (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>"
-         'font-lock-keyword-face))
+  (list (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>" 'font-lock-keyword-face)
+        (cons "^[ \t]*===*\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
+        (cons "^[ \t]*---*\\(-[^-]+\\)*[^-]+---*" 'font-lock-doc-face)
+        (cons "^[ \t]*===========*" 'font-lock-doc-face)
+        (cons "^[ \t]*-----------*" 'font-lock-doc-face)
+        (cons "^[ \t]*[=-]>[^\n]*\n[\r \t]*\n" 'font-lock-doc-face)
+        (cons "^[ \t]*[=-]<\\([ \t]*[=-]<\\)*" 'font-lock-doc-face)
+  )
   "Minimal highlighting expressions for Patoline mode.")
 
 (defvar patoline-mode-hook nil)
@@ -83,7 +90,7 @@
     patoline-mode-map))
   "Keymap for PATOLINE major mode")
 
-(add-hook 'patoline-mode-hook 'flyspell-mode)
+(add-hook 'patoline-mode-hook (lambda () (flyspell-mode t)))
 
 (defvar patoline-mode-syntax-table
   (let ((patoline-mode-syntax-table (make-syntax-table)))
@@ -124,5 +131,22 @@
   (setq mode-name "Patoline")
   (run-hooks 'patoline-mode-hook)
 )
+
+(require 'mmm-mode nil t)
+(require 'tuareg nil t)
+
+(if (and (featurep 'mmm-mode) (featurep 'tuareg-mode))
+    (progn 
+      (setq mmm-global-mode 'maybe)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-tuareg)
+      (mmm-add-mode-ext-class nil "\\.txp" 'tuareg-patoline)
+      (mmm-add-classes
+       '((patoline-tuareg
+	  :submode tuareg-mode
+	  :front "\\\\[Cc]aml("
+	  :back "^)")
+	 ))))
+
+
 
 
