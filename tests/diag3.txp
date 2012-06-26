@@ -1,0 +1,61 @@
+(* #FORMAT FormatArticle *)
+
+\Caml(
+open Diagrams
+module Env_Diagram (Arg : sig val env : user environment end) = struct
+  include Env_Diagram (Arg) 
+
+  let my_matrix style l = 
+    matrix (Matrix.([centers 20. 20.;
+		     mainNode Node.([at (0.,ex env);anchor `Pdf])]) @ style) l
+
+  let my_math_matrix style l = 
+    math_matrix (Matrix.([centers 20. 20.;
+			  mainNode Node.([at (0.,ex env);anchor `Pdf])]) @ style) l
+
+  let square ?matrix_style:(matrix_style=[Matrix.centers 20. 20.]) 
+      ?edges_style:(edges_style=Edge.([arrow;draw]))
+      ?labels_style:(labels_style=[]) 
+      a b c d above left right below = 
+    let m,([|[|a;b|];[|c;d|]|] as ms) = my_matrix matrix_style [[
+      ([], a) ; ([], b) ];[
+      ([], c) ; ([], d) ]] in
+    let [ e_above ; e_left ; e_right ; e_below ] as es = edges edges_style [
+      ([], a, [], b) ;
+      ([], a, [], c) ;
+      ([], b, [], d) ;
+      ([], c, [], d) ]
+    in
+    let _ = labela ~style:labels_style e_above above in
+    let _ = labell ~style:labels_style e_left left in
+    let _ = labelr ~style:labels_style e_right right in
+    let _ = labelb ~style:labels_style e_below below in
+    m,ms,es
+
+end
+)
+
+Alors, comment  ça s'aligne ce \diagram(
+  let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
+) bordel? Et si le paragraphe a plus qu'une ligne, est-ce que ça marche encore?
+
+Et avec une équation?
+
+\equation{
+\diagram(
+  let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
+)
+}\label("rien de spe")
+comment ça marche, par exemple si la ligne est encore plutôt longue?
+
+\Begin{definition}
+Et à l'intérieur d'une définition?
+
+\equation{
+\diagram(
+  let _ = square <<$A$>> <<$B$>> <<$P_n$>> <<$P_m$>> <<$f$>> <<$λ$>> <<$μ$>> <<$P_i$>>
+)
+}\label("rien de spe")
+comment ça marche?
+\End{definition}
+Et si la ligne d'après la def est plutôt longue?
