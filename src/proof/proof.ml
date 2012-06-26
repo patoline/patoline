@@ -16,8 +16,8 @@ let _=
     for i=1 to Array.length Sys.argv-1 do
       let f = Sys.argv.(i) in
       let font= loadFont f in
-        Printf.printf "%d\n" (List.length (fontFeatures font));
-        List.iter print_subst (select_features font (fontFeatures font));
+        Printf.printf "%d\n" (List.length (font_features font));
+        List.iter print_subst (select_features font (font_features font));
       let nb_glyphs = Fonts.cardinal font in
       let w=
         let m=ref 0. in
