@@ -53,6 +53,17 @@
 ;    (display-progress-feedback 'patoline-compilation (concat "compiling: " buffer-file-name)) 
 ))
 
+(defun patoline-make ()
+  "compile the current buffer with make"
+  (interactive)
+  (save-buffer)
+  (setq patoline-pending-output "") 
+  (select-patoline-program-buffer)
+  (comint-exec patoline-program-buffer "patoline-process" "make" nil nil)
+  (set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)
+;    (display-progress-feedback 'patoline-compilation (concat "compiling: " buffer-file-name)) 
+)
+
 (defun patoline-view ()
   "view the pdf corresponding to the current buffer"
   (interactive)
@@ -67,6 +78,7 @@
   (let ((patoline-mode-map (make-keymap)))
     (progn
       (define-key patoline-mode-map (kbd "C-c C-c") 'patoline-compile)
+      (define-key patoline-mode-map (kbd "C-c C-e") 'patoline-make)
       (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-view)
     patoline-mode-map))
   "Keymap for PATOLINE major mode")

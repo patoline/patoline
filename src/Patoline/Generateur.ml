@@ -28,13 +28,12 @@ let apply_options n arg opts =
 
 let _= macros:=
   StrMap.add "diagram" (fun x->
-    " (let module MaFigure (Arg : sig val env : user environment end) = struct \n" ^
-      "module Lib = Env_Diagram (struct let arg1 = \"\" end) (Arg) \n open Lib \n" ^
-      x ^
-      "end in \n" ^
-      "[B (fun env -> \n" ^
-      "let module Res = MaFigure (struct let env = env end) in \n" ^
-      "[ Drawing (Res.Lib.make ()) ])]) ") 
+    "[B (fun env -> \n" ^
+      "let module Res = struct\n "^
+      "module Lib = Env_Diagram (struct let env = env end) \n open Lib \n"^
+      x^
+      "\n end \n"^ 
+      "in [ Drawing (Res.Lib.make ()) ])]\n")
   (StrMap.add "genumerate" (fun s->
     let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
     let c = String.make 1 s.[pos+1] in
@@ -307,14 +306,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  else name
 	in
 	let end_open =
-	  if args = [] then 
-	    if mtype = `Begin && name = "Diagram" then begin
-	      Printf.bprintf buf
-		"module Args = (struct let arg1 = \"figure%d\" end)" !moduleCounter;
-	      "(Args)"
-	    end
-	    else 
-	      ""
+	  if args = [] then ""
 	  else begin
 	    let num = ref 1 in
 	    Printf.bprintf buf "module Args = struct\n";
@@ -336,13 +328,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    "(Args)"
 	  end
 	in
-	if mtype = `Begin && name = "Diagram" then begin
-	(* Printf.bprintf buf "open %s%s\n let _ = do_begin_env()\n" modname end_open (\* name *\) ; *)
-	  Printf.bprintf buf 
-	    ("module MaFigure(Args : sig val arg1 : string end) (Args' : sig val env : user environment end) = struct \n") ; 
-	  Printf.bprintf buf "module Lib = Env_Diagram (Args) (Args')\n include Lib\n" (* name *) 
-	end
-	else begin
+	begin
           incr moduleCounter;
 	  let num = !moduleCounter in
           let s=String.make 1 modname.[0] in
@@ -351,13 +337,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    num modname end_open num (* name *)
 	end
       | `End -> 
-
-	if name = "Diagram" then begin
-	  Printf.bprintf buf "\n end \n" (* name *) ;
-	  Printf.bprintf buf "let _ = figure D.structure ~name:Args.arg1 (fun env -> \n" (* name *) ;
-	  Printf.bprintf buf "   let module Res = MaFigure (Args) (struct let env = env end) in \n" ;
-	  Printf.bprintf buf "   Res.make ())\n end \n " end
-	else Printf.bprintf buf "let _ = do_end_env()\nend" (* name *)
+	Printf.bprintf buf "let _ = do_end_env()\nend" (* name *)
       | `Include ->
 	  incr moduleCounter;
 	  Printf.bprintf buf

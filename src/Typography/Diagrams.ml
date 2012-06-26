@@ -32,6 +32,12 @@ let list_split_last_rev l =
     | x :: l -> list_split_last_rec (x :: res) l
   in list_split_last_rec [] l
 
+let app_default f x y default = 
+  match f x y with
+    | Some res -> res
+    | None -> default
+
+
 module Point = struct 
   type t = float * float
   type point = t
@@ -210,6 +216,8 @@ module Curve = struct
 	  if t <= 1. then bezier_evaluate bezier t
 	  else eval_rec reste (t -. 1.)
     in eval_rec beziers t
+
+  let eval_global beziers lt = eval beziers (global_time beziers lt)
 
   let gradient curve =
     List.map (fun (xs,ys) -> (Bezier.derivee xs, Bezier.derivee ys)) curve
@@ -903,11 +911,11 @@ end
 	      [p4;p1] 	(* The left-hand curve *)
 	    ]
 	  in
+	  let (p1,p2,p3,p4) as outer_bb = BB.outer_points info bb_boot in
 	  let inner_curve = rectangle (BB.points bb_boot) in
 	  let mid_curve = rectangle  (BB.mid_points info bb_boot) in
-	  let outer_curve = rectangle (BB.outer_points info bb_boot) in	  
+	  let outer_curve = rectangle outer_bb in
 
-	  let (p1,p2,p3,p4) = BB.outer_points info bb_boot in
 	  let text_depth = -. y0 in 
 	  let inner_sep = info.innerSep  in 
 	  let outer_sep = info.outerSep  in 
@@ -948,6 +956,16 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    | `SouthEast -> p2
 	    | `NorthEast -> p3
 	    | `NorthWest -> p4
+	    | `Angle angle ->		(* angle en degres *)
+	      let (x,y) as main = anchors main in
+	      let angle = to_rad angle in
+	      let direction = (cos angle, sin angle) in
+	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in 
+	      let rayon = Curve.of_point_lists [[main;Vector.(+) main direction']] in
+	      let inter = 
+		app_default Curve.latest_intersection rayon outer_curve (0,0.)
+	      in
+	      Curve.eval_global rayon inter
 	    | `Pdf -> info.pdfAnchor
 	    | _ -> Printf.fprintf stderr "Anchor undefined for a rectangle. Returning the center instead.\n" ; 
 	      Point.middle p1 p3
@@ -1394,25 +1412,27 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  match node1.curve with
 	    | [xs,ys] when Array.length xs <= 1 -> (0,0.)
 	    | curve1 ->
-	      match Curve.latest_intersection curve curve1 with
-		| None -> begin
-		  (* Printf.fprintf stderr *)
-		  (* 	"I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ; *)
-		  (0,0.)
-		end
-		| Some (i, t1) -> (i, t1)
+	      Curve.(app_default latest_intersection curve curve1 (0,0.))
+	      (* match Curve.latest_intersection curve curve1 with *)
+	      (* 	| None -> begin *)
+	      (* 	  (\* Printf.fprintf stderr *\) *)
+	      (* 	  (\* 	"I can't find any intersection of your edge with the start node shape.\nI'm taking the center as a start node instead.\n" ; *\) *)
+	      (* 	  (0,0.) *)
+	      (* 	end *)
+	      (* 	| Some (i, t1) -> (i, t1) *)
 	end in
 	let (j,t') as finish = begin 
 	  match node2.curve with
 	    | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
 	    | curve2 ->
-	      match Curve.earliest_intersection curve curve2 with
-		| None -> begin
-		  (* Printf.fprintf stderr *)
-		  (* 	"I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ; *)
-		  ((Curve.nb_beziers curve) - 1,1.)
-		end
-		| Some (j, t2) -> (j, t2)
+	      Curve.(app_default earliest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.))
+	      (* match Curve.earliest_intersection curve curve2 with *)
+	      (* 	| None -> begin *)
+	      (* 	  (\* Printf.fprintf stderr *\) *)
+	      (* 	  (\* 	"I can't find any intersection of your edge with the end node shape.\nI'm taking the center as a end node instead.\n" ; *\) *)
+	      (* 	  ((Curve.nb_beziers curve) - 1,1.) *)
+	      (* 	end *)
+	      (* 	| Some (j, t2) -> (j, t2) *)
 	end in
 	Curve.internal_restrict curve start finish 
 
@@ -1702,10 +1722,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
 
-    module Env_Diagram (Args : sig val arg1 : string end)(Args' : sig val env : user environment end) = struct
+    module Env_Diagram (Args : sig val env : user environment end) = struct
       let stack = ref []
-      let env = Args'.env
-      let offset = ref 0.
+      let env = Args.env
 
       let node style contents = 
 	let a = Node.(make env (default_shape env :: style)) contents in
@@ -1738,10 +1757,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	node, m
 
       let make () = 
-	let fig = Box.drawing ~offset:(!offset) 
-	  (List.fold_right (fun gentity res -> List.rev_append gentity.contents res)
+	let contents = List.fold_right (fun gentity res -> List.rev_append gentity.contents res)
 	     !stack
-	     [])
+	     []
+	in
+	let fig = Box.drawing_inline contents
 	in
 	stack := [] ; fig
 

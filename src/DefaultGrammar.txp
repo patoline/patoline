@@ -103,12 +103,12 @@ Symboles de Patoline
 \Add_arrow{<- \impliedBy \leftarrow ←}{←}
 \Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
-\Add_arrow{|-> \mapsto ↦}{↦}
+\Add_arrow{|-> \mapsto ↦}(MathFonts.euler "mapsto" 243)
 \Add_arrow{<-| \mapsfrom ↤}{↤}
 (*\Add_arrow{\epi ->> ↠}{↠}*)
 (*\Add_arrow{\mono >-> ↣}{↣}*)
-\Add_arrow{\inj ↪}{↪}
-\Add_arrow{\jni ↩}{↩}
+\Add_arrow{\hookrightarrow \inj ↪}(MathFonts.euler "hookrightarrow" 245)
+\Add_arrow{\hookleftarrow \jni ↩}(MathFonts.euler "hookleftarrow" 244)
 \Add_arrow{\ulharpoon ↼}{↼}
 \Add_arrow{\urharpoon ⇀}{⇀}
 \Add_arrow{\dlharpoon ↽}{↽}
