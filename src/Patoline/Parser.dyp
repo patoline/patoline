@@ -260,7 +260,7 @@ let add_combining_symbol local_data symbol macro =
 let gram_ext = ".tgx"
 
 let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
-    	         "Add_relation"; "Add_addition_like"; "Add_product_like"; ]
+    	         "Add_relation"; "Add_addition_like"; "Add_product_like"; "left"; "right"]
 
 let fprint_caml_buf = ref (fun _ _ _ _ _ _ -> ((assert false):unit))
 
@@ -607,6 +607,14 @@ var_or_symbol:
   | symbol<name>
       { Symbol(name) }
 
+left:
+   "\\left" right<d> { d }
+  |"\\left." { "[]" }
+
+right:
+   "\\right" left<d> { d }
+   |"\\right." { "[]" }
+ 
 math:
    (mathvar)<name>
       { Var(name) } atom

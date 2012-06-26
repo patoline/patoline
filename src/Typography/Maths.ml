@@ -780,28 +780,23 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box_kerning mid in
   let (x0',y0',x1',y1')=bounding_box_full mid in
 
-  let left, (x0_l',y0_l',x1_l',y1_l'), right, (x0_r',y0_r',x1_r',y1_r') =
+  let (left, (x0_l',y0_l',x1_l',y1_l')), (right, (x0_r',y0_r',x1_r',y1_r')) =
     let ll = left env_ style and lr = right env_ style in
-    let rec boundings l0 l1=match l0,l1 with
-        [],_
-      | _,[]->[]
-      | left::s0, right::s1->(
-          let left=draw_boxes left in
-          let right=draw_boxes right in
-          (left, bounding_box_full left, right, bounding_box_full right)::(boundings s0 s1)
-        )
+    let boxes = List.map (fun d ->
+      let d=draw_boxes d in
+      (d, bounding_box_full d))
     in
-    let lc=boundings ll lr in
+    let ll = boxes ll in
+    let lr = boxes lr in
 
-    let rec fn = function
-      | [] -> assert false
+    let rec select_size = function
+      | [] -> [], (0.0, 0.0, 0.0, 0.0)
       | [c] -> c
-      | (left, (x0_l,y0_l,x1_l,y1_l), right, (x0_r,y0_r,x1_r,y1_r)) as c :: l ->
+      | (d, (x0',y0',x1',y1')) as c :: l ->
 	(*FIXME: 1.05 coef should be in MathEnvs *)
-	if y1 -. y0 <= (y1_l -. y0_l) *. 1.05 &&  y1 -. y0 <= (y1_r -. y0_r) *. 1.05 then c
-	else fn l
+	if y1 -. y0 <= (y1' -. y0') *. 1.05 then c else select_size l
     in
-    fn lc
+    select_size ll, select_size lr
   in
   
   let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
@@ -811,8 +806,10 @@ let open_close left right env_ style box=
   let left = List.map (translate 0.0 (-.vertical_translation)) left in
   let right = List.map (translate 0.0 (-.vertical_translation)) right in
 
-  let dist0= adjust_space env (s*.env.open_dist) (-.x1_l+.x0_l) left mid in
-  let dist1= adjust_space env (s*.env.close_dist) (-.x1_r+.x0_r) mid right in
+  let dist0 = if left = [] then 0.0 else 
+      adjust_space env (s*.env.open_dist) (-.x1_l+.x0_l) left mid in
+  let dist1 = if right = [] then 0.0 else
+      adjust_space env (s*.env.close_dist) (-.x1_r+.x0_r) mid right in
 
   if !debug_kerning then begin
     Printf.printf "scale: %f\n" s;
@@ -822,7 +819,7 @@ let open_close left right env_ style box=
       x0_l' x1_l' x0' x1' x0_r' x1_r';
   end;
 
-    (Drawing {
+    (if left = [] then  [] else  [Drawing {
        drawing_min_width=x1_l +. dist0;
        drawing_nominal_width=x1_l +.dist0;
        drawing_max_width=x1_l +. dist0;
@@ -830,7 +827,7 @@ let open_close left right env_ style box=
        drawing_y1=y1_l'-.vertical_translation;
        drawing_badness=(fun _->0.);
        drawing_contents=(fun _-> left) (*  @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
-        [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *) })::
+        [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *) }])@
     (Drawing {
        drawing_min_width=x1 +. dist1;
        drawing_nominal_width=x1 +. dist1;
@@ -839,6 +836,7 @@ let open_close left right env_ style box=
        drawing_y1=y1;
        drawing_badness=(fun _->0.);
        drawing_contents=(fun _-> mid);})::
+    (if right = [] then  [] else
      [Drawing {
          drawing_min_width=x1_r;
          drawing_nominal_width=x1_r;
@@ -846,4 +844,4 @@ let open_close left right env_ style box=
          drawing_y0=y0_r'-.vertical_translation;
          drawing_y1=y1_r'-.vertical_translation;
          drawing_badness=(fun _->0.);
-         drawing_contents=(fun _->  right);}]
+         drawing_contents=(fun _->  right);}])

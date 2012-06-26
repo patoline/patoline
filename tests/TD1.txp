@@ -158,7 +158,7 @@ $$
  
 \ser{n a^{n}}{n}{1} 
  \mathrm{et}  
-\ser{\frac{a^{n}}{n}}{n}{1}  \mathrm{avec}  a \in [0 , 1]. \unit
+\ser{\frac{a^{n}}{n}}{n}{1}  \mathrm{avec}  a \in [0 , 1\right[. \unit
 $$ 
 
 \item
