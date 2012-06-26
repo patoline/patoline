@@ -1245,39 +1245,55 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	Pet.register "matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement -> 
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    (* Printf.fprintf stderr "matrix placement \n" ; flush stderr ; *)
-	    { info with placement = placement })})
-
-      let mainNodeContents,main_node_contents_pet =
-	Pet.register "matrix main node contents" ~depends:[placement_pet] (fun pet -> 
-	{ pet = pet ; transfo = (fun transfos info -> 
-	  let nodes_contents = nodes_contents info in
-	  let node_info = Node.Transfo.transform
-	    [Node.contents_outputcommon nodes_contents]
-	    info.mainNode 
-	  in
-	  { info with mainNode = node_info })})
-	  
-      let mainNode,main_node_pet = 
-      Pet.register "matrix main node" ~depends:[placement_pet] (fun pet node_transfos -> 
-	{ pet = pet ; transfo = (fun transfos info -> 
-	  let node_info = Node.Transfo.transform node_transfos info.mainNode in
-	  { info with mainNode = node_info })})
-
-      let wrap,wrap_pet = 
-	Pet.register "matrix wrap" ~depends:[main_node_contents_pet; main_node_pet] (fun pet ->
-	  { pet = pet ; 
-	    transfo = (fun transfos info -> 
 	      let info' = 
 		{ info with nodes = mapi (fun i j node_info -> 
-		  Node.translate (info.placement info i j) node_info) info.nodes } 
+		  Node.translate (placement info i j) node_info) info.nodes } 
 	      in 
-	      let node_info' = { info.mainNode with node_contents = [] } in
-	      let pdf_start = info'.nodes.(0).(0).anchors `Pdf in
-	      let pdf_end = node_info'.pdfAnchor in
-	      let v = Vector.of_points pdf_start pdf_end in
-	      let nodes = map (Node.translate v) info'.nodes in
-	      { info' with mainNode = node_info' ;
-		nodes = nodes })})
+	      let nodes_contents = nodes_contents info in
+	      let node_info = Node.Transfo.transform
+		[Node.contents_outputcommon nodes_contents]
+		info.mainNode 
+	      in
+	      { info' with placement = placement ; mainNode = node_info })})
+
+      (* let mainNodeContents,main_node_contents_pet = *)
+      (* 	Pet.register "matrix main node contents" ~depends:[placement_pet] (fun pet ->  *)
+      (* 	{ pet = pet ; transfo = (fun transfos info ->  *)
+      (* 	  let nodes_contents = nodes_contents info in *)
+      (* 	  let node_info = Node.Transfo.transform *)
+      (* 	    [Node.contents_outputcommon nodes_contents] *)
+      (* 	    info.mainNode  *)
+      (* 	  in *)
+      (* 	  { info with mainNode = node_info })}) *)
+	  
+      let mainNode,main_node_pet = 
+      Pet.register "matrix main node" ~depends:[placement_pet] 
+	(fun pet node_transfos -> 
+	  { pet = pet ; transfo = (fun transfos info -> 
+	    let pdf_start = 0.,0. in
+	    let node_info = Node.Transfo.transform node_transfos info.mainNode in
+	    let pdf_end = node_info.anchors `Pdf in
+	    let v = Vector.of_points pdf_start pdf_end in
+	    let nodes = map (Node.translate v) info.nodes in
+	    { info with 
+	      mainNode = { node_info with node_contents = [] } ; 
+	      nodes = nodes })})
+	
+      (* let wrap,wrap_pet =  *)
+      (* 	Pet.register "matrix wrap" ~depends:[main_node_contents_pet; main_node_pet] (fun pet -> *)
+      (* 	  { pet = pet ;  *)
+      (* 	    transfo = (fun transfos info ->  *)
+      (* 	      let info' =  *)
+      (* 		{ info with nodes = mapi (fun i j node_info ->  *)
+      (* 		  Node.translate (info.placement info i j) node_info) info.nodes }  *)
+      (* 	      in  *)
+      (* 	      let node_info' = { info.mainNode with node_contents = [] } in *)
+      (* 	      let pdf_start = info'.nodes.(0).(0).anchors `Pdf in *)
+      (* 	      let pdf_end = node_info'.pdfAnchor in *)
+      (* 	      let v = Vector.of_points pdf_start pdf_end in *)
+      (* 	      let nodes = map (Node.translate v) info'.nodes in *)
+      (* 	      { info' with mainNode = node_info' ; *)
+      (* 		nodes = nodes })}) *)
 
       let centers y x = placement (between_centers y x)
 
@@ -1285,9 +1301,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	let info = T.transform 
 	  (contents env lines :: 
 	     mainNode [rectangle env] :: 
-	     mainNodeContents ::
+	     (* mainNodeContents :: *)
 	     allNodes [] ::
-	     wrap ::
+	     (* wrap :: *)
 	     style) (default env) in
 	let m,ms = to_gentities info in
 	m, ms
