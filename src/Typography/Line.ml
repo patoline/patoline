@@ -12,13 +12,15 @@ type line= {
   page:int;
   min_width:float;
   nom_width:float;
-  max_width:float
+  max_width:float;
+  line_y0:float;
+  line_y1:float
 }
 
 let uselessLine=
   { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
     lastFigure=(-1); height= 0.;paragraph_height= -1; page_line=0; page=0;
-    min_width=0.;nom_width=0.;max_width=0. }
+    min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
 
 let sprint_linef l=
   Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; page=%d; isFigure=%b }"

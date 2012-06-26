@@ -100,9 +100,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
           let wi=box_width comp_i box_i in
           let wj=box_width comp_j box_j in
           if !xi +.wi < !xj+. wj && i < !max_haut then (
-            let yi=lower_y box_i wi in
+            let yi=lower_y box_i in
             let yj=if !xi+.wi < !xj then -.infinity else
-              upper_y box_j wj
+              upper_y box_j
             in
             (* let x0=if !xi+.wi < !xj then !xi else max !xi !xj in *)
             (* let w0= !xi +. wi -. x0 in *)
@@ -112,9 +112,9 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
             collide (i+1) j (min max_col (yi-.yj))
           ) else if j < !max_bas then (
             let yi=if !xj +. wj < !xi then infinity else
-              lower_y box_i wi
+              lower_y box_i
             in
-            let yj=upper_y box_j wj in
+            let yj=upper_y box_j in
             (* let x0=if !xj+.wj < !xi then !xj else max !xi !xj in *)
             (* let w0= !xj +. wj -. x0 in *)
             (* Graphics.draw_rect (round (mm*. x0)) (yj0 + round (mm*. yj)) *)
@@ -203,7 +203,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   page_line=node.page_line+1; page=node.page;
                   min_width=fig.drawing_min_width;
                   nom_width=fig.drawing_nominal_width;
-                  max_width=fig.drawing_max_width }
+                  max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
@@ -225,7 +225,7 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                 page_line=node.page_line+1; page=node.page+1;
                 min_width=fig.drawing_min_width;
                 nom_width=fig.drawing_nominal_width;
-                max_width=fig.drawing_max_width }
+                max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               register node nextNode
@@ -285,7 +285,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                   paragraph_height=if i=0 then 0 else node.paragraph_height+1;
                   page_line=if page=node.page then node.page_line+1 else 0;
                   page=page;
-                  min_width=0.;nom_width=0.;max_width=0. }
+                  min_width=0.;nom_width=0.;max_width=0.;
+                  line_y0=infinity; line_y1= -.infinity }
                 in
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
                 if height>=(!r_params).page_height then
@@ -299,10 +300,12 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                                            | _->p) !r_params nextNode;
                     if not (!r_params.really_next_line) || nextNode.height<>node.height then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
+                      let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
+
                       let height'=
                         if lastParameters.min_page_after>0 then 0. else (
                           if page=node.page && node<>uselessLine then (
-                            let rec v_distance node0 parameters=
+                            let rec v_distance node0 parameters comp0 max_dist=
                               if node0.isFigure then (
                                 let fig=figures.(node0.lastFigure) in
                                 node0.height+.(snd (line_height paragraphs figures nextNode))-.fig.drawing_y0
@@ -317,38 +320,48 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                                   (*   ) *)
                               ) else (
                                 let d=
-                                  node0.height+.
-                                    (try
-                                       ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
-                                                    !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
-                                     with
-                                         Not_found -> (
-                                           let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                           colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
-                                                                         !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
-                                           -.dist
-                                         )
+                                    (node0.height+.
+                                       (try
+                                          ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                       !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                        with
+                                            Not_found -> (
+                                              let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                              colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                            !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
+                                              -.dist
+                                            )
+                                       )
+                                     +. max !r_params.min_height_before parameters.min_height_after
                                     )
-                                  +. max !r_params.min_height_before parameters.min_height_after
                                 in
-                                if d=infinity || d = -.infinity then
-                                  (try
-                                     let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
-                                     let _,_,params,_,_,_,_=LineMap.find prec !demerits' in
-                                     if prec.page=page then v_distance prec params else
+                                let node0_width=node0.min_width +. comp0*.(node0.max_width-.node0.min_width) in
+
+                                (try
+                                   let _,_,_,_,prec,_,_=LineMap.find node0 !demerits' in
+                                   let _,_,params,comp,_,_,_=LineMap.find prec !demerits' in
+
+                                   let arret=
+                                     (!r_params).left_margin>=parameters.left_margin
+                                     && (!r_params).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
+                                   in
+                                   if prec.page=page && not arret then (v_distance prec params comp (max d max_dist)) else
+                                     max (max d max_dist) (
                                        (node0.height
                                         +. max (snd (line_height paragraphs figures nextNode))
                                         (max !r_params.min_height_before parameters.min_height_after))
-                                   with
-                                       Not_found->
+                                     )
+                                 with
+                                     Not_found->
+                                       max (max d max_dist) (
                                          (node0.height
                                           +. max (snd (line_height paragraphs figures nextNode))
                                           (max !r_params.min_height_before parameters.min_height_after))
-                                  )
-                                else d
+                                       )
+                                )
                               )
                             in
-                            v_distance node lastParameters
+                            v_distance node lastParameters comp0 (-.infinity)
                           ) else (
                             (snd (line_height paragraphs figures nextNode))
                           )

@@ -932,8 +932,8 @@ module Output=functor(M:Driver)->struct
 
                 let comp=compression paragraphs param line in
                 let rec draw_box x y box=
-                  let lowy=y+.lower_y box 0. in
-                  let uppy=y+.upper_y box 0. in
+                  let lowy=y+.lower_y box in
+                  let uppy=y+.upper_y box in
                     (match !urilinks with
                          None->()
                        | Some h->(

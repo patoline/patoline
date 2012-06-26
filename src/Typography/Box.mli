@@ -60,10 +60,10 @@ val boxes_interval : 'a box array -> float * float * float
 val draw_boxes : 'a box list -> OutputCommon.contents list
 
 (** Bas d'une boîte *)
-val lower_y : 'a box -> 'b -> float
+val lower_y : 'a box -> float
 
 (** Haut d'une boîte *)
-val upper_y : 'a box -> 'b -> float
+val upper_y : 'a box -> float
 
 (** Fabrique une glue avec les paramètres normaux, pour les largeurs données. *)
 val glue : float -> float -> float -> 'a box

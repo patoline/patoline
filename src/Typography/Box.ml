@@ -149,19 +149,19 @@ let draw_boxes l=
     make_line 0. 0. [] l
 
 
-let rec lower_y x w=match x with
+let rec lower_y x=match x with
     GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.
   | Glue y
   | Drawing y->y.drawing_y0
-  | Kerning y->(lower_y y.kern_contents w) +. y.kern_y0
+  | Kerning y->(lower_y y.kern_contents) +. y.kern_y0
   | Empty->infinity
   | _->0.
 
-let rec upper_y x w=match x with
+let rec upper_y x=match x with
     GlyphBox y->Fonts.glyph_y1 y.glyph*.y.glyph_size/.1000.
   | Glue y
   | Drawing y->y.drawing_y1
-  | Kerning y->(upper_y y.kern_contents w) +. y.kern_y0
+  | Kerning y->(upper_y y.kern_contents) +. y.kern_y0
   | Empty-> -.infinity
   | _-> 0.
 
@@ -284,8 +284,8 @@ let line_height paragraphs figures node=
               line_height boxes (k+1) maxk a b
           )
         | _->(line_height boxes (k+1) maxk
-                (min min_height (lower_y boxes.(k) 0.))
-                (max max_height (upper_y boxes.(k) 0.)))
+                (min min_height (lower_y boxes.(k)))
+                (max max_height (upper_y boxes.(k))))
     )
   in
   let a0,b0=

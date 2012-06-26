@@ -14,7 +14,7 @@ let ex env =
   let x = List.find
     (function Box.GlyphBox x -> true | _ -> false)
     l
-  in (Box.upper_y x 0. -. Box.lower_y x 0.) /. 2.
+  in (Box.upper_y x -. Box.lower_y x) /. 2.
 
 let rec list_last = function
   [] -> assert false

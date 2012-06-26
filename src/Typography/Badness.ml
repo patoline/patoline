@@ -13,9 +13,9 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
     let wi=box_width comp_i box_i in
     let wj=box_width comp_j box_j in
       if !xi +.wi < !xj+. wj && i < max_haut then (
-        let yi=lower_y box_i wi in
+        let yi=lower_y box_i in
         let yj=if !xi+.wi < !xj then -.infinity else
-          if upper_y box_j wj > -.infinity then upper_y box_j wj else 0.
+          if upper_y box_j > -.infinity then upper_y box_j else 0.
         in
         let x0=if !xi+.wi < !xj then !xi else max !xi !xj in
         let w0= !xi +. wi -. x0 in
@@ -29,8 +29,8 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
                collide (i+1) j (w_tot+.w0) (col+.ar) (col+.ar*.ar))
       ) else if j < max_bas then (
         let yi=if !xj +. wj < !xi then infinity else
-          if lower_y box_i wi < infinity then lower_y box_i wi else 0. in
-        let yj=upper_y box_j wj in
+          if lower_y box_i < infinity then lower_y box_i else 0. in
+        let yj=upper_y box_j in
         let x0=if !xj+.wj < !xi then !xj else max !xi !xj in
         let w0= !xj +. wj -. x0 in
           xj:= !xj+.wj;

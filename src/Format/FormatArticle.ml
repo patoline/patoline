@@ -22,13 +22,13 @@ let boxes_width env contents =
 
 let boxes_y0 boxes = 
   List.fold_left
-    (fun res box -> min res (Box.lower_y box 0.))
+    (fun res box -> min res (Box.lower_y box))
     0.
     boxes
 
 let boxes_y1 boxes = 
   List.fold_left
-    (fun res box -> max res (Box.upper_y box 0.))
+    (fun res box -> max res (Box.upper_y box))
     0.
     boxes
 
