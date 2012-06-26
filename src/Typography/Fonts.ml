@@ -20,10 +20,10 @@ type font = CFF of CFF.font | Opentype of Opentype.font
 type glyph = CFFGlyph of CFF.glyph | OpentypeGlyph of Opentype.glyph
 
 
-let fontName f=
+let fontName  ?index:(index=0) f=
   match f with
-      CFF x->CFF.fontName x
-    | Opentype x->Opentype.fontName x
+      CFF x->CFF.fontName ~index:index x
+    | Opentype x->Opentype.fontName ~index:index x
 
 #ifdef BAN_COMIC_SANS
 exception Comic_sans
@@ -54,10 +54,10 @@ let glyph_of_uchar f c=
 let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
 
-let loadGlyph f g=
+let loadGlyph f ?index:(index=0) g=
   match f with
-      CFF x->CFFGlyph (CFF.loadGlyph x g)
-    | Opentype x->OpentypeGlyph (Opentype.loadGlyph x g)
+      CFF x->CFFGlyph (CFF.loadGlyph x ~index:index g)
+    | Opentype x->OpentypeGlyph (Opentype.loadGlyph x ~index:index g)
 
 let cardinal f=
   match f with
@@ -114,7 +114,7 @@ let select_features a b=match a with
     CFF x->CFF.select_features x b
   | Opentype x->Opentype.select_features x b
 
-let fontFeatures a=match a with
+let font_features a=match a with
     CFF x->CFF.font_features x
   | Opentype x->Opentype.font_features x
 
