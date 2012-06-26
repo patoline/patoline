@@ -13,6 +13,8 @@ let camlimages=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 
+let emacsdir = "/usr/local/share/emacs/site-lisp/patoline"
+
 let avail_lang=
   let f=open_in "src/Typography/Language.ml" in
   let buf=String.create (in_channel_length f) in
@@ -179,6 +181,11 @@ let _=
 
       (* proof *)
       Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof.native $(DESTDIR)%s/proof\n" (escape !bin_dir);
+
+      (* emacs *)
+      Printf.fprintf out "\tcd emacs; cat patoline-input.pre ../src/quail.el patoline-input.post > patoline-input.el\n";
+      Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
+      Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
 
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (

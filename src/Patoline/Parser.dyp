@@ -129,6 +129,10 @@ let local_data = {
     env_macros = [];
 }
 
+let quail = Lazy.lazy_from_fun (fun () ->
+    let ch = open_out_bin "quail.el" in
+    ch)
+
 let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
   let adef = if noinfix then 
@@ -152,6 +156,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
       [ Lexeme_matched _ ] -> rule_constr symbol_value, []
     | _ -> assert false
   in
+  let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
       [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
@@ -159,6 +164,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
        let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
        in	     
+	if utflen = 1 && String.length s > 1 then has_utf8 := Some s;
         let elt = 
 	  if utflen = 1 && 
 	     (match symbol_value with SimpleSym _ -> false | _ -> true) then
@@ -169,6 +175,18 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
         if acc = Var "" then elt else
 	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]]
   in
+  begin
+    match !has_utf8 with
+      None -> ()
+    | Some s ->
+      List.iter (fun s' ->  
+         if String.length s' > 1 && (try
+            for i = 0 to String.length s' - 1 do if Char.code s'.[i] > 127 then raise Exit done;
+	    true with Exit -> false)
+         then (
+(*	   Printf.fprintf stderr "(\"%s\" ?%s)\n" s' s;*)
+	   Printf.fprintf (Lazy.force quail) "(\"%s\" ?%s)\n" (String.escaped s') s)) symbols
+  end;
   elt, [Add_rules[rule, action]; Local_data local_data]
 
 let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value =
@@ -194,19 +212,33 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
       [ Lexeme_matched _ ] -> rule_constr symbol_value, []
     | _ -> assert false
   in
+  let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
       [FC (false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
-       let _utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
+       let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
        in	     
-        let elt = 
+       if utflen = 1 && String.length s > 1 then has_utf8 := Some s;
+       let elt = 
   	    Symbol (SimpleSym (String.escaped s))
-        in
-        if acc = Var "" then elt else
+       in
+       if acc = Var "" then elt else
 	  Binary(0, elt, true, SimpleSym ",", false, acc)) symbols (Var "")))]]
   in
+  begin
+    match !has_utf8 with
+      None -> ()
+    | Some s ->
+      List.iter (fun s' ->  
+         if String.length s' > 1 && s' <> s && (try
+            for i = 0 to String.length s' - 1 do if Char.code s'.[i] > 127 then raise Exit done;
+	    true with Exit -> false)
+         then (
+(*	   Printf.fprintf stderr "(\"%s\" ?%s)\n" s' s;*)
+	   Printf.fprintf (Lazy.force quail) "(\"%s\" ?%s)\n" (String.escaped s') s)) symbols
+  end;
   elt, [Add_rules[rule, action]; Local_data local_data]
 
 let add_combining_symbol local_data symbol macro =
