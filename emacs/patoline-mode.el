@@ -21,12 +21,9 @@
 (defvar patoline-mode-hook nil)
 (autoload 'patoline-mode "patoline-mode" "Major mode for editing Patoline documents." t)
 
-(defvar patoline-program-name
-  "patoline")
-
-(defvar patoline-program-options (list))
-
 (defvar patoline-program-buffer
+  nil)
+(defvar patoline-view-buffer
   nil)
 
 (defun select-patoline-program-buffer ()
@@ -47,39 +44,46 @@
       (display-buffer patoline-program-buffer t 'visible)) 
   (message m))
 
+(defvar patoline-compile-format
+  "patoline \"%s\""
+  "What to do to compile patoline document. Examples [patoline \"%s\"], [make]")
+
 (defun patoline-compile ()
   "compile the current buffer with patoline"
   (interactive)
   (save-buffer)
-  (let ((switches
-	 (append patoline-program-options (list buffer-file-name))))
-    (setq patoline-pending-output "") 
-    (select-patoline-program-buffer)
-    (comint-exec patoline-program-buffer "patoline-process" patoline-program-name nil switches)
-    (set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)
-;    (display-progress-feedback 'patoline-compilation (concat "compiling: " buffer-file-name)) 
-))
+  (save-excursion
+    (let ((cmd-format (read-from-minibuffer "compile: " patoline-compile-format)))
+      (setq patoline-compile-format cmd-format)
+      (let ((cmd (split-string-and-unquote (format cmd-format buffer-file-name))))
+	(select-patoline-program-buffer)
+	(erase-buffer)
+	(comint-exec patoline-program-buffer "patoline-process" (car cmd) nil (cdr cmd))
+	(set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)))))
 
-(defun patoline-make ()
-  "compile the current buffer with make"
-  (interactive)
-  (save-buffer)
-  (setq patoline-pending-output "") 
-  (select-patoline-program-buffer)
-  (comint-exec patoline-program-buffer "patoline-process" "make" nil nil)
-  (set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)
-;    (display-progress-feedback 'patoline-compilation (concat "compiling: " buffer-file-name)) 
-)
+(defvar patoline-view-format
+  "embedded"
+  "What to do to view patoline document. Examples [embedded], [xpdf \"%s\"]")
 
 (defun patoline-view ()
   "view the pdf corresponding to the current buffer"
   (interactive)
   (let ((file-name 
-	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".pdf")))
-    (find-file-other-window file-name)
-    (save-excursion
-      (set-buffer (find-buffer-visiting file-name))
-      (auto-revert-mode))))
+	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".pdf"))
+	(cmd-format (read-from-minibuffer "view: " patoline-view-format)))
+    (setq patoline-view-format cmd-format)
+    (if (string-equal cmd-format "embedded")
+	(progn
+	  (find-file-other-window file-name)
+	  (save-excursion
+	    (set-buffer (find-buffer-visiting file-name))
+	    (auto-revert-mode)))
+      (let ((cmd (split-string-and-unquote (format cmd-format file-name))))
+	(save-excursion
+	  (select-patoline-program-buffer)
+	  (erase-buffer)
+	  (apply 'start-process "patoline-view" patoline-view-buffer (car cmd) (cdr cmd))
+	  (set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel))))))
 
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-keymap)))
@@ -120,6 +124,9 @@
 ;  (set (make-local-variable 'indent-line-function) 'patoline-indent-line)  
   (set-input-method "Patoline")
   (make-local-variable 'paren-mode)
+  (make-local-variable 'patoline-compile-format)
+  (make-local-variable 'patoline-view-format)
+  (make-local-variable 'patoline-view-buffer)
   (if (featurep 'xemacs)
       (progn (require 'paren)
 	     (paren-set-mode 'blink-paren t))
