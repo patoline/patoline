@@ -1,4 +1,5 @@
 (** Le type du contenu, et comment on le transforme en boîtes. *)
+let _=Gc.set {(Gc.get ()) with Gc.minor_heap_size=1 lsl 20 }
 open Config
 open Util
 open Fonts

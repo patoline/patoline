@@ -45,7 +45,7 @@ let _= macros:=
 
 
 let hashed="(Sys.executable_name^\".aux\")"
-
+let env_stack=ref []
 let preambule format amble filename=
   match amble with
       Noamble->""
@@ -333,11 +333,16 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  let num = !moduleCounter in
           let s=String.make 1 modname.[0] in
           modname.[0]<-(String.uppercase s).[0];
-	  Printf.bprintf buf "module TEMP%d = %s%s\nopen TEMP%d\n let _ = do_begin_env()"
-	    num modname end_open num (* name *)
+          if mtype=`Begin then env_stack:=(num,name)::(!env_stack);
+	  Printf.bprintf buf "module TEMP%d = %s%s\nopen TEMP%d\n let _ = TEMP%d.do_begin_env()"
+	    num modname end_open num num (* name *)
 	end
-      | `End -> 
-	Printf.bprintf buf "let _ = do_end_env()\nend" (* name *)
+      | `End ->(
+          let n,name'=List.hd !env_stack in
+          if name'<>name then failwith ("Environment not closed: "^name');
+	  Printf.bprintf buf "let _ = TEMP%d.do_end_env()\nend" n(* name *);
+          env_stack:=List.tl !env_stack
+        )
       | `Include ->
 	  incr moduleCounter;
 	  Printf.bprintf buf
