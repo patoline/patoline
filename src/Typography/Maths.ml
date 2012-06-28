@@ -364,12 +364,12 @@ let rec draw env_stack mlist=
                 let xoff=Array.mapi (fun i l->
                   if mathsEnv.kerning then
 		    let ll = List.map (translate 0.0 yoff.(i)) l in
+		    let x0', _, x1', _ = bb.(i) in
+		    let m = max ((x0 -. x1) /. 2.) ((x0' -. x1') /. 2.) in
                     if i mod 2 = 0 && xoff.(i) <> infinity && xoff.(i) <> -.infinity then 
-		      adjust_space ~absolute:true mathsEnv xoff.(i)
-			((x0 -. x1) /. 2.) box_nucleus ll
+		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
 		    else
-		      -. (adjust_space ~absolute:true mathsEnv xoff.(i)
-			((x0 -. x1) /. 2.) ll box_nucleus)
+		      -. (adjust_space ~absolute:true mathsEnv xoff.(i) m ll box_nucleus)
                   else
                     start.(i)
                 ) [|a;b;c;d|]
@@ -430,7 +430,7 @@ let rec draw env_stack mlist=
 		  let space = (mathsEnv.mathsSize*.env.size*.mathsEnv.invisible_binary_factor)*.
 		    (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor
 		  in
-		  let dist = adjust_space mathsEnv space (max m_l m_r) box_left box_right in
+		  let dist = adjust_space mathsEnv space 0.0 box_left box_right in
 		  let gl0=glue dist dist dist in
 		  let gl0=match gl0 with
 		      Box.Glue x->Drawing x
@@ -455,13 +455,13 @@ let rec draw env_stack mlist=
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
 			(1.5 *. abs_float(x0 -. x0')), m_l
 		    else space,m_op in
-		  adjust_space mathsEnv space m_r box_left box_op
+		  adjust_space mathsEnv space (m_r +. space) box_left box_op
 		in
 		let dist1 =
 		  if bin_right= [] then 0.0 else
 		  let space, m_r = if no_sp_right then 1.5 *. abs_float(x1 -. x1'), m_r
 		    else space,m_op in
-		  adjust_space mathsEnv space m_r box_op box_right
+		  adjust_space mathsEnv space (m_r +. space) box_op box_right
 		in
 		(* avoid collisions above binary symbols *)
 		let left_right_space = 
