@@ -1,0 +1,23 @@
+\Caml(open Diagrams)
+
+\diagram(
+ let a = Node.(node [anchor `Base;at (0.,0.)] <<a>>) 
+
+ let b = Node.(node [anchor `Base;at (30.,0.)] <<b>>) 
+
+  let asouth = (a.anchor `South)
+  let bsouth = (b.anchor `South)
+
+  let d = 5.
+
+  let e = edge Edge.([arrow;draw]) 
+    a 
+    ~controls:[[(Vector.(+) asouth (0.,-. d));  
+		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d))
+	       ];[
+		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d)); 
+		(Vector.(+) bsouth (0.,-. d)) 
+    ]] 
+    b
+
+)
