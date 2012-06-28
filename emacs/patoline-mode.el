@@ -150,7 +150,8 @@
        '((patoline-tuareg
 	  :submode tuareg-mode
 	  :front "\\\\[Cc]aml("
-	  :back "^)")
+	  :back "^)"
+	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)))
 	 ))))
 
 
