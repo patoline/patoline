@@ -485,19 +485,24 @@ module Format=functor (D:Document.DocumentStructure)->(
                 });
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
-      let item ()=
-        D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
-          (Node { empty with node_env=(incr_counter "enumerate") });
-        D.structure:=lastChild !D.structure;
-        [B (fun env->
-              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
-              let bb=boxify_scoped env (M.from_counter enum) in
-              let fix g= { g with drawing_min_width=g.drawing_nominal_width;
-                            drawing_max_width=g.drawing_nominal_width }
-              in
-              let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
-                boxes@[User AlignmentMark])
-        ]
+      module Item=struct
+        let do_begin_env ()=
+          D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+            (Node { empty with node_env=(incr_counter "enumerate") });
+          D.structure:=lastChild !D.structure;
+          newPar D.structure Complete.normal parameters
+            [B (fun env->
+                  let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
+                  let bb=boxify_scoped env (M.from_counter enum) in
+                  let fix g= { g with drawing_min_width=g.drawing_nominal_width;
+                                 drawing_max_width=g.drawing_nominal_width }
+                  in
+                  let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
+                  boxes@[User AlignmentMark])
+            ];
+          D.structure:=lastChild !D.structure
+        let do_end_env()=()
+      end
 
       let do_end_env ()=
         let params parameters env a1 a2 a3 a4 a5 line=

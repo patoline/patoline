@@ -247,7 +247,7 @@ Symboles de Patoline
 \Add_combining{ ⃗ }{\vec}
 \Add_combining{ ⃖ }{\cev}
 
-\Configure_word_macro{\item}{ eat_right }
+\Configure_paragraph_macro{\item}{ eat_right }
 \Configure_word_macro{\label}{ eat_right
                                eat_left }
 
