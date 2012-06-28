@@ -467,18 +467,21 @@ allparagraph:
 
 word_macro: MACRO<name>
   { let test =
-      List.mem_assoc name dyp.local_data.word_macros ||
+      (List.mem_assoc name dyp.local_data.word_macros ||
       let c = Char.code name.[0] in
-      (Char.code 'a' <= c && c <= Char.code 'z')
+      (Char.code 'a' <= c && c <= Char.code 'z')) &&
+     not (List.mem_assoc name dyp.local_data.par_macros)
     in
     if not test then raise Giveup;
     name }    
 
 par_macro: MACRO<name>
   { let test =
-      List.mem_assoc name dyp.local_data.par_macros ||
+      (List.mem_assoc name dyp.local_data.par_macros  ||
       let c = Char.code name.[0] in
-      (Char.code 'A' <= c && c <= Char.code 'Z')
+      (Char.code 'A' <= c && c <= Char.code 'Z'))
+     &&    
+      not (List.mem_assoc name dyp.local_data.word_macros)
     in
     if not test then raise Giveup;
     name }    
