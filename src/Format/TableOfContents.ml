@@ -36,7 +36,7 @@ let centered str tree max_level=
                     )
                 in
                 let chi=flat_children env0 (IntMap.bindings s.children) in
-                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[]) in
+                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=drop 1 b in
                 let in_toc=List.mem_assoc "InTOC" s.node_tags in
                   if in_toc && count<>[] then (
