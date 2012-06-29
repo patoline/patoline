@@ -41,7 +41,10 @@
 
 (defun patoline-process-sentinel (p m)
   (if (not (string-match "finished\\.*" m))
-      (display-buffer patoline-program-buffer t 'visible)) 
+      (display-buffer patoline-program-buffer t 'visible)
+    (select-patoline-program-buffer)
+    (if patoline-view-process 
+	(signal-process patoline-view-process 1)))
   (message m))
 
 (defvar patoline-compile-format
@@ -65,6 +68,9 @@
   "embedded"
   "What to do to view patoline document. Examples [embedded], [xpdf \"%s\"]")
 
+(defvar patoline-view-process
+  nil)
+
 (defun patoline-view ()
   "view the pdf corresponding to the current buffer"
   (interactive)
@@ -81,9 +87,8 @@
       (let ((cmd (split-string-and-unquote (format cmd-format file-name))))
 	(save-excursion
 	  (select-patoline-program-buffer)
-	  (erase-buffer)
-	  (apply 'start-process "patoline-view" patoline-view-buffer (car cmd) (cdr cmd))
-	  (set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel))))))
+	  (setq patoline-view-process
+		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd))))))))
 
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-keymap)))
@@ -127,6 +132,7 @@
   (make-local-variable 'patoline-compile-format)
   (make-local-variable 'patoline-view-format)
   (make-local-variable 'patoline-view-buffer)
+  (make-local-variable 'patoline-view-process)
   (if (featurep 'xemacs)
       (progn (require 'paren)
 	     (paren-set-mode 'blink-paren t))

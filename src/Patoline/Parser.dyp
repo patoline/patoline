@@ -647,6 +647,8 @@ math:
       { Symbol op } atom
   | "{" relation<op> "}"
       { Symbol op } atom
+  | "{" quantifier<op> "}"
+      { Symbol op } atom
 
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in

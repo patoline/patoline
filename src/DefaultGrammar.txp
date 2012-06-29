@@ -55,8 +55,8 @@ Symboles de Patoline
 \Add_relation{\defeq :=}(MathFonts.asana "force" 798)
 
 
-\Add_relation{\succ ≻}(MathFonts.asana "force" 937)
-\Add_relation{\pred ≺}(MathFonts.asana "force" 936)
+\Add_relation{\succ ≻}(MathFonts.asana "force" 837)
+\Add_relation{\pred ≺}(MathFonts.asana "force" 836)
 
 \Add_relation{\realize \force ⊩}(MathFonts.asana "force" 1620)
 \Add_relation{\vdash ⊢ |-}{⊢}
@@ -246,6 +246,7 @@ Symboles de Patoline
 == Combining symbols ==
 \Add_combining{ ⃗ }{\vec}
 \Add_combining{ ⃖ }{\cev}
+\Add_combining{ ̅ }{\oline}
 
 \Configure_paragraph_macro{\item}{ eat_right }
 \Configure_word_macro{\label}{ eat_right
