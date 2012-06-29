@@ -691,25 +691,32 @@ let notFirstLine _=B (fun _->[Parameters (fun p->{p with not_first_line=true})])
 let notLastLine _=B (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
 #ifdef CAMLIMAGES
-let includeGraphics ?scale:(scale=0.1) imageFile=
+let includeGraphics ?width:(width=0.) ?height:(height=0.) imageFile=
   [B (fun env->
         let image=(OImages.load imageFile []) in
         let w,h=Images.size image#image in
-        let fw=float_of_int w in
-        let fh=float_of_int h in
+        let fw,fh=
+          if width=0. then
+            if height=0. then
+              env.normalMeasure, env.normalMeasure*.(float_of_int h)/.(float_of_int w)
+            else
+              height*.(float_of_int w)/.(float_of_int h), height
+          else
+            width, width*.(float_of_int h)/.(float_of_int w)
+        in
         let i={image_file=imageFile;
-               image_width=fw*.scale;
-               image_height=fh*.scale;
+               image_width=fw;
+               image_height=fh;
                image_x=0.;
                image_y=0.
               }
         in
         let img=Drawing {
-          drawing_min_width=fw*.scale;
-          drawing_max_width=fw*.scale;
-          drawing_nominal_width=fw*.scale;
+          drawing_min_width=fw;
+          drawing_max_width=fw;
+          drawing_nominal_width=fw;
           drawing_y0=0.;
-          drawing_y1=fh*.scale;
+          drawing_y1=fh;
           drawing_badness=(fun _->0.);
           drawing_contents=(fun _->[OutputCommon.Image i])
         }
