@@ -49,7 +49,7 @@ let drawing_inline ?offset:(offset=0.) cont=
       drawing_y0=offset+.b;
       drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
-      drawing_contents=(fun _->List.map (translate 0. offset) cont)
+      drawing_contents=(fun _->List.map (translate (-.a) offset) cont)
     }
 
 let drawing_blit a x0 y0 b=
