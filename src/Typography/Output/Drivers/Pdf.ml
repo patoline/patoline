@@ -399,7 +399,7 @@ let output ?(structure:structure={name="";displayname=[];
                           let obj=futureObject () in
                           fprintf outChan "/Im%d %d 0 R" !ii obj;
                           incr ii;
-                          (obj, !ii, i)) !pageImages
+                          (obj, !ii, i)) (List.rev !pageImages)
             in
             if !pageImages<>[] then fprintf outChan ">>";
             if StrMap.cardinal !pageFonts >0 then (
