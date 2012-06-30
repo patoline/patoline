@@ -308,7 +308,8 @@ module Make (L:New_map.OrderedType with type t=Line.line) (User:Map.OrderedType)
                             let rec v_distance node0 parameters comp0 max_dist=
                               if node0.isFigure then (
                                 let fig=figures.(node0.lastFigure) in
-                                node0.height+.(snd (line_height paragraphs figures nextNode))-.fig.drawing_y0
+                                max max_dist
+                                  (node0.height+.(snd (line_height paragraphs figures nextNode))-.fig.drawing_y0)
                                   (* let dist=collide node0 parameters comp0 nextNode !r_params comp1 in *)
                                   (*   if dist < infinity then node0.height+. (ceil (-.dist)) else ( *)
                                   (*     try *)
