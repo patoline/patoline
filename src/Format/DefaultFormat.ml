@@ -239,7 +239,9 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
         str:=follow (t0',[]) (List.map fst (List.rev path))
 
-    let table_of_contents=TableOfContents.centered
+    let table_of_contents ?(max_depth=2) () =
+      TableOfContents.centered D.structure (fst (top !D.structure)) max_depth
+
     let postprocess_tree=Sections.postprocess_tree
 
     let lang_OCaml s=[T s]
