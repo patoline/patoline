@@ -332,7 +332,7 @@ properly closed.
 Then, it is easy to add a table of contents:
 
 """
-\Caml(let _ = \table_of_contents ())
+\Caml(let _ = table_of_contents ())
 """
 
 Or if you want to control what depth is printed (this should be

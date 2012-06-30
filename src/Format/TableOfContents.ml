@@ -31,8 +31,8 @@ let centered str tree max_level=
                   | (_,(Paragraph _))::s->flat_children env1 s
                   | (_,(Node h as tr))::s->(
                       let env'=h.node_env env1 in
-                        (toc env' (level+1) tr)@
-                          flat_children (h.node_post_env env1 env') s
+		      let chi1 = toc env' (level+1) tr in
+		      chi1@flat_children (h.node_post_env env1 env') s
                     )
                 in
                 let chi=flat_children env0 (IntMap.bindings s.children) in

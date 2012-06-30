@@ -81,16 +81,16 @@ let postprocess_tree tree=
           if List.mem_assoc "Numbered" n.node_tags  then
             [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
-                  let _,path'=try StrMap.find "_path" env.counters with Not_found -> -1,[] in
                   let path=drop 1 b in
-                    B (fun _->[User (Structure path')])
+                    B (fun _->[User (Structure path)])
                     ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
                     ::T " "
                     ::n.displayname
                )]
           else
             B (fun env->
-                 let _,path=try StrMap.find "_path" env.counters with Not_found -> -1,[] in
+                let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
+                let path=drop 1 b in (* FIXME: what is exactly the path for unnumbered section *)
                    [User (Structure path)])::
               n.displayname
         in

@@ -962,17 +962,7 @@ let flatten env0 fixable str=
                 )
               | Node h as tr->(
                   let env2=h.node_env env1 in
-                  let env2'=
-                    let cou=
-                      StrMap.add "_path" (-1,k::path)
-                        (if List.mem_assoc "Structural" h.node_tags then
-                           StrMap.map (fun (a,b)->if a<=level+1 then (a,b) else (a,[])) env2.counters
-                         else
-                           env2.counters)
-                    in
-                      {env2 with counters=cou }
-                  in
-                  let env3=flatten flushes' env2' (k::path) tr in
+                  let env3=flatten flushes' env2 (k::path) tr in
                     is_first,false, h.node_post_env env1 env3
                 )
             in
