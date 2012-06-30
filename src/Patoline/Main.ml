@@ -92,7 +92,7 @@ let rec process_each_file =
         Printf.fprintf stderr "File %s generated.\n" (binname_of f);
         flush stderr;
         if !run then (
-          let cline = (List.fold_left (fun acc x -> ("\""^x^"\" ")^acc) !extras !cmd_line) in
+          let cline = (List.fold_left (fun acc x -> (x^" ")^acc) !extras !cmd_line) in
           Printf.fprintf stderr "Running OCaml code... \n";
           flush stderr;
           let r= Sys.command (Printf.sprintf "\"%s\" %s" (execname_of f) cline) in

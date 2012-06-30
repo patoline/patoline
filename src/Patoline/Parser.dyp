@@ -37,7 +37,16 @@ end
 module StrSet = Set.Make(Str)
 module StrMap=Map.Make(Str)
 
-type macro_info = [ `Eat_left | `Eat_right | `Arg_pat of (int * string) | `Arg_nopar of int | `Is_idt ]
+type macro_info = [ 
+  `Eat_left
+| `Eat_right
+| `Arg_pat of (int * string)
+| `Arg_nopar of int
+| `Is_idt
+| `Nb_args of int
+| `Fun_name of string
+]
+
 type local_data = { 
      infixes : StrSet.t;
      other_symbols : StrSet.t;
@@ -45,6 +54,7 @@ type local_data = {
      word_macros : (string * macro_info list) list;
      par_macros : (string * macro_info list) list;
      env_macros : (string * macro_info list) list;
+     math_macros : (string * macro_info list) list;
 }
 
 type 'a math =
@@ -127,6 +137,7 @@ let local_data = {
     word_macros = [];
     par_macros = [];
     env_macros = [];
+    math_macros = [];
 }
 
 let quail = Lazy.lazy_from_fun (fun () ->
@@ -313,13 +324,90 @@ let get_pminfo dyp name =
 
 let get_eminfo dyp name =
   try List.assoc name dyp.local_data.env_macros with Not_found -> []
+
+let get_mminfo dyp name =
+  try List.assoc name dyp.local_data.math_macros with Not_found -> []
+
+let get_nbargs name l =
+    let rec fn = function
+      [] -> raise Not_found
+    | `Nb_args n::_ -> n
+    | _::l -> fn l
+    in
+    fn (List.assoc name l)
+  
+let fix_name dyp name l =
+  let rec fn = function
+    [] -> raise Not_found
+  | `Fun_name n::_ -> n
+  | _::l -> fn l
+  in
+  try fn (List.assoc name l) with Not_found -> name
+
+let test_wargs dyp name a =
+    if List.mem name reserved then raise Giveup;
+    let ld, gr = get_local_data_and_grammar dyp in
+    let args = a ld gr in
+    begin
+      try	
+        let l = get_nbargs name dyp.local_data.word_macros in
+        if l <> List.length args then raise Giveup;
+      with Not_found ->
+        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+   end;
+   fix_name dyp name dyp.local_data.word_macros, args
+
+let test_pargs dyp name a =
+    if List.mem name reserved then raise Giveup;
+    let ld, gr = get_local_data_and_grammar dyp in
+    let args = a ld gr in
+    begin
+      try	
+        let l = get_nbargs name dyp.local_data.par_macros in
+        if l <> List.length args then raise Giveup;
+      with Not_found ->
+        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+   end;
+   fix_name dyp name dyp.local_data.word_macros, args
+
+let test_eargs dyp name a =
+    let ld, gr = get_local_data_and_grammar dyp in
+    let args = a ld gr in
+    begin
+      try	
+        let l = get_nbargs name dyp.local_data.env_macros in
+        if l <> List.length args then raise Giveup;
+      with Not_found ->
+        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+   end;
+   fix_name dyp name dyp.local_data.word_macros, args
+
+let test_margs dyp name a =
+    if List.mem name reserved then raise Giveup;
+    let name' = "\\"^name in
+    if StrSet.mem name' dyp.local_data.other_symbols ||
+       StrSet.mem name' dyp.local_data.infixes
+    then raise Giveup;
+    let ld, gr = get_local_data_and_grammar dyp in
+    let args = a ld gr in
+    begin
+      try	
+        let l = get_nbargs name dyp.local_data.math_macros in
+        if l <> List.length args then raise Giveup;
+      with Not_found ->
+        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+   end;
+   fix_name dyp name dyp.local_data.word_macros, args
+
+
+
 }
 
 %start main 
 %start allparagraph
 %start allmath 
 
-%relation macro < args < atom < accent < ind < fun < prod < sum < operator < rel < neg < conj < impl < punc
+%relation macro < atom < accent < ind < fun < prod < sum < operator < rel < neg < conj < impl < punc
 %relation endany < endatom
 %relation endany < endpar
 
@@ -490,39 +578,33 @@ args:
     /* empty */
      { (fun (ld:local_data) gr  -> []) } 
   | "()"
-    { (fun (ld:local_data) gr  -> []) } 
-  | args<a> - "{" oparagraph<p> "}" 
+    { (fun (ld:local_data) gr  -> []) }
+  | "{" oparagraph<p> "}" - args<a>
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
-  | args<a> - CAML<s,e,txps>
-    { if e - s < 1 then raise Giveup; 
-      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
+  | CAML<s,e,txps> - args<a>
+    { (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
 
-neargs:
+mathargs:
+  /* empty */
+    { (fun (ld:local_data) gr  -> []) } 
   | "()"
     { (fun (ld:local_data) gr  -> []) }
-  | "{" oparagraph<p> "}" 
-    { (fun (ld:local_data) gr -> [sParagraph (p)]) }
-  | CAML<s,e,txps>
-    { if e - s < 1 then raise Giveup; 
-      (fun ld gr -> [Caml(ld,gr,s,e,txps)]) }
-  | neargs<a> - "{" oparagraph<p> "}" 
-    { (fun ld gr -> sParagraph (p)::a ld gr) }
-  | neargs<a> - CAML<s,e,txps>
-    { if e - s < 1 then raise Giveup; 
-      (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) }
+  |  "{" math<m> "}" - mathargs<a>
+    { (fun ld gr -> m::a ld gr) }
+  | CAML<s,e,txps> - mathargs<a>
+    { (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" - args<a>
-      { let ld, gr = get_local_data_and_grammar dyp in
-        Macro(`Begin, name, List.rev (a ld gr), get_eminfo dyp name) }
+      {	let name, args = test_eargs dyp name a in
+        Macro(`Begin, name, args, get_eminfo dyp name) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`End, name, [], []) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[], []) }
   | par_macro<name> - args<a>
-      { let ld, gr = get_local_data_and_grammar dyp in
-        if List.mem name reserved then raise Giveup;
-        Macro(`Module, name, List.rev (a ld gr), get_pminfo dyp name) }
+      {	let name, args = test_pargs dyp name a in
+        Macro(`Module, name, args, get_pminfo dyp name) }
   | TPRE<preproc> '{' preproc<text> '}'
       { try
             (*if Sys.file_exists (Printf.sprintf "%s.cmxs" preproc) then
@@ -544,14 +626,10 @@ preproc:
 
 
 in_par_macro:
-  | word_macro<name> - neargs<a>
-      { let ld, gr = get_local_data_and_grammar dyp in
-        if List.mem name reserved then raise Giveup;
-        [MC(`Single, name, List.rev (a ld gr), get_wminfo dyp name)] }  macro
-  | word_macro<name>
-      { if next_lexeme_paren (dyp.next_lexeme ()) then begin
-	(* Printf.fprintf stderr "Giving up.\n" ; flush stderr ;  *) raise Giveup end
-	else [MC(`Single, name, [], get_wminfo dyp name)] } args
+  | word_macro<name> - args<a>
+      { 
+        let name, args = test_wargs dyp name a in
+        [MC(`Single, name, args, get_wminfo dyp name)] }  macro
   | PPRE<preproc> - CAML<s,e,txps>
       { let ld, gr = get_local_data_and_grammar dyp in
         [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)], [])]
@@ -592,17 +670,6 @@ promath:
 
 allmath:
    math<m> eof { m }
-
-mathargs:
-  /* empty */
-    { (fun (ld:local_data) gr  -> []) } atom
-  | "()"
-    { (fun (ld:local_data) gr  -> []) } args
-  | mathargs<a> - "{" math<m> "}"
-    { (fun ld gr -> m::a ld gr) }  args
-  | mathargs<a> - CAML<s,e,txps>
-    { if e - s < 1 then raise Giveup;
-      (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 
 var_or_symbol:
    (mathvar)<name>
@@ -686,15 +753,9 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
-  | "\\" - (ident)<macro> - mathargs<args> 
-    { let ld, gr = get_local_data_and_grammar dyp in
-      let macro' = "\\"^macro in
-      if StrSet.mem macro' dyp.local_data.other_symbols ||
-         StrSet.mem macro' dyp.local_data.infixes
-        then raise Giveup;
-      if next_lexeme_paren (dyp.next_lexeme ()) then begin
-        (* Printf.fprintf stderr "Giving up.\n" ; flush stderr ; *)   raise Giveup end
-      else MathMacro (macro,List.rev (args ld gr)) } atom
+  | "\\" - (ident)<macro> - mathargs<args>
+    { let macro, args = test_margs dyp macro args in
+      MathMacro (macro, args) } atom
   | prefix<op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
 
@@ -745,8 +806,10 @@ macro_option:
   "eat_left" { `Eat_left }
 | "eat_right" { `Eat_right }
 | "is_identity" { `Is_idt }
+| "name" "=" (['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_' ''']*)<s> { `Fun_name s }
 | "arg_" - (['0'-'9']+)<i> "=" ['a'-'z''A'-'Z''0'-'9''_']+<s> { `Arg_pat(int_of_string i, s) }
 | "arg_" - (['0'-'9']+)<i> "no_parenthesis" { `Arg_nopar(int_of_string i) }
+| "arity" "=" (['0'-'9']+)<i> { `Nb_args(int_of_string i) }
 
 macro_options:
   | { [] }
@@ -839,6 +902,10 @@ atomelt:
   | "\\Configure_word_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
     @{ [Ignore], 
        [Local_data { dyp.local_data with word_macros = (w, o)::dyp.local_data.word_macros }]
+     }
+  | "\\Configure_math_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
+    @{ [Ignore], 
+       [Local_data { dyp.local_data with math_macros = (w, o)::dyp.local_data.math_macros }]
      }
   | "\\Configure_paragraph_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
     @{ [Ignore], 

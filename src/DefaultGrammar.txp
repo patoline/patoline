@@ -248,6 +248,8 @@ Symboles de Patoline
 \Add_combining{ ⃖ }{\cev}
 \Add_combining{ ̅ }{\oline}
 
+\Configure_math_macro{\cal}{ arity = 1 name = mathcal }
+\Configure_math_macro{\bold}{ arity = 1 name = mathbold }
 \Configure_paragraph_macro{\item}{ eat_right }
 \Configure_word_macro{\label}{ eat_right
                                eat_left }
