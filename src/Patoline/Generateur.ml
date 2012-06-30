@@ -536,19 +536,15 @@ and output_list parser_pp from where no_indent lvl docs =
         | Ignore -> 
 	  next_no_indent := no_indent
 	| Verbatim(lang, lines) ->
-	  Printf.fprintf where "module VERB = struct\n\n";
-	  Printf.fprintf where "let verbEnv x = { (envAlternative [] Monospaced x)
-                                                     with normalMeasure=infinity; par_indent = [] }\n\n";
 	  let lang = match lang with
-	      None -> "T"
+	      None -> "lang_default"
 	    | Some s -> s
 	  in
 	  List.iter (fun l ->
 	    Printf.fprintf where
-	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (lang_%s \"%s\");;\n"
-	      lang l)
+	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s \"%s\");;\n"
+	      lang (String.escaped l))
 	    lines;
-	  Printf.fprintf where "end\n\n";
 	  next_no_indent := true
       );
       output_list parser_pp from where !next_no_indent !lvl docs

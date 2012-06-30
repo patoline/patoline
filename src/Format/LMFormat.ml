@@ -44,6 +44,40 @@ let lmroman =
      "lmodern/lmromancaps10-oblique.otf")));
   ]
 
+let lmmono =
+  [ Regular,
+    (Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "lmodern/lmmono10-regular.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+    Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "lmodern/lmmono10-italic.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+    Bold,
+    (Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "lmodern/lmmono10-bold.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+    Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "lmodern/lmmono10-bolditalic.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+    Caps,
+    (simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+    "lmodern/lmmonocaps10-regular.otf")),
+     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+     "lmodern/lmmonocaps10-oblique.otf")));
+  ]
+
 module LMMath = struct
   include Euler
 
@@ -137,6 +171,7 @@ module MakeFormat (D:Document.DocumentStructure)
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
         {
           fontFamily=lmroman;
+          fontMonoFamily=lmmono;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;

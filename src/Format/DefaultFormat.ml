@@ -64,6 +64,38 @@ let alegreya=
      simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
   ]
 
+let texgyrecursor=
+  [ Regular,
+    (Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-regular.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-italic.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+    Bold,
+    (Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-bold.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-bolditalic.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+
+  ]
+
+let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
+
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
@@ -74,6 +106,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let sc a=alternative Caps a
 
+    let lang_default str = [T str]
+
+
+    let verbEnv x = { (envFamily x.fontMonoFamily x)
+                           with normalMeasure=infinity; par_indent = [] }
 
     let id x=x
 
@@ -156,6 +193,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
         {
           fontFamily=alegreya;
+          fontMonoFamily=texgyrecursor;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;
@@ -746,10 +784,10 @@ module MathsFormat=struct
     (* Symboles et polices de maths *)
 
     module MathFonts = MathFonts
-    let mathcal a=Maths.Env (Euler.changeFont [Euler.Font `Cal]) :: a
+    let mathcal a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Cal]):: a)]
     let cal a=mathcal a
-    let fraktur a=Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a
-    let mathbf a=Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative [] Bold env)) :: a
+    let fraktur a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a)]
+    let mathbf a=[Maths.Scope(fun _ _-> Maths.Env (fun env -> Euler.changeFont [Euler.Graisse `Gras] (envAlternative [] Bold env)) :: a)]
     let mathsc a=
       [Maths.Scope(fun _ _->
                      Maths.Env (fun env->envAlternative [] Caps env)::
@@ -839,6 +877,8 @@ module MathsFormat=struct
                          ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]
             ))]
+ 
+ 
 
     let oLeftArrow a=
       [Maths.Ordinary
