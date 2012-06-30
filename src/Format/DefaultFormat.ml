@@ -106,11 +106,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let sc a=alternative Caps a
 
-    let lang_default str = [T str]
-
-
-    let verbEnv x = { (envFamily x.fontMonoFamily x)
-                           with normalMeasure=infinity; par_indent = [] }
+    let verbEnv x = 
+	{ (envFamily x.fontMonoFamily x)
+	with normalMeasure=infinity; par_indent = [] }
 
     let id x=x
 
@@ -282,7 +280,30 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let postprocess_tree=Sections.postprocess_tree
 
-    let lang_OCaml s=[T s]
+    let split_space s =
+      let gl env =
+	let font,_,_,_=selectFont env.fontFamily Regular false in
+	glyph_of_string env.substitutions env.positioning font env.size env.fontColor " "
+      in
+      let space = B(fun env -> gl env) in
+      let len = String.length s in
+      let rec fn acc i0 i =
+	if i >= len then
+	  List.rev (T (String.sub s i0 (len - i0))::acc)
+	else if s.[i] = ' ' then
+	  let acc = if i <> i0 then
+	      space::T (String.sub s i0 (i - i0))::acc
+	    else
+	      space::acc
+	  in
+	  fn acc (i+1) (i+1)
+	else
+	  fn acc i0 (i+1)
+      in fn [] 0 0
+
+    let lang_OCaml s = split_space s
+
+    let lang_default str = split_space str
 
     let minipage env str=
       let env',fig_params,params,compl,pars,figures=flatten env D.fixable (fst str) in
