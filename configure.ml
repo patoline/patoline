@@ -13,7 +13,6 @@ let camlimages=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 
-let emacsdir = "/usr/local/share/emacs/site-lisp/patoline"
 
 let avail_lang=
   let f=open_in "src/Typography/Language.ml" in
@@ -87,6 +86,7 @@ let _=
   let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
+  let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let tests = ["min.txp";"TD1.txp"] in
 
@@ -154,6 +154,7 @@ let _=
 <Format/*.{ml,mli}>: use_Typography,use_str
 <proof/proof.{byte,native}>: package(camomile)%s%s
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
+<Typography/Break.ml>:rectypes
 \"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")

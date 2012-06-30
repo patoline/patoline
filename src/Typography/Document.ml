@@ -84,6 +84,7 @@ module TS=Break.Make
            if a.height<b.height then -1 else
              if a.height>b.height then 1 else
                0
+     let hash a=Hashtbl.hash a
    end)
   (struct
      type t=user

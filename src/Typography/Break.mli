@@ -1,7 +1,12 @@
 val is_last : 'a Box.box array -> int -> bool
 type figurePosition = Placed of Line.line | Flushed | Begun
+module type Line=sig
+  type t
+  val compare:t->t->int
+  val hash:t->int
+end
 module Make :
-  functor (L : sig type t = Line.line val compare : t -> t -> int end) ->
+  functor (L : Line with type t=Line.line) ->
     functor (User : Map.OrderedType) ->
       sig
         module User : sig type t = User.t val compare : t -> t -> int end
