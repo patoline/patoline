@@ -112,6 +112,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let id x=x
 
+    let sourcePosition(file,line,column,char) =       
+      [T (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
+
     let node l=
       Document.Node
         {Document.empty with
@@ -280,7 +283,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let postprocess_tree=Sections.postprocess_tree
 
-    let split_space is_letter s =
+    let split_space is_letter is_special s =
       let gl env =
 	let font,_,_,_=selectFont env.fontFamily Regular false in
 	glyph_of_string env.substitutions env.positioning font env.size env.fontColor " "
@@ -295,6 +298,13 @@ module Format=functor (D:Document.DocumentStructure)->(
 	      space::T (String.sub s i0 (i - i0))::acc
 	    else
 	      space::acc
+	  in
+	  fn acc None (i+1) (i+1)
+	else if is_special s.[i] then
+	  let acc = if i <> i0 then
+	      T(String.sub s i 1)::T (String.sub s i0 (i - i0))::acc
+	    else
+	      T(String.sub s i 1)::acc
 	  in
 	  fn acc None (i+1) (i+1)
 	else if w =None then
@@ -313,9 +323,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       Char.code '_' = c || c = Char.code '\''
 
 
-
-    let lang_ML keywords s =
-      let l = split_space is_letter_ml s in
+    let lang_ML keywords specials s =
+      let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
       List.rev (List.fold_left (fun a x ->
 	match x with
           T s as x when List.mem s keywords -> bold [x]@a
@@ -323,15 +332,18 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let lang_default str = split_space (fun _ -> true) str
 
-    let lang_SML s= 
-      let keywords = ["fun";"fn";"val";"and";"=>";"->";"type";"|";"=";
+    let lang_SML s=
+      let specials = ['(';')';';'] in
+      let keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";"and";"=>";"->";"type";"|";"=";
 			  "case";"of";"datatype";"let";"rec";"end"] in
-      lang_ML keywords s
+      lang_ML keywords specials s
 
     let lang_OCaml s= 
-      let keywords = ["fun";"function";"val";"and";"=>";"->";"type";"|";"=";
-			  "match";"with";"rec";"let";"begin";"end"] in
-      lang_ML keywords s
+      let specials = ['(';')';';'] in
+      let keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";"and";"=>";"->";"type";"|";"=";
+		      "match";"with";"rec";"let";"begin";"end";"while";"for";"do";"done";
+		      "struct"; "sig"; "module"; "functor"] in
+      lang_ML keywords specials s
 
     let minipage env str=
       let env',fig_params,params,compl,pars,figures=flatten env D.fixable (fst str) in

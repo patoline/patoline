@@ -170,7 +170,8 @@ let rec print_math_buf parser_pp op buf m =
             print_caml_buf parser_pp ld gr op buf' s e txps;
 	    let s = Buffer.contents buf' in
 	      Printf.bprintf buf " ( %s ) " s
-	end
+      end
+      | MathString s ->	Printf.bprintf buf "%s" s
       | Delim(op,a,cl) ->
 	wrap_deco_math_default buf indices
 	  (fun buf ->
@@ -273,6 +274,8 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 		if use_par then Printf.bprintf buf "(";
 		print_caml_buf parser_pp ld gr op buf s e txps;
 		if use_par then Printf.bprintf buf ")";
+	      | String s ->
+		Printf.bprintf buf "%s" s
 	      | _ -> assert false);
 	    let arg = apply_options !num (Buffer.contents buf) opts in
 	    Printf.bprintf main_buf " %s" arg ;
@@ -507,6 +510,8 @@ and output_list parser_pp from where no_indent lvl docs =
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
 	    env param (print_contents parser_pp from) p
 	| Caml(ld,gr,s,e,txps) -> print_caml parser_pp ld gr from where s e txps
+	| String s -> Printf.fprintf where "%s" s
+
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered then "" else " ~numbered:false" in
 	  (match docs with

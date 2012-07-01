@@ -262,6 +262,7 @@
 \Configure_paragraph_macro{\item}{ eat_right }
 \Configure_word_macro{\label}{ eat_right
                                eat_left }
+\Configure_word_macro{\sourcePosition}{ arity = 1 give_position }
 
 \Configure_environment{genumerate}{ arg_1 = genumerate }
 

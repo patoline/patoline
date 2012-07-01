@@ -45,6 +45,7 @@ type macro_info = [
 | `Is_idt
 | `Nb_args of int
 | `Fun_name of string
+| `Give_pos
 ]
 
 type local_data = { 
@@ -73,6 +74,8 @@ type 'a math =
    | MathCaml of local_data * 'a * int * int * (texprime_section * int * int) list
    | Delim of string * 'a math * string
    | MScope of 'a math list
+   | MathString of string
+
 and 'a indices = { up_right : 'a math option;
     down_right : 'a math option;
     up_left : 'a math option;
@@ -94,6 +97,7 @@ and 'a doc =
    | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
      * 'a doc list * macro_info list
    | Preproc of string
+   | String of string
    | Ignore
 
 and texprime_section = TxpMath | TxpText
@@ -305,6 +309,14 @@ let layout_info dyp a b =
     (*Printf.fprintf stderr "[%d: %d - %d: %d]  [%d: %d - %d: %d]\n" a'.pos_lnum a'.pos_cnum a.pos_lnum a.pos_cnum b.pos_lnum b.pos_cnum b'.pos_lnum b'.pos_cnum; *)
     cdiff, ldiff, margin
 
+let get_pos_as_string dyp a =
+    let a = dyp.rhs_start_pos a in
+    Printf.sprintf "(\"%s\",%d,%d,%d)"
+      (String.escaped a.pos_fname)
+      a.pos_lnum
+      (a.pos_cnum - a.pos_bol)
+      a.pos_cnum
+
 let layout_parskip dyp a b =
     let c,l,m = layout_info dyp a b in l > 1 (* or (l = 1 && m > 1) *)
 
@@ -336,7 +348,7 @@ let get_nbargs name l =
     in
     fn (List.assoc name l)
   
-let fix_name dyp name l =
+let fix_name name l =
   let rec fn = function
     [] -> raise Not_found
   | `Fun_name n::_ -> n
@@ -344,10 +356,16 @@ let fix_name dyp name l =
   in
   try fn (List.assoc name l) with Not_found -> name
 
+let give_pos name l =
+  try List.mem `Give_pos (List.assoc name l) with Not_found -> false
+
 let test_wargs dyp name a =
     if List.mem name reserved then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
+    let args = if give_pos name dyp.local_data.word_macros then
+      String (get_pos_as_string dyp 1)::args else args
+    in    
     begin
       try	
         let l = get_nbargs name dyp.local_data.word_macros in
@@ -355,12 +373,15 @@ let test_wargs dyp name a =
       with Not_found ->
         if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
-   fix_name dyp name dyp.local_data.word_macros, args
+   fix_name name dyp.local_data.word_macros, args
 
 let test_pargs dyp name a =
     if List.mem name reserved then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
+    let args = if give_pos name dyp.local_data.word_macros then
+      String(get_pos_as_string dyp 1)::args else args
+    in    
     begin
       try	
         let l = get_nbargs name dyp.local_data.par_macros in
@@ -368,11 +389,14 @@ let test_pargs dyp name a =
       with Not_found ->
         if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
-   fix_name dyp name dyp.local_data.word_macros, args
+   fix_name name dyp.local_data.word_macros, args
 
 let test_eargs dyp name a =
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
+    let args = if give_pos name dyp.local_data.word_macros then
+      String(get_pos_as_string dyp 1)::args else args
+    in    
     begin
       try	
         let l = get_nbargs name dyp.local_data.env_macros in
@@ -380,7 +404,7 @@ let test_eargs dyp name a =
       with Not_found ->
         if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
-   fix_name dyp name dyp.local_data.word_macros, args
+   fix_name name dyp.local_data.word_macros, args
 
 let test_margs dyp name a =
     if List.mem name reserved then raise Giveup;
@@ -390,6 +414,9 @@ let test_margs dyp name a =
     then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
+    let args = if give_pos name dyp.local_data.word_macros then
+      MathString(get_pos_as_string dyp 1)::args else args
+    in    
     begin
       try	
         let l = get_nbargs name dyp.local_data.math_macros in
@@ -397,8 +424,7 @@ let test_margs dyp name a =
       with Not_found ->
         if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
-   fix_name dyp name dyp.local_data.word_macros, args
-
+   fix_name name dyp.local_data.word_macros, args
 
 
 }
@@ -807,6 +833,7 @@ macro_option:
   "eat_left" { `Eat_left }
 | "eat_right" { `Eat_right }
 | "is_identity" { `Is_idt }
+| "give_position" { `Give_pos }
 | "name" "=" (['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_' ''']*)<s> { `Fun_name s }
 | "arg_" - (['0'-'9']+)<i> "=" ['a'-'z''A'-'Z''0'-'9''_']+<s> { `Arg_pat(int_of_string i, s) }
 | "arg_" - (['0'-'9']+)<i> "no_parenthesis" { `Arg_nopar(int_of_string i) }
