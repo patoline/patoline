@@ -10,7 +10,7 @@ let centered str tree max_level=
   newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
     BFix (
       fun env->
-        let x0=75. in
+        let x0=100. in
         let spacing=1. in
         let r=0.3 in
         let x_height=

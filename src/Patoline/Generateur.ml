@@ -538,7 +538,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	| Verbatim(lang, lines) ->
 	  let lang = match lang with
 	      None -> "lang_default"
-	    | Some s -> s
+	    | Some s -> "lang_"^s
 	  in
 	  List.iter (fun l ->
 	    Printf.fprintf where

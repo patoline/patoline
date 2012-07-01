@@ -280,14 +280,14 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let postprocess_tree=Sections.postprocess_tree
 
-    let split_space s =
+    let split_space is_letter s =
       let gl env =
 	let font,_,_,_=selectFont env.fontFamily Regular false in
 	glyph_of_string env.substitutions env.positioning font env.size env.fontColor " "
       in
       let space = B(fun env -> gl env) in
       let len = String.length s in
-      let rec fn acc i0 i =
+      let rec fn acc w i0 i =
 	if i >= len then
 	  List.rev (T (String.sub s i0 (len - i0))::acc)
 	else if s.[i] = ' ' then
@@ -296,14 +296,42 @@ module Format=functor (D:Document.DocumentStructure)->(
 	    else
 	      space::acc
 	  in
-	  fn acc (i+1) (i+1)
+	  fn acc None (i+1) (i+1)
+	else if w =None then
+	  fn acc (Some (is_letter s.[i])) i0 (i+1)
+	else if w = Some (is_letter s.[i]) then
+	  fn acc  w i0 (i + 1)
 	else
-	  fn acc i0 (i+1)
-      in fn [] 0 0
+	  fn (T (String.sub s i0 (i - i0))::acc) (Some (is_letter s.[i])) i (i+1)
+      in fn [] None 0 0
 
-    let lang_OCaml s = split_space s
+    let is_letter_ml = fun c ->
+      let c = Char.code c in
+      (Char.code 'a' <= c && c <= Char.code 'z') ||
+      (Char.code 'A' <= c && c <= Char.code 'Z') ||
+      (Char.code '0' <= c && c <= Char.code '9') ||
+      Char.code '_' = c || c = Char.code '\''
 
-    let lang_default str = split_space str
+
+
+    let lang_ML keywords s =
+      let l = split_space is_letter_ml s in
+      List.rev (List.fold_left (fun a x ->
+	match x with
+          T s as x when List.mem s keywords -> bold [x]@a
+	| x -> x::a) [] l)
+
+    let lang_default str = split_space (fun _ -> true) str
+
+    let lang_SML s= 
+      let keywords = ["fun";"fn";"val";"and";"=>";"->";"type";"|";"=";
+			  "case";"of";"datatype";"let";"rec";"end"] in
+      lang_ML keywords s
+
+    let lang_OCaml s= 
+      let keywords = ["fun";"function";"val";"and";"=>";"->";"type";"|";"=";
+			  "match";"with";"rec";"let";"begin";"end"] in
+      lang_ML keywords s
 
     let minipage env str=
       let env',fig_params,params,compl,pars,figures=flatten env D.fixable (fst str) in
