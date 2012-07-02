@@ -391,7 +391,7 @@ let cardinal font=
 
 exception Found of float
 let outlines_ gl onlyWidth=
-  Random.init (int_of_char gl.type2.[0]);
+(*  Random.init (int_of_char gl.type2.[0]);*)
   let rstack=ref (Array.create 48 0.) in
   let stackC=ref 0 in
   let stWrite c x=
