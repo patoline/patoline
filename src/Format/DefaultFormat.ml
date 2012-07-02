@@ -288,7 +288,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 	let font,_,_,_=selectFont env.fontFamily Regular false in
 	glyph_of_string env.substitutions env.positioning font env.size env.fontColor " "
       in
-      let space = B(fun env -> gl env) in
+      let space = bB(fun env -> gl env) in
       let len = String.length s in
       let rec fn acc w i0 i =
 	if i >= len then
@@ -330,7 +330,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           T s as x when List.mem s keywords -> bold [x]@a
 	| x -> x::a) [] l)
 
-    let lang_default str = split_space (fun _ -> true) str
+    let lang_default str = split_space (fun _ -> true) (fun _ -> false) str
 
     let lang_SML s=
       let specials = ['(';')';';'] in
@@ -399,7 +399,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     type 'a tableParams={ widths:'a environment->float array; h_spacing:float; v_spacing:float }
 
     let table params tab=
-      [ B (fun env->
+      [ bB (fun env->
              let widths0=params.widths env in
              let widths=Array.make (Array.length widths0) 0. in
              let heights=Array.make (Array.length tab) 0. in
@@ -592,7 +592,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             (Node { empty with node_env=(incr_counter "enumerate") });
           D.structure:=lastChild !D.structure;
           newPar D.structure Complete.normal parameters
-            [B (fun env->
+            [bB (fun env->
                   let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
                   let bb=boxify_scoped env (M.from_counter enum) in
                   let fix g= { g with drawing_min_width=g.drawing_nominal_width;
@@ -653,7 +653,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       Enumerate(struct
                   let from_counter _ =
                     [
-                      B (fun env->[Drawing (
+                      bB (fun env->[Drawing (
                                      let y=env.size/.4. in
                                      let x0=tiret_w env/.phi in
                                      let x1=tiret_w env-.x0 in
@@ -695,7 +695,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       Enumerate(struct
                   let from_counter x =
                     [ T(string_of_int (List.hd x + 1));T".";
-                      B (fun env->let w=env.size/.phi in [glue w w w])]
+                      bB (fun env->let w=env.size/.phi in [glue w w w])]
                 end)
 
     module Env_abstract = struct
@@ -726,7 +726,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let do_begin_env ()=
         let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
-          (italic [T "Proof.";B (fun env->let w=env.size in [glue w w w])]);
+          (italic [T "Proof.";bB (fun env->let w=env.size in [glue w w w])]);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         D.structure:=lastChild !D.structure
 
@@ -734,7 +734,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=false } in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
         newPar D.structure Complete.normal par
-          [B (fun env->
+          [bB (fun env->
                 let w=env.size/.phi in
                   [Drawing (
                      drawing [OutputCommon.Path ({ OutputCommon.default with

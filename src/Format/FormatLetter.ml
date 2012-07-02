@@ -31,7 +31,7 @@ module Format=functor (D:DocumentStructure)->struct
         newChildBefore (tree,[])
           (fst
              (paragraph
-                [ B (fun env->
+                [ bB (fun env->
                        let w=env.normalMeasure/.2. in
                        let sender=match tree with
                            Node n->(try List.assoc "sender" n.node_tags with Not_found->"")

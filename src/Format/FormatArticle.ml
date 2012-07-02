@@ -107,9 +107,9 @@ module Env_corollary=Default.Make_theorem
 		        T ")" ]) in
              let w0=(env.normalMeasure -. w)/.2. in
              let w1=env.normalMeasure -. w'-.w0-.w in
-             B(fun _->[glue w0 w0 w0])::
+             bB(fun _->[glue w0 w0 w0])::
                contents@
-               [B (fun _->glue w1 w1 w1 :: num)]
+               [bB (fun _->glue w1 w1 w1 :: num)]
 	  )];
     []
 
@@ -131,7 +131,7 @@ module Env_corollary=Default.Make_theorem
 
   let utf8Char x=[T (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=
-    B (fun env->
+    bB (fun env->
          let code={glyph_utf8=""; glyph_index=x } in
            [GlyphBox { (Box.glyphCache env.font code) with
                          OutputCommon.glyph_color=env.fontColor;

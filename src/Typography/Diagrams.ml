@@ -1820,7 +1820,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let math_matrix style l = 
 	matrix style (List.map (fun line ->
 	  (List.map (fun (style, math_list) -> 
-	    (style, [B (fun env -> Maths.draw [env] math_list)])) 
+	    (style, [bB (fun env -> Maths.draw [env] math_list)])) 
 	     line))
 			l)
 

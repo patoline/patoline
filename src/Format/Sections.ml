@@ -82,13 +82,13 @@ let postprocess_tree tree=
             [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
                   let path=drop 1 b in
-                    B (fun _->[User (Structure path)])
+                    bB (fun _->[User (Structure path)])
                     ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev path)))
                     ::T " "
                     ::n.displayname
                )]
           else
-            B (fun env->
+            bB (fun env->
                 let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
                 let path=drop 1 b in (* FIXME: what is exactly the path for unnumbered section *)
                    [User (Structure path)])::
