@@ -161,9 +161,10 @@
       (mmm-add-classes
        '((patoline-tuareg
 	  :submode tuareg-mode
-	  :front "\\\\[Cc]aml("
+	  :front "\\\\\\([Cc]aml\\)\\|\\(diagram\\)("
 	  :back "^)"
-	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)))
+	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)
+		   (?d tuareg-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
 	 ))))
 
 
