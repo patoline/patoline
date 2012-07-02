@@ -602,21 +602,21 @@ par_macro: MACRO<name>
 args:
     /* empty */
      { (fun (ld:local_data) gr  -> []) } 
-  | "()"
+  | - "()"
     { (fun (ld:local_data) gr  -> []) }
-  | "{" oparagraph<p> "}" - args<a>
+  | - "{" oparagraph<p> "}" - args<a>
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
-  | CAML<s,e,txps> - args<a>
+  | - CAML<s,e,txps> - args<a>
     { (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
 
 mathargs:
   /* empty */
     { (fun (ld:local_data) gr  -> []) } 
-  | "()"
+  | - "()"
     { (fun (ld:local_data) gr  -> []) }
-  |  "{" math<m> "}" - mathargs<a>
+  | - "{" math<m> "}" - mathargs<a>
     { (fun ld gr -> m::a ld gr) }
-  | CAML<s,e,txps> - mathargs<a>
+  | - CAML<s,e,txps> - mathargs<a>
     { (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
 
 topmacro:

@@ -47,6 +47,11 @@
 	(signal-process patoline-view-process 1)))
   (message m))
 
+(defun display-program-buffer ()
+  "display patoline compilation buffer"
+  (interactive)
+  (display-buffer patoline-program-buffer t 'visible))
+
 (defvar patoline-compile-format
   "patoline \"%s\""
   "What to do to compile patoline document. Examples [patoline \"%s\"], [make]")
@@ -96,6 +101,7 @@
       (define-key patoline-mode-map (kbd "C-c C-c") 'patoline-compile)
       (define-key patoline-mode-map (kbd "C-c C-e") 'patoline-make)
       (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-view)
+      (define-key patoline-mode-map (kbd "C-c C-l") 'display-program-buffer)
     patoline-mode-map))
   "Keymap for PATOLINE major mode")
 
