@@ -653,9 +653,9 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
 let pageref x=
   [CFix (fun env->try
            let (_,_,node)=StrMap.find x env.names in
-             [bB (fun _->[User (BeginLink x)]);
+             [BFix (fun _->[User (BeginLink x)]);
               T (string_of_int (1+node.page));
-              bB (fun _->[User EndLink])]
+              BFix (fun _->[User EndLink])]
          with Not_found -> []
         )]
 
@@ -664,7 +664,7 @@ let label ?(labelType="_structure") name=
           let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
             { env with names=StrMap.add name (env.counters, labelType, w) env.names });
 
-   bB (fun env ->
+   BFix (fun env ->
         [User (Label name)])
   ]
 
@@ -680,18 +680,18 @@ let generalRef refType name=
             let num=if refType="_structure" then drop 1 num_ else num_ in
             let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-              [bB (fun _->[User (BeginLink name)]);
+              [BFix (fun _->[User (BeginLink name)]);
                T (String.concat "." (List.map (fun x->string_of_int (x+1))
                                        (List.rev (num@sect_num))));
-               bB (fun _->[User EndLink])]
+               BFix (fun _->[User EndLink])]
           with
               Not_found -> []
          )]
 
 let sectref x=generalRef "_structure" x
 
-let extLink a b=bB (fun _->[User (BeginURILink a)])::b@[bB (fun _->[User EndLink])]
-let link a b=bB (fun _->[User (BeginLink a)])::b@[bB (fun _->[User EndLink])]
+let extLink a b=BFix (fun _->[User (BeginURILink a)])::b@[BFix (fun _->[User EndLink])]
+let link a b=BFix (fun _->[User (BeginLink a)])::b@[BFix (fun _->[User EndLink])]
 let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
 let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
@@ -948,7 +948,7 @@ let flatten env0 fixable str=
                                          Not_found -> uselessLine in
                                        { env with names=StrMap.add name (env.counters, "_", w)
                                            env.names });
-                              bB (fun _->[User (Label name)])
+                              BFix (fun _->[User (Label name)])
                              ]
                          ) else [])@
                           (if indent then [bB (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
