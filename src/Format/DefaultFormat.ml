@@ -94,7 +94,46 @@ let texgyrecursor=
 
   ]
 
+let bitstreamverasansmono=
+  [ Regular,
+    (Lazy.lazy_from_fun
+       (fun ()->
+         (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Roman.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Oblique.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+    Bold,
+    (Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Bold.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)),
+     Lazy.lazy_from_fun
+       (fun ()->
+          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-BoldOb.otf")),
+          (fun x->x),
+          (fun x->x),
+          (fun x->x)));
+
+  ]
+
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
+
+let font_size_ratio font1 font2 =
+  let x_h f =
+    let f,_,_,_ = Lazy.force (fst (List.assoc Regular f)) in
+    let x=Fonts.loadGlyph f
+      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'x'}) in
+    Fonts.glyph_y1 x -.  Fonts.glyph_y0 x 
+  in
+  x_h font1 /. x_h font2
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
@@ -108,8 +147,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let verbEnv x = 
 	{ (envFamily x.fontMonoFamily x)
-	with normalMeasure=infinity; par_indent = [] }
+	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [] }
 
+    let verb p =
+       [Scoped ((fun x -> 
+	 { (envFamily x.fontMonoFamily x) with size = x.size *. x.fontMonoRatio}), p)]
+        
     let id x=x
 
     let sourcePosition(file,line,column,char) =       
@@ -194,7 +237,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
         {
           fontFamily=alegreya;
-          fontMonoFamily=texgyrecursor;
+          fontMonoFamily=bitstreamverasansmono (*texgyrecursor*);
+	  fontMonoRatio=font_size_ratio alegreya bitstreamverasansmono (*texgyrecursor*);
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;

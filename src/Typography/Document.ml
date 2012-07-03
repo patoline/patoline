@@ -166,6 +166,7 @@ and ('a) tree=
 and 'a environment={
   fontFamily:fontFamily;
   fontMonoFamily:fontFamily;
+  fontMonoRatio:float; (* size adjustment of the two previous family *)
   fontItalic:bool;
   fontAlternative:fontAlternative;
   fontFeatures:string list;

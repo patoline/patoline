@@ -172,6 +172,7 @@ module MakeFormat (D:Document.DocumentStructure)
         {
           fontFamily=lmroman;
           fontMonoFamily=lmmono;
+	  fontMonoRatio=1.0;
           fontItalic=false;
           fontAlternative=Regular;
           fontFeatures=feat;
