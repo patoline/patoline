@@ -546,16 +546,27 @@ let figure str ?(parameters=center) ?(name="") drawing=
                                 Not_found -> -1, [0] in
                             let l0,cou0=try StrMap.find "figure" x.counters with
                                 Not_found -> -1, [0] in
-                            let counters'=StrMap.add "_figure"
-                              (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                            let counters''=StrMap.add "figure" (l0,match cou0 with []->[0]
-                                                                  | h::_->[h+1]) counters' in
+
+                            let counters0=
+                              StrMap.add "_figure" (l,if cou=[] then [0] else cou)
+                                (StrMap.add "figure" (l0,if cou0=[] then [0] else cou0) x.counters)
+                            in
+                            let counters'=
+                              (StrMap.add "_figure"
+                                 (l,(List.hd cou+1)::(List.tl cou))
+                                 (StrMap.add "figure"
+                                    (l0,(List.hd cou0+1)::(List.tl cou0)) counters0)
+                              )
+                            in
                             { x with
                                 names=if name="" then x.names else (
-                                  let w=try let (_,_,w)=StrMap.find name x.names in w with Not_found -> uselessLine in
-                                  StrMap.add name (x.counters, "_figure", w) x.names
+                                  let w=
+                                    try let (_,_,w)=StrMap.find name x.names in w
+                                    with Not_found -> uselessLine
+                                  in
+                                  StrMap.add name (counters0, "_figure", w) x.names
                                 );
-                                counters=counters''
+                                counters=counters'
                             });
                  fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
                  fig_parameters=parameters }))
@@ -566,7 +577,7 @@ let flushFigure name=
           let (counters,_,_)=StrMap.find name env.names in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[FlushFigure h])]
-              | _->[Env (incr_counter "_figure")]
+              | _->[]
         with
             Not_found ->[]
      )]
@@ -578,7 +589,7 @@ let beginFigure name=
           let (counters,_,_)=StrMap.find name env.names in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[BeginFigure h])]
-              | _->[Env (incr_counter "_figure")]
+              | _->[]
         with
             Not_found ->[]
      )]
@@ -922,8 +933,9 @@ let flatten env0 fixable str=
       v
   in
 
-  let rec flatten flushes env path tree=
-(*    let level=List.length path in*)
+  let rec flatten flushes env_ path tree=
+    let level=List.length path in
+    let env={ env_ with counters=StrMap.filter (fun _ (lvl,_)->lvl<=level) env_.counters } in
       match tree with
           Paragraph p -> add_paragraph env p
         | FigureDef f -> (
@@ -1031,13 +1043,21 @@ let tag str tags=
 let update_names env figs user=
   (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
-  let env'={ env with user_positions=user; counters=StrMap.map (fun (l,_)->l,[0]) env.counters; names=
+  let env'={ env with user_positions=user;
+               counters=StrMap.map (fun (l,_)->l,[]) env.counters;
+               names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
                        if b="_figure" then
-                         match IntMap.find (List.hd (snd (StrMap.find "_figure" a))) figs with
-                             Break.Placed l->l
-                           | _->raise Not_found
+                         (match StrMap.find "_figure" a with
+                              _,[]->(Printf.fprintf stderr "figure not found (1):%S\n" k;
+                                   raise Not_found)
+                            | _,(h::_)->(
+                                match IntMap.find h figs with
+                                    Break.Placed l->l
+                                  | _->raise Not_found
+                              )
+                         )
                        else
                          TS.UMap.find (Label k) user
                      in

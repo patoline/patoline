@@ -224,10 +224,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                   drawing_contents=(fun _->[]);
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate;
-          counters=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty
-            ["_structure",(-1,[0]);
-             "_figure",(-1,[0]);
-             "figure",(2,[0])];
+          counters=StrMap.empty;
           names=StrMap.empty;
           user_positions=TS.UMap.empty;
 	  show_boxes=false;
