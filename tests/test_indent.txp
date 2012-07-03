@@ -1,0 +1,21 @@
+
+Un paragraphe \cr
+un autre non indenté
+
+et enfin avec indentation.
+$$ des maths $$
+et la suite pas indentée
+$$ encore des maths (si si)$$
+
+et la suite indentée.
+
+Et des maths ponctués:
+
+    $ a = b$ et $c = d$. \cr
+Pas d'indentation après ces équations inutiles.
+
+Et enfin, des math ponctués:
+
+    $ a = b$ et $c = d$.
+
+avec indentation

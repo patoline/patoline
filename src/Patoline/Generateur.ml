@@ -499,7 +499,8 @@ and output_list parser_pp from where no_indent lvl docs =
       let next_no_indent = ref false in
       (match doc with
 	| Paragraph(options, p) ->
-	  let env = if no_indent then "(fun x -> { x with par_indent = [] })" 
+	  let env = if no_indent or not options.indent_paragraph 
+	    then "(fun x -> { x with par_indent = [] })" 
 	    else "(fun x -> x)"
 	  in
 	  let param = if options.center_paragraph then 
@@ -526,18 +527,17 @@ and output_list parser_pp from where no_indent lvl docs =
 	      done;
 	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
 	      lvl := l
-	  )
+	  );
 	| Macro(mtype, name, args,opts) ->
 	  print_macro parser_pp where from mtype name args opts;
 	  Printf.fprintf where "\n\n" 
 	| Preproc t -> begin
-	  Printf.fprintf where "%s\n\n" t ;
-	  (* Printf.fprintf stderr "Printed : \n %s \n" t ; *)
-	end
+	    Printf.fprintf where "%s\n\n" t ;
+	    (* Printf.fprintf stderr "Printed : \n %s \n" t ; *)
+	  end
 	| Math m ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
-	    (fun ch -> print_math_par parser_pp from ch true) m;
-	  next_no_indent := true
+	    (fun ch -> print_math_par parser_pp from ch true) m
         | Ignore -> 
 	  next_no_indent := no_indent
 	| Verbatim(lang, lines) ->
@@ -550,7 +550,6 @@ and output_list parser_pp from where no_indent lvl docs =
 	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s \"%s\");;\n"
 	      lang (String.escaped l))
 	    lines;
-	  next_no_indent := true
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 

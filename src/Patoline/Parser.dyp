@@ -86,7 +86,8 @@ and symbol=
 
 and 'a structType = Absolute of int | Relative of 'a doc list
 
-and paragraph_options = { center_paragraph : bool; useless_option : unit }
+and paragraph_options = { 
+    center_paragraph : bool; indent_paragraph : bool }
 
 and 'a doc =
      Paragraph of paragraph_options * 'a content list
@@ -111,7 +112,7 @@ and 'a content =
 let par_macros:(string->'a content list) StrMap.t ref=ref StrMap.empty
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
-let default_paragraph_options = { center_paragraph = false; useless_option = (); }
+let default_paragraph_options = { center_paragraph = false; indent_paragraph = true; }
 let sParagraph c = Paragraph(default_paragraph_options, c)
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
@@ -275,7 +276,7 @@ let add_combining_symbol local_data symbol macro =
 let gram_ext = ".tgx"
 
 let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
-    	         "Add_relation"; "Add_addition_like"; "Add_product_like"; "left"; "right"]
+    	         "Add_relation"; "Add_addition_like"; "Add_product_like"; "left"; "right"; "cr"]
 
 let fprint_caml_buf = ref (fun _ _ _ _ _ _ -> ((assert false):unit))
 
@@ -956,13 +957,8 @@ atomelt:
   | "$$" math<m> "$$" { [Math(m)] }
   | "\\Verbose_Changes" 
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
+  | "\\cr" { [Ignore] }
 
-atomeltp:
-    atomelt<e> @{ e, [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | paragraph<p> @{ 
-      let _,_,m = layout_info dyp 1 1 in
-      let options = { default_paragraph_options with center_paragraph = m >= 4 } in
-      [Paragraph(options, p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
 
 title:
   ("=========="('='*))
@@ -975,15 +971,29 @@ title:
 text: { [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}
 
 ntext:
-  | atomeltp<p> 
-   @{ p, [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | ntext<t> atomeltp<p>
-   @{ 
-      (match t, p with 
-        (Paragraph _::_), (Paragraph _::_) ->
-	  if not (layout_parskip dyp 1 2) then raise Giveup
-       | _ -> ()); 
-      (p@t), [ Keep_grammar; Local_data dyp.last_local_data ]}
+  | paragraph<p> 
+     @{ 
+       let _,_,m = layout_info dyp 1 1 in
+       let options = { default_paragraph_options with center_paragraph = m >= 4 } in
+       [Paragraph(options, p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | atomelt<p> 
+     @{ p, [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | ntext<t> atomelt<p>
+     @{ p@t, [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | ntext<t> paragraph<p>
+     @{ 
+       let _,_,m = layout_info dyp 2 2 in
+       let opt = { default_paragraph_options with center_paragraph = m >= 4 } in
+       (match t with 
+       | (Paragraph _::_) ->
+	  if not (layout_parskip dyp 1 2) then raise Giveup;
+	  Paragraph(opt,p)::t
+       | _ ->
+          if not (layout_parskip dyp 1 2) then
+	    Paragraph({opt with indent_paragraph = false},p)::t
+	  else 
+            Paragraph(opt,p)::t)
+       , [ Keep_grammar; Local_data dyp.last_local_data ]}
 
 grammar_aux:
     { Some "DefaultGrammar" }
