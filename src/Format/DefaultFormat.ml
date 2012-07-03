@@ -392,9 +392,10 @@ module Format=functor (D:Document.DocumentStructure)->(
             match resize scale (Drawing dr_) with Drawing f->f | _->assert false
           else dr_
         in
-        let lvl,num=StrMap.find "figure" env.counters in
-        let _,str_counter=StrMap.find "_structure" env.counters in
-        let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+        let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
+        let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
+        Printf.fprintf stderr "%s %d\n" name lvl;
+        let sect_num=drop (List.length str_counter - max 0 lvl) str_counter in
         let caption=
           Box.drawing (
             draw_boxes (
