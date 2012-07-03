@@ -690,7 +690,7 @@ let generalRef refType name=
 
 let sectref x=generalRef "_structure" x
 
-let extLink a b=BFix (fun _->[User (BeginURILink a)])::b@[BFix (fun _->[User EndLink])]
+let extLink a b=bB (fun _->[User (BeginURILink a)])::b@[bB (fun _->[User EndLink])]
 let link a b=BFix (fun _->[User (BeginLink a)])::b@[BFix (fun _->[User EndLink])]
 let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
 let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])

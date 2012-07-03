@@ -1,0 +1,22 @@
+#!/usr/bin/python
+import sys
+import os
+
+uri = sys.argv[1].replace("%20"," ")
+
+[protocol, location] = uri.split(":")
+
+# log = open("/tmp/xpdflog", mode='a')
+# log.write(uri+"\n")
+# log.close()
+
+if (protocol == "edit"):
+    [filename, linenum, colnum] = location.split("@")
+    os.execlp("emacsclient", "-n", "--eval",
+              '(progn (find-file "' + filename +'") (goto-line '+
+             str(linenum) + ') (forward-char '+
+             str(colnum) + "))")
+else:
+    os.execlp("firefox", "uri")
+          
+

@@ -14,6 +14,7 @@ open PatolineLanguage
 (*   (let style = Mathematical.Text and _env = (Maths.env_style Maths.default Mathematical.Text) in  *)
 (*    Maths.draw_maths Maths.default style ((arg ))))] *)
 
+let edit_link = ref false
 
 type amble=Noamble | Separate | Main
 
@@ -247,9 +248,9 @@ and print_math_par_buf parser_pp op buf display m =
   print_math_buf parser_pp op buf m;
   Printf.bprintf buf "))] "
 
-and print_math_par parser_pp op ch display m = begin 
+and print_math_par pos parser_pp op ch display m = begin 
   let buf = Buffer.create 80 in
-  print_math_par_buf parser_pp op buf display m ;
+  print_ext_link pos (fun buf () -> print_math_par_buf parser_pp op buf display m) buf;
   output_string ch (Buffer.contents buf) 
 end
 
@@ -437,15 +438,25 @@ and print_caml parser_pp ld gr op (ch : out_channel) s e txps = begin
   Buffer.output_buffer ch buf
 end
 
+and print_ext_link pos f buf=
+  if pos = "" or not !edit_link then f buf ()
+  else
+    Printf.bprintf buf 
+      "(let (file, l, c, _) = %s in extLink (\"edit:\"^file^\"@\"^string_of_int l^\"@\"^string_of_int c) %a)"
+	        pos f ()
+
 and print_contents_buf use_par parser_pp op buf l = 
   (* Printf.fprintf stderr "Entering print_contents_buf.\n" ; flush stderr ; *)
   if use_par then Printf.bprintf buf "(";
   let rec fn l = 
     begin match l with
       [] ->  Printf.bprintf buf "[]";
-    | (TC _ :: _ ) as l -> 
-      Printf.bprintf buf "(T(\"";
-      gn l
+    | (TC (pos, s) :: l' ) as l ->
+      if !edit_link then
+	(print_ext_link pos (fun buf () -> Printf.bprintf buf "[T(\"%s\")]" (String.escaped s)) buf;
+	 Printf.bprintf buf "@"; fn l')
+      else 
+	(Printf.bprintf buf "(T(\""; gn l)
     | GC :: (MC(_,_,_,opts)::_ as l) when List.mem `Eat_left opts -> 
       fn l
     | GC :: l -> 
@@ -459,15 +470,15 @@ and print_contents_buf use_par parser_pp op buf l =
 	GC :: l when  List.mem `Eat_right opts ->
 	    fn l
       | l -> fn l)
-    | FC(b,m) :: l ->
+    | FC(pos,b,m) :: l ->
       Printf.bprintf buf "(";
-      print_math_par_buf parser_pp op buf b m;
+      print_ext_link pos (fun buf () -> print_math_par_buf parser_pp op buf b m) buf;
       Printf.bprintf buf ")@";
       fn l
     end;
   and gn l =
     begin match l with
-    | TC s :: l -> 
+    | TC(_pos,s) :: l -> 
       Printf.bprintf buf "%s" (String.escaped s);
       gn l
     | GC :: ((TC _ :: _) as l) -> 
@@ -515,9 +526,12 @@ and output_list parser_pp from where no_indent lvl docs =
 
 	| Struct(title, numbered, docs) ->
 	  let num = if numbered then "" else " ~numbered:false" in
+	  let print_title where title = 
+	      print_contents parser_pp from where title
+	  in
 	  (match docs with
 	      Relative docs ->
-		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
+		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num print_title title;
 		output_list parser_pp from where true (!lvl + 1) docs;
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
 	     | Absolute l ->
@@ -525,7 +539,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	      for i = 0 to !lvl - l do
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"
 	      done;
-	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num (print_contents parser_pp from) title;
+	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num print_title title;
 	      lvl := l
 	  );
 	| Macro(mtype, name, args,opts) ->
@@ -535,9 +549,9 @@ and output_list parser_pp from where no_indent lvl docs =
 	    Printf.fprintf where "%s\n\n" t ;
 	    (* Printf.fprintf stderr "Printed : \n %s \n" t ; *)
 	  end
-	| Math m ->
+	| Math(pos, m) ->
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:(fun x->{x with par_indent = []}) Complete.normal displayedFormula %a;;\n"
-	    (fun ch -> print_math_par parser_pp from ch true) m
+	    (fun ch -> print_math_par pos parser_pp from ch true) m
         | Ignore -> 
 	  next_no_indent := no_indent
 	| Verbatim(lang, lines) ->

@@ -92,7 +92,7 @@ and paragraph_options = {
 and 'a doc =
      Paragraph of paragraph_options * 'a content list
    | Caml of local_data * 'a * int * int * (texprime_section * int * int) list
-   | Math of 'a math
+   | Math of string * 'a math
    | Verbatim of string option * string list
    | Struct of 'a content list * bool * 'a structType
    | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
@@ -104,8 +104,8 @@ and 'a doc =
 and texprime_section = TxpMath | TxpText
 
 and 'a content =
-     TC of string
-   | FC of bool * 'a math
+     TC of string * string
+   | FC of string * bool * 'a math
    | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
            * 'a doc list * macro_info list
    | GC
@@ -175,7 +175,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
-      [FC (false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
+      [FC ("", false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
        let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
@@ -231,7 +231,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
   let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
-      [FC (false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
+      [FC ("", false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
        let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
              with _ -> -1
@@ -268,7 +268,7 @@ let add_combining_symbol local_data symbol macro =
   in
   let elt = if not local_data.verbose then [Ignore] else
     [Ignore; sParagraph
-      [FC (false, Binary(0, MathMacro(macro, [Var("x")]), false, SimpleSym "⇐", false,
+      [FC ("", false, Binary(0, MathMacro(macro, [Var("x")]), false, SimpleSym "⇐", false,
         	    Symbol (SimpleSym (String.escaped ("\\"^macro)))))]]
   in
   elt, [Add_rules[rule, action]]
@@ -551,14 +551,14 @@ main lexer =
 
 parelt:
     in_par_macro<m> { m, false }
-  | "$" math<m> "$" { [FC(false,m)], false }
-  | line<w> { [TC w], false }
-  | "\\{" { [TC "{"], false }
-  | "\\\\"  { [TC "\\"], false }
-  | "\\}"  { [TC "}"], false }
-  | "~"  { [TC " "], false }
-  | "\\_"  { [TC "_"],false }
-  | "\\~"  { [TC "~"], false }
+  | "$" math<m> "$" { [FC(get_pos_as_string dyp 1, false,m)], false }
+  | line<w> { [TC (get_pos_as_string dyp 1, w)], false }
+  | "\\{" { [TC("","{")], false }
+  | "\\\\"  { [TC("", "\\")], false }
+  | "\\}"  { [TC("", "}")], false }
+  | "~"  { [TC("", " ")], false }
+  | "\\_"  { [TC("", "_")],false }
+  | "\\~"  { [TC("", "~")], false }
   | "_" paragraph_aux<p,false> "_" { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)], [])], true }
 
 
@@ -954,7 +954,7 @@ atomelt:
       close_out oc;
       [Ignore]
     } 
-  | "$$" math<m> "$$" { [Math(m)] }
+  | "$$" math<m> "$$" { [Math(get_pos_as_string dyp 1, m)] }
   | "\\Verbose_Changes" 
     @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
   | "\\cr" { [Ignore] }
