@@ -82,7 +82,7 @@ let rec process_each_file =
     if !format <> "DefaultFormat" then
       package_list := ("Typography." ^ !format) :: !package_list;
     if !compile then (
-      let lespackages = String.concat "," !package_list in
+      let lespackages = String.concat "," (List.rev !package_list) in
       let lesincludes = String.concat " " (List.map (fun s -> "\""^s^".cmx\"") !Generateur.includeList) in 
       let build_command = Printf.sprintf "ocamlfind ocamlopt -package %s %s %s -linkpkg -o \"%s\" -impl \"%s\"" lespackages (str_dirs ()) lesincludes (binname_of f) (mlname_of f)in
       Printf.fprintf stderr "Compiling OCaml code...\n";
