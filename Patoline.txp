@@ -1,3 +1,4 @@
+(* #COMPILATION -I src/_build *)
 ==========================================
   Patoline documentation
 ------------------------------------------
@@ -11,9 +12,31 @@
 
 == Introduction ==
 
+== Usage ==
+
+To write a patoline document, you must create a file with the
+extension \verb{.txp}.  This file can be created using any text
+editor. At the moment an emacs mode is provided by the distribution
+and probably other modes will come soon.
+
+Next you need to "compile" your file by entering in a terminal the following command:
+
+\verb{patoline myfile.txp} \cr
+This should either produce a pdf file \verb{myfile.pdf} or an error message.
+
+From emacs, you can just type \verb{Ctrl-C Ctrl-C} to achieve the same result. 
+
+If your document uses multiple files, the sub-files must be compiled
+using the \verb{-c} compilation option of patoline. Soon, this will
+not be needed as patoline will computes the dependency of your
+document.
+ 
+
 == Structure of the document ==
 
 === Titre ===
+
+To give the title of your document, it should start with something like:
 
 """
 ==============
@@ -28,45 +51,46 @@
 The fields author and institute are optional. 
 This will be improved with more tags possible
 and a flexible way to define the layout
-of the title.
+of the title. The must be at least 10 equal signs. 
 
 === Sections ===
 
-There are $2 × 2 = 4$ ways to do section  in patoline:
+You document may use sections, sub-sections, …
+There are $2 × 2 = 4$ type of section  in patoline:
 
-Numbered absolute section:
+\begin{itemize}
+\item Numbered absolute section:
 """
 == Section niveau 1 ==
 === Section niveau 2 ===
 ...
 """
 
-Unnumbered absolute section:
+\item Unnumbered absolute section:
 """
 -- Section niveau 1 --
 --- Section niveau 2 ---
 ...
 """
 
-Numbered relative section
+\item Numbered relative section
 """
 => Section title
 
 Section text
-
 =<
 """
 
-Unnumbered relative section
+\item Unnumbered relative section
 """
 -> Section title
  
 Section text
- 
 -<
 """
+\end{itemize}
 
-Relative or absolute section have their own advantages: relative section
+Relative or absolute sections have their own advantages: relative section
 can be easily moved at various levels, but they cause syntax error when they are not 
 properly closed.
 
@@ -85,7 +109,30 @@ accessible without entering OCaml section in future versions):
 
 == Text layout ==
 
+Here are standard possibilities for texts:
+\begin{itemize}
+\item \verb{\bold{text}} : write text in \bold{bold}.
+\item \verb{\italic{text}} : write text in \italic{italic}.
+\item \verb{\bold{\italic{text}}} : to combine both.
+\item \verb{\sc{text}} : to write text using \sc{Small Capitals}.
+\item \verb{\verb{text}} : to write \verb{verbatim text} i.e. text which is printed as it is written, except line breaking and spaces. If your verbatim text uses curly braces, you have nothing special to do as long as you curly braces match. Otherwise, you can use \verb{\\\{} or \verb{\\\}} for non matched curly brace and \verb{\\\\} if you want to write a backslash that will be followed by a curly brace or a backslash. However, a backslash followed by other charaters do not need to be escaped. This means that most of the time you do not need to escape anything inside \verb{\verb}. By the way, the above examples, where printed using \verb{\verb{\\\\\\\{}}, \verb{\verb{\\\\\\\}}} and \verb{\verb{\\\\\\\\}}.
+
+
+There is another command if you want fixed spaces and line breaking:
+"""
+       """
+         many lines
+           in verbatim mode
+       """
+""" 
+will produce the line exactly as you entered them (this is used to print what you see !).
+Here there are no escaping mechanism so it is impossible to start a line with \verb{"""} (*"*)
+in verbatim mode. However, 3 closing double quotes have to be at the beginning of the line, other wise their will be printed verbatim. This is what we used above.
+ 
+\end{itemize}
 == Mathematics ==
 
+Mathematics are signaled by \verb{$ a formula in text mode$} or
+\verb{$$ a formula in display mode$$} … FIXME BY REALLY DOING THAT.
 
 \Include{DefaultGrammar}

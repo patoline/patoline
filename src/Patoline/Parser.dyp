@@ -559,7 +559,7 @@ verb_text:
   | verb_text<t> - ("\\"[^'{''}''\\'])<s>  { TC("",s)::t }
   | verb_text<t> - "\\}"  { TC("","}")::t }
   | verb_text<t> - "\\{"  { TC("","{")::t }
-  | verb_text<t> - "{" - verb_text<t'> - "}"  { TC("","}")::t@(TC("","}")::t') }
+  | verb_text<t> - "{" - verb_text<t'> - "}"  { TC("","}")::t'@(TC("","{")::t) }
   | verb_text<t> - ([^'\\''{''}']*)<s>  { TC("", s)::t }
  
 parelt:
