@@ -16,6 +16,8 @@ open PatolineLanguage
 
 let edit_link = ref false
 
+let includeList = ref []
+
 type amble=Noamble | Separate | Main
 
 let apply_options n arg opts = 
@@ -349,6 +351,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
         )
       | `Include ->
 	  incr moduleCounter;
+	  includeList := name :: !includeList;
 	  Printf.bprintf buf
 	    "module TEMP%d=%s.Document(D);;\n open TEMP%d" !moduleCounter name !moduleCounter
   end
@@ -592,25 +595,30 @@ let gen_ml format amble filename from wherename where pdfname =
                     match pre with
 		    None -> ()
 		  | Some(title, at) -> 
-		    Printf.fprintf where "let _ = title D.structure (%a);;\n\n" 
-		      (print_contents parser_pp source) title;
-		    match at with
-			None -> ()
+		    let extra_tags =
+		      let buf = Buffer.create 80 in
+		      match at with
+			None -> ""
 		      | Some(auth,inst) ->
-			Printf.fprintf where "let _ = author D.structure (%a);;\n\n" 
-			  (print_contents parser_pp source) auth;
-			match inst with
-			    None -> ()
-			  | Some(inst) ->
-			    Printf.fprintf where "let _ = institute D.structure (%a);;\n\n" 
-			      (print_contents parser_pp source) inst
+			Printf.bprintf buf "~extra_tags:((\"Author\", string_of_contents %a)::"
+			  (print_contents_buf true parser_pp source) auth;
+			(match inst with
+			  None -> ()
+			| Some(inst) ->
+			  Printf.bprintf buf "(\"Institute\", string_of_contents %a)::"
+			    (print_contents_buf true parser_pp source) inst);
+			Printf.bprintf buf "[])";
+			Buffer.contents buf
+		    in
+		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n" 
+		      extra_tags (print_contents parser_pp source) title;
 		end;
 		output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
                     Main->output_string where (postambule format pdfname)
                   | Noamble->()
-                  | Separate->Printf.fprintf where "\nend\n"
+                  | Separate->Printf.fprintf where "\nlet _ = go_up D.structure\nend\n"
 	    with
 	      | Dyp.Syntax_error when !Parser.deps_only=None ->
 		raise

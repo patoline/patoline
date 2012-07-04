@@ -20,8 +20,11 @@ exception File_not_found of (string*string list)
 let findPath f path=
   let rec findPath f=function
       []->raise (File_not_found (f,path))
-    | h::s when Sys.file_exists (Filename.concat h f)->(Filename.concat h f)
-    | h::s -> (findPath f s)
+    | h::s ->
+      if Sys.file_exists (Filename.concat h f) then
+	Filename.concat h f
+      else
+	findPath f s
   in
     findPath f path
 let findGrammar f=findPath f ("." :: (!grammarsdir))
@@ -865,12 +868,13 @@ verbatim_lines:
 atomelt:
   /* Section */
   | (("="|"-")">")<o> paragraph<title> text<content> (("="|"-")"<")<c>
-    { let content = List.rev content in
+    @{ let content = List.rev content in
       (match content with 
         Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
       | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
-      [Struct(title, o.[0] = '=', Relative content)]
+      [Struct(title, o.[0] = '=', Relative content)],
+	[ Keep_grammar; Local_data dyp.last_local_data ]
     }
   | (("=""="+)|("-""-"+))<o> paragraph<title>
       (("=""="+)|("-""-"+))<c>
@@ -1057,7 +1061,8 @@ grammar: grammar_aux<g>
 	      (* Printf.fprintf stderr "Grammar: %s.\n" grammar_name ; *)
 	      [ Local_data local_data; Parser grammar ]
           with
-            | e ->(Printf.fprintf stderr "No Grammar Loaded (%s). Pwd = %S\n" (filename^gram_ext) (Sys.getcwd ()); [])
+            | e ->(Printf.fprintf stderr "No Grammar Loaded (%s: %s). Pwd = %S\n"
+		     (filename^gram_ext) (Printexc.to_string e) (Sys.getcwd ()); [])
         )
       | _-> []
        in

@@ -42,10 +42,6 @@ module MakeFormat (D:DocumentStructure)
   module Default = Default
   include Default
 
-  let title=Default.title
-  let author=Default.author
-  let institute=Default.institute
-
   let caml x = x
   let displayedFormula=Default.displayedFormula
 

@@ -276,48 +276,32 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
 
-    let title str ?label displayname =
-      let name = string_of_contents displayname in
-      let t0',path=
-        match top !str with
-            Node n,path -> Node { n with
-                                    name=name;
-                                    node_tags=("Structural","")::("InTOC","")::n.node_tags;
-                                    displayname = displayname},path
-          | t,path->Node { name=name;
-                           node_tags=["Structural","";"InTOC",""];
-                           displayname=displayname;
-		           children=IntMap.singleton 1 t;
-                           node_env=(fun x->x);
-                           node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
-                                                       user_positions=y.user_positions });
-                           tree_paragraph=0 },path
-      in
-        str:=follow (t0',[]) (List.map fst (List.rev path))
-
-    let author str name =
-      let name = string_of_contents name in
-      let t0',path=
-        match top !str with
-            Node n,path -> Node { n with node_tags=("Author",name)::n.node_tags }, path
-          | t,path->Node { Document.empty with
-                             node_tags=["Author",name];
-		             children=IntMap.singleton 1 t
-                         },path
-      in
-        str:=follow (t0',[]) (List.map fst (List.rev path))
-
-    let institute str name =
-      let name = string_of_contents name in
-      let t0',path=
-        match top !str with
-            Node n,path -> Node { n with node_tags=("Institute",name)::n.node_tags }, path
-          | t,path->Node { Document.empty with
-                             node_tags=["Institute",name];
-		             children=IntMap.singleton 1 t
-                         },path
-      in
-        str:=follow (t0',[]) (List.map fst (List.rev path))
+    let title str ?label ?(extra_tags=[]) displayname =
+      try
+	let name = string_of_contents displayname in
+	let t0',path=
+          match top !str with
+            Node n,path -> 
+	      if List.mem_assoc "MainTitle" n.node_tags then
+		raise Exit;
+	      Node { n with
+                name=name;
+                node_tags=("MainTitle","")::("Structural","")::("InTOC","")::extra_tags@n.node_tags;
+                displayname = displayname},path
+          | t,path->
+	    Node { name=name;
+                   node_tags=["Structural","";"InTOC",""];
+                   displayname=displayname;
+		   children=IntMap.singleton 1 t;
+                   node_env=(fun x->x);
+                   node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
+                     user_positions=y.user_positions });
+                   tree_paragraph=0 },path
+	in
+        str:=follow (t0',[]) (List.map fst (List.rev path)); true
+      with
+	Exit ->
+	  newStruct D.structure displayname; false
 
     let table_of_contents ?(max_depth=2) () =
       TableOfContents.centered D.structure (fst (top !D.structure)) max_depth

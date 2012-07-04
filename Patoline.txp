@@ -1,0 +1,91 @@
+==========================================
+  Patoline documentation
+------------------------------------------
+  Pierre-Étienne Meunier, Tom Hisrshowitz,
+  Christophe Raffalli, …
+==========================================
+
+
+
+\Caml(let _ = table_of_contents ~max_depth:2 ())
+
+== Introduction ==
+
+== Structure of the document ==
+
+=== Titre ===
+
+"""
+==============
+   Titre
+--------------
+   Author
+--------------
+   Institute
+==============
+"""
+
+The fields author and institute are optional. 
+This will be improved with more tags possible
+and a flexible way to define the layout
+of the title.
+
+=== Sections ===
+
+There are $2 × 2 = 4$ ways to do section  in patoline:
+
+Numbered absolute section:
+"""
+== Section niveau 1 ==
+=== Section niveau 2 ===
+...
+"""
+
+Unnumbered absolute section:
+"""
+-- Section niveau 1 --
+--- Section niveau 2 ---
+...
+"""
+
+Numbered relative section
+"""
+=> Section title
+
+Section text
+
+=<
+"""
+
+Unnumbered relative section
+"""
+-> Section title
+ 
+Section text
+ 
+-<
+"""
+
+Relative or absolute section have their own advantages: relative section
+can be easily moved at various levels, but they cause syntax error when they are not 
+properly closed.
+
+Then, it is easy to add a table of contents:
+
+"""
+\Caml(let _ = table_of_contents ())
+"""
+
+Or if you want to control what depth is printed (this should be
+accessible without entering OCaml section in future versions):
+
+"""
+\Caml(let _ = table_of_contents ~max_depth:4 ())
+"""
+
+== Text layout ==
+
+== Mathematics ==
+
+
+\Include{DefaultGrammar}

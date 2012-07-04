@@ -35,13 +35,9 @@ Typography/Typography.p.cma:
 	$(OCAMLBUILD) -I Typography Typography/Typography.p.cma
 
 
-DefaultGrammar.ml:DefaultGrammar.tgx
-	cp DefaultGrammar.tml DefaultGrammar.ml
-
 DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
-	rm -f patolineDefault.tgx
-	./Main.native --ml --no-grammar --extra-fonts-dir ../Fonts DefaultGrammar.txp
-
+	rm -f _build/DefaultGrammar.tgx
+	$(OCAMLBUILD)  DefaultGrammar.tgx
 
 %.cmx:%.ml
 	$(OCAMLBUILD) $@

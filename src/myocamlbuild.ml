@@ -86,5 +86,13 @@ let _ = dispatch begin function
           Seq[Cmd(S([A"dypgen";A"--no-mli";A"--merge-warning";P(env "%.dyp")]))]
 	end;
 
+      rule "patoline:txp->tgx"
+	~prods:["%.cmx";"%.tml";"%.o";"%.cmi";"%.tgx"]
+	~deps:["%.txp"]
+	(* FIXME: --no-grammar should be computed automatically *)
+	begin fun env _->
+          Seq[Cmd(S([A"./Patoline/Main.native";A"-c";A"--no-grammar";P(env "%.txp")]))]
+	end;
+
   | _ -> ()
 end

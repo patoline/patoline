@@ -637,7 +637,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
               counters=StrMap.add "_structure" (
                 try
                   let (a,b)=StrMap.find "_structure" env.counters in
-                    a,0::b
+                  a,0::b
                 with
                     Not_found -> (-1,[0;0])
               ) env.counters }
