@@ -63,9 +63,11 @@
   (save-excursion
     (let ((cmd-format (read-from-minibuffer "compile: " patoline-compile-format)))
       (setq patoline-compile-format cmd-format)
-      (let ((cmd (split-string-and-unquote (format cmd-format buffer-file-name))))
+      (let ((cmd (split-string-and-unquote (format cmd-format buffer-file-name)))
+	    (dir-name (file-name-directory buffer-file-name)))
 	(select-patoline-program-buffer)
 	(erase-buffer)
+	(cd dir-name)
 	(comint-exec patoline-program-buffer "patoline-process" (car cmd) nil (cdr cmd))
 	(set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)))))
 
@@ -92,6 +94,7 @@
       (let ((cmd (split-string-and-unquote (format cmd-format file-name))))
 	(save-excursion
 	  (select-patoline-program-buffer)
+	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
 		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd))))))))
 
