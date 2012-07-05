@@ -14,6 +14,8 @@
 
 == Usage ==
 
+=== Producing pdf ===
+
 To write a patoline document, you must create a file with the
 extension \verb{.txp}.  This file can be created using any text
 editor. At the moment an emacs mode is provided by the distribution
@@ -31,7 +33,37 @@ using the \verb{-c} compilation option of patoline. Soon, this will
 not be needed as patoline will computes the dependency of your
 document.
  
+=== inverse search ===
 
+inverse search is the possibility to click in the produced pdf document and 
+see the corresponding lines of the source document. 
+
+Patoline implements this with external links in the document (URI).
+To use this feature you must add the compilation option \verb{--edit-link}
+to the \verb{patoline} command.
+
+Unfortunately, the standard \verb{file:filename} URI does not provide
+a way to specify position in a text file. Therefore, Patoline uses its own non standard URI:
+
+    \verb{edit:filename@linuenum@colnum}
+
+Most pdf reader will not understand this external link. Here are what you can do for some readers.
+First in the \verb{Tools} folder of patoline distribution, there is a python script that 
+call \verb{emacsclient} to open the file. Similar script are easy to write for other text editors.  
+
+\begin{itemize}
+\item \verb{xpdf}: add the line \verb{urlCommand "pdfclick '%s'"} to your \verb{.xpdfrc}
+\item \verb{mupdf}: define the environment variable \verb{BROWSER} to point to pdfclick.
+\end{itemize}
+
+=== Forward search ===
+
+This is the reciprocal feature : to show in your pdf viewer the current position in the file you are editing.
+This is currently not implemented in Patoline, but we plan to extend some pdf reader (probably \verb{mupdf})
+to support this feature. 
+
+Another possibility will be by using a planned future OpenGL engine for Patoline instead of a pdf reader.
+ 
 == Structure of the document ==
 
 === Titre ===
