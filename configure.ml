@@ -98,7 +98,7 @@ let _=
     Printf.fprintf out "Patoline.pdf: Patoline.txp\n\tmake -C src doc\n\t./src/_build/Patoline/Main.native --extra-fonts-dir ../Fonts -I src/_build Patoline.txp\n";
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
-      Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
+      Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src/_build --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
 
     Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/_build/quail.el patoline-input.post > patoline-input.el\n";
 
