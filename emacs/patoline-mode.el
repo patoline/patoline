@@ -69,6 +69,18 @@
 	(compilation-start cmd t (lambda (name) "*patoline-interaction*") t)
 	(set-process-sentinel (get-buffer-process patoline-program-buffer) 'patoline-process-sentinel)))))
 
+(defvar patoline-default-env
+  "center"
+  "Patoline default environment")
+
+(defun patoline-env ()
+  "insert environment"
+  (interactive)
+  (let ((env (read-from-minibuffer "insert environment: " patoline-default-env)))
+    (setq patoline-default-env env)
+    (insert "\\begin{" env "}\n") 
+    (save-excursion (insert "\n\\end{" env "}"))))
+
 (defvar patoline-view-format
   "embedded"
   "What to do to view patoline document. Examples [embedded], [xpdf \"%s\"]")
@@ -101,6 +113,7 @@
     (progn
       (define-key patoline-mode-map (kbd "C-c C-c") 'patoline-compile)
       (define-key patoline-mode-map (kbd "C-c C-e") 'patoline-make)
+      (define-key patoline-mode-map (kbd "C-c C-a") 'patoline-env)
       (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-view)
       (define-key patoline-mode-map (kbd "C-c C-l") 'display-program-buffer)
     patoline-mode-map))
@@ -147,6 +160,7 @@
   (make-local-variable 'patoline-view-format)
   (make-local-variable 'patoline-view-buffer)
   (make-local-variable 'patoline-view-process)
+  (make-local-variable 'patoline-default-env)
   (if (featurep 'xemacs)
       (progn (require 'paren)
 	     (paren-set-mode 'blink-paren t))
