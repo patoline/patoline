@@ -466,7 +466,7 @@ let rec draw env_stack mlist=
 		(* avoid collisions above binary symbols *)
 		let left_right_space = 
 		  if bin_left = [] or bin_right = [] then infinity else
-		    min dist0 dist1 (*+. x1' -. x0' *)
+		    dist0 +. dist1 (*+. x1' -. x0'*)
 		in
 		let dist0, dist1 =
 		  if left_right_space <= 0.0 then begin
