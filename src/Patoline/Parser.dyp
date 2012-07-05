@@ -173,7 +173,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let rule = (rule_name, [ Regexp regexp ], "default_priority", []) in
   let action dyp l =
     match l with
-      [ Lexeme_matched _ ] -> rule_constr symbol_value, []
+      [ Lexeme_matched l ] -> rule_constr (l, symbol_value), []
     | _ -> assert false
   in
   let has_utf8 = ref None in
@@ -229,7 +229,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
   let rule = (rule_name, [ Regexp regexp ], "default_priority", []) in
   let action dyp l =
     match l with
-      [ Lexeme_matched _ ] -> rule_constr symbol_value, []
+      [ Lexeme_matched l ] -> rule_constr(symbol_value), []
     | _ -> assert false
   in
   let has_utf8 = ref None in
@@ -719,7 +719,7 @@ var_or_symbol:
       { Var(name) }
   | (num)<n>
       { Num(n) } 
-  | symbol<name>
+  | symbol<_,name>
       { Symbol(name) }
 
 left:
@@ -743,23 +743,25 @@ math:
   | "{" math<a> "}"
       { a } atom
 
-  | "{" addition_like<op> "}"
+  | "{" addition_like<_,op> "}"
       { Symbol op } atom
-  | "{" product_like<op> "}"
+  | "{" product_like<_,op> "}"
       { Symbol op } atom
-  | "{" prefix<op> "}"
+  | "{" prefix<l,op> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	Symbol op } atom
+  | "{" postfix<l,op> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	Symbol op } atom
+  | "{" accent<_,op> "}"
       { Symbol op } atom
-  | "{" postfix<op> "}"
+  | "{" arrow<_,op> "}"
       { Symbol op } atom
-  | "{" accent<op> "}"
+  | "{" connector<_,op> "}"
       { Symbol op } atom
-  | "{" arrow<op> "}"
+  | "{" relation<_,op> "}"
       { Symbol op } atom
-  | "{" connector<op> "}"
-      { Symbol op } atom
-  | "{" relation<op> "}"
-      { Symbol op } atom
-  | "{" quantifier<op> "}"
+  | "{" quantifier<_,op> "}"
       { Symbol op } atom
 
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
@@ -769,13 +771,13 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | quantifier<m> math(<operator)<v> [ relation<r> math(<operator)<e> {r, e} ]?<c> [punctuation]?<p> math(<=operator)<b>
+  | quantifier<_,m> math(<operator)<v> [ relation<_,r> math(<operator)<e> {r, e} ]?<c> [punctuation]?<p> math(<=operator)<b>
       { match c, p with
         | None, None -> Binary(1,Prefix(3,m,false,v),false,SimpleSym "",false,b)
-        | None, Some p -> Binary(0,Prefix(3,m,false,v),true,p,false,b)
+        | None, Some(_,p) -> Binary(0,Prefix(3,m,false,v),true,p,false,b)
         | Some(r,e), None -> Binary(1,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
 	                         false,SimpleSym "",false,b)
-        | Some(r,e), Some p -> Binary(0,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
+        | Some(r,e), Some(_,p) -> Binary(0,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
 	                         true,p,false,b)
       } operator
 
@@ -796,35 +798,35 @@ math:
 
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
-  | math(<=sum)<a> addition_like<op> math(<sum)<b>
+  | math(<=sum)<a> addition_like<_,op> math(<sum)<b>
       { Binary(2, a, false, op, false, b) } sum
   | "\\" - (ident)<macro> - mathargs<args>
     { let macro, args = test_margs dyp macro args in
       MathMacro (macro, args) } atom
-  | prefix<op> math(<sum)<b> 
+  | prefix<_,op> math(<sum)<b> 
       { Prefix(3,op,false,b) } sum
 
-  | math(<sum)<b> postfix<op>
+  | math(<sum)<b> postfix<_,op>
       { Postfix(3,b,true,op) } sum
-  | math(<=accent)<b> accent<op>
+  | math(<=accent)<b> accent<_,op>
       { Postfix(3,b,true,op) } accent
-  | math(<=prod)<a> product_like<op> math(<prod)<b> 
+  | math(<=prod)<a> product_like<_,op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
   | promath<a> math(<prod)<b>
       { if not (layout_space dyp 1 2) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, SimpleSym "", false, b) } prod
-  | math(<=rel)<a> relation<op> math(<rel)<b> 
+  | math(<=rel)<a> relation<_,op> math(<rel)<b> 
       { Binary(1, a, false, op, false, b) } rel
-  | negation<op> math(<=neg)<b>  
+  | negation<_,op> math(<=neg)<b>  
       { Prefix(0,op,false,b) } neg
-  | math(<=conj)<a> connector<op> math(<conj)<b> 
+  | math(<=conj)<a> connector<_,op> math(<conj)<b> 
       { Binary(0, a, false, op, false, b) } conj
-  | math(<=impl)<a> arrow<op> math(<impl)<b> 
+  | math(<=impl)<a> arrow<_,op> math(<impl)<b> 
       { Binary(0, a, false, op, false, b) } impl
-  | math(<=punc)<a> punctuation<op> math(<punc)<b> 
+  | math(<=punc)<a> punctuation<_,op> math(<punc)<b> 
       { Binary(2, a, true, op, false, b) } punc
-  | symbol<name>
+  | symbol<_,name>
       { Symbol(name) } atom
 
 symbol_name:
