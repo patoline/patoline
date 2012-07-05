@@ -547,10 +547,17 @@ let figure str ?(parameters=center) ?(name="") drawing=
                                 Not_found -> -1, [0] in
                             let l0,cou0=try StrMap.find "figure" x.counters with
                                 Not_found -> -1, [0] in
-                            let counters'=StrMap.add "_figure"
-                              (l,match cou with []->[0] | h::_->[h+1]) x.counters in
-                            let counters''=StrMap.add "figure" (l0,match cou0 with []->[0]
-                                                                  | h::_->[h+1]) counters' in
+                            let counters0=
+                              StrMap.add "_figure" (l,if cou=[] then [0] else cou)
+                                (StrMap.add "figure" (l0,if cou0=[] then [0] else cou0) x.counters)
+                            in
+                            let counters'=
+                              (StrMap.add "_figure"
+                                 (l,match cou with h::s->(h+1)::s | _->[0])
+                                 (StrMap.add "figure"
+                                    (l0,match cou0 with h::s->(h+1)::s | _->[0]) counters0)
+                              )
+                            in
                             { x with
                                 names=if name="" then x.names else (
                                   let w=
@@ -629,7 +636,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
               counters=StrMap.add "_structure" (
                 try
                   let (a,b)=StrMap.find "_structure" env.counters in
-                    a,0::b
+                    a,0::(match b with []->[0] | _->b)
                 with
                     Not_found -> (-1,[0;0])
               ) env.counters }
@@ -926,8 +933,11 @@ let flatten env0 fixable str=
       v
   in
 
-  let rec flatten flushes env path tree=
-(*    let level=List.length path in*)
+  let rec flatten flushes env_ path tree=
+    let level=List.length path in
+    let env={ env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
+        env_.counters }
+    in
       match tree with
           Paragraph p -> add_paragraph env p
         | FigureDef f -> (
@@ -1035,7 +1045,9 @@ let tag str tags=
 let update_names env figs user=
   (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
-  let env'={ env with user_positions=user; counters=StrMap.map (fun (l,_)->l,[0]) env.counters; names=
+  let env'={ env with user_positions=user;
+               counters=StrMap.empty;
+               names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
                        if b="_figure" then
