@@ -446,9 +446,9 @@ let rec draw env_stack mlist=
 		  *. (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
 		let op = draw env_stack [Ordinary op] in
 		let box_op = draw_boxes op in
-		let (x0,x1,_,_) = bounding_box_full box_op in
-		let (x0',x1',_,_) = bounding_box_kerning box_op in
-		let m_op = (x0' -. x1') /. 2. in
+		let (x0,_,x1,_) = bounding_box_full box_op in
+		assert (x0 <= x1);
+		let (x0',_,x1',_) = bounding_box_kerning box_op in
 		let dist0 =
 		  if bin_left = [] then 0.0 else
 		  let space, m_r = if no_sp_left then 
@@ -463,21 +463,13 @@ let rec draw env_stack mlist=
 		    else space,m_r in
 		  adjust_space mathsEnv space (m_r +. space) box_op box_right
 		in
-		(* avoid collisions above binary symbols *)
-		let left_right_space = 
-		  if bin_left = [] or bin_right = [] then infinity else
-		    dist0 +. dist1 (*+. x1' -. x0'*)
+		(* computes distance left - right to avoid collisions above binary symbols *)
+		let dist2 = 
+		  if bin_left = [] or bin_right = [] then -. infinity else
+		    let space = space /. 3.0 in
+		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
 		in
-		let dist0, dist1 =
-		  if left_right_space <= 0.0 then begin
-		    if !debug_kerning then
-		      Printf.printf "lr space: %f\n" left_right_space;
-		    if bin_left = [] or no_sp_left then dist0, dist1 -. left_right_space
-		    else if bin_left = [] or no_sp_right then dist0 -. left_right_space, dist1
-		    else dist0 -. left_right_space /. 2., dist1 -. left_right_space /. 2.
-		  end
-		  else dist0, dist1
-		in
+		let dist1 = max dist1 (dist2 -. dist0 -. (x1 -. x0)) in
 		let gl0=
 		  if bin_left = [] then [] else
 		  match glue dist0 dist0 dist0 with
