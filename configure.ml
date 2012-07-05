@@ -100,7 +100,7 @@ let _=
     List.iter (fun txp ->
       Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
 
-    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/quail.el patoline-input.post > patoline-input.el\n";
+    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/_build/quail.el patoline-input.post > patoline-input.el\n";
 
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";

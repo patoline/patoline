@@ -91,7 +91,7 @@ let _ = dispatch begin function
 	~deps:["%.txp"]
 	(* FIXME: --no-grammar should be computed automatically *)
 	begin fun env _->
-          Seq[Cmd(S([A"./Patoline/Main.native";A"-c";A"--no-grammar";P(env "%.txp")]))]
+          Seq[Cmd(S([A"./Patoline/Main.native";A"--ml";A"-c";A"--no-grammar";P(env "%.txp")]))]
 	end;
 
   | _ -> ()
