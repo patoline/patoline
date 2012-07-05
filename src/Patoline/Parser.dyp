@@ -1036,13 +1036,14 @@ grammar: grammar_aux<g>
       let action = match g with
            (* Patch temporaire : on ne charge pas de grammaire s'il n'y a pas de chemin,
               pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
-        Some filename when !PatolineConfig.grammarsdir <> []-> (
+        Some filename when !PatolineConfig.grammarsdir <> [] -> (
 	  try
 	    let grammar_name =
               let name=try findGrammar (filename ^ gram_ext) with _->"" in
               let orig=try findGrammar (filename^".txp") with _->"" in
                 if orig<>"" &&
-                  (name="" ||
+                  filename<>"DefaultGrammar"
+                  && (name="" ||
                       (Unix.stat orig).Unix.st_mtime > (Unix.stat name).Unix.st_mtime ||
                       (Unix.stat Sys.executable_name).Unix.st_mtime > (Unix.stat name).Unix.st_mtime
                   ) then (
