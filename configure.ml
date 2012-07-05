@@ -95,7 +95,7 @@ let _=
     Printf.fprintf out "all:\n\tmake -C src all\n\tmake emacs\n";
     Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc: Patoline.pdf\n\n";
-    Printf.fprintf out "Patoline.pdf: Patoline.txp\n\tmake -C src doc\n\t./src/_build/Patoline/Main.native --extra-fonts-dir ../Fonts -I src/_build --Patoline.txp\n";
+    Printf.fprintf out "Patoline.pdf: Patoline.txp\n\tmake -C src doc\n\t./src/_build/Patoline/Main.native --extra-fonts-dir ../Fonts -I src/_build Patoline.txp\n";
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
       Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;

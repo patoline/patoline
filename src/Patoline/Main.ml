@@ -14,7 +14,8 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 
             ("-I",Arg.String (fun x->
                                 PatolineConfig.local_path:=x::(!PatolineConfig.local_path);
-                                PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir)),
+                                PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir);
+				dirs := ("-I " ^ x) :: !dirs),
              "Adds directories to the search path");
 
             ("--no-grammar",Arg.Unit (fun ()->PatolineConfig.grammarsdir:=[]), "Empty grammar search path");
