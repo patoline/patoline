@@ -113,7 +113,7 @@ Here are standard possibilities for texts:
 \begin{itemize}
 \item \verb{\bold{text}} : write text in \bold{bold}.
 \item \verb{\italic{text}} : write text in \italic{italic}.
-\item \verb{\bold{\italic{text}}} : to combine both.
+\item \verb{\bold{\italic{text}}} : to \bold{\italic{combine both}}.
 \item \verb{\sc{text}} : to write text using \sc{Small Capitals}.
 \item \verb{\verb{text}} : to write \verb{verbatim text} i.e. text which is printed as it is written, except line breaking and spaces. If your verbatim text uses curly braces, you have nothing special to do as long as you curly braces match. Otherwise, you can use \verb{\\\{} or \verb{\\\}} for non matched curly brace and \verb{\\\\} if you want to write a backslash that will be followed by a curly brace or a backslash. However, a backslash followed by other charaters do not need to be escaped. This means that most of the time you do not need to escape anything inside \verb{\verb}. By the way, the above examples, where printed using \verb{\verb{\\\\\\\{}}, \verb{\verb{\\\\\\\}}} and \verb{\verb{\\\\\\\\}}.
 

@@ -454,19 +454,19 @@ let rec draw env_stack mlist=
 		  let space, m_r = if no_sp_left then 
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
 			(1.5 *. abs_float(x0 -. x0')), m_l
-		    else space,m_op in
+		    else space,m_l in
 		  adjust_space mathsEnv space (m_r +. space) box_left box_op
 		in
 		let dist1 =
 		  if bin_right= [] then 0.0 else
 		  let space, m_r = if no_sp_right then 1.5 *. abs_float(x1 -. x1'), m_r
-		    else space,m_op in
+		    else space,m_r in
 		  adjust_space mathsEnv space (m_r +. space) box_op box_right
 		in
 		(* avoid collisions above binary symbols *)
 		let left_right_space = 
 		  if bin_left = [] or bin_right = [] then infinity else
-		    dist0 +. dist1 +. x1' -. x0' 
+		    min dist0 dist1 (*+. x1' -. x0' *)
 		in
 		let dist0, dist1 =
 		  if left_right_space <= 0.0 then begin
