@@ -117,6 +117,7 @@ let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
 let default_paragraph_options = { center_paragraph = false; indent_paragraph = true; }
 let sParagraph c = Paragraph(default_paragraph_options, c)
+let niParagraph c = Paragraph({default_paragraph_options with indent_paragraph = false}, c)
 
 let comment_depth = ref 0 let push_comment () = incr comment_depth
 let caml_depth = ref 0 let push_caml () = incr caml_depth
@@ -177,7 +178,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   in
   let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
-    [Ignore; sParagraph
+    [niParagraph
       [FC ("", false, Binary(0, Symbol symbol_value, false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
        let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
@@ -233,7 +234,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
   in
   let has_utf8 = ref None in
   let elt = if not local_data.verbose then [Ignore] else
-    [Ignore; sParagraph
+    [niParagraph
       [FC ("", false, Binary(0, Symbol (CamlSym ("(fun x y -> List.flatten (Maths.multi_glyphs (" ^ symbol_value ^ ") x y))")), false, SimpleSym "⇐", false,
       List.fold_right (fun s acc ->
        let utflen = try CamomileLibrary.UTF8.validate s; CamomileLibrary.UTF8.length s
@@ -270,7 +271,7 @@ let add_combining_symbol local_data symbol macro =
     | _ -> assert false
   in
   let elt = if not local_data.verbose then [Ignore] else
-    [Ignore; sParagraph
+    [niParagraph
       [FC ("", false, Binary(0, MathMacro(macro, [Var("x")]), false, SimpleSym "⇐", false,
         	    Symbol (SimpleSym (String.escaped ("\\"^macro)))))]]
   in
