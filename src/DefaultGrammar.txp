@@ -18,8 +18,8 @@
 \Add_right{ \} }(List.map (MathFonts.asana "left_curly_brace") [95;3355;3356;3357])
 \Add_left{ [ }(List.map (MathFonts.asana "left_square_bracket") [61;3340;3341;3342])
 \Add_right{ ] }(List.map (MathFonts.asana "right_square_bracket") [63;3343;3344;3345])
-\Add_left{ \langle < 〈}(List.map (MathFonts.asana "left_angle") [3239;3240;3241])
-\Add_right{ \rangle > 〉}(List.map (MathFonts.asana "left_angle") [3226;3227;3228])
+\Add_left{ \langle < 〈}(List.map (MathFonts.asana "left_angle") [3239;3240;3341])
+\Add_right{ \rangle > 〉}(List.map (MathFonts.asana "left_angle") [3226;3227;3328])
 \Add_left{ | }(List.map (MathFonts.asana "left_bar") [749;3316;3317;3318;3319])
 \Add_right{ | }(List.map (MathFonts.asana "right_bar") [749;3316;3317;3318;3319])
 \Add_left{ || }(List.map (MathFonts.asana "left_double_bar") [385;3308;3309;3310;3311])
@@ -57,14 +57,14 @@
 \Add_relation{\lt <}{<}
 \Add_relation{\gt >}{>}
 \Add_relation{… ..}{…}
-\Add_relation{\eqdef =:}(MathFonts.asana "force" 799)
-\Add_relation{\defeq :=}(MathFonts.asana "force" 798)
+\Add_relation{\eqdef =:}(MathFonts.asana "\\eqdef" 799)
+\Add_relation{\defeq :=}(MathFonts.asana "\\defeq" 798)
 
 
-\Add_relation{\succ ≻}(MathFonts.asana "force" 837)
-\Add_relation{\pred ≺}(MathFonts.asana "force" 836)
+\Add_relation{\succ ≻}(MathFonts.asana "\\succ" 837)
+\Add_relation{\pred ≺}(MathFonts.asana "\\prec" 836)
 
-\Add_relation{\realize \force ⊩}(MathFonts.asana "force" 1620)
+\Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 1620)
 \Add_relation{\vdash ⊢ |-}{⊢}
 
 =<
@@ -102,7 +102,7 @@
 => Connector symbols 
 
 \Add_connector{\land &&}{∧}
-\Add_connector{\restriction ↾}(MathFonts.euler "restriction" 248)
+\Add_connector{\restriction ↾}(MathFonts.euler "↾" 248)
 \Add_connector{\lor}{∨}
 \Add_negation{\neg ¬}{¬}
 
@@ -116,12 +116,12 @@
 \Add_arrow{<- \impliedBy \leftarrow ←}{←}
 \Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
-\Add_arrow{|-> \mapsto ↦}(MathFonts.euler "mapsto" 243)
+\Add_arrow{|-> \mapsto ↦}(MathFonts.euler "↦" 243)
 \Add_arrow{<-| \mapsfrom ↤}{↤}
 (*\Add_arrow{\epi ->> ↠}{↠}*)
 (*\Add_arrow{\mono >-> ↣}{↣}*)
-\Add_arrow{\hookrightarrow \inj ↪}(MathFonts.euler "hookrightarrow" 245)
-\Add_arrow{\hookleftarrow \jni ↩}(MathFonts.euler "hookleftarrow" 244)
+\Add_arrow{\hookrightarrow \inj ↪}(MathFonts.euler "↪" 245)
+\Add_arrow{\hookleftarrow \jni ↩}(MathFonts.euler "↩" 244)
 \Add_arrow{\ulharpoon ↼}{↼}
 \Add_arrow{\urharpoon ⇀}{⇀}
 \Add_arrow{\dlharpoon ↽}{↽}
@@ -229,8 +229,8 @@
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
-\Add_symbol{\dtop}(MathFonts.asana "dtop" 1626)
-\Add_symbol{\dbottom \dbot}(MathFonts.asana "dbottom" 1625)
+\Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
+\Add_symbol{\dbottom \dbot}(MathFonts.asana "\\dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
 
 =<
@@ -239,41 +239,41 @@
 
 \Add_symbol{\bbA}(MathFonts.ams "bbA" 66)
 \Add_symbol{\bbB}(MathFonts.ams "bbB" 67)
-\Add_symbol{\bbC ℂ}(MathFonts.ams "bbC" 68)
+\Add_symbol{\bbC ℂ}(MathFonts.ams "ℂ" 68)
 \Add_symbol{\bbD}(MathFonts.ams "bbD" 69)
 \Add_symbol{\bbE}(MathFonts.ams "bbE" 70)
 \Add_symbol{\bbF}(MathFonts.ams "bbF" 71)
 \Add_symbol{\bbG}(MathFonts.ams "bbG" 72)
-\Add_symbol{\bbH ℍ}(MathFonts.ams "bbH" 73)
+\Add_symbol{\bbH ℍ}(MathFonts.ams "ℍ" 73)
 \Add_symbol{\bbI}(MathFonts.ams "bbI" 74)
 \Add_symbol{\bbJ}(MathFonts.ams "bbJ" 75)
 \Add_symbol{\bbK}(MathFonts.ams "bbK" 76)
 \Add_symbol{\bbL}(MathFonts.ams "bbL" 77)
 \Add_symbol{\bbM}(MathFonts.ams "bbM" 78)
-\Add_symbol{\bbN ℕ}(MathFonts.ams "bbN" 79)
+\Add_symbol{\bbN ℕ}(MathFonts.ams "ℕ" 79)
 \Add_symbol{\bbO}(MathFonts.ams "bbO" 80)
-\Add_symbol{\bbP ℙ}(MathFonts.ams "bbP" 81)
-\Add_symbol{\bbQ ℚ}(MathFonts.ams "bbQ" 82)
-\Add_symbol{\bbR ℝ}(MathFonts.ams "bbR" 83)
-\Add_symbol{\bbS}(MathFonts.ams "bbS" 84)
-\Add_symbol{\bbT}(MathFonts.ams "bbT" 85)
-\Add_symbol{\bbU}(MathFonts.ams "bbU" 86)
-\Add_symbol{\bbV}(MathFonts.ams "bbV" 86)
-\Add_symbol{\bbW}(MathFonts.ams "bbW" 88)
-\Add_symbol{\bbX}(MathFonts.ams "bbX" 89)
-\Add_symbol{\bbY}(MathFonts.ams "bbY" 90)
-\Add_symbol{\bbZ ℤ}(MathFonts.ams "bbZ" 91)
+\Add_symbol{\bbP ℙ}(MathFonts.ams "ℙ" 81)
+\Add_symbol{\bbQ ℚ}(MathFonts.ams "ℚ" 82)
+\Add_symbol{\bbR ℝ}(MathFonts.ams "ℝ" 83)
+\Add_symbol{\bbS}(MathFonts.ams "\\bbS" 84)
+\Add_symbol{\bbT}(MathFonts.ams "\\bbT" 85)
+\Add_symbol{\bbU}(MathFonts.ams "\\bbU" 86)
+\Add_symbol{\bbV}(MathFonts.ams "\\bbV" 86)
+\Add_symbol{\bbW}(MathFonts.ams "\\bbW" 88)
+\Add_symbol{\bbX}(MathFonts.ams "\\bbX" 89)
+\Add_symbol{\bbY}(MathFonts.ams "\\bbY" 90)
+\Add_symbol{\bbZ ℤ}(MathFonts.ams "ℤ" 91)
 
 =<
 
 => Operators 
 
-\Add_limits_operator{∑ \sum}(List.map (MathFonts.euler "sum") [778;779])
-\Add_limits_operator{∏ \prod}(List.map (MathFonts.euler "product") [780;781])
-\Add_limits_operator{∐ \coprod}(List.map (MathFonts.euler "coproduct") [784;785])
-\Add_operator{∫ \int}(List.map (MathFonts.euler "integral") [782;783])
-\Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "inter") [1766;1768])
-\Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "union") [1765;1767])
+\Add_limits_operator{∑ \sum}(List.map (MathFonts.euler "∑") [778;779])
+\Add_limits_operator{∏ \prod}(List.map (MathFonts.euler "∏") [780;781])
+\Add_limits_operator{∐ \coprod}(List.map (MathFonts.euler "∐") [784;785])
+\Add_operator{∫ \int}(List.map (MathFonts.euler "∫") [782;783])
+\Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "⋂") [1766;1768])
+\Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "⋃") [1765;1767])
 
 =<
 

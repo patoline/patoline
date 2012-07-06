@@ -67,8 +67,8 @@ module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"]
           "module Format="^format^".Format(D);;\nopen Format;;\nopen DefaultFormat.MathsFormat;;\n"
       )
 
-let postambule format outfile = Printf.sprintf "
-module Out=%s.Output(Pdf)
+let postambule format driver outfile = Printf.sprintf "
+module Out=%s.Output(%s)
 
 let _ = 
   let filename=\"%s\" in
@@ -98,7 +98,7 @@ let _ =
   in
   let env0=defaultEnv in
   resolve 0 env0
-" format outfile
+" format driver outfile
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)
@@ -570,7 +570,7 @@ and output_list parser_pp from where no_indent lvl docs =
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 
-let gen_ml format amble filename from wherename where pdfname =
+let gen_ml format driver amble filename from wherename where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
@@ -616,7 +616,7 @@ let gen_ml format amble filename from wherename where pdfname =
 		output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
-                    Main->output_string where (postambule format pdfname)
+                    Main->output_string where (postambule format driver pdfname)
                   | Noamble->()
                   | Separate->Printf.fprintf where "\nlet _ = go_up D.structure\nend\n"
 	    with

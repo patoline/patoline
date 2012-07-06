@@ -5,11 +5,13 @@ let run = ref true
 let cmd_line = ref []
 let format=ref "DefaultFormat"
 let cmd_line_format = ref false
+let cmd_line_driver= ref false
 let dirs = ref []
 let package_list = ref ["Typography"]
 let no_grammar=ref false
 let deps_only=ref false
 let extras = ref ""
+let driver = ref "Pdf"
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
 
             ("-I",Arg.String (fun x->
@@ -21,6 +23,8 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("--no-grammar",Arg.Unit (fun ()->PatolineConfig.grammarsdir:=[]), "Empty grammar search path");
             ("--format",Arg.String
               (fun f ->format := Filename.basename f; cmd_line_format := true), "Change the default document format");
+            ("--driver",Arg.String
+               (fun f ->driver := f; cmd_line_driver := true), "Change the default document driver");
             ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
             ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
             ("-package",Arg.String (fun s-> package_list:= s::(!package_list)), "Use package given as argument when compiling");
@@ -42,12 +46,17 @@ let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (bin
 let read_options_from_source_file fread =
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let add_compilation_option = Str.regexp "^[ \t]*(\\*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ \t]*\\*)[ \t\r]*$" in
   let add_package = Str.regexp "^[ \t]*(\\*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ \t]*\\*)[ \t\r]*$" in
   let rec pump () =
     let s = input_line fread in
     if Str.string_match set_format s 0 then (
       if not !cmd_line_format then format := Str.matched_group 1 s;
+      pump ()
+    ) 
+    else if Str.string_match set_driver s 0 then (
+      if not !cmd_line_driver then driver := Str.matched_group 1 s;
       pump ()
     ) 
     else if Str.string_match add_compilation_option s 0 then (dirs := (Str.matched_group 1 s)::(!dirs); pump ())
@@ -74,7 +83,7 @@ let rec process_each_file =
           let pos = pos_in fread in
           Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
           seek_in fread pos);
-      Generateur.gen_ml !format !amble f fread (mlname_of f) where_ml (pdfname_of f);
+      Generateur.gen_ml !format !driver !amble f fread (mlname_of f) where_ml (pdfname_of f);
     );
     Printf.fprintf stderr "ML generated.\n" ; flush stderr ;
     close_out where_ml;

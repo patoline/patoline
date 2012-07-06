@@ -36,7 +36,6 @@ Typography/Typography.p.cma:
 
 
 DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
-	rm -f _build/DefaultGrammar.tgx
 	$(OCAMLBUILD)  DefaultGrammar.tgx
 
 %.cmx:%.ml
@@ -51,6 +50,8 @@ DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
 	cd _build; $(CAMLOPT) -o $*.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl $*.tml
 	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
 	ln -sf _build/$*.pdf .
+
+
 
 DefaultGrammar.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.txp
 	cp DefaultGrammar.txp _build

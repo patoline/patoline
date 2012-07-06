@@ -87,8 +87,8 @@ let _ = dispatch begin function
 	end;
 
       rule "patoline:txp->tgx"
-	~prods:["%.cmx";"%.tml";"%.o";"%.cmi";"%.tgx"]
-	~deps:["%.txp";"Patoline/Main.native"]
+	~prods:["%.tml";"%.tgx"]
+	~deps:["%.txp";"./Patoline/Main.native"]
 	(* FIXME: --no-grammar should be computed automatically *)
 	begin fun env _->
           Seq[Cmd(S([A"./Patoline/Main.native";A"-c";A"--no-grammar";P(env "%.txp")]))]

@@ -20,5 +20,6 @@ Fonts/CFF
 Fonts
 Output/OutputPaper
 Output/OutputDrawing
-Pdf
+Output/Drivers/Pdf
+Output/Drivers/SVG
 Diagrams

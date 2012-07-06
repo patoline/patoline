@@ -1046,7 +1046,7 @@ let update_names env figs user=
   (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
   let env'={ env with user_positions=user;
-               counters=StrMap.empty;
+               counters=StrMap.map (fun (l,_)->(l,[])) env.counters;
                names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
