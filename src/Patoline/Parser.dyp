@@ -207,7 +207,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
 (*	   Printf.fprintf stderr "(\"%s\" ?%s)\n" s' s;*)
 	   Printf.fprintf (Lazy.force quail) "(\"%s\" ?%s)\n" (String.escaped s') s)) symbols
   end;
-  elt, [Add_rules[rule, action]; Local_data local_data]
+  (elt, [rule, action]), [Local_data local_data]
 
 let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
@@ -259,7 +259,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
 (*	   Printf.fprintf stderr "(\"%s\" ?%s)\n" s' s;*)
 	   Printf.fprintf (Lazy.force quail) "(\"%s\" ?%s)\n" (String.escaped s') s)) symbols
   end;
-  elt, [Add_rules[rule, action]; Local_data local_data]
+  (elt, [rule, action]), [Local_data local_data]
 
 let add_combining_symbol local_data symbol macro =
   let rule = ("math", [ Non_ter ("var_or_symbol", No_priority);
@@ -275,7 +275,7 @@ let add_combining_symbol local_data symbol macro =
       [FC ("", false, Binary(0, MathMacro(macro, [Var("x")]), false, SimpleSym "⇐", false,
         	    Symbol (SimpleSym (String.escaped ("\\"^macro)))))]]
   in
-  elt, [Add_rules[rule, action]]
+  (elt, [rule, action]), []
 
 let gram_ext = ".tgx"
 
@@ -870,13 +870,13 @@ verbatim_lines:
 
 atomelt:
   /* Section */
-  | (("="|"-")">")<o> paragraph<title> text<content> (("="|"-")"<")<c>
+  | (("="|"-")">")<o> paragraph<title> text<content,rules> (("="|"-")"<")<c>
     @{ let content = List.rev content in
       (match content with 
         Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
       | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
-      [Struct(title, o.[0] = '=', Relative content)],
+      ([Struct(title, o.[0] = '=', Relative content)],rules),
 	[ Keep_grammar; Local_data dyp.last_local_data ]
     }
   | (("=""="+)|("-""-"+))<o> paragraph<title>
@@ -884,16 +884,16 @@ atomelt:
     { let level = String.length o in
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
-      [Struct(title,  o.[0] = '=', Absolute (level - 1))] }
+      [Struct(title,  o.[0] = '=', Absolute (level - 1))], [] }
   | "\"\"\"" [ (ident) ]?<lang> NEWLINE verbatim_lines<ls> - "\"\"\""
-    { [Verbatim(lang, List.rev ls)] }
+    { [Verbatim(lang, List.rev ls)], [] }
   /* Code Caml */
   | "\\Caml" CAML<s,e,txps>
     { let ld, gr = get_local_data_and_grammar dyp in
-      [Caml(ld,gr,s,e,txps)] }
+      [Caml(ld,gr,s,e,txps)], [] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
-    { [m] }
+    { [m], [] }
   /* Symbol extension */
   | "\\Add_relation" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
@@ -952,32 +952,25 @@ atomelt:
   | "\\Add_combining" "{" (utf8_char)<symbol> "}" "{" MACRO<m> "}"
     @{ add_combining_symbol dyp.local_data symbol m }
   | "\\Configure_word_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
-    @{ [Ignore], 
+    @{ ([Ignore], []), 
        [Local_data { dyp.local_data with word_macros = (w, o)::dyp.local_data.word_macros }]
      }
   | "\\Configure_math_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
-    @{ [Ignore], 
+    @{ ([Ignore], []), 
        [Local_data { dyp.local_data with math_macros = (w, o)::dyp.local_data.math_macros }]
      }
   | "\\Configure_paragraph_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
-    @{ [Ignore], 
+    @{ ([Ignore], []), 
        [Local_data { dyp.local_data with par_macros = (w, o)::dyp.local_data.par_macros }]
      }
   | "\\Configure_environment" "{" symbol_name<w> "}" "{" macro_options<o> "}"
-    @{ [Ignore], 
+    @{ ([Ignore], []), 
        [Local_data { dyp.local_data with env_macros = (w, o)::dyp.local_data.env_macros }]
      }
-  | "\\Save_Grammar"
-    { let oc = open_out_bin (!out_grammar_name^gram_ext) in
-      let ld = { dyp.local_data with verbose = false } in
-      Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
-      close_out oc;
-      [Ignore]
-    } 
-  | "$$" math<m> "$$" { [Math(get_pos_as_string dyp 1, m)] }
+  | "$$" math<m> "$$" { [Math(get_pos_as_string dyp 1, m)], [] }
   | "\\Verbose_Changes" 
-    @{ [Ignore], [Local_data { dyp.local_data with verbose = true }] }
-  | "\\cr" { [Ignore] }
+    @{ ([Ignore], []), [Local_data { dyp.local_data with verbose = true }] }
+  | "\\cr" { [Ignore], [] }
 
 
 title:
@@ -988,21 +981,33 @@ title:
   ("=========="('='*))
   { title,at }
 
-text: { [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}
+ntext_applied:
+    ntext<t,rs> "\\Save_Grammar"
+   @{ (t:'a list), [Add_rules rs; Local_data dyp.last_local_data ] }
 
 ntext:
   | paragraph<p> 
      @{ 
        let _,_,m = layout_info dyp 1 1 in
        let options = { default_paragraph_options with center_paragraph = m >= 4 } in
-       [Paragraph(options, p)], [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | atomelt<p> 
-     @{ p, [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | ntext<t> atomelt<p>
-     @{ p@t, [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | ntext<t> paragraph<p>
+       ([Paragraph(options, p)], []), [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | atomelt<t,r> 
+     @{ (t, r), [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | ntext_applied<p> 
+    @{
+      if !out_grammar_name <> "" then begin
+	let oc = open_out_bin (!out_grammar_name^gram_ext) in
+	let ld = { dyp.last_local_data with verbose = false } in
+	Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
+	close_out oc;
+      end;
+      (p,[]), [ Keep_grammar; Local_data dyp.last_local_data ]
+    } 
+  | ntext<t,rs> atomelt<p,r>
+     @{ (p@t,r@rs), [ Keep_grammar; Local_data dyp.last_local_data ] }
+  | ntext<t,rs> paragraph<p>
      @{ 
-       let _,_,m = layout_info dyp 2 2 in
+       (let _,_,m = layout_info dyp 2 2 in
        let opt = { default_paragraph_options with center_paragraph = m >= 4 } in
        (match t with 
        | (Paragraph _::_) ->
@@ -1012,7 +1017,7 @@ ntext:
           if not (layout_parskip dyp 1 2) then
 	    Paragraph({opt with indent_paragraph = false},p)::t
 	  else 
-            Paragraph(opt,p)::t)
+            Paragraph(opt,p)::t), rs)
        , [ Keep_grammar; Local_data dyp.last_local_data ]}
 
 grammar_aux:
@@ -1073,6 +1078,8 @@ grammar: grammar_aux<g>
        (), action
     }
 
+text: { [], [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}
+
 main:
-  | grammar [title]?<p> text<t> eof
+  | grammar [title]?<p> text<t,_> eof
     { (p, List.rev t) }
