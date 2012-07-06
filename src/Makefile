@@ -5,7 +5,7 @@ FORMAT=$(shell ls Format/*.mllib)
 
 all:native byte prof
 
-native:Main.native DefaultGrammar.tgx proof.native
+native:Main.native DefaultGrammar.cmx proof.native
 byte:Typography/Typography.cma $(FORMAT:.mllib=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
@@ -35,8 +35,8 @@ Typography/Typography.p.cma:
 	$(OCAMLBUILD) -I Typography Typography/Typography.p.cma
 
 
-DefaultGrammar.tgx: _build/Patoline/Main.native DefaultGrammar.txp
-	$(OCAMLBUILD)  DefaultGrammar.tgx
+DefaultGrammar.cmx: _build/Patoline/Main.native DefaultGrammar.txp
+	$(OCAMLBUILD) -I Typography -I Format DefaultGrammar.cmx
 
 %.cmx:%.ml
 	$(OCAMLBUILD) $@
