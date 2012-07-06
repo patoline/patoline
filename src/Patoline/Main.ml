@@ -14,6 +14,8 @@ let extras = ref ""
 let driver = ref "Pdf"
 let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
 
+	    ("--extra-hyph-dir",Arg.String (fun x->cmd_line:=("--extra-hyph-dir "^x)::(!cmd_line)), "Adds directories to the hyphenation search path");
+
             ("-I",Arg.String (fun x->
                                 PatolineConfig.local_path:=x::(!PatolineConfig.local_path);
                                 PatolineConfig.grammarsdir:=x::(!PatolineConfig.grammarsdir);

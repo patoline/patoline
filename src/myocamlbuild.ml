@@ -87,7 +87,7 @@ let _ = dispatch begin function
 	end;
 
       rule "patoline:txp->tgx"
-	~prods:["%.tml";"%.tgx"]
+	~prods:["%.tml";"%.tgx";".cmx";".o";".cmi"]
 	~deps:["%.txp";"./Patoline/Main.native"]
 	(* FIXME: --no-grammar should be computed automatically *)
 	begin fun env _->
