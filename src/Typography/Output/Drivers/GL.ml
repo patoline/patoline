@@ -13,6 +13,7 @@ let init_gl width height =
     GlClear.clear [`color; `depth];
     Gl.enable `depth_test;
     Gl.enable `polygon_smooth;
+    Gl.enable `line_smooth;
     GlMisc.hint `polygon_smooth `nicest;
     GlFunc.depth_func `lequal
 
@@ -84,12 +85,51 @@ let output ?(structure:structure={name="";displayname=[];
 	    Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
 
 	  Printf.fprintf stderr "\n") lines; *)
+	let r,g,b = match g.glyph_color with
+	    RGB{red = r; green=g; blue=b;} -> r,g,b
+	in
 	flush stderr;
 	GlMat.load_identity ();
 	GlMat.translate3 (x, y, 0.0);
 	GlMat.scale3 (s, s, s);
-	GlDraw.color (0.0, 0.0, 0.0);
+	GlDraw.color (r,g,b);
 	draw_glyph ()
+    | Path(param, beziers) ->
+      GlMat.load_identity ();
+      (match param.fillColor with
+	None -> ()
+      | Some RGB{red = r; green=g; blue=b;} ->
+	GlDraw.color (r,g,b);
+	GlDraw.line_width (param.lineWidth /. !zoom);
+	List.iter (fun line ->
+	  let line = 
+	    List.flatten (Array.to_list (Array.map (fun b ->
+	      List.map
+		(fun (xa,ya) -> xa.(0), ya.(0), 0.0)
+		(Bezier.subdivise (1e-2 *. !zoom) b)) line))
+	  in
+	  GluTess.tesselate [line];
+	) beziers);
+      (match param.strokingColor with
+	None -> ()
+      | Some RGB{red = r; green=g; blue=b;} ->
+	GlDraw.color (r,g,b);
+	List.iter (fun line ->
+	  GlDraw.begins (if param.close then `line_loop else `line_strip);
+	  let first = ref true in
+	  Array.iter (fun b ->
+	    List.iter
+	      (fun (xa,ya) ->
+		    (*	      if !first then Printf.fprintf stderr "(%f, %f) " xa.(0) ya.(0);*)
+		if !first then (GlDraw.vertex2 (xa.(0), ya.(0)); first := false);
+		    (*	      Printf.fprintf stderr "(%f, %f) " xa.(Array.length xa -1) *)
+              	(*	ya.(Array.length ya - 1);*)
+		GlDraw.vertex2 (xa.(Array.length xa -1), ya.(Array.length ya - 1)))
+	      (Bezier.subdivise (1e-2 *. !zoom) b))
+	    line;
+	      (*	Printf.fprintf stderr "\n"; flush stderr;*)
+	  GlDraw.ends ();
+	) beziers);
     | _ -> ())
       pages.(page).pageContents;
 
