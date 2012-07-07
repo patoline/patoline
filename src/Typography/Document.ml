@@ -935,24 +935,24 @@ let flatten env0 fixable str=
 
   let rec flatten flushes env_ path tree=
     let level=List.length path in
-    let env={ env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
-        env_.counters }
-    in
-      match tree with
-          Paragraph p -> add_paragraph env p
-        | FigureDef f -> (
-            let env1=f.fig_env env in
-            let n=IntMap.cardinal !figures in
-              fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
-              figures:=IntMap.add n (f.fig_contents env1) !figures;
-              append buf frees (BeginFigure n);
-              f.fig_post_env env env1
-          )
-        | Node s-> (
-            s.tree_paragraph <- List.length !paragraphs;
-            let flushes'=ref [] in
-            let flat_children k a (is_first,indent, env1)=match a with
-                Paragraph p->(
+    match tree with
+        Paragraph p -> add_paragraph env_ p
+      | FigureDef f -> (
+          let env1=f.fig_env env_ in
+          let n=IntMap.cardinal !figures in
+          fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
+          figures:=IntMap.add n (f.fig_contents env1) !figures;
+          append buf frees (BeginFigure n);
+          f.fig_post_env env_ env1
+        )
+      | Node s-> (
+          let env={ env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
+              env_.counters }
+          in
+          s.tree_paragraph <- List.length !paragraphs;
+          let flushes'=ref [] in
+          let flat_children k a (is_first,indent, env1)=match a with
+              Paragraph p->(
                   let env2=flatten flushes' (p.par_env env1) (k::path) (
                     Paragraph { p with par_contents=
                         (if is_first then (
