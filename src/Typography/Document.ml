@@ -199,7 +199,7 @@ and 'a content=
   | BFix of ('a environment->'a box list)     (** Une liste de boîtes dépendante des positions des boîtes [User] *)
   | C of ('a environment->'a content list)    (** Le symmétrique de [C] pour [BFix]. On peut implémenter la paresse avec ça, par exemple. *)
   | CFix of ('a environment->'a content list) (** Pareil que [BFix], mais avec du contenu au lieu des boîtes *)
-  | T of string*'a box list option ref        (** Un texte simple *)
+  | T of string*('a box list IntMap.t option) ref        (** Un texte simple *)
   | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
   | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
   | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
@@ -827,6 +827,14 @@ let append buf nbuf x=
     buf:=arr;
     incr nbuf
 
+let concat buf1 nbuf1 buf2 nbuf2=
+  for i=0 to nbuf2-1 do
+    append buf1 nbuf1 buf2.(i)
+  done
+
+let mappend m x=
+  let a=try fst (IntMap.max_binding m) with Not_found -> -1 in
+  IntMap.add (a+1) x m
 
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
@@ -845,33 +853,43 @@ let boxify buf nbuf fixable env0 l=
     | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
     | (BFix b)::s->(fixable:=true; List.iter (append buf nbuf) (b env); boxify env s)
     | Env f::s->boxify (f env) s
-    | (T (t,_))::s->(
-        let rec cut_str only_spaces needs_glue gl i0 i=
-          if i>=String.length t then (
-            if only_spaces then append buf nbuf gl;
-            if i0<>i then (
-              if needs_glue then append buf nbuf gl;
-              List.iter (append buf nbuf)
-                (gl_of_str env (String.sub t i0 (i-i0)))
+    | (T (t,cache))::s->(
+        match !cache with
+	    Some l ->(
+              IntMap.iter (fun _->List.iter (append buf nbuf)) l;
+              boxify env s
             )
-          ) else (
-            if is_space (UTF8.look t i) then (
-              let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
-                if i0<>i && needs_glue then append buf nbuf gl;
-                List.iter (append buf nbuf)
-                  (gl_of_str env (String.sub t i0 (i-i0)));
-                cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
-            ) else (
-              cut_str false needs_glue gl i0 (UTF8.next t i)
+          | None ->(
+              (* let buf=ref [|Empty|] in *)
+              (* let nbuf=ref 0 in *)
+              let l=ref IntMap.empty in
+              let rec cut_str only_spaces needs_glue gl i0 i=
+                if i>=String.length t then (
+                  if only_spaces then l:=mappend !l [gl];
+                  if i0<>i then (
+                    if needs_glue then l:=mappend !l [gl];
+                    l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)))
+                  )
+                ) else (
+                  if is_space (UTF8.look t i) then (
+                    let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
+                    if i0<>i && needs_glue then l:=mappend !l [gl];
+                    l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)));
+                    cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
+                  ) else (
+                    cut_str false needs_glue gl i0 (UTF8.next t i)
+                  )
+                )
+              in
+              cut_str true false (snd !rStdGlue) (UTF8.first t) (UTF8.first t);
+              cache:=Some !l;
+              IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
+              boxify env s
             )
-          )
-        in
-          cut_str true false (snd !rStdGlue) (UTF8.first t) (UTF8.first t);
-          boxify env s
       )
     | FileRef (file,off,size)::s -> (
-        let i=try 
-	  StrMap.find file !sources 
+        let i=try
+	  StrMap.find file !sources
         with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i) 
         in
         let buffer=String.create size in
