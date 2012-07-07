@@ -7,22 +7,26 @@ open Util
 let cur_page = ref 0
 
 let init_gl width height =
-    GlDraw.shade_model `smooth;
+(*    GlDraw.shade_model `smooth;*)
     GlClear.color (1.0, 1.0, 1.0);
     GlClear.depth 1.0;
     GlClear.clear [`color; `depth];
     Gl.enable `depth_test;
-    GlFunc.depth_func `lequal;
-    GlMisc.hint `perspective_correction `nicest
+    Gl.enable `polygon_smooth;
+    GlMisc.hint `polygon_smooth `nicest;
+    GlFunc.depth_func `lequal
 
 let filename x=""
 
+let zoom = ref 1.0
+let dx = ref 0.0
+let dy = ref 0.0
+
+let glyphCache = Hashtbl.create 1001
 
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
-
-  let coord x=x in
 
   let num_pages = Array.length pages in
 
@@ -34,7 +38,11 @@ let output ?(structure:structure={name="";displayname=[];
     GlDraw.viewport 0 0 w h;
     GlMat.mode `projection;
     GlMat.load_identity ();
-    GlMat.ortho (0.,ph*.ratio) (0.,ph) (-1.,1.);
+    let cx = pw /. 2.0 +. !dx in
+    let cy = ph /. 2.0 +. !dy in
+    let rx = (ph *. ratio) /. 2.0 *. !zoom in
+    let ry = ph /. 2.0 *. !zoom in
+    GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
     GlMat.mode `modelview;
     GlMat.load_identity ()
   in
@@ -46,35 +54,70 @@ let output ?(structure:structure={name="";displayname=[];
 
     List.iter (function
       Glyph g ->
-	let x = coord g.glyph_x in
-	let y = coord g.glyph_y  in
-	let s = coord g.glyph_size in
-	let dx = coord (Fonts.glyphWidth g.glyph) /. 1000. *. s in
-	let dy = coord (Fonts.glyph_y1 g.glyph) /. 1000. *. s in
-
+	let x = g.glyph_x in
+	let y = g.glyph_y  in
+	let size = g.glyph_size in
+	let s = 1.   /. 1000. *. size in
 (*	Printf.fprintf stderr "x = %f, y = %f, dx = %f, dy = %f, s = %f\n"
-	  x y dx dy s;*)
+	  x y dx dy size;*)
+
+	let draw_glyph () = 
+	  try
+	    GlList.call (Hashtbl.find glyphCache g.glyph)
+	  with
+	    Not_found ->
+	      let beziers =  Fonts.outlines g.glyph in
+	      let lines = 
+		List.map (fun bs -> 
+		  let bs = List.flatten (List.map (Bezier.subdivise 1e-1) bs) in
+		  List.map (fun (xs, ys) -> (xs.(0),ys.(0),0.0)) bs
+		) beziers 
+	      in
+	      let l = GlList.create `compile_and_execute in
+	      GluTess.tesselate  lines;
+	      GlList.ends ();
+	      Hashtbl.add glyphCache g.glyph l
+	in
+(*	
+	List.iter (fun bs ->
+	  List.iter (fun (x,y,z) -> 
+	    Printf.fprintf stderr "(%f,%f,%f) " x y z) bs;
+
+	  Printf.fprintf stderr "\n") lines; *)
+	flush stderr;
 	GlMat.load_identity ();
 	GlMat.translate3 (x, y, 0.0);
+	GlMat.scale3 (s, s, s);
 	GlDraw.color (0.0, 0.0, 0.0);
-	GlDraw.begins `quads;
-	GlDraw.vertex3 (0.0,  0.0, 0.0);
-	GlDraw.vertex3 (dx,  0.0, 0.0);
-	GlDraw.vertex3 (dx,  dy, 0.0);
-	GlDraw.vertex3 (0.0, dy, 0.0);
-	GlDraw.ends ();
+	draw_glyph ()
     | _ -> ())
       pages.(page).pageContents;
 
     Glut.swapBuffers ()
   in
 
+  let redraw () =
+    Glut.reshapeWindow (Glut.get Glut.WINDOW_WIDTH)  (Glut.get Glut.WINDOW_HEIGHT);
+    Glut.postRedisplay ()
+  in
+
   let keyboard_cb ~key ~x ~y =
     match key with
     | 27 (* ESC *) -> exit 0
-    | 110 | 32 -> if !cur_page < num_pages - 1 then incr cur_page; draw_gl_scene ()
-    | 112 | 8 -> if !cur_page > 0 then decr cur_page; draw_gl_scene ()
+    | 110 | 32 -> if !cur_page < num_pages - 1 then incr cur_page; Glut.postRedisplay ()
+    | 112 | 8 -> if !cur_page > 0 then decr cur_page; Glut.postRedisplay ()
+    | 43 -> zoom := !zoom /. 1.1; redraw ();
+    | 45 -> zoom := !zoom *. 1.1; redraw ();
     | n -> Printf.fprintf stderr "Unbound key: %d\n" n; flush stderr      
+  in
+
+  let special_cb ~key ~x ~y =
+    match key with
+    | Glut.KEY_DOWN -> dy := !dy -. 5.; redraw ();
+    | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
+    | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
+    | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
+    | _ -> ();
   in
 
   let main () =
@@ -83,11 +126,12 @@ let output ?(structure:structure={name="";displayname=[];
 	height = 480 
     in
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayMode ~alpha:true ~depth:true ~double_buffer:true ();
+    Glut.initDisplayMode ~multisample:true ~alpha:true ~depth:true ~double_buffer:true ();
     Glut.initWindowSize width height;
     ignore (Glut.createWindow "O'Caml OpenGL Lesson 2");
     Glut.displayFunc draw_gl_scene;
     Glut.keyboardFunc keyboard_cb;
+    Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
     init_gl width height;
     Glut.mainLoop ()
