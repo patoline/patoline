@@ -998,7 +998,11 @@ title:
   ("=========="('='*))
   { title,at }
 
-ntext_applied:
+ntext_apply_grammar:
+    ntext<t,rs> "\\Build_Grammar"
+   @{ (t:'a list), [Add_rules rs; Local_data dyp.last_local_data ] }
+
+ntext_save_grammar:
     ntext<t,rs> "\\Save_Grammar"
    @{ (t:'a list), [Add_rules rs; Local_data dyp.last_local_data ] }
 
@@ -1010,7 +1014,9 @@ ntext:
        ([Paragraph(options, p)], []), [ Keep_grammar; Local_data dyp.last_local_data ] }
   | atomelt<t,r> 
      @{ (t, r), [ Keep_grammar; Local_data dyp.last_local_data ] }
-  | ntext_applied<p> 
+  | ntext_apply_grammar<t> 
+     @{ (t, []), [ Keep_grammar; Local_data dyp.last_local_data ] }     
+  | ntext_save_grammar<t> 
     @{
       if !out_grammar_name <> "" then begin
 	let oc = open_out_bin (!out_grammar_name^gram_ext) in
@@ -1018,7 +1024,7 @@ ntext:
 	Marshal.to_channel oc (ld, dyp.parser_pilot.pp_dev) [ Marshal.Closures ];
 	close_out oc;
       end;
-      (p,[]), [ Keep_grammar; Local_data dyp.last_local_data ]
+      (t,[]), [ Keep_grammar; Local_data dyp.last_local_data ]
     } 
   | ntext<t,rs> atomelt<p,r>
      @{ (p@t,r@rs), [ Keep_grammar; Local_data dyp.last_local_data ] }
