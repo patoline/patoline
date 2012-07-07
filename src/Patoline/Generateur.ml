@@ -590,11 +590,19 @@ let gen_ml format driver amble filename from wherename where pdfname =
 		  (PatolineLanguage.message (PatolineLanguage.End_of_parsing nbdocs));
 		flush stderr;
 	      let source = Source.of_in_channel from in
+              let tmp_pos=
+                incr moduleCounter;
+                !moduleCounter
+              in
 	      match docs with
 	        [] -> assert false
 	      | ((pre, docs), _) :: _  ->
 		  begin
                     Printf.fprintf where "%s" (preambule format amble filename);
+                    (match amble with
+                         Main | Noamble -> ()
+                       | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"
+                           tmp_pos);
                     match pre with
 		    None -> ()
 		  | Some(title, at) -> 
@@ -615,13 +623,14 @@ let gen_ml format driver amble filename from wherename where pdfname =
 		    in
 		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n" 
 		      extra_tags (print_contents parser_pp source) title;
-		end;
-		output_list parser_pp source where true 0 docs;
+		  end;
+		  output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
                     Main->output_string where (postambule format driver pdfname)
                   | Noamble->()
-                  | Separate->Printf.fprintf where "\nlet _ = go_up D.structure\nend\n"
+                  | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
+                      tmp_pos
 	    with
 	      | Dyp.Syntax_error when !Parser.deps_only=None ->
 		raise
