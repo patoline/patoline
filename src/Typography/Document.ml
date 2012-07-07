@@ -505,6 +505,8 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
 
 let vspaceBefore x=[bB (fun _->[Parameters (fun p->{ p with min_height_before=p.min_height_before+.x })])]
 let vspaceAfter x=[bB (fun _->[Parameters (fun p->{ p with min_height_after=p.min_height_after+.x })])]
+let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=p.min_page_before+x })])]
+let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=p.min_page_after+x })])]
 let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 
 let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
