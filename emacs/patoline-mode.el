@@ -2,7 +2,6 @@
 
 (provide 'patoline-mode)
 (require 'patoline-input)
-(require 'comint)
 
 (add-to-list 'auto-mode-alist '("\\.txp\\'" . patoline-mode))
 
@@ -26,18 +25,17 @@
 (defvar patoline-view-buffer
   nil)
 
+(defvar patoline-error-regexp 
+    '(("^[^\"]+\"\\([^\"]*\\)\", line \\([0-9]+\\), character \\([0-9]+\\):$" 1 2 3 1)
+      ("^[^\"]+\"\\([^\"]+\\)\", line \\([0-9]+\\), characters \\([0-9]+\\)-\\([0-9]+\\):$" 1 2 (3 . 4) 1)))
+
 (defun select-patoline-program-buffer ()
   (if (and patoline-program-buffer (buffer-live-p patoline-program-buffer))
       (set-buffer patoline-program-buffer)
     (progn
       (setq patoline-program-buffer (get-buffer-create "*patoline-interaction*"))
       (set-buffer patoline-program-buffer)
-      (comint-mode)
-      (make-local-variable 'comint-output-filter-functions)
-      (make-local-variable 'comint-exec-hook)
-;      (setq comint-output-filter-functions
-;	    '(comint-postoutput-scroll-to-bottom patoline-filter-comint-output))
-      (setq comint-exec-hook nil))))
+      )))
 
 (defun patoline-process-sentinel (p m)
   (if (not (string-match "finished\\.*" m))
@@ -63,13 +61,13 @@
   (save-excursion
     (let ((cmd-format (read-from-minibuffer "compile: " patoline-compile-format)))
       (setq patoline-compile-format cmd-format)
-      (let ((cmd (split-string-and-unquote (format cmd-format buffer-file-name)))
+      (let ((cmd (format cmd-format buffer-file-name))
 	    (dir-name (file-name-directory buffer-file-name)))
 	(select-patoline-program-buffer)
 	(erase-buffer)
 	(cd dir-name)
-	(comint-exec patoline-program-buffer "patoline-process" (car cmd) nil (cdr cmd))
-	(set-process-sentinel (get-process "patoline-process") 'patoline-process-sentinel)))))
+	(compilation-start cmd t (lambda (name) "*patoline-interaction*") t)
+	(set-process-sentinel (get-buffer-process patoline-program-buffer) 'patoline-process-sentinel)))))
 
 (defvar patoline-view-format
   "embedded"
@@ -130,6 +128,13 @@
   "Major mode for editing Patoline documents."
   (interactive)
   (kill-all-local-variables)
+
+  (setq major-mode 'patoline-mode)
+  (line-number-mode t)
+  (column-number-mode t)
+  (setq mode-name "Patoline")
+  (make-local-variable 'compilation-error-regexp-alist)
+  (setq-default compilation-error-regexp-alist patoline-error-regexp)
   (use-local-map patoline-mode-map)
   (set-syntax-table patoline-mode-syntax-table)
   ;; Set up font-lock
@@ -147,10 +152,6 @@
 	     (paren-set-mode 'blink-paren t))
     (show-paren-mode 'mixed))
   (setq case-fold-search nil)
-  (setq major-mode 'patoline-mode)
-  (line-number-mode t)
-  (column-number-mode t)
-  (setq mode-name "Patoline")
   (run-hooks 'patoline-mode-hook)
 )
 

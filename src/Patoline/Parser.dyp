@@ -74,7 +74,8 @@ type 'a math =
    | Indices of 'a indices * 'a math
    | Apply of 'a math * 'a math
    | MathMacro of string * 'a math list
-   | MathCaml of local_data * 'a * int * int * (texprime_section * int * int) list
+   | MathCaml of local_data * 'a * int * int * (texprime_section * int * int * int * int) list
+     * (string * int * int)
    | Delim of string * 'a math * string
    | MScope of 'a math list
    | MathString of string
@@ -94,7 +95,8 @@ and paragraph_options = {
 
 and 'a doc =
      Paragraph of paragraph_options * 'a content list
-   | Caml of local_data * 'a * int * int * (texprime_section * int * int) list
+   | Caml of local_data * 'a * int * int * (texprime_section * int * int * int * int) list 
+     * (string * int * int)
    | Math of string * 'a math
    | Verbatim of string option * string list
    | Struct of 'a content list * bool * 'a structType
@@ -283,7 +285,7 @@ let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "I
     	         "Add_relation"; "Add_addition_like"; "Add_product_like"; "left"; "right"; "cr";
 	         "verb";]
 
-let fprint_caml_buf = ref (fun _ _ _ _ _ _ -> ((assert false):unit))
+let fprint_caml_buf = ref (fun _ _ _ _ _ _ _ -> ((assert false):unit))
 
 
 let rec list_last = function
@@ -322,6 +324,14 @@ let get_pos_as_string dyp a =
       a.pos_lnum
       (a.pos_cnum - a.pos_bol)
       a.pos_cnum
+
+let get_pos_as_tuple dyp a =
+    let a = dyp.rhs_start_pos a in
+    Printf.fprintf stderr "line: %d\n" a.pos_lnum;
+    ( (String.escaped a.pos_fname),
+      a.pos_lnum,
+      (a.pos_cnum - a.pos_bol),
+      a.pos_cnum)
 
 let layout_parskip dyp a b =
     let c,l,m = layout_info dyp a b in l > 1 (* or (l = 1 && m > 1) *)
@@ -500,13 +510,17 @@ and caml txps= parse
 	      push_texprime_math () ; 
 	      flush stdout; 
 	      texprime_math lexbuf; 
-	      caml ((TxpMath, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
+	      (* FIXME : why +2 below ? *)
+	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
+	      caml ((TxpMath, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
   | '<' '<' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
 	      push_texprime_text () ; 
 	      flush stdout; 
 	      texprime_text lexbuf; 
-	      caml ((TxpText, start, l.lex_start_p.pos_cnum) :: txps) lexbuf } 
+	      (* FIXME : why +2 below ? *)
+	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
+	      caml ((TxpText, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
   | eof { [] }
   | newline { set_newline 1 (std_lexbuf lexbuf); caml txps lexbuf }
   | string { caml txps lexbuf }
@@ -545,10 +559,13 @@ main lexer =
   '(' '*' -> { push_comment (); comment lexbuf }
   '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
+		    let lstart = l.lex_start_p.pos_lnum in 
+		    let cstart = start - l.lex_start_p.pos_bol in 
 		    push_caml ();
 		    let txps= caml [] lexbuf in
 (*		    Printf.fprintf stderr "%d, %d\n" start l.lex_start_p.pos_cnum;*)
-		    start, l.lex_start_p.pos_cnum, List.rev txps
+		    start, (l.lex_start_p.pos_fname, lstart, cstart),
+		     l.lex_start_p.pos_cnum, List.rev txps
 		  }
   newline -> NEWLINE { set_newline 1 (std_lexbuf lexbuf) }
   
@@ -624,8 +641,8 @@ args:
     { (fun (ld:local_data) gr  -> []) }
   | - "{" oparagraph<p> "}" - args<a>
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
-  | - CAML<s,e,txps> - args<a>
-    { (fun ld gr -> Caml(ld,gr,s,e,txps) :: a ld gr) } 
+  | - CAML<s,pos,e,txps> - args<a>
+    { (fun ld gr -> Caml(ld,gr,s,e,txps,pos) :: a ld gr) } 
 
 mathargs:
   /* empty */
@@ -634,8 +651,8 @@ mathargs:
     { (fun (ld:local_data) gr  -> []) }
   | - "{" math<m> "}" - mathargs<a>
     { (fun ld gr -> m::a ld gr) }
-  | - CAML<s,e,txps> - mathargs<a>
-    { (fun ld gr -> MathCaml(ld,gr,s,e,txps) :: a ld gr) }
+  | - CAML<s,pos,e,txps> - mathargs<a>
+    { (fun ld gr -> MathCaml(ld,gr,s,e,txps,pos) :: a ld gr) }
 
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" - args<a>
@@ -673,9 +690,9 @@ in_par_macro:
       { 
         let name, args = test_wargs dyp name a in
         [MC(`Single, name, args, get_wminfo dyp name)] }  macro
-  | PPRE<preproc> - CAML<s,e,txps>
+  | PPRE<preproc> - CAML<s,pos,e,txps>
       { let ld, gr = get_local_data_and_grammar dyp in
-        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps)], [])]
+        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps,pos)], [])]
       }
   | PPRE<preproc> '{' preproc<text> '}'
 
@@ -833,19 +850,19 @@ symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
 
 symbol_def:
-    CAML<s,e,txps> {
+    CAML<s,pos,e,txps> {
       let ld, gr = get_local_data_and_grammar dyp in
       let buf = Buffer.create 80 in  
-      !fprint_caml_buf ld gr buf s e txps;
+      !fprint_caml_buf ld gr buf s e txps pos;
       CamlSym(Buffer.contents buf)
     }
   | '{' symbol_name<sym> '}' { SimpleSym sym }
 
 symbol_defs:
-    CAML<s,e,txps> {
+    CAML<s,pos,e,txps> {
       let ld, gr = get_local_data_and_grammar dyp in
       let buf = Buffer.create 80 in  
-      !fprint_caml_buf ld gr buf s e txps;
+      !fprint_caml_buf ld gr buf s e txps pos;
       Buffer.contents buf
     }
 
@@ -888,9 +905,9 @@ atomelt:
   | "\"\"\"" [ (ident) ]?<lang> NEWLINE verbatim_lines<ls> - "\"\"\""
     { [Verbatim(lang, List.rev ls)], [] }
   /* Code Caml */
-  | "\\Caml" CAML<s,e,txps>
+  | "\\Caml" CAML<s,pos,e,txps>
     { let ld, gr = get_local_data_and_grammar dyp in
-      [Caml(ld,gr,s,e,txps)], [] }
+      [Caml(ld,gr,s,e,txps,pos)], [] }
   /* Top level macros \Begin or \Ident */
   | topmacro<m>
     { [m], [] }

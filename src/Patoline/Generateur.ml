@@ -15,6 +15,7 @@ open PatolineLanguage
 (*    Maths.draw_maths Maths.default style ((arg ))))] *)
 
 let edit_link = ref false
+let line_directive = ref true
 
 let includeList = ref []
 
@@ -168,9 +169,9 @@ let rec print_math_buf parser_pp op buf m =
 	    args ;
 	  Printf.bprintf buf ")"
 	)
-      | MathCaml (ld,gr,s,e,txps) -> begin
+      | MathCaml (ld,gr,s,e,txps,pos) -> begin
 	  let buf' = Buffer.create 80 in
-            print_caml_buf parser_pp ld gr op buf' s e txps;
+            print_caml_buf parser_pp ld gr op buf' s e txps pos;
 	    let s = Buffer.contents buf' in
 	      Printf.bprintf buf " ( %s ) " s
       end
@@ -273,9 +274,9 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    let use_par = not (List.mem (`Arg_nopar !num) opts) in
 	    (match x with
               | Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf use_par parser_pp op) p
-	      | Caml(ld,gr,s,e,txps) ->
+	      | Caml(ld,gr,s,e,txps,pos) ->
 		if use_par then Printf.bprintf buf "(";
-		print_caml_buf parser_pp ld gr op buf s e txps;
+		print_caml_buf parser_pp ld gr op buf s e txps pos;
 		if use_par then Printf.bprintf buf ")";
 	      | String s ->
 		Printf.bprintf buf "%s" s
@@ -290,9 +291,9 @@ and print_macro_buf parser_pp buf op mtype name args opts =
       | `Preproc -> 
 	begin
 	  match args with 
-	    | Caml (ld,gr,s,e,txps) :: _ -> begin
+	    | Caml (ld,gr,s,e,txps,pos) :: _ -> begin
 	      let buf' = Buffer.create 80 in
-              print_caml_buf parser_pp ld gr op buf' s e txps;
+              print_caml_buf parser_pp ld gr op buf' s e txps pos;
 	      let s = Buffer.contents buf' in 
               let f=StrMap.find name !macros in
 	      let s' = f s in
@@ -322,9 +323,9 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	      let use_par = not (List.mem (`Arg_nopar !num) opts) in
 	      (match x with
 		| Paragraph(_,p) -> Printf.bprintf buf "%a" (print_contents_buf use_par parser_pp op) p
-		| Caml(ld,gr,s,e,txps) ->
+		| Caml(ld,gr,s,e,txps,pos) ->
 		  if use_par then Printf.bprintf buf "(";
-		  print_caml_buf parser_pp ld gr op buf s e txps;
+		  print_caml_buf parser_pp ld gr op buf s e txps pos;
 		  if use_par then Printf.bprintf buf ")";
 		| _ -> assert false);
 	      let arg = apply_options !num (Buffer.contents buf) opts in
@@ -362,8 +363,9 @@ and print_macro parser_pp ch op mtype name args opts = begin
   output_string ch (Buffer.contents buf) 
 end
 
-and print_caml_buf parser_pp ld gr op buf s e txps = 
+and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) = 
   (* Printf.fprintf stderr "Entering print_caml_buf.\n" ; flush stderr ; *)
+  if !line_directive then Printf.bprintf buf "\n# %d \"%s\"\n%s" line file (String.make col ' ');
   match txps with
   | [] -> 
     let size = e - s in
@@ -371,7 +373,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps =
     let buf'=String.create size in
     let _= op s buf' 0 size in
     Printf.bprintf buf "%s" buf'
-  | (style, s',e') :: txps' -> begin
+  | (style, s',e',line,col) :: txps' -> begin
     (* On imprime du caml avant le premier "<<" *)
     let offset = match style with
       | TxpMath -> 2
@@ -430,13 +432,13 @@ and print_caml_buf parser_pp ld gr op buf s e txps =
 	  | _ -> assert false
       end
     end ;
-    print_caml_buf parser_pp ld gr op buf (e' + offset) e txps'
+    print_caml_buf parser_pp ld gr op buf (e' + offset) e txps' (file,line,col)
   end
 
-and print_caml parser_pp ld gr op (ch : out_channel) s e txps = begin
+and print_caml parser_pp ld gr op (ch : out_channel) s e txps pos = begin
   let buf = Buffer.create 80 in
   Printf.bprintf buf " ";
-  print_caml_buf parser_pp ld gr op buf s e txps;
+  print_caml_buf parser_pp ld gr op buf s e txps pos;
   Printf.bprintf buf " ";
   Buffer.output_buffer ch buf
 end
@@ -524,7 +526,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
 	    env param (print_contents parser_pp from) p
-	| Caml(ld,gr,s,e,txps) -> print_caml parser_pp ld gr from where s e txps
+	| Caml(ld,gr,s,e,txps,pos) -> print_caml parser_pp ld gr from where s e txps pos
 	| String s -> Printf.fprintf where "%s" s
 
 	| Struct(title, numbered, docs) ->
@@ -543,7 +545,8 @@ and output_list parser_pp from where no_indent lvl docs =
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 3 *)\n\n"
 	      done;
 	      Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num print_title title;
-	      lvl := l
+	      lvl := l; 
+	      next_no_indent := true
 	  );
 	| Macro(mtype, name, args,opts) ->
 	  print_macro parser_pp where from mtype name args opts;

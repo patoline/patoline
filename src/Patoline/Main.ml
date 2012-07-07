@@ -35,6 +35,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
             ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
 	    ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), "Generated uri link of the form \"edit:filename@line");
+	    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=true), "Disable generation of \"# line\" directive in the generated ml (for debugging the generator)");
 	    ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), "Remaining arguments are passed to the OCaml executable")
            ]
 
@@ -81,9 +82,9 @@ let rec process_each_file =
     ) else (
       read_options_from_source_file fread;
       Parser.fprint_caml_buf :=
-        (fun ld gr buf s e txps ->
+        (fun ld gr buf s e txps opos ->
           let pos = pos_in fread in
-          Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps;
+          Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
           seek_in fread pos);
       Generateur.gen_ml !format !driver !amble f fread (mlname_of f) where_ml (pdfname_of f);
     );
