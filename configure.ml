@@ -82,10 +82,14 @@ let _=
   then camlimages := "camlimages.all_formats";
 
   if Sys.command "ocamlfind query lablgl" = 0
-  then lablgl := "lablgl";
+  then lablgl := "lablgl"
+  else if Sys.command "ocamlfind query lablGL" = 0
+  then lablgl := "lablGL";
 
   if Sys.command "ocamlfind query lablgl.glut" = 0
-  then lablglut := "lablgl.glut";
+  then lablglut := "lablgl.glut"
+  else if Sys.command "ocamlfind query lablGL.glut" = 0
+  then lablglut := "lablGL.glut";
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
@@ -161,7 +165,7 @@ let _=
 
     let tags=open_out "src/_tags" in
       Printf.fprintf tags
-        "<**/*>: pp(cpp -w),package(camomile)%s%s
+        "<**/*>: pp(cpp -w),package(camomile)%s%s%s%s
 <Format/*.{ml,mli}>: use_Typography,use_str
 <proof/proof.{byte,native}>: package(camomile)%s%s
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
@@ -169,6 +173,8 @@ let _=
 \"Typography\":include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
+        (if !lablgl <> "" then ",package("^(!lablgl)^")" else "")
+        (if !lablglut <> "" then ",package("^(!lablglut)^")" else "")
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
