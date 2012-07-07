@@ -51,35 +51,35 @@ module Env_definition=Default.Make_theorem
     let refType="definition"
     let counter="definition"
     let counterLevel=0
-    let display num=alternative Bold [T ("Definition "^num^"."); (T " ")]
+    let display num=alternative Bold [tT ("Definition "^num^"."); (tT " ")]
    end)
 module Env_theorem=Default.Make_theorem
   (struct
     let refType="theorem"
     let counter="theorem"
     let counterLevel=0
-    let display num=alternative Bold [T ("Theorem "^num^"."); (T " ")]
+    let display num=alternative Bold [tT ("Theorem "^num^"."); (tT " ")]
    end)
 module Env_lemma=Default.Make_theorem
   (struct
     let refType="lemma"
     let counter="lemma"
     let counterLevel=0
-    let display num=alternative Bold [T ("Lemma "^num^"."); (T " ")]
+    let display num=alternative Bold [tT ("Lemma "^num^"."); (tT " ")]
    end)
 module Env_proposition=Default.Make_theorem
   (struct
     let refType="proposition"
     let counter="proposition"
     let counterLevel=0
-    let display num=alternative Bold [T ("Proposition "^num^"."); (T " ")]
+    let display num=alternative Bold [tT ("Proposition "^num^"."); (tT " ")]
    end)
 module Env_corollary=Default.Make_theorem
   (struct
     let refType="corollary"
     let counter="corollary"
     let counterLevel=0
-    let display num=alternative Bold [T ("Corollary "^num^"."); (T " ")]
+    let display num=alternative Bold [tT ("Corollary "^num^"."); (tT " ")]
    end)
 (* module Env_proof=Default.Proof *)
 
@@ -98,9 +98,9 @@ module Env_corollary=Default.Make_theorem
 	     let _,w = boxes_width env contents in
 	     let _,x = StrMap.find "equation" env.counters in
 	     let num,w' = boxes_width env
-	       (italic [T "(";
-		        T (string_of_int (1 + List.hd x));
-		        T ")" ]) in
+	       (italic [tT "(";
+		        tT (string_of_int (1 + List.hd x));
+		        tT ")" ]) in
              let w0=(env.normalMeasure -. w)/.2. in
              let w1=env.normalMeasure -. w'-.w0-.w in
              bB(fun _->[glue w0 w0 w0])::
@@ -125,7 +125,7 @@ module Env_corollary=Default.Make_theorem
   (* open Binary *)
 
 
-  let utf8Char x=[T (UTF8.init 1 (fun _->UChar.chr x))]
+  let utf8Char x=[tT (UTF8.init 1 (fun _->UChar.chr x))]
   let glyph x=
     bB (fun env->
          let code={glyph_utf8=""; glyph_index=x } in

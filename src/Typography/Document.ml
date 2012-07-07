@@ -199,12 +199,13 @@ and 'a content=
   | BFix of ('a environment->'a box list)     (** Une liste de boîtes dépendante des positions des boîtes [User] *)
   | C of ('a environment->'a content list)    (** Le symmétrique de [C] pour [BFix]. On peut implémenter la paresse avec ça, par exemple. *)
   | CFix of ('a environment->'a content list) (** Pareil que [BFix], mais avec du contenu au lieu des boîtes *)
-  | T of string                               (** Un texte simple *)
+  | T of string*'a box list option ref        (** Un texte simple *)
   | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
   | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
   | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
 
 let bB f = B(f,ref None)
+let tT f = T(f,ref None)
 
 let incr_counter ?(level= -1) name env=
   { env with counters=
@@ -614,7 +615,7 @@ let newPar str ?(environment=(fun x->x)) complete parameters par=
 let string_of_contents l =
   let s = ref "" in
   List.iter (function
-    T str ->
+    T (str,_) ->
       if !s = "" then s:= str else s:= !s ^" " ^str
   | _ -> ()) l;
   !s
@@ -664,9 +665,9 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
 let pageref x=
   [CFix (fun env->try
            let (_,_,node)=StrMap.find x env.names in
-             [BFix (fun _->[User (BeginLink x)]);
-              T (string_of_int (1+node.page));
-              BFix (fun _->[User EndLink])]
+           [BFix (fun _->[User (BeginLink x)]);
+            tT (string_of_int (1+node.page));
+            BFix (fun _->[User EndLink])]
          with Not_found -> []
         )]
 
@@ -692,7 +693,7 @@ let generalRef refType name=
             let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
               [BFix (fun _->[User (BeginLink name)]);
-               T (String.concat "." (List.map (fun x->string_of_int (x+1))
+               tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                        (List.rev (num@sect_num))));
                BFix (fun _->[User EndLink])]
           with
@@ -844,7 +845,7 @@ let boxify buf nbuf fixable env0 l=
     | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
     | (BFix b)::s->(fixable:=true; List.iter (append buf nbuf) (b env); boxify env s)
     | Env f::s->boxify (f env) s
-    | (T t)::s->(
+    | (T (t,_))::s->(
         let rec cut_str only_spaces needs_glue gl i0 i=
           if i>=String.length t then (
             if only_spaces then append buf nbuf gl;
@@ -875,7 +876,7 @@ let boxify buf nbuf fixable env0 l=
         in
         let buffer=String.create size in
         let _=seek_in i off; really_input i buffer 0 size in
-          boxify env (T buffer::s)
+          boxify env (tT buffer::s)
       )
     | Scoped (fenv, p)::s->(
         let env'=fenv env in

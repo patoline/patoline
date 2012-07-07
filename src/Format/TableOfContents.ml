@@ -57,7 +57,7 @@ let centered str tree max_level=
                         (List.map (OutputCommon.translate (x0-.w-.spacing) 0.) (draw_boxes name))@
                           orn::
                           List.map (OutputCommon.translate (x0+.y+.spacing) 0.)
-                          (draw_boxes (boxify_scoped (fenv (envItalic true env0)) [T (Printf.sprintf "page %d" page)]))
+                          (draw_boxes (boxify_scoped (fenv (envItalic true env0)) [tT (Printf.sprintf "page %d" page)]))
                       in
                       let (a,b,c,d)=OutputCommon.bounding_box cont in
                         Drawing {

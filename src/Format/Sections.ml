@@ -10,7 +10,7 @@ let postprocess_tree tree=
 
   let with_institute=match tree with
       Node n->(try
-        let cont=[T (List.assoc "Institute" n.node_tags)] in
+        let cont=[tT (List.assoc "Institute" n.node_tags)] in
         let par=Paragraph {
           par_contents=cont;
           par_env=(fun env->env);
@@ -34,7 +34,7 @@ let postprocess_tree tree=
 
   let with_author=match with_institute with
       Node n->(try
-        let cont=[T (List.assoc "Author" n.node_tags)] in
+        let cont=[tT (List.assoc "Author" n.node_tags)] in
         let par=Paragraph {
           par_contents=cont;
           par_env=(fun env->env);
@@ -82,8 +82,8 @@ let postprocess_tree tree=
             [C (fun env->
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   bB (fun _->[User (Structure path)])
-                  ::T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
-                  ::T " "
+                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                  ::tT " "
                   ::n.displayname
                )]
           else

@@ -456,14 +456,14 @@ and print_contents_buf use_par parser_pp op buf l =
       [] ->  Printf.bprintf buf "[]";
     | (TC (pos, s) :: l' ) as l ->
       if !edit_link then
-	(print_ext_link pos (fun buf () -> Printf.bprintf buf "[T(\"%s\")]" (String.escaped s)) buf;
+	(print_ext_link pos (fun buf () -> Printf.bprintf buf "[tT(\"%s\")]" (String.escaped s)) buf;
 	 Printf.bprintf buf "@"; fn l')
       else 
-	(Printf.bprintf buf "(T(\""; gn l)
+	(Printf.bprintf buf "(tT(\""; gn l)
     | GC :: (MC(_,_,_,opts)::_ as l) when List.mem `Eat_left opts -> 
       fn l
     | GC :: l -> 
-      Printf.bprintf buf "(T \" \")::";
+      Printf.bprintf buf "(tT \" \")::";
       fn l
     | MC(mtype, name, args, opts) :: l -> 
       Printf.bprintf buf " (";

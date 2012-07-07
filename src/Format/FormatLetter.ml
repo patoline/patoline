@@ -16,7 +16,7 @@ module Format=functor (D:DocumentStructure)->struct
   module Default=DefaultFormat.Format(D)
   include Default
 
-  let subject_text: user content list ref = ref (toggleItalic [T "Subject:";T" "]) 
+  let subject_text: user content list ref = ref (toggleItalic [tT "Subject:";tT" "]) 
 
   let rec lines s=try
     let idx=String.index s '\n' in
@@ -46,8 +46,8 @@ module Format=functor (D:DocumentStructure)->struct
                          let l=lines sender in
                            repeat " " (List.length lines_recipient-List.length l)@l
                        in
-                       let pars_sender=node (List.map (fun l->paragraph [T l]) (lines_sender)) in
-                       let pars_recip=node (List.map (fun l->paragraph [T l]) (lines_recipient)) in
+                       let pars_sender=node (List.map (fun l->paragraph [tT l]) (lines_sender)) in
+                       let pars_recip=node (List.map (fun l->paragraph [tT l]) (lines_recipient)) in
                        let minip_sender=(Default.minipage { env with
                                                               normalMeasure=w;
                                                               par_indent=[]} pars_sender).(0) in
@@ -94,7 +94,7 @@ module Format=functor (D:DocumentStructure)->struct
 
   let lieu_date lieu x =
       newPar D.structure Complete.normal ragged_right
-        ((vspaceBefore 10.) @ [T (!lieu_date_text lieu x)])
+        ((vspaceBefore 10.) @ [tT (!lieu_date_text lieu x)])
   let dear x=(vspaceBefore 13.)@(vspaceAfter 3.)@x
   let subject x= !subject_text @ x
 

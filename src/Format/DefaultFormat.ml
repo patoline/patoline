@@ -156,7 +156,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     let id x=x
 
     let sourcePosition(file,line,column,char) =       
-      [T (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
+      [tT (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
 
     let node l=
       Document.Node
@@ -317,19 +317,19 @@ module Format=functor (D:Document.DocumentStructure)->(
       let len = String.length s in
       let rec fn acc w i0 i =
 	if i >= len then
-	  List.rev (T (String.sub s i0 (len - i0))::acc)
+	  List.rev (tT (String.sub s i0 (len - i0))::acc)
 	else if s.[i] = ' ' then
 	  let acc = if i <> i0 then
-	      space::T (String.sub s i0 (i - i0))::acc
+	      space::tT (String.sub s i0 (i - i0))::acc
 	    else
 	      space::acc
 	  in
 	  fn acc None (i+1) (i+1)
 	else if is_special s.[i] then
 	  let acc = if i <> i0 then
-	      T(String.sub s i 1)::T (String.sub s i0 (i - i0))::acc
+	    tT(String.sub s i 1)::tT (String.sub s i0 (i - i0))::acc
 	    else
-	      T(String.sub s i 1)::acc
+	      tT(String.sub s i 1)::acc
 	  in
 	  fn acc None (i+1) (i+1)
 	else if w =None then
@@ -337,7 +337,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 	else if w = Some (is_letter s.[i]) then
 	  fn acc  w i0 (i + 1)
 	else
-	  fn (T (String.sub s i0 (i - i0))::acc) (Some (is_letter s.[i])) i (i+1)
+	  fn (tT (String.sub s i0 (i - i0))::acc) (Some (is_letter s.[i])) i (i+1)
       in fn [] None 0 0
 
     let is_letter_ml = fun c ->
@@ -352,7 +352,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
       List.rev (List.fold_left (fun a x ->
 	match x with
-          T s as x when List.mem s keywords -> bold [x]@a
+            T (s,_) as x when List.mem s keywords -> bold [x]@a
 	| x -> x::a) [] l)
 
     let lang_default str = split_space (fun _ -> true) (fun _ -> false) str
@@ -400,9 +400,9 @@ module Format=functor (D:Document.DocumentStructure)->(
           Box.drawing (
             draw_boxes (
               boxify_scoped env (
-                [ T "Figure"; T " ";
-                  T (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
-                @(if caption=[] then [] else T" "::T"-"::T" "::caption)
+                [ tT "Figure"; tT " ";
+                  tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
+                @(if caption=[] then [] else tT" "::tT"-"::tT" "::caption)
               )
             )
           )
@@ -512,8 +512,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                      { p with min_height_after=0. }
                  in
                    newPar str ~environment:(fun x->x) normal params
-                     (T (string_of_int !page_footnotes)
-                      ::T " "
+                     (tT (string_of_int !page_footnotes)
+                      ::tT " "
                       ::l);
                    let a=1./.(sqrt phi) in
                    let pages=minipage { env with
@@ -526,7 +526,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                        [User (Footnote (count, pages.(0)));
                         Drawing (drawing ~offset:(env.size/.2.)
                                    (draw_boxes (boxify_scoped { env with size=env.size/.(sqrt phi) }
-                                                  [T (string_of_int !page_footnotes)])
+                                                  [tT (string_of_int !page_footnotes)])
                                    ))
                        ]
                      else
@@ -720,7 +720,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module Env_enumerate =
       Enumerate(struct
                   let from_counter x =
-                    [ T(string_of_int (List.hd x + 1));T".";
+                    [ tT(string_of_int (List.hd x + 1));tT".";
                       bB (fun env->let w=env.size/.phi in [glue w w w])]
                 end)
 
@@ -752,7 +752,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let do_begin_env ()=
         let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
-          (italic [T "Proof.";bB (fun env->let w=env.size in [glue w w w])]);
+          (italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         D.structure:=lastChild !D.structure
 
@@ -800,7 +800,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                      in
                      Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
                   )::
-             [T " "]);
+             [tT " "]);
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
