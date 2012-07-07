@@ -22,4 +22,5 @@ Output/OutputPaper
 Output/OutputDrawing
 Output/Drivers/Pdf
 Output/Drivers/SVG
+Output/Drivers/GL
 Diagrams

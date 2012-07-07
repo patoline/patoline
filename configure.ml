@@ -10,6 +10,8 @@ let grammars_dirs=ref []
 let hyphen_dirs=ref []
 let camlzip=ref ""
 let camlimages=ref ""
+let lablgl=ref ""
+let lablglut=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 
@@ -79,6 +81,12 @@ let _=
   if Sys.command "ocamlfind query camlimages" = 0
   then camlimages := "camlimages.all_formats";
 
+  if Sys.command "ocamlfind query lablgl" = 0
+  then lablgl := "lablgl";
+
+  if Sys.command "ocamlfind query lablgl.glut" = 0
+  then lablglut := "lablgl.glut";
+
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/PatolineConfig.ml" in
@@ -138,11 +146,13 @@ let _=
 
     let tags=open_out "src/Typography/_tags" in
       Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s%s)
+        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s%s%s,pp(cpp -w %s%s%s%s)
 <**/*.{cmo,cmx}> and not <Typography.*>:for-pack(Typography)
 <Fonts> or <Output> or <Output/Drivers>:include\n"
         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
+        (if !lablgl <> "" then ",package("^(!lablgl)^")" else "")
+        (if !lablglut <> "" then ",package("^(!lablglut)^")" else "")
         (if !camlzip <> "" then "-DCAMLZIP " else "")
         (if !camlimages <> "" then "-DCAMLIMAGES " else "")
         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
