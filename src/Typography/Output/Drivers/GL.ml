@@ -182,8 +182,8 @@ let output ?(structure:structure={name="";displayname=[];
   let keyboard_cb ~key ~x ~y =
     match key with
     | 27 (* ESC *) -> exit 0
-    | 110 | 32 -> if !cur_page < num_pages - 1 then incr cur_page; Glut.postRedisplay ()
-    | 112 | 8 -> if !cur_page > 0 then decr cur_page; Glut.postRedisplay ()
+    | 110 | 32 -> if !cur_page < num_pages - 1 then incr cur_page; redraw ();
+    | 112 | 8 -> if !cur_page > 0 then decr cur_page; redraw ();
     | 43 -> zoom := !zoom /. 1.1; redraw ();
     | 45 -> zoom := !zoom *. 1.1; redraw ();
     | n -> Printf.fprintf stderr "Unbound key: %d\n" n; flush stderr      
@@ -206,7 +206,21 @@ let output ?(structure:structure={name="";displayname=[];
 	    Printf.fprintf stderr 
 	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
 	      l.uri l.dest_page l.dest_x l.dest_y;
-	    flush stderr
+	    flush stderr;
+	    if l.uri = "" then
+	      begin
+		cur_page := l.dest_page;
+		redraw ();
+	      end
+	    else
+	      begin
+		try
+		  let browser = Sys.getenv "BROWSER" in
+		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser l.uri));
+		with
+		  Not_found -> 
+		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
+	      end
 	  )
 	  (find_link x y)
     | _ -> ()
