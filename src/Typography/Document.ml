@@ -471,7 +471,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
                                                 | _->fn) 0. line
     in
       { measure=measure;
-        page_height=min  250. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
+        page_height=min  240. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
           -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
         left_margin=env.normalLeftMargin;
         local_optimization=0;
@@ -555,7 +555,7 @@ let figure str ?(parameters=center) ?(name="") drawing=
                               (StrMap.add "_figure"
                                  (l,match cou with h::s->(h+1)::s | _->[0])
                                  (StrMap.add "figure"
-                                    (l0,match cou0 with h::s->(h+1)::s | _->[0]) counters0)
+                                    (l0,match cou0 with h::s->(h+1)::s | _->[1]) counters0)
                               )
                             in
                             { x with
@@ -973,7 +973,7 @@ let flatten env0 fixable str=
               | FigureDef f as h->(
                   let env2=flatten flushes' env1 (k::path) h in
                   let num=try
-                    match StrMap.find "_figure" env1.counters with
+                    match StrMap.find "_figure" env2.counters with
                         _,h::_->h
                       | _->0
                   with

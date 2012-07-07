@@ -780,50 +780,30 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
-        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
+        newPar D.structure Complete.normal
+           (fun a b c d e f g->
+              { (parameters a b c d e f g) with
+                  min_height_before=
+                  if g.lineStart=0 then a.lead else 0. })
+          (Env (incr_counter ~level:Th.counterLevel Th.counter)::
+             CFix (fun env->
+                     let lvl,num=try (StrMap.find Th.counter env.counters) with
+                         Not_found -> -1,[0]
+                     in
+                     let _,str_counter=try
+                       StrMap.find "_structure" env.counters
+                     with Not_found -> -1,[0]
+                     in
+                     let sect_num=drop (max 1 (List.length str_counter - lvl+1))
+                       str_counter
+                     in
+                     Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
+                  )::
+             [T " "]);
+        D.structure:=lastChild !D.structure
 
       let do_end_env ()=
-        let rec first_par=function
-            Paragraph p->
-              Paragraph { p with
-                            par_parameters=(fun a b c d e f g->
-                                              { (parameters a b c d e f g) with
-                                                  min_height_before=
-                                                  if g.lineStart=0 then a.lead else 0. });
-                            par_contents=
-                  Env (incr_counter ~level:Th.counterLevel Th.counter)::
-                    CFix (fun env->
-                            let lvl,num=try (StrMap.find Th.counter env.counters) with
-                                Not_found -> -1,[0]
-                            in
-                            let _,str_counter=try
-                              StrMap.find "_structure" env.counters
-                            with Not_found -> -1,[0]
-                            in
-                            let sect_num=drop (max 1 (List.length str_counter - lvl+1))
-                              str_counter
-                            in
-                              Th.display (String.concat "." (List.map (fun x->string_of_int (x+1)) ((List.rev sect_num)@num)))
-                         )::
-                    T " "::
-                    p.par_contents
-                        }
-          | Node n->
-              let k0=try fst (IntMap.min_binding n.children) with Not_found->0 in
-              let paragraph=IntMap.singleton k0
-                (first_par (Paragraph
-                              { par_contents=[]; par_env=(fun x->x);
-                                par_post_env=
-                                  (fun env1 env2 -> { env1 with names=env2.names;
-                                                        counters=env2.counters;
-                                                        user_positions=env2.user_positions });
-                                par_parameters=parameters; par_completeLine=normal
-                              }))
-              in
-                Node { n with children=IntMap.fold (fun k a b->IntMap.add (k+1) a b)
-                    n.children paragraph }
-          | x -> x
-        in
         let rec last_par=function
             Paragraph p->
               Paragraph { p with
@@ -832,22 +812,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                   min_height_after=
                                                   if g.lineEnd>=Array.length b.(g.paragraph) then a.lead else 0. });
                         }
-          | Node n->
-              let k0,a0=IntMap.max_binding n.children in
-                Node { n with children=IntMap.add k0 (last_par a0) n.children }
+          | Node n->(try
+                       let k0,a0=IntMap.max_binding n.children in
+                       Node { n with children=IntMap.add k0 (last_par a0) n.children }
+                     with Not_found -> Node n)
           | x -> x
         in
-        let stru,path=match follow (top !D.structure) (List.rev (List.hd !env_stack)) with
-            Node n,x->
-              (try
-                 let a,b=IntMap.min_binding n.children in
-                   Node { n with children = IntMap.add a (first_par b) n.children }
-               with
-                   Not_found->first_par (Node n)), x
-          | x,y->(first_par x), y
-        in
-	  D.structure := up (last_par stru,path);
-          env_stack:=List.tl !env_stack
+        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+	D.structure := up (last_par stru,path);
+        env_stack:=List.tl !env_stack
     end
 
 
