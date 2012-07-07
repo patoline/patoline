@@ -31,6 +31,20 @@ let output ?(structure:structure={name="";displayname=[];
 
   let num_pages = Array.length pages in
 
+  let links = 
+    Array.mapi
+      (fun i page ->
+	let l = ref [] in
+	List.iter
+	  (function  
+            Link(l') -> 
+	      l := (l', i)::!l
+	  | _ -> ())
+	  page.pageContents;
+	!l)
+      pages;
+  in
+
 (* Handle window reshape events *)
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
@@ -46,6 +60,29 @@ let output ?(structure:structure={name="";displayname=[];
     GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
     GlMat.mode `modelview;
     GlMat.load_identity ()
+  in
+
+  let inverse_coord x y =
+    let w = float (Glut.get Glut.WINDOW_WIDTH)
+    and h = float (Glut.get Glut.WINDOW_HEIGHT) in
+    let x = float x and y = h -. float y in
+    let ratio = w /. h in
+    let page = !cur_page in
+    let pw,ph=pages.(page).pageFormat in
+    let cx = pw /. 2.0 +. !dx in
+    let cy = ph /. 2.0 +. !dy in
+    let dx = (ph *. ratio) *. !zoom in
+    let dy = ph *. !zoom in
+    let x = (x -. w /. 2.0) /. w *. dx +. cx in
+    let y = (y -. h /. 2.0) /. h *. dy +. cy in
+    (x, y)
+  in
+
+  let find_link x y =
+    let x,y = inverse_coord x y in
+    List.filter (fun (l, i) ->
+      l.link_x0 <= x && x <= l.link_x1 &&
+      l.link_y0 <= y && y <= l.link_y1) links.(!cur_page)
   in
 
   let draw_gl_scene () =
@@ -130,6 +167,7 @@ let output ?(structure:structure={name="";displayname=[];
 	      (*	Printf.fprintf stderr "\n"; flush stderr;*)
 	  GlDraw.ends ();
 	) beziers);
+    | Link(link) -> ()
     | _ -> ())
       pages.(page).pageContents;
 
@@ -160,6 +198,20 @@ let output ?(structure:structure={name="";displayname=[];
     | _ -> ();
   in
 
+  let mouse_cb ~button ~state ~x ~y =
+    match button, state with
+      Glut.LEFT_BUTTON, Glut.UP ->
+	List.iter 
+	  (fun (l, i) ->
+	    Printf.fprintf stderr 
+	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
+	      l.uri l.dest_page l.dest_x l.dest_y;
+	    flush stderr
+	  )
+	  (find_link x y)
+    | _ -> ()
+  in
+
   let main () =
     let 
 	width = 640 and
@@ -173,6 +225,7 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.keyboardFunc keyboard_cb;
     Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
+    Glut.mouseFunc mouse_cb;
     init_gl width height;
     Glut.mainLoop ()
   in
