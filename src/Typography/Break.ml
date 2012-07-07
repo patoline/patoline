@@ -200,7 +200,8 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
             if node.height-.vspace +. fig.drawing_y1 -. fig.drawing_y0 <=
               lastParameters.page_height then (
                 let nextNode={
-                  paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                  paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
+                  lastFigure=node.lastFigure+1; isFigure=true;
                   hyphenStart= -1; hyphenEnd= -1;
                   height=node.height-.vspace+.fig.drawing_y1;
                   lineStart= -1; lineEnd= -1; paragraph_height= -1;
@@ -222,7 +223,8 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 0.
             ) else if allow_impossible then (
               let nextNode={
-                paragraph=node.paragraph+1; lastFigure=node.lastFigure+1; isFigure=true;
+                paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
+                lastFigure=node.lastFigure+1; isFigure=true;
                 hyphenStart= -1; hyphenEnd= -1;
                 height=fig.drawing_y1;
                 lineStart= -1; lineEnd= -1; paragraph_height= -1;

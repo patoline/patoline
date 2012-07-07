@@ -394,7 +394,6 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
         let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
-        Printf.fprintf stderr "%s %d\n" name lvl;
         let sect_num=drop (List.length str_counter - max 0 lvl) str_counter in
         let caption=
           Box.drawing (
