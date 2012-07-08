@@ -149,41 +149,52 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
     | Path(param, beziers) ->
-      GlMat.load_identity ();
+	let lines = List.map (fun line ->
+	  let line = List.rev (Array.to_list line) in
+	  let line = List.flatten (List.map (Bezier.subdivise  (1e-2 *. !zoom)) line) in
+	  List.map
+	    (fun (xa,ya) -> (xa.(0), ya.(0), 0.0),
+	      (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0)) line
+	) beziers in
       (match param.fillColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	GlDraw.color (r,g,b);
-	GlDraw.line_width (param.lineWidth /. !zoom);
-	List.iter (fun line ->
-	  let line = 
-	    List.flatten (Array.to_list (Array.map (fun b ->
-	      List.map
-		(fun (xa,ya) -> xa.(0), ya.(0), 0.0)
-		(Bezier.subdivise (1e-2 *. !zoom) b)) line))
-	  in
-	  GluTess.tesselate [line];
-	) beziers);
+	GlMat.load_identity ();
+	GlMat.translate3 (!pixel_width/.4., !pixel_width/.4., 0.0);
+	let l = GlList.create `compile_and_execute in
+	List.map (fun l -> GluTess.tesselate [List.map fst l]) lines;
+	GlList.ends ();
+	GlMat.load_identity ();
+	GlMat.translate3 (-. !pixel_width/.4., !pixel_width/.4., 0.0);
+	GlList.call l;
+	GlMat.load_identity ();
+	GlMat.translate3 (!pixel_width/.4., -. !pixel_width/.4., 0.0);
+	GlList.call l;
+	GlMat.load_identity ();
+	GlMat.translate3 (-. !pixel_width/.4., -. !pixel_width/.4., 0.0);
+	GlList.call l;
+	GlList.delete l
+      );
       (match param.strokingColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	GlDraw.color (r,g,b);
 	List.iter (fun line ->
+	  GlMat.load_identity ();
 	  GlDraw.begins (if param.close then `line_loop else `line_strip);
+	  GlDraw.line_width (param.lineWidth /. !pixel_width);
 	  let first = ref true in
-	  Array.iter (fun b ->
-	    List.iter
-	      (fun (xa,ya) ->
-		    (*	      if !first then Printf.fprintf stderr "(%f, %f) " xa.(0) ya.(0);*)
-		if !first then (GlDraw.vertex2 (xa.(0), ya.(0)); first := false);
-		    (*	      Printf.fprintf stderr "(%f, %f) " xa.(Array.length xa -1) *)
+	  List.iter
+	    (fun (a,b) ->
+	      (*	      if !first then Printf.fprintf stderr "(%f, %f) " xa.(0) ya.(0);*)
+	      if !first then (GlDraw.vertex3 a; first := false);
+		(*	      Printf.fprintf stderr "(%f, %f) " xa.(Array.length xa -1) *)
               	(*	ya.(Array.length ya - 1);*)
-		GlDraw.vertex2 (xa.(Array.length xa -1), ya.(Array.length ya - 1)))
-	      (Bezier.subdivise (1e-2 *. !zoom) b))
-	    line;
+		GlDraw.vertex3 b) line;
 	      (*	Printf.fprintf stderr "\n"; flush stderr;*)
 	  GlDraw.ends ();
-	) beziers);
+	) lines);
     | Link(link) -> ()
     | _ -> ())
       pages.(page).pageContents;
