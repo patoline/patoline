@@ -45,6 +45,8 @@ let output ?(structure:structure={name="";displayname=[];
       pages;
   in
 
+  let pixel_width = ref 0.0 in
+
 (* Handle window reshape events *)
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
@@ -57,6 +59,7 @@ let output ?(structure:structure={name="";displayname=[];
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
     let ry = ph /. 2.0 *. !zoom in
+    pixel_width := rx *. 2.0 /. (float_of_int h);
     GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
     GlMat.mode `modelview;
     GlMat.load_identity ()
@@ -96,6 +99,8 @@ let output ?(structure:structure={name="";displayname=[];
 	let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = 1.   /. 1000. *. size in
+	let w = Fonts.glyphWidth g.glyph *. s in
+	
 (*	Printf.fprintf stderr "x = %f, y = %f, dx = %f, dy = %f, s = %f\n"
 	  x y dx dy size;*)
 
@@ -126,11 +131,23 @@ let output ?(structure:structure={name="";displayname=[];
 	    RGB{red = r; green=g; blue=b;} -> r,g,b
 	in
 	flush stderr;
-	GlMat.load_identity ();
-	GlMat.translate3 (x, y, 0.0);
-	GlMat.scale3 (s, s, s);
 	GlDraw.color (r,g,b);
-	draw_glyph ()
+	GlMat.load_identity ();
+	GlMat.translate3 (x +. !pixel_width/.4., y +. !pixel_width/.4., 0.0);
+	GlMat.scale3 (s, s, s);
+	draw_glyph ();
+	GlMat.load_identity ();
+	GlMat.translate3 (x -. !pixel_width/.4., y +. !pixel_width/.4., 0.0);
+	GlMat.scale3 (s, s, s);
+	draw_glyph ();
+	GlMat.load_identity ();
+	GlMat.translate3 (x +. !pixel_width/.4., y -. !pixel_width/.4., 0.0);
+	GlMat.scale3 (s, s, s);
+	draw_glyph ();
+	GlMat.load_identity ();
+	GlMat.translate3 (x -. !pixel_width/.4., y -. !pixel_width/.4., 0.0);
+	GlMat.scale3 (s, s, s);
+	draw_glyph ();
     | Path(param, beziers) ->
       GlMat.load_identity ();
       (match param.fillColor with
@@ -234,7 +251,9 @@ let output ?(structure:structure={name="";displayname=[];
     ignore (Glut.init Sys.argv);
     Glut.initDisplayMode ~multisample:true ~alpha:true ~depth:true ~double_buffer:true ();
     Glut.initWindowSize width height;
-    ignore (Glut.createWindow "O'Caml OpenGL Lesson 2");
+    ignore (Glut.createWindow "Patoline OpenGL Driver");
+    Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);
+    flush stderr;
     Glut.displayFunc draw_gl_scene;
     Glut.keyboardFunc keyboard_cb;
     Glut.specialFunc special_cb;
