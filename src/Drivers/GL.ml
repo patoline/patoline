@@ -48,25 +48,48 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let pixel_width = ref 0.0 in
+  let pixel_height = ref 0.0 in
 
 (* Handle window reshape events *)
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
     let pw,ph=pages.(page).pageFormat in
-    GlDraw.viewport 0 0 w h;
-    GlMat.mode `projection;
-    GlMat.load_identity ();
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
     let ry = ph /. 2.0 *. !zoom in
     pixel_width := rx *. 2.0 /. (float_of_int h);
-    GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
-    GlMat.mode `modelview;
-    GlMat.load_identity ()
+    pixel_height := ry *. 2.0 /. (float_of_int w);
+
+    let set_proj () =
+      GlDraw.viewport 0 0 w h;
+      GlMat.mode `projection;
+      GlMat.load_identity ();
+      GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
+      GlMat.mode `modelview;
+      GlMat.load_identity ()
+    in
+
+(*
+    Glut.useLayer(Glut.OVERLAY);
+    set_proj ();
+    Glut.useLayer(Glut.NORMAL);
+*)
+    set_proj ()
   in
 
+  let overlay_rect (r,g,b) (x,y,x',y') =
+    GlMat.load_identity ();
+    GlDraw.color (r,g,b);
+    GlDraw.begins `line_loop;
+    GlDraw.vertex2 (x,y');
+    GlDraw.vertex2 (x',y');
+    GlDraw.vertex2 (x',y);
+    GlDraw.vertex2 (x,y);
+    GlDraw.ends ();
+  in
+    
   let inverse_coord x y =
     let w = float (Glut.get Glut.WINDOW_WIDTH)
     and h = float (Glut.get Glut.WINDOW_HEIGHT) in
@@ -134,19 +157,19 @@ let output ?(structure:structure={name="";displayname=[];
 	flush stderr;
 	GlDraw.color (r,g,b);
 	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.4., y +. !pixel_width/.4., 0.0);
+	GlMat.translate3 (x +. !pixel_width/.4., y +. !pixel_height/.4., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.4., y +. !pixel_width/.4., 0.0);
+	GlMat.translate3 (x -. !pixel_width/.4., y +. !pixel_height/.4., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.4., y -. !pixel_width/.4., 0.0);
+	GlMat.translate3 (x +. !pixel_width/.4., y -. !pixel_height/.4., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.4., y -. !pixel_width/.4., 0.0);
+	GlMat.translate3 (x -. !pixel_width/.4., y -. !pixel_height/.4., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 
@@ -163,18 +186,18 @@ let output ?(structure:structure={name="";displayname=[];
       | Some RGB{red = r; green=g; blue=b;} ->
 	GlDraw.color (r,g,b);
 	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.4., !pixel_width/.4., 0.0);
+	GlMat.translate3 (!pixel_width/.4., !pixel_height/.4., 0.0);
 	let l = GlList.create `compile_and_execute in
 	List.iter (fun l -> GluTess.tesselate [List.map fst l]) lines;
 	GlList.ends ();
 	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.4., !pixel_width/.4., 0.0);
+	GlMat.translate3 (-. !pixel_width/.4., !pixel_height/.4., 0.0);
 	GlList.call l;
 	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.4., -. !pixel_width/.4., 0.0);
+	GlMat.translate3 (!pixel_width/.4., -. !pixel_height/.4., 0.0);
 	GlList.call l;
 	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.4., -. !pixel_width/.4., 0.0);
+	GlMat.translate3 (-. !pixel_width/.4., -. !pixel_height/.4., 0.0);
 	GlList.call l;
 	GlList.delete l
       );
@@ -246,9 +269,7 @@ let output ?(structure:structure={name="";displayname=[];
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) pages.(page).pageContents;
-
-    Glut.swapBuffers ()
+    ) pages.(page).pageContents
   in
 
   let redraw () =
@@ -263,7 +284,7 @@ let output ?(structure:structure={name="";displayname=[];
     | 112 | 8 -> if !cur_page > 0 then decr cur_page; redraw ();
     | 43 -> zoom := !zoom /. 1.1; redraw ();
     | 45 -> zoom := !zoom *. 1.1; redraw ();
-    | n -> Printf.fprintf stderr "Unbound key: %d\n" n; flush stderr      
+    | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr      
   in
 
   let special_cb ~key ~x ~y =
@@ -272,12 +293,60 @@ let output ?(structure:structure={name="";displayname=[];
     | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
     | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
-    | _ -> ();
+    | b -> Printf.fprintf stderr "Unbound special: %s\n" (Glut.string_of_special b); flush stderr;
   in
 
+  let motion_ref = ref None in
+
+  let motion_cb ~x ~y =
+    match !motion_ref with
+      None -> ()
+    | Some (x', y') ->
+      let mx = float (x - x') and my = float (y - y') in
+      motion_ref := Some (x, y);
+      dx := !dx -. mx *. !pixel_width;
+      dy := !dy +. my *. !pixel_height;
+      redraw ();
+  in
+
+  let previous_links = ref [] in
+
+  let passive_motion_cb ~x ~y =
+    let l = find_link x y in
+    if l <> !previous_links then (
+      draw_gl_scene ();
+      previous_links := l;
+      if l = [] then Glut.setCursor Glut.CURSOR_INHERIT;
+      List.iter (fun (l, _) ->
+	let color = 
+	  if String.length(l.uri) >= 5 &&
+	    String.sub l.uri 0 5 = "edit:" then (
+	    Glut.setCursor Glut.CURSOR_TEXT;
+	      (1.0,0.0,0.0)
+	    )
+	  else (
+	    Glut.setCursor Glut.CURSOR_INFO;
+	    if l.uri <> "" then (0.0,0.0,1.0) else (0.0,1.0,0.0)
+	  )
+	in
+	overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+      ) l;
+      Glut.swapBuffers ();
+    )
+  in
+      
   let mouse_cb ~button ~state ~x ~y =
     match button, state with
-      Glut.LEFT_BUTTON, Glut.UP ->
+    | Glut.RIGHT_BUTTON, Glut.DOWN ->
+      motion_ref := Some (x, y);
+
+    | Glut.OTHER_BUTTON(3), Glut.UP -> zoom := !zoom /. 1.1; redraw ();
+    | Glut.OTHER_BUTTON(4), Glut.UP -> zoom := !zoom *. 1.1; redraw ();
+
+    | Glut.RIGHT_BUTTON, Glut.UP ->
+      motion_ref := None;
+
+    | Glut.LEFT_BUTTON, Glut.UP ->
 	List.iter 
 	  (fun (l, i) ->
 	    Printf.fprintf stderr 
@@ -300,7 +369,15 @@ let output ?(structure:structure={name="";displayname=[];
 	      end
 	  )
 	  (find_link x y)
+    | b, Glut.UP -> 
+      Printf.fprintf stderr "Unbound button: %s\n" (Glut.string_of_button b);
+      flush stderr
     | _ -> ()
+  in
+
+  let display_cb () = 
+    draw_gl_scene ();
+    Glut.swapBuffers ()
   in
 
   let main () =
@@ -314,11 +391,13 @@ let output ?(structure:structure={name="";displayname=[];
     ignore (Glut.createWindow "Patoline OpenGL Driver");
     Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);
     flush stderr;
-    Glut.displayFunc draw_gl_scene;
+    Glut.displayFunc display_cb;
     Glut.keyboardFunc keyboard_cb;
     Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
     Glut.mouseFunc mouse_cb;
+    Glut.motionFunc motion_cb;
+    Glut.passiveMotionFunc passive_motion_cb;
     init_gl width height;
     Glut.mainLoop ()
   in
