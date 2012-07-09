@@ -1,7 +1,7 @@
 include Makefile.config
 
 OCAMLBUILD=ocamlbuild
-CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg
+CAMLOPT=ocamlfind ocamlopt $(PACK) -linkpkg
 
 FORMAT=$(shell ls Format/*.mllib)
 DRIVERS=$(shell ls Drivers/*.ml)
