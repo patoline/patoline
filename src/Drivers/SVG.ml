@@ -1,3 +1,4 @@
+open Typography
 open CamomileLibrary
 open Fonts.FTypes
 open OutputCommon

@@ -94,9 +94,8 @@ let rec process_each_file =
       (* Printf.fprintf stderr "File %s generated.\n" (mlname_of f); *)
     if !format <> "DefaultFormat" then
       package_list := ("Typography." ^ !format) :: !package_list;
-    (* FIXME: lablgl should not be needed without --driver GL *)
-    if true or !driver = "GL" then
-      package_list := !package_list@["lablgl"; "lablgl.glut"];
+    package_list := ("Typography."^ !driver):: !package_list;
+
     if !compile then (
       let lespackages = String.concat "," (List.rev !package_list) in
       let lesincludes = String.concat " " (List.map (fun s -> "\""^s^".cmx\"") !Generateur.includeList) in 

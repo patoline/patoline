@@ -1,12 +1,15 @@
+include Makefile.config
+
 OCAMLBUILD=ocamlbuild
 CAMLOPT=ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg
 
 FORMAT=$(shell ls Format/*.mllib)
+DRIVERS=$(shell ls Drivers/*.ml)
 
 all:native byte prof
 
-native:Main.native DefaultGrammar.cmx proof.native
-byte:Typography/Typography.cma $(FORMAT:.mllib=.cma)
+native:Typography/Typography.cmxa Main.native DefaultGrammar.cmx $(DRIVERS:.ml=.cmxa) proof.native
+byte:Typography/Typography.cma $(FORMAT:.mllib=.cma) $(DRIVERS:.ml=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
@@ -16,12 +19,12 @@ doc:
 Main.native: $(FORMAT:.mllib=.cmxa)
 	$(OCAMLBUILD) -I Typography Patoline/Main.native
 
-proof.native:Typography/Typography.cmxa
-	$(OCAMLBUILD) proof/proof.native
+proof.native:Typography/Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
+	mkdir -p _build;cp -R proof _build; cd _build/proof; $(CAMLOPT) -I ../Typography -I ../Drivers -o proof Typography.cmxa Pdf.cmxa proof.ml
 
-Format/%.cmxa:Typography/Typography.cmxa
+Format/%.cmxa:
 	$(OCAMLBUILD) Format/$*.cmxa
-Format/%.cma:Typography/Typography.cma
+Format/%.cma:
 	$(OCAMLBUILD) Format/$*.cma
 
 Typography/Typography.cmxa:
@@ -33,6 +36,13 @@ Typography/Typography.p.cmxa:
 	$(OCAMLBUILD) -I Typography Typography/Typography.p.cmxa
 Typography/Typography.p.cma:
 	$(OCAMLBUILD) -I Typography Typography/Typography.p.cma
+
+Drivers/%.cmxa:Drivers/%.ml
+	mkdir -p _build; cp -R Drivers _build; cd _build/Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -pp $(CPP) -I ../Typography -o $*.cmxa $*.ml
+Drivers/%.p.cmxa:Drivers/%.ml
+	mkdir -p _build; cp -R Drivers _build; cd _build/Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -p -pp $(CPP) -I ../Typography -o $*.p.cmxa $*.ml
+Drivers/%.cma:Drivers/%.ml
+	mkdir -p _build; cp -R Drivers _build; cd _build/Drivers; ocamlfind ocamlc -package camomile $(PACK) -a -pp $(CPP) -I ../Typography -o $*.cma $*.ml
 
 
 DefaultGrammar.cmx: _build/Patoline/Main.native DefaultGrammar.txp
