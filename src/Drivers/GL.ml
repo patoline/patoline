@@ -25,6 +25,7 @@ let dx = ref 0.0
 let dy = ref 0.0
 
 let glyphCache = Hashtbl.create 1001
+let imageCache = Hashtbl.create 1001
 
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -100,8 +101,7 @@ let output ?(structure:structure={name="";displayname=[];
 	let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = 1.   /. 1000. *. size in
-	let w = Fonts.glyphWidth g.glyph *. s in
-	
+(*	let w = Fonts.glyphWidth g.glyph *. s in	*)
 (*	Printf.fprintf stderr "x = %f, y = %f, dx = %f, dy = %f, s = %f\n"
 	  x y dx dy size;*)
 
@@ -149,9 +149,10 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.translate3 (x -. !pixel_width/.4., y -. !pixel_width/.4., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
+
     | Path(param, beziers) ->
 	let lines = List.map (fun line ->
-	  let line = List.rev (Array.to_list line) in
+	  let line = Array.to_list line in
 	  let line = List.flatten (List.map (Bezier.subdivise  (1e-2 *. !zoom)) line) in
 	  List.map
 	    (fun (xa,ya) -> (xa.(0), ya.(0), 0.0),
@@ -164,7 +165,7 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.load_identity ();
 	GlMat.translate3 (!pixel_width/.4., !pixel_width/.4., 0.0);
 	let l = GlList.create `compile_and_execute in
-	List.map (fun l -> GluTess.tesselate [List.map fst l]) lines;
+	List.iter (fun l -> GluTess.tesselate [List.map fst l]) lines;
 	GlList.ends ();
 	GlMat.load_identity ();
 	GlMat.translate3 (-. !pixel_width/.4., !pixel_width/.4., 0.0);
@@ -196,9 +197,56 @@ let output ?(structure:structure={name="";displayname=[];
 	      (*	Printf.fprintf stderr "\n"; flush stderr;*)
 	  GlDraw.ends ();
 	) lines);
+
     | Link(link) -> ()
-    | _ -> ())
-      pages.(page).pageContents;
+
+    | Image i -> 
+      GlMat.load_identity ();
+      Gl.enable `texture_2d;
+      begin     
+	try 	  
+	  GlTex.bind_texture `texture_2d (Hashtbl.find imageCache i)
+	with Not_found ->
+	  let image = Images.load i.image_file [] in
+	  let w,h=Images.size image in
+	  let image32 = match image with
+	      Images.Rgba32 i -> i
+	    | Images.Rgb24 i -> Rgb24.to_rgba32 i
+	    | _ -> failwith "Unsupported"
+	  in 
+	  let raw = Raw.create `ubyte ~len:(4*w*h) in
+	  for j=0 to h-1 do
+            for i=0 to w-1 do
+	      let rgba = Rgba32.get image32 i j in
+	      Raw.set raw ((j * w + i) * 4 + 0) rgba.Color.color.Color.r;
+	      Raw.set raw ((j * w + i) * 4 + 1) rgba.Color.color.Color.g;
+	      Raw.set raw ((j * w + i) * 4 + 2) rgba.Color.color.Color.b;
+	      Raw.set raw ((j * w + i) * 4 + 3) rgba.Color.alpha;
+	    done
+	  done;
+	  let texture = GlPix.of_raw raw `rgba w h in  
+	  let tid = GlTex.gen_texture () in
+	  GlTex.bind_texture `texture_2d tid;
+	  GlTex.image2d texture ~border:false;
+	  GlTex.env (`mode `modulate);
+	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
+	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
+	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
+	  Hashtbl.add imageCache i tid
+      end;
+      GlDraw.color (1.0,1.0,1.0);
+      GlDraw.begins `quads;
+      GlTex.coord2 (0., 1.);
+      GlDraw.vertex2 (i.image_x, i.image_y);
+      GlTex.coord2 (1., 1.);
+      GlDraw.vertex2 (i.image_x +. i.image_width, i.image_y);
+      GlTex.coord2 (1., 0.);
+      GlDraw.vertex2 (i.image_x +. i.image_width, i.image_y +. i.image_height);
+      GlTex.coord2 (0., 0.);
+      GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
+      GlDraw.ends ();
+      Gl.disable `texture_2d;
+    ) pages.(page).pageContents;
 
     Glut.swapBuffers ()
   in
@@ -261,7 +309,7 @@ let output ?(structure:structure={name="";displayname=[];
 	height = 480 
     in
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayMode ~multisample:true ~alpha:true ~depth:true ~double_buffer:true ();
+    Glut.initDisplayString "rgba double samples>=32";
     Glut.initWindowSize width height;
     ignore (Glut.createWindow "Patoline OpenGL Driver");
     Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);

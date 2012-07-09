@@ -772,4 +772,4 @@ let subdivise thick b =
       fn acc (restrict xa 0.5 1.0, restrict ya 0.5 1.0) 
   else
     b::acc
-  in fn [] b
+  in List.rev (fn [] b)

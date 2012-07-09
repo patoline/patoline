@@ -917,7 +917,7 @@ module MathsFormat=struct
                              Array.of_list (List.map (fun (u,v)->
                                                         Array.map (fun y->if y>=w1/.4. then (y*.size)+.(max 0. (x1_-.w1*.size)) else y*.size) u,
                                                         Array.map (fun y->y*.size-.y0+.y1_+.space) v
-                                                     ) (List.rev x))) arr
+                                                     ) x)) arr
                in
                  [Box.Drawing {
                     drawing_nominal_width=max (w1*.size) boxes_w;
@@ -969,7 +969,7 @@ module MathsFormat=struct
                              Array.of_list (List.map (fun (u,v)->
                                                         Array.map (fun y->if y>=w1*.0.75 then (y*.size)+.(max 0. (x1_-.w1*.size)) else y*.size) u,
                                                         Array.map (fun y->y*.size-.y0+.y1_+.space) v
-                                                     ) (List.rev x))) arr
+                                                     ) x)) arr
                in
                  [Box.Drawing {
                     drawing_nominal_width=max (w1*.size) boxes_w;

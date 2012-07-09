@@ -783,7 +783,7 @@ let outlines_ gl onlyWidth=
       done
   in
     execute gl.type2;
-    List.rev !resultat
+    List.rev_map List.rev !resultat
 
 let outlines glyph=outlines_ glyph false
 let glyphWidth glyph=
