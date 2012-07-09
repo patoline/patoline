@@ -35,7 +35,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
             ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
             ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
 	    ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), "Generated uri link of the form \"edit:filename@line");
-	    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=true), "Disable generation of \"# line\" directive in the generated ml (for debugging the generator)");
+	    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), "Disable generation of \"# line\" directive in the generated ml (for debugging the generator)");
 	    ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), "Remaining arguments are passed to the OCaml executable")
            ]
 
