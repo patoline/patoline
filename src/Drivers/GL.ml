@@ -9,7 +9,7 @@ let cur_page = ref 0
 
 let init_gl width height =
 (*    GlDraw.shade_model `smooth;*)
-    GlClear.color (1.0, 1.0, 1.0);
+    GlClear.color (0.5, 0.5, 0.5);
     GlClear.depth 1.0;
     GlClear.clear [`color; `depth];
     Gl.enable `depth_test;
@@ -120,6 +120,14 @@ let output ?(structure:structure={name="";displayname=[];
     GlClear.clear [`color; `depth];
     GlMat.load_identity ();
     let page = !cur_page in
+    let pw,ph=pages.(page).pageFormat in
+    GlDraw.color (1.0, 1.0, 1.0);
+    GlDraw.begins `quads;
+    GlDraw.vertex2 (0., 0.);
+    GlDraw.vertex2 (pw, 0.);
+    GlDraw.vertex2 (pw, ph);
+    GlDraw.vertex2 (0., ph);
+    GlDraw.ends ();
 
     List.iter (function
       Glyph g ->
@@ -166,19 +174,19 @@ let output ?(structure:structure={name="";displayname=[];
 	flush stderr;
 	GlDraw.color (r,g,b);
 	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.4., y +. !pixel_height/.4., 0.0);
+	GlMat.translate3 (x +. !pixel_width/.5., y +. !pixel_height/.5., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.4., y +. !pixel_height/.4., 0.0);
+	GlMat.translate3 (x -. !pixel_width/.5., y +. !pixel_height/.5., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.4., y -. !pixel_height/.4., 0.0);
+	GlMat.translate3 (x +. !pixel_width/.5., y -. !pixel_height/.5., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.4., y -. !pixel_height/.4., 0.0);
+	GlMat.translate3 (x -. !pixel_width/.5., y -. !pixel_height/.5., 0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph ();
 
@@ -195,18 +203,18 @@ let output ?(structure:structure={name="";displayname=[];
       | Some RGB{red = r; green=g; blue=b;} ->
 	GlDraw.color (r,g,b);
 	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.4., !pixel_height/.4., 0.0);
+	GlMat.translate3 (!pixel_width/.5., !pixel_height/.5., 0.0);
 	let l = GlList.create `compile_and_execute in
 	List.iter (fun l -> GluTess.tesselate [List.map fst l]) lines;
 	GlList.ends ();
 	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.4., !pixel_height/.4., 0.0);
+	GlMat.translate3 (-. !pixel_width/.5., !pixel_height/.5., 0.0);
 	GlList.call l;
 	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.4., -. !pixel_height/.4., 0.0);
+	GlMat.translate3 (!pixel_width/.5., -. !pixel_height/.5., 0.0);
 	GlList.call l;
 	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.4., -. !pixel_height/.4., 0.0);
+	GlMat.translate3 (-. !pixel_width/.5., -. !pixel_height/.5., 0.0);
 	GlList.call l;
 	GlList.delete l
       );
