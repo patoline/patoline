@@ -842,7 +842,7 @@ let mappend m x=
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
     consécutifs est pris en compte *)
-let boxify buf nbuf fixable env0 l=
+let boxify buf nbuf fixable env0 spaces l=
   let rec boxify env=function
       []->env
     | B (b, cache)::s->
@@ -875,7 +875,7 @@ let boxify buf nbuf fixable env0 l=
                 ) else (
                   if is_space (UTF8.look t i) then (
                     let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
-                    if i0<>i && needs_glue then l:=mappend !l [gl];
+                    if spaces || (i0<>i && needs_glue) then l:=mappend !l [gl];
                     l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)));
                     cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
                   ) else (
@@ -906,10 +906,10 @@ let boxify buf nbuf fixable env0 l=
   in
     boxify env0 l
 
-let boxify_scoped env x=
+let boxify_scoped ?spaces:(spaces=false) env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
-  let _=boxify buf nbuf (ref false) env x in
+  let _=boxify buf nbuf (ref false) env spaces x in
     Array.to_list (Array.sub !buf 0 !nbuf)
 
 
@@ -945,7 +945,7 @@ let flatten env0 fixable str=
   let frees=ref 0 in
   let add_paragraph env p=
     nbuf:= !frees;
-    let v=boxify buf nbuf fixable env p.par_contents in
+    let v=boxify buf nbuf fixable env false p.par_contents in
       paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
       compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
