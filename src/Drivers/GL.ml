@@ -224,17 +224,19 @@ let output ?(structure:structure={name="";displayname=[];
 	GlDraw.color (r,g,b);
 	List.iter (fun line ->
 	  GlMat.load_identity ();
-	  GlDraw.begins (if param.close then `line_loop else `line_strip);
-	  GlDraw.line_width (param.lineWidth /. !pixel_width);
-	  let first = ref true in
+	  GlDraw.begins `quads;
+	  let lw = param.lineWidth +. 0.5 *. !pixel_width in
 	  List.iter
-	    (fun (a,b) ->
-	      (*	      if !first then Printf.fprintf stderr "(%f, %f) " xa.(0) ya.(0);*)
-	      if !first then (GlDraw.vertex3 a; first := false);
-		(*	      Printf.fprintf stderr "(%f, %f) " xa.(Array.length xa -1) *)
-              	(*	ya.(Array.length ya - 1);*)
-		GlDraw.vertex3 b) line;
-	      (*	Printf.fprintf stderr "\n"; flush stderr;*)
+	    (fun ((ax,ay,_),(bx,by,_)) ->
+	      let vx = bx -. ax and vy = by -. ay in
+	      let norm = sqrt (vx*.vx +. vy*.vy) in
+	      let nx = vy /. norm /. 2.0 *. lw in
+	      let ny = -. vx /. norm /. 2.0  *. lw in
+	      GlDraw.vertex2 (ax +. nx, ay +. ny);
+	      GlDraw.vertex2 (bx +. nx, by +. ny);
+	      GlDraw.vertex2 (bx -. nx, by -. ny);
+	      GlDraw.vertex2 (ax -. nx, ay -. ny);
+	    ) line;
 	  GlDraw.ends ();
 	) lines);
 
