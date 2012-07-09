@@ -171,6 +171,5 @@
 		   (?d tuareg-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
 	 ))))
 
-
-
-
+(setq comment-start "(*")
+(setq comment-end "*)")
