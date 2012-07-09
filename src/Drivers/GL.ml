@@ -113,7 +113,10 @@ let output ?(structure:structure={name="";displayname=[];
       l.link_y0 <= y && y <= l.link_y1) links.(!cur_page)
   in
 
+  let fps = ref 0.0 and cfps = ref 0 in
+
   let draw_gl_scene () =
+    let time = Sys.time () in
     GlClear.clear [`color; `depth];
     GlMat.load_identity ();
     let page = !cur_page in
@@ -124,26 +127,32 @@ let output ?(structure:structure={name="";displayname=[];
 	let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = 1.   /. 1000. *. size in
-(*	let w = Fonts.glyphWidth g.glyph *. s in	*)
-(*	Printf.fprintf stderr "x = %f, y = %f, dx = %f, dy = %f, s = %f\n"
-	  x y dx dy size;*)
-
+	let w = Fonts.glyphWidth g.glyph *. s in
+	let pw = w /. !pixel_width in
+	let scale = if pw < 20.0 then 
+	    if pw < 5.0 then 25.0 else 5.0
+	  else if pw < 100.0 then 1.0 else 0.1
+	in
+(*
+	Printf.fprintf stderr "x = %f, y = %f, w = %f, pw = %f, scale = %f\n"
+	  x y w pw scale ;
+*)
 	let draw_glyph () = 
 	  try
-	    GlList.call (Hashtbl.find glyphCache g.glyph)
+	    GlList.call (Hashtbl.find glyphCache (g.glyph, scale))
 	  with
 	    Not_found ->
 	      let beziers =  Fonts.outlines g.glyph in
 	      let lines = 
 		List.map (fun bs -> 
-		  let bs = List.flatten (List.map (Bezier.subdivise 1e-1) bs) in
+		  let bs = List.flatten (List.map (Bezier.subdivise scale) bs) in
 		  List.map (fun (xs, ys) -> (xs.(0),ys.(0),0.0)) bs
 		) beziers 
 	      in
 	      let l = GlList.create `compile_and_execute in
 	      GluTess.tesselate  lines;
 	      GlList.ends ();
-	      Hashtbl.add glyphCache g.glyph l
+	      Hashtbl.add glyphCache (g.glyph, scale) l
 	in
 (*	
 	List.iter (fun bs ->
@@ -269,19 +278,35 @@ let output ?(structure:structure={name="";displayname=[];
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) pages.(page).pageContents
+    ) pages.(page).pageContents;
+
+    let delta = Sys.time () -. time in
+    fps := !fps +. delta;
+    incr cfps;
+    if !cfps = 50 then (
+      Printf.fprintf stderr "fps: %f\n" (float !cfps /. !fps);
+      flush stderr;
+      cfps := 0; fps := 0.0
+    )
   in
 
+  let display_cb () = 
+    draw_gl_scene ();
+    Glut.swapBuffers ()
+  in
+
+
   let redraw () =
-    Glut.reshapeWindow (Glut.get Glut.WINDOW_WIDTH)  (Glut.get Glut.WINDOW_HEIGHT);
+    reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
     Glut.postRedisplay ()
   in
+
 
   let keyboard_cb ~key ~x ~y =
     match key with
     | 27 (* ESC *) -> exit 0
-    | 110 | 32 -> if !cur_page < num_pages - 1 then incr cur_page; redraw ();
-    | 112 | 8 -> if !cur_page > 0 then decr cur_page; redraw ();
+    | 110 | 32 -> if !cur_page < num_pages - 1 then (incr cur_page; redraw ());
+    | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
     | 43 -> zoom := !zoom /. 1.1; redraw ();
     | 45 -> zoom := !zoom *. 1.1; redraw ();
     | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr      
@@ -373,11 +398,6 @@ let output ?(structure:structure={name="";displayname=[];
       Printf.fprintf stderr "Unbound button: %s\n" (Glut.string_of_button b);
       flush stderr
     | _ -> ()
-  in
-
-  let display_cb () = 
-    draw_gl_scene ();
-    Glut.swapBuffers ()
   in
 
   let main () =
