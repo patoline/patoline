@@ -139,6 +139,7 @@ let default_env=
       close_dist=0.15;
       left_op_dist = 0.25;
       right_op_dist = 0.25;
+      sqrt_dist=0.2;
       kerning=true;
       precise_kerning=Some 1e-2;
       priorities=[| 4.;3.;2.;1. |];

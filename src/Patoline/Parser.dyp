@@ -368,7 +368,7 @@ let fix_name name l =
   let rec fn = function
     [] -> raise Not_found
   | `Fun_name n::_ -> n
-  | _::l -> fn l
+  | h::l -> fn l
   in
   try fn (List.assoc name l) with Not_found -> name
 
@@ -430,7 +430,7 @@ let test_margs dyp name a =
     then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
-    let args = if give_pos name dyp.local_data.word_macros then
+    let args = if give_pos name dyp.local_data.math_macros then
       MathString(get_pos_as_string dyp 1)::args else args
     in    
     begin
@@ -440,7 +440,7 @@ let test_margs dyp name a =
       with Not_found ->
         if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
-   fix_name name dyp.local_data.word_macros, args
+   fix_name name dyp.local_data.math_macros, args
 
 
 }
@@ -871,7 +871,7 @@ macro_option:
 | "eat_right" { `Eat_right }
 | "is_identity" { `Is_idt }
 | "give_position" { `Give_pos }
-| "name" "=" (['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_' ''']*)<s> { `Fun_name s }
+| "name" "=" ((['A'-'Z']['a'-'z']*'.')?['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9''_' ''']*)<s> { `Fun_name s }
 | "arg_" - (['0'-'9']+)<i> "=" ['a'-'z''A'-'Z''0'-'9''_']+<s> { `Arg_pat(int_of_string i, s) }
 | "arg_" - (['0'-'9']+)<i> "no_parenthesis" { `Arg_nopar(int_of_string i) }
 | "arity" "=" (['0'-'9']+)<i> { `Nb_args(int_of_string i) }
@@ -973,7 +973,7 @@ atomelt:
        [Local_data { dyp.local_data with word_macros = (w, o)::dyp.local_data.word_macros }]
      }
   | "\\Configure_math_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
-    @{ ([Ignore], []), 
+    @{ ([Ignore], []),
        [Local_data { dyp.local_data with math_macros = (w, o)::dyp.local_data.math_macros }]
      }
   | "\\Configure_paragraph_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"

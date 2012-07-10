@@ -837,3 +837,192 @@ let open_close left right env_ style box=
          drawing_y1=y1_r'-.vertical_translation;
          drawing_badness=(fun _->0.);
          drawing_contents=(fun _->  right);}])
+
+
+let sqrts=ref [||]
+
+let make_sqrt env_ style box=
+  let env=env_style env_.mathsEnvironment style in
+  let s=env.mathsSize*.env_.size in
+  let under=draw_boxes box in
+  let (bx0,by0,bx1,by1)=bounding_box under in
+
+  let f=Fonts.loadFont (findFont "../Fonts/Euler/euler.otf") in
+  sqrts:=Array.map (fun x->Fonts.loadGlyph f { glyph_utf8="\\sqrt";glyph_index=x })
+    [|693;694;695;696;697|];
+  let h=by1 -. by0 +. (phi)*.env.sqrt_dist*.s in
+  let glyphs= ! sqrts in
+  let rec select i=
+    if i>=Array.length glyphs-1 then i else (
+      let h0=(Fonts.glyph_y1 glyphs.(i)-.Fonts.glyph_y0 glyphs.(i))*.s/.1000. in
+      let h1=(Fonts.glyph_y1 glyphs.(i+1)-.Fonts.glyph_y0 glyphs.(i+1))*.s/.1000. in
+      if h>h1 then
+        select (i+1)
+      else (
+        if h>=(h1+.h0)/.3. then i+1 else i
+      )
+    )
+  in
+  let gl=glyphs.(select 0) in
+  let out=Fonts.outlines gl in
+  let out=
+    Array.of_list
+      (List.map (fun (a,b)->
+                   Array.map (fun aa->aa*.s/.1000.) a,
+                   Array.map (fun aa->aa*.s/.1000.) b) (List.hd out))
+  in
+  let i0=ref (-1) in (* courbe qui bouche la patte qui monte *)
+  let i1=ref (-1) in (* courbe à droite de i0 *)
+  let i2=ref (-1) in (* courbe à gauche de i0 *)
+  let y0=ref (-.infinity) in
+  let y1=ref (-.infinity) in
+
+  for i=0 to Array.length out - 1 do
+    let x,y=out.(i) in
+    (* Courbe la plus à droite *)
+    let yy0,yy1=
+      if y.(0)<y.(Array.length y-1) then
+        y.(0),y.(Array.length y-1)
+      else if y.(0)>y.(Array.length y-1) then
+        y.(Array.length y-1),y.(0)
+      else
+        if x.(0)>x.(Array.length x-1) then
+          y.(Array.length y-1),y.(0)
+        else
+          y.(0),y.(Array.length x-1)
+    in
+    if yy0 >= !y0 && yy1 >= !y1 then (
+      y0:=yy0;y1:=yy1;i0:=i;
+      if x.(0)<x.(Array.length x-1) then
+        (i1:=if i<Array.length out-1 then i+1 else 0;
+         i2:=if i>=1 then i-1 else Array.length out-1)
+      else
+        (i1:=if i>=1 then i-1 else Array.length out-1;
+         i2:=if i<Array.length out-1 then i+1 else 0)
+    )
+  done;
+
+  let dx,dy=out.(!i0) in
+  let dx0,dy0,dx1,dy1=if dx.(0)>dx.(Array.length dx-1) then
+    dx.(0),dy.(0),dx.(Array.length dx-1),dy.(Array.length dy-1)
+  else
+    dx.(Array.length dx-1),dy.(Array.length dy-1),dx.(0),dy.(0)
+  in
+  let dd=sqrt ((dx1-.dx0)*.(dx1-.dx0)+.
+                 (dy1-.dy0)*.(dy1-.dy0))
+  in
+  let p=
+    if by1-.by0 <= (Fonts.glyph_y1 gl-.Fonts.glyph_y0 gl)*.s/.1000. then (
+      (* Il faut raccourcir *)
+      let shorten i y=
+        let rx,ry=out.(i) in
+        let ry'=Array.make (Array.length ry) 0. in
+        for j=0 to Array.length ry'-1 do
+          ry'.(j)<-ry.(j) -. y
+        done;
+        match (Bezier.bernstein_solve ry' 1e-5) with
+            tt::_->(
+              if ry.(0)<=ry.(1) then
+                out.(i)<-(Bezier.restrict rx 0. tt, Bezier.restrict ry 0. tt)
+              else
+                out.(i)<-(Bezier.restrict rx tt 1., Bezier.restrict ry tt 1.)
+            )
+          | _->()
+      in
+      let y0'=by1-.by0+.env.sqrt_dist*.s*.(phi) in
+      let y1'=y0'+.min (s/.30.) dd in
+      shorten !i1 y0';
+      shorten !i2 y1';
+      let ddx0,ddy0=out.(!i1) in
+      let ddx1,ddy1=out.(!i2) in
+      let dx0,dx1=
+        let dx0=
+          if ddy0.(0)>ddy0.(Array.length ddy0-1) then
+            ddx0.(0)
+          else
+            ddx0.(Array.length ddx0-1)
+        in
+        let dx1=
+          if ddy1.(0)>ddy1.(Array.length ddy1-1) then
+            ddx1.(0)
+          else
+            ddx1.(Array.length ddx1-1)
+        in
+        if dx0<dx1 then (dx1,dx0) else (dx0,dx1)
+      in
+      let xmax=max (bx1-.bx0) (Fonts.glyphWidth gl*.s/.1000.)/.phi in
+      let path0=Array.sub out 0 !i0
+      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
+      let path2=
+        [|[|dx0;dx0+.xmax|],[|y0';y0'|];
+          [|dx0+.xmax;dx0+.xmax|],[|y0';y1'|];
+          [|dx0+.xmax;dx1|],[|y1';y1'|];
+        |]
+      in
+      let path=Array.concat [path0; path2; path1] in
+      let tx=(xmax-.(bx1-.bx0))/.2. +. dx0 in
+      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
+      let p=
+        translate 0. ty
+          (Path ({default with strokingColor=None;fillColor=Some black},
+                 [path]
+                ))
+      in
+      let (a,b,c,d)=bounding_box [p] in
+      [Drawing {
+         drawing_min_width=c-.a;
+         drawing_nominal_width=c-.a;
+         drawing_max_width=c-.a;
+         drawing_y0=b;
+         drawing_y1=d;
+         drawing_badness=(fun _->0.);
+         drawing_contents=
+           (fun _->p::
+              (List.map (translate tx 0.) under))
+       }]
+    ) else (
+      (* Il faut rallonger *)
+      let vx=dy1-.dy0
+      and vy= -.(dx1-.dx0) in
+      let tt=(max 0. (env.sqrt_dist*.s*.phi-.by0+.by1
+                      +.Fonts.glyph_y0 gl*.s/.1000.
+                      -.Fonts.glyph_y1 gl*.s/.1000.))/.vy in
+      let tt'= tt+. ((dd-. (dy1-.dy0))/.(vy*.phi)) in
+      let xmax=bx1-.bx0 in
+      let path0=Array.sub out 0 !i0
+      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
+      let path2=
+        [|[|dx0;dx0+.tt*.vx|], [|dy0;dy0+.tt*.vy|];
+          [|dx0+.tt*.vx+.xmax;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy0+.tt*.vy|];
+          [|dx0+.tt*.vx+.xmax;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy1+.tt'*.vy|];
+          [|dx0+.tt*.vx+.xmax;dx1+.tt'*.vx|], [|dy1+.tt'*.vy;dy1+.tt'*.vy|];
+          [|dx1+.tt'*.vx; dx1|], [|dy1+.tt'*.vy; dy1|]
+        |]
+      in
+      let path=Array.concat [path0; path2; path1] in
+      let tx=(xmax-.(bx1-.bx0))/.2. +. dx0 +. vx*.tt in
+      let ty=by0-.env.sqrt_dist in
+      let p=
+        translate 0. ty
+          (Path ({default with strokingColor=None;fillColor=Some black},
+                 [path]
+                ))
+      in
+      let (a,b,c,d)=bounding_box [p] in
+      [Drawing {
+         drawing_min_width=c-.a;
+         drawing_nominal_width=c-.a;
+         drawing_max_width=c-.a;
+         drawing_y0=b;
+         drawing_y1=d;
+         drawing_badness=(fun _->0.);
+         drawing_contents=
+           (fun _->p::
+              (List.map (translate tx 0.) under))
+       }]
+    )
+  in
+  p
+
+
+let sqrt x=[Decoration (make_sqrt,x)]

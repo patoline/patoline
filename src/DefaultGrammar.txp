@@ -283,6 +283,7 @@
 \Add_combining{ ⃖ }{\cev}
 \Add_combining{ ̅ }{\oline}
 
+\Configure_math_macro{\sqrt}{ arity = 1 name = Maths.sqrt }
 \Configure_math_macro{\cal}{ arity = 1 name = mathcal }
 \Configure_math_macro{\bold}{ arity = 1 name = mathbold }
 \Configure_paragraph_macro{\item}{ eat_right }

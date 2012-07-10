@@ -116,6 +116,7 @@ module Mathematical=struct
     close_dist:float;
     left_op_dist:float;
     right_op_dist:float;
+    sqrt_dist:float;
     kerning:bool;
   (* None means precise, Some x mean unprecise, but subdivise 
      Bezier curve until the thickness of the polygon is less than x *)
