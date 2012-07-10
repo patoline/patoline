@@ -47,7 +47,7 @@ let output ?(structure:structure={name="";displayname=[];
     Printf.bprintf buf "<font-face font-family=\"%s\" ascent=\"%d\" descent=\"%d\" alphabetic=\"0\"/>\n" f (int_of_float y1) (int_of_float y0);
     Printf.bprintf buf "<missing-glyph horiz-adv-x=\"1024\" d=\"M128 0V1638H896V0H128zM256 128H768V1510H256V128z\"/>";
     let output_glyph buf glyph=
-      List.iter (fun l->match List.rev l with
+      List.iter (fun l->match l with
                      []->()
                    | h::s->(
                        let x0,y0=h in
@@ -213,12 +213,20 @@ else if(e.which==39) next();
     Printf.fprintf o "</defs>\n";
 
 
-    Printf.fprintf o "<title id=\"test-title\">%s</title>\n" "titre";
+    Printf.fprintf o "<title>%s</title>\n" "titre";
     List.iter (function
                    Glyph x->(
-                     Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" fill=\"black\" stroke=\"none\">"
+                     Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" "
                        (Fonts.fontName (Fonts.glyphFont x.glyph))
                        (round (coord x.glyph_size));
+                     (match x.glyph_color with
+                          RGB fc ->
+                            Printf.fprintf o "fill=\"#%02x%02x%02x\" "
+                              (round (fc.red))
+                              (round (fc.green))
+                              (round (fc.blue))
+                        | _->());
+                     Printf.fprintf o "stroke=\"none\">";
                      Printf.fprintf o "<text x=\"%g\" y=\"%g\">"
                        (coord x.glyph_x) (coord (h-.x.glyph_y));
                      let ff=StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)) embedded_fonts in
@@ -232,6 +240,45 @@ else if(e.which==39) next();
                          (html_escape (Fonts.glyphContents x.glyph))
                      );
                      Printf.fprintf o "</text></g>"
+                   )
+                 | Path (args, l)->(
+                     Buffer.clear buf;
+                     List.iter
+                       (fun a->
+                          let x0,y0=a.(0) in
+                          Printf.bprintf buf "M%g %g" (coord x0.(0)) (coord (h-.y0.(0)));
+                          Array.iter
+                            (fun (x,y)->
+                               if Array.length x=2 then Printf.bprintf buf "L" else
+                                 if Array.length x=3 then Printf.bprintf buf "Q" else
+                                   if Array.length x=4 then Printf.bprintf buf "C" else
+                                     raise Bezier_degree;
+                               for j=1 to Array.length x-1 do
+                                 Printf.bprintf buf "%g %g " (coord x.(j)) (coord (h-.y.(j)))
+                               done
+                            ) a;
+                          if args.close then Printf.bprintf buf "Z"
+                       ) l;
+                     Printf.fprintf o
+                       "<path ";
+                     (match args.fillColor with
+                          Some (RGB fc) ->
+                            Printf.fprintf o "fill=\"#%02X%02X%02X\" "
+                              (round (fc.red))
+                              (round (fc.green))
+                              (round (fc.blue));
+                        | None->Printf.fprintf o "fill=\"none\" ");
+                     (match args.strokingColor with
+                          Some (RGB fc) ->
+                            Printf.fprintf o "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" "
+                              (round (fc.red))
+                              (round (fc.green))
+                              (round (fc.blue))
+                              (coord args.lineWidth)
+                        | None->
+                            Printf.fprintf o "stroke=\"none\" "
+                     );
+                     Printf.fprintf o "d=\"%s\" />\n" (Buffer.contents buf);
                    )
                  | _->()
               ) pages.(i).pageContents;
