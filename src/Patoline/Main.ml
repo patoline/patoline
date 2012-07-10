@@ -113,8 +113,7 @@ let rec process_each_file =
           Printf.fprintf stderr "Running OCaml code... \n";
           flush stderr;
           let r= Sys.command (Printf.sprintf "\"%s\" %s" (execname_of f) cline) in
-          flush stderr;
-          if r=0 then Printf.fprintf stderr "File %s generated.\n" (pdfname_of f)
+          if r=0 then Printf.fprintf stderr "Execution successful.\n"
           else (Printf.fprintf stderr "Execution returned with exit code %d.\n" r; exit r)
         )
       ) else (Printf.fprintf stderr "Compilation returned with exit code %d.\n" r; exit r)

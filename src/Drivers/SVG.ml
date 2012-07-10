@@ -8,12 +8,14 @@ open Util
 
 exception Bezier_degree
 
-let filename x=(Filename.chop_extension x)^".svg"
+let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
+
+  let fileName = filename fileName in
 
   let pathbuf=Buffer.create 100 in
 
@@ -135,7 +137,7 @@ let output ?(structure:structure={name="";displayname=[];
 
 
   let coord x=x*.3. in
-  let html=open_out ((Filename.chop_extension fileName)^".html") in
+  let html=open_out fileName in
   Printf.fprintf html
     "<!DOCTYPE html>
 <!DOCTYPE html>
@@ -235,4 +237,6 @@ else if(e.which==39) next();
               ) pages.(i).pageContents;
     Printf.fprintf o "</svg>";
     close_out o;
-  done
+  done;
+  Printf.fprintf stderr "File %s written.\n" fileName;
+  flush stderr

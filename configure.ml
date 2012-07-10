@@ -185,6 +185,7 @@ let _=
         "<**/*>: pp(cpp -w),package(camomile)%s%s
 <Format/*.{ml,mli}>: use_Typography,use_str
 <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
+<Patoline/PatolineGL.native>:package(lablgl),package(lablgl.glut)
 %s
 <Typography/Break.ml>:rectypes
 \"Typography\":include\n"
@@ -202,6 +203,7 @@ let _=
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/PatolineGL.native $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
 
     let sources=
       "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.p.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.p.a src/_build/Typography/Typography.cmi "^

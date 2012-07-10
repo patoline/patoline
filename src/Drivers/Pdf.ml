@@ -44,6 +44,7 @@ let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
+  let fileName = filename fileName in
   let outChan=open_out_bin fileName in
   let pageBuf=Buf.create 1000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
@@ -712,4 +713,7 @@ let output ?(structure:structure={name="";displayname=[];
         (* Trailer *)
         fprintf outChan "trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF\n"
           (1+IntMap.cardinal !xref) cat xref_pos;
-        close_out outChan
+	
+        close_out outChan;
+	Printf.fprintf stderr "File %s written.\n" fileName;
+	flush stderr

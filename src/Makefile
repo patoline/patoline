@@ -8,7 +8,7 @@ DRIVERS=$(shell ls Drivers/*.ml)
 
 all:native byte prof
 
-native:Typography/Typography.cmxa Main.native DefaultGrammar.cmx $(DRIVERS:.ml=.cmxa) proof.native
+native:Typography/Typography.cmxa Main.native PatolineGL.native DefaultGrammar.cmx $(DRIVERS:.ml=.cmxa) proof.native
 byte:Typography/Typography.cma $(FORMAT:.mllib=.cma) $(DRIVERS:.ml=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
@@ -18,6 +18,9 @@ doc:
 
 Main.native: $(FORMAT:.mllib=.cmxa)
 	$(OCAMLBUILD) -I Typography Patoline/Main.native
+
+PatolineGL.native: Patoline/PatolineGL.ml Drivers/GL.cmxa
+	$(OCAMLBUILD) -I Drivers Patoline/PatolineGL.native
 
 proof.native:Typography/Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
 	mkdir -p _build;cp -R proof _build; cd _build/proof; $(CAMLOPT) -I ../Typography -I ../Drivers -o proof Typography.cmxa Pdf.cmxa proof.ml
