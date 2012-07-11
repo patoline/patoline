@@ -12,7 +12,7 @@ let init_gl width height =
     GlClear.color (0.5, 0.5, 0.5);
     GlClear.depth 1.0;
     GlClear.clear [`color; `depth];
-    Gl.enable `depth_test;
+    Gl.disable `depth_test;
     Gl.enable `polygon_smooth;
     Gl.enable `line_smooth;
     GlMisc.hint `polygon_smooth `nicest;
@@ -123,9 +123,12 @@ let output ?(structure:structure={name="";displayname=[];
 
   let fps = ref 0.0 and cfps = ref 0 in
 
+  let saved_rectangle = ref None in
+
   let draw_gl_scene () =
     let time = Sys.time () in
-    GlClear.clear [`color; `depth];
+    saved_rectangle := None;
+    GlClear.clear [`color];
     GlMat.load_identity ();
     let page = !cur_page in
     let pw,ph = !pages.(page).pageFormat in
@@ -146,8 +149,8 @@ let output ?(structure:structure={name="";displayname=[];
 	let w = Fonts.glyphWidth g.glyph *. s in
 	let pw = w /. !pixel_width in
 	let scale = if pw < 20.0 then 
-	    if pw < 5.0 then 25.0 else 5.0
-	  else if pw < 100.0 then 1.0 else 0.1
+	    if pw < 5.0 then 100.0 else 20.0
+	  else if pw < 100.0 then 4.0 else 0.5
 	in
 (*
 	Printf.fprintf stderr "x = %f, y = %f, w = %f, pw = %f, scale = %f\n"
@@ -166,7 +169,7 @@ let output ?(structure:structure={name="";displayname=[];
 		) beziers 
 	      in
 	      let l = GlList.create `compile_and_execute in
-	      GluTess.tesselate  lines;
+	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
 	      GlList.ends ();
 	      Hashtbl.add glyphCache (g.glyph, scale) l
 	in
@@ -253,7 +256,7 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.load_identity ();
 	GlMat.translate3 (!pixel_width/.5., !pixel_height/.5., 0.0);
 	let l = GlList.create `compile_and_execute in
-	List.iter (fun l -> GluTess.tesselate [List.map fst l]) filled;
+	List.iter (fun l -> GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) [List.map fst l]) filled;
 	GlList.ends ();
 	GlMat.load_identity ();
 	GlMat.translate3 (-. !pixel_width/.5., !pixel_height/.5., 0.0);
@@ -401,13 +404,27 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let previous_links = ref [] in
+  let next_links = ref [] in
 
   let passive_motion_cb ~x ~y =
     let l = find_link x y in
+    next_links := l
+  in
+  
+  let show_links () =
+    let l = !next_links in
     if l <> !previous_links then (
-      draw_gl_scene ();
+(*      draw_gl_scene ();*)
       previous_links := l;
-      if l = [] then Glut.setCursor Glut.CURSOR_INHERIT;
+      (match !saved_rectangle with
+	None -> ()
+      | Some r -> GlPix.draw r);
+      (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
+       else if !saved_rectangle = None then
+	 saved_rectangle := 
+	   Some (GlPix.read ~x:0 ~y:0 
+		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+		   ~format:`rgba ~kind:`ubyte));
       List.iter (fun l ->
 	let color = 
 	  if is_edit l.uri then (
@@ -449,12 +466,13 @@ let output ?(structure:structure={name="";displayname=[];
 	l0 c0; flush stderr
     | (_,_,Some(l,i)) -> 
       cur_page:= i;
-      draw_gl_scene ();
+(*      draw_gl_scene ();*)
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
   in
 
-  let reader () = 
+  let reader () =
+    show_links ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
       match i with
@@ -530,7 +548,7 @@ let output ?(structure:structure={name="";displayname=[];
 	height = 480 
     in
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgba double samples>=32";
+    Glut.initDisplayString "rgba depth=0 double samples>=32";
     Glut.initWindowSize width height;
     ignore (Glut.createWindow "Patoline OpenGL Driver");
     Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);
@@ -544,7 +562,7 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.motionFunc motion_cb;
     Glut.passiveMotionFunc passive_motion_cb;
     init_gl width height;
-    Sys.signal Sys.sighup (Sys.Signal_handle (fun s -> revert ()));
+    Sys.set_signal Sys.sighup (Sys.Signal_handle (fun s -> revert ()));
     Glut.mainLoop ()
   in
 

@@ -129,6 +129,14 @@
 	  (setq patoline-view-process
 		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd)))))))
 
+(defun patoline-goto (file line col)
+  (find-file file)
+  (goto-line line)
+  (let ((bol (position-bytes (point))))
+    (let ((dest (+ bol col)))
+      (while (< (position-bytes (point)) dest)
+	(forward-char)))))
+
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-keymap)))
     (progn
@@ -163,7 +171,7 @@
 (defun patoline-forward-search ()
   (interactive)
   (let ((line (line-number-at-pos))
-	(col (current-column)))
+	(col (- (position-bytes (point)) (position-bytes (line-beginning-position)))))
     (save-excursion
       (message  (format "e %d %d\n" line col))
       (select-patoline-view-buffer)
