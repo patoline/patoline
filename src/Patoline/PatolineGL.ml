@@ -9,7 +9,8 @@ let _ =
     [f] ->
       let ch = open_in f in
       let pages = input_value ch in
-      GL.output pages ""
+      close_in ch;
+      GL.output pages f
   | _ ->
     Printf.fprintf stderr "%s: more than one file given!" Sys.argv.(0)
 

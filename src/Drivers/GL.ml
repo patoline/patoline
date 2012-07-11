@@ -31,21 +31,25 @@ let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  let num_pages = Array.length pages in
+  let pages = ref pages in
+  let num_pages = ref (Array.length !pages) in
+  let links = ref [||] in
 
-  let links = 
-    Array.mapi
+  let read_links () = 
+    links := Array.mapi
       (fun i page ->
 	let l = ref [] in
 	List.iter
 	  (function  
             Link(l') -> 
-	      l := (l', i)::!l
+	      l := l'::!l
 	  | _ -> ())
 	  page.pageContents;
 	!l)
-      pages;
+      !pages;
   in
+
+  let _ = read_links () in
 
   let pixel_width = ref 0.0 in
   let pixel_height = ref 0.0 in
@@ -54,7 +58,7 @@ let output ?(structure:structure={name="";displayname=[];
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
-    let pw,ph=pages.(page).pageFormat in
+    let pw,ph = !pages.(page).pageFormat in
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
@@ -96,7 +100,7 @@ let output ?(structure:structure={name="";displayname=[];
     let x = float x and y = h -. float y in
     let ratio = w /. h in
     let page = !cur_page in
-    let pw,ph=pages.(page).pageFormat in
+    let pw,ph = !pages.(page).pageFormat in
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let dx = (ph *. ratio) *. !zoom in
@@ -108,9 +112,13 @@ let output ?(structure:structure={name="";displayname=[];
 
   let find_link x y =
     let x,y = inverse_coord x y in
-    List.filter (fun (l, i) ->
+    List.filter (fun l ->
       l.link_x0 <= x && x <= l.link_x1 &&
-      l.link_y0 <= y && y <= l.link_y1) links.(!cur_page)
+      l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page)
+  in
+
+  let is_edit uri =
+    String.length(uri) >= 5 && String.sub uri 0 5 = "edit:"
   in
 
   let fps = ref 0.0 and cfps = ref 0 in
@@ -120,7 +128,7 @@ let output ?(structure:structure={name="";displayname=[];
     GlClear.clear [`color; `depth];
     GlMat.load_identity ();
     let page = !cur_page in
-    let pw,ph=pages.(page).pageFormat in
+    let pw,ph = !pages.(page).pageFormat in
     GlDraw.color (1.0, 1.0, 1.0);
     GlDraw.begins `quads;
     GlDraw.vertex2 (0., 0.);
@@ -328,7 +336,7 @@ let output ?(structure:structure={name="";displayname=[];
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) pages.(page).pageContents;
+    ) !pages.(page).pageContents;
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -340,22 +348,30 @@ let output ?(structure:structure={name="";displayname=[];
     )
   in
 
-  let display_cb () = 
-    draw_gl_scene ();
-    Glut.swapBuffers ()
-  in
-
-
   let redraw () =
     reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
     Glut.postRedisplay ()
   in
 
+  let revert () = 
+    let ch = open_in fileName in
+    pages := input_value ch;
+    close_in ch;
+    num_pages := Array.length !pages;
+    read_links ();
+    (* Not clearing the caches slows down a lot after redraw *)
+    Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
+    Hashtbl.clear imageCache;
+    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+    Hashtbl.clear glyphCache;
+    redraw ();
+    Gc.compact ();
+  in
 
   let keyboard_cb ~key ~x ~y =
     match key with
     | 27 (* ESC *) -> exit 0
-    | 110 | 32 -> if !cur_page < num_pages - 1 then (incr cur_page; redraw ());
+    | 110 | 32 -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
     | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
     | 43 -> zoom := !zoom /. 1.1; redraw ();
     | 45 -> zoom := !zoom *. 1.1; redraw ();
@@ -392,10 +408,9 @@ let output ?(structure:structure={name="";displayname=[];
       draw_gl_scene ();
       previous_links := l;
       if l = [] then Glut.setCursor Glut.CURSOR_INHERIT;
-      List.iter (fun (l, _) ->
+      List.iter (fun l ->
 	let color = 
-	  if String.length(l.uri) >= 5 &&
-	    String.sub l.uri 0 5 = "edit:" then (
+	  if is_edit l.uri then (
 	    Glut.setCursor Glut.CURSOR_TEXT;
 	      (1.0,0.0,0.0)
 	    )
@@ -408,6 +423,65 @@ let output ?(structure:structure={name="";displayname=[];
       ) l;
       Glut.swapBuffers ();
     )
+  in
+
+  let goto_link l0 c0 = 
+    let res = Array.fold_left(fun (acc, i) links ->
+      let acc =
+	List.fold_left (fun (bl, bc, res as acc) link ->
+	  if Str.string_match (Str.regexp "^edit:[^@]*@\\([0-9]+\\)@\\([0-9]+\\)")
+	    link.uri 0 then
+	    let l = int_of_string (Str.matched_group 1 link.uri) in
+	    let c = int_of_string (Str.matched_group 2 link.uri) in
+	    if (l0 > l or (l = l0 && c0 >= c)) && 
+	      (l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
+	      l0 - l, c0 - c, Some(link, i)
+	    else
+	      acc
+	  else acc) acc links
+      in
+      (acc, i + 1))
+      ((max_int, 0, None), 0) !links
+    in
+
+    match fst res with
+      (_,_,None) -> Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n"
+	l0 c0; flush stderr
+    | (_,_,Some(l,i)) -> 
+      cur_page:= i;
+      draw_gl_scene ();
+      overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+      Glut.swapBuffers ()
+  in
+
+  let reader () = 
+    try
+      let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
+      match i with
+	[] -> ()
+      | i ->
+	let cmd = input_line stdin in
+	if cmd <> "" then begin
+	  try
+	    match cmd.[0] with
+	      'r' -> revert ()
+	    | 'e' -> (
+	      match Str.split (Str.regexp_string " ") cmd with
+		[_;l;c] ->
+		  goto_link (int_of_string l) (int_of_string c)
+	      | _ -> raise Exit)
+	    | _ -> raise Exit
+	  with
+	    Exit ->
+	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
+	end
+    with _ -> ()
+  in
+
+  let display_cb () = 
+    reader ();
+    draw_gl_scene ();
+    Glut.swapBuffers ()
   in
       
   let mouse_cb ~button ~state ~x ~y =
@@ -423,7 +497,7 @@ let output ?(structure:structure={name="";displayname=[];
 
     | Glut.LEFT_BUTTON, Glut.UP ->
 	List.iter 
-	  (fun (l, i) ->
+	  (fun l ->
 	    Printf.fprintf stderr 
 	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
 	      l.uri l.dest_page l.dest_x l.dest_y;
@@ -466,9 +540,11 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
     Glut.mouseFunc mouse_cb;
+    Glut.idleFunc (Some reader);
     Glut.motionFunc motion_cb;
     Glut.passiveMotionFunc passive_motion_cb;
     init_gl width height;
+    Sys.signal Sys.sighup (Sys.Signal_handle (fun s -> revert ()));
     Glut.mainLoop ()
   in
 

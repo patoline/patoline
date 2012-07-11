@@ -22,6 +22,7 @@
 
 (defvar patoline-program-buffer
   nil)
+
 (defvar patoline-view-buffer
   nil)
 
@@ -35,6 +36,14 @@
     (progn
       (setq patoline-program-buffer (get-buffer-create "*patoline-interaction*"))
       (set-buffer patoline-program-buffer)
+      )))
+
+(defun select-patoline-view-buffer ()
+  (if (and patoline-view-buffer (buffer-live-p patoline-view-buffer))
+      (set-buffer patoline-view-buffer)
+    (progn
+      (setq patoline-view-buffer (get-buffer-create "*patoline-view*"))
+      (set-buffer patoline-view-buffer)
       )))
 
 (defun patoline-process-sentinel (p m)
@@ -51,7 +60,7 @@
   (display-buffer patoline-program-buffer t 'visible))
 
 (defvar patoline-compile-format
-  "patoline \"%s\""
+  "patoline --edit-link --driver Bin \"%s\""
   "What to do to compile patoline document. Examples [patoline \"%s\"], [make]")
 
 (defun patoline-compile ()
@@ -103,10 +112,22 @@
 	    (auto-revert-mode)))
       (let ((cmd (split-string-and-unquote (format cmd-format file-name))))
 	(save-excursion
-	  (select-patoline-program-buffer)
+	  (select-patoline-view-buffer)
 	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
 		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd))))))))
+
+(defun patoline-glview ()
+  "view the pdf corresponding to the current buffer"
+  (interactive)
+  (let ((file-name 
+	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".bin")))
+      (let ((cmd (split-string-and-unquote (format "patolineGL \"%s\"" file-name))))
+	(save-excursion
+	  (select-patoline-view-buffer)
+	  (cd (file-name-directory file-name))
+	  (setq patoline-view-process
+		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd)))))))
 
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-keymap)))
@@ -114,7 +135,9 @@
       (define-key patoline-mode-map (kbd "C-c C-c") 'patoline-compile)
       (define-key patoline-mode-map (kbd "C-c C-e") 'patoline-make)
       (define-key patoline-mode-map (kbd "C-c C-a") 'patoline-env)
-      (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-view)
+      (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-glview)
+      (define-key patoline-mode-map (kbd "C-c C-p") 'patoline-view)
+      (define-key patoline-mode-map (kbd "C-c C-s") 'patoline-forward-search)
       (define-key patoline-mode-map (kbd "C-c C-l") 'display-program-buffer)
     patoline-mode-map))
   "Keymap for PATOLINE major mode")
@@ -136,6 +159,16 @@
 ;	(modify-syntax-entry ?\n "> b" patoline-mode-syntax-table)
 	patoline-mode-syntax-table)
   "Syntax table for patoline-mode")
+
+(defun patoline-forward-search ()
+  (interactive)
+  (let ((line (line-number-at-pos))
+	(col (current-column)))
+    (save-excursion
+      (message  (format "e %d %d\n" line col))
+      (select-patoline-view-buffer)
+      (if patoline-view-process
+	  (process-send-string patoline-view-process (format "e %d %d\n" line col))))))
 
 (define-derived-mode patoline-mode fundamental-mode "WPDL"
   "Major mode for editing Patoline documents."
