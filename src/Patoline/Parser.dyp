@@ -1103,6 +1103,15 @@ grammar: grammar_aux<g>
 
 text: { [], [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}
 
+caml_header:
+  | "\\Caml" CAML<s,pos,e,txps>
+  { let ld, gr = get_local_data_and_grammar dyp in
+    Caml(ld,gr,s,e,txps,pos) }
+
+
 main:
+  grammar [caml_header]<a> [title]<p> text<t,_> eof
+    { (Some a, Some p, List.rev t) }
+
   | grammar [title]?<p> text<t,_> eof
-    { (p, List.rev t) }
+      { (None, p, List.rev t) }

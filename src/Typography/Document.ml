@@ -853,12 +853,20 @@ let boxify buf nbuf fixable env0 spaces l=
       in
       (List.iter (append buf nbuf) l; boxify env s)
     | (C b)::s->(boxify env ((b env)@s))
-    | (CFix b)::s->(fixable:=true; boxify env ((b env)@s))
+    | (CFix b)::s->(fixable:=true;
+                    let c=b env in
+                    List.iter (function
+                                   T (_,a)->a:=None
+                                 | B (_,a)->a:=None
+                                 | _->())
+                      c;
+                    boxify env (c@s)
+                   )
     | (BFix b)::s->(fixable:=true; List.iter (append buf nbuf) (b env); boxify env s)
     | Env f::s->boxify (f env) s
     | (T (t,cache))::s->(
         match !cache with
-	    Some l ->(
+	    Some l  ->(
               IntMap.iter (fun _->List.iter (append buf nbuf)) l;
               boxify env s
             )

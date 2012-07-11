@@ -56,10 +56,12 @@ let preambule format amble filename=
     | _->(
         "open Typography\nopen Typography.Util\nopen Typography.Box\n"^
         "open Typography.Config\nopen Typography.Document\nopen Typography.OutputCommon\n"^
+          "let atmost=ref 3\n"^
           (match amble with
                Main->
                  "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),\"Adds directories to the font search path\");
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
+(\"--at-most\",Arg.Int (fun x->atmost:=x),\"Compile at most n times\");
 (\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
 module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)\n"
@@ -90,7 +92,7 @@ let _ =
   in
   Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());
   let env2, reboot=update_names env1 figs' user' in
-  if i<3 && reboot && !D.fixable then (
+  if i < !atmost-1 && reboot && !D.fixable then (
     resolve (i+1) env2
   ) else (
     List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
@@ -596,7 +598,7 @@ let gen_ml format driver amble filename from wherename where pdfname =
               in
 	      match docs with
 	        [] -> assert false
-	      | ((pre, docs), _) :: _  ->
+	      | ((caml_header, pre, docs), _) :: _  ->
 		  begin
                     Printf.fprintf where "%s" (preambule format amble filename);
                     (match amble with
@@ -621,6 +623,9 @@ let gen_ml format driver amble filename from wherename where pdfname =
 			Printf.bprintf buf "[])";
 			Buffer.contents buf
 		    in
+		    (match caml_header with
+                         None->()
+                       | Some a->output_list parser_pp source where true 0 [a]);
 		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n" 
 		      extra_tags (print_contents parser_pp source) title;
 		  end;
