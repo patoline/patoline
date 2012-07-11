@@ -348,6 +348,24 @@ module Format=functor (D:Document.DocumentStructure)->(
       Char.code '_' = c || c = Char.code '\''
 
 
+    let verb_counter filename =
+      let get_line env =
+	  try 
+	    match StrMap.find filename env.counters
+	    with a,[line] -> line
+	    | _ -> raise Not_found
+	  with Not_found -> 1
+      in
+      C (fun env ->
+	let line = string_of_int (get_line env) in
+	let miss = 4 - String.length line in
+	let rec fn acc n = if n = 0 then acc else fn (tT " "::acc) (n - 1) in
+	fn [tT line;tT " "] miss)::
+      Env (fun env ->
+	let line = get_line env in
+	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
+	[]
+
     let lang_ML keywords specials s =
       let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
       List.rev (List.fold_left (fun a x ->

@@ -98,7 +98,7 @@ and 'a doc =
    | Caml of local_data * 'a * int * int * (texprime_section * int * int * int * int) list 
      * (string * int * int)
    | Math of string * 'a math
-   | Verbatim of string option * string list
+   | Verbatim of string option * string option * string list
    | Struct of 'a content list * bool * 'a structType
    | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
      * 'a doc list * macro_info list
@@ -902,8 +902,8 @@ atomelt:
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))], [] }
-  | "\"\"\"" [ (ident) ]?<lang> NEWLINE verbatim_lines<ls> - "\"\"\""
-    { [Verbatim(lang, List.rev ls)], [] }
+  | "\"\"\"" [ (ident) ]?<lang> [ string ]?<filename> NEWLINE verbatim_lines<ls> - "\"\"\""
+    { [Verbatim(lang, filename, List.rev ls)], [] }
   /* Code Caml */
   | "\\Caml" CAML<s,pos,e,txps>
     { let ld, gr = get_local_data_and_grammar dyp in

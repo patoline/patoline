@@ -123,6 +123,7 @@ module Source = struct
 
 end
 
+let verb_files = Hashtbl.create 13
 
 let moduleCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
@@ -562,15 +563,32 @@ and output_list parser_pp from where no_indent lvl docs =
 	    (fun ch -> print_math_par pos parser_pp from ch true) m
         | Ignore -> 
 	  next_no_indent := no_indent
-	| Verbatim(lang, lines) ->
+	| Verbatim(lang, filename, lines) ->
 	  let lang = match lang with
 	      None -> "lang_default"
 	    | Some s -> "lang_"^s
 	  in
+	  let linenum = match filename with
+	      None -> ""
+	    | Some f ->
+	      let f = String.sub f 1 (String.length f - 2) in
+	      let ch =
+		try
+		  Hashtbl.find verb_files f
+		with Not_found ->
+		  let ch = open_out f in
+		  Hashtbl.add verb_files f ch;
+		  ch
+	      in
+	      List.iter (fun l ->
+		Printf.fprintf ch "%s\n" l) lines;
+	      flush ch;
+	      Printf.sprintf "verb_counter \"verb_file_%s\" @" f
+	  in
 	  List.iter (fun l ->
 	    Printf.fprintf where
-	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s \"%s\");;\n"
-	      lang (String.escaped l))
+	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s %s \"%s\");;\n"
+	      linenum lang (String.escaped l))
 	    lines;
       );
       output_list parser_pp from where !next_no_indent !lvl docs
