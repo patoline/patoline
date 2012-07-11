@@ -191,13 +191,53 @@ let output ?(structure:structure={name="";displayname=[];
 	draw_glyph ();
 
     | Path(param, beziers) ->
-	let lines = List.map (fun line ->
-	  let line = Array.to_list line in
+	let lines = List.map (fun aline ->
+	  let line = Array.to_list aline in
 	  let line = List.flatten (List.map (Bezier.subdivise  (1e-2 *. !zoom)) line) in
-	  List.map
-	    (fun (xa,ya) -> (xa.(0), ya.(0), 0.0),
-	      (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0)) line
-	) beziers in
+	  param,List.map
+	    (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
+	       (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
+            line
+	) beziers
+        in
+        let drawn=List.map
+          (function
+               p,h::s->(
+                 let (x0,y0,_),_=h in
+                 let _,(x1,y1,_)=List.fold_left (fun _ x->x) h s in
+                 let line=
+                   if p.close then
+                     (List.map
+	                (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
+	                   (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
+                        (Bezier.subdivise  (1e-2 *. !zoom) ([|x1;x0|],[|y1;y0|])))@(h::s)
+                   else
+                     h::s
+                 in
+                 line
+               )
+             | _,l->l
+          ) lines
+        in
+        let filled=List.map
+          (function
+               p,h::s->(
+                 let (x0,y0,_),_=h in
+                 let _,(x1,y1,_)=List.fold_left (fun _ x->x) h s in
+                 let line=
+                   if p.fillColor<>None then
+                     (List.map
+	                (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
+	                   (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
+                        (Bezier.subdivise  (1e-2 *. !zoom) ([|x1;x0|],[|y1;y0|])))@(h::s)
+                   else
+                     h::s
+                 in
+                 line
+               )
+             | _,l->l
+          ) lines
+        in
       (match param.fillColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
@@ -205,7 +245,7 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.load_identity ();
 	GlMat.translate3 (!pixel_width/.5., !pixel_height/.5., 0.0);
 	let l = GlList.create `compile_and_execute in
-	List.iter (fun l -> GluTess.tesselate [List.map fst l]) lines;
+	List.iter (fun l -> GluTess.tesselate [List.map fst l]) filled;
 	GlList.ends ();
 	GlMat.load_identity ();
 	GlMat.translate3 (-. !pixel_width/.5., !pixel_height/.5., 0.0);
@@ -238,7 +278,7 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.vertex2 (ax -. nx, ay -. ny);
 	    ) line;
 	  GlDraw.ends ();
-	) lines);
+	) drawn);
 
     | Link(link) -> ()
 

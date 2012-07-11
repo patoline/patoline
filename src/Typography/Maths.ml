@@ -1001,7 +1001,7 @@ let make_sqrt env_ style box=
       in
       let path=Array.concat [path0; path2; path1] in
       let tx=(xmax-.(bx1-.bx0))/.2. +. dx0 +. vx*.tt in
-      let ty=by0-.env.sqrt_dist in
+      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
       let p=
         translate 0. ty
           (Path ({default with strokingColor=None;fillColor=Some black},
