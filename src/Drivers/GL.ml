@@ -7,7 +7,7 @@ open Util
 
 let cur_page = ref 0
 
-let init_gl width height =
+let init_gl () =
 (*    GlDraw.shade_model `smooth;*)
     GlClear.color (0.5, 0.5, 0.5);
     GlClear.depth 1.0;
@@ -124,10 +124,27 @@ let output ?(structure:structure={name="";displayname=[];
   let fps = ref 0.0 and cfps = ref 0 in
 
   let saved_rectangle = ref None in
+  let to_revert = ref false in
+
+  let revert () = 
+    let ch = open_in fileName in
+    to_revert := false;
+    pages := input_value ch;
+    close_in ch;
+    num_pages := Array.length !pages;
+    read_links ();
+    (* Not clearing the caches slows down a lot after redraw *)
+    Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
+    Hashtbl.clear imageCache;
+    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+    Hashtbl.clear glyphCache;
+    Gc.compact ();
+  in
 
   let draw_gl_scene () =
     let time = Sys.time () in
     saved_rectangle := None;
+    if !to_revert then revert ();
     GlClear.clear [`color];
     GlMat.load_identity ();
     let page = !cur_page in
@@ -356,21 +373,6 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.postRedisplay ()
   in
 
-  let revert () = 
-    let ch = open_in fileName in
-    pages := input_value ch;
-    close_in ch;
-    num_pages := Array.length !pages;
-    read_links ();
-    (* Not clearing the caches slows down a lot after redraw *)
-    Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
-    Hashtbl.clear imageCache;
-    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
-    Hashtbl.clear glyphCache;
-    redraw ();
-    Gc.compact ();
-  in
-
   let keyboard_cb ~key ~x ~y =
     match key with
     | 27 (* ESC *) -> exit 0
@@ -466,12 +468,12 @@ let output ?(structure:structure={name="";displayname=[];
 	l0 c0; flush stderr
     | (_,_,Some(l,i)) -> 
       cur_page:= i;
-(*      draw_gl_scene ();*)
+      draw_gl_scene ();
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
   in
 
-  let reader () =
+  let idle_cb () =
     show_links ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -482,7 +484,7 @@ let output ?(structure:structure={name="";displayname=[];
 	if cmd <> "" then begin
 	  try
 	    match cmd.[0] with
-	      'r' -> revert ()
+	      'r' -> to_revert := true; Glut.postRedisplay ()
 	    | 'e' -> (
 	      match Str.split (Str.regexp_string " ") cmd with
 		[_;l;c] ->
@@ -493,11 +495,16 @@ let output ?(structure:structure={name="";displayname=[];
 	    Exit ->
 	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
 	end
-    with _ -> ()
+    with 
+      Unix.Unix_error(nb, _, _) as e -> 
+      Printf.fprintf stderr "Error in select: %s (%s)\n"
+	(Printexc.to_string e)
+	(Unix.error_message nb);
+      flush stderr
   in
 
   let display_cb () = 
-    reader ();
+    idle_cb ();
     draw_gl_scene ();
     Glut.swapBuffers ()
   in
@@ -543,13 +550,8 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let main () =
-    let 
-	width = 640 and
-	height = 480 
-    in
     ignore (Glut.init Sys.argv);
     Glut.initDisplayString "rgba depth=0 double samples>=32";
-    Glut.initWindowSize width height;
     ignore (Glut.createWindow "Patoline OpenGL Driver");
     Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);
     flush stderr;
@@ -558,11 +560,13 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
     Glut.mouseFunc mouse_cb;
-    Glut.idleFunc (Some reader);
+    Glut.idleFunc (Some idle_cb);
     Glut.motionFunc motion_cb;
     Glut.passiveMotionFunc passive_motion_cb;
-    init_gl width height;
-    Sys.set_signal Sys.sighup (Sys.Signal_handle (fun s -> revert ()));
+    init_gl ();
+    Sys.set_signal Sys.sighup
+      (Sys.Signal_handle
+	 (fun s ->  to_revert := true; Glut.postRedisplay ()));
     Glut.mainLoop ()
   in
 

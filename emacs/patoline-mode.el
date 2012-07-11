@@ -127,7 +127,8 @@
 	  (select-patoline-view-buffer)
 	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
-		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd)))))))
+		(get-buffer-process
+		 (apply 'make-comint "patoline-view" (car cmd) nil (cdr cmd))))))))
 
 (defun patoline-goto (file line col)
   (find-file file)
@@ -172,8 +173,8 @@
   (interactive)
   (let ((line (line-number-at-pos))
 	(col (- (position-bytes (point)) (position-bytes (line-beginning-position)))))
+    (message  (format "e %d %d\n" line col))
     (save-excursion
-      (message  (format "e %d %d\n" line col))
       (select-patoline-view-buffer)
       (if patoline-view-process
 	  (process-send-string patoline-view-process (format "e %d %d\n" line col))))))
