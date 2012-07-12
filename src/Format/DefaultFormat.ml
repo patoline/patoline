@@ -303,8 +303,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 	Exit ->
 	  newStruct D.structure displayname; false
 
-    let table_of_contents ?(max_depth=2) () =
-      TableOfContents.centered D.structure (fst (top !D.structure)) max_depth
+    module TableOfContents=struct
+      let do_begin_env ()=
+        let max_depth=2 in
+        TableOfContents.these D.structure (fst (top !D.structure)) max_depth
+      let do_end_env ()=()
+    end
 
     let postprocess_tree=Sections.postprocess_tree
 
