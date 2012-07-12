@@ -477,7 +477,7 @@ let rec draw env_stack mlist=
 		  | x->assert false
 		in           
 		let gl1 =
-		  if bin_left = [] then [] else [glue dist1 dist1 dist1]
+		  if bin_right = [] then [] else [glue dist1 dist1 dist1]
 		in
 
                 bin_left@
