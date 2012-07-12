@@ -473,7 +473,8 @@ let output ?(structure:structure={name="";displayname=[];
       Glut.swapBuffers ()
   in
 
-  let idle_cb () =
+  let rec idle_cb ~value:() =
+    Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
     show_links ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -500,7 +501,8 @@ let output ?(structure:structure={name="";displayname=[];
       Printf.fprintf stderr "Error in select: %s (%s)\n"
 	(Printexc.to_string e)
 	(Unix.error_message nb);
-      flush stderr
+      flush stderr;
+
   in
 
   let display_cb () = 
@@ -560,7 +562,7 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.specialFunc special_cb;
     Glut.reshapeFunc reshape_cb;
     Glut.mouseFunc mouse_cb;
-    Glut.idleFunc (Some idle_cb);
+    Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
     Glut.motionFunc motion_cb;
     Glut.passiveMotionFunc passive_motion_cb;
     init_gl ();
