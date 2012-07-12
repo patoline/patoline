@@ -548,18 +548,14 @@ let figure str ?(parameters=center) ?(name="") drawing=
                { fig_contents=drawing;
                  fig_env=(fun x->
                             let l,cou=try StrMap.find "_figure" x.counters with
-                                Not_found -> -1, [0] in
+                                Not_found -> -1, [] in
                             let l0,cou0=try StrMap.find "figure" x.counters with
-                                Not_found -> -1, [0] in
-                            let counters0=
-                              StrMap.add "_figure" (l,if cou=[] then [0] else cou)
-                                (StrMap.add "figure" (l0,if cou0=[] then [0] else cou0) x.counters)
-                            in
+                                Not_found -> -1, [] in
                             let counters'=
                               (StrMap.add "_figure"
                                  (l,match cou with h::s->(h+1)::s | _->[0])
                                  (StrMap.add "figure"
-                                    (l0,match cou0 with h::s->(h+1)::s | _->[1]) counters0)
+                                    (l0,match cou0 with h::s->(h+1)::s | _->[0]) x.counters)
                               )
                             in
                             { x with
@@ -568,7 +564,7 @@ let figure str ?(parameters=center) ?(name="") drawing=
                                     try let (_,_,w)=StrMap.find name x.names in w
                                     with Not_found -> uselessLine
                                   in
-                                  StrMap.add name (counters0, "_figure", w) x.names
+                                  StrMap.add name (counters', "_figure", w) x.names
                                 );
                                 counters=counters'
                             });
