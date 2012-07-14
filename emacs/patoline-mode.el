@@ -218,6 +218,8 @@
     (progn 
       (setq mmm-global-mode 'maybe)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-tuareg)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-tuareg)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-sml)
       (mmm-add-classes
        '((patoline-tuareg
 	  :submode tuareg-mode
@@ -225,6 +227,14 @@
 	  :back "^)"
 	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)
 		   (?d tuareg-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
+       (patoline-verb-tuareg
+	  :submode tuareg-mode
+	  :front "^###[ \t]*OCaml"
+	  :back "^###")
+       (patoline-verb-sml
+	  :submode sml-mode
+	  :front "^###[ \t]*SML"
+	  :back "^###")
 	 ))))
 
 (setq comment-start "(*")

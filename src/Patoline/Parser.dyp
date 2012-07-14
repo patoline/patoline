@@ -472,7 +472,7 @@ let newline = '\n'
 let string = '"' ([^'"'] | "\\\"")* '"'
 let num = ['0'-'9']+('.'['0'-'9']+)?
 
-let verbatim_line = '"'? '"'? [^'\n' '\r' '"'] [^'\n''\r']*
+let verbatim_line = '#'? '#'? [^'\n' '\r' '#'] [^'\n''\r']*
 
 let ident = ['a'-'z''A'-'Z'] ['a'-'z''A'-'Z''0'-'9']*
 let lident = ['a'-'z'] ['a'-'z''A'-'Z''0'-'9']*
@@ -725,9 +725,6 @@ rightind:
   | "_" - math(<=atom)<m1>
       { fun i -> { i with down_right = Some m1 } }
 
-promath:
-    math(<=prod)<m> { m }
-
 allmath:
    math<m> eof { m }
 
@@ -829,7 +826,7 @@ math:
       { Postfix(3,b,true,op) } accent
   | math(<=prod)<a> product_like<_,op> math(<prod)<b> 
       { Binary(3, a, false, op, false, b) } prod
-  | promath<a> math(<prod)<b>
+  | math(<=prod)<a> math(<prod)<b>
       { if not (layout_space dyp 1 2) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, SimpleSym "", false, b) } prod
@@ -902,7 +899,7 @@ atomelt:
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))], [] }
-  | "\"\"\"" [ (ident) ]?<lang> [ string ]?<filename> NEWLINE verbatim_lines<ls> - "\"\"\""
+  | "###" [ (ident) ]?<lang> [ string ]?<filename> NEWLINE verbatim_lines<ls> - "###"
     { [Verbatim(lang, filename, List.rev ls)], [] }
   /* Code Caml */
   | "\\Caml" CAML<s,pos,e,txps>

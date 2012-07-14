@@ -8,7 +8,7 @@
 
 
 
-\Caml(let _ = table_of_contents ~max_depth:2 ())
+\TableOfContents
 
 == Introduction ==
 
@@ -70,7 +70,7 @@ Another possibility will be by using a planned future OpenGL engine for Patoline
 
 To give the title of your document, it should start with something like:
 
-"""
+###
 ==============
    Titre
 --------------
@@ -78,7 +78,7 @@ To give the title of your document, it should start with something like:
 --------------
    Institute
 ==============
-"""
+###
 
 The fields author and institute are optional. 
 This will be improved with more tags possible
@@ -92,34 +92,34 @@ There are $2 × 2 = 4$ type of section  in patoline:
 
 \begin{itemize}
 \item Numbered absolute section:
-"""
+###
 == Section niveau 1 ==
 === Section niveau 2 ===
 ...
-"""
+###
 
 \item Unnumbered absolute section:
-"""
+###
 -- Section niveau 1 --
 --- Section niveau 2 ---
 ...
-"""
+###
 
 \item Numbered relative section
-"""
+###
 => Section title
 
 Section text
 =<
-"""
+###
 
 \item Unnumbered relative section
-"""
+###
 -> Section title
  
 Section text
 -<
-"""
+###
 \end{itemize}
 
 Relative or absolute sections have their own advantages: relative section
@@ -128,16 +128,16 @@ properly closed.
 
 Then, it is easy to add a table of contents:
 
-"""
+###
 \Caml(let _ = table_of_contents ())
-"""
+###
 
 Or if you want to control what depth is printed (this should be
 accessible without entering OCaml section in future versions):
 
-"""
+###
 \Caml(let _ = table_of_contents ~max_depth:4 ())
-"""
+###
 
 == Text layout ==
 
@@ -151,14 +151,14 @@ Here are standard possibilities for texts:
 
 
 There is another command if you want fixed spaces and line breaking:
-"""
-       """
+###
+       ###
          many lines
            in verbatim mode
-       """
-""" 
+       ###
+### 
 will produce the line exactly as you entered them (this is used to print what you see !).
-Here there are no escaping mechanism so it is impossible to start a line with \verb{"""} (*"*)
+Here there are no escaping mechanism so it is impossible to start a line with \verb{###} (*"*)
 in verbatim mode. However, 3 closing double quotes have to be at the beginning of the line, other wise their will be printed verbatim. This is what we used above.
  
 \end{itemize}
