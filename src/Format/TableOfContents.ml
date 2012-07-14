@@ -127,43 +127,40 @@ let these str tree max_level=
                 let in_toc=List.mem_assoc "InTOC" s.node_tags in
                 let numbered=List.mem_assoc "Numbered" s.node_tags in
                 if in_toc && count<>[] then (
-                  try
-                    let labl=String.concat "_" ("_"::List.map string_of_int path) in
-                    let page=try
-                      (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
-                    with Not_found -> 0
-                    in
-                    let env'=add_features [Opentype.oldStyleFigures] env in
-                    let num=boxify_scoped { env' with fontColor=
-                        if level=1 then OutputCommon.rgb 255. 0. 0. else OutputCommon.black }
-                      [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
-                    let name=boxify_scoped env' s.displayname in
-                    let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
-                    let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
-                    let cont=
-                      (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
-                         (draw_boxes num) else [])@
-                        (List.map (OutputCommon.translate 0. 0.) (draw_boxes name))@
-                        List.map (OutputCommon.translate (w'+.spacing) 0.)
-                        (draw_boxes (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
-                    in
-                    let (a,b,c,d)=OutputCommon.bounding_box cont in
-                    User (BeginLink (labl))::
-                      Drawing {
-                        drawing_min_width=env.normalMeasure;
-                        drawing_nominal_width=env.normalMeasure;
-                        drawing_max_width=env.normalMeasure;
-                        drawing_y0=b;
-                        drawing_y1=d;
-                        drawing_badness=(fun _->0.);
-                        drawing_contents=
-                          (fun _->
-                             List.map (OutputCommon.translate
-                                         (spacing*.3.*.(float_of_int (level-1)))
-                                         0.) cont)
-                      }::User EndLink::(glue 0. 0. 0.)::chi
-                  with
-                      Not_found -> chi
+                  let labl=String.concat "_" ("_"::List.map string_of_int path) in
+                  let page=try
+                    (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
+                  with Not_found -> 0
+                  in
+                  let env'=add_features [Opentype.oldStyleFigures] env in
+                  let num=boxify_scoped { env' with fontColor=
+                      if level=1 then OutputCommon.rgb 255. 0. 0. else OutputCommon.black }
+                    [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
+                  let name=boxify_scoped env' s.displayname in
+                  let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
+                  let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
+                  let cont=
+                    (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
+                       (draw_boxes num) else [])@
+                      (List.map (OutputCommon.translate 0. 0.) (draw_boxes name))@
+                      List.map (OutputCommon.translate (w'+.spacing) 0.)
+                      (draw_boxes (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
+                  in
+                  let (a,b,c,d)=OutputCommon.bounding_box cont in
+                  User (BeginLink (labl))::
+                    Drawing {
+                      drawing_min_width=env.normalMeasure;
+                      drawing_nominal_width=env.normalMeasure;
+                      drawing_max_width=env.normalMeasure;
+                      drawing_y0=b;
+                      drawing_y1=d;
+                      drawing_badness=(fun _->0.);
+                      drawing_contents=
+                        (fun _->
+                           List.map (OutputCommon.translate
+                                       (spacing*.3.*.(float_of_int (level-1)))
+                                       0.) cont)
+                    }::User EndLink::(glue 0. 0. 0.)::chi
                 )
                 else chi
               )

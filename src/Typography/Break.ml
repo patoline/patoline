@@ -282,6 +282,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               in
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
+              let min_page_before=ref 0 in
               let rec fix page height=(* Printf.fprintf stderr "fix : %d %f\n" page height;flush stderr; *)
                 let r_nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
@@ -304,6 +305,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                     r_params:=fold_left_line paragraphs (fun p x->match x with
                                                              Parameters fp->fp p
                                                            | _->p) !r_params nextNode;
+                    min_page_before:=max !min_page_before !r_params.min_page_before;
                     if not (!r_params.really_next_line) || nextNode.height<>node.height then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
@@ -439,7 +441,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   in
                   let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
                   List.iter make_next_node (compl);
-                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1 then (
+                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+max lastParameters.min_page_after !min_page_before then (
                     let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
                     fix page (if next_h=height then height+.1. else next_h)
                   )

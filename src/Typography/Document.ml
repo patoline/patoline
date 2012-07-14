@@ -206,11 +206,21 @@ and 'a content=
 let bB f = B(f,ref None)
 let tT f = T(f,ref None)
 let env_accessed=ref false
+let uT f = C(fun _->env_accessed:=true;[tT f])
+
 let names env=
   env_accessed:=true;
   env.names
 let user_positions env=
   env_accessed:=true;
+  env.user_positions
+let displayname n=
+  env_accessed:=true;
+  n.displayname
+
+let _names env=
+  env.names
+let _user_positions env=
   env.user_positions
 
 let incr_counter ?(level= -1) name env=
@@ -633,7 +643,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   let para=Node {
     empty with
       name=name;
-      displayname =[C (fun _->displayname)];
+      displayname =[C (fun _->env_accessed:=true;displayname)];
       node_tags= (if in_toc then ["InTOC",""] else []) @ ["Structural",""] @(if numbered then ["Numbered",""] else []);
       node_env=(
         fun env->
@@ -852,15 +862,17 @@ let boxify buf nbuf fixable env0 spaces l=
       let l = match !cache with
 	  Some l -> l
         | None -> (
+            let acc= !env_accessed in
             env_accessed:=false;
             let l = b env in
-            (if not !env_accessed then cache := Some l);
+            (if not !env_accessed then cache := Some l else fixable:=true);
+            env_accessed:=acc || !env_accessed;
             l
           )
       in
-      if !env_accessed then fixable:=true;
       (List.iter (append buf nbuf) l; boxify env s)
     | (C b)::s->(
+        let acc= !env_accessed in
         env_accessed:=false;
         let c = b env in
         (if !env_accessed then (
@@ -870,6 +882,7 @@ let boxify buf nbuf fixable env0 spaces l=
                         | B (_,a)->a:=None
                         | _->())
              c));
+        env_accessed:=acc || !env_accessed;
         boxify env (c@s)
       )
     | Env f::s->boxify (f env) s
