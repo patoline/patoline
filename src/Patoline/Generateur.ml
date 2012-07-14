@@ -394,12 +394,18 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
       let s'' = ref s' in
       fun s n ->
     	let n' = min n (size_txp - !count) in
-    	(* Printf.fprintf stderr "Arguments to blit: \"%s\" %d %d.\n" s 0 n' ; *)
-    	(* flush stderr ; *)
-    	let _ = if n' > 0 then op !s'' s !count n' else () in
-    	let _ = (count := n' + !count) in
-    	let _ = (s'' := n' + !s'') in
-    	n'
+	if n' > 0 then begin
+    	  let _ = if n' > 0 then op !s'' s 0 n' else () in
+      	  (*Printf.fprintf stderr "Arguments to blit: \"%s\" %d %d.\n" s 0 n' ; *)
+    	  (*flush stderr ; *)
+  	  let _ = (count := n' + !count) in
+    	  let _ = (s'' := n' + !s'') in
+    	  n'
+	end else begin
+    	  (*Printf.fprintf stderr "End of stream\n" ; *)
+    	  (*flush stderr ; *)
+	  0
+	end
     in
     let lexbuf_txp = Dyp.from_function (parser_pp) input in
     (* let buf'=String.create size_txp in *)

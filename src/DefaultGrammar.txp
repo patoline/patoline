@@ -35,7 +35,7 @@
 
 \Add_relation{\eq =}{=}
 \Add_relation{\neq ≠ /=}{≠}
-\Add_relation{\st |}{|}
+\Add_relation{\st \|}{|}
 \Add_relation{:}{:}
 \Add_relation{\in ∈}{∈}
 \Add_relation{\notin ∉}{∉}
