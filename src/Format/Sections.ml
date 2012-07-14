@@ -14,8 +14,8 @@ let postprocess_tree tree=
         let par=Paragraph {
           par_contents=cont;
           par_env=(fun env->env);
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
+          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                                             user_positions=user_positions env2 });
           par_parameters=
             (fun a b c d e f g->
                { (center a b c d e f g) with
@@ -38,8 +38,8 @@ let postprocess_tree tree=
         let par=Paragraph {
           par_contents=cont;
           par_env=(fun env->env);
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
+          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                                             user_positions=user_positions env2 });
           par_parameters=
             (fun a b c d e f g->
                { (center a b c d e f g) with
@@ -61,8 +61,8 @@ let postprocess_tree tree=
         let par=Paragraph {
           par_contents=n.displayname;
           par_env=resize_env 8.;
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
+          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                                             user_positions=user_positions env2 });
           par_parameters=
             (fun a b c d e f g->
                { (center a b c d e f g) with
@@ -87,8 +87,9 @@ let postprocess_tree tree=
                   ::n.displayname
                )]
           else
-            bB (fun env->[User (Structure path)])::
-              n.displayname
+            [C(fun env->
+                 bB (fun env->[User (Structure path)])::
+                   n.displayname)]
         in
         let par=Paragraph {
           par_contents=section_name;
@@ -98,8 +99,8 @@ let postprocess_tree tree=
                          size=(if List.length b <= 2 then sqrt phi else
                                  sqrt (sqrt phi))*.env.size;
                      });
-          par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters;
-                                             user_positions=env2.user_positions });
+          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                                             user_positions=user_positions env2 });
           par_parameters=
             (fun a b c d e f g->
                { (parameters a b c d e f g) with

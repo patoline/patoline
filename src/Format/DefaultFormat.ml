@@ -506,7 +506,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 | h::_->h
               in
                 { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters });
-       BFix (fun env0->
+       bB (fun env0->
                let env= { env0 with normalMeasure=150.; normalLeftMargin=(fst a4-.150.)/.2. } in
                let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
                    []->0
@@ -518,14 +518,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                                  match k with
                                      Footnote (i,_) when i= count -> foot_num:=a.page
                                    | _->()
-                              ) env.user_positions;
+                              ) (user_positions env);
                  (* Y a-t-il deja des footnotes sur cette page ? *)
                  TS.UMap.iter (fun k a->
                                  match k with
                                      Footnote (i,_) when a.page= !foot_num && i< count ->
                                        incr page_footnotes
                                    | _->()
-                              ) env.user_positions;
+                              ) (user_positions env);
                  (* Insertion d'une footnote *)
                  let str=ref (Node empty,[]) in
                  let params a b c d e f g=
@@ -808,7 +808,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   min_height_before=
                   if g.lineStart=0 then a.lead else 0. })
           (Env (incr_counter ~level:Th.counterLevel Th.counter)::
-             CFix (fun env->
+             C (fun env->
                      let lvl,num=try (StrMap.find Th.counter env.counters) with
                          Not_found -> -1,[0]
                      in

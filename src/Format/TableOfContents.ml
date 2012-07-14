@@ -8,7 +8,7 @@ open Typography.Util
 
 let centered str tree _=
   newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
-    BFix (
+    bB (
       fun env->
         let spacing=1. in
         let r=0.3 in
@@ -43,7 +43,7 @@ let centered str tree _=
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
-                      (1+(TS.UMap.find (Label labl) env0.user_positions).page)
+                      (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
                     with Not_found -> 0
                     in
                     let fenv env={ env with
@@ -102,7 +102,7 @@ let centered str tree _=
 let these str tree max_level=
 
   newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
-    BFix (
+    bB (
       fun env->
         let rec toc env0 path tree=
           let level=List.length path in
@@ -130,7 +130,7 @@ let these str tree max_level=
                   try
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
-                      (1+(TS.UMap.find (Label labl) env0.user_positions).page)
+                      (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
                     with Not_found -> 0
                     in
                     let env'=add_features [Opentype.oldStyleFigures] env in

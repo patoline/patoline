@@ -197,9 +197,7 @@ and 'a environment={
 and 'a content=
     B of ('a environment->'a box list) * 'a box list option ref
                                               (** Une liste de boîtes, dépendante de l'environnement *)
-  | BFix of ('a environment->'a box list)     (** Une liste de boîtes dépendante des positions des boîtes [User] *)
-  | C of ('a environment->'a content list)    (** Le symmétrique de [C] pour [BFix]. On peut implémenter la paresse avec ça, par exemple. *)
-  | CFix of ('a environment->'a content list) (** Pareil que [BFix], mais avec du contenu au lieu des boîtes *)
+  | C of ('a environment->'a content list)
   | T of string*('a box list IntMap.t option) ref        (** Un texte simple *)
   | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
   | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
@@ -207,6 +205,13 @@ and 'a content=
 
 let bB f = B(f,ref None)
 let tT f = T(f,ref None)
+let env_accessed=ref false
+let names env=
+  env_accessed:=true;
+  env.names
+let user_positions env=
+  env_accessed:=true;
+  env.user_positions
 
 let incr_counter ?(level= -1) name env=
   { env with counters=
@@ -243,8 +248,8 @@ let empty={ name="";
             node_env=(fun x->x);
             node_post_env=(fun x y->{ x with
                                         counters=y.counters;
-                                        names=y.names;
-                                        user_positions=y.user_positions });
+                                        names=names y;
+                                        user_positions=user_positions y });
             tree_paragraph=0 }
 
 type ('a) cxt=(int*('a) tree) list
@@ -559,22 +564,22 @@ let figure str ?(parameters=center) ?(name="") drawing=
                               )
                             in
                             { x with
-                                names=if name="" then x.names else (
+                                names=if name="" then names x else (
                                   let w=
-                                    try let (_,_,w)=StrMap.find name x.names in w
+                                    try let (_,_,w)=StrMap.find name (names x) in w
                                     with Not_found -> uselessLine
                                   in
-                                  StrMap.add name (counters', "_figure", w) x.names
+                                  StrMap.add name (counters', "_figure", w) (names x)
                                 );
                                 counters=counters'
                             });
-                 fig_post_env=(fun x y->{ x with names=y.names; counters=y.counters; user_positions=y.user_positions });
+                 fig_post_env=(fun x y->{ x with names=names y; counters=y.counters; user_positions=user_positions y });
                  fig_parameters=parameters }))
 
 let flushFigure name=
-  [CFix (fun env->
+  [C (fun env->
         try
-          let (counters,_,_)=StrMap.find name env.names in
+          let (counters,_,_)=StrMap.find name (names env) in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[FlushFigure h])]
               | _->[]
@@ -584,9 +589,9 @@ let flushFigure name=
 
 
 let beginFigure name=
-  [CFix (fun env->
+  [C (fun env->
         try
-          let (counters,_,_)=StrMap.find name env.names in
+          let (counters,_,_)=StrMap.find name (names env) in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[BeginFigure h])]
               | _->[]
@@ -605,7 +610,7 @@ let newPar str ?(environment=(fun x->x)) complete parameters par=
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
         let para=Paragraph {par_contents=par; par_env=environment;
-                            par_post_env=(fun env1 env2 -> { env1 with names=env2.names; counters=env2.counters; user_positions=env2.user_positions });
+                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
                             par_parameters=parameters; par_completeLine=complete }
         in
           str:=up (newChildAfter !str para)
@@ -628,7 +633,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   let para=Node {
     empty with
       name=name;
-      displayname =displayname;
+      displayname =[C (fun _->displayname)];
       node_tags= (if in_toc then ["InTOC",""] else []) @ ["Structural",""] @(if numbered then ["Numbered",""] else []);
       node_env=(
         fun env->
@@ -644,8 +649,8 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
       node_post_env=(
         fun env env'->
           { env with
-              names=env'.names;
-              user_positions=env'.user_positions;
+              names=names env';
+              user_positions=user_positions env';
               counters=StrMap.add "_structure" (
                 try
                   let a,b=StrMap.find "_structure" env'.counters in
@@ -662,39 +667,39 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
     str:=newChildAfter !str para
 
 let pageref x=
-  [CFix (fun env->try
-           let (_,_,node)=StrMap.find x env.names in
-           [BFix (fun _->[User (BeginLink x)]);
+  [C (fun env->try
+           let (_,_,node)=StrMap.find x (names env) in
+           [bB (fun _->[User (BeginLink x)]);
             tT (string_of_int (1+node.page));
-            BFix (fun _->[User EndLink])]
+            bB (fun _->[User EndLink])]
          with Not_found -> []
         )]
 
 let label ?(labelType="_structure") name=
   [Env (fun env->
-          let w=try let (_,_,w)=StrMap.find name env.names in w with Not_found -> uselessLine in
-            { env with names=StrMap.add name (env.counters, labelType, w) env.names });
+          let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
+            { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
 
-   BFix (fun env ->
+   bB (fun env ->
         [User (Label name)])
   ]
 
 
 
 let generalRef refType name=
-  [ CFix (fun env->try
+  [ C (fun env->try
             let counters=
               if name="_here" then env.counters else
-                let a,_,_=StrMap.find name env.names in a
+                let a,_,_=StrMap.find name (names env) in a
             in
             let lvl,num_=(StrMap.find refType counters) in
             let num=if refType="_structure" then drop 1 num_ else num_ in
             let _,str_counter=StrMap.find "_structure" counters in
             let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-              [BFix (fun _->[User (BeginLink name)]);
+              [bB (fun _->[User (BeginLink name)]);
                tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                        (List.rev (num@sect_num))));
-               BFix (fun _->[User EndLink])]
+               bB (fun _->[User EndLink])]
           with
               Not_found -> []
          )]
@@ -702,7 +707,7 @@ let generalRef refType name=
 let sectref x=generalRef "_structure" x
 
 let extLink a b=bB (fun _->[User (BeginURILink a)])::b@[bB (fun _->[User EndLink])]
-let link a b=BFix (fun _->[User (BeginLink a)])::b@[BFix (fun _->[User EndLink])]
+let link a b=bB (fun _->[User (BeginLink a)])::b@[bB (fun _->[User EndLink])]
 let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
 let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
@@ -835,6 +840,7 @@ let mappend m x=
   let a=try fst (IntMap.max_binding m) with Not_found -> -1 in
   IntMap.add (a+1) x m
 
+
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
@@ -845,20 +851,27 @@ let boxify buf nbuf fixable env0 spaces l=
     | B (b, cache)::s->
       let l = match !cache with
 	  Some l -> l
-        | None -> let l = b env in cache := Some l; l
+        | None -> (
+            env_accessed:=false;
+            let l = b env in
+            (if not !env_accessed then cache := Some l);
+            l
+          )
       in
+      if !env_accessed then fixable:=true;
       (List.iter (append buf nbuf) l; boxify env s)
-    | (C b)::s->(boxify env ((b env)@s))
-    | (CFix b)::s->(fixable:=true;
-                    let c=b env in
-                    List.iter (function
-                                   T (_,a)->a:=None
-                                 | B (_,a)->a:=None
-                                 | _->())
-                      c;
-                    boxify env (c@s)
-                   )
-    | (BFix b)::s->(fixable:=true; List.iter (append buf nbuf) (b env); boxify env s)
+    | (C b)::s->(
+        env_accessed:=false;
+        let c = b env in
+        (if !env_accessed then (
+           fixable:=true;
+           List.iter (function
+                          T (_,a)->a:=None
+                        | B (_,a)->a:=None
+                        | _->())
+             c));
+        boxify env (c@s)
+      )
     | Env f::s->boxify (f env) s
     | (T (t,cache))::s->(
         match !cache with
@@ -937,6 +950,7 @@ module type Format=sig
 end
 
 
+
 let flatten env0 fixable str=
   let paragraphs=ref [] in
   let figures=ref IntMap.empty in
@@ -984,11 +998,11 @@ let flatten env0 fixable str=
                         (if is_first then (
                            let name=String.concat "_" ("_"::List.map string_of_int path) in
                              [Env (fun env->
-                                     let w=try let (_,_,w)=StrMap.find name env.names in w with
+                                     let w=try let (_,_,w)=StrMap.find name (names env) in w with
                                          Not_found -> uselessLine in
                                        { env with names=StrMap.add name (env.counters, "_", w)
-                                           env.names });
-                              BFix (fun _->[User (Label name)])
+                                           (names env) });
+                              bB (fun _->[User (Label name)])
                              ]
                          ) else [])@
                           (if indent then [bB (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
@@ -1095,7 +1109,7 @@ let update_names env figs user=
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
                    with Not_found -> (Printf.fprintf stderr "reboot : position of %S not found\n" k;needs_reboot:=true; m)
-                  ) env.names env.names
+                  ) (names env) (names env)
            }
   in
     flush stderr;
