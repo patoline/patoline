@@ -986,6 +986,7 @@ let boxify_scoped ?spaces:(spaces=false) env x=
   let _=boxify buf nbuf (ref false) env spaces x in
     Array.to_list (Array.sub !buf 0 !nbuf)
 
+let draw env x=draw_boxes (boxify_scoped env x)
 
 
 module type DocumentStructure=sig
