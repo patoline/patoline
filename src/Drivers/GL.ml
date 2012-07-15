@@ -25,7 +25,9 @@ let dx = ref 0.0
 let dy = ref 0.0
 
 let glyphCache = Hashtbl.create 1001
+#ifdef CAMLIMAGES
 let imageCache = Hashtbl.create 1001
+#endif
 
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -134,8 +136,10 @@ let output ?(structure:structure={name="";displayname=[];
     num_pages := Array.length !pages;
     read_links ();
     (* Not clearing the caches slows down a lot after redraw *)
+#ifdef CAMLIMAGES
     Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
     Hashtbl.clear imageCache;
+#endif
     Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
     Hashtbl.clear glyphCache;
     Gc.compact ();
@@ -313,6 +317,7 @@ let output ?(structure:structure={name="";displayname=[];
     | Image i -> 
       GlMat.load_identity ();
       Gl.enable `texture_2d;
+#ifdef CAMLIMAGES
       begin     
 	try 	  
 	  GlTex.bind_texture `texture_2d (Hashtbl.find imageCache i)
@@ -344,6 +349,7 @@ let output ?(structure:structure={name="";displayname=[];
 	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
 	  Hashtbl.add imageCache i tid
       end;
+#endif
       GlDraw.color (1.0,1.0,1.0);
       GlDraw.begins `quads;
       GlTex.coord2 (0., 1.);

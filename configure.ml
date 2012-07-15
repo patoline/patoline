@@ -14,7 +14,7 @@ let lablgl=ref ""
 let lablglut=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
-
+let use_camlimages=ref false
 
 let avail_lang=
   let f=open_in "src/Typography/Language.ml" in
@@ -60,6 +60,7 @@ let _=
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
+    ("--with-camlimages", Set use_camlimages, " allows camlimages experimental library.");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
@@ -78,7 +79,7 @@ let _=
   else if Sys.command "ocamlfind query camlzip" = 0
   then camlzip := "camlzip";
 
-  if Sys.command "ocamlfind query camlimages" = 0
+  if !use_camlimages && Sys.command "ocamlfind query camlimages" = 0
   then camlimages := "camlimages.all_formats";
 
   if Sys.command "ocamlfind query lablgl" = 0
