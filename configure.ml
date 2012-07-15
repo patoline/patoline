@@ -260,43 +260,29 @@ let _=
             (if !camlimages="" then "" else (","^(!camlimages)));
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
-          Array.iter (fun x->
-                        if Filename.check_suffix x ".ml" && is_substring "Format" x
-                          && x<>"DefaultFormat.ml"
-                        then (
-                          let base_x = Filename.chop_extension x in
-                          Printf.fprintf meta "package \"%s\" (\n" base_x;
-                          Printf.fprintf meta "requires=\"Typography\"\n";
-                          Printf.fprintf meta "archive(native)=\"%s\"\n"
-                            (base_x^".cmxa");
-                          Printf.fprintf meta "archive(byte)=\"%s\"\n"
-                            (base_x^".cma");
-                          let custom_meta = Filename.concat "src/Format/" (base_x^".META") in
-                          (try
-                            let custom_meta_fd = open_in custom_meta in
-                            let buf = String.create (in_channel_length custom_meta_fd) in
-                            really_input custom_meta_fd buf 0 (in_channel_length custom_meta_fd);
-                            close_in custom_meta_fd;
-                            Printf.fprintf meta "%s\n" buf
-                          with Sys_error _ -> ());
-                          Printf.fprintf meta ")\n";
-                        )
-                     ) (Sys.readdir "src/Format");
-          Array.iter (fun x->
-                        if Filename.check_suffix x ".ml" then (
-                          let base_x = Filename.chop_extension x in
-                          Printf.fprintf meta "package \"%s\" (\n" base_x;
-                          Printf.fprintf meta "requires=\"Typography%s\"\n"
-                            (match base_x with
-                                 "GL"->",lablgl,lablgl.glut"
-                               | _->"");
-                          Printf.fprintf meta "archive(native)=\"%s\"\n"
-                            (base_x^".cmxa");
-                          Printf.fprintf meta "archive(byte)=\"%s\"\n"
-                            (base_x^".cma");
-                          Printf.fprintf meta ")\n";
-                        )
-                     ) (Sys.readdir "src/Drivers");
+
+          let make_meta_part dir file =
+            if Filename.check_suffix file ".ml"
+            then (
+              let base_file = Filename.chop_extension file in
+              let custom_meta = Filename.concat dir (base_file^".META") in
+              try
+                let custom_meta_fd = open_in custom_meta in
+                let buf = String.create (in_channel_length custom_meta_fd) in
+                really_input custom_meta_fd buf 0 (in_channel_length custom_meta_fd);
+                close_in custom_meta_fd;
+                Printf.fprintf meta "%s\n" buf
+              with Sys_error _ ->
+                Printf.fprintf meta
+                  "package \"%s\" (\nrequires=\"Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"
+                  base_file (base_file^".cmxa") (base_file^".cma")
+            )
+          in
+          Array.iter
+            (fun file ->
+              if is_substring "Format" file && file <> "DefaultFormat.ml"
+              then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
+          Array.iter (make_meta_part "src/Drivers") (Sys.readdir "src/Drivers");
           close_out meta;
           Printf.printf "\nConfigure finished\n
 You can now build by doing:
