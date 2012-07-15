@@ -151,6 +151,7 @@ and 'a paragraph={
   par_env:'a environment -> 'a environment;
   par_post_env:'a environment -> 'a environment -> 'a environment;
   par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
+  par_badness: 'a environment -> 'a box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> float;
   par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list
 }
 and 'a figuredef={
@@ -551,6 +552,47 @@ let ragged_right a b c d e f line=
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
 
+
+
+
+let badness
+    env
+    paragraphs
+    figures
+    figureStates
+    node_i line_i max_i params_i comp_i
+    node_j line_j max_j params_j comp_j=
+
+  if node_j.paragraph>=Array.length paragraphs then 0. else (
+    let v_bad=
+      if node_i.page=node_j.page then (
+        Badness.v_badness
+          (node_j.height-.node_i.height)
+          line_i max_i params_i comp_i
+          line_j max_j params_j comp_j
+      ) else 0.
+    in
+      (Badness.h_badness paragraphs node_j comp_j)
+      +. v_bad
+        (* Page pas assez remplie *)
+      +. (if node_i.page<>node_j.page &&
+            node_i.height<>params_i.page_height then 10000. else 0.)
+        (* Cesures *)
+      +. (if node_j.hyphenEnd >=0 then
+            (if node_j.hyphenStart >=0 then
+               1e10
+             else
+               1e8)
+          else
+            0.)
+      +. (1000.*.(abs_float (comp_i-.comp_j)))
+  )
+
+(*********************************************************************)
+
+
+
+
 let in_text_figure a b c d e f line=
   let par=parameters a b c d e f line in
   { par with
@@ -614,14 +656,15 @@ let beginFigure name=
 
 
 
-let newPar str ?(environment=(fun x->x)) complete parameters par=
+let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters par=
   match !str with
       Paragraph p,path->
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-                            par_parameters=parameters; par_completeLine=complete }
+                            par_parameters=parameters; par_badness=badness;
+                            par_completeLine=complete }
         in
           str:=up (newChildAfter !str para)
 
@@ -970,6 +1013,7 @@ let flatten env0 fixable str=
   let fig_param=ref IntMap.empty in
   let param=ref [] in
   let compl=ref [] in
+  let bads=ref [] in
   let n=ref 0 in
 
   let buf=ref [||] in
@@ -981,6 +1025,7 @@ let flatten env0 fixable str=
       paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
       compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
+      bads:=(p.par_badness env)::(!bads);
       incr n;
       frees:=0;
       v
@@ -1061,6 +1106,7 @@ let flatten env0 fixable str=
     (env2, params,
      Array.of_list (List.rev !param),
      Array.of_list (List.rev !compl),
+     Array.of_list (List.rev !bads),
      Array.of_list (List.rev !paragraphs),
      Array.of_list (List.map snd (IntMap.bindings !figures)))
 

@@ -62,15 +62,17 @@ module Make :
                       figurePosition Util.IntMap.t ->
                       Line.line UMap.t -> Line.line -> Line.parameters)
                      array ->
-          badness:(figurePosition Util.IntMap.t ->
-                   Line.line ->
+          badness:(UMap.key Box.box array array ->
+                     Box.drawingBox array ->
+                       figurePosition Util.IntMap.t ->
+                         Line.line ->
                    UMap.key Box.box array ->
                    int ->
                    Line.parameters ->
                    float ->
                    Line.line ->
                    UMap.key Box.box array ->
-                   int -> Line.parameters -> float -> float) ->
+                   int -> Line.parameters -> float -> float) array ->
           UMap.key Box.box array array ->
           Language.message list * (Line.parameters * Line.line) list array *
           figurePosition Util.IntMap.t * Line.line UMap.t

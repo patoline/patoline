@@ -214,7 +214,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
               let nextNode={nextNode with height=next_h } in
               register (Some cur_node) nextNode
-                (lastBadness+.badness
+                (lastBadness+.badness.(nextNode.paragraph) paragraphs figures
                    lastFigures
                    node !haut 0 lastParameters 0.
                    nextNode !bas 0 params 0.)
@@ -235,7 +235,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               register (Some cur_node) nextNode
-                (lastBadness+.badness
+                (lastBadness+.badness.(nextNode.paragraph) paragraphs figures
                    lastFigures
                    node !haut 0 lastParameters 0.
                    nextNode !bas 0 params 0.)
@@ -425,23 +425,29 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                         )
                         else if nextNode.min_width > (!r_params).measure && allow_impossible then (
                           let bad=(lastBadness+.
-                                     badness lastFigures node !haut !max_haut lastParameters comp0
+                                     badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          local_opt:=(nextNode,bad,(Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
-                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          if bad<infinity then
+                            local_opt:=(nextNode,
+                                        max 0. bad,
+                                        (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                        !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                         ) else (
                           let bad=(lastBadness+.
-                                     badness lastFigures node !haut !max_haut lastParameters comp0
+                                     badness.(nextNode.paragraph) paragraphs figures
+                                     lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          local_opt:=(nextNode,bad,Language.Normal,
-                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          if bad<infinity then
+                            local_opt:=(nextNode,
+                                        max 0. bad,Language.Normal,
+                                        !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                         )
                       )
                     )
                   in
                   let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
                   List.iter make_next_node (compl);
-                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+max lastParameters.min_page_after !min_page_before then (
+                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+max 1 (max lastParameters.min_page_after !min_page_before) then (
                     let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
                     fix page (if next_h=height then height+.1. else next_h)
                   )

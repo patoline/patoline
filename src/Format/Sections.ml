@@ -24,6 +24,7 @@ let postprocess_tree tree=
                    min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
                      2.*.a.normalLead else 0.
                });
+          par_badness=(badness);
           par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (tree,[]) par))
@@ -48,6 +49,7 @@ let postprocess_tree tree=
                    min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
                      2.*.a.normalLead else 0.
                });
+          par_badness=(badness);
           par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (with_institute,[]) par))
@@ -69,6 +71,7 @@ let postprocess_tree tree=
                    min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
                      a.normalLead else 0.;
                    min_height_before=0. });
+          par_badness=(badness);
           par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (with_author,[]) par))
@@ -108,6 +111,7 @@ let postprocess_tree tree=
                    min_height_before=if g.lineStart=0 then a.normalLead else 0.;
                    min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then a.normalLead else 0.;
                    not_last_line=true });
+          par_badness=(badness);
           par_completeLine=Complete.normal }
         in
           fst (up (newChildBefore (

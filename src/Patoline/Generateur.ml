@@ -80,14 +80,14 @@ let _ =
   let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o;
   D.fixable:=false;
   let tree=postprocess_tree (fst (top (!D.structure))) in
-  let env1,fig_params,params,compl,pars,figures=flatten env0 D.fixable tree in
+  let env1,fig_params,params,compl,badness,pars,figures=flatten env0 D.fixable tree in
   Printf.fprintf stderr \"Début de l'optimisation : %%f s\n\" (Sys.time ());
   let (logs,pages,figs',user')=TS.typeset
     ~completeLine:compl
     ~figure_parameters:fig_params
     ~figures:figures
     ~parameters:params
-    ~badness:(Badness.badness pars figures)
+    ~badness:badness
     pars
   in
   Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());

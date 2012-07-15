@@ -170,6 +170,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
                                                      counters=env2.counters;
                                                      user_positions=env2.user_positions });
+                  par_badness=(badness);
                   par_parameters=parameters; par_completeLine=Complete.normal }, [])
 
     module Env_Noindent=struct
@@ -393,13 +394,13 @@ module Format=functor (D:Document.DocumentStructure)->(
       lang_ML keywords specials s
 
     let minipage env str=
-      let env',fig_params,params,compl,pars,figures=flatten env D.fixable (fst str) in
+      let env',fig_params,params,compl,bads,pars,figures=flatten env D.fixable (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
-        ~badness:(Badness.badness pars figures)
+        ~badness:bads
         pars
       in
         OutputDrawing.output pars figures
@@ -779,8 +780,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       let do_end_env ()=
         let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=false } in
+        let bad env a b c d e f g h i j k l m=if d.isFigure then infinity else
+          Document.badness env a b c d e f g h i j k l m
+        in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
-        newPar D.structure Complete.normal par
+        newPar D.structure ~badness:bad Complete.normal par
           [bB (fun env->
                 let w=env.size/.phi in
                   [Drawing (
