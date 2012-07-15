@@ -1,0 +1,109 @@
+###
+open SMLofNJ.Cont open Int
+
+exception Impossible
+
+datatype ('a, 'b) Sum = Inl of 'a | Inr of 'b
+
+type 'a susp = unit -> 'a
+datatype 'a Stream_ = Cons of 'a * 'a Stream_ susp
+type 'a Stream = 'a Stream_ susp
+
+type 'a coloring = 'a * 'a Stream -> ('a Stream, 'a Stream) Sum;
+
+(* The infinite tape lemma *)
+fun T (f:'a coloring, n:'a, s:'a Stream, k1:'a Stream_ cont, k2:'a Stream_ cont) =
+    case f(n,s)  of
+      Inl s => throw k1 (Cons(n, 
+        fn () => callcc (fn k => (T' (f, s, k, k2); raise Impossible))))
+    | Inr s => throw k2 (Cons(n,
+        fn () => callcc (fn k => (T' (f, s, k1, k); raise Impossible))))
+
+and T' (f:'a coloring,s:'a Stream,k1:'a Stream_ cont,k2:'a Stream_ cont) =
+  case s () of Cons(n,s') => T(f,n,s',k1,k2)
+
+val infinite_tape: 'a coloring -> 'a Stream -> ('a Stream, 'a Stream) Sum 
+  = fn f => fn s => 
+    callcc (fn k => Inr (fn () => callcc (fn kr =>
+           throw k (Inl (fn () => callcc (fn kl => T' (f, s, kl, kr)))))))
+
+(* The stream of all natural numbers with a given "color" *)
+fun init_aux n () = Cons(n, init_aux (n+1))
+val init = init_aux 0
+
+(* Extraction of finite initial sequence from a stream *)
+fun extract_aux n s =
+  if n = 0 then [] else
+  let val Cons(a,s') = s () in
+      a::extract_aux (n - 1) s'
+  end
+
+fun extract s n m =
+  case s of
+    Inl f => Inl (extract_aux n f)
+  | Inr f => Inr (extract_aux m f)
+
+fun test f n m =
+  extract (infinite_tape f init) n m 
+
+(* test *)
+val x = test 
+  (fn (n, s) => if n mod 7 = 1 then Inl s else Inr s) 10 10
+val y = test 
+  (fn (n, s) => if n mod 7 <> 1 then Inl s else Inr s) 10 10
+
+fun ramsey k color s = 
+  if k = 1 then
+      let fun color1 (n, s) = color([n], s) in
+      infinite_tape color1 s
+    end
+  else
+      let fun color1 (n, s) = 
+	let fun color2 (l, s) = color(n::l, s) in
+  	  ramsey (k-1) color2 s
+	end
+      in
+      infinite_tape color1 s  
+    end
+
+fun hash l = 
+  case l of 
+    [] => 0
+  | n::l => (3571 * n + 1987 * hash l) mod 16384
+
+fun color_hash (l, s) = if (hash l div 1024) mod 2 = 0 then Inl s else Inr s
+
+fun test k n m =
+  extract (ramsey k color_hash init) n m 
+
+val x2 = test 2 10 10
+val x3 = test 4 5 5
+
+fun dot_prod (a,b) (a',b') = a*a' + b*b'
+fun vec (a,b) (c,d) = (c - a, d - b)
+fun vec_prod (a,b) (a',b') = b'*a - b*a'
+
+fun same_side x y u v =
+    let val s = vec x y in
+	vec_prod s (vec x u) * vec_prod s (vec x v) > 0
+    end
+
+fun in_triangle x y z u =
+    same_side x y z u andalso
+    same_side y z x u andalso
+    same_side z x y u
+
+fun convex x y z t =
+    not (in_triangle x y z t) andalso 
+    not (in_triangle y z t x) andalso 
+    not (in_triangle z t x y) andalso 
+    not (in_triangle t x y z)
+
+fun color_erdos ([x,y,z,t], s) = 
+    if convex x y z t then Inl s else Inr s
+
+fun spirale_aux q (n,p) () = Cons((n,p), if p < q then spirale_aux q (n-1,p+1) else spirale_aux (q+1) (p+1,0))
+val spirale = spirale_aux 0 (0,0)
+
+val p1 = extract (ramsey 4 color_erdos spirale) 7 5 
+###
