@@ -1,3 +1,12 @@
+patoline (0~20120715) unstable; urgency=low
+
+  * Update patoline sources.
+  * New trigger to generate ocamlfind's META file in libtypography-ocaml-dev.
+  * Add patoline-driver-gl.
+  * Add patoline-mode.
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Sun, 15 Jul 2012 19:43:32 +0200
+
 patoline (0~20120621) unstable; urgency=low
 
   * New upstream with math kerning and a new patofig.

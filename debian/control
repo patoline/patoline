@@ -37,3 +37,10 @@ Package: libtypography-ocaml-dev
 Architecture: any
 Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
 Description: Library of typographic primitives for OCaml
+
+Package: patoline-mode
+Architecture: all
+Depends: xemacs21-nomule | emacsen
+Recommends: patoline, patoline-driver-gl
+Description: Emacs mode for Patoline
+Enhances: patoline
