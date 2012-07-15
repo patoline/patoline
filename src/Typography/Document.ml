@@ -579,12 +579,16 @@ let badness
             node_i.height<>params_i.page_height then 10000. else 0.)
         (* Cesures *)
       +. (if node_j.hyphenEnd >=0 then
-            (if node_j.hyphenStart >=0 then
-               1e10
-             else
-               1e8)
-          else
-            0.)
+          (if node_j.hyphenStart >=0 then
+              1e10
+           else
+              1e8)
+        else
+          (if node_j.hyphenStart >=0 then
+              1e8
+           else
+              0.)
+      )
       +. (1000.*.(abs_float (comp_i-.comp_j)))
   )
 

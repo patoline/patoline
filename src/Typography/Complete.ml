@@ -47,7 +47,7 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
       let y1'=upper_y paragraphs.(line.paragraph).(j) in
       let result0=
         match paragraphs.(line.paragraph).(j) with
-            Hyphen x when (not allow_impossible) && j<Array.length paragraphs-1 ->(
+            Hyphen x when (not allow_impossible) && j<Array.length paragraphs.(line.paragraph)-1 ->(
               let rec hyphenation k res=
                 if k>=Array.length x.hyphenated then res else (
                   let (a',b',c')=boxes_interval (fst x.hyphenated.(k)) in
