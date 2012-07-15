@@ -20,6 +20,11 @@ Description: Digital typography system written in OCaml
     by "what compiles on all machines of the laboratory".
   * The global network has changed: today, nobody knows anyone on the net.
 
+Package: patoline-driver-gl
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, patoline, liblablgl-ocaml-dev
+Description: OpenGL output driver for Patoline
+
 Package: patoline-fonts
 Architecture: all
 Section: fonts

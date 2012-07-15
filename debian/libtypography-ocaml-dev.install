@@ -1,2 +1,10 @@
-/usr/lib/ocaml/Typography/*
-/usr/share/patoline/hyphen/*
+usr/lib/ocaml/Typography/Bin.*
+usr/lib/ocaml/Typography/Pdf.*
+usr/lib/ocaml/Typography/SVG.*
+usr/share/patoline/hyphen/*
+usr/lib/ocaml/Typography/Typography.*
+usr/lib/ocaml/Typography/DefaultFormat.*
+usr/lib/ocaml/Typography/FormatArticle.*
+usr/lib/ocaml/Typography/FormatLetter.*
+usr/lib/ocaml/Typography/LMFormat.*
+src/Format/LMFormat.META usr/lib/ocaml/Typography/META.d
