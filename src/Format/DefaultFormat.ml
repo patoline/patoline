@@ -1051,6 +1051,11 @@ module Output=functor(M:Driver)->struct
 
               if line.isFigure then (
                 let fig=figures.(line.lastFigure) in
+		if env.show_boxes then
+                  page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                                            [rectangle (param.left_margin,y+.fig.drawing_y0)
+                                                (param.left_margin+.fig.drawing_nominal_width,
+                                                 y+.fig.drawing_y1)]) :: page.pageContents;
                   page.pageContents<- (List.map (translate param.left_margin y)
                                          (fig.drawing_contents fig.drawing_nominal_width))
                   @ page.pageContents;
