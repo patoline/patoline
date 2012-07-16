@@ -568,7 +568,28 @@ main lexer =
 		     l.lex_start_p.pos_cnum, List.rev txps
 		  }
   newline -> NEWLINE { set_newline 1 (std_lexbuf lexbuf) }
-  
+  newline "=="'='?'='?'='?'='?'='?'='?'='?'='? -> ABS_SECTION { 
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline "--"'-'?'-'?'-'?'-'?'-'?'-'?'-'?'-'? -> ABS_SECTION { 
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  "=="'='?'='?'='?'='?'='?'='?'='?'='? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
+  "--"'-'?'-'?'-'?'-'?'-'?'-'?'-'?'-'? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
+  newline ('='|'-') ">" -> START_SECTION { 
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline ('='|'-') "<" -> END_SECTION { 
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline ("=========="'='*) -> TITLE {
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline ("----------"'-'*) -> TITLESEP {
+    set_newline 1 (std_lexbuf lexbuf); 
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline "###" -> VERBATIM
+
 %parser
 
 verb_text:
@@ -879,12 +900,12 @@ macro_options:
 
 verbatim_lines:
   { [] }
-| verbatim_lines<ls> - (verbatim_line)<l> NEWLINE {l::ls}
+| verbatim_lines<ls> NEWLINE (verbatim_line)<l> {l::ls}
 | verbatim_lines<ls> NEWLINE {""::ls}
 
 atomelt:
   /* Section */
-  | (("="|"-")">")<o> paragraph<title> text<content,rules> (("="|"-")"<")<c>
+  | START_SECTION<o> paragraph<title> text<content,rules> END_SECTION<c>
     @{ let content = List.rev content in
       (match content with 
         Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
@@ -893,14 +914,14 @@ atomelt:
       ([Struct(title, o.[0] = '=', Relative content)],rules),
 	[ Keep_grammar; Local_data dyp.last_local_data ]
     }
-  | (("=""="+)|("-""-"+))<o> paragraph<title>
-      (("=""="+)|("-""-"+))<c>
+  | ABS_SECTION<o> paragraph<title> END_ABS_SECTION<c>
     { let level = String.length o in
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
       [Struct(title,  o.[0] = '=', Absolute (level - 1))], [] }
-  | "###" [ (ident) ]?<lang> [ string ]?<filename> NEWLINE verbatim_lines<ls> - "###"
-    { [Verbatim(lang, filename, List.rev ls)], [] }
+  | VERBATIM [ - (space*) - (ident) ]?<lang> [ - (space*) - string ]?<filename>  [ - (space*)]? -
+    verbatim_lines<ls> - VERBATIM
+    { [Verbatim(None, None (*lang, filename*), List.rev ls)], [] }
   /* Code Caml */
   | "\\Caml" CAML<s,pos,e,txps>
     { let ld, gr = get_local_data_and_grammar dyp in
@@ -988,11 +1009,11 @@ atomelt:
 
 
 title:
-  ("=========="('='*))
+  TITLE
     paragraph<title>
-     [("----------"('-'*)) paragraph<author>
-      [("----------"('-'*)) paragraph]?<institute> {author, institute} ]?<at>
-  ("=========="('='*))
+     [TITLESEP paragraph<author>
+      [TITLESEP paragraph]?<institute> {author, institute} ]?<at>
+  TITLE
   { title,at }
 
 ntext_apply_grammar:
