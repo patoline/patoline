@@ -114,7 +114,7 @@ and 'a content =
    | MC of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
            * 'a doc list * macro_info list
    | GC
-let par_macros:(string->'a content list) StrMap.t ref=ref StrMap.empty
+
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
 
 let default_paragraph_options = { center_paragraph = false; indent_paragraph = true; }
@@ -552,10 +552,6 @@ main lexer =
   '\\' "Include" -> INCLUDE
   '\\' ident
     -> MACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  '#' lident
-    -> PPRE { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  '#' uident
-    -> TPRE { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '(' '*' -> { push_comment (); comment lexbuf }
   '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
@@ -588,7 +584,7 @@ main lexer =
   newline ("----------"'-'*) -> TITLESEP {
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  newline "###" -> VERBATIM
+  newline "###" -> VERBATIM { set_newline 1 (std_lexbuf lexbuf) }
 
 %parser
 
@@ -686,24 +682,6 @@ topmacro:
   | par_macro<name> - args<a>
       {	let name, args = test_pargs dyp name a in
         Macro(`Module, name, args, get_pminfo dyp name) }
-  | TPRE<preproc> '{' preproc<text> '}'
-      { try
-            (*if Sys.file_exists (Printf.sprintf "%s.cmxs" preproc) then
-              (Printf.sprintf "%s.cmxs" preproc)
-            else
-              (Printf.sprintf "%s%s.cmxs"(String.lowercase (String.sub preproc 0 1))
-                 (String.sub preproc 1 (String.length preproc-1)));*)
-            let f=StrMap.find preproc !macros in
-            let t=String.concat "" text in
-              Preproc (f t)
-        with
-            Not_found ->Printf.fprintf stderr "Error in toplevel macro \"%s\"\n" preproc;
-	      flush stderr ; raise Not_found
-      }
-preproc:
-      {[]}
-  | '{' preproc<a> '}' preproc<b> { ("{"::a)@("}"::b) }
-  | (utf8_char | space)*<a> preproc<b> {a::b}
 
 
 in_par_macro:
@@ -711,20 +689,6 @@ in_par_macro:
       { 
         let name, args = test_wargs dyp name a in
         [MC(`Single, name, args, get_wminfo dyp name)] }  macro
-  | PPRE<preproc> - CAML<s,pos,e,txps>
-      { let ld, gr = get_local_data_and_grammar dyp in
-        [MC (`Preproc, preproc, [Caml (ld,gr,s,e,txps,pos)], [])]
-      }
-  | PPRE<preproc> '{' preproc<text> '}'
-
-      { try
-          let f=StrMap.find preproc !par_macros in
-          let t=String.concat "" text in
-            f t
-        with
-            Not_found ->Printf.fprintf stderr "Error in macro \"%s\"\n" preproc;
-	      flush stderr ; raise Not_found
-      }
 
 leftind:
   | math(<=atom)<m1> - "^^" - math(<=atom)<m2> - "__" 
