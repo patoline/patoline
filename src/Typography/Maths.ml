@@ -278,7 +278,25 @@ let rec draw env_stack mlist=
 
 		let box_nucleus = draw_boxes nucleus in
                 let x0,y0,x1,y1=bounding_box box_nucleus in
-
+                let is_letter=
+                  match nucleus with
+                      []->false
+                    | h::s->
+                      (match List.fold_left (fun _ x->x) h s with
+                          GlyphBox g->(
+                            let utf8=(Fonts.glyphNumber g.glyph).glyph_utf8 in
+                            utf8.[0]<>'\\' &&
+                              (let lastChar=UTF8.look utf8 (UTF8.last utf8) in
+                               match CamomileLibraryDefault.Camomile.UCharInfo.general_category lastChar with
+                                   (* Letters *)
+                                   `Lu | `Ll | `Lt | `Lm | `Lo
+                                 (* Numbers *)
+                                 | `Nd | `Nl | `No -> true
+                                 | _->false
+                              )
+                          )
+                        | _->false)
+                in
 		if !debug_kerning then begin
 		  Printf.printf "indices:\n" ;
 		  Printf.printf "box nucleus: (%f,%f) (%f,%f)\n"  x0 x1 y0 y1;
@@ -291,14 +309,7 @@ let rec draw env_stack mlist=
                   in
                     if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
                 in
-		let xx_height =
-                  let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
-                    ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'X'}) in
-                    (Fonts.glyph_y1 x)/.1000.
-                  in
-                    if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
-                in
-                let u,v= if y1 < xx_height *. 1.1 then  0., 0. else
+                let u,v= if is_letter then  0., 0. else
                   y1 -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
                   -.y0+. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
                 in
