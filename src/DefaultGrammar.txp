@@ -77,6 +77,7 @@
 \Add_addition_like{\pm}{±}
 \Add_addition_like{\mp}{∓}
 \Add_addition_like{\union \cup ∪}{∪}
+\Add_addition_like{\inter \cap ∩}{∩}
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
 \Add_addition_like{\vee ∨}{∨}
 \Add_addition_like{\setminus ∖}{∖}
@@ -95,7 +96,6 @@
 \Add_product_like{\circ ∘}{∘}
 \Add_product_like{\wedge ∧}{∧}
 \Add_product_like{\star ∗}{∗}
-\Add_product_like{\inter \cap ∩}{∩}
 
 =<
 
