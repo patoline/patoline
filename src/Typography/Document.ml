@@ -570,7 +570,9 @@ let badness
           (node_j.height-.node_i.height)
           line_i max_i params_i comp_i
           line_j max_j params_j comp_j
-      ) else 0.
+      ) else (
+        if node_i.hyphenEnd>=0 then infinity else 0.
+      )
     in
       (Badness.h_badness paragraphs node_j comp_j)
       +. v_bad
