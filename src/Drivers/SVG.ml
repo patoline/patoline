@@ -220,12 +220,12 @@ else if(e.which==39) next();
                        (Fonts.fontName (Fonts.glyphFont x.glyph))
                        (round (coord x.glyph_size));
                      (match x.glyph_color with
-                          RGB fc ->
-                            Printf.fprintf o "fill=\"#%02x%02x%02x\" "
-                              (round (fc.red))
-                              (round (fc.green))
-                              (round (fc.blue))
-                        | _->());
+                         RGB fc ->
+                           Printf.fprintf o "fill=\"#%02x%02x%02x\" "
+                             (round (255.*.fc.red))
+                             (round (255.*.fc.green))
+                             (round (255.*.fc.blue))
+                       | _->());
                      Printf.fprintf o "stroke=\"none\">";
                      Printf.fprintf o "<text x=\"%g\" y=\"%g\">"
                        (coord x.glyph_x) (coord (h-.x.glyph_y));
@@ -264,16 +264,16 @@ else if(e.which==39) next();
                      (match args.fillColor with
                           Some (RGB fc) ->
                             Printf.fprintf o "fill=\"#%02X%02X%02X\" "
-                              (round (fc.red))
-                              (round (fc.green))
-                              (round (fc.blue));
+                              (round (255.*.fc.red))
+                              (round (255.*.fc.green))
+                              (round (255.*.fc.blue));
                         | None->Printf.fprintf o "fill=\"none\" ");
                      (match args.strokingColor with
                           Some (RGB fc) ->
                             Printf.fprintf o "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" "
-                              (round (fc.red))
-                              (round (fc.green))
-                              (round (fc.blue))
+                              (round (255.*.fc.red))
+                              (round (255.*.fc.green))
+                              (round (255.*.fc.blue))
                               (coord args.lineWidth)
                         | None->
                             Printf.fprintf o "stroke=\"none\" "
