@@ -574,7 +574,7 @@ let badness
         if node_i.hyphenEnd>=0 then infinity else 0.
       )
     in
-      (Badness.h_badness paragraphs node_j comp_j)
+      (Badness.h_badness paragraphs params_j.measure node_j comp_j)
       +. v_bad
         (* Page pas assez remplie *)
       +. (if node_i.page<>node_j.page &&

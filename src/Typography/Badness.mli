@@ -4,4 +4,4 @@ val v_badness :
   int ->
   Line.parameters ->
   float -> 'b Box.box array -> int -> Line.parameters -> float -> float
-val h_badness : 'a Box.box array array -> Line.line -> float -> float
+val h_badness : 'a Box.box array array -> float -> Line.line -> float -> float

@@ -49,14 +49,20 @@ let v_badness v_space haut max_haut params_i comp_i bas max_bas params_j comp_j=
 
 
 
-let h_badness paragraphs node comp=
+let h_badness paragraphs measure node comp=
   let bad=ref 0. in
-    for k=node.lineStart to node.lineEnd-1 do
-      bad:= !bad +.
-        (match paragraphs.(node.paragraph).(k) with
-             Drawing x
-           | Glue x->x.drawing_badness (x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
-           | _->0.
-        )
-    done;
-    !bad
+  let glues=ref 0 in
+  for k=node.lineStart to node.lineEnd-1 do
+    match paragraphs.(node.paragraph).(k) with
+        Drawing x ->
+          bad:= !bad +.
+            x.drawing_badness (x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp)
+      | Glue x->(
+        bad:= !bad +.
+          x.drawing_badness (x.drawing_min_width+.(x.drawing_max_width-.x.drawing_min_width)*.comp);
+        incr glues
+      )
+      | _->()
+  done;
+  if !glues<=0 then 10e6 else
+    !bad *. (if node.nom_width/.measure < 2./.9. || node.nom_width/.measure > 7./.9. then 20. else 1.)
