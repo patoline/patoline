@@ -427,7 +427,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                           let bad=(lastBadness+.
                                      badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          if bad<infinity then
+                          if bad<infinity || allow_impossible then
                             local_opt:=(nextNode,
                                         max 0. bad,
                                         (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
@@ -437,7 +437,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                      badness.(nextNode.paragraph) paragraphs figures
                                      lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          if bad<infinity then
+                          if bad<infinity || allow_impossible then
                             local_opt:=(nextNode,
                                         max 0. bad,Language.Normal,
                                         !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
