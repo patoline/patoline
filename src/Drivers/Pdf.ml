@@ -34,11 +34,15 @@ let stream str=
       close_in ic;
       close_out oc;
       let f=open_in_bin tmp1 in
-      let buf=String.create (in_channel_length f) in
-        really_input f buf 0 (in_channel_length f);
-        "/Filter [/FlateDecode]", buf
+      let rec inp x=
+        if pos_in f>=in_channel_length f then List.rev x else
+          (let buf=String.create (min 256 (in_channel_length f-pos_in f)) in
+           really_input f buf 0 (String.length buf);
+           inp (buf::x))
+      in
+        "/Filter [/FlateDecode]", inp []
 #else
-  let stream str="",str
+  let stream str="",[str]
 #endif
 
 let output ?(structure:structure={name="";displayname=[];
@@ -387,8 +391,10 @@ let output ?(structure:structure={name="";displayname=[];
         let contentObj=beginObject () in
         let contStr=Buf.contents pageBuf in
         let filt, data=stream contStr in
-          fprintf outChan "<< /Length %d %s>>\nstream\n%s\nendstream"
-            (String.length data) filt data;
+        let len=List.fold_left (fun x y->x+String.length y) 0 data in
+          fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+          List.iter (fprintf outChan "%s") data;
+          fprintf outChan "\nendstream";
           endObject ();
           resumeObject pageObjects.(page);
           let w,h=pages.(page).pageFormat in
@@ -452,8 +458,11 @@ let output ?(structure:structure={name="";displayname=[];
                                         done
                                       done;
                                       let a,b=stream (Buffer.contents img_buf) in
-                                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n%s\nendstream\n"
-                                          w h (String.length b) a b;
+                                      let len=List.fold_left (fun x y->x+String.length y) 0 b in
+                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
+                                      List.iter (fprintf outChan "%s") b;
+                                      fprintf outChan "\nendstream";
+
                                   )
                                 | OImages.ClassRgba32->(
                                     let src=OImages.rgba32 image in
@@ -467,8 +476,10 @@ let output ?(structure:structure={name="";displayname=[];
                                         done
                                       done;
                                       let a,b=stream (Buffer.contents img_buf) in
-                                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n%s\nendstream\n"
-                                          w h (String.length b) a b;
+                                      let len=List.fold_left (fun x y->x+String.length y) 0 b in
+                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
+                                      List.iter (fprintf outChan "%s") b;
+                                      fprintf outChan "\nendstream";
                                   )
                                 | _->()
                              );
@@ -595,9 +606,11 @@ let output ?(structure:structure={name="";displayname=[];
 
                            resumeObject x.fontToUnicode;
                            let filt, data=stream (Buf.contents buf) in
-                             fprintf outChan "<< /Length %d %s>>\nstream\n%s\nendstream"
-                               (String.length data) filt data;
-                             endObject ()
+                           let len=List.fold_left (fun x y->x+String.length y) 0 data in
+                           fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+                           List.iter (fprintf outChan "%s") data;
+                           fprintf outChan "\nendstream";
+                           endObject ()
                 ) !fonts;
     (* Toutes les largeurs des polices *)
     StrMap.iter (fun _ x->
@@ -643,9 +656,11 @@ let output ?(structure:structure={name="";displayname=[];
                    in
 #endif
                    let filt, data=stream program in
-                     fprintf outChan "<< /Length %d /Subtype /CIDFontType0C %s>>\nstream\n%s\nendstream"
-                       (String.length data) filt data;
-                     endObject();
+                   let len=List.fold_left (fun x y->x+String.length y) 0 data in
+                   fprintf outChan "<< /Length %d /Subtype /CIDFontType0C %s>>\nstream\n" len filt;
+                   List.iter (fprintf outChan "%s") data;
+                   fprintf outChan "\nendstream";
+                   endObject();
                 ) !fonts;
 
 
