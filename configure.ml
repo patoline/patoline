@@ -97,7 +97,7 @@ let _=
   let config'=open_out "src/Patoline/PatolineConfig.ml" in
 
   let fonts_src_dir="Fonts" in
-  let grammars_src_dir="src/_build" in
+  let grammars_src_dir="src" in
   let hyphen_src_dir="Hyphenation" in
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
@@ -110,12 +110,12 @@ let _=
        else "");
     Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc: Patoline.pdf\n\tmake -C src doc\n\n";
-    Printf.fprintf out "Patoline.pdf: Patoline.txp src/_build/Patoline/Main.native src/_build/DefaultGrammar.tgx\n\t./src/_build/Patoline/Main.native --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts -I src/_build Patoline.txp\n";
+    Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx\n\t./src/Patoline/patoline --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts -I src Patoline.txp\n";
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
-      Printf.fprintf out "\tcd tests; ../src/_build/Patoline/Main.native -I ../src/_build --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
+      Printf.fprintf out "\tcd tests; ../src/Patoline/patoline -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
 
-    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/_build/quail.el patoline-input.post > patoline-input.el\n";
+    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/quail.el patoline-input.post > patoline-input.el\n";
 
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
@@ -167,51 +167,51 @@ let _=
 
     close_out make;
 
-    let tags=open_out "src/Typography/_tags" in
-      Printf.fprintf tags
-        "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s%s)
-<**/*.{cmo,cmx}> and not <Typography.*>:for-pack(Typography)
-<Break.ml>:rectypes
-<Fonts> or <Output> or <Output/Drivers>:include\n"
-        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
-        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
-        (if !camlzip <> "" then "-DCAMLZIP " else "")
-        (if !camlimages <> "" then "-DCAMLIMAGES " else "")
-        (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
-        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-    close_out tags;
+(*     let tags=open_out "src/Typography/_tags" in *)
+(*       Printf.fprintf tags *)
+(*         "<**/*.ml> or <**/*.mli>: package(camomile)%s%s,pp(cpp -w %s%s%s%s) *)
+(* <**/*.{cmo,cmx}> and not <Typography.*>:for-pack(Typography) *)
+(* <Break.ml>:rectypes *)
+(* <Fonts> or <Output> or <Output/Drivers>:include\n" *)
+(*         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "") *)
+(*         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "") *)
+(*         (if !camlzip <> "" then "-DCAMLZIP " else "") *)
+(*         (if !camlimages <> "" then "-DCAMLIMAGES " else "") *)
+(*         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "") *)
+(*         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else ""); *)
+(*     close_out tags; *)
 
-      let tags=open_out "src/_tags" in
-      Printf.fprintf tags
-        "<**/*>: pp(cpp -w),package(camomile)%s%s
-<Format/*.{ml,mli}>: use_Typography,use_str
-<Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes
-<Patoline/PatolineGL.native>:package(lablgl),package(lablgl.glut)
-%s
-<Typography/Break.ml>:rectypes
-\"Typography\":include\n"
-        (if !camlzip <> "" then ",package("^(!camlzip)^")" else "")
-        (if !camlimages <> "" then ",package("^(!camlimages)^")" else "")
-        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "")
-        (if !lablgl <> "" then
-           "<Drivers/GL.*>:package("^(!lablgl)^")"^
-             (if !lablglut <> "" then ",package("^(!lablglut)^")" else "")
-         else "");
+(*       let tags=open_out "src/_tags" in *)
+(*       Printf.fprintf tags *)
+(*         "<**/*>: pp(cpp -w),package(camomile)%s%s *)
+(* <Format/*.{ml,mli}>: use_Typography,use_str *)
+(* <Patoline/*>:pp(cpp -w %s),package(dyp),use_str,rectypes *)
+(* <Patoline/PatolineGL.native>:package(lablgl),package(lablgl.glut) *)
+(* %s *)
+(* <Typography/Break.ml>:rectypes *)
+(* \"Typography\":include\n" *)
+(*         (if !camlzip <> "" then ",package("^(!camlzip)^")" else "") *)
+(*         (if !camlimages <> "" then ",package("^(!camlimages)^")" else "") *)
+(*         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "") *)
+(*         (if !lablgl <> "" then *)
+(*            "<Drivers/GL.*>:package("^(!lablgl)^")"^ *)
+(*              (if !lablglut <> "" then ",package("^(!lablglut)^")" else "") *)
+(*          else ""); *)
 
-      close_out tags;
+(*       close_out tags; *)
 
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/Main.native $(DESTDIR)%s/patoline\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/_build/Patoline/PatolineGL.native $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
 
     let sources=
-      "src/_build/Typography/Typography.cmxa src/_build/Typography/Typography.p.cmxa src/_build/Typography/Typography.a src/_build/Typography/Typography.p.a src/_build/Typography/Typography.cmi "^
-        "src/_build/Format/*Format*.cmxa src/_build/Format/*Format*.a src/_build/Format/*Format*.cmi "^
-        "src/_build/Typography/Typography.cma src/_build/Format/*Format*.cma "^
-        "src/_build/Drivers/*.cmxa src/_build/Drivers/*.cma src/_build/Drivers/*.a "^
-        "src/_build/Drivers/*.cmi"
+      "src/Typography/Typography.cmxa src/Typography/Typography.p.cmxa src/Typography/Typography.a src/Typography/Typography.p.a src/Typography/Typography.cmi "^
+        "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
+        "src/Typography/Typography.cma src/Format/*Format*.cma "^
+        "src/Drivers/*.cmxa src/Drivers/*.cma src/Drivers/*.a "^
+        "src/Drivers/*.cmi"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -223,7 +223,7 @@ let _=
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
-      Printf.fprintf out "\tinstall -m 755 src/_build/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
       (* emacs *)
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
@@ -249,7 +249,7 @@ let _=
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
-        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/PatolineConfig.ml src/Typography/_tags src/_tags src/Typography/META\n";
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/PatolineConfig.ml src/Typography/META\n";
         close_out out;
         close_out config;
         close_out config';

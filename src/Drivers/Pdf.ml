@@ -1,4 +1,5 @@
 open Typography
+open Fonts
 open CamomileLibrary
 open Printf
 open Util

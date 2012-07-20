@@ -51,7 +51,7 @@ let centered str tree _=
                         (fun glyphs->
                            List.fold_left (fun a b->Fonts.FTypes.apply b a)
                              (env.substitutions glyphs)
-                             (Fonts.select_features env.font [ Opentype.oldStyleFigures ]))
+                             (Fonts.select_features env.font [ Fonts.Opentype.oldStyleFigures ]))
                                  }
                     in
                     let env'=fenv env0 in
@@ -132,7 +132,7 @@ let these str tree max_level=
                     (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
                   with Not_found -> 0
                   in
-                  let env'=add_features [Opentype.oldStyleFigures] env in
+                  let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
                   let num=boxify_scoped { env' with fontColor=
                       if level=1 then OutputCommon.rgb 255. 0. 0. else OutputCommon.black }
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in

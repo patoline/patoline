@@ -98,7 +98,7 @@ let postprocess_tree tree=
           par_contents=section_name;
           par_env=(fun env->
                      let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-                     { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+                     { (envAlternative (Fonts.Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
                          size=(if List.length b <= 2 then sqrt phi else
                                  sqrt (sqrt phi))*.env.size;
                      });

@@ -57,11 +57,13 @@ let preambule format amble filename=
         "open Typography\nopen Typography.Util\nopen Typography.Box\n"^
         "open Typography.Config\nopen Typography.Document\nopen Typography.OutputCommon\n"^
           "let atmost=ref 3\n"^
+          "let _print_graph=ref false\n"^
           (match amble with
                Main->
                  "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),\"Adds directories to the font search path\");
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
 (\"--at-most\",Arg.Int (fun x->atmost:=x),\"Compile at most n times\");
+(\"--print-graph\",Arg.Unit (fun ()->_print_graph:=true),\"Print the document graph\");
 (\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
 let _=Arg.parse spec ignore \"Usage :\";;
 module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)\n"
@@ -77,7 +79,7 @@ let _ =
   let filename=\"%s\" in
   let rec resolve i env0=
   Printf.printf \"Compilation %%d\\n\" i; flush stdout;
-  let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o;
+  (if !_print_graph then (let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o));
   D.fixable:=false;
   let tree=postprocess_tree (fst (top (!D.structure))) in
   let env1,fig_params,params,compl,badness,pars,figures=flatten env0 D.fixable tree in
