@@ -86,7 +86,8 @@
 
 => Product like symbols 
 
-\Add_product_like{\dot .}{.}
+\Add_product_like{\dot \cdot ⋅}{⋅}
+\Add_product_like{\diamond ⋄}{⋄}
 \Add_product_like{\times ×}{×}
 \Add_product_like{\over}{over} (* Donne une barre de fraction *)
 \Add_product_like{/}{/}
