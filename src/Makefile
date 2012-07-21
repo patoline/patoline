@@ -1,22 +1,27 @@
 include Makefile.config
 
-OCAMLBUILD=ocamlbuild
-CAMLOPT=ocamlfind ocamlopt $(PACK)
-CAMLC=ocamlfind ocamlc $(PACK)
-
 FORMAT=$(shell ls Format/Format*.ml)
 DRIVERS=$(shell ls Drivers/*.ml)
 
+ifdef GL_PACK
+PACK+=$(GL_PACK)
+NATIVE_EXTRA+=Patoline/PatolineGL
+else
+  DRIVERS:=$(filter-out Drivers/GL.ml,$(DRIVERS))
+endif
+
+CAMLOPT=ocamlfind ocamlopt $(PACK)
+CAMLC=ocamlfind ocamlc $(PACK)
+
 all:native byte prof
 
-native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline Patoline/PatolineGL DefaultGrammar.cmx proof/proof
+native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx proof/proof $(NATIVE_EXTRA)
 byte:Typography/Typography.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
 Patoline/patoline:
 	make -C Patoline patoline
-
 Patoline/PatolineGL:Drivers/GL.cmxa
 	make -C Patoline PatolineGL
 
@@ -57,23 +62,6 @@ DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
 DefaultGrammar.cmx: Typography/Typography.cmxa Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.tml
 	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.tml
-
-%.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.tgx %.txp
-	cp $*.txp _build
-	cd _build; Patoline/Main.native --ml --extra-fonts-dir ../../Fonts  $*.txp
-
-	cd _build; $(CAMLOPT) -o $*.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl $*.tml
-	cd _build; ./$*.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
-	ln -sf _build/$*.pdf .
-
-
-
-DefaultGrammar.pdf: Main.native Typography/Typography.cmxa Format/DefaultFormat.cmxa DefaultGrammar.txp
-	cp DefaultGrammar.txp _build
-	cd _build; Patoline/Main.native --ml --no-grammar --extra-fonts-dir ../../Fonts  DefaultGrammar.txp
-	cd _build; $(CAMLOPT) -o DefaultGrammar.tmx -I Typography -I Format Typography/Typography.cmxa Format/DefaultFormat.cmxa -impl DefaultGrammar.tml
-	cd _build; ./DefaultGrammar.tmx --extra-fonts-dir ../../Fonts --extra-hyph-dir ../../Hyphenation
-	ln -sf _build/DefaultGrammar.pdf .
 
 clean:
 	make -C Typography clean

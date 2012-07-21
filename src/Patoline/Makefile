@@ -6,7 +6,7 @@ patoline:Main.cmx PatolineLanguage.cmx PatolineConfig.cmx
 	$(CAMLOPT) -linkpkg -o patoline str.cmxa PatolineLanguage.cmx PatolineConfig.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 
 PatolineGL:PatolineGL.ml
-	$(CAMLOPT) -linkpkg -I ../Drivers -I ../Typography str.cmxa Typography.cmxa GL.cmxa  -o $@ $<
+	$(CAMLOPT) $(GL_PACK) -linkpkg -I ../Drivers -I ../Typography str.cmxa Typography.cmxa GL.cmxa  -o $@ $<
 
 Main.cmx:Generateur.cmx SimpleGenerateur.cmx
 
