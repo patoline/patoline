@@ -25,8 +25,8 @@ let stream str=
   let tmp0=Filename.temp_file "txp_" "" in
   let tmp1=Filename.temp_file "txp_" "" in
   let f0=open_out_bin tmp0 in
-    output_string f0 str;
-    close_out f0;
+  List.iter (output_string f0) str;
+  close_out f0;
     let ic = open_in_bin tmp0
     and oc = open_out_bin tmp1 in
       Zlib.compress (fun buf -> input ic buf 0 (String.length buf))
@@ -42,7 +42,7 @@ let stream str=
       in
         "/Filter [/FlateDecode]", inp []
 #else
-  let stream str="",[str]
+  let stream str="",str
 #endif
 
 let output ?(structure:structure={name="";displayname=[];
@@ -390,7 +390,7 @@ let output ?(structure:structure={name="";displayname=[];
         (* Objets de la page *)
         let contentObj=beginObject () in
         let contStr=Buf.contents pageBuf in
-        let filt, data=stream contStr in
+        let filt, data=stream [contStr] in
         let len=List.fold_left (fun x y->x+String.length y) 0 data in
           fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
           List.iter (fprintf outChan "%s") data;
@@ -457,7 +457,7 @@ let output ?(structure:structure={name="";displayname=[];
                                             Buffer.add_char img_buf (char_of_int rgb.Images.b);
                                         done
                                       done;
-                                      let a,b=stream (Buffer.contents img_buf) in
+                                      let a,b=stream [Buffer.contents img_buf] in
                                       let len=List.fold_left (fun x y->x+String.length y) 0 b in
                                       fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
                                       List.iter (fprintf outChan "%s") b;
@@ -475,7 +475,7 @@ let output ?(structure:structure={name="";displayname=[];
                                             Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
                                         done
                                       done;
-                                      let a,b=stream (Buffer.contents img_buf) in
+                                      let a,b=stream [Buffer.contents img_buf] in
                                       let len=List.fold_left (fun x y->x+String.length y) 0 b in
                                       fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
                                       List.iter (fprintf outChan "%s") b;
@@ -605,7 +605,7 @@ let output ?(structure:structure={name="";displayname=[];
 
 
                            resumeObject x.fontToUnicode;
-                           let filt, data=stream (Buf.contents buf) in
+                           let filt, data=stream [Buf.contents buf] in
                            let len=List.fold_left (fun x y->x+String.length y) 0 data in
                            fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
                            List.iter (fprintf outChan "%s") data;
@@ -639,8 +639,8 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                         CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
-                                                         (IntMap.bindings x.revFontGlyphs))))
+                       [CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
+                                                        (IntMap.bindings x.revFontGlyphs))))]
                        )
                      (* | _->raise Fonts.Not_supported *)
                    in
@@ -648,11 +648,15 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                         let buf=String.create (y.CFF.size) in
-                           seek_in y.CFF.file y.CFF.offset;
-                           really_input y.CFF.file buf 0 y.CFF.size;
-                           buf)
-                     (* | _->raise Fonts.Not_supported *)
+                       seek_in y.CFF.file y.CFF.offset;
+                       let rec inp x=
+                         if pos_in y.CFF.file >= y.CFF.offset + y.CFF.size then List.rev x else
+                           (let buf=String.create (min 256 (y.CFF.offset + y.CFF.size - pos_in y.CFF.file)) in
+                            really_input f buf 0 (String.length buf);
+                            inp (buf::x))
+                       in
+                       inp [])
+                   (* | _->raise Fonts.Not_supported *)
                    in
 #endif
                    let filt, data=stream program in
