@@ -909,6 +909,10 @@ module MathsFormat=struct
                   }]
             ))]
 
+    let binomial a b=
+      [Maths.Fraction { Maths.numerator=b; Maths.denominator=a;
+                        Maths.line=(fun _ _->{OutputCommon.default with OutputCommon.fillColor=None;OutputCommon.strokingColor=None}) }]
+
     (* Une chirurgie esthétique de glyphs. Ce n'est sans doute pas très
        bien fait, et il faut kerner en haut. Un truc generique pour
        allonger toutes les flêches est à réfléchir *)
