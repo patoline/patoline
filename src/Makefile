@@ -20,9 +20,9 @@ byte:Typography/Typography.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
 
 prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
-Patoline/patoline:
+Patoline/patoline:Patoline
 	make -C Patoline patoline
-Patoline/PatolineGL:Drivers/GL.cmxa
+Patoline/PatolineGL:Drivers/GL.cmxa Patoline
 	make -C Patoline PatolineGL
 
 proof/proof:Typography/Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
@@ -42,11 +42,11 @@ Format/%.p.cmxa:Format/DefaultFormat.cmxa Format/%.ml
 Format/%.cma:Format/DefaultFormat.cma Format/%.ml
 	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
 
-Typography/Typography.cma:
+Typography/Typography.cma:Typography
 	make -C Typography Typography.cma
-Typography/Typography.cmxa:
+Typography/Typography.cmxa:Typography
 	make -C Typography Typography.cmxa
-Typography/Typography.p.cmxa:
+Typography/Typography.p.cmxa:Typography
 	make -C Typography Typography.p.cmxa
 
 
