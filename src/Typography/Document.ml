@@ -951,7 +951,7 @@ let boxify buf nbuf fixable env0 l=
                 ) else (
                   if is_space (UTF8.look t i) then (
                     l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)));
-                    l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
+                    if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
                     cut_str (UTF8.next t i) (UTF8.next t i)
                   ) else (
                     cut_str i0 (UTF8.next t i)
