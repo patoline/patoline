@@ -904,7 +904,7 @@ let mappend m x=
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
     consécutifs est pris en compte *)
-let boxify buf nbuf fixable env0 spaces l=
+let boxify buf nbuf fixable env0 l=
   let rec boxify env=function
       []->env
     | B (b, cache)::s->
@@ -945,25 +945,20 @@ let boxify buf nbuf fixable env0 spaces l=
               (* let buf=ref [|Empty|] in *)
               (* let nbuf=ref 0 in *)
               let l=ref IntMap.empty in
-              let rec cut_str only_spaces needs_glue gl i0 i=
+              let rec cut_str i0 i=
                 if i>=String.length t then (
-                  if only_spaces then l:=mappend !l [gl];
-                  if i0<>i then (
-                    if needs_glue then l:=mappend !l [gl];
-                    l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)))
-                  )
+                  l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)))
                 ) else (
                   if is_space (UTF8.look t i) then (
-                    let sp=makeGlue env (UChar.uint_code (UTF8.look t i)) in
-                    if spaces || (i0<>i && needs_glue) then l:=mappend !l [gl];
                     l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)));
-                    cut_str (only_spaces && i=i0) (needs_glue || i<>i0) sp (UTF8.next t i) (UTF8.next t i)
+                    l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
+                    cut_str (UTF8.next t i) (UTF8.next t i)
                   ) else (
-                    cut_str false needs_glue gl i0 (UTF8.next t i)
+                    cut_str i0 (UTF8.next t i)
                   )
                 )
               in
-              cut_str true false (snd !rStdGlue) (UTF8.first t) (UTF8.first t);
+              cut_str (UTF8.first t) (UTF8.first t);
               cache:=Some !l;
               IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
               boxify env s
@@ -986,10 +981,10 @@ let boxify buf nbuf fixable env0 spaces l=
   in
     boxify env0 l
 
-let boxify_scoped ?spaces:(spaces=false) env x=
+let boxify_scoped env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
-  let _=boxify buf nbuf (ref false) env spaces x in
+  let _=boxify buf nbuf (ref false) env x in
     Array.to_list (Array.sub !buf 0 !nbuf)
 
 let draw env x=draw_boxes (boxify_scoped env x)
@@ -1028,7 +1023,7 @@ let flatten env0 fixable str=
   let frees=ref 0 in
   let add_paragraph env p=
     nbuf:= !frees;
-    let v=boxify buf nbuf fixable env false p.par_contents in
+    let v=boxify buf nbuf fixable env p.par_contents in
       paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
       compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
