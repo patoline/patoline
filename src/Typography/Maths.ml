@@ -444,9 +444,12 @@ let rec draw env_stack mlist=
 		  let dist = adjust_space mathsEnv space 0.0 box_left box_right in
 		  let gl0=glue dist dist dist in
 		  let gl0=match gl0 with
-		      Box.Glue x->Drawing x
+		      Box.Glue x->Drawing
+                        { x with
+                          drawing_badness=(fun w->100.*.(knuth_h_badness dist w))
+                        }
 		    | x->assert false
-		  in              
+		  in
 		    bin_left@
                     gl0::
                     bin_right
@@ -482,13 +485,24 @@ let rec draw env_stack mlist=
 		in
 		let dist1 = max dist1 (dist2 -. dist0 -. (x1 -. x0)) in
 		let gl0=
-		  if bin_left = [] then [] else
-		  match glue dist0 dist0 dist0 with
-		    Box.Glue x->[Drawing x]
-		  | x->assert false
-		in           
+		  if bin_left = [] then [] else (
+		    match glue dist0 dist0 dist0 with
+		        Box.Glue x->
+		          [Drawing { x with
+                            drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
+                           }]
+		      | x->assert false
+                  )
+		in
 		let gl1 =
-		  if bin_right = [] then [] else [glue dist1 dist1 dist1]
+		  if bin_right = [] then [] else (
+		    match glue dist1 dist1 dist1 with
+		        Box.Glue x->
+		          [Box.Glue { x with
+                            drawing_badness=(fun w->100.*.(knuth_h_badness dist1 w))
+                          }]
+		      | x->assert false
+                  )
 		in
 
                 bin_left@
