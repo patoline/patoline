@@ -28,11 +28,11 @@ Patoline/PatolineGL:Drivers/GL.cmxa
 proof/proof:Typography/Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
 	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -linkpkg -o proof Typography.cmxa Pdf.cmxa proof.ml
 
-Format/DefaultFormat.cmxa: Typography/Typography.cmxa
+Format/DefaultFormat.cmxa: Typography/Typography.cmxa Format
 	make -C Format DefaultFormat.cmxa
-Format/DefaultFormat.cma: Typography/Typography.cma
+Format/DefaultFormat.cma: Typography/Typography.cma Format
 	make -C Format DefaultFormat.cma
-Format/DefaultFormat.p.cmax: Typography/Typography.p.cmxa
+Format/DefaultFormat.p.cmax: Typography/Typography.p.cmxa Format
 	make -C Format DefaultFormat.p.cmxa
 
 Format/%.cmxa:Format/DefaultFormat.cmxa Format/%.ml

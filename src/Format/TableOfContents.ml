@@ -134,7 +134,7 @@ let these str tree max_level=
                   in
                   let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
                   let num=boxify_scoped { env' with fontColor=
-                      if level=1 then OutputCommon.rgb 255. 0. 0. else OutputCommon.black }
+                      if level=1 then OutputCommon.rgb 1. 0. 0. else OutputCommon.black }
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
                   let name=boxify_scoped env' s.displayname in
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
