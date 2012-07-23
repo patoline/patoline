@@ -306,70 +306,69 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                                              Parameters fp->fp p
                                                            | _->p) !r_params nextNode;
                     min_page_before:=max !min_page_before !r_params.min_page_before;
-                    if not (!r_params.really_next_line) || nextNode.page>node.page || nextNode.height<>node.height then (
+                    if not (!r_params.really_next_line) || nextNode.page>node.page || nextNode.height>node.height then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
 
                       let height'=
-                        if lastParameters.min_page_after>0 then 0. else (
-                          if page=node.page && node<>uselessLine then (
-                            let rec v_distance cur_node0 parameters comp0 max_dist=
-                              let node0,_,_,_,_,_,_,_=cur_node0 in
-                              if node0.isFigure then (
-                                let fig=figures.(node0.lastFigure) in
-                                max max_dist
-                                  (node0.height+.(snd (line_height paragraphs figures nextNode))-.fig.drawing_y0)
-                              ) else (
-                                let d=
-                                    (node0.height+.
-                                       (try
-                                          ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
-                                                       !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
-                                        with
-                                            Not_found -> (
-                                              let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
-                                              colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
-                                                                            !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.}) (-.dist) !colision_cache;
-                                              -.dist
-                                            )
-                                       )
-                                     +. max !r_params.min_height_before parameters.min_height_after
-                                    )
-                                in
-                                let node0_width=node0.min_width +. comp0*.(node0.max_width-.node0.min_width) in
+                        if lastParameters.min_page_after=0 && page=node.page && node<>uselessLine then (
+                          let rec v_distance cur_node0 parameters comp0 max_dist=
+                            let node0,_,_,_,_,_,_,_=cur_node0 in
+                            if node0.isFigure then (
+                              let fig=figures.(node0.lastFigure) in
+                              max max_dist
+                                (node0.height+.(snd (line_height paragraphs figures nextNode))-.fig.drawing_y0)
+                            ) else (
+                              let d=
+                                (node0.height+.
+                                   (try
+                                      ColMap.find (parameters.left_margin, parameters.measure, { node0 with page=0;height=0. },
+                                                   !r_params.left_margin, !r_params.measure, { nextNode with page=0;height=0. }) !colision_cache
+                                    with
+                                        Not_found -> (
+                                          let dist=collide node0 parameters comp0 nextNode !r_params comp1 in
+                                          colision_cache := ColMap.add (parameters.left_margin, parameters.measure, {node0 with page=0;height=0.},
+                                                                        !r_params.left_margin, !r_params.measure, {nextNode with page=0;height=0.})
+                                            (-.dist) !colision_cache;
+                                          -.dist
+                                        )
+                                   )
+                                 +. max !r_params.min_height_before parameters.min_height_after
+                                )
+                              in
+                              let node0_width=node0.min_width +. comp0*.(node0.max_width-.node0.min_width) in
 
-                                (try
-                                   let _,_,_,_,_,prec,_,_=cur_node0 in
-                                   let (prec_line,_,_,params,comp,_,_,_) as prec_=match prec with None->raise Not_found | Some a->a in
+                              (try
+                                 let _,_,_,_,_,prec,_,_=cur_node0 in
+                                 let (prec_line,_,_,params,comp,_,_,_) as prec_=match prec with None->raise Not_found | Some a->a in
 
-                                   let arret=
-                                     (!r_params).left_margin>=parameters.left_margin
-                                     && (!r_params).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
-                                   in
-                                   if prec_line.page=page && not arret then (v_distance prec_ params comp (max d max_dist)) else
+                                 let arret=
+                                   (!r_params).left_margin>=parameters.left_margin
+                                   && (!r_params).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
+                                 in
+                                 if prec_line.page=page && not arret then (v_distance prec_ params comp (max d max_dist)) else
+                                   max (max d max_dist) (
+                                     (node0.height
+                                      +. max (snd (line_height paragraphs figures nextNode))
+                                        (max !r_params.min_height_before parameters.min_height_after))
+                                   )
+                               with
+                                   Not_found->
                                      max (max d max_dist) (
                                        (node0.height
                                         +. max (snd (line_height paragraphs figures nextNode))
-                                        (max !r_params.min_height_before parameters.min_height_after))
-                                     )
-                                 with
-                                     Not_found->
-                                       max (max d max_dist) (
-                                         (node0.height
-                                          +. max (snd (line_height paragraphs figures nextNode))
                                           (max !r_params.min_height_before parameters.min_height_after))
-                                       )
-                                )
+                                     )
                               )
-                            in
-                            v_distance cur_node lastParameters comp0 (-.infinity)
-                          ) else (
-                            snd (line_height paragraphs figures nextNode)
-                          )
+                            )
+                          in
+                          v_distance cur_node lastParameters comp0 (-.infinity)
+                        ) else (
+                          snd (line_height paragraphs figures nextNode)
                         )
                       in
                       minimal_tried_height:=min !minimal_tried_height height';
-                      if (page<>node.page || height>=height')
+                      if (height>=height')
                         && (page >= node.page +
                               max !r_params.min_page_before lastParameters.min_page_after)
                       then (
