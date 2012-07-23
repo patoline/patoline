@@ -306,7 +306,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                                              Parameters fp->fp p
                                                            | _->p) !r_params nextNode;
                     min_page_before:=max !min_page_before !r_params.min_page_before;
-                    if not (!r_params.really_next_line) || nextNode.height<>node.height then (
+                    if not (!r_params.really_next_line) || nextNode.page>node.page || nextNode.height<>node.height then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
 
@@ -369,7 +369,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                         )
                       in
                       minimal_tried_height:=min !minimal_tried_height height';
-                      if (height>=height')
+                      if (page<>node.page || height>=height')
                         && (page >= node.page +
                               max !r_params.min_page_before lastParameters.min_page_after)
                       then (
