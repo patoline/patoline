@@ -870,6 +870,36 @@ let select_features _ _=[]
 let positioning _ x=x
 
 
+module Buffer=struct
+  type t=string list ref
+  let chunks=256
+  let add_channel h f s=
+    for i=0 to s/chunks do
+      let str=String.create (if i=s/chunks then s mod chunks else chunks) in
+      really_input f str 0 (String.length str);
+      h:=str::(!h);
+    done
+  let add_string h s=h:=s::(!h)
+  let create _=ref []
+  let add_char h c=h:=(String.make 1 c)::(!h)
+  let add_buffer h h'=h:=(!h')@(!h)
+  let length h=List.fold_left (fun s x->s+String.length x) 0 !h
+  let reset h=h:=[]
+  let contents h=
+    let s=length h in
+    let str=String.create s in
+    let rec copy i s=match s with
+        []->()
+      | a::b->(
+        for j=0 to String.length a-1 do
+          str.[i-String.length a+j]<-a.[j]
+        done;
+        copy (i-String.length a) b
+      )
+    in
+    copy s !h;
+    str
+end
 let writeIndex buf data=
   let dataSize=Array.fold_left (fun s str->s+String.length str) 0 data in
   let rec offSize_ i res=if i=0 then res else offSize_ (i lsr 8) (res+1) in
@@ -1011,6 +1041,7 @@ let copyIndex f=
 type encoding=
     StdEncoding of int
   | Encoding of string
+
 
 let subset font gls=
   let buf=Buffer.create 100 in
@@ -1163,4 +1194,4 @@ let subset font gls=
         Buffer.add_buffer buf charStrings;
         Buffer.add_buffer buf privDict;
         Buffer.add_string buf lsubr;
-        Buffer.contents buf
+        List.rev !buf

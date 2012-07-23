@@ -639,8 +639,8 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                       [CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
-                                                        (IntMap.bindings x.revFontGlyphs))))]
+                       CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
+                                                       (IntMap.bindings x.revFontGlyphs))))
                        )
                      (* | _->raise Fonts.Not_supported *)
                    in
@@ -648,11 +648,12 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                       seek_in y.CFF.file y.CFF.offset;
+                       let file=open_in y.CFF.file in
+                       seek_in file y.CFF.offset;
                        let rec inp x=
-                         if pos_in y.CFF.file >= y.CFF.offset + y.CFF.size then List.rev x else
-                           (let buf=String.create (min 256 (y.CFF.offset + y.CFF.size - pos_in y.CFF.file)) in
-                            really_input f buf 0 (String.length buf);
+                         if pos_in file >= y.CFF.offset + y.CFF.size then List.rev x else
+                           (let buf=String.create (min 256 (y.CFF.offset + y.CFF.size - pos_in file)) in
+                            really_input file buf 0 (String.length buf);
                             inp (buf::x))
                        in
                        inp [])
