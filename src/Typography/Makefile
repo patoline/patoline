@@ -6,7 +6,7 @@ CAMLC=ocamlfind ocamlc -pp "cpp -w" -I Fonts -I Output $(PACK)
 SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
 
-all: Fonts.cmx Fonts.cmo
+all:Typography.cmxa Typography.p.cmxa Typography.cma
 
 Typography.cmxa:Typography.cmx
 	$(CAMLOPT) -a -o Typography.cmxa Typography.cmx
@@ -50,12 +50,9 @@ Output/OutputPaper.cmx:Output/OutputCommon.cmi Output/OutputPaper.cmi Fonts.cmx 
 Output/OutputPaper.p.cmx:Output/OutputCommon.cmi Output/OutputPaper.cmi Fonts.p.cmx Box.cmi Document.p.cmx
 Output/OutputPaper.cmi:Output/OutputCommon.cmi
 
-Output/OutputDrawing.cmo:Output/OutputCommon.cmi Output/OutputDrawing.cmi Fonts.cmo Box.cmi Document.cmo
-Output/OutputDrawing.cmx:Output/OutputCommon.cmi Output/OutputDrawing.cmi Fonts.cmx Box.cmi Document.cmx
-Output/OutputDrawing.p.cmx:Output/OutputCommon.cmi Output/OutputDrawing.cmi Fonts.p.cmx Box.cmi Document.p.cmx
-Output/OutputDrawing.cmi:Output/OutputCommon.cmi
-
-
+Output/OutputDrawing.cmo:Output/OutputCommon.cmi Fonts.cmo Box.cmi Document.cmo
+Output/OutputDrawing.cmx:Output/OutputCommon.cmi Fonts.cmx Box.cmi Document.cmx
+Output/OutputDrawing.p.cmx:Output/OutputCommon.cmi Fonts.p.cmx Box.cmi Document.p.cmx
 
 Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi
 	$(CAMLC) -c -rectypes -o $@ Break.ml
@@ -63,7 +60,7 @@ Break.cmx:Output/OutputCommon.cmi Box.cmi Language.cmx Break.cmi Box.cmx
 	$(CAMLOPT) -for-pack Typography -c -rectypes -o $@ Break.ml
 Break.p.cmx:Output/OutputCommon.cmi Box.cmi Language.p.cmx Break.cmi Box.p.cmx
 	$(CAMLOPT) -for-pack Typography -p -c -rectypes -o $@ Break.ml
-Break.cmi:Box.cmi Language.p.cmx
+Break.cmi:Box.cmi Language.p.cmx Break.ml
 
 Hyphenate.cmo:Hyphenate.cmi
 Hyphenate.cmx:Hyphenate.cmi new_map.cmx
