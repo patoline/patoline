@@ -134,7 +134,7 @@ let output ?(structure:structure={name="";displayname=[];
     for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
     done;
 
-    fprintf outChan "%%PDF-1.7\n\128\128\128\128\n";
+    fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
     for page=0 to Array.length pages-1 do
       Buf.clear pageBuf;
       let pageLinks=ref [] in
@@ -423,13 +423,13 @@ let output ?(structure:structure={name="";displayname=[];
               List.iter (fun l->
                              if l.uri="" then
                                fprintf outChan
-                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
                                  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                                  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(l.dest_page)
                                  (pt_of_mm l.dest_x) (pt_of_mm l.dest_y)
                              else
                                fprintf outChan
-                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /A <</Type /Action /S /URI /URI (%s) >> /Border [0 0 0]  >> "
+                                 "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
                                  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                                  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
                                  l.uri
@@ -639,8 +639,13 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                       CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
+                       Printf.fprintf stderr "begin subset\n";flush stderr;
+                       let sub=CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
                                                        (IntMap.bindings x.revFontGlyphs))))
+                       in
+                       Printf.fprintf stderr "end subset\n";flush stderr;
+                       sub
+
                        )
                      (* | _->raise Fonts.Not_supported *)
                    in
@@ -680,10 +685,11 @@ let output ?(structure:structure={name="";displayname=[];
     endObject ();
 
     (* Ecriture du catalogue *)
+
     let cat=futureObject () in
       if structure.name="" && Array.length structure.substructures=0 then (
         resumeObject cat;
-        fprintf outChan "<< /Type /Catalog /Pages 1 0 R >>";
+        fprintf outChan "<< /Type /Catalog /Pages 1 0 R>>";
         endObject ()
       ) else (
         let count=ref 0 in
@@ -732,8 +738,9 @@ let output ?(structure:structure={name="";displayname=[];
         IntMap.iter (fun _ a->fprintf outChan "%010d 00000 n \n" a) !xref;
 
         (* Trailer *)
-        fprintf outChan "trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF\n"
-          (1+IntMap.cardinal !xref) cat xref_pos;
+        let file_id=(Digest.to_hex (Digest.string fileName)) in
+        fprintf outChan "trailer\n<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\nstartxref\n%d\n%%%%EOF\n"
+          (1+IntMap.cardinal !xref) cat file_id file_id xref_pos;
 	
         close_out outChan;
 	Printf.fprintf stderr "File %s written.\n" fileName;
