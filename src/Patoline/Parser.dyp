@@ -578,9 +578,17 @@ main lexer =
   newline ('='|'-') "<" -> END_SECTION { 
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  newline ("=========="'='*) -> TITLE {
-    set_newline 1 (std_lexbuf lexbuf); 
-    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+  newline? ("=========="'='*) -> TITLE {
+    let pos = (std_lexbuf lexbuf).lex_curr_p in
+    let l = Dyp.lexeme lexbuf in
+    if l.[0]='\n' then (
+      set_newline 1 (std_lexbuf lexbuf);
+      String.sub l 1 (String.length l - 1)
+     ) else (
+      if pos.pos_cnum<>String.length l then raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,PatolineLanguage.Unterminated_text)) else l
+     )
+    }
+
   newline ("----------"'-'*) -> TITLESEP {
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }

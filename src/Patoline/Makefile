@@ -2,7 +2,7 @@ include ../Makefile.config
 
 CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -package dyp $(PACK)
 
-patoline:Main.cmx PatolineLanguage.cmx PatolineConfig.cmx
+patoline: PatolineLanguage.cmx PatolineConfig.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 	$(CAMLOPT) -linkpkg -o patoline str.cmxa PatolineLanguage.cmx PatolineConfig.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 
 PatolineGL:PatolineGL.ml
