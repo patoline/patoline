@@ -16,8 +16,8 @@ rm -Rf ocaml-patoline-$version
 mv patoline ocaml-patoline-$version
 tar -cvf ocaml-patoline-$version.tar ocaml-patoline-$version
 gzip ocaml-patoline-$version.tar
-cat /Users/pe/Projets/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projets/ports/ml/ocaml-patoline/
+cat /Users/pe/Projets/ports/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
+mv Portfile /Users/pe/Projets/ports/ports/ml/ocaml-patoline/
 mv ocaml-patoline-$version.tar.gz $init_dir
 cd $init_dir
 

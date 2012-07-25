@@ -22,7 +22,7 @@ prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
-Patoline/PatolineGL:Patoline
+Patoline/PatolineGL:Patoline Drivers/GL.cmxa
 	make -C Patoline PatolineGL
 
 proof/proof:Typography/Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
