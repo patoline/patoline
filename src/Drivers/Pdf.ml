@@ -639,11 +639,9 @@ let output ?(structure:structure={name="";displayname=[];
                    let program=match x.font with
                        Fonts.Opentype (Opentype.CFF (y,_))
                      | Fonts.CFF y->(
-                       Printf.fprintf stderr "begin subset\n";flush stderr;
                        let sub=CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
                                                        (IntMap.bindings x.revFontGlyphs))))
                        in
-                       Printf.fprintf stderr "end subset\n";flush stderr;
                        sub
 
                        )
