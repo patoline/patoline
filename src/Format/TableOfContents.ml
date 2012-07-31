@@ -36,7 +36,7 @@ let centered str tree _=
 		      chi1@flat_children (h.node_post_env env1 env') s
                     )
                 in
-                let chi=flat_children env0 (IntMap.bindings s.children) in
+                let chi=if List.mem_assoc "Numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=drop 1 b in
                 let in_toc=List.mem_assoc "InTOC" s.node_tags in
@@ -120,7 +120,7 @@ let these str tree max_level=
                         flat_children (h.node_post_env env1 env') s
                     )
                 in
-                let chi=flat_children env0 (IntMap.bindings s.children) in
+                let chi=if List.mem_assoc "Numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=(List.rev (drop 1 b)) in
                 let spacing=env.size in
