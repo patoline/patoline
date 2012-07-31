@@ -516,7 +516,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
         min_height_after=0.;
         not_last_line=false;
         not_first_line=false;
-        really_next_line=true;
+        really_next_line=1;
         absolute=false
       }
 

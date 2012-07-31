@@ -586,9 +586,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let displayedFormula a b c d e f g=
       { (center a b c d e f g) with
-          min_height_before=a.lead/.2.;
-          min_height_after=a.lead/.2.;
-          not_first_line=true }
+        min_height_before=3.*.a.lead/.4.;
+        min_height_after=3.*.a.lead/.4.;
+        not_first_line=true }
 
     module Env_center = struct
 
@@ -806,7 +806,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
-        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=false } in
+        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=0 } in
         let bad env a b c d e f g h i j k l m=if d.isFigure then infinity else
           Document.badness env a b c d e f g h i j k l m
         in
