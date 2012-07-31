@@ -253,8 +253,10 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   with
                       Not_found ->false))
           in
-          if flushed then place_figure () else (
-            let i,pi=
+          if (node.lineEnd+1>=Array.length paragraphs.(node.paragraph)
+              || node.lineEnd<=0)
+            && flushed then place_figure () else (
+              let i,pi=
               if node.paragraph>=Array.length paragraphs || (node.hyphenEnd<0 && node.lineEnd+1>=Array.length paragraphs.(node.paragraph)) then
                 (0,min (node.paragraph+1) (Array.length paragraphs))
               else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else (node.lineEnd, node.paragraph)
