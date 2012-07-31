@@ -784,9 +784,9 @@ math:
       { match c, p with
         | None, None -> Binary(1,Prefix(3,m,false,v),false,SimpleSym "",false,b)
         | None, Some(_,p) -> Binary(0,Prefix(3,m,false,v),true,p,false,b)
-        | Some(r,e), None -> Binary(1,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
+        | Some(r,e), None -> Binary(1,Prefix(2,m,false,Binary(2,v,false,r,false,e)),
 	                         false,SimpleSym "",false,b)
-        | Some(r,e), Some(_,p) -> Binary(0,Prefix(3,m,false,Binary(3,v,false,r,false,e)),
+        | Some(r,e), Some(_,p) -> Binary(0,Prefix(2,m,false,Binary(2,v,false,r,false,e)),
 	                         true,p,false,b)
       } operator
 
