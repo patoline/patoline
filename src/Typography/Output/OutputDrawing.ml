@@ -63,10 +63,9 @@ let output paragraphs (figures:drawingBox array) env (opt_pages:(parameters*line
                 x1:=max !x1 (fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line)
             )
       ) p;
-      pageContents:=List.map (translate (-. !x0) 0.) !pageContents;
-      { drawing_min_width= !x1-. !x0;
-        drawing_nominal_width= !x1-. !x0;
-        drawing_max_width= !x1-. !x0;
+      { drawing_min_width= !x1;
+        drawing_nominal_width= !x1;
+        drawing_max_width= !x1;
         drawing_y0= !y0;
         drawing_y1= max env.normalLead !y1;
         drawing_badness=(fun _->0.);

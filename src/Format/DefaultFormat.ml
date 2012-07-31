@@ -508,7 +508,8 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
                 { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters });
        bB (fun env0->
-               let env= { env0 with normalMeasure=150.; normalLeftMargin=(fst a4-.150.)/.2. } in
+         let w0=env0.size in
+         let env= { env0 with normalMeasure=env0.normalMeasure-.w0; normalLeftMargin=w0 } in
                let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
                    []->0
                  | h::_->h
@@ -529,13 +530,39 @@ module Format=functor (D:Document.DocumentStructure)->(
                               ) (user_positions env);
                  (* Insertion d'une footnote *)
                  let str=ref (Node empty,[]) in
-                 let params a b c d e f g=
-                   let p=(parameters a b c d e f g) in
-                     { p with min_height_after=0. }
+
+                 let params env a1 a2 a3 a4 a5 line=
+                   let p={(parameters env a1 a2 a3 a4 a5 line) with min_height_after=0.} in
+                   if not p.absolute && line.lineStart=0 then (
+                     let rec findMark w j=
+                       if j>=line.lineEnd then 0. else
+                         if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                           let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
+                           findMark (w+.ww) (j+1)
+                     in
+                     let w=findMark 0. 0 in
+                     { p with
+                       left_margin=p.left_margin-.w;
+                       measure=p.measure+.w }
+                   ) else
+                     p
                  in
-                   newPar str ~environment:(fun x->x) normal params
+                 let comp complete mes a1 a2 a3 a4 line a6=
+                   if line.lineStart>0 then complete mes a1 a2 a3 a4 line a6 else (
+                     let rec findMark w j=
+                       if j>=Array.length a1.(line.paragraph) then 0. else
+                         if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                           let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
+                           findMark (w+.ww) (j+1)
+                     in
+                     complete { mes with normalMeasure=mes.normalMeasure+.findMark 0. 0 } a1 a2 a3 a4 line a6
+                   )
+                 in
+
+                   newPar str (comp normal) params
                      (tT (string_of_int !page_footnotes)
                       ::tT " "
+                      ::bB (fun _->[User AlignmentMark])
                       ::l);
                    let a=1./.(sqrt phi) in
                    let pages=minipage { env with
