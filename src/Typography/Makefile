@@ -67,7 +67,9 @@ Hyphenate.cmx:Hyphenate.cmi new_map.cmx
 Hyphenate.p.cmx:Hyphenate.cmi new_map.p.cmx
 Maths.cmo:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmo
 Maths.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmx
+Maths.cmi:Maths.cmx
 Maths.p.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.p.cmx
+Maths.p.cmi:Maths.cmx
 
 Document.cmo:Config.cmo Util.cmi Fonts.cmo Output/OutputCommon.cmi Box.cmi Break.cmi Badness.cmi Badness.cmo Break.cmo
 Document.cmx:Config.cmx Util.cmi Fonts.cmx Output/OutputCommon.cmi Box.cmi Break.cmi Badness.cmi Badness.cmx Break.cmx
@@ -86,9 +88,9 @@ Offset.cmo:Offset.cmi Bezier.cmo
 Offset.cmx:Offset.cmi Bezier.cmx
 Offset.p.cmx:Offset.cmi Bezier.p.cmx
 
-Diagrams.cmo:Maths.cmo
-Diagrams.cmx:Maths.cmx
-Diagrams.p.cmx:Maths.p.cmx
+Diagrams.cmo:Maths.cmo Maths.cmi
+Diagrams.cmx:Maths.cmx Maths.cmi
+Diagrams.p.cmx:Maths.p.cmx Maths.p.cmi
 
 Box.cmi:Line.cmx Output/OutputCommon.cmi
 Box.cmo:Box.cmi
