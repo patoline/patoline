@@ -179,7 +179,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               IntMap.add nextNode.lastFigure (Placed nextNode) figures1
             else figures1
             in
-
+            let badness=match classify_float badness with FP_infinite | FP_nan -> 0. | _->badness in
             let a=(nextNode,badness,log,next_params,comp,node,figures2,nextUser) in
             try
               let _,bad,_,_,_,_,_,_=H.find demerits a in
@@ -428,11 +428,10 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                           let bad=(lastBadness+.
                                      badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          if bad<infinity || allow_impossible then
-                            local_opt:=(nextNode,
-                                        max 0. bad,
-                                        (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
-                                        !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          local_opt:=(nextNode,
+                                      max 0. bad,
+                                      (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                         ) else (
                           let bad=(lastBadness+.
                                      badness.(nextNode.paragraph) paragraphs figures
