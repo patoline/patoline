@@ -1643,11 +1643,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
                  (fun transfos edge_info->
                     let info={ edge_info with
                                  underlying_curve=
-                        List.map Bezier.rev edge_info.underlying_curve
-                             }
+                        List.map Bezier.rev (List.rev edge_info.underlying_curve)
+                    }
                     in
                     let info'=base_arrow pet head_params transfos info in
-                    { info with decorations=info'.decorations }
+                    { edge_info with decorations=info'.decorations }
                  )
              })
 
