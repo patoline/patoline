@@ -51,6 +51,13 @@
 \Add_relation{\notsupset ⊅}{⊅}
 \Add_relation{\subsetneq ⊊}{⊊}
 \Add_relation{\supsetneq ⊋}{⊋}
+\Add_relation{\squaresub ⊏}{⊏}
+\Add_relation{\squaresup ⊐}{⊐}
+\Add_relation{\squaresubeq ⊑}{⊑}
+\Add_relation{\squaresupeq ⊒}{⊒}
+\Add_relation{\squaresubnoteq ⋤}{⋤}
+\Add_relation{\squaresupnoteq ⋥}{⋥}
+
 
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
@@ -78,6 +85,9 @@
 \Add_addition_like{\mp}{∓}
 \Add_addition_like{\union \cup ∪}{∪}
 \Add_addition_like{\inter \cap ∩}{∩}
+\Add_addition_like{\squareunion \sqaurecup ⊔}{⊔}
+\Add_addition_like{\squareinter \squarecap ⊓}{⊓}
+
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
 \Add_addition_like{\vee ∨}{∨}
 \Add_addition_like{\setminus ∖}{∖}
