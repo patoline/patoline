@@ -59,7 +59,7 @@ Drivers/%.p.cmxa:Drivers/%.ml Typography/Typography.cmxa
 
 
 DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
-	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
+	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
 DefaultGrammar.cmx: Typography/Typography.cmxa Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.tml
 	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.tml
 
