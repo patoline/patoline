@@ -1228,9 +1228,9 @@ grammar: grammar_aux<g>
                       (List.map (Printf.sprintf " -I %s ") !PatolineConfig.grammarsdir)
                     in
                     let com=(Printf.sprintf "%s --noamble --ml %s %s" (Sys.argv.(0)) path orig) in
-                      Printf.printf "%s\n" com; flush stdout;
+                    Printf.printf "%s\n" com; flush stdout;
                     let _=Sys.command com in
-                      findGrammar (filename ^ gram_ext)
+                    findGrammar (filename ^ gram_ext)
                   )
                 else
                   name

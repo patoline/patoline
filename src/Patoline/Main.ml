@@ -42,7 +42,7 @@ let spec = [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-di
 let str_dirs () = (String.concat " " !dirs)
 
 let pdfname_of f = (Filename.chop_extension f)^".pdf"
-let mlname_of f = (Filename.chop_extension f)^".tml"
+let mlname_of f = (Filename.chop_extension f)^(if !amble==Generateur.Separate then ".ttml" else ".tml")
 let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 

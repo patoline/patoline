@@ -18,5 +18,9 @@ Parser.ml:Parser.dyp
 %.cmx:%.ml
 	$(CAMLOPT) -rectypes -c -o $@ $<
 
+Build.native:Build.ml
+	ocamlbuild -ocamlopt "ocamlopt -thread -I +threads unix.cmxa str.cmxa threads.cmxa" -ocamlc "ocamlc -thread thread.cma" Build.native
+
+
 clean:
 	rm -f *~ \#*\# *.o *.cm[iox] Parser.ml
