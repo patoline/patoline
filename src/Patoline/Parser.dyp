@@ -155,6 +155,11 @@ let quail = Lazy.lazy_from_fun (fun () ->
     let ch = open_out_bin "quail.el" in
     ch)
 
+let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
+
+let app_ind d m = 
+    if d = no_ind then m else Indices(d,m)
+
 let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let noinfix = List.mem rule_name ["symbol"; "prefix"; "postfix"; "accent"] in
   let adef = if noinfix then 
@@ -175,7 +180,7 @@ let add_symbol_rule local_data rule_name rule_constr symbols symbol_value =
   let rule = (rule_name, [ Regexp regexp ], "default_priority", []) in
   let action dyp l =
     match l with
-      [ Lexeme_matched l ] -> rule_constr (l, symbol_value), []
+      [ Lexeme_matched l ] -> rule_constr (l, symbol_value, no_ind), []
     | _ -> assert false
   in
   let has_utf8 = ref None in
@@ -726,8 +731,9 @@ var_or_symbol:
       { Var(name) }
   | (num)<n>
       { Num(n) } 
-  | symbol<_,name>
-      { Symbol(name) }
+  | symbol<_,name,d>
+      { if d <> no_ind then raise Giveup;
+        Symbol(name) }
 
 left:
    "\\left" right<d> { d }
@@ -737,6 +743,117 @@ right:
    "\\right" left<d> { d }
    |"\\right." { "[]" }
  
+
+addition_like:
+  | addition_like<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - addition_like<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+product_like:
+  | product_like<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - product_like<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+relation:
+  | relation<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - relation<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+quantifier:
+  | quantifier<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - quantifier<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+arrow:
+  | arrow<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - arrow<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+connector:
+  | connector<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - connector<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+negation:
+  | negation<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - negation<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+postfix:
+  | postfix<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - postfix<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+prefix:
+  | prefix<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - prefix<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
+punctuation:
+  | punctuation<x,m,d> - rightind<fi>
+      { 
+        if d.down_right <> None || d.up_right <> None then raise Giveup;
+        x, m, fi d
+      }
+  | leftind<d> - punctuation<x,m,d'>
+      { if d' <> no_ind then raise Giveup;
+        x, m, d
+      }
+
 math:
    (mathvar)<name>
       { Var(name) } atom
@@ -750,29 +867,6 @@ math:
   | "{" math<a> "}"
       { a } atom
 
-  | "{" addition_like<_,op> "}"
-      { Symbol op } atom
-  | "{" product_like<_,op> "}"
-      { Symbol op } atom
-  | "{" prefix<l,op> "}"
-      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
-	Symbol op } atom
-  | "{" postfix<l,op> "}"
-      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
-	Symbol op } atom
-  | "{" accent<_,op> "}"
-      { Symbol op } atom
-  | "{" arrow<_,op> "}"
-      { Symbol op } atom
-  | "{" connector<_,op> "}"
-      { Symbol op } atom
-  | "{" relation<_,op> "}"
-      { Symbol op } atom
-  | "{" quantifier<_,op> "}"
-      { Symbol op } atom
-  | "{" negation<_,op> "}"
-      { Symbol op } atom
-
   | leftind<i> - math(<ind)<m> [- rightind]?<fi>
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind
@@ -780,14 +874,14 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | quantifier<_,m> math(<operator)<v> [ relation<_,r> math(<operator)<e> {r, e} ]?<c> [punctuation]?<p> math(<=operator)<b>
+  | quantifier<_,m,d> math(<operator)<v> [ relation<_,r,d> math(<operator)<e> {r, e, d} ]?<c> [punctuation]?<p> math(<=operator)<b>
       { match c, p with
         | None, None -> Binary(1,Prefix(3,m,false,v),false,SimpleSym "",false,b)
-        | None, Some(_,p) -> Binary(0,Prefix(3,m,false,v),true,p,false,b)
-        | Some(r,e), None -> Binary(1,Prefix(2,m,false,Binary(2,v,false,r,false,e)),
+        | None, Some(_,p,d) -> app_ind d (Binary(0,Prefix(3,m,false,v),true,p,false,b))
+        | Some(r,e,d), None -> Binary(1,Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e))),
 	                         false,SimpleSym "",false,b)
-        | Some(r,e), Some(_,p) -> Binary(0,Prefix(2,m,false,Binary(2,v,false,r,false,e)),
-	                         true,p,false,b)
+        | Some(r,e,d), Some(_,p,d') -> app_ind d' (Binary(0,Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e))),
+	                         true,p,false,b))
       } operator
 
   | leftind<i> - operator<m> [- rightind]?<fi> math(<=operator)<b>
@@ -807,36 +901,59 @@ math:
 
   | math(<=fun)<a> - math(<fun)<b>
       { Apply(a, b) } fun
-  | math(<=sum)<a> addition_like<_,op> math(<sum)<b>
-      { Binary(2, a, false, op, false, b) } sum
+  | math(<=sum)<a> addition_like<_,op,d> math(<sum)<b>
+      { app_ind d (Binary(2, a, false, op, false, b)) } sum
   | "\\" - (ident)<macro> - mathargs<args>
     { let macro, args = test_margs dyp macro args in
       MathMacro (macro, args) } atom
-  | prefix<_,op> math(<sum)<b> 
-      { Prefix(3,op,false,b) } sum
+  | prefix<_,op,d> math(<sum)<b> 
+      { app_ind d (Prefix(3,op,false,b)) } sum
 
-  | math(<sum)<b> postfix<_,op>
-      { Postfix(3,b,true,op) } sum
-  | math(<=accent)<b> accent<_,op>
+  | math(<sum)<b> postfix<_,op,d>
+      { app_ind d (Postfix(3,b,true,op)) } sum
+  | math(<=accent)<b> accent<_,op,d>
       { Postfix(3,b,true,op) } accent
-  | math(<=prod)<a> product_like<_,op> math(<prod)<b> 
-      { Binary(3, a, false, op, false, b) } prod
+  | math(<=prod)<a> product_like<_,op,d> math(<prod)<b> 
+      { app_ind d (Binary(3, a, false, op, false, b)) } prod
   | math(<=prod)<a> math(<prod)<b>
       { if not (layout_space dyp 1 2) then raise Giveup; Binary(3, a, false, SimpleSym "", false, b) } prod
   | math(<=prod)<a> "*" math(<prod)<b>
       { Binary(3, a, false, SimpleSym "", false, b) } prod
-  | math(<=rel)<a> relation<_,op> math(<rel)<b> 
-      { Binary(1, a, false, op, false, b) } rel
-  | negation<_,op> math(<=neg)<b>  
-      { Prefix(0,op,false,b) } neg
-  | math(<=conj)<a> connector<_,op> math(<conj)<b> 
-      { Binary(0, a, false, op, false, b) } conj
-  | math(<=impl)<a> arrow<_,op> math(<impl)<b> 
-      { Binary(0, a, false, op, false, b) } impl
-  | math(<=punc)<a> punctuation<_,op> math(<punc)<b> 
-      { Binary(2, a, true, op, false, b) } punc
-  | symbol<_,name>
-      { Symbol(name) } atom
+  | math(<=rel)<a> relation<_,op,d> math(<rel)<b> 
+      { app_ind d (Binary(1, a, false, op, false, b)) } rel
+  | negation<_,op,d> math(<=neg)<b>  
+      { app_ind d (Prefix(0,op,false,b)) } neg
+  | math(<=conj)<a> connector<_,op,d> math(<conj)<b> 
+      { app_ind d (Binary(0, a, false, op, false, b)) } conj
+  | math(<=impl)<a> arrow<_,op,d> math(<impl)<b> 
+      { app_ind d (Binary(0, a, false, op, false, b)) } impl
+  | math(<=punc)<a> punctuation<_,op,d> math(<punc)<b> 
+      { app_ind d (Binary(2, a, true, op, false, b)) } punc
+
+  | "{" addition_like<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" product_like<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" prefix<l,op,d> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	app_ind d (Symbol op) } atom
+  | "{" postfix<l,op,d> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	app_ind d (Symbol op) } atom
+  | "{" accent<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" arrow<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" connector<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" relation<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" quantifier<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" negation<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | symbol<_,name,d>
+      { app_ind d (Symbol(name)) } atom
 
 symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>

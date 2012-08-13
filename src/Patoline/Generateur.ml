@@ -154,13 +154,10 @@ let rec print_math_buf parser_pp op buf m =
 	if (indices <> no_ind) then failwith "Indices on fraction.";
 	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line=(fun env style->{OutputCommon.default with lineWidth = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness }) }]" (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr, a, _,SimpleSym "",_,b) ->
-	if (indices <> no_ind) then failwith "Indices on binary.";
+	if (indices <> no_ind) then failwith "Indices on empty binary.";
 	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr,a,nsl,op,nsr,b) ->
-	if (indices <> no_ind) then failwith "Indices on binary.";
-	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,Maths.noad (" pr nsl;
-        print_math_symbol buf op;
-	Printf.bprintf buf "), %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" nsr (print_math_expr indices) a (print_math_expr indices) b
+	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl (print_math_deco op) indices nsr (print_math_expr no_ind) a (print_math_expr no_ind) b
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
 	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a 
