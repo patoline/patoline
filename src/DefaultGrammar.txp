@@ -285,6 +285,8 @@
 \Add_operator{∫ \int}(List.map (MathFonts.euler "∫") [782;783])
 \Add_limits_operator{⋂ \biginter \bigcap}(List.map (MathFonts.euler "⋂") [1766;1768])
 \Add_limits_operator{⋃ \bigunion \bigcup}(List.map (MathFonts.euler "⋃") [1765;1767])
+\Add_limits_operator{\bigsquareinter \bigsquarecap}(List.map (MathFonts.asana "\\bigsquareinter") [3233;3234])
+\Add_limits_operator{\bigsquareunion \bigsquarecup}(List.map (MathFonts.asana "\\bigsquareunion") [3235;3236])
 
 =<
 
