@@ -57,7 +57,10 @@
 \Add_relation{\squaresupeq ⊒}{⊒}
 \Add_relation{\squaresubnoteq ⋤}(MathFonts.asana "⋤" 942)
 \Add_relation{\squaresupnoteq ⋥}(MathFonts.asana "⋥" 943)
-
+\Add_relation{\identical ≡}{≡}
+\Add_relation{\notidentical ≢}{≢}
+\Add_relation{\almostequal ≈}{≈}
+\Add_relation{\notalmostequal ≉}{≉}
 
 \Add_relation{\leq <= ≤}{≤}
 \Add_relation{\geq >= ≥}{≥}
