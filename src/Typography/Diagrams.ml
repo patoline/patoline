@@ -1914,7 +1914,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		   mainNode Node.([
 		   anchor `Pdf;
 		   innerSep 0. ; outerSep 0. ;
-		   at (-. 0.75 *. env.size *. (ex env), 0.)])] 
+		   at (0., ex env)])] 
 		  Node.([[
 		     ([innerSep 0.;outerSep 0.], []) ; 
 		     ([innerSep 0.;outerSep 0.], [])
@@ -1931,7 +1931,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		       []
 		       (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
 		in 
-		let width = drawn.drawing_min_width  -. 1.5 *. env.size *. (ex env) in
+		let width = drawn.drawing_min_width in
 		let drawn = { drawn with
 		  drawing_min_width = width ;
 		  drawing_nominal_width = width ;
@@ -1955,7 +1955,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		   mainNode Node.([
 		     anchor `Pdf;
 		     innerSep 0. ; outerSep 0. ;
-		     at (-. 0.75 *. env.size *. (ex env),0.)])]\
+		     at (0., ex env)])]
 		     Node.([[
 		     ([innerSep 0.;outerSep 0.], []) ; 
 		     ([innerSep 0.;outerSep 0.], [])
