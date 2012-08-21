@@ -36,7 +36,6 @@ let disp = displayStyle
 let caml x = x
 let ser u n i = <$ \sum_{\n ≥ \i } \u $>
 let frac u v = <$ \u \over \v $>
-let sqrt u = <$ \u^{1 / 2} $>
 let unit = []
 )
 
@@ -60,12 +59,12 @@ et $\displayStyle{u_{n + 1} := {1 \over 2} (u_n + 2 \over u_n)}$ pour tout $n \i
 \begin{genumerate}{ &a)\hspace(0.2)}
    \item Montrer que $(u_n)_{n \in \bbN}$ est bien définie et qu'elle est décroissante. 
 
-   _Indication_ : on montrera au préalable que $2^{1/ 2} \leq u_{n}$ pour tout $n \in \bbN$. 
+   _Indication_ : on montrera au préalable que $\sqrt{2} \leq u_{n}$ pour tout $n \in \bbN$. 
    
-   \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $2^{1 / 2}$. 
+   \item En déduire que la suite $(u_n)_{n \in \bbN}$ converge vers $\sqrt{2}$. 
    
-   \item Calculer $\displayStyle{ {u_{n + 1} - 2^{1/ 2}} \over
-     {u_{n + 1} + 2^{1/ 2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
+   \item Calculer $\displayStyle{ {u_{n + 1} - \sqrt{2}} \over
+     {u_{n + 1} + \sqrt{2}}}$ en fonction de $u_{n}$ pour tout $n \in \bbN$, puis retrouver le résultat précédent. 
 \end{genumerate}
 
 \item
@@ -87,7 +86,7 @@ et $\disp{ u_{n + 1} = {3 u_{n}}\over{1 + u_{n}^{2}}}$ pour tout $n \in \bbN$.
 \item
 _Moyenne arithmético-géométrique_ :
 Étant donné des réels $0 < a ≤ b$, on considère les suites réelles $(a_n)_{n ∈ \bbN}$ et $(b_n)_{n ∈ \bbN}$ 
-définies par $a_{0} := a$, $b_{0} := b$ ainsi que $a_{n + 1} := (a_{n} b_{n})^{1 \over 2}$ et 
+définies par $a_{0} := a$, $b_{0} := b$ ainsi que $a_{n + 1} := \sqrt{a_{n} b_{n}}$ et 
 $\disp{b_{n + 1} := {1}\over{2} (a_{n} + b_{n})}$ pour tout $n \in \bbN$. 
 
 \begin{genumerate}{ &a)\hspace(0.2)}
@@ -113,7 +112,7 @@ des nombres $a$ et $b$, notée $M(a , b)$.
 Déterminer la nature des séries numériques suivantes~: 
 $$
 \ser{\frac{n}{n+1}}{n}{0},  
-\ser{(n+1)^{1\over 2} - n^{1\over 2}}{n}{0}, 
+\ser{\sqrt{n+1} - \sqrt{n}}{n}{0}, 
 \ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0}, 
 \ser{\frac{1}{{n!}^{1 \over n}}}{n}{1}, 
 \ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1}, \unit
@@ -142,7 +141,7 @@ $$
 \ser{\frac{(n + 1)2^{n}}{n!}}{n}{0}, 
  
 \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} 
- \mathrm{et}  
+ \mathrm{et}
 \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}. \unit
 $$ 
 
