@@ -415,7 +415,7 @@ let test_pargs dyp name a =
 let test_eargs dyp name a =
     let ld, gr = get_local_data_and_grammar dyp in
     let args = a ld gr in
-    let args = if give_pos name dyp.local_data.word_macros then
+    let args = if give_pos name dyp.local_data.env_macros then
       String(get_pos_as_string dyp 1)::args else args
     in    
     begin
@@ -664,41 +664,74 @@ par_macro: MACRO<name>
     if not test then raise Giveup;
     name }    
       
-args:
+test<b>:
+	{ if not b then raise Giveup; }
+
+args<nb>:
     /* empty */
-     { (fun (ld:local_data) gr  -> []) } 
+     { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) } 
   | - "()"
-    { (fun (ld:local_data) gr  -> []) }
-  | - "{" oparagraph<p> "}" - args<a>
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) }
+  | - "{" oparagraph<p> "}"
+    { if nb <> 1 then raise Giveup; (fun ld gr -> [sParagraph (p)]) } 
+  | - CAML<s,pos,e,txps> 
+    { if nb <> 1 then raise Giveup; (fun ld gr -> [Caml(ld,gr,s,e,txps,pos)]) } 
+  | - "{" oparagraph<p> "}" - test{nb>1 || nb < 0} - args{nb-1}<a>
     { (fun ld gr -> sParagraph (p)::a ld gr) } 
-  | - CAML<s,pos,e,txps> - args<a>
+  | - CAML<s,pos,e,txps> - test{nb>1 || nb < 0} - args{nb-1}<a>
     { (fun ld gr -> Caml(ld,gr,s,e,txps,pos) :: a ld gr) } 
 
-mathargs:
+mathargs<nb>:
   /* empty */
-    { (fun (ld:local_data) gr  -> []) } 
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) } 
   | - "()"
-    { (fun (ld:local_data) gr  -> []) }
-  | - "{" math<m> "}" - mathargs<a>
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) }
+  | - "{" math<m> "}"
+    { if nb <> 1 then raise Giveup; (fun ld gr -> [m]) }
+  | - CAML<s,pos,e,txps>
+    { if nb <> 1 then raise Giveup; (fun ld gr -> [MathCaml(ld,gr,s,e,txps,pos)]) }
+  | - "{" math<m> "}" - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
     { (fun ld gr -> m::a ld gr) }
-  | - CAML<s,pos,e,txps> - mathargs<a>
+  | - CAML<s,pos,e,txps> - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
     { (fun ld gr -> MathCaml(ld,gr,s,e,txps,pos) :: a ld gr) }
 
+readenvargs<macro>:
+      { 
+            try	
+      	      get_nbargs macro dyp.local_data.env_macros
+	    with Not_found -> -2
+      }
+
+readwordargs<macro>:
+      { 
+            try	
+      	      get_nbargs macro dyp.local_data.word_macros
+	    with Not_found -> -2
+      }
+
+readparargs<macro>:
+      { 
+            try	
+      	      get_nbargs macro dyp.local_data.par_macros
+	    with Not_found -> -2
+      }
+
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" - args<a>
+    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" 
+    - readenvargs{name}<nb> - args{nb}<a>
       {	let name, args = test_eargs dyp name a in
         Macro(`Begin, name, args, get_eminfo dyp name) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`End, name, [], []) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[], []) }
-  | par_macro<name> - args<a>
+  | par_macro<name> - readparargs{name}<nb> - args{nb}<a>
       {	let name, args = test_pargs dyp name a in
         Macro(`Module, name, args, get_pminfo dyp name) }
 
 
 in_par_macro:
-  | word_macro<name> - args<a>
+  | word_macro<name> - readwordargs{name}<nb> - args{nb}<a>
       { 
         let name, args = test_wargs dyp name a in
         [MC(`Single, name, args, get_wminfo dyp name)] }  macro
@@ -854,6 +887,13 @@ punctuation:
         x, m, d
       }
 
+readmathargs<macro>:
+      { 
+            try	
+      	      get_nbargs macro dyp.local_data.math_macros
+	    with Not_found -> -2
+      }
+
 math:
    (mathvar)<name>
       { Var(name) } atom
@@ -903,7 +943,7 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<_,op,d> math(<sum)<b>
       { app_ind d (Binary(2, a, false, op, false, b)) } sum
-  | "\\" - (ident)<macro> - mathargs<args>
+  | "\\" - (ident)<macro> - readmathargs{macro}<nb> mathargs{nb}<args>
     { let macro, args = test_margs dyp macro args in
       MathMacro (macro, args) } atom
   | prefix<_,op,d> math(<sum)<b> 
