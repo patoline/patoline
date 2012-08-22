@@ -66,7 +66,6 @@
 \Add_relation{\geq >= ≥}{≥}
 \Add_relation{\lt <}{<}
 \Add_relation{\gt >}{>}
-\Add_relation{… ..}{…}
 \Add_relation{\eqdef =:}(MathFonts.asana "\\eqdef" 799)
 \Add_relation{\defeq :=}(MathFonts.asana "\\defeq" 798)
 
@@ -248,6 +247,8 @@
 \Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
 \Add_symbol{\dbottom \dbot}(MathFonts.asana "\\dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
+\Add_symbol{\emptyset ∅}{∅}
+\Add_symbol{… .. \dots}{…}
 
 =<
 
