@@ -187,11 +187,12 @@ and patoline_rule objects h=
       let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
         let dirs_=String.concat " " !dirs in
-        let cmd=Printf.sprintf "%s %s --ml%s%s -c %s"
+        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s -c %s"
           !patoline
           dirs_
           (if !format<>"DefaultFormat" then " --format " else "")
           (if !format<>"DefaultFormat" then !format else "")
+	  opts.driver
           source
         in
         if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
@@ -214,11 +215,12 @@ and patoline_rule objects h=
       let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
         let dirs_=String.concat " " !dirs in
-        let cmd=Printf.sprintf "%s %s --ml%s%s %s"
+        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s %s"
           !patoline
           dirs_
           (if !format<>"DefaultFormat" then " --format " else "")
           (if !format<>"DefaultFormat" then !format else "")
+	  opts.driver
           source
         in
         if not !quiet then (Printf.fprintf stdout "%s\n" cmd; flush stdout);
