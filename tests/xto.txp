@@ -1,5 +1,4 @@
 
-
 \Caml(
 open Diagrams
 
@@ -46,9 +45,9 @@ open Diagrams
       ]
 )
 
-et ça ne parse même plus...
 
 $A \xto{Agbcdef} pP$
 
+$a \xto{\id([])} b$
 
 $$s_1 \xto{τ} s_2 \xto{a} s_3 \xto{τ} s_4$$

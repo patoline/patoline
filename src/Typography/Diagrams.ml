@@ -1972,7 +1972,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		       []
 		       (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
 		in 
-		let width = drawn.drawing_min_width  -. 1.5 *. env.size *. (ex env) in
+		let width = drawn.drawing_min_width  (* -. 1.5 *. env.size *. (ex env) *) in
 		let drawn = { drawn with
 		  drawing_min_width = width ;
 		  drawing_nominal_width = width ;
