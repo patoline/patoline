@@ -145,7 +145,7 @@ and make_deps source=
 
   let dirs_=String.concat " " !dirs in
   let cmd=Printf.sprintf
-    "ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp %s"
+    "ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
     (let pack=String.concat "," (List.rev opts.packages) in
      if pack<>"" then "-package "^pack else "")
     dirs_
@@ -187,11 +187,11 @@ and patoline_rule objects h=
       let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
         let dirs_=String.concat " " !dirs in
-        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s -c %s"
+        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s -c '%s'"
           !patoline
           dirs_
-          (if !format<>"DefaultFormat" then " --format " else "")
-          (if !format<>"DefaultFormat" then !format else "")
+          (if opts.format<>"DefaultFormat" then " --format " else "")
+          (if opts.format<>"DefaultFormat" then !format else "")
 	  opts.driver
           source
         in
@@ -215,11 +215,11 @@ and patoline_rule objects h=
       let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
         let dirs_=String.concat " " !dirs in
-        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s %s"
+        let cmd=Printf.sprintf "%s %s --ml%s%s --driver %s '%s'"
           !patoline
           dirs_
-          (if !format<>"DefaultFormat" then " --format " else "")
-          (if !format<>"DefaultFormat" then !format else "")
+          (if opts.format<>"DefaultFormat" then " --format " else "")
+          (if opts.format<>"DefaultFormat" then !format else "")
 	  opts.driver
           source
         in
@@ -256,7 +256,7 @@ and patoline_rule objects h=
     let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
     if age_h<age_source then (
       let dirs_=String.concat " " !dirs in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o %s -impl %s"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
         (let pack=String.concat "," (List.rev !package_list) in
          if pack<>"" then "-package "^pack else "")
@@ -276,9 +276,10 @@ and patoline_rule objects h=
   else if Filename.check_suffix h ".tmx" || Filename.check_suffix h ".cmxs" then (
     let raw_h=(Filename.chop_extension h) in
     let source=if Filename.check_suffix h ".tmx" then raw_h^".tml" else raw_h^".ml"in
+    let source_txp=raw_h^".txp"in
     Build.build source;
 
-    let in_s=open_in source in
+    let in_s=open_in source_txp in
     let opts=read_options_from_source_file in_s in
     close_in in_s;
     List.iter Build.build opts.deps;
@@ -292,14 +293,16 @@ and patoline_rule objects h=
     if age_h<age_source then (
       Mutex.lock (fst objects);
       let dirs_=String.concat " " !dirs in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o %s %s -impl %s"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s %s -impl '%s'"
         !ocamlopt
-        (let pack=String.concat "," (List.rev !package_list) in
+        (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
-
-        h (String.concat " " (!(snd objects))) source
+        h 
+        (if opts.format<>"DefaultFormat" then (opts.format^".cmxa") else "")
+	(String.concat " " (!(snd objects))) 
+	source
       in
       Mutex.unlock (fst objects);
 
@@ -324,13 +327,12 @@ and process_each_file l=
         package_list := ("Typography."^ !driver):: !package_list;
 
         let cmd= (Filename.concat
-                    (Sys.getcwd ())
-                    (Filename.chop_extension f)^".tmx") in
+                    (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
         Build.sem_set Build.sem !Build.j;
         Build.build cmd;
         if !run then (
-          Printf.fprintf stdout "%s\n" cmd;flush stdout;
-          let _=Build.command cmd in
+          Printf.fprintf stdout "'%s'\n" cmd;flush stdout;
+          let _=Build.command ("'"^cmd^"'") in
           ()
         )
       ) else (
