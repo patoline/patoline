@@ -7,6 +7,8 @@ let ocaml_lib_dir=ref ""
 let ocamlfind_dir=ref ""
 let fonts_dirs=ref []
 let grammars_dirs=ref []
+let plugins_dir=ref ""
+let plugins_dirs=ref []
 let hyphen_dirs=ref []
 let camlzip=ref ""
 let camlimages=ref ""
@@ -55,6 +57,7 @@ let _=
     ("--ocamlfind-dir", Set_string ocamlfind_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
     ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
+    ("--plugins-dir", Set_string plugins_dir, "  directory for the plugins ($PREFIX/lib/patoline/plugins/ by default)");
     ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/patoline/hyphen/ by default)");
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
@@ -69,10 +72,12 @@ let _=
   if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/patoline/fonts";
   if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
+  if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "share/patoline/plugins";
 
   fonts_dirs:= !fonts_dir ::(!fonts_dirs);
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
   hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
+  plugins_dirs:= !plugins_dir ::(!plugins_dirs);
 
   if Sys.command "ocamlfind query zip" = 0
   then camlzip := "zip"
@@ -94,7 +99,7 @@ let _=
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Patoline/PatolineConfig.ml" in
+  let config'=open_out "src/Patoline/Config.ml" in
 
   let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
@@ -174,8 +179,8 @@ let _=
       "src/Typography/Typography.cmxa src/Typography/Typography.p.cmxa src/Typography/Typography.a src/Typography/Typography.p.a src/Typography/Typography.cmi "^
         "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
         "src/Typography/Typography.cma src/Format/*Format*.cma "^
-        "src/Drivers/*.cmxa src/Drivers/*.cma src/Drivers/*.a "^
-        "src/Drivers/*.cmi"
+        "src/Drivers/*.cmxa src/Drivers/*.cma src/Drivers/*.a src/Drivers/*.cmi "^
+        "src/Patoline/Build.cmi src/Patoline/Util.cmi"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -196,24 +201,34 @@ let _=
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
         let path_var="PATOLINE_PATH" in
-          Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\n"
-            path_var
-            (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !fonts_dirs)))
-            !bin_dir
-            (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
-            (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !hyphen_dirs)))
+        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\n"
+          path_var
+          !fonts_dir
+          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !fonts_dirs)))
+          !bin_dir
+          !grammars_dir
+          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
+          !hyphen_dir
+          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !hyphen_dirs)))
+          !plugins_dir
+          (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !plugins_dirs)))
       ) else (
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=ref [%s]\nlet local_path:string list ref=ref []\n"
+        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\n"
+          !fonts_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !fonts_dirs)))
           !bin_dir
+          !grammars_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !grammars_dirs)))
+          !hyphen_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !hyphen_dirs)))
+          !plugins_dir
+          (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !plugins_dirs)))
       )
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
-        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/PatolineConfig.ml src/Typography/META src/Makefile.config\n";
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config\n";
         close_out out;
         close_out config;
         close_out config';

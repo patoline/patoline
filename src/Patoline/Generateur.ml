@@ -1,7 +1,8 @@
 module StrRegexp=Str
 open Lexing
 open Parser
-open PatolineLanguage
+open Language
+open Util
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -25,12 +26,12 @@ let apply_options n arg opts =
   let rec fn = function
   [] -> arg
   | `Arg_pat(i,s)::_ when i = n ->
-    StrMap.find s !macros arg
+    StrMap.find s !Build.macros arg
   | _::l -> fn l
   in
   fn opts
 
-let _= macros:=
+let _= Build.macros:=
   StrMap.add "diagram" (fun x->
     "[bB (fun env -> \n" ^
       "let module Res = struct\n "^
@@ -45,7 +46,7 @@ let _= macros:=
     let suffix = String.sub s (pos+2) (String.length s - pos - 2) in
     "('"^c^"',(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))"
   )
-  !macros)
+  !Build.macros)
 
 
 let hashed="(Sys.executable_name^\".aux\")"
@@ -60,8 +61,8 @@ let preambule format amble filename=
           "let _print_graph=ref false\n"^
           (match amble with
                Main->
-                 "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontsdir:=x::(!Config.fontsdir)),\"Adds directories to the font search path\");
-(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphendir:=x::(!Config.hyphendir)), \"Adds directories to the font search path\");
+                 "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
+(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)), \"Adds directories to the font search path\");
 (\"--at-most\",Arg.Int (fun x->atmost:=x),\"Compile at most n times\");
 (\"--print-graph\",Arg.Unit (fun ()->_print_graph:=true),\"Print the document graph\");
 (\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
@@ -297,7 +298,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	      let buf' = Buffer.create 80 in
               print_caml_buf parser_pp ld gr op buf' s e txps pos;
 	      let s = Buffer.contents buf' in 
-              let f=StrMap.find name !macros in
+              let f=StrMap.find name !Build.macros in
 	      let s' = f s in
 	      (* Printf.fprintf stderr "Started from : \n %s \n" s ; *)
 	      (* Printf.fprintf stderr "Printed : \n %s \n" s' ; *)
@@ -612,7 +613,7 @@ let gen_ml format driver amble filename from wherename where pdfname =
 	      let docs = Parser.main lexbuf in
 	      let nbdocs = List.length docs in
 		Printf.fprintf stderr "%s\n" 
-		  (PatolineLanguage.message (PatolineLanguage.End_of_parsing nbdocs));
+		  (Language.message (Language.End_of_parsing nbdocs));
 		flush stderr;
 	      let source = Source.of_in_channel from in
               let tmp_pos=
@@ -675,6 +676,6 @@ let gen_ml format driver amble filename from wherename where pdfname =
 		  Parser.Syntax_Error(pos,msg) when !Parser.deps_only=None ->
 		    Sys.remove wherename;
 		    Printf.fprintf stderr "%s\n"
-		      (PatolineLanguage.message (PatolineLanguage.Syntax_error (filename, pos, msg)));
+		      (Language.message (Language.Syntax_error (filename, pos, msg)));
 		    exit 1
                 | Parser.Syntax_Error _ -> exit 0

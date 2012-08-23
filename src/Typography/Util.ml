@@ -12,11 +12,11 @@ let findPath f path=
   in
     findPath f path
 (** Chercher un fichier dans le chemin des polices *)
-let findFont f=findPath f ("."::(!fontsdir))
+let findFont f=findPath f ("."::(!fontspath))
 (** Chercher un fichier dans le chemin des grammaires *)
-let findGrammar f=findPath f ("." :: (!grammarsdir))
+let findGrammar f=findPath f ("." :: (!grammarspath))
 (** Chercher un fichier dans le chemin des dictionnaires de césures *)
-let findHyph f=findPath f ("."::(!hyphendir))
+let findHyph f=findPath f ("."::(!hyphenpath))
 
 (** Convertir en points Adobe une longueur en millimètres *)
 let pt_of_mm x=(72.*.x)/.25.4

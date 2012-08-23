@@ -35,9 +35,9 @@ Format/DefaultFormat.cma:Format Typography/Typography.cma
 Format/DefaultFormat.p.cmax:Format Typography/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
-Format/%.cmxa:Format/DefaultFormat.cmxa Format/%.ml
+Format/%.cmxa:Format/DefaultFormat.cmxa Format/%.ml Format/%.cma
 	$(CAMLOPT) -a -I Typography -I Format -o $@ Format/$*.ml
-Format/%.p.cmxa:Format/DefaultFormat.cmxa Format/%.ml
+Format/%.p.cmxa:Format/DefaultFormat.cmxa Format/%.ml Format/%.cma
 	$(CAMLOPT) -p -I Typography -I Format -o $@ Format/$*.ml
 Format/%.cma:Format/DefaultFormat.cma Format/%.ml
 	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
@@ -58,10 +58,10 @@ Drivers/%.p.cmxa:Drivers/%.ml Typography/Typography.cmxa
 	cd Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -p -pp $(CPP) -I ../Typography -o $*.p.cmxa $*.ml
 
 
-DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
+DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
-DefaultGrammar.cmx: Typography/Typography.cmxa Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.tml
-	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.tml
+DefaultGrammar.cmx: Typography/Typography.cmxa Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
+	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
 
 clean:
 	make -C Typography clean
