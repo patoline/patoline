@@ -70,7 +70,7 @@
   (save-excursion
     (let ((cmd-format (read-from-minibuffer "compile: " patoline-compile-format)))
       (setq patoline-compile-format cmd-format)
-      (let ((cmd (format cmd-format buffer-file-name))
+      (let ((cmd (format cmd-format (file-name-nondirectory buffer-file-name)))
 	    (dir-name (file-name-directory buffer-file-name)))
 	(select-patoline-program-buffer)
 	(erase-buffer)
