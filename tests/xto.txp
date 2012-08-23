@@ -51,4 +51,4 @@ et ça ne parse même plus...
 $A \xto{Agbcdef} pP$
 
 
-$$s_1 \xtostar{τ} s_2 \xto{a} s_3 \xtostar{τ} s_4$$
+$$s_1 \xto{τ} s_2 \xto{a} s_3 \xto{τ} s_4$$
