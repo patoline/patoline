@@ -16,41 +16,42 @@ let patoline=ref (Sys.argv.(0))
 let ocamlopt=ref "ocamlopt"
 
 let quiet=ref false
-
+open Language
 let spec =
-  [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)), "Adds directories to the font search path");
-   ("--extra-hyph-dir",Arg.String (fun x->cmd_line:=("--extra-hyph-dir "^x)::(!cmd_line)), "Adds directories to the hyphenation search path");
+  [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)),
+    message (Cli Extra_fonts));
+   ("--extra-hyph-dir",Arg.String (fun x->cmd_line:=("--extra-hyph-dir "^x)::(!cmd_line)),
+    message (Cli Extra_hyph));
 
    ("-I",Arg.String (fun x->
      Config.local_path:=x::(!Config.local_path);
      Config.grammarspath:=x::(!Config.grammarspath);
      dirs := ("-I " ^ x) :: !dirs),
-    "Adds directories to the search path");
+    message (Cli Dirs));
 
-   ("--no-grammar",Arg.Unit (fun ()->Config.grammarspath:=[]), "Empty grammar search path");
+   ("--no-grammar",Arg.Unit (fun ()->Config.grammarspath:=[]), message (Cli No_grammar));
    ("--format",Arg.String
-     (fun f ->format := Filename.basename f; cmd_line_format := true), "Change the default document format");
+     (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
    ("--driver",Arg.String
-     (fun f ->driver := f; cmd_line_driver := true), "Change the default document driver");
-   ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), "Compile separately");
-   ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), "Compile separately");
-   ("-package",Arg.String (fun s-> package_list:= s::(!package_list)), "Use package given as argument when compiling");
-   ("--caml",Arg.String (fun arg -> (dirs := arg :: !dirs)), "Add the given arguments to the OCaml command line");
-   ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), "Only generates OCaml code");
-   ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), "Generates OCaml code and compiles it");
-   ("--pdf",Arg.Unit (fun () -> compile:=true; run:= true), "Generates OCaml code, compiles it and runs it");
-   ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), "Generated uri link of the form \"edit:filename@line");
-   ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), "Disable generation of \"# line\" directive in the generated ml (for debugging the generator)");
-   ("--patoline",Arg.String (fun s->patoline:=s), "Changes the patoline compiler");
-   ("--ocamlopt",Arg.String (fun s->ocamlopt:=s), "Changes the ocamlopt compiler");
-   ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), "Maximum number of processes");
-   ("--quiet", Arg.Unit (fun ()->quiet:=true), "Do not output the commands");
-   ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), "Remaining arguments are passed to the OCaml executable")
+     (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
+   ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), message (Cli Separately));
+   ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), message (Cli Noamble));
+   ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
+    message (Cli Package));
+   ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
+   ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), message (Cli Bin));
+   ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), message (Cli Edit_link));
+   ("--patoline",Arg.String (fun s->patoline:=s), message (Cli Patoline));
+   ("--ocamlopt",Arg.String (fun s->ocamlopt:=s), message (Cli Ocamlopt));
+   ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
+   ("--quiet", Arg.Unit (fun ()->quiet:=true), message (Cli Quiet));
+   ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), message (Cli Remaining));
+
+   ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
   ]
 
 let str_dirs () = (String.concat " " !dirs)
 
-let pdfname_of f = (Filename.chop_extension f)^".pdf"
 let mlname_of f = (Filename.chop_extension f)^(if !amble==Generateur.Separate then ".ttml" else ".tml")
 let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
@@ -319,7 +320,7 @@ and patoline_rule objects h=
   else false
 and process_each_file l=
   if l=[] then
-    Printf.fprintf stderr "no input files\n"
+    Printf.fprintf stderr "%s\n" (Language.message No_input_file)
   else
     List.iter (fun f->
       if !compile then (
@@ -342,7 +343,7 @@ and process_each_file l=
         let fread = open_in f in
         Parser.out_grammar_name:=Filename.chop_extension f;
         if Filename.check_suffix f "txt" then (
-          SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (pdfname_of f);
+          SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
         ) else (
           let opts=read_options_from_source_file fread in
           Parser.fprint_caml_buf :=
@@ -350,17 +351,12 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          Generateur.gen_ml opts.format opts.driver !amble f fread (mlname_of f) where_ml (pdfname_of f);
+          Generateur.gen_ml opts.format opts.driver !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
         );
         close_out where_ml;
         close_in fread;
       )
     ) l
-
-
-let _=
-  let objects=(Mutex.create (), ref []) in
-  Build.append_rule (patoline_rule objects)
 
 
 (************************************************)
@@ -369,5 +365,36 @@ let _=
 
 
 let _ =
-  Arg.parse spec (fun x->files := x::(!files)) "Usage :";
-  process_each_file (List.rev !files)
+  if Array.length Sys.argv < 2 then (
+    Printf.fprintf stderr "%s\n" (Language.message No_input_file);flush stderr;
+  ) else (
+    match Sys.argv.(1) with
+        "destdir"->(
+          if Array.length Sys.argv<3 then (
+            Printf.fprintf stderr "%s\n" (Language.message Usage);
+            List.iter (Printf.fprintf stderr "  patoline destdir %s\n")
+              ["fonts";"plugins";"grammars";"hyphendir"];flush stderr;
+            exit 1
+          ) else (
+            match Sys.argv.(2) with
+                "fonts"->
+                  Printf.fprintf stdout "%s\n" Config.fontsdir
+              | "plugins"->
+                Printf.fprintf stdout "%s\n" Config.pluginsdir
+              | "grammars"->
+                Printf.fprintf stdout "%s\n" Config.grammarsdir
+              | "hyphens"->
+                Printf.fprintf stdout "%s\n" Config.hyphendir
+              | _->(
+                Printf.fprintf stderr "%s\n" (Language.message (Unknown_command Sys.argv.(2)));
+                exit 1
+              )
+          )
+        )
+      | _->(
+        let objects=(Mutex.create (), ref []) in
+        Build.append_rule (patoline_rule objects);
+        Arg.parse spec (fun x->files := x::(!files)) (Language.message Usage);
+        process_each_file (List.rev !files)
+      )
+  )

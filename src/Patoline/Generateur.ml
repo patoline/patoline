@@ -76,7 +76,7 @@ module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"]
 let postambule format driver outfile = Printf.sprintf "
 module Out=%s.Output(%s)
 
-let _ = 
+let _ =
   let filename=\"%s\" in
   let rec resolve i env0=
   Printf.printf \"Compilation %%d\\n\" i; flush stdout;
