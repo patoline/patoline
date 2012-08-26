@@ -69,6 +69,32 @@ type options={
 }
 
 
+let last_options_used file=
+  let fread=open_in file in
+  let _format=ref "" in
+  let _driver=ref "" in
+  let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let rec pump () =
+    let s = input_line fread in
+    if Str.string_match set_format s 0 then (
+      _format:=Str.matched_group 1 s;
+      if String.length !_driver=0 then pump ()
+    )
+    else if Str.string_match set_driver s 0 then (
+      _driver:=Str.matched_group 1 s;
+      if String.length !_format=0 then pump ()
+    )
+    else pump ()
+  in
+  (try
+     pump ()
+   with End_of_file -> ());
+  close_in fread;
+  !_format, !_driver
+
+
+
 let rec read_options_from_source_file fread =
   let deps=ref [] in
   let format=ref !format in
@@ -185,7 +211,7 @@ and patoline_rule objects h=
       List.iter Build.build opts.deps;
 
       let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-      let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
+      let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
         let dirs_=String.concat " " !dirs in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s -c '%s'"
@@ -214,8 +240,14 @@ and patoline_rule objects h=
       List.iter Build.build opts.deps;
 
       let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-      let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
-      if age_h<age_source then (
+      let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
+      if age_h<age_source || (
+        if Sys.file_exists h then (
+          let last_format,last_driver=last_options_used h in
+          Printf.fprintf stderr "last used %S %S %S %S\n" last_format !format last_driver !driver;flush stderr;
+          (last_format<> !format || last_driver<> !driver)
+        ) else false
+      ) then (
         let dirs_=String.concat " " !dirs in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s '%s'"
           !patoline
@@ -256,7 +288,7 @@ and patoline_rule objects h=
     List.iter (Thread.join) tar;
 
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-    let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
+    let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
     if age_h<age_source then (
       let dirs_=String.concat " " !dirs in
       let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
@@ -292,7 +324,7 @@ and patoline_rule objects h=
     List.iter (Thread.join) tar;
 
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-    let age_source=if Sys.file_exists h then (Unix.stat source).Unix.st_mtime else infinity in
+    let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
     if age_h<age_source then (
       Mutex.lock (fst objects);
       let dirs_=String.concat " " !dirs in

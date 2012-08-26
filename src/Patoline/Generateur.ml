@@ -56,7 +56,9 @@ let preambule format driver amble filename=
       Noamble->""
     | _->(
       Printf.sprintf
-        "open Typography
+        "(* #FORMAT %s *)
+(* #DRIVER %s *)
+open Typography
 open Typography.Util
 open Typography.Box
 open Typography.Config
@@ -65,6 +67,8 @@ open Typography.OutputCommon
 %s
 %s
 "
+        format
+        driver
         (match amble with
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
@@ -106,8 +110,8 @@ module Source = struct
 
   let of_buffer = Buffer.blit
 
-  let of_function f source_pos dest pos size = 
-    f source_pos dest pos size 
+  let of_function f source_pos dest pos size =
+    f source_pos dest pos size
 
 end
 
@@ -120,7 +124,7 @@ let split_ind indices =
   { no_ind with up_left = indices.up_left; down_left = indices.down_left; },
   { no_ind with up_right = indices.up_right; down_right = indices.down_right; }
 
-let rec print_math_buf parser_pp op buf m = 
+let rec print_math_buf parser_pp op buf m =
   (* Printf.fprintf stderr "Entering print_math_buf.\n" ; flush stderr ; *)
   let rec print_math_expr indices buf m =
     match m with
