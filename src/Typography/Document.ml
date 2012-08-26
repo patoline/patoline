@@ -1011,7 +1011,9 @@ end
 
 let flatten env0 fixable str=
   let paragraphs=ref [] in
+  let trees=ref [] in
   let figures=ref IntMap.empty in
+  let figure_trees=ref IntMap.empty in
   let fig_param=ref IntMap.empty in
   let param=ref [] in
   let compl=ref [] in
@@ -1021,10 +1023,11 @@ let flatten env0 fixable str=
   let buf=ref [||] in
   let nbuf=ref 0 in
   let frees=ref 0 in
-  let add_paragraph env p=
+  let add_paragraph env tree path p=
     nbuf:= !frees;
     let v=boxify buf nbuf fixable env p.par_contents in
       paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
+      trees:=(tree,path)::(!trees);
       compl:=(p.par_completeLine env)::(!compl);
       param:=(p.par_parameters env)::(!param);
       bads:=(p.par_badness env)::(!bads);
@@ -1036,12 +1039,13 @@ let flatten env0 fixable str=
   let rec flatten flushes env_ path tree=
     let level=List.length path in
     match tree with
-        Paragraph p -> add_paragraph env_ p
+        Paragraph p -> add_paragraph env_ tree path p
       | FigureDef f -> (
           let env1=f.fig_env env_ in
           let n=IntMap.cardinal !figures in
           fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
           figures:=IntMap.add n (f.fig_contents env1) !figures;
+          figure_trees:=IntMap.add n (tree,path) !figure_trees;
           append buf frees (BeginFigure n);
           f.fig_post_env env_ env1
         )
@@ -1053,10 +1057,10 @@ let flatten env0 fixable str=
           let flushes'=ref [] in
           let flat_children k a (is_first,indent, env1)=match a with
               Paragraph p->(
-                  let env2=flatten flushes' (p.par_env env1) (k::path) (
+                  let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
                     Paragraph { p with par_contents=
                         (if is_first then (
-                           let name=String.concat "_" ("_"::List.map string_of_int path) in
+                           let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
                              [Env (fun env->
                                      let w=try let (_,_,w)=StrMap.find name (names env) in w with
                                          Not_found -> uselessLine in
@@ -1071,7 +1075,7 @@ let flatten env0 fixable str=
                     false,true, p.par_post_env env1 env2
                 )
               | FigureDef f as h->(
-                  let env2=flatten flushes' env1 (k::path) h in
+                  let env2=flatten flushes' env1 ((k,tree)::path) h in
                   let num=try
                     match StrMap.find "_figure" env2.counters with
                         _,h::_->h
@@ -1084,7 +1088,7 @@ let flatten env0 fixable str=
                 )
               | Node h as tr->(
                   let env2=h.node_env env1 in
-                  let env3=flatten flushes' env2 (k::path) tr in
+                  let env3=flatten flushes' env2 ((k,tree)::path) tr in
                     is_first,false, h.node_post_env env1 env3
                 )
             in
@@ -1110,7 +1114,9 @@ let flatten env0 fixable str=
      Array.of_list (List.rev !compl),
      Array.of_list (List.rev !bads),
      Array.of_list (List.rev !paragraphs),
-     Array.of_list (List.map snd (IntMap.bindings !figures)))
+     Array.of_list (List.rev !trees),
+     Array.of_list (List.map snd (IntMap.bindings !figures)),
+     Array.of_list (List.map snd (IntMap.bindings !figure_trees)))
 
 let rec make_struct positions tree=
   match tree with

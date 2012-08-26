@@ -51,60 +51,45 @@ let _= Build.macros:=
 
 let hashed="(Sys.executable_name^\".aux\")"
 let env_stack=ref []
-let preambule format amble filename=
+let preambule format driver amble filename=
   match amble with
       Noamble->""
     | _->(
-        "open Typography\nopen Typography.Util\nopen Typography.Box\n"^
-        "open Typography.Config\nopen Typography.Document\nopen Typography.OutputCommon\n"^
-          "let atmost=ref 3\n"^
-          "let _print_graph=ref false\n"^
-          (match amble with
-               Main->
-                 "let spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
-(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)), \"Adds directories to the font search path\");
-(\"--at-most\",Arg.Int (fun x->atmost:=x),\"Compile at most n times\");
-(\"--print-graph\",Arg.Unit (fun ()->_print_graph:=true),\"Print the document graph\");
-(\"--clean\", Arg.Unit (fun ()->let hashed_tmp="^hashed^" in if Sys.file_exists hashed_tmp then Sys.remove hashed_tmp;exit 0),\"Cleans the saved environment\")];;
-let _=Arg.parse spec ignore \"Usage :\";;
-module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)\n"
-             | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
-             | _->"")^
-          "module Format="^format^".Format(D);;\nopen Format;;\nopen DefaultFormat.MathsFormat;;\n"
-      )
-
-let postambule format driver outfile = Printf.sprintf "
+      Printf.sprintf
+        "open Typography
+open Typography.Util
+open Typography.Box
+open Typography.Config
+open Typography.Document
+open Typography.OutputCommon
+%s
+%s
+"
+        (match amble with
+            Main->
+              Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Out=%s.Output(%s)
+let _driver=ref \"Pdf\"
+let _atmost=ref 3
+let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
+(\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)), \"Adds directories to the font search path\");
+(\"-I\",Arg.String (fun x->Config.local_path:=x::(!Config.local_path)), \"Adds directories to the font search path\");
+(\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
+]
 
-let _ =
-  let filename=\"%s\" in
-  let rec resolve i env0=
-  Printf.printf \"Compilation %%d\\n\" i; flush stdout;
-  (if !_print_graph then (let o=open_out (\"graph\"^string_of_int i) in doc_graph o (fst !D.structure); close_out o));
-  D.fixable:=false;
-  let tree=postprocess_tree (fst (top (!D.structure))) in
-  let env1,fig_params,params,compl,badness,pars,figures=flatten env0 D.fixable tree in
-  Printf.fprintf stderr \"Début de l'optimisation : %%f s\n\" (Sys.time ());
-  let (logs,pages,figs',user')=TS.typeset
-    ~completeLine:compl
-    ~figure_parameters:fig_params
-    ~figures:figures
-    ~parameters:params
-    ~badness:badness
-    pars
-  in
-  Printf.fprintf stderr \"Fin de l'optimisation : %%f s\n\" (Sys.time ());
-  let env2, reboot=update_names env1 figs' user' in
-  if i < !atmost-1 && reboot && !D.fixable then (
-    resolve (i+1) env2
-  ) else (
-    List.iter (fun x->Printf.fprintf stderr \"%%s\\n\" (Typography.Language.message x)) logs;
-    Out.output tree pars figures env2 pages filename
-  )
-  in
-  let env0=defaultEnv in
-  resolve 0 env0
-" format driver outfile
+let _=Arg.parse _spec ignore \"Usage :\";;" format driver
+          | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
+          | _->"")
+
+        (Printf.sprintf "module Format=%s.Format(D);;
+open Format;;
+open DefaultFormat.MathsFormat;;
+" format)
+    )
+
+let postambule outfile = Printf.sprintf "
+let _ =Out.output Out.outputParams D.structure Format.defaultEnv Format.postprocess_tree %S
+" outfile
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)
@@ -357,7 +342,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  incr moduleCounter;
 	  includeList := name :: !includeList;
 	  Printf.bprintf buf
-	    "module TEMP%d=%s.Document(D);;\n open TEMP%d" !moduleCounter name !moduleCounter
+	    "module TEMP%d=%s.Document(D);;\nopen TEMP%d" !moduleCounter name !moduleCounter
   end
 
 and print_macro parser_pp ch op mtype name args opts = begin
@@ -624,7 +609,7 @@ let gen_ml format driver amble filename from wherename where pdfname =
 	        [] -> assert false
 	      | ((caml_header, pre, docs), _) :: _  ->
 		  begin
-                    Printf.fprintf where "%s" (preambule format amble filename);
+                    Printf.fprintf where "%s" (preambule format driver amble filename);
                     (match amble with
                          Main | Noamble -> ()
                        | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"
@@ -650,13 +635,13 @@ let gen_ml format driver amble filename from wherename where pdfname =
 		    (match caml_header with
                          None->()
                        | Some a->output_list parser_pp source where true 0 [a]);
-		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n" 
+		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n"
 		      extra_tags (print_contents parser_pp source) title;
 		  end;
 		  output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
-                    Main->output_string where (postambule format driver pdfname)
+                    Main->output_string where (postambule pdfname)
                   | Noamble->()
                   | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
                       tmp_pos

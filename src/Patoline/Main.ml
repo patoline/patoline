@@ -279,7 +279,7 @@ and patoline_rule objects h=
   else if Filename.check_suffix h ".tmx" || Filename.check_suffix h ".cmxs" then (
     let raw_h=(Filename.chop_extension h) in
     let source=if Filename.check_suffix h ".tmx" then raw_h^".tml" else raw_h^".ml"in
-    let source_txp=raw_h^".txp"in
+    let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
     Build.build source;
 
     let in_s=open_in source_txp in
