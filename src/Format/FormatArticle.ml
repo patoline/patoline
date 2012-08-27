@@ -81,6 +81,14 @@ module Env_corollary=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [tT ("Corollary "^num^"."); (tT " ")]
    end)
+module Env_example=Default.Make_theorem
+  (struct
+    let refType="example"
+    let counter="example"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Example "^num^"."); (tT " ")]
+   end)
+
 (* module Env_proof=Default.Proof *)
 
   let equation contents = 
