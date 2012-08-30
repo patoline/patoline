@@ -1,0 +1,8 @@
+
+\diagram(
+  let x = Node.(node [draw] 
+    <<$\diagram(
+         let y = Node.(node [draw] <<$haha$>>)
+         let z = Node.(node [draw; at (20.,20.)] <<$hu$>>)
+       )$>>)
+)
