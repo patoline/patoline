@@ -1,9 +1,11 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output $(PACK)
-CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output $(PACK)
+CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I Fonts -I Output $(PACK)
+CAMLC=ocamlfind ocamlc -pp "cpp -w" -I Fonts -I Output $(PACK)
 
-SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
+SFNT=Fonts/Sfnt/unicode_ranges.cmx
+
+SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Sfnt/Cmap.cmx $(SFNT) Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
 
 all:Typography.cmxa Typography.p.cmxa Typography.cma
@@ -30,15 +32,21 @@ Util.p.cmx : new_map.p.cmx Config.p.cmx Util.cmi
 Fonts.cmo : Util.cmi Fonts/Opentype.cmo Fonts/FTypes.cmi Fonts/CFF.cmo Bezier.cmi
 Fonts.cmx : Util.cmx Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cmx
 Fonts.p.cmx : Util.p.cmx Fonts/Opentype.p.cmx Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Bezier.p.cmx
-Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/CFF.cmo
-Fonts/Opentype.cmx:Fonts/FTypes.cmx Fonts/CFF.cmx
-Fonts/Opentype.p.cmx:Fonts/FTypes.p.cmx Fonts/CFF.p.cmx
+Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/CFF.cmo Fonts/Sfnt/Cmap.cmo
+Fonts/Opentype.cmx:Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Sfnt/Cmap.cmx
+Fonts/Opentype.p.cmx:Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Fonts/Sfnt/Cmap.p.cmx
 Fonts/CFF.cmo:Fonts/FTypes.cmi Util.cmi Bezier.cmi
 Fonts/CFF.cmx:Fonts/FTypes.cmi Util.cmi Bezier.cmi Bezier.cmx
 Fonts/CFF.p.cmx:Fonts/FTypes.cmi Util.cmi Bezier.cmi Bezier.p.cmx
 Fonts/FTypes.cmo:Fonts/FTypes.cmi Bezier.cmi
 Fonts/FTypes.cmx:Fonts/FTypes.cmi Bezier.cmx
 Fonts/FTypes.p.cmx:Fonts/FTypes.cmi Bezier.p.cmx
+Fonts/Sfnt/%.cmo:Util.cmi
+Fonts/Sfnt/%.cmx:Util.cmi
+Fonts/Sfnt/%.p.cmx:Util.p.cmi
+Fonts/Sfnt/unicode_ranges.ml:Fonts/Sfnt/make_unicode_ranges.ml Fonts/Sfnt/unicode
+	ocamlc -o Fonts/Sfnt/make_unicode_ranges str.cma Fonts/Sfnt/make_unicode_ranges.ml
+	cd Fonts/Sfnt; ./make_unicode_ranges
 
 Output/OutputCommon.cmo:Output/OutputCommon.cmi Fonts.cmo
 Output/OutputCommon.cmx:Output/OutputCommon.cmi Fonts.cmx
