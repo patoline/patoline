@@ -52,7 +52,7 @@ let spec =
 
 let str_dirs () = (String.concat " " !dirs)
 
-let mlname_of f = (Filename.chop_extension f)^(if !amble==Generateur.Separate then ".ttml" else ".tml")
+let mlname_of f = (Filename.chop_extension f)^(if !amble<>Generateur.Main then ".ttml" else ".tml")
 let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 
