@@ -2,11 +2,12 @@
 
 \Caml(
 
-  open DefaultFormat
-  open MathsFormat
-
   let view x = <$\mathbf{v} (x)$>
+
+    let pow = <$\mathcal{P}$>
 
 )
 
 $\view{x}$
+
+$\pow()(X)$
