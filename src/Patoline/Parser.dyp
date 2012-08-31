@@ -364,7 +364,7 @@ let give_pos name l =
 let test_wargs dyp name a =
     if List.mem name reserved then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
-    let args = a ld gr in
+    let terminated, args = a ld gr in
     let args = if give_pos name dyp.local_data.word_macros then
       String (get_pos_as_string dyp 1)::args else args
     in    
@@ -373,14 +373,14 @@ let test_wargs dyp name a =
         let l = get_nbargs name dyp.local_data.word_macros in
         if l <> List.length args then raise Giveup;
       with Not_found ->
-        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+        if not terminated && next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
    fix_name name dyp.local_data.word_macros, args
 
 let test_pargs dyp name a =
     if List.mem name reserved then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
-    let args = a ld gr in
+    let terminated, args = a ld gr in
     let args = if give_pos name dyp.local_data.word_macros then
       String(get_pos_as_string dyp 1)::args else args
     in    
@@ -389,13 +389,13 @@ let test_pargs dyp name a =
         let l = get_nbargs name dyp.local_data.par_macros in
         if l <> List.length args then raise Giveup;
       with Not_found ->
-        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+        if not terminated && next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
    fix_name name dyp.local_data.word_macros, args
 
 let test_eargs dyp name a =
     let ld, gr = get_local_data_and_grammar dyp in
-    let args = a ld gr in
+    let terminated, args = a ld gr in
     let args = if give_pos name dyp.local_data.env_macros then
       String(get_pos_as_string dyp 1)::args else args
     in    
@@ -404,7 +404,7 @@ let test_eargs dyp name a =
         let l = get_nbargs name dyp.local_data.env_macros in
         if l <> List.length args then raise Giveup;
       with Not_found ->
-        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+        if not terminated && next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
    fix_name name dyp.local_data.word_macros, args
 
@@ -415,7 +415,7 @@ let test_margs dyp name a =
        StrSet.mem name' dyp.local_data.infixes
     then raise Giveup;
     let ld, gr = get_local_data_and_grammar dyp in
-    let args = a ld gr in
+    let terminated, args = a ld gr in
     let args = if give_pos name dyp.local_data.math_macros then
       MathString(get_pos_as_string dyp 1)::args else args
     in    
@@ -424,7 +424,7 @@ let test_margs dyp name a =
         let l = get_nbargs name dyp.local_data.math_macros in
         if l <> List.length args then raise Giveup;
       with Not_found ->
-        if next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
+        if not terminated && next_lexeme_paren (dyp.next_lexeme ()) then raise Giveup
    end;
    fix_name name dyp.local_data.math_macros, args
 
@@ -650,31 +650,32 @@ test<b>:
 
 args<nb>:
     /* empty */
-     { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) } 
+     { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> false, []) } 
   | - "()"
-    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) }
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> true, []) }
   | - "{" oparagraph<p> "}"
-    { if nb <> 1 then raise Giveup; (fun ld gr -> [sParagraph (p)]) } 
+    { if nb <> 1 then raise Giveup; (fun ld gr -> true, [sParagraph (p)]) } 
   | - CAML<s,pos,e,txps> 
-    { if nb <> 1 then raise Giveup; (fun ld gr -> [Caml(ld,gr,s,e,txps,pos)]) } 
+    { if nb <> 1 then raise Giveup; (fun ld gr -> true, [Caml(ld,gr,s,e,txps,pos)]) } 
   | - "{" oparagraph<p> "}" - test{nb>1 || nb < 0} - args{nb-1}<a>
-    { (fun ld gr -> sParagraph (p)::a ld gr) } 
+    { (fun ld gr -> let b,l = a ld gr in b, (sParagraph (p)::l)) } 
   | - CAML<s,pos,e,txps> - test{nb>1 || nb < 0} - args{nb-1}<a>
-    { (fun ld gr -> Caml(ld,gr,s,e,txps,pos) :: a ld gr) } 
+    { (fun ld gr -> let b,l = a ld gr in b, (Caml(ld,gr,s,e,txps,pos) :: l)) } 
 
 mathargs<nb>:
   /* empty */
-    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) } 
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> false, []) } 
   | - "()"
-    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> []) }
+    { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> true, []) }
   | - "{" math<m> "}"
-    { if nb <> 1 then raise Giveup; (fun ld gr -> [m]) }
+    { if nb <> 1 then raise Giveup; (fun ld gr -> true, [m]) }
   | - CAML<s,pos,e,txps>
-    { if nb <> 1 then raise Giveup; (fun ld gr -> [MathCaml(ld,gr,s,e,txps,pos)]) }
+    { if nb <> 1 then raise Giveup; (fun ld gr -> true, [MathCaml(ld,gr,s,e,txps,pos)]) }
   | - "{" math<m> "}" - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
-    { (fun ld gr -> m::a ld gr) }
+    { (fun ld gr -> let b,l = a ld gr in b, (m::l)) }
   | - CAML<s,pos,e,txps> - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
-    { (fun ld gr -> MathCaml(ld,gr,s,e,txps,pos) :: a ld gr) }
+    { (fun ld gr -> let b,l = a ld gr in 
+             b, (MathCaml(ld,gr,s,e,txps,pos) :: l)) }
 
 readenvargs<macro>:
       { 
@@ -924,8 +925,9 @@ math:
       { Apply(a, b) } fun
   | math(<=sum)<a> addition_like<_,op,d> math(<sum)<b>
       { app_ind d (Binary(2, a, false, op, false, b)) } sum
-  | "\\" - (ident)<macro> - readmathargs{macro}<nb> mathargs{nb}<args>
-    { let macro, args = test_margs dyp macro args in
+  | "\\" - (ident)<macro> - readmathargs{macro}<nb> - mathargs{nb}<args>
+    {
+    let macro, args = test_margs dyp macro args in
       MathMacro (macro, args) } atom
   | prefix<_,op,d> math(<sum)<b> 
       { app_ind d (Prefix(3,op,false,b)) } sum
