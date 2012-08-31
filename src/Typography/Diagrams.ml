@@ -1907,7 +1907,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
            (Maths.noad
               (fun env st->
 		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-		let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
+		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr in
 		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in
 		let m,ms = Matrix.(make env
 		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
@@ -1949,7 +1949,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
            (Maths.noad
               (fun env st->
 		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-		let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
+		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr in
 		let m,ms = Matrix.(make env
 		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
 		   mainNode Node.([
