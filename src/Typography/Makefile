@@ -1,7 +1,7 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I Fonts -I Output $(PACK)
-CAMLC=ocamlfind ocamlc -pp "cpp -w" -I Fonts -I Output $(PACK)
+CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output $(PACK)
+CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output $(PACK)
 
 SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
