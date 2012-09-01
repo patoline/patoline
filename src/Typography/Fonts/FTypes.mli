@@ -25,9 +25,11 @@ type substitution =
   | Subst of subst
   | Chain of chain
   | Context of (int * substitution list) array
+#ifdef DEBUG
 val print_int_array : int array -> unit
 val print_int_list : int list -> unit
 val print_subst : substitution -> unit
+#endif
 val apply_ligature : subst -> glyph_id list -> glyph_id list
 val apply_subst : subst -> glyph_id list -> glyph_id list
 val apply_alternative : int array -> int -> glyph_id list -> glyph_id list
@@ -51,10 +53,8 @@ module type Font =
     val glyph_x0 : glyph -> float
     val glyph_x1 : glyph -> float
     val fontName : ?index:int -> font -> string
+    val glyphName : glyph -> string
     val font_features : font -> string list
     val select_features : font -> string list -> substitution list
     val positioning : font -> glyph_ids list -> glyph_ids list
   end
-val glyph_roots :
-  (float array * float array) list list ->
-  int * int * int * int * float list array

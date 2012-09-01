@@ -161,6 +161,10 @@ let glyphNumber gl=match gl with
 let glyphContents gl=match gl with
     CFFGlyph (_,x)->CFF.glyphContents x
 
+let glyphName gl=
+  match gl with
+      CFFGlyph (CFF(f, offset),x)-> CFF.glyphName x
+
 
 let glyphWidth gl=
   match gl with

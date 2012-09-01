@@ -217,7 +217,7 @@ let write_cmap ?(formats=[0;4;6]) ?(lang=0) cmap buf0=
   ) bufs;
   List.iter (Buffer.add_buffer buf0) bufs
 
-let read_cmap file a char=
+let cmap file a char=
   seek_in file (a+2);
   let numTables=readInt2 file in
   let table=ref 0 in

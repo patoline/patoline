@@ -33,6 +33,7 @@ type substitution=
   | Chain of chain
   | Context of (int*(substitution list)) array
 
+#ifdef DEBUG
 open Format
 open Printf
 let print_int_array x=
@@ -61,7 +62,7 @@ let print_subst=function
               printf " }\n")
   | Chain x->(printf "Chain { ... }\n")
   | Context _->(printf "Context { ... }\n")
-
+#endif
 
 
 let apply_ligature lig glyphs0=
@@ -190,6 +191,7 @@ module type Font=(
     val glyph_x0:glyph->float
     val glyph_x1:glyph->float
     val fontName:?index:int->font->string
+    val glyphName:glyph->string
 
     (** Lists all the available features of the font *)
     val font_features:font->string list
@@ -201,71 +203,3 @@ module type Font=(
         list. This can be used for kerning, but not only *)
     val positioning:font->glyph_ids list->glyph_ids list
   end)
-
-
-let glyph_roots glyph=
-  let eps=0.01 in
-  let minx=List.fold_left (List.fold_left (fun a (fx,_)->Array.fold_left min a fx)) infinity glyph in
-  let maxx=List.fold_left (List.fold_left (fun a (fx,_)->Array.fold_left max a fx)) (-.infinity) glyph in
-  let miny=List.fold_left (List.fold_left (fun a (_,fy)->Array.fold_left min a fy)) infinity glyph in
-  let maxy=List.fold_left (List.fold_left (fun a (_,fy)->Array.fold_left max a fy)) (-.infinity) glyph in
-  let lines=List.map (fun l->
-                        let path=Array.of_list
-                          (List.rev (List.fold_right (fun (fx,fy) lines->
-                                                        if Array.length fx=2 then (
-                                                          (fx.(0),fy.(0),fx.(1),fy.(1))::lines
-                                                        ) else (
-                                                          let rec draw t x y lines0=
-                                                            if t<1. then (
-                                                              let x'=eval fx t in
-                                                              let y'=eval fy t in
-                                                                draw (t+.eps) x' y' ((x,y,x',y')::lines0)
-                                                            ) else (
-                                                              (x,y,fx.(Array.length fx-1),fy.(Array.length fy-1))::lines0
-                                                            )
-                                                          in
-                                                            draw eps fx.(0) fy.(0) lines
-                                                        )
-                                                     ) l []))
-                        in
-                        let arr=Array.make (int_of_float (ceil maxy)-int_of_float (floor miny)+2)  [] in
-                          for i=0 to Array.length path-1 do
-                            let _,y0,_,y1=path.(i) in
-                              for j=int_of_float (floor (min y0 y1)) to int_of_float (ceil (max y0 y1)) do
-                                arr.(j-int_of_float (floor miny))<-i::arr.(j-int_of_float (floor miny))
-                              done
-                          done;
-                          (path,arr)
-                     ) glyph
-  in
-  let rec inter y lines is result=match is with
-      []->result
-    | i::s->(
-        let (x0,y0,x1,y1) = lines.(i) in
-          if (min y0 y1)>y || (max y0 y1)<y then (
-            inter y lines s result
-          ) else (
-            let result'=
-              if y0=y then (
-                let _,y0',_,_=lines.((i-1+Array.length lines) mod (Array.length lines)) in
-                let y1'=ref y1 in
-                let j=ref (i+1) in
-                  while !y1'=y0 && (!j mod (Array.length lines))<>i do
-                    let _,y0',_,_=lines.(!j mod (Array.length lines)) in
-                      y1':=y0';
-                      incr j
-                  done;
-                  if (y0'-.y0)*.(!y1'-.y0) < 0. then x0::result else result
-              ) else
-                if y<>y1 then (x0+.(y-.y0)*.(x1-.x0)/.(y1-.y0))::result else result
-            in
-              inter y lines s result'
-          )
-      )
-  in
-  let arr=Array.make (int_of_float (ceil maxy) - int_of_float (floor miny) + 1) [] in
-    for y = 0 to Array.length arr-1 do
-      arr.(y)<-List.sort compare
-        (List.concat (List.map (fun (l,arr)-> inter (float_of_int (y+int_of_float miny)) l arr.(y) []) lines))
-    done;
-    (int_of_float (floor minx),int_of_float (floor miny),int_of_float (ceil maxx),int_of_float (ceil maxy), arr)
