@@ -1121,7 +1121,7 @@ let flatten env0 fixable str=
 let rec make_struct positions tree=
   match tree with
       Node s -> (
-        let (p,x,y)=try positions.(s.tree_paragraph) with _->(0,0.,0.) in
+        let (p,x,y)=positions.(s.tree_paragraph) in
         let rec make=function
             []->[]
           | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)

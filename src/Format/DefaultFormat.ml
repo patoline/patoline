@@ -1279,7 +1279,7 @@ module Output=functor(M:Driver)->struct
           with
               Not_found->()
         ) !crosslinks;
-        M.output ~structure:(make_struct positions (fst (top !structure))) pages file
+        M.output ~structure:(make_struct positions tree) pages file
       )
     in
     resolve 0 defaultEnv
