@@ -225,7 +225,7 @@ else if(e.which==39) next();
                              (round (255.*.fc.red))
                              (round (255.*.fc.green))
                              (round (255.*.fc.blue))
-                       | _->());
+                       (* | _->() *));
                      Printf.fprintf o "stroke=\"none\">";
                      Printf.fprintf o "<text x=\"%g\" y=\"%g\">"
                        (coord x.glyph_x) (coord (h-.x.glyph_y));

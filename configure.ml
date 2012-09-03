@@ -160,7 +160,7 @@ let _=
         (if !camlimages <> "" then "-DCAMLIMAGES " else "")
         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-    Printf.fprintf make "PACK=-package camomile%s%s\n"
+    Printf.fprintf make "PACK=-package rbuffer,camomile%s%s\n"
       (if !camlzip <> "" then " -package "^(!camlzip) else "")
       (if !camlimages <> "" then " -package "^(!camlimages) else "");
     if !lablgl <> "" && !lablglut <> "" then

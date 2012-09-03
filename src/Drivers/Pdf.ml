@@ -7,8 +7,6 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 
-module Buf=UTF8.Buf
-
 let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 
 type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
@@ -21,28 +19,25 @@ type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicod
 #define SUBSET
 
 #ifdef CAMLZIP
-let stream str=
+let stream buf=
   let tmp0=Filename.temp_file "txp_" "" in
   let tmp1=Filename.temp_file "txp_" "" in
   let f0=open_out_bin tmp0 in
-  List.iter (output_string f0) str;
+  Rbuffer.output_buffer f0 buf;
   close_out f0;
-    let ic = open_in_bin tmp0
-    and oc = open_out_bin tmp1 in
-      Zlib.compress (fun buf -> input ic buf 0 (String.length buf))
-        (fun buf len -> output oc buf 0 len);
-      close_in ic;
-      close_out oc;
-      let f=open_in_bin tmp1 in
-      let rec inp x=
-        if pos_in f>=in_channel_length f then List.rev x else
-          (let buf=String.create (min 256 (in_channel_length f-pos_in f)) in
-           really_input f buf 0 (String.length buf);
-           inp (buf::x))
-      in
-        "/Filter [/FlateDecode]", inp []
+  let ic = open_in_bin tmp0
+  and oc = open_out_bin tmp1 in
+  Zlib.compress (fun buf -> input ic buf 0 (String.length buf))
+    (fun buf len -> output oc buf 0 len);
+  close_in ic;
+  close_out oc;
+  let f=open_in_bin tmp1 in
+  let out_buf=Rbuffer.create 256 in
+  Rbuffer.add_channel out_buf f (in_channel_length f);
+  close_in f;
+  "/Filter [/FlateDecode]", out_buf
 #else
-  let stream str="",str
+  let stream buf="",buf
 #endif
 
 let output ?(structure:structure={name="";displayname=[];
@@ -51,7 +46,7 @@ let output ?(structure:structure={name="";displayname=[];
 
   let fileName = filename fileName in
   let outChan=open_out_bin fileName in
-  let pageBuf=Buf.create 1000 in
+  let pageBuf=Rbuffer.create 256 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
   let fonts=ref StrMap.empty in
   let resumeObject n=
@@ -136,7 +131,7 @@ let output ?(structure:structure={name="";displayname=[];
 
     fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
     for page=0 to Array.length pages-1 do
-      Buf.clear pageBuf;
+      Rbuffer.reset pageBuf;
       let pageLinks=ref [] in
       let pageImages=ref [] in
       let pageFonts=ref StrMap.empty in
@@ -159,13 +154,13 @@ let output ?(structure:structure={name="";displayname=[];
       let dashPattern=ref [] in
 
       let close_line ()=
-        if !openedWord then (Buf.add_string pageBuf ">"; openedWord:=false);
-        if !openedLine then (Buf.add_string pageBuf " ] TJ ";
+        if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+        if !openedLine then (Rbuffer.add_string pageBuf " ] TJ ";
                              openedLine:=false; xline:=0.);
       in
       let close_text ()=
         close_line ();
-        if !isText then (Buf.add_string pageBuf " ET "; isText:=false);
+        if !isText then (Rbuffer.add_string pageBuf " ET "; isText:=false);
         xt:=0.; yt:=0.
       in
       let change_stroking_color col =
@@ -178,7 +173,7 @@ let output ?(structure:structure={name="";displayname=[];
                 let g=max 0. (min 1. color.green) in
                 let b=max 0. (min 1. color.blue) in
                   strokingColor:=col;
-                  Buf.add_string pageBuf (sprintf "%f %f %f RG " r g b);
+                  Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
               )
         )
       in
@@ -192,7 +187,7 @@ let output ?(structure:structure={name="";displayname=[];
                 let g=max 0. (min 1. color.green) in
                 let b=max 0. (min 1. color.blue) in
                   nonStrokingColor:=col;
-                  Buf.add_string pageBuf (sprintf "%f %f %f rg " r g b);
+                  Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
               )
         )
       in
@@ -200,7 +195,7 @@ let output ?(structure:structure={name="";displayname=[];
         if j<> !lineJoin then (
           close_text ();
           lineJoin:=j;
-          Buf.add_string pageBuf (
+          Rbuffer.add_string pageBuf (
             match j with
                 Miter_join->" 0 j "
               | Round_join->" 1 j "
@@ -213,7 +208,7 @@ let output ?(structure:structure={name="";displayname=[];
         if c<> !lineCap then (
           close_text ();
           lineCap:=c;
-          Buf.add_string pageBuf (
+          Rbuffer.add_string pageBuf (
             match c with
                 Butt_cap->" 0 J "
               | Round_cap->" 1 J "
@@ -226,7 +221,7 @@ let output ?(structure:structure={name="";displayname=[];
         if w <> !lineWidth then (
           close_text ();
           lineWidth:=w;
-          Buf.add_string pageBuf (sprintf "%f w " w);
+          Rbuffer.add_string pageBuf (sprintf "%f w " w);
         )
       in
       let set_dash_pattern l=
@@ -234,18 +229,18 @@ let output ?(structure:structure={name="";displayname=[];
           close_text ();
           dashPattern:=l;
           match l with
-              []->(Buf.add_string pageBuf "[] 0 d ")
+              []->(Rbuffer.add_string pageBuf "[] 0 d ")
             | _::_->(
-                Buf.add_string pageBuf " [";
-                List.iter (fun x->Buf.add_string pageBuf (sprintf "%f " x)) l;
-                Buf.add_string pageBuf (sprintf "] 0. d ");
+                Rbuffer.add_string pageBuf " [";
+                List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " x)) l;
+                Rbuffer.add_string pageBuf (sprintf "] 0. d ");
               )
         )
       in
       let rec output_contents=function
         | Glyph gl->(
             change_non_stroking_color gl.glyph_color;
-            if not !isText then Buf.add_string pageBuf " BT ";
+            if not !isText then Rbuffer.add_string pageBuf " BT ";
             isText:=true;
             let gx=pt_of_mm gl.glyph_x in
             let gy=pt_of_mm gl.glyph_y in
@@ -292,31 +287,31 @@ let output ?(structure:structure={name="";displayname=[];
 
                 if idx <> !currentFont || size <> !currentSize then (
                   close_line ();
-                  Buf.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
+                  Rbuffer.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
                   currentFont:=idx;
                   currentSize:=size;
                 );
                 if !yt<>gy || (not !openedLine) then (
                   close_line ();
-                  Buf.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
+                  Rbuffer.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
                   xline:=0.;
                   xt:=gx;yt:=gy
                 );
 
-                if not !openedLine then (Buf.add_string pageBuf "["; openedLine:=true; xline:=0.);
+                if not !openedLine then (Rbuffer.add_string pageBuf "["; openedLine:=true; xline:=0.);
 
                 if !xt +. !xline <> gx then (
                   let str=sprintf "%f" (1000.*.(!xt+. !xline -. gx)/.size) in
                   let i=ref 0 in
                     while !i<String.length str && (str.[!i]='0' || str.[!i]='.' || str.[!i]='-') do incr i done;
                     if !i<String.length str then (
-                      if !openedWord then (Buf.add_string pageBuf ">"; openedWord:=false);
-                      Buf.add_string pageBuf str;
+                      if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+                      Rbuffer.add_string pageBuf str;
                       xline:= !xline -. size*.(float_of_string str)/.1000.;
                     )
                 );
-                if not !openedWord then (Buf.add_string pageBuf "<"; openedWord:=true);
-                Buf.add_string pageBuf (sprintf "%04x" num);
+                if not !openedWord then (Rbuffer.add_string pageBuf "<"; openedWord:=true);
+                Rbuffer.add_string pageBuf (sprintf "%04x" num);
                 xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
           )
         | Path (params,[])->()
@@ -339,20 +334,20 @@ let output ?(structure:structure={name="";displayname=[];
               List.iter (fun path->
                            let (x0,y0)=path.(0) in
                              if are_valid x0 0 && are_valid y0 0 then (
-                               Buf.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+                               Rbuffer.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
                                Array.iter (
                                  fun (x,y)->if are_valid x 0 && are_valid y 0 then (
                                    if Array.length x=2 && Array.length y=2 then (
                                      let x1=if Array.length x=2 then x.(1) else x.(0) in
                                      let y1=if Array.length y=2 then y.(1) else y.(0) in
-                                       Buf.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
+                                       Rbuffer.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
                                    ) else if Array.length x=3 && Array.length y=3 then (
-                                     Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                     Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
                                                                (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
                                                                (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
                                                                (pt_of_mm x.(2)) (pt_of_mm y.(2)));
                                    ) else if Array.length x=4 && Array.length y=4 then (
-                                     Buf.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                     Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
                                                                (pt_of_mm x.(1)) (pt_of_mm y.(1))
                                                                (pt_of_mm x.(2)) (pt_of_mm y.(2))
                                                                (pt_of_mm x.(3)) (pt_of_mm y.(3)));
@@ -362,15 +357,15 @@ let output ?(structure:structure={name="";displayname=[];
                              )
                       ) paths;
             match params.fillColor, params.strokingColor with
-                None, None-> Buf.add_string pageBuf "n "
+                None, None-> Rbuffer.add_string pageBuf "n "
               | None, Some col -> (
-                  if params.close then Buf.add_string pageBuf "s " else
-                    Buf.add_string pageBuf "S "
+                  if params.close then Rbuffer.add_string pageBuf "s " else
+                    Rbuffer.add_string pageBuf "S "
                 )
-              | Some col, None -> (Buf.add_string pageBuf "f ")
+              | Some col, None -> (Rbuffer.add_string pageBuf "f ")
               | Some fCol, Some sCol -> (
-                  if params.close then Buf.add_string pageBuf "b " else
-                    Buf.add_string pageBuf "B "
+                  if params.close then Rbuffer.add_string pageBuf "b " else
+                    Rbuffer.add_string pageBuf "B "
                 )
           )
         | Link l->pageLinks:= l:: !pageLinks
@@ -389,11 +384,10 @@ let output ?(structure:structure={name="";displayname=[];
         close_text ();
         (* Objets de la page *)
         let contentObj=beginObject () in
-        let contStr=Buf.contents pageBuf in
-        let filt, data=stream [contStr] in
-        let len=List.fold_left (fun x y->x+String.length y) 0 data in
+        let filt, data=stream pageBuf in
+        let len=Rbuffer.length data in
           fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-          List.iter (fprintf outChan "%s") data;
+          Rbuffer.output_buffer outChan data;
           fprintf outChan "\nendstream";
           endObject ();
           resumeObject pageObjects.(page);
@@ -492,11 +486,11 @@ let output ?(structure:structure={name="";displayname=[];
 
     (* Tous les dictionnaires de unicode mapping *)
     StrMap.iter (fun _ x->
-                   let buf=Buf.create 256 in
-                     Buf.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
-                     Buf.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
-                     Buf.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
-                     Buf.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+                   let buf=Rbuffer.create 256 in
+                     Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
+                     Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
+                     Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
+                     Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
                      let range=ref [] in
                      let one=ref [] in
                      let multRange=ref [] in
@@ -568,47 +562,47 @@ let output ?(structure:structure={name="";displayname=[];
                        make_cmap x.revFontGlyphs;
                        let rec print_utf8 utf idx=
                          try
-                           Buf.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
+                           Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
                            print_utf8 utf (UTF8.next utf idx)
                          with
                              _->()
                        in
                        let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
                          if one_nonempty<>[] then (
-                           Buf.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
+                           Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
                            List.iter (fun (a,b)->
-                                        Buf.add_string buf (sprintf "<%04x> <" a);
+                                        Rbuffer.add_string buf (sprintf "<%04x> <" a);
                                         print_utf8 b (UTF8.first b);
-                                        Buf.add_string buf ">\n"
+                                        Rbuffer.add_string buf ">\n"
                                      ) one_nonempty;
-                           Buf.add_string buf "endbfchar\n"
+                           Rbuffer.add_string buf "endbfchar\n"
                          );
 
                          let mult_nonempty=List.filter (fun (_,b)->b<>[])
                            (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
 
                            if !range<>[] || mult_nonempty<>[] then (
-                             Buf.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
-                             List.iter (fun (a,b,c)->Buf.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
+                             Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
+                             List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
                                                                            a b (UChar.uint_code c))) !range;
                              List.iter (fun (a,b)->
-                                          Buf.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
+                                          Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
                                           List.iter (fun c->
-                                                       Buf.add_string buf "<";
+                                                       Rbuffer.add_string buf "<";
                                                        print_utf8 c (UTF8.first c);
-                                                       Buf.add_string buf ">") b;
-                                          Buf.add_string buf "]\n"
+                                                       Rbuffer.add_string buf ">") b;
+                                          Rbuffer.add_string buf "]\n"
                                        ) mult_nonempty;
-                             Buf.add_string buf "endbfrange\n"
+                             Rbuffer.add_string buf "endbfrange\n"
                            );
-                           Buf.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
+                           Rbuffer.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
 
 
                            resumeObject x.fontToUnicode;
-                           let filt, data=stream [Buf.contents buf] in
-                           let len=List.fold_left (fun x y->x+String.length y) 0 data in
+                           let filt, data=stream buf in
+                           let len=Rbuffer.length data in
                            fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-                           List.iter (fprintf outChan "%s") data;
+                           Rbuffer.output_buffer outChan data;
                            fprintf outChan "\nendstream";
                            endObject ()
                 ) !fonts;
@@ -653,20 +647,17 @@ let output ?(structure:structure={name="";displayname=[];
                      | Fonts.CFF y->(
                        let file=open_in y.CFF.file in
                        seek_in file y.CFF.offset;
-                       let rec inp x=
-                         if pos_in file >= y.CFF.offset + y.CFF.size then List.rev x else
-                           (let buf=String.create (min 256 (y.CFF.offset + y.CFF.size - pos_in file)) in
-                            really_input file buf 0 (String.length buf);
-                            inp (buf::x))
-                       in
-                       inp [])
+                       let buf=Rbuffer.create 256 in
+                       Rbuffer.add_channel buf file y.CFF.size;
+                       buf
+                     )
                    (* | _->raise Fonts.Not_supported *)
                    in
 #endif
                    let filt, data=stream program in
-                   let len=List.fold_left (fun x y->x+String.length y) 0 data in
+                   let len=Rbuffer.length data in
                    fprintf outChan "<< /Length %d /Subtype /CIDFontType0C %s>>\nstream\n" len filt;
-                   List.iter (fprintf outChan "%s") data;
+                   Rbuffer.output_buffer outChan data;
                    fprintf outChan "\nendstream";
                    endObject();
                 ) !fonts;
