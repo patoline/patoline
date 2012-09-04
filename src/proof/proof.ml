@@ -43,7 +43,7 @@ let _=
                      translate x 0.
                        (resize (size/.1000.)
                           (Path ({OutputCommon.default with lineWidth=0.01},
-                                 (List.map (fun a->Array.of_list (List.rev a)) (outlines gl))))) :: l
+                                 (List.map (fun a->Array.of_list a) (outlines gl))))) :: l
 
                  ))
           )
