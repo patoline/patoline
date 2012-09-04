@@ -42,39 +42,46 @@ let readInt2 f=
   let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
     d
 
+let strInt2 s i x=
+  s.[i]<-char_of_int (x lsr 8);
+  s.[i+1]<-char_of_int (x land 0xff)
+
+let strInt4 s i x=
+  let a=x lsr 8 in
+  let b=a lsr 8 in
+  let c=b lsr 8 in
+  s.[i]<-char_of_int (c land 0xff);
+  s.[i+1]<-char_of_int (b land 0xff);
+  s.[i+2]<-char_of_int (a land 0xff);
+  s.[i+3]<-char_of_int (x land 0xff)
+
+
 let buf2="  "
 let writeInt2 f x=
-  buf2.[0]<-char_of_int (x lsr 8);
-  buf2.[1]<-char_of_int (x land 0xff);
+  strInt2 buf2 0 x;
   output_string f buf2
 
 let buf4="    "
 let writeInt4 f x=
-  let a=x lsr 8 in
-  let b=a lsr 8 in
-  let c=b lsr 8 in
-  buf4.[0]<-char_of_int (c land 0xff);
-  buf4.[1]<-char_of_int (b land 0xff);
-  buf4.[2]<-char_of_int (a land 0xff);
-  buf4.[3]<-char_of_int (x land 0xff);
+  strInt4 buf4 0 x;
   output_string f buf4
 
 
 let bufInt1 b x=
-  Buffer.add_char b (char_of_int (x land 0xff))
+  Rbuffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt2 b x=
-  Buffer.add_char b (char_of_int ((x lsr 8) land 0xff));
-  Buffer.add_char b (char_of_int (x land 0xff))
+  Rbuffer.add_char b (char_of_int ((x lsr 8) land 0xff));
+  Rbuffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt4 b x=
   let u=x lsr 8 in
   let v=u lsr 8 in
   let w=v lsr 8 in
-  Buffer.add_char b (char_of_int (w land 0xff));
-  Buffer.add_char b (char_of_int (v land 0xff));
-  Buffer.add_char b (char_of_int (u land 0xff));
-  Buffer.add_char b (char_of_int (x land 0xff))
+  Rbuffer.add_char b (char_of_int (w land 0xff));
+  Rbuffer.add_char b (char_of_int (v land 0xff));
+  Rbuffer.add_char b (char_of_int (u land 0xff));
+  Rbuffer.add_char b (char_of_int (x land 0xff))
 
 
 let readInt4 f=
@@ -185,7 +192,7 @@ let open_in_bin_cached f=
     bin_cache:=StrMap.add f (open_in_bin f) !bin_cache
   );
   StrMap.find f !bin_cache
-  
+
 
 let open_in_cached f=
 #ifdef WIN32

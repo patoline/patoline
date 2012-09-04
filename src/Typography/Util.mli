@@ -16,12 +16,15 @@ val readInt2 : in_channel -> int
 (** reads a 32-bit, big endian int *)
 val readInt4 : in_channel -> int
 
+val strInt2 : string -> int -> int -> unit
+val strInt4 : string -> int -> int -> unit
+
 val writeInt2 : out_channel -> int -> unit
 val writeInt4 : out_channel -> int -> unit
 
-val bufInt1 : Buffer.t -> int -> unit
-val bufInt2 : Buffer.t -> int -> unit
-val bufInt4 : Buffer.t -> int -> unit
+val bufInt1 : Rbuffer.t -> int -> unit
+val bufInt2 : Rbuffer.t -> int -> unit
+val bufInt4 : Rbuffer.t -> int -> unit
 
   (** converts a 16 bit integer in two's complement representation to a
       caml int *)
