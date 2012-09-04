@@ -1,4 +1,3 @@
-open CamomileLibrary
 open Util
 open Bezier
 open FTypes
@@ -17,7 +16,7 @@ type font= { file:string; offset:int; size:int; offSize:int;
            }
 
 type glyph= { glyphFont:font; glyphNumber:glyph_id; type2:string;
-              glyphContents:UTF8.t;
+              glyphContents:string;
               mutable glyphWidth:float;
               mutable glyphX0:float; mutable glyphX1:float;
               mutable glyphY0:float; mutable glyphY1:float
@@ -347,6 +346,7 @@ let cardinal font=
 
 
 let outlines glyph=Type2.outlines_ glyph.glyphFont.subrIndex.(0) glyph.glyphFont.gsubrIndex glyph.type2 false
+
 let glyphWidth glyph=
   if glyph.glyphWidth=infinity then
     glyph.glyphWidth<-(
@@ -492,6 +492,31 @@ let writeCFFInt buf x=
       Rbuffer.add_char buf (char_of_int (y land 0xff))
   )
 
+let writeCFFFloat buf x=
+  let s=Printf.sprintf "%f" x in
+  let tmp=ref 0 in
+  let i=ref 0 in
+  let parity=ref 0 in
+  while !i<String.length s do
+
+    let nibble=
+      match s.[!i] with
+          '0'->0x0 | '1'->0x1 | '2'->0x2 | '3'->0x3 | '4'->0x4
+        | '5'->0x5 | '6'->0x6 | '7'->0x7 | '8'->0x8 | '9'->0x9
+        | '.'->0xa
+        | 'e' when s.[!i+1]='-' -> (incr i; 0xb)
+        | 'e'->0xc
+        | '-'->0xe
+        | _->assert false
+    in
+    (if !parity mod 2=0 then tmp:=nibble lsl 4 else
+        Rbuffer.add_char buf (char_of_int (!tmp lor nibble)));
+    incr parity;
+    incr i
+  done;
+  if !parity mod 2=0 then Rbuffer.add_char buf (char_of_int 0xff) else
+    Rbuffer.add_char buf (char_of_int (!tmp lor 0xf))
+
 
 let rec writeDict buf=function
     []->()
@@ -508,13 +533,13 @@ let rec writeDict buf=function
         writeDict buf s
     )
   | (op,stack)::s->(
-      try
-        List.iter (fun x->writeCFFInt buf (int_of_num x)) (List.rev stack);
-        if op>0xff then Rbuffer.add_char buf (char_of_int (op lsr 8));
-        Rbuffer.add_char buf (char_of_int (op land 0xff));
-        writeDict buf s
-      with
-          _->writeDict buf s
+    List.iter (fun x->match x with
+        CFFInt y->writeCFFInt buf y
+      | CFFFloat y->writeCFFFloat buf y
+    ) (List.rev stack);
+    if op>0xff then Rbuffer.add_char buf (char_of_int (op lsr 8));
+    Rbuffer.add_char buf (char_of_int (op land 0xff));
+    writeDict buf s
     )
 
 let readIndex f idx_off=
@@ -565,15 +590,16 @@ type encoding=
 
 
 let subset font gls=
-  let buf=Rbuffer.create 100 in
+  let buf=Rbuffer.create 256 in
+  let headersize=4 in
+  Rbuffer.add_char buf (char_of_int 1);
+  Rbuffer.add_char buf (char_of_int 0);
+  Rbuffer.add_char buf (char_of_int headersize);
+  Rbuffer.add_char buf (char_of_int 4);
   let f=open_in_bin_cached font.file in
-  seek_in f (font.offset+2);
-  let headersize=input_byte f in
-  seek_in f font.offset;
-  Rbuffer.add_channel buf f headersize;
   let name=
     let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in
-    seek_in f (font.offset+headersize);
+    seek_in f (font.nameIndex.(0));
     really_input f buf_ 0 (String.length buf_);
     buf_
   in
