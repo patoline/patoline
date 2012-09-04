@@ -3,12 +3,11 @@ include ../Makefile.config
 CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt $(PACK)
 CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt $(PACK)
 
-SFNT=Fonts/Sfnt/unicode_ranges.cmx Fonts/Sfnt/Sfnt.cmx
+SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx Fonts/CFF.cmx Fonts/Sfnt/unicode_ranges.cmx Fonts/Cmap.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
-SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx Fonts/CFF.cmx Fonts/Sfnt/Cmap.cmx Fonts/Opentype.cmx Fonts.cmx $(SFNT) Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
+VPATH=Fonts:Fonts/Sfnt:Output
 
-
-all:Typography.cmxa Typography.p.cmxa Typography.cma
+all:Typography.cmxa #Typography.p.cmxa Typography.cma
 
 Typography.cmxa:Typography.cmx
 	$(CAMLOPT) -a -o Typography.cmxa Typography.cmx
@@ -30,31 +29,37 @@ Util.cmx : new_map.cmx Config.cmx Util.cmi
 Util.p.cmx : new_map.p.cmx Config.p.cmx Util.cmi
 
 Fonts.cmo : Util.cmi Fonts/Opentype.cmo Fonts/FTypes.cmi Fonts/CFF.cmo Bezier.cmi
-Fonts.cmx : Util.cmx Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cmx
-Fonts.p.cmx : Util.p.cmx Fonts/Opentype.p.cmx Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Bezier.p.cmx
-Fonts.cmi : Fonts.cmo
+Fonts.cmx : Util.cmi Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cmx
+Fonts.p.cmx : Util.cmi Fonts/Opentype.p.cmx Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Bezier.p.cmx
+Fonts.cmi : Util.cmi Fonts.cmo
 
-Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/CFF.cmo Fonts/Sfnt/Cmap.cmo
-Fonts/Opentype.cmx:Fonts/FTypes.cmx Fonts/CFF.cmx  Fonts/Sfnt/Cmap.cmx
-Fonts/Opentype.p.cmx:Fonts/FTypes.cmi Fonts/CFF.p.cmx Fonts/Sfnt/Cmap.p.cmx
+Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/FTypes.cmo Fonts/CFF.cmo Cmap.cmo unicode_ranges.cmo
+Fonts/Opentype.cmx:Fonts/FTypes.cmi Fonts/FTypes.cmx Fonts/CFF.cmx  Cmap.cmx unicode_ranges.cmx
+Fonts/Opentype.p.cmx:Fonts/FTypes.cmi Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Cmap.p.cmx unicode_ranges.p.cmx
 Fonts/Opentype.cmi:Fonts/Opentype.cmo
 
-Fonts/CFF.cmo:Fonts/FTypes.cmi Util.cmi Bezier.cmi Fonts/Type2.cmo Fonts/CFFStd.cmo
-Fonts/CFF.cmx:Fonts/FTypes.cmi Util.cmi Bezier.cmi Bezier.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx
-Fonts/CFF.p.cmx:Fonts/FTypes.cmi Util.cmi Bezier.cmi Bezier.p.cmx Fonts/Type2.p.cmx Fonts/CFFStd.p.cmx
-Fonts/CFF.cmi:Fonts/CFF.cmo
+Fonts/CFF.cmo:FTypes.cmi Util.cmi Bezier.cmi Bezier.cmo Type2.cmo CFFStd.cmo
+Fonts/CFF.cmx:FTypes.cmi Util.cmi Bezier.cmi Bezier.cmx Type2.cmx CFFStd.cmx
+Fonts/CFF.p.cmx:FTypes.cmi Util.cmi Bezier.cmi Bezier.p.cmx Type2.p.cmx CFFStd.p.cmx
+Fonts/CFF.cmi:CFF.cmo
 
-Fonts/FTypes.cmo:Fonts/FTypes.cmi Bezier.cmi
-Fonts/FTypes.cmx:Fonts/FTypes.cmi Bezier.cmx
-Fonts/FTypes.p.cmx:Fonts/FTypes.cmi Bezier.p.cmx
+Fonts/FTypes.cmo:FTypes.cmi Bezier.cmi Util.cmi
+Fonts/FTypes.cmx:FTypes.cmi Bezier.cmi Util.cmi
+Fonts/FTypes.p.cmx:FTypes.cmi Bezier.cmi Util.cmi
 
 Fonts/Sfnt/Sfnt.cmo:Util.cmi Fonts/Opentype.cmi Fonts.cmo Fonts/Sfnt/unicode_ranges.cmo
 Fonts/Sfnt/Sfnt.cmx:Util.cmi Fonts/Opentype.cmi Fonts.cmx Fonts/Sfnt/unicode_ranges.cmx
 Fonts/Sfnt/Sfnt.p.cmx:Util.cmi Fonts/Opentype.cmi Fonts.p.cmx Fonts/Sfnt/unicode_ranges.p.cmx
 
+Fonts/Cmap.cmo:Util.cmi
+Fonts/Cmap.cmx:Util.cmi
+Fonts/Cmap.p.cmx:Util.cmi
+
 Fonts/Sfnt/unicode_ranges.ml:Fonts/Sfnt/make_unicode_ranges.ml Fonts/Sfnt/unicode
 	ocamlc -o Fonts/Sfnt/make_unicode_ranges str.cma Fonts/Sfnt/make_unicode_ranges.ml
 	cd Fonts/Sfnt; ./make_unicode_ranges
+
+
 
 Output/OutputCommon.cmo:Output/OutputCommon.cmi Fonts.cmo
 Output/OutputCommon.cmx:Output/OutputCommon.cmi Fonts.cmx
@@ -129,7 +134,7 @@ Bezier.p.cmx:Bezier.cmi
 
 %.cmx:%.ml
 	$(CAMLOPT) -for-pack Typography  -c -o $@ $<
-%.p.cmx:%.ml %.cmx
+%.p.cmx:%.ml
 	$(CAMLOPT) -p -for-pack Typography  -c -o $@ $*.ml
 %.cmo:%.ml
 	$(CAMLC) -c -o $@ $<
@@ -139,4 +144,5 @@ Bezier.p.cmx:Bezier.cmi
 clean:
 	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd Fonts; rm -f *.o *.cm[iox]
+	cd Fonts/Sfnt; rm -f *.o *.cm[iox]
 	cd Output; rm -f *.o *.cm[iox]
