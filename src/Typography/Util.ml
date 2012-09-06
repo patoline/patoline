@@ -43,7 +43,7 @@ let readInt2 f=
     d
 
 let strInt2 s i x=
-  s.[i]<-char_of_int (x lsr 8);
+  s.[i]<-char_of_int ((x lsr 8) land 0xff);
   s.[i+1]<-char_of_int (x land 0xff)
 
 let strInt4 s i x=
