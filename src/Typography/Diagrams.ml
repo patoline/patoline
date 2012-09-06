@@ -977,14 +977,16 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    anchors = anchors
 	  })})
 
-    let (default_shape : user Document.environment -> Transfo.Style.t),
-      default_shape_pet = 
-      Pet.register "node default shape" 
-	~depends:[shape_pet] 
-	(fun pet env -> 
-	{ pet = pet ; transfo = (fun transfos info -> 
-	  (* Printf.fprintf stderr "default node shape\n" ;  *)
-	  if info.midCurve = [] then (rectangle env).transfo transfos info else info) })
+    let (default_shape : user Document.environment -> Transfo.Style.t) = fun env -> rectangle env
+
+    (* let (default_shape : user Document.environment -> Transfo.Style.t), *)
+    (*   default_shape_pet = *)
+    (*   Pet.register "node default shape" *)
+    (* 	~depends:[shape_pet] *)
+    (* 	(fun pet env -> *)
+    (* 	{ pet = pet ; transfo = (fun transfos info -> *)
+    (* 	  (\* Printf.fprintf stderr "default node shape\n" ;  *\) *)
+    (* 	  if info.midCurve = [] then (rectangle env).transfo transfos info else info) }) *)
 
     let kappa = 0.5522847498
 
@@ -1159,6 +1161,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       open S
 
       let default_matrix_node env = Node.([mainAnchor `Base ; anchor `Base ; rectangle env])
+      let default_main_node env = Node.([mainAnchor `Center ; anchor `Pdf ; rectangle env])
 
       let between_centers disty distx _ i j =
 	(float_of_int j *. distx), -. (float_of_int i *. disty) 
@@ -1280,7 +1283,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    let v = Vector.of_points pdf_start pdf_end in
 	    let nodes = map (Node.translate v) info.nodes in
 	    { info with 
-	      mainNode = { node_info with node_contents = [] } ; 
+	      mainNode = { node_info with node_contents = [] }; 
 	      nodes = nodes })})
 	
       (* let wrap,wrap_pet =  *)
@@ -1585,7 +1588,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  { info_black with 
 	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
 	    curves = (info_black.curves @ info_white.curves) }) })
-
 
       let base_arrow pet head_params transfos edge_info=
 	let info = edge_info.tip_info in
@@ -1901,35 +1903,47 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
     open Box
-    let xto ?margin:(margin=2.) a =
-      [Maths.Binary { Maths.bin_priority = 0 ; Maths.bin_drawing = Maths.Normal 
+
+
+
+    let default_where ms =  
+      let point_of_node n = n.anchor `Main in
+      Point.middle (point_of_node ms.(0).(0)) (point_of_node ms.(0).(1))
+
+    let default_deco env ms = [], default_where ms
+
+    let xarrow ?margin:(margin=2.) ?decoration:(deco=default_deco) 
+	a = 
+      [Maths.Binary { Maths.bin_priority = 2 ; Maths.bin_drawing = Maths.Normal 
 	  (true, 
            (Maths.noad
               (fun env st->
 		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr in
+		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr 
+		in
 		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in
 		let m,ms = Matrix.(make env
 		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
 		   mainNode Node.([
-		   anchor `Pdf;
 		   innerSep 0. ; outerSep 0. ;
+		     rectangle env ;
+		     anchor `Pdf ;
 		   at (0., ex env)])] 
 		  Node.([[
-		     ([innerSep 0.;outerSep 0.], []) ; 
+		     ([innerSep 0.;outerSep 0.], []);
 		     ([innerSep 0.;outerSep 0.], [])
 		   ]]))
 		in
-		let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
+		let e, where = deco env ms in
 		let l = Node.(make_output
-		  [outerSep 0.2 ; innerSep 0.; anchor `South; 
-		   default_shape env ; at (e.anchor (`Temporal 0.5))] dr)
+		  [outerSep 0.2 ; innerSep 0.; anchor `South;
+		   default_shape env ; at where] dr)
 		in
 		let drawn = 
-		  drawing_inline
+		  drawing
 		    (List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
 		       []
-		       (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
+		       (l :: m :: (e @ (List.flatten (Array.to_list (Array.map Array.to_list ms))))))
 		in 
 		let width = drawn.drawing_min_width in
 		let drawn = { drawn with
@@ -1943,43 +1957,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		      Maths.bin_right = [] }
       ]
 
-    let xot ?margin:(margin=2.) a =
-      [Maths.Binary { Maths.bin_priority = 0 ; Maths.bin_drawing = Maths.Normal 
-	  (true, 
-           (Maths.noad
-              (fun env st->
-		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr in
-		let m,ms = Matrix.(make env
-		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
-		   mainNode Node.([
-		     anchor `Pdf;
-		     innerSep 0. ; outerSep 0. ;
-		     at (0., ex env)])]
-		     Node.([[
-		     ([innerSep 0.;outerSep 0.], []) ; 
-		     ([innerSep 0.;outerSep 0.], [])
-		   ]]))
-		in
-		let e = Edge.(make [draw;lineWidth 0.1;arrow] ms.(0).(1) ms.(0).(0)) in
-		let l = Node.(make_output
-		  [outerSep 0.2 ; innerSep 0.; default_shape env ; 
-		   anchor `South; at (e.anchor (`Temporal 0.5))] dr) 
-		in
-		let drawn = 
-		  drawing_inline 
-		    (List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
-		       []
-		       (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
-		in 
-		let width = drawn.drawing_min_width  (* -. 1.5 *. env.size *. (ex env) *) in
-		let drawn = { drawn with
-		  drawing_min_width = width ;
-		  drawing_nominal_width = width ;
-		  drawing_max_width = width }
-		in
-		[Box.Drawing drawn])),
-	   true);
-		      Maths.bin_left = [] ; 
-		      Maths.bin_right = [] }
-      ]
+    let xto = xarrow ~decoration:(fun env ms ->
+      let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
+      [e], default_where ms)
+    let xot = xarrow ~decoration:(fun env ms ->
+      let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(1) ms.(0).(0) in
+      [e], default_where ms)
