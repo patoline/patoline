@@ -1,52 +1,37 @@
 
+
 \Caml(
 open Diagrams
 
-    let xto ?margin:(margin=2.) a =
-      [Maths.Binary { Maths.bin_priority = 0 ; Maths.bin_drawing = Maths.Normal 
-	  (true, 
-           (Maths.noad
-              (fun env st->
-		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
-		let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
-		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in
-		let m,ms = Matrix.(make env
-		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
-		   mainNode Node.([
-		   anchor `Pdf;
-		   innerSep 0. ; outerSep 0. ;
-		   at (0., ex env)])] 
-		  Node.([[
-		     ([innerSep 0.;outerSep 0.], []) ; 
-		     ([innerSep 0.;outerSep 0.], [])
-		   ]]))
-		in
-		let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
-		let l = Node.(make_output
-		  [outerSep 0.2 ; innerSep 0.; anchor `South; 
-		   default_shape env ; at (e.anchor (`Temporal 0.5))] dr)
-		in
-		let drawn = 
-		  drawing_inline
-		    (List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
-		       []
-		       (l :: e :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
-		in 
-		let width = drawn.drawing_min_width in
-		let drawn = { drawn with
-		  drawing_min_width = width ;
-		  drawing_nominal_width = width ;
-		  drawing_max_width = width }
-		in
-		[Box.Drawing drawn])),
-	   true);
-		      Maths.bin_left = [] ; 
-		      Maths.bin_right = [] }
-      ]
+    let xmodto ?width:(width=1.5) a = xarrow 
+      ~where:(fun m ms env -> 
+	let x,y = default_where m ms env in
+	(x, y +. 0.5 *. width))
+      ~decoration:(fun env l m ms ->
+	let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
+	let (x,y) = e.anchor (`Temporal 0.5) in
+	let y0 = y -. 0.5 *. width in
+	let y1 = y +. 0.5 *. width in
+	let dash = Edge.(make [draw;lineWidth 0.05] (coord (x,y0)) (coord (x,y1))) in
+	[e;dash]) 
+      a
+
+    let xtostar = xarrow ~decoration:(fun env l m ms ->
+      let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
+      let s = Node.(make env [innerSep 0.;outerSep 0.;at (ms.(0).(1).anchor `NorthWest) ; anchor `South] 
+		    <<$\lambda$>>)
+      in
+      [s;e]
+    )
+
 )
 
 
-$A \xto{Agbcdef} pP$
+$A \xto{Agbcde} pPq$
+
+$A \xmodto{Agbcde} pPq$
+
+$A \xtostar{Agbcde} pPq$
 
 $a \xto{\id([])} b$
 
