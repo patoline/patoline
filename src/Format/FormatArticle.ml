@@ -88,6 +88,13 @@ module Env_example=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [tT ("Example "^num^"."); (tT " ")]
    end)
+module Env_hypothesis=Default.Make_theorem
+  (struct
+    let refType="hypothesis"
+    let counter="hypothesis"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Hypothesis "^num^"."); (tT " ")]
+   end)
 
 (* module Env_proof=Default.Proof *)
 
