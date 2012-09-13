@@ -1,12 +1,24 @@
 open FTypes
 open Util
 open CFF
-open CamomileLibrary
+open CamomileLibraryDefault.Camomile
 let offsetTable=12
 let dirSize=16
 exception Table_not_found of string
 
-type font = CFF of (CFF.font*int)
+type ttf={
+  ttf_version:string;
+  ttf_file:string;
+  ttf_offset:int;
+}
+type cff={
+  cff_font:CFF.font;
+  cff_offset:int
+}
+type font =
+    CFF of cff
+  | TTF of ttf
+type glyph = CFFGlyph of (cff*CFF.glyph) | TTFGlyph of (ttf*glyph_id)
 
 let tableLookup table file off=
   seek_in file (off+4);
@@ -50,164 +62,351 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
     match typ with
         "OTTO"->
           let (a,b)=tableLookup "CFF " f off in
-            CFF (CFF.loadFont file ~offset:(off+a) ~size:b, off)
-      | _->failwith ("OpenType : format non reconnu : "^typ)
+          CFF {cff_font=CFF.loadFont file ~offset:(off+a) ~size:b;cff_offset=off}
+      | version->TTF { ttf_version=version;
+                       ttf_offset=off;
+                       ttf_file=file }
+
+
+
+let getNames font off=
+  try
+    let file=open_in_bin_cached font in
+    let (a,b)=tableLookup "name" file off in
+    seek_in file a;
+    let format=readInt2 file in
+    if format=0 then (
+      let count=readInt2 file in
+      let stringOffset=readInt2 file in
+      let rec get_names i m=
+        if i>=count then m else (
+          seek_in file (a+6+12*i);
+          let platformID=readInt2 file in
+          let encodingID=readInt2 file in
+          let languageID=readInt2 file in
+          let nameID=readInt2 file in
+          let length=readInt2 file in
+          let offset=readInt2 file in
+          let str=String.create length in
+          seek_in file (a+stringOffset+offset);
+          really_input file str 0 length;
+          let m'=
+            try
+              match platformID,encodingID with
+                  1,0->(
+                    let utf8=CharEncoding.recode_string
+                      (CharEncoding.of_name "MACINTOSH")
+                      (CharEncoding.of_name "UTF-8")
+                      str
+                    in
+                    ((languageID,nameID,utf8)::m)
+                  )
+                | 3,1->(                (* UTF-16 *)
+                  let utf8=CharEncoding.recode_string
+                    (CharEncoding.of_name "UTF-16")
+                    (CharEncoding.of_name "UTF-8")
+                    str
+                  in
+                  ((languageID,nameID,utf8)::m)
+                )
+                | a,b->(
+                  Printf.fprintf stderr "encoding : %d %d\n" a b;
+                  m
+                )
+            with
+                Not_found->m
+          in
+          get_names (i+1) m'
+        )
+      in
+      get_names 0 []
+    ) else []
+  with
+      Not_found->[]
+
+
+
+
 
 let fontName ?index:(idx=0) f =
   match f with
-      CFF (x,_)->CFF.fontName x ~index:idx
+      CFF x->CFF.fontName x.cff_font ~index:idx
+    | TTF ttf->
+      let name={postscript_name="";full_name="";family_name="";subfamily_name=""} in
+      let rec getName l m=match l with
+          []->m
+        | (lang,nameID,h)::s->(
+          let name=try IntMap.find lang m with Not_found->name in
+          (match nameID with
+              1->name.family_name<-h
+            | 2->name.subfamily_name<-h
+            | 4->name.full_name<-h
+            | 6->name.postscript_name<-h
+            | _->());
+          getName s (IntMap.add lang name m)
+        )
+      in
+      let lang=getName (getNames ttf.ttf_file ttf.ttf_offset) IntMap.empty in
+      snd (IntMap.min_binding lang)
 
-let cardinal=function
-    CFF (f,_)->CFF.cardinal f
+
+let cardinal f=
+  let file,offset0=match f with
+      CFF font->
+        let file=open_in_bin_cached font.cff_font.file in
+        file,font.cff_offset
+    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
+  in
+  let (a,b)=tableLookup "maxp" file offset0 in
+  seek_in file (a+4);
+  readInt2 file
 
 
-type glyph = CFFGlyph of (font*CFF.glyph)
 
 let glyph_of_uchar font0 char0=
-  match font0 with
-      CFF (font,offset0)->
-        let file=open_in_bin_cached font.file in
-        let char=UChar.code char0 in
-        let (a,b)=tableLookup "cmap" file offset0 in
-        seek_in file (a+2);
-        let numTables=readInt2 file in
+  let file,offset0=match font0 with
+      CFF (font)->font.cff_font.file, font.cff_offset
+    | TTF ttf->ttf.ttf_file,ttf.ttf_offset
+  in
+  let file=open_in_bin_cached file in
+  let char=UChar.code char0 in
+  let (a,b)=tableLookup "cmap" file offset0 in
+  seek_in file (a+2);
+  let numTables=readInt2 file in
 
-        let rec read_tables table=
-          if table>=numTables then 0 else (
-            seek_in file (a+8+8*table);
-            let offset=a+readInt4 file in
-            seek_in file offset;
-            let t=readInt2 file in
-            (match t with
-                0->if char<256 then (
-                  seek_in file (offset+6+char);
-                  let cid=input_byte file in
-                  if cid<>0 then cid else read_tables (table+1)
-                ) else read_tables (table+1)
-              | 2->
-                (let i=(char lsr 8) land 0xff in
-                 let j=char land 0xff in
-                 let k=(seek_in file (offset+6+i*2); readInt2 file) lsr 3 in
-                 let subHeaders=offset+6+256*2+k*8 in
-                 if k=0 then
-                   (seek_in file (subHeaders+6);
-                    let idRangeOffset=readInt2 file in
-                    seek_in file (subHeaders+idRangeOffset+i*2);
-                    let cid=readInt2 file in
-                    if cid<>0 then cid else read_tables (table+1)
-                   )
-                 else
-                   (let firstCode=seek_in file subHeaders; readInt2 file in
-                    let entryCount=seek_in file (subHeaders+2); readInt2 file in
-                    let idDelta=seek_in file (subHeaders+4); readInt file 2 in
-                    let idDelta=if idDelta>=0x8000 then idDelta-0x8000 else idDelta in
-                    let idRangeOffset=seek_in file (subHeaders+6); readInt2 file in
-                    if j>=firstCode && j < (firstCode+entryCount) then
-                      (let p=seek_in file (subHeaders+8+idRangeOffset+j*2); readInt2 file in
-                       let cid=if p=0 then p else p+idDelta in
-                       if cid<>0 then cid else read_tables (table+1))
-                    else
-                      read_tables (table+1)
-                   )
-                )
-              | 4->(
-                let sc2=seek_in file (offset+6); readInt2 file in
-                let rec smallestEnd i j=
-                  if j<=i then i else
-                    let middle=((i+j) lsr 1) land 0xfffe in
-                    let end_=seek_in file (offset+14+middle); readInt2 file in
-                    if char>end_ then
-                      smallestEnd (middle+2) j
-                    else
-                      smallestEnd i middle
-                in
-                let seg=smallestEnd 0 (sc2-2) in
-                let start=seek_in file (offset+16+sc2+seg); readInt2 file in
-                if char>=start then (
-                  let delta=seek_in file (offset+16+2*sc2+seg); readInt2 file in
-                  let delta=if delta>=0x8000 then delta-0x8000 else delta in
-                  let p_idrOffset=offset+16+3*sc2+seg in
-                  let idrOffset=seek_in file p_idrOffset; readInt2 file in
-                  let cid=
-                    if idrOffset=0 then
-                      (char+delta) mod 0x8000
-                    else (
-                      seek_in file (idrOffset+2*(char-start)+p_idrOffset);
-                      (readInt2 file+delta) mod 0x8000
-                    )
-                  in
-                  if cid<>0 then cid else read_tables (table+1)
-                ) else read_tables (table+1)
+  let rec read_tables table=
+    if table>=numTables then 0 else (
+      seek_in file (a+8+8*table);
+      let offset=a+readInt4 file in
+      seek_in file offset;
+      let t=readInt2 file in
+      (match t with
+          0->if char<256 then (
+            seek_in file (offset+6+char);
+            let cid=input_byte file in
+            if cid<>0 then cid else read_tables (table+1)
+          ) else read_tables (table+1)
+        | 2->
+          (let i=(char lsr 8) land 0xff in
+           let j=char land 0xff in
+           let k=(seek_in file (offset+6+i*2); readInt2 file) lsr 3 in
+           let subHeaders=offset+6+256*2+k*8 in
+           if k=0 then
+             (seek_in file (subHeaders+6);
+              let idRangeOffset=readInt2 file in
+              seek_in file (subHeaders+idRangeOffset+i*2);
+              let cid=readInt2 file in
+              if cid<>0 then cid else read_tables (table+1)
+             )
+           else
+             (let firstCode=seek_in file subHeaders; readInt2 file in
+              let entryCount=seek_in file (subHeaders+2); readInt2 file in
+              let idDelta=seek_in file (subHeaders+4); readInt file 2 in
+              let idDelta=if idDelta>=0x8000 then idDelta-0x8000 else idDelta in
+              let idRangeOffset=seek_in file (subHeaders+6); readInt2 file in
+              if j>=firstCode && j < (firstCode+entryCount) then
+                (let p=seek_in file (subHeaders+8+idRangeOffset+j*2); readInt2 file in
+                 let cid=if p=0 then p else p+idDelta in
+                 if cid<>0 then cid else read_tables (table+1))
+              else
+                read_tables (table+1)
+             )
+          )
+        | 4->(
+          let sc2=seek_in file (offset+6); readInt2 file in
+          let rec smallestEnd i j=
+            if j<=i then i else
+              let middle=((i+j) lsr 1) land 0xfffe in
+              let end_=seek_in file (offset+14+middle); readInt2 file in
+              if char>end_ then
+                smallestEnd (middle+2) j
+              else
+                smallestEnd i middle
+          in
+          let seg=smallestEnd 0 (sc2-2) in
+          let start=seek_in file (offset+16+sc2+seg); readInt2 file in
+          if char>=start then (
+            let delta=seek_in file (offset+16+2*sc2+seg); readInt2 file in
+            let delta=if delta>=0x8000 then delta-0x8000 else delta in
+            let p_idrOffset=offset+16+3*sc2+seg in
+            let idrOffset=seek_in file p_idrOffset; readInt2 file in
+            let cid=
+              if idrOffset=0 then
+                (char+delta) mod 0x8000
+              else (
+                seek_in file (idrOffset+2*(char-start)+p_idrOffset);
+                (readInt2 file+delta) mod 0x8000
               )
-              | 6->
-                (seek_in file (offset+6);
-                 let first=readInt2 file in
-                 let entryCount=readInt2 file in
-                 if first<=char && char <first+entryCount then
-                   (seek_in file (offset+10+(char-first)*2);
-                    let cid=readInt2 file in
-                    if cid<>0 then cid else read_tables (table+1))
-                 else
-                   read_tables (table+1)
-                )
-              | _->read_tables (table+1)
-            ))
-        in
-        let cid=read_tables 0 in
-        if cid = 0 then
-          raise (Glyph_not_found (fontName font0, UTF8.init 1 (fun _->char0)))
-        else
-          cid
+            in
+            if cid<>0 then cid else read_tables (table+1)
+          ) else read_tables (table+1)
+        )
+        | 6->
+          (seek_in file (offset+6);
+           let first=readInt2 file in
+           let entryCount=readInt2 file in
+           if first<=char && char <first+entryCount then
+             (seek_in file (offset+10+(char-first)*2);
+              let cid=readInt2 file in
+              if cid<>0 then cid else read_tables (table+1))
+           else
+             read_tables (table+1)
+          )
+        | _->read_tables (table+1)
+      ))
+  in
+  let cid=read_tables 0 in
+  if cid = 0 then
+    raise (Glyph_not_found ((fontName font0).full_name, UTF8.init 1 (fun _->char0)))
+  else
+    cid
+
 
 let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
+let read_cmap font=
+  let file,offset0=match font with
+      CFF (font)->font.cff_font.file, font.cff_offset
+    | TTF ttf->ttf.ttf_file,ttf.ttf_offset
+  in
+  let file=open_in_bin_cached file in
+  let (a,b)=tableLookup "cmap" file offset0 in
+  Cmap.read_cmap file a
+
 
 let glyphFont f=match f with
-    CFFGlyph (x,_)->x
+    CFFGlyph (x,_)->CFF x
+  | TTFGlyph (ttf,_)->TTF ttf
 let loadGlyph f ?index:(idx=0) gl=
   match f with
-      CFF (x,_)->CFFGlyph (f, CFF.loadGlyph x ~index:idx gl)
+      CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
+    | TTF ttf->TTFGlyph (ttf,gl)
+
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
+  | TTFGlyph _->[]
+
+
 let glyph_y0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
+  | TTFGlyph (ttf,gl)->(
+    let file=open_in_bin_cached ttf.ttf_file in
+    let off_size=
+      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      seek_in file (a+50);
+      if readInt2 file=0 then 2 else 4
+    in
+
+    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
+    seek_in file (a+gl.glyph_index*off_size);
+    let off=
+      let off=readInt2 file in
+      if off_size=2 then 2*off else off
+    in
+    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    seek_in file (c+off+4);
+    float_of_int (readInt2 file)
+  )
+
 let glyph_y1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
+  | TTFGlyph (ttf,gl)->(
+    let file=open_in_bin_cached ttf.ttf_file in
+    let off_size=
+      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      seek_in file (a+50);
+      if readInt2 file=0 then 2 else 4
+    in
+
+    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
+    seek_in file (a+gl.glyph_index*off_size);
+    let off=
+      let off=readInt2 file in
+      if off_size=2 then 2*off else off
+    in
+    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    seek_in file (c+off+8);
+    float_of_int (readInt2 file)
+  )
 
 let glyph_x0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x0 x
+  | TTFGlyph (ttf,gl)->(
+    let file=open_in_bin_cached ttf.ttf_file in
+    let off_size=
+      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      seek_in file (a+50);
+      if readInt2 file=0 then 2 else 4
+    in
+
+    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
+    seek_in file (a+gl.glyph_index*off_size);
+    let off=
+      let off=readInt2 file in
+      if off_size=2 then 2*off else off
+    in
+    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    seek_in file (c+off+2);
+    float_of_int (readInt2 file)
+  )
+
 let glyph_x1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x1 x
+  | TTFGlyph (ttf,gl)->(
+    let file=open_in_bin_cached ttf.ttf_file in
+    let off_size=
+      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      seek_in file (a+50);
+      if readInt2 file=0 then 2 else 4
+    in
+
+    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
+    seek_in file (a+gl.glyph_index*off_size);
+    let off=
+      let off=readInt2 file in
+      if off_size=2 then 2*off else off
+    in
+    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    seek_in file (c+off+6);
+    float_of_int (readInt2 file)
+  )
 
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
+  | TTFGlyph (ttf,gl)->gl
 
 let glyphContents gl=match gl with
     CFFGlyph (_,x)->CFF.glyphContents x
+  | TTFGlyph (ttf,gl)->gl.glyph_utf8
 
 let glyphName gl=
   match gl with
-      CFFGlyph (CFF(f, offset),x)-> CFF.glyphName x
-
+      CFFGlyph (_,x)-> CFF.glyphName x
+    | TTFGlyph (_,gl)->gl.glyph_utf8
 
 let glyphWidth gl=
   match gl with
       CFFGlyph (_,x) when x.glyphWidth <> infinity -> x.glyphWidth
-    | CFFGlyph (CFF(f, offset),x)->
-        (let file=open_in_bin_cached f.CFF.file in
-         let num=(CFF.glyphNumber x).glyph_index in
-         let (a,_)=tableLookup "hhea" file offset in
-         let nh=(seek_in file (a+34); readInt2 file) in
-         let (b,_)=tableLookup "hmtx" file offset in
-           seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
-           let w=float_of_int (readInt2 file) in
-             x.glyphWidth<-w;
-             w
-        )
+    | _->
+      let file,offset,x=match gl with
+          CFFGlyph (f,x)->f.cff_font.file,f.cff_offset,CFF.glyphNumber x
+        | TTFGlyph (ttf,g)->ttf.ttf_file,ttf.ttf_offset,g
+      in
+      let file=open_in_bin_cached file in
+      let num=x.glyph_index in
+      let (a,_)=tableLookup "hhea" file offset in
+      let nh=(seek_in file (a+34); readInt2 file) in
+      let (b,_)=tableLookup "hmtx" file offset in
+      seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
+      let w=float_of_int (readInt2 file) in
+      (match gl with
+          CFFGlyph(_,x)->x.glyphWidth<-w
+        | _->());
+      w
 
 let otype_file font=match font with
-    CFF (font,offset0)->font.file, offset0
-
+    CFF (font)->font.cff_font.file, font.cff_offset
+  | TTF ttf->ttf.ttf_file,ttf.ttf_offset
 
 let coverageIndex file off glyph=
   let format=seek_in file off; readInt2 file in
@@ -532,6 +731,7 @@ let select_features font feature_tags=try
     if i>=featureCount then result else (
         seek_in file (gsubOff+features+2+i*6);
         let _=input file feature_tag 0 4 in
+        seek_in file (gsubOff+features+6+i*6);
         let lookupOff=readInt2 file in
         let lookupCount=seek_in file (gsubOff+features+lookupOff+2); readInt2 file in
         let rec read lookup s=
@@ -562,12 +762,11 @@ let font_features font=try
     if i>=featureCount then result else (
       seek_in file (gsubOff+features+2+i*6);
       let _=input file buf 0 4 in
-        make_features (i+1) (String.copy buf::result)
+      make_features (i+1) (String.copy buf::result)
     )
   in
   make_features 0 []
-
-with Table_not_found _->[]
+  with Table_not_found _->[]
 
 
 let read_scripts font=
@@ -701,13 +900,17 @@ let positioning font glyphs0=try gpos font glyphs0 with Table_not_found _->glyph
 
 type fontInfo=
     { mutable tables:string StrMap.t;
-      mutable fontType:string }
+      mutable fontType:string;
+      mutable names:(int*int*string) list }
+
+let getInt2 str i=(int_of_char str.[i] lsl 8) lor (int_of_char str.[i+1])
 
 let fontInfo font=
-  let file,off=match font with
-      CFF (cff,off)->cff.file,off
+  let fileName,off=match font with
+      CFF (cff)->cff.cff_font.file,cff.cff_offset
+    | TTF ttf->ttf.ttf_file,ttf.ttf_offset
   in
-  let file=open_in_bin_cached file in
+  let file=open_in_bin_cached fileName in
   let fontType=String.create 4 in
   seek_in file off;
   really_input file fontType 0 4;
@@ -718,18 +921,72 @@ let fontInfo font=
       seek_in file (off+n);
       let newTable=String.create 4 in
       really_input file newTable 0 4;
+      Printf.fprintf stderr "%S newTable=%S\n" fileName newTable;flush stderr;
       let _ (* checkSum *)=readInt4 file in
       let offset=readInt4 file in
       let length=readInt4 file in
       seek_in file (off+offset);
       let buf=String.create length in
       really_input file buf 0 length;
-      Printf.fprintf stderr "Opentype.fontInfo:%S\n" newTable;
       getTables (n-dirSize) (StrMap.add newTable buf l)
     )
   in
-  { tables=getTables (off+dirSize*(numTables-1)+offsetTable) StrMap.empty;
-    fontType=fontType }
+  let tables=getTables (off+dirSize*(numTables-1)+offsetTable) StrMap.empty in
+  let names=
+    try
+      let buf_name=StrMap.find "name" tables in
+      let format=getInt2 buf_name 0 in
+      if format=0 then (
+        let count=getInt2 buf_name 2 in
+        let stringOffset=getInt2 buf_name 4 in
+        let rec get_names i m=
+          if i>=count then m else (
+            let off=6+i*12 in
+            let platformID=getInt2 buf_name off in
+            let encodingID=getInt2 buf_name (off+2) in
+            let languageID=getInt2 buf_name (off+4) in
+            let nameID=getInt2 buf_name (off+6) in
+            let length=getInt2 buf_name (off+8) in
+            let offset=getInt2 buf_name (off+10) in
+            let str=String.sub buf_name (stringOffset+offset) length in
+            let m'=
+              try
+                match platformID,encodingID with
+                    1,0->(
+                      let utf8=CharEncoding.recode_string
+                        (CharEncoding.of_name "MACINTOSH")
+                        (CharEncoding.of_name "UTF-8")
+                        str
+                      in
+                      ((languageID,nameID,utf8)::m)
+                    )
+                  | 3,1->(                (* UTF-16 *)
+                    let utf8=CharEncoding.recode_string
+                      (CharEncoding.of_name "UTF-16")
+                      (CharEncoding.of_name "UTF-8")
+                      str
+                    in
+                    ((languageID,nameID,utf8)::m)
+                  )
+                  | a,b->(
+                    Printf.fprintf stderr "encoding : %d %d\n" a b;
+                    m
+                  )
+              with
+                  Not_found->m
+            in
+            get_names (i+1) m'
+          )
+        in
+        get_names 0 []
+      ) else []
+    with
+        Not_found->[]
+  in
+
+  { tables=tables;
+    fontType=fontType;
+    names=names }
 
 
 
@@ -767,6 +1024,7 @@ let rec buf_checksum32 x=
   done;
   !cs
 
+
 let write_cff fontInfo=
 
   let buf=Rbuffer.create 256 in
@@ -774,7 +1032,6 @@ let write_cff fontInfo=
   bufInt2 buf (StrMap.cardinal fontInfo.tables);
   let rec searchRange a b k=if a=1 then b lsl 4,k else searchRange (a lsr 1) (b lsl 1) (k+1) in
   let sr,log2=searchRange (StrMap.cardinal fontInfo.tables) 1 0 in
-  Printf.printf "opentype : sr=%d, log2=%d\n" sr log2;
   bufInt2 buf sr;
   bufInt2 buf log2;
   bufInt2 buf ((StrMap.cardinal fontInfo.tables lsl 4) - sr);
@@ -782,7 +1039,7 @@ let write_cff fontInfo=
   let buf_headers=Rbuffer.create 256 in
   let write_tables checksums=
     StrMap.fold (fun k a _->
-      Printf.fprintf stderr "writing table %S\n" k;
+      (* Printf.fprintf stderr "writing table %S\n" k; *)
       while (Rbuffer.length buf_tables) land 3 <> 0 do
         Rbuffer.add_char buf_tables (char_of_int 0)
       done;
@@ -808,12 +1065,7 @@ let write_cff fontInfo=
      Rbuffer.clear buf_headers;
      let check=Int32.sub (Int32.of_int (-1313820742)) (Int32.of_int total_checksum) in
      strInt4 buf_head 8 (Int32.to_int check);
-     Printf.fprintf stderr "%x %x %x %x\n"
-       (int_of_char buf_head.[8])
-       (int_of_char buf_head.[9])
-       (int_of_char buf_head.[10])
-       (int_of_char buf_head.[11]);
-     Printf.fprintf stderr "total checksum=%x %x\n" (total_checksum) (Int32.to_int check);
+     (* Printf.fprintf stderr "total checksum=%x %x\n" (total_checksum) (Int32.to_int check); *)
      write_tables checksums
    with
        Not_found->failwith "no head table"
@@ -826,43 +1078,35 @@ let write_cff fontInfo=
   buf
 
 
-let make_tables font fontInfo glyphs=
+let make_tables font fontInfo cmap glyphs_idx=
+  let glyphs=Array.map (loadGlyph font) glyphs_idx in
   let fontInfo_tables=fontInfo.tables in
-  fontInfo.tables<-StrMap.remove "kern" fontInfo.tables;
+  fontInfo.tables<-
+    StrMap.filter (fun k _->
+      match k with
+          "cmap" | "hmtx" | "hhea" | "head" | "maxp"
+        | "OS/2" | "CFF " | "GSUB" | "name" | "post"
+        | "cvt " | "fpgm" | "glyf" | "loca" | "prep" -> true
+        | _->(
+          Printf.fprintf stderr "excluded table : %S\n" k;flush stderr;
+          false
+        )
+    ) fontInfo.tables;
+
   (* cmap *)
   Printf.fprintf stderr "cmap\n"; flush stderr;
   let r_cmap=ref IntMap.empty in
   (try
-     let tmp0=Filename.temp_file "cmap_" "" in
-     let o=open_out tmp0 in
-     output_string o (StrMap.find "cmap" fontInfo_tables);
-     close_out o;
-     let file=open_in tmp0 in
-     let old_cmap=Cmap.read_cmap file 0 in
-     close_in file;
-
+     r_cmap:=IntMap.filter (fun _ a->a<Array.length glyphs && a>=0) cmap;
      let buf=Rbuffer.create 256 in
-     let charset=ref IntMap.empty in
-     for i=0 to Array.length glyphs-1 do
-       charset:=IntMap.add
-         ((glyphNumber glyphs.(i)).glyph_index)
-         i
-         !charset
-     done;
-     r_cmap:=
-       IntMap.fold (fun k a m->
-         try
-           IntMap.add k (IntMap.find a !charset) m
-         with
-             Not_found->m
-       ) old_cmap IntMap.empty;
      Cmap.write_cmap ~formats:[4] !r_cmap buf;
      fontInfo.tables<-StrMap.add "cmap" (Rbuffer.contents buf) fontInfo.tables
    with
        Not_found->());
   let cmap= !r_cmap in
 
-  Printf.fprintf stderr "hmtx\n"; flush stderr;
+
+  (* Printf.fprintf stderr "hmtx\n"; flush stderr; *)
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
   let buf_hmtx=String.create (2*(Array.length glyphs)+2*(!numberOfHMetrics+1)) in
@@ -886,7 +1130,7 @@ let make_tables font fontInfo glyphs=
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
 
-  Printf.fprintf stderr "hhea\n"; flush stderr;
+  (* Printf.fprintf stderr "hhea\n"; flush stderr; *)
   (* hhea *)
   let xAvgCharWidth=ref 0. in
   let yMax=ref (-.infinity) in
@@ -927,7 +1171,7 @@ let make_tables font fontInfo glyphs=
    with
        Not_found -> ());
 
-  Printf.fprintf stderr "head\n"; flush stderr;
+  (* Printf.fprintf stderr "head\n"; flush stderr; *)
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
@@ -938,7 +1182,7 @@ let make_tables font fontInfo glyphs=
    with
        Not_found->());
 
-  Printf.fprintf stderr "maxp\n"; flush stderr;
+  (* Printf.fprintf stderr "maxp\n"; flush stderr; *)
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=String.create 6 in
@@ -948,14 +1192,16 @@ let make_tables font fontInfo glyphs=
     buf_maxp.[3]<-char_of_int 0x00;
     strInt2 buf_maxp 4 (Array.length glyphs);
     fontInfo.tables<-StrMap.add "maxp" buf_maxp fontInfo.tables
+   ) else (
+    let buf_maxp=StrMap.find "maxp" fontInfo.tables in
+    strInt2 buf_maxp 4 (Array.length glyphs);
    ));
 
-
-
-  Printf.fprintf stderr "os/2\n"; flush stderr;
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
+     strInt2 buf_os2 0 3;               (* version *)
+
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
      let u1=ref 0 in
      let u2=ref 0 in
@@ -967,11 +1213,11 @@ let make_tables font fontInfo glyphs=
      strInt4 buf_os2 50 !u3;
      strInt4 buf_os2 54 !u4;
 
-     Printf.printf "usFirst/Last : %d/%d\n" (fst (IntMap.min_binding cmap)) (fst (IntMap.max_binding cmap));
-     strInt2 buf_os2 74 0x10; (* (fst (IntMap.min_binding cmap)); *) (* usFirstCharIndex *)
+     strInt2 buf_os2 74 (fst (IntMap.min_binding cmap)); (* usFirstCharIndex *)
      strInt2 buf_os2 76 (fst (IntMap.max_binding cmap)); (* usLastCharIndex *)
-     Printf.fprintf stderr "usBreakChar : %d\n" (fst (IntMap.min_binding cmap));
      strInt2 buf_os2 92 (if IntMap.mem 0x20 cmap then 0x20 else (fst (IntMap.min_binding cmap))); (* usBreakChar *)
+
+     strInt2 buf_os2 94 2;              (* usMaxContext *)
 
      (* strInt2 buf_os2 64 (round !yMax);              (\* usWinAscent *\) *)
      (* strInt2 buf_os2 66 (max 0 (round (-. !yMin))); (\* usWinDescent *\) *)
@@ -994,25 +1240,133 @@ let make_tables font fontInfo glyphs=
        Not_found->()
   );
 
-  Printf.fprintf stderr "CFF \n"; flush stderr;
   (* CFF  *)
   (match font with
-      CFF (cff,_)->(
-        let glyphs_arr=Array.map (fun g->(glyphNumber g).glyph_index) glyphs in
-        let cff'=(CFF.subset cff glyphs_arr) in
+      CFF (cff)->(
+        let name0=CFF.fontName cff.cff_font in
+        let rec getName l m=match l with
+            []->m
+          | (lang,nameID,h)::s->(
+            let name=try IntMap.find lang m with Not_found->name0 in
+            (match nameID with
+                1->name.family_name<-h
+              | 2->name.subfamily_name<-h
+              | 4->name.full_name<-h
+              | 6->name.postscript_name<-h
+              | _->());
+            getName s (IntMap.add lang name m)
+          )
+        in
+        let names=(getName fontInfo.names IntMap.empty) in
+        let _,cff_name=IntMap.min_binding names in
+        let cff'=(CFF.subset cff.cff_font
+                    { CFF.name=cff_name }
+                    IntMap.empty
+                    glyphs_idx)
+        in
         (try
            let o=open_out "original.cff" in
            output_string o (StrMap.find "CFF " fontInfo_tables);
            close_out o;
-         with Not_found -> Printf.fprintf stderr "dommage\n";);
+         with Not_found -> ());
         let o=open_out "subset.cff" in
         Rbuffer.output_buffer o cff';
         close_out o;
         fontInfo.tables<-StrMap.add "CFF " (Rbuffer.contents cff') fontInfo.tables
-      ))
+      )
+    | _->());
 
+  (* truetype *)
+  begin
+    match font with
+        TTF _->(
+          try
+            let off_size=
+              let head=StrMap.find "head" fontInfo_tables in
+              if getInt2 head 50=0 then 2 else 4
+            in
+            let buf_loca=StrMap.find "loca" fontInfo_tables in
+            let buf_glyf=StrMap.find "glyf" fontInfo_tables in
+            let glyf=Rbuffer.create 256 in
+            let loca=Rbuffer.create 256 in
+            Array.iter (fun gl->
+              let off0=getInt2 buf_loca (off_size*gl.glyph_index) in
+              let off0=if off_size=2 then off0*2 else off0 in
+              let off1=getInt2 buf_loca (off_size*gl.glyph_index+2) in
+              let off1=if off_size=2 then off1*2 else off1 in
+              if off_size=2 then bufInt2 loca (Rbuffer.length glyf/2)
+              else bufInt2 loca (Rbuffer.length glyf);
+              Rbuffer.add_string glyf
+                (String.sub buf_glyf off0 (off1-off0));
+            ) glyphs_idx;
+            if off_size=2 then bufInt2 loca (Rbuffer.length glyf/2)
+            else bufInt2 loca (Rbuffer.length glyf);
+            fontInfo.tables<-StrMap.add "loca" (Rbuffer.contents loca) fontInfo.tables;
+            fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
+          with
+              Not_found->()
+        )
+      | _->()
+  end;
 
-let subset font glyphs=
-  let info=fontInfo font in
-  make_tables font info glyphs;
+  (* GSUB *)
+  (* begin *)
+  (*   let open Layout in *)
+  (*       let scr=StrMap.singleton "latn" StrMap.empty in *)
+  (*       let feat=[| {tag="dlig";lookups=[0]} |] in *)
+  (*       let lookups= [| make_ligatures [| [[1;2],9] |] |] in *)
+  (*       let buf=write_layout scr feat lookups in *)
+  (*       fontInfo.tables<-StrMap.add "GSUB" buf fontInfo.tables *)
+  (* end; *)
+
+  (* names *)
+  begin
+    try
+      let buf=Rbuffer.create 256 in
+      let names=List.fold_left (fun l (language,name,str)->
+        let utf16=
+          CharEncoding.recode_string
+            (CharEncoding.of_name "UTF-8")
+            (CharEncoding.of_name "UTF-16")
+            str
+        in
+        (1,0,language,name,CharEncoding.recode_string
+          (CharEncoding.of_name "UTF-8")
+          (CharEncoding.of_name "MACINTOSH")
+          str)::
+          (3,1,language,name,String.sub utf16 2 (String.length utf16-2))::
+          l
+      ) [] fontInfo.names
+      in
+      bufInt2 buf 0;                    (* format *)
+      bufInt2 buf (List.length names);
+      bufInt2 buf (6+12*(List.length names));
+      let buf'=Rbuffer.create 256 in
+      List.iter (fun (a,b,c,d,s)->
+        bufInt2 buf a;
+        bufInt2 buf b;
+        bufInt2 buf c;
+        bufInt2 buf d;
+        bufInt2 buf (String.length s);
+        bufInt2 buf (Rbuffer.length buf');
+        Rbuffer.add_string buf' s
+      ) names;
+      Rbuffer.add_buffer buf buf';
+      fontInfo.tables<-StrMap.add "name" (Rbuffer.contents buf) fontInfo.tables
+    with
+        Not_found->()
+  end
+
+let setName info name=
+  info.names<-List.map (fun (lang,id,s)->
+    match id with
+        1->(lang,id,name.family_name)
+      | 2->(lang,id,name.subfamily_name)
+      | 4->(lang,id,name.full_name)
+      | 6->(lang,id,name.postscript_name)
+      | _->(lang,id,s)
+  ) info.names
+
+let subset font info cmap glyphs=
+  make_tables font info cmap glyphs;
   write_cff info

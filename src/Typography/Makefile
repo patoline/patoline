@@ -3,7 +3,7 @@ include ../Makefile.config
 CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt $(PACK)
 CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt $(PACK)
 
-SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFF.cmx Fonts/Sfnt/unicode_ranges.cmx Fonts/Cmap.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
+SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx Fonts/CFF.cmx Fonts/Sfnt/unicode_ranges.cmx Fonts/Cmap.cmx Fonts/Layout.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
 VPATH=Fonts:Fonts/Sfnt:Output
 
@@ -33,9 +33,9 @@ Fonts.cmx : Util.cmi Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cm
 Fonts.p.cmx : Util.cmi Fonts/Opentype.p.cmx Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Bezier.p.cmx
 Fonts.cmi : Util.cmi Fonts.cmo
 
-Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/FTypes.cmo Fonts/CFF.cmo Cmap.cmo unicode_ranges.cmo
-Fonts/Opentype.cmx:Fonts/FTypes.cmi Fonts/FTypes.cmx Fonts/CFF.cmx  Cmap.cmx unicode_ranges.cmx
-Fonts/Opentype.p.cmx:Fonts/FTypes.cmi Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Cmap.p.cmx unicode_ranges.p.cmx
+Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/FTypes.cmo Fonts/CFF.cmo Cmap.cmo Layout.cmo unicode_ranges.cmo
+Fonts/Opentype.cmx:Fonts/FTypes.cmi Fonts/FTypes.cmx Fonts/CFF.cmx  Cmap.cmx Layout.cmx unicode_ranges.cmx
+Fonts/Opentype.p.cmx:Fonts/FTypes.cmi Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Cmap.p.cmx Layout.p.cmx unicode_ranges.p.cmx
 Fonts/Opentype.cmi:Fonts/Opentype.cmo
 
 Fonts/CFF.cmo:FTypes.cmi Util.cmi Bezier.cmi Bezier.cmo Type2.cmo CFFStd.cmo

@@ -191,8 +191,8 @@ else if(e.which==39) next();
       (fun m x->match x with
            Glyph gl->(
              let fname=Fonts.fontName (Fonts.glyphFont gl.glyph) in
-             let f=try StrMap.find fname m with _->IntMap.empty in
-             StrMap.add fname
+             let f=try StrMap.find fname.full_name m with _->IntMap.empty in
+             StrMap.add fname.full_name
                (IntMap.add (Fonts.glyphNumber gl.glyph).glyph_index gl.glyph f)
                m
            )
@@ -217,7 +217,7 @@ else if(e.which==39) next();
     List.iter (function
                    Glyph x->(
                      Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" "
-                       (Fonts.fontName (Fonts.glyphFont x.glyph))
+                       (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name
                        (round (coord x.glyph_size));
                      (match x.glyph_color with
                          RGB fc ->
@@ -229,13 +229,13 @@ else if(e.which==39) next();
                      Printf.fprintf o "stroke=\"none\">";
                      Printf.fprintf o "<text x=\"%g\" y=\"%g\">"
                        (coord x.glyph_x) (coord (h-.x.glyph_y));
-                     let ff=StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)) embedded_fonts in
+                     let ff=StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name embedded_fonts in
                      let fi=try IntMap.find ((Fonts.glyphNumber x.glyph).glyph_index) ff with Not_found->"" in
                      if fi="" then
                        Printf.fprintf o "%s" (html_escape (Fonts.glyphContents x.glyph))
                      else (
                        Printf.fprintf o "<altGlyph xlink:href=\"#alt%d_%d\">%s</altGlyph>"
-                         (StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)) !fontRefs)
+                         (StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name !fontRefs)
                          ((Fonts.glyphNumber x.glyph).glyph_index)
                          (html_escape (Fonts.glyphContents x.glyph))
                      );

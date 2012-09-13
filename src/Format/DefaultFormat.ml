@@ -418,8 +418,8 @@ module Format=functor (D:Document.DocumentStructure)->(
         let lvl,num=try StrMap.find "figure" env.counters with Not_found -> -1,[] in
         let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
         let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-	let caption = 
-	  minipage env (              
+	let caption =
+	  minipage {env with normalLeftMargin=0.} (
 	    paragraph ((
               [ tT "Figure"; tT " ";
                 tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]

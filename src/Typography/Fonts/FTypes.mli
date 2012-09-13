@@ -25,15 +25,22 @@ type substitution =
   | Subst of subst
   | Chain of chain
   | Context of (int * substitution list) array
-#ifdef DEBUG
+(* #ifdef DEBUG *)
 val print_int_array : int array -> unit
 val print_int_list : int list -> unit
 val print_subst : substitution -> unit
-#endif
+(* #endif *)
 val apply_ligature : subst -> glyph_id list -> glyph_id list
 val apply_subst : subst -> glyph_id list -> glyph_id list
 val apply_alternative : int array -> int -> glyph_id list -> glyph_id list
 val apply : substitution -> glyph_id list -> glyph_id list
+
+type name={
+  mutable postscript_name:string;
+  mutable full_name:string;
+  mutable family_name:string;
+  mutable subfamily_name:string
+}
 module type Font =
   sig
     type font
@@ -52,9 +59,13 @@ module type Font =
     val glyph_y1 : glyph -> float
     val glyph_x0 : glyph -> float
     val glyph_x1 : glyph -> float
-    val fontName : ?index:int -> font -> string
+    val fontName : ?index:int -> font -> name
     val glyphName : glyph -> string
     val font_features : font -> string list
     val select_features : font -> string list -> substitution list
     val positioning : font -> glyph_ids list -> glyph_ids list
+    type fontInfo
+    val fontInfo:font->fontInfo
+    val subset:font->fontInfo->int Util.IntMap.t->glyph_id array->Rbuffer.t
+    val setName:fontInfo->name->unit
   end

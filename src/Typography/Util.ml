@@ -35,7 +35,7 @@ let readInt f n0=
   in
     readInt_ 0 0
 
-let buf=String.create 4
+let buf="    "
 
 let readInt2 f=
   really_input f buf 0 2;

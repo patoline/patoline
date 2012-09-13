@@ -936,7 +936,7 @@ let boxify buf nbuf fixable env0 l=
       )
     | Env f::s->boxify (f env) s
     | (T (t,cache))::s->(
-        match !cache with
+      match !cache with
 	    Some l  ->(
               IntMap.iter (fun _->List.iter (append buf nbuf)) l;
               boxify env s

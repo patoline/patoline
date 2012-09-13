@@ -31,7 +31,7 @@ exception Comic_sans
 
 let loadFont ?offset:(off=0) ?size:(_=0) f=
   let size=let i=Util.open_in_bin_cached f in in_channel_length i in
-  let font=if Filename.check_suffix f ".otf" then
+  let font=if Filename.check_suffix f ".otf" || Filename.check_suffix f ".ttf" then
     Opentype (Opentype.loadFont ~offset:off f ~size:size)
   else
     raise Not_supported
@@ -123,3 +123,23 @@ let positioning f glyphs=
   match f with
       CFF x->CFF.positioning x glyphs
     | Opentype x->Opentype.positioning x glyphs
+
+type fontInfo=
+    CFFInfo of CFF.fontInfo
+  | OpentypeInfo of Opentype.fontInfo
+
+let fontInfo f=
+  match f with
+      CFF x->CFFInfo (CFF.fontInfo x)
+    | Opentype x->OpentypeInfo (Opentype.fontInfo x)
+
+let setName info name=match info with
+    CFFInfo f->CFF.setName f name
+  | OpentypeInfo f->Opentype.setName f name
+
+let subset font info b c=match font,info with
+    CFF x,CFFInfo y->
+      CFF.subset x y b c
+  | Opentype x,OpentypeInfo y->
+    Opentype.subset x y b c
+  | _->assert false

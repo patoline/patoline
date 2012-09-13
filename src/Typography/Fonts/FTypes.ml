@@ -33,7 +33,7 @@ type substitution=
   | Chain of chain
   | Context of (int*(substitution list)) array
 
-#ifdef DEBUG
+
 open Format
 open Printf
 let print_int_array x=
@@ -62,7 +62,6 @@ let print_subst=function
               printf " }\n")
   | Chain x->(printf "Chain { ... }\n")
   | Context _->(printf "Context { ... }\n")
-#endif
 
 
 let apply_ligature lig glyphs0=
@@ -144,6 +143,12 @@ let apply subst glyphs0=match subst with
   | _->glyphs0
 
 
+type name={
+  mutable postscript_name:string;
+  mutable full_name:string;
+  mutable family_name:string;
+  mutable subfamily_name:string
+}
 
 module type Font=(
   sig
@@ -190,7 +195,7 @@ module type Font=(
     val glyph_y1:glyph->float
     val glyph_x0:glyph->float
     val glyph_x1:glyph->float
-    val fontName:?index:int->font->string
+    val fontName:?index:int->font->name
     val glyphName:glyph->string
 
     (** Lists all the available features of the font *)
@@ -202,4 +207,9 @@ module type Font=(
     (** Appiles the available positioning information to a glyph
         list. This can be used for kerning, but not only *)
     val positioning:font->glyph_ids list->glyph_ids list
+
+    type fontInfo
+    val fontInfo:font->fontInfo
+    val subset:font->fontInfo->int IntMap.t->glyph_id array->Rbuffer.t
+    val setName:fontInfo->name->unit
   end)

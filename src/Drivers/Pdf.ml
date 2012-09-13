@@ -79,23 +79,28 @@ let output ?(structure:structure={name="";displayname=[];
         fill (UTF8.first str) 2
   in
   let addFont font=
-    try StrMap.find (Fonts.fontName font) !fonts with
+    try StrMap.find (Fonts.fontName font).postscript_name !fonts with
         Not_found->
           match font with
-              Fonts.CFF x->raise Fonts.Not_supported
-            | Fonts.Opentype (Opentype.CFF (x,_))->
+              Fonts.CFF _
+            | Fonts.Opentype (Opentype.CFF _)->
                 ((* Font program *)
+                  let x=match font with
+                      Fonts.CFF x->x
+                    | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
+                    | _->assert false
+                  in
                   let fontFile=futureObject () in
 
                     (* Font descriptor -- A completer*)
 
-                    let fontName="PATOLIN+"^(CFF.fontName x) in
-                    let descr=beginObject () in
-                    let (a,b,c,d)=CFF.fontBBox x in
-                      fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
-                      fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (CFF.italicAngle x);
-                      fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile3 %d 0 R >>" fontFile;
-                      endObject();
+                  let fontName="PATOLIN+"^(CFF.fontName x).postscript_name in
+                  let descr=beginObject () in
+                  let (a,b,c,d)=CFF.fontBBox x in
+                  fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
+                  fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (CFF.italicAngle x);
+                  fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile3 %d 0 R >>" fontFile;
+                  endObject();
 
                       (* Widths *)
                       let w=futureObject () in
@@ -120,10 +125,10 @@ let output ?(structure:structure={name="";displayname=[];
                                        fontToUnicode=toUnicode;
                                        fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
                                        revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
-                            fonts:=StrMap.add (Fonts.fontName font) result !fonts;
+                          fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
                             result
                 )
-
+            | Fonts.Opentype _->failwith (__FILE__^" line "^(string_of_int __LINE__))
   in
   let pageObjects=Array.make (Array.length pages) 0 in
     for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
@@ -250,15 +255,15 @@ let output ?(structure:structure={name="";displayname=[];
 
               let fnt=Fonts.glyphFont (gl.glyph) in
                 (* Inclusion de la police sur la page *)
-              let idx=try fst (StrMap.find (Fonts.fontName fnt) !pageFonts) with
+              let idx=try fst (StrMap.find (Fonts.fontName fnt).postscript_name !pageFonts) with
                   Not_found->(
                     let card=StrMap.cardinal !pageFonts in
                     let pdfFont=addFont fnt in
-                      pageFonts := StrMap.add (Fonts.fontName fnt) (card, pdfFont.fontObject) !pageFonts;
+                      pageFonts := StrMap.add (Fonts.fontName fnt).postscript_name (card, pdfFont.fontObject) !pageFonts;
                       card
                   )
               in
-              let pdfFont=StrMap.find (Fonts.fontName fnt) !fonts in
+              let pdfFont=StrMap.find (Fonts.fontName fnt).postscript_name !fonts in
               let num=
 #ifdef SUBSET
             let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
@@ -631,10 +636,20 @@ let output ?(structure:structure={name="";displayname=[];
                    resumeObject x.fontFile;
 #ifdef SUBSET
                    let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF (y,_))
+                       Fonts.Opentype (Opentype.CFF y)->(
+                         let y=y.Opentype.cff_font in
+                         let sub=CFF.subset y
+                           {CFF.name=(CFF.fontName y)} IntMap.empty
+                           (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
+                                              (IntMap.bindings x.revFontGlyphs))))
+                         in
+                         sub
+                       )
+                     | Fonts.Opentype _->failwith (__FILE__^" line "^(string_of_int __LINE__))
                      | Fonts.CFF y->(
-                       let sub=CFF.subset y (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl).glyph_index)
-                                                       (IntMap.bindings x.revFontGlyphs))))
+                       let sub=CFF.subset y {CFF.name=(CFF.fontName y)} IntMap.empty
+                         (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
+                                            (IntMap.bindings x.revFontGlyphs))))
                        in
                        sub
 
