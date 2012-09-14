@@ -84,51 +84,91 @@ let output ?(structure:structure={name="";displayname=[];
           match font with
               Fonts.CFF _
             | Fonts.Opentype (Opentype.CFF _)->
-                ((* Font program *)
-                  let x=match font with
-                      Fonts.CFF x->x
-                    | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
-                    | _->assert false
-                  in
-                  let fontFile=futureObject () in
+              ((* Font program *)
+                let x=match font with
+                    Fonts.CFF x->x
+                  | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
+                  | _->assert false
+                in
+                let fontFile=futureObject () in
 
-                    (* Font descriptor -- A completer*)
+                  (* Font descriptor -- A completer*)
 
-                  let fontName="PATOLIN+"^(CFF.fontName x).postscript_name in
-                  let descr=beginObject () in
-                  let (a,b,c,d)=CFF.fontBBox x in
-                  fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
-                  fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (CFF.italicAngle x);
-                  fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile3 %d 0 R >>" fontFile;
-                  endObject();
+                let fontName="PATOLIN+"^(CFF.fontName x).postscript_name in
+                let descr=beginObject () in
+                let (a,b,c,d)=CFF.fontBBox x in
+                fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
+                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (CFF.italicAngle x);
+                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile3 %d 0 R >>" fontFile;
+                endObject();
 
-                      (* Widths *)
-                      let w=futureObject () in
+                (* Widths *)
+                let w=futureObject () in
 
-                      (* Font dictionary *)
-                      let fontDict=beginObject () in
-                        fprintf outChan "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /%s " fontName;
-                        fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
-                        fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
-                        endObject();
+                (* Font dictionary *)
+                let fontDict=beginObject () in
+                fprintf outChan "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /%s " fontName;
+                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
+                fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
+                endObject();
 
-                        (* CID Font dictionary *)
-                        let toUnicode=futureObject () in
-                        let cidFontDict=beginObject () in
-                          fprintf outChan
-                            "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
-                          fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
-                          endObject();
+                (* CID Font dictionary *)
+                let toUnicode=futureObject () in
+                let cidFontDict=beginObject () in
+                fprintf outChan
+                  "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
+                fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
+                endObject();
 
-                          let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
-                                       fontFile=fontFile;
-                                       fontToUnicode=toUnicode;
-                                       fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
-                                       revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
-                          fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
-                            result
-                )
-            | Fonts.Opentype _->failwith (__FILE__^" line "^(string_of_int __LINE__))
+                let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
+                             fontFile=fontFile;
+                             fontToUnicode=toUnicode;
+                             fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
+                             revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
+                fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
+                result
+              )
+            | Fonts.Opentype ((Opentype.TTF ttf) as x)->(
+              ((* Font program *)
+                let fontFile=futureObject () in
+
+                (* Font descriptor -- A completer*)
+
+                let fontName="PATOLIN+"^(Opentype.fontName x).postscript_name in
+                let descr=beginObject () in
+                let (a,b,c,d)=Opentype.fontBBox x in
+                fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
+                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (Opentype.italicAngle x);
+                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile2 %d 0 R >>" fontFile;
+                endObject();
+
+                (* Widths *)
+                let w=futureObject () in
+
+                (* Font dictionary *)
+                let fontDict=beginObject () in
+                fprintf outChan "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /%s " fontName;
+                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
+                fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
+                endObject();
+
+                (* CID Font dictionary *)
+                let toUnicode=futureObject () in
+                let cidFontDict=beginObject () in
+                fprintf outChan
+                  "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
+                fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
+                endObject();
+
+                let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
+                             fontFile=fontFile;
+                             fontToUnicode=toUnicode;
+                             fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
+                             revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
+                fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
+                result
+              )
+            )
   in
   let pageObjects=Array.make (Array.length pages) 0 in
     for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
@@ -267,18 +307,18 @@ let output ?(structure:structure={name="";displayname=[];
               let num=
 #ifdef SUBSET
             let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
-                  (try
-                     fst (IntMap.find num0 pdfFont.fontGlyphs)
-                   with
-                       Not_found->(
-                         let num1=IntMap.cardinal pdfFont.fontGlyphs in
-                           pdfFont.fontGlyphs<-IntMap.add num0
-                             (num1,gl.glyph) pdfFont.fontGlyphs;
-                           pdfFont.revFontGlyphs<-IntMap.add num1
-                             (gl.glyph) pdfFont.revFontGlyphs;
-                           num1
-                       )
-                  )
+            (try
+               fst (IntMap.find num0 pdfFont.fontGlyphs)
+             with
+                 Not_found->(
+                   let num1=IntMap.cardinal pdfFont.fontGlyphs in
+                   pdfFont.fontGlyphs<-IntMap.add num0
+                     (num1,gl.glyph) pdfFont.fontGlyphs;
+                   pdfFont.revFontGlyphs<-IntMap.add num1
+                     (gl.glyph) pdfFont.revFontGlyphs;
+                   num1
+                 )
+            )
 #else
   let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
   pdfFont.fontGlyphs<-IntMap.add num0
@@ -321,7 +361,7 @@ let output ?(structure:structure={name="";displayname=[];
           )
         | Path (params,[])->()
         | Path (params,paths) ->(
-            close_text ();
+          close_text ();
             set_line_join params.lineJoin;
             set_line_cap params.lineCap;
             set_line_width (pt_of_mm params.lineWidth);
@@ -337,30 +377,31 @@ let output ?(structure:structure={name="";displayname=[];
                 if x.(i) < infinity && x.(i)> -.infinity then are_valid x (i+1) else false
             in
               List.iter (fun path->
-                           let (x0,y0)=path.(0) in
-                             if are_valid x0 0 && are_valid y0 0 then (
-                               Rbuffer.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
-                               Array.iter (
-                                 fun (x,y)->if are_valid x 0 && are_valid y 0 then (
-                                   if Array.length x=2 && Array.length y=2 then (
-                                     let x1=if Array.length x=2 then x.(1) else x.(0) in
-                                     let y1=if Array.length y=2 then y.(1) else y.(0) in
-                                       Rbuffer.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
-                                   ) else if Array.length x=3 && Array.length y=3 then (
-                                     Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                               (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
-                                                               (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
-                                                               (pt_of_mm x.(2)) (pt_of_mm y.(2)));
-                                   ) else if Array.length x=4 && Array.length y=4 then (
-                                     Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                               (pt_of_mm x.(1)) (pt_of_mm y.(1))
-                                                               (pt_of_mm x.(2)) (pt_of_mm y.(2))
-                                                               (pt_of_mm x.(3)) (pt_of_mm y.(3)));
-                                   )
-                                 )
-                               ) path
-                             )
-                      ) paths;
+                if Array.length path > 0 then (
+                  let (x0,y0)=path.(0) in
+                  if are_valid x0 0 && are_valid y0 0 then (
+                    Rbuffer.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+                    Array.iter (
+                      fun (x,y)->if are_valid x 0 && are_valid y 0 then (
+                        if Array.length x<=2 && Array.length y<=2 then (
+                          let x1=if Array.length x=2 then x.(1) else x.(0) in
+                          let y1=if Array.length y=2 then y.(1) else y.(0) in
+                          Rbuffer.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
+                        ) else if Array.length x=3 && Array.length y=3 then (
+                          Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                        (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
+                                                        (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
+                                                        (pt_of_mm x.(2)) (pt_of_mm y.(2)));
+                        ) else if Array.length x=4 && Array.length y=4 then (
+                          Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
+                                                        (pt_of_mm x.(1)) (pt_of_mm y.(1))
+                                                        (pt_of_mm x.(2)) (pt_of_mm y.(2))
+                                                        (pt_of_mm x.(3)) (pt_of_mm y.(3)));
+                        )
+                      )
+                    ) path
+                  ))
+              ) paths;
             match params.fillColor, params.strokingColor with
                 None, None-> Rbuffer.add_string pageBuf "n "
               | None, Some col -> (
@@ -611,6 +652,9 @@ let output ?(structure:structure={name="";displayname=[];
                            fprintf outChan "\nendstream";
                            endObject ()
                 ) !fonts;
+
+
+
     (* Toutes les largeurs des polices *)
     StrMap.iter (fun _ x->
                    resumeObject x.fontWidthsObj;
@@ -645,7 +689,6 @@ let output ?(structure:structure={name="";displayname=[];
                          in
                          sub
                        )
-                     | Fonts.Opentype _->failwith (__FILE__^" line "^(string_of_int __LINE__))
                      | Fonts.CFF y->(
                        let sub=CFF.subset y {CFF.name=(CFF.fontName y)} IntMap.empty
                          (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
@@ -654,24 +697,49 @@ let output ?(structure:structure={name="";displayname=[];
                        sub
 
                        )
-                     (* | _->raise Fonts.Not_supported *)
+                     | Fonts.Opentype (Opentype.TTF ttf as f)->(
+
+                       let info=Opentype.fontInfo f in
+                       let glyphs=(Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
+                                                     (IntMap.bindings x.revFontGlyphs))))
+                       in
+                       let sub=Opentype.subset f info IntMap.empty glyphs in
+                       sub
+                     )
                    in
 #else
                    let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF (y,_))
-                     | Fonts.CFF y->(
-                       let file=open_in y.CFF.file in
+                       Fonts.Opentype (Opentype.CFF _)
+                     | Fonts.CFF _->(
+                       let y=match x.font with
+                           Fonts.CFF x->x
+                         | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
+                         | _->assert false
+                       in
+                       let file=open_in_bin_cached y.CFF.file in
                        seek_in file y.CFF.offset;
                        let buf=Rbuffer.create 256 in
                        Rbuffer.add_channel buf file y.CFF.size;
+                       buf
+                     )
+                     | Fonts.Opentype (Opentype.TTF ttf)->(
+                       let file=open_in_bin_cached ttf.Opentype.ttf_file in
+                       seek_in file ttf.Opentype.ttf_offset;
+                       let buf=Rbuffer.create 256 in
+                       Rbuffer.add_channel buf file (in_channel_length file);
                        buf
                      )
                    (* | _->raise Fonts.Not_supported *)
                    in
 #endif
                    let filt, data=stream program in
+                   let subtype=match x.font with
+                       Fonts.Opentype(Opentype.CFF _)
+                     | Fonts.CFF _->"/Subtype /CIDFontType0C"
+                     | Fonts.Opentype(Opentype.TTF _)->""
+                   in
                    let len=Rbuffer.length data in
-                   fprintf outChan "<< /Length %d /Subtype /CIDFontType0C %s>>\nstream\n" len filt;
+                   fprintf outChan "<< /Length %d %s %s>>\nstream\n" len subtype filt;
                    Rbuffer.output_buffer outChan data;
                    fprintf outChan "\nendstream";
                    endObject();

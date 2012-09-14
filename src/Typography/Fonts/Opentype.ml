@@ -161,6 +161,32 @@ let cardinal f=
   seek_in file (a+4);
   readInt2 file
 
+let fontBBox f=
+  let file,offset0=match f with
+      CFF font->
+        let file=open_in_bin_cached font.cff_font.file in
+        file,font.cff_offset
+    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
+  in
+  let (a,b)=tableLookup "hhea" file offset0 in
+  seek_in file (a+4);
+  let ascender=readInt2 file in
+  let descender=readInt2 file in
+  seek_in file (a+12);
+  let lsb=readInt2 file in
+  let rsb=readInt2 file in
+  (lsb,descender,rsb,ascender)
+
+let italicAngle f=
+  let file,offset0=match f with
+      CFF font->
+        let file=open_in_bin_cached font.cff_font.file in
+        file,font.cff_offset
+    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
+  in
+  let (a,b)=tableLookup "post" file offset0 in
+  seek_in file (a+4);
+  float_of_int (readInt4 file)
 
 
 let glyph_of_uchar font0 char0=
@@ -202,11 +228,10 @@ let glyph_of_uchar font0 char0=
              (let firstCode=seek_in file subHeaders; readInt2 file in
               let entryCount=seek_in file (subHeaders+2); readInt2 file in
               let idDelta=seek_in file (subHeaders+4); readInt file 2 in
-              let idDelta=if idDelta>=0x8000 then idDelta-0x8000 else idDelta in
               let idRangeOffset=seek_in file (subHeaders+6); readInt2 file in
               if j>=firstCode && j < (firstCode+entryCount) then
                 (let p=seek_in file (subHeaders+8+idRangeOffset+j*2); readInt2 file in
-                 let cid=if p=0 then p else p+idDelta in
+                 let cid=if p=0 then p else (p+idDelta) land 0xffff in
                  if cid<>0 then cid else read_tables (table+1))
               else
                 read_tables (table+1)
@@ -223,16 +248,16 @@ let glyph_of_uchar font0 char0=
               else
                 smallestEnd i middle
           in
-          let seg=smallestEnd 0 (sc2-2) in
+          let seg=smallestEnd 0 (sc2-2) in (* 2*numéro de segment *)
           let start=seek_in file (offset+16+sc2+seg); readInt2 file in
           if char>=start then (
             let delta=seek_in file (offset+16+2*sc2+seg); readInt2 file in
-            let delta=if delta>=0x8000 then delta-0x8000 else delta in
+            (* let delta=if delta>=0x8000 then delta-0x10000 else delta in *)
             let p_idrOffset=offset+16+3*sc2+seg in
             let idrOffset=seek_in file p_idrOffset; readInt2 file in
             let cid=
               if idrOffset=0 then
-                (char+delta) mod 0x8000
+                (char+delta) land 0xffff
               else (
                 seek_in file (idrOffset+2*(char-start)+p_idrOffset);
                 (readInt2 file+delta) mod 0x8000
