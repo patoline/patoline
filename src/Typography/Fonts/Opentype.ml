@@ -308,9 +308,155 @@ let loadGlyph f ?index:(idx=0) gl=
       CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
     | TTF ttf->TTFGlyph (ttf,gl)
 
+
+(* Interpréteur truetype *)
+
+#define TT_ON_CURVE 1
+#define TT_XSHORT_VECTOR 2
+#define TT_YSHORT_VECTOR 4
+#define TT_REPEAT 8
+#define TT_SAME_X 16
+#define TT_SAME_Y 32
+
+#define TT_ARG1_AND_ARG2_ARE_WORDS
+#define TT_ARGS_ARE_XY_VALUES
+#define TT_ROUND_XY_TO_GRID
+#define TT_WE_HAVE_A_SCALE
+#define TT_MORE_COMPONENTS
+#define TT_WE_HAVE_AN_X_AND_Y_SCALE
+#define TT_WE_HAVE_A_TWO_BY_TWO
+#define TT_WE_HAVE_INSTRUCTIONS
+#define TT_USE_MY_METRICS
+#define TT_OVELAP_COMPOUND
+#define TT_SCALED_COMPONENTS_OFFSET
+#define TT_UNSCALED_COMPONENTS_OFFSET
+
+
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
-  | TTFGlyph _->[]
+  | TTFGlyph (ttf,gl)->(
+    let file=open_in_bin_cached ttf.ttf_file in
+    let off_size=
+      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      seek_in file (a+50);
+      if readInt2 file=0 then 2 else 4
+    in
+
+    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
+    seek_in file (a+gl.glyph_index*off_size);
+    let off=
+      let off=readInt2 file in
+      if off_size=2 then 2*off else off
+    in
+    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    seek_in file (c+off);
+    let numberOfContours=sreadInt2 file in
+
+
+    if numberOfContours>0 then (        (* simple glyph *)
+      seek_in file (c+off+10);
+      let rec read_contours i l=
+        if i>=numberOfContours then (
+          match l with
+              h::_->h,List.rev l
+            | _-> -1,l
+        ) else (
+          let j=readInt2 file in
+          read_contours (i+1) (j::l)
+        )
+      in
+      let lastPoint,contours=read_contours 0 [] in
+      let instr_length=readInt2 file in
+      seek_in file (pos_in file+instr_length);
+      let flags=Array.make (lastPoint+1) 0 in
+      let rec read_flags n=
+        if n<=lastPoint then (
+          flags.(n)<-input_byte file;
+          let n_repeat=
+            if flags.(n) land TT_REPEAT <> 0 then (
+              let n_repeat=input_byte file in
+              for i=1 to n_repeat do
+                flags.(n+i)<-flags.(n)
+              done;
+              n_repeat
+            ) else 0
+          in
+          read_flags (n+n_repeat+1)
+        )
+      in
+      read_flags 0;
+      let x=Array.make (Array.length flags) 0 in
+      let y=Array.make (Array.length flags) 0 in
+      for i=0 to Array.length x-1 do
+        if flags.(i) land TT_XSHORT_VECTOR<>0 then (
+          x.(i)<-if flags.(i) land TT_SAME_X <>0 then input_byte file else -(input_byte file)
+        ) else (
+          x.(i)<-if flags.(i) land TT_SAME_X <>0 then
+              0
+            else sreadInt2 file
+        )
+      done;
+      for i=0 to Array.length y-1 do
+        if flags.(i) land TT_YSHORT_VECTOR <>0 then (
+          y.(i)<-if flags.(i) land TT_SAME_Y <>0 then input_byte file else -(input_byte file)
+        ) else (
+          y.(i)<-if flags.(i) land TT_SAME_Y <>0 then
+              0
+            else sreadInt2 file
+        )
+      done;
+      let rec build_outlines x0 y0 outlines contours=
+        match contours with
+            [] | [_]->outlines
+          | h::hh::s->(
+            let ox0=x0+.float_of_int x.(h) in
+            let oy0=y0+.float_of_int y.(h) in
+            (* Courbe qui commence en i *)
+            let rec contour lastx lasty x0 y0 i l=
+              if i>=hh then lastx,lasty,l else (
+                if i+1>hh || flags.(i+1) land TT_ON_CURVE<>0 then (
+                  (* segment de droite *)
+                  let x1,y1=if i+1>hh then ox0,oy0 else
+                      (lastx+.float_of_int x.(i+1),
+                       lasty+.float_of_int y.(i+1))
+                  in
+                  contour x1 y1 x1 y1 (i+1) (([|x0;x1|],[|y0;y1|])::l)
+                ) else (
+                  if i+2>hh then (
+                      let x1=lastx+.float_of_int x.(i+1) in
+                      let y1=lasty+.float_of_int y.(i+1) in
+                      contour x1 y1 ox0 oy0 (i+2) (([|x0;x1;ox0|],[|y0;y1;oy0|])::l)
+                  ) else (
+                    if flags.(i+2) land TT_ON_CURVE<>0 then (
+                      let x1=lastx+.float_of_int x.(i+1) in
+                      let y1=lasty+.float_of_int y.(i+1) in
+                      let x2=x1+.float_of_int x.(i+2) in
+                      let y2=y1+.float_of_int y.(i+2) in
+                      contour x2 y2 x2 y2 (i+2) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                    ) else (
+                      let x1=lastx+.float_of_int x.(i+1) in
+                      let y1=lasty+.float_of_int y.(i+1) in
+                      let x2_=x1+.float_of_int x.(i+2) in
+                      let y2_=y1+.float_of_int y.(i+2) in
+                      let x2=(x1+.x2_)/.2. in
+                      let y2=(y1+.y2_)/.2. in
+                      contour x1 y1 x2 y2 (i+1) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                    )
+                  )
+                )
+              )
+            in
+            let x1,y1,l=contour ox0 oy0 ox0 oy0 h [] in
+            let l=List.rev (if x1<>ox0 || y1<>oy0 then ([|x1;ox0|],[|y1;oy0|])::l else l) in
+            build_outlines x1 y1 (l::outlines) ((hh+1)::s)
+          )
+      in
+      let x=build_outlines 0. 0. [] (0::contours) in
+      List.rev x
+    ) else (                            (* composite glyph *)
+      []
+    )
+  )
 
 
 let glyph_y0 gl=match gl with
@@ -331,7 +477,7 @@ let glyph_y0 gl=match gl with
     in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
     seek_in file (c+off+4);
-    float_of_int (readInt2 file)
+    float_of_int (sreadInt2 file)
   )
 
 let glyph_y1 gl=match gl with
@@ -352,7 +498,7 @@ let glyph_y1 gl=match gl with
     in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
     seek_in file (c+off+8);
-    float_of_int (readInt2 file)
+    float_of_int (sreadInt2 file)
   )
 
 let glyph_x0 gl=match gl with
@@ -373,7 +519,7 @@ let glyph_x0 gl=match gl with
     in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
     seek_in file (c+off+2);
-    float_of_int (readInt2 file)
+    float_of_int (sreadInt2 file)
   )
 
 let glyph_x1 gl=match gl with
@@ -394,7 +540,7 @@ let glyph_x1 gl=match gl with
     in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
     seek_in file (c+off+6);
-    float_of_int (readInt2 file)
+    float_of_int (sreadInt2 file)
   )
 
 let glyphNumber gl=match gl with

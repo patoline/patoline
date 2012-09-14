@@ -11,8 +11,10 @@ val a4 : float * float
 val phi : float
 (** reads a caml int of the given number of bytes, in big endian *)
 val readInt : in_channel -> int -> int
-(** reads a 16-bit, big endian int *)
+(** reads a 16-bit, unsigned big endian int *)
 val readInt2 : in_channel -> int
+(** reads a 16-bit, signed big endian int *)
+val sreadInt2 : in_channel -> int
 (** reads a 32-bit, big endian int *)
 val readInt4 : in_channel -> int
 

@@ -38,6 +38,13 @@ Fonts/Opentype.cmx:Fonts/FTypes.cmi Fonts/FTypes.cmx Fonts/CFF.cmx  Cmap.cmx Lay
 Fonts/Opentype.p.cmx:Fonts/FTypes.cmi Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Cmap.p.cmx Layout.p.cmx unicode_ranges.p.cmx
 Fonts/Opentype.cmi:Fonts/Opentype.cmo
 
+Fonts/Layout.cmo : Util.cmi
+Fonts/Layout.cmx : Util.cmi
+Fonts/Layout.p.cmx : Util.cmi
+
+
+
+
 Fonts/CFF.cmo:FTypes.cmi Util.cmi Bezier.cmi Bezier.cmo Type2.cmo CFFStd.cmo
 Fonts/CFF.cmx:FTypes.cmi Util.cmi Bezier.cmi Bezier.cmx Type2.cmx CFFStd.cmx
 Fonts/CFF.p.cmx:FTypes.cmi Util.cmi Bezier.cmi Bezier.p.cmx Type2.p.cmx CFFStd.p.cmx
@@ -46,6 +53,7 @@ Fonts/CFF.cmi:CFF.cmo
 Fonts/FTypes.cmo:FTypes.cmi Bezier.cmi Util.cmi
 Fonts/FTypes.cmx:FTypes.cmi Bezier.cmi Util.cmi
 Fonts/FTypes.p.cmx:FTypes.cmi Bezier.cmi Util.cmi
+Fonts/FTypes.cmi:Util.cmi Bezier.cmi
 
 Fonts/Sfnt/Sfnt.cmo:Util.cmi Fonts/Opentype.cmi Fonts.cmo Fonts/Sfnt/unicode_ranges.cmo
 Fonts/Sfnt/Sfnt.cmx:Util.cmi Fonts/Opentype.cmi Fonts.cmx Fonts/Sfnt/unicode_ranges.cmx

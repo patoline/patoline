@@ -41,6 +41,10 @@ let readInt2 f=
   really_input f buf 0 2;
   let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
     d
+let sreadInt2 f=
+  really_input f buf 0 2;
+  let d=((int_of_char buf.[0]) lsl 8) lor (int_of_char buf.[1]) in
+  if d>=0x8000 then d-0x10000 else d
 
 let strInt2 s i x=
   s.[i]<-char_of_int ((x lsr 8) land 0xff);
