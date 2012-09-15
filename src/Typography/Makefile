@@ -31,7 +31,7 @@ Util.p.cmx : new_map.p.cmx Config.p.cmx Util.cmi
 Fonts.cmo : Util.cmi Fonts/Opentype.cmo Fonts/FTypes.cmi Fonts/CFF.cmo Bezier.cmi
 Fonts.cmx : Util.cmi Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cmx
 Fonts.p.cmx : Util.cmi Fonts/Opentype.p.cmx Fonts/FTypes.p.cmx Fonts/CFF.p.cmx Bezier.p.cmx
-Fonts.cmi : Util.cmi Fonts.cmo
+Fonts.cmi : Util.cmi Util.cmx Fonts.cmx
 
 Fonts/Opentype.cmo:Fonts/FTypes.cmi Fonts/FTypes.cmo Fonts/CFF.cmo Fonts/Cmap.cmo Fonts/Layout.cmo Fonts/Sfnt/unicode_ranges.cmo
 Fonts/Opentype.cmx:Fonts/FTypes.cmi Fonts/FTypes.cmx Fonts/CFF.cmx Fonts/Cmap.cmx Fonts/Layout.cmx Fonts/Sfnt/unicode_ranges.cmx
@@ -158,8 +158,10 @@ NORMALSOURCES=$(filter-out Break%, $(SOURCES))
 
 $(NORMALSOURCES):%.cmx:%.ml
 	$(CAMLOPT) -for-pack Typography  -c -o $@ $<
-%.p.cmx:%.ml
-	$(CAMLOPT) -p -for-pack Typography  -c -o $@ $*.ml
+
+$(NORMALSOURCES:.cmx=.p.cmx):%.p.cmx:%.ml
+	$(CAMLOPT) -for-pack Typography -p -c -o $@ $<
+
 %.cmo:%.ml
 	$(CAMLC) -c -o $@ $<
 
