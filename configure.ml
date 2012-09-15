@@ -235,7 +235,7 @@ let _=
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
-            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"str,camomile%s%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)))
+            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"str,camomile,rbuffer%s%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)))
             (if !camlimages="" then "" else (","^(!camlimages)));
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";

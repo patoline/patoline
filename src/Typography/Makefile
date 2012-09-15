@@ -7,7 +7,7 @@ SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx F
 
 VPATH=Fonts:Fonts/Sfnt:Output
 
-all:Typography.cmxa #Typography.p.cmxa Typography.cma
+all:Typography.cmxa Typography.p.cmxa Typography.cma
 
 Typography.cmxa:Typography.cmx
 	$(CAMLOPT) -a -o Typography.cmxa Typography.cmx
