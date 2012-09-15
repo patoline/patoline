@@ -19,7 +19,9 @@ let _=
       let font= loadFont f in
         Printf.printf "%d\n" (List.length (font_features font));
         (* List.iter print_subst (select_features font (font_features font)); *)
+      Printf.fprintf stdout "cardinal : %d\n" (Fonts.cardinal font);
       let nb_glyphs = Fonts.cardinal font in
+      let init_glyph= 0 in
       let w=
         let m=ref 0. in
           for i=0 to nb_glyphs-1 do
@@ -62,5 +64,5 @@ let _=
                  pageContents=p})::(make_pages i0 0 280. [])
           )
       in
-        Pdf.output (Array.of_list ((make_pages 0 0 280. []))) ((Filename.chop_extension f)^".pdf")
+        Pdf.output (Array.of_list ((make_pages init_glyph 0 280. []))) ((Filename.chop_extension f)^".pdf")
     done

@@ -318,36 +318,33 @@ let loadGlyph f ?index:(idx=0) gl=
 #define TT_SAME_X 16
 #define TT_SAME_Y 32
 
-#define TT_ARG1_AND_ARG2_ARE_WORDS
-#define TT_ARGS_ARE_XY_VALUES
-#define TT_ROUND_XY_TO_GRID
-#define TT_WE_HAVE_A_SCALE
-#define TT_MORE_COMPONENTS
-#define TT_WE_HAVE_AN_X_AND_Y_SCALE
-#define TT_WE_HAVE_A_TWO_BY_TWO
-#define TT_WE_HAVE_INSTRUCTIONS
-#define TT_USE_MY_METRICS
-#define TT_OVELAP_COMPOUND
-#define TT_SCALED_COMPONENTS_OFFSET
-#define TT_UNSCALED_COMPONENTS_OFFSET
+#define TT_ARGS_ARE_WORDS                          1
+#define TT_ARGS_ARE_XY_VALUES                      2
+#define TT_ROUND_XY_TO_GRID                        4
+#define TT_WE_HAVE_A_SCALE                         8
+#define TT_MORE_COMPONENTS                        32
+#define TT_WE_HAVE_AN_X_AND_Y_SCALE               64
+#define TT_WE_HAVE_A_TWO_BY_TWO                  128
+#define TT_WE_HAVE_INSTRUCTIONS                  256
+#define TT_USE_MY_METRICS                        512
+#define TT_OVELAP_COMPOUND                      1024
+#define TT_SCALED_COMPONENTS_OFFSET             2048
+#define TT_UNSCALED_COMPONENTS_OFFSET           4096
 
 
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
   | TTFGlyph (ttf,gl)->(
     let file=open_in_bin_cached ttf.ttf_file in
-    let off_size=
+    let locformat=
       let (a,b)=tableLookup "head" file ttf.ttf_offset in
       seek_in file (a+50);
-      if readInt2 file=0 then 2 else 4
+      readInt2 file
     in
 
     let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    seek_in file (a+gl.glyph_index*off_size);
-    let off=
-      let off=readInt2 file in
-      if off_size=2 then 2*off else off
-    in
+    if locformat=0 then seek_in file (a+gl.glyph_index*2) else seek_in file (a+gl.glyph_index*4);
+    let off=if locformat=0 then (readInt2 file) lsl 1 else readInt4 file in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
     seek_in file (c+off);
     let numberOfContours=sreadInt2 file in
@@ -1076,6 +1073,12 @@ type fontInfo=
       mutable names:(int*int*string) list }
 
 let getInt2 str i=(int_of_char str.[i] lsl 8) lor (int_of_char str.[i+1])
+let getInt4 str i=
+  (((((int_of_char str.[i] lsl 8) lor (int_of_char str.[i+1])) lsl 8) lor (int_of_char str.[i+2])) lsl 8) lor
+    (int_of_char str.[i+3])
+let sgetInt2 str i=
+  let a=(int_of_char str.[i] lsl 8) lor (int_of_char str.[i+1]) in
+  if a>=0x8000 then a-0x10000 else a
 
 let fontInfo font=
   let fileName,off=match font with
@@ -1265,7 +1268,9 @@ let make_tables font fontInfo cmap glyphs_idx=
         )
     ) fontInfo.tables;
 
-  (* Printf.fprintf stderr "cmap\n"; flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "cmap\n"; flush stderr;
+#endif
   (* cmap *)
   let r_cmap=ref IntMap.empty in
   (try
@@ -1277,11 +1282,12 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->());
   let cmap= !r_cmap in
 
-
-  (* Printf.fprintf stderr "hmtx\n"; flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "hmtx\n"; flush stderr;
+#endif
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
-  let buf_hmtx=String.create (2*(Array.length glyphs)+2*(!numberOfHMetrics+1)) in
+  let buf_hmtx=String.create (2*(Array.length glyphs-1)+4*(!numberOfHMetrics+1)+2) in
   let advanceWidthMax=ref 0 in
   while !numberOfHMetrics>0 &&
     glyphWidth glyphs.(!numberOfHMetrics) = glyphWidth glyphs.(!numberOfHMetrics-1) do
@@ -1298,11 +1304,11 @@ let make_tables font fontInfo cmap glyphs_idx=
     let x0=round (glyph_x0 glyphs.(i)) in
     strInt2 buf_hmtx (4*(!numberOfHMetrics+1)+2*i) x0
   done;
-
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
-
-  (* Printf.fprintf stderr "hhea\n"; flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "hhea\n"; flush stderr;
+#endif
   (* hhea *)
   let xAvgCharWidth=ref 0. in
   let yMax=ref (-.infinity) in
@@ -1343,7 +1349,9 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found -> ());
 
-  (* Printf.fprintf stderr "head\n"; flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "head\n"; flush stderr;
+#endif
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
@@ -1354,7 +1362,9 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found->());
 
-  (* Printf.fprintf stderr "maxp\n"; flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "maxp\n"; flush stderr;
+#endif
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=String.create 6 in
@@ -1369,7 +1379,9 @@ let make_tables font fontInfo cmap glyphs_idx=
     strInt2 buf_maxp 4 (Array.length glyphs);
    ));
 
-  (* Printf.fprintf stderr "OS/2\n";flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "OS/2\n";flush stderr;
+#endif
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
@@ -1413,7 +1425,9 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->()
   );
 
-  (* Printf.fprintf stderr "CFF\n";flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "CFF\n";flush stderr;
+#endif
   (* CFF  *)
   (match font with
       CFF (cff)->(
@@ -1463,24 +1477,97 @@ let make_tables font fontInfo cmap glyphs_idx=
             let buf_glyf=StrMap.find "glyf" fontInfo_tables in
             let glyf=Rbuffer.create 256 in
             let loca=Rbuffer.create 256 in
-            Array.iter (fun gl->
-              let off0=if locformat=0 then
-                  2*(getInt2 buf_loca (2*gl.glyph_index))
-                else
-                  getInt2 buf_loca (4*gl.glyph_index)
+
+
+            let rec make_glyph_map i m0=
+              if i>=Array.length glyphs_idx then m0 else (
+                let gl=glyphs_idx.(i) in
+                make_glyph_map (i+1) (IntMap.add gl.glyph_index i m0)
+              )
+            in
+            let glyphMap=make_glyph_map 0 IntMap.empty in
+
+            (* Complétion de la police quand il manque des composantes de glyphs *)
+            let rec make_glyph_map i m0=
+              if i>=Array.length glyphs_idx then m0 else (
+                let gl=glyphs_idx.(i) in
+                let off0=if locformat=0 then
+                    2*(getInt2 buf_loca (2*gl.glyph_index))
+                  else
+                    getInt4 buf_loca (4*gl.glyph_index)
+                in
+                let off1=if locformat=0 then
+                    2*(getInt2 buf_loca (2*gl.glyph_index+2))
+                  else
+                    getInt4 buf_loca (4*gl.glyph_index+4)
+                in
+                make_glyph_map (i+1)
+                  (if off1<=off0 then m0 else (
+                    let numberOfContours=sgetInt2 buf_glyf off0 in
+                    if numberOfContours<0 then (
+                      let rec replace_glyphs i m1=
+                        let old_component=getInt2 buf_glyf (i+2) in
+                        let m2=if IntMap.mem old_component m1 then m1 else
+                            IntMap.add old_component (IntMap.cardinal m1) m1
+                        in
+                        let flags=getInt2 buf_glyf i in
+                        if flags land TT_MORE_COMPONENTS <> 0 then (
+                          let off_args=if flags land TT_ARGS_ARE_WORDS <>0 then 4 else 2 in
+                          let off_trans=
+                            (if flags land TT_WE_HAVE_A_SCALE<>0 then 2 else
+                                if flags land TT_WE_HAVE_AN_X_AND_Y_SCALE<>0 then 4 else
+                                  if flags land TT_WE_HAVE_A_TWO_BY_TWO<>0 then 8 else 0)
+                          in
+                          replace_glyphs (i+4+off_args+off_trans) m2
+                        ) else m2
+                      in
+                      replace_glyphs (off0+10) m0
+                    ) else m0
+                   ))
+              )
+            in
+            let glyphMap=make_glyph_map 0 glyphMap in
+            let revGlyphMap=Array.make (IntMap.cardinal glyphMap) 0 in
+            IntMap.iter (fun old_index gl->revGlyphMap.(gl)<-old_index) glyphMap;
+            for i=0 to Array.length revGlyphMap-1 do
+              let old_index=revGlyphMap.(i) in
+              let off0=
+                  if locformat=0 then
+                    2*(getInt2 buf_loca (2*old_index))
+                  else
+                    getInt4 buf_loca (4*old_index)
               in
-              let off1=if locformat=0 then
-                  2*(getInt2 buf_loca (2*gl.glyph_index+2))
-                else
-                  getInt2 buf_loca (4*gl.glyph_index+4)
+              let off1=
+                  if locformat=0 then
+                    2*(getInt2 buf_loca (2*old_index+2))
+                  else
+                    getInt4 buf_loca (4*old_index+4)
               in
-              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2)
-              else bufInt4 loca (Rbuffer.length glyf);
-              Rbuffer.add_string glyf
-                (String.sub buf_glyf off0 (off1-off0));
-            ) glyphs_idx;
-            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2)
-            else bufInt4 loca (Rbuffer.length glyf);
+              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4 loca (Rbuffer.length glyf);
+              let str=String.sub buf_glyf off0 (off1-off0) in
+              if String.length str>0 then (
+                let numberOfContours=sgetInt2 str 0 in
+                if numberOfContours<0 then (
+                  let rec replace_glyphs i=
+                    let old_component=getInt2 str (i+2) in
+                    strInt2 str (i+2) (IntMap.find old_component glyphMap);
+                    let flags=getInt2 str i in
+                    if flags land TT_MORE_COMPONENTS <> 0 then (
+                      let off_args=if flags land TT_ARGS_ARE_WORDS <>0 then 4 else 2 in
+                      let off_trans=
+                        (if flags land TT_WE_HAVE_A_SCALE<>0 then 2 else
+                            if flags land TT_WE_HAVE_AN_X_AND_Y_SCALE<>0 then 4 else
+                              if flags land TT_WE_HAVE_A_TWO_BY_TWO<>0 then 8 else 0)
+                      in
+                      replace_glyphs (i+4+off_args+off_trans)
+                    )
+                  in
+                  replace_glyphs 10
+                ));
+              Rbuffer.add_string glyf str
+            done;
+
+            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4 loca (Rbuffer.length glyf);
             fontInfo.tables<-StrMap.add "loca" (Rbuffer.contents loca) fontInfo.tables;
             fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
           with
@@ -1498,8 +1585,9 @@ let make_tables font fontInfo cmap glyphs_idx=
   (*       let buf=write_layout scr feat lookups in *)
   (*       fontInfo.tables<-StrMap.add "GSUB" buf fontInfo.tables *)
   (* end; *)
-
-  (* Printf.fprintf stderr "names\n";flush stderr; *)
+#ifdef DEBUG_TTF
+  Printf.fprintf stderr "names\n";flush stderr;
+#endif
   (* names *)
   begin
     try
