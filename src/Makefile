@@ -37,11 +37,11 @@ Format/DefaultFormat.cma:Format Typography.cma
 Format/DefaultFormat.p.cmax:Format Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
-Format/%.cmxa:DefaultFormat.cmxa Format/%.ml
+Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml
 	$(CAMLOPT) -a -I Typography -I Format -o $@ Format/$*.ml
-Format/%.p.cmxa:DefaultFormat.cmxa Format/%.ml
+Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa  Format/%.ml
 	$(CAMLOPT) -p -I Typography -I Format -o $@ Format/$*.ml
-Format/%.cma:DefaultFormat.cma Format/%.ml
+Format/%.cma:DefaultFormat.cma Typography.cma  Format/%.ml
 	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
 
 .PHONY:Typography/Typography.cma Typography/Typography.cmxa Typography/Typography.p.cmxa
