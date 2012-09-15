@@ -342,10 +342,10 @@ let compression paragraphs (parameters) (line)=comp paragraphs parameters.measur
 let glyphCache_=ref StrMap.empty
 
 let glyphCache cur_font gl=
-  let name=Fonts.fontName cur_font in
-  let font=try StrMap.find name.postscript_name !glyphCache_ with
+  let name=(Fonts.fontName cur_font).postscript_name in
+  let font=try StrMap.find name !glyphCache_ with
         Not_found->(let fontCache=ref IntMap.empty in
-                      glyphCache_:=StrMap.add name.postscript_name fontCache !glyphCache_;
+                      glyphCache_:=StrMap.add name fontCache !glyphCache_;
                       fontCache)
   in
     try IntMap.find gl.glyph_index !font with

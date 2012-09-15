@@ -67,7 +67,9 @@ let loadFont ?offset:(off=0) ?size:(_=0) file=
                        ttf_offset=off;
                        ttf_file=file }
 
-
+let uniqueName font=match font with
+    CFF cff->CFF.uniqueName cff.cff_font
+  | TTF ttf->ttf.ttf_file
 
 let getNames font off=
   try
@@ -251,16 +253,15 @@ let glyph_of_uchar font0 char0=
           let seg=smallestEnd 0 (sc2-2) in (* 2*numéro de segment *)
           let start=seek_in file (offset+16+sc2+seg); readInt2 file in
           if char>=start then (
-            let delta=seek_in file (offset+16+2*sc2+seg); readInt2 file in
-            (* let delta=if delta>=0x8000 then delta-0x10000 else delta in *)
+            let delta=seek_in file (offset+16+2*sc2+seg); sreadInt2 file in
             let p_idrOffset=offset+16+3*sc2+seg in
             let idrOffset=seek_in file p_idrOffset; readInt2 file in
             let cid=
               if idrOffset=0 then
-                (char+delta) land 0xffff
+                (char+delta+0x10000) land 0xffff
               else (
                 seek_in file (idrOffset+2*(char-start)+p_idrOffset);
-                (readInt2 file+delta) mod 0x8000
+                (readInt2 file+delta+0x10000) land 0xffff
               )
             in
             if cid<>0 then cid else read_tables (table+1)
@@ -805,15 +806,15 @@ let read_scripts font=
         seek_in file (gsubOff+scripts+2+i*6);
         let _=input file scriptTag 0 4 in
         let off=readInt2 file in
-          Printf.printf "\n%s\n" scriptTag;
-          let offset1=gsubOff+scripts+off in
-          let langSysCount=seek_in file (offset1+2); readInt2 file in
-            for langSys=0 to langSysCount-1 do
-              let langSysTag=String.create 4 in
-                seek_in file (offset1+4+langSys*6);
-                let _=input file langSysTag 0 4 in
-                  Printf.printf "lang : %s\n" langSysTag
-          done
+        Printf.printf "\n%s\n" scriptTag;
+        let offset1=gsubOff+scripts+off in
+        let langSysCount=seek_in file (offset1+2); readInt2 file in
+        for langSys=0 to langSysCount-1 do
+          let langSysTag=String.create 4 in
+          seek_in file (offset1+4+langSys*6);
+          let _=input file langSysTag 0 4 in
+          Printf.printf "lang : %s\n" langSysTag
+        done
     done
 
 
@@ -946,7 +947,7 @@ let fontInfo font=
       seek_in file (off+n);
       let newTable=String.create 4 in
       really_input file newTable 0 4;
-      Printf.fprintf stderr "%S newTable=%S\n" fileName newTable;flush stderr;
+      (* Printf.fprintf stderr "%S newTable=%S\n" fileName newTable;flush stderr; *)
       let _ (* checkSum *)=readInt4 file in
       let offset=readInt4 file in
       let length=readInt4 file in
@@ -994,7 +995,7 @@ let fontInfo font=
                     ((languageID,nameID,utf8)::m)
                   )
                   | a,b->(
-                    Printf.fprintf stderr "encoding : %d %d\n" a b;
+                    Printf.fprintf stderr "unrecognized encoding, please report (font %s) : %d %d\n" fileName a b;
                     m
                   )
               with
@@ -1118,7 +1119,7 @@ let make_tables font fontInfo cmap glyphs_idx=
         )
     ) fontInfo.tables;
 
-  Printf.fprintf stderr "cmap\n"; flush stderr;
+  (* Printf.fprintf stderr "cmap\n"; flush stderr; *)
   (* cmap *)
   let r_cmap=ref IntMap.empty in
   (try
@@ -1131,7 +1132,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   let cmap= !r_cmap in
 
 
-  Printf.fprintf stderr "hmtx\n"; flush stderr;
+  (* Printf.fprintf stderr "hmtx\n"; flush stderr; *)
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
   let buf_hmtx=String.create (2*(Array.length glyphs)+2*(!numberOfHMetrics+1)) in
@@ -1155,7 +1156,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
 
-  Printf.fprintf stderr "hhea\n"; flush stderr;
+  (* Printf.fprintf stderr "hhea\n"; flush stderr; *)
   (* hhea *)
   let xAvgCharWidth=ref 0. in
   let yMax=ref (-.infinity) in
@@ -1196,8 +1197,7 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found -> ());
 
-
-  Printf.fprintf stderr "head\n"; flush stderr;
+  (* Printf.fprintf stderr "head\n"; flush stderr; *)
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
@@ -1208,7 +1208,7 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found->());
 
-  Printf.fprintf stderr "maxp\n"; flush stderr;
+  (* Printf.fprintf stderr "maxp\n"; flush stderr; *)
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=String.create 6 in
@@ -1223,7 +1223,7 @@ let make_tables font fontInfo cmap glyphs_idx=
     strInt2 buf_maxp 4 (Array.length glyphs);
    ));
 
-  Printf.fprintf stderr "OS/2\n"; flush stderr;
+  (* Printf.fprintf stderr "OS/2\n";flush stderr; *)
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
@@ -1267,7 +1267,7 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->()
   );
 
-  Printf.fprintf stderr "CFF \n"; flush stderr;
+  (* Printf.fprintf stderr "CFF\n";flush stderr; *)
   (* CFF  *)
   (match font with
       CFF (cff)->(
@@ -1309,26 +1309,32 @@ let make_tables font fontInfo cmap glyphs_idx=
     match font with
         TTF _->(
           try
-            let off_size=
+            let locformat=
               let head=StrMap.find "head" fontInfo_tables in
-              if getInt2 head 50=0 then 2 else 4
+              getInt2 head 50
             in
             let buf_loca=StrMap.find "loca" fontInfo_tables in
             let buf_glyf=StrMap.find "glyf" fontInfo_tables in
             let glyf=Rbuffer.create 256 in
             let loca=Rbuffer.create 256 in
             Array.iter (fun gl->
-              let off0=getInt2 buf_loca (off_size*gl.glyph_index) in
-              let off0=if off_size=2 then off0*2 else off0 in
-              let off1=getInt2 buf_loca (off_size*gl.glyph_index+2) in
-              let off1=if off_size=2 then off1*2 else off1 in
-              if off_size=2 then bufInt2 loca (Rbuffer.length glyf/2)
-              else bufInt2 loca (Rbuffer.length glyf);
+              let off0=if locformat=0 then
+                  2*(getInt2 buf_loca (2*gl.glyph_index))
+                else
+                  getInt2 buf_loca (4*gl.glyph_index)
+              in
+              let off1=if locformat=0 then
+                  2*(getInt2 buf_loca (2*gl.glyph_index+2))
+                else
+                  getInt2 buf_loca (4*gl.glyph_index+4)
+              in
+              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2)
+              else bufInt4 loca (Rbuffer.length glyf);
               Rbuffer.add_string glyf
                 (String.sub buf_glyf off0 (off1-off0));
             ) glyphs_idx;
-            if off_size=2 then bufInt2 loca (Rbuffer.length glyf/2)
-            else bufInt2 loca (Rbuffer.length glyf);
+            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2)
+            else bufInt4 loca (Rbuffer.length glyf);
             fontInfo.tables<-StrMap.add "loca" (Rbuffer.contents loca) fontInfo.tables;
             fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
           with
@@ -1347,6 +1353,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (*       fontInfo.tables<-StrMap.add "GSUB" buf fontInfo.tables *)
   (* end; *)
 
+  (* Printf.fprintf stderr "names\n";flush stderr; *)
   (* names *)
   begin
     try

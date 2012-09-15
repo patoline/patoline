@@ -25,6 +25,11 @@ let fontName  ?index:(index=0) f=
       CFF x->CFF.fontName ~index:index x
     | Opentype x->Opentype.fontName ~index:index x
 
+let uniqueName  ?index:(index=0) f=
+  match f with
+      CFF x->CFF.uniqueName x
+    | Opentype x->Opentype.uniqueName x
+
 #ifdef BAN_COMIC_SANS
 exception Comic_sans
 #endif

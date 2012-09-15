@@ -78,7 +78,7 @@ let output ?(structure:structure={name="";displayname=[];
         fill (UTF8.first str) 2
   in
   let addFont font=
-    try StrMap.find (Fonts.fontName font).postscript_name !fonts with
+    try StrMap.find (Fonts.uniqueName font) !fonts with
         Not_found->
           match font with
               Fonts.CFF _
@@ -133,7 +133,7 @@ let output ?(structure:structure={name="";displayname=[];
                              fontToUnicode=toUnicode;
                              fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
                              revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
-                fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
+                fonts:=StrMap.add (Fonts.uniqueName font) result !fonts;
                 result
               )
             )
@@ -263,15 +263,15 @@ let output ?(structure:structure={name="";displayname=[];
 
               let fnt=Fonts.glyphFont (gl.glyph) in
                 (* Inclusion de la police sur la page *)
-              let idx=try fst (StrMap.find (Fonts.fontName fnt).postscript_name !pageFonts) with
+              let idx=try fst (StrMap.find (Fonts.uniqueName fnt) !pageFonts) with
                   Not_found->(
                     let card=StrMap.cardinal !pageFonts in
                     let pdfFont=addFont fnt in
-                      pageFonts := StrMap.add (Fonts.fontName fnt).postscript_name (card, pdfFont.fontObject) !pageFonts;
+                      pageFonts := StrMap.add (Fonts.uniqueName fnt) (card, pdfFont.fontObject) !pageFonts;
                       card
                   )
               in
-              let pdfFont=StrMap.find (Fonts.fontName fnt).postscript_name !fonts in
+              let pdfFont=StrMap.find (Fonts.uniqueName fnt) !fonts in
               let num=
 #ifdef SUBSET
             let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in

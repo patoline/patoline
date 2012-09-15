@@ -49,6 +49,7 @@ let print_num chan=function
     CFFInt x->Printf.fprintf chan "CFFInt %d" x
   | CFFFloat x->Printf.fprintf chan "CFFFloat %f" x
 #endif
+let uniqueName f=f.file
 
 let readCFFNum f=
   let b0=input_byte f in
