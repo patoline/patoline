@@ -43,7 +43,6 @@ let stream buf=
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
-
   let fileName = filename fileName in
   let outChan=open_out_bin fileName in
   let pageBuf=Rbuffer.create 256 in
@@ -83,23 +82,30 @@ let output ?(structure:structure={name="";displayname=[];
         Not_found->
           match font with
               Fonts.CFF _
-            | Fonts.Opentype (Opentype.CFF _)->
+            | Fonts.Opentype (Opentype.CFF _)
+            | Fonts.Opentype (Opentype.TTF _)->(
               ((* Font program *)
-                let x=match font with
-                    Fonts.CFF x->x
-                  | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
-                  | _->assert false
-                in
                 let fontFile=futureObject () in
 
                   (* Font descriptor -- A completer*)
 
-                let fontName="PATOLIN+"^(CFF.fontName x).postscript_name in
+                let fontName="PATOLIN+"^(Fonts.fontName font).postscript_name in
                 let descr=beginObject () in
-                let (a,b,c,d)=CFF.fontBBox x in
+                let (a,b,c,d)=match font with
+                    Fonts.CFF x->CFF.fontBBox x
+                  | Fonts.Opentype x->Opentype.fontBBox x
+                  (* | _->assert false *)
+                in
+                let italicAngle=match font with
+                    Fonts.CFF x->CFF.italicAngle x
+                  | Fonts.Opentype x->Opentype.italicAngle x
+                  (* | _->assert false *)
+                in
                 fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
-                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (CFF.italicAngle x);
-                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile3 %d 0 R >>" fontFile;
+                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d italicAngle;
+                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile%d %d 0 R >>"
+                  (match font with Fonts.Opentype (Opentype.TTF _)->2 | _->3)
+                  fontFile;
                 endObject();
 
                 (* Widths *)
@@ -107,47 +113,9 @@ let output ?(structure:structure={name="";displayname=[];
 
                 (* Font dictionary *)
                 let fontDict=beginObject () in
-                fprintf outChan "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /%s " fontName;
-                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
-                fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
-                endObject();
-
-                (* CID Font dictionary *)
-                let toUnicode=futureObject () in
-                let cidFontDict=beginObject () in
-                fprintf outChan
-                  "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
-                fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
-                endObject();
-
-                let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
-                             fontFile=fontFile;
-                             fontToUnicode=toUnicode;
-                             fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
-                             revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
-                fonts:=StrMap.add (Fonts.fontName font).postscript_name result !fonts;
-                result
-              )
-            | Fonts.Opentype ((Opentype.TTF ttf) as x)->(
-              ((* Font program *)
-                let fontFile=futureObject () in
-
-                (* Font descriptor -- A completer*)
-
-                let fontName="PATOLIN+"^(Opentype.fontName x).postscript_name in
-                let descr=beginObject () in
-                let (a,b,c,d)=Opentype.fontBBox x in
-                fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
-                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d (Opentype.italicAngle x);
-                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile2 %d 0 R >>" fontFile;
-                endObject();
-
-                (* Widths *)
-                let w=futureObject () in
-
-                (* Font dictionary *)
-                let fontDict=beginObject () in
-                fprintf outChan "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /%s " fontName;
+                fprintf outChan "<< /Type /Font /Subtype /CIDFontType%d /BaseFont /%s "
+                  (match font with Fonts.Opentype (Opentype.TTF _)->2 | _->0)
+                  fontName;
                 fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
                 fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
                 endObject();

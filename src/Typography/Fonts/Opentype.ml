@@ -1118,8 +1118,8 @@ let make_tables font fontInfo cmap glyphs_idx=
         )
     ) fontInfo.tables;
 
-  (* cmap *)
   Printf.fprintf stderr "cmap\n"; flush stderr;
+  (* cmap *)
   let r_cmap=ref IntMap.empty in
   (try
      r_cmap:=IntMap.filter (fun _ a->a<Array.length glyphs && a>=0) cmap;
@@ -1131,7 +1131,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   let cmap= !r_cmap in
 
 
-  (* Printf.fprintf stderr "hmtx\n"; flush stderr; *)
+  Printf.fprintf stderr "hmtx\n"; flush stderr;
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
   let buf_hmtx=String.create (2*(Array.length glyphs)+2*(!numberOfHMetrics+1)) in
@@ -1155,7 +1155,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
 
-  (* Printf.fprintf stderr "hhea\n"; flush stderr; *)
+  Printf.fprintf stderr "hhea\n"; flush stderr;
   (* hhea *)
   let xAvgCharWidth=ref 0. in
   let yMax=ref (-.infinity) in
@@ -1196,7 +1196,8 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found -> ());
 
-  (* Printf.fprintf stderr "head\n"; flush stderr; *)
+
+  Printf.fprintf stderr "head\n"; flush stderr;
   (* head *)
   (try
      let buf_head=StrMap.find "head" fontInfo_tables in
@@ -1207,7 +1208,7 @@ let make_tables font fontInfo cmap glyphs_idx=
    with
        Not_found->());
 
-  (* Printf.fprintf stderr "maxp\n"; flush stderr; *)
+  Printf.fprintf stderr "maxp\n"; flush stderr;
   (* maxp *)
   (if fontInfo.fontType="OTTO" then (
     let buf_maxp=String.create 6 in
@@ -1222,6 +1223,7 @@ let make_tables font fontInfo cmap glyphs_idx=
     strInt2 buf_maxp 4 (Array.length glyphs);
    ));
 
+  Printf.fprintf stderr "OS/2\n"; flush stderr;
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
@@ -1265,6 +1267,7 @@ let make_tables font fontInfo cmap glyphs_idx=
        Not_found->()
   );
 
+  Printf.fprintf stderr "CFF \n"; flush stderr;
   (* CFF  *)
   (match font with
       CFF (cff)->(
