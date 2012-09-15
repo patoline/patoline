@@ -15,7 +15,7 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Drivers:Format
 
-all:native #byte prof
+all:native byte prof
 
 native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx proof/proof $(NATIVE_EXTRA)
 byte:Typography/Typography.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
@@ -55,9 +55,9 @@ Typography/Typography.p.cmxa:
 
 Drivers/%.cmxa:Drivers/%.ml Typography.cmxa
 	cd Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -pp $(CPP) -I ../Typography -o $*.cmxa $*.ml
-Drivers/%.cma:Drivers/%.ml
+Drivers/%.cma:Drivers/%.ml Typography.cma
 	cd Drivers; ocamlfind ocamlc -package camomile $(PACK) -a -pp $(CPP) -I ../Typography Typography.cma -o $*.cma $*.ml
-Drivers/%.p.cmxa:Drivers/%.ml
+Drivers/%.p.cmxa:Drivers/%.ml Typography.p.cmxa
 	cd Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -p -pp $(CPP) -I ../Typography -o $*.p.cmxa $*.ml
 
 

@@ -16,4 +16,4 @@ DefaultFormat.cma:DefaultFormat.ml Euler.cmo Numerals.cmo TableOfContents.cmo Se
 	$(CAMLC) -c -o $@ $*.ml
 
 clean:
-	rm -f *~ \#*\# *.o *.cm[ioxa] *.cmxa
+	rm -f *~ \#*\# *.o *.cm[ioxa] *.cmxa *.a
