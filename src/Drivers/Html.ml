@@ -30,7 +30,7 @@ let output ?(structure:structure={name="";displayname=[];
         )
       | Glyph h::s->(
         let font=Fonts.glyphFont h.glyph in
-        let fontName=(Fonts.fontName font).postscript_name in
+        let fontName=(Fonts.uniqueName font) in
         let _,fontDict=
           try StrMap.find fontName fonts with
               Not_found->font,IntMap.empty
@@ -62,6 +62,17 @@ let output ?(structure:structure={name="";displayname=[];
        ) glyphMap m) a IntMap.empty)
   ) f
   in
+
+  let fontInstances=ref StrMap.empty in
+  let fontInstance font=
+    let u=Fonts.uniqueName font in
+    let p=(Fonts.fontName font).postscript_name in
+    let instances=try StrMap.find p !fontInstances with Not_found->StrMap.empty in
+    let inst_num=try StrMap.find u instances with Not_found->StrMap.cardinal instances in
+    fontInstances:=StrMap.add p (StrMap.add u inst_num instances) !fontInstances;
+    inst_num
+  in
+
   let style_buf=Rbuffer.create 256 in
   Rbuffer.add_string style_buf ".z { font-size:0; }\n";
   let classes=ref StrMap.empty in
@@ -81,17 +92,20 @@ let output ?(structure:structure={name="";displayname=[];
       let glyphs=Array.of_list glyphList in
       let family=(Fonts.fontName font).family_name in
       let subfamily=(Fonts.fontName font).subfamily_name in
-      let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int subfont) in
-      let ps=(Fonts.fontName font).postscript_name^"_"^(string_of_int subfont) in
+
+      let instance=fontInstance font in
+
+      let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
+      let ps=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
       let info=Fonts.fontInfo font in
       let filename=full^".otf" in
-      Fonts.setName info
-        { family_name=family;
-          subfamily_name=subfamily;
-          full_name=full;
-          postscript_name=ps };
+      (* Fonts.setName info *)
+      (*   { family_name=family; *)
+      (*     subfamily_name=subfamily; *)
+      (*     full_name=full; *)
+      (*     postscript_name=ps }; *)
       let class_name=Printf.sprintf "c%d" (StrMap.cardinal !classes) in
-      classes:=StrMap.add ps class_name !classes;
+      classes:=StrMap.add (Fonts.uniqueName font) class_name !classes;
       Rbuffer.add_string style_buf (Printf.sprintf "@font-face { font-family:%s;
 src:url(\"%s\") format(\"opentype\"); }
 .%s { font-family:%s; }\n"
@@ -129,12 +143,12 @@ src:url(\"%s\") format(\"opentype\"); }
     List.iter (fun l->match l with
         Glyph x->(
           let font=Fonts.glyphFont x.glyph in
-          let ps=(Fonts.fontName font).postscript_name in
+          let ps=(Fonts.uniqueName font) in
           let idx=Fonts.glyphNumber x.glyph in
-          let _,subfont=IntMap.find idx.glyph_index (snd (StrMap.find ps f)) in
+          let _,subfont=IntMap.find idx.glyph_index (snd (StrMap.find (Fonts.uniqueName font) f)) in
 
           let ps=ps^"_"^(string_of_int subfont) in
-          let class_name=StrMap.find ps !classes in
+          let class_name=StrMap.find (Fonts.uniqueName font) !classes in
           let cont=Fonts.glyphNumber x.glyph in
           let pos=UTF8.next cont.glyph_utf8 0 in
           Printf.fprintf o "<span class=\"%s\">%s</span>"

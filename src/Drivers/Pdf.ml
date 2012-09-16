@@ -43,6 +43,7 @@ let stream buf=
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
+
   let fileName = filename fileName in
   let outChan=open_out_bin fileName in
   let pageBuf=Rbuffer.create 256 in
