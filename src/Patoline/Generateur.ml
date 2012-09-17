@@ -51,13 +51,14 @@ let _= Build.macros:=
 
 let hashed="(Sys.executable_name^\".aux\")"
 let env_stack=ref []
-let preambule format driver amble filename=
+let preambule format driver packages amble filename=
   match amble with
       Noamble->""
     | _->(
       Printf.sprintf
         "(* #FORMAT %s *)
 (* #DRIVER %s *)
+%s
 open Typography
 open Typography.Util
 open Typography.Box
@@ -69,6 +70,9 @@ open Typography.OutputCommon
 "
         format
         driver
+        (if packages<>[] then Printf.sprintf "(* #PACKAGES %s *)"
+            (String.concat "," packages)
+         else "")
         (match amble with
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
@@ -588,7 +592,7 @@ and output_list parser_pp from where no_indent lvl docs =
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 
-let gen_ml format driver amble filename from wherename where pdfname =
+let gen_ml format driver packages amble filename from wherename where pdfname =
     try
       (* match filename with *)
       (*     []-> Printf.fprintf stderr "no input files\n" *)
@@ -613,7 +617,7 @@ let gen_ml format driver amble filename from wherename where pdfname =
 	        [] -> assert false
 	      | ((caml_header, pre, docs), _) :: _  ->
 		  begin
-                    Printf.fprintf where "%s" (preambule format driver amble filename);
+                    Printf.fprintf where "%s" (preambule format driver packages amble filename);
                     (match amble with
                          Main | Noamble -> ()
                        | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"

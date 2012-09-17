@@ -152,6 +152,7 @@ let rec read_options_from_source_file fread =
     else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
     else if Str.string_match nothing s 0 then pump ()
   in
+  seek_in fread 0;
   (try
      pump ()
    with End_of_file -> ());
@@ -334,9 +335,12 @@ and patoline_rule objects h=
 
     if age_h<age_source || cmi_is_older then (
       let dirs_=String.concat " " !dirs in
+      let i=open_in source in
+      let opts=read_options_from_source_file i in
+      close_in i;
       let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
-        (let pack=String.concat "," (List.rev !package_list) in
+        (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         h
@@ -438,7 +442,7 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          Generateur.gen_ml opts.format opts.driver !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
+          Generateur.gen_ml opts.format opts.driver opts.packages !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
         );
         close_out where_ml;
         close_in fread;
