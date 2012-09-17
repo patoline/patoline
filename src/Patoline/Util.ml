@@ -17,3 +17,4 @@ end
 
 module StrSet = Set.Make(Str_)
 module StrMap=Map.Make(Str_)
+module IntMap=Map.Make(struct type t=int let compare=compare end)

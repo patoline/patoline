@@ -119,7 +119,7 @@ let rec read_options_from_source_file fread =
       let name=
         try
           let name=Util.findPath ((Filename.chop_extension n)^".ml") ("."::!Config.local_path) in
-          let objects=(Mutex.create (), ref []) in
+          let objects=(Mutex.create (), ref StrMap.empty, ref 0) in
           Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo"));
           Dynlink.adapt_filename (Filename.chop_extension name^".cmo")
         with
@@ -270,10 +270,7 @@ and patoline_rule objects h=
     Sys.file_exists h;
   )
   else if Filename.check_suffix h ".cmx" then (
-    Mutex.lock (fst objects);
-    (if not (List.mem h !(snd objects)) then
-        (snd objects):=h::(!(snd objects)));
-    Mutex.unlock (fst objects);
+
     let pref=Filename.chop_extension h in
     let source_ml=pref^".ml" in
     let source=
@@ -283,13 +280,59 @@ and patoline_rule objects h=
     in
     Build.build source;
 
+    (* On ouvre la map à h, on place les dépendances de h après h, et
+       on rajoute la fin de la map par-dessus. Ainsi, on n'a pas
+       besoin de recalculer l'ordre de la ligne de commande dans les
+       cas compliqués. *)
     let deps0=make_deps source in
+    let mut,m,n=objects in
+    Mutex.lock mut;
+    (try
+       let lower,_,upper=StrMap.split h !m in
+       m:=lower;
+       List.iter (fun x->
+         incr n;
+         m:=StrMap.add x !n !m
+       ) deps0;
+
+       incr n;
+       m:=StrMap.add h !n !m;
+
+       StrMap.iter (fun k _->
+         incr n;
+         m:=StrMap.add k !n !m
+       ) upper;
+     with
+         Not_found->
+           List.iter (fun x->
+             incr n;
+             m:=StrMap.add x !n !m
+           ) deps0
+    );
+    Mutex.unlock mut;
+
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
 
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
     let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-    if age_h<age_source then (
+
+    (* Gestion des "incoherent assumptions" (cmi) *)
+    let my_cmi=pref^".cmi" in
+    let cmi_is_older=if Sys.file_exists my_cmi then
+        let age_cmi=(Unix.stat my_cmi).Unix.st_mtime in
+        List.fold_left (fun m x->
+          let x_cmi=((Filename.chop_extension x)^".cmi") in
+          if Sys.file_exists x_cmi then
+            m || ((Unix.stat x_cmi).Unix.st_mtime >= age_cmi)
+          else
+            true
+        ) false deps0
+      else
+        true
+    in
+
+    if age_h<age_source || cmi_is_older then (
       let dirs_=String.concat " " !dirs in
       let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
@@ -319,27 +362,39 @@ and patoline_rule objects h=
     close_in in_s;
     List.iter Build.build opts.deps;
 
+    (* A ce niveau, toutes les dépendances sont indépendantes entre
+       elles. On peut les placer sur le même niveau. *)
     let deps0=make_deps source in
+    let mut,m,n=objects in
+    Mutex.lock mut;
+    List.iter (fun x->
+      incr n;
+      m:=StrMap.add x !n !m
+    ) deps0;
+    Mutex.unlock mut;
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
 
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
     let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
     if age_h<age_source then (
-      Mutex.lock (fst objects);
+      let mut,m,n=objects in
+      Mutex.lock mut;
       let dirs_=String.concat " " !dirs in
+      let objs=StrMap.fold (fun k a m->IntMap.add (-a) k m) !m IntMap.empty in
+      let objs=List.map snd (IntMap.bindings objs) in
       let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s %s -impl '%s'"
         !ocamlopt
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
-        h 
+        h
         (if opts.format<>"DefaultFormat" then (opts.format^".cmxa") else "")
-	(String.concat " " (!(snd objects))) 
+	(String.concat " " objs)
 	source
       in
-      Mutex.unlock (fst objects);
+      Mutex.unlock mut;
 
       if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
       let err=Build.command cmd in
@@ -424,7 +479,7 @@ let _ =
           )
         )
       | _->(
-        let objects=(Mutex.create (), ref []) in
+        let objects=(Mutex.create (), ref StrMap.empty, ref 0) in
         Build.append_rule (patoline_rule objects);
         Arg.parse spec (fun x->files := x::(!files)) (Language.message Usage);
         process_each_file (List.rev !files)
