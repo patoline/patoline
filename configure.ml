@@ -180,10 +180,9 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
 
     let sources=
-      "src/Typography/Typography.cmxa src/Typography/Typography.p.cmxa src/Typography/Typography.a src/Typography/Typography.p.a src/Typography/Typography.cmi "^
+      "src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi "^
         "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
-        "src/Typography/Typography.cma src/Format/*Format*.cma "^
-        "src/Drivers/*.cmxa src/Drivers/*.cma src/Drivers/*.a src/Drivers/*.cmi "^
+        "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);

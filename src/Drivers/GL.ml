@@ -575,6 +575,8 @@ let output ?(structure:structure={name="";displayname=[];
     Sys.set_signal Sys.sighup
       (Sys.Signal_handle
 	 (fun s ->  to_revert := true; Glut.postRedisplay ()));
+    Printf.fprintf stderr "Start loop\n";
+    flush stderr;
     Glut.mainLoop ()
   in
 
