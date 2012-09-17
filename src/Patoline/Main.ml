@@ -245,7 +245,6 @@ and patoline_rule objects h=
       if age_h<age_source || (
         if Sys.file_exists h then (
           let last_format,last_driver=last_options_used h in
-          Printf.fprintf stderr "last used %S %S %S %S\n" last_format !format last_driver !driver;flush stderr;
           (last_format<> !format || last_driver<> !driver)
         ) else false
       ) then (
@@ -442,7 +441,9 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          Generateur.gen_ml opts.format opts.driver opts.packages !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
+          let suppl=Printf.sprintf "(* #PACKAGES %s *)\n" (String.concat "," opts.packages)
+          in
+          Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
         );
         close_out where_ml;
         close_in fread;
