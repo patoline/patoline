@@ -140,6 +140,16 @@ src:url(\"%s\") format(\"opentype\"); }
     Printf.fprintf o "</style></head><body>\n";
 
     let w,h=pages.(i).pageFormat in
+    let cur_x=ref 0. in
+    let cur_y=ref 0. in
+    let cur_class=ref "" in
+    let cur_size=ref 0. in
+    let span_open=ref false in
+    let close_span ()=if !span_open then (
+      Printf.fprintf o "</span>"; span_open:=false
+    )
+    in
+    Printf.fprintf o "<nobr>\n";
     List.iter (fun l->match l with
         Glyph x->(
           let font=Fonts.glyphFont x.glyph in
@@ -151,20 +161,36 @@ src:url(\"%s\") format(\"opentype\"); }
           let class_name=StrMap.find (Fonts.uniqueName font) !classes in
           let cont=Fonts.glyphNumber x.glyph in
           let pos=UTF8.next cont.glyph_utf8 0 in
-          Printf.fprintf o "<span class=\"%s\">%s</span>"
-            class_name
-            (String.sub cont.glyph_utf8 0 pos);
-          if String.length cont.glyph_utf8>pos then (
-            Printf.fprintf o "<span class=\"z\">%s</span>"
-              (String.sub cont.glyph_utf8 pos (String.length cont.glyph_utf8-pos))
-          );
+          if class_name<> !cur_class
+            || !cur_x <> x.glyph_x
+            || !cur_y <> x.glyph_y
+            || !cur_size <> x.glyph_size then (
+              close_span ();
+              span_open:=true;
+              Printf.fprintf o "<span class=\"%s\" style=\"font-size:%fmm;position:absolute;left:%fmm;top:%fmm;\">%s"
+                class_name
+                x.glyph_size
+                x.glyph_x
+                (h-.x.glyph_y)
+                (String.sub cont.glyph_utf8 0 pos);
+              cur_size:= x.glyph_size;
+              cur_class:=class_name;
+            ) else (
+              Printf.fprintf o "%s" (String.sub cont.glyph_utf8 0 pos);
+            );
+          cur_x:= x.glyph_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
+          cur_y:= x.glyph_y;
+          (* if String.length cont.glyph_utf8>pos then ( *)
+          (*   Printf.fprintf o "<span class=\"z\">%s</span>" *)
+          (*     (String.sub cont.glyph_utf8 pos (String.length cont.glyph_utf8-pos)) *)
+          (* ); *)
         )
       | Path (args, l)->(
       )
       | _->()
     ) pages.(i).pageContents;
 
-
+    Printf.fprintf o "</nobr>\n";
     Printf.fprintf o "</body></html>\n";
     close_out o;
   done;
