@@ -382,7 +382,7 @@ and patoline_rule objects h=
       Mutex.lock mut;
       let dirs_=String.concat " " !dirs in
       let objs=StrMap.fold (fun k a m->IntMap.add (-a) k m) !m IntMap.empty in
-      let objs=List.map snd (IntMap.bindings objs) in
+      let objs=List.rev (List.map snd (IntMap.bindings objs)) in
       let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s %s -impl '%s'"
         !ocamlopt
         (let pack=String.concat "," (List.rev opts.packages) in
