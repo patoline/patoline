@@ -332,6 +332,14 @@ let loadGlyph f ?index:(idx=0) gl=
 #define TT_UNSCALED_COMPONENTS_OFFSET           4096
 
 
+let read2dot14 file=
+  let x=input_byte file in
+  let y=input_byte file in
+  let m=(x lsr 6) in
+  let mantissa=float_of_int (if m>=0x10 then m-0x100 else m) in
+  let frac=(float_of_int (((x land 0x3fff) lsl 8) lor y))/.(float_of_int 0x4000) in
+  mantissa+.frac
+
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
   | TTFGlyph (ttf,gl)->(
@@ -343,116 +351,196 @@ let outlines gl=match gl with
     in
 
     let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    if locformat=0 then seek_in file (a+gl.glyph_index*2) else seek_in file (a+gl.glyph_index*4);
-    let off=if locformat=0 then (readInt2 file) lsl 1 else readInt4 file in
     let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
-    seek_in file (c+off);
-    let numberOfContours=sreadInt2 file in
 
-
-    if numberOfContours>0 then (        (* simple glyph *)
-      seek_in file (c+off+10);
-      let rec read_contours i l=
-        if i>=numberOfContours then (
-          match l with
-              h::_->h,List.rev l
-            | _-> -1,l
-        ) else (
-          let j=readInt2 file in
-          read_contours (i+1) (j::l)
-        )
-      in
-      let lastPoint,contours=read_contours 0 [] in
-      let instr_length=readInt2 file in
-      seek_in file (pos_in file+instr_length);
-      let flags=Array.make (lastPoint+1) 0 in
-      let rec read_flags n=
-        if n<=lastPoint then (
-          flags.(n)<-input_byte file;
-          let n_repeat=
-            if flags.(n) land TT_REPEAT <> 0 then (
+    let rec fetch_outlines glyph_index=
+      if locformat=0 then seek_in file (a+glyph_index*2) else seek_in file (a+glyph_index*4);
+      let off=if locformat=0 then (readInt2 file) lsl 1 else readInt4 file in
+      seek_in file (c+off);
+      let numberOfContours=sreadInt2 file in
+      if numberOfContours>0 then (        (* simple glyph *)
+        seek_in file (c+off+10);
+        let rec read_contours i l=
+          if i>=numberOfContours then (
+            match l with
+                h::_->h,List.rev l
+              | _-> -1,l
+          ) else (
+            let j=readInt2 file in
+            read_contours (i+1) (j::l)
+          )
+        in
+        let lastPoint,contours=read_contours 0 [] in
+        let instr_length=readInt2 file in
+        seek_in file (pos_in file+instr_length);
+        let flags=Array.make (lastPoint+1) 0 in
+        let rec read_flags n=
+          if n<=lastPoint then (
+            flags.(n)<-input_byte file;
+            let rep=if flags.(n) land TT_REPEAT <> 0 then (
               let n_repeat=input_byte file in
               for i=1 to n_repeat do
                 flags.(n+i)<-flags.(n)
               done;
               n_repeat
             ) else 0
-          in
-          read_flags (n+n_repeat+1)
-        )
-      in
-      read_flags 0;
-      let x=Array.make (Array.length flags) 0 in
-      let y=Array.make (Array.length flags) 0 in
-      for i=0 to Array.length x-1 do
-        if flags.(i) land TT_XSHORT_VECTOR<>0 then (
-          x.(i)<-if flags.(i) land TT_SAME_X <>0 then input_byte file else -(input_byte file)
-        ) else (
-          x.(i)<-if flags.(i) land TT_SAME_X <>0 then
-              0
-            else sreadInt2 file
-        )
-      done;
-      for i=0 to Array.length y-1 do
-        if flags.(i) land TT_YSHORT_VECTOR <>0 then (
-          y.(i)<-if flags.(i) land TT_SAME_Y <>0 then input_byte file else -(input_byte file)
-        ) else (
-          y.(i)<-if flags.(i) land TT_SAME_Y <>0 then
-              0
-            else sreadInt2 file
-        )
-      done;
-      let rec build_outlines x0 y0 outlines contours=
-        match contours with
-            [] | [_]->outlines
-          | h::hh::s->(
-            let ox0=x0+.float_of_int x.(h) in
-            let oy0=y0+.float_of_int y.(h) in
-            (* Courbe qui commence en i *)
-            let rec contour lastx lasty x0 y0 i l=
-              if i>=hh then lastx,lasty,l else (
-                if i+1>hh || flags.(i+1) land TT_ON_CURVE<>0 then (
-                  (* segment de droite *)
-                  let x1,y1=if i+1>hh then ox0,oy0 else
-                      (lastx+.float_of_int x.(i+1),
-                       lasty+.float_of_int y.(i+1))
-                  in
-                  contour x1 y1 x1 y1 (i+1) (([|x0;x1|],[|y0;y1|])::l)
-                ) else (
-                  if i+2>hh then (
-                      let x1=lastx+.float_of_int x.(i+1) in
-                      let y1=lasty+.float_of_int y.(i+1) in
-                      contour x1 y1 ox0 oy0 (i+2) (([|x0;x1;ox0|],[|y0;y1;oy0|])::l)
+            in
+            read_flags (n+rep+1)
+          )
+        in
+        let x=Array.make (lastPoint+1) 0 in
+        let y=Array.make (lastPoint+1) 0 in
+        read_flags 0;
+        for i=0 to lastPoint do
+          x.(i)<-if flags.(i) land TT_XSHORT_VECTOR<>0 then (
+            if flags.(i) land TT_SAME_X <>0 then input_byte file else -(input_byte file)
+          ) else (
+            if flags.(i) land TT_SAME_X <>0 then 0 else sreadInt2 file
+          )
+        done;
+        for i=0 to lastPoint do
+          y.(i)<-if flags.(i) land TT_YSHORT_VECTOR<>0 then (
+            if flags.(i) land TT_SAME_Y <>0 then input_byte file else -(input_byte file)
+          ) else (
+            if flags.(i) land TT_SAME_Y <>0 then 0 else sreadInt2 file
+          )
+        done;
+        let finalx=ref IntMap.empty in
+        let finaly=ref IntMap.empty in
+
+        let rec build_outlines x0 y0 outlines contours=
+          match contours with
+              [] | [_]->outlines
+            | h::hh::s->(
+              let ox0=x0+.float_of_int x.(h) in
+              let oy0=y0+.float_of_int y.(h) in
+              finalx:=IntMap.add h ox0 !finalx;
+              finaly:=IntMap.add h oy0 !finaly;
+
+              (* Courbe qui commence en i *)
+              let rec contour lastx lasty x0 y0 i l=
+                if i>=hh then lastx,lasty,l else (
+                  if i+1>hh || flags.(i+1) land TT_ON_CURVE<>0 then (
+                    (* segment de droite *)
+                    let x1,y1=if i+1>hh then ox0,oy0 else
+                        (lastx+.float_of_int x.(i+1),
+                         lasty+.float_of_int y.(i+1))
+                    in
+                    finalx:=IntMap.add (i+1) x1 !finalx;
+                    finaly:=IntMap.add (i+1) y1 !finaly;
+                    contour x1 y1 x1 y1 (i+1) (([|x0;x1|],[|y0;y1|])::l)
                   ) else (
-                    if flags.(i+2) land TT_ON_CURVE<>0 then (
+                    if i+2>hh then (
                       let x1=lastx+.float_of_int x.(i+1) in
                       let y1=lasty+.float_of_int y.(i+1) in
-                      let x2=x1+.float_of_int x.(i+2) in
-                      let y2=y1+.float_of_int y.(i+2) in
-                      contour x2 y2 x2 y2 (i+2) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                    finalx:=IntMap.add (i+1) x1 !finalx;
+                    finaly:=IntMap.add (i+1) y1 !finaly;
+                      contour x1 y1 ox0 oy0 (i+2) (([|x0;x1;ox0|],[|y0;y1;oy0|])::l)
                     ) else (
-                      let x1=lastx+.float_of_int x.(i+1) in
-                      let y1=lasty+.float_of_int y.(i+1) in
-                      let x2_=x1+.float_of_int x.(i+2) in
-                      let y2_=y1+.float_of_int y.(i+2) in
-                      let x2=(x1+.x2_)/.2. in
-                      let y2=(y1+.y2_)/.2. in
-                      contour x1 y1 x2 y2 (i+1) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                      if flags.(i+2) land TT_ON_CURVE<>0 then (
+                        let x1=lastx+.float_of_int x.(i+1) in
+                        let y1=lasty+.float_of_int y.(i+1) in
+                        finalx:=IntMap.add (i+1) x1 !finalx;
+                        finaly:=IntMap.add (i+1) y1 !finaly;
+                        let x2=x1+.float_of_int x.(i+2) in
+                        let y2=y1+.float_of_int y.(i+2) in
+                        finalx:=IntMap.add (i+2) x2 !finalx;
+                        finaly:=IntMap.add (i+2) y2 !finaly;
+                        contour x2 y2 x2 y2 (i+2) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                      ) else (
+                        let x1=lastx+.float_of_int x.(i+1) in
+                        let y1=lasty+.float_of_int y.(i+1) in
+                        finalx:=IntMap.add (i+1) x1 !finalx;
+                        finaly:=IntMap.add (i+1) y1 !finaly;
+                        let x2_=x1+.float_of_int x.(i+2) in
+                        let y2_=y1+.float_of_int y.(i+2) in
+                        let x2=(x1+.x2_)/.2. in
+                        let y2=(y1+.y2_)/.2. in
+                        contour x1 y1 x2 y2 (i+1) (([|x0;x1;x2|],[|y0;y1;y2|])::l)
+                      )
                     )
                   )
                 )
-              )
-            in
-            let x1,y1,l=contour ox0 oy0 ox0 oy0 h [] in
-            let l=List.rev (if x1<>ox0 || y1<>oy0 then ([|x1;ox0|],[|y1;oy0|])::l else l) in
-            build_outlines x1 y1 (l::outlines) ((hh+1)::s)
-          )
-      in
-      let x=build_outlines 0. 0. [] (0::contours) in
-      List.rev x
-    ) else (                            (* composite glyph *)
-      []
-    )
+              in
+              let x1,y1,l=contour ox0 oy0 ox0 oy0 h [] in
+              let l=List.rev (if x1<>ox0 || y1<>oy0 then ([|x1;ox0|],[|y1;oy0|])::l else l) in
+              build_outlines x1 y1 (l::outlines) ((hh+1)::s)
+            )
+        in
+        let x=build_outlines 0. 0. [] (0::contours) in
+        List.rev x, !finalx, !finaly
+
+      ) else (
+        (* Composite *)
+        seek_in file (c+off+10);
+        let rec make_composite outlines0 mx my=
+          let flags=readInt2 file in
+          let glyphIndex'=readInt2 file in
+          let readArg ()=
+            if flags land TT_ARGS_ARE_WORDS<>0 then
+              if flags land TT_ARGS_ARE_XY_VALUES <>0 then
+                sreadInt2 file
+              else
+                readInt2 file
+            else
+              let b=input_byte file in
+              if flags land TT_ARGS_ARE_XY_VALUES <>0 then
+                if b>=0x80 then b-0x100 else b
+              else
+                b
+          in
+          let arg1=readArg () in
+          let arg2=readArg () in
+
+          let pos=pos_in file in
+          let outlines,finalx,finaly=fetch_outlines glyphIndex' in
+          let mx'=IntMap.fold (fun k a m->IntMap.add (IntMap.cardinal m) a m) finalx mx in
+          let my'=IntMap.fold (fun k a m->IntMap.add (IntMap.cardinal m) a m) finaly my in
+          seek_in file pos;
+
+          let a,b,c,d=
+            if flags land TT_WE_HAVE_A_SCALE<>0 then
+              let sc=read2dot14 file in (sc,0.,0.,sc)
+            else
+              if flags land TT_WE_HAVE_AN_X_AND_Y_SCALE<>0 then
+                let scx=read2dot14 file in
+                let scy=read2dot14 file in
+                (scx,0.,0.,scy)
+              else
+                if flags land TT_WE_HAVE_A_TWO_BY_TWO<>0 then
+                  let a=read2dot14 file in
+                  let b=read2dot14 file in
+                  let c=read2dot14 file in
+                  let d=read2dot14 file in
+                  (a,b,c,d)
+                else
+                  (1.,0.,0.,1.)
+          in
+
+          let m=max (abs_float a) (abs_float b) in
+          let m=if abs_float (abs_float a-.abs_float c) <= 33./.65536. then m*.2. else m in
+          let n=max (abs_float c) (abs_float d) in
+          let n=if abs_float (abs_float c-.abs_float d) <= 33./.65536. then n*.2. else n in
+
+          let tx,ty=if flags land TT_ARGS_ARE_XY_VALUES<>0 then float_of_int arg1,float_of_int arg2 else
+              (IntMap.find arg1 mx -. IntMap.find arg2 finalx,
+               IntMap.find arg1 my -. IntMap.find arg2 finaly)
+          in
+          List.iter (List.iter (fun (x,y)->
+            for i=0 to Array.length x-1 do
+              x.(i)<-m*.(a*.x.(i)/.m +. c*.y.(i)/.m) +.tx;
+              y.(i)<-n*.(b*.x.(i)/.n +. d*.y.(i)/.n) +.ty;
+            done
+          )) outlines;
+          if flags land TT_MORE_COMPONENTS <> 0 then (
+            make_composite (outlines@outlines0) mx' my'
+          ) else (outlines@outlines0, mx',my')
+        in
+        make_composite [] IntMap.empty IntMap.empty
+      )
+    in
+    let out,_,_=fetch_outlines gl.glyph_index in
+    out
   )
 
 
@@ -1287,22 +1375,14 @@ let make_tables font fontInfo cmap glyphs_idx=
 #endif
   (* hmtx *)
   let numberOfHMetrics=ref (Array.length glyphs-1) in
-  let buf_hmtx=String.create (2*(Array.length glyphs-1)+4*(!numberOfHMetrics+1)+2) in
+  let buf_hmtx=String.create (4*Array.length glyphs) in
   let advanceWidthMax=ref 0 in
-  while !numberOfHMetrics>0 &&
-    glyphWidth glyphs.(!numberOfHMetrics) = glyphWidth glyphs.(!numberOfHMetrics-1) do
-    decr numberOfHMetrics
-  done;
-  for i=0 to !numberOfHMetrics do
+  for i=0 to Array.length glyphs-1 do
     let w=glyphWidth glyphs.(i) in
     let x0=round (glyph_x0 glyphs.(i)) in
     advanceWidthMax:=max !advanceWidthMax (round w);
     strInt2 buf_hmtx (i*4) (round w);
     strInt2 buf_hmtx (i*4+2) x0
-  done;
-  for i= !numberOfHMetrics+1 to Array.length glyphs-1 do
-    let x0=round (glyph_x0 glyphs.(i)) in
-    strInt2 buf_hmtx (4*(!numberOfHMetrics+1)+2*i) x0
   done;
   fontInfo.tables<-StrMap.add "hmtx" buf_hmtx fontInfo.tables;
 
@@ -1379,6 +1459,53 @@ let make_tables font fontInfo cmap glyphs_idx=
     strInt2 buf_maxp 4 (Array.length glyphs);
    ));
 
+(* post *)
+  (try
+     let buf_post=StrMap.find "post" fontInfo_tables in
+     let format=getInt4 buf_post 0 in
+     match format with
+         0x20000->(
+           let rec get_pascal_string i m=
+             if i>=String.length buf_post then m else (
+               let len=int_of_char buf_post.[i] in
+               get_pascal_string (i+1+len)
+                 (IntMap.add (IntMap.cardinal m) (i,len) m)
+             )
+           in
+           let strings=get_pascal_string (34+2*Array.length glyphs) IntMap.empty in
+           let buf_post'=Rbuffer.create 256 in
+           Rbuffer.add_string buf_post' (String.sub buf_post 0 32);
+           bufInt2 buf_post' (Array.length glyphs_idx);
+           let strBuf=Rbuffer.create 256 in
+           let strs=ref 0 in
+           for i=0 to Array.length glyphs_idx-1 do
+             let idx=getInt2 buf_post (34+2*glyphs_idx.(i).glyph_index) in
+             if idx<=257 then bufInt2 buf_post' idx else (
+               let off,len=IntMap.find (idx-258) strings in
+               bufInt2 buf_post' (258+ !strs);
+               for i=off to off+len do
+                 Rbuffer.add_char strBuf buf_post.[i]
+               done;
+               incr strs
+             )
+           done;
+           Rbuffer.add_buffer buf_post' strBuf;
+           fontInfo.tables<-StrMap.add "post" (Rbuffer.contents buf_post') fontInfo.tables
+         )
+       | 0x25000->(
+          let buf_post'=Rbuffer.create 256 in
+          Rbuffer.add_string buf_post' (String.sub buf_post 0 32);
+          bufInt2 buf_post' (Array.length glyphs_idx);
+          for i=0 to Array.length glyphs_idx-1 do
+            Rbuffer.add_char buf_post' buf_post.[34+glyphs_idx.(i).glyph_index]
+          done;
+          fontInfo.tables<-StrMap.add "post" (Rbuffer.contents buf_post') fontInfo.tables
+       )
+       | _->()
+   with
+       Not_found->()
+  );
+
 #ifdef DEBUG_TTF
   Printf.fprintf stderr "OS/2\n";flush stderr;
 #endif
@@ -1452,14 +1579,6 @@ let make_tables font fontInfo cmap glyphs_idx=
                     IntMap.empty
                     glyphs_idx)
         in
-        (try
-           let o=open_out "original.cff" in
-           output_string o (StrMap.find "CFF " fontInfo_tables);
-           close_out o;
-         with Not_found -> ());
-        let o=open_out "subset.cff" in
-        Rbuffer.output_buffer o cff';
-        close_out o;
         fontInfo.tables<-StrMap.add "CFF " (Rbuffer.contents cff') fontInfo.tables
       )
     | _->());
