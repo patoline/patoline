@@ -769,7 +769,12 @@ let subset font info _ gls=
         (* let b=String.create (off1-off0) in *)
         (* seek_in f off0; *)
         (* really_input f b 0 (off1-off0); *)
-          let b=(gls.(i)).glyph_utf8 in
+          let b=
+            if (gls.(i)).glyph_utf8<>"" then
+              (gls.(i)).glyph_utf8
+            else
+              glyphName (loadGlyph font gls.(i))
+          in
           391+(
             try
               StrMap.find b !strings
