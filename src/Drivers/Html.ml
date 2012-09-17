@@ -62,7 +62,14 @@ let output ?(structure:structure={name="";displayname=[];
        ) glyphMap m) a IntMap.empty)
   ) f
   in
+  let glyph_subfont gl=
+    let font=Fonts.glyphFont gl in
+    let _,x=StrMap.find (Fonts.uniqueName font) f in
+    let y=snd (IntMap.find (Fonts.glyphNumber gl).glyph_index x) in
+    y
+  in
 
+  (* Eviter que deux fonts avec le même nom et des fichiers différents ne s'emmèlent *)
   let fontInstances=ref StrMap.empty in
   let fontInstance font=
     let u=Fonts.uniqueName font in
@@ -105,7 +112,7 @@ let output ?(structure:structure={name="";displayname=[];
       (*     full_name=full; *)
       (*     postscript_name=ps }; *)
       let class_name=Printf.sprintf "c%d" (StrMap.cardinal !classes) in
-      classes:=StrMap.add (Fonts.uniqueName font) class_name !classes;
+      classes:=StrMap.add (full) class_name !classes;
       Rbuffer.add_string style_buf (Printf.sprintf "@font-face { font-family:%s;
 src:url(\"%s\") format(\"opentype\"); }
 .%s { font-family:%s; }\n"
@@ -153,12 +160,15 @@ src:url(\"%s\") format(\"opentype\"); }
     List.iter (fun l->match l with
         Glyph x->(
           let font=Fonts.glyphFont x.glyph in
+          let subfont=glyph_subfont x.glyph in
           let ps=(Fonts.uniqueName font) in
           let idx=Fonts.glyphNumber x.glyph in
           let _,subfont=IntMap.find idx.glyph_index (snd (StrMap.find (Fonts.uniqueName font) f)) in
 
           let ps=ps^"_"^(string_of_int subfont) in
-          let class_name=StrMap.find (Fonts.uniqueName font) !classes in
+          let instance=fontInstance font in
+          let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
+          let class_name=StrMap.find full !classes in
           let cont=Fonts.glyphNumber x.glyph in
           let pos=UTF8.next cont.glyph_utf8 0 in
           if class_name<> !cur_class
