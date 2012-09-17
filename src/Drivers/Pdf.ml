@@ -389,9 +389,10 @@ let output ?(structure:structure={name="";displayname=[];
             pageImages:=i::(!pageImages);
             let num=List.length !pageImages in
             close_text ();
-            Printf.bprintf pageBuf "q %f 0 0 %f %f %f cm /Im%d Do Q "
-              (pt_of_mm i.image_width) (pt_of_mm i.image_height)
-              (pt_of_mm i.image_x) (pt_of_mm i.image_y) num;
+            Rbuffer.add_string pageBuf
+              (Printf.sprintf "q %f 0 0 %f %f %f cm /Im%d Do Q "
+                 (pt_of_mm i.image_width) (pt_of_mm i.image_height)
+                 (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
 #endif
 )
       in
@@ -457,37 +458,35 @@ let output ?(structure:structure={name="";displayname=[];
                              (match image#image_class with
                                   OImages.ClassRgb24->(
                                     let src=OImages.rgb24 image in
-                                    let img_buf=Buffer.create (w*h*3) in
+                                    let img_buf=Rbuffer.create (w*h*3) in
                                       for j=0 to h-1 do
                                         for i=0 to w-1 do
                                           let rgb = src#get i j in
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.r);
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.g);
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.b);
+                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.r);
+                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.g);
+                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.b);
                                         done
                                       done;
-                                      let a,b=stream [Buffer.contents img_buf] in
-                                      let len=List.fold_left (fun x y->x+String.length y) 0 b in
-                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
-                                      List.iter (fprintf outChan "%s") b;
+                                      let a,b=stream img_buf in
+                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                                      Rbuffer.output_buffer outChan b;
                                       fprintf outChan "\nendstream";
 
                                   )
                                 | OImages.ClassRgba32->(
                                     let src=OImages.rgba32 image in
-                                    let img_buf=Buffer.create (w*h*3) in
+                                    let img_buf=Rbuffer.create (w*h*3) in
                                       for j=0 to h-1 do
                                         for i=0 to w-1 do
                                           let rgb = src#get i j in
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.r);
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.g);
-                                            Buffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
+                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.r);
+                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.g);
+                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
                                         done
                                       done;
-                                      let a,b=stream [Buffer.contents img_buf] in
-                                      let len=List.fold_left (fun x y->x+String.length y) 0 b in
-                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h len a;
-                                      List.iter (fprintf outChan "%s") b;
+                                      let a,b=stream img_buf in
+                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                                      Rbuffer.output_buffer outChan b;
                                       fprintf outChan "\nendstream";
                                   )
                                 | _->()
