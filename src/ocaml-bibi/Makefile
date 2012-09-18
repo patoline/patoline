@@ -3,7 +3,7 @@ all:bibi.cmxa bibi.p.cmxa bibi.cma
 bibi.cmxa:bibi.cmi bibi.ml ../Typography/Typography.cmxa ../Typography/Typography.cmi
 	ocamlfind ocamlopt -package camomile,sqlite3 -a -o bibi.cmxa -I ../Typography bibi.ml
 bibi.p.cmxa:bibi.cmi bibi.ml ../Typography/Typography.p.cmxa ../Typography/Typography.cmi
-	ocamlfind ocamlopt -package camomile,sqlite3 -p -a -o bibi.cmxa -I ../Typography bibi.ml
+	ocamlfind ocamlopt -package camomile,sqlite3 -p -a -o bibi.p.cmxa -I ../Typography bibi.ml
 bibi.cma:bibi.cmi bibi.ml ../Typography/Typography.cma ../Typography/Typography.cmi
 	ocamlfind ocamlc -package camomile,sqlite3 -a -o bibi.cma -I ../Typography bibi.ml
 

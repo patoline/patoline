@@ -28,11 +28,11 @@ Patoline/PatolineGL:Patoline GL.cmxa
 	make -C Patoline PatolineGL
 
 
-ocaml-bibi/bibi.cma:
+ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
-ocaml-bibi/bibi.cmxa:
+ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.cmxa
-ocaml-bibi/bibi.p.cmxa:
+ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.p.cmxa
 
 proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
