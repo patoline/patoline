@@ -69,6 +69,15 @@ let cardinal f=
       CFF x->CFF.cardinal x
     | Opentype x->Opentype.cardinal x
 
+let ascender f=
+  match f with
+      CFF x->CFF.ascender x
+    | Opentype x->Opentype.ascender x
+let descender f=
+  match f with
+      CFF x->CFF.descender x
+    | Opentype x->Opentype.descender x
+
 let outlines gl=
   match gl with
       CFFGlyph x->CFF.outlines x

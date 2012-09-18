@@ -4,7 +4,7 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 open Util
-
+open HtmlFonts
 
 exception Bezier_degree
 
@@ -14,197 +14,261 @@ let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 (* draw prend un nom de fichier, une largeur, une hauteur, du contenu,
    et écrit ce contenu dans le fichier svg. *)
-let draw svg_name w h contents=
+let draw ?fontCache standalone w h contents=
+  let svg_buf=Rbuffer.create 256 in
 
+  let fontCache=match fontCache with
+      None->build_font_cache [|contents|]
+    | Some x->x
+  in
   (* Une petite burocratie pour gérer les particularités d'html/svg/etc *)
-  let coord x=x in
+  let coord x=3.*.x in
   let escapes=
     IntMap.add (int_of_char '<') "&lt;"
       (IntMap.add (int_of_char '>') "&gt;" IntMap.empty)
   in
-  let esc_buf=Buffer.create 2 in
+  let esc_buf=Rbuffer.create 2 in
   let html_escape x=
-    Buffer.clear esc_buf;
+    Rbuffer.clear esc_buf;
     for i=0 to String.length x-1 do
       try
-        Buffer.add_string esc_buf
+        Rbuffer.add_string esc_buf
           (IntMap.find (int_of_char x.[i]) escapes)
       with
-          Not_found -> Buffer.add_char esc_buf x.[i]
+          Not_found -> Rbuffer.add_char esc_buf x.[i]
     done;
-    Buffer.contents esc_buf
+    Rbuffer.contents esc_buf
   in
   (****)
 
-
-  let o=open_out svg_name in
-  Printf.fprintf o "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+  if standalone then (
+    Rbuffer.add_string svg_buf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1 Tiny//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd\">
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\" width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\" version=\"1.1\" baseProfile=\"tiny\">" (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h));
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\"";
+    Rbuffer.add_string svg_buf (Printf.sprintf "width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\"" (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h)));
+    Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">"
+  );
 
-  Printf.fprintf o "<defs>\n";
+  Rbuffer.add_string svg_buf "<defs>\n";
 
-  let buf=Buffer.create 100 in
-  let page_fonts=List.fold_left
-    (fun m x->match x with
-        Glyph gl->(
-          let fname=Fonts.fontName (Fonts.glyphFont gl.glyph) in
-          let f=try StrMap.find fname.full_name m with _->IntMap.empty in
-          StrMap.add fname.full_name
-            (IntMap.add (Fonts.glyphNumber gl.glyph).glyph_index gl.glyph f)
-            m
-        )
-      | _->m
-    ) StrMap.empty contents
-  in
-  let fontRefs=ref StrMap.empty in
+  let buf=Rbuffer.create 100 in
 
-  (* embed embarque une police avec tous ses glyphs dans un document
-     svg autonome. Quand les navigateurs supporteront les polices svg,
-     on fera un cache. *)
-  let embed f buf glyphs=
-    let fontNum=try StrMap.find f !fontRefs with Not_found -> (let c=StrMap.cardinal !fontRefs in
-                                                               fontRefs:=StrMap.add f c !fontRefs;c)
-    in
-    let y0=List.fold_left (fun m (_,y)->min m (Fonts.glyph_y0 y)) 0. glyphs in
-    let y1=List.fold_left (fun m (_,y)->max m (Fonts.glyph_y1 y)) 0. glyphs in
-    Printf.bprintf buf "<font id=\"%s\" horiz-adv-x=\"%g\">\n" f 1000.;
-    Printf.bprintf buf "<font-face font-family=\"%s\" ascent=\"%d\" descent=\"%d\" alphabetic=\"0\"/>\n" f (int_of_float y1) (int_of_float y0);
-    Printf.bprintf buf "<missing-glyph horiz-adv-x=\"1024\" d=\"M128 0V1638H896V0H128zM256 128H768V1510H256V128z\"/>";
-    let output_glyph buf glyph=
-      List.iter (fun l->match l with
-          []->()
-        | h::s->(
-          let x0,y0=h in
-          Printf.bprintf buf "M%g %g" x0.(0) y0.(0);
-          List.iter (fun (x,y)->
-            if Array.length x=2 then Printf.bprintf buf "L" else
-              if Array.length x=3 then Printf.bprintf buf "Q" else
-                if Array.length x=4 then Printf.bprintf buf "C" else
-                  raise Bezier_degree;
-            for i=1 to Array.length x-1 do
-              Printf.bprintf buf "%g %g " x.(i) y.(i)
-            done
-          ) ((h::s));
-          Printf.bprintf buf "Z"
-        )) (Fonts.outlines glyph)
-    in
-    let variants=ref StrMap.empty in
-    let pathbuf=Buffer.create 100 in
-    List.iter (fun (i,g)->
-      Buffer.clear pathbuf;
-      output_glyph pathbuf g;
-      let cont=Fonts.glyphContents g in
-      let variant=try StrMap.find cont !variants with Not_found->0 in
-      variants:=StrMap.add cont (variant+1) !variants;
-      Printf.bprintf buf "<glyph id=\"gl%d_%d\" %shoriz-adv-x=\"%g\" d=\"%s\"/>\n"
-        fontNum
-        i
-        (html_escape (if variant=0 then Printf.sprintf "unicode=\"%s\" " cont else ""))
-        (Fonts.glyphWidth g)
-        (Buffer.contents pathbuf);
-    ) glyphs;
-    Printf.bprintf buf "</font>\n";
-    variants:=StrMap.empty;
-    let actual_var=ref IntMap.empty in
-    List.iter (fun (i,g)->
-      let cont=Fonts.glyphContents g in
-      let variant=try StrMap.find cont !variants with Not_found->0 in
-      variants:=StrMap.add cont (variant+1) !variants;
-      if variant>0 then (
-        actual_var:=IntMap.add i (Printf.sprintf "alt%d_%d" fontNum i) !actual_var;
-        Printf.bprintf buf "<altGlyphDef id=\"alt%d_%d\"><glyphRef xlink:href=\"#gl%d_%d\"/></altGlyphDef>\n" fontNum i fontNum i
-      )
-    ) glyphs;
-    !actual_var
-  in
+  (* Polices SVG intégrées (pas dans firefox aujourd'hui) *)
+  (* let page_fonts=List.fold_left *)
+  (*   (fun m x->match x with *)
+  (*       Glyph gl->( *)
+  (*         let fname=Fonts.fontName (Fonts.glyphFont gl.glyph) in *)
+  (*         let f=try StrMap.find fname.full_name m with _->IntMap.empty in *)
+  (*         StrMap.add fname.full_name *)
+  (*           (IntMap.add (Fonts.glyphNumber gl.glyph).glyph_index gl.glyph f) *)
+  (*           m *)
+  (*       ) *)
+  (*     | _->m *)
+  (*   ) StrMap.empty contents *)
+  (* in *)
+  (* let fontRefs=ref StrMap.empty in *)
 
-  let embedded_fonts=StrMap.mapi
-    (fun k a->
-      let glyphs=IntMap.bindings a in
-      Buffer.clear buf;
-      let vars=embed k buf glyphs in
-      Printf.fprintf o "%s" (Buffer.contents buf);
-      vars
-    ) page_fonts
-  in
+  (* let embed f buf glyphs= *)
+  (*   let fontNum=try StrMap.find f !fontRefs with Not_found -> (let c=StrMap.cardinal !fontRefs in *)
+  (*                                                              fontRefs:=StrMap.add f c !fontRefs;c) *)
+  (*   in *)
+  (*   let y0=List.fold_left (fun m (_,y)->min m (Fonts.glyph_y0 y)) 0. glyphs in *)
+  (*   let y1=List.fold_left (fun m (_,y)->max m (Fonts.glyph_y1 y)) 0. glyphs in *)
+  (*   Printf.bprintf buf "<font id=\"%s\" horiz-adv-x=\"%g\">\n" f 1000.; *)
+  (*   Printf.bprintf buf "<font-face font-family=\"%s\" ascent=\"%d\" descent=\"%d\" alphabetic=\"0\"/>\n" f (int_of_float y1) (int_of_float y0); *)
+  (*   Printf.bprintf buf "<missing-glyph horiz-adv-x=\"1024\" d=\"M128 0V1638H896V0H128zM256 128H768V1510H256V128z\"/>"; *)
+  (*   let output_glyph buf glyph= *)
+  (*     List.iter (fun l->match l with *)
+  (*         []->() *)
+  (*       | h::s->( *)
+  (*         let x0,y0=h in *)
+  (*         Printf.bprintf buf "M%g %g" x0.(0) y0.(0); *)
+  (*         List.iter (fun (x,y)-> *)
+  (*           if Array.length x=2 then Printf.bprintf buf "L" else *)
+  (*             if Array.length x=3 then Printf.bprintf buf "Q" else *)
+  (*               if Array.length x=4 then Printf.bprintf buf "C" else *)
+  (*                 raise Bezier_degree; *)
+  (*           for i=1 to Array.length x-1 do *)
+  (*             Printf.bprintf buf "%g %g " x.(i) y.(i) *)
+  (*           done *)
+  (*         ) ((h::s)); *)
+  (*         Printf.bprintf buf "Z" *)
+  (*       )) (Fonts.outlines glyph) *)
+  (*   in *)
+  (*   let variants=ref StrMap.empty in *)
+  (*   let pathbuf=Buffer.create 100 in *)
+  (*   List.iter (fun (i,g)-> *)
+  (*     Buffer.clear pathbuf; *)
+  (*     output_glyph pathbuf g; *)
+  (*     let cont=Fonts.glyphContents g in *)
+  (*     let variant=try StrMap.find cont !variants with Not_found->0 in *)
+  (*     variants:=StrMap.add cont (variant+1) !variants; *)
+  (*     Printf.bprintf buf "<glyph id=\"gl%d_%d\" %shoriz-adv-x=\"%g\" d=\"%s\"/>\n" *)
+  (*       fontNum *)
+  (*       i *)
+  (*       (html_escape (if variant=0 then Printf.sprintf "unicode=\"%s\" " cont else "")) *)
+  (*       (Fonts.glyphWidth g) *)
+  (*       (Buffer.contents pathbuf); *)
+  (*   ) glyphs; *)
+  (*   Printf.bprintf buf "</font>\n"; *)
+  (*   variants:=StrMap.empty; *)
+  (*   let actual_var=ref IntMap.empty in *)
+  (*   List.iter (fun (i,g)-> *)
+  (*     let cont=Fonts.glyphContents g in *)
+  (*     let variant=try StrMap.find cont !variants with Not_found->0 in *)
+  (*     variants:=StrMap.add cont (variant+1) !variants; *)
+  (*     if variant>0 then ( *)
+  (*       actual_var:=IntMap.add i (Printf.sprintf "alt%d_%d" fontNum i) !actual_var; *)
+  (*       Printf.bprintf buf "<altGlyphDef id=\"alt%d_%d\"><glyphRef xlink:href=\"#gl%d_%d\"/></altGlyphDef>\n" fontNum i fontNum i *)
+  (*     ) *)
+  (*   ) glyphs; *)
+  (*   !actual_var *)
+  (* in *)
 
-  Printf.fprintf o "</defs>\n";
+  (* let embedded_fonts=StrMap.mapi *)
+  (*   (fun k a-> *)
+  (*     let glyphs=IntMap.bindings a in *)
+  (*     Buffer.clear buf; *)
+  (*     let vars=embed k buf glyphs in *)
+  (*     Printf.fprintf o "%s" (Buffer.contents buf); *)
+  (*     vars *)
+  (*   ) page_fonts *)
+  (* in *)
+
+  (* Version alternative avec opentype *)
+  Rbuffer.add_string svg_buf "<style type=\"text/css\">\n<![CDATA[\n";
+  StrMap.iter (fun full class_name->
+    Rbuffer.add_string svg_buf "@font-face { font-family:";
+    Rbuffer.add_string svg_buf class_name;
+    Rbuffer.add_string svg_buf "; src:url(\"";
+    Rbuffer.add_string svg_buf full;
+    Rbuffer.add_string svg_buf ".otf\") format(\"opentype\"); }\n"
+  ) fontCache.classes;
+  Rbuffer.add_string svg_buf "]]>\n</style>\n";
+  Rbuffer.add_string svg_buf "</defs>\n";
 
   (* Écriture du contenu à proprement parler *)
 
-  Printf.fprintf o "<title>%s</title>\n" "titre";
-  List.iter (function
+  Rbuffer.add_string svg_buf "<title>";
+  Rbuffer.add_string svg_buf "titre";
+  Rbuffer.add_string svg_buf "</title>\n";
+
+  let cur_x=ref 0. in
+  let cur_y=ref 0. in
+  let cur_family=ref "" in
+  let cur_size=ref 0 in
+  let cur_color=ref (RGB {red=0.;green=0.;blue=0.}) in
+  let opened_text=ref false in
+
+  List.iter (fun cont->match cont with
       Glyph x->(
-        Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" "
-          (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name
-          (round (coord x.glyph_size));
-        (match x.glyph_color with
-            RGB fc ->
-              Printf.fprintf o "fill=\"#%02x%02x%02x\" "
+        let _,fontName=className fontCache x.glyph in
+        (* Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" " *)
+        (*   fontName *)
+        (*   (round (coord x.glyph_size)); *)
+        let size=(round (coord x.glyph_size)) in
+        if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
+          || !cur_size<>size || !cur_color<>x.glyph_color || not !opened_text
+        then (
+          if !opened_text then (
+            Rbuffer.add_string svg_buf "</text>";
+          );
+          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%d;\" "
+                                        (coord x.glyph_x) (coord (h-.x.glyph_y))
+                                        fontName
+                                        size);
+          (match x.glyph_color with
+              RGB fc ->
+                Rbuffer.add_string svg_buf
+                  (Printf.sprintf "fill=\"#%02x%02x%02x\" "
+                     (round (255.*.fc.red))
+                     (round (255.*.fc.green))
+                     (round (255.*.fc.blue)))
+        (* | _->() *)
+          );
+          Rbuffer.add_string svg_buf "stroke=\"none\">";
+          cur_x:=x.glyph_x;
+          cur_y:=x.glyph_y;
+          cur_family:=fontName;
+          cur_size:=size;
+          cur_color:=x.glyph_color;
+          opened_text:=true;
+        );
+        let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
+        Rbuffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
+        cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
+        (* let ff=StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name embedded_fonts in *)
+        (* let fi=try IntMap.find ((Fonts.glyphNumber x.glyph).glyph_index) ff with Not_found->"" in *)
+        (* if fi="" then *)
+        (*   Printf.fprintf o "%s" (html_escape (Fonts.glyphContents x.glyph)) *)
+        (* else ( *)
+        (*   Printf.fprintf o "<altGlyph xlink:href=\"#alt%d_%d\">%s</altGlyph>" *)
+        (*     (StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name !fontRefs) *)
+        (*     ((Fonts.glyphNumber x.glyph).glyph_index) *)
+        (*     (html_escape (Fonts.glyphContents x.glyph)) *)
+          (* ); *)
+      )
+    | Path (args, l)->(
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>";
+      );
+      Rbuffer.clear buf;
+      List.iter
+        (fun a->
+          let x0,y0=a.(0) in
+          Rbuffer.add_string buf "M";
+          Rbuffer.add_string buf (string_of_float (coord x0.(0)));
+          Rbuffer.add_string buf " ";
+          Rbuffer.add_string buf (string_of_float (coord (h-.y0.(0))));
+          Rbuffer.add_string buf " ";
+          Array.iter
+            (fun (x,y)->
+              if Array.length x=2 then Rbuffer.add_string buf "L" else
+                if Array.length x=3 then Rbuffer.add_string buf "Q" else
+                  if Array.length x=4 then Rbuffer.add_string buf "C" else
+                    raise Bezier_degree;
+              for j=1 to Array.length x-1 do
+                Rbuffer.add_string buf (string_of_float (coord x.(j)));
+                Rbuffer.add_string buf " ";
+                Rbuffer.add_string buf (string_of_float (coord (h-.y.(j))));
+                Rbuffer.add_string buf " ";
+              done
+            ) a;
+          if args.close then Rbuffer.add_string buf "Z"
+        ) l;
+      Rbuffer.add_string svg_buf "<path ";
+      (match args.fillColor with
+          Some (RGB fc) ->
+            Rbuffer.add_string svg_buf (
+              Printf.sprintf "fill=\"#%02X%02X%02X\" "
                 (round (255.*.fc.red))
                 (round (255.*.fc.green))
                 (round (255.*.fc.blue))
-                       (* | _->() *));
-        Printf.fprintf o "stroke=\"none\">";
-        Printf.fprintf o "<text x=\"%g\" y=\"%g\">"
-          (coord x.glyph_x) (coord (h-.x.glyph_y));
-        let ff=StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name embedded_fonts in
-        let fi=try IntMap.find ((Fonts.glyphNumber x.glyph).glyph_index) ff with Not_found->"" in
-        if fi="" then
-          Printf.fprintf o "%s" (html_escape (Fonts.glyphContents x.glyph))
-        else (
-          Printf.fprintf o "<altGlyph xlink:href=\"#alt%d_%d\">%s</altGlyph>"
-            (StrMap.find (Fonts.fontName (Fonts.glyphFont x.glyph)).full_name !fontRefs)
-            ((Fonts.glyphNumber x.glyph).glyph_index)
-            (html_escape (Fonts.glyphContents x.glyph))
-        );
-        Printf.fprintf o "</text></g>"
-      )
-        | Path (args, l)->(
-          Buffer.clear buf;
-          List.iter
-            (fun a->
-              let x0,y0=a.(0) in
-              Printf.bprintf buf "M%g %g" (coord x0.(0)) (coord (h-.y0.(0)));
-              Array.iter
-                (fun (x,y)->
-                  if Array.length x=2 then Printf.bprintf buf "L" else
-                    if Array.length x=3 then Printf.bprintf buf "Q" else
-                      if Array.length x=4 then Printf.bprintf buf "C" else
-                        raise Bezier_degree;
-                  for j=1 to Array.length x-1 do
-                    Printf.bprintf buf "%g %g " (coord x.(j)) (coord (h-.y.(j)))
-                  done
-                ) a;
-              if args.close then Printf.bprintf buf "Z"
-            ) l;
-          Printf.fprintf o
-            "<path ";
-          (match args.fillColor with
-              Some (RGB fc) ->
-                Printf.fprintf o "fill=\"#%02X%02X%02X\" "
-                  (round (255.*.fc.red))
-                  (round (255.*.fc.green))
-                  (round (255.*.fc.blue));
-            | None->Printf.fprintf o "fill=\"none\" ");
-          (match args.strokingColor with
-              Some (RGB fc) ->
-                Printf.fprintf o "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" "
-                  (round (255.*.fc.red))
-                  (round (255.*.fc.green))
-                  (round (255.*.fc.blue))
-                  (coord args.lineWidth)
-            | None->
-              Printf.fprintf o "stroke=\"none\" "
-          );
-          Printf.fprintf o "d=\"%s\" />\n" (Buffer.contents buf);
-        )
-        | _->()
-  ) contents;
-  Printf.fprintf o "</svg>";
-  close_out o
-
+            );
+        | None->Rbuffer.add_string svg_buf "fill=\"none\" ");
+      (match args.strokingColor with
+          Some (RGB fc) ->
+            Rbuffer.add_string svg_buf (
+              Printf.sprintf "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" "
+                (round (255.*.fc.red))
+                (round (255.*.fc.green))
+                (round (255.*.fc.blue))
+                (coord args.lineWidth)
+            );
+        | None->
+          Rbuffer.add_string svg_buf "stroke=\"none\" "
+      );
+      Rbuffer.add_string svg_buf "d=\"";
+      Rbuffer.add_buffer svg_buf buf;
+      Rbuffer.add_string svg_buf "\" />\n";
+    )
+    | _->()
+      ) contents;
+  if !opened_text then (
+    Rbuffer.add_string svg_buf "</text>";
+  );
+  if standalone then Rbuffer.add_string svg_buf "</svg>";
+  svg_buf
 
 
 
@@ -256,49 +320,33 @@ let output ?(structure:structure={name="";displayname=[];
   (*   Printf.fprintf o "</defs></svg>\n"; *)
   (*   close_out o; *)
 
-  let html=open_out fileName in
-  Printf.fprintf html
-    "<!DOCTYPE html>
-<!DOCTYPE html>
+  for i=0 to Array.length pages-1 do
+    let chop=Filename.chop_extension fileName in
+    let html_name=Printf.sprintf "%s%d.html" chop i in
+    let w,h=pages.(i).pageFormat in
+    let html=open_out html_name in
+    Printf.fprintf html
+      "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
 <meta charset=utf-8>
-<title>%s</title><script>
-current=0;
-prev=function(){
-if(current>0) {
-current--;
-document.getElementById(\"svg\").src=\"%s\"+current+\".svg\"
-}
-}
-next=function(){
-if(current<%d)
-{
-current++;
-document.getElementById(\"svg\").src=\"%s\"+current+\".svg\"
-}
-}
-window.onload=function(){
-document.body.onkeydown=function(e){
-if(e.which==37) prev()
-else if(e.which==39) next();
-}
-}
-</script>
-</head><body>
-<div><a href=\"#\" onclick=\"prev()\">Précédent</a> <a href=\"#\" onclick=\"next()\">Suivant</a></div>
-<div><img style=\"border:1px solid black\" id=\"svg\" src=\"%s0.svg\"/></div>
-</body></html>\n"
+<title>%s</title>
+<div>%s%s%s</div>
+"
     structure.name
-    (Filename.chop_extension fileName)
-    (Array.length pages-1)
-    (Filename.chop_extension fileName)
-    (Filename.chop_extension fileName);
+      (if i=0 then "" else
+          Printf.sprintf "<a href=\"%s\">Précédent</a>"
+            (Printf.sprintf "%s%d.html" chop (i-1)))
+      (if i<>0 && i<>Array.length pages-1 then " " else "")
+      (if i=Array.length pages-1 then "" else
+          Printf.sprintf "<a href=\"%s\">Suivant</a>"
+            (Printf.sprintf "%s%d.html" chop (i+1)));
 
-  for i=0 to Array.length pages-1 do
-    let svg_name= ((Filename.chop_extension fileName)^(Printf.sprintf "%d" i)^".svg") in
-    let w,h=pages.(i).pageFormat in
-    draw svg_name w h pages.(i).pageContents
+    Printf.fprintf html "<svg>\n";
+    Rbuffer.output_buffer html (draw false w h pages.(i).pageContents);
+    Printf.fprintf html "</svg>\n";
+    Printf.fprintf html "</head><body>"
+
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr

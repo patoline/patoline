@@ -133,9 +133,9 @@ Diagrams.p.cmx:Maths.p.cmx Maths.p.cmi
 Diagrams.cmi:Diagrams.cmx
 
 Box.cmi:Line.cmx Output/OutputCommon.cmi
-Box.cmo:Box.cmi
-Box.cmx:Box.cmi
-Box.p.cmx:Box.cmi
+Box.cmo:Box.cmi Line.cmo Output/OutputCommon.cmo Output/OutputCommon.cmi
+Box.cmx:Box.cmi Line.cmx Output/OutputCommon.cmx Output/OutputCommon.cmi
+Box.p.cmx:Box.cmi Line.p.cmx Output/OutputCommon.p.cmx Output/OutputCommon.cmi
 
 Language.cmo:Line.cmo
 Language.cmx:Line.cmx

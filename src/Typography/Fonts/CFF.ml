@@ -343,6 +343,9 @@ let loadFont ?offset:(off=0) ?size file=
 let glyph_of_uchar _ _=0
 let glyph_of_char f c=glyph_of_uchar f (CamomileLibrary.UChar.of_char c)
 
+let ascender _=0.
+let descender _=0.
+
 let loadGlyph font ?index:(idx=0) gl=
   let file=open_in_bin_cached font.file in
   let charStrings=int_of_num (List.hd (findDict file font.dictIndex.(idx) font.dictIndex.(idx+1) 17)) in

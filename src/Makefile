@@ -53,19 +53,19 @@ Format/%.cma:DefaultFormat.cma Typography.cma  Format/%.ml
 	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
 
 
-Typography/Typography.cma:
+Typography/Typography.cma:Typography
 	make -C Typography Typography.cma
-Typography/Typography.cmxa:
+Typography/Typography.cmxa:Typography
 	make -C Typography Typography.cmxa
-Typography/Typography.p.cmxa:
+Typography/Typography.p.cmxa:Typography
 	make -C Typography Typography.p.cmxa
 
-Drivers/%.cmxa:Drivers/%.ml Typography.cmxa
-	cd Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -pp $(CPP) -I ../Typography -o $*.cmxa $*.ml
-Drivers/%.cma:Drivers/%.ml Typography.cma
-	cd Drivers; ocamlfind ocamlc -package camomile $(PACK) -a -pp $(CPP) -I ../Typography Typography.cma -o $*.cma $*.ml
-Drivers/%.p.cmxa:Drivers/%.ml Typography.p.cmxa
-	cd Drivers; ocamlfind ocamlopt -package camomile $(PACK) -a -p -pp $(CPP) -I ../Typography -o $*.p.cmxa $*.ml
+Drivers/%.cmxa:Drivers Typography.cmxa
+	make -C Drivers $(shell basename $@)
+Drivers/%.cma:Drivers Typography.cma
+	make -C Drivers $(shell basename $@)
+Drivers/%.p.cmxa:Drivers Typography.p.cmxa
+	make -C Drivers $(shell basename $@)
 
 
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline

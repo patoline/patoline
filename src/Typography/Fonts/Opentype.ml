@@ -190,6 +190,28 @@ let italicAngle f=
   seek_in file (a+4);
   float_of_int (readInt4 file)
 
+let ascender f=
+  let file,offset0=match f with
+      CFF font->
+        let file=open_in_bin_cached font.cff_font.file in
+        file,font.cff_offset
+    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
+  in
+  let (a,b)=tableLookup "OS/2" file offset0 in
+  seek_in file (a+68);
+  float_of_int (sreadInt2 file)
+
+let descender f=
+  let file,offset0=match f with
+      CFF font->
+        let file=open_in_bin_cached font.cff_font.file in
+        file,font.cff_offset
+    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
+  in
+  let (a,b)=tableLookup "OS/2" file offset0 in
+  seek_in file (a+70);
+  float_of_int (sreadInt2 file)
+
 
 let glyph_of_uchar font0 char0=
   let file,offset0=match font0 with
@@ -1396,14 +1418,9 @@ let make_tables font fontInfo cmap glyphs_idx=
   let xMax=ref (-.infinity) in
   let xMin=ref infinity in
   (try
-     let ascender=ref 0 in
-     let descender=ref 0 in
      let minLSB=ref infinity in
      let minRSB=ref infinity in
      for i=0 to Array.length glyphs-1 do
-       ascender:=max !ascender (round (glyph_y1 glyphs.(i)));
-       descender:=min !descender (round (glyph_y0 glyphs.(i)));
-
        let lsb=glyph_x0 glyphs.(i) in
        let x1=glyph_x1 glyphs.(i) in
        minLSB:=min !minLSB lsb;
@@ -1418,9 +1435,6 @@ let make_tables font fontInfo cmap glyphs_idx=
 
      let buf_hhea=StrMap.find "hhea" fontInfo_tables in
      strInt4 buf_hhea 0 0x00010000;        (* Version *)
-     (* strInt2 buf_hhea 4 (!ascender); (\* Ascender *\) *)
-     (* strInt2 buf_hhea 6 (!descender);        (\* Descender *\) *)
-     (* strInt2 buf_hhea 8 0; *)           (* LineGap *)
      strInt2 buf_hhea 10 !advanceWidthMax;  (* advanceWidthMax (hmtx) *)
      strInt2 buf_hhea 12 (round !minLSB);           (* minLeftSideBearing *)
      strInt2 buf_hhea 14 (round !minRSB);           (* minRightSideBearing *)
@@ -1531,8 +1545,20 @@ let make_tables font fontInfo cmap glyphs_idx=
 
      strInt2 buf_os2 94 2;              (* usMaxContext *)
 
+     (* Il faut recopier sTypoAscender et sTypoDescender *)
+     let typoAsc=sgetInt2 buf_os2 68 in
+     let typoDesc=sgetInt2 buf_os2 70 in
+     let lineGap=sgetInt2 buf_os2 72 in
+     strInt2 buf_os2 74 (abs typoAsc);
+     strInt2 buf_os2 76 (abs typoDesc);
+     let buf_hhea=StrMap.find "hhea" fontInfo_tables in
+     strInt2 buf_hhea 4 typoAsc;
+     strInt2 buf_hhea 6 typoDesc;
+     strInt2 buf_hhea 8 lineGap;
+
      (* strInt2 buf_os2 64 (round !yMax);              (\* usWinAscent *\) *)
      (* strInt2 buf_os2 66 (max 0 (round (-. !yMin))); (\* usWinDescent *\) *)
+     ()
 
      (* (try *)
      (*    let ix=IntMap.find 0x78 cmap in *)

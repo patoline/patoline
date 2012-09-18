@@ -47,6 +47,8 @@ module type Font =
     type glyph
     val loadFont : ?offset:int -> ?size:int -> string -> font
     val cardinal : font -> int
+    val ascender : font -> float
+    val descender : font -> float
     val glyph_of_char : font -> char -> int
     val glyph_of_uchar : font -> CamomileLibrary.UChar.t -> int
     val loadGlyph : font -> ?index:int -> glyph_id -> glyph
