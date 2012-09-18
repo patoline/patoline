@@ -12,6 +12,12 @@ val rev : 'a array * 'b array -> 'a array * 'b array
 (** O(n) Dérivée d'un polynôme de Bernstein *)
 val derivee : float array -> float array
 
+(** Dérivée en 0 d'un polynôme de Bernstein *)
+val derivee_start : float array -> float 
+
+(** Dérivée en 1 d'un polynôme de Bernstein *)
+val derivee_end : float array -> float 
+
 (** O(n^2) Subdivision de De Casteljau, sur l'intervalle [x;1] *)
 val casteljau_right : float array -> float -> float array
 

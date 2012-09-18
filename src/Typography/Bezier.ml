@@ -26,6 +26,13 @@ let derivee a=
     done;
     b
 
+let derivee_start a =
+  (a.(1) -. a.(0)) *.  (float_of_int (Array.length a-1))
+
+let derivee_end a =
+  let n = Array.length a in
+  (a.(n - 1) -. a.(n - 2)) *.  (float_of_int (n-1))
+
 let casteljau_right f x=
   for t=Array.length f downto 2 do
     for i=0 to (t-2) do

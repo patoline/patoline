@@ -16,6 +16,8 @@ let init_gl () =
     Gl.enable `polygon_smooth;
     Gl.enable `line_smooth;
     GlMisc.hint `polygon_smooth `nicest;
+    Gl.enable `blend;
+    GlFunc.blend_func `src_alpha `one_minus_src_alpha;
     GlFunc.depth_func `lequal
 
 let filename x=""
@@ -167,32 +169,83 @@ let output ?(structure:structure={name="";displayname=[];
 	let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = 1.   /. 1000. *. size in
+	let ratio = s /. !pixel_width in
+(*
 	let w = Fonts.glyphWidth g.glyph *. s in
 	let pw = w /. !pixel_width in
 	let scale = if pw < 20.0 then 
 	    if pw < 5.0 then 100.0 else 20.0
 	  else if pw < 100.0 then 4.0 else 0.5
 	in
-(*
 	Printf.fprintf stderr "x = %f, y = %f, w = %f, pw = %f, scale = %f\n"
 	  x y w pw scale ;
 *)
-	let draw_glyph () = 
+
+	let graisse = 0.707 in
+
+	let draw_glyph color = 
 	  try
-	    GlList.call (Hashtbl.find glyphCache (g.glyph, scale))
+	    GlList.call (Hashtbl.find glyphCache (g.glyph, ratio, color))
 	  with
 	    Not_found ->
 	      let beziers =  Fonts.outlines g.glyph in
-	      let lines = 
-		List.map (fun bs -> 
-		  let bs = List.flatten (List.map (Bezier.subdivise scale) bs) in
-		  List.map (fun (xs, ys) -> (xs.(0),ys.(0),0.0)) bs
-		) beziers 
+	      let lines, normals = 
+		List.split (List.map (fun bs -> 
+		  let bs = List.flatten (List.map (Bezier.subdivise (3.0 *. ratio)) bs) in
+		  let rec last = function
+		    [] -> assert false
+		  | [x] -> x
+		  | _::l -> last l
+		  in
+		  let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
+		  List.split (List.map (fun (xs, ys) -> 
+		    let a, b = !prev in
+		    let xp = Bezier.derivee_start ys +. a in
+		    let yp =  -. (Bezier.derivee_start xs) +. b in
+		    let n = graisse /. ratio /. sqrt (xp*.xp +. yp*.yp) in
+		    prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
+		  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
+		) beziers) 
 	      in
 	      let l = GlList.create `compile_and_execute in
+	      
+	      List.iter2 (fun l n ->
+		GlDraw.begins `quad_strip;
+		List.iter2 (fun (x,y,_) (xn,yn,_) ->
+		  GlDraw.color color;
+		  GlDraw.vertex2 (x,y);
+		  GlDraw.color ~alpha:0.0 color;
+		  GlDraw.vertex2 (x+.xn,y+.yn)) l n;
+		let (x,y,_) = List.hd l in
+		let (xn,yn,_) = List.hd n in
+		GlDraw.color color;
+		GlDraw.vertex2 (x,y);
+		GlDraw.color ~alpha:0.0 color;
+		GlDraw.vertex2 (x+.xn,y+.yn);
+	      GlDraw.ends ();
+	      )	lines normals;
+
+ 	      List.iter2 (fun l n ->
+		GlDraw.begins `quad_strip;
+		List.iter2 (fun (x,y,_) (xn,yn,_) ->
+		  GlDraw.color color;
+		  GlDraw.vertex2 (x,y);
+		  GlDraw.color ~alpha:0.0 color;
+		  GlDraw.vertex2 (x-.xn,y-.yn)) l n;
+		let (x,y,_) = List.hd l in
+		let (xn,yn,_) = List.hd n in
+		GlDraw.color color;
+		GlDraw.vertex2 (x,y);
+		GlDraw.color ~alpha:0.0 color;
+		GlDraw.vertex2 (x-.xn,y-.yn);
+	      GlDraw.ends ();
+	      )	lines normals;
+ 
+	      GlDraw.color color;
 	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
+	      
 	      GlList.ends ();
-	      Hashtbl.add glyphCache (g.glyph, scale) l
+	      Hashtbl.add glyphCache (g.glyph, ratio, color) l
 	in
 (*	
 	List.iter (fun bs ->
@@ -204,23 +257,10 @@ let output ?(structure:structure={name="";displayname=[];
 	    RGB{red = r; green=g; blue=b;} -> r,g,b
 	in
 	flush stderr;
-	GlDraw.color (r,g,b);
 	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.5., y +. !pixel_height/.5., 0.0);
+	GlMat.translate3 (x,y,0.0);
 	GlMat.scale3 (s, s, s);
-	draw_glyph ();
-	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.5., y +. !pixel_height/.5., 0.0);
-	GlMat.scale3 (s, s, s);
-	draw_glyph ();
-	GlMat.load_identity ();
-	GlMat.translate3 (x +. !pixel_width/.5., y -. !pixel_height/.5., 0.0);
-	GlMat.scale3 (s, s, s);
-	draw_glyph ();
-	GlMat.load_identity ();
-	GlMat.translate3 (x -. !pixel_width/.5., y -. !pixel_height/.5., 0.0);
-	GlMat.scale3 (s, s, s);
-	draw_glyph ();
+	draw_glyph (r,g,b);
 
     | Path(param, beziers) ->
 	let lines = List.map (fun aline ->
@@ -373,6 +413,7 @@ let output ?(structure:structure={name="";displayname=[];
       cfps := 0; fps := 0.0
     )
   in
+
 
   let redraw () =
     reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
@@ -558,10 +599,13 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let main () =
+    Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgba depth=0 double samples>=32";
+    Glut.initDisplayString "rgba depth=0 double samples>=4";
+    Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
     ignore (Glut.createWindow "Patoline OpenGL Driver");
-    Printf.fprintf stderr "Number of samples: %d\n" (Glut.get Glut.WINDOW_NUM_SAMPLES);
+    Printf.fprintf stderr "Window created, number of samples: %d\n" 
+      (Glut.get Glut.WINDOW_NUM_SAMPLES);
     flush stderr;
     Glut.displayFunc display_cb;
     Glut.keyboardFunc keyboard_cb;
@@ -575,7 +619,7 @@ let output ?(structure:structure={name="";displayname=[];
     Sys.set_signal Sys.sighup
       (Sys.Signal_handle
 	 (fun s ->  to_revert := true; Glut.postRedisplay ()));
-    Printf.fprintf stderr "Start loop\n";
+    Printf.fprintf stderr "GL setup finished, starting loop\n";
     flush stderr;
     Glut.mainLoop ()
   in
