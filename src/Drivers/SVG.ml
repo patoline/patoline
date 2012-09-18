@@ -345,8 +345,8 @@ let output ?(structure:structure={name="";displayname=[];
     Printf.fprintf html "<svg>\n";
     Rbuffer.output_buffer html (draw false w h pages.(i).pageContents);
     Printf.fprintf html "</svg>\n";
-    Printf.fprintf html "</head><body>"
-
+    Printf.fprintf html "</head><body>";
+    close_out html
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr

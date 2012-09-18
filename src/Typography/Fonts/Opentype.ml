@@ -1373,7 +1373,7 @@ let make_tables font fontInfo cmap glyphs_idx=
         | "OS/2" | "CFF " | "GSUB" | "name" | "post"
         | "cvt " | "fpgm" | "glyf" | "loca" | "prep" -> true
         | _->(
-          Printf.fprintf stderr "excluded table : %S\n" k;flush stderr;
+          (* Printf.fprintf stderr "excluded table : %S\n" k;flush stderr; *)
           false
         )
     ) fontInfo.tables;
