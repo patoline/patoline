@@ -79,6 +79,7 @@ clean:
 	make -C Typography clean
 	make -C Format clean
 	make -C Patoline clean
+	make -C ocaml-bibi clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd proof; rm -f *~ \#*\# *.cm[xoi] *.o
 	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.o *.a
