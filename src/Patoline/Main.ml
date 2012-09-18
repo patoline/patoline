@@ -415,7 +415,12 @@ and process_each_file l=
     List.iter (fun f->
       if !compile then (
         if !format <> "DefaultFormat" &&
-          (not (List.mem ("Typography." ^ !format) !package_list)) then
+          (not (List.mem ("Typography." ^ !format) !package_list)) &&
+          (try
+             let _=findPath (!format ^ ".ml") (".":: !Config.local_path) in
+             false
+           with _->true)
+        then
           package_list := ("Typography." ^ !format) :: !package_list;
         package_list := ("Typography."^ !driver):: !package_list;
 
