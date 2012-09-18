@@ -66,8 +66,7 @@ Fonts/Type2.cmi:Fonts/Type2.cmx
 Fonts/CFFStd.cmi:Fonts/CFFStd.cmx
 
 Fonts/Sfnt/unicode_ranges.ml:Fonts/Sfnt/make_unicode_ranges.ml Fonts/Sfnt/unicode
-	ocamlc -o Fonts/Sfnt/make_unicode_ranges str.cma Fonts/Sfnt/make_unicode_ranges.ml
-	cd Fonts/Sfnt; ./make_unicode_ranges
+	cd Fonts/Sfnt; ocamlc -o make_unicode_ranges str.cma make_unicode_ranges.ml; ./make_unicode_ranges
 Fonts/Sfnt/unicode_ranges.cmi:Fonts/Sfnt/unicode_ranges.cmx
 
 

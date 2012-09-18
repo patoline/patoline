@@ -1,7 +1,7 @@
 include Makefile.config
 
 FORMAT=$(shell ls Format/Format*.ml)
-DRIVERS=$(shell ls Drivers/*.ml)
+DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/GL.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa
 
 ifdef GL_PACK
 PACK+=$(GL_PACK)
