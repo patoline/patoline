@@ -119,7 +119,7 @@ let rec read_options_from_source_file fread =
       let name=
         try
           let name=Util.findPath ((Filename.chop_extension n)^".ml") ("."::!Config.local_path) in
-          let objects=(Mutex.create (), ref StrMap.empty, ref 0) in
+          let objects=(Mutex.create (), ref StrMap.empty) in
           Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo"));
           Dynlink.adapt_filename (Filename.chop_extension name^".cmo")
         with
@@ -280,35 +280,13 @@ and patoline_rule objects h=
     in
     Build.build source;
 
-    (* On ouvre la map à h, on place les dépendances de h après h, et
-       on rajoute la fin de la map par-dessus. Ainsi, on n'a pas
-       besoin de recalculer l'ordre de la ligne de commande dans les
-       cas compliqués. *)
+
     let deps0=make_deps source in
-    let mut,m,n=objects in
+    List.iter (Printf.fprintf stderr "%S -> %S\n" h) deps0;
+
+    let mut,m=objects in
     Mutex.lock mut;
-    (try
-       let lower,_,upper=StrMap.split h !m in
-       m:=lower;
-       List.iter (fun x->
-         incr n;
-         m:=StrMap.add x !n !m
-       ) deps0;
-
-       incr n;
-       m:=StrMap.add h !n !m;
-
-       StrMap.iter (fun k _->
-         incr n;
-         m:=StrMap.add k !n !m
-       ) upper;
-     with
-         Not_found->
-           List.iter (fun x->
-             incr n;
-             m:=StrMap.add x !n !m
-           ) deps0
-    );
+    m:=StrMap.add h deps0 !m;
     Mutex.unlock mut;
 
     let tar=List.map (Thread.create Build.build) deps0 in
@@ -368,12 +346,9 @@ and patoline_rule objects h=
     (* A ce niveau, toutes les dépendances sont indépendantes entre
        elles. On peut les placer sur le même niveau. *)
     let deps0=make_deps source in
-    let mut,m,n=objects in
+    let mut,m=objects in
     Mutex.lock mut;
-    List.iter (fun x->
-      incr n;
-      m:=StrMap.add x !n !m
-    ) deps0;
+    m:=StrMap.singleton h deps0;
     Mutex.unlock mut;
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
@@ -381,19 +356,33 @@ and patoline_rule objects h=
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
     let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
     if age_h<age_source then (
-      let mut,m,n=objects in
+      let mut,m=objects in
       Mutex.lock mut;
+
+      let rec breadth_first h l=match h with
+          []->l
+        | _::_->
+          let rec make_next h0 l0 h=match h with
+              []->h0,l0
+            | a::b->
+              let next=try StrMap.find a !m with Not_found->[] in
+              let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+              let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+              make_next h1 l1 b
+          in
+          let h1,l1=make_next [] l h in
+          breadth_first h1 l1
+      in
+      let objs=breadth_first [h] [] in
+
       let dirs_=String.concat " " !dirs in
-      let objs=StrMap.fold (fun k a m->IntMap.add (-a) k m) !m IntMap.empty in
-      let objs=List.rev (List.map snd (IntMap.bindings objs)) in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s %s -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
         !ocamlopt
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
         h
-        (if opts.format<>"DefaultFormat" then (opts.format^".cmxa") else "")
 	(String.concat " " objs)
 	source
       in
@@ -489,7 +478,7 @@ let _ =
           )
         )
       | _->(
-        let objects=(Mutex.create (), ref StrMap.empty, ref 0) in
+        let objects=(Mutex.create (), ref StrMap.empty) in
         Build.append_rule (patoline_rule objects);
         Arg.parse spec (fun x->files := x::(!files)) (Language.message Usage);
         process_each_file (List.rev !files)
