@@ -1,0 +1,6 @@
+name="bibi"
+version="1.0"
+description="A library for using bibliographic data in a TeX' program"
+requires="camomile, sqlite3"
+archive(byte)="bibi.cma"
+archive(native)="bibi.cmxa"

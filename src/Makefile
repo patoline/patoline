@@ -17,15 +17,23 @@ VPATH=Typography:Drivers:Format
 
 all:native byte prof
 
-native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx proof/proof $(NATIVE_EXTRA)
-byte:Typography/Typography.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
+native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof $(NATIVE_EXTRA)
+byte:Typography/Typography.cma ocaml-bibi/bibi.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
 
-prof:Typography/Typography.p.cmxa $(FORMAT:.mllib=.p.cmxa)
+prof:Typography/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(FORMAT:.mllib=.p.cmxa)
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
 Patoline/PatolineGL:Patoline GL.cmxa
 	make -C Patoline PatolineGL
+
+
+ocaml-bibi/bibi.cma:
+	make -C ocaml-bibi bibi.cma
+ocaml-bibi/bibi.cmxa:
+	make -C ocaml-bibi bibi.cmxa
+ocaml-bibi/bibi.p.cmxa:
+	make -C ocaml-bibi bibi.p.cmxa
 
 proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
 	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -linkpkg -o proof Typography.cmxa Pdf.cmxa proof.ml
@@ -44,7 +52,6 @@ Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa  Format/%.ml
 Format/%.cma:DefaultFormat.cma Typography.cma  Format/%.ml
 	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
 
-.PHONY:Typography/Typography.cma Typography/Typography.cmxa Typography/Typography.p.cmxa
 
 Typography/Typography.cma:
 	make -C Typography Typography.cma
