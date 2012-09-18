@@ -520,7 +520,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	    else "(fun x -> x)"
 	  in
 	  let param = if options.center_paragraph then 
-	      "(Document.do_center parameters)"
+	      "(Typography.Document.do_center parameters)"
 	    else
 	      "parameters"
 	  in
