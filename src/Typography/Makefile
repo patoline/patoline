@@ -87,13 +87,13 @@ Output/OutputDrawing.p.cmx:Output/OutputCommon.cmi Fonts.p.cmx Box.cmi Document.
 Output/OutputDrawing.cmi:Output/OutputDrawing.cmx
 
 
-Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi
+Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi Box.cmo
 	$(CAMLC) -c -rectypes -o $@ Break.ml
 Break.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.cmx Break.cmi Box.cmx
 	$(CAMLOPT) -for-pack Typography -c -rectypes -o $@ Break.ml
 Break.p.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.p.cmx Break.cmi Box.p.cmx
 	$(CAMLOPT) -for-pack Typography -p -c -rectypes -o $@ Break.ml
-Break.cmi:Box.cmi Language.p.cmx Break.ml
+Break.cmi:Box.cmi Language.cmx
 
 Hyphenate.cmo:Hyphenate.cmi
 Hyphenate.cmx:Hyphenate.cmi new_map.cmx
@@ -141,9 +141,9 @@ Language.cmx:Line.cmx
 Language.p.cmx:Line.p.cmx
 Language.cmi:Language.cmx
 
-Util.cmo:Util.cmi new_map.cmi
-Util.cmx:Util.cmi new_map.cmx
-Util.p.cmx:Util.cmi new_map.p.cmx
+Util.cmo:Util.cmi new_map.cmi Config.cmo
+Util.cmx:Util.cmi new_map.cmx Config.cmx
+Util.p.cmx:Util.cmi new_map.p.cmx Config.p.cmx
 Util.cmi:new_map.cmi
 
 new_map.cmo: new_map.cmi

@@ -59,12 +59,14 @@ Typography/Typography.cmxa:Typography
 	make -C Typography Typography.cmxa
 Typography/Typography.p.cmxa:Typography
 	make -C Typography Typography.p.cmxa
+Typography/Typography.cmi:Typography.cmxa
 
-Drivers/%.cmxa:Drivers Typography.cmxa
+
+Drivers/%.cmxa:Drivers Typography/Typography.cmxa Typography/Typography.cmi
 	make -C Drivers $(shell basename $@)
-Drivers/%.cma:Drivers Typography.cma
+Drivers/%.cma:Drivers Typography/Typography.cma Typography/Typography.cmi
 	make -C Drivers $(shell basename $@)
-Drivers/%.p.cmxa:Drivers Typography.p.cmxa
+Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa Typography/Typography.cmi
 	make -C Drivers $(shell basename $@)
 
 
