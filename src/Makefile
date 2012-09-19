@@ -35,8 +35,8 @@ ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi
 ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.p.cmxa
 
-proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml
-	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -linkpkg -o proof Typography.cmxa Pdf.cmxa proof.ml
+proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
+	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -I ../Rbuffer -linkpkg -o proof rbuffer.cmxa Typography.cmxa Pdf.cmxa proof.ml
 
 Format/DefaultFormat.cmxa:Format Typography.cmxa
 	make -C Format DefaultFormat.cmxa
@@ -45,22 +45,28 @@ Format/DefaultFormat.cma:Format Typography.cma
 Format/DefaultFormat.p.cmax:Format Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
-Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml
-	$(CAMLOPT) -a -I Typography -I Format -o $@ Format/$*.ml
-Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa  Format/%.ml
-	$(CAMLOPT) -p -I Typography -I Format -o $@ Format/$*.ml
-Format/%.cma:DefaultFormat.cma Typography.cma  Format/%.ml
-	$(CAMLC) -a -I Typography -I Format -o $@ Format/$*.ml
+Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml Rbuffer/rbuffer.cmxa
+	$(CAMLOPT) -I Rbuffer -a -I Typography -I Format -o $@ Format/$*.ml
+Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa  Format/%.ml Rbuffer/rbuffer.p.cmxa
+	$(CAMLOPT) -I Rbuffer  -p -I Typography -I Format -o $@ Format/$*.ml
+Format/%.cma:DefaultFormat.cma Typography.cma  Format/%.ml Rbuffer/rbuffer.cma
+	$(CAMLC) -I Rbuffer  -a -I Typography -I Format -o $@ Format/$*.ml
 
 
-Typography/Typography.cma:Typography
+Typography/Typography.cma:Typography Rbuffer/rbuffer.cma
 	make -C Typography Typography.cma
-Typography/Typography.cmxa:Typography
+Typography/Typography.cmxa:Typography Rbuffer/rbuffer.cmxa
 	make -C Typography Typography.cmxa
-Typography/Typography.p.cmxa:Typography
+Typography/Typography.p.cmxa:Typography Rbuffer/rbuffer.p.cmxa
 	make -C Typography Typography.p.cmxa
 Typography/Typography.cmi:Typography.cmxa
 
+Rbuffer/rbuffer.cma:Rbuffer
+	make -C Rbuffer rbuffer.cma
+Rbuffer/rbuffer.cmxa:Rbuffer
+	make -C Rbuffer rbuffer.cmxa
+Rbuffer/rbuffer.p.cmxa:Rbuffer
+	make -C Rbuffer rbuffer.p.cmxa
 
 Drivers/%.cmxa:Drivers Typography/Typography.cmxa Typography/Typography.cmi
 	make -C Drivers $(shell basename $@)
@@ -75,7 +81,7 @@ DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 
 DefaultGrammar.cmx:Typography/Typography.cmxa
 DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
-	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
+	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
 
 clean:
 	make -C Typography clean

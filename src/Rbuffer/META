@@ -1,0 +1,5 @@
+name="RBuffer"
+version="1.0"
+description="An implementation of buffer using ropes. By Jean-Christophe Filliatre"
+archive(native)="rope.cmxa, rbuffer.cmxa"
+archive(byte)="rope.cma, rbuffer.cma"

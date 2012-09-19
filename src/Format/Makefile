@@ -1,7 +1,7 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../Typography $(PACK)
-CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography $(PACK)
+CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../Typography -I ../Rbuffer $(PACK)
+CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography -I ../Rbuffer $(PACK)
 
 DefaultFormat.cmxa:DefaultFormat.ml Euler.cmx Numerals.cmx TableOfContents.cmx Sections.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Euler.cmx Numerals.cmx TableOfContents.cmx Sections.cmx DefaultFormat.ml

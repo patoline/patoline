@@ -116,7 +116,7 @@ let _=
     Printf.fprintf out "doc: Patoline.pdf\n\tmake -C src doc\n\n";
     Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx src/Typography/Typography.cmxa src/Format/DefaultFormat.cmxa src/Drivers/Pdf.cmxa
 	./src/Patoline/patoline --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
-	ocamlfind ocamlopt -package camomile,rbuffer%s -linkpkg -I src -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
+	ocamlfind ocamlopt -package camomile%s -linkpkg -I src -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
 	./Patoline.tmx --extra-fonts-dir Fonts
 "  (if !camlzip="" then "" else (","^(!camlzip)));
     Printf.fprintf out "check: doc\n";
@@ -165,7 +165,7 @@ let _=
         (if !camlimages <> "" then "-DCAMLIMAGES " else "")
         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-    Printf.fprintf make "PACK=-package rbuffer,camomile%s%s\n"
+    Printf.fprintf make "PACK=-package camomile%s%s\n"
       (if !camlzip <> "" then " -package "^(!camlzip) else "")
       (if !camlimages <> "" then " -package "^(!camlimages) else "");
     if !lablgl <> "" && !lablglut <> "" then
@@ -175,6 +175,7 @@ let _=
 
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
+    Printf.fprintf out "\t make -C src/Rbuffer install DESTDIR=$(DESTDIR)\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
     if !lablgl <> "" && !lablglut <> "" then
