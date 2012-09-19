@@ -156,7 +156,7 @@ let draw ?fontCache standalone w h contents=
   let cur_x=ref 0. in
   let cur_y=ref 0. in
   let cur_family=ref "" in
-  let cur_size=ref 0 in
+  let cur_size=ref 0. in
   let cur_color=ref (RGB {red=0.;green=0.;blue=0.}) in
   let opened_text=ref false in
 
@@ -166,17 +166,17 @@ let draw ?fontCache standalone w h contents=
         (* Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" " *)
         (*   fontName *)
         (*   (round (coord x.glyph_size)); *)
-        let size=(round (coord x.glyph_size)) in
+        let size=x.glyph_size in
         if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
           || !cur_size<>size || !cur_color<>x.glyph_color || not !opened_text
         then (
           if !opened_text then (
             Rbuffer.add_string svg_buf "</text>";
           );
-          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%dpx;\" "
+          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%gpx;\" "
                                         (coord x.glyph_x) (coord (h-.x.glyph_y))
                                         fontName
-                                        size);
+                                        (coord size));
           (match x.glyph_color with
               RGB fc ->
                 Rbuffer.add_string svg_buf
