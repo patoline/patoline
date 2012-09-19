@@ -114,9 +114,9 @@ let _=
     Printf.fprintf out "src/Typography/Config.ml:configure.ml\n\tocaml configure.ml\n";
     Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc: Patoline.pdf\n\tmake -C src doc\n\n";
-    Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx src/Typography/Typography.cmxa src/Format/DefaultFormat.cmxa src/Drivers/Pdf.cmxa
+    Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx src/Rbuffer/rbuffer.cmxa src/Typography/Typography.cmxa src/Format/DefaultFormat.cmxa src/Drivers/Pdf.cmxa
 	./src/Patoline/patoline --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
-	ocamlfind ocamlopt -package camomile%s -linkpkg -I src -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
+	ocamlfind ocamlopt -package camomile%s -linkpkg -I src -I src/Rbuffer rbuffer.cmxa -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
 	./Patoline.tmx --extra-fonts-dir Fonts
 "  (if !camlzip="" then "" else (","^(!camlzip)));
     Printf.fprintf out "check: doc\n";

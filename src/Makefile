@@ -27,6 +27,11 @@ Patoline/patoline:Patoline
 Patoline/PatolineGL:Patoline GL.cmxa
 	make -C Patoline PatolineGL
 
+.PHONY:test
+test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline
+	Patoline/patoline --format FormatDiapo --driver FormatDiapo.M --ml test.txp
+	ocamlfind ocamlopt -package Typography -I Format FormatDiapo.cmxa -linkpkg -o 'test.tmx'  -impl 'test.tml'
+	./test
 
 ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
@@ -82,6 +87,11 @@ DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 DefaultGrammar.cmx:Typography/Typography.cmxa
 DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
 	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
+
+.PHONY :doc
+doc:
+	ocamlfind ocamldoc -package camomile -html -d doc -pp cpp -I Typography -I Typography/Output Typography/Document.ml
+
 
 clean:
 	make -C Typography clean
