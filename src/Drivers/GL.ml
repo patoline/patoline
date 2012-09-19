@@ -31,6 +31,12 @@ let glyphCache = Hashtbl.create 1001
 let imageCache = Hashtbl.create 1001
 #endif
 
+let rec last = function
+[] -> assert false
+  | [x] -> x
+  | _::l -> last l
+
+
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
@@ -67,8 +73,8 @@ let output ?(structure:structure={name="";displayname=[];
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
     let ry = ph /. 2.0 *. !zoom in
-    pixel_width := rx *. 2.0 /. (float_of_int h);
-    pixel_height := ry *. 2.0 /. (float_of_int w);
+    pixel_width := rx *. 2.0 /. (float_of_int w);
+    pixel_height := ry *. 2.0 /. (float_of_int h);
 
     let set_proj () =
       GlDraw.viewport 0 0 w h;
@@ -147,6 +153,48 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
+  let graisse = 1.0 /. 3.0 in
+  let tesselation_factor = 0.25 in
+
+  let add_normals closed ratio beziers =
+    List.split (List.map (fun bs -> 
+      let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+      if closed then
+	let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
+	List.split (List.map (fun (xs, ys) -> 
+	  let a, b = !prev in
+	  let xp = Bezier.derivee_start ys +. a in
+	  let yp =  -. (Bezier.derivee_start xs) +. b in
+	  let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
+	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
+      else
+	let prev = ref None in
+	let ln = 
+	  List.map (fun (xs, ys) -> 
+	    let xp, yp =
+	      match !prev with
+		None -> 
+		  Bezier.derivee_start ys, -. (Bezier.derivee_start xs)
+	      | Some(_,_,a,b) -> 
+		Bezier.derivee_start ys +. a, -. (Bezier.derivee_start xs) +. b 
+	    in
+	    let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
+	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
+	in
+	let last = 
+	  match !prev with
+	    None -> assert false
+	  | Some(xs,ys,xp,yp) -> 
+	    let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    let s = Array.length xs in
+	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
+	in
+	List.split (ln @ [last])
+    ) beziers) 
+  in
+
   let draw_gl_scene () =
     let time = Sys.time () in
     saved_rectangle := None;
@@ -163,25 +211,18 @@ let output ?(structure:structure={name="";displayname=[];
     GlDraw.vertex2 (0., ph);
     GlDraw.ends ();
 
-    List.iter (function
+    let do_draw () =
+      List.iter (function
       Glyph g ->
-	let x = g.glyph_x in
-	let y = g.glyph_y  in
+        let x = g.glyph_x in
+        let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = 1.   /. 1000. *. size in
-	let ratio = s /. !pixel_width in
+	let ratio = !pixel_width /. s in
 (*
-	let w = Fonts.glyphWidth g.glyph *. s in
-	let pw = w /. !pixel_width in
-	let scale = if pw < 20.0 then 
-	    if pw < 5.0 then 100.0 else 20.0
-	  else if pw < 100.0 then 4.0 else 0.5
-	in
-	Printf.fprintf stderr "x = %f, y = %f, w = %f, pw = %f, scale = %f\n"
-	  x y w pw scale ;
+	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
+	  x y s !pixel_width !pixel_height ratio ;
 *)
-
-	let graisse = 0.707 in
 
 	let draw_glyph color = 
 	  try
@@ -189,26 +230,12 @@ let output ?(structure:structure={name="";displayname=[];
 	  with
 	    Not_found ->
 	      let beziers =  Fonts.outlines g.glyph in
-	      let lines, normals = 
-		List.split (List.map (fun bs -> 
-		  let bs = List.flatten (List.map (Bezier.subdivise (3.0 *. ratio)) bs) in
-		  let rec last = function
-		    [] -> assert false
-		  | [x] -> x
-		  | _::l -> last l
-		  in
-		  let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
-		  List.split (List.map (fun (xs, ys) -> 
-		    let a, b = !prev in
-		    let xp = Bezier.derivee_start ys +. a in
-		    let yp =  -. (Bezier.derivee_start xs) +. b in
-		    let n = graisse /. ratio /. sqrt (xp*.xp +. yp*.yp) in
-		    prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-		  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
-		) beziers) 
-	      in
+	      let lines, normals = add_normals true ratio beziers in
 	      let l = GlList.create `compile_and_execute in
-	      
+
+	      GlDraw.color color;
+	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
+	      	      
 	      List.iter2 (fun l n ->
 		GlDraw.begins `quad_strip;
 		List.iter2 (fun (x,y,_) (xn,yn,_) ->
@@ -241,9 +268,6 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.ends ();
 	      )	lines normals;
  
-	      GlDraw.color color;
-	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
-	      
 	      GlList.ends ();
 	      Hashtbl.add glyphCache (g.glyph, ratio, color) l
 	in
@@ -257,105 +281,105 @@ let output ?(structure:structure={name="";displayname=[];
 	    RGB{red = r; green=g; blue=b;} -> r,g,b
 	in
 	flush stderr;
-	GlMat.load_identity ();
+	let x = (floor (x /. !pixel_width +. 1.0) -. 0.5) *. !pixel_width in
+	let y = (floor (y /. !pixel_height +. 1.0) -. 0.5) *. !pixel_height in
+	GlMat.push ();
 	GlMat.translate3 (x,y,0.0);
 	GlMat.scale3 (s, s, s);
 	draw_glyph (r,g,b);
+	GlMat.pop ();
 
     | Path(param, beziers) ->
-	let lines = List.map (fun aline ->
-	  let line = Array.to_list aline in
-	  let line = List.flatten (List.map (Bezier.subdivise  (1e-2 *. !zoom)) line) in
-	  param,List.map
-	    (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
-	       (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
-            line
-	) beziers
-        in
-        let drawn=List.map
-          (function
-               p,h::s->(
-                 let (x0,y0,_),_=h in
-                 let _,(x1,y1,_)=List.fold_left (fun _ x->x) h s in
-                 let line=
-                   if p.close then
-                     (List.map
-	                (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
-	                   (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
-                        (Bezier.subdivise  (1e-2 *. !zoom) ([|x1;x0|],[|y1;y0|])))@(h::s)
-                   else
-                     h::s
-                 in
-                 line
-               )
-             | _,l->l
-          ) lines
-        in
-        let filled=List.map
-          (function
-               p,h::s->(
-                 let (x0,y0,_),_=h in
-                 let _,(x1,y1,_)=List.fold_left (fun _ x->x) h s in
-                 let line=
-                   if p.fillColor<>None then
-                     (List.map
-	                (fun (xa,ya) ->(xa.(0), ya.(0), 0.0),
-	                   (xa.(Array.length xa -1), ya.(Array.length ya - 1), 0.0))
-                        (Bezier.subdivise  (1e-2 *. !zoom) ([|x1;x0|],[|y1;y0|])))@(h::s)
-                   else
-                     h::s
-                 in
-                 line
-               )
-             | _,l->l
-          ) lines
-        in
+      let beziers = List.map Array.to_list beziers in
+      let lines, normals = add_normals param.close !pixel_width beziers in
       (match param.fillColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
-	GlDraw.color (r,g,b);
-	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.5., !pixel_height/.5., 0.0);
-	let l = GlList.create `compile_and_execute in
-	List.iter (fun l -> GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) [List.map fst l]) filled;
-	GlList.ends ();
-	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.5., !pixel_height/.5., 0.0);
-	GlList.call l;
-	GlMat.load_identity ();
-	GlMat.translate3 (!pixel_width/.5., -. !pixel_height/.5., 0.0);
-	GlList.call l;
-	GlMat.load_identity ();
-	GlMat.translate3 (-. !pixel_width/.5., -. !pixel_height/.5., 0.0);
-	GlList.call l;
-	GlList.delete l
+	let color = (r,g,b) in
+	GlDraw.color color;
+	GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) lines;
+	List.iter2 (fun l n ->
+	  if param.strokingColor = None then begin
+	    GlDraw.begins `quad_strip;
+	    List.iter2 (fun (x,y,_) (xn,yn,_) ->
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x,y);
+	      GlDraw.color ~alpha:0.0 color;
+	      GlDraw.vertex2 (x+.xn,y+.yn)) l n;
+	    let (x,y,_) = List.hd l in
+	    let (xn,yn,_) = List.hd n in
+	    GlDraw.color color;
+	    GlDraw.vertex2 (x,y);
+	    GlDraw.color ~alpha:0.0 color;
+	    GlDraw.vertex2 (x+.xn,y+.yn);
+	    GlDraw.ends ()
+	  end) lines normals;
+	List.iter2 (fun l n ->
+	  if param.strokingColor = None then begin
+	    GlDraw.begins `quad_strip;
+	    List.iter2 (fun (x,y,_) (xn,yn,_) ->
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x,y);
+	      GlDraw.color ~alpha:0.0 color;
+	      GlDraw.vertex2 (x-.xn,y-.yn)) l n;
+	    let (x,y,_) = List.hd l in
+	    let (xn,yn,_) = List.hd n in
+	    GlDraw.color color;
+	    GlDraw.vertex2 (x,y);
+	    GlDraw.color ~alpha:0.0 color;
+	    GlDraw.vertex2 (x-.xn,y-.yn);
+	    GlDraw.ends ()
+	  end) lines normals;
       );
       (match param.strokingColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
-	GlDraw.color (r,g,b);
-	List.iter (fun line ->
-	  GlMat.load_identity ();
-	  GlDraw.begins `quads;
-	  let lw = param.lineWidth +. 0.5 *. !pixel_width in
-	  List.iter
-	    (fun ((ax,ay,_),(bx,by,_)) ->
-	      let vx = bx -. ax and vy = by -. ay in
+	let color = (r,g,b) in
+	List.iter2 (fun l n ->
+	  GlDraw.begins `quad_strip; 
+	  GlDraw.color color; 
+	  let lw = param.lineWidth in
+	  List.iter2
+	    (fun (x,y,_) (vx, vy,_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx = vy /. norm /. 2.0 *. lw in
-	      let ny = -. vx /. norm /. 2.0  *. lw in
-	      GlDraw.vertex2 (ax +. nx, ay +. ny);
-	      GlDraw.vertex2 (bx +. nx, by +. ny);
-	      GlDraw.vertex2 (bx -. nx, by -. ny);
-	      GlDraw.vertex2 (ax -. nx, ay -. ny);
-	    ) line;
+	      let nx = vx /. norm *. lw /. 2.0 in
+	      let ny = vy /. norm *. lw /. 2.0 in
+	      Printf.printf "x = %f, y = %f, nx = %f, ny = %f\n" x y nx ny;
+	      GlDraw.vertex2 (x +. nx, y +. ny);
+	      GlDraw.vertex2 (x -. nx, y -. ny)
+	    ) l n;
 	  GlDraw.ends ();
-	) drawn);
+	  GlDraw.begins `quad_strip;
+	  let lw = param.lineWidth in
+	  List.iter2
+	    (fun (x,y,_) (vx, vy,_) ->
+	      let norm = sqrt (vx*.vx +. vy*.vy) in
+	      let nx = (vx /. norm *. lw) /. 2.0 in
+	      let ny = (vy /. norm *. lw) /. 2.0 in
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x +. nx, y +. ny);
+	      GlDraw.color ~alpha:0.0 color;
+	      GlDraw.vertex2 (x +. nx +. vx, y +. ny +. vy);
+	    ) l n;
+	  GlDraw.ends ();
+	  GlDraw.begins `quad_strip;
+	  let lw = param.lineWidth in
+	  List.iter2
+	    (fun (x,y,_) (vx, vy,_) ->
+	      let norm = sqrt (vx*.vx +. vy*.vy) in
+	      let nx = (vx /. norm *. lw) /. 2.0 in
+	      let ny = (vy /. norm *. lw) /. 2.0 in
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x -. nx, y -. ny);
+	      GlDraw.color ~alpha:0.0 color;
+	      GlDraw.vertex2 (x -. nx -. vx, y -. ny -. vy);
+	    ) l n;
+	  GlDraw.ends ();
+	) lines normals);
 
     | Link(link) -> ()
 
     | Image i -> 
-      GlMat.load_identity ();
       Gl.enable `texture_2d;
 #ifdef CAMLIMAGES
       begin     
@@ -402,7 +426,22 @@ let output ?(structure:structure={name="";displayname=[];
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) !pages.(page).pageContents;
+    ) !pages.(page).pageContents
+    in
+
+    GlFunc.color_mask ~red:false ~green:true ~blue:false ();
+    do_draw ();
+    GlMat.push ();
+    GlMat.translate3 (!pixel_width /. 3.0, 0.0, 0.0);
+    GlFunc.color_mask ~red:true ~green:false ~blue:false ();
+    do_draw ();
+    GlMat.pop ();
+    GlMat.push ();
+    GlMat.translate3 (-. !pixel_width /. 3.0, 0.0, 0.0);
+    GlFunc.color_mask ~red:false ~green:false ~blue:true ();
+    do_draw ();
+    GlMat.pop ();
+    GlFunc.color_mask ~red:true ~green:true ~blue:true ();
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -601,9 +640,11 @@ let output ?(structure:structure={name="";displayname=[];
   let main () =
     Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgba depth=0 double samples>=4";
+    Glut.initDisplayString "rgb depth=0 double samples>=4";
     Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
-    ignore (Glut.createWindow "Patoline OpenGL Driver");
+    let win = 
+      Glut.createWindow "Patoline OpenGL Driver"
+    in
     Printf.fprintf stderr "Window created, number of samples: %d\n" 
       (Glut.get Glut.WINDOW_NUM_SAMPLES);
     flush stderr;
@@ -621,7 +662,8 @@ let output ?(structure:structure={name="";displayname=[];
 	 (fun s ->  to_revert := true; Glut.postRedisplay ()));
     Printf.fprintf stderr "GL setup finished, starting loop\n";
     flush stderr;
-    Glut.mainLoop ()
+    try Glut.mainLoop ()
+    with e -> Glut.destroyWindow win; raise e
   in
 
   main ()
