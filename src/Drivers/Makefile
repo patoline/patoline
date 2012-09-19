@@ -18,8 +18,8 @@ SVG.cmxa:SVG.cmx HtmlFonts.cmx
 Html.cmx:SVG.cmx HtmlFonts.cmx
 SVG.cmx:HtmlFonts.cmx
 
-%.cmxa:%.cmx
+%.cmxa:%.cmx ../Typography/Typography.cmxa ../Typography/Typography.cmi
 	$(CAMLOPT) -a -o $@ $<
 
-%.cmx:%.ml
+%.cmx:%.ml ../Typography/Typography.cmxa ../Typography/Typography.cmi
 	$(CAMLOPT) -c -o $@ $<

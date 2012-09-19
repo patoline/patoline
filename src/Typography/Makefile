@@ -24,9 +24,11 @@ Typography.cma: Typography.cmo
 Typography.cmo: $(SOURCES:.cmx=.cmo)
 	$(CAMLC) -pack -o Typography.cmo $(SOURCES:.cmx=.cmo)
 
-Util.cmo : new_map.cmi Config.cmo Util.cmi
-Util.cmx : new_map.cmx Config.cmx Util.cmi
-Util.p.cmx : new_map.p.cmx Config.p.cmx Util.cmi
+Util.cmo : new_map.cmi Config.cmo Config.cmi Util.cmi
+Util.cmx : new_map.cmx Config.cmx Config.cmi Util.cmi
+Util.p.cmx : new_map.p.cmx Config.p.cmx Util.cmx
+
+Config.cmi:Config.cmx
 
 Fonts.cmo : Util.cmi Fonts/Opentype.cmo Fonts/FTypes.cmi Fonts/CFF.cmo Bezier.cmi
 Fonts.cmx : Util.cmi Fonts/Opentype.cmx Fonts/FTypes.cmx Fonts/CFF.cmx Bezier.cmx
@@ -66,7 +68,7 @@ Fonts/Type2.cmi:Fonts/Type2.cmx
 Fonts/CFFStd.cmi:Fonts/CFFStd.cmx
 
 Fonts/Sfnt/unicode_ranges.ml:Fonts/Sfnt/make_unicode_ranges.ml Fonts/Sfnt/unicode
-	cd Fonts/Sfnt; ocamlc -o make_unicode_ranges str.cma make_unicode_ranges.ml; ./make_unicode_ranges
+	cd Fonts/Sfnt; ocaml str.cma make_unicode_ranges.ml
 Fonts/Sfnt/unicode_ranges.cmi:Fonts/Sfnt/unicode_ranges.cmx
 
 
@@ -100,11 +102,10 @@ Hyphenate.cmx:Hyphenate.cmi new_map.cmx
 Hyphenate.p.cmx:Hyphenate.cmi new_map.p.cmx
 Hyphenate.cmi:new_map.cmx
 
-Maths.cmo:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmo
-Maths.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmx
+Maths.cmo:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmo Document.cmi
+Maths.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.cmx Document.cmi
 Maths.cmi:Maths.cmx
-Maths.p.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.p.cmx
-Maths.p.cmi:Maths.cmx
+Maths.p.cmx:Util.cmi Output/OutputCommon.cmi Box.cmi Document.p.cmx Document.cmi
 
 Document.cmo:Config.cmo Util.cmi Fonts.cmo Output/OutputCommon.cmi Box.cmi Break.cmi Badness.cmi Badness.cmo Break.cmo
 Document.cmx:Config.cmx Util.cmi Fonts.cmx Output/OutputCommon.cmi Box.cmi Break.cmi Badness.cmi Badness.cmx Break.cmx
@@ -128,7 +129,7 @@ Offset.cmi:Bezier.cmi Bezier.cmx
 
 Diagrams.cmo:Maths.cmo Maths.cmi
 Diagrams.cmx:Maths.cmx Maths.cmi
-Diagrams.p.cmx:Maths.p.cmx Maths.p.cmi
+Diagrams.p.cmx:Maths.p.cmx Maths.cmi
 Diagrams.cmi:Diagrams.cmx
 
 Box.cmi:Line.cmx Output/OutputCommon.cmi
@@ -141,10 +142,10 @@ Language.cmx:Line.cmx
 Language.p.cmx:Line.p.cmx
 Language.cmi:Language.cmx
 
-Util.cmo:Util.cmi new_map.cmi Config.cmo
-Util.cmx:Util.cmi new_map.cmx Config.cmx
-Util.p.cmx:Util.cmi new_map.p.cmx Config.p.cmx
-Util.cmi:new_map.cmi
+Util.cmo:Util.cmi new_map.cmi Config.cmo Config.cmi
+Util.cmx:Util.cmi new_map.cmx Config.cmx Config.cmi
+Util.p.cmx:Util.cmi new_map.p.cmx Config.p.cmx Config.cmi
+Util.cmi:new_map.cmi Config.cmi
 
 new_map.cmo: new_map.cmi
 new_map.cmx: new_map.cmi
