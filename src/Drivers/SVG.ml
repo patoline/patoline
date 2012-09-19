@@ -11,6 +11,7 @@ exception Bezier_degree
 let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 
+let coord x=3.*.x
 
 (* draw prend un nom de fichier, une largeur, une hauteur, du contenu,
    et écrit ce contenu dans le fichier svg. *)
@@ -22,7 +23,6 @@ let draw ?fontCache standalone w h contents=
     | Some x->x
   in
   (* Une petite burocratie pour gérer les particularités d'html/svg/etc *)
-  let coord x=3.*.x in
   let escapes=
     IntMap.add (int_of_char '<') "&lt;"
       (IntMap.add (int_of_char '>') "&gt;" IntMap.empty)
@@ -173,7 +173,7 @@ let draw ?fontCache standalone w h contents=
           if !opened_text then (
             Rbuffer.add_string svg_buf "</text>";
           );
-          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%d;\" "
+          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%dpx;\" "
                                         (coord x.glyph_x) (coord (h-.x.glyph_y))
                                         fontName
                                         size);
@@ -216,11 +216,7 @@ let draw ?fontCache standalone w h contents=
       List.iter
         (fun a->
           let x0,y0=a.(0) in
-          Rbuffer.add_string buf "M";
-          Rbuffer.add_string buf (string_of_float (coord x0.(0)));
-          Rbuffer.add_string buf " ";
-          Rbuffer.add_string buf (string_of_float (coord (h-.y0.(0))));
-          Rbuffer.add_string buf " ";
+          Rbuffer.add_string buf (Printf.sprintf "M%g %g" (coord x0.(0)) (coord (h-.y0.(0))));
           Array.iter
             (fun (x,y)->
               if Array.length x=2 then Rbuffer.add_string buf "L" else
@@ -228,10 +224,7 @@ let draw ?fontCache standalone w h contents=
                   if Array.length x=4 then Rbuffer.add_string buf "C" else
                     raise Bezier_degree;
               for j=1 to Array.length x-1 do
-                Rbuffer.add_string buf (string_of_float (coord x.(j)));
-                Rbuffer.add_string buf " ";
-                Rbuffer.add_string buf (string_of_float (coord (h-.y.(j))));
-                Rbuffer.add_string buf " ";
+                Rbuffer.add_string buf (Printf.sprintf "%g %g " (coord x.(j)) (coord (h-.y.(j))));
               done
             ) a;
           if args.close then Rbuffer.add_string buf "Z"
@@ -319,9 +312,11 @@ let output ?(structure:structure={name="";displayname=[];
   (*   in *)
   (*   Printf.fprintf o "</defs></svg>\n"; *)
   (*   close_out o; *)
+  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
 
   for i=0 to Array.length pages-1 do
     let chop=Filename.chop_extension fileName in
+    let chop_file=Filename.basename chop in
     let html_name=Printf.sprintf "%s%d.html" chop i in
     let w,h=pages.(i).pageFormat in
     let html=open_out html_name in
@@ -331,21 +326,24 @@ let output ?(structure:structure={name="";displayname=[];
 <head>
 <meta charset=utf-8>
 <title>%s</title>
-<div>%s%s%s</div>
+</head><body>
+<div style=\"margin-left:auto;margin-right:auto;\">%s%s%s</div>
 "
     structure.name
       (if i=0 then "" else
           Printf.sprintf "<a href=\"%s\">Précédent</a>"
-            (Printf.sprintf "%s%d.html" chop (i-1)))
+            (Printf.sprintf "%s%d.html" chop_file (i-1)))
       (if i<>0 && i<>Array.length pages-1 then " " else "")
       (if i=Array.length pages-1 then "" else
           Printf.sprintf "<a href=\"%s\">Suivant</a>"
-            (Printf.sprintf "%s%d.html" chop (i+1)));
+            (Printf.sprintf "%s%d.html" chop_file (i+1)));
 
-    Printf.fprintf html "<svg>\n";
-    Rbuffer.output_buffer html (draw false w h pages.(i).pageContents);
+    Printf.fprintf html "<div style=\"width:%fpx;height:%fpx;margin-left:auto;margin-right:auto;\">" (3.*.w) (3.*.h);
+    Printf.fprintf html "<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">"
+      (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h));
+    Rbuffer.output_buffer html (draw ~fontCache:cache false w h pages.(i).pageContents);
     Printf.fprintf html "</svg>\n";
-    Printf.fprintf html "</head><body>";
+    Printf.fprintf html "</div></body></html>";
     close_out html
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
