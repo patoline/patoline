@@ -267,35 +267,34 @@ let more_than_one x=match Typography.Language.lang with
     `FR->Printf.sprintf "Attention : La requête a donné plus d'un résultat :\n%s" x
   | _->Printf.sprintf "Warning : The request gave more than one result :\n%s" x
 
-let citeFile bibfile x=try
-  let num a b=try
-    fst (IntMap.find a !bib)
-  with
-      Not_found->
-        let key=(IntMap.cardinal !bib)+1 in
+let citeFile bibfile x=
+  try
+    let num a b=
+      try
+	fst (IntMap.find a !bib)
+      with
+	Not_found->
+          let key=(IntMap.cardinal !bib)+1 in
           bib:=IntMap.add a (key, b) !bib;
           revbib:=IntMap.add key (a, b) !revbib;
           key
-  in
-    (match bibitem bibfile x with
-        []-> raise (No_bib (no_results x))
-      | (a,_)::_->citeCounter:=IntMap.add a () !citeCounter);
-
-    [ C (fun _->
-       match bibitem bibfile x with
-               []-> raise (No_bib (no_results x))
-             | [a,b]->
-                 [bB (fun _->[User (BeginLink (sprintf "_bibi_%d" (num a b)))]);
-                  tT (sprintf "[%d]" (num a b));
-                  bB (fun _->[User EndLink])]
-             | (a,b)::_::_->(
-                 Printf.fprintf stderr "%s\n" (more_than_one x);
-                 [bB (fun _->[User (BeginLink (sprintf "_bibi_%d" (num a b)))]);
-                  tT (sprintf "[%d]" (num a b));
-                  bB (fun _->[User EndLink])]
-               )
-        )]
-with
+    in
+    let rec fn l = 
+      match  l with
+	[]-> raise (No_bib (no_results x));
+      | (a,b)::l->
+	citeCounter:=IntMap.add a () !citeCounter;
+	let item = 
+          C (fun _-> [bB (fun _->[User (BeginLink (sprintf "_bibi_%d" (num a b)))]);
+           tT (sprintf "%d" (num a b));
+           bB (fun _->[User EndLink])])
+	in
+	if l = [] then item::[tT"]"] else
+	  item::tT ","::fn l
+    in 
+    let l = bibitem bibfile x in
+    tT"["::fn l
+  with
     No_bib s->(Printf.fprintf stderr "%s\n" s;exit 1)
 
 let authorCite x y=
