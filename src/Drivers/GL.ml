@@ -139,13 +139,52 @@ let output ?(structure:structure={name="";displayname=[];
   let saved_rectangle = ref None in
   let to_revert = ref true in
 
+
+  let old_menu = ref [] in
+  let menu_item = Hashtbl.create 13 in
+
+  let menu_cb ~value:i =
+    try
+      let (a,i) = Hashtbl.find menu_item i in
+      Printf.printf "menu: %d of %d\n" i (Array.length a);
+      flush stdout;
+      let s = a.(i) in
+      cur_page:= s.page;
+      Glut.swapBuffers ()
+    with Not_found -> ()
+  in
+
+  let create_menu structure = 
+    let c = ref 0 in
+    List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
+    let menu = Glut.createMenu menu_cb in
+    old_menu := [menu];
+    Glut.setMenu menu;
+    let rec fn menu a i s = 
+      Glut.addMenuEntry s.name !c;
+      Hashtbl.add menu_item !c (a, i);
+      incr c;
+      if s.substructures <> [||] then
+	begin
+	  let menu' = Glut.createMenu menu_cb in
+	  old_menu := menu' :: !old_menu;
+	  Glut.setMenu menu';
+	  Array.iteri (fn menu' s.substructures) s.substructures;
+	  Glut.setMenu menu;
+	  Glut.addSubMenu "  ==>" menu';
+	end
+    in
+    Array.iteri (fn menu structure.substructures)  structure.substructures;
+    Glut.attachMenu Glut.RIGHT_BUTTON
+  in
+
   let revert () = 
     let ch = open_in fileName in
     to_revert := false;
     pages := input_value ch;
     structure := input_value ch;
     Printf.printf "Structure:\n";
-    print_structure !structure;
+    create_menu !structure;
     close_in ch;
     num_pages := Array.length !pages;
     read_links ();
