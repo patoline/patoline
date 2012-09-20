@@ -6,7 +6,7 @@ open Typography.Line
 open Typography.Util
 
 
-let centered str tree _=
+let centered parameters str tree _=
   newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal parameters [
     bB (
       fun env->
@@ -99,7 +99,7 @@ let centered str tree _=
     )]
 
 
-let these str tree max_level=
+let these parameters str tree max_level=
 
   newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
     bB (

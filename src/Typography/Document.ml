@@ -253,15 +253,16 @@ let tags=function
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty={ name="";
-            node_tags=[];
-            displayname = []; children=IntMap.empty;
-            node_env=(fun x->x);
-            node_post_env=(fun x y->{ x with
-                                        counters=y.counters;
-                                        names=names y;
-                                        user_positions=user_positions y });
-            tree_paragraph=0 }
+let empty:user node=
+  { name="";
+    node_tags=[];
+    displayname = []; children=IntMap.empty;
+    node_env=(fun x->x);
+    node_post_env=(fun x y->{ x with
+      counters=y.counters;
+      names=names y;
+      user_positions=user_positions y });
+    tree_paragraph=0 }
 
 type ('a) cxt=(int*('a) tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
@@ -464,61 +465,6 @@ let size fsize t=
 
 
 
-let parameters env paragraphs figures last_parameters last_figures last_users (line:line)=
-  let page_footnotes=ref 0 in
-  let measure=IntMap.fold (fun i aa m->match aa with
-                               Break.Placed a->
-                                 (if line.page=a.page &&
-                                    line.height<=
-                                    a.height -.figures.(i).drawing_y0
-                                      && line.height>=
-                                      a.height-. figures.(i).drawing_y1
-                                  then
-                                    env.normalMeasure -. figures.(i).drawing_nominal_width
-                                  else m)
-                             | _->m
-                          ) last_figures env.normalMeasure
-  in
-    TS.UMap.iter (fun k a->
-                    match k with
-                        Footnote _ when a.page=line.page -> incr page_footnotes
-                      | _->()
-                 ) last_users;
-    let footnote_h=fold_left_line paragraphs (fun fn box->match box with
-                                                  User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
-                                                | _->fn) 0. line
-    in
-      { measure=measure;
-        page_height=min  240. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
-          -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
-        left_margin=env.normalLeftMargin;
-        local_optimization=0;
-        min_page_before=0;
-        min_page_after=0;
-        next_acceptable_height=(fun node params nextNode nextParams height->
-                                  if node==nextNode then
-                                    let min_height=node.height+.params.min_height_after in
-                                      env.lead*.(ceil (min_height/.env.lead))
-                                  else
-                                    if node.page=nextNode.page then (
-                                      let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
-                                      let h0=min_height/.env.lead in
-                                      let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
-                                        env.lead*.ceil h0
-                                      in
-                                        h
-                                    ) else (
-                                      let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
-                                        env.lead*.(ceil (min_height/.env.lead))
-                                    )
-                               );
-        min_height_before=0.;
-        min_height_after=0.;
-        not_last_line=false;
-        not_first_line=false;
-        really_next_line=1;
-        absolute=false
-      }
 
 let vspaceBefore x=[bB (fun _->[Parameters (fun p->{ p with min_height_before=p.min_height_before+.x })])]
 let vspaceAfter x=[bB (fun _->[Parameters (fun p->{ p with min_height_after=p.min_height_after+.x })])]
@@ -533,20 +479,12 @@ let do_center parameters env paragraphs figures last_parameters lastFigures last
       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
     else
       param
-let center = do_center parameters
-(* let center env paragraphs figures last_parameters lastFigures lastUsers l= *)
-(*   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in *)
-(*   let b=l.nom_width in *)
-(*     if param.measure >= b then *)
-(*       { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. } *)
-(*     else *)
-(*       param *)
 
-let ragged_left a b c d e f line=
+let do_ragged_left parameters a b c d e f line=
   let par=parameters a b c d e f line in
   { par with measure=line.nom_width }
 
-let ragged_right a b c d e f line=
+let do_ragged_right parameters a b c d e f line=
   let par=parameters a b c d e f line in
   { par with
     measure=line.nom_width;
@@ -596,16 +534,7 @@ let badness
 
 (*********************************************************************)
 
-
-
-
-let in_text_figure a b c d e f line=
-  let par=parameters a b c d e f line in
-  { par with
-    measure=line.nom_width;
-    left_margin=par.left_margin+.par.measure-.line.nom_width }
-
-let figure str ?(parameters=center) ?(name="") drawing=
+let figure str parameters ?(name="") drawing=
   str:=up (newChildAfter !str (
              FigureDef
                { fig_contents=drawing;
@@ -995,7 +924,6 @@ module type DocumentStructure=sig
   val fixable:bool ref
 end
 module type Format=sig
-  type user
   val defaultEnv:user environment
   val postprocess_tree:(user) tree->(user) tree
   val title:
@@ -1005,6 +933,7 @@ module type Format=sig
     string -> unit
   val author:string->unit
   val institute:string->unit
+  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters
 end
 
 

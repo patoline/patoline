@@ -7,7 +7,7 @@ bibi.p.cmxa:bibi.cmi bibi.ml ../Typography/Typography.p.cmxa ../Typography/Typog
 bibi.cma:bibi.cmi bibi.ml ../Typography/Typography.cma ../Typography/Typography.cmi
 	ocamlfind ocamlc -package camomile,sqlite3 -a -o bibi.cma -I ../Typography bibi.ml
 
-bibi.cmi:bibi.mli
+bibi.cmi:bibi.mli ../Typography/Typography.cmi
 	ocamlfind ocamlc -package camomile,sqlite3 -c -o bibi.cmi -I ../Typography bibi.mli
 
 install:bibi.cmxa bibi.p.cmxa bibi.cma

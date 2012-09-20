@@ -312,10 +312,10 @@ open Util
 open Box
 open Line
 
-module TheBibliography (D : DocumentStructure) = struct
+module TheBibliography (F:Format) (D : DocumentStructure) = struct
   let _ =
     let params env a1 a2 a3 a4 a5 line=
-      let p=parameters env a1 a2 a3 a4 a5 line in
+      let p=F.parameters env a1 a2 a3 a4 a5 line in
         if line.lineStart=0 then (
           let rec findMark w j=
             if j>=line.lineEnd then 0. else

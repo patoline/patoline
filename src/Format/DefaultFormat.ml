@@ -165,6 +165,187 @@ module Format=functor (D:Document.DocumentStructure)->(
             (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
       []
 
+
+    let parameters env paragraphs figures last_parameters last_figures last_users (line:line)=
+      let page_footnotes=ref 0 in
+      let measure=IntMap.fold (fun i aa m->match aa with
+          Break.Placed a->
+            (if line.page=a.page &&
+               line.height<=
+               a.height -.figures.(i).drawing_y0
+             && line.height>=
+               a.height-. figures.(i).drawing_y1
+             then
+                env.normalMeasure -. figures.(i).drawing_nominal_width
+             else m)
+        | _->m
+      ) last_figures env.normalMeasure
+      in
+      TS.UMap.iter (fun k a->
+        match k with
+            Footnote _ when a.page=line.page -> incr page_footnotes
+          | _->()
+      ) last_users;
+      let footnote_h=fold_left_line paragraphs (fun fn box->match box with
+          User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
+        | _->fn) 0. line
+      in
+      { measure=measure;
+        page_height=min  240. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
+        -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
+        left_margin=env.normalLeftMargin;
+        local_optimization=0;
+        min_page_before=0;
+        min_page_after=0;
+        next_acceptable_height=(fun node params nextNode nextParams height->
+          if node==nextNode then
+            let min_height=node.height+.params.min_height_after in
+            env.lead*.(ceil (min_height/.env.lead))
+          else
+            if node.page=nextNode.page then (
+              let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
+              let h0=min_height/.env.lead in
+              let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
+                  env.lead*.ceil h0
+              in
+              h
+            ) else (
+              let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
+              env.lead*.(ceil (min_height/.env.lead))
+            )
+        );
+        min_height_before=0.;
+        min_height_after=0.;
+        not_last_line=false;
+        not_first_line=false;
+        really_next_line=1;
+        absolute=false
+      }
+    let center = do_center parameters
+    let ragged_right = do_ragged_right parameters
+    let ragged_left = do_ragged_left parameters
+
+
+    let postprocess_tree tree=
+
+      let with_institute=match tree with
+          Node n->(try
+                     let cont=[tT (List.assoc "Institute" n.node_tags)] in
+                     let par=Paragraph {
+                       par_contents=cont;
+                       par_env=(fun env->env);
+                       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                         user_positions=user_positions env2 });
+                       par_parameters=
+                         (fun a b c d e f g->
+                           { (center a b c d e f g) with
+                             min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                                 2.*.a.normalLead else 0.;
+                             min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                                 2.*.a.normalLead else 0.
+                           });
+                       par_badness=(badness);
+                       par_completeLine=Complete.normal }
+                     in
+                     fst (up (newChildBefore (tree,[]) par))
+            with
+                Not_found->tree)
+        | _->tree
+      in
+
+      let with_author=match with_institute with
+          Node n->(try
+                     let cont=[tT (List.assoc "Author" n.node_tags)] in
+                     let par=Paragraph {
+                       par_contents=cont;
+                       par_env=(fun env->env);
+                       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                         user_positions=user_positions env2 });
+                       par_parameters=
+                         (fun a b c d e f g->
+                           { (center a b c d e f g) with
+                             min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                                 2.*.a.normalLead else 0.;
+                             min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                                 2.*.a.normalLead else 0.
+                           });
+                       par_badness=(badness);
+                       par_completeLine=Complete.normal }
+                     in
+                     fst (up (newChildBefore (with_institute,[]) par))
+            with
+                Not_found->with_institute)
+        | _->with_institute
+      in
+
+      let with_title=match with_author with
+          Node n->
+            let par=Paragraph {
+              par_contents=n.displayname;
+              par_env=resize_env 8.;
+              par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+                user_positions=user_positions env2 });
+              par_parameters=
+                (fun a b c d e f g->
+                  { (center a b c d e f g) with
+                    min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                        a.normalLead else 0.;
+                    min_height_before=0. });
+              par_badness=(badness);
+              par_completeLine=Complete.normal }
+            in
+            fst (up (newChildBefore (with_author,[]) par))
+        | _->with_author
+      in
+
+      let rec sectionize path=function
+      Node n when List.mem_assoc "Structural" n.node_tags ->
+        let section_name=
+          if List.mem_assoc "Numbered" n.node_tags  then
+            [C (fun env->
+              let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+              bB (fun _->[User (Structure path)])
+              ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+              ::tT " "
+              ::n.displayname
+            )]
+          else
+            [C(fun env->
+              bB (fun env->[User (Structure path)])::
+                n.displayname)]
+        in
+        let par=Paragraph {
+          par_contents=section_name;
+          par_env=(fun env->
+            let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+            { (envAlternative (Fonts.Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+              size=(if List.length b <= 2 then sqrt phi else
+                  sqrt (sqrt phi))*.env.size;
+            });
+          par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
+            user_positions=user_positions env2 });
+          par_parameters=
+            (fun a b c d e f g->
+              { (parameters a b c d e f g) with
+                min_page_before = 0;
+                min_height_before=if g.lineStart=0 then a.normalLead else 0.;
+                min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then a.normalLead else 0.;
+                not_last_line=true });
+          par_badness=(badness);
+          par_completeLine=Complete.normal }
+        in
+        fst (up (newChildBefore (
+          Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
+              n.children }, []) par
+        ))
+        | a->a
+      in
+      let with_chapters=match with_title with
+          Node n->Node { n with children=IntMap.map (sectionize []) n.children }
+        | _->with_title
+      in
+      with_chapters
+
     let paragraph cont=
       (Paragraph {par_contents=cont; par_env=(fun x->x);
                   par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
@@ -276,7 +457,6 @@ module Format=functor (D:Document.DocumentStructure)->(
         }
 
 
-
     let title str ?label ?(extra_tags=[]) displayname =
       try
 	let name = string_of_contents displayname in
@@ -307,7 +487,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module TableOfContents=struct
       let do_begin_env ()=
         let max_depth=2 in
-        TableOfContents.these D.structure (fst (top !D.structure)) max_depth
+        TableOfContents.these center D.structure (fst (top !D.structure)) max_depth
       let do_end_env ()=()
     end
 
@@ -437,7 +617,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         { fig with drawing_y0=fig.drawing_y0-.env.lead }
       in
-      figure ~parameters:parameters ~name:name D.structure drawing'
+      figure ~name:name D.structure center drawing'
 
 
 
@@ -608,7 +788,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
-        let rag p = { p with par_parameters=Document.ragged_right } in
+        let rag p = { p with par_parameters=ragged_right } in
         let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
         let res = map_paragraphs rag res0 in
           D.structure:=up (res, path0);
@@ -622,7 +802,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
-        let rag p = { p with par_parameters=Document.ragged_left } in
+        let rag p = { p with par_parameters=ragged_left } in
         let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
         let res = map_paragraphs rag res0 in
           D.structure:=up (res, path0);
@@ -796,14 +976,14 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
     module Env_proof=struct
       let do_begin_env ()=
-        let par a b c d e f g={ (Document.parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
+        let par a b c d e f g={ (parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
           (italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
-        let par a b c d e f g={ (Document.ragged_right a b c d e f g) with not_first_line=true;really_next_line=0 } in
+        let par a b c d e f g={ (ragged_right a b c d e f g) with not_first_line=true;really_next_line=0 } in
         let bad env a b c d e f g h i j k l m=if d.isFigure then infinity else
           Document.badness env a b c d e f g h i j k l m
         in
@@ -1045,6 +1225,7 @@ module MathsFormat=struct
 
     let cev = oLeftArrow
         (*******************************************************)
+
 end
 
 
@@ -1057,7 +1238,8 @@ end
 open OutputPaper
 open OutputCommon
 
-module Output=functor(M:Driver)->struct
+
+module Output (F:Format) (M:Driver)=struct
   type 'a t={
     format:'a Box.box array array->('a Document.tree*'a Document.cxt) array->
            Box.drawingBox array->('a Document.tree*'a Document.cxt) array->
@@ -1071,7 +1253,7 @@ module Output=functor(M:Driver)->struct
 
     let rec resolve i env0=
       Printf.printf "Compilation %d\n" i; flush stdout;
-      let tree=Sections.postprocess_tree (fst (top (!structure))) in
+      let tree=F.postprocess_tree (fst (top (!structure))) in
       let fixable=ref false in
       let env1,fig_params,params,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
       Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());

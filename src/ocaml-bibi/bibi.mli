@@ -19,4 +19,4 @@ val bibitem :
 val author:string->string->string list
 val authorCite : CamomileLibrary.UTF8.t -> CamomileLibrary.UTF8.t -> CamomileLibrary.UTF8.t
 val cite : CamomileLibrary.UTF8.t -> Typography.Document.user Typography.Document.content list
-module TheBibliography : functor (D : Typography.Document.DocumentStructure) -> sig end
+module TheBibliography : functor (F:Typography.Document.Format)-> functor (D : Typography.Document.DocumentStructure) -> sig end
