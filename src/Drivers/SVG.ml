@@ -338,7 +338,7 @@ let output ?(structure:structure={name="";displayname=[];
           Printf.sprintf "<a href=\"%s\">Suivant</a>"
             (Printf.sprintf "%s%d.html" chop_file (i+1)));
 
-    Printf.fprintf html "<div style=\"width:%fpx;height:%fpx;margin-left:auto;margin-right:auto;\">" (3.*.w) (3.*.h);
+    Printf.fprintf html "<div style=\"width:%fpx;height:%fpx;margin-left:auto;margin-right:auto;border:solid black 1px;\">" (3.*.w) (3.*.h);
     Printf.fprintf html "<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h));
     Rbuffer.output_buffer html (draw ~fontCache:cache false w h pages.(i).pageContents);
