@@ -81,3 +81,11 @@ val distance1 :
 
 val subdivise :
   float -> (float array*float array) -> (float array*float array) list
+
+(* orientation des courbes de Beziers:
+   - on oriente chaque courba par l'aire (>= 0 = sens direct de rotation)
+   - on regarde le module 2 du nombre de courbe qui contiennent chaque courbe
+   - on garde true pour sens directe avec module 2 = 0
+*)
+val oriente :
+  (float array*float array) list list -> ((float array*float array) list * bool) list

@@ -145,3 +145,14 @@ type structure= { mutable name:string;
                   mutable struct_x:float;
                   mutable struct_y:float;
                   mutable substructures:structure array }
+
+let print_structure s = 
+  let rec fn lvl s =
+    for i = 0 to lvl do 
+      Printf.printf " ";
+    done;
+    Printf.printf "%s\n" s.name;
+    Array.iter (fn (lvl+1)) s.substructures
+  in
+  fn 0 s;
+  flush stdout

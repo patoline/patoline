@@ -13,9 +13,9 @@ let init_gl () =
     GlClear.depth 1.0;
     GlClear.clear [`color; `depth];
     Gl.disable `depth_test;
-    Gl.enable `polygon_smooth;
-    Gl.enable `line_smooth;
-    GlMisc.hint `polygon_smooth `nicest;
+    Gl.disable `polygon_smooth;
+(*    GlMisc.hint `polygon_smooth `nicest;*)
+    Gl.disable `line_smooth;
     Gl.enable `blend;
     GlFunc.blend_func `src_alpha `one_minus_src_alpha;
     GlFunc.depth_func `lequal
@@ -25,6 +25,7 @@ let filename x=""
 let zoom = ref 1.0
 let dx = ref 0.0
 let dy = ref 0.0
+let subpixel = ref (Some(1.0 /. 3.0, 0.0, -. 1.0 /. 3.0, 0.0))
 
 let glyphCache = Hashtbl.create 1001
 #ifdef CAMLIMAGES
@@ -35,13 +36,15 @@ let rec last = function
 [] -> assert false
   | [x] -> x
   | _::l -> last l
-
+    
+type page_mode = Single | Double
 
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
   let pages = ref pages in
+  let structure = ref structure in
   let num_pages = ref (Array.length !pages) in
   let links = ref [||] in
 
@@ -134,12 +137,15 @@ let output ?(structure:structure={name="";displayname=[];
   let fps = ref 0.0 and cfps = ref 0 in
 
   let saved_rectangle = ref None in
-  let to_revert = ref false in
+  let to_revert = ref true in
 
   let revert () = 
     let ch = open_in fileName in
     to_revert := false;
     pages := input_value ch;
+    structure := input_value ch;
+    Printf.printf "Structure:\n";
+    print_structure !structure;
     close_in ch;
     num_pages := Array.length !pages;
     read_links ();
@@ -153,22 +159,29 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let graisse = 1.0 /. 3.0 in
+  let graisse = 1.0 /. 4.0 in
   let tesselation_factor = 0.25 in
 
   let add_normals closed ratio beziers =
-    List.split (List.map (fun bs -> 
-      let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-      if closed then
+    if closed then
+      let beziers = Bezier.oriente beziers in
+      List.split (List.map (fun (bs, orientation) -> 
+	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+	(* FIXME: close the curve if it is not closed !!! *)
 	let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
 	List.split (List.map (fun (xs, ys) -> 
 	  let a, b = !prev in
 	  let xp = Bezier.derivee_start ys +. a in
 	  let yp =  -. (Bezier.derivee_start xs) +. b in
 	  let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	  let n = if classify_float n <> FP_normal then 0.0 else n in
+	  let n = if orientation then n else -. n in
 	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
 	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
-      else
+      ) beziers) 
+    else
+      List.split (List.map (fun bs -> 
+	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
 	let prev = ref None in
 	let ln = 
 	  List.map (fun (xs, ys) -> 
@@ -195,23 +208,29 @@ let output ?(structure:structure={name="";displayname=[];
     ) beziers) 
   in
 
+  let mode = ref Single in
+
   let draw_gl_scene () =
     let time = Sys.time () in
     saved_rectangle := None;
     if !to_revert then revert ();
     GlClear.clear [`color];
     GlMat.load_identity ();
-    let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
-    GlDraw.color (1.0, 1.0, 1.0);
-    GlDraw.begins `quads;
-    GlDraw.vertex2 (0., 0.);
-    GlDraw.vertex2 (pw, 0.);
-    GlDraw.vertex2 (pw, ph);
-    GlDraw.vertex2 (0., ph);
-    GlDraw.ends ();
 
-    let do_draw () =
+    let draw_blank page =
+      let pw,ph = !pages.(page).pageFormat in
+      GlDraw.color (1.0, 1.0, 1.0);
+      GlDraw.begins `quads;
+      GlDraw.vertex2 (0., 0.);
+      GlDraw.vertex2 (pw, 0.);
+      GlDraw.vertex2 (pw, ph);
+      GlDraw.vertex2 (0., ph);
+      GlDraw.ends ();
+    in
+
+    let draw_page page =
+      draw_blank page;
+
       List.iter (function
       Glyph g ->
         let x = g.glyph_x in
@@ -234,6 +253,8 @@ let output ?(structure:structure={name="";displayname=[];
 	      let l = GlList.create `compile_and_execute in
 
 	      GlDraw.color color;
+	      let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
+		(x -. xn, y -. yn, 0.0)) l n) lines normals in
 	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
 	      	      
 	      List.iter2 (fun l n ->
@@ -242,32 +263,16 @@ let output ?(structure:structure={name="";displayname=[];
 		  GlDraw.color color;
 		  GlDraw.vertex2 (x,y);
 		  GlDraw.color ~alpha:0.0 color;
-		  GlDraw.vertex2 (x+.xn,y+.yn)) l n;
+		  GlDraw.vertex2 (x+. 2.0 *. xn,y+. 2.0 *. yn)) l n;
 		let (x,y,_) = List.hd l in
 		let (xn,yn,_) = List.hd n in
 		GlDraw.color color;
 		GlDraw.vertex2 (x,y);
 		GlDraw.color ~alpha:0.0 color;
-		GlDraw.vertex2 (x+.xn,y+.yn);
+		GlDraw.vertex2 (x+. 2.0 *. xn,y+. 2.0 *. yn);
 	      GlDraw.ends ();
 	      )	lines normals;
 
- 	      List.iter2 (fun l n ->
-		GlDraw.begins `quad_strip;
-		List.iter2 (fun (x,y,_) (xn,yn,_) ->
-		  GlDraw.color color;
-		  GlDraw.vertex2 (x,y);
-		  GlDraw.color ~alpha:0.0 color;
-		  GlDraw.vertex2 (x-.xn,y-.yn)) l n;
-		let (x,y,_) = List.hd l in
-		let (xn,yn,_) = List.hd n in
-		GlDraw.color color;
-		GlDraw.vertex2 (x,y);
-		GlDraw.color ~alpha:0.0 color;
-		GlDraw.vertex2 (x-.xn,y-.yn);
-	      GlDraw.ends ();
-	      )	lines normals;
- 
 	      GlList.ends ();
 	      Hashtbl.add glyphCache (g.glyph, ratio, color) l
 	in
@@ -281,8 +286,10 @@ let output ?(structure:structure={name="";displayname=[];
 	    RGB{red = r; green=g; blue=b;} -> r,g,b
 	in
 	flush stderr;
-	let x = (floor (x /. !pixel_width +. 1.0) -. 0.5) *. !pixel_width in
+(*
+	let x = (floor (x /. !pixel_width +. 1.0 /. 3.0) -. 0.5 /. 3.0) *. !pixel_width in
 	let y = (floor (y /. !pixel_height +. 1.0) -. 0.5) *. !pixel_height in
+*)
 	GlMat.push ();
 	GlMat.translate3 (x,y,0.0);
 	GlMat.scale3 (s, s, s);
@@ -297,7 +304,11 @@ let output ?(structure:structure={name="";displayname=[];
       | Some RGB{red = r; green=g; blue=b;} ->
 	let color = (r,g,b) in
 	GlDraw.color color;
+
+	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
+	  (x -. xn, y -. yn, 0.0)) l n) lines normals in
 	GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) lines;
+
 	List.iter2 (fun l n ->
 	  if param.strokingColor = None then begin
 	    GlDraw.begins `quad_strip;
@@ -305,31 +316,16 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.color color;
 	      GlDraw.vertex2 (x,y);
 	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x+.xn,y+.yn)) l n;
+	      GlDraw.vertex2 (x+.2.0*.xn,y+.2.0*.yn)) l n;
 	    let (x,y,_) = List.hd l in
 	    let (xn,yn,_) = List.hd n in
 	    GlDraw.color color;
 	    GlDraw.vertex2 (x,y);
 	    GlDraw.color ~alpha:0.0 color;
-	    GlDraw.vertex2 (x+.xn,y+.yn);
+	    GlDraw.vertex2 (x+.2.0*.xn,y+.2.0*.yn);
 	    GlDraw.ends ()
 	  end) lines normals;
-	List.iter2 (fun l n ->
-	  if param.strokingColor = None then begin
-	    GlDraw.begins `quad_strip;
-	    List.iter2 (fun (x,y,_) (xn,yn,_) ->
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x,y);
-	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x-.xn,y-.yn)) l n;
-	    let (x,y,_) = List.hd l in
-	    let (xn,yn,_) = List.hd n in
-	    GlDraw.color color;
-	    GlDraw.vertex2 (x,y);
-	    GlDraw.color ~alpha:0.0 color;
-	    GlDraw.vertex2 (x-.xn,y-.yn);
-	    GlDraw.ends ()
-	  end) lines normals;
+
       );
       (match param.strokingColor with
 	None -> ()
@@ -344,11 +340,11 @@ let output ?(structure:structure={name="";displayname=[];
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
 	      let nx = vx /. norm *. lw /. 2.0 in
 	      let ny = vy /. norm *. lw /. 2.0 in
-	      Printf.printf "x = %f, y = %f, nx = %f, ny = %f\n" x y nx ny;
 	      GlDraw.vertex2 (x +. nx, y +. ny);
 	      GlDraw.vertex2 (x -. nx, y -. ny)
 	    ) l n;
 	  GlDraw.ends ();
+(*
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
@@ -375,6 +371,7 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.vertex2 (x -. nx -. vx, y -. ny -. vy);
 	    ) l n;
 	  GlDraw.ends ();
+*)
 	) lines normals);
 
     | Link(link) -> ()
@@ -429,19 +426,39 @@ let output ?(structure:structure={name="";displayname=[];
     ) !pages.(page).pageContents
     in
 
-    GlFunc.color_mask ~red:false ~green:true ~blue:false ();
-    do_draw ();
-    GlMat.push ();
-    GlMat.translate3 (!pixel_width /. 3.0, 0.0, 0.0);
-    GlFunc.color_mask ~red:true ~green:false ~blue:false ();
-    do_draw ();
-    GlMat.pop ();
-    GlMat.push ();
-    GlMat.translate3 (-. !pixel_width /. 3.0, 0.0, 0.0);
-    GlFunc.color_mask ~red:false ~green:false ~blue:true ();
-    do_draw ();
-    GlMat.pop ();
-    GlFunc.color_mask ~red:true ~green:true ~blue:true ();
+    let do_draw () =
+      match !mode with
+	Single ->
+	  draw_page !cur_page
+      | Double ->
+	let page = (!cur_page / 2) * 2 in
+	let pw,ph = !pages.(!cur_page).pageFormat in
+	if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
+	GlMat.push ();
+	GlMat.translate3 (pw +. 1.0, 0.0, 0.0);
+	if page >= 0 && page < !num_pages then draw_page page else draw_blank !cur_page;
+	GlMat.pop ();
+
+    in
+
+    begin
+      match !subpixel with 
+	None -> do_draw ();
+      | Some (xr,yr, xb,yb) ->
+	GlFunc.color_mask ~red:false ~green:true ~blue:false ();
+	do_draw ();
+	GlMat.push ();
+	GlMat.translate3 (!pixel_width *. xb , !pixel_width *. yb , 0.0);
+	GlFunc.color_mask ~red:false ~green:false ~blue:true ();
+	do_draw ();
+	GlMat.pop ();
+	GlMat.push ();
+	GlMat.translate3 (!pixel_width *. xr , !pixel_width *. yr, 0.0);
+	GlFunc.color_mask ~red:true ~green:false ~blue:false ();
+	do_draw ();
+	GlMat.pop ();
+	GlFunc.color_mask ~red:true ~green:true ~blue:true ();
+    end;
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -459,14 +476,22 @@ let output ?(structure:structure={name="";displayname=[];
     Glut.postRedisplay ()
   in
 
+  let dest = ref 0 in
+
   let keyboard_cb ~key ~x ~y =
-    match key with
-    | 27 (* ESC *) -> exit 0
-    | 110 | 32 -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
-    | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
-    | 43 -> zoom := !zoom /. 1.1; redraw ();
-    | 45 -> zoom := !zoom *. 1.1; redraw ();
-    | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr      
+    if key >= 48 && key < 58 then
+      dest := !dest * 10 + (key - 48)
+    else begin
+      (match key with
+      | 27 | 120 | 113 (* ESC *) -> raise Exit
+      | 110 | 32 -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
+      | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
+      | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); redraw ();
+      | 43 -> zoom := !zoom /. 1.1; redraw ();
+      | 45 -> zoom := !zoom *. 1.1; redraw ();
+      | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr);
+      dest := 0;
+    end
   in
 
   let special_cb ~key ~x ~y =
@@ -475,6 +500,11 @@ let output ?(structure:structure={name="";displayname=[];
     | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
     | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
+    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
+    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; redraw ());
+(*    | Glut.KEY_HOME -> 
+    | Glut.KEY_END ->
+*)
     | b -> Printf.fprintf stderr "Unbound special: %s\n" (Glut.string_of_special b); flush stderr;
   in
 
@@ -599,17 +629,22 @@ let output ?(structure:structure={name="";displayname=[];
       
   let mouse_cb ~button ~state ~x ~y =
     match button, state with
-    | Glut.RIGHT_BUTTON, Glut.DOWN ->
-      motion_ref := Some (x, y);
 
     | Glut.OTHER_BUTTON(3), Glut.UP -> zoom := !zoom /. 1.1; redraw ();
     | Glut.OTHER_BUTTON(4), Glut.UP -> zoom := !zoom *. 1.1; redraw ();
 
-    | Glut.RIGHT_BUTTON, Glut.UP ->
-      motion_ref := None;
+    | Glut.LEFT_BUTTON, Glut.DOWN ->
+      motion_ref := Some (x, y);
 
     | Glut.LEFT_BUTTON, Glut.UP ->
-	List.iter 
+      let clic = match !motion_ref with
+	  None -> false
+	| Some(x',y') ->
+	  let dx = x - x' and dy = y - y' in
+	  (dx * dx + dy * dy < 9)
+      in
+      motion_ref := None;
+      if clic then List.iter 
 	  (fun l ->
 	    Printf.fprintf stderr 
 	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
@@ -663,7 +698,7 @@ let output ?(structure:structure={name="";displayname=[];
     Printf.fprintf stderr "GL setup finished, starting loop\n";
     flush stderr;
     try Glut.mainLoop ()
-    with e -> Glut.destroyWindow win; raise e
+    with e -> Glut.destroyWindow win; if e <> Exit then raise e
   in
 
   main ()

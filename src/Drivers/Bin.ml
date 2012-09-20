@@ -14,6 +14,7 @@ let output ?(structure:structure={name="";displayname=[];
   let fileName = filename fileName in
   let ch = open_out_bin fileName in
   output_value ch pages;
+  output_value ch structure;
   close_out ch;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr

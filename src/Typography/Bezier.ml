@@ -210,6 +210,49 @@ let mult_matrix a b=
     done;
     result
 
+let oriente all =
+  let horizontal_intercept x y bs =
+    let count = ref 0 in
+    List.iter (fun (xs, ys) ->
+	let s = Array.length xs - 1 in
+	let xa = xs.(0) in
+	let xb = xs.(s) in
+	let ya = ys.(0) in
+	let yb = ys.(s) in
+      if (ya -. y)*.(yb -. y) <= 0.0 then begin
+	let t = (ya -. y) /. (ya -. yb) in
+	let xt = xa *. (1. -. t) +. xb *. t in
+	if xt >= x then incr count
+      end) bs;
+    !count mod 2 <> 0
+  in
+
+  let orientation_composante bs =
+    let area =
+      List.fold_left (fun a (xs, ys) ->
+	let s = Array.length xs - 1 in
+	let xa = xs.(0) in
+	let xb = xs.(s) in
+	let ya = ys.(0) in
+	let yb = ys.(s) in
+	a +. xa *. yb -. xb *. ya) 0.0 bs 
+    in
+    area >= 0.0 (* =0 should be treated by subdivision,
+	      but very smalle values too ?*)
+  in
+
+  let num_outside bs others =
+    match bs with
+      (xs,ys)::_ ->
+	let x = xs.(0) in
+	let y = ys.(0) in
+	let l = List.filter (fun bs -> horizontal_intercept x y bs) others in
+	List.length l = 0 mod 2
+    | [] -> assert false
+  in
+
+  List.map (fun bs -> bs, orientation_composante bs = num_outside bs (List.filter (fun x -> x != bs) all)) all
+
 (* let fwd_subst l= *)
 (*   let result=Array.make_matrix (Array.length l) (Array.length l.(0)) 0. in *)
 (*     for j=0 to Array.length l-1 do *)

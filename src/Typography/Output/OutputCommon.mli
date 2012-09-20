@@ -64,6 +64,7 @@ val bounding_box_full : contents list -> float * float * float * float
 
 val circle : float -> (float array * float array) array
 val rectangle : (float*float) -> (float*float)->(float array * float array) array
+
 type structure = {
   mutable name : string;
   mutable displayname : contents list;
@@ -72,3 +73,4 @@ type structure = {
   mutable struct_y : float;
   mutable substructures : structure array;
 }
+val print_structure : structure -> unit
