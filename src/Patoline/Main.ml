@@ -26,7 +26,7 @@ let spec =
    ("-I",Arg.String (fun x->
      Config.local_path:=x::(!Config.local_path);
      Config.grammarspath:=x::(!Config.grammarspath);
-     dirs := ("-I " ^ x) :: !dirs),
+     dirs := x :: !dirs),
     message (Cli Dirs));
 
    ("--no-grammar",Arg.Unit (fun ()->Config.grammarspath:=[]), message (Cli No_grammar));
@@ -50,7 +50,6 @@ let spec =
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
   ]
 
-let str_dirs () = (String.concat " " !dirs)
 
 let mlname_of f = (Filename.chop_extension f)^(if !amble<>Generateur.Main then ".ttml" else ".tml")
 let binname_of f = (Filename.chop_extension f)^".tmx"
@@ -65,9 +64,16 @@ type options={
   format:string;
   driver:string;
   comp_opts:string list;
-  packages:string list
+  packages:string list;
+  directories:string list
 }
 
+let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (!dirs (* @ opts.directories *))))
+module StringSet = Set.Make(struct type t = string let compare = compare end)
+let compact l = 
+  let s = List.fold_right StringSet.add l StringSet.empty in
+  StringSet.elements s
+  
 
 let last_options_used file=
   let fread=open_in file in
@@ -95,12 +101,25 @@ let last_options_used file=
 
 
 
+let add_format opts = 
+  if opts.format <> "DefaultFormat" &&
+    (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
+    (try
+       let _=findPath (opts.format ^ ".ml") (".":: !Config.local_path) in
+       false
+     with _->true)
+  then
+    { opts with packages = ("Typography." ^ opts.format) :: opts.packages }
+  else opts 
+
+
 let rec read_options_from_source_file fread =
   let deps=ref [] in
   let format=ref !format in
   let driver=ref !driver in
-  let comp_opts=ref !dirs in
+  let comp_opts=ref [] in
   let packages=ref !package_list in
+  let directories = ref [] in
 
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
@@ -109,6 +128,7 @@ let rec read_options_from_source_file fread =
   let depends = Str.regexp "^[ \t]*(\\*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let add_compilation_option = Str.regexp "^[ \t]*(\\*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ \t]*\\*)[ \t\r]*$" in
   let add_package = Str.regexp "^[ \t]*(\\*[ \t]*#PACKAGES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ \t]*\\*)[ \t\r]*$" in
+  let add_directories = Str.regexp "^[ \t]*(\\*[ \t]*#DIRECTORIES[ \t]+\\([^ \t]+\\(,[ \t]*[^ \t]+\\)*\\)[ \t]*\\*)[ \t\r]*$" in
   let rec pump () =
     let s = input_line fread in
     if Str.string_match link s 0 then (
@@ -150,6 +170,12 @@ let rec read_options_from_source_file fread =
     )
     else if Str.string_match add_compilation_option s 0 then (comp_opts := (Str.matched_group 1 s)::(!comp_opts); pump ())
     else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
+    else if Str.string_match add_directories s 0 then 
+      (let dirs_ = Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)
+       in 
+       directories := dirs_ ; 
+       dirs := (compact (dirs_ @ !dirs)) ;
+       pump ())
     else if Str.string_match nothing s 0 then pump ()
   in
   seek_in fread 0;
@@ -162,7 +188,8 @@ let rec read_options_from_source_file fread =
     format= !format;
     driver= !driver;
     comp_opts= !comp_opts;
-    packages= !packages
+    packages= !packages ;
+    directories = !directories
   }
 and make_deps source=
   let ldeps=ref [] in
@@ -171,7 +198,7 @@ and make_deps source=
   let opts=read_options_from_source_file in_s in
   close_in in_s;
 
-  let dirs_=String.concat " " !dirs in
+  let dirs_=str_dirs opts in
   let cmd=Printf.sprintf
     "ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
     (let pack=String.concat "," (List.rev opts.packages) in
@@ -214,7 +241,7 @@ and patoline_rule objects h=
       let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
       let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
       if age_h<age_source then (
-        let dirs_=String.concat " " !dirs in
+	let dirs_=str_dirs opts in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s -c '%s'"
           !patoline
           dirs_
@@ -248,7 +275,7 @@ and patoline_rule objects h=
           (last_format<> !format || last_driver<> !driver)
         ) else false
       ) then (
-        let dirs_=String.concat " " !dirs in
+	let dirs_=str_dirs opts in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s '%s'"
           !patoline
           dirs_
@@ -311,9 +338,9 @@ and patoline_rule objects h=
     in
 
     if age_h<age_source || cmi_is_older then (
-      let dirs_=String.concat " " !dirs in
       let i=open_in source in
-      let opts=read_options_from_source_file i in
+      let opts= add_format (read_options_from_source_file i) in
+      let dirs_=str_dirs opts in
       close_in i;
       let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
@@ -339,7 +366,7 @@ and patoline_rule objects h=
     Build.build source;
 
     let in_s=open_in source_txp in
-    let opts=read_options_from_source_file in_s in
+    let opts=add_format (read_options_from_source_file in_s) in
     close_in in_s;
     List.iter Build.build opts.deps;
 
@@ -374,8 +401,7 @@ and patoline_rule objects h=
           breadth_first h1 l1
       in
       let objs=breadth_first [h] [] in
-
-      let dirs_=String.concat " " !dirs in
+      let dirs_=str_dirs opts in
       let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
         !ocamlopt
         (let pack=String.concat "," (List.rev opts.packages) in
@@ -403,14 +429,6 @@ and process_each_file l=
   else
     List.iter (fun f->
       if !compile then (
-        if !format <> "DefaultFormat" &&
-          (not (List.mem ("Typography." ^ !format) !package_list)) &&
-          (try
-             let _=findPath (!format ^ ".ml") (".":: !Config.local_path) in
-             false
-           with _->true)
-        then
-          package_list := ("Typography." ^ !format) :: !package_list;
         package_list := ("Typography."^ !driver):: !package_list;
 
         let cmd= (Filename.concat
@@ -435,7 +453,11 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          let suppl=Printf.sprintf "(* #PACKAGES %s *)\n" (String.concat "," opts.packages)
+          let suppl=Printf.sprintf "(* #PACKAGES %s *)%s\n" 
+	    (String.concat "," opts.packages)
+	    (if opts.directories <> [] then 
+		(Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
+	     else "")
           in
           Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
         );
