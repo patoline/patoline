@@ -45,7 +45,7 @@ let draw ?fontCache standalone w h contents=
     Rbuffer.add_string svg_buf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1 Tiny//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd\">
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\"";
-    Rbuffer.add_string svg_buf (Printf.sprintf "width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\"" (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h)));
+    Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\"" (round (coord w)) (round (coord h)));
     Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">"
   );
 
@@ -338,9 +338,9 @@ let output ?(structure:structure={name="";displayname=[];
           Printf.sprintf "<a href=\"%s\">Suivant</a>"
             (Printf.sprintf "%s%d.html" chop_file (i+1)));
 
-    Printf.fprintf html "<div style=\"width:%fpx;height:%fpx;margin-left:auto;margin-right:auto;border:solid black 1px;\">" (3.*.w) (3.*.h);
-    Printf.fprintf html "<svg width=\"%d\" height=\"%d\" viewBox=\"0 0 %d %d\">"
-      (round (coord w)) (round (coord h)) (round (coord w)) (round (coord h));
+    Printf.fprintf html "<div style=\"margin-left:auto;margin-right:auto;border:solid black 1px;\">";
+    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\">"
+      (round (coord w)) (round (coord h));
     Rbuffer.output_buffer html (draw ~fontCache:cache false w h pages.(i).pageContents);
     Printf.fprintf html "</svg>\n";
     Printf.fprintf html "</div></body></html>";
