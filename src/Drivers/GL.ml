@@ -12,7 +12,7 @@ let init_gl () =
     GlClear.color (0.5, 0.5, 0.5);
     GlClear.depth 1.0;
     GlClear.clear [`color; `depth];
-    Gl.disable `depth_test;
+    Gl.enable `depth_test;
     Gl.disable `polygon_smooth;
 (*    GlMisc.hint `polygon_smooth `nicest;*)
     Gl.disable `line_smooth;
@@ -155,27 +155,29 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let create_menu structure = 
-    let c = ref 0 in
-    List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
-    let menu = Glut.createMenu menu_cb in
-    old_menu := [menu];
-    Glut.setMenu menu;
-    let rec fn menu a i s = 
-      Glut.addMenuEntry s.name !c;
-      Hashtbl.add menu_item !c (a, i);
-      incr c;
-      if s.substructures <> [||] then
-	begin
-	  let menu' = Glut.createMenu menu_cb in
-	  old_menu := menu' :: !old_menu;
-	  Glut.setMenu menu';
-	  Array.iteri (fn menu' s.substructures) s.substructures;
-	  Glut.setMenu menu;
-	  Glut.addSubMenu "  ==>" menu';
-	end
-    in
-    Array.iteri (fn menu structure.substructures)  structure.substructures;
-    Glut.attachMenu Glut.RIGHT_BUTTON
+    if structure.substructures <> [||] then begin
+      let c = ref 0 in
+      List.iter (fun menu -> Glut.destroyMenu ~menu) !old_menu;
+      let menu = Glut.createMenu menu_cb in
+      old_menu := [menu];
+      Glut.setMenu menu;
+      let rec fn menu a i s = 
+	Glut.addMenuEntry s.name !c;
+	Hashtbl.add menu_item !c (a, i);
+	incr c;
+	if s.substructures <> [||] then
+	  begin
+	    let menu' = Glut.createMenu menu_cb in
+	    old_menu := menu' :: !old_menu;
+	    Glut.setMenu menu';
+	    Array.iteri (fn menu' s.substructures) s.substructures;
+	    Glut.setMenu menu;
+	    Glut.addSubMenu "  ==>" menu';
+	  end
+      in
+      Array.iteri (fn menu structure.substructures)  structure.substructures;
+      Glut.attachMenu Glut.RIGHT_BUTTON
+    end
   in
 
   let revert () = 
@@ -248,13 +250,6 @@ let output ?(structure:structure={name="";displayname=[];
   in
 
   let mode = ref Single in
-
-  let draw_gl_scene () =
-    let time = Sys.time () in
-    saved_rectangle := None;
-    if !to_revert then revert ();
-    GlClear.clear [`color];
-    GlMat.load_identity ();
 
     let draw_blank page =
       let pw,ph = !pages.(page).pageFormat in
@@ -479,6 +474,14 @@ let output ?(structure:structure={name="";displayname=[];
 	GlMat.pop ();
 
     in
+
+  let draw_gl_scene () =
+    let time = Sys.time () in
+    saved_rectangle := None;
+    if !to_revert then revert ();
+    GlClear.clear [`color;`depth];
+    GlMat.load_identity ();
+
 
     begin
       match !subpixel with 
@@ -714,7 +717,7 @@ let output ?(structure:structure={name="";displayname=[];
   let main () =
     Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgb depth=0 double samples>=4";
+    Glut.initDisplayString "rgb double samples>=4";
     Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
     let win = 
       Glut.createWindow "Patoline OpenGL Driver"
