@@ -28,7 +28,7 @@ Patoline/PatolineGL:Patoline GL.cmxa
 	make -C Patoline PatolineGL
 
 .PHONY:test
-test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline
+test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline DefaultGrammar.ttml
 	Patoline/patoline --format FormatDiapo --driver FormatDiapo.M --ml test.txp
 	ocamlfind ocamlopt -package Typography -I Format FormatDiapo.cmxa -linkpkg -o 'test.tmx'  -impl 'test.tml'
 	./test

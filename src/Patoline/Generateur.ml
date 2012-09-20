@@ -94,7 +94,7 @@ open DefaultFormat.MathsFormat;;
     )
 
 let postambule outfile = Printf.sprintf "
-let _ =Out.output Out.outputParams D.structure Format.defaultEnv Format.postprocess_tree %S
+let _ =Out.output Out.outputParams D.structure Format.defaultEnv %S
 " outfile
 
 module Source = struct

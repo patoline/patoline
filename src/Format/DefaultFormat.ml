@@ -311,7 +311,6 @@ module Format=functor (D:Document.DocumentStructure)->(
       let do_end_env ()=()
     end
 
-    let postprocess_tree=Sections.postprocess_tree
 
     let split_space is_letter is_special s =
       let gl env =
@@ -1068,11 +1067,11 @@ module Output=functor(M:Driver)->struct
   let outputParams={
     format=(fun _ _ _ _ _->{ pageFormat=a4; pageContents=[] })
   }
-  let output out_params structure defaultEnv postprocess_tree file=
+  let output out_params structure defaultEnv file=
 
     let rec resolve i env0=
       Printf.printf "Compilation %d\n" i; flush stdout;
-      let tree=postprocess_tree (fst (top (!structure))) in
+      let tree=Sections.postprocess_tree (fst (top (!structure))) in
       let fixable=ref false in
       let env1,fig_params,params,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
       Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
