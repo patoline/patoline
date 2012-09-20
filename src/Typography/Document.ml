@@ -926,13 +926,15 @@ end
 module type Format=sig
   val defaultEnv:user environment
   val postprocess_tree:(user) tree->(user) tree
-  val title:
-    ((user) tree * (((user) tree) list)) ref ->
-    ?label:string ->
-    ?displayname:user content list ->
-    string -> unit
-  val author:string->unit
-  val institute:string->unit
+  val title :
+    (user tree *
+       (IntMap.key *
+          user tree)
+            list)
+           ref ->
+    ?label:'a ->
+    ?extra_tags:(string * string) list ->
+    user content list -> bool
   val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters
 end
 

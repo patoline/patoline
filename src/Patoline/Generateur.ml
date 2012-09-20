@@ -66,7 +66,7 @@ open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
 %s
-%s
+open DefaultFormat.MathsFormat
 "
         format
         driver
@@ -74,7 +74,9 @@ open Typography.OutputCommon
         (match amble with
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
-module Out=%s.Output(%s)
+module Patoline_Format=%s.Format(D);;
+module Patoline_Out=%s.Output(Patoline_Format)(%s)
+open Patoline_Format;;
 let _driver=ref \"Pdf\"
 let _atmost=ref 3
 let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
@@ -83,18 +85,17 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
 ]
 
-let _=Arg.parse _spec ignore \"Usage :\";;" format driver
-          | Separate->"module Document=functor(D:DocumentStructure)->struct\n"
-          | _->"")
+let _=Arg.parse _spec ignore \"Usage :\";;" format format driver
+          | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
+module Patoline_Format=%s.Format(D);;
+module Patoline_Out=%s.Output(Patoline_Format)(%s);;
+open Patoline_Format;;\n" format format driver
+          | _->""
+        ))
 
-        (Printf.sprintf "module Format=%s.Format(D);;
-open Format;;
-open DefaultFormat.MathsFormat;;
-" format)
-    )
 
 let postambule outfile = Printf.sprintf "
-let _ =Out.output Out.outputParams D.structure Format.defaultEnv %S
+let _ =Patoline_Out.output Patoline_Out.outputParams D.structure Patoline_Format.defaultEnv %S
 " outfile
 
 module Source = struct
@@ -520,9 +521,9 @@ and output_list parser_pp from where no_indent lvl docs =
 	    else "(fun x -> x)"
 	  in
 	  let param = if options.center_paragraph then 
-	      "(Typography.Document.do_center parameters)"
+	      "(Typography.Document.do_center Patoline_Format.parameters)"
 	    else
-	      "parameters"
+	      "Patoline_Format.parameters"
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
 	    env param (print_contents parser_pp from) p
@@ -641,7 +642,7 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
 		    (match caml_header with
                          None->()
                        | Some a->output_list parser_pp source where true 0 [a]);
-		    Printf.fprintf where "let _ = title D.structure %s (%a);;\n\n"
+		    Printf.fprintf where "let _ = Patoline_Format.title D.structure %s (%a);;\n\n"
 		      extra_tags (print_contents parser_pp source) title;
 		  end;
 		  output_list parser_pp source where true 0 docs;
