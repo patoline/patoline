@@ -138,9 +138,6 @@ let font_size_ratio font1 font2 =
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
-
-    type user=Document.user
-
     let bold a=alternative Bold a
 
     let sc a=alternative Caps a
@@ -1286,17 +1283,19 @@ module Output (F:Format) (M:Driver)=struct
           let footnotes=ref [] in
           let footnote_y=ref (-.infinity) in
           let pp=Array.of_list p in
+          let w,h=page.pageFormat in
+          let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
           for j=0 to Array.length pp-1 do
             let param,line=pp.(j) in
-            let y=270.0-.line.height in
+            let y=h-.topMargin-.line.height in
 
             if line.isFigure then (
               let fig=figures.(line.lastFigure) in
               let y=
                 if j>0 && j<Array.length pp-1 then
                   let milieu=
-                    (270.-.(snd pp.(j-1)).height+.fst (line_height paragraphs figures (snd pp.(j-1)))
-                     +.(270.-.(snd pp.(j+1)).height+.snd (line_height paragraphs figures (snd pp.(j+1)))))/.2.
+                    (h-.topMargin-.(snd pp.(j-1)).height+.fst (line_height paragraphs figures (snd pp.(j-1)))
+                     +.(h-.topMargin-.(snd pp.(j+1)).height+.snd (line_height paragraphs figures (snd pp.(j+1)))))/.2.
                   in
                   milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
                 else
@@ -1393,7 +1392,7 @@ module Output (F:Format) (M:Driver)=struct
                   )
                   | User (Footnote (_,g))->(
                     footnotes:= g::(!footnotes);
-                    footnote_y:=max !footnote_y (270.-.param.page_height);
+                    footnote_y:=max !footnote_y (h-.topMargin-.param.page_height);
                     0.
                   )
                   | b->box_width comp b
