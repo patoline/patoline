@@ -200,7 +200,7 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let graisse_x = 1.0 /. 6.0 and graisse_y = 1.0 /. 2.0 in
+  let graisse_x = 1.0 /. 6.0 and graisse_y = 1.0 /. 4.0 in
 
   let tesselation_factor = 0.25 in
 
@@ -217,7 +217,7 @@ let output ?(structure:structure={name="";displayname=[];
 	  let yp =  -. (Bezier.derivee_start xs) +. b in
 	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	  let n = if classify_float n <> FP_normal then 0.0 else n in
-	  let n = if orientation then n else -. n in
+	  let n = if orientation then -. n else n in
 	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
 	  (xs.(0),ys.(0),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)) bs)
       ) beziers) 
