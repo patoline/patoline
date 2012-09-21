@@ -200,7 +200,8 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let graisse_x = 1.0 /. 2.0 and graisse_y = 1.0 /. 6.0 in
+  let graisse_x = 1.0 /. 6.0 and graisse_y = 1.0 /. 2.0 in
+
   let tesselation_factor = 0.25 in
 
   let add_normals closed ratio beziers =
