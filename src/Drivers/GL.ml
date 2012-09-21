@@ -200,7 +200,7 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let flou_x = 1.0 /. 3.0 and flou_y = 1.0 /. 2.0 (* 1.0 plus logique ?*) in
+  let flou_x = 1.0 /. 6.0 and flou_y = 1.0 /. 2.0 (* 1.0 /. 3.0 et 1.0 plus logique ?*) in
   let graisse = ref 0.0 (* entre -1 et 1 pour rester raisonnable *) in
  
   let tesselation_factor = 0.25 in
