@@ -320,16 +320,18 @@ let output ?(structure:structure={name="";displayname=[];
     let html_name=Printf.sprintf "%s%d.html" chop i in
     let w,h=pages.(i).pageFormat in
     let html=open_out html_name in
+    let noscript=false in
     Printf.fprintf html
       "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
 <meta charset=utf-8>
-<title>%s</title>
-<script>
+<title>%s</title>"      structure.name;
+    if not noscript then
+      Printf.fprintf html "<script>
 resize=function(){
-sizex=(window.innerWidth-10)/%g;
-sizey=(window.innerHeight-10)/%g;
+sizex=(window.innerWidth)/%g;
+sizey=(window.innerHeight)/%g;
 size=sizex>sizey ? sizey : sizex;
 svg=document.getElementById(\"svg\");
 svg.style.width=(%g*size)+'px';
@@ -337,20 +339,28 @@ svg.style.height=(%g*size)+'px';
 };
 window.onresize=function(e){resize()};
 window.onload=function(){resize()};
-</script>
-</head><body style=\"margin:0\">
-<div style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">%s%s%s</div>
-"
-    structure.name
-      w h w h
-      (if i=0 then "" else
-          Printf.sprintf "<a href=\"%s\">Précédent</a>"
-            (Printf.sprintf "%s%d.html" chop_file (i-1)))
-      (if i<>0 && i<>Array.length pages-1 then " " else "")
-      (if i=Array.length pages-1 then "" else
-          Printf.sprintf "<a href=\"%s\">Suivant</a>"
-            (Printf.sprintf "%s%d.html" chop_file (i+1)));
+window.onkeydown=function(e){
+console.log(e);
+if(e.keyCode==37){document.location.href=\"%s%d.html\"} // left
+else if(e.keyCode==39){document.location.href=\"%s%d.html\"} //right
+}
+</script>"
+      w h (w-.10.) (h-.10.)
+      chop_file (max 0 (i-1))
+      chop_file (min (Array.length pages-1) (i+1));
 
+
+    Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
+    if noscript then (
+      Printf.fprintf html "<div style=\"margin:0;padding:0;\">%s%s%s</div>"
+        (if i=0 then "" else
+            Printf.sprintf "<a href=\"%s\">Précédent</a>"
+              (Printf.sprintf "%s%d.html" chop_file (i-1)))
+        (if i<>0 && i<>Array.length pages-1 then " " else "")
+        (if i=Array.length pages-1 then "" else
+            Printf.sprintf "<a href=\"%s\">Suivant</a>"
+              (Printf.sprintf "%s%d.html" chop_file (i+1)));
+    );
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
     Printf.fprintf html "<svg  viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h));
