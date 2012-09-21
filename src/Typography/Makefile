@@ -89,11 +89,11 @@ Output/OutputDrawing.p.cmx:Output/OutputCommon.cmi Fonts.p.cmx Box.cmi Document.
 Output/OutputDrawing.cmi:Output/OutputDrawing.cmx
 
 
-Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi Box.cmo
+Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi Box.cmo Break.ml
 	$(CAMLC) -c -rectypes -o $@ Break.ml
-Break.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.cmx Break.cmi Box.cmx
+Break.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.cmx Break.cmi Box.cmx Break.ml
 	$(CAMLOPT) -for-pack Typography -c -rectypes -o $@ Break.ml
-Break.p.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.p.cmx Break.cmi Box.p.cmx
+Break.p.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.p.cmx Break.cmi Box.p.cmx Break.ml
 	$(CAMLOPT) -for-pack Typography -p -c -rectypes -o $@ Break.ml
 Break.cmi:Box.cmi Language.cmx
 

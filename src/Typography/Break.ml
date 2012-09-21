@@ -298,7 +298,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   line_y0=infinity; line_y1= -.infinity }
                 in
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
-                if height>=(!r_params).page_height then
+                if height>=(!r_params).page_height || page < node.page+(!r_params).min_page_before then
                   fix (page+1) 0. (n_iter+1)
                 else (
                   let minimal_tried_height=ref infinity in
