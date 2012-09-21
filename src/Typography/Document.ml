@@ -144,7 +144,7 @@ type 'a node={
   node_tags:(string*string) list;
   node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
   node_post_env:'a environment -> 'a environment -> 'a environment;(** Changement d'environnement quand on en sort *)
-  mutable tree_paragraph:int;
+  mutable node_paragraph:int;
 }
 and 'a paragraph={
   par_contents:'a content list;
@@ -152,7 +152,8 @@ and 'a paragraph={
   par_post_env:'a environment -> 'a environment -> 'a environment;
   par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
   par_badness: 'a environment -> 'a box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> float;
-  par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list
+  par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list;
+  mutable par_paragraph:int
 }
 and 'a figuredef={
   fig_contents:'a environment->drawingBox;
@@ -262,7 +263,7 @@ let empty:user node=
       counters=y.counters;
       names=names y;
       user_positions=user_positions y });
-    tree_paragraph=0 }
+    node_paragraph=0 }
 
 type ('a) cxt=(int*('a) tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
@@ -599,7 +600,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters 
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
                             par_parameters=parameters; par_badness=badness;
-                            par_completeLine=complete }
+                            par_completeLine=complete; par_paragraph=(-1) }
         in
           str:=up (newChildAfter !str para)
 
@@ -970,7 +971,10 @@ let flatten env0 fixable str=
   let rec flatten flushes env_ path tree=
     let level=List.length path in
     match tree with
-        Paragraph p -> add_paragraph env_ tree path p
+        Paragraph p -> (
+          p.par_paragraph <- List.length !paragraphs;
+          add_paragraph env_ tree path p
+        )
       | FigureDef f -> (
           let env1=f.fig_env env_ in
           let n=IntMap.cardinal !figures in
@@ -979,12 +983,12 @@ let flatten env0 fixable str=
           figure_trees:=IntMap.add n (tree,path) !figure_trees;
           append buf frees (BeginFigure n);
           f.fig_post_env env_ env1
-        )
+      )
       | Node s-> (
           let env={ env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
               env_.counters }
           in
-          s.tree_paragraph <- List.length !paragraphs;
+          s.node_paragraph <- List.length !paragraphs;
           let flushes'=ref [] in
           let flat_children k a (is_first,indent, env1)=match a with
               Paragraph p->(
@@ -1052,7 +1056,7 @@ let flatten env0 fixable str=
 let rec make_struct positions tree=
   match tree with
       Node s -> (
-        let (p,x,y)=positions.(s.tree_paragraph) in
+        let (p,x,y)=positions.(s.node_paragraph) in
         let rec make=function
             []->[]
           | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)

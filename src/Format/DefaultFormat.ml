@@ -242,7 +242,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                                  2.*.a.normalLead else 0.
                            });
                        par_badness=(badness);
-                       par_completeLine=Complete.normal }
+                       par_completeLine=Complete.normal;
+                       par_paragraph=(-1) }
                      in
                      fst (up (newChildBefore (tree,[]) par))
             with
@@ -267,7 +268,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                                  2.*.a.normalLead else 0.
                            });
                        par_badness=(badness);
-                       par_completeLine=Complete.normal }
+                       par_completeLine=Complete.normal;
+                       par_paragraph=(-1) }
                      in
                      fst (up (newChildBefore (with_institute,[]) par))
             with
@@ -289,7 +291,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                         a.normalLead else 0.;
                     min_height_before=0. });
               par_badness=(badness);
-              par_completeLine=Complete.normal }
+              par_completeLine=Complete.normal;
+              par_paragraph=(-1)}
             in
             fst (up (newChildBefore (with_author,[]) par))
         | _->with_author
@@ -329,7 +332,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                 min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then a.normalLead else 0.;
                 not_last_line=true });
           par_badness=(badness);
-          par_completeLine=Complete.normal }
+          par_completeLine=Complete.normal;
+          par_paragraph=(-1) }
         in
         fst (up (newChildBefore (
           Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
@@ -349,7 +353,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                      counters=env2.counters;
                                                      user_positions=env2.user_positions });
                   par_badness=(badness);
-                  par_parameters=parameters; par_completeLine=Complete.normal }, [])
+                  par_parameters=parameters; par_completeLine=Complete.normal;
+                  par_paragraph=(-1)}, [])
 
     module Env_Noindent=struct
       let do_begin_env ()=()
@@ -474,7 +479,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                    node_env=(fun x->x);
                    node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
                      user_positions=y.user_positions });
-                   tree_paragraph=0 },path
+                   node_paragraph=0 },path
 	in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
       with
