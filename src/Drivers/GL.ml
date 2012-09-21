@@ -200,7 +200,8 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let graisse_x = 1.0 /. 6.0 and graisse_y = 1.0 /. 4.0 in
+  let flou_x = 1.0 /. 6.0 and flou_y = 1.0 /. 4.0 (* 1/2 plus logique ?*) in
+  let graisse = 0.0 (* entre -1 et 1 pour rester raisonnable *) in
 
   let tesselation_factor = 0.25 in
 
@@ -217,9 +218,9 @@ let output ?(structure:structure={name="";displayname=[];
 	  let yp =  -. (Bezier.derivee_start xs) +. b in
 	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	  let n = if classify_float n <> FP_normal then 0.0 else n in
-	  let n = if orientation then -. n else n in
+	  let n = if orientation then n else -. n in
 	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-	  (xs.(0),ys.(0),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)) bs)
+	  (xs.(0),ys.(0),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)) bs)
       ) beziers) 
     else
       List.split (List.map (fun bs -> 
@@ -236,7 +237,7 @@ let output ?(structure:structure={name="";displayname=[];
 	    in
 	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)) bs
+	    (xs.(0),ys.(0),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)) bs
 	in
 	let last = 
 	  match !prev with
@@ -244,7 +245,7 @@ let output ?(structure:structure={name="";displayname=[];
 	  | Some(xs,ys,xp,yp) -> 
 	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    let s = Array.length xs in
-	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)
+	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)
 	in
 	List.split (ln @ [last])
     ) beziers) 
@@ -289,7 +290,7 @@ let output ?(structure:structure={name="";displayname=[];
 
 	      GlDraw.color color;
 	      let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-		(x -. xn, y -. yn, 0.0)) l n) lines normals in
+		(x -. xn *. graisse, y -. yn *. graisse , 0.0)) l n) lines normals in
 	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
 	      	      
 	      List.iter2 (fun l n ->
@@ -298,13 +299,13 @@ let output ?(structure:structure={name="";displayname=[];
 		  GlDraw.color color;
 		  GlDraw.vertex2 (x,y);
 		  GlDraw.color ~alpha:0.0 color;
-		  GlDraw.vertex2 (x+. 2.0 *. xn,y+. 2.0 *. yn)) l n;
+		  GlDraw.vertex2 (x+. (2.0 -. graisse) *. xn,y+. (2.0 -. graisse) *. yn)) l n;
 		let (x,y,_) = List.hd l in
 		let (xn,yn,_) = List.hd n in
 		GlDraw.color color;
 		GlDraw.vertex2 (x,y);
 		GlDraw.color ~alpha:0.0 color;
-		GlDraw.vertex2 (x+. 2.0 *. xn,y+. 2.0 *. yn);
+		GlDraw.vertex2 (x+. (2.0 -. graisse) *. xn,y+. (2.0 -. graisse) *. yn);
 	      GlDraw.ends ();
 	      )	lines normals;
 
@@ -341,7 +342,7 @@ let output ?(structure:structure={name="";displayname=[];
 	GlDraw.color color;
 
 	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-	  (x -. xn, y -. yn, 0.0)) l n) lines normals in
+	  (x -. xn *. graisse, y -. yn *. graisse, 0.0)) l n) lines normals in
 	GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) lines;
 
 	List.iter2 (fun l n ->
@@ -351,13 +352,13 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.color color;
 	      GlDraw.vertex2 (x,y);
 	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x+.2.0*.xn,y+.2.0*.yn)) l n;
+	      GlDraw.vertex2 (x+.(2.0 -. graisse)*.xn,y+.(2.0 -. graisse)*.yn)) l n;
 	    let (x,y,_) = List.hd l in
 	    let (xn,yn,_) = List.hd n in
 	    GlDraw.color color;
 	    GlDraw.vertex2 (x,y);
 	    GlDraw.color ~alpha:0.0 color;
-	    GlDraw.vertex2 (x+.2.0*.xn,y+.2.0*.yn);
+	    GlDraw.vertex2 (x+.(2.0 -. graisse)*.xn,y+.(2.0 -. graisse)*.yn);
 	    GlDraw.ends ()
 	  end) lines normals;
 
