@@ -200,9 +200,9 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let flou_x = 1.0 /. 6.0 and flou_y = 1.0 /. 4.0 (* 1/2 plus logique ?*) in
-  let graisse = 0.0 (* entre -1 et 1 pour rester raisonnable *) in
-
+  let flou_x = 1.0 /. 3.0 and flou_y = 1.0 /. 2.0 (* 1.0 plus logique ?*) in
+  let graisse = ref 0.0 (* entre -1 et 1 pour rester raisonnable *) in
+ 
   let tesselation_factor = 0.25 in
 
   let add_normals closed ratio beziers =
@@ -220,7 +220,7 @@ let output ?(structure:structure={name="";displayname=[];
 	  let n = if classify_float n <> FP_normal then 0.0 else n in
 	  let n = if orientation then n else -. n in
 	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-	  (xs.(0),ys.(0),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)) bs)
+	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
       ) beziers) 
     else
       List.split (List.map (fun bs -> 
@@ -237,7 +237,7 @@ let output ?(structure:structure={name="";displayname=[];
 	    in
 	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)) bs
+	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
 	in
 	let last = 
 	  match !prev with
@@ -245,7 +245,7 @@ let output ?(structure:structure={name="";displayname=[];
 	  | Some(xs,ys,xp,yp) -> 
 	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    let s = Array.length xs in
-	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n*.flou_x, yp*.n*.flou_y,0.0)
+	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
 	in
 	List.split (ln @ [last])
     ) beziers) 
@@ -265,6 +265,10 @@ let output ?(structure:structure={name="";displayname=[];
     in
 
     let draw_page page =
+      let graisse = !graisse in
+      let graisse_x = flou_x +. graisse and graisse_y = flou_y +. graisse in
+      
+
       draw_blank page;
 
       List.iter (function
@@ -272,7 +276,7 @@ let output ?(structure:structure={name="";displayname=[];
         let x = g.glyph_x in
         let y = g.glyph_y  in
 	let size = g.glyph_size in
-	let s = 1.   /. 1000. *. size in
+	let s = size   /. 1000. in
 	let ratio = !pixel_width /. s in
 (*
 	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
@@ -290,7 +294,7 @@ let output ?(structure:structure={name="";displayname=[];
 
 	      GlDraw.color color;
 	      let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-		(x -. xn *. graisse, y -. yn *. graisse , 0.0)) l n) lines normals in
+		(x +. xn *. graisse, y +. yn *. graisse , 0.0)) l n) lines normals in
 	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
 	      	      
 	      List.iter2 (fun l n ->
@@ -299,13 +303,13 @@ let output ?(structure:structure={name="";displayname=[];
 		  GlDraw.color color;
 		  GlDraw.vertex2 (x,y);
 		  GlDraw.color ~alpha:0.0 color;
-		  GlDraw.vertex2 (x+. (2.0 -. graisse) *. xn,y+. (2.0 -. graisse) *. yn)) l n;
+		  GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn)) l n;
 		let (x,y,_) = List.hd l in
 		let (xn,yn,_) = List.hd n in
 		GlDraw.color color;
 		GlDraw.vertex2 (x,y);
 		GlDraw.color ~alpha:0.0 color;
-		GlDraw.vertex2 (x+. (2.0 -. graisse) *. xn,y+. (2.0 -. graisse) *. yn);
+		GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn);
 	      GlDraw.ends ();
 	      )	lines normals;
 
@@ -342,7 +346,7 @@ let output ?(structure:structure={name="";displayname=[];
 	GlDraw.color color;
 
 	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-	  (x -. xn *. graisse, y -. yn *. graisse, 0.0)) l n) lines normals in
+	  (x +. xn *. graisse, y +. yn *. graisse, 0.0)) l n) lines normals in
 	GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) lines;
 
 	List.iter2 (fun l n ->
@@ -352,13 +356,13 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.color color;
 	      GlDraw.vertex2 (x,y);
 	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x+.(2.0 -. graisse)*.xn,y+.(2.0 -. graisse)*.yn)) l n;
+	      GlDraw.vertex2 (x+.graisse_x*.xn,y+.graisse_y*.yn)) l n;
 	    let (x,y,_) = List.hd l in
 	    let (xn,yn,_) = List.hd n in
 	    GlDraw.color color;
 	    GlDraw.vertex2 (x,y);
 	    GlDraw.color ~alpha:0.0 color;
-	    GlDraw.vertex2 (x+.(2.0 -. graisse)*.xn,y+.(2.0 -. graisse)*.yn);
+	    GlDraw.vertex2 (x+.graisse_x*.xn,y+.graisse_y*.yn);
 	    GlDraw.ends ()
 	  end) lines normals;
 
@@ -531,8 +535,22 @@ let output ?(structure:structure={name="";displayname=[];
       | 110 | 32 -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
       | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
       | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); redraw ();
-      | 43 -> zoom := !zoom /. 1.1; redraw ();
-      | 45 -> zoom := !zoom *. 1.1; redraw ();
+      | 43 -> 
+	if Glut.getModifiers () = Glut.active_shift then (
+	  Hashtbl.clear glyphCache;
+	  graisse := !graisse +. 0.05;
+	  Printf.printf "Graisse : %f\n" !graisse; flush stdout;
+	  redraw ())
+	else
+	  zoom := !zoom /. 1.1; redraw ();
+      | 45 ->
+	if Glut.getModifiers () = Glut.active_shift then (
+	  Hashtbl.clear glyphCache;
+	  graisse := !graisse -. 0.05;
+	  Printf.printf "Graisse : %f\n" !graisse; flush stdout;
+	  redraw ())
+	else
+	  zoom := !zoom *. 1.1; redraw ();
       | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr);
       dest := 0;
     end
