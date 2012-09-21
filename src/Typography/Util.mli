@@ -52,7 +52,7 @@ val last : 'a list -> 'a
 (** the list, minus its last element *)
 val init : 'a list -> 'a list
 val is_space : CamomileLibrary.UChar.t -> bool
-val unspace : CamomileLibrary.UTF8.t -> string
+val unspace : string -> string
 
 module IntMap :
   sig

@@ -9,7 +9,7 @@ type 'a kerningBox= { advance_height:float; advance_width:float; kern_x0:float; 
 
 let empty_kern a={ advance_height=0.; advance_width=0.; kern_x0=0.; kern_y0=0.; kern_contents=a }
 
-type glyph_id = { glyph_utf8:CamomileLibrary.UTF8.t; glyph_index:int }
+type glyph_id = { glyph_utf8:string; glyph_index:int }
 let empty_glyph= { glyph_utf8=UTF8.init 0 (fun _->UChar.chr 0); glyph_index=0 }
 type glyph_ids=KernID of (glyph_ids kerningBox) | GlyphID of glyph_id
 
@@ -192,7 +192,7 @@ module type Font=(
     val glyphFont:glyph->font
     val glyphNumber:glyph->glyph_id
     val glyphWidth:glyph->float
-    val glyphContents:glyph->UTF8.t
+    val glyphContents:glyph->string
     val glyph_y0:glyph->float
     val glyph_y1:glyph->float
     val glyph_x0:glyph->float

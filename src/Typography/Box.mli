@@ -112,16 +112,16 @@ val glyph_of_string :
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font ->
-  float -> OutputCommon.color -> CamomileLibrary.UTF8.t -> 'a box list
+  float -> OutputCommon.color -> string -> 'a box list
 
 (** Pareil que {!glyph_of_string}, mais en appliquant une fonction de césure avant *)
 val hyphenate :
-  (CamomileLibrary.UTF8.t ->
-   (CamomileLibrary.UTF8.t * CamomileLibrary.UTF8.t) array) ->
+  (string ->
+   (string * string) array) ->
   (Fonts.FTypes.glyph_id list -> Fonts.FTypes.glyph_id list) ->
   (Fonts.FTypes.glyph_ids list -> Fonts.FTypes.glyph_ids list) ->
   Fonts.font ->
-  float -> OutputCommon.color -> CamomileLibrary.UTF8.t -> 'a box list
+  float -> OutputCommon.color -> string -> 'a box list
 
 
 (** {3 Fonctions de démouchage} *)

@@ -727,7 +727,7 @@ let dist_boxes precise a b=
   min_dist_left_right precise bezier_left lr
 
 
-let glyphs c envs st=
+let glyphs (c:string) envs st=
   let env=env_style envs.mathsEnvironment st in
   let font=Lazy.force env.mathsFont in
   let s=env.mathsSize*.envs.size in

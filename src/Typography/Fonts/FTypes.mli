@@ -7,12 +7,12 @@ type 'a kerningBox = {
   kern_contents : 'a;
 }
 val empty_kern : 'a->'a kerningBox
-type glyph_id = { glyph_utf8 : CamomileLibrary.UTF8.t; glyph_index : int; }
+type glyph_id = { glyph_utf8 : string; glyph_index : int; }
 val empty_glyph : glyph_id
 type glyph_ids = KernID of glyph_ids kerningBox | GlyphID of glyph_id
 val kern : glyph_ids -> glyph_ids kerningBox
 val glyph_id_cont : glyph_ids -> int
-val glyph_id_utf8 : glyph_ids -> CamomileLibrary.UTF8.t
+val glyph_id_utf8 : glyph_ids -> string
 
 type subst = { original_glyphs : int array; subst_glyphs : int array; }
 type chain = {
@@ -56,7 +56,7 @@ module type Font =
     val glyphFont : glyph -> font
     val glyphNumber : glyph -> glyph_id
     val glyphWidth : glyph -> float
-    val glyphContents : glyph -> CamomileLibrary.UTF8.t
+    val glyphContents : glyph -> string
     val glyph_y0 : glyph -> float
     val glyph_y1 : glyph -> float
     val glyph_x0 : glyph -> float
