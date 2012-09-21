@@ -200,7 +200,7 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let graisse = 1.0 /. 4.0 in
+  let graisse_x = 1.0 /. 2.0 and graisse_y = 1.0 /. 6.0 in
   let tesselation_factor = 0.25 in
 
   let add_normals closed ratio beziers =
@@ -214,11 +214,11 @@ let output ?(structure:structure={name="";displayname=[];
 	  let a, b = !prev in
 	  let xp = Bezier.derivee_start ys +. a in
 	  let yp =  -. (Bezier.derivee_start xs) +. b in
-	  let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	  let n = if classify_float n <> FP_normal then 0.0 else n in
 	  let n = if orientation then n else -. n in
 	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
+	  (xs.(0),ys.(0),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)) bs)
       ) beziers) 
     else
       List.split (List.map (fun bs -> 
@@ -233,17 +233,17 @@ let output ?(structure:structure={name="";displayname=[];
 	      | Some(_,_,a,b) -> 
 		Bezier.derivee_start ys +. a, -. (Bezier.derivee_start xs) +. b 
 	    in
-	    let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
+	    (xs.(0),ys.(0),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)) bs
 	in
 	let last = 
 	  match !prev with
 	    None -> assert false
 	  | Some(xs,ys,xp,yp) -> 
-	    let n = graisse *. ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
 	    let s = Array.length xs in
-	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
+	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n*.graisse_x, yp*.n*.graisse_y,0.0)
 	in
 	List.split (ln @ [last])
     ) beziers) 
