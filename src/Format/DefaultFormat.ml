@@ -1060,14 +1060,31 @@ module Format=functor (D:Document.DocumentStructure)->(
     open OutputPaper
     open OutputCommon
     module type Driver=OutputPaper.Driver
-    type 'a t={
-      format:'a Box.box array array->('a Document.tree*'a Document.cxt) array->
-             Box.drawingBox array->('a Document.tree*'a Document.cxt) array->
-             (Line.parameters*Line.line) list -> OutputPaper.page
+    type defaultOutputParam={
+      mutable format:user Box.box array array->(user Document.tree*user Document.cxt) array->
+                     Box.drawingBox array->(user Document.tree*user Document.cxt) array->
+                     (Line.parameters*Line.line) list -> OutputPaper.page;
+      mutable pageNumbers:OutputPaper.page->user environment->int->unit
     }
     let max_iterations=ref 3
     let outputParams={
-      format=(fun _ _ _ _ _->{ pageFormat=a4; pageContents=[] })
+      format=(fun _ _ _ _ _->{ pageFormat=a4; pageContents=[] });
+      pageNumbers=(fun page env n->
+        let pnum=glyph_of_string env.substitutions env.positioning env.font env.size env.fontColor (string_of_int (n+1)) in
+        let (_,w,_)=boxes_interval (Array.of_list pnum) in
+        let x=(fst page.pageFormat -. w)/.2. in
+        let _=List.fold_left (fun x0 b->match b with
+            (GlyphBox a)->(
+              let (_,w,_)=box_interval b in
+              page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x0;glyph_y=20. })
+              :: page.pageContents;
+              x0+.w
+             )
+          | _ -> x0
+        ) x pnum
+        in
+        ()
+      )
     }
     let output m out_params structure defaultEnv file=
       let module M=(val m:Driver) in
@@ -1259,19 +1276,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                                                          [| !footnote_y-.env.footnote_y;
                                                                                             !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
             );
-            let pnum=glyph_of_string env.substitutions env.positioning env.font env.size env.fontColor (string_of_int (i+1)) in
-            let (_,w,_)=boxes_interval (Array.of_list pnum) in
-            let x=(fst page.pageFormat -. w)/.2. in
-            let _=List.fold_left (fun x0 b->match b with
-                (GlyphBox a)->(
-                  let (_,w,_)=box_interval b in
-                  page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x0;glyph_y=20. })
-                  :: page.pageContents;
-                  x0+.w
-                 )
-              | _ -> x0
-            ) x pnum
-            in
+            out_params.pageNumbers page env i;
             page.pageContents<-List.rev page.pageContents
           in
           for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
