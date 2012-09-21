@@ -161,8 +161,8 @@ and 'a figuredef={
   fig_post_env:'a environment -> 'a environment -> 'a environment;
   fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> parameters
 }
-and ('a) tree=
-    Node of ('a) node
+and 'a tree=
+    Node of 'a node
   | Paragraph of 'a paragraph
   | FigureDef of 'a figuredef
 
@@ -265,7 +265,7 @@ let empty:user node=
       user_positions=user_positions y });
     node_paragraph=0 }
 
-type ('a) cxt=(int*('a) tree) list
+type 'a cxt=(int*'a tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 

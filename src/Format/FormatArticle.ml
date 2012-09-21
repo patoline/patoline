@@ -156,5 +156,3 @@ end
 
 module Format (D : DocumentStructure) =
   MakeFormat (D) (DefaultFormat.Format(D))
-
-module Output = DefaultFormat.Output

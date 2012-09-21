@@ -75,7 +75,6 @@ open DefaultFormat.MathsFormat
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
-module Patoline_Out=%s.Output(Patoline_Format)(%s)
 open Patoline_Format;;
 let _driver=ref \"Pdf\"
 let _atmost=ref 3
@@ -85,18 +84,17 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
 ]
 
-let _=Arg.parse _spec ignore \"Usage :\";;" format format driver
+let _=Arg.parse _spec ignore \"Usage :\";;" format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
-module Patoline_Out=%s.Output(Patoline_Format)(%s);;
-open Patoline_Format;;\n" format format driver
+open Patoline_Format;;\n" format
           | _->""
         ))
 
 
-let postambule outfile = Printf.sprintf "
-let _ =Patoline_Out.output Patoline_Out.outputParams D.structure Patoline_Format.defaultEnv %S
-" outfile
+let postambule driver outfile = Printf.sprintf "
+let _ =Patoline_Format.output (module %s:Patoline_Format.Driver) Patoline_Format.outputParams D.structure Patoline_Format.defaultEnv %S
+" driver outfile
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)
@@ -648,7 +646,7 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
 		  output_list parser_pp source where true 0 docs;
 		  (* close_in op; *)
                 match amble with
-                    Main->output_string where (postambule pdfname)
+                    Main->output_string where (postambule driver pdfname)
                   | Noamble->()
                   | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
                       tmp_pos
