@@ -18,8 +18,11 @@ SVG.cmxa:SVG.cmx HtmlFonts.cmx
 Html.cmx:SVG.cmx HtmlFonts.cmx
 SVG.cmx:HtmlFonts.cmx
 
-%.cmxa:%.cmx ../Typography/Typography.cmxa ../Typography/Typography.cmi
+%.cmxa:%.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ $<
 
-%.cmx:%.ml ../Typography/Typography.cmxa ../Typography/Typography.cmi
+%.cmx:%.ml ../Typography/Typography.cmxa
 	$(CAMLOPT) -c -o $@ $<
+
+clean:
+	rm -f *.cm[aoix] *.cmxa *.o *.a *~ \#*\#

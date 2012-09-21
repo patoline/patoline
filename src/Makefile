@@ -30,7 +30,7 @@ Patoline/PatolineGL:Patoline GL.cmxa
 .PHONY:test
 test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline DefaultGrammar.ttml
 	Patoline/patoline --format FormatDiapo --driver SVG --ml test.txp
-	ocamlfind ocamlopt -package Typography -I Format -I Drivers SVG.cmxa FormatDiapo.cmxa -linkpkg -o 'test.tmx'  -impl 'test.tml'
+	ocamlfind ocamlopt -package camomile -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa SVG.cmxa Pdf.cmxa DefaultFormat.cmxa FormatDiapo.cmxa -linkpkg  -o 'test.tmx'  -impl 'test.tml'
 	./test.tmx
 
 ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
@@ -73,11 +73,11 @@ Rbuffer/rbuffer.cmxa:Rbuffer
 Rbuffer/rbuffer.p.cmxa:Rbuffer
 	make -C Rbuffer rbuffer.p.cmxa
 
-Drivers/%.cmxa:Drivers Typography/Typography.cmxa Typography/Typography.cmi
+Drivers/%.cmxa:Drivers Typography/Typography.cmxa
 	make -C Drivers $(shell basename $@)
-Drivers/%.cma:Drivers Typography/Typography.cma Typography/Typography.cmi
+Drivers/%.cma:Drivers Typography/Typography.cma
 	make -C Drivers $(shell basename $@)
-Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa Typography/Typography.cmi
+Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa
 	make -C Drivers $(shell basename $@)
 
 
@@ -97,6 +97,7 @@ doc:
 clean:
 	make -C Typography clean
 	make -C Format clean
+	make -C Drivers clean
 	make -C Patoline clean
 	make -C ocaml-bibi clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
