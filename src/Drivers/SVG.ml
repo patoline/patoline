@@ -326,10 +326,23 @@ let output ?(structure:structure={name="";displayname=[];
 <head>
 <meta charset=utf-8>
 <title>%s</title>
-</head><body>
-<div style=\"margin-left:auto;margin-right:auto;\">%s%s%s</div>
+<script>
+resize=function(){
+sizex=(window.innerWidth-10)/%g;
+sizey=(window.innerHeight-10)/%g;
+size=sizex>sizey ? sizey : sizex;
+svg=document.getElementById(\"svg\");
+svg.style.width=(%g*size)+'px';
+svg.style.height=(%g*size)+'px';
+};
+window.onresize=function(e){resize()};
+window.onload=function(){resize()};
+</script>
+</head><body style=\"margin:0\">
+<div style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">%s%s%s</div>
 "
     structure.name
+      w h w h
       (if i=0 then "" else
           Printf.sprintf "<a href=\"%s\">Précédent</a>"
             (Printf.sprintf "%s%d.html" chop_file (i-1)))
@@ -338,8 +351,8 @@ let output ?(structure:structure={name="";displayname=[];
           Printf.sprintf "<a href=\"%s\">Suivant</a>"
             (Printf.sprintf "%s%d.html" chop_file (i+1)));
 
-    Printf.fprintf html "<div style=\"margin-left:auto;margin-right:auto;border:solid black 1px;\">";
-    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\">"
+    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
+    Printf.fprintf html "<svg  viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h));
     Rbuffer.output_buffer html (draw ~fontCache:cache false w h pages.(i).pageContents);
     Printf.fprintf html "</svg>\n";
