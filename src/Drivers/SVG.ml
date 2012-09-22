@@ -337,18 +337,20 @@ svg=document.getElementById(\"svg\");
 svg.style.width=(%g*size)+'px';
 svg.style.height=(%g*size)+'px';
 };
-window.onresize=function(e){resize()};
+//window.onresize=function(e){resize()};
 window.onload=function(){resize()};
 window.onkeydown=function(e){
-console.log(e);
-if(e.keyCode==37){document.location.href=\"%s%d.html\"} // left
-else if(e.keyCode==39){document.location.href=\"%s%d.html\"} //right
+%s
+%s
 }
 </script>"
       w h (w-.10.) (h-.10.)
-      chop_file (max 0 (i-1))
-      chop_file (min (Array.length pages-1) (i+1));
-
+        (if i>0 then
+            Printf.sprintf "if(e.keyCode==37){document.location.href=\"%s%d.html\"} // left" chop_file (i-1)
+         else "")
+        (if i<Array.length pages-1 then
+            Printf.sprintf "if(e.keyCode==39){document.location.href=\"%s%d.html\"} //right" chop_file (i+1)
+         else "");
 
     Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
     if noscript then (
