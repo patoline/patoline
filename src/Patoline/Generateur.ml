@@ -82,7 +82,7 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)), \"Adds directories to the font search path\");
 (\"-I\",Arg.String (fun x->Config.local_path:=x::(!Config.local_path)), \"Adds directories to the font search path\");
 (\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
-]
+]@Patoline_Format.spec
 
 let _=Arg.parse _spec ignore \"Usage :\";;" format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct

@@ -307,10 +307,13 @@ let authorFile bibfile x=match author bibfile (sprintf "name LIKE '%%%s%%'" x) w
 
 let cite x=citeFile !bibfile x
 
-open Typography.Document
 open Util
 open Box
 open Line
+
+module type Format=sig
+  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters
+end
 
 module TheBibliography (F:Format) (D : DocumentStructure) = struct
   let _ =
