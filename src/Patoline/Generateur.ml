@@ -143,12 +143,13 @@ let rec print_math_buf parser_pp op buf m =
 	print_math_expr ind' buf m
       | Binary(_, a, _,SimpleSym "over",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on fraction.";
-	Printf.bprintf buf "[Maths.Fraction {  Maths.numerator=(%a); Maths.denominator=(%a); Maths.line=(fun env style->{OutputCommon.default with lineWidth = (Maths.env_style env.mathsEnvironment style).Mathematical.default_rule_thickness }) }]" (print_math_expr indices) a (print_math_expr indices) b
+	Printf.bprintf buf "[Maths.fraction (%a) (%a)]" (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr, a, _,SimpleSym "",_,b) ->
 	if (indices <> no_ind) then failwith "Indices on empty binary.";
-	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Invisible; Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr (print_math_expr indices) a (print_math_expr indices) b
+	Printf.bprintf buf "[Maths.bin_invisible %d (%a) (%a)]" pr (print_math_expr indices) a (print_math_expr indices) b
       | Binary(pr,a,nsl,op,nsr,b) ->
-	Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(%b,%a, %b); Maths.bin_left=(%a); Maths.bin_right=(%a) }]" pr nsl (print_math_deco op) indices nsr (print_math_expr no_ind) a (print_math_expr no_ind) b
+	Printf.bprintf buf "[Maths.bin %d (Maths.Normal(%b,%a, %b)) (%a) (%a)]" pr nsl (print_math_deco op) indices nsr
+          (print_math_expr no_ind) a (print_math_expr no_ind) b
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
 	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a 
@@ -176,15 +177,15 @@ let rec print_math_buf parser_pp op buf m =
 	      print_math_multi_symbol op print_math_multi_symbol cl (print_math_expr no_ind) a)
       | Prefix(pr, op, nsp, b) ->
 	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a,%b); Maths.bin_left=[]; Maths.bin_right=(%a) }]" pr (print_math_deco op) ind_left nsp (print_math_expr ind_right) b
+	  Printf.bprintf buf "[Maths.bin %d [] (Maths.Normal(true,%a,%b)) (%a)]" pr (print_math_deco op) ind_left nsp (print_math_expr ind_right) b
       | Postfix(pr, a, nsp, op) ->
 	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.Binary { Maths.bin_priority=%d; Maths.bin_drawing=Maths.Normal(true,%a, %b); Maths.bin_left=(%a); Maths.bin_right=[] }]" pr (print_math_deco op) ind_right nsp (print_math_expr ind_left) a
+	  Printf.bprintf buf "[Maths.bin %d (%a) (Maths.Normal(true,%a, %b)) []]" pr (print_math_expr ind_left) a (print_math_deco op) ind_right nsp
 
       | Limits_operator(op, a) ->
-	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=true; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.op_limits [] (%a) (%a)]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
       | Operator(op, a) ->
-	  Printf.bprintf buf "[Maths.Operator { Maths.op_noad=%a; Maths.op_limits=false; Maths.op_left_contents=[]; Maths.op_right_contents=%a }]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.op_nolimits [] (%a) (%a)]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
       | MScope a->
 	  Printf.bprintf buf "[Maths.Scope (";
           List.iter (print_math_expr indices buf) a;

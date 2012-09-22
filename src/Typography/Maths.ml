@@ -46,7 +46,19 @@ let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=
 
 let style x = Env (fun env -> { env with mathStyle = x })
 
-
+let fraction a b=Fraction {
+  numerator=a;
+  denominator=b;
+  line=(fun env style->{OutputCommon.default with lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
+}
+let bin_invisible prio left right=
+  Binary { bin_priority=prio; bin_drawing=Invisible; bin_left=left; bin_right=right }
+let bin prio drawing left right=
+  Binary { bin_priority=prio; bin_drawing=drawing; bin_left=left; bin_right=right }
+let op_limits a b c=
+  Operator { op_noad=b; op_limits=true; op_left_contents=a; op_right_contents=c}
+let op_nolimits a b c=
+  Operator { op_noad=b; op_limits=false; op_left_contents=a; op_right_contents=c}
 (* let symbol font size c= *)
 (*   { *)
 (*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
