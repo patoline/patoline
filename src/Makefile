@@ -1,13 +1,20 @@
 include Makefile.config
 
 FORMAT=$(shell ls Format/Format*.ml)
-DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/GL.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa
+DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/GL.cmxa Drivers/GL2.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa
 
 ifdef GL_PACK
 PACK+=$(GL_PACK)
 NATIVE_EXTRA+=Patoline/PatolineGL
 else
   DRIVERS:=$(filter-out Drivers/GL.ml,$(DRIVERS))
+endif
+
+ifdef GLGTK_PACK
+PACK+=$(GLGTK_PACK)
+NATIVE_EXTRA+=Patoline/PatolineGL2
+else
+  DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
 endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK)
@@ -26,6 +33,8 @@ Patoline/patoline:Patoline
 	make -C Patoline patoline
 Patoline/PatolineGL:Patoline GL.cmxa
 	make -C Patoline PatolineGL
+Patoline/PatolineGL2:Patoline GL2.cmxa
+	make -C Patoline PatolineGL2
 
 .PHONY:test
 test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline DefaultGrammar.ttml

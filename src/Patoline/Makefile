@@ -8,6 +8,9 @@ patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx
 PatolineGL:PatolineGL.ml ../Typography/Typography.cmxa ../Drivers/GL.cmxa
 	$(CAMLOPT) $(GL_PACK) -linkpkg -I ../Rbuffer -I ../Drivers str.cmxa ../Rbuffer/rbuffer.cmxa ../Typography/Typography.cmxa GL.cmxa  -o $@ $<
 
+PatolineGL2:PatolineGL2.ml ../Typography/Typography.cmxa ../Drivers/GL2.cmxa
+	$(CAMLOPT) $(GLGTK_PACK) -package lablgtk2-gl.gtkgl -linkpkg -I ../Rbuffer -I ../Drivers str.cmxa ../Rbuffer/rbuffer.cmxa ../Typography/Typography.cmxa gtkInit.cmx GL2.cmxa  -o $@ $<
+
 Main.cmx:Generateur.cmx SimpleGenerateur.cmx Main.ml Build.cmx
 	ocamlopt -thread -rectypes -I +threads -c -o Main.cmx Main.ml
 

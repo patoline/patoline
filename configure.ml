@@ -14,6 +14,7 @@ let camlzip=ref ""
 let camlimages=ref ""
 let lablgl=ref ""
 let lablglut=ref ""
+let lablgtk2=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 let use_camlimages=ref false
@@ -97,6 +98,9 @@ let _=
   else if Sys.command "ocamlfind query lablGL.glut" = 0
   then lablglut := "lablGL.glut";
 
+  if Sys.command "ocamlfind query lablgtk2" = 0 && Sys.command "ocamlfind query lablgtk2-gl.gtkgl" = 0
+  then lablgtk2 := "lablgtk2";
+
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config.ml" in
@@ -170,6 +174,8 @@ let _=
       (if !camlimages <> "" then " -package "^(!camlimages) else "");
     if !lablgl <> "" && !lablglut <> "" then
       Printf.fprintf make "GL_PACK=-package %s -package %s\n" (!lablgl) (!lablglut);
+    if !lablgl <> "" && !lablgtk2 <> "" then
+      Printf.fprintf make "GLGTK_PACK=-package %s -package %s \n" (!lablgl) (!lablgtk2);
 
     close_out make;
 
@@ -180,6 +186,8 @@ let _=
     Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
     if !lablgl <> "" && !lablglut <> "" then
       Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
+    if !lablgl <> "" && !lablgtk2 <> "" then
+      Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
 
     let sources=
       "src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi "^

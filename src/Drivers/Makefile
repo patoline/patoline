@@ -5,6 +5,12 @@ NATIVE_EXTRA+=Patoline/PatolineGL
 else
   DRIVERS:=$(filter-out Drivers/GL.ml,$(DRIVERS))
 endif
+ifdef GLGTK_PACK
+PACK+=$(GLGTK_PACK)
+NATIVE_EXTRA+=Patoline/PatolineGL2
+else
+  DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
+endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK) -pp "cpp -w" -I ../Typography -I ../Rbuffer
 CAMLC=ocamlfind ocamlc $(PACK) -pp "cpp -w" -I ../Typography -I ../Rbuffer
