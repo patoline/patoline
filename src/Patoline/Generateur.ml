@@ -298,14 +298,9 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    | _ -> assert false
 	end
       | `Module | `Begin -> 
-	let modname = 
-	  if mtype = `Begin then begin
-            incr moduleCounter;
-	    Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
-	    "Env_"^name
-	  end
-	  else name
-	in
+        incr moduleCounter;
+	Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
+	let modname =if mtype = `Begin then "Env_"^name else name in
 	let end_open =
 	  if args = [] then ""
 	  else begin
@@ -335,9 +330,10 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  let num = !moduleCounter in
           let s=String.make 1 modname.[0] in
           modname.[0]<-(String.uppercase s).[0];
-          if mtype=`Begin then env_stack:=(num,name)::(!env_stack);
 	  Printf.bprintf buf "module TEMP%d = %s%s\nopen TEMP%d\n let _ = TEMP%d.do_begin_env()"
-	    num modname end_open num num (* name *)
+	    num modname end_open num num; (* name *)
+          if mtype=`Begin then env_stack:=(num,name)::(!env_stack) else
+	    Printf.bprintf buf "let _=TEMP%d.do_end_env()\nend\n" num
 	end
       | `End ->(
           let n,name'=List.hd !env_stack in
