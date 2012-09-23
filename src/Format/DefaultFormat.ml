@@ -244,6 +244,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                            });
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
+                       par_states=IntSet.empty;
                        par_paragraph=(-1) }
                      in
                      fst (up (newChildBefore (tree,[]) par))
@@ -270,6 +271,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                            });
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
+                       par_states=IntSet.empty;
                        par_paragraph=(-1) }
                      in
                      fst (up (newChildBefore (with_institute,[]) par))
@@ -293,6 +295,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     min_height_before=0. });
               par_badness=(badness);
               par_completeLine=Complete.normal;
+              par_states=IntSet.empty;
               par_paragraph=(-1)}
             in
             fst (up (newChildBefore (with_author,[]) par))
@@ -334,6 +337,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 not_last_line=true });
           par_badness=(badness);
           par_completeLine=Complete.normal;
+          par_states=IntSet.empty;
           par_paragraph=(-1) }
         in
         fst (up (newChildBefore (
@@ -355,6 +359,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                      user_positions=env2.user_positions });
                   par_badness=(badness);
                   par_parameters=parameters; par_completeLine=Complete.normal;
+                  par_states=IntSet.empty;
                   par_paragraph=(-1)}, [])
 
     module Env_Noindent=struct

@@ -1,4 +1,3 @@
-
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
 
@@ -52,15 +51,17 @@ type contents=
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
   | Image of image
+  | States of contents*Util.IntSet.t
 
-let translate x y=function
+let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
   | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)
   | Link l -> Link { l with link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
                        link_x1=l.link_x1+.x; link_y1=l.link_y1+.y }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
+  | States (a,b)->States ((translate x y a), b)
 
-let resize alpha=function
+let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
   | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha },
                        List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
@@ -68,6 +69,7 @@ let resize alpha=function
                        link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha }
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
+  | States (a,b)->States ((resize alpha a), b)
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
@@ -109,6 +111,9 @@ let bounding_box_opt opt l=
         bb (min x0 i.image_x) (min y0 i.image_y)
           (max x1 (i.image_x+.i.image_width))
           (max y1 (i.image_y+.i.image_height)) s
+
+    | States (a,b)::s->bb x0 y0 x1 y1 (a::s)
+
     | _::s -> bb x0 y0 x1 y1 s
   in
     bb infinity infinity (-.infinity) (-.infinity) l

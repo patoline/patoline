@@ -19,9 +19,9 @@ type 'a box=
 and 'a kerningBox='a Fonts.FTypes.kerningBox
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
-                    drawing_max_width:float; drawing_y0:float; drawing_y1:float;
-                    drawing_badness : float -> float;
-                    drawing_contents:float -> OutputCommon.contents list }
+                   drawing_max_width:float; drawing_y0:float; drawing_y1:float;
+                   drawing_badness : float -> float;
+                   drawing_contents:float -> OutputCommon.contents list }
 
 
 and 'a hyphenBox= { hyphen_normal:'a box array; hyphenated:('a box array* 'a box array) array }

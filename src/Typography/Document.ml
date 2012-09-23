@@ -153,6 +153,7 @@ and 'a paragraph={
   par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
   par_badness: 'a environment -> 'a box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> float;
   par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list;
+  par_states:Util.IntSet.t;
   mutable par_paragraph:int
 }
 and 'a figuredef={
@@ -600,7 +601,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters 
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
                             par_parameters=parameters; par_badness=badness;
-                            par_completeLine=complete; par_paragraph=(-1) }
+                            par_completeLine=complete; par_states=IntSet.empty; par_paragraph=(-1) }
         in
           str:=up (newChildAfter !str para)
 
