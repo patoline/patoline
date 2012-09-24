@@ -69,6 +69,69 @@ let rec last = function
     
 type page_mode = Single | Double
 
+let pixel_width = ref 0.0
+let pixel_height = ref 0.0
+
+(* Handle window reshape events *)
+
+let overlay_rect (r,g,b) (x,y,x',y') =
+  GlMat.load_identity ();
+  GlDraw.color (r,g,b);
+  GlDraw.begins `line_loop;
+  GlDraw.vertex2 (x,y');
+  GlDraw.vertex2 (x',y');
+  GlDraw.vertex2 (x',y);
+  GlDraw.vertex2 (x,y);
+  GlDraw.ends ()
+  
+  let add_normals closed ratio beziers =
+
+    let tesselation_factor = !prefs.tesselation_factor  in
+  
+    if closed then
+      let beziers = Bezier.oriente beziers in
+      List.split (List.map (fun (bs, orientation) -> 
+	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+	(* FIXME: close the curve if it is not closed !!! *)
+	let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
+	List.split (List.map (fun (xs, ys) -> 
+	  let a, b = !prev in
+	  let xp = Bezier.derivee_start ys +. a in
+	  let yp =  -. (Bezier.derivee_start xs) +. b in
+	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
+	  let n = if classify_float n <> FP_normal then 0.0 else n in
+	  let n = if orientation then n else -. n in
+	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
+	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
+      ) beziers) 
+    else
+      List.split (List.map (fun bs -> 
+	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
+	let prev = ref None in
+	let ln = 
+	  List.map (fun (xs, ys) -> 
+	    let xp, yp =
+	      match !prev with
+		None -> 
+		  Bezier.derivee_start ys, -. (Bezier.derivee_start xs)
+	      | Some(_,_,a,b) -> 
+		Bezier.derivee_start ys +. a, -. (Bezier.derivee_start xs) +. b 
+	    in
+	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
+	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
+	in
+	let last = 
+	  match !prev with
+	    None -> assert false
+	  | Some(xs,ys,xp,yp) -> 
+	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
+	    let s = Array.length xs in
+	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
+	in
+	List.split (ln @ [last])
+    ) beziers)   
+
 let output ?(structure:structure={name="";displayname=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
@@ -77,6 +140,9 @@ let output ?(structure:structure={name="";displayname=[];
   let structure = ref structure in
   let num_pages = ref (Array.length !pages) in
   let links = ref [||] in
+  let cur_state = ref 0 in
+  let max_state = ref 0 in
+  let min_state = ref max_int in
 
   let read_links () = 
     links := Array.mapi
@@ -94,49 +160,6 @@ let output ?(structure:structure={name="";displayname=[];
 
   let _ = read_links () in
 
-  let pixel_width = ref 0.0 in
-  let pixel_height = ref 0.0 in
-
-(* Handle window reshape events *)
-  let reshape_cb ~w ~h =
-    let ratio = (float_of_int w) /. (float_of_int h) in
-    let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
-    let cx = pw /. 2.0 +. !dx in
-    let cy = ph /. 2.0 +. !dy in
-    let rx = (ph *. ratio) /. 2.0 *. !zoom in
-    let ry = ph /. 2.0 *. !zoom in
-    pixel_width := rx *. 2.0 /. (float_of_int w);
-    pixel_height := ry *. 2.0 /. (float_of_int h);
-
-    let set_proj () =
-      GlDraw.viewport 0 0 w h;
-      GlMat.mode `projection;
-      GlMat.load_identity ();
-      GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
-      GlMat.mode `modelview;
-      GlMat.load_identity ()
-    in
-
-(*
-    Glut.useLayer(Glut.OVERLAY);
-    set_proj ();
-    Glut.useLayer(Glut.NORMAL);
-*)
-    set_proj ()
-  in
-
-  let overlay_rect (r,g,b) (x,y,x',y') =
-    GlMat.load_identity ();
-    GlDraw.color (r,g,b);
-    GlDraw.begins `line_loop;
-    GlDraw.vertex2 (x,y');
-    GlDraw.vertex2 (x',y');
-    GlDraw.vertex2 (x',y);
-    GlDraw.vertex2 (x,y);
-    GlDraw.ends ();
-  in
-    
   let inverse_coord x y =
     let w = float (Glut.get Glut.WINDOW_WIDTH)
     and h = float (Glut.get Glut.WINDOW_HEIGHT) in
@@ -160,6 +183,33 @@ let output ?(structure:structure={name="";displayname=[];
       l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page)
   in
 
+  let reshape_cb ~w ~h =
+    let ratio = (float_of_int w) /. (float_of_int h) in
+    let page = !cur_page in
+    let pw,ph = !pages.(page).pageFormat in
+    let cx = pw /. 2.0 +. !dx in
+    let cy = ph /. 2.0 +. !dy in
+    let rx = (ph *. ratio) /. 2.0 *. !zoom in
+    let ry = ph /. 2.0 *. !zoom in
+    pixel_width := rx *. 2.0 /. (float_of_int w);
+    pixel_height := ry *. 2.0 /. (float_of_int h);
+    
+    let set_proj () =
+      GlDraw.viewport 0 0 w h;
+      GlMat.mode `projection;
+      GlMat.load_identity ();
+      GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
+      GlMat.mode `modelview;
+      GlMat.load_identity ()
+    in
+  (*
+    Glut.useLayer(Glut.OVERLAY);
+    set_proj ();
+    Glut.useLayer(Glut.NORMAL);
+  *)
+    set_proj ()
+  in
+
   let is_edit uri =
     String.length(uri) >= 5 && String.sub uri 0 5 = "edit:"
   in
@@ -168,7 +218,6 @@ let output ?(structure:structure={name="";displayname=[];
 
   let saved_rectangle = ref None in
   let to_revert = ref true in
-
 
   let old_menu = ref [] in
   let menu_item = Hashtbl.create 13 in
@@ -230,56 +279,7 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-
  
-  let add_normals closed ratio beziers =
-
-    let tesselation_factor = !prefs.tesselation_factor  in
-  
-    if closed then
-      let beziers = Bezier.oriente beziers in
-      List.split (List.map (fun (bs, orientation) -> 
-	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	(* FIXME: close the curve if it is not closed !!! *)
-	let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
-	List.split (List.map (fun (xs, ys) -> 
-	  let a, b = !prev in
-	  let xp = Bezier.derivee_start ys +. a in
-	  let yp =  -. (Bezier.derivee_start xs) +. b in
-	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
-	  let n = if classify_float n <> FP_normal then 0.0 else n in
-	  let n = if orientation then n else -. n in
-	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
-      ) beziers) 
-    else
-      List.split (List.map (fun bs -> 
-	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	let prev = ref None in
-	let ln = 
-	  List.map (fun (xs, ys) -> 
-	    let xp, yp =
-	      match !prev with
-		None -> 
-		  Bezier.derivee_start ys, -. (Bezier.derivee_start xs)
-	      | Some(_,_,a,b) -> 
-		Bezier.derivee_start ys +. a, -. (Bezier.derivee_start xs) +. b 
-	    in
-	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
-	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
-	in
-	let last = 
-	  match !prev with
-	    None -> assert false
-	  | Some(xs,ys,xp,yp) -> 
-	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
-	    let s = Array.length xs in
-	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
-	in
-	List.split (ln @ [last])
-    ) beziers) 
-  in
 
   let mode = ref Single in
 
@@ -297,11 +297,12 @@ let output ?(structure:structure={name="";displayname=[];
     let draw_page page =
       let graisse =  !prefs.graisse in
       let graisse_x = flou_x () +. graisse and graisse_y = flou_y () +. graisse in
-      
+      max_state := 0;
+      min_state := max_int;
 
       draw_blank page;
 
-      List.iter (function
+      let rec fn = function
       Glyph g ->
         let x = g.glyph_x in
         let y = g.glyph_y  in
@@ -446,6 +447,11 @@ let output ?(structure:structure={name="";displayname=[];
 
     | Link(link) -> ()
 
+    | States (a,s) ->
+      max_state := max !max_state (Util.IntSet.max_elt s);
+      min_state := min !min_state (Util.IntSet.min_elt s);
+      if Util.IntSet.mem !cur_state s then fn a
+	
     | Image i -> 
       Gl.enable `texture_2d;
 #ifdef CAMLIMAGES
@@ -493,8 +499,10 @@ let output ?(structure:structure={name="";displayname=[];
       GlDraw.vertex2 (i.image_x, i.image_y +. i.image_height);
       GlDraw.ends ();
       Gl.disable `texture_2d;
-    ) !pages.(page).pageContents
+      in
+      List.iter fn !pages.(page).pageContents
     in
+
 
     let do_draw () =
       match !mode with
@@ -587,9 +595,17 @@ let output ?(structure:structure={name="";displayname=[];
     else begin
       (match key with
       | 27 | 120 | 113 (* ESC *) -> raise Exit
-      | 110 | 32 -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
-      | 112 | 8 -> if !cur_page > 0 then (decr cur_page; redraw ());
-      | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); redraw ();
+      | 110 -> 
+	if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
+      | 32 -> 
+	if !cur_state < !max_state then (incr cur_state; redraw ())
+	else if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
+      | 112 -> 
+	if !cur_page > 0 then (decr cur_page; cur_state := 0; redraw ());
+      | 8 -> 
+	if !cur_state > !min_state then (decr cur_state; redraw ())
+	else if !cur_page > 0 then (decr cur_page; redraw ());
+      | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw ();
       | 43 -> 
 	if Glut.getModifiers () = Glut.active_shift then (
 	  Hashtbl.clear glyphCache;
@@ -627,8 +643,8 @@ let output ?(structure:structure={name="";displayname=[];
     | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
     | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
-    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (incr cur_page; redraw ());
-    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; redraw ());
+    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
+    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; cur_state := 0; redraw ());
 (*    | Glut.KEY_HOME -> 
     | Glut.KEY_END ->
 *)
@@ -711,6 +727,7 @@ let output ?(structure:structure={name="";displayname=[];
 	l0 c0; flush stderr
     | (_,_,Some(l,i)) -> 
       cur_page:= i;
+      cur_state := 0;
       draw_gl_scene ();
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
@@ -780,6 +797,7 @@ let output ?(structure:structure={name="";displayname=[];
 	    if l.uri = "" then
 	      begin
 		cur_page := l.dest_page;
+		cur_state := 0;
 		redraw ();
 	      end
 	    else
