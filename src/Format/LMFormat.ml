@@ -217,6 +217,4 @@ module LMArticle = struct
   module Format (D : DocumentStructure) =
     FormatArticle.MakeFormat (D)
       (MakeFormat (D) (DefaultFormat.Format(D)))
-
-  module Output = FormatArticle.Output
 end
