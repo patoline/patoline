@@ -144,6 +144,7 @@ type 'a node={
   node_tags:(string*string) list;
   node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
   node_post_env:'a environment -> 'a environment -> 'a environment;(** Changement d'environnement quand on en sort *)
+  node_states:Util.IntSet.t;
   mutable node_paragraph:int;
 }
 and 'a paragraph={
@@ -264,6 +265,7 @@ let empty:user node=
       counters=y.counters;
       names=names y;
       user_positions=user_positions y });
+    node_states=IntSet.empty;
     node_paragraph=0 }
 
 type 'a cxt=(int*'a tree) list
@@ -993,8 +995,8 @@ let flatten env0 fixable str=
           let flushes'=ref [] in
           let flat_children k a (is_first,indent, env1)=match a with
               Paragraph p->(
-                  let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
-                    Paragraph { p with par_contents=
+                let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
+                  Paragraph { p with par_contents=
                         (if is_first then (
                            let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
                              [Env (fun env->

@@ -485,6 +485,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                    node_env=(fun x->x);
                    node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
                      user_positions=y.user_positions });
+                   node_states=IntSet.empty;
                    node_paragraph=0 },path
 	in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
