@@ -7,14 +7,14 @@ ifdef GL_PACK
 PACK+=$(GL_PACK)
 NATIVE_EXTRA+=Patoline/PatolineGL
 else
-  DRIVERS:=$(filter-out Drivers/GL.ml,$(DRIVERS))
+  DRIVERS:=$(filter-out Drivers/GL.cmxa,$(DRIVERS))
 endif
 
 ifdef GLGTK_PACK
 PACK+=$(GLGTK_PACK)
 NATIVE_EXTRA+=Patoline/PatolineGL2
 else
-  DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
+  DRIVERS:=$(filter-out Drivers/GL2.cmxa,$(DRIVERS))
 endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK)
