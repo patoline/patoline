@@ -5,6 +5,22 @@ open OutputCommon
 open OutputPaper
 open Util
 
+type subpixel_anti_aliasing =
+  No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
+
+type prefs = {
+  subpixel_anti_aliasing : subpixel_anti_aliasing;
+  graisse : float;
+  tesselation_factor : float;
+  
+}
+
+let prefs = ref {
+  subpixel_anti_aliasing = RGB_SAA;
+  graisse = -0.1;
+  tesselation_factor = 1.0/.3.0;
+}
+
 let cur_page = ref 0
 
 let init_gl () =
@@ -25,7 +41,21 @@ let filename x=""
 let zoom = ref 1.0
 let dx = ref 0.0
 let dy = ref 0.0
-let subpixel = ref (Some(1.0 /. 3.0, 0.0, -. 1.0 /. 3.0, 0.0))
+let subpixel () =
+  match !prefs.subpixel_anti_aliasing with
+    No_SAA -> None
+  | RGB_SAA -> Some(1.0 /. 3.0, 0.0, -. 1.0 /. 3.0, 0.0)
+  | BGR_SAA -> Some(-. 1.0 /. 3.0, 0.0, 1.0 /. 3.0, 0.0)
+  | VRGB_SAA -> Some(0.0, 1.0 /. 3.0, 0.0, -. 1.0 /. 3.0)
+  | VBGR_SAA -> Some(0.0, -. 1.0 /. 3.0, 0.0, 1.0 /. 3.0)
+
+let flou_x () =
+  match !prefs.subpixel_anti_aliasing with
+    RGB_SAA | BGR_SAA -> 1.0 /. 6.0 | _ -> 1.0 /. 2.0
+
+let flou_y () =
+  match !prefs.subpixel_anti_aliasing with
+    VRGB_SAA | VBGR_SAA -> 1.0 /. 6.0 | _ -> 1.0 /. 2.0
 
 let glyphCache = Hashtbl.create 1001
 #ifdef CAMLIMAGES
@@ -200,12 +230,12 @@ let output ?(structure:structure={name="";displayname=[];
     Gc.compact ();
   in
 
-  let flou_x = 1.0 /. 6.0 and flou_y = 1.0 /. 2.0 (* 1.0 /. 3.0 et 1.0 plus logique ?*) in
-  let graisse = ref 0.0 (* entre -1 et 1 pour rester raisonnable *) in
- 
-  let tesselation_factor = 0.25 in
 
+ 
   let add_normals closed ratio beziers =
+
+    let tesselation_factor = !prefs.tesselation_factor  in
+  
     if closed then
       let beziers = Bezier.oriente beziers in
       List.split (List.map (fun (bs, orientation) -> 
@@ -265,8 +295,8 @@ let output ?(structure:structure={name="";displayname=[];
     in
 
     let draw_page page =
-      let graisse = !graisse in
-      let graisse_x = flou_x +. graisse and graisse_y = flou_y +. graisse in
+      let graisse =  !prefs.graisse in
+      let graisse_x = flou_x () +. graisse and graisse_y = flou_y () +. graisse in
       
 
       draw_blank page;
@@ -490,7 +520,7 @@ let output ?(structure:structure={name="";displayname=[];
 
 
     begin
-      match !subpixel with 
+      match subpixel () with 
 	None -> do_draw ();
       | Some (xr,yr, xb,yb) ->
 	GlFunc.color_mask ~red:false ~green:true ~blue:false ();
@@ -518,6 +548,31 @@ let output ?(structure:structure={name="";displayname=[];
     )
   in
 
+(* Ne marche pas 
+  let rotate_page i =
+    let time = Sys.time () in
+    let angle = ref 0.0 in
+    saved_rectangle := None;
+    if !to_revert then revert ();
+
+    while !angle < 1.57 do
+      let delta = Sys.time () -. time in
+      angle := delta /. 2.0 *. 1.57;
+      Printf.printf "angle: %f\n" !angle;
+      flush stdout;
+      GlClear.clear [`color;`depth];
+      GlMat.load_identity ();
+      GlMat.rotate3 !angle (0.0,-1.0,0.0);
+      Gl.disable `blend;
+      draw_blank (!cur_page - i);
+      GlMat.load_identity ();      
+      draw_page (!cur_page);
+      Glut.swapBuffers ();
+      Gl.enable `blend;
+    done;
+  in
+*)
+    
 
   let redraw () =
     reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
@@ -538,16 +593,26 @@ let output ?(structure:structure={name="";displayname=[];
       | 43 -> 
 	if Glut.getModifiers () = Glut.active_shift then (
 	  Hashtbl.clear glyphCache;
-	  graisse := !graisse +. 0.05;
-	  Printf.printf "Graisse : %f\n" !graisse; flush stdout;
+	  prefs := { !prefs with graisse = !prefs.graisse +. 0.05 };
+	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
+	  redraw ())
+	else if Glut.getModifiers () = Glut.active_ctrl then (
+	  Hashtbl.clear glyphCache;
+	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor *. 2.0 };
+	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
 	  redraw ())
 	else
 	  zoom := !zoom /. 1.1; redraw ();
       | 45 ->
 	if Glut.getModifiers () = Glut.active_shift then (
 	  Hashtbl.clear glyphCache;
-	  graisse := !graisse -. 0.05;
-	  Printf.printf "Graisse : %f\n" !graisse; flush stdout;
+	  prefs := { !prefs with graisse = !prefs.graisse -. 0.05 };
+	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
+	  redraw ())
+	else if Glut.getModifiers () = Glut.active_ctrl then (
+	  Hashtbl.clear glyphCache;
+	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor /. 2.0 };
+	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
 	  redraw ())
 	else
 	  zoom := !zoom *. 1.1; redraw ();
