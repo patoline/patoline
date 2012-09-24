@@ -1339,6 +1339,11 @@ module MathsFormat=struct
                     fun _ _->Maths.Env (fun env->Maths.change_fonts env env.font)::a
                   )]
 
+    let displayStyle a=[Maths.Scope(
+      fun _ _->Maths.Env (fun env-> { env with mathStyle
+        = Mathematical.Display })::a
+    )]
+
     let oline a=
       [Maths.Ordinary
          (Maths.noad
