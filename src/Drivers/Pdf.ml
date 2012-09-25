@@ -395,6 +395,7 @@ let output ?(structure:structure={name="";displayname=[];
                  (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
 #endif
 )
+        | States (a,b)->output_contents a
       in
         List.iter output_contents pages.(page).pageContents;
         close_text ();

@@ -13,10 +13,33 @@ let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 let coord x=3.*.x
 
-(* draw prend un nom de fichier, une largeur, une hauteur, du contenu,
-   et écrit ce contenu dans le fichier svg. *)
-let draw ?fontCache standalone w h contents=
+let assemble style title svg=
   let svg_buf=Rbuffer.create 256 in
+  Rbuffer.add_string svg_buf "<defs>";
+  Rbuffer.add_string svg_buf "<style type=\"text/css\">\n<![CDATA[\n";
+  Rbuffer.add_buffer svg_buf style;
+  Rbuffer.add_string svg_buf "]]>\n</style>\n";
+  Rbuffer.add_string svg_buf "</defs>";
+  Rbuffer.add_string svg_buf "<title>";
+  Rbuffer.add_string svg_buf title;
+  Rbuffer.add_string svg_buf "</title>";
+  Rbuffer.add_buffer svg_buf svg;
+  svg_buf
+
+let standalone w h style title svg=
+  let svg_buf=Rbuffer.create 256 in
+  Rbuffer.add_string svg_buf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1 Tiny//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd\">
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\"";
+  Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\"" (round (coord w)) (round (coord h)));
+  Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">";
+  Rbuffer.add_buffer svg_buf (assemble style title svg);
+  svg_buf
+
+
+let draw ?fontCache w h contents=
+  let svg_buf=Rbuffer.create 256 in
+  let def_buf=Rbuffer.create 256 in
 
   let fontCache=match fontCache with
       None->build_font_cache [|contents|]
@@ -41,15 +64,6 @@ let draw ?fontCache standalone w h contents=
   in
   (****)
 
-  if standalone then (
-    Rbuffer.add_string svg_buf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1 Tiny//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd\">
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\"";
-    Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\"" (round (coord w)) (round (coord h)));
-    Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">"
-  );
-
-  Rbuffer.add_string svg_buf "<defs>\n";
 
   let buf=Rbuffer.create 100 in
 
@@ -136,22 +150,16 @@ let draw ?fontCache standalone w h contents=
   (* in *)
 
   (* Version alternative avec opentype *)
-  Rbuffer.add_string svg_buf "<style type=\"text/css\">\n<![CDATA[\n";
   StrMap.iter (fun full class_name->
-    Rbuffer.add_string svg_buf "@font-face { font-family:";
-    Rbuffer.add_string svg_buf class_name;
-    Rbuffer.add_string svg_buf "; src:url(\"";
-    Rbuffer.add_string svg_buf full;
-    Rbuffer.add_string svg_buf ".otf\") format(\"opentype\"); }\n"
+    Rbuffer.add_string def_buf "@font-face { font-family:";
+    Rbuffer.add_string def_buf class_name;
+    Rbuffer.add_string def_buf "; src:url(\"";
+    Rbuffer.add_string def_buf full;
+    Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
   ) fontCache.classes;
-  Rbuffer.add_string svg_buf "]]>\n</style>\n";
-  Rbuffer.add_string svg_buf "</defs>\n";
+
 
   (* Écriture du contenu à proprement parler *)
-
-  Rbuffer.add_string svg_buf "<title>";
-  Rbuffer.add_string svg_buf "titre";
-  Rbuffer.add_string svg_buf "</title>\n";
 
   let cur_x=ref 0. in
   let cur_y=ref 0. in
@@ -163,9 +171,6 @@ let draw ?fontCache standalone w h contents=
   List.iter (fun cont->match cont with
       Glyph x->(
         let _,fontName=className fontCache x.glyph in
-        (* Printf.fprintf o "<g font-family=\"%s\" font-size=\"%d\" " *)
-        (*   fontName *)
-        (*   (round (coord x.glyph_size)); *)
         let size=x.glyph_size in
         if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
           || !cur_size<>size || !cur_color<>x.glyph_color || not !opened_text
@@ -260,8 +265,7 @@ let draw ?fontCache standalone w h contents=
   if !opened_text then (
     Rbuffer.add_string svg_buf "</text>";
   );
-  if standalone then Rbuffer.add_string svg_buf "</svg>";
-  svg_buf
+  def_buf,svg_buf
 
 
 
@@ -366,7 +370,8 @@ window.onkeydown=function(e){
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
     Printf.fprintf html "<svg  viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h));
-    Rbuffer.output_buffer html (draw ~fontCache:cache false w h pages.(i).pageContents);
+    let defs,svg=draw ~fontCache:cache w h pages.(i).pageContents in
+    Rbuffer.output_buffer html (assemble defs "" svg);
     Printf.fprintf html "</svg>\n";
     Printf.fprintf html "</div></body></html>";
     close_out html
