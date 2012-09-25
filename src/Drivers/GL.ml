@@ -450,7 +450,7 @@ let output ?(structure:structure={name="";displayname=[];
     | States (a,s) ->
       max_state := max !max_state (Util.IntSet.max_elt s);
       min_state := min !min_state (Util.IntSet.min_elt s);
-      if Util.IntSet.mem !cur_state s then fn a
+      if Util.IntSet.mem !cur_state s then List.iter fn a
 	
     | Image i -> 
       Gl.enable `texture_2d;

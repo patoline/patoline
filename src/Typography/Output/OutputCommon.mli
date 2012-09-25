@@ -48,7 +48,7 @@ type contents =
   | Path of path_parameters * Bezier.curve array list
   | Link of link
   | Image of image
-  | States of contents*Util.IntSet.t
+  | States of contents list*Util.IntSet.t
 
 val translate : float -> float -> contents -> contents
 val resize : float -> contents -> contents

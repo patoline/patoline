@@ -51,7 +51,7 @@ type contents=
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
   | Image of image
-  | States of contents*Util.IntSet.t
+  | States of contents list*Util.IntSet.t
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
@@ -59,7 +59,7 @@ let rec translate x y=function
   | Link l -> Link { l with link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
                        link_x1=l.link_x1+.x; link_y1=l.link_y1+.y }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
-  | States (a,b)->States ((translate x y a), b)
+  | States (a,b)->States ((List.map (translate x y) a), b)
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
@@ -69,7 +69,7 @@ let rec resize alpha=function
                        link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha }
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
-  | States (a,b)->States ((resize alpha a), b)
+  | States (a,b)->States ((List.map (resize alpha) a), b)
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
@@ -112,7 +112,7 @@ let bounding_box_opt opt l=
           (max x1 (i.image_x+.i.image_width))
           (max y1 (i.image_y+.i.image_height)) s
 
-    | States (a,b)::s->bb x0 y0 x1 y1 (a::s)
+    | States (a,b)::s->bb x0 y0 x1 y1 (a@s)
 
     | _::s -> bb x0 y0 x1 y1 s
   in
