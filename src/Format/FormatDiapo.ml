@@ -71,7 +71,12 @@ module Format=functor (D:Document.DocumentStructure)->(
                 if IntSet.is_empty p.par_states then st
                 else IntSet.inter p.par_states st
             }
-          | Node n->Node { n with children=IntMap.map (restate st) n.children }
+          | Node n->Node { n with
+            children=IntMap.map (restate
+                                   (if IntSet.is_empty n.node_states then st
+                                    else IntSet.inter n.node_states st)
+            ) n.children
+          }
           | _->t
         in
         let states=List.fold_left (fun s x->IntSet.add x s) IntSet.empty S.arg1 in
@@ -115,7 +120,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                 let rec get_max_state t=match t with
                     Paragraph p->(try IntSet.max_elt p.par_states with Not_found -> 0)
-                  | Node n->IntMap.fold (fun _ a m->max m (get_max_state a)) n.children 0
+                  | Node n->
+                    IntMap.fold (fun _ a m->max m (get_max_state a)) n.children
+                      (try IntSet.max_elt n.node_states with Not_found->0)
                   | _->0
                 in
                 let max_state=get_max_state tree in
