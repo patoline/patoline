@@ -89,6 +89,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
       close_out f
 
     let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
+      if Array.length paragraphs=0 then ([],[||],IntMap.empty,UMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
@@ -539,4 +540,5 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
             Printf.fprintf stderr "%s" (Language.message (Language.No_solution ""));
             [],[||],IntMap.empty,UMap.empty
           )
+      end
   end)
