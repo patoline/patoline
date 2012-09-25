@@ -201,19 +201,47 @@ module Format=functor (D:Document.DocumentStructure)->(
                    les possibilités rencontrées. *)
                 (* Position verticale de la première ligne de chaque
                    paragraphe *)
-                let par_pos=Array.make (Array.length paragraphs0) 0. in
                 let par_current=Array.make_matrix (Array.length opts)
-                  (Array.length paragraphs0) 0.
+                  (Array.length paragraphs0) infinity
                 in
                 for i=0 to Array.length opts-1 do
                   List.iter (fun (_,line)->
                     if line.lineStart=0 then (
                       par_current.(i).(line.paragraph)<-line.height;
-                      if line.height>=par_pos.(line.paragraph) then
-                        par_pos.(line.paragraph)<-line.height
                     )
                   ) opts.(i)
                 done;
+
+                (* offs.(i) est la différence courante, dans l'état i,
+                   entre la hauteur calculée par l'optimiseur et la
+                   vraie hauteur, pour tous les paragraphes placés
+                   jusque là. *)
+                let offs=Array.make (Array.length opts) 0. in
+
+                (* par_pos.(p) est la position définitive du paragraphe p. *)
+                let par_pos=Array.make (Array.length paragraphs0) 0. in
+
+                for par=0 to Array.length paragraphs0-1 do
+
+                  (* Calculer les offsets après avoir placé le
+                     paragraphe par sur tous les états où il apparaît. *)
+                  let rec max_off i off=
+                    if i>=Array.length opts then off else (
+                      if par_current.(i).(par)<>infinity then
+                        max_off (i+1) (max (par_current.(i).(par)+.offs.(i)) off)
+                      else
+                        max_off (i+1) off
+                    )
+                  in
+                  par_pos.(par)<-max_off 0 0.;
+                  (* Mise à jour des nouvelles positions définitives *)
+                  for i=0 to Array.length opts-1 do
+                    if par_current.(i).(par)<>infinity then
+                      offs.(i)<-offs.(i)+.(par_pos.(par)-.par_current.(i).(par))
+                  done
+                done;
+
+                (*  *)
                 for i=0 to Array.length opts-1 do
                   opts.(i)<-List.map
                     (fun (a,b)->(a,{ b with
