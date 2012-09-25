@@ -258,7 +258,7 @@ and patoline_rule objects h=
           (last_format<> !format || last_driver<> !driver)
         ) else false
       in
-      if options_have_changed || compilation_needed [source] [h] then (
+      if options_have_changed || compilation_needed [source;Sys.argv.(0)] [h] then (
 	let dirs_=str_dirs opts in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s%s '%s'"
           !patoline
