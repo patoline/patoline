@@ -262,8 +262,17 @@ let _=
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
 
+          let check_name file=
+            let valid=ref (String.length file>0) in
+            for i=0 to String.length file-1 do
+              valid:= !valid && ((file.[i]>='a' && file.[i]<='z')
+                                 || (file.[i]>='A' && file.[i]<='Z')
+                                 || (file.[i]>='0' && file.[i]<='9'))
+            done;
+            !valid
+          in
           let make_meta_part dir file =
-            if Filename.check_suffix file ".ml"
+            if Filename.check_suffix file ".ml" && check_name (Filename.chop_extension file)
             then (
               let base_file = Filename.chop_extension file in
               let custom_meta = Filename.concat dir (base_file^".META") in
