@@ -14,7 +14,7 @@ let dirs = ref []
 let package_list = ref ["Typography"]
 let patoline=ref (Sys.argv.(0))
 let ocamlopt=ref "ocamlopt"
-
+let recompile=ref false
 let quiet=ref false
 open Language
 let spec =
@@ -28,7 +28,7 @@ let spec =
      Config.grammarspath:=x::(!Config.grammarspath);
      dirs := x :: !dirs),
     message (Cli Dirs));
-
+   ("--recompile",Arg.Unit(fun ()->recompile:=true),message (Cli Recompile));
    ("--no-grammar",Arg.Unit (fun ()->Config.grammarspath:=[]), message (Cli No_grammar));
    ("--format",Arg.String
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
@@ -240,7 +240,7 @@ and patoline_rule objects h=
 
       let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
       let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-      if age_h<age_source then (
+      if age_h<age_source || !recompile then (
 	let dirs_=str_dirs opts in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s -c '%s'"
           !patoline
@@ -274,7 +274,7 @@ and patoline_rule objects h=
           let last_format,last_driver=last_options_used h in
           (last_format<> !format || last_driver<> !driver)
         ) else false
-      ) then (
+      ) || !recompile then (
 	let dirs_=str_dirs opts in
         let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s '%s'"
           !patoline
@@ -337,7 +337,7 @@ and patoline_rule objects h=
         true
     in
 
-    if age_h<age_source || cmi_is_older then (
+    if age_h<age_source || cmi_is_older || !recompile then (
       let i=open_in source in
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
@@ -382,7 +382,7 @@ and patoline_rule objects h=
 
     let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
     let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-    if age_h<age_source then (
+    if age_h<age_source || !recompile then (
       let mut,m=objects in
       Mutex.lock mut;
 

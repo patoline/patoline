@@ -119,13 +119,13 @@ let _=
     Printf.fprintf out "binary:all\nbuild:all\n";
     Printf.fprintf out "doc: Patoline.pdf\n\tmake -C src doc\n\n";
     Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx src/Rbuffer/rbuffer.cmxa src/Typography/Typography.cmxa src/Format/DefaultFormat.cmxa src/Drivers/Pdf.cmxa
-	./src/Patoline/patoline --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
+	./src/Patoline/patoline --recompile --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
 	ocamlfind ocamlopt -package camomile%s -linkpkg -I src -I src/Rbuffer rbuffer.cmxa -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
 	./Patoline.tmx --extra-fonts-dir Fonts
 "  (if !camlzip="" then "" else (","^(!camlzip)));
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
-      Printf.fprintf out "\tcd tests; ../src/Patoline/patoline -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
+      Printf.fprintf out "\tcd tests; ../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
 
     Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/quail.el patoline-input.post > patoline-input.el\n";
 

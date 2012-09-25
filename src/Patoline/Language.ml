@@ -40,6 +40,7 @@ and command_line=
   | Quiet
   | Remaining
   | No_line_directive
+  | Recompile
 
 #ifdef LANG_FR
 let lang=`FR
@@ -83,6 +84,7 @@ let message=function
       | Quiet->"Ne pas afficher les commandes de compilation"
       | Remaining->"Passer les arguments suivants au compilateur caml"
       | No_line_directive->"Ne pas générer de #line dans le caml produit"
+      | Recompile->"Tout recompiler"
   )
 
 #else
@@ -128,5 +130,6 @@ let message=function
       | Quiet->"Do not output the compilation commands"
       | Remaining->"Forward the remaining arguments to the caml compiler"
       | No_line_directive->"Do not add #line directives in the generated caml code"
+      | Recompile->"Recompile everything"
   )
 #endif
