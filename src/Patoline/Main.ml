@@ -229,26 +229,45 @@ and make_deps source=
   Build.sem_up Build.sem;
   !ldeps
 
+
+and compilation_needed sources targets=
+  if !recompile then true else (
+    let max_sources=List.fold_left (fun m f->
+      if Sys.file_exists f then max m (Unix.stat f).Unix.st_mtime else infinity
+    ) (-.infinity) sources
+    in
+    let min_targets=List.fold_left (fun m f->
+      if Sys.file_exists f then min m (Unix.stat f).Unix.st_mtime else (-.infinity)
+    ) (infinity) targets
+    in
+    max_sources>=min_targets
+  )
+
 and patoline_rule objects h=
-  if Filename.check_suffix h ".ttml" then
+  if Filename.check_suffix h ".ttml" || Filename.check_suffix h ".tml" then
     (
-      let source=(Filename.chop_suffix h ".ttml")^".txp" in
+      let source=(Filename.chop_extension h)^".txp" in
       let in_s=open_in source in
       let opts=read_options_from_source_file in_s in
       close_in in_s;
       List.iter Build.build opts.deps;
 
-      let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-      let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-      if age_h<age_source || !recompile then (
+      let options_have_changed=
+        if Sys.file_exists h then (
+          let last_format,last_driver=last_options_used h in
+          (last_format<> !format || last_driver<> !driver)
+        ) else false
+      in
+      if options_have_changed || compilation_needed [source] [h] then (
 	let dirs_=str_dirs opts in
-        let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s -c '%s'"
+        let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s%s '%s'"
           !patoline
           dirs_
           (if opts.format<>"DefaultFormat" then " --format " else "")
           (if opts.format<>"DefaultFormat" then opts.format else "")
 	  (if !Generateur.edit_link then " --edit-link" else "")
 	  opts.driver
+          (if Filename.check_suffix h ".ttml" then " -c" else "")
           source
         in
         if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
@@ -259,57 +278,20 @@ and patoline_rule objects h=
       );
       true
     )
-  else if Filename.check_suffix h ".tml" then
-    (
-      let source=(Filename.chop_suffix h ".tml")^".txp" in
-      let in_s=open_in source in
-      let opts=read_options_from_source_file in_s in
-      close_in in_s;
-      List.iter Build.build opts.deps;
-
-      let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-      let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-      if age_h<age_source || (
-        if Sys.file_exists h then (
-          let last_format,last_driver=last_options_used h in
-          (last_format<> !format || last_driver<> !driver)
-        ) else false
-      ) || !recompile then (
-	let dirs_=str_dirs opts in
-        let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s '%s'"
-          !patoline
-          dirs_
-          (if opts.format<>"DefaultFormat" then " --format " else "")
-          (if opts.format<>"DefaultFormat" then opts.format else "")
-	  (if !Generateur.edit_link then " --edit-link" else "")
-	  opts.driver
-          source
-        in
-        if not !quiet then (Printf.fprintf stdout "%s\n" cmd; flush stdout);
-        let err=Build.command cmd in
-        if err<>0 then (
-          failwith ("error : "^h);
-        )
-      );
-      true
-    )
-  else if Filename.check_suffix h ".ml" then (
+  else if Filename.check_suffix h ".ml" || Filename.check_suffix h ".mli" then (
     Sys.file_exists h;
   )
-  else if Filename.check_suffix h ".cmx" then (
+  else if Filename.check_suffix h ".cmx" || Filename.check_suffix h ".cmi" then (
 
     let pref=Filename.chop_extension h in
-    let source_ml=pref^".ml" in
     let source=
-      if Sys.file_exists source_ml then source_ml else (
-        pref^".ttml"
-      )
+      if Filename.check_suffix h ".cmi" && Sys.file_exists (pref^".mli") then pref^".mli" else
+        if Sys.file_exists (pref^".ml") then (pref^".ml") else
+          pref^".ttml"
     in
     Build.build source;
 
-
     let deps0=make_deps source in
-    List.iter (Printf.fprintf stderr "%S -> %S\n" h) deps0;
 
     let mut,m=objects in
     Mutex.lock mut;
@@ -318,26 +300,8 @@ and patoline_rule objects h=
 
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
-
-    let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-    let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-
-    (* Gestion des "incoherent assumptions" (cmi) *)
-    let my_cmi=pref^".cmi" in
-    let cmi_is_older=if Sys.file_exists my_cmi then
-        let age_cmi=(Unix.stat my_cmi).Unix.st_mtime in
-        List.fold_left (fun m x->
-          let x_cmi=((Filename.chop_extension x)^".cmi") in
-          if Sys.file_exists x_cmi then
-            m || ((Unix.stat x_cmi).Unix.st_mtime >= age_cmi)
-          else
-            true
-        ) false deps0
-      else
-        true
-    in
-
-    if age_h<age_source || cmi_is_older || !recompile then (
+    let cmis=List.map (fun x->Filename.chop_extension x^".cmi") deps0 in
+    if compilation_needed (source::cmis) [h;pref^".cmi"] then (
       let i=open_in source in
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
@@ -380,27 +344,25 @@ and patoline_rule objects h=
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
 
-    let age_h=if Sys.file_exists h then (Unix.stat h).Unix.st_mtime else -.infinity in
-    let age_source=if Sys.file_exists source then (Unix.stat source).Unix.st_mtime else infinity in
-    if age_h<age_source || !recompile then (
-      let mut,m=objects in
-      Mutex.lock mut;
+    let mut,m=objects in
+    Mutex.lock mut;
 
-      let rec breadth_first h l=match h with
-          []->l
-        | _::_->
-          let rec make_next h0 l0 h=match h with
-              []->h0,l0
-            | a::b->
-              let next=try StrMap.find a !m with Not_found->[] in
-              let h1=List.fold_left (fun h2 x->x::h2) h0 next in
-              let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
-              make_next h1 l1 b
-          in
-          let h1,l1=make_next [] l h in
-          breadth_first h1 l1
-      in
-      let objs=breadth_first [h] [] in
+    let rec breadth_first h l=match h with
+        []->l
+      | _::_->
+        let rec make_next h0 l0 h=match h with
+            []->h0,l0
+          | a::b->
+            let next=try StrMap.find a !m with Not_found->[] in
+            let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+            let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+            make_next h1 l1 b
+        in
+        let h1,l1=make_next [] l h in
+        breadth_first h1 l1
+    in
+    let objs=breadth_first [h] [] in
+    if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
       let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
         !ocamlopt
@@ -409,8 +371,8 @@ and patoline_rule objects h=
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
         h
-	(String.concat " " objs)
-	source
+        (String.concat " " objs)
+        source
       in
       Mutex.unlock mut;
 
@@ -420,9 +382,13 @@ and patoline_rule objects h=
         failwith ("error : "^h)
       )
     );
-    true
+  true
   )
   else false
+
+
+(* Gestion de la compilation de plusieurs fichiers patolines différents. *)
+
 and process_each_file l=
   if l=[] then
     Printf.fprintf stderr "%s\n" (Language.message No_input_file)
@@ -453,9 +419,9 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          let suppl=Printf.sprintf "(* #PACKAGES %s *)%s\n" 
+          let suppl=Printf.sprintf "(* #PACKAGES %s *)%s\n"
 	    (String.concat "," opts.packages)
-	    (if opts.directories <> [] then 
+	    (if opts.directories <> [] then
 		(Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
 	     else "")
           in
@@ -465,7 +431,6 @@ and process_each_file l=
         close_in fread;
       )
     ) l
-
 
 (************************************************)
 
