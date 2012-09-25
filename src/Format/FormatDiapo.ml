@@ -61,12 +61,14 @@ module Format=functor (D:Document.DocumentStructure)->(
       val arg1 : int list
     end
     module Env_states (S:States)=struct
-      let do_begin_env ()=env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node empty);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
       let do_end_env ()=
         let rec restate st t=match t with
             Paragraph p->Paragraph { p with
               par_states=
-                if p.par_states=IntSet.empty then st
+                if IntSet.is_empty p.par_states then st
                 else IntSet.inter p.par_states st
             }
           | Node n->Node { n with children=IntMap.map (restate st) n.children }
@@ -74,7 +76,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         let states=List.fold_left (fun s x->IntSet.add x s) IntSet.empty S.arg1 in
         let slide,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
-        D.structure:=(restate states slide,path);
+        D.structure:=up (restate states slide,path);
         env_stack:=List.tl !env_stack
     end
 
@@ -124,7 +126,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                   figures0,figure_trees0=flatten env fixable tree
                 in
 
-                (* Pour chaque paragraphe, l'ensemble des états où il apparaît *)
                 let opts=Array.make (max_state+1) [] in
 
                 (* Typesetting de tous les états *)
