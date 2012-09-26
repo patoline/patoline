@@ -34,7 +34,7 @@ and 'a fraction= { numerator:'a math list; denominator:'a math list; line: 'a Do
 and 'a operator= { op_noad:('a,'a nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of ('a,'a nucleus) noad 
-  | Glue of float
+  | Glue of drawingBox
   | Env of ('a Document.environment->'a Document.environment)
   | Scope of ('a Document.environment->Mathematical.style->'a math list)
   | Binary of 'a binary
@@ -259,15 +259,9 @@ let rec draw env_stack mlist=
     match mlist with
 
         []->[]
-      | h::Glue x::Glue y::s->draw env_stack (h::Glue (x+.y)::s)
-      | Glue _::s->draw env_stack s
-      | h::Glue x::s->(
-          let left=draw env_stack [h] in
-            (match List.rev left with
-                 []->[]
-               | h0::s0->List.rev (Kerning { (Fonts.FTypes.empty_kern h0) with Fonts.FTypes.advance_width=x }::s0))
-              @ (draw env_stack s)
-        )
+      | Glue x::s->(
+	  let right=draw env_stack s in
+	  Box.Glue x :: right)
       | Scope l::s->(
           (draw env_stack (l env style))@(draw env_stack s)
         )
