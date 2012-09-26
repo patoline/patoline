@@ -329,7 +329,7 @@ let output ?(structure:structure={name="";displayname=[];
       "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
-<meta charset=utf-8>
+<meta charset=\"utf-8\">
 <title>%s</title>"      structure.name;
     if not noscript then
       Printf.fprintf html "<script>
