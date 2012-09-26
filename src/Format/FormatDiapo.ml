@@ -28,8 +28,17 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     module Default=DefaultFormat.Format(D)
     include (Default:module type of Default with module Output:=Default.Output)
+
+    let mes=(slidew/.2.)*.phi
+    let defaultEnv:user environment={
+      Default.defaultEnv with
+        normalMeasure=mes;
+        normalLeftMargin=(slidew-.mes)/.2.;
+        par_indent=[]
+    }
+
     let parameters a b c d e f g=
-      { (Default.parameters a b c d e f g) with page_height=infinity }
+      { (Default.parameters a b c d e f g) with page_height=2.*.slideh }
 
 
     module type Title = sig
@@ -91,13 +100,6 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
 
 
-    let mes=(slidew/.2.)*.phi
-    let defaultEnv:user environment={
-      Default.defaultEnv with
-        normalMeasure=mes;
-        normalLeftMargin=(slidew-.mes)/.2.;
-        par_indent=[]
-    }
 
     module Output(M:OutputPaper.Driver)=struct
 
