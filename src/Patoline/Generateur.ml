@@ -93,7 +93,8 @@ open Patoline_Format;;\n" format
 
 
 let postambule driver outfile = Printf.sprintf "
-let _ =Patoline_Format.output (module %s:Patoline_Format.Driver) Patoline_Format.outputParams D.structure Patoline_Format.defaultEnv %S
+module Patoline_Output=Patoline_Format.Output(%s)
+let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) Patoline_Format.defaultEnv %S
 " driver outfile
 
 module Source = struct

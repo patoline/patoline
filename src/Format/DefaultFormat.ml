@@ -1062,245 +1062,244 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
 
 
+    module Output(M:OutputPaper.Driver)=struct
+      (** Output routines. An output routine is just a functor taking a driver module *)
+      open OutputPaper
+      open OutputCommon
+      module type Driver=OutputPaper.Driver
+      type defaultOutputParam={
+        mutable format:user Box.box array array->(user Document.tree*user Document.cxt) array->
+                       Box.drawingBox array->(user Document.tree*user Document.cxt) array->
+                       (Line.parameters*Line.line) list -> OutputPaper.page;
+        mutable pageNumbers:OutputPaper.page->user environment->int->unit
+      }
+      let max_iterations=ref 3
+      let outputParams={
+        format=(fun _ _ _ _ _->{ pageFormat=a4; pageContents=[] });
+        pageNumbers=(fun page env n->
+          let pnum=glyph_of_string env.substitutions env.positioning env.font env.size env.fontColor (string_of_int (n+1)) in
+          let (_,w,_)=boxes_interval (Array.of_list pnum) in
+          let x=(fst page.pageFormat -. w)/.2. in
+          let _=List.fold_left (fun x0 b->match b with
+              (GlyphBox a)->(
+                let (_,w,_)=box_interval b in
+                page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x0;glyph_y=20. })
+                :: page.pageContents;
+                x0+.w
+               )
+            | _ -> x0
+          ) x pnum
+          in
+          ()
+        )
+      }
+      let basic_output out_params tree defaultEnv file=
+        let rec resolve i env0=
+          Printf.printf "Compilation %d\n" i; flush stdout;
+          let fixable=ref false in
+          let env1,fig_params,params,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
+          Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
+          let (logs,opt_pages,figs',user')=TS.typeset
+            ~completeLine:compl
+            ~figure_parameters:fig_params
+            ~figures:figures
+            ~parameters:params
+            ~badness:badness
+            paragraphs
+          in
+          Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
+          let env, reboot=update_names env1 figs' user' in
+          if i < !max_iterations-1 && reboot && !fixable then (
+            resolve (i+1) env
+          ) else (
 
-    (** Output routines. An output routine is just a functor taking a driver module *)
-    open OutputPaper
-    open OutputCommon
-    module type Driver=OutputPaper.Driver
-    type defaultOutputParam={
-      mutable format:user Box.box array array->(user Document.tree*user Document.cxt) array->
-                     Box.drawingBox array->(user Document.tree*user Document.cxt) array->
-                     (Line.parameters*Line.line) list -> OutputPaper.page;
-      mutable pageNumbers:OutputPaper.page->user environment->int->unit
-    }
-    let max_iterations=ref 3
-    let outputParams={
-      format=(fun _ _ _ _ _->{ pageFormat=a4; pageContents=[] });
-      pageNumbers=(fun page env n->
-        let pnum=glyph_of_string env.substitutions env.positioning env.font env.size env.fontColor (string_of_int (n+1)) in
-        let (_,w,_)=boxes_interval (Array.of_list pnum) in
-        let x=(fst page.pageFormat -. w)/.2. in
-        let _=List.fold_left (fun x0 b->match b with
-            (GlyphBox a)->(
-              let (_,w,_)=box_interval b in
-              page.pageContents<- (OutputCommon.Glyph { a with glyph_x=x0;glyph_y=20. })
-              :: page.pageContents;
-              x0+.w
-             )
-          | _ -> x0
-        ) x pnum
-        in
-        ()
-      )
-    }
-    let output m out_params structure defaultEnv file=
-      let module M=(val m:Driver) in
-      let rec resolve i env0=
-        Printf.printf "Compilation %d\n" i; flush stdout;
-        let tree=postprocess_tree (fst (top (!structure))) in
-        let fixable=ref false in
-        let env1,fig_params,params,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
-        Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
-        let (logs,opt_pages,figs',user')=TS.typeset
-          ~completeLine:compl
-          ~figure_parameters:fig_params
-          ~figures:figures
-          ~parameters:params
-          ~badness:badness
-          paragraphs
-        in
-        Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
-        let env, reboot=update_names env1 figs' user' in
-        if i < !max_iterations-1 && reboot && !fixable then (
-          resolve (i+1) env
-        ) else (
+            List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.Language.message x)) logs;
 
-          List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.Language.message x)) logs;
+            let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
+            let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in
+            let par=ref (-1) in
+            let crosslinks=ref [] in (* (page, link, destination) *)
+            let crosslink_opened=ref false in
+            let destinations=ref StrMap.empty in
+            let urilinks=ref None in
+            let draw_page i p=
+              pages.(i)<-out_params.format paragraphs paragraph_trees figures figure_trees p;
+              let page=pages.(i) in
+              let footnotes=ref [] in
+              let footnote_y=ref (-.infinity) in
+              let pp=Array.of_list p in
+              let w,h=page.pageFormat in
+              let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
+              for j=0 to Array.length pp-1 do
+                let param,line=pp.(j) in
+                let y=h-.topMargin-.line.height in
 
-          let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
-          let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in
-          let par=ref (-1) in
-          let crosslinks=ref [] in (* (page, link, destination) *)
-          let crosslink_opened=ref false in
-          let destinations=ref StrMap.empty in
-          let urilinks=ref None in
-          let draw_page i p=
-            pages.(i)<-out_params.format paragraphs paragraph_trees figures figure_trees p;
-            let page=pages.(i) in
-            let footnotes=ref [] in
-            let footnote_y=ref (-.infinity) in
-            let pp=Array.of_list p in
-            let w,h=page.pageFormat in
-            let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
-            for j=0 to Array.length pp-1 do
-              let param,line=pp.(j) in
-              let y=h-.topMargin-.line.height in
+                if line.isFigure then (
+                  let fig=figures.(line.lastFigure) in
+                  let y=
+                    if j>0 && j<Array.length pp-1 then
+                      let milieu=
+                        (h-.topMargin-.(snd pp.(j-1)).height+.fst (line_height paragraphs figures (snd pp.(j-1)))
+                         +.(h-.topMargin-.(snd pp.(j+1)).height+.snd (line_height paragraphs figures (snd pp.(j+1)))))/.2.
+                      in
+                      milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
+                    else
+                      y
+                  in
+	          if env.show_boxes then
+                    page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                                              [rectangle (param.left_margin,y+.fig.drawing_y0)
+                                                  (param.left_margin+.fig.drawing_nominal_width,
+                                                   y+.fig.drawing_y1)]) :: page.pageContents;
+                  page.pageContents<- (List.map (translate param.left_margin y)
+                                         (fig.drawing_contents fig.drawing_nominal_width))
+                  @ page.pageContents;
 
-              if line.isFigure then (
-                let fig=figures.(line.lastFigure) in
-                let y=
-                  if j>0 && j<Array.length pp-1 then
-                    let milieu=
-                      (h-.topMargin-.(snd pp.(j-1)).height+.fst (line_height paragraphs figures (snd pp.(j-1)))
-                       +.(h-.topMargin-.(snd pp.(j+1)).height+.snd (line_height paragraphs figures (snd pp.(j+1)))))/.2.
-                    in
-                    milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
-                  else
-                    y
-                in
-	        if env.show_boxes then
-                  page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
-                                            [rectangle (param.left_margin,y+.fig.drawing_y0)
-                                                (param.left_margin+.fig.drawing_nominal_width,
-                                                 y+.fig.drawing_y1)]) :: page.pageContents;
-                page.pageContents<- (List.map (translate param.left_margin y)
-                                       (fig.drawing_contents fig.drawing_nominal_width))
-                @ page.pageContents;
+                ) else if line.paragraph<Array.length paragraphs then (
 
-              ) else if line.paragraph<Array.length paragraphs then (
+                  if line.paragraph<> !par then (
+                    par:=line.paragraph;
+                    positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs figures line))
+                  );
 
-                if line.paragraph<> !par then (
-                  par:=line.paragraph;
-                  positions.(!par)<-(i,0., y +. phi*.snd (line_height paragraphs figures line))
-                );
-
-                let comp=compression paragraphs param line in
-                let rec draw_box x y box=
-                  let lowy=y+.lower_y box in
-                  let uppy=y+.upper_y box in
-                  (match !urilinks with
-                      None->()
-                    | Some h->(
-                      h.link_y0<-min h.link_y0 lowy;
-                      h.link_y1<-max h.link_y1 uppy
-                    ));
-                  if !crosslink_opened then
-                    (match !crosslinks with
-                        []->()
-                      | (_,h,_)::_->(
+                  let comp=compression paragraphs param line in
+                  let rec draw_box x y box=
+                    let lowy=y+.lower_y box in
+                    let uppy=y+.upper_y box in
+                    (match !urilinks with
+                        None->()
+                      | Some h->(
                         h.link_y0<-min h.link_y0 lowy;
                         h.link_y1<-max h.link_y1 uppy
                       ));
-                  match box with
-                      Kerning kbox ->(
-                        let fact=(box_size kbox.kern_contents/.1000.) in
-                        let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
-                        w+.kbox.advance_width*.fact
-                      )
-                    | Hyphen h->(
-                      (Array.fold_left (fun x' box->
-                        let w=draw_box (x+.x') y box in
-                        x'+.w) 0. h.hyphen_normal)
-                    )
-                    | GlyphBox a->(
-                      page.pageContents<-
-                        (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                      :: page.pageContents;
-                      a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
-                    )
-                    | Glue g
-                    | Drawing g ->(
-                      let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                      page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
-		      if env.show_boxes then
-                        page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
-                      w
-                    )
-                    | User (BeginURILink l)->(
-                      urilinks:=Some { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                       dest_page=0;dest_x=0.;dest_y=0. };
-                      0.
-                    )
-                    | User (BeginLink l)->(
-                      crosslinks:=(i, { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
-                                        dest_page=0;dest_x=0.;dest_y=0. }, l) :: !crosslinks;
-                      crosslink_opened:=true;
-                      0.
-                    )
-                    | User (Label l)->(
-                      let y0,y1=line_height paragraphs figures line in
-                      destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
-                      0.
-                    )
-                    | User EndLink->(
-                      (match !urilinks with
-                          None->(
-                            match !crosslinks with
-                                []->()
-                              | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
-                          )
-                        | Some h->(
-                          h.link_x1<-x;
-                          page.pageContents<-Link h::page.pageContents;
-                          urilinks:=None;
+                    if !crosslink_opened then
+                      (match !crosslinks with
+                          []->()
+                        | (_,h,_)::_->(
+                          h.link_y0<-min h.link_y0 lowy;
+                          h.link_y1<-max h.link_y1 uppy
+                        ));
+                    match box with
+                        Kerning kbox ->(
+                          let fact=(box_size kbox.kern_contents/.1000.) in
+                          let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
+                          w+.kbox.advance_width*.fact
                         )
-                      );
-                      0.
-                    )
-                    | User (Footnote (_,g))->(
-                      footnotes:= g::(!footnotes);
-                      footnote_y:=max !footnote_y (h-.topMargin-.param.page_height);
-                      0.
-                    )
-                    | b->box_width comp b
-                in
-                urilinks:=(match !urilinks with
-                    None->None
-                  | Some h->
-                    page.pageContents<-Link h::page.pageContents;
-                    Some { h with link_x0=param.left_margin;link_x1=param.left_margin;
-                      link_y0=y;link_y1=y });
-                if !crosslink_opened then
-                  crosslinks:=(match !crosslinks with
-                      []->[]
-                    | (a,h,c)::s->
-                      (a, { h with link_x0=param.left_margin;link_x1=param.left_margin;
-                        link_y0=y;link_y1=y }, c)::(a,h,c)::s);
-                let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
-                (match !urilinks with
-                    None->()
-                  | Some h->h.link_x1<-x1);
-                if !crosslink_opened then
-                  (match !crosslinks with
-                      []->()
-                    | (_,h,_)::_->h.link_x1<-x1)
-              )
-            done;
-            (match !urilinks with
-                None->()
-              | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
-            ignore (
-              List.fold_left (
-                fun y footnote->
-                  page.pageContents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1-.env.footnote_y))
-                                         (footnote.drawing_contents footnote.drawing_nominal_width)) @ page.pageContents;
-                  y-.(footnote.drawing_y1-.footnote.drawing_y0)
-              ) !footnote_y !footnotes
-            );
-            if !footnotes<>[] then (
-              page.pageContents<- (Path ({OutputCommon.default with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
-                                                                                              env.normalLeftMargin+.env.normalMeasure*.(2.-.phi) |],
-                                                                                         [| !footnote_y-.env.footnote_y;
-                                                                                            !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
-            );
-            out_params.pageNumbers page env i;
-            page.pageContents<-List.rev page.pageContents
-          in
-          for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
-          List.iter (fun (p,link,dest)->try
-                                          let (p',x,y0,y1)=StrMap.find dest !destinations in
-                                          pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
-                                          ::pages.(p).pageContents
-            with
-                Not_found->()
-          ) !crosslinks;
-          M.output ~structure:(make_struct positions tree) pages file
-        )
-      in
-      resolve 0 defaultEnv
+                      | Hyphen h->(
+                        (Array.fold_left (fun x' box->
+                          let w=draw_box (x+.x') y box in
+                          x'+.w) 0. h.hyphen_normal)
+                      )
+                      | GlyphBox a->(
+                        page.pageContents<-
+                          (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
+                        :: page.pageContents;
+                        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+                      )
+                      | Glue g
+                      | Drawing g ->(
+                        let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
+                        page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+		        if env.show_boxes then
+                          page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                        w
+                      )
+                      | User (BeginURILink l)->(
+                        urilinks:=Some { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                         dest_page=0;dest_x=0.;dest_y=0. };
+                        0.
+                      )
+                      | User (BeginLink l)->(
+                        crosslinks:=(i, { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
+                                          dest_page=0;dest_x=0.;dest_y=0. }, l) :: !crosslinks;
+                        crosslink_opened:=true;
+                        0.
+                      )
+                      | User (Label l)->(
+                        let y0,y1=line_height paragraphs figures line in
+                        destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
+                        0.
+                      )
+                      | User EndLink->(
+                        (match !urilinks with
+                            None->(
+                              match !crosslinks with
+                                  []->()
+                                | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
+                            )
+                          | Some h->(
+                            h.link_x1<-x;
+                            page.pageContents<-Link h::page.pageContents;
+                            urilinks:=None;
+                          )
+                        );
+                        0.
+                      )
+                      | User (Footnote (_,g))->(
+                        footnotes:= g::(!footnotes);
+                        footnote_y:=max !footnote_y (h-.topMargin-.param.page_height);
+                        0.
+                      )
+                      | b->box_width comp b
+                  in
+                  urilinks:=(match !urilinks with
+                      None->None
+                    | Some h->
+                      page.pageContents<-Link h::page.pageContents;
+                      Some { h with link_x0=param.left_margin;link_x1=param.left_margin;
+                        link_y0=y;link_y1=y });
+                  if !crosslink_opened then
+                    crosslinks:=(match !crosslinks with
+                        []->[]
+                      | (a,h,c)::s->
+                        (a, { h with link_x0=param.left_margin;link_x1=param.left_margin;
+                          link_y0=y;link_y1=y }, c)::(a,h,c)::s);
+                  let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                  (match !urilinks with
+                      None->()
+                    | Some h->h.link_x1<-x1);
+                  if !crosslink_opened then
+                    (match !crosslinks with
+                        []->()
+                      | (_,h,_)::_->h.link_x1<-x1)
+                )
+              done;
+              (match !urilinks with
+                  None->()
+                | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
+              ignore (
+                List.fold_left (
+                  fun y footnote->
+                    page.pageContents<- (List.map (translate (env.normalLeftMargin) (y-.footnote.drawing_y1-.env.footnote_y))
+                                           (footnote.drawing_contents footnote.drawing_nominal_width)) @ page.pageContents;
+                    y-.(footnote.drawing_y1-.footnote.drawing_y0)
+                ) !footnote_y !footnotes
+              );
+              if !footnotes<>[] then (
+                page.pageContents<- (Path ({OutputCommon.default with lineWidth=0.01 }, [ [| [| env.normalLeftMargin;
+                                                                                                env.normalLeftMargin+.env.normalMeasure*.(2.-.phi) |],
+                                                                                           [| !footnote_y-.env.footnote_y;
+                                                                                              !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
+              );
+              out_params.pageNumbers page env i;
+              page.pageContents<-List.rev page.pageContents
+            in
+            for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
+            List.iter (fun (p,link,dest)->try
+                                            let (p',x,y0,y1)=StrMap.find dest !destinations in
+                                            pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
+                                            ::pages.(p).pageContents
+              with
+                  Not_found->()
+            ) !crosslinks;
+            M.output ~structure:(make_struct positions tree) pages file
+          )
+        in
+        resolve 0 defaultEnv
 
-
-
+      let output out_params structure defaultEnv file=
+        basic_output out_params (postprocess_tree structure) defaultEnv file
+    end
   end)
 
 module MathFonts = struct
