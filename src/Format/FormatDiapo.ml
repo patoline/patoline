@@ -113,7 +113,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         }
 
 
-      let output m out_params structure defaultEnv file=
+      let output out_params structure defaultEnv file=
         let rec resolve i env0=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let tree=structure in

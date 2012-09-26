@@ -18,9 +18,10 @@ let dypgen_choose_token = `all
 let dyp_merge = keep_one
 
 let findGrammar f=findPath f ("." :: (!grammarspath))
-let deps_only=ref None
 let out_grammar_name=ref ""
-let used_grammars=ref []
+
+let grammar=ref (Some "DefaultGrammar")
+
 
 type macro_info = [ 
   `Eat_left
@@ -267,7 +268,7 @@ let add_combining_symbol local_data symbol macro =
 
 let gram_ext = ".tgx"
 
-let reserved = [ "Begin"; "begin"; "end"; "End"; "No_Grammar"; "Use_Grammar"; "Include"; "Caml"; 
+let reserved = [ "Begin"; "begin"; "end"; "End"; "Include"; "Caml";
     	         "Add_relation"; "Add_addition_like"; "Add_product_like"; "left"; "right"; "cr";
 	         "verb";]
 
@@ -1176,62 +1177,23 @@ ntext:
             Paragraph(opt,p)::t), rs)
        , [ Keep_grammar; Local_data dyp.last_local_data ]}
 
-grammar_aux:
-    { Some "DefaultGrammar" }
-  | "\\Use_Grammar{" filename<name> "}"
-    { (* Printf.fprintf stderr "Some\n"; *) Some name }
-  | "\\No_Grammar"
-    { (* Printf.fprintf stderr "None\n"; *) None }
 
-grammar: grammar_aux<g>
-    @{(match g, !deps_only with
-           Some filename,Some f->(
-             let i=open_out_gen [Open_append] 0644 f in
-               Printf.fprintf i "%s\n" (filename^gram_ext);
-               close_out i;
-           )
-         | _,Some _->()
-         | _->()
-      );
-
-      let action = match g with
-           (* Patch temporaire : on ne charge pas de grammaire s'il n'y a pas de chemin,
-              pour éviter les "code mismatch". L'option --no-grammar de TeX' contrôle ça *)
+grammar:
+    @{let action = match !grammar with
         Some filename when !Config.grammarspath <> [] -> (
 	  try
-	    let grammar_name =
-              let name=try findGrammar (filename ^ gram_ext) with _->"" in
-              let orig=try findGrammar (filename^".txp") with _->"" in
-                if orig<>"" &&
-                  filename<>"DefaultGrammar"
-                  && (name="" ||
-                      (Unix.stat orig).Unix.st_mtime > (Unix.stat name).Unix.st_mtime ||
-                      (Unix.stat Sys.executable_name).Unix.st_mtime > (Unix.stat name).Unix.st_mtime
-                  ) then (
-                    let path=String.concat ""
-                      (List.map (Printf.sprintf " -I %s ") !Config.grammarspath)
-                    in
-                    let com=(Printf.sprintf "%s --noamble --ml %s %s" (Sys.argv.(0)) path orig) in
-                    Printf.printf "%s\n" com; flush stdout;
-                    let _=Sys.command com in
-                    findGrammar (filename ^ gram_ext)
-                  )
-                else
-                  name
-            in
+	    let grammar_name =findGrammar (filename ^ gram_ext) in
 	    let ic = open_in grammar_name in
 	    let local_data, grammar = input_value ic in
-	      close_in ic;
-              used_grammars:=filename::(!used_grammars);
-	      (* Printf.fprintf stderr "Grammar: %s.\n" grammar_name ; *)
-	      [ Local_data local_data; Parser grammar ]
+	    close_in ic;
+	    [ Local_data local_data; Parser grammar ]
           with
             | e ->(Printf.fprintf stderr "No Grammar Loaded (%s: %s). Pwd = %S\n"
 		     (filename^gram_ext) (Printexc.to_string e) (Sys.getcwd ()); [])
         )
       | _-> []
-       in
-       (), action
+      in
+      (), action
     }
 
 text: { [], [] } | ntext<t> @{ t, [ Keep_grammar; Local_data dyp.last_local_data ]}

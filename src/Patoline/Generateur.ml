@@ -589,82 +589,80 @@ and output_list parser_pp from where no_indent lvl docs =
       output_list parser_pp from where !next_no_indent !lvl docs
 
 let gen_ml format driver suppl amble filename from wherename where pdfname =
-    try
-      (* match filename with *)
-      (*     []-> Printf.fprintf stderr "no input files\n" *)
-      (*   | h::_-> *)
-      (* let op=open_in h in *)
+  try
+    begin
+    (* match filename with *)
+    (*     []-> Printf.fprintf stderr "no input files\n" *)
+    (*   | h::_-> *)
+    (* let op=open_in h in *)
       let parser_pp = Parser.pp () in
       let lexbuf=Dyp.from_channel parser_pp from in
       let l = Dyp.std_lexbuf lexbuf in
       l.lex_curr_p <- { l.lex_curr_p with pos_fname = filename };
-            try
-	      let docs = Parser.main lexbuf in
-	      let nbdocs = List.length docs in
-		Printf.fprintf stderr "%s\n" 
-		  (Language.message (Language.End_of_parsing nbdocs));
-		flush stderr;
-	      let source = Source.of_in_channel from in
-              let tmp_pos=
-                incr moduleCounter;
-                !moduleCounter
-              in
-	      match docs with
-	        [] -> assert false
-	      | ((caml_header, pre, docs), _) :: _  ->
-		  begin
-                    Printf.fprintf where "%s" (preambule format driver suppl amble filename);
-                    (match amble with
-                         Main | Noamble -> ()
-                       | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"
-                           tmp_pos);
-                    match pre with
-		    None -> ()
-		  | Some(title, at) -> 
-		    let extra_tags =
-		      let buf = Buffer.create 80 in
-		      match at with
-			None -> ""
+      try
+        let docs = Parser.main lexbuf in
+        let nbdocs = List.length docs in
+        Printf.fprintf stderr "%s\n" 
+	  (Language.message (Language.End_of_parsing nbdocs));
+        flush stderr;
+        let source = Source.of_in_channel from in
+        let tmp_pos=
+          incr moduleCounter;
+          !moduleCounter
+        in
+        match docs with
+	    [] -> assert false
+	  | ((caml_header, pre, docs), _) :: _  ->
+	    begin
+              Printf.fprintf where "%s" (preambule format driver suppl amble filename);
+              (match amble with
+                  Main | Noamble -> ()
+                | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"
+                  tmp_pos);
+              match pre with
+		  None -> ()
+	        | Some(title, at) -> 
+		  let extra_tags =
+		    let buf = Buffer.create 80 in
+		    match at with
+		        None -> ""
 		      | Some(auth,inst) ->
-			Printf.bprintf buf "~extra_tags:((\"Author\", string_of_contents %a)::"
+		        Printf.bprintf buf "~extra_tags:((\"Author\", string_of_contents %a)::"
 			  (print_contents_buf true parser_pp source) auth;
-			(match inst with
-			  None -> ()
-			| Some(inst) ->
-			  Printf.bprintf buf "(\"Institute\", string_of_contents %a)::"
-			    (print_contents_buf true parser_pp source) inst);
-			Printf.bprintf buf "[])";
-			Buffer.contents buf
-		    in
-		    (match caml_header with
-                         None->()
-                       | Some a->output_list parser_pp source where true 0 [a]);
-		    Printf.fprintf where "let _ = Patoline_Format.title D.structure %s (%a);;\n\n"
-		      extra_tags (print_contents parser_pp source) title;
-		  end;
-		  output_list parser_pp source where true 0 docs;
-		  (* close_in op; *)
-                match amble with
-                    Main->output_string where (postambule driver pdfname)
-                  | Noamble->()
-                  | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
-                      tmp_pos
-	    with
-	      | Dyp.Syntax_error when !Parser.deps_only=None ->
-		raise
-	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-					Parse_error))
-	      | Failure("lexing: empty token") when !Parser.deps_only=None ->
-		raise
-	          (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
-					Unexpected_char))
-              | Dyp.Syntax_error -> exit 0
-	      | Failure("lexing: empty token") -> exit 0
-
-	      with
-		  Parser.Syntax_Error(pos,msg) when !Parser.deps_only=None ->
-		    Sys.remove wherename;
-		    Printf.fprintf stderr "%s\n"
-		      (Language.message (Language.Syntax_error (filename, pos, msg)));
-		    exit 1
-                | Parser.Syntax_Error _ -> exit 0
+		        (match inst with
+			    None -> ()
+			  | Some(inst) ->
+			    Printf.bprintf buf "(\"Institute\", string_of_contents %a)::"
+			      (print_contents_buf true parser_pp source) inst);
+		        Printf.bprintf buf "[])";
+		        Buffer.contents buf
+		  in
+		  (match caml_header with
+                      None->()
+                    | Some a->output_list parser_pp source where true 0 [a]);
+		  Printf.fprintf where "let _ = Patoline_Format.title D.structure %s (%a);;\n\n"
+		    extra_tags (print_contents parser_pp source) title;
+	    end;
+	    output_list parser_pp source where true 0 docs;
+	  (* close_in op; *)
+            match amble with
+                Main->output_string where (postambule driver pdfname)
+              | Noamble->()
+              | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
+                tmp_pos
+      with
+        | Dyp.Syntax_error ->
+	  raise
+	    (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+				  Parse_error))
+        | Failure("lexing: empty token") ->
+	  raise
+	    (Parser.Syntax_Error (Dyp.lexeme_start_p lexbuf,
+				  Unexpected_char))
+    end
+  with
+      Parser.Syntax_Error(pos,msg) ->
+	Sys.remove wherename;
+	Printf.fprintf stderr "%s\n"
+	  (Language.message (Language.Syntax_error (filename, pos, msg)));
+	exit 1

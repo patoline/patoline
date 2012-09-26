@@ -128,6 +128,7 @@ let rec read_options_from_source_file fread =
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let set_grammar = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_noamble = Str.regexp "^[ \t]*(\\*[ \t]*#NOAMBLE[ \t]*\\*)[ \t\r]*$" in
   let link = Str.regexp "^[ \t]*(\\*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let depends = Str.regexp "^[ \t]*(\\*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
@@ -163,6 +164,11 @@ let rec read_options_from_source_file fread =
     )
     else if Str.string_match depends s 0 then (
       deps := Str.matched_group 1 s:: !deps;
+      pump ()
+    )
+    else if Str.string_match set_grammar s 0 then (
+      if Str.matched_group 1 s="" then Parser.grammar:=None else Parser.grammar:=Some (Str.matched_group 1 s);
+      deps := (Str.matched_group 1 s ^ Parser.gram_ext) :: !deps;
       pump ()
     )
     else if Str.string_match set_format s 0 then (
@@ -260,7 +266,7 @@ and compilation_needed sources targets=
   )
 
 and patoline_rule objects h=
-  if Filename.check_suffix h ".ttml" || Filename.check_suffix h ".tml" then
+  if Filename.check_suffix h ".ttml" || Filename.check_suffix h ".tml" || Filename.check_suffix h Parser.gram_ext then
     (
       let source=(Filename.chop_extension h)^".txp" in
       let in_s=open_in source in
@@ -323,9 +329,10 @@ and patoline_rule objects h=
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
       close_in i;
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -c -o '%s' -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
         !extras
+        (String.concat " " opts.comp_opts)
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
@@ -384,9 +391,10 @@ and patoline_rule objects h=
     let objs=breadth_first [h] [] in
     if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
         !ocamlopt
         !extras
+        (String.concat " " opts.comp_opts)
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
@@ -442,10 +450,13 @@ and process_each_file l=
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
           let suppl=
-            Printf.sprintf "(* #PACKAGES %s *)%s%s\n"
+            Printf.sprintf "(* #PACKAGES %s *)%s%s%s\n"
 	      (String.concat "," opts.packages)
 	      (if opts.directories <> [] then
 		  (Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
+	       else "")
+	      (if opts.comp_opts <> [] then
+		  (Printf.sprintf "\n(* #COMPILATION %s *)" (String.concat " " opts.comp_opts))
 	       else "")
 	      (if opts.noamble then
 		  Printf.sprintf "\n(* #NOAMBLE *)"
