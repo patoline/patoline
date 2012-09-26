@@ -18,5 +18,3 @@ let output ?(structure:structure={name="";displayname=[];
   close_out ch;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
-
-

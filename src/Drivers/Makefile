@@ -12,8 +12,8 @@ else
   DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
 endif
 
-CAMLOPT=ocamlfind ocamlopt $(PACK) -pp "cpp -w" -I ../Typography -I ../Rbuffer
-CAMLC=ocamlfind ocamlc $(PACK) -pp "cpp -w" -I ../Typography -I ../Rbuffer
+CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
+CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
 
 
 Html.cmxa:Html.cmx

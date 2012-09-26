@@ -32,7 +32,7 @@ let stream buf=
   close_in ic;
   close_out oc;
   let f=open_in_bin tmp1 in
-  let out_buf=Rbuffer.create 256 in
+  let out_buf=Rbuffer.create 100000 in
   Rbuffer.add_channel out_buf f (in_channel_length f);
   close_in f;
   "/Filter [/FlateDecode]", out_buf
@@ -46,7 +46,7 @@ let output ?(structure:structure={name="";displayname=[];
 
   let fileName = filename fileName in
   let outChan=open_out_bin fileName in
-  let pageBuf=Rbuffer.create 256 in
+  let pageBuf=Rbuffer.create 100000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
   let fonts=ref StrMap.empty in
   let resumeObject n=
@@ -501,7 +501,7 @@ let output ?(structure:structure={name="";displayname=[];
 
     (* Tous les dictionnaires de unicode mapping *)
     StrMap.iter (fun _ x->
-                   let buf=Rbuffer.create 256 in
+                   let buf=Rbuffer.create 100000 in
                      Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
                      Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
                      Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
@@ -687,14 +687,14 @@ let output ?(structure:structure={name="";displayname=[];
                        in
                        let file=open_in_bin_cached y.CFF.file in
                        seek_in file y.CFF.offset;
-                       let buf=Rbuffer.create 256 in
+                       let buf=Rbuffer.create 100000 in
                        Rbuffer.add_channel buf file y.CFF.size;
                        buf
                      )
                      | Fonts.Opentype (Opentype.TTF ttf)->(
                        let file=open_in_bin_cached ttf.Opentype.ttf_file in
                        seek_in file ttf.Opentype.ttf_offset;
-                       let buf=Rbuffer.create 256 in
+                       let buf=Rbuffer.create 100000 in
                        Rbuffer.add_channel buf file (in_channel_length file);
                        buf
                      )
