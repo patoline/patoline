@@ -34,7 +34,10 @@ let spec =
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
    ("--driver",Arg.String
      (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
-   ("-c",Arg.Unit (fun ()->amble:=Generateur.Separate), message (Cli Separately));
+   ("-c",Arg.Unit (fun ()->
+     if !amble<> Generateur.Noamble then
+       amble:=Generateur.Separate
+    ), message (Cli Separately));
    ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), message (Cli Noamble));
    ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
     message (Cli Package));
@@ -46,7 +49,6 @@ let spec =
    ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
    ("--quiet", Arg.Unit (fun ()->quiet:=true), message (Cli Quiet));
    ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), message (Cli Remaining));
-
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
   ]
 
@@ -65,7 +67,8 @@ type options={
   driver:string;
   comp_opts:string list;
   packages:string list;
-  directories:string list
+  directories:string list;
+  noamble:bool
 }
 
 let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (!dirs (* @ opts.directories *))))
@@ -117,6 +120,7 @@ let rec read_options_from_source_file fread =
   let deps=ref [] in
   let format=ref !format in
   let driver=ref !driver in
+  let noamble=ref false in
   let comp_opts=ref [] in
   let packages=ref !package_list in
   let directories = ref [] in
@@ -124,6 +128,7 @@ let rec read_options_from_source_file fread =
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let set_noamble = Str.regexp "^[ \t]*(\\*[ \t]*#NOAMBLE[ \t]*\\*)[ \t\r]*$" in
   let link = Str.regexp "^[ \t]*(\\*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let depends = Str.regexp "^[ \t]*(\\*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let add_compilation_option = Str.regexp "^[ \t]*(\\*[ \t]*#COMPILATION[ \t]+\\(.+\\)[ \t]*\\*)[ \t\r]*$" in
@@ -168,6 +173,10 @@ let rec read_options_from_source_file fread =
       if not !cmd_line_driver then driver := Str.matched_group 1 s;
       pump ()
     )
+    else if Str.string_match set_noamble s 0 then (
+      noamble:=true;
+      pump ()
+    )
     else if Str.string_match add_compilation_option s 0 then (comp_opts := (Str.matched_group 1 s)::(!comp_opts); pump ())
     else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
     else if Str.string_match add_directories s 0 then 
@@ -189,8 +198,10 @@ let rec read_options_from_source_file fread =
     driver= !driver;
     comp_opts= !comp_opts;
     packages= !packages ;
-    directories = !directories
+    directories = !directories;
+    noamble = !noamble
   }
+
 and make_deps source=
   let ldeps=ref [] in
   Build.sem_down Build.sem;
@@ -219,7 +230,7 @@ and make_deps source=
    with
        End_of_file->());
   let cont=Buffer.contents buf in
-  let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx:\\(\\(.*\\\n\\)*\\(.*$\\)\\)") in
+  let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(\\(.*\\\n\\)*\\)$") in
   (try
      let _=Str.search_forward str cont 0 in
      ldeps:=(Str.split (Str.regexp "[\n\t\r\\ ]+") (Str.matched_group 1 cont))@(!ldeps);
@@ -240,7 +251,12 @@ and compilation_needed sources targets=
       if Sys.file_exists f then min m (Unix.stat f).Unix.st_mtime else (-.infinity)
     ) (infinity) targets
     in
-    max_sources>=min_targets
+    if max_sources>min_targets then (
+    Printf.fprintf stderr "\n\nCompilation needed %f %f\n\n" max_sources min_targets;
+    List.iter (Printf.fprintf stderr "Source %S\n") sources;
+    List.iter (Printf.fprintf stderr "Target %S\n") targets;
+    );
+    max_sources>min_targets
   )
 
 and patoline_rule objects h=
@@ -256,13 +272,14 @@ and patoline_rule objects h=
         if Sys.file_exists h then (
           let last_format,last_driver=last_options_used h in
           (last_format<> !format || last_driver<> !driver)
-        ) else false
+        ) else true
       in
-      if options_have_changed || compilation_needed [source;Sys.argv.(0)] [h] then (
+      if options_have_changed || compilation_needed [source] [h] then (
 	let dirs_=str_dirs opts in
-        let cmd=Printf.sprintf "%s %s --ml%s%s%s --driver %s%s '%s'"
+        let cmd=Printf.sprintf "%s %s %s--ml%s%s%s --driver %s%s '%s'"
           !patoline
           dirs_
+          (if opts.noamble then "--noamble " else "")
           (if opts.format<>"DefaultFormat" then " --format " else "")
           (if opts.format<>"DefaultFormat" then opts.format else "")
 	  (if !Generateur.edit_link then " --edit-link" else "")
@@ -306,8 +323,9 @@ and patoline_rule objects h=
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
       close_in i;
-      let cmd=Printf.sprintf "ocamlfind %s %s %s -c -o '%s' -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -c -o '%s' -impl '%s'"
         !ocamlopt
+        !extras
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
@@ -333,6 +351,8 @@ and patoline_rule objects h=
     let opts=add_format (read_options_from_source_file in_s) in
     close_in in_s;
     List.iter Build.build opts.deps;
+
+    if not opts.noamble then begin
 
     (* A ce niveau, toutes les dépendances sont indépendantes entre
        elles. On peut les placer sur le même niveau. *)
@@ -364,8 +384,9 @@ and patoline_rule objects h=
     let objs=breadth_first [h] [] in
     if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
         !ocamlopt
+        !extras
         (let pack=String.concat "," (List.rev opts.packages) in
          if pack<>"" then "-package "^pack else "")
         dirs_
@@ -382,7 +403,8 @@ and patoline_rule objects h=
         failwith ("error : "^h)
       )
     );
-  true
+    end;
+    true
   )
   else false
 
@@ -401,7 +423,7 @@ and process_each_file l=
                     (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
         Build.sem_set Build.sem !Build.j;
         Build.build cmd;
-        if !run then (
+        if !run && Sys.file_exists cmd then (
           Printf.fprintf stdout "'%s'\n" cmd;flush stdout;
           let _=Build.command ("'"^cmd^"'") in
           ()
@@ -419,11 +441,15 @@ and process_each_file l=
               let pos = pos_in fread in
               Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
               seek_in fread pos);
-          let suppl=Printf.sprintf "(* #PACKAGES %s *)%s\n"
-	    (String.concat "," opts.packages)
-	    (if opts.directories <> [] then
-		(Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
-	     else "")
+          let suppl=
+            Printf.sprintf "(* #PACKAGES %s *)%s%s\n"
+	      (String.concat "," opts.packages)
+	      (if opts.directories <> [] then
+		  (Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
+	       else "")
+	      (if opts.noamble then
+		  Printf.sprintf "\n(* #NOAMBLE *)"
+	       else "")
           in
           Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
         );
