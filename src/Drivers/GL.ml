@@ -415,7 +415,6 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.vertex2 (x -. nx, y -. ny)
 	    ) l n;
 	  GlDraw.ends ();
-(*
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
@@ -442,7 +441,6 @@ let output ?(structure:structure={name="";displayname=[];
 	      GlDraw.vertex2 (x -. nx -. vx, y -. ny -. vy);
 	    ) l n;
 	  GlDraw.ends ();
-*)
 	) lines normals);
 
     | Link(link) -> ()
