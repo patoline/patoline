@@ -286,6 +286,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
               let min_page_before=ref 0 in
+              let height_problem=ref true in
               let rec fix attempts page height n_iter=
                 (* Printf.fprintf stderr "fix : %d %f\n" page height;flush stderr; *)
                 let r_nextNode={
@@ -301,7 +302,8 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 in
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
 
-                if !r_params.page_height < infinity || attempts < 42 then begin
+                if !r_params.page_height < infinity || !height_problem || attempts < 42 then begin
+
                 if height>=(!r_params).page_height
                   || page < node.page+(!r_params).min_page_before
                 then
@@ -380,6 +382,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                         && (page >= node.page +
                               max !r_params.min_page_before lastParameters.min_page_after)
                       then (
+                        height_problem:=false;
                         let node_is_orphan=
                           page<>node.page
                           &&
@@ -448,7 +451,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                         max 0. bad,Language.Normal,
                                         !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                         )
-                      )
+                      ) else height_problem:=true
                     )
                   in
                   let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
