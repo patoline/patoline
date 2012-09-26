@@ -286,7 +286,8 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
               let min_page_before=ref 0 in
-              let rec fix page height n_iter=(* Printf.fprintf stderr "fix : %d %f\n" page height;flush stderr; *)
+              let rec fix attempts page height n_iter=
+                (* Printf.fprintf stderr "fix : %d %f\n" page height;flush stderr; *)
                 let r_nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
                   hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
@@ -299,8 +300,12 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   line_y0=infinity; line_y1= -.infinity }
                 in
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
-                if height>=(!r_params).page_height || page < node.page+(!r_params).min_page_before then
-                  fix (page+1) 0. (n_iter+1)
+
+                if !r_params.page_height < infinity || attempts < 42 then begin
+                if height>=(!r_params).page_height
+                  || page < node.page+(!r_params).min_page_before
+                then
+                  fix (attempts+1) (page+1) 0. (n_iter+1)
                 else (
                   let minimal_tried_height=ref infinity in
                   let make_next_node nextNode=
@@ -450,11 +455,12 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   List.iter make_next_node (compl);
                   if !local_opt=[] && !extreme_solutions=[] && page<=node.page+max 1 (max lastParameters.min_page_after !min_page_before) then (
                     let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
-                    fix page (if next_h=height then height+.1. else next_h) (n_iter+1)
+                    fix (attempts+1) page (if next_h=height then height+.1. else next_h) (n_iter+1)
                   )
                 )
+                end
               in
-              (fix page0 h0 0;
+              (fix 0 page0 h0 0;
                if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                  List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
                               let b,_,_=LineMap.split nextNode !todo' in
