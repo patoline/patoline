@@ -75,6 +75,7 @@ open DefaultFormat.MathsFormat
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
+open %s;;
 open Patoline_Format;;
 let _driver=ref \"Pdf\"
 let _atmost=ref 3
@@ -84,10 +85,11 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
 ]@Patoline_Format.spec
 
-let _=Arg.parse _spec ignore \"Usage :\";;" format
+let _=Arg.parse _spec ignore \"Usage :\";;" format format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
-open Patoline_Format;;\n" format
+open %s;;
+open Patoline_Format;;\n" format format
           | _->""
         ))
 

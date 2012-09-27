@@ -378,3 +378,17 @@ window.onkeydown=function(e){
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
+
+
+
+let output' w h groups states transitions file=
+  let pages=ref [] in
+  let rec make_pages t=match t with
+      L x->pages:=
+        { pageFormat=w,h;pageContents=
+            (List.concat (List.map (fun x->IntMap.find x groups) x))
+        } ::(!pages)
+    | N x->IntMap.iter (fun _ y->make_pages y) x
+  in
+  make_pages states;
+  output (Array.of_list !pages) file

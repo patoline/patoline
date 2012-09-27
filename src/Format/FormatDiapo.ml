@@ -18,10 +18,35 @@ let slideh=100.
 let slidew=phi*.slideh
 
 
-type group=
-    Gr of group IntMap.t
-  | Co of contents list
+type state={
+  subautomata:state IntMap.t;
+  stateContents:int list;
+  transitions:((int list * (string IntMap.t)) StrMap.t)
+}
 
+module type Driver=sig
+  val output':
+    float->float ->
+    contents list IntMap.t ->
+    state IntMap.t ->
+    string ->
+    unit
+end
+
+module MakeDriver(M:OutputPaper.Driver)=(struct
+  let output' w h groups states file=
+    let pages=ref [] in
+    let rec make_pages cont t=
+      if IntMap.is_empty t.subautomata then
+
+        let pageCont=List.fold_left (fun c x->IntMap.find x groups@c) [] (t.stateContents@cont) in
+        pages:={ pageFormat=w,h;pageContents=pageCont } :: (!pages)
+      else
+        IntMap.iter (fun _->make_pages (t.stateContents@cont)) t.subautomata
+    in
+    IntMap.iter (fun _->make_pages []) states;
+    M.output (Array.of_list (List.rev !pages)) file
+end:Driver)
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
@@ -101,9 +126,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
 
-    module Output(M:OutputPaper.Driver)=struct
+    module Output(M:Driver)=struct
 
-      type 'a output={
+      type output={
         format:float*float;
       }
       let max_iterations=ref 3
@@ -279,9 +304,15 @@ module Format=functor (D:Document.DocumentStructure)->(
             List.iter (List.iter (fun x->Printf.fprintf stderr "%s\n"
               (Typography.Language.message x))
             ) (List.rev !logs);
+            let groups=ref IntMap.empty in
+            let add_group x=
+              let card=IntMap.cardinal !groups in
+              groups:=IntMap.add card x !groups;
+              card
+            in
 
             let draw_slide (paragraphs,figures,figure_trees,opts)=
-              let groups=Array.make (Array.length paragraphs) [] in
+              let pars=Array.make (Array.length paragraphs) [] in
               let first_state=Array.make (Array.length paragraphs) (-1) in
               let state_contents=Array.make (Array.length opts) [] in
               for st=0 to Array.length opts-1 do
@@ -312,9 +343,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                           x'+.w) 0. h.hyphen_normal)
                       )
                       | GlyphBox a->(
-                        groups.(line.paragraph)<-
+                        pars.(line.paragraph)<-
                           (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                        :: groups.(line.paragraph);
+                        :: pars.(line.paragraph);
                         a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                       )
                       | Glue g
@@ -322,9 +353,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                         let w=g.drawing_min_width+.
                           comp*.(g.drawing_max_width-.g.drawing_min_width)
                         in
-                        groups.(line.paragraph)<-
+                        pars.(line.paragraph)<-
                           (List.map (translate x y) (g.drawing_contents w))
-                        @groups.(line.paragraph);
+                        @pars.(line.paragraph);
                         w
                       )
                       | b->box_width comp b
@@ -338,24 +369,37 @@ module Format=functor (D:Document.DocumentStructure)->(
                     first_state.(line.paragraph)<-st
                   );
                   if line.lineStart=0 then
-                    state_contents.(i)<-line.paragraph::state_contents.(i)
+                    state_contents.(st)<-line.paragraph::state_contents.(st)
                 done;
               done;
 
-
-              let rec make_slide_group i m=
-                if i>=Array.length paragraphs then Gr m else
-                  make_slide_group (i+1) (IntMap.add (IntMap.cardinal m) (Co groups.(i)) m)
+              (* Collecte les groupes de chaque état du slide *)
+              let rec make_slide_states i m=
+                if i>=Array.length opts then (
+                  { stateContents=[];
+                    subautomata=m;
+                    transitions=StrMap.empty }
+                ) else
+                  make_slide_states (i+1)
+                    (IntMap.add i
+                       ({ stateContents=List.map (fun j->add_group pars.(j)) state_contents.(i);
+                          subautomata=IntMap.empty;
+                          transitions=StrMap.empty })
+                       m)
               in
-              let slide=make_slide_group 0 IntMap.empty in
-              slide
+              make_slide_states 0 IntMap.empty
             in
-
-          (* let pages=Array.concat (List.map draw_slide (List.rev !slides)) in *)
-
-          (* let module M=(val m:Driver) in *)
-          (* M.output pages file *)
-            ()
+            let rec make_states m_st i l=match l with
+                []->m_st
+              | h::s->
+                let states=draw_slide h in
+                make_states
+                  (IntMap.add i states m_st)
+                  (i+1)
+                  s
+            in
+            let states=make_states IntMap.empty 0 (List.rev !slides) in
+            M.output' slidew slideh !groups states file
           )
         in
         resolve 0 defaultEnv
