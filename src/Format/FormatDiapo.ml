@@ -24,37 +24,6 @@ type state={
   transitions:(string StrMap.t)
 }
 
-module type Driver=sig
-  val output':
-    float->float ->
-    contents list IntMap.t ->
-    state IntMap.t ->
-    string ->
-    unit
-end
-
-module MakeDriver(M:OutputPaper.Driver)=(struct
-  let output' w h groups states file=
-    let pages=ref [] in
-
-    let make_stateContents m=
-      IntMap.fold (fun i (x,y) l->
-        (List.map (OutputCommon.translate x y) (IntMap.find i groups)) @ l
-      ) m []
-    in
-
-    let rec make_pages cont t=
-      let newCont=IntMap.fold (fun k a m->IntMap.add k a m) cont t.stateContents in
-      if IntMap.is_empty t.subautomata then
-        let contents=make_stateContents newCont in
-        pages:={ pageFormat=w,h;pageContents=contents } :: (!pages)
-      else
-        IntMap.iter (fun _->make_pages newCont) t.subautomata
-    in
-    IntMap.iter (fun _->make_pages IntMap.empty) states;
-    M.output (Array.of_list (List.rev !pages)) file
-end:Driver)
-
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
@@ -66,11 +35,16 @@ module Format=functor (D:Document.DocumentStructure)->(
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
-        par_indent=[]
+        par_indent=[];
     }
 
     let parameters a b c d e f g=
-      { (Default.parameters a b c d e f g) with page_height=2.*.slideh }
+      { (Default.parameters a b c d e f g) with
+        page_height=2.*.slideh;
+        next_acceptable_height=
+        (fun a b c d e->e)
+
+      }
 
 
     module type Title = sig
@@ -282,7 +256,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     done
                   done;
 
-                (*  *)
+                  (*  *)
                   for i=0 to Array.length opts-1 do
                     opts.(i)<-List.map
                       (fun (a,b)->(a,{ b with
@@ -290,6 +264,37 @@ module Format=functor (D:Document.DocumentStructure)->(
                       }))
                       opts.(i)
                   done;
+
+
+
+                  let linegap=
+                    defaultEnv.size/.(phi*.phi)
+                  in
+                  let rec make_lineGaps h l=match l with
+                      []->[]
+                    | (p,u)::v->(p,{ u with height=u.height+.h })::
+                      (make_lineGaps (h+.linegap) v)
+                  in
+                  let rec extrema m0 m1 l=match l with
+                      []->if m0=infinity then 0.,0. else m0,m1
+                    | (_,h)::s->
+                      let m0',m1'=Box.line_height paragraphs0 figures0 h in
+                      extrema (min m0 (h.height+.m0')) (max m1 (h.height+.m1')) s
+                  in
+                  let text_h states=
+                    let m0=ref infinity and m1=ref (-.infinity) in
+                    for i=0 to Array.length states-1 do
+                      let m0',m1'=extrema !m0 !m1 states.(i) in
+                      m0:=m0';m1:=m1'
+                    done;
+                    let m0= !m0 and m1= !m1 in
+                    let h=max 0. (slideh-.(m1-.m0))/.2. in
+                    Printf.fprintf stderr "h=%f\n" h;
+                    Array.map (List.map (fun (p,l)->p,{l with height=l.height+.h})) states
+                  in
+                  let opts=Array.map (make_lineGaps 0.) opts in
+                  let opts=text_h opts in
+
                   slides:=(paragraphs0,figures0,figure_trees0,opts)::(!slides);
                   n.node_post_env env0 env'
                 )
@@ -308,111 +313,74 @@ module Format=functor (D:Document.DocumentStructure)->(
             resolve (i+1) env
           ) else (
 
-            List.iter (List.iter (fun x->Printf.fprintf stderr "%s\n"
-              (Typography.Language.message x))
-            ) (List.rev !logs);
-            let groups=ref IntMap.empty in
-            let add_group x=
-              let card=IntMap.cardinal !groups in
-              groups:=IntMap.add card x !groups;
-              card
-            in
 
             let draw_slide (paragraphs,figures,figure_trees,opts)=
-              let pars=Array.make (Array.length paragraphs) [] in
-              let first_state=Array.make (Array.length paragraphs) (-1) in
-              let state_contents=Array.make (Array.length opts) [] in
+              let states=ref [] in
               for st=0 to Array.length opts-1 do
-                let p=opts.(st) in
-                let page={ pageFormat=(slidew,slideh); pageContents=[] } in
-                let pp=Array.of_list p in
-                let w,h=page.pageFormat in
-                let topMargin=0. in
+                let page={ pageFormat=slidew,slideh; pageContents=[] } in
+                let pp=Array.of_list opts.(st) in
+                let w,h=slidew,slideh in
+
                 for j=0 to Array.length pp-1 do
                   let param,line=pp.(j) in
-                  let y=h-.topMargin-.line.height in
-                  let comp=compression paragraphs param line in
+                  let y=h-.line.height in
 
-                  let rec draw_box x y box=
-                    let lowy=y+.lower_y box in
-                    let uppy=y+.upper_y box in
-                    match box with
-                        Kerning kbox ->(
-                          let fact=(box_size kbox.kern_contents/.1000.) in
-                          let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact)
-                            kbox.kern_contents
-                          in
-                          w+.kbox.advance_width*.fact
+                  if line.isFigure then (
+                    let fig=figures.(line.lastFigure) in
+	            if env.show_boxes then
+                      page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                                                [rectangle (param.left_margin,y+.fig.drawing_y0)
+                                                    (param.left_margin+.fig.drawing_nominal_width,
+                                                     y+.fig.drawing_y1)]) :: page.pageContents;
+                    page.pageContents<- (List.map (translate param.left_margin y)
+                                           (fig.drawing_contents fig.drawing_nominal_width))
+                    @ page.pageContents;
+
+                  ) else if line.paragraph<Array.length paragraphs then (
+
+                    let comp=compression paragraphs param line in
+                    let rec draw_box x y box=
+                      let lowy=y+.lower_y box in
+                      let uppy=y+.upper_y box in
+                      match box with
+                          Kerning kbox ->(
+                            let fact=(box_size kbox.kern_contents/.1000.) in
+                            let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
+                            w+.kbox.advance_width*.fact
+                          )
+                        | Hyphen h->(
+                          (Array.fold_left (fun x' box->
+                            let w=draw_box (x+.x') y box in
+                            x'+.w) 0. h.hyphen_normal)
                         )
-                      | Hyphen h->(
-                        (Array.fold_left (fun x' box->
-                          let w=draw_box (x+.x') y box in
-                          x'+.w) 0. h.hyphen_normal)
-                      )
-                      | GlyphBox a->(
-                        pars.(line.paragraph)<-
-                          (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                        :: pars.(line.paragraph);
-                        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
-                      )
-                      | Glue g
-                      | Drawing g ->(
-                        let w=g.drawing_min_width+.
-                          comp*.(g.drawing_max_width-.g.drawing_min_width)
-                        in
-                        pars.(line.paragraph)<-
-                          (List.map (translate x y) (g.drawing_contents w))
-                        @pars.(line.paragraph);
-                        w
-                      )
-                      | b->box_width comp b
-                  in
-                  if first_state.(line.paragraph)=(-1) || first_state.(line.paragraph)=st then (
-                    let x1=fold_left_line paragraphs
-                      (fun x b->x+.draw_box x y b)
-                      param.left_margin
-                      line
+                        | GlyphBox a->(
+                          page.pageContents<-
+                            (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
+                          :: page.pageContents;
+                          a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+                        )
+                        | Glue g
+                        | Drawing g ->(
+                          let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
+                          page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+		          if env.show_boxes then
+                            page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                          w
+                        )
+                        | b->box_width comp b
                     in
-                    first_state.(line.paragraph)<-st
-                  );
-                  if line.lineStart=0 then
-                    state_contents.(st)<-line.paragraph::state_contents.(st)
+                    let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                    ()
+                  )
                 done;
+                page.pageContents<-List.rev page.pageContents;
+                states:=page:: !states
               done;
-
-              (* Collecte les groupes de chaque état du slide *)
-              let rec make_slide_states i m=
-                if i>=Array.length opts then (
-                  { stateContents=IntMap.empty;
-                    subautomata=m;
-                    transitions=StrMap.empty }
-                ) else
-                  make_slide_states (i+1)
-                    (IntMap.add i
-                       ({ stateContents=
-                           List.fold_left (fun m j->
-                             IntMap.add (add_group pars.(j)) (0.,0.) m
-                           ) IntMap.empty state_contents.(i);
-                          subautomata=IntMap.empty;
-                          transitions=
-                           StrMap.add "next_slide" "slide"
-                             StrMap.empty
-                        })
-                       m)
-              in
-              make_slide_states 0 IntMap.empty
+              List.rev !states
             in
-            let rec make_states m_st i l=match l with
-                []->m_st
-              | h::s->
-                let states=draw_slide h in
-                make_states
-                  (IntMap.add i states m_st)
-                  (i+1)
-                  s
-            in
-            let states=make_states IntMap.empty 0 (List.rev !slides) in
-            M.output' slidew slideh !groups states file
+            let pages=List.map draw_slide (List.rev !slides) in
+            let states=Array.of_list (List.concat pages) in
+            M.output states file
           )
         in
         resolve 0 defaultEnv
