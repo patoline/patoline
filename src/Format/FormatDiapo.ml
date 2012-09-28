@@ -20,8 +20,8 @@ let slidew=phi*.slideh
 
 type state={
   subautomata:state IntMap.t;
-  stateContents:int list;
-  transitions:((int list * (string IntMap.t)) StrMap.t)
+  stateContents:(float*float) IntMap.t;
+  transitions:(string StrMap.t)
 }
 
 module type Driver=sig
@@ -36,15 +36,22 @@ end
 module MakeDriver(M:OutputPaper.Driver)=(struct
   let output' w h groups states file=
     let pages=ref [] in
-    let rec make_pages cont t=
-      if IntMap.is_empty t.subautomata then
 
-        let pageCont=List.fold_left (fun c x->IntMap.find x groups@c) [] (t.stateContents@cont) in
-        pages:={ pageFormat=w,h;pageContents=pageCont } :: (!pages)
-      else
-        IntMap.iter (fun _->make_pages (t.stateContents@cont)) t.subautomata
+    let make_stateContents m=
+      IntMap.fold (fun i (x,y) l->
+        (List.map (OutputCommon.translate x y) (IntMap.find i groups)) @ l
+      ) m []
     in
-    IntMap.iter (fun _->make_pages []) states;
+
+    let rec make_pages cont t=
+      let newCont=IntMap.fold (fun k a m->IntMap.add k a m) cont t.stateContents in
+      if IntMap.is_empty t.subautomata then
+        let contents=make_stateContents newCont in
+        pages:={ pageFormat=w,h;pageContents=contents } :: (!pages)
+      else
+        IntMap.iter (fun _->make_pages newCont) t.subautomata
+    in
+    IntMap.iter (fun _->make_pages IntMap.empty) states;
     M.output (Array.of_list (List.rev !pages)) file
 end:Driver)
 
@@ -169,7 +176,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   let opts=Array.make (max_state+1) [] in
 
-                (* Typesetting de tous les états *)
+                  (* Typesetting de tous les états *)
 
                   let rec typeset_states state reboot_ env=
                     if state>max_state then (reboot_,env) else (
@@ -222,8 +229,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                         List.map (fun (param,parag)->
                           (param, { parag with paragraph=IntMap.find parag.paragraph !par_map })
                         ) (if Array.length opt_pages>0 then opt_pages.(0) else []);
-                    (* let env2,reboot'=update_names env1 figs' user' in *)
-                    (* typeset_states (state+1) (reboot_ || (reboot'&& !fixable)) env2 *)
+                      (* let env2,reboot'=update_names env1 figs' user' in *)
+                      (* typeset_states (state+1) (reboot_ || (reboot'&& !fixable)) env2 *)
                       typeset_states (state+1) reboot_ env1
                     )
                   in
@@ -376,15 +383,21 @@ module Format=functor (D:Document.DocumentStructure)->(
               (* Collecte les groupes de chaque état du slide *)
               let rec make_slide_states i m=
                 if i>=Array.length opts then (
-                  { stateContents=[];
+                  { stateContents=IntMap.empty;
                     subautomata=m;
                     transitions=StrMap.empty }
                 ) else
                   make_slide_states (i+1)
                     (IntMap.add i
-                       ({ stateContents=List.map (fun j->add_group pars.(j)) state_contents.(i);
+                       ({ stateContents=
+                           List.fold_left (fun m j->
+                             IntMap.add (add_group pars.(j)) (0.,0.) m
+                           ) IntMap.empty state_contents.(i);
                           subautomata=IntMap.empty;
-                          transitions=StrMap.empty })
+                          transitions=
+                           StrMap.add "next_slide" "slide"
+                             StrMap.empty
+                        })
                        m)
               in
               make_slide_states 0 IntMap.empty

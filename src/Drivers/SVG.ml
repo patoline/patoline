@@ -37,9 +37,20 @@ let standalone w h style title svg=
   svg_buf
 
 
+let make_defs fontCache=
+  let def_buf=Rbuffer.create 256 in
+  StrMap.iter (fun full class_name->
+    Rbuffer.add_string def_buf "@font-face { font-family:";
+    Rbuffer.add_string def_buf class_name;
+    Rbuffer.add_string def_buf "; src:url(\"";
+    Rbuffer.add_string def_buf full;
+    Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
+  ) fontCache.classes;
+  def_buf
+
+
 let draw ?fontCache w h contents=
   let svg_buf=Rbuffer.create 256 in
-  let def_buf=Rbuffer.create 256 in
 
   let fontCache=match fontCache with
       None->build_font_cache [|contents|]
@@ -66,14 +77,6 @@ let draw ?fontCache w h contents=
 
 
   let buf=Rbuffer.create 100 in
-  (* Version alternative avec opentype *)
-  StrMap.iter (fun full class_name->
-    Rbuffer.add_string def_buf "@font-face { font-family:";
-    Rbuffer.add_string def_buf class_name;
-    Rbuffer.add_string def_buf "; src:url(\"";
-    Rbuffer.add_string def_buf full;
-    Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
-  ) fontCache.classes;
 
 
   (* Écriture du contenu à proprement parler *)
@@ -172,7 +175,7 @@ let draw ?fontCache w h contents=
   if !opened_text then (
     Rbuffer.add_string svg_buf "</text>";
   );
-  def_buf,svg_buf
+  svg_buf
 
 
 
@@ -235,7 +238,8 @@ window.onkeydown=function(e){
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
     Printf.fprintf html "<svg  viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h));
-    let defs,svg=draw ~fontCache:cache w h pages.(i).pageContents in
+    let svg=draw ~fontCache:cache w h pages.(i).pageContents in
+    let defs=make_defs cache in
     Rbuffer.output_buffer html (assemble defs "" svg);
     Printf.fprintf html "</svg>\n";
     Printf.fprintf html "</div></body></html>";
@@ -243,17 +247,3 @@ window.onkeydown=function(e){
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
-
-
-
-let output' w h groups states transitions file=
-  let pages=ref [] in
-  let rec make_pages t=match t with
-      L x->pages:=
-        { pageFormat=w,h;pageContents=
-            (List.concat (List.map (fun x->IntMap.find x groups) x))
-        } ::(!pages)
-    | N x->IntMap.iter (fun _ y->make_pages y) x
-  in
-  make_pages states;
-  output (Array.of_list !pages) file
