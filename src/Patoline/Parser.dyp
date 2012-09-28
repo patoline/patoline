@@ -1191,8 +1191,9 @@ grammar:
             | e ->(Printf.fprintf stderr "No Grammar Loaded (%s: %s). Pwd = %S\n"
 		     (filename^gram_ext) (Printexc.to_string e) (Sys.getcwd ()); [])
         )
-      | _-> []
+      | _->[]
       in
+
       (), action
     }
 

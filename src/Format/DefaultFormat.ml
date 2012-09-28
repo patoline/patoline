@@ -1067,7 +1067,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       open OutputPaper
       open OutputCommon
       module type Driver=OutputPaper.Driver
-      type defaultOutputParam={
+      type output={
         mutable format:user Box.box array array->(user Document.tree*user Document.cxt) array->
                        Box.drawingBox array->(user Document.tree*user Document.cxt) array->
                        (Line.parameters*Line.line) list -> OutputPaper.page;

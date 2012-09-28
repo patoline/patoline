@@ -156,6 +156,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
         if not (LineMap.is_empty todo) then (
           let _,((node,lastBadness,_,lastParameters,comp0,lastNode_opt,lastFigures,lastUser) as cur_node)=LineMap.min_binding todo in
           (* print_text_line paragraphs node; *)
+          (* Printf.fprintf stderr "allow_impossible : %b\n" allow_impossible;flush stderr; *)
           let todo'=ref (LineMap.remove node todo) in
           (* On commence par chercher la première vraie boite après node *)
           let register node nextNode badness log next_params comp=
@@ -287,7 +288,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let extreme_solutions=ref [] in
               let min_page_before=ref 0 in
               let height_problem=ref true in
-              let rec fix attempts page height n_iter=
+              let rec fix page height n_iter=
                 (* Printf.fprintf stderr "fix : %d %f\n" page height;flush stderr; *)
                 let r_nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
@@ -302,12 +303,12 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 in
                 let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
 
-                if !r_params.page_height < infinity || !height_problem || attempts < 42 then begin
+                if !r_params.page_height < infinity || !height_problem then begin
 
                 if height>=(!r_params).page_height
                   || page < node.page+(!r_params).min_page_before
                 then
-                  fix (attempts+1) (page+1) 0. (n_iter+1)
+                  fix (page+1) 0. (n_iter+1)
                 else (
                   let minimal_tried_height=ref infinity in
                   let make_next_node nextNode=
@@ -377,93 +378,96 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                           snd (line_height paragraphs figures nextNode)
                         )
                       in
-                      minimal_tried_height:=min !minimal_tried_height height';
-                      if (height>=height')
-                        && (page >= node.page +
-                              max !r_params.min_page_before lastParameters.min_page_after)
-                      then (
-                        height_problem:=false;
-                        let node_is_orphan=
-                          page<>node.page
-                          &&
-                            ((node.lineStart <= 0
-                              && node.lineEnd < Array.length (paragraphs.(node.paragraph)))
-                             || lastParameters.not_last_line)
-                          && !r_params.min_page_before<=0
-                          && not node.isFigure
-                        in
-                        let nextNode_is_widow=
-                          page<>node.page
-                          &&
-                            ((nextNode.lineStart > 0
-                              && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph)))
-                             || !r_params.not_first_line)
-                          && !r_params.min_page_before<=0
-                        in
-                        if node_is_orphan then (
-                          if allow_impossible then (
-                            try
-                              let _,_,_,_,_,prec,_,_=cur_node in
-                              let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
-                              if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
-                                extreme_solutions:=(pr,a,(Language.Opt_error (Language.Orphan (node, text_line paragraphs node))),
-                                                    { c with min_page_after=1 },
-                                                    d,e,f,g)::(!extreme_solutions)
-                              ) else raise Not_found
-                            with
-                                Not_found->(
-                                  extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Orphan (node,text_line paragraphs nextNode))),
-                                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
-                                )
-                          )
-                        ) else if nextNode_is_widow then (
-                          if allow_impossible then (
-                            try
-                              let _,_,_,_,_,prec,_,_=cur_node in
-                              let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
-                              if node.paragraph=nextNode.paragraph || (!r_params.not_first_line) && not lastParameters.not_first_line then (
-                                extreme_solutions:=(pr,a,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
-                                                    { c with min_page_after=1 },
-                                                    d,e,f,g)::(!extreme_solutions)
-                              ) else raise Not_found
-                            with
-                                Not_found->(
-                                  extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
-                                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
-                                )
-                          )
+                      let node_is_orphan=
+                        page<>node.page
+                        &&
+                          ((node.lineStart <= 0
+                            && node.lineEnd < Array.length (paragraphs.(node.paragraph)))
+                           || lastParameters.not_last_line)
+                        && !r_params.min_page_before<=0
+                        && not node.isFigure
+                      in
+                      let nextNode_is_widow=
+                        page<>node.page
+                        &&
+                          ((nextNode.lineStart > 0
+                            && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph)))
+                           || !r_params.not_first_line)
+                        && !r_params.min_page_before<=0
+                      in
+                      if node_is_orphan then (
+                        if allow_impossible then (
+                          minimal_tried_height:=min !minimal_tried_height height';
+                          try
+                            let _,_,_,_,_,prec,_,_=cur_node in
+                            let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
+                            if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
+                              extreme_solutions:=(pr,a,(Language.Opt_error (Language.Orphan (node, text_line paragraphs node))),
+                                                  { c with min_page_after=1 },
+                                                  d,e,f,g)::(!extreme_solutions)
+                            ) else raise Not_found
+                          with
+                              Not_found->(
+                                extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Orphan (node,text_line paragraphs nextNode))),
+                                                    !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
+                              )
                         )
+                      ) else if nextNode_is_widow then (
+                        if allow_impossible then (
+                          minimal_tried_height:=min !minimal_tried_height height';
+                          try
+                            let _,_,_,_,_,prec,_,_=cur_node in
+                            let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
+                            if node.paragraph=nextNode.paragraph || (!r_params.not_first_line) && not lastParameters.not_first_line then (
+                              extreme_solutions:=(pr,a,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
+                                                  { c with min_page_after=1 },
+                                                  d,e,f,g)::(!extreme_solutions)
+                            ) else raise Not_found
+                          with
+                              Not_found->(
+                                extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
+                                                    !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
+                              )
+                        )
+                      )
                         else if nextNode.min_width > (!r_params).measure && allow_impossible then (
-                          let bad=(lastBadness+.
-                                     badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
+                          minimal_tried_height:=min !minimal_tried_height height';
+                          if (height>=height') then (
+                            let bad=(lastBadness+.
+                                       badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
-                          local_opt:=(nextNode,
-                                      max 0. bad,
-                                      (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
-                                      !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
-                        ) else (
-                          let bad=(lastBadness+.
-                                     badness.(nextNode.paragraph) paragraphs figures
-                                     lastFigures node !haut !max_haut lastParameters comp0
-                                     nextNode !bas !max_bas !r_params comp1) in
-                          if bad<infinity || allow_impossible then
                             local_opt:=(nextNode,
-                                        max 0. bad,Language.Normal,
+                                        max 0. bad,
+                                        (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
                                         !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          )
+                        ) else (
+                          minimal_tried_height:=min !minimal_tried_height height';
+                          if (height>=height') then (
+                            let bad=(lastBadness+.
+                                       badness.(nextNode.paragraph) paragraphs figures
+                                       lastFigures node !haut !max_haut lastParameters comp0
+                                       nextNode !bas !max_bas !r_params comp1) in
+                            if bad<infinity || allow_impossible then
+                              local_opt:=(nextNode,
+                                          max 0. bad,Language.Normal,
+                                          !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          ) else (
+                            height_problem:=true
+                          )
                         )
-                      ) else height_problem:=true
                     )
                   in
                   let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
                   List.iter make_next_node (compl);
-                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+max 1 (max lastParameters.min_page_after !min_page_before) then (
+                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1+(max lastParameters.min_page_after !min_page_before) then (
                     let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
-                    fix (attempts+1) page (if next_h=height then height+.1. else next_h) (n_iter+1)
+                    fix page (if next_h<infinity then next_h else node.height) (n_iter+1)
                   )
                 )
                 end
               in
-              (fix 0 page0 h0 0;
+              (fix page0 h0 0;
                if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                  List.iter (fun (nextNode,bad,log,params,comp,node,figures,user)->
                               let b,_,_=LineMap.split nextNode !todo' in

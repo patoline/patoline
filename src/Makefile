@@ -37,10 +37,9 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 .PHONY:test
-test: Typography/Typography.cmxa Format/FormatDiapo.cmxa $(DRIVERS) Patoline/patoline DefaultGrammar.ttml
-	Patoline/patoline --format FormatDiapo --driver SVG --ml test.txp
-	Patoline/patoline --format FormatDiapo --driver "FormatDiapo.MakeDriver(SVG)" --ml test.txp
-	ocamlfind ocamlopt -package camomile -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa SVG.cmxa Pdf.cmxa DefaultFormat.cmxa FormatDiapo.cmxa -linkpkg  -o 'test.tmx'  -impl 'test.tml'
+test: Typography/Typography.cmxa Format/FormatSlides.cmxa $(DRIVERS) Patoline/patoline DefaultGrammar.ttml
+	Patoline/patoline --format FormatSlides --driver SVG --ml test.txp
+	ocamlfind ocamlopt -package camomile -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa SVG.cmxa Pdf.cmxa DefaultFormat.cmxa FormatSlides.cmxa -linkpkg  -o 'test.tmx'  -impl 'test.tml'
 	./test.tmx
 
 ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
