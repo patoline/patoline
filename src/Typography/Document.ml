@@ -457,7 +457,7 @@ let resize_env fsize env=
 
 (* Changer de taille dans un scope *)
 let size fsize t=
-  Scoped (resize_env fsize, t)
+  [Scoped (resize_env fsize, t)]
 
 
 (****************************************************************)
