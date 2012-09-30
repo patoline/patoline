@@ -15,7 +15,14 @@ let spec = [
   "--graisse", Float (fun x -> prefs := { !prefs with graisse = x })
          , (Printf.sprintf "Fixes the thickness of rendering (default: %.2f pixel), warning : -1 and 1 are big" !prefs.graisse);
   "--tesselation-factor", Float (fun x -> prefs := { !prefs with tesselation_factor = x })
-         ,  (Printf.sprintf "Fixes the tessalation precision in pixels (default: %.2f)" !prefs.graisse);
+         , (Printf.sprintf "Fixes the tessalation precision in pixels (default: %.2f)" !prefs.graisse);
+  "--fit-width", Unit (fun () -> prefs := { !prefs with init_zoom = FitWidth })
+         , "Start with fitting the page width in the window";
+  "--fit-height", Unit (fun () -> prefs := { !prefs with init_zoom = FitHeight })
+         , "Start with fitting the page height in the window";
+  "--fit-page", Unit (fun () -> prefs := { !prefs with init_zoom = FitHeight })
+         , "Start with fitting the page in the window";
+
 ]
 
 let files = ref []

@@ -8,17 +8,21 @@ open Util
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
 
+type init_zoom = 
+  FitWidth  | FitHeight | FitPage
+
 type prefs = {
   subpixel_anti_aliasing : subpixel_anti_aliasing;
   graisse : float;
   tesselation_factor : float;
-  
+  init_zoom : init_zoom;
 }
 
 let prefs = ref {
   subpixel_anti_aliasing = RGB_SAA;
   graisse = -0.1;
   tesselation_factor = 1.0/.3.0;
+  init_zoom = FitPage;
 }
 
 let cur_page = ref 0
@@ -183,10 +187,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page)
   in
 
+  let init_zoom = ref true in
+
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
     let pw,ph = !pages.(page).pageFormat in
+    if !init_zoom then begin
+      init_zoom := false; 
+      if (pw /. ph < ratio && !prefs.init_zoom != FitWidth) || !prefs.init_zoom = FitHeight  then
+	zoom := 1.0
+      else
+	zoom := (pw /. ph) /. ratio
+    end;
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
