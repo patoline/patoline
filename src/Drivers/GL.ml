@@ -132,7 +132,7 @@ let overlay_rect (r,g,b) (x,y,x',y') =
 	List.split (ln @ [last])
     ) beziers)   
 
-let output ?(structure:structure={name="";displayname=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 

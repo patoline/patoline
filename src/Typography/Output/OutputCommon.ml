@@ -22,6 +22,25 @@ let yellow=RGB{red=1.;green=1.;blue=0.}
 let gray=mix 50. white black
 
 
+type metadata=
+    Contributor
+  | Coverage
+  | Creator
+  | Date
+  | Description
+  | Format
+  | Identifier
+  | Language
+  | Publisher
+  | Relation
+  | Rights
+  | Source
+  | Subject
+  | Title
+  | Type
+
+
+
 type path_parameters= {
   close:bool;
   strokingColor:color option;
@@ -145,6 +164,7 @@ let circle r=
        [|r;r;lambda;0.|], [|0.;-.lambda;-.r;-.r|];
        [|0.;-.lambda;-.r;-.r|], [|-.r;-.r;-.lambda;0.|] |]
 type structure= { mutable name:string;
+                  mutable metadata : (metadata*string) list;
 		  mutable displayname:contents list;
                   mutable page:int;
                   mutable struct_x:float;

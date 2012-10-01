@@ -43,6 +43,24 @@ type link = {
 }
 type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
 
+
+type metadata=
+    Contributor
+  | Coverage
+  | Creator
+  | Date
+  | Description
+  | Format
+  | Identifier
+  | Language
+  | Publisher
+  | Relation
+  | Rights
+  | Source
+  | Subject
+  | Title
+  | Type
+
 type contents =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
@@ -68,6 +86,7 @@ val rectangle : (float*float) -> (float*float)->(float array * float array) arra
 
 type structure = {
   mutable name : string;
+  mutable metadata : (metadata*string) list;
   mutable displayname : contents list;
   mutable page : int;
   mutable struct_x : float;

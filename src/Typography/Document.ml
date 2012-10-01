@@ -1067,6 +1067,7 @@ let rec make_struct positions tree=
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
           { OutputCommon.name=s.name;
+            OutputCommon.metadata=[];
 	    OutputCommon.displayname=[] (* FIXME boxify ?env [T s.name] *);
             OutputCommon.page=p;
             OutputCommon.struct_x=x;
@@ -1075,6 +1076,7 @@ let rec make_struct positions tree=
       )
     | _->
         { OutputCommon.name="";
+          OutputCommon.metadata=[];
 	  OutputCommon.displayname=[];
           OutputCommon.page=0;
           OutputCommon.struct_x=0.;

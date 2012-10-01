@@ -40,7 +40,7 @@ let stream buf=
   let stream buf="",buf
 #endif
 
-let output ?(structure:structure={name="";displayname=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
@@ -500,127 +500,128 @@ let output ?(structure:structure={name="";displayname=[];
     done;
 
     (* Tous les dictionnaires de unicode mapping *)
+    let defaultutf8=String.make 1 (char_of_int 0) in
+    let glyphutf8 x=
+      let n=Fonts.glyphNumber x in
+      if n.glyph_utf8="" then defaultutf8 else n.glyph_utf8
+    in
     StrMap.iter (fun _ x->
-                   let buf=Rbuffer.create 100000 in
-                     Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
-                     Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
-                     Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
-                     Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
-                     let range=ref [] in
-                     let one=ref [] in
-                     let multRange=ref [] in
-                     let rec make_cmap glyphs=
-                       if not (IntMap.is_empty glyphs) then (
-                         (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
-                         let m0,(g0)=IntMap.min_binding glyphs in
-                           if UTF8.length (Fonts.glyphNumber g0).glyph_utf8 <= 0 then
-                             make_cmap (IntMap.remove m0 glyphs)
-                           else (
-                             let a,b=
-                               let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
-                                 (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
-                             in
-                             let one_char, mult_char=IntMap.partition (fun _ gl->
-                                                                         let utf8=(Fonts.glyphNumber gl).glyph_utf8 in
-                                                                           UTF8.next utf8 0 > String.length utf8) a
-                             in
-                               (* recuperer les intervalles et singletons *)
-                             let rec unicode_diff a0=
-                               if not (IntMap.is_empty a0) then (
-                                 let idx0,m0=IntMap.min_binding a0 in
-                                 let num0=Fonts.glyphNumber m0 in
-                                 let u,v=IntMap.partition (fun idx x->let num=Fonts.glyphNumber x in
-                                                             idx-(UChar.uint_code (UTF8.get num.glyph_utf8 0)) =
-                                                               idx0-(UChar.uint_code (UTF8.get num0.glyph_utf8 0))
-                                                          ) a0
-                                 in
-                                 let idx1,m1=IntMap.max_binding u in
-                                   if IntMap.cardinal u > 1 then (
-                                     range:=(idx0,idx1,UTF8.get num0.glyph_utf8 0)::(!range)
-                                   ) else (
-                                     one:=(idx0, num0.glyph_utf8)::(!one)
-                                   );
-                                   unicode_diff v
-                               )
-                             in
-                               unicode_diff one_char;
-                               if not (IntMap.is_empty mult_char) then (
-                                 let idx0,m0=IntMap.min_binding mult_char in
-                                 let first=ref idx0 in
-                                 let last=ref (idx0-1) in
-                                 let cur=ref [] in
-                                   IntMap.iter (fun idx (a)->
-                                                  let num=Fonts.glyphNumber a in
-                                                    if idx > (!last)+1 then (
-                                                      (match !cur with
-                                                           _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
-                                                         | [h]->one:=(!first, h)::(!one)
-                                                         | []->());
-                                                      cur:=[]
-                                                    );
-                                                    if !cur=[] then
-                                                      first:=idx;
-                                                    cur:=num.glyph_utf8::(!cur);
-                                                    last:=idx
-                                               ) mult_char;
+      let buf=Rbuffer.create 100000 in
+      Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
+      Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
+      Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
+      Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+      let range=ref [] in
+      let one=ref [] in
+      let multRange=ref [] in
+      let rec make_cmap glyphs=
+        if not (IntMap.is_empty glyphs) then (
+          (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
+          let m0,g0=IntMap.min_binding glyphs in
+          let a,b=
+            let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
+            (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
+          in
+          let one_char, mult_char=IntMap.partition (fun _ gl->
+            let utf8=(glyphutf8 gl) in
+            UTF8.next utf8 0 > String.length utf8) a
+          in
+          (* recuperer les intervalles et singletons *)
+          let rec unicode_diff a0=
+            if not (IntMap.is_empty a0) then (
+              let idx0,m0=IntMap.min_binding a0 in
+              let num0=glyphutf8 m0 in
+              let u,v=IntMap.partition (fun idx x->let num=glyphutf8 x in
+                                                   idx-(UChar.uint_code (UTF8.get num 0)) =
+                  idx0-(UChar.uint_code (UTF8.get num0 0))
+              ) a0
+              in
+              let idx1,m1=IntMap.max_binding u in
+              if IntMap.cardinal u > 1 then (
+                range:=(idx0,idx1,UTF8.get num0 0)::(!range)
+              ) else (
+                one:=(idx0, num0)::(!one)
+              );
+              unicode_diff v
+            )
+          in
+          unicode_diff one_char;
+          if not (IntMap.is_empty mult_char) then (
+            let idx0,m0=IntMap.min_binding mult_char in
+            let first=ref idx0 in
+            let last=ref (idx0-1) in
+            let cur=ref [] in
+            IntMap.iter (fun idx a->
+              let num=glyphutf8 a in
+              if idx > (!last)+1 then (
+                (match !cur with
+                    _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+                  | [h]->one:=(!first, h)::(!one)
+                  | []->());
+                cur:=[]
+              );
+              if !cur=[] then
+                first:=idx;
+              cur:=num::(!cur);
+              last:=idx
+            ) mult_char;
 
-                                   match !cur with
-                                       _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
-                                     | [h]->one:=(!first, h)::(!one)
-                                     | []->()
+            match !cur with
+                _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+              | [h]->one:=(!first, h)::(!one)
+              | []->()
 
-                               );
-                               make_cmap b
-                           )
-                       )
-                     in
-                       make_cmap x.revFontGlyphs;
-                       let rec print_utf8 utf idx=
-                         try
-                           Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
-                           print_utf8 utf (UTF8.next utf idx)
-                         with
-                             _->()
-                       in
-                       let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
-                         if one_nonempty<>[] then (
-                           Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
-                           List.iter (fun (a,b)->
-                                        Rbuffer.add_string buf (sprintf "<%04x> <" a);
-                                        print_utf8 b (UTF8.first b);
-                                        Rbuffer.add_string buf ">\n"
-                                     ) one_nonempty;
-                           Rbuffer.add_string buf "endbfchar\n"
-                         );
+          );
+          make_cmap b
+        )
+      in
+      make_cmap x.revFontGlyphs;
+      let rec print_utf8 utf idx=
+        try
+          Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
+          print_utf8 utf (UTF8.next utf idx)
+        with
+            _->()
+      in
+      let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
+      if one_nonempty<>[] then (
+        Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
+        List.iter (fun (a,b)->
+          Rbuffer.add_string buf (sprintf "<%04x> <" a);
+          print_utf8 b (UTF8.first b);
+          Rbuffer.add_string buf ">\n"
+        ) one_nonempty;
+        Rbuffer.add_string buf "endbfchar\n"
+      );
 
-                         let mult_nonempty=List.filter (fun (_,b)->b<>[])
-                           (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
+      let mult_nonempty=List.filter (fun (_,b)->b<>[])
+        (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
 
-                           if !range<>[] || mult_nonempty<>[] then (
-                             Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
-                             List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
-                                                                           a b (UChar.uint_code c))) !range;
-                             List.iter (fun (a,b)->
-                                          Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
-                                          List.iter (fun c->
-                                                       Rbuffer.add_string buf "<";
-                                                       print_utf8 c (UTF8.first c);
-                                                       Rbuffer.add_string buf ">") b;
-                                          Rbuffer.add_string buf "]\n"
-                                       ) mult_nonempty;
-                             Rbuffer.add_string buf "endbfrange\n"
-                           );
-                           Rbuffer.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
+      if !range<>[] || mult_nonempty<>[] then (
+        Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
+        List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
+                                                          a b (UChar.uint_code c))) !range;
+        List.iter (fun (a,b)->
+          Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
+          List.iter (fun c->
+            Rbuffer.add_string buf "<";
+            print_utf8 c (UTF8.first c);
+            Rbuffer.add_string buf ">") b;
+          Rbuffer.add_string buf "]\n"
+        ) mult_nonempty;
+        Rbuffer.add_string buf "endbfrange\n"
+      );
+      Rbuffer.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
 
 
-                           resumeObject x.fontToUnicode;
-                           let filt, data=stream buf in
-                           let len=Rbuffer.length data in
-                           fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-                           Rbuffer.output_buffer outChan data;
-                           fprintf outChan "\nendstream";
-                           endObject ()
-                ) !fonts;
+      resumeObject x.fontToUnicode;
+      let filt, data=stream buf in
+      let len=Rbuffer.length data in
+      fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+      Rbuffer.output_buffer outChan data;
+      fprintf outChan "\nendstream";
+      endObject ()
+    ) !fonts;
 
 
 
@@ -727,50 +728,95 @@ let output ?(structure:structure={name="";displayname=[];
 
     (* Ecriture du catalogue *)
 
+    let rdf=Rbuffer.create 1000 in
+    Rbuffer.add_string rdf"<?xpacket begin='' id='W5M0MpCehiHzreSzNTczkc9d'?>\n";
+
+    Rbuffer.add_string rdf "<rdf:RDF
+xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"
+xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
+    Rbuffer.add_string rdf "<rdf:Description rdf:about=\"\" xmlns:pdfaid=\"http://www.aiim.org/pdfa/ns/id/\">\n<pdfaid:part>1</pdfaid:part>\n<pdfaid:conformance>A</pdfaid:conformance>\n</rdf:Description>\n";
+
+    Rbuffer.add_string rdf "<rdf:Description rdf:about=\"\">\n";
+
+
+    List.iter (fun (meta, cont)->
+      let descr=match meta with
+          Contributor->"contributor"
+        | Coverage->"coverage"
+        | Creator->"creator"
+        | Date->"date"
+        | Description->"description"
+        | Format->"format"
+        | Identifier->"identifier"
+        | Language->"language"
+        | Publisher->"publisher"
+        | Relation->"relation"
+        | Rights->"rights"
+        | Source->"source"
+        | Subject->"subject"
+        | Title->"title"
+        | Type->"type"
+      in
+      Rbuffer.add_string rdf (sprintf "<dc:%s>%s</dc:%s>\n" descr cont descr)
+    ) structure.metadata;
+
+    Rbuffer.add_string rdf "</rdf:Description>\n</rdf:RDF>\n";
+    Rbuffer.add_string rdf "<?xpacket end='w'?>\n";
+
+    let metadata=beginObject () in
+    fprintf outChan "<< /Length %d /Type /Metadata /Subtype /XML >>\nstream\n"
+      (Rbuffer.length rdf);
+    Rbuffer.output_buffer outChan rdf;
+    fprintf outChan "\nendstream\n";
+    endObject ();
+
+    let markinfo="<< /Marked true /UserProperties false /Suspects false >>" in
+    let outputIntents="/OutputIntents [ << /Info (none) /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (Blurb.com) /RegistryName (http://www.color.org/) >> ]"
+    in
     let cat=futureObject () in
-      if structure.name="" && Array.length structure.substructures=0 then (
-        resumeObject cat;
-        fprintf outChan "<< /Type /Catalog /Pages 1 0 R>>";
-        endObject ()
-      ) else (
-        let count=ref 0 in
-        let rec make_outlines str par=
-          let hijosObjs=Array.map (fun _-> futureObject ()) str.substructures in
-            for i=0 to Array.length str.substructures-1 do
-              let (a,b)=make_outlines str.substructures.(i) hijosObjs.(i) in
-                incr count;
+    if structure.name="" && Array.length structure.substructures=0 then (
+      resumeObject cat;
+      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s >>" metadata markinfo outputIntents;
+      endObject ()
+    ) else (
+      let count=ref 0 in
+      let rec make_outlines str par=
+        let hijosObjs=Array.map (fun _-> futureObject ()) str.substructures in
+        for i=0 to Array.length str.substructures-1 do
+          let (a,b)=make_outlines str.substructures.(i) hijosObjs.(i) in
+          incr count;
 
-                resumeObject hijosObjs.(i);
-                fprintf outChan "<< /Title (%s) /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
-                if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
-                if i<Array.length str.substructures-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
-                if a>0 then
-                  fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
-                    a b (Array.length str.substructures.(i).substructures);
-                if str.substructures.(i).page>=0 then
-                  fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
-                    (pt_of_mm str.substructures.(i).struct_x)
-                    (pt_of_mm str.substructures.(i).struct_y);
-                fprintf outChan ">> ";
-                endObject ()
-            done;
-            if Array.length hijosObjs>0 then
-              (hijosObjs.(0),hijosObjs.(Array.length hijosObjs-1))
-            else
-              (-1,-1)
-        in
-
-
-        let outlines=futureObject () in
-        let a,b=make_outlines structure (* { name=""; page=0; struct_x=0.; struct_y=0.; substructures=[|structure|] } *) outlines in
-
-          resumeObject outlines;
-          fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
-          endObject ();
-          resumeObject cat;
-          fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R >>" outlines;
+          resumeObject hijosObjs.(i);
+          fprintf outChan "<< /Title (%s) /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
+          if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
+          if i<Array.length str.substructures-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
+          if a>0 then
+            fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
+              a b (Array.length str.substructures.(i).substructures);
+          if str.substructures.(i).page>=0 then
+            fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
+              (pt_of_mm str.substructures.(i).struct_x)
+              (pt_of_mm str.substructures.(i).struct_y);
+          fprintf outChan ">> ";
           endObject ()
-      );
+        done;
+        if Array.length hijosObjs>0 then
+          (hijosObjs.(0),hijosObjs.(Array.length hijosObjs-1))
+        else
+          (-1,-1)
+      in
+
+
+      let outlines=futureObject () in
+      let a,b=make_outlines structure (* { name=""; page=0; struct_x=0.; struct_y=0.; substructures=[|structure|] } *) outlines in
+
+      resumeObject outlines;
+      fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
+      endObject ();
+      resumeObject cat;
+      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R /Metadata %d 0 R /MarkInfo %s %s >>" outlines metadata markinfo outputIntents;
+      endObject ()
+    );
 
       (* Ecriture de xref *)
       flush outChan;

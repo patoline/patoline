@@ -12,7 +12,7 @@ let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 
 
-let output ?(structure:structure={name="";displayname=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
