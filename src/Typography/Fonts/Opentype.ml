@@ -172,11 +172,11 @@ let fontBBox f=
   in
   let (a,b)=tableLookup "hhea" file offset0 in
   seek_in file (a+4);
-  let ascender=readInt2 file in
-  let descender=readInt2 file in
+  let ascender=sreadInt2 file in
+  let descender=sreadInt2 file in
   seek_in file (a+12);
-  let lsb=readInt2 file in
-  let rsb=readInt2 file in
+  let lsb=sreadInt2 file in
+  let rsb=sreadInt2 file in
   (lsb,descender,rsb,ascender)
 
 let italicAngle f=
