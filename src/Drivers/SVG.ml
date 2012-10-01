@@ -87,18 +87,24 @@ let draw ?fontCache w h contents=
   let cur_size=ref 0. in
   let cur_color=ref (RGB {red=0.;green=0.;blue=0.}) in
   let opened_text=ref false in
+  let opened_tspan=ref false in
 
   List.iter (fun cont->match cont with
       Glyph x->(
+        if not !opened_text then (
+          Rbuffer.add_string svg_buf "<text>\n";
+          opened_text:=true
+        );
+
         let _,fontName=className fontCache x.glyph in
         let size=x.glyph_size in
         if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
-          || !cur_size<>size || !cur_color<>x.glyph_color || not !opened_text
+          || !cur_size<>size || !cur_color<>x.glyph_color
         then (
-          if !opened_text then (
-            Rbuffer.add_string svg_buf "</text>";
+          if !opened_tspan then (
+            Rbuffer.add_string svg_buf "</tspan>";
           );
-          Rbuffer.add_string svg_buf (Printf.sprintf "<text x=\"%g\" y=\"%g\" style=\"font-family:%s;font-size:%gpx;\" "
+          Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" font-family=\"%s\" font-size=\"%gpx\" "
                                         (coord x.glyph_x) (coord (h-.x.glyph_y))
                                         fontName
                                         (coord size));
@@ -117,15 +123,20 @@ let draw ?fontCache w h contents=
           cur_family:=fontName;
           cur_size:=size;
           cur_color:=x.glyph_color;
-          opened_text:=true;
+          opened_tspan:=true;
         );
         let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
         Rbuffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
         cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
       )
     | Path (args, l)->(
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>";
+        opened_tspan:=false
+      );
       if !opened_text then (
         Rbuffer.add_string svg_buf "</text>";
+        opened_text:=false
       );
       Rbuffer.clear buf;
       List.iter
@@ -172,6 +183,9 @@ let draw ?fontCache w h contents=
     )
     | _->()
       ) contents;
+  if !opened_tspan then (
+    Rbuffer.add_string svg_buf "</tspan>";
+  );
   if !opened_text then (
     Rbuffer.add_string svg_buf "</text>";
   );
@@ -179,7 +193,7 @@ let draw ?fontCache w h contents=
 
 
 
-let output ?(structure:structure={name="";displayname=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
@@ -236,7 +250,7 @@ window.onkeydown=function(e){
               (Printf.sprintf "%s%d.html" chop_file (i+1)));
     );
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-    Printf.fprintf html "<svg  viewBox=\"0 0 %d %d\">"
+    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\">"
       (round (coord w)) (round (coord h));
     let svg=draw ~fontCache:cache w h pages.(i).pageContents in
     let defs=make_defs cache in
@@ -247,3 +261,104 @@ window.onkeydown=function(e){
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
+
+
+
+
+let output' ?(structure:structure={name="";displayname=[];metadata=[];
+				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages fileName=
+
+  let fileName = filename fileName in
+  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
+
+  let chop=Filename.chop_extension fileName in
+  let chop_file=Filename.basename chop in
+
+  let defs=make_defs cache in
+
+  for i=0 to Array.length pages-1 do
+    let file=open_out (Printf.sprintf "%s%d.svg" chop_file i) in
+    let w,h=pages.(i).pageFormat in
+    Printf.fprintf file "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
+      (round (coord w)) (round (coord h));
+    let svg=draw ~fontCache:cache w h pages.(i).pageContents in
+    Rbuffer.output_buffer file svg;
+    Printf.fprintf file "</svg>\n";
+    close_out file
+  done;
+  let html_name=Printf.sprintf "%s.html" chop in
+  let html=open_out html_name in
+  let w,h=if Array.length pages>0 then pages.(0).pageFormat else 0.,0. in
+  Printf.fprintf html
+      "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+<meta charset=\"utf-8\">
+<title>%s</title>"      structure.name;
+    Printf.fprintf html "<script>
+var current=0;
+resize=function(){
+sizex=(window.innerWidth)/%g;
+sizey=(window.innerHeight)/%g;
+size=sizex>sizey ? sizey : sizex;
+svg=document.getElementById(\"svg\");
+svg.style.width=(%g*size)+'px';
+svg.style.height=(%g*size)+'px';
+};
+//window.onresize=function(e){resize()};
+
+function loadSlide(n){
+if(n>=0 && n<%d) {
+    xhttp=new XMLHttpRequest();
+    xhttp.open(\"GET\",\"%s\"+n+\".svg\",false);
+    xhttp.send();
+    var parser=new DOMParser();
+    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
+
+    var svg=document.getElementsByTagName(\"svg\")[0];
+
+    newSvg=document.importNode(newSvg.rootElement,true);
+    var g=document.createElementNS(\"http://www.w3.org/2000/svg\",\"g\");
+    //g.setAttribute(\"transform\",\"translate(100 100)\");
+    g.setAttribute(\"id\",\"g\"+n);
+
+    var cur_g=document.getElementById(\"g\"+current);
+    if(cur_g) svg.removeChild(cur_g);
+    svg.appendChild(g);
+    for(i=0;i<newSvg.childNodes.length;i++) {
+        if(newSvg.childNodes[i].nodeType==document.ELEMENT_NODE)
+            g.appendChild(newSvg.childNodes[i]);
+    }
+    current=n;
+}
+}
+
+window.onload=function(){resize();loadSlide(0)};
+window.onkeydown=function(e){
+if(e.keyCode==37){loadSlide(current-1)}
+if(e.keyCode==39){loadSlide(current+1)} //right
+}
+</script>"
+      w h (w-.10.) (h-.10.)
+      (Array.length pages)
+      chop_file
+    ;
+
+    Printf.fprintf html "<title>%s</title></head><body style=\"margin:0;padding:0;\">" structure.name;
+    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
+    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\">" (round (coord w)) (round (coord h));
+
+    let style=make_defs cache in
+    Printf.fprintf html "<defs>";
+    Printf.fprintf html "<style type=\"text/css\">\n<![CDATA[\n";
+    Rbuffer.output_buffer html style;
+    Printf.fprintf html "]]>\n</style>\n";
+    Printf.fprintf html "</defs><title>%s</title>" structure.name;
+
+    Printf.fprintf html "</svg>\n";
+    Printf.fprintf html "</div></body></html>";
+    close_out html;
+
+    Printf.fprintf stderr "File %s written.\n" fileName;
+    flush stderr
