@@ -432,7 +432,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                       )
                         else if nextNode.min_width > (!r_params).measure && allow_impossible then (
                           minimal_tried_height:=min !minimal_tried_height height';
-                          if (height>=height') then (
+                          if (height>=height') || allow_impossible  then (
                             let bad=(lastBadness+.
                                        badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
@@ -443,7 +443,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                           )
                         ) else (
                           minimal_tried_height:=min !minimal_tried_height height';
-                          if (height>=height') then (
+                          if (height>=height') || allow_impossible then (
                             let bad=(lastBadness+.
                                        badness.(nextNode.paragraph) paragraphs figures
                                        lastFigures node !haut !max_haut lastParameters comp0
@@ -459,10 +459,26 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                     )
                   in
                   let compl=completeLine.(pi) paragraphs figures lastFigures lastUser r_nextNode allow_impossible in
+                  let compl=if compl=[] && allow_impossible then (
+                    [{
+                      paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
+                      hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
+                      height = height;
+                      lineStart= i; lineEnd= i+1;
+                      paragraph_height=if i=0 then 0 else node.paragraph_height+1;
+                      page_line=if page=node.page then node.page_line+1 else 0;
+                      page=page;
+                      min_width=0.;nom_width=0.;max_width=0.;
+                      line_y0=infinity; line_y1= -.infinity }
+                    ]
+                  ) else compl
+                  in
                   List.iter make_next_node (compl);
                   if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1+(max lastParameters.min_page_after !min_page_before) then (
                     let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
-                    fix page (if next_h<infinity then next_h else node.height) (n_iter+1)
+                    (* Printf.fprintf stderr "%f %f\n" next_h node.height; *)
+                    fix page (if next_h<infinity && next_h>height then next_h else
+                        height+.1.) (n_iter+1)
                   )
                 )
                 end
