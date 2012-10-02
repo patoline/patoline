@@ -258,7 +258,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                      let cont=[tT (List.assoc "Author" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
-                       par_env=(fun env->env);
+                       par_env=(fun env->{env with par_indent=[]});
                        par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                          user_positions=user_positions env2 });
                        par_parameters=
@@ -284,7 +284,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           Node n->
             let par=Paragraph {
               par_contents=n.displayname;
-              par_env=resize_env 8.;
+              par_env=resize_env 3.;
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=
@@ -466,6 +466,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     let title str ?label ?(extra_tags=[]) displayname =
+      let displayname=[C (fun _->env_accessed:=true;displayname)] in
       try
 	let name = string_of_contents displayname in
 	let t0',path=
