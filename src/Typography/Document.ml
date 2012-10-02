@@ -468,6 +468,9 @@ let resize_env fsize env=
 let size fsize t=
   [Scoped (resize_env fsize, t)]
 
+let color col t=
+  [Scoped ((fun env->{env with fontColor=col}), t)]
+
 
 (****************************************************************)
 
