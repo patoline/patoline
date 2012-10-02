@@ -478,15 +478,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                 node_tags=("MainTitle","")::("Structural","")::("InTOC","")::extra_tags@n.node_tags;
                 displayname = displayname},path
           | t,path->
-	    Node { name=name;
-                   node_tags=["Structural","";"InTOC",""];
-                   displayname=displayname;
-		   children=IntMap.singleton 1 t;
-                   node_env=(fun x->x);
-                   node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
-                     user_positions=y.user_positions });
-                   node_states=IntSet.empty;
-                   node_paragraph=0 },path
+	    Node { empty with
+              name=name;
+              node_tags=["Structural","";"InTOC",""];
+              displayname=displayname;
+	      children=IntMap.singleton 1 t;
+              node_env=(fun x->x);
+              node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
+                user_positions=y.user_positions });
+              node_states=IntSet.empty
+            },path
 	in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
       with
@@ -850,19 +851,10 @@ module Format=functor (D:Document.DocumentStructure)->(
       module Item=struct
         let do_begin_env ()=
           D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
-            (Node { empty with node_env=(incr_counter "enumerate") });
-          D.structure:=lastChild !D.structure;
-          newPar D.structure Complete.normal parameters
-            [bB (fun env->
-                  let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
-                  let bb=boxify_scoped env (M.from_counter enum) in
-                  let fix g= { g with drawing_min_width=g.drawing_nominal_width;
-                                 drawing_max_width=g.drawing_nominal_width }
-                  in
-                  let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
-                  boxes@[User AlignmentMark])
-            ];
-          D.structure:=lastChild !D.structure
+            (Node { empty with
+              node_tags=("item","")::empty.node_tags;
+              node_env=(incr_counter "enumerate")
+            })
         let do_end_env()=()
       end
 
@@ -904,10 +896,30 @@ module Format=functor (D:Document.DocumentStructure)->(
                         }
           | x->x
         in
-          D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
-          D.structure:=replaceParams 0 (fst !D.structure), snd !D.structure;
-          D.structure:=up (up !D.structure);
-          env_stack:=List.tl !env_stack
+        let rec enumerate do_it t=match t with
+            Node n when List.mem_assoc "item" n.node_tags && not do_it ->
+              Node { n with children=IntMap.map (enumerate true) n.children }
+          | Node n when List.mem_assoc "item" n.node_tags -> Node n
+          | Node n->Node { n with children=IntMap.map (enumerate do_it) n.children }
+          | Paragraph p when do_it->
+            let item=bB (fun env->
+              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
+              let bb=boxify_scoped env (M.from_counter enum) in
+              let fix g= { g with drawing_min_width=g.drawing_nominal_width;
+                drawing_max_width=g.drawing_nominal_width }
+              in
+              let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
+              boxes@[User AlignmentMark])
+            in
+            Paragraph { p with par_contents=item::p.par_contents }
+          | _->t
+        in
+        D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+        let a,b= !D.structure in
+        D.structure:=(enumerate false a,b);
+        D.structure:=replaceParams 0 (fst !D.structure), snd !D.structure;
+        D.structure:=up (up !D.structure);
+        env_stack:=List.tl !env_stack
     end
 
     module Env_itemize =
