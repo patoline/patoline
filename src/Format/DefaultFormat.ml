@@ -850,6 +850,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       module Item=struct
         let do_begin_env ()=
+          D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
           D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
             (Node { empty with
               node_tags=("item","")::empty.node_tags;
