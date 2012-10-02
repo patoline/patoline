@@ -519,10 +519,16 @@ and output_list parser_pp from where no_indent lvl docs =
 	    then "(fun x -> { x with par_indent = [] })" 
 	    else "(fun x -> x)"
 	  in
-	  let param = if options.center_paragraph then 
-	      "(Typography.Document.do_center Patoline_Format.parameters)"
-	    else
-	      "Patoline_Format.parameters"
+	  let param =
+              (* FIXME : cette option ne marche pas, il y a un
+                 problème dans le parser. Celui-ci teste si le
+                 paragraphe commence après au moins quatre caractères
+                 quelconques. Du coup, on se retrouve à centrer les \item *)
+
+              (* if options.center_paragraph then  *)
+	      (*   "(Typography.Document.do_center Patoline_Format.parameters)" *)
+	      (* else *)
+	    "Patoline_Format.parameters"
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
 	    env param (print_contents parser_pp from) p
