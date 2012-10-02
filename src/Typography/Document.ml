@@ -140,6 +140,7 @@ end
 type 'a node={
   name:string;
   displayname:'a content list;
+  mutable boxified_displayname:contents list;
   children:'a tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
   node_tags:(string*string) list;
   node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
@@ -211,6 +212,13 @@ let bB f = B(f,ref None)
 let tT f = T(f,ref None)
 let env_accessed=ref false
 let uT f = C(fun _->env_accessed:=true;[tT f])
+let string_of_contents l =
+  let s = ref "" in
+  List.iter (function
+    T (str,_) ->
+      if !s = "" then s:= str else s:= !s ^" " ^str
+  | _ -> ()) l;
+  !s
 
 let names env=
   env_accessed:=true;
@@ -259,7 +267,8 @@ let tags=function
 let empty:user node=
   { name="";
     node_tags=[];
-    displayname = []; children=IntMap.empty;
+    displayname = []; boxified_displayname=[];
+    children=IntMap.empty;
     node_env=(fun x->x);
     node_post_env=(fun x y->{ x with
       counters=y.counters;
@@ -608,20 +617,15 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters 
           str:=up (newChildAfter !str para)
 
 
-let string_of_contents l =
-  let s = ref "" in
-  List.iter (function
-    T (str,_) ->
-      if !s = "" then s:= str else s:= !s ^" " ^str
-  | _ -> ()) l;
-  !s
-
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   let name = match label with
       None -> string_of_contents displayname
     | Some s -> s
   in
-
+  let displayname=match displayname with
+      []->(match label with Some s->[tT s] | None->[])
+    | _->displayname
+  in
   let para=Node {
     empty with
       name=name;
@@ -992,6 +996,7 @@ let flatten env0 fixable str=
               env_.counters }
           in
           s.node_paragraph <- List.length !paragraphs;
+          s.boxified_displayname <- draw_boxes (boxify_scoped env s.displayname);
           let flushes'=ref [] in
           let flat_children k a (is_first,indent, env1)=match a with
               Paragraph p->(
@@ -1068,7 +1073,7 @@ let rec make_struct positions tree=
         let a=Array.of_list (make (IntMap.bindings s.children)) in
           { OutputCommon.name=s.name;
             OutputCommon.metadata=[];
-	    OutputCommon.displayname=[] (* FIXME boxify ?env [T s.name] *);
+	    OutputCommon.displayname=s.boxified_displayname;
             OutputCommon.page=p;
             OutputCommon.struct_x=x;
             OutputCommon.struct_y=y;
