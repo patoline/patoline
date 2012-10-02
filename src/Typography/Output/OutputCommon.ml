@@ -155,7 +155,9 @@ let bounding_box_full =  bounding_box_opt {
 let rectangle (xa,ya) (xb,yb)=
   [|[|xa;xa|],[|ya;yb|];
     [|xa;xb|],[|yb;yb|];
-    [|xb;xb|],[|yb;ya|]|]
+    [|xb;xb|],[|yb;ya|];
+    [|xb;xa|],[|ya;ya|];
+  |]
 
 let circle r=
   let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in

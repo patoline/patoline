@@ -415,6 +415,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	let color = (r,g,b) in
+	let lines, normals = 
+	  if param.close then
+	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) lines,
+	    List.map (function (x::_ as l) -> l @ [x] | [] -> []) normals
+	  else
+	    lines, normals
+	in
+	Printf.printf "coucou: %d\n" (List.length lines);
 	List.iter2 (fun l n ->
 	  GlDraw.begins `quad_strip; 
 	  GlDraw.color color; 
