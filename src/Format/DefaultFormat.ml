@@ -280,7 +280,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         | _->with_institute
       in
 
-      let with_title=match with_author with
+      let with_title=match tree with
           Node n->
             let par=Paragraph {
               par_contents=n.displayname;
