@@ -179,12 +179,9 @@ let rec print_math_buf parser_pp op buf m =
 	    Printf.bprintf buf "[Maths.Decoration (Maths.open_close (%a) (%a), %a)]"
 	      print_math_multi_symbol op print_math_multi_symbol cl (print_math_expr no_ind) a)
       | Prefix(pr, op, nsp, b) ->
-	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a,%b)) [] (%a)]" pr (print_math_deco op) ind_left nsp (print_math_expr ind_right) b
+	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a,%b)) [] (%a)]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) b
       | Postfix(pr, a, nsp, op) ->
-	let ind_left, ind_right = split_ind indices in
-	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a, %b)) (%a)  []]" pr (print_math_deco op) ind_right nsp (print_math_expr ind_left) a
-
+	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a, %b)) (%a)  []]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) a
       | Limits_operator(op, a) ->
 	  Printf.bprintf buf "[Maths.op_limits [] (%a) (%a)]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
       | Operator(op, a) ->

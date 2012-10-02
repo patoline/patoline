@@ -898,13 +898,14 @@ math:
       { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
         Indices(fi d, m) } ind
 
-  | quantifier<_,m,d> math(<operator)<v> [ relation<_,r,d> math(<operator)<e> {r, e, d} ]?<c> [punctuation]?<p> math(<=operator)<b>
-      { match c, p with
-        | None, None -> Binary(1,Prefix(3,m,false,v),false,SimpleSym "",false,b)
-        | None, Some(_,p,d) -> app_ind d (Binary(0,Prefix(3,m,false,v),true,p,false,b))
-        | Some(r,e,d), None -> Binary(1,Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e))),
+  | quantifier<_,m,dq> math(<operator)<v> [ relation<_,r,d> math(<operator)<e> {r, e, d} ]?<c> [punctuation]?<p> math(<=operator)<b>
+      { 
+        match c, p with
+        | None, None -> Binary(1,app_ind dq (Prefix(3,m,false,v)),false,SimpleSym "",false,b)
+        | None, Some(_,p,d) -> app_ind d (Binary(0,app_ind dq (Prefix(3,m,false,v)),true,p,false,b))
+        | Some(r,e,d), None -> Binary(1,app_ind dq (Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e)))),
 	                         false,SimpleSym "",false,b)
-        | Some(r,e,d), Some(_,p,d') -> app_ind d' (Binary(0,Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e))),
+        | Some(r,e,d), Some(_,p,d') -> app_ind d' (Binary(0,app_ind dq (Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e)))),
 	                         true,p,false,b))
       } operator
 
