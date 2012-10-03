@@ -889,13 +889,13 @@ module Format=functor (D:Document.DocumentStructure)->(
           )
         in
 
-        let rec replaceParams level=function
-            Node n when level<=1 -> Node { n with children=IntMap.map (replaceParams (level+1)) n.children }
-          | Paragraph p when level=2->
-              Paragraph { p with
-                            par_parameters=params p.par_parameters;
-                            par_completeLine=comp p.par_completeLine;
-                        }
+        let rec replaceParams t=match t with
+            Node n -> Node { n with children=IntMap.map replaceParams n.children }
+          | Paragraph p ->
+            Paragraph { p with
+              par_parameters=params p.par_parameters;
+              par_completeLine=comp p.par_completeLine;
+            }
           | x->x
         in
         let rec enumerate do_it t=match t with
@@ -919,7 +919,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
         let a,b= !D.structure in
         D.structure:=(enumerate false a,b);
-        D.structure:=replaceParams 0 (fst !D.structure), snd !D.structure;
+        D.structure:=replaceParams (fst !D.structure), snd !D.structure;
         D.structure:=up (up !D.structure);
         env_stack:=List.tl !env_stack
     end
