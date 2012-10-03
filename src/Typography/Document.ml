@@ -851,43 +851,41 @@ let mappend m x=
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
     consécutifs est pris en compte *)
 let boxify buf nbuf fixable env0 l=
-  let rec boxify env=function
+  let rec boxify keep_cache env=function
       []->env
     | B (b, cache)::s->
       let l = match !cache with
-	  Some l -> l
-        | None -> (
+	  Some l when keep_cache-> l
+        | _ -> (
             let acc= !env_accessed in
             env_accessed:=false;
             let l = b env in
-            (if not !env_accessed then cache := Some l else fixable:=true);
+            (if keep_cache && not !env_accessed then cache := Some l else fixable:=true);
             env_accessed:=acc || !env_accessed;
             l
           )
       in
-      (List.iter (append buf nbuf) l; boxify env s)
+      (List.iter (append buf nbuf) l; boxify keep_cache env s)
     | (C b)::s->(
         let acc= !env_accessed in
         env_accessed:=false;
         let c = b env in
-        (if !env_accessed then (
-           fixable:=true;
-           List.iter (function
-                          T (_,a)->a:=None
-                        | B (_,a)->a:=None
-                        | _->())
-             c));
+        let env'=if !env_accessed then (
+          fixable:=true;
+          boxify false env c
+        ) else boxify keep_cache env c
+        in
         env_accessed:=acc || !env_accessed;
-        boxify env (c@s)
+        boxify keep_cache env s
       )
-    | Env f::s->boxify (f env) s
+    | Env f::s->boxify keep_cache (f env) s
     | (T (t,cache))::s->(
       match !cache with
-	    Some l  ->(
+	    Some l when keep_cache ->(
               IntMap.iter (fun _->List.iter (append buf nbuf)) l;
-              boxify env s
+              boxify keep_cache env s
             )
-          | None ->(
+          | _ ->(
               (* let buf=ref [|Empty|] in *)
               (* let nbuf=ref 0 in *)
               let l=ref IntMap.empty in
@@ -905,27 +903,27 @@ let boxify buf nbuf fixable env0 l=
                 )
               in
               cut_str (UTF8.first t) (UTF8.first t);
-              cache:=Some !l;
+              if keep_cache then cache:=Some !l;
               IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
-              boxify env s
+              boxify keep_cache env s
             )
       )
     | FileRef (file,off,size)::s -> (
         let i=try
 	  StrMap.find file !sources
-        with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i) 
+        with _-> (let i=open_in_bin file in sources:= StrMap.add file i !sources; i)
         in
         let buffer=String.create size in
         let _=seek_in i off; really_input i buffer 0 size in
-          boxify env (tT buffer::s)
+        boxify keep_cache env (tT buffer::s)
       )
     | Scoped (fenv, p)::s->(
         let env'=fenv env in
-        let _=boxify env' p in
-          boxify env s
+        let _=boxify keep_cache env' p in
+        boxify keep_cache env s
       )
   in
-    boxify env0 l
+  boxify true env0 l
 
 let boxify_scoped env x=
   let buf=ref [||] in
