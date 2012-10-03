@@ -206,7 +206,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     let html_name=Printf.sprintf "%s%d.html" chop i in
     let w,h=pages.(i).pageFormat in
     let html=open_out html_name in
-    let noscript=false in
+    let noscript=true in
     Printf.fprintf html
       "<!DOCTYPE html>
 <html lang=\"en\">
@@ -222,6 +222,7 @@ size=sizex>sizey ? sizey : sizex;
 svg=document.getElementById(\"svg\");
 svg.style.width=(%g*size)+'px';
 svg.style.height=(%g*size)+'px';
+console.log(svg.style.width,svg.style.height);
 };
 //window.onresize=function(e){resize()};
 window.onload=function(){resize()};
@@ -240,7 +241,7 @@ window.onkeydown=function(e){
 
     Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
     if noscript then (
-      Printf.fprintf html "<div style=\"margin:0;padding:0;\">%s%s%s</div>"
+      Printf.fprintf html "<div style=\"margin:0;padding:0;width:100%%;\">%s%s%s</div>"
         (if i=0 then "" else
             Printf.sprintf "<a href=\"%s\">Précédent</a>"
               (Printf.sprintf "%s%d.html" chop_file (i-1)))
@@ -249,8 +250,8 @@ window.onkeydown=function(e){
             Printf.sprintf "<a href=\"%s\">Suivant</a>"
               (Printf.sprintf "%s%d.html" chop_file (i+1)));
     );
-    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\">"
+    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
+    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
       (round (w)) (round ( h));
     let svg=draw ~fontCache:cache w h pages.(i).pageContents in
     let defs=make_defs cache in
@@ -293,7 +294,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];
       let page=(snd pages.(i)).(j) in
       let file=open_out (Printf.sprintf "%s_%d_%d.svg" chop_file i j) in
       let w,h=page.pageFormat in
-      Printf.fprintf file "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
+      Printf.fprintf file "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
         (round (w)) (round (h));
       let svg=draw ~fontCache:cache w h page.pageContents in
       Rbuffer.output_buffer file svg;
@@ -376,7 +377,9 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
 
     for(i=0;i<newSvg.childNodes.length;i++) {
         if(newSvg.childNodes[i].nodeType==document.ELEMENT_NODE)
-            g.appendChild(newSvg.childNodes[i]);
+        g.appendChild(newSvg.childNodes[i]);
+        else
+        newSvg.removeChild(newSvg.childNodes[i]);
     }
     var cur_g=document.getElementById(\"g\"+current_slide+\"_\"+current_state);
     if(effect) { effect(g,cur_g); } else {
