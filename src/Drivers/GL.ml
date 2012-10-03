@@ -16,28 +16,26 @@ type prefs = {
   graisse : float;
   tesselation_factor : float;
   init_zoom : init_zoom;
+  rotation : float option;
 }
 
 let prefs = ref {
   subpixel_anti_aliasing = RGB_SAA;
-  graisse = -0.1;
+  graisse = 0.0;
   tesselation_factor = 1.0/.3.0;
   init_zoom = FitPage;
+  rotation = None;
 }
 
 let cur_page = ref 0
 
 let init_gl () =
-(*    GlDraw.shade_model `smooth;*)
-    GlClear.color (0.5, 0.5, 0.5);
-    GlClear.depth 1.0;
-    GlClear.clear [`color; `depth];
+    (*GlDraw.shade_model `smooth;*)
+    GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
     Gl.enable `depth_test;
-    Gl.disable `polygon_smooth;
-(*    GlMisc.hint `polygon_smooth `nicest;*)
+    (*Gl.enable `polygon_smooth;
+    GlMisc.hint `polygon_smooth `nicest;*)
     Gl.disable `line_smooth;
-    Gl.enable `blend;
-    GlFunc.blend_func `src_alpha `one_minus_src_alpha;
     GlFunc.depth_func `lequal
 
 let filename x=""
@@ -200,6 +198,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       else
 	zoom := (pw /. ph) /. ratio
     end;
+
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let rx = (ph *. ratio) /. 2.0 *. !zoom in
@@ -211,7 +210,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       GlDraw.viewport 0 0 w h;
       GlMat.mode `projection;
       GlMat.load_identity ();
-      GlMat.ortho (cx -. rx, cx +. rx) (cy -. ry, cy +. ry) (-1., 1.);
+      GlMat.frustum ((cx -. rx)/.1000., (cx +. rx)/.1000.) 
+	            ((cy -. ry)/.1000., (cy +. ry)/.1000.) (1., 10000.);
+      GlMat.translate3 (0.,0.,-1000.);
       GlMat.mode `modelview;
       GlMat.load_identity ()
     in
@@ -312,8 +313,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       let graisse_x = flou_x () +. graisse and graisse_y = flou_y () +. graisse in
       max_state := 0;
       min_state := max_int;
-
-      draw_blank page;
 
       let rec fn = function
       Glyph g ->
@@ -422,7 +421,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	  else
 	    lines, normals
 	in
-	Printf.printf "coucou: %d\n" (List.length lines);
 	List.iter2 (fun l n ->
 	  GlDraw.begins `quad_strip; 
 	  GlDraw.color color; 
@@ -436,6 +434,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	      GlDraw.vertex2 (x -. nx, y -. ny)
 	    ) l n;
 	  GlDraw.ends ();
+
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
@@ -449,6 +448,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	      GlDraw.vertex2 (x +. nx +. vx, y +. ny +. vy);
 	    ) l n;
 	  GlDraw.ends ();
+
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
@@ -462,6 +462,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	      GlDraw.vertex2 (x -. nx -. vx, y -. ny -. vy);
 	    ) l n;
 	  GlDraw.ends ();
+
 	) lines normals);
 
     | Link(link) -> ()
@@ -519,7 +520,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       GlDraw.ends ();
       Gl.disable `texture_2d;
       in
-      List.iter fn !pages.(page).pageContents
+
+
+      Gl.enable `blend;
+      GlFBO.merge_blend ();
+      GlFunc.depth_mask false;
+      List.iter fn !pages.(page).pageContents; 
+      GlFBO.merge_blend2 ();
+      GlFunc.depth_mask true;
+      draw_blank page;
+
+
+
+
     in
 
 
@@ -538,31 +551,72 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 
     in
 
+  let draw_off_screen page =
+    let pw,ph = !pages.(page).pageFormat in
+    let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
+    let fbo = GlFBO.create_fbo_texture (2*w) (2*h) in
+    GlFBO.bind_fbo fbo;
+    GlDraw.viewport 0 0 (2*w) (2*h);
+    GlMat.mode `projection;
+    GlMat.load_identity ();
+    GlMat.frustum (0., pw/.500.) (0., ph/.500.) (1., 10000.);
+    GlMat.translate3 (0.,0.,-500.);
+    GlMat.mode `modelview;
+    GlClear.clear [`color;`depth];
+    GlMat.load_identity ();
+    draw_page page;
+    GlFBO.unbind_fbo fbo;
+    reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
+    fbo
+  in
+ 
+   let draw_texture fbo page =
+     let pw,ph = !pages.(page).pageFormat in
+     Gl.enable `texture_2d;
+     GlFBO.bind_texture fbo;
+     GlDraw.color (1.0, 1.0, 1.0);
+     GlDraw.begins `quads;
+     GlTex.coord2 (0., 0.);
+     GlDraw.vertex2 (0., 0.);
+     GlTex.coord2 (1., 0.);
+     GlDraw.vertex2 (pw, 0.);
+     GlTex.coord2 (1., 1.);
+     GlDraw.vertex2 (pw, ph);
+     GlTex.coord2 (0., 1.);
+     GlDraw.vertex2 (0., ph);
+     GlDraw.ends ();
+     Gl.disable `texture_2d;
+   in
+
   let draw_gl_scene () =
     let time = Sys.time () in
     saved_rectangle := None;
     if !to_revert then revert ();
+    GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
+    GlClear.color ~alpha:0.0 (0.2, 0.2, 0.2);
+    GlClear.depth 1.0;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
 
 
     begin
       match subpixel () with 
-	None -> do_draw ();
+	None -> 
+	  do_draw ();
       | Some (xr,yr, xb,yb) ->
-	GlFunc.color_mask ~red:false ~green:true ~blue:false ();
-	do_draw ();
 	GlMat.push ();
 	GlMat.translate3 (!pixel_width *. xb , !pixel_width *. yb , 0.0);
-	GlFunc.color_mask ~red:false ~green:false ~blue:true ();
+	GlFunc.color_mask ~red:false ~green:false ~blue:true ~alpha:true ();
 	do_draw ();
 	GlMat.pop ();
 	GlMat.push ();
 	GlMat.translate3 (!pixel_width *. xr , !pixel_width *. yr, 0.0);
-	GlFunc.color_mask ~red:true ~green:false ~blue:false ();
+	GlFunc.color_mask ~red:true ~green:false ~blue:false ~alpha:true ();
 	do_draw ();
 	GlMat.pop ();
-	GlFunc.color_mask ~red:true ~green:true ~blue:true ();
+	GlFunc.color_mask ~red:false ~green:true ~blue:false ~alpha:true ();
+	do_draw ();
+	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
     end;
 
     let delta = Sys.time () -. time in
@@ -575,30 +629,51 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     )
   in
 
-(* Ne marche pas 
   let rotate_page i =
-    let time = Sys.time () in
-    let angle = ref 0.0 in
-    saved_rectangle := None;
-    if !to_revert then revert ();
-
-    while !angle < 1.57 do
-      let delta = Sys.time () -. time in
-      angle := delta /. 2.0 *. 1.57;
-      Printf.printf "angle: %f\n" !angle;
-      flush stdout;
-      GlClear.clear [`color;`depth];
-      GlMat.load_identity ();
-      GlMat.rotate3 !angle (0.0,-1.0,0.0);
-      Gl.disable `blend;
-      draw_blank (!cur_page - i);
-      GlMat.load_identity ();      
-      draw_page (!cur_page);
-      Glut.swapBuffers ();
-      Gl.enable `blend;
-    done;
+(*    Gc.set {(Gc.get ()) with Gc.verbose = 255 };*)
+    match !prefs.rotation with
+      None -> ()
+    | Some duration -> 
+      saved_rectangle := None;
+      if !to_revert then revert ();
+    (*
+      let fbo1 = draw_off_screen !cur_page in
+      let fbo2 = draw_off_screen (!cur_page + i) in
+    *)
+    (*
+      let l1 = GlList.create `compile in
+      draw_page !cur_page;
+      GlList.ends ();
+      
+      let l2 = GlList.create `compile in
+      draw_page  (!cur_page + i);
+      GlList.ends ();
+    *)
+      let nb = ref 0 in
+      let time = Unix.gettimeofday () in
+      let angle = ref (if i > 0 then 0.0 else 90.0) in
+      
+      while !angle <= 90.0 && !angle >= 0.0 do
+	let delta = Unix.gettimeofday () -. time in
+	angle := if i > 0 then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
+	GlClear.clear [`color;`depth];
+	GlMat.load_identity ();
+	GlMat.rotate3 !angle (0.0,-1.0,0.0);
+      (*GlList.call l1;*)
+	draw_page (*draw_texture fbo1*) !cur_page;
+	if !angle > 15.0 then begin
+	  GlMat.load_identity ();      
+	(*GlList.call l2;*)
+	  draw_page (*draw_texture fbo2*) (!cur_page + 1);
+	end;
+	Glut.swapBuffers ();
+	incr nb;
+      done;
+      
+      Printf.printf "rotation: %f fps.\n" (float !nb /. duration);
+      flush stdout
   in
-*)
+
     
 
   let redraw () =
@@ -615,15 +690,15 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       (match key with
       | 27 | 120 | 113 (* ESC *) -> raise Exit
       | 110 -> 
-	if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
+	if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
       | 32 -> 
 	if !cur_state < !max_state then (incr cur_state; redraw ())
-	else if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
+	else if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
       | 112 -> 
-	if !cur_page > 0 then (decr cur_page; cur_state := 0; redraw ());
+	if !cur_page > 0 then (decr cur_page; rotate_page (-1); cur_state := 0; redraw ());
       | 8 -> 
 	if !cur_state > !min_state then (decr cur_state; redraw ())
-	else if !cur_page > 0 then (decr cur_page; redraw ());
+	else if !cur_page > 0 then (decr cur_page; rotate_page (-1); redraw ());
       | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw ();
       | 43 -> 
 	if Glut.getModifiers () = Glut.active_shift then (
@@ -662,8 +737,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
     | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
-    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (incr cur_page; cur_state := 0; redraw ());
-    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; cur_state := 0; redraw ());
+    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
+    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; rotate_page (-1); cur_state := 0; redraw ());
 (*    | Glut.KEY_HOME -> 
     | Glut.KEY_END ->
 *)
@@ -787,7 +862,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
   let display_cb () = 
     idle_cb ();
     draw_gl_scene ();
-    Glut.swapBuffers ()
+    Glut.swapBuffers ();
   in
       
   let mouse_cb ~button ~state ~x ~y =
@@ -837,9 +912,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
   in
 
   let main () =
+    Sys.catch_break true;
     Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgb double samples>=4";
+    Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double samples>=4";
     Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
     let win = 
       Glut.createWindow "Patoline OpenGL Driver"

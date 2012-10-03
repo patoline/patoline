@@ -13,16 +13,22 @@ else
 endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
+CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography -I ../Rbuffer
 CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
-
+CFLAGS=-fPIC
 
 Html.cmxa:Html.cmx
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
 SVG.cmxa:SVG.cmx HtmlFonts.cmx
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
+GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx
+	$(CAMLMKLIB) -o GL FrameBuffer.o GlFBO.cmx GL.cmx
 
 Html.cmx:SVG.cmx HtmlFonts.cmx
 SVG.cmx:HtmlFonts.cmx
+GL.cmx:FrameBuffer.o GlFBO.cmx
+
+
 
 %.cmxa:%.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ $<

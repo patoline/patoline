@@ -210,6 +210,8 @@ let mult_matrix a b=
     done;
     result
 
+let t = [[ [|0.0;1.0|], [|0.0;0.0|]; [|1.0;0.0|], [|0.0;1.0|]; [|0.0;0.0|], [|1.0;0.0|] ]]
+
 let oriente all =
   let horizontal_intercept x y bs =
     let count = ref 0 in

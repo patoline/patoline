@@ -22,6 +22,8 @@ let spec = [
          , "Start with fitting the page height in the window";
   "--fit-page", Unit (fun () -> prefs := { !prefs with init_zoom = FitHeight })
          , "Start with fitting the page in the window";
+  "--rotation", Float (fun x -> prefs := { !prefs with rotation = Some x })
+         , "Animate page change with a rotation of the given duration (in second)";
 
 ]
 
