@@ -654,8 +654,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
       let angle = ref (if i > 0 then 0.0 else 90.0) in
       
       while !angle <= 90.0 && !angle >= 0.0 do
-	let delta = Unix.gettimeofday () -. time in
-	angle := if i > 0 then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
 	GlClear.clear [`color;`depth];
 	GlMat.load_identity ();
 	GlMat.rotate3 !angle (0.0,-1.0,0.0);
@@ -668,6 +666,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	end;
 	Glut.swapBuffers ();
 	incr nb;
+	let delta = Unix.gettimeofday () -. time in
+	angle := if i > 0 then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
+
       done;
       
       Printf.printf "rotation: %f fps.\n" (float !nb /. duration);

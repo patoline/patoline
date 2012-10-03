@@ -105,7 +105,7 @@ CAMLprim gl_unbind_fbo(value fbo)
 
 CAMLprim gl_merge_blend(value u)
 { CAMLparam0();
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_DST_ALPHA, GL_ONE, GL_ONE);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
   CAMLreturn(Val_unit);
 }
 CAMLprim gl_merge_blend2(value u)
