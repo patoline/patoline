@@ -630,9 +630,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
                    resumeObject x.fontWidthsObj;
 #ifdef SUBSET
                    fprintf outChan "[ 0 [ ";
-                   IntMap.fold (fun i (gl) _->
-                                  let w=Fonts.glyphWidth gl in
-                                    fprintf outChan "%d " (round w)) x.revFontGlyphs ();
+                   IntMap.iter (fun i gl->
+                     let w=Fonts.glyphWidth gl in
+                     fprintf outChan "%d " (round w)) x.revFontGlyphs;
                    fprintf outChan "]]";
 #else
                     let (m0,_)=IntMap.min_binding x.fontGlyphs in

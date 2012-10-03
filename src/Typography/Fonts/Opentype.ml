@@ -665,7 +665,7 @@ let glyphName gl=
 
 let glyphWidth gl=
   match gl with
-      CFFGlyph (_,x) when x.glyphWidth <> infinity -> x.glyphWidth
+      CFFGlyph (_,x)->CFF.glyphWidth x
     | _->
       let file,offset,x=match gl with
           CFFGlyph (f,x)->f.cff_font.file,f.cff_offset,CFF.glyphNumber x
@@ -678,9 +678,6 @@ let glyphWidth gl=
       let (b,_)=tableLookup "hmtx" file offset in
       seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
       let w=float_of_int (readInt2 file) in
-      (match gl with
-          CFFGlyph(_,x)->x.glyphWidth<-w
-        | _->());
       w
 
 let otype_file font=match font with
