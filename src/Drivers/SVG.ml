@@ -129,11 +129,11 @@ let draw ?fontCache w h contents=
       )
     | Path (args, l)->(
       if !opened_tspan then (
-        Rbuffer.add_string svg_buf "</tspan>";
+        Rbuffer.add_string svg_buf "</tspan>\n";
         opened_tspan:=false
       );
       if !opened_text then (
-        Rbuffer.add_string svg_buf "</text>";
+        Rbuffer.add_string svg_buf "</text>\n";
         opened_text:=false
       );
       let buf=Rbuffer.create 100000 in
@@ -184,10 +184,10 @@ let draw ?fontCache w h contents=
   in
   List.iter output_contents contents;
   if !opened_tspan then (
-    Rbuffer.add_string svg_buf "</tspan>";
+    Rbuffer.add_string svg_buf "</tspan>\n";
   );
   if !opened_text then (
-    Rbuffer.add_string svg_buf "</text>";
+    Rbuffer.add_string svg_buf "</text>\n";
   );
   svg_buf
 
