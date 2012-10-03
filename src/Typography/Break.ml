@@ -432,7 +432,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                       )
                         else if nextNode.min_width > (!r_params).measure && allow_impossible then (
                           minimal_tried_height:=min !minimal_tried_height height';
-                          if (height>=height') || allow_impossible  then (
+                          if (height>=height')  then (
                             let bad=(lastBadness+.
                                        badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
                                      nextNode !bas !max_bas !r_params comp1) in
@@ -443,7 +443,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                           )
                         ) else (
                           minimal_tried_height:=min !minimal_tried_height height';
-                          if (height>=height') || allow_impossible then (
+                          if (height>=height') then (
                             let bad=(lastBadness+.
                                        badness.(nextNode.paragraph) paragraphs figures
                                        lastFigures node !haut !max_haut lastParameters comp0

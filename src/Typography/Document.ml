@@ -462,7 +462,7 @@ let family fam t =
 let resize_env fsize env=
   { env with
       size=env.size*.fsize;
-      lead=env.lead*.fsize/.env.size }
+      lead=env.lead*.fsize }
 
 (* Changer de taille dans un scope *)
 let size fsize t=
@@ -490,11 +490,17 @@ let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 
 let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
-  let b=l.nom_width in
-    if param.measure >= b then
-      { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
-    else
+  let a=l.min_width
+  and b=l.nom_width
+  and c=l.max_width in
+  if param.measure >= b then
+    { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
+  else
+    if param.measure >= a then
       param
+    else
+      { param with measure=a; left_margin=param.left_margin +. (param.measure-.a)/.2. }
+
 
 let do_ragged_left parameters a b c d e f line=
   let par=parameters a b c d e f line in
