@@ -588,6 +588,7 @@ let figure str parameters ?(name="") drawing=
 let flushFigure name=
   [C (fun env->
         try
+          env_accessed:=true;
           let (counters,_,_)=StrMap.find name (names env) in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[FlushFigure h])]
@@ -600,6 +601,7 @@ let flushFigure name=
 let beginFigure name=
   [C (fun env->
         try
+          env_accessed:=true;
           let (counters,_,_)=StrMap.find name (names env) in
             match StrMap.find "_figure" counters with
                 _,h::_->[bB (fun _->[BeginFigure h])]
@@ -672,13 +674,15 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
     str:=newChildAfter !str para
 
 let pageref x=
-  [C (fun env->try
-           let (_,_,node)=StrMap.find x (names env) in
-           [bB (fun _->[User (BeginLink x)]);
-            tT (string_of_int (1+node.page));
-            bB (fun _->[User EndLink])]
-         with Not_found -> []
-        )]
+  [C (fun env->
+    try
+      env_accessed:=true;
+      let (_,_,node)=StrMap.find x (names env) in
+      [bB (fun _->[User (BeginLink x)]);
+       tT (string_of_int (1+node.page));
+       bB (fun _->[User EndLink])]
+    with Not_found -> []
+  )]
 
 let label ?(labelType="_structure") name=
   [Env (fun env->
@@ -692,22 +696,24 @@ let label ?(labelType="_structure") name=
 
 
 let generalRef refType name=
-  [ C (fun env->try
-            let counters=
-              if name="_here" then env.counters else
-                let a,_,_=StrMap.find name (names env) in a
-            in
-            let lvl,num_=(StrMap.find refType counters) in
-            let num=if refType="_structure" then drop 1 num_ else num_ in
-            let _,str_counter=StrMap.find "_structure" counters in
-            let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-              [bB (fun _->[User (BeginLink name)]);
-               tT (String.concat "." (List.map (fun x->string_of_int (x+1))
-                                       (List.rev (num@sect_num))));
-               bB (fun _->[User EndLink])]
-          with
-              Not_found -> []
-         )]
+  [ C (fun env->
+    try
+      env_accessed:=true;
+      let counters=
+        if name="_here" then env.counters else
+          let a,_,_=StrMap.find name (names env) in a
+      in
+      let lvl,num_=(StrMap.find refType counters) in
+      let num=if refType="_structure" then drop 1 num_ else num_ in
+      let _,str_counter=StrMap.find "_structure" counters in
+      let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
+      [bB (fun _->[User (BeginLink name)]);
+       tT (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                (List.rev (num@sect_num))));
+       bB (fun _->[User EndLink])]
+    with
+        Not_found -> []
+  )]
 
 let sectref x=generalRef "_structure" x
 
@@ -876,7 +882,7 @@ let boxify buf nbuf fixable env0 l=
         ) else boxify keep_cache env c
         in
         env_accessed:=acc || !env_accessed;
-        boxify keep_cache env s
+        boxify keep_cache env' s
       )
     | Env f::s->boxify keep_cache (f env) s
     | (T (t,cache))::s->(
