@@ -593,7 +593,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     saved_rectangle := None;
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
-    GlClear.color ~alpha:0.0 (0.2, 0.2, 0.2);
+    GlClear.color ~alpha:0.0 (0.0, 0.0, 0.0);
     GlClear.depth 1.0;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
