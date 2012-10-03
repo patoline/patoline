@@ -12,6 +12,7 @@ type font= { file:string; offset:int; size:int; offSize:int;
              subrIndex:(string array) array;
              gsubrIndex:string array;
              nominalWidth:float;
+             defaultWidth:float;
              fontMatrix:float list
            }
 
@@ -313,17 +314,18 @@ let loadFont ?offset:(off=0) ?size file=
     done;
     gsubr
   in
-  let nominalWidth=
+  let nominalWidth,defaultWidth=
     try
       let privOffset=findDict f (dictIndex.(0)) (dictIndex.(1)) 18 in
       match privOffset with
-          offset::size::_->float_of_num (
+          offset::size::_->(
             let w=List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 21) in
-            w
+            let w'=List.hd (findDict f (off+int_of_num offset) (off+int_of_num offset+int_of_num size) 20) in
+            float_of_num w,float_of_num w'
           )
-        | _->0.
+        | _->0.,0.
     with
-        _->0.
+        _->0.,0.
   in
   let fontMatrix=
     try
@@ -337,7 +339,7 @@ let loadFont ?offset:(off=0) ?size file=
 
     { file=file; offset=off; size=size; offSize=offSize; nameIndex=nameIndex; dictIndex=dictIndex;
       stringIndex=stringIndex; gsubrIndex=gsubrIndex; subrIndex=subrIndex;
-      nominalWidth=nominalWidth; fontMatrix=fontMatrix
+      nominalWidth=nominalWidth; defaultWidth=defaultWidth; fontMatrix=fontMatrix
     }
 
 let glyph_of_uchar _ _=0
@@ -373,8 +375,9 @@ let outlines glyph=Type2.outlines_ glyph.glyphFont.subrIndex.(0) glyph.glyphFont
 let glyphWidth glyph=
   if glyph.glyphWidth=infinity then
     glyph.glyphWidth<-(
-      try let _=Type2.outlines_ glyph.glyphFont.subrIndex.(0) glyph.glyphFont.gsubrIndex glyph.type2 true in raise (Type2.Found 0.) with
+      try let _=Type2.outlines_ glyph.glyphFont.subrIndex.(0) glyph.glyphFont.gsubrIndex glyph.type2 true in raise Not_found with
           Type2.Found x->glyph.glyphFont.nominalWidth+.x
+        | Not_found->glyph.glyphFont.defaultWidth
     );
     glyph.glyphWidth
 
