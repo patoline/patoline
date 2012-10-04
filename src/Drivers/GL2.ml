@@ -39,7 +39,7 @@ let rec last = function
     
 type page_mode = Single | Double
 
-let output ?(structure:structure={name="";displayname=[];
+let output ?(structure:structure={name="";displayname=[]; metadata = [];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
