@@ -1,8 +1,12 @@
-#include<GL/gl.h>
+#include <GL/gl.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <caml/mlvalues.h>
 #include <caml/custom.h>
 #include <caml/memory.h>
+#define GL_GLEXT_PROTOTYPES
+#include <GL/glext.h>
 
 
 typedef struct _fbo_texture {
@@ -105,12 +109,95 @@ CAMLprim gl_unbind_fbo(value fbo)
 
 CAMLprim gl_merge_blend(value u)
 { CAMLparam0();
-  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE, GL_ONE, GL_ONE);
+  glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ONE);
+  glBlendEquation(GL_MAX);
   CAMLreturn(Val_unit);
 }
 CAMLprim gl_merge_blend2(value u)
 { CAMLparam0();
   glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA, GL_ZERO, GL_ZERO);
+  glBlendEquation(GL_FUNC_ADD);
+  CAMLreturn(Val_unit);
+}
+
+
+const char* vertex_shader_source = "\
+varying vec4 color;\
+void main()\
+{\
+        gl_Position = ftransform();\
+        color = gl_Color;\
+}";
+
+const char* pixel_shader_source = "\
+varying vec4 color;\
+const float pi = 3.1415926535897932384626;\
+attribute float x_factor = 1.0;\
+attribute float y_factor = 1.0;\
+\
+void main()\
+{\
+        vec4 alpha = color[3];\
+        float t = 2.0 - alpha * 3.0;\
+        float a = 0.0;\
+        if (t <= 0.0) {\
+           t = - t;\
+           a = 1.0 - (acos(t) - t * sqrt(1.0 - t * t))/pi;\
+        } else if (t <= 1.0) {\
+           a = (acos(t) - t * sqrt(1.0 - t * t))/pi;\
+        } else a = 0;\
+        gl_FragColor = color;\
+        gl_FragColor[3] = a;\
+}";
+
+GLuint vertex_shader = 0;
+GLuint pixel_shader = 0;
+GLuint program_shader = 0;
+
+#define MSGSIZE 10000
+static char msg[MSGSIZE];
+
+void compile_shader(GLenum type, GLuint *id, const char* source) { 
+  GLint result;
+
+  *id = glCreateShader(type);
+  glShaderSource(*id, 1, &source, NULL);
+  glCompileShader(*id);
+  glGetShaderiv(*id, GL_COMPILE_STATUS, &result);
+  glGetShaderInfoLog(*id, MSGSIZE, 0, msg); 
+  if (!result) printf("shader compilation: %s\n", msg);
+  if (!result) exit(1);
+}
+
+CAMLprim gl_init_shader(value u) {
+  CAMLparam0();
+  GLint result;
+
+  compile_shader(GL_VERTEX_SHADER,&vertex_shader, vertex_shader_source);
+  compile_shader(GL_FRAGMENT_SHADER, &pixel_shader, pixel_shader_source);
+
+  if (program_shader) glDeleteProgram(program_shader);
+  program_shader = glCreateProgram();
+  glAttachShader(program_shader, vertex_shader);
+  glAttachShader(program_shader, pixel_shader);
+  glLinkProgram(program_shader);
+  glGetProgramiv(program_shader, GL_LINK_STATUS, &result);
+  glGetProgramInfoLog(program_shader, MSGSIZE, 0, msg); 
+  if (!result) printf("link: %s\n", msg);
+  if (!result) exit(1);
+
+  CAMLreturn(Val_unit);  
+}
+
+CAMLprim gl_use_shader(value u) {
+  CAMLparam0();
+  glUseProgram(program_shader);
+  CAMLreturn(Val_unit);
+}
+
+CAMLprim gl_no_shader(value u) {
+  CAMLparam0();
+  glUseProgram(0);
   CAMLreturn(Val_unit);
 }
 

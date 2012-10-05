@@ -33,6 +33,45 @@ let derivee_end a =
   let n = Array.length a in
   (a.(n - 1) -. a.(n - 2)) *.  (float_of_int (n-1))
 
+let derivee_approx a =
+  let n = Array.length a in
+  (a.(n - 1) -. a.(0)) *.  (float_of_int (n-1))
+
+let sanitize (a,b as orig) =
+  Printf.printf "sanitize start\n";
+  let la = Array.length a in
+  let lb = Array.length b in
+  let lmin = min la lb in
+  let new_start =  ref 0 in
+  let modif = ref false in
+  while !new_start < lmin - 1 &&
+    abs_float (a.(!new_start) -. a.(!new_start + 1)) < 10.0 &&
+    abs_float (b.(!new_start) -. b.(!new_start + 1)) < 10.0
+  do
+    incr new_start;
+    modif := true;
+  done;
+  let new_end_a = ref (la - 1) in
+  let new_end_b = ref (lb - 1) in
+  while !new_end_a > !new_start && !new_end_b > !new_start &&
+        abs_float (a.(!new_end_a) -. a.(!new_end_a - 1)) < 10.0 &&
+        abs_float (b.(!new_end_b) -. b.(!new_end_b - 1)) < 10.0
+  do
+    decr new_end_a;
+    decr new_end_b;
+    modif := true;
+  done;
+  Printf.printf "sanitize end %b\n" !modif;
+
+  if !modif then begin
+(*
+    Printf.printf "la = %d, lb = %d, new_start = %d; new_end_a = %d; new_end_b = %d\n"
+     la lb !new_start !new_end_a !new_end_b;
+*)
+    Array.sub a !new_start (!new_end_a - !new_start + 1),
+    Array.sub b !new_start (!new_end_b - !new_start + 1)
+  end else orig 
+
 let casteljau_right f x=
   for t=Array.length f downto 2 do
     for i=0 to (t-2) do
@@ -253,6 +292,7 @@ let oriente all =
     | [] -> assert false
   in
 
+(*  let all = List.map (fun l -> let l = List.map sanitize l in List.filter (fun (a,b) -> Array.length a > 1 && Array.length b > 1) l) all in*)
   List.map (fun bs -> bs, orientation_composante bs = num_outside bs (List.filter (fun x -> x != bs) all)) all
 
 (* let fwd_subst l= *)

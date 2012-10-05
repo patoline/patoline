@@ -18,6 +18,9 @@ val derivee_start : float array -> float
 (** Dérivée en 1 d'un polynôme de Bernstein *)
 val derivee_end : float array -> float 
 
+(** Dérivée approximative : la corde ! *)
+val derivee_approx : float array -> float 
+
 (** O(n^2) Subdivision de De Casteljau, sur l'intervalle [x;1] *)
 val casteljau_right : float array -> float -> float array
 

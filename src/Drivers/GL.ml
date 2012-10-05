@@ -21,7 +21,7 @@ type prefs = {
 
 let prefs = ref {
   subpixel_anti_aliasing = RGB_SAA;
-  graisse = 0.0;
+  graisse = 0.1;
   tesselation_factor = 1.0/.3.0;
   init_zoom = FitPage;
   rotation = None;
@@ -36,7 +36,8 @@ let init_gl () =
     (*Gl.enable `polygon_smooth;
     GlMisc.hint `polygon_smooth `nicest;*)
     Gl.disable `line_smooth;
-    GlFunc.depth_func `lequal
+    GlFunc.depth_func `lequal;
+    GlFBO.init_shader ()
 
 let filename x=""
 
@@ -53,11 +54,13 @@ let subpixel () =
 
 let flou_x () =
   match !prefs.subpixel_anti_aliasing with
-    RGB_SAA | BGR_SAA -> 1.0 /. 6.0 | _ -> 1.0 /. 2.0
+    RGB_SAA | BGR_SAA -> 1.0 /. 2.0 | _ -> 1.0 /. 2.0
+
 
 let flou_y () =
   match !prefs.subpixel_anti_aliasing with
-    VRGB_SAA | VBGR_SAA -> 1.0 /. 6.0 | _ -> 1.0 /. 2.0
+    VRGB_SAA | VBGR_SAA -> 1.0 /. 2.0 | _ -> 1.0 /. 2.0
+
 
 let glyphCache = Hashtbl.create 1001
 #ifdef CAMLIMAGES
@@ -73,6 +76,10 @@ type page_mode = Single | Double
 
 let pixel_width = ref 0.0
 let pixel_height = ref 0.0
+let cx = ref 0.0
+let cy = ref 0.0
+let rx = ref 0.0
+let ry = ref 0.0
 
 (* Handle window reshape events *)
 
@@ -85,8 +92,42 @@ let overlay_rect (r,g,b) (x,y,x',y') =
   GlDraw.vertex2 (x',y);
   GlDraw.vertex2 (x,y);
   GlDraw.ends ()
-  
-  let add_normals closed ratio beziers =
+
+let normalize (a,b) = 
+  let n = 1. /. sqrt(a*.a +. b*.b) in
+  let n = if classify_float n <> FP_normal then  ( 
+      print_string "coucou 2"; print_newline (); 1.0) else n in
+  a *. n, b *. n
+
+let dot_prod (a,b) (a',b') =
+  a*.a' +. b*.b'
+
+let combine orientation ratio (a,b) (a',b') =
+  let ratio = if orientation then ratio else -. ratio in
+  let c = a *. a' +. b *. b' in
+  let s = a *. b' -. a' *. b in
+
+  let (a0,b0),sgn = 
+    if c > sqrt(2.0) /. 2.0 then
+      normalize (a +. a', b +. b'), 1.0
+    else 
+      normalize (-.b +. b', a -. a'), -1.0
+  in
+
+  if s >= 0.0 then begin
+    let l = (ratio *. a, ratio *. b) and r = (ratio *. a', ratio *. b') in
+    (ratio*.a0,ratio*.b0),Some(l,r)
+  end else begin
+    let l = sgn *. ratio /. cos(acos(c) /. 2.0) in
+    let l = if classify_float l <> FP_normal then ratio else l in
+    (l*.a0,l*.b0),None
+  end
+
+
+let single ratio (a, b) =
+  (ratio *. a, ratio *. b), None
+
+let add_normals closed ratio beziers =
 
     let tesselation_factor = !prefs.tesselation_factor  in
   
@@ -94,17 +135,22 @@ let overlay_rect (r,g,b) (x,y,x',y') =
       let beziers = Bezier.oriente beziers in
       List.split (List.map (fun (bs, orientation) -> 
 	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in
-	(* FIXME: close the curve if it is not closed !!! *)
-	let prev = ref (let xs, ys = last bs in (Bezier.derivee_end ys), -. (Bezier.derivee_end xs)) in
+	let prev, bs = 
+	  let xe, ye = last bs in
+	  let xs, ys = List.hd bs in
+	  let prev = ref ( normalize (Bezier.derivee_approx ye, -. Bezier.derivee_approx xe)) in
+	  let ex = xe.(Array.length xe - 1) and ey = ye.(Array.length ye - 1) in
+	  let sx = xs.(0) and sy = ys.(0) in
+	  if abs_float (ex -. sx) > 1e-6 || abs_float (ey -. sy) > 1e-6 then (
+ 	    prev, ([| ex; sx |], [| ey; sy |]) :: bs)
+	  else
+	    prev, bs
+	in
 	List.split (List.map (fun (xs, ys) -> 
-	  let a, b = !prev in
-	  let xp = Bezier.derivee_start ys +. a in
-	  let yp =  -. (Bezier.derivee_start xs) +. b in
-	  let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
-	  let n = if classify_float n <> FP_normal then 0.0 else n in
-	  let n = if orientation then n else -. n in
-	  prev :=  (Bezier.derivee_end ys), -. (Bezier.derivee_end xs);
-	  (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs)
+	  let cur = normalize (Bezier.derivee_approx ys, -. Bezier.derivee_approx xs) in
+	  let n = combine orientation ratio !prev cur in
+	  prev :=  cur;
+	  (xs.(0),ys.(0),0.0),n) bs)
       ) beziers) 
     else
       List.split (List.map (fun bs -> 
@@ -112,24 +158,23 @@ let overlay_rect (r,g,b) (x,y,x',y') =
 	let prev = ref None in
 	let ln = 
 	  List.map (fun (xs, ys) -> 
-	    let xp, yp =
+	    let n =
 	      match !prev with
 		None -> 
-		  Bezier.derivee_start ys, -. (Bezier.derivee_start xs)
-	      | Some(_,_,a,b) -> 
-		Bezier.derivee_start ys +. a, -. (Bezier.derivee_start xs) +. b 
+		  single ratio (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
+	      | Some(_,_,v) -> 
+		  combine true ratio v (normalize (Bezier.derivee_start ys, -. Bezier.derivee_start xs))
 	    in
-	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
-	    prev :=  Some (xs, ys, (Bezier.derivee_end ys), -. (Bezier.derivee_end xs));
-	    (xs.(0),ys.(0),0.0),(xp*.n, yp*.n,0.0)) bs
+	    prev :=  Some (xs, ys, normalize (Bezier.derivee_end ys, -. Bezier.derivee_end xs));
+	    (xs.(0),ys.(0),0.0),n) bs
 	in
 	let last = 
 	  match !prev with
 	    None -> assert false
-	  | Some(xs,ys,xp,yp) -> 
-	    let n = ratio /. sqrt (xp*.xp +. yp*.yp) in
+	  | Some(xs,ys,v) -> 
 	    let s = Array.length xs in
-	    (xs.(s - 1),ys.(s - 1),0.0),(xp*.n, yp*.n,0.0)
+	    let n = single ratio v in
+	    (xs.(s - 1),ys.(s - 1),0.0),n
 	in
 	List.split (ln @ [last])
     ) beziers)   
@@ -187,6 +232,20 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 
   let init_zoom = ref true in
 
+  let set_proj xb yb =
+    let w = Glut.get Glut.WINDOW_WIDTH in
+    let h = Glut.get Glut.WINDOW_HEIGHT in
+    GlDraw.viewport 0 0 w h;
+    GlMat.mode `projection;
+    GlMat.load_identity ();
+    GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
+    GlMat.frustum ((!cx -. !rx)/.1000., (!cx +. !rx)/.1000.) 
+      ((!cy -. !ry)/.1000., (!cy +. !ry)/.1000.) (1., 10000.);
+    GlMat.translate3 (0., 0., -1000.);
+    GlMat.mode `modelview;
+    GlMat.load_identity ()
+  in
+
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
@@ -199,29 +258,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	zoom := (pw /. ph) /. ratio
     end;
 
-    let cx = pw /. 2.0 +. !dx in
-    let cy = ph /. 2.0 +. !dy in
-    let rx = (ph *. ratio) /. 2.0 *. !zoom in
-    let ry = ph /. 2.0 *. !zoom in
-    pixel_width := rx *. 2.0 /. (float_of_int w);
-    pixel_height := ry *. 2.0 /. (float_of_int h);
-    
-    let set_proj () =
-      GlDraw.viewport 0 0 w h;
-      GlMat.mode `projection;
-      GlMat.load_identity ();
-      GlMat.frustum ((cx -. rx)/.1000., (cx +. rx)/.1000.) 
-	            ((cy -. ry)/.1000., (cy +. ry)/.1000.) (1., 10000.);
-      GlMat.translate3 (0.,0.,-1000.);
-      GlMat.mode `modelview;
-      GlMat.load_identity ()
-    in
-  (*
-    Glut.useLayer(Glut.OVERLAY);
-    set_proj ();
-    Glut.useLayer(Glut.NORMAL);
-  *)
-    set_proj ()
+    cx := pw /. 2.0 +. !dx;
+    cy := ph /. 2.0 +. !dy;
+    rx := (ph *. ratio) /. 2.0 *. !zoom;
+    ry := ph /. 2.0 *. !zoom;
+    pixel_width := !rx *. 2.0 /. (float_of_int w);
+    pixel_height := !ry *. 2.0 /. (float_of_int h);
   in
 
   let is_edit uri =
@@ -310,9 +352,61 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 
     let draw_page page =
       let graisse =  !prefs.graisse in
-      let graisse_x = flou_x () +. graisse and graisse_y = flou_y () +. graisse in
+      let flou_x = flou_x () and flou_y = flou_y () in
+      let graisse_x' = flou_x -. graisse and graisse_y' = flou_y -. graisse in
+      let graisse_x = 3.0 *. flou_x +. graisse and graisse_y = 3.0 *. flou_y +. graisse in
       max_state := 0;
       min_state := max_int;
+
+      let fill_bezier color lines normals =
+	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) -> 
+	  (x -. xn *. graisse_x', y -. yn *. graisse_y' , 0.0)) l n) lines normals in
+	GlDraw.color color;
+	GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
+	
+	let fn alpha ends (x,y,_) ((xn,yn),quality) =
+	  match quality with 
+	  | None ->
+	    GlDraw.color color;
+	    GlDraw.vertex2 (x,y);
+	    GlDraw.color ~alpha color;
+	    GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn)
+	  | Some((a,b),(a',b')) ->
+	    GlDraw.color color;
+	    GlDraw.vertex2 (x,y);
+	    GlDraw.color ~alpha color;
+	    GlDraw.vertex2 (x+. graisse_x *. a,y+. graisse_y *. b);
+	    if not ends then begin
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x,y);
+	      GlDraw.color ~alpha color;
+	      GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn);
+	      GlDraw.color color;
+	      GlDraw.vertex2 (x,y);
+	      GlDraw.color ~alpha color;
+	      GlDraw.vertex2 (x+. graisse_x *. a',y+. graisse_y *. b')
+	    end
+	in
+	      (*
+		GlDraw.polygon_mode `both `line;
+		List.iter2 (fun l n ->
+		GlDraw.begins `quad_strip;
+		List.iter2 (fn 1.0 false) l n;
+		fn 1.0 true (List.hd l) (List.hd n);
+		GlDraw.ends ();
+		)	lines normals;
+		GlDraw.polygon_mode `both `fill;
+	      *)
+	GlFBO.use_shader ();
+	List.iter2 (fun l n ->
+	  GlDraw.begins `quad_strip;
+	  List.iter2 (fn 0.0 false) l n;
+	  fn 0.0 true (List.hd l) (List.hd n);
+	  GlDraw.ends ();
+	) lines normals;
+	GlFBO.no_shader ();
+	
+      in
 
       let rec fn = function
       Glyph g ->
@@ -320,12 +414,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
         let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = size   /. 1000. in
-	let ratio = !pixel_width /. s in
+	let ratio = !pixel_width /. s (* *. 10.0 *) in
 (*
 	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
 	  x y s !pixel_width !pixel_height ratio ;
 *)
-
+	  
 	let draw_glyph color = 
 	  try
 	    GlList.call (Hashtbl.find glyphCache (g.glyph, ratio, color))
@@ -334,30 +428,11 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	      let beziers =  Fonts.outlines g.glyph in
 	      let lines, normals = add_normals true ratio beziers in
 	      let l = GlList.create `compile_and_execute in
-
-	      GlDraw.color color;
-	      let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-		(x +. xn *. graisse, y +. yn *. graisse , 0.0)) l n) lines normals in
-	      GluTess.tesselate (*~tolerance:(scale/.5.)*) lines;
-	      	      
-	      List.iter2 (fun l n ->
-		GlDraw.begins `quad_strip;
-		List.iter2 (fun (x,y,_) (xn,yn,_) ->
-		  GlDraw.color color;
-		  GlDraw.vertex2 (x,y);
-		  GlDraw.color ~alpha:0.0 color;
-		  GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn)) l n;
-		let (x,y,_) = List.hd l in
-		let (xn,yn,_) = List.hd n in
-		GlDraw.color color;
-		GlDraw.vertex2 (x,y);
-		GlDraw.color ~alpha:0.0 color;
-		GlDraw.vertex2 (x+. graisse_x *. xn,y+. graisse_y *. yn);
-	      GlDraw.ends ();
-	      )	lines normals;
-
+	      fill_bezier color lines normals;
 	      GlList.ends ();
+
 	      Hashtbl.add glyphCache (g.glyph, ratio, color) l
+
 	in
 (*	
 	List.iter (fun bs ->
@@ -382,37 +457,22 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     | Path(param, beziers) ->
       let beziers = List.map Array.to_list beziers in
       let lines, normals = add_normals param.close !pixel_width beziers in
+
       (match param.fillColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	let color = (r,g,b) in
-	GlDraw.color color;
+	fill_bezier color lines normals);
 
-	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) (xn,yn,_) -> 
-	  (x +. xn *. graisse, y +. yn *. graisse, 0.0)) l n) lines normals in
-	GluTess.tesselate (*~tolerance:(2e-3 *. !zoom)*) lines;
-
-	List.iter2 (fun l n ->
-	  if param.strokingColor = None then begin
-	    GlDraw.begins `quad_strip;
-	    List.iter2 (fun (x,y,_) (xn,yn,_) ->
-	      GlDraw.color color;
-	      GlDraw.vertex2 (x,y);
-	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x+.graisse_x*.xn,y+.graisse_y*.yn)) l n;
-	    let (x,y,_) = List.hd l in
-	    let (xn,yn,_) = List.hd n in
-	    GlDraw.color color;
-	    GlDraw.vertex2 (x,y);
-	    GlDraw.color ~alpha:0.0 color;
-	    GlDraw.vertex2 (x+.graisse_x*.xn,y+.graisse_y*.yn);
-	    GlDraw.ends ()
-	  end) lines normals;
-
-      );
       (match param.strokingColor with
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
+	let lw = param.lineWidth /. 2.0 in
+	let graisse_x' = lw -. (!pixel_width *. (flou_x -. graisse)) 
+	  and graisse_y' = lw -. (!pixel_width *. (flou_y -. graisse)) in
+	let graisse_x =  lw +. (!pixel_width *. (3.0 *. flou_x +. graisse))
+	  and graisse_y = lw +. (!pixel_width *. (3.0 *. flou_y +. graisse)) in
+
 	let color = (r,g,b) in
 	let lines, normals = 
 	  if param.close then
@@ -424,44 +484,51 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	List.iter2 (fun l n ->
 	  GlDraw.begins `quad_strip; 
 	  GlDraw.color color; 
-	  let lw = param.lineWidth in
+
 	  List.iter2
-	    (fun (x,y,_) (vx, vy,_) ->
+	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx = vx /. norm *. lw /. 2.0 in
-	      let ny = vy /. norm *. lw /. 2.0 in
+	      let nx = vx /. norm *. graisse_x' in
+	      let ny = vy /. norm *. graisse_y' in
 	      GlDraw.vertex2 (x +. nx, y +. ny);
 	      GlDraw.vertex2 (x -. nx, y -. ny)
 	    ) l n;
 	  GlDraw.ends ();
 
+  	  GlFBO.use_shader ();
+
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
-	    (fun (x,y,_) (vx, vy,_) ->
+	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx = (vx /. norm *. lw) /. 2.0 in
-	      let ny = (vy /. norm *. lw) /. 2.0 in
+	      let nx' = vx /. norm *. graisse_x' in
+	      let ny' = vy /. norm *. graisse_y' in
+	      let nx = vx /. norm *. graisse_x in
+	      let ny = vy /. norm *. graisse_y in
 	      GlDraw.color color;
-	      GlDraw.vertex2 (x +. nx, y +. ny);
+	      GlDraw.vertex2 (x +. nx', y +. ny');
 	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x +. nx +. vx, y +. ny +. vy);
+	      GlDraw.vertex2 (x +. nx, y +. ny);
 	    ) l n;
 	  GlDraw.ends ();
 
 	  GlDraw.begins `quad_strip;
 	  let lw = param.lineWidth in
 	  List.iter2
-	    (fun (x,y,_) (vx, vy,_) ->
+	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
-	      let nx = (vx /. norm *. lw) /. 2.0 in
-	      let ny = (vy /. norm *. lw) /. 2.0 in
+	      let nx' = vx /. norm *. graisse_x' in
+	      let ny' = vy /. norm *. graisse_y' in
+	      let nx = vx /. norm *. graisse_x in
+	      let ny = vy /. norm *. graisse_y in
 	      GlDraw.color color;
-	      GlDraw.vertex2 (x -. nx, y -. ny);
+	      GlDraw.vertex2 (x -. nx', y -. ny');
 	      GlDraw.color ~alpha:0.0 color;
-	      GlDraw.vertex2 (x -. nx -. vx, y -. ny -. vy);
+	      GlDraw.vertex2 (x -. nx, y -. ny);
 	    ) l n;
 	  GlDraw.ends ();
+	  GlFBO.no_shader ();
 
 	) lines normals);
 
@@ -551,22 +618,21 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 
     in
 
-  let draw_off_screen page =
+  let draw_off_screen samples page =
     let pw,ph = !pages.(page).pageFormat in
     let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
-    let fbo = GlFBO.create_fbo_texture (2*w) (2*h) in
+    let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) in
     GlFBO.bind_fbo fbo;
-    GlDraw.viewport 0 0 (2*w) (2*h);
+    GlDraw.viewport 0 0 (samples*w) (samples*h);
     GlMat.mode `projection;
     GlMat.load_identity ();
-    GlMat.frustum (0., pw/.500.) (0., ph/.500.) (1., 10000.);
-    GlMat.translate3 (0.,0.,-500.);
+    GlMat.ortho (0., float samples *. pw) (0., float samples *. ph) (-1., 1.);
+(*    GlMat.translate3 (0.,0.,-1000. *. float samples);*)
     GlMat.mode `modelview;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
     draw_page page;
     GlFBO.unbind_fbo fbo;
-    reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
     fbo
   in
  
@@ -587,6 +653,26 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
      GlDraw.ends ();
      Gl.disable `texture_2d;
    in
+  
+   let draw_saa do_draw =
+     match subpixel () with 
+	None -> 
+	  set_proj 0.0 0.0;
+	  do_draw ();
+      | Some (xr,yr, xb,yb) ->
+	set_proj xb yb;
+	GlFunc.color_mask ~red:false ~green:false ~blue:true ~alpha:true ();
+	do_draw ();
+	set_proj xr yr;
+	GlFunc.color_mask ~red:true ~green:false ~blue:false ~alpha:true ();
+	GlClear.clear [`depth];
+	do_draw ();
+	set_proj 0.0 0.0;
+	GlFunc.color_mask ~red:false ~green:true ~blue:false ~alpha:true ();
+	GlClear.clear [`depth];
+	do_draw ();
+	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
+   in 
 
   let draw_gl_scene () =
     let time = Sys.time () in
@@ -597,27 +683,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     GlClear.depth 1.0;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
-
-
-    begin
-      match subpixel () with 
-	None -> 
-	  do_draw ();
-      | Some (xr,yr, xb,yb) ->
-	GlMat.push ();
-	GlMat.translate3 (!pixel_width *. xb , !pixel_width *. yb , 0.0);
-	GlFunc.color_mask ~red:false ~green:false ~blue:true ~alpha:true ();
-	do_draw ();
-	GlMat.pop ();
-	GlMat.push ();
-	GlMat.translate3 (!pixel_width *. xr , !pixel_width *. yr, 0.0);
-	GlFunc.color_mask ~red:true ~green:false ~blue:false ~alpha:true ();
-	do_draw ();
-	GlMat.pop ();
-	GlFunc.color_mask ~red:false ~green:true ~blue:false ~alpha:true ();
-	do_draw ();
-	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
-    end;
+    draw_saa do_draw;
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -636,34 +702,26 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     | Some duration -> 
       saved_rectangle := None;
       if !to_revert then revert ();
-    (*
-      let fbo1 = draw_off_screen !cur_page in
-      let fbo2 = draw_off_screen (!cur_page + i) in
-    *)
-    (*
-      let l1 = GlList.create `compile in
-      draw_page !cur_page;
-      GlList.ends ();
-      
-      let l2 = GlList.create `compile in
-      draw_page  (!cur_page + i);
-      GlList.ends ();
-    *)
+ 
+      let fbo1 = draw_off_screen 1 !cur_page in
+      let fbo2 = draw_off_screen 1 (!cur_page + 1) in
+ 
       let nb = ref 0 in
       let time = Unix.gettimeofday () in
       let angle = ref (if i > 0 then 0.0 else 90.0) in
-      
+      let axe = (0.0,-1.0,0.0) in
       while !angle <= 90.0 && !angle >= 0.0 do
 	GlClear.clear [`color;`depth];
+	draw_saa (fun () ->
 	GlMat.load_identity ();
-	GlMat.rotate3 !angle (0.0,-1.0,0.0);
-      (*GlList.call l1;*)
-	draw_page (*draw_texture fbo1*) !cur_page;
-	if !angle > 15.0 then begin
-	  GlMat.load_identity ();      
-	(*GlList.call l2;*)
-	  draw_page (*draw_texture fbo2*) (!cur_page + 1);
-	end;
+	GlMat.rotate3 !angle axe;
+	draw_texture fbo1 !cur_page;
+	if !angle > 15.0 then 
+	  begin
+	    GlMat.load_identity ();      
+	    draw_texture fbo2 (!cur_page + 1);
+	  end
+	);
 	Glut.swapBuffers ();
 	incr nb;
 	let delta = Unix.gettimeofday () -. time in
@@ -916,7 +974,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     Sys.catch_break true;
     Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
     ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double samples>=4";
+    Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
     Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
     let win = 
       Glut.createWindow "Patoline OpenGL Driver"
@@ -939,7 +997,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     Printf.fprintf stderr "GL setup finished, starting loop\n";
     flush stderr;
     try Glut.mainLoop ()
-    with e -> Glut.destroyWindow win; if e <> Exit then raise e
+    with e -> 
+      Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+      Gl.flush ();
+      Glut.destroyWindow win; if e <> Exit then raise e
   in
 
   main ()
