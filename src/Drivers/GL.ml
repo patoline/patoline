@@ -22,7 +22,7 @@ type prefs = {
 let prefs = ref {
   subpixel_anti_aliasing = RGB_SAA;
   graisse = 0.1;
-  tesselation_factor = 1.0/.3.0;
+  tesselation_factor = 1.0/.4.0;
   init_zoom = FitPage;
   rotation = None;
 }
@@ -273,7 +273,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
   let fps = ref 0.0 and cfps = ref 0 in
 
   let saved_rectangle = ref None in
-  let to_revert = ref true in
+  let to_revert = ref false in
 
   let old_menu = ref [] in
   let menu_item = Hashtbl.create 13 in
