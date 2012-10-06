@@ -75,9 +75,6 @@ let draw ?fontCache w h contents=
   (****)
 
 
-  let buf=Rbuffer.create 100 in
-
-
   (* Écriture du contenu à proprement parler *)
 
   let cur_x=ref 0. in
@@ -275,12 +272,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
   HtmlFonts.output_fonts cache;
   let chop=Filename.chop_extension fileName in
-  let chop_file=Filename.basename chop in
   let i=ref 0 in
   while !i<Array.length pages do
     let html_name=Printf.sprintf "%s%d.html" chop !i in
     let html=open_out html_name in
-    let noscript=false in
     Printf.fprintf html
       "<!DOCTYPE html>
 <html lang=\"en\">
@@ -322,8 +317,6 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   in
 
   let cache=build_font_cache (Array.map (fun x->x.pageContents) all_pages) in
-
-  let defs=make_defs cache in
 
   let svg_files=Array.map (fun (_,pi)->
     Array.map (fun page->
@@ -482,7 +475,6 @@ if(current_state>=states[current_slide]-1) {
 
 let onepage_html cache structure pages svg_files=
   let html=Rbuffer.create 10000 in
-  let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
   Rbuffer.add_string html
     "<!DOCTYPE html>
 <html lang=\"en\">

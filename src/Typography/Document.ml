@@ -491,8 +491,7 @@ let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
   let a=l.min_width
-  and b=l.nom_width
-  and c=l.max_width in
+  and b=l.nom_width in
   if param.measure >= b then
     { param with measure=b; left_margin=param.left_margin +. (param.measure-.b)/.2. }
   else
