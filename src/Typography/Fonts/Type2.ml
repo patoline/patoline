@@ -153,17 +153,17 @@ let outlines_ subrs gsubrs gl onlyWidth=
         match int_of_char (program.[!pc]) with
             RMOVETO->
               (moveto (!x +. (!rstack).(!stackC-2)) (!y +. (!rstack).(!stackC-1));
-               if onlyWidth && !stackC>2 then raise (Found (!rstack).(0));
+               if onlyWidth && !stackC>2 && !stackC land 1=1 then raise (Found (!rstack).(0));
                stackC:=0;
                incr pc)
           | HMOVETO->
               (moveto (!x +. (!rstack).(!stackC-1)) !y;
-               if onlyWidth && !stackC>1 then raise (Found (!rstack).(0));
+               if onlyWidth && !stackC>1 && !stackC land 1=0 then raise (Found (!rstack).(0));
                stackC:=0;
                incr pc)
           | VMOVETO->
               (moveto !x (!y +. (!rstack).(!stackC-1));
-               if onlyWidth && !stackC>1 then raise (Found (!rstack).(0));
+               if onlyWidth && !stackC>1 && !stackC land 1=0 then raise (Found (!rstack).(0));
                stackC:=0;
                incr pc)
           | RLINETO->
@@ -260,7 +260,7 @@ let outlines_ subrs gsubrs gl onlyWidth=
             )
           | HINTMASK | CNTRMASK ->(
               hints:= !hints+ !stackC/2;
-              if onlyWidth && !stackC > 0 then raise (Found (!rstack).(0));
+              if onlyWidth && !stackC land 1=1 then raise (Found (!rstack).(0));
               stackC:=0 ; pc := !pc + 1 + (if !hints land 7=0 then (!hints/8) else (!hints/8+1))
             )
           | ENDCHAR->

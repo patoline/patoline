@@ -376,7 +376,9 @@ let glyphWidth glyph=
   if glyph.glyphWidth=infinity then
     glyph.glyphWidth<-(
       try let _=Type2.outlines_ glyph.glyphFont.subrIndex.(0) glyph.glyphFont.gsubrIndex glyph.type2 true in raise Not_found with
-          Type2.Found x->glyph.glyphFont.nominalWidth+.x
+          Type2.Found x->(
+            glyph.glyphFont.nominalWidth+.x
+          )
         | Not_found->glyph.glyphFont.defaultWidth
     );
     glyph.glyphWidth
