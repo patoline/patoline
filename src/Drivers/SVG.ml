@@ -32,6 +32,7 @@ let standalone w h style title svg=
   Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\"" (round (w)) (round (h)));
   Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">";
   Rbuffer.add_buffer svg_buf (assemble style title svg);
+  Rbuffer.add_string svg_buf "</svg>\n";
   svg_buf
 
 
@@ -206,7 +207,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     let html_name=Printf.sprintf "%s%d.html" chop i in
     let w,h=pages.(i).pageFormat in
     let html=open_out html_name in
-    let noscript=true in
+    let noscript=false in
     Printf.fprintf html
       "<!DOCTYPE html>
 <html lang=\"en\">
@@ -266,11 +267,50 @@ window.onkeydown=function(e){
 
 
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];
-				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+let output ?(structure:structure={name="";displayname=[];metadata=[];
+				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
   let fileName = filename fileName in
+  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
+  HtmlFonts.output_fonts cache;
+  let chop=Filename.chop_extension fileName in
+  let chop_file=Filename.basename chop in
+  let i=ref 0 in
+  while !i<Array.length pages do
+    let html_name=Printf.sprintf "%s%d.html" chop !i in
+    let html=open_out html_name in
+    let noscript=false in
+    Printf.fprintf html
+      "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+<meta charset=\"utf-8\">
+<title>%s</title>"      structure.name;
+    Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
+    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
+    for j= !i to min (!i+10) (Array.length pages-1) do
+      let w,h=pages.(j).pageFormat in
+      Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
+        (round (w)) (round ( h));
+      let svg=draw ~fontCache:cache w h pages.(j).pageContents in
+      let defs=make_defs cache in
+      Rbuffer.output_buffer html (assemble defs "" svg);
+      Printf.fprintf html "</svg>\n";
+    done;
+    Printf.fprintf html "</div></body></html>";
+    close_out html;
+    i:= !i+10
+  done;
+  Printf.fprintf stderr "File %s written.\n" fileName;
+  flush stderr
+
+
+
+let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];
+				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages prefix=
+
   let total=Array.fold_left (fun m x->m+Array.length (snd x)) 0 pages in
   let all_pages=Array.make total ((snd pages.(0)).(0)) in
   let _=Array.fold_left (fun m0 (_,x)->
@@ -283,40 +323,37 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];
 
   let cache=build_font_cache (Array.map (fun x->x.pageContents) all_pages) in
 
-  let chop=Filename.chop_extension fileName in
-  let chop_file=Filename.basename chop in
-
   let defs=make_defs cache in
 
-  for i=0 to Array.length pages-1 do
-    let env,p=pages.(i) in
-    for j=0 to Array.length p-1 do
-      let page=(snd pages.(i)).(j) in
-      let file=open_out (Printf.sprintf "%s_%d_%d.svg" chop_file i j) in
+  let svg_files=Array.map (fun (_,pi)->
+    Array.map (fun page->
+      let file=Rbuffer.create 10000 in
+      (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
       let w,h=page.pageFormat in
-      Printf.fprintf file "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
-        (round (w)) (round (h));
+      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
+                                 (round (w)) (round (h)));
       let svg=draw ~fontCache:cache w h page.pageContents in
-      Rbuffer.output_buffer file svg;
-      Printf.fprintf file "</svg>\n";
-      close_out file
-    done
-  done;
-  let html_name=Printf.sprintf "%s.html" chop in
-  let html=open_out html_name in
+      Rbuffer.add_buffer file svg;
+      Rbuffer.add_string file "</svg>\n";
+      file
+    ) pi
+  ) pages
+  in
+  svg_files,cache
+
+
+let basic_html cache structure pages prefix=
+  let html=Rbuffer.create 10000 in
   let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
-  Printf.fprintf html
-      "<!DOCTYPE html>
+  Rbuffer.add_string html
+    "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
 <meta charset=\"utf-8\">
-<title>%s</title>"      structure.name;
-  let states=Rbuffer.create 10000 in
-  for i=0 to Array.length pages-1 do
-    if Rbuffer.length states>0 then Rbuffer.add_string states ",";
-    Rbuffer.add_string states (string_of_int (Array.length (snd pages.(i))))
-  done;
-  Printf.fprintf html "<script>
+<title>";
+  Rbuffer.add_string html structure.name;
+  Rbuffer.add_string html "</title>\n";
+  Rbuffer.add_string html (Printf.sprintf "<script>
 var current_slide=0;
 var current_state=0;
 resize=function(){
@@ -327,9 +364,9 @@ svg=document.getElementById(\"svg\");
 svg.style.width=(%g*size)+'px';
 svg.style.height=(%g*size)+'px';
 };
-//window.onresize=function(e){resize()};
+" w h (w-.10.) (h-.10.));
 
-function slide(width,g0,g1){
+  Rbuffer.add_string html "function slide(width,g0,g1){
   var svg=document.getElementsByTagName(\"svg\")[0];
   g0.setAttribute(\"transform\",\"translate(\"+width+\" 0)\");
   svg.appendChild(g0);
@@ -348,10 +385,19 @@ function slide(width,g0,g1){
     }
   }
   slideTimer=setInterval(do_slide,0.1);
-}
+}";
 
-var states=[%s];
-function loadSlide(n,state,effect){
+  let states=Rbuffer.create 10000 in
+  for i=0 to Array.length pages-1 do
+    if Rbuffer.length states>0 then Rbuffer.add_string states ",";
+    Rbuffer.add_string states (string_of_int (Array.length (snd pages.(i))))
+  done;
+  Rbuffer.add_string html "var states=[";
+  Rbuffer.add_buffer html states;
+  Rbuffer.add_string html "];";
+
+  Rbuffer.add_string html (
+    Printf.sprintf "function loadSlide(n,state,effect){
 if(n>=0 && n<%d && state>=0 && state<states[n]) {
     xhttp=new XMLHttpRequest();
     xhttp.open(\"GET\",\"%s_\"+n+\"_\"+state+\".svg\",false);
@@ -388,10 +434,15 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
     }
     current_slide=n;
     current_state=state;
-}
-}
+}}"
+      (Array.length pages)
+      prefix
+      w
+      h
+  );
 
-window.onload=function(){
+  Rbuffer.add_string html (
+    Printf.sprintf "window.onload=function(){
 resize();loadSlide(0,0)
 };
 window.onkeydown=function(e){
@@ -411,30 +462,62 @@ if(current_state>=states[current_slide]-1) {
 } //right
 }
 </script>"
-    w h (w-.10.) (h-.10.)
-    (Rbuffer.contents states)
-    (Array.length pages)
-    chop_file
-    w
-    h
-    (-.w)
-    w
-  ;
+      (-.w)
+      w);
 
-    Printf.fprintf html "<title>%s</title></head><body style=\"margin:0;padding:0;\">" structure.name;
-    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h));
+  Rbuffer.add_string html "<title>";
+  Rbuffer.add_string html structure.name;
+  Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
+  Rbuffer.add_string html (Printf.sprintf "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
-    let style=make_defs cache in
-    Printf.fprintf html "<defs>";
-    Printf.fprintf html "<style type=\"text/css\">\n<![CDATA[\n";
-    Rbuffer.output_buffer html style;
-    Printf.fprintf html "]]>\n</style>\n";
-    Printf.fprintf html "</defs><title>%s</title>" structure.name;
+  let style=make_defs cache in
+  Rbuffer.add_string html "<defs><style type=\"text/css\">\n<![CDATA[\n";
+  Rbuffer.add_buffer html style;
+  Rbuffer.add_string html "]]>\n</style></defs><title>";
+  Rbuffer.add_string html structure.name;
+  Rbuffer.add_string html "</title></svg></div></body></html>";
+  html
 
-    Printf.fprintf html "</svg>\n";
-    Printf.fprintf html "</div></body></html>";
-    close_out html;
 
-    Printf.fprintf stderr "File %s written.\n" fileName;
-    flush stderr
+
+let onepage_html cache structure pages svg_files=
+  let html=Rbuffer.create 10000 in
+  let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
+  Rbuffer.add_string html
+    "<!DOCTYPE html>
+<html lang=\"en\">
+<head>
+<meta charset=\"utf-8\">
+<title>";
+  Rbuffer.add_string html structure.name;
+  Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\">";
+
+  Array.iteri (fun i->
+    Array.iteri (fun j x->
+      Rbuffer.add_buffer html x;
+    )
+  ) svg_files;
+
+  Rbuffer.add_string html "</div></body></html>";
+  html
+
+
+
+let output' ?(structure:structure={name="";displayname=[];metadata=[];
+				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages filename=
+  let prefix=try Filename.chop_extension filename with _->filename in
+  let svg_files,cache=buffered_output' ~structure:structure pages prefix in
+  let html=basic_html cache structure pages prefix in
+  let o=open_out (prefix^".html") in
+  Rbuffer.output_buffer o html;
+  close_out o;
+
+  Array.iteri (fun i->
+    Array.iteri (fun j x->
+      let o=open_out (Printf.sprintf "%s_%d_%d.svg" prefix i j) in
+      Rbuffer.output_buffer o x;
+      close_out o
+    )
+  ) svg_files;
+  output_fonts cache

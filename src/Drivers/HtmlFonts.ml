@@ -9,6 +9,7 @@ open Typography.OutputPaper
 
 type font_cache={
   subfonts:(Fonts.font * (FTypes.glyph_id*int) IntMap.t) StrMap.t;
+  fontBuffers:Rbuffer.t StrMap.t;
   mutable instances:(int StrMap.t) StrMap.t;
   classes:string StrMap.t
 }
@@ -70,6 +71,7 @@ let build_font_cache pages=
   let style_buf=Rbuffer.create 256 in
   Rbuffer.add_string style_buf "body{line-height:0;}\n.z { font-size:0; }\n";
   let classes=ref StrMap.empty in
+  let fontBuffers=ref StrMap.empty in
   StrMap.iter (fun name (font,a)->
     (* k : nom de la police
        a : (glyph*int) IntMap.t : map du numéro de glyph vers la sous-police *)
@@ -89,11 +91,6 @@ let build_font_cache pages=
       let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
       let info=Fonts.fontInfo font in
       let filename=full^".otf" in
-      (* Fonts.setName info *)
-      (*   { family_name=family; *)
-      (*     subfamily_name=subfamily; *)
-      (*     full_name=full; *)
-      (*     postscript_name=ps }; *)
       let class_name=Printf.sprintf "c%d" (StrMap.cardinal !classes) in
       classes:=StrMap.add (full) class_name !classes;
       let rec make_bindings i b=
@@ -105,14 +102,20 @@ let build_font_cache pages=
         )
       in
       let buf=Fonts.subset font info (make_bindings 1 IntMap.empty) glyphs in
-      let out=open_out filename in
-      Rbuffer.output_buffer out buf;
-      close_out out;
+      fontBuffers:=StrMap.add filename buf !fontBuffers;
     ) sub_fonts
   ) f;
   { subfonts=f;
+    fontBuffers= !fontBuffers;
     instances= !fontInstances;
     classes= !classes }
+
+let output_fonts cache=
+  StrMap.iter (fun filename buf->
+      let out=open_out filename in
+      Rbuffer.output_buffer out buf;
+      close_out out;
+  ) cache.fontBuffers
 
 (* renvoit (nom complet de la police, nom de la classe) *)
 let className cache gl=
