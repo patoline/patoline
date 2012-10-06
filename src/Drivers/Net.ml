@@ -3,13 +3,6 @@ open Typography.OutputPaper
 open Typography.Util
 open HtmlFonts
 
-let patonet=
-  let pato=findPath (pluginspath@["."]) "patonet.ml" in
-  let o=open_in pato in
-  let s=String.create (in_channel_length o) in
-  really_input o s 0 (String.length s);
-  close_in o;
-  s
 
 
 let add_header title w h html=
@@ -353,7 +346,16 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];
     Printf.fprintf o "(%S,%S)" font (Rbuffer.contents buf)
   ) cache.fontBuffers;
   Printf.fprintf o "]\n";
+
+  let patonet=
+    let pato=findPath "patonet.ml" ((!Typography.Config.pluginspath)@["."]) in
+    let patof=open_in pato in
+    let s=String.create (in_channel_length patof) in
+    really_input patof s 0 (String.length s);
+    close_in patof;
+    s
+  in
   Printf.fprintf o "# 1 \"patonet.ml\"\n%s\n" patonet;
   close_out o;
-  Printf.fprintf stdout "OCaml file %s.ml written. Compile with :\n\t" prefix;
-  Printf.fprintf stdout "ocamlfind ocamlopt -o %s -package \"netstring,netsys,unix,nethttpd,netcgi2,cryptokit\" -thread -linkpkg %s.ml\n" prefix prefix
+  Printf.fprintf stdout "\nOCaml file %s.ml written. Compile with :\n\t" prefix;
+  Printf.fprintf stdout "ocamlfind ocamlopt -o %s -package \"netstring,netsys,unix,nethttpd,netcgi2,cryptokit\" -thread -linkpkg %s.ml\n\n" prefix prefix

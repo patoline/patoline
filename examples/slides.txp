@@ -1,0 +1,45 @@
+(* #FORMAT FormatDiapo *)
+========================
+Cellular automata as a model of parallel complexities
+------------------------
+Pierre-Etienne Meunier
+========================
+
+=> First Part
+
+\begin{slide}
+\Title{Slide}
+
+\begin{itemize}
+
+\item Blabla
+\item Blibli
+
+\end{itemize}
+
+\end{slide}
+
+\begin{slide}
+\Title{Another slide}
+
+\begin{itemize}
+
+\item\begin{states}([0;1])Houlala\end{states}
+\item\begin{states}([1])Hilili\end{states}
+
+\end{itemize}
+
+\end{slide}
+
+=<
+
+=> Second part
+
+\begin{slide}
+\Title{Deuxième partie}
+
+Hola !
+
+\end{slide}
+
+=<
