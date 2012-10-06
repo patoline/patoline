@@ -466,7 +466,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     let sl=
                       let open Typography.OutputCommon in
                           {name=(try List.assoc "name" n.node_tags with Not_found->"");
-                           displayname=[];metadata=[];
+                           displayname=[];metadata=[];tags=n.node_tags;
 		           page= !slide_num;struct_x=0.;struct_y=0.;
                            substructures=[||]
                           }
@@ -483,13 +483,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                   in
                   let open Typography.OutputCommon in
                   {name=(try List.assoc "name" n.node_tags with Not_found->"");
-                   displayname=[];metadata=[];
+                   displayname=[];metadata=[];tags=n.node_tags;
 		   page= !slide_num;struct_x=0.;struct_y=0.;
                    substructures=Array.of_list (List.rev sub)
                   }
                 | _->(
                   let open Typography.OutputCommon in
-                  {name="";displayname=[];metadata=[];
+                  {name="";displayname=[];metadata=[];tags=[];
 		   page= -1;struct_x=0.;struct_y=0.;substructures=[||]}
                 )
 

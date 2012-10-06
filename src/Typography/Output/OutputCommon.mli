@@ -88,6 +88,7 @@ type structure = {
   mutable name : string;
   mutable metadata : (metadata*string) list;
   mutable displayname : contents list;
+  mutable tags:(string*string) list;
   mutable page : int;
   mutable struct_x : float;
   mutable struct_y : float;

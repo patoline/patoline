@@ -194,7 +194,7 @@ let draw ?fontCache w h contents=
 
 
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
@@ -267,7 +267,7 @@ window.onkeydown=function(e){
 
 
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
@@ -307,7 +307,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 
 
 
-let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];
+let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages prefix=
 
@@ -503,7 +503,7 @@ let onepage_html cache structure pages svg_files=
 
 
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];
+let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages filename=
   let prefix=try Filename.chop_extension filename with _->filename in

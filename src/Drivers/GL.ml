@@ -179,7 +179,7 @@ let add_normals closed ratio beziers =
 	List.split (ln @ [last])
     ) beziers)   
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 

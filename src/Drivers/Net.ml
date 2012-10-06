@@ -310,7 +310,7 @@ let master_html cache structure pages prefix=
   html
 
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];
+let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages filename=
   let prefix=try Filename.chop_extension filename with _->filename in
