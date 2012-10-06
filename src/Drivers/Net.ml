@@ -305,7 +305,6 @@ let master_html cache structure pages prefix=
 </table>
 
 </td>
-
 ");
   Rbuffer.add_string html "</tr></tbody></table>";
   html
