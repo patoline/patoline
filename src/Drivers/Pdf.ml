@@ -22,6 +22,7 @@ type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicod
 let stream buf=
   let tmp0=Filename.temp_file "txp_" "" in
   let tmp1=Filename.temp_file "txp_" "" in
+  if Sys.file_exists tmp0 then Unix.unlink tmp0;
   let f0=open_out_bin tmp0 in
   Rbuffer.output_buffer f0 buf;
   close_out f0;
@@ -45,6 +46,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     pages fileName=
 
   let fileName = filename fileName in
+  if Sys.file_exists fileName then Unix.unlink fileName;
   let outChan=open_out_bin fileName in
   let pageBuf=Rbuffer.create 100000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
