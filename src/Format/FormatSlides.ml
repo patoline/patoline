@@ -459,7 +459,42 @@ module Format=functor (D:Document.DocumentStructure)->(
               env,Array.of_list (List.rev !states)
             in
             let pages=Array.of_list (List.map draw_slide (List.rev !slides)) in
-            M.output' pages file
+            let slide_num=ref 0 in
+            let rec make_structure t=
+              match t with
+                  Node n when List.mem_assoc "slide" n.node_tags ->(
+                    let sl=
+                      let open Typography.OutputCommon in
+                          {name=(try List.assoc "name" n.node_tags with Not_found->"");
+                           displayname=[];metadata=[];
+		           page= !slide_num;struct_x=0.;struct_y=0.;
+                           substructures=[||]
+                          }
+                    in
+                    incr slide_num;
+                    sl
+                  )
+                | Node n when List.mem_assoc "InTOC" n.node_tags->
+                  let sub=IntMap.fold (fun _ a m->
+                    match a with
+                        Node _ when List.mem_assoc "InTOC" n.node_tags->(make_structure a)::m
+                      | _->m
+                  ) n.children []
+                  in
+                  let open Typography.OutputCommon in
+                  {name=(try List.assoc "name" n.node_tags with Not_found->"");
+                   displayname=[];metadata=[];
+		   page= !slide_num;struct_x=0.;struct_y=0.;
+                   substructures=Array.of_list (List.rev sub)
+                  }
+                | _->(
+                  let open Typography.OutputCommon in
+                  {name="";displayname=[];metadata=[];
+		   page= -1;struct_x=0.;struct_y=0.;substructures=[||]}
+                )
+
+            in
+            M.output' ~structure:(make_structure structure) pages file
           )
         in
         resolve 0 defaultEnv
