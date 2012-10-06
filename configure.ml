@@ -216,6 +216,9 @@ let _=
       (* proof *)
       Printf.fprintf out "\tinstall -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
+      (* Plugins *)
+      Printf.fprintf out "\tinstall -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml" (escape !plugins_dir);
+
       (* emacs *)
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
       Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;

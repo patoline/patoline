@@ -26,6 +26,7 @@ GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx
 
 Html.cmx:SVG.cmx HtmlFonts.cmx
 SVG.cmx:HtmlFonts.cmx
+Net.cmx:SVG.cmx HtmlFonts.cmx
 GL.cmx:FrameBuffer.o GlFBO.cmx
 
 
