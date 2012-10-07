@@ -26,11 +26,11 @@ let assemble style title svg=
 
 let standalone w h style title svg=
   let svg_buf=Rbuffer.create 256 in
-  Rbuffer.add_string svg_buf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1 Tiny//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11-tiny.dtd\">
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" id=\"svg-root\"";
-  Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\"" (round (w)) (round (h)));
-  Rbuffer.add_string svg_buf "version=\"1.1\" baseProfile=\"tiny\">";
+  Rbuffer.add_string svg_buf (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">
+<svg width=\"%d\" height=\"%d\" version=\"1.1\"
+     xmlns=\"http://www.w3.org/2000/svg\" " (round w) (round h));
+  Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\" >" (round (w)) (round (h)));
   Rbuffer.add_buffer svg_buf (assemble style title svg);
   Rbuffer.add_string svg_buf "</svg>\n";
   svg_buf
