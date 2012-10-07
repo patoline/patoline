@@ -1127,7 +1127,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             resolve (i+1) env
           ) else (
 
-            List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.Language.message x)) logs;
+            List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
 
             let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
             let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in

@@ -10,6 +10,7 @@ type message=
   | Usage
   | Unknown_command of string
   | Cli of command_line
+  | Image of image
 
 and syntax_error=
     Parse_error
@@ -44,6 +45,12 @@ and command_line=
   | CCOpts 
   | TopOpts
 
+and image =
+    Width
+  | Height
+  | IFormat
+  | RGB | BGR | VRGB | VBGR
+ 
 #ifdef LANG_FR
 let lang=`FR
 let message=function
@@ -89,7 +96,15 @@ let message=function
       | TopOpts->"Passer la chaine à l'exécutable généré par Patoline"
       | No_line_directive->"Ne pas générer de #line dans le caml produit"
       | Recompile->"Tout recompiler")
-
+  | Image cli -> (
+    match cli with
+    | Width -> "specifie la largeur de l'image"
+    | Height -> "specifie la hauteur de l'image"
+    | IFormat -> "specifie le format de l'image"
+    | RGB -> "active l'antialiasing pour les écrans RGB"
+    | BGR -> "active l'antialiasing pour les écrans BGR"
+    | VRGB -> "active l'antialiasing pour les écrans VRGB"
+    | VBGR -> "active l'antialiasing pour les écrans VBGR")
 
 #else
 #define LANG_EN
@@ -136,6 +151,15 @@ let message=function
       | CCOpts->"Forward the string to the ocaml compiler"
       | TopOpts->"Forward the string to the generated executable"
       | No_line_directive->"Do not add #line directives in the generated caml code"
-      | Recompile->"Recompile everything"
-  )
+      | Recompile->"Recompile everything")
+  | Image cli -> (
+    match cli with
+    | Width -> "specify image width"
+    | Height -> "specify image height"
+    | IFormat -> "specify image format"
+    | RGB -> "subpixel antialiasing for RGB screen"
+    | BGR -> "subpixel antialiasing for BGR screen"
+    | VRGB -> "subpixel antialiasing for VRGB screen"
+    | VBGR -> "subpixel antialiasing for VBGR screen")
+
 #endif

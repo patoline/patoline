@@ -260,10 +260,10 @@ let revbib:((int*user content list) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
 let bibfile= ref "biblio.bibi"
 
-let no_results x=match Typography.Language.lang with
+let no_results x=match Typography.TypoLanguage.lang with
     `FR->Printf.sprintf "La requête n'a pas donné de résultats :\n%s" x
   | _->Printf.sprintf "The request gave no results:\n%s" x
-let more_than_one x=match Typography.Language.lang with
+let more_than_one x=match Typography.TypoLanguage.lang with
     `FR->Printf.sprintf "Attention : La requête a donné plus d'un résultat :\n%s" x
   | _->Printf.sprintf "Warning : The request gave more than one result :\n%s" x
 

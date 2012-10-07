@@ -3,7 +3,7 @@ include ../Makefile.config
 CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbuffer $(PACK)
 CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbuffer $(PACK)
 
-SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx Fonts/CFF.cmx Fonts/Sfnt/unicode_ranges.cmx Fonts/Cmap.cmx Fonts/Layout.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx Language.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
+SOURCES=Config.cmx new_map.cmx Util.cmx Bezier.cmx Offset.cmx Fonts/FTypes.cmx Fonts/Type2.cmx Fonts/CFFStd.cmx Fonts/CFF.cmx Fonts/Sfnt/unicode_ranges.cmx Fonts/Cmap.cmx Fonts/Layout.cmx Fonts/Opentype.cmx Fonts.cmx Output/OutputCommon.cmx Line.cmx Box.cmx Badness.cmx TypoLanguage.cmx Break.cmx Document.cmx Complete.cmx Hyphenate.cmx Maths.cmx Output/OutputPaper.cmx Output/OutputDrawing.cmx Diagrams.cmx
 
 VPATH=Fonts:Fonts/Sfnt:Output
 
@@ -89,13 +89,13 @@ Output/OutputDrawing.p.cmx:Output/OutputCommon.cmi Fonts.p.cmx Box.cmi Document.
 Output/OutputDrawing.cmi:Output/OutputDrawing.cmx
 
 
-Break.cmo:Output/OutputCommon.cmi Box.cmi Language.cmo Break.cmi Box.cmo Break.ml
+Break.cmo:Output/OutputCommon.cmi Box.cmi TypoLanguage.cmo Break.cmi Box.cmo Break.ml
 	$(CAMLC) -c -rectypes -o $@ Break.ml
-Break.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.cmx Break.cmi Box.cmx Break.ml
+Break.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi TypoLanguage.cmx Break.cmi Box.cmx Break.ml
 	$(CAMLOPT) -for-pack Typography -c -rectypes -o $@ Break.ml
-Break.p.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi Language.p.cmx Break.cmi Box.p.cmx Break.ml
+Break.p.cmx:Output/OutputCommon.cmi Output/OutputCommon.cmx Box.cmi TypoLanguage.p.cmx Break.cmi Box.p.cmx Break.ml
 	$(CAMLOPT) -for-pack Typography -p -c -rectypes -o $@ Break.ml
-Break.cmi:Box.cmi Language.cmx
+Break.cmi:Box.cmi TypoLanguage.cmx
 
 Hyphenate.cmo:Hyphenate.cmi
 Hyphenate.cmx:Hyphenate.cmi new_map.cmx
@@ -137,10 +137,10 @@ Box.cmo:Box.cmi Line.cmo Output/OutputCommon.cmo Output/OutputCommon.cmi
 Box.cmx:Box.cmi Line.cmx Output/OutputCommon.cmx Output/OutputCommon.cmi
 Box.p.cmx:Box.cmi Line.p.cmx Output/OutputCommon.p.cmx Output/OutputCommon.cmi
 
-Language.cmo:Line.cmo
-Language.cmx:Line.cmx
-Language.p.cmx:Line.p.cmx
-Language.cmi:Language.cmx
+TypoLanguage.cmo:Line.cmo
+TypoLanguage.cmx:Line.cmx
+TypoLanguage.p.cmx:Line.p.cmx
+TypoLanguage.cmi:TypoLanguage.cmx
 
 Util.cmo:Util.cmi new_map.cmi Config.cmo Config.cmi
 Util.cmx:Util.cmi new_map.cmx Config.cmx Config.cmi

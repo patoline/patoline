@@ -1,4 +1,5 @@
 #include <GL/gl.h>
+#include <GL/glu.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,16 +9,38 @@
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glext.h>
 
+#define Base_raw(raw) (Field(raw,1))
+#define Offset_raw(raw) (Field(raw,2))
+
+#define Addr_raw(raw) (Base_raw(raw)+Long_val(Offset_raw(raw)))
+
+#define Void_raw(raw) ((void *) Addr_raw(raw))
 
 typedef struct _fbo_texture {
   GLuint textureId;
   GLuint rboId;
   GLuint fboId;
+  int is_texture;
 } *fbo_texture;
+
+void testGL(msg) {
+  GLenum errCode;
+  const GLubyte* errString;
+
+  while((errCode = glGetError()) != GL_NO_ERROR)
+    {
+      errString = gluErrorString(errCode);
+      fprintf(stderr,"GL_ERROR: %s in %s\n", errString, msg); 
+    }
+
+}
 
 void delete_fbo(value fbo) {
   fbo_texture cfbo = Data_custom_val(fbo);
-  glDeleteTextures(1,&(cfbo->textureId));
+  if (cfbo->is_texture)
+    glDeleteTextures(1,&(cfbo->textureId));
+  else 
+    glDeleteRenderbuffers(1,&(cfbo->textureId));
   glDeleteRenderbuffers(1,&(cfbo->rboId));
   glDeleteFramebuffers(1,&(cfbo->fboId));
 }
@@ -32,26 +55,44 @@ static struct custom_operations objst_custom_ops = {
     deserialize: custom_deserialize_default
 };
 
-CAMLprim gl_create_fbo_texture(value ml_width, value ml_height)
+CAMLprim gl_create_fbo_texture(value ml_width, value ml_height, value ml_texture)
 { CAMLparam0();
   int height = Int_val(ml_height);
   int width = Int_val(ml_width);
+  int texture = Bool_val(ml_texture);
   CAMLlocal1(fbo);
 
   fbo = caml_alloc_custom( &objst_custom_ops, sizeof(struct _fbo_texture), 0, 1);
   fbo_texture cfbo = Data_custom_val(fbo);
-
-
-  glGenTextures(1, &(cfbo->textureId));
-  glBindTexture(GL_TEXTURE_2D, cfbo->textureId);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); // automatic mipmap
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0,
-	       GL_RGBA, GL_UNSIGNED_BYTE, 0);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  cfbo->is_texture = texture;
+  
+  if (texture) {
+    glGenTextures(1, &(cfbo->textureId));
+    testGL("glGenTextures");
+    glBindTexture(GL_TEXTURE_2D, cfbo->textureId);
+    testGL("glBindTexture");
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    testGL("glParameterf 1");
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    testGL("glParameterf 2");
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    testGL("glParameterf 3");
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    testGL("glParameterf 4");
+    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); // automatic mipmap
+    testGL("glParameterf 5");
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+		 GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    testGL("glTexImage2D");
+    glBindTexture(GL_TEXTURE_2D, 0);
+    testGL("glUnBindTexture");
+  } else {
+    glGenRenderbuffers(1, &(cfbo->textureId));
+    glBindRenderbuffer(GL_RENDERBUFFER, cfbo->textureId);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA,
+			  width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+  }
 
   // create a renderbuffer object to store depth info
   glGenRenderbuffers(1, &(cfbo->rboId));
@@ -62,15 +103,24 @@ CAMLprim gl_create_fbo_texture(value ml_width, value ml_height)
 
   // create a framebuffer object
   glGenFramebuffers(1, &(cfbo->fboId));
+  testGL("glGenFramebuffers");
   glBindFramebuffer(GL_FRAMEBUFFER,cfbo-> fboId);
+  testGL("glBindFrameBuffer");
 
   // attach the texture to FBO color attachment point
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-			 GL_TEXTURE_2D, cfbo->textureId, 0);
+  if (texture)
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			   GL_TEXTURE_2D, cfbo->textureId, 0);
+  else
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+			      GL_RENDERBUFFER, cfbo->textureId);
+  testGL("Attach color");
+
 
   // attach the renderbuffer to depth attachment point
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 			    GL_RENDERBUFFER, cfbo->rboId);
+  testGL("Attach depth");
 
   // check FBO status
   GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -79,6 +129,7 @@ CAMLprim gl_create_fbo_texture(value ml_width, value ml_height)
 
   // switch back to window-system-provided framebuffer
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  testGL("UnbindFrameBuffer");
 
   CAMLreturn(fbo);
 }
@@ -87,6 +138,11 @@ CAMLprim gl_bind_fbo(value fbo)
 { CAMLparam0();
   fbo_texture cfbo = Data_custom_val(fbo);
   glBindFramebuffer(GL_FRAMEBUFFER,cfbo-> fboId);
+  testGL("glBindFrameBuffer");
+  glDrawBuffer(GL_COLOR_ATTACHMENT0);
+  testGL("glDrawBuffer");
+  glReadBuffer(GL_COLOR_ATTACHMENT0);
+  testGL("glReadBuffer");
   CAMLreturn(Val_unit);
 }
 
@@ -100,9 +156,11 @@ CAMLprim gl_bind_texture(value fbo)
 CAMLprim gl_unbind_fbo(value fbo)
 { CAMLparam0();
   fbo_texture cfbo = Data_custom_val(fbo);
-  glBindTexture(GL_TEXTURE_2D, cfbo->textureId);
-  glGenerateMipmap(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, 0);
+  if (cfbo->is_texture) {
+    glBindTexture(GL_TEXTURE_2D, cfbo->textureId);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+  }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
   CAMLreturn(Val_unit);
 }

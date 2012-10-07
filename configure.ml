@@ -20,7 +20,7 @@ let ban_comic_sans=ref false
 let use_camlimages=ref false
 
 let avail_lang=
-  let f=open_in "src/Typography/Language.ml" in
+  let f=open_in "src/Typography/TypoLanguage.ml" in
   let buf=String.create (in_channel_length f) in
     really_input f buf 0 (in_channel_length f);
     close_in f;

@@ -434,8 +434,8 @@ and process_each_file l=
         Build.sem_set Build.sem !Build.j;
         Build.build cmd;
         if !run && Sys.file_exists cmd then (
-          Printf.fprintf stdout "'%s %s'\n" cmd !extrastop;flush stdout;
-          let _=Build.command ("'"^cmd^"'") in
+          Printf.fprintf stdout "'%s' %s\n" cmd !extrastop;flush stdout;
+          let _=Build.command ("'"^cmd^"' "^ !extrastop) in
           ()
         )
       ) else (

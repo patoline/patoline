@@ -74,6 +74,6 @@ module Make :
                    UMap.key Box.box array ->
                    int -> Line.parameters -> float -> float) array ->
           UMap.key Box.box array array ->
-          Language.message list * (Line.parameters * Line.line) list array *
+          TypoLanguage.message list * (Line.parameters * Line.line) list array *
           figurePosition Util.IntMap.t * Line.line UMap.t
       end

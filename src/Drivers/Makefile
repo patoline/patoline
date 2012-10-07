@@ -12,27 +12,33 @@ else
   DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
 endif
 
-CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
-CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography -I ../Rbuffer
-CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer
+CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
+CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography -I ../Rbuffer -I ../Patoline
+CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
 CFLAGS=-fPIC
 
-Html.cmxa:Html.cmx
+Html.cmxa:Html.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
-SVG.cmxa:SVG.cmx HtmlFonts.cmx
+SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
-GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx
+GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx ../Typography/Typography.cmxa
 	$(CAMLMKLIB) -o GL FrameBuffer.o GlFBO.cmx GL.cmx
+Image.cmxa:GL.cmxa Image.cmx ../Typography/Typography.cmxa
+	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
+Pdf.cmxa:Pdf.cmx
+	$(CAMLOPT) -a -o $@ Pdf.cmx
+Bin.cmxa:Bin.cmx
+	$(CAMLOPT) -a -o $@ Bin.cmx
+GL2.cmxa:GL2.cmx
+	$(CAMLOPT) -a -o $@ GL2.cmx
+Net.cmxa:Net.cmx
+	$(CAMLOPT) -a -o $@ Net.cmx
 
-Html.cmx:SVG.cmx HtmlFonts.cmx
-SVG.cmx:HtmlFonts.cmx
-Net.cmx:SVG.cmx HtmlFonts.cmx
-GL.cmx:FrameBuffer.o GlFBO.cmx
-
-
-
-%.cmxa:%.cmx ../Typography/Typography.cmxa
-	$(CAMLOPT) -a -o $@ $<
+Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
+SVG.cmx:SVG.ml HtmlFonts.cmx
+Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
+GL.cmx:GL.ml FrameBuffer.o GlFBO.cmx
+Image.cmx:Image.ml ../Patoline/Language.cmx
 
 %.cmx:%.ml ../Typography/Typography.cmxa
 	$(CAMLOPT) -c -o $@ $<

@@ -37,7 +37,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
 
     module H=Weak.Make(
       struct
-        type t=L.t*float*Language.message*parameters*float*(t option)*(figurePosition IntMap.t)*L.t UMap.t
+        type t=L.t*float*TypoLanguage.message*parameters*float*(t option)*(figurePosition IntMap.t)*L.t UMap.t
         let equal (a,_,_,_,_,_,_,_) (b,_,_,_,_,_,_,_)=(L.compare a b)==0
         let hash (a,_,_,_,_,_,_,_)=L.hash a
       end)
@@ -146,7 +146,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
       let endNode=ref None in
 
       let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty uselessLine in
-      let first_line=(uselessLine,0.,Language.Normal,first_parameters,0.,None,IntMap.empty,UMap.empty) in
+      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,0.,None,IntMap.empty,UMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -220,7 +220,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                    lastFigures
                    node !haut 0 lastParameters 0.
                    nextNode !bas 0 params 0.)
-                Language.Normal
+                TypoLanguage.Normal
                 params
                 0.
             ) else if allow_impossible then (
@@ -241,7 +241,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                    lastFigures
                    node !haut 0 lastParameters 0.
                    nextNode !bas 0 params 0.)
-                Language.Normal
+                TypoLanguage.Normal
                 params
                 0.
             )
@@ -402,13 +402,13 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                             let _,_,_,_,_,prec,_,_=cur_node in
                             let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
                             if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
-                              extreme_solutions:=(pr,a,(Language.Opt_error (Language.Orphan (node, text_line paragraphs node))),
+                              extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Orphan (node, text_line paragraphs node))),
                                                   { c with min_page_after=1 },
                                                   d,e,f,g)::(!extreme_solutions)
                             ) else raise Not_found
                           with
                               Not_found->(
-                                extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Orphan (node,text_line paragraphs nextNode))),
+                                extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Orphan (node,text_line paragraphs nextNode))),
                                                     !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                               )
                         )
@@ -419,13 +419,13 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                             let _,_,_,_,_,prec,_,_=cur_node in
                             let pr,a,b,c,d,e,f,g=match prec with None->raise Not_found | Some a->a  in
                             if node.paragraph=nextNode.paragraph || (!r_params.not_first_line) && not lastParameters.not_first_line then (
-                              extreme_solutions:=(pr,a,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
+                              extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Widow (nextNode,text_line paragraphs nextNode))),
                                                   { c with min_page_after=1 },
                                                   d,e,f,g)::(!extreme_solutions)
                             ) else raise Not_found
                           with
                               Not_found->(
-                                extreme_solutions:=(nextNode,lastBadness,(Language.Opt_error (Language.Widow (nextNode,text_line paragraphs nextNode))),
+                                extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Widow (nextNode,text_line paragraphs nextNode))),
                                                     !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                               )
                         )
@@ -438,7 +438,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                      nextNode !bas !max_bas !r_params comp1) in
                             local_opt:=(nextNode,
                                         max 0. bad,
-                                        (Language.Opt_error (Language.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                        (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
                                         !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                           )
                         ) else (
@@ -450,7 +450,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                                        nextNode !bas !max_bas !r_params comp1) in
                             if bad<infinity || allow_impossible then
                               local_opt:=(nextNode,
-                                          max 0. bad,Language.Normal,
+                                          max 0. bad,TypoLanguage.Normal,
                                           !r_params,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                           ) else (
                             height_problem:=true
@@ -526,7 +526,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
             let param0=LineMap.find b !last_failure in
             if param0.min_page_after<>param.min_page_after then raise Not_found;
             Printf.fprintf stderr "%s\n" (
-              Language.message (Language.No_solution (text_line paragraphs b)));
+              TypoLanguage.message (TypoLanguage.No_solution (text_line paragraphs b)));
             finished:=true
           with
               Not_found->(
@@ -549,7 +549,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               None->(log,result)
             | Some n->(
                 (* print_text_line paragraphs n0; *)
-                makeParagraphs (match log_ with Language.Normal -> log | _->log_::log) n ((params',n0)::result)
+                makeParagraphs (match log_ with TypoLanguage.Normal -> log | _->log_::log) n ((params',n0)::result)
               )
         in
         let pages=Array.create (n0.page+1) [] in
@@ -566,7 +566,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
         (log, Array.map (List.rev) pages, figs0,user0)
       with
           Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UMap.empty) else (
-            Printf.fprintf stderr "%s" (Language.message (Language.No_solution ""));
+            Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
             [],[||],IntMap.empty,UMap.empty
           )
       end

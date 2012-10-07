@@ -17,6 +17,7 @@ type prefs = {
   tesselation_factor : float;
   init_zoom : init_zoom;
   rotation : float option;
+  batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array) -> unit) option
 }
 
 let prefs = ref {
@@ -25,6 +26,7 @@ let prefs = ref {
   tesselation_factor = 1.0/.4.0;
   init_zoom = FitPage;
   rotation = None;
+  batch_cmd = None;
 }
 
 let cur_page = ref 0
@@ -44,8 +46,8 @@ let filename x=""
 let zoom = ref 1.0
 let dx = ref 0.0
 let dy = ref 0.0
-let subpixel () =
-  match !prefs.subpixel_anti_aliasing with
+let subpixel saa =
+  match saa with
     No_SAA -> None
   | RGB_SAA -> Some(1.0 /. 3.0, 0.0, -. 1.0 /. 3.0, 0.0)
   | BGR_SAA -> Some(-. 1.0 /. 3.0, 0.0, 1.0 /. 3.0, 0.0)
@@ -498,7 +500,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   	  GlFBO.use_shader ();
 
 	  GlDraw.begins `quad_strip;
-	  let lw = param.lineWidth in
 	  List.iter2
 	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
@@ -514,7 +515,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlDraw.ends ();
 
 	  GlDraw.begins `quad_strip;
-	  let lw = param.lineWidth in
 	  List.iter2
 	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
@@ -618,44 +618,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     in
 
-  let draw_off_screen samples page =
-    let pw,ph = !pages.(page).pageFormat in
-    let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
-    let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) in
-    GlFBO.bind_fbo fbo;
-    GlDraw.viewport 0 0 (samples*w) (samples*h);
-    GlMat.mode `projection;
-    GlMat.load_identity ();
-    GlMat.ortho (0., float samples *. pw) (0., float samples *. ph) (-1., 1.);
-(*    GlMat.translate3 (0.,0.,-1000. *. float samples);*)
-    GlMat.mode `modelview;
-    GlClear.clear [`color;`depth];
-    GlMat.load_identity ();
-    draw_page page;
-    GlFBO.unbind_fbo fbo;
-    fbo
-  in
- 
-   let draw_texture fbo page =
-     let pw,ph = !pages.(page).pageFormat in
-     Gl.enable `texture_2d;
-     GlFBO.bind_texture fbo;
-     GlDraw.color (1.0, 1.0, 1.0);
-     GlDraw.begins `quads;
-     GlTex.coord2 (0., 0.);
-     GlDraw.vertex2 (0., 0.);
-     GlTex.coord2 (1., 0.);
-     GlDraw.vertex2 (pw, 0.);
-     GlTex.coord2 (1., 1.);
-     GlDraw.vertex2 (pw, ph);
-     GlTex.coord2 (0., 1.);
-     GlDraw.vertex2 (0., ph);
-     GlDraw.ends ();
-     Gl.disable `texture_2d;
-   in
-  
-   let draw_saa do_draw =
-     match subpixel () with 
+   let draw_saa do_draw set_proj saa =
+     match subpixel saa with 
 	None -> 
 	  set_proj 0.0 0.0;
 	  do_draw ();
@@ -674,6 +638,78 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
    in 
 
+    let draw_fbo fbo w h pw ph page saa =
+      GlDraw.viewport 0 0 w h;
+      GlClear.clear [`color;`depth];
+      GlMat.load_identity ();
+      let set_proj xb yb = 
+	GlMat.mode `projection;
+	GlMat.load_identity ();
+	GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
+	GlMat.ortho (0., pw) (0., ph) (-1., 1.);
+	GlMat.mode `modelview;
+      in
+      draw_saa (fun () -> draw_page page) set_proj saa;
+    in
+
+  let draw_off_screen samples page =
+    let pw,ph = !pages.(page).pageFormat in
+    let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
+    let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) true in
+    GlFBO.bind_fbo fbo;
+    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page No_SAA;
+    GlFBO.unbind_fbo fbo;
+    fbo
+  in
+ 
+  let get_pix samples w h saa page =
+    let pw,ph = !pages.(page).pageFormat in
+    let w, h = match w, h with
+	None, None -> 1024, int_of_float (ph /. pw *. float 1024)
+      | Some w, None -> w, int_of_float (ph /. pw *. float w)
+      | None, Some h -> int_of_float (pw /. ph *. float h), h
+      | Some w, Some h -> w, h
+    in
+    pixel_width := pw /. float (samples * w);
+    pixel_height := ph /. float (samples * h);
+    let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) false in
+    GlFBO.bind_fbo fbo;
+    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page saa;
+    Gl.finish ();
+(*
+    let raw = Raw.create `ubyte ~len:(4*samples*w*samples*h) in
+    GlFBO.read_fbo fbo raw;
+*)
+    let raw = GlPix.to_raw (GlPix.read ~x:0 ~y:0 ~width:(samples*w) ~height:(samples*h)
+	~format:`rgba ~kind:`ubyte)
+    in
+    GlFBO.unbind_fbo fbo;
+    (raw,w,h)
+  in
+
+  let get_pixes samples w h saa =
+    Array.mapi (fun i _ ->
+      get_pix samples w h saa i) !pages
+  in
+
+   let draw_texture fbo page =
+     let pw,ph = !pages.(page).pageFormat in
+     Gl.enable `texture_2d;
+     GlFBO.bind_texture fbo;
+     GlDraw.color (1.0, 1.0, 1.0);
+     GlDraw.begins `quads;
+     GlTex.coord2 (0., 0.);
+     GlDraw.vertex2 (0., 0.);
+     GlTex.coord2 (1., 0.);
+     GlDraw.vertex2 (pw, 0.);
+     GlTex.coord2 (1., 1.);
+     GlDraw.vertex2 (pw, ph);
+     GlTex.coord2 (0., 1.);
+     GlDraw.vertex2 (0., ph);
+     GlDraw.ends ();
+     Gl.disable `texture_2d;
+   in
+  
   let draw_gl_scene () =
     let time = Sys.time () in
     saved_rectangle := None;
@@ -683,7 +719,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlClear.depth 1.0;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
-    draw_saa do_draw;
+    draw_saa do_draw set_proj !prefs.subpixel_anti_aliasing;
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -721,7 +757,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    GlMat.load_identity ();      
 	    draw_texture fbo2 (!cur_page + 1);
 	  end
-	);
+	) set_proj !prefs.subpixel_anti_aliasing;
 	Glut.swapBuffers ();
 	incr nb;
 	let delta = Unix.gettimeofday () -. time in
@@ -979,28 +1015,34 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let win = 
       Glut.createWindow "Patoline OpenGL Driver"
     in
-    Printf.fprintf stderr "Window created, number of samples: %d\n" 
-      (Glut.get Glut.WINDOW_NUM_SAMPLES);
-    flush stderr;
-    Glut.displayFunc display_cb;
-    Glut.keyboardFunc keyboard_cb;
-    Glut.specialFunc special_cb;
-    Glut.reshapeFunc reshape_cb;
-    Glut.mouseFunc mouse_cb;
-    Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
-    Glut.motionFunc motion_cb;
-    Glut.passiveMotionFunc passive_motion_cb;
-    init_gl ();
-    Sys.set_signal Sys.sighup
-      (Sys.Signal_handle
-	 (fun s ->  to_revert := true; Glut.postRedisplay ()));
-    Printf.fprintf stderr "GL setup finished, starting loop\n";
-    flush stderr;
-    try Glut.mainLoop ()
-    with e -> 
-      Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
-      Gl.flush ();
-      Glut.destroyWindow win; if e <> Exit then raise e
+    match !prefs.batch_cmd with
+      None ->
+	Printf.fprintf stderr "Window created, number of samples: %d\n" 
+	  (Glut.get Glut.WINDOW_NUM_SAMPLES);
+	flush stderr;
+	init_gl ();
+	Glut.displayFunc display_cb;
+	Glut.keyboardFunc keyboard_cb;
+	Glut.specialFunc special_cb;
+	Glut.reshapeFunc reshape_cb;
+	Glut.mouseFunc mouse_cb;
+	Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
+	Glut.motionFunc motion_cb;
+	Glut.passiveMotionFunc passive_motion_cb;
+	
+	Sys.set_signal Sys.sighup
+	  (Sys.Signal_handle
+	     (fun s ->  to_revert := true; Glut.postRedisplay ()));
+	Printf.fprintf stderr "GL setup finished, starting loop\n";
+	flush stderr;
+	(try Glut.mainLoop ()
+	with e -> 
+	  Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+	  Gl.flush ();
+	  Glut.destroyWindow win; if e <> Exit then raise e)
+    | Some f -> 
+      init_gl ();
+      f get_pixes
   in
 
-  main ()
+  main()
