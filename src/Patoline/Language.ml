@@ -41,6 +41,8 @@ and command_line=
   | Remaining
   | No_line_directive
   | Recompile
+  | CCOpts 
+  | TopOpts
 
 #ifdef LANG_FR
 let lang=`FR
@@ -83,9 +85,11 @@ let message=function
       | Parallel->"Nombre maximal de processus (pour la compilation parallèle)"
       | Quiet->"Ne pas afficher les commandes de compilation"
       | Remaining->"Passer les arguments suivants au compilateur caml"
+      | CCOpts->"Passer la chaine au compilateur caml"
+      | TopOpts->"Passer la chaine à l'exécutable généré par Patoline"
       | No_line_directive->"Ne pas générer de #line dans le caml produit"
-      | Recompile->"Tout recompiler"
-  )
+      | Recompile->"Tout recompiler")
+
 
 #else
 #define LANG_EN
@@ -129,6 +133,8 @@ let message=function
       | Parallel->"Maximal number of processes (for parallel build)"
       | Quiet->"Do not output the compilation commands"
       | Remaining->"Forward the remaining arguments to the caml compiler"
+      | CCOpts->"Forward the string to the ocaml compiler"
+      | TopOpts->"Forward the string to the generated executable"
       | No_line_directive->"Do not add #line directives in the generated caml code"
       | Recompile->"Recompile everything"
   )

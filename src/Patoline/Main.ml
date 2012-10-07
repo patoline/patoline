@@ -6,6 +6,7 @@ let cmd_line = ref []
 let no_grammar=ref false
 let deps_only=ref false
 let extras = ref ""
+let extrastop = ref ""
 let cmd_line_format = ref false
 let cmd_line_driver= ref false
 let format=ref "DefaultFormat"
@@ -49,6 +50,8 @@ let spec =
    ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
    ("--quiet", Arg.Unit (fun ()->quiet:=true), message (Cli Quiet));
    ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), message (Cli Remaining));
+   ("--topopts",Arg.String (fun s -> extrastop := !extrastop ^ " " ^ s), message (Cli TopOpts));
+   ("--ccopts",Arg.String (fun s -> extras := !extras ^ " " ^ s), message (Cli CCOpts));
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
   ]
 
@@ -431,7 +434,7 @@ and process_each_file l=
         Build.sem_set Build.sem !Build.j;
         Build.build cmd;
         if !run && Sys.file_exists cmd then (
-          Printf.fprintf stdout "'%s'\n" cmd;flush stdout;
+          Printf.fprintf stdout "'%s %s'\n" cmd !extrastop;flush stdout;
           let _=Build.command ("'"^cmd^"'") in
           ()
         )
