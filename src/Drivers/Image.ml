@@ -48,21 +48,20 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
     Printf.printf "Images generated\n";
     Array.iteri (
       fun page (raw,w,h) ->
-	let image32 = Rgba32.create w h in 
+	let image = Rgb24.create w h in 
 	for j=0 to h-1 do	  
           for i=0 to w-1 do
 	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
 	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
 	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let a = Raw.get raw ((j * w + i) * 4 + 3) in 
-	    let c = { color = { r = r; g = g; b = b }; alpha = 255 } in
+	    let c = { r = r; g = g; b = b } in
 (*	    Printf.printf "%d %d %d %d\n" r g b a;*)
-	    Rgba32.set image32 i (h-1-j) c
+	    Rgb24.set image i (h-1-j) c
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page) in
 	Printf.fprintf stderr "Wrinting %s\n" fname;
-	Images.save fname None [] (Images.Rgba32 image32);) pages;
+	Images.save fname None [] (Images.Rgb24 image);) pages;
     ()
   in
 
