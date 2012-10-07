@@ -217,7 +217,8 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
       (* Plugins *)
-      Printf.fprintf out "\tinstall -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml" (escape !plugins_dir);
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
+      Printf.fprintf out "\tinstall -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
 
       (* emacs *)
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
