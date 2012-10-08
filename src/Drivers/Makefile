@@ -15,7 +15,17 @@ endif
 CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
 CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography -I ../Rbuffer -I ../Patoline
 CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
+
+
+UNAME := $(shell uname)
+
+ifeq ($(UNAME), Linux)
 CFLAGS=-fPIC
+endif
+ifeq ($(UNAME), Darwin)
+CFLAGS=-fPIC -framework GLUT -framework OpenGL
+endif
+
 
 Html.cmxa:Html.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
