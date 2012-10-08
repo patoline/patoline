@@ -306,9 +306,9 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages prefix=
 
-  let total=Array.fold_left (fun m x->m+Array.length (snd x)) 0 pages in
-  let all_pages=Array.make total ((snd pages.(0)).(0)) in
-  let _=Array.fold_left (fun m0 (_,x)->
+  let total=Array.fold_left (fun m x->m+Array.length x) 0 pages in
+  let all_pages=Array.make total (pages.(0).(0)) in
+  let _=Array.fold_left (fun m0 x->
     Array.fold_left (fun m x->
       all_pages.(m)<-x;
       m+1
@@ -318,7 +318,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 
   let cache=build_font_cache (Array.map (fun x->x.pageContents) all_pages) in
 
-  let svg_files=Array.map (fun (_,pi)->
+  let svg_files=Array.map (fun pi->
     Array.map (fun page->
       let file=Rbuffer.create 10000 in
       (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
@@ -337,7 +337,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 
 let basic_html cache structure pages prefix=
   let html=Rbuffer.create 10000 in
-  let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
+  let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
   Rbuffer.add_string html
     "<!DOCTYPE html>
 <html lang=\"en\">
@@ -383,7 +383,7 @@ svg.style.height=(%g*size)+'px';
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
     if Rbuffer.length states>0 then Rbuffer.add_string states ",";
-    Rbuffer.add_string states (string_of_int (Array.length (snd pages.(i))))
+    Rbuffer.add_string states (string_of_int (Array.length (pages.(i))))
   done;
   Rbuffer.add_string html "var states=[";
   Rbuffer.add_buffer html states;

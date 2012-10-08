@@ -184,3 +184,17 @@ let print_structure s =
   in
   fn 0 s;
   flush stdout
+
+let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
+    ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+			   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages fileName =
+  let l = ref [] in
+  Array.iter (fun ps -> Array.iter (fun p -> l:=p::!l) ps) pages;
+  output ~structure (Array.of_list !l) fileName
+
+let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
+    ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+			   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages fileName =
+  output ~structure (Array.map (fun x -> [|x|]) pages) fileName

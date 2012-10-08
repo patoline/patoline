@@ -4,6 +4,7 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 open Util
+open GLNet
 
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
@@ -17,7 +18,7 @@ type prefs = {
   tesselation_factor : float;
   init_zoom : init_zoom;
   rotation : float option;
-  batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array) -> unit) option
+  batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array array) -> unit) option
 }
 
 let prefs = ref {
@@ -181,13 +182,23 @@ let add_normals closed ratio beziers =
 	List.split (ln @ [last])
     ) beziers)   
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+
+let image_cache = Hashtbl.create 101
+let tmp_image_dir = 
+  let dir = Filename.temp_file "patoline" "Image" in
+  Sys.remove dir;
+  Unix.mkdir dir 0o700;
+  dir
+  
+
+let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
   let pages = ref pages in
   let structure = ref structure in
   let num_pages = ref (Array.length !pages) in
+  let num_states = ref (Array.length !pages.(!cur_page)) in
   let links = ref [||] in
   let cur_state = ref 0 in
   let max_state = ref 0 in
@@ -196,14 +207,15 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let read_links () = 
     links := Array.mapi
       (fun i page ->
-	let l = ref [] in
-	List.iter
-	  (function  
-            Link(l') -> 
+	Array.mapi (fun j state ->
+	  let l = ref [] in
+	  List.iter
+	    (function  
+            | Link(l') -> 
 	      l := l'::!l
-	  | _ -> ())
-	  page.pageContents;
-	!l)
+	    | _ -> ())
+	    state.pageContents;
+	  !l) page)
       !pages;
   in
 
@@ -215,7 +227,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let x = float x and y = h -. float y in
     let ratio = w /. h in
     let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
+    let state = !cur_state in
+    let pw,ph = !pages.(page).(state).pageFormat in
     let cx = pw /. 2.0 +. !dx in
     let cy = ph /. 2.0 +. !dy in
     let dx = (ph *. ratio) *. !zoom in
@@ -229,7 +242,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let x,y = inverse_coord x y in
     List.filter (fun l ->
       l.link_x0 <= x && x <= l.link_x1 &&
-      l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page)
+      l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page).(!cur_state)
   in
 
   let init_zoom = ref true in
@@ -251,7 +264,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let reshape_cb ~w ~h =
     let ratio = (float_of_int w) /. (float_of_int h) in
     let page = !cur_page in
-    let pw,ph = !pages.(page).pageFormat in
+    let state = !cur_state in
+    let pw,ph = !pages.(page).(state).pageFormat in
     if !init_zoom then begin
       init_zoom := false; 
       if (pw /. ph < ratio && !prefs.init_zoom != FitWidth) || !prefs.init_zoom = FitHeight  then
@@ -326,6 +340,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     create_menu !structure;
     close_in ch;
     num_pages := Array.length !pages;
+    if !cur_page > !num_pages - 1 then (cur_page := !num_pages - 1; cur_state := 0);
+    num_states := Array.length (!pages.(!cur_page));
+    if !cur_state > !num_states - 1 then (cur_state := !num_states - 1);
     read_links ();
     (* Not clearing the caches slows down a lot after redraw *)
 #ifdef CAMLIMAGES
@@ -341,8 +358,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let mode = ref Single in
 
-    let draw_blank page =
-      let pw,ph = !pages.(page).pageFormat in
+    let draw_blank page state =
+      let pw,ph = !pages.(page).(state).pageFormat in
       GlDraw.color (1.0, 1.0, 1.0);
       GlDraw.begins `quads;
       GlDraw.vertex2 (0., 0.);
@@ -352,7 +369,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       GlDraw.ends ();
     in
 
-    let draw_page page =
+    let draw_page page state =
       let graisse =  !prefs.graisse in
       let flou_x = flou_x () and flou_y = flou_y () in
       let graisse_x' = flou_x -. graisse and graisse_y' = flou_y -. graisse in
@@ -534,10 +551,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     | Link(link) -> ()
 
-    | States (a,s) ->
-      max_state := max !max_state (Util.IntSet.max_elt s);
-      min_state := min !min_state (Util.IntSet.min_elt s);
-      if Util.IntSet.mem !cur_state s then List.iter fn a
+    | States (a,s) -> assert false
 	
     | Image i -> 
       Gl.enable `texture_2d;
@@ -592,10 +606,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
-      List.iter fn !pages.(page).pageContents; 
+      List.iter fn !pages.(page).(state).pageContents; 
       GlFBO.merge_blend2 ();
       GlFunc.depth_mask true;
-      draw_blank page;
+      draw_blank page state;
 
 
 
@@ -606,15 +620,15 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let do_draw () =
       match !mode with
 	Single ->
-	  draw_page !cur_page
-      | Double ->
+	  draw_page !cur_page !cur_state
+      | Double -> () (*
 	let page = (!cur_page / 2) * 2 in
-	let pw,ph = !pages.(!cur_page).pageFormat in
+	let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
 	if page - 1 >= 0 && page - 1 < !num_pages then draw_page (page - 1) else draw_blank !cur_page;
 	GlMat.push ();
 	GlMat.translate3 (pw +. 1.0, 0.0, 0.0);
 	if page >= 0 && page < !num_pages then draw_page page else draw_blank !cur_page;
-	GlMat.pop ();
+	GlMat.pop ();*)
 
     in
 
@@ -638,7 +652,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
    in 
 
-    let draw_fbo fbo w h pw ph page saa =
+    let draw_fbo fbo w h pw ph page state saa =
       GlDraw.viewport 0 0 w h;
       GlClear.clear [`color;`depth];
       GlMat.load_identity ();
@@ -649,23 +663,23 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlMat.ortho (0., pw) (0., ph) (-1., 1.);
 	GlMat.mode `modelview;
       in
-      draw_saa (fun () -> draw_page page) set_proj saa;
+      draw_saa (fun () -> draw_page page state) set_proj saa;
     in
 
-  let draw_off_screen samples page =
-    let pw,ph = !pages.(page).pageFormat in
+  let draw_off_screen samples page state =
+    let pw,ph = !pages.(page).(state).pageFormat in
     let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) true in
     GlFBO.bind_fbo fbo;
-    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page No_SAA;
+    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page state No_SAA;
     GlFBO.unbind_fbo fbo;
     fbo
   in
  
-  let get_pix samples w h saa page =
-    let pw,ph = !pages.(page).pageFormat in
+  let get_pix samples w h saa page state =
+    let pw,ph = !pages.(page).(state).pageFormat in
     let w, h = match w, h with
-	None, None -> 1024, int_of_float (ph /. pw *. float 1024)
+	None, None -> 400, int_of_float (ph /. pw *. float 400)
       | Some w, None -> w, int_of_float (ph /. pw *. float w)
       | None, Some h -> int_of_float (pw /. ph *. float h), h
       | Some w, Some h -> w, h
@@ -674,7 +688,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     pixel_height := ph /. float (samples * h);
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) false in
     GlFBO.bind_fbo fbo;
-    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page saa;
+    draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page state saa;
     Gl.finish ();
 (*
     let raw = Raw.create `ubyte ~len:(4*samples*w*samples*h) in
@@ -688,12 +702,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let get_pixes samples w h saa =
-    Array.mapi (fun i _ ->
-      get_pix samples w h saa i) !pages
+    Array.mapi (fun i states ->
+      Array.mapi (fun j _ ->
+	get_pix samples w h saa i j) states) !pages
   in
 
-   let draw_texture fbo page =
-     let pw,ph = !pages.(page).pageFormat in
+   let draw_texture fbo page state =
+     let pw,ph = !pages.(page).(state).pageFormat in
      Gl.enable `texture_2d;
      GlFBO.bind_texture fbo;
      GlDraw.color (1.0, 1.0, 1.0);
@@ -731,37 +746,38 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     )
   in
 
-  let rotate_page i =
+  let rotate_page (i,j) (i',j') =
 (*    Gc.set {(Gc.get ()) with Gc.verbose = 255 };*)
-    match !prefs.rotation with
-      None -> ()
-    | Some duration -> 
+    match !prefs.rotation, i <> i' with
+      (None, _) | (Some _, false) -> ()
+    | Some duration, _ -> 
+      let dir = i < i' in
       saved_rectangle := None;
       if !to_revert then revert ();
  
-      let fbo1 = draw_off_screen 1 !cur_page in
-      let fbo2 = draw_off_screen 1 (!cur_page + 1) in
+      let fbo1 = draw_off_screen 1 i j in
+      let fbo2 = draw_off_screen 1 i' j' in
  
       let nb = ref 0 in
       let time = Unix.gettimeofday () in
-      let angle = ref (if i > 0 then 0.0 else 90.0) in
+      let angle = ref (if dir then 0.0 else 90.0) in
       let axe = (0.0,-1.0,0.0) in
       while !angle <= 90.0 && !angle >= 0.0 do
 	GlClear.clear [`color;`depth];
 	draw_saa (fun () ->
 	GlMat.load_identity ();
 	GlMat.rotate3 !angle axe;
-	draw_texture fbo1 !cur_page;
+	draw_texture fbo1 i j;
 	if !angle > 15.0 then 
 	  begin
 	    GlMat.load_identity ();      
-	    draw_texture fbo2 (!cur_page + 1);
+	    draw_texture fbo2 i' j';
 	  end
 	) set_proj !prefs.subpixel_anti_aliasing;
 	Glut.swapBuffers ();
 	incr nb;
 	let delta = Unix.gettimeofday () -. time in
-	angle := if i > 0 then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
+	angle := if dir then delta /. duration *. 90.0 else (1.0 -. delta /. duration) *. 90.0;
 
       done;
       
@@ -778,22 +794,52 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let dest = ref 0 in
 
+  let incr_page () =
+    let i, j = !cur_page, !cur_state in
+    if !cur_page + 1 < !num_pages then (
+      incr cur_page;
+      cur_state := 0;
+      num_states := Array.length !pages.(!cur_page);
+      rotate_page (i,j) (!cur_page, !cur_state);
+      redraw ())
+  in
+
+  let decr_page reset_state =
+    let i, j = !cur_page, !cur_state in
+    if !cur_page > 0 then (
+      decr cur_page;
+      num_states := Array.length !pages.(!cur_page);
+      cur_state := if reset_state then 0 else !num_states - 1;
+      rotate_page (i,j) (!cur_page, !cur_state);
+      redraw ())
+  in
+
+  let incr_state () =
+    let i, j = !cur_page, !cur_state in
+    if !cur_state + 1 >= !num_states then incr_page () else (
+      incr cur_state;
+      rotate_page (i,j) (i, !cur_state);
+      redraw())
+  in
+
+  let decr_state () =
+    let i, j = !cur_page, !cur_state in
+    if !cur_state <= 0 then decr_page false else (
+      decr cur_state;
+      rotate_page (i,j) (i, !cur_state);
+      redraw())
+  in
+      
   let keyboard_cb ~key ~x ~y =
     if key >= 48 && key < 58 then
       dest := !dest * 10 + (key - 48)
     else begin
       (match key with
       | 27 | 120 | 113 (* ESC *) -> raise Exit
-      | 110 -> 
-	if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
-      | 32 -> 
-	if !cur_state < !max_state then (incr cur_state; redraw ())
-	else if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
-      | 112 -> 
-	if !cur_page > 0 then (decr cur_page; rotate_page (-1); cur_state := 0; redraw ());
-      | 8 -> 
-	if !cur_state > !min_state then (decr cur_state; redraw ())
-	else if !cur_page > 0 then (decr cur_page; rotate_page (-1); redraw ());
+      | 110 -> incr_page ()
+      | 32 -> incr_state ()
+      | 112 -> decr_page true
+      | 8 -> decr_state ()
       | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw ();
       | 43 -> 
 	if Glut.getModifiers () = Glut.active_shift then (
@@ -832,8 +878,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
     | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
-    | Glut.KEY_PAGE_DOWN -> if !cur_page < !num_pages - 1 then (rotate_page (1); incr cur_page; cur_state := 0; redraw ());
-    | Glut.KEY_PAGE_UP -> if !cur_page > 0 then (decr cur_page; rotate_page (-1); cur_state := 0; redraw ());
+    | Glut.KEY_PAGE_DOWN -> incr_page ()
+    | Glut.KEY_PAGE_UP -> decr_page true
 (*    | Glut.KEY_HOME -> 
     | Glut.KEY_END ->
 *)
@@ -893,37 +939,39 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let goto_link l0 c0 = 
-    let res = Array.fold_left(fun (acc, i) links ->
-      let acc =
-	List.fold_left (fun (bl, bc, res as acc) link ->
-	  if Str.string_match (Str.regexp "^edit:[^@]*@\\([0-9]+\\)@\\([0-9]+\\)")
-	    link.uri 0 then
-	    let l = int_of_string (Str.matched_group 1 link.uri) in
-	    let c = int_of_string (Str.matched_group 2 link.uri) in
-	    if (l0 > l or (l = l0 && c0 >= c)) && 
-	      (l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
-	      l0 - l, c0 - c, Some(link, i)
-	    else
-	      acc
-	  else acc) acc links
-      in
-      (acc, i + 1))
-      ((max_int, 0, None), 0) !links
+    let res = 
+      Array.fold_left(fun (acc, (i,j)) linkss ->
+	Array.fold_left(fun (acc, (i,j)) links ->
+	  let acc =
+	    List.fold_left (fun (bl, bc, res as acc) link ->
+	      if Str.string_match (Str.regexp "^edit:[^@]*@\\([0-9]+\\)@\\([0-9]+\\)")
+		link.uri 0 then
+		let l = int_of_string (Str.matched_group 1 link.uri) in
+		let c = int_of_string (Str.matched_group 2 link.uri) in
+		if (l0 > l or (l = l0 && c0 >= c)) && 
+		  (l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
+		  l0 - l, c0 - c, Some(link, i, j)
+		else
+		  acc
+	      else acc) acc links
+	  in
+	  (acc, (i, j + 1))) (acc, (i+1,0)) linkss) ((max_int, 0, None), (0, 0)) !links
     in
 
     match fst res with
       (_,_,None) -> Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n"
 	l0 c0; flush stderr
-    | (_,_,Some(l,i)) -> 
+    | (_,_,Some(l,i,j)) -> 
       cur_page:= i;
-      cur_state := 0;
+      cur_state := j;
       draw_gl_scene ();
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
   in
 
-  let rec idle_cb ~value:() =
+  let rec idle_cb ~value:() =    
     Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
+    GLNet.handle_one ();
     show_links ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -959,7 +1007,73 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     draw_gl_scene ();
     Glut.swapBuffers ();
   in
-      
+    
+  let page_counter = Random.self_init (); ref (Random.int 1000000000)
+  in
+
+  let make_content out cmd fmt width height format =
+    Printf.fprintf stderr "Make content\n"; flush stderr;
+    begin match cmd with
+      Next_page -> incr_page ()
+    | Prev_page -> decr_page true
+    | Next_state -> incr_state ()
+    | Prev_state -> decr_state ()
+    | Goto(page, state) -> 
+      cur_page := min (max 0 page) (!num_pages - 1);
+      num_states := Array.length !pages.(!cur_page);
+      cur_state := min (max 0 state) (!num_states - 1);
+      redraw ()
+    | Refresh -> ()
+    end;
+    let page, state = !cur_page, !cur_state in
+
+    let format = match format with
+	None -> "png"
+      | Some f -> f
+    in 
+ 
+    let imgname,w,h = try
+      Hashtbl.find image_cache (page,state,width,height,format)
+    with
+      Not_found ->
+	let (raw,w,h) = get_pix 1 width height No_SAA page state in
+	let image = Rgb24.create w h in 
+	for j=0 to h-1 do	  
+	  for i=0 to w-1 do
+	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
+	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
+	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
+	    let c = { Color.r = r; Color.g = g; Color.b = b } in
+	(*	    Printf.printf "%d %d %d %d\n" r g b a;*)
+	    Rgb24.set image i (h-1-j) c
+	  done
+	done;
+	let fname = Filename.temp_file ~temp_dir:tmp_image_dir "page" ("."^format) in
+	
+	Printf.fprintf stderr "Wrinting %s\n" fname;
+	Images.save fname None [] (Images.Rgb24 image);
+	Hashtbl.add image_cache (page,state,width,height,format) (fname,w,h);
+	fname,w,h
+    in
+
+    let id = !page_counter in
+    incr page_counter;
+
+    out (Printf.sprintf "<span style=\"position:fixed;top:0px;left:0px;text-align:left;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
+	   (if !cur_page = 0 then "PREV" else
+	       Printf.sprintf "<a href=\"id%d?prev=\">PREV</a>" id));
+
+    out " ";
+
+    out (Printf.sprintf "<span style=\"position:fixed;top:0px;right:0px;text-align:right;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
+	   (if !cur_page >= !num_pages - 1 then "NEXT" else
+	       Printf.sprintf "<a href=\"id%d?next=\">NEXT</a>" id));
+
+     out (Printf.sprintf "<span style=\"position:fixed;top:0px;text-align:center\"><IMG src=\"?file=%s\" width=%d height=%d></span>" imgname w h);
+  in
+
+  GLNet.make_content := make_content;
+
   let mouse_cb ~button ~state ~x ~y =
     match button, state with
 
@@ -1046,3 +1160,5 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   main()
+
+let output = output_from_prime output'

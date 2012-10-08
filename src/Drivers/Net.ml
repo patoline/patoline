@@ -168,12 +168,12 @@ window.onbeforeunload = function() {
 
 let slave_html cache structure pages prefix=
   let html=Rbuffer.create 10000 in
-  let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
+  let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
   add_header structure.name w h html;
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
     if Rbuffer.length states>0 then Rbuffer.add_string states ",";
-    Rbuffer.add_string states (string_of_int (Array.length (snd pages.(i))))
+    Rbuffer.add_string states (string_of_int (Array.length pages.(i)))
   done;
   Rbuffer.add_string html "var states=[";
   Rbuffer.add_buffer html states;
@@ -255,12 +255,12 @@ if(current_state>=states[current_slide]-1) {
 "
 let master_html cache structure pages prefix=
   let html=Rbuffer.create 10000 in
-  let w,h=if Array.length pages>0 then (snd pages.(0)).(0).pageFormat else 0.,0. in
+  let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
   add_header structure.name w h html;
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
     if Rbuffer.length states>0 then Rbuffer.add_string states ",";
-    Rbuffer.add_string states (string_of_int (Array.length (snd pages.(i))))
+    Rbuffer.add_string states (string_of_int (Array.length (pages.(i))))
   done;
   Rbuffer.add_string html "var states=[";
   Rbuffer.add_buffer html states;

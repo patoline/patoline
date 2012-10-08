@@ -107,7 +107,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     module type Driver'=sig
-      val output': ?structure:structure -> ('a environment * page array) array -> string -> unit
+      val output': ?structure:structure -> (page array) array -> string -> unit
     end
 
 
@@ -494,7 +494,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 )
 
             in
-            M.output' ~structure:(make_structure structure) pages file
+            M.output' ~structure:(make_structure structure) (Array.map snd pages) file
           )
         in
         resolve 0 defaultEnv

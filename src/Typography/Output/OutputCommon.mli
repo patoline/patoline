@@ -95,3 +95,11 @@ type structure = {
   mutable substructures : structure array;
 }
 val print_structure : structure -> unit
+
+val output_to_prime : 
+  (?structure:structure -> 'b array -> 'c -> 'd) -> 
+    ?structure:structure -> 'b array array -> 'c -> 'd
+
+val output_from_prime : 
+  (?structure:structure -> 'b array array -> 'c -> 'd) ->
+    ?structure:structure -> 'b array -> 'c -> 'd

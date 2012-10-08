@@ -853,3 +853,5 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     close_out outChan;
     Printf.fprintf stderr "File %s written.\n" fileName;
     flush stderr
+
+let output' = output_to_prime output

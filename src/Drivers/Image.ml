@@ -27,14 +27,14 @@ let filename file = try (Filename.chop_extension file)^"_img_dir" with _->file^"
 
 
 
-let filename' file i = 
-  try "page_"^string_of_int i^"."^ !format with _->"page_"^string_of_int i^"."^ !format
+let filename' file i j = 
+  try "page_"^string_of_int i^"."^ !format with _->"page_"^string_of_int i^"_"^string_of_int j^"."^ !format
 
 
 let _ =
   Arg.parse spec (fun x-> raise (Arg.Bad x)) (Language.message Usage)
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];
+let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
@@ -46,8 +46,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
   let generate get_pixes =
     let pages = get_pixes 1 !width !height !saa in
     Printf.printf "Images generated\n";
-    Array.iteri (
-      fun page (raw,w,h) ->
+    Array.iteri (fun page states -> Array.iteri (
+      fun state (raw,w,h) ->
 	let image = Rgb24.create w h in 
 	for j=0 to h-1 do	  
           for i=0 to w-1 do
@@ -59,9 +59,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];
 	    Rgb24.set image i (h-1-j) c
 	  done
 	done;
-	let fname = Filename.concat dirname (filename' fileName page) in
+	let fname = Filename.concat dirname (filename' fileName page state) in
 	Printf.fprintf stderr "Wrinting %s\n" fname;
-	Images.save fname None [] (Images.Rgb24 image);) pages;
+	Images.save fname None [] (Images.Rgb24 image)) states) pages;
     ()
   in
 
