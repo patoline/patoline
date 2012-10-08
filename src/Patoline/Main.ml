@@ -258,9 +258,8 @@ and compilation_needed sources targets=
     ) (infinity) targets
     in
     if max_sources>min_targets then (
-    Printf.fprintf stderr "\n\nCompilation needed %f %f\n\n" max_sources min_targets;
+    Printf.fprintf stderr "\n\nCompilation of [%s] needed %g %g\n\n" (String.concat ";" targets) max_sources min_targets;
     List.iter (Printf.fprintf stderr "Source %S\n") sources;
-    List.iter (Printf.fprintf stderr "Target %S\n") targets;
     );
     max_sources>min_targets
   )
@@ -324,7 +323,7 @@ and patoline_rule objects h=
     let tar=List.map (Thread.create Build.build) deps0 in
     List.iter (Thread.join) tar;
     let cmis=List.map (fun x->Filename.chop_extension x^".cmi") deps0 in
-    if compilation_needed (source::cmis) [h;pref^".cmi"] then (
+    if compilation_needed (source::cmis) [pref^".cmx";pref^".cmi"] then (
       let i=open_in source in
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
