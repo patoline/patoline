@@ -37,8 +37,10 @@ exception Comic_sans
 let loadFont ?offset:(off=0) ?size:(_=0) f=
   let size=let i=Util.open_in_bin_cached f in in_channel_length i in
   let font=if Filename.check_suffix f ".otf" || Filename.check_suffix f ".ttf" then
-    Opentype (Opentype.loadFont ~offset:off f ~size:size)
-  else
+      Opentype (Opentype.loadFont ~offset:off f ~size:size)
+    else if Filename.check_suffix f ".cff" then
+      CFF (CFF.loadFont ~offset:off f ~size:size)
+    else
     raise Not_supported
   in
 #ifdef BAN_COMIC_SANS

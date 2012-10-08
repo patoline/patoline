@@ -164,20 +164,21 @@ let cardinal f=
   readInt2 file
 
 let fontBBox f=
-  let file,offset0=match f with
-      CFF font->
-        let file=open_in_bin_cached font.cff_font.file in
-        file,font.cff_offset
-    | TTF ttf->open_in_bin_cached ttf.ttf_file,ttf.ttf_offset
-  in
-  let (a,b)=tableLookup "hhea" file offset0 in
-  seek_in file (a+4);
-  let ascender=sreadInt2 file in
-  let descender=sreadInt2 file in
-  seek_in file (a+12);
-  let lsb=sreadInt2 file in
-  let rsb=sreadInt2 file in
-  (lsb,descender,rsb,ascender)
+  match f with
+      CFF font->CFF.fontBBox font.cff_font
+    | TTF ttf->(
+      let file,offset0=open_in_bin_cached ttf.ttf_file,ttf.ttf_offset in
+      let (a,b)=tableLookup "hhea" file offset0 in
+      seek_in file (a+4);
+      let ascender=sreadInt2 file in
+      let descender=sreadInt2 file in
+      seek_in file (a+12);
+      let lsb=sreadInt2 file in
+      (* let rsb=sreadInt2 file in *)
+      seek_in file (a+16);
+      let xmax=sreadInt2 file in
+      (lsb,descender,xmax,ascender)
+    )
 
 let italicAngle f=
   let file,offset0=match f with
