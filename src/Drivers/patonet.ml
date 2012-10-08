@@ -436,9 +436,10 @@ let serve addr fd =
 let start() =
   let master_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt master_sock Unix.SO_REUSEADDR true;
-  Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, 8765));
+  let port=8080 in
+  Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
   Unix.listen master_sock 100;
-  printf "Listening on port 8765\n";
+  printf "Listening on port %d\n" port;
   flush stdout;
   let accept_connections ()=
     while true do

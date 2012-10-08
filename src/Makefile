@@ -37,6 +37,21 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 
+.PHONY:test truc.pdf
+test: Drivers/Net.cmxa Patoline/patoline
+	Patoline/patoline --recompile --format FormatSlides --driver Net --ml test.txp
+	ocamlfind ocamlopt -package camomile -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa SVG.cmxa Pdf.cmxa Net.cmxa DefaultFormat.cmxa FormatSlides.cmxa -linkpkg  -o 'test.tmx'  -impl 'test.tml'
+	./test.tmx --extra-plugins-dir Drivers --extra-fonts-dir ../Fonts
+
+	ocamlfind ocamlopt -o test -package "netstring,netsys,unix,nethttpd,netcgi2,cryptokit" -thread -linkpkg test.ml
+
+truc.pdf: Drivers/Pdf.cmxa Patoline/patoline Typography/Typography.cmxa Format/DefaultFormat.cmxa truc.txp
+	Patoline/patoline --recompile --driver Pdf --ml truc.txp
+	ocamlfind ocamlopt -package camomile,camlzip -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa Pdf.cmxa DefaultFormat.cmxa FormatSlides.cmxa -linkpkg  -o 'truc.tmx'  -impl 'truc.tml'
+	./truc.tmx --extra-fonts-dir ../Fonts
+
+
+
 ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
 ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi
