@@ -1,6 +1,7 @@
 open Util
 open Bezier
 open FTypes
+open CamomileLibrary
 let pt_of_mm x=(72.*.x)/.25.4
 let mm_of_pt x=(25.4*.x)/.72.
 
@@ -417,20 +418,6 @@ let glyph_x1 gl=
 
 let glyphNumber glyph=glyph.glyphNumber
 
-let glyphName glyph=
-  let font=glyphFont glyph in
-  let f=open_in_bin_cached font.file in
-  let i=(glyphNumber glyph).glyph_index in
-  let set=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 15)) in
-  let idx=useCharset f (font.offset+set) i in
-  if idx<=390 then CFFStd.stdStrings.(idx) else (
-    let off0=font.stringIndex.(idx-391) in
-    let off1=font.stringIndex.(idx-390) in
-    let b=String.create (off1-off0) in
-    seek_in f off0;
-    really_input f b 0 (off1-off0);
-    b
-  )
 
 let fontName ?index:(idx=0) font=
   (* postscript name *)
@@ -460,6 +447,23 @@ let fontName ?index:(idx=0) font=
     family_name=family_name;
     subfamily_name=subfamily_name
   }
+
+let glyphName glyph=
+  let font=glyphFont glyph in
+  let f=open_in_bin_cached font.file in
+  let i=(glyphNumber glyph).glyph_index in
+  let set=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 15)) in
+  let idx=useCharset f (font.offset+set) i in
+  (* Printf.fprintf stderr "glyphName : %S %d -> %d\n" (fontName font).postscript_name i idx; *)
+  (* flush stderr; *)
+  if idx<=390 then CFFStd.stdStrings.(idx) else (
+    let off0=font.stringIndex.(idx-391) in
+    let off1=font.stringIndex.(idx-390) in
+    let b=String.create (off1-off0) in
+    seek_in f off0;
+    really_input f b 0 (off1-off0);
+    b
+  )
 
 let fontBBox ?index:(idx=0) font=
   let f=open_in_bin_cached font.file in
@@ -777,34 +781,37 @@ let subset(* _encoded *) font info cmap gls=
   in
   let charset=
     try
-      (* let set=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 15)) in *)
-      (* let charset=readCharset f (cardinal font) (font.offset+set) in *)
+      (* Les glyphs sont tous renommés avec leur contenu unicode.
+         Voir la page
+         http://www.adobe.com/devnet/opentype/archives/glyph.html
+         pour savoir comment on les nomme. *)
       let str=String.make (2*Array.length gls-1) (char_of_int 0) in
+      let glbuf=Buffer.create 50 in
+      let altmap=ref StrMap.empty in
+      let names=Array.make (Array.length gls) "" in
+      let alternates=Array.make (Array.length gls) 0 in
       for i=1 to Array.length gls-1 do
-        (* let idx=charset.(gls.(i).glyph_index) in *)
-        let num=
-        (*   if idx-390>=Array.length font.stringIndex then ( *)
-        (*     try *)
-        (*       StrMap.find "" !strings *)
-        (*     with *)
-        (*         Not_found->( *)
-        (*           let n=StrMap.cardinal !strings in *)
-        (*           strings:=StrMap.add "" n !strings; *)
-        (*           n *)
-        (*         ) *)
-        (*   ) else if idx<=390 then idx else ( *)
+        let b=gls.(i).glyph_utf8 in
+        let rec make_name i=
+          if UTF8.out_of_range b i then Buffer.contents glbuf else
+            (let x=UChar.code (UTF8.look b i) in
+             Buffer.add_string glbuf (Printf.sprintf "uni%04X" x);
+             make_name (UTF8.next b i))
+        in
+        Buffer.clear glbuf;
+        let str=make_name 0 in
+        let alt=try StrMap.find str !altmap with _->0 in
+        altmap:=StrMap.add str (alt+1) !altmap;
 
-        (* let off0=font.stringIndex.(idx-391) in *)
-        (* let off1=font.stringIndex.(idx-390) in *)
-        (* let b=String.create (off1-off0) in *)
-        (* seek_in f off0; *)
-        (* really_input f b 0 (off1-off0); *)
-          let b=
-            if (gls.(i)).glyph_utf8<>"" then
-              (gls.(i)).glyph_utf8
-            else
-              glyphName (loadGlyph font gls.(i))
-          in
+        names.(i)<-if str="" then "space" else str;
+        alternates.(i)<-alt
+      done;
+      for i=1 to Array.length gls-1 do
+        let b=
+          let alt=try StrMap.find names.(i) !altmap with Not_found->0 in
+          if alt<=1 then names.(i) else Printf.sprintf "%s.alt%d" names.(i) alternates.(i)
+        in
+        let num=
           391+(
             try
               StrMap.find b !strings
@@ -815,7 +822,6 @@ let subset(* _encoded *) font info cmap gls=
                   n
                 )
           )
-        (* ) *)
         in
         str.[2*i-1]<-char_of_int (num lsr 8);
         str.[2*i]<-char_of_int (num land 0xff)
