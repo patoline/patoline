@@ -175,14 +175,14 @@ CAMLprim gl_unbind_fbo(value fbo)
 
 CAMLprim gl_merge_blend(value u)
 { CAMLparam0();
-  glBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ONE);
-  glBlendEquation(GL_MAX);
+  glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+  /*  glBlendEquation(GL_MAX);*/
   CAMLreturn(Val_unit);
 }
 CAMLprim gl_merge_blend2(value u)
 { CAMLparam0();
   glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA, GL_ZERO, GL_ZERO);
-  glBlendEquation(GL_FUNC_ADD);
+  /*  glBlendEquation(GL_FUNC_ADD);*/
   CAMLreturn(Val_unit);
 }
 
