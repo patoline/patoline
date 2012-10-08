@@ -119,8 +119,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 fprintf outChan "<< /Type /Font /Subtype /CIDFontType%d /BaseFont /%s "
                   (match font with Fonts.Opentype (Opentype.TTF _)->2 | _->0)
                   fontName;
-                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >>";
-                fprintf outChan "/W %d 0 R /FontDescriptor %d 0 R >>" w descr;
+                (match font with
+                    Fonts.Opentype (Opentype.TTF _)->
+                      fprintf outChan "/CIDToGIDMap /Identity "
+                  | _->()
+                );
+                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >> ";
+                fprintf outChan "/W %d 0 R " w;
+                fprintf outChan "/FontDescriptor %d 0 R >>"  descr;
                 endObject();
 
                 (* CID Font dictionary *)
@@ -632,18 +638,26 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                    resumeObject x.fontWidthsObj;
 #ifdef SUBSET
                    fprintf outChan "[ 0 [ ";
-                   IntMap.iter (fun i gl->
-                     let w=Fonts.glyphWidth gl in
-                     fprintf outChan "%d " (round w)) x.revFontGlyphs;
+                   let (m0,_)=IntMap.min_binding x.revFontGlyphs in
+                   let (m1,_)=IntMap.max_binding x.revFontGlyphs in
+                   for i=m0 to m1 do
+                     let w=try Fonts.glyphWidth (IntMap.find i x.revFontGlyphs) with Not_found->0. in
+                     fprintf outChan "%d " (int_of_float w);
+                   done;
+                   (* IntMap.iter (fun i gl-> *)
+                   (*   let w=Fonts.glyphWidth gl in *)
+                   (*   fprintf outChan "%d " (round w)) x.revFontGlyphs; *)
                    fprintf outChan "]]";
 #else
-                    let (m0,_)=IntMap.min_binding x.fontGlyphs in
+                    let (m0,(_,gl0))=IntMap.min_binding x.fontGlyphs in
                       fprintf outChan "[ %d [ " m0;
-                      for i=m0 to fst (IntMap.max_binding x.fontGlyphs) do
-                        let w=try Fonts.glyphWidth (snd (IntMap.find i x.fontGlyphs)) with Not_found->0. in
-                          fprintf outChan "%d " (round w);
-                      done;
-                      fprintf outChan "]]";
+                    let f=Fonts.glyphFont gl0 in
+                    for i=m0 to Fonts.cardinal f-1 do
+                      let gl=Fonts.loadGlyph f { glyph_utf8="";glyph_index=i } in
+                      let w=Fonts.glyphWidth gl in
+                      fprintf outChan "%d " (round w);
+                    done;
+                    fprintf outChan "]]";
 #endif
                    endObject ();
                 ) !fonts;
@@ -667,8 +681,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                                             (IntMap.bindings x.revFontGlyphs))))
                        in
                        sub
-
-                       )
+                     )
                      | Fonts.Opentype (Opentype.TTF ttf as f)->(
 
                        let info=Opentype.fontInfo f in
@@ -775,10 +788,17 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     let markinfo="<< /Marked true /UserProperties false /Suspects false >>" in
     let outputIntents="/OutputIntents [ << /Info (none) /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (Blurb.com) /RegistryName (http://www.color.org/) >> ]"
     in
+
+
+    (* Encore plus de metadonnees ! structtree *)
+    let structTreeRoot=beginObject () in
+    fprintf outChan "<< /Type /StructTreeRoot /S /Document >>\n";
+    endObject ();
+
     let cat=futureObject () in
     if structure.name="" && Array.length structure.substructures=0 then (
       resumeObject cat;
-      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s >>" metadata markinfo outputIntents;
+      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" metadata markinfo outputIntents structTreeRoot;
       endObject ()
     ) else (
       let count=ref 0 in
@@ -816,21 +836,20 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
       fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
       endObject ();
       resumeObject cat;
-      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R /Metadata %d 0 R /MarkInfo %s %s >>" outlines metadata markinfo outputIntents;
+      fprintf outChan "<< /Type /Catalog /Pages 1 0 R /Outlines %d 0 R /Metadata %d 0 R /MarkInfo %s %s /StructTreeRoot %d 0 R >>" outlines metadata markinfo outputIntents structTreeRoot;
       endObject ()
     );
 
-      (* Ecriture de xref *)
-      flush outChan;
-      let xref_pos=pos_out outChan in
-        fprintf outChan "xref\n0 %d \n0000000000 65535 f \n" (1+IntMap.cardinal !xref);
-        IntMap.iter (fun _ a->fprintf outChan "%010d 00000 n \n" a) !xref;
+    (* Ecriture de xref *)
+    flush outChan;
+    let xref_pos=pos_out outChan in
+    fprintf outChan "xref\n0 %d \n0000000000 65535 f \n" (1+IntMap.cardinal !xref);
+    IntMap.iter (fun _ a->fprintf outChan "%010d 00000 n \n" a) !xref;
 
-        (* Trailer *)
-        let file_id=(Digest.to_hex (Digest.string fileName)) in
-        fprintf outChan "trailer\n<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\nstartxref\n%d\n%%%%EOF\n"
-          (1+IntMap.cardinal !xref) cat file_id file_id xref_pos;
-	
-        close_out outChan;
-	Printf.fprintf stderr "File %s written.\n" fileName;
-	flush stderr
+    (* Trailer *)
+    let file_id=(Digest.to_hex (Digest.string fileName)) in
+    fprintf outChan "trailer\n<< /Size %d /Root %d 0 R /ID [(%s) (%s)] >>\nstartxref\n%d\n%%%%EOF\n"
+      (1+IntMap.cardinal !xref) cat file_id file_id xref_pos;
+    close_out outChan;
+    Printf.fprintf stderr "File %s written.\n" fileName;
+    flush stderr
