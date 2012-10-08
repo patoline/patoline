@@ -123,6 +123,8 @@
 =<
 
 => Arrow symbols 
+(* Euler doesn't seem to have all the arrows we might want.
+Wouldn't it be better to take all arrows from Asana-Math??? *)
 
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
 \Add_arrow{-> \imply \rightarrow →}{→}
@@ -132,8 +134,8 @@
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
 \Add_arrow{|-> \mapsto ↦}(MathFonts.euler "↦" 243)
 \Add_arrow{<-| \mapsfrom ↤}{↤}
-(*\Add_arrow{\epi ->> ↠}{↠}*)
-(*\Add_arrow{\mono >-> ↣}{↣}*)
+\Add_arrow{\epi ->> ↠}(MathFonts.asana "↠" 618)
+\Add_arrow{\mono >-> ↣}(MathFonts.asana "↣" 621)
 \Add_arrow{\hookrightarrow \inj ↪}(MathFonts.euler "↪" 245)
 \Add_arrow{\hookleftarrow \jni ↩}(MathFonts.euler "↩" 244)
 \Add_arrow{\ulharpoon ↼}{↼}
@@ -240,15 +242,31 @@
 
 => Other symbols 
 
-\Add_symbol{\sharp}(Maths.glyphs "#")
+(*\Add_symbol{\sharp}(Maths.glyphs "#")*)
+\Add_symbol{\sharp ♯}(MathFonts.asana "♯" 1062)
+\Add_symbol{\natural ♮}(MathFonts.asana "♮" 1061)
+\Add_symbol{\flat ♭}(MathFonts.asana "♭" 1060)
 \Add_symbol{\infty ∞}{∞}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
 \Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
 \Add_symbol{\dbottom \dbot}(MathFonts.asana "\\dbottom" 1625)
 \Add_symbol{\emptyset ∅}{∅}
-\Add_symbol{\emptyset ∅}{∅}
-\Add_symbol{… .. \dots}{…}
+\Add_symbol{… ... \dots}{…}
+
+(* It seems Euler only has a glyph for alef, we'll use Asana-math instead
+\Add_symbol{\alef ℵ}{ℵ}
+\Add_symbol{\bet ℶ}{ℶ}
+\Add_symbol{\gimel ℷ}{ℷ}
+\Add_symbol{\dalet ℸ}{ℸ}
+*)
+
+\Add_symbol{\alef ℵ}(MathFonts.asana "ℵ" 533)
+\Add_symbol{\bet ℶ}(MathFonts.asana "ℶ" 534)
+\Add_symbol{\gimel ℷ}(MathFonts.asana "ℷ" 535)
+\Add_symbol{\dalet ℸ}(MathFonts.asana "ℸ" 536)
+
+\Add_symbol{\$}{$}
 
 =<
 
