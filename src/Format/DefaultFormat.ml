@@ -137,7 +137,6 @@ let font_size_ratio font1 font2 =
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
-    let spec=[]
 
     let bold a=alternative Bold a
 
