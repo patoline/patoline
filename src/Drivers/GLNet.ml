@@ -165,7 +165,7 @@ let generate_page (cgi : cgi_activation) =
     with Not_found  | Failure _ -> None
   in
   let format =
-    try Some ((cgi # argument "width") # value)
+    try Some ((cgi # argument "format") # value)
     with Not_found  | Failure _ -> None
   in
  

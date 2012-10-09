@@ -201,8 +201,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let num_states = ref (Array.length !pages.(!cur_page)) in
   let links = ref [||] in
   let cur_state = ref 0 in
-  let max_state = ref 0 in
-  let min_state = ref max_int in
 
   let read_links () = 
     links := Array.mapi
@@ -360,7 +358,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     let draw_blank page state =
       let pw,ph = !pages.(page).(state).pageFormat in
-      GlDraw.color (1.0, 1.0, 1.0);
+      GlDraw.color ~alpha:0.0 (1.0, 1.0, 1.0);
       GlDraw.begins `quads;
       GlDraw.vertex2 (0., 0.);
       GlDraw.vertex2 (pw, 0.);
@@ -374,8 +372,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       let flou_x = flou_x () and flou_y = flou_y () in
       let graisse_x' = flou_x -. graisse and graisse_y' = flou_y -. graisse in
       let graisse_x = 3.0 *. flou_x +. graisse and graisse_y = 3.0 *. flou_y +. graisse in
-      max_state := 0;
-      min_state := max_int;
+
+      GlFunc.depth_mask true;
+      GlFBO.merge_blend2 ();
+      draw_blank page state;
+
 
       let fill_bezier color lines normals =
 	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) -> 
@@ -606,12 +607,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
-      List.iter fn !pages.(page).(state).pageContents; 
-      GlFBO.merge_blend2 ();
-      GlFunc.depth_mask true;
-      draw_blank page state;
-
-
+      List.iter fn !pages.(page).(state).pageContents
 
 
     in
