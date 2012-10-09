@@ -12,6 +12,7 @@ let plugins_dirs=ref []
 let hyphen_dirs=ref []
 let camlzip=ref ""
 let camlimages=ref ""
+let ocamlnet=ref ""
 let lablgl=ref ""
 let lablglut=ref ""
 let lablgtk2=ref ""
@@ -87,6 +88,9 @@ let _=
 
   if !use_camlimages && Sys.command "ocamlfind query camlimages" = 0
   then camlimages := "camlimages.all_formats";
+
+  if Sys.command "ocamlfind query netstring netsys unix nethttpd netcgi2 cryptokit" = 0
+  then ocamlnet := "netstring,netsys,unix,nethttpd,netcgi2,cryptokit";
 
   if Sys.command "ocamlfind query lablgl" = 0
   then lablgl := "lablgl"
@@ -177,6 +181,10 @@ let _=
     if !lablgl <> "" && !lablgtk2 <> "" then
       Printf.fprintf make "GLGTK_PACK=-package %s -package %s \n" (!lablgl) (!lablgtk2);
 
+    Printf.fprintf make "DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa %s%s%s\n"
+      (if !lablgl<>"" then "Drivers/GL.cmxa Drivers/GL2.cmxa " else "")
+      (if !ocamlnet<>"" then "Drivers/Net.cmxa " else "")
+      (if !camlimages<>"" && !lablgl<>"" then "Drivers/Image.cmxa " else "");
     close_out make;
 
     (* binaries *)
