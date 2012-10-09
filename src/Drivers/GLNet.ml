@@ -161,7 +161,7 @@ let generate_page (cgi : cgi_activation) =
     with Not_found  | Failure _ -> None
   in
   let height =
-    try Some (int_of_string ((cgi # argument "width") # value))
+    try Some (int_of_string ((cgi # argument "height") # value))
     with Not_found  | Failure _ -> None
   in
   let format =
@@ -264,15 +264,16 @@ let conf_debug() =
 
 
 (* main: *)
+
 let _ = conf_debug()
 
-let handle_one =
+let handle_one port=
   let master_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt master_sock Unix.SO_REUSEADDR true;
-  Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, 8080));
+  Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
   Unix.listen master_sock 100;
-  printf "Listening on port 8080\n";
-  flush stdout;
+  Printf.fprintf stderr "Listening on port %d\n" port;
+  flush stderr;
   (fun () -> service master_sock process)
 
 

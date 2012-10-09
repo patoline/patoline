@@ -48,25 +48,26 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Printf.printf "Images generated\n";
     Array.iteri (fun page states -> Array.iteri (
       fun state (raw,w,h) ->
-	let image = Rgb24.create w h in 
+	let image = Rgba32.create w h in 
 	for j=0 to h-1 do	  
           for i=0 to w-1 do
 	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
 	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
 	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let c = { r = r; g = g; b = b } in
+	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
+	    let c = { color = { r = r; g = g; b = b }; alpha = a } in
 (*	    Printf.printf "%d %d %d %d\n" r g b a;*)
-	    Rgb24.set image i (h-1-j) c
+	    Rgba32.set image i (h-1-j) c
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page state) in
 	Printf.fprintf stderr "Wrinting %s\n" fname;
-	Images.save fname None [] (Images.Rgb24 image)) states) pages;
+	Images.save fname None [] (Images.Rgba32 image)) states) pages;
     ()
   in
 
-  GL.prefs := { !GL.prefs with GL.batch_cmd = Some generate };
+  GL.prefs := { !GL.prefs with GL.batch_cmd = Some generate; GL.server_port = None };
 
   GL.output ~structure pages fileName
 
-  
+let output' = output_to_prime output

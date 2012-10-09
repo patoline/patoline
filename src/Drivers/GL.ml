@@ -18,7 +18,8 @@ type prefs = {
   tesselation_factor : float;
   init_zoom : init_zoom;
   rotation : float option;
-  batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array array) -> unit) option
+  batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array array) -> unit) option;
+  server_port : int option;
 }
 
 let prefs = ref {
@@ -28,6 +29,7 @@ let prefs = ref {
   init_zoom = FitPage;
   rotation = None;
   batch_cmd = None;
+  server_port = None;
 }
 
 let cur_page = ref 0
@@ -184,11 +186,6 @@ let add_normals closed ratio beziers =
 
 
 let image_cache = Hashtbl.create 101
-let tmp_image_dir = 
-  let dir = Filename.temp_file "patoline" "Image" in
-  Sys.remove dir;
-  Unix.mkdir dir 0o700;
-  dir
   
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -201,6 +198,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let num_states = ref (Array.length !pages.(!cur_page)) in
   let links = ref [||] in
   let cur_state = ref 0 in
+
+  let tmp_image_dir = 
+    if !prefs.server_port <> None then begin
+      let dir = Filename.temp_file "patoline" "Image" in
+      Sys.remove dir;
+      Unix.mkdir dir 0o700;
+      dir
+    end else ""
+  in
 
   let read_links () = 
     links := Array.mapi
@@ -965,9 +971,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Glut.swapBuffers ()
   in
 
+  let handle_one = 
+    (match !prefs.server_port with
+      Some port -> GLNet.handle_one port
+    | None -> fun () -> ())
+  in
+
   let rec idle_cb ~value:() =    
     Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
-    GLNet.handle_one ();
+    handle_one ();
     show_links ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -1033,21 +1045,23 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     with
       Not_found ->
 	let (raw,w,h) = get_pix 1 width height No_SAA page state in
-	let image = Rgb24.create w h in 
+	let image = Rgba32.create w h in 
 	for j=0 to h-1 do	  
 	  for i=0 to w-1 do
 	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
 	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
 	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let c = { Color.r = r; Color.g = g; Color.b = b } in
+	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
+	    let c = { Color.color = { Color.r = r; Color.g = g; Color.b = b };
+		      Color.alpha = a } in
 	(*	    Printf.printf "%d %d %d %d\n" r g b a;*)
-	    Rgb24.set image i (h-1-j) c
+	    Rgba32.set image i (h-1-j) c
 	  done
 	done;
 	let fname = Filename.temp_file ~temp_dir:tmp_image_dir "page" ("."^format) in
 	
 	Printf.fprintf stderr "Wrinting %s\n" fname;
-	Images.save fname None [] (Images.Rgb24 image);
+	Images.save fname None [] (Images.Rgba32 image);
 	Hashtbl.add image_cache (page,state,width,height,format) (fname,w,h);
 	fname,w,h
     in

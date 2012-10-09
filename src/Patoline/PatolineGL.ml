@@ -24,12 +24,16 @@ let spec = [
          , "Start with fitting the page in the window";
   "--rotation", Float (fun x -> prefs := { !prefs with rotation = Some x })
          , "Animate page change with a rotation of the given duration (in second)";
-
+  "--port-cmd", Int (fun p -> prefs := { !prefs with server_port = Some p })
+         , "Give the port to control patolineGL (default 8080)" ;
+  "--no-cmd", Int (fun p -> prefs := { !prefs with server_port = None })
+         , "Do not allow remote control for patolineGL"
 ]
 
 let files = ref []
 
 let _ = 
+  prefs :={ !prefs with server_port = Some 8080 };
   Arg.parse spec (fun x->files := x::(!files)) (Printf.sprintf "Usage : %s [options] file.bin" Sys.argv.(0));
   match !files with
     [f] ->
