@@ -176,13 +176,13 @@ let _=
     Printf.fprintf make "PACK=-package camomile%s%s\n"
       (if !camlzip <> "" then " -package "^(!camlzip) else "")
       (if !camlimages <> "" then " -package "^(!camlimages) else "");
-    if !lablgl <> "" && !lablglut <> "" then
+    if !lablgl <> "" && !lablglut <> "" && !camlimages<>"" then
       Printf.fprintf make "GL_PACK=-package %s -package %s\n" (!lablgl) (!lablglut);
-    if !lablgl <> "" && !lablgtk2 <> "" then
+    if !lablgl <> "" && !lablgtk2 <> "" && !camlimages<>"" then
       Printf.fprintf make "GLGTK_PACK=-package %s -package %s \n" (!lablgl) (!lablgtk2);
 
     Printf.fprintf make "DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa %s%s%s\n"
-      (if !lablgl<>"" then "Drivers/GL.cmxa Drivers/GL2.cmxa " else "")
+      (if !lablgl<>"" && !camlimages<>"" then "Drivers/GL.cmxa Drivers/GL2.cmxa " else "")
       (if !ocamlnet<>"" then "Drivers/Net.cmxa " else "")
       (if !camlimages<>"" && !lablgl<>"" then "Drivers/Image.cmxa " else "");
     close_out make;
