@@ -87,7 +87,7 @@ let text = Netencoding.Html.encode_from_latin1
  * as character entities. E.g. text "<" = "&lt;", and text "ä" = "&auml;"
  *)
 
-let make_content = ref (fun out cmd fmt width height format -> (assert false:unit))
+let make_content = ref (fun out id cmd fmt width height format -> (assert false:unit))
 
 let fetch_file cgi name =
   let out = cgi # output # output_string in
@@ -98,7 +98,7 @@ let fetch_file cgi name =
   close_in ic;
   out s    
 
-let make_page cgi cmd fmt width height format=
+let make_page cgi id cmd fmt width height format=
   (* Output the beginning of the page with the passed [title]. *)
   let out = cgi # output # output_string in
   out "<html>";
@@ -109,7 +109,7 @@ let make_page cgi cmd fmt width height format=
   out "</head>";
 
   out "<body>";
-  !make_content out cmd fmt width height format;
+  !make_content out id cmd fmt width height format;
   out "</body>";
   out "</html>"
 
@@ -118,7 +118,15 @@ let generate_page (cgi : cgi_activation) =
   (* Check which page is to be displayed. This is contained in the CGI
    * argument "page".
    *)
-  Printf.fprintf stderr "Url is %s\n" (cgi # url ~with_path_info:`None ());
+  let url = cgi # url () in
+  Printf.fprintf stderr "Url is %s\n" url;
+  let id = 
+    try
+      Str.search_forward (Str.regexp "/id\\([0-9]+\\)$") url 0;
+      int_of_string (Str.matched_group 1 url)
+    with Not_found -> 0
+  in
+  Printf.fprintf stderr "id = %d\n" id;
   List.iter (fun arg ->
     Printf.fprintf stderr "%s = %s  " (arg # name) (arg # value))
     cgi # arguments;
@@ -170,7 +178,7 @@ let generate_page (cgi : cgi_activation) =
   in
  
 
-  make_page cgi cmd fmt width height format
+  make_page cgi id cmd fmt width height format
 
 
 

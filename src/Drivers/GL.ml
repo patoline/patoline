@@ -1019,20 +1019,26 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
   in
 
-  let make_content out cmd fmt width height format =
+  let make_content out id cmd fmt width height format =
     Printf.fprintf stderr "Make content\n"; flush stderr;
-    begin match cmd with
-      Next_page -> incr_page ()
-    | Prev_page -> decr_page true
-    | Next_state -> incr_state ()
-    | Prev_state -> decr_state ()
-    | Goto(page, state) -> 
-      cur_page := min (max 0 page) (!num_pages - 1);
-      num_states := Array.length !pages.(!cur_page);
-      cur_state := min (max 0 state) (!num_states - 1);
-      redraw ()
-    | Refresh -> ()
-    end;
+    if id = !page_counter then
+      begin match cmd with
+	Next_page -> incr_page ()
+      | Prev_page -> decr_page true
+      | Next_state -> incr_state ()
+      | Prev_state -> decr_state ()
+      | Goto(page, state) -> 
+	cur_page := min (max 0 page) (!num_pages - 1);
+	num_states := Array.length !pages.(!cur_page);
+	cur_state := min (max 0 state) (!num_states - 1);
+	redraw ()
+      | Refresh -> ()
+      end;
+    let args =
+      (match width with None -> "" | Some n -> Printf.sprintf "&width=%d" n) ^
+      (match height with None -> "" | Some n -> Printf.sprintf "&height=%d" n) ^
+      (match format with None -> "" | Some n -> Printf.sprintf "&format=%s" n)
+    in
     let page, state = !cur_page, !cur_state in
 
     let format = match format with
@@ -1066,20 +1072,20 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	fname,w,h
     in
 
-    let id = !page_counter in
     incr page_counter;
+    let id = !page_counter in
 
     out (Printf.sprintf "<span style=\"position:fixed;top:0px;left:0px;text-align:left;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
 	   (if !cur_page = 0 then "PREV" else
-	       Printf.sprintf "<a href=\"id%d?prev=\">PREV</a>" id));
+	       Printf.sprintf "<a href=\"id%d?prev=%s\">PREV</a>" id args));
 
     out " ";
 
     out (Printf.sprintf "<span style=\"position:fixed;top:0px;right:0px;text-align:right;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
 	   (if !cur_page >= !num_pages - 1 then "NEXT" else
-	       Printf.sprintf "<a href=\"id%d?next=\">NEXT</a>" id));
+	       Printf.sprintf "<a href=\"id%d?next=%s\">NEXT</a>" id args));
 
-     out (Printf.sprintf "<span style=\"position:fixed;top:0px;text-align:center\"><IMG src=\"?file=%s\" width=%d height=%d></span>" imgname w h);
+     out (Printf.sprintf "<span style=\"position:fixed;top:0px\"><IMG src=\"?file=%s\" width=%d height=%d align=\"center\"></span>" imgname w h);
   in
 
   GLNet.make_content := make_content;
