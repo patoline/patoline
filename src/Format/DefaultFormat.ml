@@ -888,15 +888,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           )
         in
 
-        let rec replaceParams t=match t with
-            Node n -> Node { n with children=IntMap.map replaceParams n.children }
-          | Paragraph p ->
-            Paragraph { p with
-              par_parameters=params p.par_parameters;
-              par_completeLine=comp p.par_completeLine;
-            }
-          | x->x
-        in
         let rec enumerate do_it t=match t with
             Node n when List.mem_assoc "item" n.node_tags && not do_it ->
               Node { n with children=IntMap.map (enumerate true) n.children }
@@ -912,13 +903,16 @@ module Format=functor (D:Document.DocumentStructure)->(
               let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
               boxes@[User AlignmentMark])
             in
-            Paragraph { p with par_contents=item::p.par_contents }
+            Paragraph { p with
+              par_parameters=params p.par_parameters;
+              par_completeLine=comp p.par_completeLine;
+              par_contents=item::p.par_contents
+            }
           | _->t
         in
         D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
         let a,b= !D.structure in
         D.structure:=(enumerate false a,b);
-        D.structure:=replaceParams (fst !D.structure), snd !D.structure;
         D.structure:=up (up !D.structure);
         env_stack:=List.tl !env_stack
     end
