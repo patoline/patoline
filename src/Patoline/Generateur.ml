@@ -53,7 +53,7 @@ let hashed="(Sys.executable_name^\".aux\")"
 let env_stack=ref []
 let preambule format driver suppl amble filename=
   match amble with
-      Noamble->""
+      Noamble->suppl^"\n"
     | _->(
       Printf.sprintf
         "(* #FORMAT %s *)

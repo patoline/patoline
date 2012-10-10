@@ -260,10 +260,17 @@ and compilation_needed sources targets=
       if Sys.file_exists f then min m (Unix.stat f).Unix.st_mtime else (-.infinity)
     ) (infinity) targets
     in
-    if max_sources>min_targets then (
-    Printf.fprintf stderr "\n\nCompilation of [%s] needed %g %g\n\n" (String.concat ";" targets) max_sources min_targets;
-    List.iter (Printf.fprintf stderr "Source %S\n") sources;
-    );
+    (* Printf.fprintf stderr "\n\nCompilation of [%s] %sneeded %g %g (diff %g)\n\n" *)
+    (*   (String.concat ";" targets) *)
+    (*   (if max_sources>min_targets then "" else "not ") *)
+    (*   max_sources min_targets (min_targets-.max_sources); *)
+    (* List.iter (fun f-> *)
+    (*   let y=if Sys.file_exists f then (Unix.stat f).Unix.st_mtime else infinity in *)
+    (*   Printf.fprintf stderr "Source %S (diff %g)\n" *)
+    (*     f *)
+    (*     (min_targets-.y) *)
+    (* ) sources; *)
+
     max_sources>min_targets
   )
 
@@ -277,10 +284,12 @@ and patoline_rule objects h=
       List.iter Build.build opts.deps;
 
       let options_have_changed=
-        if Sys.file_exists h then (
-          let last_format,last_driver=last_options_used h in
-          (last_format<> !format || last_driver<> !driver)
-        ) else true
+        (not (Sys.file_exists h)) ||
+          ((Filename.check_suffix h ".tml") &&
+              (
+                let last_format,last_driver=last_options_used h in
+                (last_format<> !format || last_driver<> !driver)
+              ))
       in
       if options_have_changed || compilation_needed [source] [h] then (
 	let dirs_=str_dirs opts in
