@@ -873,6 +873,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  redraw ())
 	else
 	  zoom := !zoom *. 1.1; redraw ();
+      | 119 ->
+	init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw ()
+      | 104 ->
+	init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw ()
       | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr);
       dest := 0;
     end
@@ -886,9 +890,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
     | Glut.KEY_PAGE_DOWN -> incr_page ()
     | Glut.KEY_PAGE_UP -> decr_page true
-(*    | Glut.KEY_HOME -> 
-    | Glut.KEY_END ->
-*)
+    | Glut.KEY_HOME -> init_zoom:=true; redraw ()
     | b -> Printf.fprintf stderr "Unbound special: %s\n" (Glut.string_of_special b); flush stderr;
   in
 
