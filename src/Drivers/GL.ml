@@ -1081,13 +1081,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     incr page_counter;
     let id = !page_counter in
 
-    out (Printf.sprintf "<span style=\"position:fixed;top:0px;left:0px;text-align:left;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
+    out (Printf.sprintf "<span style=\"position:fixed;top:20px;left:20px;text-align:left;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
 	   (if !cur_page = 0 then "PREV" else
 	       Printf.sprintf "<a href=\"id%d?prev=%s\">PREV</a>" id args));
 
     out " ";
 
-    out (Printf.sprintf "<span style=\"position:fixed;top:0px;right:0px;text-align:right;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
+    out (Printf.sprintf "<span style=\"position:fixed;top:20px;right:20px;text-align:right;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
 	   (if !cur_page >= !num_pages - 1 then "NEXT" else
 	       Printf.sprintf "<a href=\"id%d?next=%s\">NEXT</a>" id args));
 

@@ -359,8 +359,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                 List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') m a
               ) boxes 0.
               in
-              let alpha=(min 1. (slidew*.0.8/.total))/.(sqrt phi) in
-              let inter=(slidew-.(alpha*.total))/.(float_of_int (1+IntMap.cardinal toc)) in
+              let alpha=(min 1.0 (slidew*.0.8/.total))/.(sqrt phi) in
+	      let denom, start_space = if IntMap.cardinal toc > 1 && total > slidew *. 0.5 then
+		 (* espace fixe au bord à 0.125 slidew *) 
+		  (float_of_int (IntMap.cardinal toc - 1)),
+  		  (fun inter -> 0.125 *. slidew)
+		else
+		  (float_of_int (IntMap.cardinal toc + 1)),
+  		  (fun inter -> inter +. 0.125 *. slidew)
+	      in
+              let inter=(0.75 *. slidew -. (alpha*.total))/.denom in
               let x0=slidew/.10.
               and y0=slideh
               and x1=slidew*.0.9
@@ -384,9 +392,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               let drawn=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->translate m y_menu (OutputCommon.resize alpha x))
                          (draw_boxes a))@(!cont);
-                let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. a in
+                let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
-              ) boxes inter
+              ) boxes (start_space inter)
               in
               !cont
             in
