@@ -338,8 +338,12 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let revert () = 
     let ch = open_in fileName in
     to_revert := false;
-    pages := input_value ch;
+    let prime = input_value ch in
     structure := input_value ch;
+    if prime then
+      pages := input_value ch
+    else 
+      pages := Array.map (fun x -> [|x|]) (input_value ch);
     Printf.printf "Structure:\n";
     create_menu !structure;
     close_in ch;
