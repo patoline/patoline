@@ -5,7 +5,7 @@ val known : string -> known
 type sem = {
   mut_value : Mutex.t;
   mutable value : int;
-  mut_signal : Mutex.t;
+  mut_signal : Condition.t;
 }
 val sem_up : sem -> unit
 val sem_down : sem -> unit

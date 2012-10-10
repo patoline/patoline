@@ -25,34 +25,37 @@ let known x=
 
 type sem= { mut_value:Mutex.t;
             mutable value:int;
-            mut_signal:Mutex.t }
+            mut_signal:Condition.t }
 
 let sem_up mut=
   Mutex.lock mut.mut_value;
   mut.value<-mut.value+1;
-  (if mut.value>0 then Mutex.unlock mut.mut_signal);
+  (if mut.value>0 then Condition.signal mut.mut_signal);
   Mutex.unlock mut.mut_value
 
 let sem_down mut=
-  Mutex.lock mut.mut_signal;
   Mutex.lock mut.mut_value;
+  while mut.value<=0 do
+    Condition.wait mut.mut_signal mut.mut_value
+  done;
   mut.value<-mut.value-1;
-  (if mut.value>0 then Mutex.unlock mut.mut_signal);
+  (if mut.value>0 then Condition.signal mut.mut_signal);
   Mutex.unlock mut.mut_value
 
 let sem_create x=
-  let mut=Mutex.create () in
-  (if x=0 then Mutex.lock mut);
   {mut_value=Mutex.create ();
-   mut_signal=mut;
+   mut_signal=Condition.create ();
    value=max 0 x }
 
 let sem_set mut y=
-  Mutex.lock mut.mut_signal;
   Mutex.lock mut.mut_value;
+  while mut.value<=0 do
+    Condition.wait mut.mut_signal mut.mut_value
+  done;
   mut.value<-y;
-  (if mut.value>0 then Mutex.unlock mut.mut_signal);
+  (if mut.value>0 then Condition.signal mut.mut_signal);
   Mutex.unlock mut.mut_value
+
 
 let sem=sem_create 1
 let command cmd=
