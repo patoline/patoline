@@ -196,6 +196,12 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               H.add demerits a
             )
           in
+          let register_endNode ()=
+            match !endNode with
+                Some (_,b,_,_,_,_,_,_) when b<lastBadness->()
+              | None
+              | Some _->endNode:=Some cur_node
+          in
           let place_figure ()=
             let fig=figures.(node.lastFigure+1) in
             let vspace,_=line_height paragraphs figures node in
@@ -215,14 +221,18 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
               let nextNode={nextNode with height=next_h } in
-              register (Some cur_node) nextNode
-                (lastBadness+.badness.(nextNode.paragraph) paragraphs figures
-                   lastFigures
-                   node !haut 0 lastParameters 0.
-                   nextNode !bas 0 params 0.)
-                TypoLanguage.Normal
-                params
-                0.
+              if nextNode.paragraph>=Array.length paragraphs &&
+                nextNode.lastFigure+1>=Array.length figures then
+                register_endNode ()
+              else
+                register (Some cur_node) nextNode
+                  (lastBadness+.badness.(node.paragraph) paragraphs figures
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.)
+                  TypoLanguage.Normal
+                  params
+                  0.;
             ) else if allow_impossible then (
               let nextNode={
                 paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
@@ -236,15 +246,19 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
-              register (Some cur_node) nextNode
-                (lastBadness+.badness.(nextNode.paragraph) paragraphs figures
-                   lastFigures
-                   node !haut 0 lastParameters 0.
-                   nextNode !bas 0 params 0.)
-                TypoLanguage.Normal
-                params
-                0.
-            )
+              if nextNode.paragraph>=Array.length paragraphs &&
+                nextNode.lastFigure+1>=Array.length figures then
+                register_endNode ()
+              else
+                register (Some cur_node) nextNode
+                  (lastBadness+.badness.(node.paragraph) paragraphs figures
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.)
+                  TypoLanguage.Normal
+                  params
+                  0.;
+              );
           in
           let flushed=
             (node.lastFigure+1 < Array.length figures) &&
@@ -274,10 +288,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
             );
             if pi >= Array.length paragraphs then (
               if node.lastFigure+1>=Array.length figures then
-                match !endNode with
-                    Some (_,b,_,_,_,_,_,_) when b<lastBadness->()
-                  | None
-                  | Some _->endNode:=Some cur_node
+                register_endNode ()
             ) else (
               let page0,h0=
                 if lastParameters.min_page_after>0 then (node.page+lastParameters.min_page_after, 0.) else
