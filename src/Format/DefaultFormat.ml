@@ -144,7 +144,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let verbEnv x =
 	{ (envFamily x.fontMonoFamily x)
-	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [] }
+	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
+	     lead = x.lead *. x.fontMonoRatio}
 
     let verb p =
        [Scoped ((fun x ->

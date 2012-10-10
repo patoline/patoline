@@ -38,6 +38,12 @@ module Format=functor (D:Document.DocumentStructure)->(
         par_indent=[];
     }
 
+    (* in slides, werbatim with a smaller lead *)
+    let verbEnv x =
+	{ (envFamily x.fontMonoFamily x)
+	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
+	     lead = x.lead *. x.fontMonoRatio *. 0.75}
+
     let parameters a b c d e f g=
       { (Default.parameters a b c d e f g) with
         page_height=2.*.slideh;
