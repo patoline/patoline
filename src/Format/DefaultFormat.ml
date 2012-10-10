@@ -887,26 +887,34 @@ module Format=functor (D:Document.DocumentStructure)->(
               complete { mes with normalMeasure=mes.normalMeasure+.findMark 0. 0 } a1 a2 a3 a4 line a6
           )
         in
-
+        let is_first_par=ref false in
         let rec enumerate do_it t=match t with
-            Node n when List.mem_assoc "item" n.node_tags && not do_it ->
+            Node n when List.mem_assoc "item" n.node_tags && not do_it ->(
+              is_first_par:=true;
               Node { n with children=IntMap.map (enumerate true) n.children }
+            )
           | Node n when List.mem_assoc "item" n.node_tags -> Node n
           | Node n->Node { n with children=IntMap.map (enumerate do_it) n.children }
           | Paragraph p when do_it->
-            let item=bB (fun env->
-              let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
-              let bb=boxify_scoped env (M.from_counter enum) in
-              let fix g= { g with drawing_min_width=g.drawing_nominal_width;
-                drawing_max_width=g.drawing_nominal_width }
-              in
-              let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
-              boxes@[User AlignmentMark])
+            let par_contents=
+              if !is_first_par then (
+                let item=bB (fun env->
+                  let _,enum=try StrMap.find "enumerate" env.counters with Not_found->(-1),[0] in
+                  let bb=boxify_scoped env (M.from_counter enum) in
+                  let fix g= { g with drawing_min_width=g.drawing_nominal_width;
+                    drawing_max_width=g.drawing_nominal_width }
+                  in
+                  let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
+                  boxes@[User AlignmentMark])
+                in
+                is_first_par:=false;
+                item::p.par_contents
+              ) else p.par_contents
             in
             Paragraph { p with
               par_parameters=params p.par_parameters;
               par_completeLine=comp p.par_completeLine;
-              par_contents=item::p.par_contents
+              par_contents=par_contents
             }
           | _->t
         in
