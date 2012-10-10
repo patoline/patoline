@@ -642,6 +642,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                    let (m1,_)=IntMap.max_binding x.revFontGlyphs in
                    for i=m0 to m1 do
                      let w=try Fonts.glyphWidth (IntMap.find i x.revFontGlyphs) with Not_found->0. in
+                     (* Printf.fprintf stderr "width %d %f\n" i w; *)
                      fprintf outChan "%d " (int_of_float w);
                    done;
                    (* IntMap.iter (fun i gl-> *)
@@ -673,6 +674,11 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                            (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
                                               (IntMap.bindings x.revFontGlyphs))))
                          in
+                         (* Printf.fprintf stderr "cardinal : %d\n" *)
+                         (*   (IntMap.cardinal x.revFontGlyphs); *)
+                         (* let o=open_out ((CFF.fontName y).postscript_name^".cff") in *)
+                         (* Rbuffer.output_buffer o sub; *)
+                         (* close_out o; *)
                          sub
                        )
                      | Fonts.CFF y->(
