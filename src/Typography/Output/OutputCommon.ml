@@ -191,7 +191,7 @@ let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     pages fileName =
   let l = ref [] in
   Array.iter (fun ps -> Array.iter (fun p -> l:=p::!l) ps) pages;
-  output ~structure (Array.of_list !l) fileName
+  output ~structure (Array.of_list (List.rev !l)) fileName
 
 let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
