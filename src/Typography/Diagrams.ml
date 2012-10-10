@@ -789,7 +789,7 @@ end
 	    strokingColor = Some color } } ) })
 
     let contents_outputcommon,contents_pet = 
-      Pet.register "node contents" 
+      Pet.register "node contents" ~depends:[fill_pet]
 	(fun pet contents -> 
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    (* Printf.fprintf stderr "contents\n" ;  *)
