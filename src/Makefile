@@ -24,10 +24,10 @@ VPATH=Typography:Drivers:Format
 
 all:native byte prof
 
-native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof $(NATIVE_EXTRA)
-byte:Typography/Typography.cma ocaml-bibi/bibi.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma)
+native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
+byte:Typography/Typography.cma ocaml-bibi/bibi.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma) Pdf/pdf_parser.cma
 
-prof:Typography/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(FORMAT:.mllib=.p.cmxa)
+prof:Typography/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(FORMAT:.mllib=.p.cmxa) Pdf/pdf_parser.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -61,6 +61,14 @@ ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
 
 proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
 	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -I ../Rbuffer -linkpkg -o proof rbuffer.cmxa Typography.cmxa Pdf.cmxa proof.ml
+
+Pdf/pdf_parser.cmxa:Pdf
+	make -C Pdf pdf_parser.cmxa
+Pdf/pdf_parser.cma:Pdf
+	make -C Pdf pdf_parser.cma
+Pdf/pdf_parser.p.cmxa:Pdf
+	make -C Pdf pdf_parser.p.cmxa
+
 
 Format/DefaultFormat.cmxa:Format Typography.cmxa
 	make -C Format DefaultFormat.cmxa
