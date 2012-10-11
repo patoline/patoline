@@ -221,18 +221,14 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
               let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
               let nextNode={nextNode with height=next_h } in
-              if nextNode.paragraph>=Array.length paragraphs &&
-                nextNode.lastFigure+1>=Array.length figures then
-                register_endNode ()
-              else
-                register (Some cur_node) nextNode
-                  (lastBadness+.badness.(node.paragraph) paragraphs figures
-                     lastFigures
-                     node !haut 0 lastParameters 0.
-                     nextNode !bas 0 params 0.)
-                  TypoLanguage.Normal
-                  params
-                  0.;
+              register (Some cur_node) nextNode
+                (lastBadness+.badness.(node.paragraph) paragraphs figures
+                   lastFigures
+                   node !haut 0 lastParameters 0.
+                   nextNode !bas 0 params 0.)
+                TypoLanguage.Normal
+                params
+                0.;
             ) else if allow_impossible then (
               let nextNode={
                 paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
@@ -246,52 +242,53 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
-              if nextNode.paragraph>=Array.length paragraphs &&
-                nextNode.lastFigure+1>=Array.length figures then
-                register_endNode ()
-              else
-                register (Some cur_node) nextNode
-                  (lastBadness+.badness.(node.paragraph) paragraphs figures
-                     lastFigures
-                     node !haut 0 lastParameters 0.
-                     nextNode !bas 0 params 0.)
-                  TypoLanguage.Normal
-                  params
-                  0.;
+              register (Some cur_node) nextNode
+                (lastBadness+.badness.(node.paragraph) paragraphs figures
+                   lastFigures
+                   node !haut 0 lastParameters 0.
+                   nextNode !bas 0 params 0.)
+                TypoLanguage.Normal
+                params
+                0.;
               );
           in
-          let flushed=
-            (node.lastFigure+1 < Array.length figures) &&
-              (node.paragraph >= Array.length paragraphs ||
-                 (try (match IntMap.find (node.lastFigure+1) lastFigures with
-                           Flushed ->true
-                         | _ ->false)
-                  with
-                      Not_found ->false))
-          in
-          if (node.lineEnd+1>=Array.length paragraphs.(node.paragraph)
-              || node.lineEnd<=0)
-            && flushed then place_figure () else (
-              let i,pi=
-              if node.paragraph>=Array.length paragraphs || (node.hyphenEnd<0 && node.lineEnd+1>=Array.length paragraphs.(node.paragraph)) then
+
+          let i,pi=
+            if node.paragraph>=Array.length paragraphs then (0,node.paragraph) else
+              if (node.hyphenEnd<0 && node.lineEnd+1>=
+                    Array.length paragraphs.(node.paragraph)) then
                 (0,min (node.paragraph+1) (Array.length paragraphs))
-              else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else (node.lineEnd, node.paragraph)
+              else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else
+                (node.lineEnd, node.paragraph)
+          in
+          if pi >= Array.length paragraphs then (
+            if node.lastFigure+1>=Array.length figures then
+              register_endNode ()
+            else
+              place_figure ()
+          ) else (
+            let flushed=
+              (node.lastFigure+1 < Array.length figures) &&
+                (try (match IntMap.find (node.lastFigure+1) lastFigures with
+                    Flushed ->true
+                  | _ ->false)
+                 with
+                     Not_found ->false)
             in
-            (* Y a-t-il encore des boites dans ce paragraphe ? *)
-            if pi<>node.paragraph then (
-              let placable=
-                (node.lastFigure+1 < Array.length figures) &&
-                  ((pi>=Array.length paragraphs) ||
-                     (IntMap.mem (node.lastFigure+1) lastFigures))
-              in
-              if placable then place_figure ();
-            );
-            if pi >= Array.length paragraphs then (
-              if node.lastFigure+1>=Array.length figures then
-                register_endNode ()
-            ) else (
+            if (node.lineEnd+1>=Array.length paragraphs.(node.paragraph) || node.lineEnd<=0)
+              && flushed
+            then place_figure () else (
+              if pi<>node.paragraph then (
+                let placable=
+                  (node.lastFigure+1 < Array.length figures) &&
+                    (IntMap.mem (node.lastFigure+1) lastFigures)
+                in
+                if placable then place_figure ();
+              );
               let page0,h0=
-                if lastParameters.min_page_after>0 then (node.page+lastParameters.min_page_after, 0.) else
+                if lastParameters.min_page_after>0 then
+                  (node.page+lastParameters.min_page_after, 0.)
+                else
                   if node.height>=lastParameters.page_height then (node.page+1,0.) else
                     (node.page, node.height)
               in
