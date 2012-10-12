@@ -1145,8 +1145,8 @@ module Format=functor (D:Document.DocumentStructure)->(
               let footnote_y=ref (-.infinity) in
               let pp=Array.of_list p in
               let w,h=page.pageFormat in
-              let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
               for j=0 to Array.length pp-1 do
+                let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
                 let param,line=pp.(j) in
                 let y=h-.topMargin-.line.height in
 
