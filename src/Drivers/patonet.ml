@@ -261,7 +261,7 @@ let serve addr fd =
            with
                Not_found->());
           uri:=Netencoding.Url.decode uri_;
-          (* Printf.fprintf stderr "%S\n" !uri; *)
+          Printf.fprintf stderr "uri : %S\n" !uri;flush stderr;
 	  cur_resp := Some resp
 
         | `Req_expect_100_continue ->
@@ -378,7 +378,7 @@ let serve addr fd =
                       else
                         present.cur_slide,present.cur_state
                 in
-                (* Printf.fprintf stderr "next : %d %d\n" slide state;flush stderr; *)
+                Printf.fprintf stderr "next : %d %d\n" slide state;flush stderr;
                 if present.cur_slide<>slide || present.cur_state<>state then (
                   present.cur_slide<-slide;
                   present.cur_state<-state;

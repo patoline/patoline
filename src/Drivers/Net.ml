@@ -281,8 +281,8 @@ let master_html cache structure pages prefix=
   Rbuffer.add_string html (Printf.sprintf "
 <table style=\"width:100%%;height:100%%;position:absolute;bottom:0;top:0;border-spacing:0;\">
 <tbody>
-<tr>
-<td style=\"width:%s;\">" (if with_time then "50%%" else "100%%"));
+<tr style=\"margin:0;padding:0;\">
+<td style=\"width:%s;padding:0;\">" (if with_time then "50%%" else "100%%"));
   Rbuffer.add_string html (Printf.sprintf "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
   let style=SVG.make_defs cache in
