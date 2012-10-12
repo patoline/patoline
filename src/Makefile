@@ -20,7 +20,7 @@ endif
 CAMLOPT=ocamlfind ocamlopt $(PACK)
 CAMLC=ocamlfind ocamlc $(PACK)
 
-VPATH=Typography:Drivers:Format
+VPATH=Typography:Pdf:Drivers:Format
 
 all:native byte prof
 
@@ -62,11 +62,13 @@ ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
 proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
 	cd proof; $(CAMLOPT) -I ../Typography -I ../Drivers -I ../Rbuffer -linkpkg -o proof rbuffer.cmxa Typography.cmxa Pdf.cmxa proof.ml
 
-Pdf/pdf_parser.cmxa:Pdf
+.PHONY:Pdf/pdf_parser.cmxa Pdf/pdf_parser.p.cmxa Pdf/pdf_parser.cma
+
+Pdf/pdf_parser.cmxa:
 	make -C Pdf pdf_parser.cmxa
-Pdf/pdf_parser.cma:Pdf
+Pdf/pdf_parser.cma:
 	make -C Pdf pdf_parser.cma
-Pdf/pdf_parser.p.cmxa:Pdf
+Pdf/pdf_parser.p.cmxa:
 	make -C Pdf pdf_parser.p.cmxa
 
 

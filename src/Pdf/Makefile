@@ -12,6 +12,8 @@ pdf_parser.cma:obj_parser.cmo obj_lexer.cmo pdf_parser.cmo pdfutil.cmo
 
 %.cmx:%.ml
 	$(OCAMLFIND) -c -o $@ $<
+%.p.cmx:%.ml
+	$(OCAMLFIND) -c -p -o $@ $<
 %.cmo:%.ml
 	$(OCAMLC) -c -o $@ $<
 %.cmi:%.mli
@@ -22,11 +24,16 @@ obj_lexer.cmx:obj_parser.cmx pdfutil.cmx
 obj_parser.cmx:obj_parser.cmi pdfutil.cmx
 obj_parser.cmi:pdfutil.cmx
 
+pdf_parser.p.cmx:obj_parser.cmi
+obj_lexer.p.cmx:obj_parser.p.cmx pdfutil.p.cmx
+obj_parser.p.cmx:obj_parser.cmi pdfutil.p.cmx
+obj_parser.p.cmi:pdfutil.p.cmx
+
+
 %.mli:%.mly
 	ocamlyacc $<
 %.ml:%.mll
 	ocamllex $<
-
 %.ml:%.mly
 	ocamlyacc $<
 
