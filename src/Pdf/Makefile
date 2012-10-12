@@ -1,21 +1,22 @@
-OCAMLFIND=ocamlfind ocamlopt -package Typography,Typography.Pdf
-OCAMLC=ocamlfind ocamlc -package Typography,Typography.Pdf
+include ../Makefile.config
+CAMLOPT=ocamlfind ocamlopt $(PACK) -I ../Typography
+CAMLC=ocamlfind ocamlc $(PACK) -I ../Typography
 
-pdf_parser.cmxa:obj_parser.cmx obj_lexer.cmx pdf_parser.cmx pdfutil.cmx
-	$(OCAMLFIND) -a -o $@ pdfutil.cmx obj_parser.cmx obj_lexer.cmx pdf_parser.cmx
+pdf_parser.cmxa:obj_parser.cmx obj_lexer.cmx pdf_parser.cmx pdfutil.cmx ../Typography/Typography.cmxa  ../Typography/Typography.cmi
+	$(CAMLOPT) -a -o $@ -I ../Typography  pdfutil.cmx obj_parser.cmx obj_lexer.cmx pdf_parser.cmx
 
-pdf_parser.p.cmxa:obj_parser.p.cmx obj_lexer.p.cmx pdf_parser.p.cmx pdfutil.p.cmx
-	$(OCAMLFIND) -p -a -o $@ pdfutil.p.cmx obj_parser.p.cmx obj_lexer.p.cmx pdf_parser.p.cmx
+pdf_parser.p.cmxa:obj_parser.p.cmx obj_lexer.p.cmx pdf_parser.p.cmx pdfutil.p.cmx ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
+	$(CAMLOPT) -p -a -o $@ -I ../Typography  pdfutil.p.cmx obj_parser.p.cmx obj_lexer.p.cmx pdf_parser.p.cmx
 
-pdf_parser.cma:obj_parser.cmo obj_lexer.cmo pdf_parser.cmo pdfutil.cmo
-	$(OCAMLC) -a -o $@ pdfutil.cmo obj_parser.cmo obj_lexer.cmo pdf_parser.cmo
+pdf_parser.cma:obj_parser.cmo obj_lexer.cmo pdf_parser.cmo pdfutil.cmo ../Typography/Typography.cma  ../Typography/Typography.cmi
+	$(CAMLC) -a -o $@ -I ../Typography pdfutil.cmo obj_parser.cmo obj_lexer.cmo pdf_parser.cmo
 
 %.cmx:%.ml
-	$(OCAMLFIND) -c -o $@ $<
+	$(CAMLOPT) -c -o $@ $<
 %.p.cmx:%.ml
-	$(OCAMLFIND) -c -p -o $@ $<
+	$(CAMLOPT) -c -p -o $@ $<
 %.cmo:%.ml
-	$(OCAMLC) -c -o $@ $<
+	$(CAMLC) -c -o $@ $<
 %.cmi:%.mli
 	ocamlc -c -o $@ $<
 

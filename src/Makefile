@@ -64,11 +64,11 @@ proof/proof:Typography.cmxa Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
 
 .PHONY:Pdf/pdf_parser.cmxa Pdf/pdf_parser.p.cmxa Pdf/pdf_parser.cma
 
-Pdf/pdf_parser.cmxa:
+Pdf/pdf_parser.cmxa:Typography/Typography.cmxa Typography/Typography.cmi
 	make -C Pdf pdf_parser.cmxa
-Pdf/pdf_parser.cma:
+Pdf/pdf_parser.cma:Typography/Typography.cma Typography/Typography.cmi
 	make -C Pdf pdf_parser.cma
-Pdf/pdf_parser.p.cmxa:
+Pdf/pdf_parser.p.cmxa:Typography/Typography.p.cmxa Typography/Typography.cmi
 	make -C Pdf pdf_parser.p.cmxa
 
 
