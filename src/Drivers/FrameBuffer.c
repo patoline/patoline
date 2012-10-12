@@ -209,7 +209,7 @@ void main()\
            a = 1.0 - (acos(t) - t * sqrt(1.0 - t * t))/pi;\
         } else if (t <= 1.0) {\
            a = (acos(t) - t * sqrt(1.0 - t * t))/pi;\
-        } else a = 0;\
+        } else a = 0.0;\
         gl_FragColor = color;\
         gl_FragColor[3] = a;\
 }";
