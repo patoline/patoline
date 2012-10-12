@@ -20,15 +20,18 @@ pdf_parser.cma:obj_parser.cmo obj_lexer.cmo pdf_parser.cmo pdfutil.cmo ../Typogr
 %.cmi:%.mli
 	ocamlc -c -o $@ $<
 
-pdf_parser.cmx:obj_parser.cmi
-obj_lexer.cmx:obj_parser.cmx pdfutil.cmx
-obj_parser.cmx:obj_parser.cmi pdfutil.cmx
-obj_parser.cmi:pdfutil.cmx
+pdf_parser.cmx:obj_parser.cmi ../Typography/Typography.cmxa  ../Typography/Typography.cmi
+obj_lexer.cmx:obj_parser.cmx pdfutil.cmx ../Typography/Typography.cmxa  ../Typography/Typography.cmi
+obj_parser.cmx:obj_parser.cmi pdfutil.cmx ../Typography/Typography.cmxa  ../Typography/Typography.cmi
+obj_parser.cmi:pdfutil.cmx ../Typography/Typography.cmxa  ../Typography/Typography.cmi
 
-pdf_parser.p.cmx:obj_parser.cmi
-obj_lexer.p.cmx:obj_parser.p.cmx pdfutil.p.cmx
-obj_parser.p.cmx:obj_parser.cmi pdfutil.p.cmx
-obj_parser.p.cmi:pdfutil.p.cmx
+pdfutil.cmx:../Typography/Typography.cmxa  ../Typography/Typography.cmi
+pdfutil.p.cmx:../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
+
+pdf_parser.p.cmx:obj_parser.cmi ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
+obj_lexer.p.cmx:obj_parser.p.cmx pdfutil.p.cmx ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
+obj_parser.p.cmx:obj_parser.cmi pdfutil.p.cmx ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
+obj_parser.cmi:pdfutil.p.cmx
 
 
 %.mli:%.mly
