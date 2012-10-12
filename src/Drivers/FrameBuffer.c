@@ -201,7 +201,7 @@ const float pi = 3.1415926535897932384626;\
 \
 void main()\
 {\
-        vec4 alpha = color[3];\
+        float alpha = color[3];\
         float t = 2.0 - alpha * 3.0;\
         float a = 0.0;\
         if (t <= 0.0) {\
