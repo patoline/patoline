@@ -198,8 +198,6 @@ void main()\
 const char* pixel_shader_source = "\
 varying vec4 color;\
 const float pi = 3.1415926535897932384626;\
-attribute float x_factor = 1.0;\
-attribute float y_factor = 1.0;\
 \
 void main()\
 {\
