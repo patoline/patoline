@@ -99,11 +99,11 @@ module Env_hypothesis=Default.Make_theorem
 (* module Env_proof=Default.Proof *)
 
   let equation contents = 
-    let pars a b c d e f g={(parameters a b c d e f g) with
+    let pars a b c d e f g line={(parameters a b c d e f g line) with
                               min_height_before=
-        if g.lineStart=0 then a.lead else 0.;
+        if line.lineStart=0 then a.lead else 0.;
                               min_height_after=
-        if g.lineEnd>=Array.length b.(g.paragraph) then a.lead else 0.
+        if line.lineEnd>=Array.length b.(line.paragraph) then a.lead else 0.
                            }
     in
     newPar ~environment:(fun env -> { env with par_indent = [] })

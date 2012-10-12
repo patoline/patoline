@@ -27,6 +27,6 @@ module type Format=sig
     Typography.Line.parameters ->
     Typography.Break.figurePosition Typography.Util.IntMap.t ->
     Typography.Line.line Typography.Document.TS.UMap.t ->
-    Typography.Line.line -> Typography.Line.parameters
+    Typography.Line.line -> Typography.Line.line -> Typography.Line.parameters
 end
 module TheBibliography : functor (F:Format)-> functor (D : Typography.Document.DocumentStructure) -> sig end

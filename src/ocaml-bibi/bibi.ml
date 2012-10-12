@@ -312,13 +312,13 @@ open Box
 open Line
 
 module type Format=sig
-  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters
+  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> line -> parameters
 end
 
 module TheBibliography (F:Format) (D : DocumentStructure) = struct
   let _ =
-    let params env a1 a2 a3 a4 a5 line=
-      let p=F.parameters env a1 a2 a3 a4 a5 line in
+    let params env a1 a2 a3 a4 a5 a6 line=
+      let p=F.parameters env a1 a2 a3 a4 a5 a6 line in
         if line.lineStart=0 then (
           let rec findMark w j=
             if j>=line.lineEnd then 0. else

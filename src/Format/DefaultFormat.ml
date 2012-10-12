@@ -164,7 +164,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       []
 
 
-    let parameters env paragraphs figures last_parameters last_figures last_users (line:line)=
+    let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
       let page_footnotes=ref 0 in
       let measure=IntMap.fold (fun i aa m->match aa with
           Break.Placed a->
@@ -235,9 +235,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                          user_positions=user_positions env2 });
                        par_parameters=
-                         (fun a b c d e f g->
-                           { (center a b c d e f g) with
-                             min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                         (fun a b c d e f g line->
+                           { (center a b c d e f g line) with
+                             min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
                                  2.*.a.normalLead else 0.;
                              min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
                                  2.*.a.normalLead else 0.
@@ -262,11 +262,11 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                          user_positions=user_positions env2 });
                        par_parameters=
-                         (fun a b c d e f g->
-                           { (center a b c d e f g) with
-                             min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                         (fun a b c d e f g line->
+                           { (center a b c d e f g line) with
+                             min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
                                  2.*.a.normalLead else 0.;
-                             min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                             min_height_before=if line.lineEnd>=Array.length b.(line.paragraph) then
                                  2.*.a.normalLead else 0.
                            });
                        par_badness=(badness);
@@ -288,9 +288,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=
-                (fun a b c d e f g->
-                  { (center a b c d e f g) with
-                    min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then
+                (fun a b c d e f g line->
+                  { (center a b c d e f g line) with
+                    min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
                         a.normalLead else 0.;
                     min_height_before=0. });
               par_badness=(badness);
@@ -329,11 +329,11 @@ module Format=functor (D:Document.DocumentStructure)->(
           par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
             user_positions=user_positions env2 });
           par_parameters=
-            (fun a b c d e f g->
-              { (parameters a b c d e f g) with
+            (fun a b c d e f g line->
+              { (parameters a b c d e f g line) with
                 min_page_before = 0;
-                min_height_before=if g.lineStart=0 then a.normalLead else 0.;
-                min_height_after=if g.lineEnd>=Array.length b.(g.paragraph) then a.normalLead else 0.;
+                min_height_before=if line.lineStart=0 then a.normalLead else 0.;
+                min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
                 not_last_line=true });
           par_badness=(badness);
           par_completeLine=Complete.normal;
@@ -719,8 +719,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                  (* Insertion d'une footnote *)
                  let str=ref (Node empty,[]) in
 
-                 let params env a1 a2 a3 a4 a5 line=
-                   let p={(parameters env a1 a2 a3 a4 a5 line) with min_height_after=0.} in
+                 let params env a1 a2 a3 a4 a5 a6 line=
+                   let p={(parameters env a1 a2 a3 a4 a5 a6 line) with min_height_after=0.} in
                    if not p.absolute && line.lineStart=0 then (
                      let rec findMark w j=
                        if j>=line.lineEnd then 0. else
@@ -772,8 +772,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let env_stack=ref []
 
-    let displayedFormula a b c d e f g=
-      { (center a b c d e f g) with
+    let displayedFormula a b c d e f g line=
+      { (center a b c d e f g line) with
         min_height_before=3.*.a.lead/.4.;
         min_height_after=3.*.a.lead/.4.;
         not_first_line=true }
@@ -861,8 +861,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       end
 
       let do_end_env ()=
-        let params parameters env a1 a2 a3 a4 a5 line=
-          let p=parameters env a1 a2 a3 a4 a5 line in
+        let params parameters env a1 a2 a3 a4 a5 a6 line=
+          let p=parameters env a1 a2 a3 a4 a5 a6 line in
             if not p.absolute && line.lineStart=0 then (
               let rec findMark w j=
                 if j>=line.lineEnd then 0. else
@@ -1001,14 +1001,14 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
     module Env_proof=struct
       let do_begin_env ()=
-        let par a b c d e f g={ (parameters a b c d e f g) with min_height_before=if g.lineStart=0 then a.lead else 0. } in
+        let par a b c d e f g line={ (parameters a b c d e f g line) with min_height_before=if line.lineStart=0 then a.lead else 0. } in
         newPar D.structure ~environment:(fun x->{x with par_indent=[]}) Complete.normal par
           (italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         D.structure:=lastChild !D.structure
 
       let do_end_env ()=
-        let par a b c d e f g={ (ragged_right a b c d e f g) with not_first_line=true;really_next_line=0 } in
+        let par a b c d e f g line={ (ragged_right a b c d e f g line) with not_first_line=true;really_next_line=0 } in
         let bad env a b c d e f g h i j k l m=if d.isFigure then infinity else
           Document.badness env a b c d e f g h i j k l m
         in
@@ -1036,10 +1036,10 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=newChildAfter !D.structure (Node empty);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         newPar D.structure Complete.normal
-           (fun a b c d e f g->
-              { (parameters a b c d e f g) with
-                  min_height_before=
-                  if g.lineStart=0 then a.lead else 0. })
+           (fun a b c d e f g line->
+             { (parameters a b c d e f g line) with
+               min_height_before=
+                 if line.lineStart=0 then a.lead else 0. })
           (Env (incr_counter ~level:Th.counterLevel Th.counter)::
              C (fun env->
                      let lvl,num=try (StrMap.find Th.counter env.counters) with
@@ -1061,10 +1061,10 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec last_par=function
             Paragraph p->
               Paragraph { p with
-                            par_parameters=(fun a b c d e f g->
-                                              { (p.par_parameters a b c d e f g) with
+                            par_parameters=(fun a b c d e f g line->
+                                              { (p.par_parameters a b c d e f g line) with
                                                   min_height_after=
-                                                  if g.lineEnd>=Array.length b.(g.paragraph) then a.lead else 0. });
+                                                  if line.lineEnd>=Array.length b.(line.paragraph) then a.lead else 0. });
                         }
           | Node n->(try
                        let k0,a0=IntMap.max_binding n.children in

@@ -38,8 +38,8 @@ module Format=functor (D:Document.DocumentStructure)->(
         par_indent=[];
     }
 
-    let parameters a b c d e f g=
-      { (Default.parameters a b c d e f g) with
+    let parameters a b c d e f g line=
+      { (Default.parameters a b c d e f g line) with
         page_height=2.*.slideh;
         next_acceptable_height=
         (fun a b c d e->e)

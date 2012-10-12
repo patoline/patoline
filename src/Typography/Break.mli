@@ -54,13 +54,13 @@ module Make :
                              Line.parameters ->
                              figurePosition Util.IntMap.t ->
                              Line.line UMap.t ->
-                             Line.line -> Line.parameters)
+                             Line.line -> Line.line -> Line.parameters)
                             array ->
           parameters:(UMap.key Box.box array array ->
                       Box.drawingBox array ->
                       Line.parameters ->
                       figurePosition Util.IntMap.t ->
-                      Line.line UMap.t -> Line.line -> Line.parameters)
+                      Line.line UMap.t -> Line.line -> Line.line -> Line.parameters)
                      array ->
           badness:(UMap.key Box.box array array ->
                      Box.drawingBox array ->

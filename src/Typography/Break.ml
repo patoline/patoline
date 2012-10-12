@@ -145,7 +145,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
       let colision_cache=ref ColMap.empty in
       let endNode=ref None in
 
-      let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty uselessLine in
+      let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty uselessLine uselessLine in
       let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,0.,None,IntMap.empty,UMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
@@ -218,7 +218,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   nom_width=fig.drawing_nominal_width;
                   max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
-              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser node nextNode in
               let next_h=params.next_acceptable_height node lastParameters nextNode params 0. in
               let nextNode={nextNode with height=next_h } in
               register (Some cur_node) nextNode
@@ -241,7 +241,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 nom_width=fig.drawing_nominal_width;
                 max_width=fig.drawing_max_width;line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
-              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser nextNode in
+              let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser node nextNode in
               register (Some cur_node) nextNode
                 (lastBadness+.badness.(node.paragraph) paragraphs figures
                    lastFigures
@@ -309,7 +309,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                   min_width=0.;nom_width=0.;max_width=0.;
                   line_y0=infinity; line_y1= -.infinity }
                 in
-                let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser r_nextNode) in
+                let r_params=ref (parameters.(pi) paragraphs figures lastParameters lastFigures lastUser node r_nextNode) in
 
                 if !r_params.page_height < infinity || !height_problem then begin
 
@@ -320,7 +320,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 else (
                   let minimal_tried_height=ref infinity in
                   let make_next_node nextNode=
-                    r_params:=parameters.(pi) paragraphs figures lastParameters lastFigures lastUser nextNode;
+                    r_params:=parameters.(pi) paragraphs figures lastParameters lastFigures lastUser node nextNode;
                     r_params:=fold_left_line paragraphs (fun p x->match x with
                                                              Parameters fp->fp p
                                                            | _->p) !r_params nextNode;

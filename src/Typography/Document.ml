@@ -152,7 +152,7 @@ and 'a paragraph={
   par_contents:'a content list;
   par_env:'a environment -> 'a environment;
   par_post_env:'a environment -> 'a environment -> 'a environment;
-  par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters;
+  par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> line -> parameters;
   par_badness: 'a environment -> 'a box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> float;
   par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list;
   par_states:Util.IntSet.t;
@@ -162,7 +162,7 @@ and 'a figuredef={
   fig_contents:'a environment->drawingBox;
   fig_env:'a environment -> 'a environment;
   fig_post_env:'a environment -> 'a environment -> 'a environment;
-  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> parameters
+  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> line -> parameters
 }
 and 'a tree=
     Node of 'a node
@@ -488,8 +488,8 @@ let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=p.min
 let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=p.min_page_after+x })])]
 let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 
-let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers l=
-  let param=parameters env paragraphs figures last_parameters lastFigures lastUsers l in
+let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l=
+  let param=parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l in
   let a=l.min_width
   and b=l.nom_width in
   if param.measure >= b then
@@ -501,12 +501,12 @@ let do_center parameters env paragraphs figures last_parameters lastFigures last
       { param with measure=a; left_margin=param.left_margin +. (param.measure-.a)/.2. }
 
 
-let do_ragged_left parameters a b c d e f line=
-  let par=parameters a b c d e f line in
+let do_ragged_left parameters a b c d e f g line=
+  let par=parameters a b c d e f g line in
   { par with measure=line.nom_width }
 
-let do_ragged_right parameters a b c d e f line=
-  let par=parameters a b c d e f line in
+let do_ragged_right parameters a b c d e f g line=
+  let par=parameters a b c d e f g line in
   { par with
     measure=line.nom_width;
     left_margin=par.left_margin+.par.measure-.line.nom_width }
