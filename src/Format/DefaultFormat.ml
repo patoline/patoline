@@ -331,7 +331,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           par_parameters=
             (fun a b c d e f g line->
               { (parameters a b c d e f g line) with
-                min_page_before = 0;
                 min_height_before=if line.lineStart=0 then a.normalLead else 0.;
                 min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
                 not_last_line=true });
@@ -352,8 +351,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
       with_chapters
 
-    let paragraph cont=
-      (Paragraph {par_contents=cont; par_env=(fun x->x);
+    let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
+      (Paragraph {par_contents=cont; par_env=par_env;
                   par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
                                                      counters=env2.counters;
                                                      user_positions=env2.user_positions });

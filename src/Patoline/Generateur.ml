@@ -75,6 +75,7 @@ open DefaultFormat.MathsFormat
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
+module Patoline_Output=Patoline_Format.Output(%s)
 open %s;;
 open Patoline_Format;;
 let _driver=ref \"Pdf\"
@@ -86,7 +87,7 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--at-most\",Arg.Int (fun x->_atmost:=x),\"Compile at most n times\")
 ]
 
-let _=Arg.parse _spec ignore \"Usage :\";;" format format
+let _=Arg.parse _spec ignore \"Usage :\";;" format driver format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
@@ -96,9 +97,8 @@ open Patoline_Format;;\n" format format
 
 
 let postambule driver outfile = Printf.sprintf "
-module Patoline_Output=Patoline_Format.Output(%s)
 let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) Patoline_Format.defaultEnv %S
-" driver outfile
+" outfile
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)

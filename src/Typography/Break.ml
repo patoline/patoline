@@ -286,11 +286,12 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                 if placable then place_figure ();
               );
               let page0,h0=
-                if lastParameters.min_page_after>0 then
-                  (node.page+lastParameters.min_page_after, 0.)
-                else
-                  if node.height>=lastParameters.page_height then (node.page+1,0.) else
-                    (node.page, node.height)
+                if node.page<0 then (0,0.) else
+                  if lastParameters.min_page_after>0 then
+                    (node.page+lastParameters.min_page_after, 0.)
+                  else
+                    if node.height>=lastParameters.page_height then (node.page+1,0.) else
+                      (node.page, node.height)
               in
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
@@ -389,8 +390,9 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
                       let node_is_orphan=
                         page<>node.page
                         &&
-                          ((node.lineStart <= 0
-                            && node.lineEnd < Array.length (paragraphs.(node.paragraph)))
+                          ((node.lineStart = 0
+                           && node.lineEnd < Array.length (paragraphs.(node.paragraph))
+                           && node.paragraph>0) (* la premiere ligne du document n'est pas orpheline *)
                            || lastParameters.not_last_line)
                         && !r_params.min_page_before<=0
                         && not node.isFigure

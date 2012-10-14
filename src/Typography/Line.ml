@@ -19,7 +19,7 @@ type line= {
 
 let uselessLine=
   { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= 0.;paragraph_height= -1; page_line= -1; page=0;
+    lastFigure=(-1); height= 0.;paragraph_height= -1; page_line= -1; page= -1;
     min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
 
 let sprint_linef l=
