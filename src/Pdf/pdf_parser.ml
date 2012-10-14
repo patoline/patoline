@@ -244,16 +244,19 @@ let parse file=
                     w::_ -> curw:=w
                     | _->failwith "not enough operands for operator w")
                 | "f"->(
-                  cur_paths:=(!cur_path)::(!cur_paths);
+                  if !cur_path<>[] then cur_paths:=(!cur_path)::(!cur_paths);
                   cur_path:=[];
                   contents:=
-                    Path ({ default with strokingColor=None;fillColor=Some !cur_fill },
+                    Path ({ default with
+                      lineWidth=mm_of_pt !curw;
+                      strokingColor=None;
+                      fillColor=Some !cur_fill },
                           List.map (fun x->Array.of_list (List.rev x)) !cur_paths)::(!contents);
                   cur_path:=[]
                 )
                 | "m"->(match stack with
                     y::x::_ -> (
-                      cur_paths:=(!cur_path)::(!cur_paths);
+                      if !cur_path<>[] then cur_paths:=(!cur_path)::(!cur_paths);
                       cur_path:=[];
                       curx:=x;cury:=y
                     )
