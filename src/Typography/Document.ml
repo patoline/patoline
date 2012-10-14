@@ -861,6 +861,9 @@ let mappend m x=
   IntMap.add (a+1) x m
 
 
+module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
+
+
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
@@ -903,6 +906,7 @@ let boxify buf nbuf fixable env0 l=
           | _ ->(
               (* let buf=ref [|Empty|] in *)
               (* let nbuf=ref 0 in *)
+              let t=UNF8.nfkc t in
               let l=ref IntMap.empty in
               let rec cut_str i0 i=
                 if i>=String.length t then (
