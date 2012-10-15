@@ -28,7 +28,10 @@
 \Add_right{\rceil ⌉}(List.map (MathFonts.asana "\\right_ceiling") [3331;3332;3333])
 \Add_left{\lfloor ⌊}(List.map (MathFonts.asana "\\left_floor") [3334;3335;3336])
 \Add_right{\rfloor ⌋}(List.map (MathFonts.asana "\\right_floor") [3337;3338;3339])
-
+\Add_left{\left_white_square_bracket 〚} (List.map (MathFonts.asana "\\left_white_square_bracket")
+				      [3320;3321;3322;3323])
+\Add_right{\right_white_square_bracket 〛} (List.map (MathFonts.asana "\\right_white_square_bracket")
+				      [3324;3325;3326;3327])
 =<
 
 => Relation symbols 
@@ -91,7 +94,7 @@
 \Add_addition_like{\squareinter \squarecap ⊓}(MathFonts.asana "⊓" 861)
 
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
-\Add_addition_like{\vee ∨}{∨}
+\Add_addition_like{\vee ∨}(MathFonts.asana "∨" 754)
 \Add_addition_like{\setminus ∖}{∖}
 
 =<
@@ -117,7 +120,7 @@
 
 \Add_connector{\land &&}(MathFonts.asana "∧" 753)
 \Add_connector{\restriction ↾}(MathFonts.euler "↾" 248)
-\Add_connector{\lor}(MathFonts.asana "∧" 754)
+\Add_connector{\lor}(MathFonts.asana "∨" 754)
 \Add_negation{\neg ¬}{¬}
 
 =<
