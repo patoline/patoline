@@ -108,15 +108,28 @@ let last_options_used file=
 
 
 let add_format opts = 
-  if opts.format <> "DefaultFormat" &&
-    (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
-    (try
-       let _=findPath (opts.format ^ ".ml") (".":: !Config.local_path) in
-       false
-     with _->true)
-  then
-    { opts with packages = ("Typography." ^ opts.format) :: opts.packages }
-  else opts 
+  let packages=
+    (if opts.format <> "DefaultFormat" &&
+        (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
+        (try
+           let _=findPath (opts.format ^ ".ml") (".":: !Config.local_path) in
+           false
+         with _->true)
+     then
+        ("Typography." ^ opts.format) :: opts.packages
+     else opts.packages)
+  in
+  let packages=
+    (if (not (List.mem ("Typography." ^ opts.driver) opts.packages)) &&
+        (try
+           let _=findPath (opts.driver ^ ".ml") (".":: !Config.local_path) in
+           false
+         with _->true)
+     then
+        ("Typography." ^ opts.driver) :: packages
+     else packages)
+  in
+  { opts with packages = packages }
 
 
 let rec read_options_from_source_file fread =
@@ -344,7 +357,7 @@ and patoline_rule objects h=
         !ocamlopt
         !extras
         (String.concat " " opts.comp_opts)
-        (let pack=String.concat "," (List.rev opts.packages) in
+        (let pack=String.concat "," (List.rev (opts.packages)) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         h
@@ -406,7 +419,7 @@ and patoline_rule objects h=
         !ocamlopt
         !extras
         (String.concat " " opts.comp_opts)
-        (let pack=String.concat "," (List.rev opts.packages) in
+        (let pack=String.concat "," (List.rev (opts.packages)) in
          if pack<>"" then "-package "^pack else "")
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
@@ -436,8 +449,6 @@ and process_each_file l=
   else
     List.iter (fun f->
       if !compile then (
-        package_list := ("Typography."^ !driver):: !package_list;
-
         let cmd= (Filename.concat
                     (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
         Build.sem_set Build.sem !Build.j;
