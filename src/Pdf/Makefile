@@ -31,7 +31,6 @@ pdfutil.p.cmx:../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
 pdf_parser.p.cmx:obj_parser.cmi ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
 obj_lexer.p.cmx:obj_parser.p.cmx pdfutil.p.cmx ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
 obj_parser.p.cmx:obj_parser.cmi pdfutil.p.cmx ../Typography/Typography.p.cmxa  ../Typography/Typography.cmi
-obj_parser.cmi:pdfutil.p.cmx
 
 
 %.mli:%.mly
