@@ -137,19 +137,21 @@ let draw ?fontCache w h contents=
       let buf=Rbuffer.create 100000 in
       List.iter
         (fun a->
-          let x0,y0=a.(0) in
-          Rbuffer.add_string buf (Printf.sprintf "M%g %g" (x0.(0)) ( (h-.y0.(0))));
-          Array.iter
-            (fun (x,y)->
-              if Array.length x=2 then Rbuffer.add_string buf "L" else
-                if Array.length x=3 then Rbuffer.add_string buf "Q" else
-                  if Array.length x=4 then Rbuffer.add_string buf "C" else
-                    raise Bezier_degree;
-              for j=1 to Array.length x-1 do
-                Rbuffer.add_string buf (Printf.sprintf "%g %g " (x.(j)) ( (h-.y.(j))));
-              done
-            ) a;
-          if args.close then Rbuffer.add_string buf "Z"
+          if Array.length a>0 then (
+            let x0,y0=a.(0) in
+            Rbuffer.add_string buf (Printf.sprintf "M%g %g" (x0.(0)) ( (h-.y0.(0))));
+            Array.iter
+              (fun (x,y)->
+                if Array.length x=2 then Rbuffer.add_string buf "L" else
+                  if Array.length x=3 then Rbuffer.add_string buf "Q" else
+                    if Array.length x=4 then Rbuffer.add_string buf "C" else
+                      raise Bezier_degree;
+                for j=1 to Array.length x-1 do
+                  Rbuffer.add_string buf (Printf.sprintf "%g %g " (x.(j)) ( (h-.y.(j))));
+                done
+              ) a;
+            if args.close then Rbuffer.add_string buf "Z"
+          )
         ) l;
       Rbuffer.add_string svg_buf "<path ";
       (match args.fillColor with
@@ -307,7 +309,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
     pages prefix=
 
   let total=Array.fold_left (fun m x->m+Array.length x) 0 pages in
-  let all_pages=Array.make total (pages.(0).(0)) in
+  let all_pages=Array.make total OutputPaper.defaultPage in
   let _=Array.fold_left (fun m0 x->
     Array.fold_left (fun m x->
       all_pages.(m)<-x;
@@ -321,7 +323,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   let svg_files=Array.map (fun pi->
     Array.map (fun page->
       let file=Rbuffer.create 10000 in
-      (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
+        (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
       let w,h=page.pageFormat in
       Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));

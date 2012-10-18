@@ -3,6 +3,8 @@ type page = {
   mutable pageFormat : float * float;
   mutable pageContents : OutputCommon.contents list;
 }
+val defaultPage:page
+
 module type Driver =
   sig
     val filename : string -> string
