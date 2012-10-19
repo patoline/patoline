@@ -12,12 +12,47 @@ let _=Random.self_init ()
 
 module Euler = Euler
 module Numerals = Numerals
+
+let replace_utf8 x y z=if String.length x>0 then (
+  let buf=Buffer.create (String.length x) in
+  let repl=UTF8.init 1 (fun _->UChar.chr y) in
+  let rec add_it i=
+    if not (UTF8.out_of_range z i) then (
+      try
+        let rec comp j=
+          if UTF8.out_of_range x j then j else
+            if UTF8.out_of_range z (i+j) then raise Not_found else
+              if UTF8.look z (i+j) <> UTF8.look x j then raise Not_found else
+                comp (UTF8.next x j)
+        in
+        let j=comp 0 in
+        Buffer.add_string buf repl;
+        add_it (i+j)
+      with
+          Not_found->(
+            Buffer.add_string buf (String.sub z i (UTF8.next z i-i));
+            add_it (UTF8.next z i)
+          )
+    )
+  in
+  add_it 0;
+  Buffer.contents buf
+) else z
+
+let word_subst=
+  (fun x->List.fold_left (fun y f->f y) x
+    [
+      replace_utf8 ("``") 8220;
+      replace_utf8 ("''") 8221
+    ]
+  )
+
 let alegreya=
   [ Regular,
     (Lazy.lazy_from_fun
        (fun ()->
          (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
-          (fun x->x),
+         word_subst,
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
               make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -28,7 +63,7 @@ let alegreya=
      Lazy.lazy_from_fun
        (fun ()->
           (Fonts.loadFont (findFont "Alegreya/Alegreya-Italic.otf")),
-          (fun x->x),
+         word_subst,
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
               make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -40,7 +75,7 @@ let alegreya=
     (Lazy.lazy_from_fun
        (fun ()->
           (Fonts.loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
-          (fun x->x),
+         word_subst,
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
               make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
@@ -51,7 +86,7 @@ let alegreya=
      Lazy.lazy_from_fun
        (fun ()->
           (Fonts.loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")),
-          (fun x->x),
+         word_subst,
           (fun x->List.fold_left (fun a f->f a) x
              [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
               make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
@@ -394,32 +429,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 	    (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
                                   List.iter (Printf.fprintf stderr "%s\n") p;
                                   fun x->[||])
-      in
-      let replace_utf8 x y z=if String.length x>0 then (
-        let buf=Buffer.create (String.length x) in
-        let repl=UTF8.init 1 (fun _->UChar.chr y) in
-        let rec add_it i=
-          if not (UTF8.out_of_range z i) then (
-            try
-              let rec comp j=
-                if UTF8.out_of_range x j then j else
-                  if UTF8.out_of_range z (i+j) then raise Not_found else
-                    if UTF8.look z (i+j) <> UTF8.look x j then raise Not_found else
-                      comp (UTF8.next x j)
-              in
-              let j=comp 0 in
-                Buffer.add_string buf repl;
-                add_it (i+j)
-            with
-                Not_found->(
-                  Buffer.add_string buf (String.sub z i (UTF8.next z i-i));
-                  add_it (UTF8.next z i)
-                )
-          )
-        in
-          add_it 0;
-          Buffer.contents buf
-      ) else z
       in
       let fsize=3.8 in
       let feat= [ Opentype.standardLigatures ] in
