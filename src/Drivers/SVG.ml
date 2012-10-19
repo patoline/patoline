@@ -29,6 +29,7 @@ let standalone w h style title svg=
   Rbuffer.add_string svg_buf (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">
 <svg width=\"%d\" height=\"%d\" version=\"1.1\"
+     xmlns:xlink=\"http://www.w3.org/1999/xlink\"
      xmlns=\"http://www.w3.org/2000/svg\" " (round w) (round h));
   Rbuffer.add_string svg_buf (Printf.sprintf "viewBox=\"0 0 %d %d\" >" (round (w)) (round (h)));
   Rbuffer.add_buffer svg_buf (assemble style title svg);
@@ -181,14 +182,36 @@ let draw ?fontCache w h contents=
     )
     | States (a,b)->List.iter output_contents a
     | Link l->(
-      (if l.dest_page<0 then
-          Rbuffer.add_string svg_buf "<a xlink:href=\"\">"
-       else (
-         Rbuffer.add_string svg_buf "<a xlink:href=\"";
-         Rbuffer.add_string svg_buf l.uri;
-         Rbuffer.add_string svg_buf "\">")
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
       );
-      (* List.iter output_contents l.link_contents; *)
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+
+      if l.dest_page<0 then (
+        Rbuffer.add_string svg_buf "<a xlink:href=\"";
+        Rbuffer.add_string svg_buf l.uri;
+        Rbuffer.add_string svg_buf "\">"
+      ) else (
+        Rbuffer.add_string svg_buf
+          (Printf.sprintf "<a xlink:href=\"#\" xlink:onclick=\"gotoSlide(%d)\">"
+             l.dest_page
+          );
+      );
+
+      List.iter output_contents (l.link_contents);
+
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
       Rbuffer.add_string svg_buf "</a>";
     )
     | _->()
@@ -328,7 +351,6 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
     ) m0 x
   ) 0 pages
   in
-
   let cache=build_font_cache (Array.map (fun x->x.pageContents) all_pages) in
 
   let svg_files=Array.map (fun pi->
@@ -336,7 +358,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
       let file=Rbuffer.create 10000 in
         (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
       let w,h=page.pageFormat in
-      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 %d %d\">"
+      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
       let svg=draw ~fontCache:cache w h page.pageContents in
       Rbuffer.add_buffer file svg;
@@ -427,11 +449,11 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
     g.appendChild(rect);
     g.setAttribute(\"id\",\"g\"+n+\"_\"+state);
 
-    for(i=0;i<newSvg.childNodes.length;i++) {
-        if(newSvg.childNodes[i].nodeType==document.ELEMENT_NODE)
-        g.appendChild(newSvg.childNodes[i]);
+    while(newSvg.firstChild) {
+        if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
+        g.appendChild(newSvg.firstChild);
         else
-        newSvg.removeChild(newSvg.childNodes[i]);
+        newSvg.removeChild(newSvg.firstChild);
     }
     var cur_g=document.getElementById(\"g\"+current_slide+\"_\"+current_state);
     if(effect) { effect(g,cur_g); } else {
@@ -467,21 +489,31 @@ if(current_state>=states[current_slide]-1) {
 }
 } //right
 }
+
+function gotoSlide(n){
+if(n>current_slide)
+  loadSlide(n,0,function(a,b){slide(%g,a,b)})
+else if(n<current_slide)
+  loadSlide(n,0,function(a,b){slide(%g,a,b)})
+}
+
 </script>"
+      (-.w)
+      w
       (-.w)
       w);
 
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
+  Rbuffer.add_string html (Printf.sprintf "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
   let style=make_defs cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\">\n<![CDATA[\n";
   Rbuffer.add_buffer html style;
-  Rbuffer.add_string html "]]>\n</style></defs><title>";
+  Rbuffer.add_string html "]]>\n</style></defs>";
   Rbuffer.add_string html structure.name;
-  Rbuffer.add_string html "</title></svg></div></body></html>";
+  Rbuffer.add_string html "</svg></div></body></html>";
   html
 
 

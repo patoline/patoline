@@ -18,7 +18,7 @@ let build_font_cache pages=
   let rec make_fonts i l fonts=
     match l with
         []->(
-          if i+1>=Array.length pages then fonts else (
+          if i<(-1) || i+1>=Array.length pages then fonts else (
             make_fonts (i+1) (pages.(i+1)) fonts
           )
         )
@@ -43,6 +43,10 @@ let build_font_cache pages=
         let fonts'=StrMap.add fontName (font,(IntMap.add c (beginning_with_c') fontDict)) fonts in
         make_fonts i s fonts'
       )
+      | Link l::s->
+        make_fonts i s (make_fonts (-2) l.link_contents fonts)
+      | States (a,b)::s->
+        make_fonts i s (make_fonts (-2) a fonts)
       | _::s->make_fonts i s fonts
   in
   let f=make_fonts (-1) [] StrMap.empty in

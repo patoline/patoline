@@ -362,7 +362,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 ) else (
                   let col=gray in
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
-                  Printf.fprintf stderr "endlink ?\n";flush stderr;
                   boxify_scoped { env with fontColor=col }
                     (bB (fun _->[User (BeginLink labl)])::
                        displayname@
@@ -580,7 +579,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 		   page= -1;struct_x=0.;struct_y=0.;substructures=[||]}
                 )
 
-            in
+                  in
             M.output' ~structure:(make_structure structure) (Array.map snd pages) file
           )
         in
