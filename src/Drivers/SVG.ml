@@ -191,15 +191,15 @@ let draw ?fontCache w h contents=
         opened_text:=false
       );
 
-      if l.dest_page<0 then (
-        Rbuffer.add_string svg_buf "<a xlink:href=\"";
-        Rbuffer.add_string svg_buf l.uri;
-        Rbuffer.add_string svg_buf "\">"
-      ) else (
+      if l.is_internal then (
         Rbuffer.add_string svg_buf
           (Printf.sprintf "<a xlink:href=\"#\" onclick=\"gotoSlide(%d)\">"
              l.dest_page
           );
+      ) else (
+        Rbuffer.add_string svg_buf "<a xlink:href=\"";
+        Rbuffer.add_string svg_buf l.uri;
+        Rbuffer.add_string svg_buf "\">"
       );
 
       List.iter output_contents (l.link_contents);
@@ -501,8 +501,9 @@ else if(n<current_slide)
 </script>"
       (-.w)
       w
+      w
       (-.w)
-      w);
+  );
 
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;

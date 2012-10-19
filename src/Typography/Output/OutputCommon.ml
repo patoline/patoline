@@ -60,7 +60,7 @@ type glyph={ glyph_x:float; glyph_y:float; glyph_color: color; glyph_size:float;
              glyph:Fonts.glyph }
 type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
-             uri:string;
+             uri:string;is_internal:bool;
              dest_page:int; dest_x:float; dest_y:float;
              link_contents:contents list}
 

@@ -54,7 +54,7 @@ type link = {
   mutable link_y0 : float;
   mutable link_x1 : float;
   mutable link_y1 : float;
-  uri:string;
+  uri:string;is_internal:bool;
   dest_page : int;
   dest_x : float;
   dest_y : float;

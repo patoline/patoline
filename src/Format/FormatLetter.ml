@@ -178,7 +178,7 @@ module Output=functor(M:Driver)->struct
                       )
                       | User (BeginURILink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                   dest_page=0;dest_x=0.;dest_y=0.;
+                                   dest_page=0;dest_x=0.;dest_y=0.;is_internal=false;
                                    link_contents=[] }
                         in
                         urilinks:=Some link;
@@ -187,7 +187,7 @@ module Output=functor(M:Driver)->struct
                       )
                       | User (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
-                                   dest_page=0;dest_x=0.;dest_y=0.;
+                                   dest_page=0;dest_x=0.;dest_y=0.;is_internal=true;
                                    link_contents=[]
                                  }
                         in
