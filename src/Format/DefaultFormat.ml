@@ -1133,6 +1133,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
           let env, reboot=update_names env1 figs' user' in
+          let env=reset_counters env in
           if i < !max_iterations-1 && reboot && !fixable then (
             resolve (i+1) env
           ) else (

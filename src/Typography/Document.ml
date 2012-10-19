@@ -986,11 +986,6 @@ let draw_boxes env l=
       in
       draw_boxes x y (Link link::dr) s
     )
-    (* | User (Label l)::s->( *)
-    (*   let y0,y1=line_height paragraphs figures line in *)
-    (*   destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations; *)
-    (*   0. *)
-    (* ) *)
     | User EndLink::s->(
       let rec link_contents u l=match l with
           []->[]
@@ -1184,10 +1179,9 @@ let tag str tags=
 
 
 let update_names env figs user=
-  (* let fil=TS.UMap.filter (fun k a->match k with Structure _->true |_->false) in *)
+  let user=UserMap.fold (UserMap.add) user env.user_positions in
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
   let env'={ env with user_positions=user;
-               counters=StrMap.map (fun (l,_)->(l,[])) env.counters;
                names=
       StrMap.fold (fun k (a,b,c) m->try
                      let pos=
@@ -1215,3 +1209,7 @@ let update_names env figs user=
   in
     flush stderr;
     env',!needs_reboot
+
+let reset_counters env=
+  { env with
+    counters=StrMap.map (fun (l,_)->(l,[])) env.counters }

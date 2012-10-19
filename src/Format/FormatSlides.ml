@@ -138,6 +138,14 @@ module Format=functor (D:Document.DocumentStructure)->(
           let reboot=ref false in
           let toc=ref [] in
           let rec typeset_structure path tree env0=
+            (* debug_env env0; *)
+            let env0=
+              let labl=String.concat "_" ("_"::List.map string_of_int path) in
+              { env0 with
+                names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
+                user_positions=UserMap.add (Label labl) { uselessLine with page=List.length !slides } env0.user_positions
+                }
+            in
             if List.length path=1 then (
               match tree with
                   Node n when List.mem_assoc "InTOC" n.node_tags->(
@@ -147,6 +155,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             );
             match tree with
                 Node n when List.mem_assoc "slide" n.node_tags ->(
+                  let env0=n.node_env env0 in
                   let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;
@@ -221,9 +230,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                         List.map (fun (param,parag)->
                           (param, { parag with paragraph=IntMap.find parag.paragraph !par_map })
                         ) (if Array.length opt_pages>0 then opt_pages.(0) else []);
-                      (* let env2,reboot'=update_names env1 figs' user' in *)
-                      (* typeset_states (state+1) (reboot_ || (reboot'&& !fixable)) env2 *)
-                      typeset_states (state+1) reboot_ env1
+
+                      let env2,reboot'=update_names env1 figs' user' in
+                      let labl_exists=
+                        let labl=String.concat "_" ("_"::List.map string_of_int path) in
+                        UserMap.mem (Label labl) env2.user_positions
+                      in
+                      typeset_states (state+1) (reboot_ || (reboot'&& !fixable) || not labl_exists) env2
                     )
                   in
 
@@ -314,7 +327,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
                   slides:=(path,tree,paragraphs0,figures0,figure_trees0,env,opts)::(!slides);
-                  n.node_post_env env0 env'
+                  n.node_post_env env0 env
                 )
               | Node n->
                 n.node_post_env env0 (
@@ -325,11 +338,16 @@ module Format=functor (D:Document.DocumentStructure)->(
               | FigureDef f->f.fig_post_env env0 (f.fig_env env0)
           in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
-          let env=typeset_structure [] tree defaultEnv in
+          let env0=match tree with
+              Node n->n.node_env defaultEnv
+            | Paragraph n->n.par_env defaultEnv
+            | _->defaultEnv
+          in
+          let env=typeset_structure [] tree env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
 
           if i < !max_iterations-1 && !reboot then (
-            resolve (i+1) env
+            resolve (i+1) (reset_counters env)
           ) else (
 
 
