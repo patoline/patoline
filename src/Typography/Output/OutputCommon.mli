@@ -31,19 +31,7 @@ type glyph = {
   glyph_size : float;
   glyph : Fonts.glyph;
 }
-type link = {
-  mutable link_x0 : float;
-  mutable link_y0 : float;
-  mutable link_x1 : float;
-  mutable link_y1 : float;
-  uri:string;
-  dest_page : int;
-  dest_x : float;
-  dest_y : float;
-}
 type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
-
-
 type metadata=
     Contributor
   | Coverage
@@ -61,7 +49,19 @@ type metadata=
   | Title
   | Type
 
-type contents =
+type link = {
+  mutable link_x0 : float;
+  mutable link_y0 : float;
+  mutable link_x1 : float;
+  mutable link_y1 : float;
+  uri:string;
+  dest_page : int;
+  dest_x : float;
+  dest_y : float;
+  link_contents : contents list
+}
+
+and contents =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
   | Link of link

@@ -12,21 +12,21 @@ val make_name : string -> string * string
 val intercalate : 'a -> 'a list -> 'a list
 val dbCite :
   Sqlite3.db ->
-  bool -> string -> (int*'a Typography.Document.content list) list
+  bool -> string -> (int*Typography.Document.content list) list
 val bibitem :
   string -> string
-   -> (int*'a Typography.Document.content list) list
+   -> (int*Typography.Document.content list) list
 val author:string->string->string list
 val authorCite : string -> string -> string
-val cite : string -> Typography.Document.user Typography.Document.content list
+val cite : string -> Typography.Document.content list
 module type Format=sig
   val parameters :
-    Typography.Document.user Typography.Document.environment ->
-    Typography.Document.user Typography.Box.box array array ->
+    Typography.Document.environment ->
+    Typography.Box.box array array ->
     Typography.Box.drawingBox array ->
     Typography.Line.parameters ->
     Typography.Break.figurePosition Typography.Util.IntMap.t ->
-    Typography.Line.line Typography.Document.TS.UMap.t ->
+    Typography.Line.line Typography.Box.UserMap.t ->
     Typography.Line.line -> Typography.Line.line -> Typography.Line.parameters
 end
 module TheBibliography : functor (F:Format)-> functor (D : Typography.Document.DocumentStructure) -> sig end

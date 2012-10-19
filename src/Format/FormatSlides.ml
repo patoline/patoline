@@ -31,7 +31,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     include (Default:module type of Default with module Output:=Default.Output)
 
     let mes=(slidew/.2.)*.phi
-    let defaultEnv:user environment={
+    let defaultEnv:environment={
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
@@ -54,7 +54,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     module type Title = sig
-      val arg1 : (user content list)
+      val arg1 : (content list)
     end
 
     module Env_slide=struct
@@ -141,7 +141,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             if List.length path=1 then (
               match tree with
                   Node n when List.mem_assoc "InTOC" n.node_tags->(
-                    toc:=(n.name,n.displayname,env0)::(!toc)
+                    toc:=(n.name,n.displayname,path,env0)::(!toc)
                   )
                 | _->()
             );
@@ -333,26 +333,42 @@ module Format=functor (D:Document.DocumentStructure)->(
           ) else (
 
 
-            let toc=List.fold_left (fun m (n,dis,env)->
+            (* Dessin du menu en haut de l'écran *)
+
+            let toc=List.fold_left (fun m (n,dis,path,env)->
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-              IntMap.add (List.hd b) (dis,env) m;
+              IntMap.add (List.hd b) (dis,path,env) m;
             ) IntMap.empty !toc
             in
 
             let y_menu=slideh-.env.size in
 
+
+            (* Dessine la table des matières du slide où on est dans l'environnement env0 *)
             let draw_toc env0=
-              let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[0] in
-              let boxes=IntMap.map (fun (displayname,env)->
+              (* Où est-on actuellement ? *)
+              let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[] in
+              let boxes=IntMap.map (fun (displayname,path,env)->
                 let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 let rec prefix u v=match u,v with
-                    [],_->true
+                  | [],_->true
                   | hu::_,hv::_ when hu<>hv->false
                   | _::su,_::sv->prefix su sv
                   | _,[]->false
                 in
-                let col=if (prefix (List.rev b) (List.rev b0)) then white else gray in
-                boxify_scoped { env with fontColor=col } displayname
+                if prefix (List.rev b) (List.rev b0) then (
+                  let col=white in
+                  boxify_scoped { env with fontColor=col } displayname
+                ) else (
+                  let col=gray in
+                  let labl=String.concat "_" ("_"::List.map string_of_int path) in
+                  Printf.fprintf stderr "endlink ?\n";flush stderr;
+                  boxify_scoped { env with fontColor=col }
+                    (bB (fun _->[User (BeginLink labl)])::
+                       displayname@
+                       [bB (fun _->[User EndLink])])
+                )
+
               ) toc
               in
               let total=IntMap.fold (fun _ a m->
@@ -398,6 +414,11 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               !cont
             in
+
+
+
+            (* Dessin du slide complet *)
+
             let draw_slide (path,tree,paragraphs,figures,figure_trees,env,opts)=
               let states=ref [] in
               for st=0 to Array.length opts-1 do
@@ -415,6 +436,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                 page.pageContents<-(List.map (translate (slidew/.8.) (y1-.phi*.(yy1-.yy0))) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
                 let w,h=slidew,slideh in
+                let crosslinks=ref [] in (* (page, link, destination) *)
+                let crosslink_opened=ref false in
+                let destinations=ref StrMap.empty in
+                let urilinks=ref None in
                 for j=0 to Array.length pp-1 do
                   let param,line=pp.(j) in
                   let y=h-.line.height in
@@ -461,6 +486,52 @@ module Format=functor (D:Document.DocumentStructure)->(
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w
                         )
+                        | User (BeginURILink l)->(
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                     dest_page=(-1);dest_x=0.;dest_y=0.;
+                                     link_contents=[] }
+                          in
+                          urilinks:=Some link;
+                          page.pageContents<-Link link::page.pageContents;
+                          0.
+                        )
+                        | User (BeginLink l)->(
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                     dest_page=0;dest_x=0.;dest_y=0.;
+                                     link_contents=[]
+                                   }
+                          in
+                          crosslinks:=(i, link, l) :: !crosslinks;
+                          page.pageContents<-Link link::page.pageContents;
+                          crosslink_opened:=true;
+                          0.
+                        )
+                        | User (Label l)->(
+                          let y0,y1=line_height paragraphs figures line in
+                          destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
+                          0.
+                        )
+                        | User EndLink->(
+                          Printf.fprintf stderr "endlink\n";flush stderr;
+                          let rec link_contents u l=match l with
+                              []->[]
+                            | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+                            | h::s->link_contents (h::u) s
+                          in
+                          page.pageContents<-link_contents [] page.pageContents;
+                          (match !urilinks with
+                              None->(
+                                match !crosslinks with
+                                    []->()
+                                  | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
+                              )
+                            | Some h->(
+                              h.link_x1<-x;
+                              urilinks:=None;
+                            )
+                          );
+                          0.
+                        )
                         | b->box_width comp b
                     in
                     let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
@@ -474,6 +545,8 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             let pages=Array.of_list (List.map draw_slide (List.rev !slides)) in
             let slide_num=ref 0 in
+
+
             let rec make_structure t=
               match t with
                   Node n when List.mem_assoc "slide" n.node_tags ->(

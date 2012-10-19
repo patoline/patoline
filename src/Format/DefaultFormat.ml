@@ -214,7 +214,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         | _->m
       ) last_figures env.normalMeasure
       in
-      TS.UMap.iter (fun k a->
+      UserMap.iter (fun k a->
         match k with
             Footnote _ when a.page=line.page -> incr page_footnotes
           | _->()
@@ -404,7 +404,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           complete params contents
     end
 
-    let defaultEnv:user environment=
+    let defaultEnv:environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=
       	try
@@ -468,7 +468,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           hyphenate=hyphenate;
           counters=StrMap.empty;
           names=StrMap.empty;
-          user_positions=TS.UMap.empty;
+          user_positions=UserMap.empty;
 	  show_boxes=false;
         }
 
@@ -640,7 +640,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
 
-    type 'a tableParams={ widths:'a environment->float array; h_spacing:float; v_spacing:float }
+    type tableParams={ widths:environment->float array; h_spacing:float; v_spacing:float }
 
     let table params tab=
       [ bB (fun env->
@@ -712,13 +712,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                in
                let foot_num=ref (-1) in
                let page_footnotes=ref 1 in
-                 TS.UMap.iter (fun k a->
+                 UserMap.iter (fun k a->
                                  match k with
                                      Footnote (i,_) when i= count -> foot_num:=a.page
                                    | _->()
                               ) (user_positions env);
                  (* Y a-t-il deja des footnotes sur cette page ? *)
-                 TS.UMap.iter (fun k a->
+                 UserMap.iter (fun k a->
                                  match k with
                                      Footnote (i,_) when a.page= !foot_num && i< count ->
                                        incr page_footnotes
@@ -832,7 +832,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     let tiret_w env=phi*.env.size
 
     module type Enumeration=sig
-      val from_counter:int list->user content list
+      val from_counter:int list->content list
     end
     module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
@@ -958,7 +958,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 end)
 
     module type Enumerate_Pattern = sig
-      val arg1 : char * (string -> user content list)
+      val arg1 : char * (string -> content list)
     end
 
     module Env_genumerate = functor (Pat:Enumerate_Pattern) ->
@@ -1005,7 +1005,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       val refType:string
       val counter:string
       val counterLevel:int
-      val display:string->user content list
+      val display:string->content list
     end
     module Env_proof=struct
       let do_begin_env ()=
@@ -1092,10 +1092,10 @@ module Format=functor (D:Document.DocumentStructure)->(
       open OutputCommon
       module type Driver=OutputPaper.Driver
       type output={
-        mutable format:user Box.box array array->(user Document.tree*user Document.cxt) array->
-                       Box.drawingBox array->(user Document.tree*user Document.cxt) array->
+        mutable format:Box.box array array->(Document.tree*Document.cxt) array->
+                       Box.drawingBox array->(Document.tree*Document.cxt) array->
                        (Line.parameters*Line.line) list -> OutputPaper.page;
-        mutable pageNumbers:OutputPaper.page->user environment->int->unit
+        mutable pageNumbers:OutputPaper.page->environment->int->unit
       }
       let max_iterations=ref 3
       let outputParams={
@@ -1229,13 +1229,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                         w
                       )
                       | User (BeginURILink l)->(
-                        urilinks:=Some { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                         dest_page=0;dest_x=0.;dest_y=0. };
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                   dest_page=(-1);dest_x=0.;dest_y=0.;
+                                   link_contents=[] }
+                        in
+                        urilinks:=Some link;
+                        page.pageContents<-Link link::page.pageContents;
                         0.
                       )
                       | User (BeginLink l)->(
-                        crosslinks:=(i, { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
-                                          dest_page=0;dest_x=0.;dest_y=0. }, l) :: !crosslinks;
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                   dest_page=0;dest_x=0.;dest_y=0.;
+                                   link_contents=[]
+                                 }
+                        in
+                        crosslinks:=(i, link, l) :: !crosslinks;
+                        page.pageContents<-Link link::page.pageContents;
                         crosslink_opened:=true;
                         0.
                       )
@@ -1245,6 +1254,12 @@ module Format=functor (D:Document.DocumentStructure)->(
                         0.
                       )
                       | User EndLink->(
+                        let rec link_contents u l=match l with
+                            []->[]
+                          | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+                          | h::s->link_contents (h::u) s
+                        in
+                        page.pageContents<-link_contents [] page.pageContents;
                         (match !urilinks with
                             None->(
                               match !crosslinks with

@@ -31,7 +31,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     include (Default:module type of Default with module Output:=Default.Output)
 
     let mes=(slidew/.2.)*.phi
-    let defaultEnv:user environment={
+    let defaultEnv:environment={
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
@@ -48,7 +48,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     module type Title = sig
-      val arg1 : (user content list)
+      val arg1 : (content list)
     end
 
     module Env_slide=struct

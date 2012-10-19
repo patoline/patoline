@@ -22,25 +22,25 @@ type ('a,'b) noad= { mutable nucleus: 'b;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
                 mutable subscript_right:'a math list; mutable superscript_right:'a math list }
 
-and 'a nucleus = 'a Document.environment -> Mathematical.style ->  'a box list
-and 'a nucleuses = ('a Document.environment -> Mathematical.style ->  'a box list) list
+and 'a nucleus = Document.environment -> Mathematical.style ->  box list
+and 'a nucleuses = (Document.environment -> Mathematical.style ->  box list) list
 
 and 'a binary_type =
     Invisible
   | Normal of bool * ('a,'a nucleus) noad * bool (* the boolean remove spacing at left or right when true *)
 
 and 'a binary= { bin_priority:int; bin_drawing:'a binary_type; bin_left:'a math list; bin_right:'a math list }
-and 'a fraction= { numerator:'a math list; denominator:'a math list; line: 'a Document.environment->style->OutputCommon.path_parameters }
+and 'a fraction= { numerator:'a math list; denominator:'a math list; line: Document.environment->style->OutputCommon.path_parameters }
 and 'a operator= { op_noad:('a,'a nucleuses) noad ; op_limits:bool; op_left_contents:'a math list; op_right_contents:'a math list }
 and 'a math=
     Ordinary of ('a,'a nucleus) noad 
   | Glue of drawingBox
-  | Env of ('a Document.environment->'a Document.environment)
-  | Scope of ('a Document.environment->Mathematical.style->'a math list)
+  | Env of (Document.environment->Document.environment)
+  | Scope of (Document.environment->Mathematical.style->'a math list)
   | Binary of 'a binary
   | Fraction of 'a fraction
   | Operator of 'a operator
-  | Decoration of ('a Document.environment -> Mathematical.style -> 'a box list -> 'a box list)*('a math list)
+  | Decoration of (Document.environment -> Mathematical.style -> box list -> box list)*('a math list)
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
 

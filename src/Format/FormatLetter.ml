@@ -16,7 +16,7 @@ module Format=functor (D:DocumentStructure)->struct
   module Default=DefaultFormat.Format(D)
   include Default
 
-  let subject_text: user content list ref = ref (toggleItalic [tT "Subject:";tT" "]) 
+  let subject_text: content list ref = ref (toggleItalic [tT "Subject:";tT" "]) 
 
   let rec lines s=try
     let idx=String.index s '\n' in
@@ -176,34 +176,49 @@ module Output=functor(M:Driver)->struct
                           (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
                           w
                       )
-                    | User (BeginURILink l)->(
-                        urilinks:=Some { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                         dest_page=0;dest_x=0.;dest_y=0. };
+                      | User (BeginURILink l)->(
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                   dest_page=0;dest_x=0.;dest_y=0.;
+                                   link_contents=[] }
+                        in
+                        urilinks:=Some link;
+                        page.pageContents<-Link link::page.pageContents;
                         0.
                       )
-                    | User (BeginLink l)->(
-                        crosslinks:=(i, { link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
-                                          dest_page=0;dest_x=0.;dest_y=0. }, l) :: !crosslinks;
+                      | User (BeginLink l)->(
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
+                                   dest_page=0;dest_x=0.;dest_y=0.;
+                                   link_contents=[]
+                                 }
+                        in
+                        crosslinks:=(i, link, l) :: !crosslinks;
+                        page.pageContents<-Link link::page.pageContents;
                         crosslink_opened:=true;
                         0.
                       )
-                    | User (Label l)->(
+                      | User (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
-                          destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
-                          0.
+                        destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
+                        0.
                       )
-                    | User EndLink->(
+                      | User EndLink->(
+                        let rec link_contents u l=match l with
+                            []->[]
+                          | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+                          | h::s->link_contents (h::u) s
+                        in
+                        page.pageContents<-link_contents [] page.pageContents;
                         (match !urilinks with
-                             None->(
-                               match !crosslinks with
-                                   []->()
-                                 | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
-                             )
-                           | Some h->(
-                               h.link_x1<-x;
-                               page.pageContents<-Link h::page.pageContents;
-                               urilinks:=None;
-                             )
+                            None->(
+                              match !crosslinks with
+                                  []->()
+                                | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
+                            )
+                          | Some h->(
+                            h.link_x1<-x;
+                            page.pageContents<-Link h::page.pageContents;
+                            urilinks:=None;
+                          )
                         );
                         0.
                       )

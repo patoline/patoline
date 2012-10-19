@@ -893,7 +893,7 @@ end
     (* 	  let bb' = (x0,y0,x1,h) in *)
     (* 	  { info with bb = bb' })}) *)
 
-    let (rectangle : user Document.environment -> Transfo.Style.t),
+    let (rectangle : Document.environment -> Transfo.Style.t),
       shape_pet = 
       Pet.register "node shape" 
 	~depends:[inner_sep_pet;outer_sep_pet;
@@ -977,7 +977,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    anchors = anchors
 	  })})
 
-    let (default_shape : user Document.environment -> Transfo.Style.t) = fun env -> rectangle env
+    let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env
 
     (* let (default_shape : user Document.environment -> Transfo.Style.t), *)
     (*   default_shape_pet = *)
@@ -1698,7 +1698,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let bendLeft = bendOf
       let bendRight angle = bendOf (-. angle)
 
-      let (paramsOf : user Document.environment -> Transfo.Style.t),
+      let (paramsOf : Document.environment -> Transfo.Style.t),
 	params_pet = Pet.register ~codepends:[clip_pet] "params"
 	(fun pet params ->
 	  { pet = pet ; transfo = (fun transfos edge_info ->
@@ -1745,7 +1745,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
 
-    module Env_Diagram (Args : sig val env : user environment end) = struct
+    module Env_Diagram (Args : sig val env : environment end) = struct
       let stack = ref []
       let env = Args.env
 

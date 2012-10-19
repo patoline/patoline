@@ -4,19 +4,18 @@ open Fonts.FTypes
 open Bezier
 open CamomileLibrary
 
-type 'a box=
+
+type box=
     GlyphBox of glyph
-  | Kerning of 'a box kerningBox
+  | Kerning of box kerningBox
   | Glue of drawingBox
   | Drawing of drawingBox
-  | Hyphen of 'a hyphenBox
-  | User of 'a
+  | Hyphen of hyphenBox
+  | User of user
   | BeginFigure of int
   | FlushFigure of int
   | Parameters of (Line.parameters->Line.parameters)
   | Empty
-
-and 'a kerningBox='a Fonts.FTypes.kerningBox
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                    drawing_max_width:float; drawing_y0:float; drawing_y1:float;
@@ -24,8 +23,23 @@ and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                    drawing_contents:float -> OutputCommon.contents list }
 
 
-and 'a hyphenBox= { hyphen_normal:'a box array; hyphenated:('a box array* 'a box array) array }
+and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) array }
 
+
+
+(** C'est là qu'on veut des variants polymorphes, mais caml ne veut pas de mon module TS polymorphe en user *)
+and user=
+    Label of string
+  | FigureRef of int
+  | Pageref of string
+  | Structure of int list
+  | Footnote of int*drawingBox
+  | BeginURILink of string
+  | BeginLink of string
+  | EndLink
+  | AlignmentMark
+
+module UserMap=Map.Make(struct type t=user let compare=compare end)
 open Line
 
 let drawing ?offset:(offset=0.) cont=
@@ -117,37 +131,65 @@ and boxes_interval boxes=
     (!a,!b,!c)
 
 let draw_boxes l=
-  let rec draw_box x y dr=function
-      Kerning kbox ->(
-        let dr',w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr kbox.kern_contents in
-          dr', w+.kbox.advance_width
+  let rec draw_boxes x y dr l=match l with
+      []->dr,x
+    | Kerning kbox::s ->(
+        let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
+        draw_boxes (x'+.kbox.advance_width) y dr' s
       )
-    | Hyphen h->(
-        Array.fold_left (fun (dr',x') box->
-                           let dr'',w=draw_box (x+.x') y dr' box in
-                             dr'',x'+.w
-                        ) (dr,0.) h.hyphen_normal
-      )
-    | GlyphBox a->(
-        ((OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y }) :: dr),
-        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
-      )
-    | Glue g
-    | Drawing g ->(
-        let w=g.drawing_nominal_width in
-          (List.map (translate (x) (y)) (g.drawing_contents w)) @ dr, w
-      )
-    | b->dr,(box_width 0. b)
-  in
-  let rec make_line x y res=function
-      []->res
-    | h::s->(
-        let dr,w=draw_box x y res h in
-          make_line (x+.w) y dr s
-      )
-  in
-    make_line 0. 0. [] l
+    | Hyphen h::s->(
+      let dr1,w1=Array.fold_left (fun (dr',x') box->
+        let dr'',x''=draw_boxes (x+.x') y dr' [box] in
+        dr'',x''
+      ) (dr,0.) h.hyphen_normal
+      in
+      draw_boxes (x+.w1) y dr1 s
+    )
+    | GlyphBox a::s->(
+      let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
+      let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
+      draw_boxes (x+.w) y (box::dr) s
+    )
+    | Glue g::s
+    | Drawing g ::s->(
+      let w=g.drawing_nominal_width in
+      let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
+      draw_boxes (x+.w) y (box@dr) s
+    )
+    | User (BeginURILink l)::s->(
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 dest_page=(-1);dest_x=0.;dest_y=0.;
+                 link_contents=[] }
+      in
+      draw_boxes x y (Link link::dr) s
+    )
+    | User (BeginLink l)::s->(
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 dest_page=0;dest_x=0.;dest_y=0.;
+                 link_contents=[]
+               }
+      in
+      draw_boxes x y (Link link::dr) s
+    )
+    (* | User (Label l)::s->( *)
+    (*   let y0,y1=line_height paragraphs figures line in *)
+    (*   destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations; *)
+    (*   0. *)
+    (* ) *)
+    | User EndLink::s->(
+      let rec link_contents u l=match l with
+          []->[]
+        | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+        | h::s->link_contents (h::u) s
+      in
+      draw_boxes x y (link_contents [] dr) s
+    )
 
+    | b::s->
+      let _,w,_=box_interval b in
+      draw_boxes (x+.w) y dr s
+  in
+  fst (draw_boxes 0. 0. [] l)
 
 let rec lower_y x=match x with
     GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.

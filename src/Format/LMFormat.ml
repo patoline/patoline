@@ -114,7 +114,7 @@ module MakeFormat (D:Document.DocumentStructure)
 
     include Default
 
-    let defaultEnv:user environment=
+    let defaultEnv:environment=
       let f,str,subst,pos=selectFont lmroman Regular false in
       let hyphenate=
       	try
@@ -207,7 +207,7 @@ module MakeFormat (D:Document.DocumentStructure)
              "_figure",(-1,[0]);
              "figure",(2,[0])];
           names=StrMap.empty;
-          user_positions=TS.UMap.empty;
+          user_positions=UserMap.empty;
 	  show_boxes=false;
         }
 

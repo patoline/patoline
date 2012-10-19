@@ -43,7 +43,7 @@ let centered parameters str tree _=
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
-                      (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
+                      (1+(UserMap.find (Label labl) (user_positions env0)).page)
                     with Not_found -> 0
                     in
                     let fenv env={ env with
@@ -129,7 +129,7 @@ let these parameters str tree max_level=
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   let page=try
-                    (1+(TS.UMap.find (Label labl) (user_positions env0)).page)
+                    (1+(UserMap.find (Label labl) (user_positions env0)).page)
                   with Not_found -> 0
                   in
                   let env'=add_features [Fonts.Opentype.oldStyleFigures] env in

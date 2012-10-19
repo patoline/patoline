@@ -255,8 +255,8 @@ let author bib auth=
 open Util
 open Box
 exception No_bib of string
-let bib:((int*user content list) IntMap.t) ref=ref IntMap.empty
-let revbib:((int*user content list) IntMap.t) ref=ref IntMap.empty
+let bib:((int*content list) IntMap.t) ref=ref IntMap.empty
+let revbib:((int*content list) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
 let bibfile= ref "biblio.bibi"
 
@@ -312,7 +312,7 @@ open Box
 open Line
 
 module type Format=sig
-  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> line -> parameters
+  val parameters: environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters
 end
 
 module TheBibliography (F:Format) (D : DocumentStructure) = struct

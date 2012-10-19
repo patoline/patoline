@@ -38,18 +38,6 @@ let make_ligature l gl x=
 type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
 
 
-(** C'est là qu'on veut des variants polymorphes, mais caml ne veut pas de mon module TS polymorphe en user *)
-type user=
-    Label of string
-  | FigureRef of int
-  | Pageref of string
-  | Structure of int list
-  | Footnote of int*drawingBox
-  | BeginURILink of string
-  | BeginLink of string
-  | EndLink
-  | AlignmentMark
-
 (** Module de typesetting Ce module contient une map des boîtes
     user, mais ne fait aucune hypothèse de plus sur le type
     user.*)
@@ -85,10 +73,6 @@ module TS=Break.Make
              if a.height>b.height then 1 else
                0
      let hash a=Hashtbl.hash a
-   end)
-  (struct
-     type t=user
-     let compare=compare
    end)
 
 
@@ -137,39 +121,39 @@ module Mathematical=struct
 end
 
 (** Structure du document. Un [node] est un nœud interne de l'arbre. *)
-type 'a node={
+type node={
   name:string;
-  displayname:'a content list;
+  displayname:content list;
   mutable boxified_displayname:contents list;
-  children:'a tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
+  children:tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
   node_tags:(string*string) list;
-  node_env:'a environment -> 'a environment; (** Changement d'environnement quand on rentre dans le nœud *)
-  node_post_env:'a environment -> 'a environment -> 'a environment;(** Changement d'environnement quand on en sort *)
+  node_env:environment -> environment; (** Changement d'environnement quand on rentre dans le nœud *)
+  node_post_env:environment -> environment -> environment;(** Changement d'environnement quand on en sort *)
   node_states:Util.IntSet.t;
   mutable node_paragraph:int;
 }
-and 'a paragraph={
-  par_contents:'a content list;
-  par_env:'a environment -> 'a environment;
-  par_post_env:'a environment -> 'a environment -> 'a environment;
-  par_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> line -> parameters;
-  par_badness: 'a environment -> 'a box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> Line.line -> 'a Box.box array -> int -> Line.parameters -> float -> float;
-  par_completeLine:'a environment -> 'a box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> bool -> line list;
+and paragraph={
+  par_contents:content list;
+  par_env:environment -> environment;
+  par_post_env:environment -> environment -> environment;
+  par_parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters;
+  par_badness: environment -> box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> Box.box array -> int -> Line.parameters -> float -> Line.line -> Box.box array -> int -> Line.parameters -> float -> float;
+  par_completeLine:environment -> box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line UserMap.t -> line -> bool -> line list;
   par_states:Util.IntSet.t;
   mutable par_paragraph:int
 }
-and 'a figuredef={
-  fig_contents:'a environment->drawingBox;
-  fig_env:'a environment -> 'a environment;
-  fig_post_env:'a environment -> 'a environment -> 'a environment;
-  fig_parameters:'a environment -> 'a box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line TS.UMap.t -> line -> line -> parameters
+and figuredef={
+  fig_contents:environment->drawingBox;
+  fig_env:environment -> environment;
+  fig_post_env:environment -> environment -> environment;
+  fig_parameters:environment -> box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line UserMap.t -> line -> line -> parameters
 }
-and 'a tree=
-    Node of 'a node
-  | Paragraph of 'a paragraph
-  | FigureDef of 'a figuredef
+and tree=
+    Node of node
+  | Paragraph of paragraph
+  | FigureDef of figuredef
 
-and 'a environment={
+and environment={
   fontFamily:fontFamily;
   fontMonoFamily:fontFamily;
   fontMonoRatio:float; (* size adjustment of the two previous family *)
@@ -186,27 +170,27 @@ and 'a environment={
   normalMeasure:float;
   normalLead:float;
   normalLeftMargin:float;
-  par_indent:'a box list;
+  par_indent:box list;
   hyphenate:string->(string*string) array;
   word_substitutions:string->string;
   substitutions:glyph_id list -> glyph_id list;
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
-  user_positions:line TS.UMap.t;
+  user_positions:line UserMap.t;
   show_boxes:bool;
 }
 
 (** {3 Contenu} *)
 
-and 'a content=
-    B of ('a environment->'a box list) * 'a box list option ref
+and content=
+    B of (environment->box list) * box list option ref
                                               (** Une liste de boîtes, dépendante de l'environnement *)
-  | C of ('a environment->'a content list)
-  | T of string*('a box list IntMap.t option) ref        (** Un texte simple *)
+  | C of (environment->content list)
+  | T of string*(box list IntMap.t option) ref        (** Un texte simple *)
   | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
-  | Env of ('a environment -> 'a environment) (** Une modification de l'environnement (par exemple des compteurs *)
-  | Scoped of ('a environment->'a environment)*('a content list) (** Comme son nom et son type l'indiquent *)
+  | Env of (environment -> environment) (** Une modification de l'environnement (par exemple des compteurs *)
+  | Scoped of (environment->environment)*(content list) (** Comme son nom et son type l'indiquent *)
 
 let bB f = B(f,ref None)
 let tT f = T(f,ref None)
@@ -264,7 +248,7 @@ let tags=function
    C'est un arbre, avec du contenu texte à chaque nœud. *)
 
 
-let empty:user node=
+let empty:node=
   { name="";
     node_tags=[];
     displayname = []; boxified_displayname=[];
@@ -277,7 +261,7 @@ let empty:user node=
     node_states=IntSet.empty;
     node_paragraph=0 }
 
-type 'a cxt=(int*'a tree) list
+type cxt=(int*tree) list
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
@@ -755,7 +739,7 @@ let image ?width:(width=0.) ?height:(height=0.) imageFile env=
   img
 
 #else
-let image ?width:(width=0.) ?height:(height=0.) (_:string) (_:'a environment)=
+let image ?width:(width=0.) ?height:(height=0.) (_:string) (_:environment)=
   {
     drawing_min_width=0.;
     drawing_max_width=0.;
@@ -774,7 +758,7 @@ let includeGraphics ?width:(width=0.) ?height:(height=0.) imageFile=
 
 (** Comment on cache des trucs à ocamldoc mais pas à caml ? Ça pourrait être utilisé ici *)
 let sources=ref StrMap.empty
-let rStdGlue:(float*user box) ref=ref (0.,glue 0. 0. 0.)
+let rStdGlue:(float*box) ref=ref (0.,glue 0. 0. 0.)
 
 (* let ambientBuf=ref ([||],0) *)
 (** Fabrique une glue à partir d'une espace en unicode *)
@@ -954,22 +938,22 @@ let draw env x=draw_boxes (boxify_scoped env x)
 
 
 module type DocumentStructure=sig
-  val structure:((user) tree*(int*(user) tree) list) ref
+  val structure:(tree*(int*tree) list) ref
   val fixable:bool ref
 end
 module type Format=sig
-  val defaultEnv:user environment
-  val postprocess_tree:(user) tree->(user) tree
+  val defaultEnv:environment
+  val postprocess_tree:tree->tree
   val title :
-    (user tree *
+    (tree *
        (IntMap.key *
-          user tree)
+          tree)
             list)
            ref ->
     ?label:'a ->
     ?extra_tags:(string * string) list ->
-    user content list -> bool
-  val parameters:user environment -> user box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line TS.UMap.t -> line -> parameters
+    content list -> bool
+  val parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> parameters
 end
 
 
@@ -1141,7 +1125,7 @@ let update_names env figs user=
                               )
                          )
                        else
-                         TS.UMap.find (Label k) user
+                         UserMap.find (Label k) user
                      in
                        if pos<>c && b<>"_" then (
                          Printf.fprintf stderr "reboot : position of %S changed\n" k

@@ -1,7 +1,7 @@
 val v_badness :
   float ->
-  'a Box.box array ->
+  Box.box array ->
   int ->
   Line.parameters ->
-  float -> 'b Box.box array -> int -> Line.parameters -> float -> float
-val h_badness : 'a Box.box array array -> float -> Line.line -> float -> float
+  float -> Box.box array -> int -> Line.parameters -> float -> float
+val h_badness : Box.box array array -> float -> Line.line -> float -> float

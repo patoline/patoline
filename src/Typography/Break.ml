@@ -24,10 +24,8 @@ module type Line=sig
   val hash:t->int
 end
 
-module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
+module Make (L:Line with type t=Line.line)=(
   struct
-    module User=User
-    module UMap=New_map.Make(User)
     module LineMap=New_map.Make (L)
     module ColMap=New_map.Make (
       struct
@@ -37,7 +35,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
 
     module H=Weak.Make(
       struct
-        type t=L.t*float*TypoLanguage.message*parameters*float*(t option)*(figurePosition IntMap.t)*L.t UMap.t
+        type t=L.t*float*TypoLanguage.message*parameters*float*(t option)*(figurePosition IntMap.t)*L.t UserMap.t
         let equal (a,_,_,_,_,_,_,_) (b,_,_,_,_,_,_,_)=(L.compare a b)==0
         let hash (a,_,_,_,_,_,_,_)=L.hash a
       end)
@@ -89,7 +87,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
       close_out f
 
     let typeset ~completeLine ~figures ~figure_parameters ~parameters ~badness paragraphs=
-      if Array.length paragraphs=0 then ([],[||],IntMap.empty,UMap.empty) else begin
+      if Array.length paragraphs=0 then ([],[||],IntMap.empty,UserMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
@@ -145,8 +143,8 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
       let colision_cache=ref ColMap.empty in
       let endNode=ref None in
 
-      let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UMap.empty uselessLine uselessLine in
-      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,0.,None,IntMap.empty,UMap.empty) in
+      let first_parameters=parameters.(0) paragraphs figures default_params IntMap.empty UserMap.empty uselessLine uselessLine in
+      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,0.,None,IntMap.empty,UserMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -161,7 +159,7 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
           (* On commence par chercher la première vraie boite après node *)
           let register node nextNode badness log next_params comp=
             let nextUser=fold_left_line paragraphs (fun u box->match box with
-                                                        User uu->UMap.add uu nextNode u
+                                                        User uu->UserMap.add uu nextNode u
                                                       | _->u) lastUser nextNode
             in
             let add_fig k a m=try
@@ -575,9 +573,9 @@ module Make (L:Line with type t=Line.line) (User:Map.OrderedType)=(
         makePages ln;
         (log, Array.map (List.rev) pages, figs0,user0)
       with
-          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UMap.empty) else (
+          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UserMap.empty) else (
             Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
-            [],[||],IntMap.empty,UMap.empty
+            [],[||],IntMap.empty,UserMap.empty
           )
       end
   end)

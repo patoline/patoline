@@ -180,6 +180,17 @@ let draw ?fontCache w h contents=
       Rbuffer.add_string svg_buf "\" />\n";
     )
     | States (a,b)->List.iter output_contents a
+    | Link l->(
+      (if l.dest_page<0 then
+          Rbuffer.add_string svg_buf "<a xlink:href=\"\">"
+       else (
+         Rbuffer.add_string svg_buf "<a xlink:href=\"";
+         Rbuffer.add_string svg_buf l.uri;
+         Rbuffer.add_string svg_buf "\">")
+      );
+      (* List.iter output_contents l.link_contents; *)
+      Rbuffer.add_string svg_buf "</a>";
+    )
     | _->()
   in
   List.iter output_contents contents;

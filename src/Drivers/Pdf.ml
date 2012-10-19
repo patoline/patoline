@@ -391,7 +391,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                     Rbuffer.add_string pageBuf "B "
                 )
           )
-        | Link l->pageLinks:= l:: !pageLinks
+        | Link l->(
+          pageLinks:= l:: !pageLinks;
+          List.iter output_contents l.link_contents
+        )
         | Image i->(
 #ifdef CAMLIMAGES
             pageImages:=i::(!pageImages);
