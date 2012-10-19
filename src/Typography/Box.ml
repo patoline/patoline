@@ -134,16 +134,16 @@ let draw_boxes l=
   let rec draw_boxes x y dr l=match l with
       []->dr,x
     | Kerning kbox::s ->(
-        let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
-        draw_boxes (x'+.kbox.advance_width) y dr' s
-      )
+      let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
+      draw_boxes (x'+.kbox.advance_width) y dr' s
+    )
     | Hyphen h::s->(
       let dr1,w1=Array.fold_left (fun (dr',x') box->
-        let dr'',x''=draw_boxes (x+.x') y dr' [box] in
+        let dr'',x''=draw_boxes x' y dr' [box] in
         dr'',x''
-      ) (dr,0.) h.hyphen_normal
+      ) (dr,x) h.hyphen_normal
       in
-      draw_boxes (x+.w1) y dr1 s
+      draw_boxes w1 y dr1 s
     )
     | GlyphBox a::s->(
       let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
@@ -179,7 +179,7 @@ let draw_boxes l=
     | User EndLink::s->(
       let rec link_contents u l=match l with
           []->[]
-        | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+        | (Link h)::s->(Link { h with link_contents=u })::s
         | h::s->link_contents (h::u) s
       in
       draw_boxes x y (link_contents [] dr) s

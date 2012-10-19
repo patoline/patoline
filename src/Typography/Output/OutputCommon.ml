@@ -74,8 +74,11 @@ and contents=
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
   | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)
-  | Link l -> Link { l with link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
-                       link_x1=l.link_x1+.x; link_y1=l.link_y1+.y }
+  | Link l -> Link { l with
+    link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
+    link_x1=l.link_x1+.x; link_y1=l.link_y1+.y;
+    link_contents=List.map (translate x y) l.link_contents
+  }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
   | States (a,b)->States ((List.map (translate x y) a), b)
 
@@ -83,8 +86,11 @@ let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
   | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha },
                        List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
-  | Link l -> Link { l with link_x0=l.link_x0*.alpha; link_y0=l.link_y0*.alpha;
-                       link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha }
+  | Link l -> Link { l with
+    link_x0=l.link_x0*.alpha; link_y0=l.link_y0*.alpha;
+    link_x1=l.link_x1*.alpha; link_y1=l.link_y1*.alpha;
+    link_contents=List.map (resize alpha) l.link_contents
+  }
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
   | States (a,b)->States ((List.map (resize alpha) a), b)
@@ -131,6 +137,7 @@ let bounding_box_opt opt l=
           (max y1 (i.image_y+.i.image_height)) s
 
     | States (a,b)::s->bb x0 y0 x1 y1 (a@s)
+    | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
 
     | _::s -> bb x0 y0 x1 y1 s
   in
