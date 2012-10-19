@@ -73,7 +73,6 @@ val box_width : float -> box -> float
 val box_size : box -> float
 val box_interval : box -> float * float * float
 val boxes_interval : box array -> float * float * float
-val draw_boxes : box list -> OutputCommon.contents list
 val lower_y : box -> float
 val upper_y : box -> float
 val knuth_h_badness : float -> float -> float

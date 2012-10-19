@@ -76,6 +76,9 @@ module TS=Break.Make
    end)
 
 
+
+
+
 module Mathematical=struct
   type env={
     mathsFont:Fonts.font Lazy.t;
@@ -847,7 +850,6 @@ let mappend m x=
 
 module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
 
-
 (** La sémantique de cette fonction par rapport aux espaces n'est pas
     évidente. S'il n'y a que des espaces, seul le dernier est pris en
     compte. Sinon, le dernier de la suite d'espaces entre deux mots
@@ -934,7 +936,82 @@ let boxify_scoped env x=
   let _=boxify buf nbuf (ref false) env x in
     Array.to_list (Array.sub !buf 0 !nbuf)
 
-let draw env x=draw_boxes (boxify_scoped env x)
+
+let draw_boxes env l=
+  let rec draw_boxes x y dr l=match l with
+      []->dr,x
+    | Kerning kbox::s ->(
+      let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
+      draw_boxes (x'+.kbox.advance_width) y dr' s
+    )
+    | Hyphen h::s->(
+      let dr1,w1=Array.fold_left (fun (dr',x') box->
+        let dr'',x''=draw_boxes x' y dr' [box] in
+        dr'',x''
+      ) (dr,x) h.hyphen_normal
+      in
+      draw_boxes w1 y dr1 s
+    )
+    | GlyphBox a::s->(
+      let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
+      let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
+      draw_boxes (x+.w) y (box::dr) s
+    )
+    | Glue g::s
+    | Drawing g ::s->(
+      let w=g.drawing_nominal_width in
+      let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
+      draw_boxes (x+.w) y (box@dr) s
+    )
+    | User (BeginURILink l)::s->(
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 dest_page=(-1);dest_x=0.;dest_y=0.;
+                 link_contents=[] }
+      in
+      draw_boxes x y (Link link::dr) s
+    )
+    | User (BeginLink l)::s->(
+      let dest_page=
+        try
+          let line=UserMap.find (Label l) env.user_positions in
+          line.page
+        with
+            Not_found->(-1)
+      in
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 dest_page=dest_page;
+                 dest_x=0.;dest_y=0.;
+                 link_contents=[]
+               }
+      in
+      draw_boxes x y (Link link::dr) s
+    )
+    (* | User (Label l)::s->( *)
+    (*   let y0,y1=line_height paragraphs figures line in *)
+    (*   destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations; *)
+    (*   0. *)
+    (* ) *)
+    | User EndLink::s->(
+      let rec link_contents u l=match l with
+          []->[]
+        | (Link h)::s->(Link { h with link_contents=u })::s
+        | h::s->link_contents (h::u) s
+      in
+      draw_boxes x y (link_contents [] dr) s
+    )
+
+    | b::s->
+      let _,w,_=box_interval b in
+      draw_boxes (x+.w) y dr s
+  in
+  fst (draw_boxes 0. 0. [] l)
+
+
+
+let draw env x=draw_boxes env (boxify_scoped env x)
+
+
+
 
 
 module type DocumentStructure=sig
@@ -1006,7 +1083,7 @@ let flatten env0 fixable str=
               env_.counters }
           in
           s.node_paragraph <- List.length !paragraphs;
-          s.boxified_displayname <- draw_boxes (boxify_scoped env s.displayname);
+          s.boxified_displayname <- draw_boxes env (boxify_scoped env s.displayname);
           let flushes'=ref [] in
           let flat_children k a (is_first,indent, env1)=match a with
               Paragraph p->(

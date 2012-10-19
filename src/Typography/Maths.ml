@@ -282,7 +282,7 @@ let rec draw env_stack mlist=
               n.subscript_right<>[] ||
               n.subscript_left<>[] then (
 
-		let box_nucleus = draw_boxes nucleus in
+		let box_nucleus = draw_boxes env nucleus in
                 let x0,y0,x1,y1=bounding_box box_nucleus in
                 let is_letter=
                   match nucleus with
@@ -321,10 +321,10 @@ let rec draw env_stack mlist=
                 in
 
                 let sub_env=drop (List.length env_stack-1) env_stack in
-                let a=draw_boxes (draw (superStyle style sub_env) n.superscript_right) in
-                let b=draw_boxes (draw (superStyle style sub_env) n.superscript_left) in
-                let c=draw_boxes (draw (subStyle style sub_env) n.subscript_right) in
-                let d=draw_boxes (draw (subStyle style sub_env) n.subscript_left) in
+                let a=draw_boxes env (draw (superStyle style sub_env) n.superscript_right) in
+                let b=draw_boxes env (draw (superStyle style sub_env) n.superscript_left) in
+                let c=draw_boxes env (draw (subStyle style sub_env) n.subscript_right) in
+                let d=draw_boxes env (draw (subStyle style sub_env) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
                 let bb=Array.map (fun l->bounding_box [Path (OutputCommon.default, [Array.of_list l])]) bezier in
 
@@ -435,8 +435,8 @@ let rec draw env_stack mlist=
 	  in
 	  let bin_left = draw env_stack b.bin_left in
 	  let bin_right = draw env_stack b.bin_right in
-	  let box_left = draw_boxes bin_left in
-	  let box_right = draw_boxes bin_right in
+	  let box_left = draw_boxes env bin_left in
+	  let box_right = draw_boxes env bin_right in
           let (x0_r,y0_r,x1_r,y1_r)=bounding_box box_right in
           let (x0_l,y0_l,x1_l,y1_l)=bounding_box box_left in
 	  let m_l = (x0_l -. x1_l)/.2.0 in
@@ -465,7 +465,7 @@ let rec draw env_stack mlist=
 		let space = (mathsEnv.mathsSize*.env.size)
 		  *. (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
 		let op = draw env_stack [Ordinary op] in
-		let box_op = draw_boxes op in
+		let box_op = draw_boxes env op in
 		let (x0,_,x1,_) = bounding_box_full box_op in
 		assert (x0 <= x1);
 		let (x0',_,x1',_) = bounding_box_kerning box_op in
@@ -525,8 +525,8 @@ let rec draw env_stack mlist=
           mathsEnv.mathsSize*.env.size*.(Fonts.glyph_y1 x +. Fonts.glyph_y0 x +.ln.lineWidth)/.2000.
         in
 
-        let ba=draw_boxes (draw (numeratorStyle style env_stack) f.numerator) in
-        let bb=draw_boxes (draw (denominatorStyle style env_stack) f.denominator) in
+        let ba=draw_boxes env (draw (numeratorStyle style env_stack) f.numerator) in
+        let bb=draw_boxes env (draw (denominatorStyle style env_stack) f.denominator) in
           let x0a,y0a,x1a,y1a=bounding_box ba in
           let x0b,y0b,x1b,y1b=bounding_box bb in
           let wa=x1a-.x0a in
@@ -558,8 +558,8 @@ let rec draw env_stack mlist=
 
           let check_inf x=if x= -.infinity || x=infinity then 0. else x in
 
-          let left=draw_boxes (draw env_stack op.op_left_contents) in
-          let right=draw_boxes (draw env_stack op.op_right_contents) in
+          let left=draw_boxes env (draw env_stack op.op_left_contents) in
+          let right=draw_boxes env (draw env_stack op.op_right_contents) in
           let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
           let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
                                      check_inf y0_r_,
@@ -582,7 +582,7 @@ let rec draw env_stack mlist=
 	    let ll = op.op_noad.nucleus in
 	    let lc = List.map (fun left ->
 	      let left' = left env style in
-	      let left'=draw_boxes left' in
+	      let left'=draw_boxes env left' in
 	      left, bounding_box left') ll
 	    in
 	    let rec fn = function
@@ -611,11 +611,11 @@ let rec draw env_stack mlist=
                 else
                   op', []
               in
-              let drawn_op=draw_boxes (draw env_stack [Ordinary op'']) in
+              let drawn_op=draw_boxes env (draw env_stack [Ordinary op'']) in
               let x0,y0,x1,y1=bounding_box drawn_op in
 
-              let ba=draw_boxes (draw (superStyle style env_stack) sup) in
-              let bb=draw_boxes (draw (subStyle style env_stack) sub) in
+              let ba=draw_boxes env (draw (superStyle style env_stack) sup) in
+              let bb=draw_boxes env (draw (subStyle style env_stack) sub) in
 
               let x0a_,y0a_,x1a_,y1a_=bounding_box ba in
               let x0b_,y0b_,x1b_,y1b_=bounding_box bb in
@@ -678,7 +678,7 @@ let rec draw env_stack mlist=
             ) else draw env_stack [Ordinary op_noad]
           in
 
-	  let box_op = draw_boxes op_noad in
+	  let box_op = draw_boxes env op_noad in
           let x0,y0,x1,y1=bounding_box box_op in
 	  let half = (x0 -. x1)/.2. in
 	  let dist_l = if left=[] then 0. else
@@ -722,10 +722,10 @@ let rec draw env_stack mlist=
         )
 
 
-let dist_boxes precise a b=
-  let left=draw_boxes a in
+let dist_boxes env precise a b=
+  let left=draw_boxes env a in
   let bezier_left=bezier_of_boxes left in
-  let right=draw_boxes b in
+  let right=draw_boxes env b in
   let bezier_right=bezier_of_boxes right in
   let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
   let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
@@ -799,14 +799,14 @@ let symbol ?name:(name="") font n envs st=
 let open_close left right env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize*.env_.size in
-  let mid=draw_boxes box in
+  let mid=draw_boxes env_ box in
   let (x0,y0,x1,y1)=bounding_box_kerning mid in
   let (x0',y0',x1',y1')=bounding_box_full mid in
 
   let (left, (x0_l',y0_l',x1_l',y1_l')), (right, (x0_r',y0_r',x1_r',y1_r')) =
     let ll = left env_ style and lr = right env_ style in
     let boxes = List.map (fun d ->
-      let d=draw_boxes d in
+      let d=draw_boxes env_ d in
       (d, bounding_box_full d))
     in
     let ll = boxes ll in
@@ -875,7 +875,7 @@ let sqrts=ref [||]
 let make_sqrt env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize*.env_.size in
-  let under=draw_boxes box in
+  let under=draw_boxes env_ box in
   let (bx0,by0,bx1,by1)=bounding_box under in
 
   let f=Fonts.loadFont (findFont "../Fonts/Euler/euler.otf") in

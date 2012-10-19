@@ -808,8 +808,8 @@ end
 		node_contents = contents }
 	  )})
 
-    let contents_box boxes = contents_outputcommon (Box.draw_boxes boxes)
-    let contents env contents = contents_box (boxify_scoped env contents)
+    let contents_box env boxes = contents_outputcommon (Document.draw_boxes env boxes)
+    let contents env contents = contents_box env (boxify_scoped env contents)
 
     let innerSep,inner_sep_pet = 
       Pet.register "inner sep" (fun pet sep -> 
@@ -1114,8 +1114,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	default 
       in
       to_gentity info
-    let make_boxified styles cont = make_output styles (Box.draw_boxes cont)
-    let make env styles cont = make_boxified styles (boxify_scoped env cont)
+    let make_boxified env styles cont = make_output styles (Document.draw_boxes env cont)
+    let make env styles cont = make_boxified env styles (boxify_scoped env cont)
 
     let inter a b=
       let curvesa=ref [] in
@@ -1224,12 +1224,12 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  List.map (List.map (fun (style,contents) -> ((Node.contents_outputcommon contents)::style))) lines
 	in
 	makeNodes lines'
-      let contents_box lines =
+      let contents_box env lines =
 	let lines' = 
 	  List.map 
 	    (List.map 
 	       (fun (style,contents) -> 
-		 ((Node.contents_outputcommon (Box.draw_boxes contents))::style)))
+		 ((Node.contents_outputcommon (Document.draw_boxes env contents))::style)))
 	    lines
 	in
 	makeNodes lines'
@@ -1239,7 +1239,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  List.map 
 	    (List.map 
 	       (fun (style,contents) -> 
-		 ((Node.contents_outputcommon (Box.draw_boxes (boxify_scoped env contents)))::style)))
+		 ((Node.contents_outputcommon (Document.draw_boxes env (boxify_scoped env contents)))::style)))
 	    lines
 	in
 	makeNodes lines'
@@ -1918,7 +1918,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  (true, 
            (Maths.noad
               (fun env st->
-		let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
+		let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
 		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr 
 		in
 		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in

@@ -770,7 +770,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                      if Array.length pages>0 then
                        [User (Footnote (count, pages.(0)));
                         Drawing (drawing ~offset:(env.size/.2.)
-                                   (draw_boxes (boxify_scoped { env with size=env.size/.(sqrt phi) }
+                                   (draw_boxes env (boxify_scoped { env with size=env.size/.(sqrt phi) }
                                                   [tT (string_of_int !page_footnotes)])
                                    ))
                        ]
@@ -1386,7 +1386,7 @@ module MathsFormat=struct
       [Maths.Ordinary
          (Maths.noad
             (fun envs st->
-               let dr=draw_boxes (Maths.draw [envs] a) in
+               let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
                let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
                let drawn=(drawing ~offset:y0 dr) in
@@ -1421,7 +1421,7 @@ module MathsFormat=struct
                                     let _,w_x,_=box_interval x in
                                       w+.w_x) 0. boxes)
                in
-               let dr=draw_boxes boxes in
+               let dr=draw_boxes envs boxes in
                let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in
@@ -1471,7 +1471,7 @@ module MathsFormat=struct
                                     let _,w_x,_=box_interval x in
                                       w+.w_x) 0. boxes)
                in
-               let dr=draw_boxes boxes in
+               let dr=draw_boxes envs boxes in
                let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in

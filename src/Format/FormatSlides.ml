@@ -406,7 +406,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let drawn=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->translate m y_menu (OutputCommon.resize alpha x))
-                         (draw_boxes a))@(!cont);
+                         (draw_boxes env a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
               ) boxes (start_space inter)
@@ -425,7 +425,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 page.pageContents<-draw_toc env;
 
                 let tit=
-                  draw_boxes (boxify_scoped {env with size=0.1} (match tree with
+                  draw_boxes env (boxify_scoped {env with size=0.1} (match tree with
                       Node n->n.displayname
                     | _->[]))
                 in
@@ -495,8 +495,17 @@ module Format=functor (D:Document.DocumentStructure)->(
                           0.
                         )
                         | User (BeginLink l)->(
+                          let dest_page=
+                            try
+                              let line=UserMap.find (Label l) env.user_positions in
+                              print_text_line paragraphs line;
+                              line.page
+                            with
+                                Not_found->(-1)
+                          in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                     dest_page=0;dest_x=0.;dest_y=0.;
+                                     dest_page=dest_page;
+                                     dest_x=0.;dest_y=0.;
                                      link_contents=[]
                                    }
                           in
@@ -511,10 +520,11 @@ module Format=functor (D:Document.DocumentStructure)->(
                           0.
                         )
                         | User EndLink->(
-                          Printf.fprintf stderr "endlink\n";flush stderr;
                           let rec link_contents u l=match l with
                               []->[]
-                            | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+                            | (Link h)::s->(Link { h with
+                              link_contents=List.rev u
+                            })::s
                             | h::s->link_contents (h::u) s
                           in
                           page.pageContents<-link_contents [] page.pageContents;

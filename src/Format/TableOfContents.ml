@@ -62,9 +62,9 @@ let centered parameters str tree _=
                     let w_name=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                     let w_page=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. pagenum in
                     let cont=
-                      (List.map (OutputCommon.translate (-.w_name-.spacing) 0.) (draw_boxes name))@
+                      (List.map (OutputCommon.translate (-.w_name-.spacing) 0.) (draw_boxes env name))@
                         orn::
-                        (List.map (OutputCommon.translate (y+.spacing) 0.) (draw_boxes pagenum))
+                        (List.map (OutputCommon.translate (y+.spacing) 0.) (draw_boxes env pagenum))
                     in
                     max_w:=max !max_w (w_name+.w_page+.2.*.spacing);
                     max_name:=max !max_name (w_name+.spacing);
@@ -141,10 +141,10 @@ let these parameters str tree max_level=
                   let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                   let cont=
                     (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
-                       (draw_boxes num) else [])@
-                      (List.map (OutputCommon.translate 0. 0.) (draw_boxes name))@
+                       (draw_boxes env num) else [])@
+                      (List.map (OutputCommon.translate 0. 0.) (draw_boxes env name))@
                       List.map (OutputCommon.translate (w'+.spacing) 0.)
-                      (draw_boxes (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
+                      (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
                   User (BeginLink (labl))::

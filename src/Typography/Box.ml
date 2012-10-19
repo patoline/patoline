@@ -130,66 +130,6 @@ and boxes_interval boxes=
     done;
     (!a,!b,!c)
 
-let draw_boxes l=
-  let rec draw_boxes x y dr l=match l with
-      []->dr,x
-    | Kerning kbox::s ->(
-      let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
-      draw_boxes (x'+.kbox.advance_width) y dr' s
-    )
-    | Hyphen h::s->(
-      let dr1,w1=Array.fold_left (fun (dr',x') box->
-        let dr'',x''=draw_boxes x' y dr' [box] in
-        dr'',x''
-      ) (dr,x) h.hyphen_normal
-      in
-      draw_boxes w1 y dr1 s
-    )
-    | GlyphBox a::s->(
-      let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
-      let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
-      draw_boxes (x+.w) y (box::dr) s
-    )
-    | Glue g::s
-    | Drawing g ::s->(
-      let w=g.drawing_nominal_width in
-      let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
-      draw_boxes (x+.w) y (box@dr) s
-    )
-    | User (BeginURILink l)::s->(
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                 dest_page=(-1);dest_x=0.;dest_y=0.;
-                 link_contents=[] }
-      in
-      draw_boxes x y (Link link::dr) s
-    )
-    | User (BeginLink l)::s->(
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                 dest_page=0;dest_x=0.;dest_y=0.;
-                 link_contents=[]
-               }
-      in
-      draw_boxes x y (Link link::dr) s
-    )
-    (* | User (Label l)::s->( *)
-    (*   let y0,y1=line_height paragraphs figures line in *)
-    (*   destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations; *)
-    (*   0. *)
-    (* ) *)
-    | User EndLink::s->(
-      let rec link_contents u l=match l with
-          []->[]
-        | (Link h)::s->(Link { h with link_contents=u })::s
-        | h::s->link_contents (h::u) s
-      in
-      draw_boxes x y (link_contents [] dr) s
-    )
-
-    | b::s->
-      let _,w,_=box_interval b in
-      draw_boxes (x+.w) y dr s
-  in
-  fst (draw_boxes 0. 0. [] l)
 
 let rec lower_y x=match x with
     GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.
