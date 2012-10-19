@@ -197,7 +197,7 @@ let draw ?fontCache w h contents=
         Rbuffer.add_string svg_buf "\">"
       ) else (
         Rbuffer.add_string svg_buf
-          (Printf.sprintf "<a xlink:href=\"#\" xlink:onclick=\"gotoSlide(%d)\">"
+          (Printf.sprintf "<a xlink:href=\"#\" onclick=\"gotoSlide(%d)\">"
              l.dest_page
           );
       );
@@ -322,7 +322,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
     for j= !i to min (!i+10) (Array.length pages-1) do
       let w,h=pages.(j).pageFormat in
-      Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
+       Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
         (round (w)) (round ( h));
       let svg=draw ~fontCache:cache w h pages.(j).pageContents in
       let defs=make_defs cache in
@@ -491,6 +491,7 @@ if(current_state>=states[current_slide]-1) {
 }
 
 function gotoSlide(n){
+console.log(\"gotoSlide\",n);
 if(n>current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)})
 else if(n<current_slide)
