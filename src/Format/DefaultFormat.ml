@@ -186,6 +186,7 @@ module Format=functor (D:Document.DocumentStructure)->(
        [Scoped ((fun x ->
 	 { (envFamily x.fontMonoFamily x) with size = x.size *. x.fontMonoRatio}), p)]
 
+    let emph=toggleItalic
     let id x=x
 
     let sourcePosition(file,line,column,char) =

@@ -155,7 +155,6 @@ module Format=functor (D:Document.DocumentStructure)->(
             );
             match tree with
                 Node n when List.mem_assoc "slide" n.node_tags ->(
-                  let env0=n.node_env env0 in
                   let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;
@@ -308,18 +307,25 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let rec extrema m0 m1 l=match l with
                       []->if m0=infinity then 0.,0. else m0,m1
                     | (_,h)::s->
+                      print_text_line paragraphs0 h;
                       let m0',m1'=Box.line_height paragraphs0 figures0 h in
-                      extrema (min m0 (h.height+.m0')) (max m1 (h.height+.m1')) s
+                      extrema (min m0 (m0'-.h.height)) (max m1 (m1'-.h.height)) s
                   in
                   let text_h states=
-                    let m0=ref infinity and m1=ref (-.infinity) in
+                    (* Pour chaque paragraphe, calculer la plus petite marge
+                       depuis le haut de l'écran qu'on aie vu *)
+                    let marges=Array.make (Array.length paragraphs0) infinity in
                     for i=0 to Array.length states-1 do
-                      let m0',m1'=extrema !m0 !m1 states.(i) in
-                      m0:=m0';m1:=m1'
+                      let m0,m1=extrema infinity (-.infinity) states.(i) in
+                      let h=max 0. (slideh-.(m1-.m0))/.2. in
+                      List.iter (fun (_,l)->
+                        if l.lineStart=0 && l.hyphenStart<0 then
+                          marges.(l.paragraph)<-min marges.(l.paragraph) h
+                      ) states.(i)
                     done;
-                    let m0= !m0 and m1= !m1 in
-                    let h=max 0. (slideh-.(m1-.m0))/.2. in
-                    Array.map (List.map (fun (p,l)->p,{l with height=l.height+.h})) states
+                    Array.map (List.map (fun (p,l)->
+                      p,{l with
+                        height=l.height+.marges.(l.paragraph)})) states
                   in
                   let opts=Array.map (make_lineGaps 0.) opts in
                   let opts=text_h opts in
@@ -343,11 +349,11 @@ module Format=functor (D:Document.DocumentStructure)->(
             | Paragraph n->n.par_env defaultEnv
             | _->defaultEnv
           in
-          let env=typeset_structure [] tree env0 in
+          let env_final=typeset_structure [] tree env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
 
           if i < !max_iterations-1 && !reboot then (
-            resolve (i+1) (reset_counters env)
+            resolve (i+1) (reset_counters env_final)
           ) else (
 
 
@@ -359,7 +365,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             ) IntMap.empty !toc
             in
 
-            let y_menu=slideh-.env.size in
+            let y_menu=slideh-.env_final.size in
 
 
             (* Dessine la table des matières du slide où on est dans l'environnement env0 *)
@@ -405,7 +411,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               let x0=slidew/.10.
               and y0=slideh
               and x1=slidew*.0.9
-              and y1=slideh-.env.size*.phi
+              and y1=slideh-.env0.size*.phi
               and r=2.
               in
               let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in
@@ -424,7 +430,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let drawn=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->translate m y_menu (OutputCommon.resize alpha x))
-                         (draw_boxes env a))@(!cont);
+                         (draw_boxes env0 a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
               ) boxes (start_space inter)
@@ -432,11 +438,18 @@ module Format=functor (D:Document.DocumentStructure)->(
               !cont
             in
 
-
+            let draw_slide_number env i=
+              let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
+              let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
+              let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) i_fin)] in
+              let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
+              let x=draw_boxes env boxes in
+              List.map (translate (slidew-.w-.2.) 2.) x
+            in
 
             (* Dessin du slide complet *)
 
-            let draw_slide (path,tree,paragraphs,figures,figure_trees,env,opts)=
+            let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts)=
               let states=ref [] in
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
@@ -565,12 +578,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                     ()
                   )
                 done;
+                page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
                 page.pageContents<-List.rev page.pageContents;
                 states:=page:: !states
               done;
               env,Array.of_list (List.rev !states)
             in
-            let pages=Array.of_list (List.map draw_slide (List.rev !slides)) in
+            let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
             let slide_num=ref 0 in
 
 

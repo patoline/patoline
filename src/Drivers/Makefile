@@ -33,7 +33,7 @@ SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/Typography.cmxa
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
 GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx ../Typography/Typography.cmxa
 	$(CAMLMKLIB) -package netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx GL.cmx
-Image.cmxa:GL.cmxa Image.cmx ../Typography/Typography.cmxa
+Image.cmxa:GL.cmx Image.cmx ../Typography/Typography.cmxa
 	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx
 	$(CAMLOPT) -a -o $@ Pdf.cmx
@@ -48,7 +48,7 @@ Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
 GL.cmx:GL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx
-Image.cmx:Image.ml ../Patoline/Language.cmx
+Image.cmx:Image.ml GL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
 	$(CAMLOPT) -package netcgi2,nethttpd -c -o $@ $<
 

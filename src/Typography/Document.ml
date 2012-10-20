@@ -710,7 +710,9 @@ let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
 #ifdef CAMLIMAGES
 let image ?width:(width=0.) ?height:(height=0.) imageFile env=
+  Printf.fprintf stderr "->image\n";flush stderr;
   let image=(OImages.load imageFile []) in
+  Printf.fprintf stderr "<-image\n";flush stderr;
   let w,h=Images.size image#image in
   let fw,fh=
     if width=0. then

@@ -180,6 +180,19 @@ let draw ?fontCache w h contents=
       Rbuffer.add_buffer svg_buf buf;
       Rbuffer.add_string svg_buf "\" />\n";
     )
+    | Image i->(
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+      Rbuffer.add_string svg_buf
+        (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
+           i.image_x i.image_y i.image_width i.image_height i.image_file)
+    )
     | States (a,b)->List.iter output_contents a
     | Link l->(
       if !opened_tspan then (
@@ -401,7 +414,7 @@ svg.style.height=(%g*size)+'px';
 
   var i=0;
   var slideTimer;
-  var n=40;
+  var n=10;
   var do_slide=function(){
     if(i<=n){
       g0.setAttribute(\"transform\",\"translate(\"+width*(n-i)/n+\" 0)\");
@@ -412,7 +425,7 @@ svg.style.height=(%g*size)+'px';
       if(g1) svg.removeChild(g1);
     }
   }
-  slideTimer=setInterval(do_slide,0.1);
+  slideTimer=setInterval(do_slide,20);
 }";
 
   let states=Rbuffer.create 10000 in

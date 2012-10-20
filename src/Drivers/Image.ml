@@ -44,6 +44,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Unix.mkdir dirname 0o777;
 
   let generate get_pixes =
+    Printf.fprintf stderr "generate\n";flush stderr;
     let pages = get_pixes 1 !width !height !saa in
     Printf.printf "Images generated\n";
     Array.iteri (fun page states -> Array.iteri (
@@ -71,3 +72,23 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   GL.output ~structure pages fileName
 
 let output' = output_to_prime output
+
+open Box
+open Document
+let makeImage filename cont env=
+  let w=cont.drawing_nominal_width in
+  let h=cont.drawing_y1-.cont.drawing_y0 in
+  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] "/tmp";
+  let buf=String.create 10000 in
+  let fi=open_in (Printf.sprintf "%s_img_dir/page_0.%s" (Filename.chop_extension filename) !format) in
+  let out_name=(Printf.sprintf "%s.%s" (Filename.chop_extension filename) !format) in
+  let fo=open_out out_name in
+  let rec copy_file ()=
+    let r=input fi buf 0 (String.length buf) in
+    Pervasives.output fo buf 0 r;
+    if r>=String.length buf then copy_file ()
+  in
+  copy_file ();
+  close_in fi;
+  close_out fo;
+  image ~width:w ~height:h out_name env
