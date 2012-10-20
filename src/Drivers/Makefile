@@ -47,7 +47,8 @@ Net.cmxa:Net.cmx
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
-GL.cmx:GL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx
+GL.cmx:GL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx Vec3.cmx
+	$(CAMLOPT) -package netcgi2,nethttpd -c -o $@ $<
 Image.cmx:Image.ml GL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
 	$(CAMLOPT) -package netcgi2,nethttpd -c -o $@ $<
