@@ -187,6 +187,7 @@ let add_normals closed ratio beziers =
 
 let image_cache = Hashtbl.create 101
   
+let win = ref None
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -271,7 +272,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let state = !cur_state in
     let pw,ph = !pages.(page).(state).pageFormat in
     if !init_zoom then begin
-      init_zoom := false; 
+      init_zoom := false; dx := 0.0; dy := 0.0;
       if (pw /. ph < ratio && !prefs.init_zoom != FitWidth) || !prefs.init_zoom = FitHeight  then
 	zoom := 1.0
       else
@@ -1143,20 +1144,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let main () =
-    Sys.catch_break true;
-    Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
-    ignore (Glut.init Sys.argv);
-    Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
-    Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
-    let win = 
-      Glut.createWindow "Patoline OpenGL Driver"
-    in
-    match !prefs.batch_cmd with
+    let win0 = match !win with
       None ->
+	Sys.catch_break true;
+	Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
+	ignore (Glut.init Sys.argv);
+	Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
+	Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
+	let w =  Glut.createWindow "Patoline OpenGL Driver" in
+	win := Some w;
 	Printf.fprintf stderr "Window created, number of samples: %d\n" 
 	  (Glut.get Glut.WINDOW_NUM_SAMPLES);
 	flush stderr;
 	init_gl ();
+	w
+    | Some w -> w
+    in
+    match !prefs.batch_cmd with
+      None ->
 	Glut.displayFunc display_cb;
 	Glut.keyboardFunc keyboard_cb;
 	Glut.specialFunc special_cb;
@@ -1175,9 +1180,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	with e -> 
 	  Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
 	  Gl.flush ();
-	  Glut.destroyWindow win; if e <> Exit then raise e)
+	  Glut.destroyWindow win0; if e <> Exit then raise e)
     | Some f -> 
-      init_gl ();
       f get_pixes
   in
 

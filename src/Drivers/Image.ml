@@ -78,9 +78,9 @@ open Document
 let makeImage filename cont env=
   let w=cont.drawing_nominal_width in
   let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] "/tmp";
+  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] "/tmp/";
   let buf=String.create 10000 in
-  let fi=open_in (Printf.sprintf "/tmp_img_dir/page_0.%s" !format) in
+  let fi=open_in (Printf.sprintf "/tmp/_img_dir/page_0.%s" !format) in
   let out_name=(Printf.sprintf "%s.%s" (Filename.chop_extension filename) !format) in
   let fo=open_out out_name in
   let rec copy_file ()=

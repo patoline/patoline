@@ -1,5 +1,5 @@
 package "GL" (
 archive(byte)="GL.cma"
 archive(native)="GL.cmxa"
-requires="Typography,lablgl,lablgl.glut,netcgi2,nethttpd"
+requires="Typography,str,lablgl,lablgl.glut,netcgi2,nethttpd"
 )

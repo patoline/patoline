@@ -231,6 +231,9 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
        in	     
        if utflen = 1 && String.length s > 1 then has_utf8 := Some s;
        let elt = 
+	  if utflen = 1 then
+	    Symbol (CamlSym("List.hd ("^symbol_value^")"))
+	  else	     
   	    Symbol (SimpleSym (String.escaped s))
        in
        if acc = Var "" then elt else
