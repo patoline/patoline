@@ -489,14 +489,14 @@ resize();loadSlide(0,0)
 window.onkeydown=function(e){
 if(e.keyCode==37){
 if(current_state<=0) {
-  loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
+  loadSlide(current_slide-1,states[current_slide-1]-1);//,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state-1)
 }
 } //left
 if(e.keyCode==39){
 if(current_state>=states[current_slide]-1) {
-  loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
+  loadSlide(current_slide+1,0);//,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state+1)
 }

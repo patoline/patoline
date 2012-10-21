@@ -602,9 +602,23 @@ module Format=functor (D:Document.DocumentStructure)->(
         ~badness:bads
         pars
       in
-        OutputDrawing.output pars figures
-          env'
-          pages
+      (OutputDrawing.output pars figures
+         env'
+         pages)
+
+    let minipage' env str=
+      let env',fig_params,params,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let (_,pages,fig',user')=TS.typeset
+        ~completeLine:compl
+        ~figure_parameters:fig_params
+        ~figures:figures
+        ~parameters:params
+        ~badness:bads
+        pars
+      in
+      (OutputDrawing.output pars figures
+         env'
+         pages,env')
 
     let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
       let drawing' env=

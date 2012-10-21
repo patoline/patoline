@@ -86,7 +86,7 @@ let makeImage filename cont env=
   let rec copy_file ()=
     let r=input fi buf 0 (String.length buf) in
     Pervasives.output fo buf 0 r;
-    if r>=String.length buf then copy_file ()
+    if r>0 then copy_file ()
   in
   copy_file ();
   close_in fi;

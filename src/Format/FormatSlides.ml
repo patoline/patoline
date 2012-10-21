@@ -16,7 +16,7 @@ module MathsFormat=DefaultFormat.MathsFormat
 
 let slideh=100.
 let slidew=phi*.slideh
-
+let hoffset=15.
 
 type state={
   subautomata:state IntMap.t;
@@ -29,6 +29,84 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     module Default=DefaultFormat.Format(D)
     include (Default:module type of Default with module Output:=Default.Output)
+
+    module Env_block (M:sig val arg1:Typography.Document.content list end)=struct
+
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node empty);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+
+        (* Fabriquer un paragraphe qui va bien *)
+        let stru',_=paragraph [C (fun env->
+          let minip=minipage env (stru,[]) in
+          [bB (fun _->[Drawing minip.(0)])]
+        )] in
+
+        (* Supprimer la structure de D.structure *)
+        D.structure:=
+          (match path with
+              []->(stru',path)
+            | (a,Node b)::s->(Node { b with children=IntMap.add a stru' b.children }, s)
+            | (a,b)::s->(Node { empty with children=IntMap.singleton a stru' }, s));
+
+        env_stack:=List.tl !env_stack
+
+    end
+
+
+module Env_definition=Default.Make_theorem
+  (struct
+    let refType="definition"
+    let counter="definition"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Definition "^num^"."); (tT " ")]
+   end)
+module Env_theorem=Default.Make_theorem
+  (struct
+    let refType="theorem"
+    let counter="theorem"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Theorem "^num^"."); (tT " ")]
+   end)
+module Env_lemma=Default.Make_theorem
+  (struct
+    let refType="lemma"
+    let counter="lemma"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Lemma "^num^"."); (tT " ")]
+   end)
+module Env_proposition=Default.Make_theorem
+  (struct
+    let refType="proposition"
+    let counter="proposition"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Proposition "^num^"."); (tT " ")]
+   end)
+module Env_corollary=Default.Make_theorem
+  (struct
+    let refType="corollary"
+    let counter="corollary"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Corollary "^num^"."); (tT " ")]
+   end)
+module Env_example=Default.Make_theorem
+  (struct
+    let refType="example"
+    let counter="example"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Example "^num^"."); (tT " ")]
+   end)
+module Env_hypothesis=Default.Make_theorem
+  (struct
+    let refType="hypothesis"
+    let counter="hypothesis"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Hypothesis "^num^"."); (tT " ")]
+   end)
+
 
     let mes=(slidew/.2.)*.phi
     let defaultEnv:environment={
@@ -317,7 +395,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     let marges=Array.make (Array.length paragraphs0) infinity in
                     for i=0 to Array.length states-1 do
                       let m0,m1=extrema infinity (-.infinity) states.(i) in
-                      let h=max 0. (slideh-.(m1-.m0))/.2. in
+                      let h=hoffset+.max 0. ((slideh-.hoffset-.(m1-.m0))/.2.) in
                       List.iter (fun (_,l)->
                         if l.lineStart=0 && l.hyphenStart<0 then
                           marges.(l.paragraph)<-min marges.(l.paragraph) h
