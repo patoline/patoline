@@ -234,6 +234,10 @@ let _=
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
       Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
 
+      (* cairo-ocaml *)
+      Printf.fprintf out "\tmake -C src/cairo-ocaml install\n";
+
+
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
         let path_var="PATOLINE_PATH" in

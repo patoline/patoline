@@ -1,0 +1,35 @@
+
+VERSION = @PACKAGE_VERSION@
+
+OCAMLC     = ocamlfind ocamlc -package lablgtk2
+OCAMLOPT   = ocamlfind ocamlopt -package lablgtk2
+OCAMLMKLIB = ocamlfind ocamlmklib -package lablgtk2
+OCAMLLIB   = /opt/local/lib/ocaml
+OCAMLDOC   = ocamlfind ocamldoc -package lablgtk2
+OCAMLDEP   = ocamlfind ocamldep -package lablgtk2
+
+
+INSTALLDIR = $(shell ocamlfind printconf destdir)/cairo
+
+LABLGTKDIR = @LABLGTKDIR@
+C_LABLGTKDIR = $(subst +,$(OCAMLLIB)/,$(LABLGTKDIR))
+
+# stop ocamlmklib moaning
+FILT = -Wl,--export-dynamic
+
+CAIRO_CFLAGS = @CAIRO_CFLAGS@
+CAIRO_LIBS   = $(filter-out $(FILT),@CAIRO_LIBS@)
+
+GDK_CFLAGS = @GDK_CFLAGS@
+GDK_LIBS   = $(filter-out $(FILT),@GDK_LIBS@)
+
+LIBSVG_CAIRO_CFLAGS = @LIBSVG_CAIRO_CFLAGS@
+LIBSVG_CAIRO_LIBS   = @LIBSVG_CAIRO_LIBS@
+
+LIBPANGOCAIRO_CFLAGS = @LIBPANGOCAIRO_CFLAGS@
+LIBPANGOCAIRO_LIBS   = @LIBPANGOCAIRO_LIBS@
+
+cobjs     = $(patsubst %.c, %.o, $(filter %.c,$(1)))
+mlintfs   = $(patsubst %.mli, %.cmi, $(filter %.mli,$(1)))
+mlobjs    = $(patsubst %.ml, %.cmo, $(filter %.ml,$(1)))
+mloptobjs = $(patsubst %.ml, %.cmx, $(filter %.ml,$(1)))

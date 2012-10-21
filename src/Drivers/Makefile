@@ -44,6 +44,14 @@ GL2.cmxa:GL2.cmx
 Net.cmxa:Net.cmx
 	$(CAMLOPT) -a -o $@ Net.cmx
 
+DriverCairo.cmxa:DriverCairo.cmx
+	$(CAMLOPT) -a -o $@ DriverCairo.cmx
+
+DriverCairo.cmx:DriverCairo.ml
+	cd ../cairo-ocaml;make configure;make
+	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
+
+
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx

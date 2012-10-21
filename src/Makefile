@@ -109,7 +109,6 @@ Drivers/%.cma:Drivers Typography/Typography.cma
 Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa
 	make -C Drivers $(shell basename $@)
 
-
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
 
