@@ -92,10 +92,7 @@ install: all
 ifdef OCAMLOPT
 	install -m644 *.cmxa *.a *.cmx $(DESTDIR)$(INSTALLDIR)
 endif
-	install -m 755 dll*.so $(DESTDIR)$(INSTALLDIR)
-	if test -w $(DESTDIR)$(shell ocamlfind printconf destdir)/stublibs ; then \
-          for lib in dll*.so ; do \
-            ln -s $(INSTALLDIR)/$$lib $(DESTDIR)$(shell ocamlfind printconf destdir)/stublibs ; done ; fi
+	install -m 755 dll*.so $(DESTDIR)$(shell ocamlfind printconf destdir)/stublibs
 
 DOCFILES = cairo.mli cairo_bigarray.mli cairo_png.mli cairo_pdf.mli cairo_ps.mli cairo_ft.mli
 ifdef LABLGTKDIR
