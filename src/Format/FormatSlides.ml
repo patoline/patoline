@@ -38,10 +38,20 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       let do_end_env ()=
         let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
-
+        let rec map_params t=match t with
+            Node n->Node {n with children=IntMap.map map_params n.children}
+          | Paragraph p->Paragraph { p with par_parameters=Default.parameters }
+          | _->t
+        in
         (* Fabriquer un paragraphe qui va bien *)
         let stru',_=paragraph [C (fun env->
-          let minip=minipage env (stru,[]) in
+          let alpha=0.8 in
+          let env0={env with
+            normalLeftMargin=0.;
+            normalMeasure=env.normalMeasure*.alpha
+          }
+          in
+          let minip=minipage env0 (map_params stru,[]) in
           [bB (fun _->[Drawing minip.(0)])]
         )] in
 
@@ -57,55 +67,55 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
 
 
-module Env_definition=Default.Make_theorem
-  (struct
-    let refType="definition"
-    let counter="definition"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Definition "^num^"."); (tT " ")]
-   end)
-module Env_theorem=Default.Make_theorem
-  (struct
-    let refType="theorem"
-    let counter="theorem"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Theorem "^num^"."); (tT " ")]
-   end)
-module Env_lemma=Default.Make_theorem
-  (struct
-    let refType="lemma"
-    let counter="lemma"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Lemma "^num^"."); (tT " ")]
-   end)
-module Env_proposition=Default.Make_theorem
-  (struct
-    let refType="proposition"
-    let counter="proposition"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Proposition "^num^"."); (tT " ")]
-   end)
-module Env_corollary=Default.Make_theorem
-  (struct
-    let refType="corollary"
-    let counter="corollary"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Corollary "^num^"."); (tT " ")]
-   end)
-module Env_example=Default.Make_theorem
-  (struct
-    let refType="example"
-    let counter="example"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Example "^num^"."); (tT " ")]
-   end)
-module Env_hypothesis=Default.Make_theorem
-  (struct
-    let refType="hypothesis"
-    let counter="hypothesis"
-    let counterLevel=0
-    let display num=alternative Bold [tT ("Hypothesis "^num^"."); (tT " ")]
-   end)
+    module Env_definition=Default.Make_theorem
+      (struct
+        let refType="definition"
+        let counter="definition"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Definition "^num^"."); (tT " ")]
+       end)
+    module Env_theorem=Default.Make_theorem
+      (struct
+        let refType="theorem"
+        let counter="theorem"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Theorem "^num^"."); (tT " ")]
+       end)
+    module Env_lemma=Default.Make_theorem
+      (struct
+        let refType="lemma"
+        let counter="lemma"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Lemma "^num^"."); (tT " ")]
+       end)
+    module Env_proposition=Default.Make_theorem
+      (struct
+        let refType="proposition"
+        let counter="proposition"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Proposition "^num^"."); (tT " ")]
+       end)
+    module Env_corollary=Default.Make_theorem
+      (struct
+        let refType="corollary"
+        let counter="corollary"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Corollary "^num^"."); (tT " ")]
+       end)
+    module Env_example=Default.Make_theorem
+      (struct
+        let refType="example"
+        let counter="example"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Example "^num^"."); (tT " ")]
+       end)
+    module Env_hypothesis=Default.Make_theorem
+      (struct
+        let refType="hypothesis"
+        let counter="hypothesis"
+        let counterLevel=0
+        let display num=alternative Bold [tT ("Hypothesis "^num^"."); (tT " ")]
+       end)
 
 
     let mes=(slidew/.2.)*.phi
@@ -113,6 +123,7 @@ module Env_hypothesis=Default.Make_theorem
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
+        normalLead=Default.defaultEnv.size*.15./.13.;
         par_indent=[];
     }
 
