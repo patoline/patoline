@@ -88,7 +88,7 @@ $(call mloptobjs,$(pangocairo_SRC))  : INCFLAGS=-I $(LABLGTKDIR)
 
 install: all
 	mkdir -p $(DESTDIR)$(INSTALLDIR) $(DESTDIR)$(shell ocamlfind printconf destdir)/stublibs
-	install -m 644 *.mli *.cmi *.cma *.META lib*.a $(DESTDIR)$(INSTALLDIR)
+	install -m 644 *.mli *.cmi *.cma META lib*.a $(DESTDIR)$(INSTALLDIR)
 ifdef OCAMLOPT
 	install -m644 *.cmxa *.a *.cmx $(DESTDIR)$(INSTALLDIR)
 endif

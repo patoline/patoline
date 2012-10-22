@@ -83,6 +83,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 (*   let g=Glyph { glyph_x=10.;glyph_y=10.;glyph=gl;glyph_color=black;glyph_size=3.8} in *)
 (*   output [|{pageFormat=a4;pageContents=[g]}|] "test" *)
 
+let output'=output_to_prime output
+
 open Typography.Box
 open Typography.Document
 let makeImage filename cont env=
