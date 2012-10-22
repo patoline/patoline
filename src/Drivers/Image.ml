@@ -72,23 +72,3 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   GL.output ~structure pages fileName
 
 let output' = output_to_prime output
-
-open Box
-open Document
-let makeImage filename cont env=
-  let w=cont.drawing_nominal_width in
-  let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] "/tmp/";
-  let buf=String.create 10000 in
-  let fi=open_in (Printf.sprintf "/tmp/_img_dir/page_0.%s" !format) in
-  let out_name=(Printf.sprintf "%s.%s" (Filename.chop_extension filename) !format) in
-  let fo=open_out out_name in
-  let rec copy_file ()=
-    let r=input fi buf 0 (String.length buf) in
-    Pervasives.output fo buf 0 r;
-    if r>0 then copy_file ()
-  in
-  copy_file ();
-  close_in fi;
-  close_out fo;
-  image ~width:w ~height:h out_name env

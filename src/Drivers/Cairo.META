@@ -1,4 +1,4 @@
-package "DriverCairo" (
+package "Cairo" (
 archive(byte)="DriverCairo.cma"
 archive(native)="DriverCairo.cmxa"
 requires="Typography,cairo"

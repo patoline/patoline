@@ -82,3 +82,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 (*   let gl=loadGlyph font { glyph_utf8="A";glyph_index=(glyph_of_char font 'A')} in *)
 (*   let g=Glyph { glyph_x=10.;glyph_y=10.;glyph=gl;glyph_color=black;glyph_size=3.8} in *)
 (*   output [|{pageFormat=a4;pageContents=[g]}|] "test" *)
+
+open Typography.Box
+open Typography.Document
+let makeImage filename cont env=
+  let w=cont.drawing_nominal_width in
+  let h=cont.drawing_y1-.cont.drawing_y0 in
+  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
+  let f=try Filename.chop_extension filename with _->filename in
+  image ~width:w ~height:h (Printf.sprintf "%s0.png" f) env
