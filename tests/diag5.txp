@@ -1,0 +1,9 @@
+\Caml(open Diagrams)
+
+\diagram(
+
+let _ = path Edge.([draw;paramsOf {default_params with close=true}]) 
+    (0.,0.)  [[30.,0.];[15.,15.]]
+
+
+)
