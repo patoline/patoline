@@ -1698,11 +1698,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let bendLeft = bendOf
       let bendRight angle = bendOf (-. angle)
 
-      let (paramsOf : Document.environment -> Transfo.Style.t),
+      let (paramsOf : user Document.environment -> Transfo.Style.t),
 	params_pet = Pet.register ~codepends:[clip_pet] "params"
 	(fun pet params ->
 	  { pet = pet ; transfo = (fun transfos edge_info ->
-	    { edge_info with params = edge_info.params })})
+	    { edge_info with params = params })})
 
       let dashed pattern =
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
