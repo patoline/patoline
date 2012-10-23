@@ -491,9 +491,16 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                                       for j=0 to h-1 do
                                         for i=0 to w-1 do
                                           let rgb = src#get i j in
-                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.r);
-                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.g);
-                                            Rbuffer.add_char img_buf (char_of_int rgb.Images.color.Images.b);
+                                          let a=(float_of_int rgb.Images.alpha)/.256. in
+                                          let r=(1.-.a)*.255.
+                                            +.a*.float_of_int rgb.Images.color.Images.r in
+                                          let g=(1.-.a)*.255.
+                                            +.a*.float_of_int rgb.Images.color.Images.g in
+                                          let b=(1.-.a)*.255.
+                                            +.a*.float_of_int rgb.Images.color.Images.b in
+                                          Rbuffer.add_char img_buf (char_of_int (round r));
+                                          Rbuffer.add_char img_buf (char_of_int (round g));
+                                          Rbuffer.add_char img_buf (char_of_int (round b));
                                         done
                                       done;
                                       let a,b=stream img_buf in
