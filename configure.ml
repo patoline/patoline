@@ -181,7 +181,7 @@ let _=
     if !lablgl <> "" && !lablgtk2 <> "" && !camlimages<>"" then
       Printf.fprintf make "GLGTK_PACK=-package %s -package %s \n" (!lablgl) (!lablgtk2);
 
-    Printf.fprintf make "DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa %s%s%s\n"
+    Printf.fprintf make "DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa Drivers/DriverCairo.cmxa %s%s%s\n"
       (if !lablgl<>"" && !camlimages<>"" then "Drivers/GL.cmxa Drivers/GL2.cmxa " else "")
       (if !ocamlnet<>"" then "Drivers/Net.cmxa " else "")
       (if !camlimages<>"" && !lablgl<>"" then "Drivers/Image.cmxa " else "");

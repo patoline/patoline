@@ -67,6 +67,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         draw_page ((Path ({default with close=true;fillColor=Some g.glyph_color;strokingColor=None},
                           l))::s)
       )
+      | Link l::s->draw_page (l.link_contents@s)
       | _::s->(draw_page s)
       | []->()
     in
