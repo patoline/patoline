@@ -150,7 +150,13 @@ module Format=functor (D:Document.DocumentStructure)->(
       module Block=Env_block(struct let arg1=blocktitle end)
       let do_begin_env ()=
         Env_center.do_begin_env ();
-        M.do_begin_env ();
+        D.structure:=newChildAfter !D.structure (Node empty);
+
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
+        newPar D.structure Complete.normal
+           (fun a b c d e f g line->
+             (parameters a b c d e f g line));
+
         Block.do_begin_env ();
         ()
       let do_end_env ()=
