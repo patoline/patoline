@@ -92,4 +92,22 @@ let makeImage filename cont env=
   let h=cont.drawing_y1-.cont.drawing_y0 in
   output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
   let f=try Filename.chop_extension filename with _->filename in
-  image ~width:w ~height:h (Printf.sprintf "%s0.png" f) env
+
+  let i={image_file=(Printf.sprintf "%s0.png" f);
+         image_width=w;
+         image_height=h;
+         image_x=0.;
+         image_y=cont.drawing_y0
+        }
+  in
+  let img={
+    drawing_min_width=w;
+    drawing_max_width=w;
+    drawing_nominal_width=w;
+    drawing_y0=cont.drawing_y0;
+    drawing_y1=cont.drawing_y1;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[Typography.OutputCommon.Image i])
+  }
+  in
+  img

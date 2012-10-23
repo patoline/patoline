@@ -191,7 +191,7 @@ let draw ?fontCache w h contents=
       );
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
-           i.image_x i.image_y i.image_width i.image_height i.image_file)
+           i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height i.image_file)
     )
     | States (a,b)->List.iter output_contents a
     | Link l->(
