@@ -1374,6 +1374,10 @@ module MathsFormat=struct
     (* Symboles et polices de maths *)
 
     module MathFonts = MathFonts
+    let mathsText t0=
+      [Maths.Ordinary (Maths.noad (fun env st->boxify_scoped
+        { env with size=env.size*.(Maths.env_style env.mathsEnvironment st).Mathematical.mathsSize }
+        t0 ))]
     let mathcal a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Cal]):: a)]
     let cal a=mathcal a
     let fraktur a=[Maths.Scope(fun _ _-> Maths.Env (Euler.changeFont [Euler.Font `Fraktur]) :: a)]
