@@ -132,6 +132,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       end
       module M=Default.Make_theorem(Th_)
       let blocktitle=
+        (Env (incr_counter ~level:Th_.counterLevel Th_.counter))::
         (C (fun env->
           let lvl,num=try (StrMap.find Th.counter env.counters) with
               Not_found -> -1,[0]
@@ -155,7 +156,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
         newPar D.structure Complete.normal
            (fun a b c d e f g line->
-             (parameters a b c d e f g line));
+             (parameters a b c d e f g line)) [];
 
         Block.do_begin_env ();
         ()
@@ -228,8 +229,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
-        normalLead=Default.defaultEnv.size*.1.2;
-        lead=Default.defaultEnv.size*.1.2;
+        normalLead=Default.defaultEnv.size*.1.3;
+        lead=Default.defaultEnv.size*.1.3;
         par_indent=[];
     }
 
@@ -374,7 +375,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   let rec typeset_states state reboot_ env=
                     if state>max_state then (reboot_,env) else (
-
                       let real_par=ref 0 in
                       let par_map=ref IntMap.empty in
                       let rec make_paragraphs t=match t with
@@ -389,6 +389,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           incr real_par
                         )
                         | Node n->IntMap.iter (fun _ a->make_paragraphs a) n.children
+                        | _->()
                       in
                       make_paragraphs tree;
                       let fig_params=[||] and figures=[||] in
@@ -624,7 +625,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let drawn=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->translate m y_menu (OutputCommon.resize alpha x))
-                         (draw_boxes env0 a))@(!cont);
+                         (draw_boxes env_final a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
               ) boxes (start_space inter)
@@ -657,7 +658,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let (_,yy0,_,yy1)=bounding_box tit in
                 let y1=slideh-.env.size*.2. in
 
-                page.pageContents<-(List.map (translate (slidew/.8.) (y1-.phi*.(yy1-.yy0))) tit)@page.pageContents;
+                page.pageContents<-(List.map (translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
                 let w,h=slidew,slideh in
                 let crosslinks=ref [] in (* (page, link, destination) *)
@@ -722,7 +723,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         | User (BeginLink l)->(
                           let dest_page=
                             try
-                              let line=UserMap.find (Label l) env.user_positions in
+                              let line=UserMap.find (Label l) env_final.user_positions in
                               print_text_line paragraphs line;
                               line.page
                             with
