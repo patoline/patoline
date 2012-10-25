@@ -49,11 +49,13 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     module Default=DefaultFormat.Format(D)
     include (Default:
-               (module type of Default
+               (((module type of Default
                  with
                    module Output:=Default.Output)
-             with
-               module Make_theorem:=Default.Make_theorem)
+                 with
+                   module Make_theorem:=Default.Make_theorem)
+                with
+                  module TableOfContents:=Default.TableOfContents))
 
     module Env_block (M:sig val arg1:Typography.Document.content list end)=struct
 
@@ -75,42 +77,57 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         (* Fabriquer un paragraphe qui va bien *)
         let stru',_=paragraph ~parameters:center [C (fun env->
-          let alpha=0.9 in
-          let margin=env.size*.0.2 in
-          let mes=env.normalMeasure*.alpha in
-          let env0={env with
-            normalLeftMargin=margin;
-            normalMeasure=mes-.2.*.margin
-          }
-          in
-          let minip,env1=minipage' env0 (map_params stru,[]) in
-          let stru_title,_=paragraph M.arg1 in
-          let minip_title,env2=minipage' {env1 with fontColor=white} (stru_title,[]) in
-          let tit=drawing_blit minip.(0) 0.
-            (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.2.*.margin)
-            minip_title.(0)
-          in
+          try
+            let alpha=0.9 in
+            let margin=env.size*.0.2 in
+            let mes=env.normalMeasure*.alpha in
+            let env0={env with
+              normalLeftMargin=margin;
+              normalMeasure=mes-.2.*.margin
+            }
+            in
+            let minip,env1=minipage' env0 (map_params stru,[]) in
+            let stru_title,_=paragraph M.arg1 in
+            let minip_title,env2=minipage' {env1 with fontColor=white} (stru_title,[]) in
+            let tit=
+              if Array.length minip_title>0 then
+                drawing_blit minip.(0) 0.
+                  (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.2.*.margin)
+                  minip_title.(0)
+              else
+                minip.(0)
+            in
 
-          let r=1. in
-          let frame=[
-            Path ({default with close=true},
-                  [rounded_corners ~r
-                      (0.,minip.(0).drawing_y0-.margin)
-                      (max mes minip.(0).drawing_nominal_width+.margin,
-                       tit.drawing_y1)]);
-            Path ({default with fillColor=Some black;strokingColor=None },
-                  [rounded_corners ~ne:r ~nw:r
-                      (0.,minip.(0).drawing_y1+.margin)
-                      (max mes minip.(0).drawing_nominal_width+.margin,
-                       tit.drawing_y1)])
-          ]
-          in
-          let w=max mes (minip.(0).drawing_nominal_width+.margin) in
-          let dr={tit with
-            drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-            drawing_contents=(fun w->(tit.drawing_contents w)@frame)
-          } in
-          [bB (fun _->[Drawing dr]);Env (fun _->env2)]
+            let r=1. in
+            let frame=
+              if M.arg1=[] then [
+                Path ({default with close=true},
+                      [rounded_corners ~r
+                          (0.,minip.(0).drawing_y0-.margin)
+                          (max mes minip.(0).drawing_nominal_width+.margin,
+                           minip.(0).drawing_y1+.margin)]);
+              ]
+              else [
+                Path ({default with close=true},
+                      [rounded_corners ~r
+                          (0.,minip.(0).drawing_y0-.margin)
+                          (max mes minip.(0).drawing_nominal_width+.margin,
+                           tit.drawing_y1)]);
+                Path ({default with fillColor=Some black;strokingColor=None },
+                      [rounded_corners ~ne:r ~nw:r
+                          (0.,minip.(0).drawing_y1+.margin)
+                          (max mes minip.(0).drawing_nominal_width+.margin,
+                           tit.drawing_y1)])
+              ]
+            in
+            let w=max mes (minip.(0).drawing_nominal_width+.margin) in
+            let dr={tit with
+              drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
+              drawing_contents=(fun w->(tit.drawing_contents w)@frame)
+            } in
+            [bB (fun _->[Drawing dr]);Env (fun _->env2)]
+          with
+              Invalid_argument _->[]
         )] in
 
         (* Supprimer la structure de D.structure *)
@@ -122,6 +139,13 @@ module Format=functor (D:Document.DocumentStructure)->(
 
         env_stack:=List.tl !env_stack
 
+    end
+
+    module TableOfContents=struct
+      let do_begin_env ()=
+        let max_depth=1 in
+        TableOfContents.slides center D.structure (fst (top !D.structure)) max_depth
+      let do_end_env ()=()
     end
 
     module Make_theorem=functor (Th:Theorem)->struct
@@ -154,9 +178,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=newChildAfter !D.structure (Node empty);
 
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack;
-        newPar D.structure Complete.normal
-           (fun a b c d e f g line->
-             (parameters a b c d e f g line)) [];
+        (* newPar D.structure Complete.normal *)
+        (*    (fun a b c d e f g line-> *)
+        (*      (parameters a b c d e f g line)) []; *)
 
         Block.do_begin_env ();
         ()
@@ -166,6 +190,24 @@ module Format=functor (D:Document.DocumentStructure)->(
         Env_center.do_end_env ()
 
     end
+    module Make_theorem' (Th:Theorem) (M:sig val arg1:content list end)=struct
+      module Th'=struct
+        include Th
+        let display x=(display x)@M.arg1
+      end
+      module X=Make_theorem(Th')
+    end
+    module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node { empty with node_env=M.arg1 });
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+        env_stack:=List.tl !env_stack
+
+    end
+
     module Env_definition=Make_theorem
       (struct
         let refType="definition"
@@ -173,6 +215,14 @@ module Format=functor (D:Document.DocumentStructure)->(
         let counterLevel=0
         let display num= [tT ("Definition "^num^"."); (tT " ")]
        end)
+    module Env_definition_ (M:sig val arg1:content list end)=Make_theorem
+      (struct
+        let refType="definition"
+        let counter="definition"
+        let counterLevel=0
+        let display num= [tT ("Definition "^num^"."); (tT " ")]@M.arg1
+       end)
+
     module Env_theorem=Make_theorem
       (struct
         let refType="theorem"
@@ -180,6 +230,17 @@ module Format=functor (D:Document.DocumentStructure)->(
         let counterLevel=0
         let display num= [tT ("Theorem "^num^"."); (tT " ")]
        end)
+    module Env_theorem_ (M:sig val arg1:content list end)=Make_theorem
+      (struct
+        let refType="theorem"
+        let counter="theorem"
+        let counterLevel=0
+        let display num= [tT ("Theorem "^num^"."); (tT " ")]@M.arg1
+       end)
+
+
+
+
     module Env_lemma=Make_theorem
       (struct
         let refType="lemma"
@@ -187,6 +248,14 @@ module Format=functor (D:Document.DocumentStructure)->(
         let counterLevel=0
         let display num= [tT ("Lemma "^num^"."); (tT " ")]
        end)
+    module Env_lemma_=Make_theorem'
+      (struct
+        let refType="lemma"
+        let counter="lemma"
+        let counterLevel=0
+        let display num= [tT ("Lemma "^num^"."); (tT " ")]
+       end)
+
     module Env_proposition=Make_theorem
       (struct
         let refType="proposition"
@@ -194,6 +263,14 @@ module Format=functor (D:Document.DocumentStructure)->(
         let counterLevel=0
         let display num= [tT ("Proposition "^num^"."); (tT " ")]
        end)
+    module Env_proposition_=Make_theorem'
+      (struct
+        let refType="proposition"
+        let counter="proposition"
+        let counterLevel=0
+        let display num= [tT ("Proposition "^num^"."); (tT " ")]
+       end)
+
     module Env_corollary=Make_theorem
       (struct
         let refType="corollary"
@@ -222,6 +299,20 @@ module Format=functor (D:Document.DocumentStructure)->(
         let counterLevel=0
         let display num= [tT ("Conjecture "^num^"."); (tT " ")]
        end)
+    module Env_openproblem=Make_theorem
+      (struct
+        let refType="conjecture"
+        let counter="conjecture"
+        let counterLevel=0
+        let display num= [tT ("Open problem "^num^"."); (tT " ")]
+       end)
+    module Env_openproblem'=Make_theorem'
+      (struct
+        let refType="conjecture"
+        let counter="conjecture"
+        let counterLevel=0
+        let display num= [tT ("Open problem "^num^"."); (tT " ")]
+       end)
 
 
     let mes=(slidew/.2.)*.phi
@@ -247,7 +338,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           (fun a b c d e->max e (a.height+.env.lead));
         really_next_line=1
       }
-
 
     module type Title = sig
       val arg1 : (content list)

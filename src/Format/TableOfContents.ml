@@ -169,3 +169,70 @@ let these parameters str tree max_level=
         toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
           [] (fst (top !str))
     )]
+
+
+let slides parameters str tree max_level=
+
+  newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
+    bB (
+      fun env->
+        let rec toc env0 path tree=
+          let level=List.length path in
+          match tree with
+              Paragraph p -> []
+            | FigureDef f -> []
+            | Node s when level <= max_level && List.mem_assoc "InTOC" s.node_tags-> (
+                let rec flat_children env1=function
+                    []->[]
+                  | (_,(FigureDef _))::s
+                  | (_,(Paragraph _))::s->flat_children env1 s
+                  | (k,(Node h as tr))::s->(
+                      let env'=h.node_env env1 in
+                      (toc env' (k::path) tr)@
+                        flat_children (h.node_post_env env1 env') s
+                    )
+                in
+                let chi=if List.mem_assoc "Numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
+                let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
+                let count=(List.rev (drop 1 b)) in
+                let spacing=env.size in
+                let in_toc=List.mem_assoc "InTOC" s.node_tags in
+                let numbered=List.mem_assoc "Numbered" s.node_tags in
+                if in_toc && count<>[] then (
+                  let labl=String.concat "_" ("_"::List.map string_of_int path) in
+
+                  let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
+                  let num=boxify_scoped { env' with fontColor=
+                      if level=1 then OutputCommon.rgb 1. 0. 0. else OutputCommon.black }
+                    [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
+                  let name=boxify_scoped env' s.displayname in
+                  let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
+                  let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
+                  let cont=
+                    (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
+                       (draw_boxes env num) else [])@
+                      (List.map (OutputCommon.translate 0. 0.) (draw_boxes env name))
+                  in
+                  let (a,b,c,d)=OutputCommon.bounding_box cont in
+                  User (BeginLink (labl))::
+                    Drawing {
+                      drawing_min_width=env.normalMeasure;
+                      drawing_nominal_width=env.normalMeasure;
+                      drawing_max_width=env.normalMeasure;
+                      drawing_y0=b;
+                      drawing_y1=d;
+                      drawing_badness=(fun _->0.);
+                      drawing_contents=
+                        (fun _->
+                           List.map (OutputCommon.translate
+                                       (spacing*.3.*.(float_of_int (level-1)))
+                                       0.) cont)
+                    }::User EndLink::(glue 0. 0. 0.)::chi
+                )
+                else chi
+              )
+            | Node _->[]
+        in
+        toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
+          [] (fst (top !str))
+    )]

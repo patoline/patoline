@@ -1100,7 +1100,6 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=List.tl !env_stack
     end
 
-
     module Output(M:OutputPaper.Driver)=struct
       (** Output routines. An output routine is just a functor taking a driver module *)
       open OutputPaper
