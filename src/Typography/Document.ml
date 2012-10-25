@@ -709,7 +709,7 @@ let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})]
 let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
 
 #ifdef CAMLIMAGES
-let image ?width:(width=0.) ?height:(height=0.) imageFile env=
+let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
   Printf.fprintf stderr "->image\n";flush stderr;
   let image=(OImages.load imageFile []) in
   Printf.fprintf stderr "<-image\n";flush stderr;
@@ -717,7 +717,13 @@ let image ?width:(width=0.) ?height:(height=0.) imageFile env=
   let fw,fh=
     if width=0. then
       if height=0. then
-        env.normalMeasure, env.normalMeasure*.(float_of_int h)/.(float_of_int w)
+        if scale=0. then
+          if env.normalMeasure<float_of_int w then
+            env.normalMeasure, env.normalMeasure*.(float_of_int h)/.(float_of_int w)
+          else
+            (float_of_int w),(float_of_int h)
+        else
+          (float_of_int w)*.scale,(float_of_int h)*.scale
       else
         height*.(float_of_int w)/.(float_of_int h), height
     else
@@ -744,7 +750,7 @@ let image ?width:(width=0.) ?height:(height=0.) imageFile env=
   img
 
 #else
-let image ?width:(width=0.) ?height:(height=0.) (_:string) (_:environment)=
+let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:environment)=
   {
     drawing_min_width=0.;
     drawing_max_width=0.;
@@ -756,8 +762,8 @@ let image ?width:(width=0.) ?height:(height=0.) (_:string) (_:environment)=
   }
 #endif
 
-let includeGraphics ?width:(width=0.) ?height:(height=0.) imageFile=
-  [bB (fun env->[Drawing (image ~width:width ~height:height imageFile env)])]
+let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile=
+  [bB (fun env->[Drawing (image ~scale ~width ~height imageFile env)])]
 
 (** {3 Boitification et "classes" de documents}*)
 
