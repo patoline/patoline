@@ -123,6 +123,7 @@ end
 let verb_files = Hashtbl.create 13
 
 let moduleCounter=ref 0
+let argsCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
 let split_ind indices =
@@ -306,8 +307,8 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  if args = [] then ""
 	  else begin
 	    let num = ref 1 in
-            incr moduleCounter;
-	    Printf.bprintf buf "module Args%d = struct\n" !moduleCounter;
+            incr argsCounter;
+	    Printf.bprintf buf "module Args%d = struct\n" !argsCounter;
 	    List.iter (function x ->
 	      let main_buf = buf in
 	      let buf = Buffer.create 80 in
@@ -323,7 +324,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	      Printf.bprintf main_buf "let arg%d = begin %s end\n" !num arg;
 	      incr num) args;
 	    Printf.bprintf buf "end\n";
-	    Printf.sprintf "(Args%d)" !moduleCounter
+	    Printf.sprintf "(Args%d)" !argsCounter
 	  end
 	in
 	begin
