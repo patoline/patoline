@@ -276,14 +276,15 @@ window.onload=function(){resize()};
 window.onkeydown=function(e){
 %s
 %s
+console.log(e)
 }
 </script>"
       w h (w-.10.) (h-.10.)
         (if i>0 then
-            Printf.sprintf "if(e.keyCode==37){document.location.href=\"%s%d.html\"} // left" chop_file (i-1)
+            Printf.sprintf "if(e.keyCode==37 || e.keycode==38){document.location.href=\"%s%d.html\"} // left" chop_file (i-1)
          else "")
         (if i<Array.length pages-1 then
-            Printf.sprintf "if(e.keyCode==39){document.location.href=\"%s%d.html\"} //right" chop_file (i+1)
+            Printf.sprintf "if(e.keyCode==39 || e.keycode==40){document.location.href=\"%s%d.html\"} //right" chop_file (i+1)
          else "");
 
     Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
@@ -487,20 +488,24 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
 resize();loadSlide(0,0)
 };
 window.onkeydown=function(e){
-if(e.keyCode==37){
+//console.log(e);
+if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_state<=0) {
   loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state-1)
 }
 } //left
-if(e.keyCode==39){
+if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
 if(current_state>=states[current_slide]-1) {
   loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state+1)
 }
 } //right
+if(e.charCode==82){ //r
+loadSlide(current_slide,current_state);
+}
 }
 
 function gotoSlide(n){
