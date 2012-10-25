@@ -11,6 +11,9 @@ val black : color
 val blue : color
 val green : color
 val red : color
+val purple : color
+val pink : color
+val orange : color
 val yellow : color
 val gray : color
 

@@ -18,6 +18,9 @@ let black=RGB{red=0.;green=0.;blue=0.}
 let blue=RGB{red=0.;green=0.;blue=1.}
 let green=RGB{red=0.;green=1.;blue=0.}
 let red=RGB{red=1.;green=0.;blue=0.}
+let orange=RGB{red=1.;green=0.5;blue=0.}
+let purple=RGB{red=0.5;green=0.;blue=1.}
+let pink=RGB{red=1.;green=0.;blue=0.5}
 let yellow=RGB{red=1.;green=1.;blue=0.}
 let gray=mix 50. white black
 
