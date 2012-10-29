@@ -670,18 +670,40 @@ let pageref x=
     with Not_found -> []
   )]
 
-let label ?(labelType="_structure") name=
-  [Env (fun env->
-          let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
-            { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
+let make_name name=
+  let realName=UTF8.Buf.create (String.length name) in
+  let rec fill i sp=
+    if UTF8.out_of_range name i then
+      UTF8.Buf.contents realName
+    else (
+      if is_space (UTF8.look name i) then
+        if sp then fill (i+1) true
+        else (
+          UTF8.Buf.add_char realName (UChar.of_char ' ');
+          fill (UTF8.next name i) true
+        )
+      else (
+        UTF8.Buf.add_char realName (UTF8.look name i);
+        fill (UTF8.next name i) false
+      )
+    )
+  in
+  fill 0 true
 
+
+let label ?(labelType="_structure") name=
+  let name=make_name name in
+  [Env (fun env->
+    let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
+    { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
    bB (fun env ->
-        [User (Label name)])
+     [User (Label name)])
   ]
 
 
 
 let generalRef refType name=
+  let name=make_name name in
   [ C (fun env->
     try
       env_accessed:=true;
