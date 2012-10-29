@@ -176,6 +176,13 @@ let slides parameters str tree max_level=
   newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
     bB (
       fun env->
+        let _,b0=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
+        let rec prefix u v=match u,v with
+          | [],_->true
+          | hu::_,hv::_ when hu<>hv->false
+          | _::su,_::sv->prefix su sv
+          | _,[]->false
+        in
         let rec toc env0 path tree=
           let level=List.length path in
           match tree with
@@ -202,10 +209,32 @@ let slides parameters str tree max_level=
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
 
                   let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
-                  let num=boxify_scoped { env' with fontColor=
-                      if level=1 then OutputCommon.rgb 1. 0. 0. else OutputCommon.black }
+
+                  List.iter (Printf.fprintf stderr "path %d\n") path;
+                  List.iter (Printf.fprintf stderr "b0 %d\n") b0;
+                  let env'=if prefix (List.rev b) (List.rev b0) || b0=[] then
+                      env'
+                    else {env' with fontColor=OutputCommon.mix 30. env'.fontColor
+                        OutputCommon.white}
+                  in
+                  let env_num=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then
+                    { env' with fontColor=OutputCommon.rgb 1. 0. 0. }
+                    else env'
+                  in
+                  let num=boxify_scoped env_num
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
+
+                  let rec prefix u v=match u,v with
+                    | [],_->true
+                    | hu::_,hv::_ when hu<>hv->false
+                    | _::su,_::sv->prefix su sv
+                    | _,[]->false
+                  in
+
+
                   let name=boxify_scoped env' s.displayname in
+
+
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
                   let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                   let cont=
