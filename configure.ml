@@ -65,7 +65,7 @@ let _=
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
-    ("--without-camlimages", Unit(fun ()->use_camlimages:=false), " allows camlimages experimental library.");
+    ("--without-camlimages", Unit(fun ()->use_camlimages:=false), " disables camlimages experimental library.");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";

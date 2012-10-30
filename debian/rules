@@ -30,7 +30,7 @@ get-orig-source:
 	darcs pull
 
 override_dh_auto_configure:
-	ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml --fonts-dir /usr/share/fonts/opentype --with-camlimages
+	ocaml configure.ml --prefix /usr --ocaml-libs /usr/lib/ocaml --ocamlfind-dir /usr/lib/ocaml --fonts-dir /usr/share/fonts/opentype
 
 override_dh_install:
 	dh_install -XAsana-Math.otf

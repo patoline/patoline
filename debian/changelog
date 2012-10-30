@@ -1,3 +1,9 @@
+patoline (0~20121030) unstable; urgency=low
+
+  * Sync with upstream
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Tue, 30 Oct 2012 10:32:36 +0100
+
 patoline (0~20120715) unstable; urgency=low
 
   * Update patoline sources.

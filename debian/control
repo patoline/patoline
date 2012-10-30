@@ -1,14 +1,15 @@
 Source: patoline
 Section: ocaml
 Priority: extra
-Maintainer: Pierre-Etienne Meunier <pierreetienne.meunier@gmail.com>
-Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgl-ocaml-dev
+Maintainer: Florian Hatat <florian.hatat@univ-savoie.fr>
+Uploaders: Tom Hirschowitz <tom.hirschowitz@univ-savoie.fr>
+Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgl-ocaml-dev
 Standards-Version: 3.9.3
-Homepage: http://www.lama.univ-savoie.fr/~meunier/patoline
+Homepage: http://www.patoline.com/
 
 Package: patoline
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, patoline-fonts, libtypography-ocaml-dev, libzip-ocaml, libcamlimages-ocaml
 Description: Digital typography system written in OCaml
  Patoline is a digital typography system, similar to TeX or Microsoft Word, but
  using an up-to-date language and algorithm, and leveraging the power of
@@ -35,7 +36,7 @@ Description: Fonts for patoline
 
 Package: libtypography-ocaml-dev
 Architecture: any
-Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120528), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
+Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
 Description: Library of typographic primitives for OCaml
 
 Package: patoline-mode
