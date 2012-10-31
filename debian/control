@@ -3,7 +3,7 @@ Section: ocaml
 Priority: extra
 Maintainer: Florian Hatat <florian.hatat@univ-savoie.fr>
 Uploaders: Tom Hirschowitz <tom.hirschowitz@univ-savoie.fr>
-Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgl-ocaml-dev
+Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgtk2-gl-ocaml-dev, liblablgl-ocaml-dev, libcairo-ocaml-dev, libsqlite3-ocaml-dev, libocamlnet-ocaml-dev, libcryptokit-ocaml-dev
 Standards-Version: 3.9.3
 Homepage: http://www.patoline.com/
 
