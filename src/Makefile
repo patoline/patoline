@@ -3,18 +3,12 @@ include Makefile.config
 FORMAT=$(shell ls Format/Format*.ml) Format/LMFormat.ml
 
 
-ifdef GL_PACK
-PACK+=$(GL_PACK)
+ifdef PACK_DRIVER_GL
 NATIVE_EXTRA+=Patoline/PatolineGL
-else
-  DRIVERS:=$(filter-out Drivers/GL.cmxa,$(DRIVERS))
 endif
 
-ifdef GLGTK_PACK
-PACK+=$(GLGTK_PACK)
+ifdef PACK_DRIVER_GL2
 NATIVE_EXTRA+=Patoline/PatolineGL2
-else
-  DRIVERS:=$(filter-out Drivers/GL2.cmxa,$(DRIVERS))
 endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK)

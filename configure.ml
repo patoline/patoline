@@ -10,15 +10,10 @@ let grammars_dirs=ref []
 let plugins_dir=ref ""
 let plugins_dirs=ref []
 let hyphen_dirs=ref []
-let camlzip=ref ""
-let camlimages=ref ""
-let ocamlnet=ref ""
-let lablgl=ref ""
-let lablglut=ref ""
-let lablgtk2=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 let use_camlimages=ref true
+let build_camlcairo=ref false
 
 let avail_lang=
   let f=open_in "src/Typography/TypoLanguage.ml" in
@@ -51,6 +46,105 @@ let is_substring s1 s0=
   in
     sub 0 0
 
+(* Querying ocamlfind packages, and caching results.
+ * Returns type is (bool * string) where the boolean indicates whether
+ * ocamlfound the package, and string is its actual name (a package may have
+ * different names depending on the system). *)
+let ocamlfind_query =
+  (* Some packages may have different names, which we try to find if the first
+   * package name yields no result. *)
+  let ocamlfind_aliases =
+    [
+      ("zip", ["camlzip"]);
+      ("lablgl", ["lablGL"]);
+      ("lablgl.glut", ["lablGL.glut"])
+    ]
+  and checked = Hashtbl.create 10 in
+  function pack ->
+    try
+      (* Easy case, when package has already been looked up *)
+      Hashtbl.find checked pack
+    with
+      Not_found ->
+        let res =
+          List.fold_left
+           (fun res pack_alias ->
+             if fst res || Sys.command ("ocamlfind query " ^ pack_alias) <> 0 then
+               res
+             else (true, pack_alias)
+           )
+           (false, "")
+           (
+             try pack :: (snd (List.find (fun (p, _) -> p = pack) ocamlfind_aliases))
+             with Not_found -> [pack]
+           )
+        in Hashtbl.add checked pack res;
+        res
+
+(* Is a package ocamlfindable? *)
+let ocamlfind_has pack = fst (ocamlfind_query pack)
+
+(* Listing Patoline drivers with their corresponding dependancies.
+ * A driver may depend on some package found using ocamlfind, or on some other
+ * driver. *)
+type driver_needs =
+  | Package of string
+  | Driver of driver
+and driver =
+  { name: string; needs: driver_needs list; suggests: driver_needs list }
+
+let ocamlnet_needs =
+  [Package "netstring"; Package "netsys"; Package "unix"; Package "nethttpd";
+  Package "netcgi2"; Package "cryptokit"]
+
+let patoline_driver_gl =
+  { name = "GL";
+    needs = (Package "str")::(Package "lablgtk2")::(Package
+    "lablgtk2-gl.gtkgl")::(Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
+    suggests = [] }
+
+let patoline_driver_gl2 =
+  { patoline_driver_gl with name = "GL2" }
+
+(* List of all Patoline drivers.
+ * Add yours to this list in order to build it. *)
+let patoline_drivers =
+  [
+    { name = "Pdf"; needs = []; suggests = [Package "zip"] };
+    { name = "Bin"; needs = []; suggests = [] };
+    { name = "Html"; needs = []; suggests = [] };
+    { name = "SVG"; needs = []; suggests = [] };
+    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = [] };
+    patoline_driver_gl;
+    patoline_driver_gl2;
+    { name = "Net"; needs = ocamlnet_needs; suggests = [] };
+    { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
+    patoline_driver_gl]; suggests = [] };
+  ]
+
+(* Checks whether we can build a given driver.
+ * This certainly won't check that a driver doesn't somehow reference itself:
+ * expect infinite loops if you do not care. *)
+let rec can_build_driver d =
+  let check_need = function
+    | Package p -> ocamlfind_has p
+    | Driver d' -> can_build_driver d'
+  in List.iter (fun a -> ignore (check_need a)) d.suggests;
+  List.for_all check_need d.needs
+
+(* Generates contents for a -package option for ocamlfind, using the argument
+ * needs.
+ * This function does not require all packages in "needs" to be present. If some
+ * of them are missing, they simply won't appear in the returned string.
+ *)
+let gen_pack_line needs =
+  let rec aux_gen = function
+  | [] -> []
+  | (Package p) :: needs -> (snd (ocamlfind_query p)) :: (aux_gen needs)
+  | (Driver d) :: needs ->
+      (aux_gen d.needs) @ (aux_gen d.suggests) @ (aux_gen needs)
+  in String.concat "," (List.filter ((<>) "") (aux_gen needs))
+
 let _=
   parse [
     ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
@@ -66,6 +160,7 @@ let _=
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
     ("--without-camlimages", Unit(fun ()->use_camlimages:=false), " disables camlimages experimental library.");
+    ("--with-camlcairo", Unit(fun ()->build_camlcairo:=true), " builds OCaml Cairo bindings from Patoline sources");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
@@ -80,30 +175,6 @@ let _=
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
   hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
   plugins_dirs:= !plugins_dir ::(!plugins_dirs);
-
-  if Sys.command "ocamlfind query zip" = 0
-  then camlzip := "zip"
-  else if Sys.command "ocamlfind query camlzip" = 0
-  then camlzip := "camlzip";
-
-  if !use_camlimages && Sys.command "ocamlfind query camlimages" = 0
-  then camlimages := "camlimages.all_formats";
-
-  if Sys.command "ocamlfind query netstring netsys unix nethttpd netcgi2 cryptokit" = 0
-  then ocamlnet := "netstring,netsys,unix,nethttpd,netcgi2,cryptokit";
-
-  if Sys.command "ocamlfind query lablgl" = 0
-  then lablgl := "lablgl"
-  else if Sys.command "ocamlfind query lablGL" = 0
-  then lablgl := "lablGL";
-
-  if Sys.command "ocamlfind query lablgl.glut" = 0
-  then lablglut := "lablgl.glut"
-  else if Sys.command "ocamlfind query lablGL.glut" = 0
-  then lablglut := "lablGL.glut";
-
-  if Sys.command "ocamlfind query lablgtk2" = 0 && Sys.command "ocamlfind query lablgtk2-gl.gtkgl" = 0
-  then lablgtk2 := "lablgtk2";
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
@@ -124,9 +195,9 @@ let _=
     Printf.fprintf out "doc: Patoline.pdf\n\tmake -C src doc\n\n";
     Printf.fprintf out "Patoline.pdf: Patoline.txp src/Patoline/patoline src/DefaultGrammar.tgx src/Rbuffer/rbuffer.cmxa src/Typography/Typography.cmxa src/Format/DefaultFormat.cmxa src/Drivers/Pdf.cmxa
 	./src/Patoline/patoline --recompile --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
-	ocamlfind ocamlopt -package camomile%s%s -linkpkg -I src -I src/Rbuffer rbuffer.cmxa -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
+	ocamlfind ocamlopt -package %s -linkpkg -I src -I src/Rbuffer rbuffer.cmxa -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
 	./Patoline.tmx --extra-fonts-dir Fonts
-"  (if !camlzip="" then "" else (","^(!camlzip))) (if !camlimages="" then "" else (","^(!camlimages)));
+"  (gen_pack_line [Package "camomile"; Package "zip"; Package "camlimages.all_formats"]);
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
       Printf.fprintf out "\tcd tests; ../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
@@ -169,22 +240,34 @@ let _=
 
     let make=open_out "src/Makefile.config" in
     Printf.fprintf make "CPP='cpp -w %s%s%s%s'\n"
-        (if !camlzip <> "" then "-DCAMLZIP " else "")
-        (if !camlimages <> "" then "-DCAMLIMAGES " else "")
+        (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
+        (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
-    Printf.fprintf make "PACK=-package camomile%s%s\n"
-      (if !camlzip <> "" then " -package "^(!camlzip) else "")
-      (if !camlimages <> "" then " -package "^(!camlimages) else "");
-    if !lablgl <> "" && !lablglut <> "" && !camlimages<>"" then
-      Printf.fprintf make "GL_PACK=-package %s -package %s\n" (!lablgl) (!lablglut);
-    if !lablgl <> "" && !lablgtk2 <> "" && !camlimages<>"" then
-      Printf.fprintf make "GLGTK_PACK=-package %s -package %s \n" (!lablgl) (!lablgtk2);
+    Printf.fprintf make "PACK=-package %s\n"
+      (gen_pack_line [Package "camomile"; Package "zip";
+        Package "camlimages.all_formats"; Package "cairo"]);
 
-    Printf.fprintf make "DRIVERS=Drivers/Pdf.cmxa Drivers/Bin.cmxa Drivers/Html.cmxa Drivers/SVG.cmxa Drivers/DriverCairo.cmxa %s%s%s\n"
-      (if !lablgl<>"" && !camlimages<>"" then "Drivers/GL.cmxa Drivers/GL2.cmxa " else "")
-      (if !ocamlnet<>"" then "Drivers/Net.cmxa " else "")
-      (if !camlimages<>"" && !lablgl<>"" then "Drivers/Image.cmxa " else "");
+    (* Write out the list of enabled drivers *)
+    let ok_drivers = List.filter can_build_driver patoline_drivers in
+    Printf.fprintf make "DRIVERS=%s\n"
+      (String.concat " "
+        (List.map (fun d -> "Drivers/" ^ d.name ^ ".cmxa") ok_drivers)
+      );
+
+    (* Output -package option for enabled drivers *)
+    List.iter
+    (fun d ->
+      Printf.fprintf make "PACK_DRIVER_%s=%s\n"
+        d.name
+        (gen_pack_line (d.needs @ d.suggests))
+    )
+    ok_drivers;
+
+    (* Control build of embedded Camlcairo *)
+    Printf.fprintf make "BUILD_OCAMLCAIRO=%s\n"
+      (if !build_camlcairo then "yes" else "no");
+
     close_out make;
 
     (* binaries *)
@@ -192,9 +275,9 @@ let _=
     Printf.fprintf out "\t make -C src/Rbuffer install DESTDIR=$(DESTDIR)\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
-    if !lablgl <> "" && !lablglut <> "" then
+    if can_build_driver patoline_driver_gl then
       Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
-    if !lablgl <> "" && !lablgtk2 <> "" then
+    if can_build_driver patoline_driver_gl2 then
       Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
 
     let sources=
@@ -235,7 +318,8 @@ let _=
       Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
 
       (* cairo-ocaml *)
-      Printf.fprintf out "\tmake -C src/cairo-ocaml install\n";
+      if !build_camlcairo then
+        Printf.fprintf out "\tmake -C src/cairo-ocaml install\n";
 
 
       (* Ecriture de la configuration *)
@@ -275,8 +359,9 @@ let _=
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
-            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"str,camomile,rbuffer%s%s\"\n" (if !camlzip="" then "" else (","^(!camlzip)))
-            (if !camlimages="" then "" else (","^(!camlimages)));
+            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
+            (gen_pack_line [Package "str"; Package "camomile";
+            Package "zip"; Package "camlimages.all_formats"]);
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
 

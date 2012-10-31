@@ -1,15 +1,12 @@
 include ../Makefile.config
-ifdef GL_PACK
-PACK+=$(GL_PACK)
+
+ifdef PACK_DRIVER_GL
+PACK:=$(PACK) -package $(PACK_DRIVER_GL)
 NATIVE_EXTRA+=Patoline/PatolineGL
-else
-  DRIVERS:=$(filter-out Drivers/GL.ml,$(DRIVERS))
 endif
-ifdef GLGTK_PACK
-PACK+=$(GLGTK_PACK)
+ifdef PACK_DRIVER_GL2
+PACK:=$(PACK) -package $(PACK_DRIVER_GL2)
 NATIVE_EXTRA+=Patoline/PatolineGL2
-else
-  DRIVERS:=$(filter-out Drivers/GL2.ml,$(DRIVERS))
 endif
 
 CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
@@ -47,19 +44,23 @@ Net.cmxa:Net.cmx
 DriverCairo.cmxa:DriverCairo.cmx
 	$(CAMLOPT) -a -o $@ DriverCairo.cmx
 
+ifeq ($(BUILD_CAMLCAIRO),yes)
 DriverCairo.cmx:DriverCairo.ml
 	cd ../cairo-ocaml;make configure;make
 	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
-
+else
+DriverCairo.cmx:DriverCairo.ml
+	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
+endif
 
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
 GL.cmx:GL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx Vec3.cmx
-	$(CAMLOPT) -package netcgi2,nethttpd -c -o $@ $<
+	$(CAMLOPT) -package netcgi2,nethttpd -package $(PACK_DRIVER_GL) -c -o $@ $<
 Image.cmx:Image.ml GL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
-	$(CAMLOPT) -package netcgi2,nethttpd -c -o $@ $<
+	$(CAMLOPT) -package netcgi2,nethttpd,$(PACK_DRIVER_GL) -c -o $@ $<
 
 %.cmx:%.ml ../Typography/Typography.cmxa
 	$(CAMLOPT) -c -o $@ $<
