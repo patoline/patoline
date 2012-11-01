@@ -54,9 +54,9 @@ let ocamlfind_query =
    * package name yields no result. *)
   let ocamlfind_aliases =
     [
-      ("zip", ["camlzip"]);
-      ("lablgl", ["lablGL"]);
-      ("lablgl.glut", ["lablGL.glut"])
+      ["zip"; "camlzip"];
+      ["lablgl"; "lablGL"];
+      ["lablgl.glut"; "lablGL.glut"]
     ]
   and checked = Hashtbl.create 10 in
   function pack ->
@@ -74,7 +74,7 @@ let ocamlfind_query =
            )
            (false, "")
            (
-             try pack :: (snd (List.find (fun (p, _) -> p = pack) ocamlfind_aliases))
+             try List.find (fun l -> List.hd l = pack) ocamlfind_aliases
              with Not_found -> [pack]
            )
         in Hashtbl.add checked pack res;
