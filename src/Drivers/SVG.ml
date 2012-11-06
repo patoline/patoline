@@ -578,3 +578,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     )
   ) svg_files;
   output_fonts cache
+
+let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages filename=
+  output' ~structure (Array.map (fun x->[|x|]) pages) filename
