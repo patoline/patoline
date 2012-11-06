@@ -13,7 +13,6 @@ let hyphen_dirs=ref []
 let lang=ref "FR"
 let ban_comic_sans=ref false
 let use_camlimages=ref true
-let build_camlcairo=ref false
 
 let avail_lang=
   let f=open_in "src/Typography/TypoLanguage.ml" in
@@ -160,7 +159,6 @@ let _=
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
     ("--without-camlimages", Unit(fun ()->use_camlimages:=false), " disables camlimages experimental library.");
-    ("--with-camlcairo", Unit(fun ()->build_camlcairo:=true), " builds OCaml Cairo bindings from Patoline sources");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)))
   ] ignore "Usage:";
@@ -264,10 +262,6 @@ let _=
     )
     ok_drivers;
 
-    (* Control build of embedded Camlcairo *)
-    Printf.fprintf make "BUILD_OCAMLCAIRO=%s\n"
-      (if !build_camlcairo then "yes" else "no");
-
     close_out make;
 
     (* binaries *)
@@ -316,11 +310,6 @@ let _=
       (* emacs *)
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
       Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
-
-      (* cairo-ocaml *)
-      if !build_camlcairo then
-        Printf.fprintf out "\tmake -C src/cairo-ocaml install\n";
-
 
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
