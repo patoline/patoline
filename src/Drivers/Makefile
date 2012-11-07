@@ -44,14 +44,8 @@ Net.cmxa:Net.cmx
 DriverCairo.cmxa:DriverCairo.cmx
 	$(CAMLOPT) -a -o $@ DriverCairo.cmx
 
-ifeq ($(BUILD_CAMLCAIRO),yes)
-DriverCairo.cmx:DriverCairo.ml
-	cd ../cairo-ocaml;make configure;make
-	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
-else
 DriverCairo.cmx:DriverCairo.ml
 	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
-endif
 
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
