@@ -482,12 +482,19 @@ module Make (L:Line with type t=Line.line)=(
                   ) else compl
                   in
                   List.iter make_next_node (compl);
-                  if !local_opt=[] && !extreme_solutions=[] && page<=node.page+1+(max lastParameters.min_page_after !min_page_before) then (
-                    let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
+                  if !local_opt=[] && !extreme_solutions=[] then
+                    if page<=node.page+1+(max lastParameters.min_page_after !min_page_before) then (
+                      let next_h=(!r_params).next_acceptable_height node lastParameters r_nextNode !r_params !minimal_tried_height in
                     (* Printf.fprintf stderr "%f %f\n" next_h node.height; *)
-                    fix page (if next_h<infinity && next_h>height then next_h else
-                        height+.1.) (n_iter+1)
-                  )
+                      fix page (if next_h<infinity && next_h>height then next_h else
+                          height+.1.) (n_iter+1)
+                    ) else if allow_impossible then (
+                      let nextNode=List.hd compl in
+                      extreme_solutions:=(nextNode,
+                                  lastBadness,
+                                  (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                  !r_params,0.,Some cur_node,lastFigures,lastUser)::[]
+                    )
                 )
                 end
               in

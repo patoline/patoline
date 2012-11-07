@@ -7,7 +7,6 @@ val defaultPage:page
 
 module type Driver =
   sig
-    val filename : string -> string
     val output :
       ?structure:OutputCommon.structure -> page array -> string -> unit
   end
