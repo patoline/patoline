@@ -1254,15 +1254,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                       | User (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                   dest_page=0;dest_x=0.;dest_y=0.;is_internal=true;
-                                   link_contents=[]
-                                 }
-                        in
-                        crosslinks:=(i, link, l) :: !crosslinks;
-                        page.pageContents<-Link link::page.pageContents;
-                        crosslink_opened:=true;
-                        0.
-                      )
+                                    dest_page=line.Line.page;dest_x=0.;dest_y=0.;is_internal=true;
+                                    link_contents=[]
+                                  }
+                         in
+                         crosslinks:=(i, link, l) :: !crosslinks;
+                         page.pageContents<-Link link::page.pageContents;
+                         crosslink_opened:=true;
+                         0.
+                        )
                       | User (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
                         destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
@@ -1339,13 +1339,29 @@ module Format=functor (D:Document.DocumentStructure)->(
               page.pageContents<-List.rev page.pageContents
             in
             for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
-            List.iter (fun (p,link,dest)->try
-                                            let (p',x,y0,y1)=StrMap.find dest !destinations in
-                                            pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
-                                            ::pages.(p).pageContents
-              with
-                  Not_found->()
-            ) !crosslinks;
+
+            let pages=Array.map (fun p->
+              { p with
+                pageContents=List.map (fun a->match a with
+                    Link l when l.is_internal->(
+                      let (p',x,y0,y1)=StrMap.find l.uri !destinations in
+                      Link { l with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
+                    )
+                  | a->a
+                ) p.pageContents
+              }
+            ) pages
+            in
+
+            (* List.iter (fun (p,link,dest)->try *)
+            (*                                 let (p',x,y0,y1)=StrMap.find dest !destinations in *)
+            (*                                 pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi } *)
+            (*                                 ::pages.(p).pageContents *)
+            (*   with *)
+            (*       Not_found->() *)
+            (* ) !crosslinks; *)
+
+
             M.output ~structure:(make_struct positions tree) pages file
           )
         in
