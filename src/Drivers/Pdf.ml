@@ -443,7 +443,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             if !pageLinks <> [] then (
               fprintf outChan "/Annots [ ";
               List.iter (fun l->
-                             if l.is_internal then
+                             if l.is_internal && l.dest_page>=0 then
                                fprintf outChan
                                  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
                                  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)

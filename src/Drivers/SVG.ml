@@ -90,13 +90,15 @@ let draw ?fontCache w h contents=
       Glyph x->(
         if not !opened_text then (
           Rbuffer.add_string svg_buf "<text>\n";
-          opened_text:=true
+          opened_text:=true;
+          opened_tspan:=false
         );
 
         let _,fontName=className fontCache x.glyph in
         let size=x.glyph_size in
         if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
           || !cur_size<>size || !cur_color<>x.glyph_color
+          || not !opened_tspan
         then (
           if !opened_tspan then (
             Rbuffer.add_string svg_buf "</tspan>";
