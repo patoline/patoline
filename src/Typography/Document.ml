@@ -800,11 +800,13 @@ let makeGlue env x0=
     (if fst !rStdGlue <> env.size then rStdGlue:=(env.size, glue (2.*.env.size/.9.) (env.size/.3.) (env.size/.2.)));
     snd !rStdGlue
   in
-    if (x0>=0x0009 && x0<=0x000d) || x0=0x0020 then stdGlue else
+  if (x0>=0x0009 && x0<=0x000d) || x0=0x0020 then stdGlue else
       match x0 with
           0x00a0->(match stdGlue with
-                       Glue y->Drawing y
-                     | y->y)
+              Glue y->(
+                Drawing y
+              )
+            | y->y)
         | 0x1680->stdGlue
         | 0x180e->(glue 0. 0. 0.)
         | 0x2000->let w=env.size/.2. in (glue w w w)
@@ -815,28 +817,28 @@ let makeGlue env x0=
         | 0x2005->let w=env.size/.4. in (glue (w*.2./.3.) w (w*.3./.2.))
         | 0x2006->let w=env.size/.6. in (glue (w*.2./.3.) w (w*.3./.2.))
         | 0x2007->(
-            let w0=
-              glyph_of_string env.substitutions env.positioning env.font env.size
-                env.fontColor
-                "0"
-            in
-            let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.))
-          )
+          let w0=
+            glyph_of_string env.substitutions env.positioning env.font env.size
+              env.fontColor
+              "0"
+          in
+          let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.))
+        )
         | 0x2008->(
-            let w0=
-              glyph_of_string env.substitutions env.positioning env.font env.size
-                env.fontColor
-                "."
-            in
-            let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.))
-          )
+          let w0=
+            glyph_of_string env.substitutions env.positioning env.font env.size
+              env.fontColor
+              "."
+          in
+          let w=env.size*.(List.fold_left (fun w1 b->w1+.box_width 0. b) 0. w0) in (glue (w*.2./.3.) w (w*.3./.2.))
+        )
         | 0x2009->let w=env.size/.5. in (glue (w*.2./.3.) w (w*.3./.2.))
         | 0x200a->let w=env.size/.8. in (glue (w*.2./.3.) w (w*.3./.2.))
         | 0x202f->
-            let w=env.size/.5. in
-              (match glue (w*.2./.3.) w (w*.3./.2.) with
-                   Glue y->Drawing y
-                 | y->y)
+          let w=env.size/.5. in
+          (match glue (w*.2./.3.) w (w*.3./.2.) with
+              Glue y->Drawing y
+            | y->y)
         | 0x205f->let w=env.size*.4./.18. in (glue (w*.2./.3.) w (w*.3./.2.))
         | 0xfeff->(glue 0. 0. 0.)
         | _->stdGlue
@@ -922,14 +924,15 @@ let boxify buf nbuf fixable env0 l=
           | _ ->(
               (* let buf=ref [|Empty|] in *)
               (* let nbuf=ref 0 in *)
-              let t=UNF8.nfkc t in
               let l=ref IntMap.empty in
               let rec cut_str i0 i=
                 if i>=String.length t then (
-                  l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)))
+                  let sub=String.sub t i0 (i-i0) in
+                  l:=mappend !l (gl_of_str env (UNF8.nfkc sub))
                 ) else (
                   if is_space (UTF8.look t i) then (
-                    l:=mappend !l (gl_of_str env (String.sub t i0 (i-i0)));
+                    let sub=String.sub t i0 (i-i0) in
+                    l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
                     if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
                     cut_str (UTF8.next t i) (UTF8.next t i)
                   ) else (
