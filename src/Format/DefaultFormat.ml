@@ -1202,6 +1202,9 @@ module Format=functor (D:Document.DocumentStructure)->(
             let crosslink_opened=ref false in
             let destinations=ref StrMap.empty in
             let urilinks=ref None in
+
+            let continued_link=ref None in
+
             let draw_page i p=
               pages.(i)<-out_params.format paragraphs paragraph_trees figures figure_trees p;
               let page=pages.(i) in
@@ -1209,6 +1212,42 @@ module Format=functor (D:Document.DocumentStructure)->(
               let footnote_y=ref (-.infinity) in
               let pp=Array.of_list p in
               let w,h=page.pageFormat in
+
+              let endlink cont=
+                continued_link:=None;
+                if !crosslink_opened then (
+                  let rec link_contents u l=match l with
+                      []->[]
+                    | (Link h)::s->(
+                      if cont then continued_link:=Some (Link h);
+                      Link { h with link_contents=List.rev u }
+                    )::s
+                    | h::s->link_contents (h::u) s
+                  in
+                  page.pageContents<-link_contents [] page.pageContents;
+                  (match !urilinks with
+                      None->(
+                        match !crosslinks with
+                            []->()
+                          | (_,h,_)::s->crosslink_opened:=false
+                      )
+                    | Some h->(
+                      page.pageContents<-Link h::page.pageContents;
+                      urilinks:=None;
+                    )
+                  )
+                )
+              in
+
+              (match !continued_link with
+                  None->()
+                | Some l->(
+                  page.pageContents<-l::page.pageContents;
+                  crosslink_opened:=true;
+                  continued_link:=None
+                )
+              );
+
               for j=0 to Array.length pp-1 do
                 let topMargin=(h-.(fst pp.(0)).page_height)/.2. in
                 let param,line=pp.(j) in
@@ -1295,39 +1334,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                       | User (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                    dest_page=line.Line.page;dest_x=0.;dest_y=0.;is_internal=true;
-                                    link_contents=[]
-                                  }
-                         in
-                         crosslinks:=(i, link, l) :: !crosslinks;
-                         page.pageContents<-Link link::page.pageContents;
-                         crosslink_opened:=true;
-                         0.
-                        )
+                                   dest_page=line.Line.page;dest_x=0.;dest_y=0.;is_internal=true;
+                                   link_contents=[]
+                                 }
+                        in
+                        crosslinks:=(i, link, l) :: !crosslinks;
+                        page.pageContents<-Link link::page.pageContents;
+                        crosslink_opened:=true;
+                        0.
+                      )
                       | User (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
                         destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
                         0.
                       )
                       | User EndLink->(
-                        let rec link_contents u l=match l with
-                            []->[]
-                          | (Link h)::s->(Link { h with link_contents=List.rev u })::s
-                          | h::s->link_contents (h::u) s
-                        in
-                        page.pageContents<-link_contents [] page.pageContents;
-                        (match !urilinks with
-                            None->(
-                              match !crosslinks with
-                                  []->()
-                                | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
-                            )
-                          | Some h->(
-                            h.link_x1<-x;
-                            page.pageContents<-Link h::page.pageContents;
-                            urilinks:=None;
-                          )
-                        );
+                        endlink false;
                         0.
                       )
                       | User (Footnote (_,g))->(
@@ -1349,7 +1371,18 @@ module Format=functor (D:Document.DocumentStructure)->(
                       | (a,h,c)::s->
                         (a, { h with link_x0=param.left_margin;link_x1=param.left_margin;
                           link_y0=y;link_y1=y }, c)::(a,h,c)::s);
+
                   let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                  endlink true;
+                  (match !continued_link with
+                      None->()
+                    | Some l->(
+                      page.pageContents<-l::page.pageContents;
+                      crosslink_opened:=true;
+                      continued_link:=None
+                    )
+                  );
+
                   (match !urilinks with
                       None->()
                     | Some h->h.link_x1<-x1);
@@ -1359,6 +1392,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       | (_,h,_)::_->h.link_x1<-x1)
                 )
               done;
+
+              endlink true;
+
               (match !urilinks with
                   None->()
                 | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
@@ -1385,8 +1421,15 @@ module Format=functor (D:Document.DocumentStructure)->(
               { p with
                 pageContents=List.map (fun a->match a with
                     Link l when l.is_internal->(
-                      let (p',x,y0,y1)=StrMap.find l.uri !destinations in
-                      Link { l with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
+                      try
+                        let (p',x,y0,y1)=StrMap.find l.uri !destinations in
+                        let dx0,dy0,dx1,dy1=bounding_box l.link_contents in
+                        Link { l with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi;
+                          link_x0=dx0;link_x1=dx1;
+                          link_y0=dy0;link_y1=dy1
+                             }
+                      with
+                          Not_found->a
                     )
                   | a->a
                 ) p.pageContents
