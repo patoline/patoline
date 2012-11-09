@@ -40,11 +40,24 @@ let standalone w h style title svg=
 let make_defs fontCache=
   let def_buf=Rbuffer.create 256 in
   StrMap.iter (fun full class_name->
-    Rbuffer.add_string def_buf "@font-face { font-family:";
-    Rbuffer.add_string def_buf class_name;
-    Rbuffer.add_string def_buf "; src:url(\"";
+    Rbuffer.add_string def_buf
+      (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
     Rbuffer.add_string def_buf full;
     Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
+  ) fontCache.fontFamilies;
+  ClassMap.iter (fun (fam,size,col) k->
+    Rbuffer.add_string def_buf (
+      Printf.sprintf ".c%d { font-family:f%d;font-size:%gpx;" k fam size
+    );
+    (match col with
+        RGB fc ->
+          Rbuffer.add_string def_buf
+            (Printf.sprintf "font-color:#%02x%02x%02x; "
+               (round (255.*.fc.red))
+               (round (255.*.fc.green))
+               (round (255.*.fc.blue)))
+    );
+    Rbuffer.add_string def_buf "}\n";
   ) fontCache.classes;
   def_buf
 
@@ -80,9 +93,7 @@ let draw ?fontCache w h contents=
 
   let cur_x=ref 0. in
   let cur_y=ref 0. in
-  let cur_family=ref "" in
-  let cur_size=ref 0. in
-  let cur_color=ref (RGB {red=0.;green=0.;blue=0.}) in
+  let cur_cls=ref (-1) in
   let opened_text=ref false in
   let opened_tspan=ref false in
 
@@ -94,34 +105,20 @@ let draw ?fontCache w h contents=
           opened_tspan:=false
         );
 
-        let _,fontName=className fontCache x.glyph in
+        let cls=className fontCache x in
         let size=x.glyph_size in
-        if !cur_x<>x.glyph_x || !cur_y<>x.glyph_y || !cur_family<>fontName
-          || !cur_size<>size || !cur_color<>x.glyph_color
+        if cls<> !cur_cls
           || not !opened_tspan
         then (
           if !opened_tspan then (
             Rbuffer.add_string svg_buf "</tspan>";
           );
-          Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" font-family=\"%s\" font-size=\"%gpx\" "
-                                        (x.glyph_x) ( (h-.x.glyph_y))
-                                        fontName
-                                        (size));
-          (match x.glyph_color with
-              RGB fc ->
-                Rbuffer.add_string svg_buf
-                  (Printf.sprintf "fill=\"#%02x%02x%02x\" "
-                     (round (255.*.fc.red))
-                     (round (255.*.fc.green))
-                     (round (255.*.fc.blue)))
-        (* | _->() *)
-          );
-          Rbuffer.add_string svg_buf "stroke=\"none\">";
+
+          Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" class=\"c%d\">"
+                                        (x.glyph_x) ((h-.x.glyph_y)) cls);
           cur_x:=x.glyph_x;
           cur_y:=x.glyph_y;
-          cur_family:=fontName;
-          cur_size:=size;
-          cur_color:=x.glyph_color;
+          cur_cls:=cls;
           opened_tspan:=true;
         );
         let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
@@ -238,7 +235,17 @@ let draw ?fontCache w h contents=
   if !opened_text then (
     Rbuffer.add_string svg_buf "</text>\n";
   );
+
   svg_buf
+
+          (*
+            "font-family=\"%s\" font-size=\"%gpx\" "
+            fontName
+            (size));
+          (* | _->() *)
+            );
+            Rbuffer.add_string svg_buf "stroke=\"none\">";
+          *)
 
 
 

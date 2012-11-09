@@ -6,13 +6,16 @@ open Typography.Fonts.FTypes
 open Typography.OutputCommon
 open Typography.OutputPaper
 
+module ClassMap=Map.Make(struct type t=int*float*OutputCommon.color let compare=compare end)
 
 type font_cache={
   subfonts:(Fonts.font * (FTypes.glyph_id*int) IntMap.t) StrMap.t;
   fontBuffers:Rbuffer.t StrMap.t;
   mutable instances:(int StrMap.t) StrMap.t;
-  classes:string StrMap.t
+  fontFamilies:int StrMap.t;
+  mutable classes:int ClassMap.t
 }
+
 
 let build_font_cache pages=
   let rec make_fonts i l fonts=
@@ -74,8 +77,9 @@ let build_font_cache pages=
 
   let style_buf=Rbuffer.create 256 in
   Rbuffer.add_string style_buf "body{line-height:0;}\n.z { font-size:0; }\n";
-  let classes=ref StrMap.empty in
+  let families=ref StrMap.empty in
   let fontBuffers=ref StrMap.empty in
+  let classes=ref ClassMap.empty in
   StrMap.iter (fun name (font,a)->
     (* k : nom de la police
        a : (glyph*int) IntMap.t : map du numéro de glyph vers la sous-police *)
@@ -95,8 +99,7 @@ let build_font_cache pages=
       let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
       let info=Fonts.fontInfo font in
       let filename=full^".otf" in
-      let class_name=Printf.sprintf "c%d" (StrMap.cardinal !classes) in
-      classes:=StrMap.add (full) class_name !classes;
+      families:=StrMap.add (full) (StrMap.cardinal !families) !families;
       let rec make_bindings i b=
         if i>=Array.length glyphs then b else (
           let gl=glyphs.(i) in
@@ -112,7 +115,9 @@ let build_font_cache pages=
   { subfonts=f;
     fontBuffers= !fontBuffers;
     instances= !fontInstances;
+    fontFamilies= !families;
     classes= !classes }
+
 
 let output_fonts cache=
   StrMap.iter (fun filename buf->
@@ -121,8 +126,11 @@ let output_fonts cache=
       close_out out;
   ) cache.fontBuffers
 
+
+
 (* renvoit (nom complet de la police, nom de la classe) *)
-let className cache gl=
+let className cache gl_=
+  let gl=gl_.glyph in
   let font=Fonts.glyphFont gl in
   let idx=Fonts.glyphNumber gl in
   let u=Fonts.uniqueName font in
@@ -137,14 +145,24 @@ let className cache gl=
   (*  *)
 
   let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
-  (full,StrMap.find full cache.classes)
+  let fam=StrMap.find full cache.fontFamilies in
+
+  try
+    ClassMap.find (fam,gl_.glyph_size,gl_.glyph_color) cache.classes
+  with
+      Not_found->(
+        let n=ClassMap.cardinal cache.classes in
+        cache.classes<-ClassMap.add (fam,gl_.glyph_size,gl_.glyph_color) n cache.classes;
+        n
+      )
+
 
 let make_style cache=
   let style_buf=Rbuffer.create 256 in
   StrMap.iter (fun full class_name->
-    Rbuffer.add_string style_buf (Printf.sprintf "@font-face { font-family:%s;
+    Rbuffer.add_string style_buf (Printf.sprintf "@font-face { font-family:f%d;
 src:url(\"%s.otf\") format(\"opentype\"); }
-.%s { font-family:%s; }\n"
+.f%d { font-family:f%d; }\n"
                                     class_name full class_name class_name)
-  ) cache.classes;
+  ) cache.fontFamilies;
   style_buf

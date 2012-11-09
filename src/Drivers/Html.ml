@@ -40,8 +40,7 @@ body{line-height:0;}\n" structure.name;
     let w,h=pages.(i).pageFormat in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
-    let cur_class=ref "" in
-    let cur_size=ref 0. in
+    let cur_class=ref (-1) in
     let span_open=ref false in
     let close_span ()=if !span_open then (
       Printf.fprintf o "</span>"; span_open:=false
@@ -50,26 +49,21 @@ body{line-height:0;}\n" structure.name;
     Printf.fprintf o "<nobr>\n";
     List.iter (fun l->match l with
         Glyph x->(
-          let _,class_name=className cache x.glyph in
+          let class_name=className cache x in
           let cont=Fonts.glyphNumber x.glyph in
           let pos=UTF8.next cont.glyph_utf8 0 in
-          if class_name<> !cur_class
-            || !cur_x <> x.glyph_x
-            || !cur_y <> x.glyph_y
-            || !cur_size <> x.glyph_size then (
+          if class_name<> !cur_class then (
               close_span ();
               span_open:=true;
               let pos_y=h-.x.glyph_y (* -. (Fonts.ascender font)*.x.glyph_size/.1000. *) in
 
-              Printf.fprintf o "<span class=\"%s\" style=\"font-size:%fmm;position:absolute;left:%fmm;top:%fmm;\">%s"
+              Printf.fprintf o "<span class=\"c%d\" style=\"position:absolute;left:%fmm;top:%fmm;\">%s"
                 class_name
-                x.glyph_size
                 x.glyph_x
                 pos_y
                 (String.sub cont.glyph_utf8 0 pos);
-              cur_size:= x.glyph_size;
               cur_class:=class_name;
-            ) else (
+          ) else (
               Printf.fprintf o "%s" (String.sub cont.glyph_utf8 0 pos);
             );
           cur_x:= x.glyph_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
