@@ -41,7 +41,12 @@ test: Drivers/Net.cmxa Patoline/patoline
 
 truc.pdf: Drivers/Pdf.cmxa Patoline/patoline Typography/Typography.cmxa Format/DefaultFormat.cmxa truc.txp
 	Patoline/patoline --recompile --driver Pdf --ml truc.txp
-	ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa Pdf.cmxa DefaultFormat.cmxa FormatSlides.cmxa -linkpkg  -o 'truc.tmx'  -impl 'truc.tml'
+	ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa Pdf.cmxa DefaultFormat.cmxa FormatArticle.cmxa FormatSlides.cmxa -linkpkg  -o 'truc.tmx'  -impl 'truc.tml'
+	./truc.tmx --extra-fonts-dir ../Fonts
+
+truc.html: Drivers/SVG.cmxa Patoline/patoline Typography/Typography.cmxa Format/DefaultFormat.cmxa truc.txp
+	Patoline/patoline --recompile --driver SVG  --ml truc.txp
+	ocamlfind ocamlopt -package camomile,camlzip,camlimages.all_formats -linkpkg -I Format -I Drivers -I Typography -I Rbuffer rbuffer.cmxa Typography.cmxa SVG.cmxa DefaultFormat.cmxa FormatArticle.cmxa FormatSlides.cmxa -linkpkg  -o 'truc.tmx'  -impl 'truc.tml'
 	./truc.tmx --extra-fonts-dir ../Fonts
 
 
