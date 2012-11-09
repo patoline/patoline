@@ -52,7 +52,7 @@ let make_defs fontCache=
     (match col with
         RGB fc ->
           Rbuffer.add_string def_buf
-            (Printf.sprintf "font-color:#%02x%02x%02x; "
+            (Printf.sprintf "fill:#%02x%02x%02x; "
                (round (255.*.fc.red))
                (round (255.*.fc.green))
                (round (255.*.fc.blue)))
@@ -108,6 +108,7 @@ let draw ?fontCache w h contents=
         let cls=className fontCache x in
         let size=x.glyph_size in
         if cls<> !cur_cls
+          || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
           || not !opened_tspan
         then (
           if !opened_tspan then (
