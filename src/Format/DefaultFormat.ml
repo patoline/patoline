@@ -252,7 +252,8 @@ module Format=functor (D:Document.DocumentStructure)->(
         min_height_after=0.;
         not_last_line=false;
         not_first_line=false;
-        really_next_line=1;
+        min_lines_before=1;
+        min_lines_after=0;
         absolute=false
       }
     let center = do_center parameters
@@ -1028,7 +1029,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
-        let par a b c d e f g line={ (ragged_right a b c d e f g line) with not_first_line=true;really_next_line=0 } in
+        let par a b c d e f g line={ (ragged_right a b c d e f g line) with not_first_line=true;
+          min_lines_before=0;min_lines_after=2; }
+        in
         let bad env a b c d e f g h i j k l m=if d.isFigure then infinity else
           Document.badness env a b c d e f g h i j k l m
         in
@@ -1090,7 +1093,8 @@ module Format=functor (D:Document.DocumentStructure)->(
               Paragraph { p with
                             par_parameters=(fun a b c d e f g line->
                                               { (p.par_parameters a b c d e f g line) with
-                                                  min_height_after=
+                                                min_lines_before=0;
+                                                min_height_after=
                                                   if line.lineEnd>=Array.length b.(line.paragraph) then a.lead else 0. });
                         }
           | Node n->(try

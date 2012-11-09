@@ -41,7 +41,8 @@ type parameters={ measure:float;
                   min_page_after:int;
                   not_last_line:bool;
                   not_first_line:bool;
-                  really_next_line:int;
+                  min_lines_before:int;
+                  min_lines_after:int;
                   absolute:bool
                 }
 
@@ -56,6 +57,7 @@ let default_params={ measure=0.;
                      min_page_after=0;
                      not_last_line=false;
                      not_first_line=false;
-                     really_next_line=1;
+                     min_lines_before=1;
+                     min_lines_after=0;
                      absolute=false
                    }

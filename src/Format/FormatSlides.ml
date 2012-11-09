@@ -336,7 +336,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         page_height=2.*.slideh;
         next_acceptable_height=
           (fun a b c d e->max e (a.height+.env.lead));
-        really_next_line=1
+        min_lines_before=1
       }
 
     module type Title = sig

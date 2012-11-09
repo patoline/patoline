@@ -324,7 +324,7 @@ module Make (L:Line with type t=Line.line)=(
                                                              Parameters fp->fp p
                                                            | _->p) !r_params nextNode;
                     min_page_before:=max !min_page_before !r_params.min_page_before;
-                    if (n_iter>= !r_params.really_next_line) || nextNode.page>node.page then (
+                    if (n_iter>= !r_params.min_lines_before && n_iter>=lastParameters.min_lines_after) || nextNode.page>node.page then (
                       let comp1=comp paragraphs !r_params.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
 
