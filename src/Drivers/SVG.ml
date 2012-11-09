@@ -488,7 +488,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
     current_state=state;
 }}"
       (Array.length pages)
-      prefix
+      (Filename.basename prefix)
       w
       h
   );

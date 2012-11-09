@@ -45,7 +45,7 @@ DriverCairo.cmxa:DriverCairo.cmx
 	$(CAMLOPT) -a -o $@ DriverCairo.cmx
 
 DriverCairo.cmx:DriverCairo.ml
-	$(CAMLOPT) -c -o $@ -I ../cairo-ocaml/src DriverCairo.ml
+	$(CAMLOPT) -package cairo -c -o $@ DriverCairo.ml
 
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
