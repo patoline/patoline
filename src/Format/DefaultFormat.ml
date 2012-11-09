@@ -1128,11 +1128,14 @@ module Format=functor (D:Document.DocumentStructure)->(
               with
                   Not_found->
                     let a=try fst (IntMap.min_binding x.children) with _->0 in
-                    let par,_=(paragraph cont) in
+                    let par,_=paragraph cont in
                     Node { x with children=IntMap.add a par x.children}
             )
           | Paragraph p->
             Paragraph { p with
+              par_parameters=(fun a b c d e f g h->
+                let p=p.par_parameters a b c d e f g h in
+                if h.lineStart=0 then {p with min_height_before=a.lead} else p);
               par_contents=cont@p.par_contents
             }
           | _->raise Not_found
