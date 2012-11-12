@@ -1,0 +1,7 @@
+\begin{enumerate}
+\item \label("haha") salut
+\item \label("hihi") non rien
+\end{enumerate}
+
+numéro \generalRef("_structure")("hihi")
+numéro \generalRef("enumerate")("hihi")
