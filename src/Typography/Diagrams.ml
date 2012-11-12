@@ -1589,7 +1589,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
 	    curves = (info_black.curves @ info_white.curves) }) })
 
-      let base_arrow pet head_params transfos edge_info=
+      let base_arrow head_params transfos edge_info=
 	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
@@ -1636,7 +1636,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let arrowOf, arrow_head_pet = 
         Pet.register ~depends:[double_pet;shorten_pet] "arrow head"
           (fun pet head_params -> 
-	     { pet = pet ; transfo = base_arrow pet head_params })
+	     { pet = pet ; transfo = base_arrow head_params })
 
       let backArrowOf, backArrow_head_pet = 
         Pet.register ~depends:[double_pet;shorten_pet] "back arrow head"
@@ -1648,7 +1648,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
                         List.map Bezier.rev (List.rev edge_info.underlying_curve)
                     }
                     in
-                    let info'=base_arrow pet head_params transfos info in
+                    let info'=base_arrow head_params transfos info in
                     { edge_info with decorations=info'.decorations }
                  )
              })

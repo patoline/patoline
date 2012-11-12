@@ -1,0 +1,80 @@
+\Caml(
+open Typography.Diagrams
+open Node 
+open Matrix
+open Edge
+
+    let kappa = 0.5522847498
+
+    let quadrant center radius a b =
+      let tangent_a = Vector.normalise ~norm:(radius *. kappa) (Vector.of_points center b) in
+      let tangent_b = Vector.normalise ~norm:(radius *. kappa) (Vector.of_points center a) in
+      [a ;
+       Vector.(+) a tangent_a ;
+       Vector.(+) b tangent_b ;
+       b ]
+
+    let half_circle x y = 
+      let center = Point.middle x y in
+      let v = Vector.of_points center y in
+      let vl = Vector.rotate 90. v in
+      let a = Vector.(+) center vl in
+      let radius = Vector.(norm v) in
+      [ quadrant center radius y a ;
+	quadrant center radius a x ]
+
+      let base_into head_params transfos edge_info=
+	let info = edge_info.tip_info in
+	let params = edge_info.params in
+	let underlying_curve = edge_info.underlying_curve in
+	let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 0. in
+	let short, thickness, height, width, lw = head_params info params in
+	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
+
+	(* Control points on the curve *)
+	let (xe,ye) as e = Curve.eval underlying_curve 0. in
+	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
+	let edge_info' = Transfo.transform [shortenS short] edge_info in
+	let curve0 = edge_info'.underlying_curve in
+	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
+	let e0 = Curve.eval curve0 0. in
+	let lnormale = Vector.rotate 90. (Vector.normalise ~norm:(width) grad) in
+	(* let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in *)
+
+	(* Put everything together *)
+	let tail = Curve.of_point_lists (half_circle e0 (Vector.(+) e0 lnormale))
+	in
+	{ edge_info with decorations = edge_info.decorations @
+	    [params, tail]}
+
+      let intoOf, into_tail_pet = 
+        Edge.Transfo.(Pet.register ~depends:[double_pet;shorten_pet] "\"into\" arrow tail"
+          (fun pet tail_params -> 
+	     { Style.pet = pet ; Style.transfo = base_into tail_params }))
+      let into = intoOf head_moustache
+
+
+)
+
+\diagram(
+
+ let a = Node.(node [anchor `Base;at (0.,0.)] <<a>>) 
+
+ let b = Node.(node [anchor `Base;at (30.,0.)] <<b>>) 
+
+  let asouth = (a.anchor `South)
+  let bsouth = (b.anchor `South)
+
+  let d = 5.
+
+  let e = edge Edge.([arrow;into;draw]) 
+    a 
+    ~controls:[[(Vector.(+) asouth (0.,-. d));  
+		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d))
+	       ];[
+		(Vector.(+) (Point.middle asouth bsouth) (0.,-. d)); 
+		(Vector.(+) bsouth (0.,-. d)) 
+    ]] 
+    b
+
+)
