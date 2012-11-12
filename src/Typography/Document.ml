@@ -1238,11 +1238,11 @@ let update_names env figs user=
                          UserMap.find (Label k) user
                      in
                        if pos<>c && b<>"_" then (
-                         Printf.fprintf stderr "reboot : position of %S changed\n" k
+                         Printf.fprintf stderr "reboot : position of %S (%S) changed\n" k b
                        );
                        needs_reboot:= !needs_reboot || (pos<>c);
                        StrMap.add k (a,b,pos) m
-                   with Not_found -> (Printf.fprintf stderr "reboot : position of %S not found\n" k;needs_reboot:=true; m)
+                   with Not_found -> (Printf.fprintf stderr "reboot : position of %S (%S) not found\n" k b;needs_reboot:=true; m)
                   ) (names env) (names env)
            }
   in

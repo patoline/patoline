@@ -739,7 +739,7 @@ end
     let to_gentity info = 
       { curve = info.midCurve ; 
 	anchor = info.anchors ;
-	contents = info.node_contents @ (Curve.draw ~parameters:info.params info.midCurve)
+	contents = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents
       }
 
     module Transfo = Transfo (struct type t = node_info let compare = compare end)
@@ -1724,7 +1724,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
       let foreground, foreground_pet = 
-	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" (fun pet margin ->
+	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" 
+	  (fun pet ?shortens:(shortens=1.) ?shortene:(shortene=1.) margin ->
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    let white_paths = List.map (fun (params, curve) -> 
 	      { info.params with 
@@ -1735,7 +1736,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      info.curves
 	    in
 	    let edge_info' = 
-	      Transfo.transform [shorten 0.1 0.1] { info with curves = white_paths }   in
+	      Transfo.transform [shorten shortens shortene] { info with curves = white_paths }   in
 	    { info with curves = (edge_info'.curves @ info.curves) }) })
 
 
