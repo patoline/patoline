@@ -1,0 +1,25 @@
+# $Id$
+
+PortSystem          1.0
+
+name                patoline
+version             1.0
+categories          ocaml
+platforms           darwin
+license             GPL
+maintainers         pierreetienne.meunier@gmail.com
+description         A new typesetting system, programmable in ocaml.
+long_description    A new typesetting system, programmable in ocaml.
+homepage            http://www.patoline.com
+master_sites        file:///Users/pe/Projets/patoline
+
+
+checksums           sha256  2829fcb7393bac85925090b286b1f9c3cd3fbbf8e7f35796ef4131322509aa53
+
+depends_lib         port:ocaml \
+                    port:ocaml-camomile \
+                    port:ocaml-dypgen \
+                    port:ocaml-findlib
+
+configure.pre_args      {}
+configure.cmd           { ./configure --prefix ${destroot}${prefix} --extra-fonts-dir /Library/Fonts }

@@ -1,5 +1,6 @@
 #!/bin/sh
-
+mkdir -p ../ports/ml/ocaml-patoline
+cp Portfile ../ports/ml/ocaml-patoline
 init_dir=$(pwd)
 version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
 darcs dist -d patoline
@@ -12,14 +13,15 @@ rm -f *.cmo *.cmi
 rm -Rf _darcs
 rm -f pack
 cd ..
-rm -Rf ocaml-patoline-$version
-mv patoline ocaml-patoline-$version
-tar -cvf ocaml-patoline-$version.tar ocaml-patoline-$version
-gzip ocaml-patoline-$version.tar
-cat /Users/pe/Projets/ports/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 ocaml-patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projets/ports/ports/ml/ocaml-patoline/
-mv ocaml-patoline-$version.tar.gz $init_dir
+rm -Rf patoline-$version
+mv patoline patoline-$version
+tar -cvf patoline-$version.tar patoline-$version
+gzip patoline-$version.tar
+cat /Users/pe/Projets/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
+mv Portfile /Users/pe/Projets/ports/ml/ocaml-patoline/
+echo $init_dir
+mv patoline-$version.tar.gz $init_dir
 cd $init_dir
 
-sudo port uninstall ocaml-patoline && sudo port clean --all ocaml-patoline && sudo port install ocaml-patoline +native_only
+sudo port uninstall patoline && sudo port clean --all patoline && sudo port install patoline +native_only
 #scp texprime-$version.tar.gz www.lama:~/www/darcs/texprime
