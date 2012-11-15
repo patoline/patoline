@@ -1725,7 +1725,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let foreground, foreground_pet = 
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" 
-	  (fun pet ?shortens:(shortens=1.) ?shortene:(shortene=1.) margin ->
+	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) margin ->
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    let white_paths = List.map (fun (params, curve) -> 
 	      { info.params with 

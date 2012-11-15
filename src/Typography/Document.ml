@@ -474,6 +474,7 @@ let vspaceAfter x=[bB (fun _->[Parameters (fun p->{ p with min_height_after=max 
 let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=max p.min_page_before x })])]
 let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=max p.min_page_after x })])]
 let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
+let hfill () = [bB (fun env-> let x = env.normalMeasure in [glue 0. (0.5 *. x) x])]
 
 let do_center parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l=
   let param=parameters env paragraphs figures last_parameters lastFigures lastUsers lastLine l in

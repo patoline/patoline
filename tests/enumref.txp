@@ -1,7 +1,11 @@
+
+== Et une section ==
+
 \begin{enumerate}
-\item \label("haha") salut
-\item \label("hihi") non rien
+\item \label("huhu") yeah
+\item \label("zobzob") nope.
 \end{enumerate}
 
-numéro \generalRef("_structure")("hihi")
-numéro \generalRef("enumerate")("hihi")
+numéro \generalRef("enumerate")("zobzob")
+
+
