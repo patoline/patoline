@@ -711,9 +711,15 @@ let generalRef refType name=
         if name="_here" then env.counters else
           let a,_,_=StrMap.find name (names env) in a
       in
-      let lvl,num_=(StrMap.find refType counters) in
+      let lvl,num_=StrMap.find refType counters in
       let num=if refType="_structure" then drop 1 num_ else num_ in
-      let _,str_counter=StrMap.find "_structure" counters in
+      let str_counter=
+        try
+          let _,str_counter=StrMap.find "_structure" counters in
+          str_counter
+        with
+            Not_found->[]
+      in
       let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
       [bB (fun _->[User (BeginLink name)]);
        tT (String.concat "." (List.map (fun x->string_of_int (x+1))
