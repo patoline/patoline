@@ -406,6 +406,8 @@ module Format=functor (D:Document.DocumentStructure)->(
           complete params contents
     end
 
+
+
     let defaultEnv:environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=
@@ -797,12 +799,40 @@ module Format=functor (D:Document.DocumentStructure)->(
     let env_stack=ref []
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
       let do_begin_env ()=
-        D.structure:=newChildAfter !D.structure (Node { empty with node_env=M.arg1 });
-        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;
+        D.structure:=newChildAfter !D.structure (Node { empty with node_env=M.arg1 })
+
 
       let do_end_env ()=
-        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
         env_stack:=List.tl !env_stack
+
+    end
+
+    let hfill t = [bB (fun env-> let x = env.normalMeasure in
+				  [match glue 0. env.size (x /. t) with
+				    Glue x -> Drawing x
+				  | _ -> assert false
+				  ])]
+
+    let hand () = hfill 4. @ hspace 0. @ hfill 4.
+
+    module Env_mathpar = struct
+
+      let do_begin_env () = 
+	D.structure:=newChildAfter !D.structure (Node Document.empty) ;
+	env_stack := (List.map fst (snd !D.structure)) :: !env_stack 
+
+      let do_end_env () = 
+	D.structure := follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
+	env_stack:=List.tl !env_stack ;
+	let rec truc t = match t with
+	  | Paragraph p -> Paragraph { p with par_contents =
+	      (hfill 2.) @ p.par_contents @ (hfill 2.) }
+	  | Node n -> Node ({ n with children = IntMap.map truc n.children })
+	  | _ -> t
+	in
+	D.structure := up (truc (fst !D.structure), (snd !D.structure))
 
     end
 
@@ -1033,7 +1063,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       val counterLevel:int
       val display:string->content list
     end
-    module Env_proof=struct
+    module Env_gproof(X : sig val arg1 : content list end)=struct
       let do_begin_env ()=
         D.structure:=newChildAfter !D.structure (Node empty);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
@@ -1049,9 +1079,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         let par_proof a b c d e f g line=
           { (parameters a b c d e f g line) with min_height_before=if line.lineStart=0 then a.lead else 0. }
         in
-        let cont=
-          italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]
-        in
+        let cont=X.arg1 in
 
         let rec add_proof t=match t with
             Node x->(
@@ -1087,6 +1115,13 @@ module Format=functor (D:Document.DocumentStructure)->(
              )];
         env_stack:=List.tl !env_stack
     end
+    module Env_proof = Env_gproof (struct 
+      let arg1 = italic [tT "Proof.";bB (fun env->let w=env.size in [glue w w w])]
+    end)
+    module Env_proofOf(X : sig val arg1 : content list end) = Env_gproof (struct 
+      let arg1 = italic (X.arg1 @ [tT ".";bB (fun env->let w=env.size in [glue w w w])])
+    end)
+
     module Proof = Env_proof (* probably useless, just for compatibility *)
 
     module Make_theorem=functor (Th:Theorem)->struct
