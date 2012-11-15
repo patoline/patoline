@@ -405,6 +405,16 @@ module Format=functor (D:Document.DocumentStructure)->(
         Document.newPar str ~environment:(fun x->{x with par_indent = []})
           complete params contents
     end
+    module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node { empty with node_env=M.arg1 });
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+      let do_end_env ()=
+        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+        env_stack:=List.tl !env_stack
+
+    end
 
     let defaultEnv:environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
