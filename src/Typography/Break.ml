@@ -26,8 +26,8 @@ end
 
 module Make (L:Line with type t=Line.line)=(
   struct
-    module LineMap=New_map.Make (L)
-    module ColMap=New_map.Make (
+    module LineMap=Map.Make (L)
+    module ColMap=Map.Make (
       struct
         type t=float*float*line*float*float*line
         let compare=compare

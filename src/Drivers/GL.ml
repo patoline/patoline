@@ -562,7 +562,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	) lines normals);
 
     | Link(link) -> (
-      List.iter fn l.link_contents
+      List.iter fn link.link_contents
     )
 
     | States (a,s) -> assert false

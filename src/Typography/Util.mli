@@ -87,7 +87,7 @@ module IntMap :
 module StrMap :
   sig
     type key = String.t
-    type 'a t = 'a New_map.Make(String).t
+    type 'a t = 'a Map.Make(String).t
     val empty : 'a t
     val is_empty : 'a t -> bool
     val mem : key -> 'a t -> bool

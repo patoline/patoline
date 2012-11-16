@@ -1,6 +1,6 @@
 open Str
 
-module C=New_map.Make (struct type t=char let compare=compare end)
+module C=Map.Make (struct type t=char let compare=compare end)
 
 type ptree=
   Node of (char array)*(ptree C.t)

@@ -179,8 +179,8 @@ let is_substring s1 s0 i0=
     sub i0 0
 
 
-module IntMap=New_map.Make (struct type t=int let compare=compare end)
-module StrMap=New_map.Make (String)
+module IntMap=Map.Make (struct type t=int let compare=compare end)
+module StrMap=Map.Make (String)
 module IntSet=Set.Make (struct type t=int let compare=compare end)
 module IntListMap=Map.Make(struct type t=int list let compare=compare end)
 

@@ -1,13 +1,13 @@
 all:bibi.cmxa bibi.p.cmxa bibi.cma
 
-bibi.cmxa:bibi.cmi bibi.ml ../Typography/Typography.cmxa ../Typography/Typography.cmi
+bibi.cmxa:bibi.cmi bibi.ml
 	ocamlfind ocamlopt -package camomile,sqlite3 -a -o bibi.cmxa -I ../Typography bibi.ml
-bibi.p.cmxa:bibi.cmi bibi.ml ../Typography/Typography.p.cmxa ../Typography/Typography.cmi
+bibi.p.cmxa:bibi.cmi bibi.ml
 	ocamlfind ocamlopt -package camomile,sqlite3 -p -a -o bibi.p.cmxa -I ../Typography bibi.ml
-bibi.cma:bibi.cmi bibi.ml ../Typography/Typography.cma ../Typography/Typography.cmi
+bibi.cma:bibi.cmi bibi.ml
 	ocamlfind ocamlc -package camomile,sqlite3 -a -o bibi.cma -I ../Typography bibi.ml
 
-bibi.cmi:bibi.mli ../Typography/Typography.cmi
+bibi.cmi:bibi.mli
 	ocamlfind ocamlc -package camomile,sqlite3 -c -o bibi.cmi -I ../Typography bibi.mli
 
 install:bibi.cmxa bibi.p.cmxa bibi.cma

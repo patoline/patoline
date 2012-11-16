@@ -12,7 +12,7 @@ module Make :
       module LineMap :
         sig
           type key = L.t
-          type 'a t = 'a New_map.Make(L).t
+          type 'a t = 'a Map.Make(L).t
           val empty : 'a t
           val is_empty : 'a t -> bool
           val mem : key -> 'a t -> bool

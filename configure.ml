@@ -142,7 +142,7 @@ let gen_pack_line needs =
   | (Package p) :: needs -> (snd (ocamlfind_query p)) :: (aux_gen needs)
   | (Driver d) :: needs ->
       (aux_gen d.needs) @ (aux_gen d.suggests) @ (aux_gen needs)
-  in String.concat "," (List.filter ((<>) "") (aux_gen needs))
+  in (List.filter ((<>) "") (aux_gen needs))
 
 let _=
   parse [
@@ -195,7 +195,7 @@ let _=
 	./src/Patoline/patoline --recompile --extra-hyph-dir ./Hyphenation --extra-fonts-dir ./Fonts --ml -I src Patoline.txp
 	ocamlfind ocamlopt -package %s -linkpkg -I src -I src/Rbuffer rbuffer.cmxa -I src/Typography src/Typography/Typography.cmxa -I src/Drivers Pdf.cmxa -I src/Format src/Format/DefaultFormat.cmxa -o Patoline.tmx src/DefaultGrammar.cmx -impl Patoline.tml
 	./Patoline.tmx --extra-fonts-dir Fonts
-"  (gen_pack_line [Package "camomile"; Package "zip"; Package "camlimages.all_formats"]);
+"  (String.concat "," (gen_pack_line [Package "camomile"; Package "zip"; Package "camlimages.all_formats"]));
     Printf.fprintf out "check: doc\n";
     List.iter (fun txp ->
       Printf.fprintf out "\tcd tests; ../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
@@ -243,8 +243,9 @@ let _=
         (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
         (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
     Printf.fprintf make "PACK=-package %s\n"
-      (gen_pack_line [Package "camomile"; Package "zip";
-        Package "camlimages.all_formats"; Package "cairo"]);
+      (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
+                                         Package "camlimages.all_formats"; Package "cairo"]));
+
 
     (* Write out the list of enabled drivers *)
     let ok_drivers = List.filter can_build_driver patoline_drivers in
@@ -258,11 +259,54 @@ let _=
     (fun d ->
       Printf.fprintf make "PACK_DRIVER_%s=%s\n"
         d.name
-        (gen_pack_line (d.needs @ d.suggests))
+        (String.concat "," (gen_pack_line (d.needs @ d.suggests)))
     )
     ok_drivers;
 
     close_out make;
+
+    let tags_format=open_out "src/Format/_tags" in
+    Printf.fprintf tags_format "<**/*.ml{i,}>:pp(cpp -w %s%s%s%s)%s
+<Typography.cmi>:not_hygienic
+"
+      (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
+      (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
+      (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
+      (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "")
+
+      (let pack=String.concat ","
+         (List.map (fun x->Printf.sprintf "package(%s)" x)
+            (gen_pack_line [Package "camomile"; Package "zip";
+                            Package "camlimages.all_formats"; Package "cairo"]))
+       in
+       if pack="" then "" else ","^pack);
+    close_out tags_format;
+
+
+    let tags_typography=open_out "src/Typography/_tags" in
+    Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -w %s%s%s%s)%s,for-pack(Typography)
+<Fonts> or <Output> or <Fonts/Sfnt>: include
+<Fonts/unicode_ranges.cm{i,x,o}>:unicode_ranges
+<Break.ml>:rectypes
+<rbuffer.cmi>:not_hygienic
+"
+      (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
+      (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
+      (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
+      (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "")
+
+      (let pack=String.concat ","
+         (List.map (fun x->Printf.sprintf "package(%s)" x)
+            (gen_pack_line [Package "camomile"; Package "zip";
+                            Package "camlimages.all_formats"; Package "cairo"]))
+       in
+       if pack="" then "" else ","^pack);
+    close_out tags_typography;
+
+    let tags_pdf=open_out "src/Pdf/_tags" in
+    Printf.fprintf tags_typography "<Typography.cmi>:not_hygienic
+";
+    close_out tags_pdf;
 
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
@@ -275,12 +319,12 @@ let _=
       Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
 
     let sources=
-      "src/Typography/Typography.cmxa src/Typography/Typography.a src/Typography/Typography.cmi "^
-        "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
+      "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
+        "src/Format/_build/*Format*.cmxa src/Format/_build/*Format*.a src/Format/_build/*Format*.cmi "^
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
-        "src/Pdf/pdf_parser.cmxa src/Pdf/pdf_parser.a  "^
-        "src/Pdf/pdf_parser.cmi  src/Pdf/pdf_parser.cma  src/Pdf/pdf_parser.p.cmxa"
+        "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^
+        "src/Pdf/_build/pdf_parser.cmi  src/Pdf/_build/pdf_parser.cma  src/Pdf/_build/pdf_parser.p.cmxa"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -349,8 +393,8 @@ let _=
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
             "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
-            (gen_pack_line [Package "str"; Package "camomile";
-            Package "zip"; Package "camlimages.all_formats"]);
+            (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
+                                               Package "zip"; Package "camlimages.all_formats"]));
           Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
           Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
 
