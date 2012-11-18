@@ -274,10 +274,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_parameters=
                          (fun a b c d e f g line->
                            { (center a b c d e f g line) with
-                             min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
-                                 2.*.a.normalLead else 0.;
-                             min_height_before=if g.lineEnd>=Array.length b.(g.paragraph) then
-                                 2.*.a.normalLead else 0.
+                             min_lines_after=if line.lineEnd>=Array.length b.(line.paragraph) then
+                                 1 else 0;
+                             min_lines_before=if g.lineEnd>=Array.length b.(g.paragraph) then
+                                 1 else 0
                            });
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
@@ -892,7 +892,6 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
     module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
-        D.structure:=newChildAfter (!D.structure) (Node empty);
         D.structure:=newChildAfter (!D.structure)
           (Node { empty with node_env=
                (fun env->
@@ -909,7 +908,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                       StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
                   with Not_found-> env1.counters
                   in
-                    { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou })
+                    { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou });
+                    node_tags=("structure","")::empty.node_tags
                 });
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
@@ -918,7 +918,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
           D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
             (Node { empty with
-              node_tags=("item","")::empty.node_tags;
+              node_tags=("item","")::("structural","")::empty.node_tags;
               node_env=(incr_counter "enumerate")
             })
         let do_end_env()=()
@@ -986,7 +986,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
         let a,b= !D.structure in
         D.structure:=(enumerate false a,b);
-        D.structure:=up (up !D.structure);
+        D.structure:=(up !D.structure);
         env_stack:=List.tl !env_stack
     end
 
@@ -1084,24 +1084,33 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec add_proof t=match t with
             Node x->(
               try
+                if List.mem_assoc "structure" x.node_tags then raise Not_found;
                 let a,b=IntMap.min_binding x.children in
                 Node { x with children=IntMap.add a (add_proof b) x.children }
               with
                   Not_found->
-                    let a=try fst (IntMap.min_binding x.children) with _->0 in
-                    let par,_=(paragraph ~parameters:par_proof cont) in
-                    Node { x with children=IntMap.add a par x.children}
+                    let a=try fst (IntMap.min_binding x.children) with _->1 in
+                    let par,_=(paragraph ~par_env:(fun env->{env with par_indent=[]})
+                                 ~parameters:par_proof cont)
+                    in
+                    Node { x with children=IntMap.add (a-1) par x.children}
             )
           | Paragraph p->
             Paragraph { p with
-              par_contents=cont@p.par_contents;
-              par_parameters=par_proof
+              par_env=(fun env->{(p.par_env env) with par_indent=[]});
+              par_parameters=(fun a b c d e f g h->
+                let p=p.par_parameters a b c d e f g h in
+                if h.lineStart=0 then {p with min_height_before=a.lead} else p);
+              par_contents=cont@p.par_contents
             }
           | _->raise Not_found
         in
-
+        let retag t=match t with
+            Node x,y->Node { x with node_tags=("structure","")::x.node_tags },y
+          | _->assert false
+        in
         D.structure:=(follow (top !D.structure) (List.rev (List.hd !env_stack)));
-        D.structure:=up (add_proof (fst !D.structure), snd !D.structure);
+        D.structure:=up (retag (add_proof (fst !D.structure), snd !D.structure));
         newPar D.structure ~badness:bad Complete.normal par
           [bB (fun env->
                 let w=env.size/.phi in
@@ -1137,11 +1146,12 @@ module Format=functor (D:Document.DocumentStructure)->(
             Paragraph p->
               Paragraph { p with
                             par_parameters=(fun a b c d e f g line->
-                                              { (p.par_parameters a b c d e f g line) with
-                                                min_lines_before=0;
-                                                min_height_after=
-                                                  if line.lineEnd>=Array.length b.(line.paragraph) then a.lead else 0. });
-                        }
+                              let pp=(p.par_parameters a b c d e f g line) in
+                              { pp with
+                                min_lines_after=
+                                  if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
+                              });
+              }
           | Node n->(try
                        let k0,a0=IntMap.max_binding n.children in
                        Node { n with children=IntMap.add k0 (last_par a0) n.children }
@@ -1173,23 +1183,30 @@ module Format=functor (D:Document.DocumentStructure)->(
             Node x->(
               try
                 let a,b=IntMap.min_binding x.children in
-                Node { x with children=IntMap.add a (add_name b) x.children }
+                match b with
+                    Node y when List.mem_assoc "structure" y.node_tags->raise Not_found
+                  | _->Node { x with children=IntMap.add a (add_name b) x.children }
               with
                   Not_found->
-                    let a=try fst (IntMap.min_binding x.children) with _->0 in
-                    let par,_=paragraph cont in
-                    Node { x with children=IntMap.add a par x.children}
+                    let a=try fst (IntMap.min_binding x.children) with _->1 in
+                    let par,_=paragraph ~par_env:(fun env->{env with par_indent=[]}) cont in
+                    Node { x with children=IntMap.add (a-1) par x.children}
             )
           | Paragraph p->
             Paragraph { p with
+              par_env=(fun env->{(p.par_env env) with par_indent=[]});
               par_parameters=(fun a b c d e f g h->
                 let p=p.par_parameters a b c d e f g h in
-                if h.lineStart=0 then {p with min_height_before=a.lead} else p);
+                if h.lineStart=0 then {p with min_lines_before=2} else p);
               par_contents=cont@p.par_contents
             }
           | _->raise Not_found
         in
-	D.structure := up (last_par (add_name stru),path);
+        let retag t=match t with
+            Node x,y->Node { x with node_tags=("structure","")::x.node_tags },y
+          | _->assert false
+        in
+	D.structure := up (retag (last_par (add_name stru),path));
         env_stack:=List.tl !env_stack
     end
 

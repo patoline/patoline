@@ -195,17 +195,30 @@ and content=
   | Env of (environment -> environment) (** Une modification de l'environnement (par exemple des compteurs *)
   | Scoped of (environment->environment)*(content list) (** Comme son nom et son type l'indiquent *)
 
+
 let bB f = B(f,ref None)
 let tT f = T(f,ref None)
 let env_accessed=ref false
 let uT f = C(fun _->env_accessed:=true;[tT f])
 let string_of_contents l =
-  let s = ref "" in
-  List.iter (function
-    T (str,_) ->
-      if !s = "" then s:= str else s:= !s ^" " ^str
-  | _ -> ()) l;
-  !s
+  let buf=Rbuffer.create 1000 in
+  let rec fill_buf t=match t with
+      T (str,_)::s->(
+        if Rbuffer.length buf>0 then (
+          Rbuffer.add_string buf " ";
+        );
+        Rbuffer.add_string buf str;
+        fill_buf s
+      )
+    (* | C f::s->( *)
+    (*   fill_buf (f defaultEnv); *)
+    (*   fill_buf s *)
+    (* ) *)
+    | _::s -> fill_buf s
+    | []->()
+  in
+  fill_buf l;
+  Rbuffer.contents buf
 
 let names env=
   env_accessed:=true;
@@ -346,19 +359,21 @@ let doc_graph out t0=
   let rec do_it path t=
     let col=
       if List.mem_assoc "Structural" t.node_tags then
-        if List.mem_assoc "Numbered" t.node_tags then "blue" else "red" else "black" in
+        if List.mem_assoc "Numbered" t.node_tags then "blue" else "red" else "black"
+    in
     Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
+    let mb=try fst (IntMap.min_binding t.children) with Not_found->0 in
     List.iter (fun (i,x)->match x with
-                   Paragraph _->(
-                     let p=path^"_"^(string_of_int i) in
-                       Printf.fprintf out "%s[color=green];\n" p;
-                       Printf.fprintf out "%s -> %s;\n" path p;
-                   )
-                 | FigureDef _-> ()
-                 | Node n->(
-                     let p=path^"_"^(string_of_int i) in
-                       Printf.fprintf out "%s -> %s;\n" path p;
-                       do_it p n)) (IntMap.bindings t.children)
+        Paragraph par->(
+          let p=path^"_"^(string_of_int (i-mb)) in
+          Printf.fprintf out "%s[color=green,label=\"%s\"];\n" p (string_of_contents par.par_contents);
+          Printf.fprintf out "%s -> %s;\n" path p;
+        )
+      | FigureDef _-> ()
+      | Node n->(
+        let p=path^"_"^(string_of_int (i-mb)) in
+        Printf.fprintf out "%s -> %s;\n" path p;
+        do_it p n)) (IntMap.bindings t.children)
   in
     (match t0 with
          Node t->do_it "x0" t
