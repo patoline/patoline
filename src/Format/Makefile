@@ -1,7 +1,7 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../Typography -I ../Rbuffer $(PACK)
-CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography -I ../Rbuffer $(PACK)
+CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../../Typography/_build -I ../Rbuffer $(PACK)
+CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../../Typography/_build -I ../Rbuffer $(PACK)
 
 all:
 

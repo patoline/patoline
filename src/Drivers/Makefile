@@ -9,9 +9,9 @@ PACK:=$(PACK) -package $(PACK_DRIVER_GL2)
 NATIVE_EXTRA+=Patoline/PatolineGL2
 endif
 
-CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
-CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography -I ../Rbuffer -I ../Patoline
-CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography -I ../Rbuffer -I ../Patoline
+CAMLOPT=ocamlfind ocamlopt $(PACK) -pp $(CPP) -I ../Typography/_build -I ../Rbuffer -I ../Patoline
+CAMLMKLIB=ocamlfind ocamlmklib $(PACK) -I ../Typography/_build -I ../Rbuffer -I ../Patoline
+CAMLC=ocamlfind ocamlc $(PACK) -pp $(CPP) -I ../Typography/_build -I ../Rbuffer -I ../Patoline
 
 
 UNAME := $(shell uname)

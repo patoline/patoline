@@ -31,14 +31,12 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 
-ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi ocaml-bibi/Typography.cmi
+ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
-ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi ocaml-bibi/Typography.cmi
+ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.cmxa
-ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi ocaml-bibi/Typography.cmi
+ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.p.cmxa
-ocaml-bibi/Typography.cmi:Typography/_build/Typography.cmi
-	cp Typography/_build/Typography.cmi ocaml-bibi
 
 
 proof/proof:proof/Typography.cmi Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
@@ -47,45 +45,34 @@ proof/proof:proof/Typography.cmi Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer
 proof/Typography.cmi:Typography/_build/Typography.cmi
 	cp Typography/_build/Typography.cmi proof
 
-Pdf/pdf_parser.cmxa:Typography/Typography.cmxa Pdf/Typography.cmi
+Pdf/pdf_parser.cmxa:Typography/Typography.cmxa
 	make -C Pdf pdf_parser.cmxa
-Pdf/pdf_parser.cma:Typography/Typography.cma Pdf/Typography.cmi
+Pdf/pdf_parser.cma:Typography/Typography.cma
 	make -C Pdf pdf_parser.cma
-Pdf/pdf_parser.p.cmxa:Typography/Typography.p.cmxa Pdf/Typography.cmi
+Pdf/pdf_parser.p.cmxa:Typography/Typography.p.cmxa
 	make -C Pdf pdf_parser.p.cmxa
-Pdf/Typography.cmi:Typography/_build/Typography.cmi
-	cp Typography/_build/Typography.cmi Pdf
-
 
 Format/DefaultFormat.cmxa:Format Typography.cmxa
-	cp Typography/_build/Typography.cmi Format
 	make -C Format DefaultFormat.cmxa
 Format/DefaultFormat.cma:Format Typography.cma
-	cp Typography/_build/Typography.cmi Format
 	make -C Format DefaultFormat.cma
 Format/DefaultFormat.p.cmax:Format Typography.p.cmxa
-	cp Typography/_build/Typography.cmi Format
 	make -C Format DefaultFormat.p.cmxa
-Format/Typography.cmi:Typography/_build/Typography.cmi
-	cp Typography/_build/Typography.cmi Formats
 
-Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml Format/Typography.cmi
+Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa Format/%.ml Format/Typography.cmi
+Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/%.cma:DefaultFormat.cma Typography.cma Format/%.ml Format/Typography.cmi
+Format/%.cma:DefaultFormat.cma Typography.cma Format/%.ml
 	make -C Format $(shell basename $@)
 
 
-Typography/Typography.cma:Typography Typography/rbuffer.cmi
+Typography/Typography.cma:Typography Rbuffer/rbuffer.cma
 	make -C Typography _build/Typography.cma
-Typography/Typography.cmxa:Typography Typography/rbuffer.cmi
+Typography/Typography.cmxa:Typography Rbuffer/rbuffer.cmxa
 	make -C Typography _build/Typography.cmxa
-Typography/Typography.p.cmxa:Typography Typography/rbuffer.cmi
+Typography/Typography.p.cmxa:Typography Rbuffer/rbuffer.p.cmxa
 	make -C Typography _build/Typography.p.cmxa
-
-Typography/rbuffer.cmi:Rbuffer/rbuffer.cma
-	cp Rbuffer/rbuffer.cmi Typography
 
 Typography/Typography.cmi:Typography.cmxa
 
@@ -96,15 +83,15 @@ Rbuffer/rbuffer.cmxa:Rbuffer
 Rbuffer/rbuffer.p.cmxa:Rbuffer
 	make -C Rbuffer rbuffer.p.cmxa
 
-Drivers/%.cmxa:Drivers Typography/Typography.cmxa Drivers/Typography.cmi
+Drivers/%.cmxa:Drivers Typography/Typography.cmxa
 	make -C Drivers $(shell basename $@)
-Drivers/%.cma:Drivers Typography/Typography.cma Drivers/Typography.cmi
+Drivers/%.cma:Drivers Typography/Typography.cma
 	make -C Drivers $(shell basename $@)
-Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa Drivers/Typography.cmi
+Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa
 	make -C Drivers $(shell basename $@)
 
-Drivers/Typography.cmi:Typography/_build/Typography.cmi
-	cp Typography/_build/Typography.cmi Drivers
+#Drivers/Typography.cmi:Typography/_build/Typography.cmi
+#	cp Typography/_build/Typography.cmi Drivers
 
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp

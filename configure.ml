@@ -269,7 +269,6 @@ let _=
 
     let tags_format=open_out "src/Format/_tags" in
     Printf.fprintf tags_format "<**/*.ml{i,}>:pp(cpp -w %s%s%s%s%s)%s
-<Typography.cmi>:not_hygienic
 "
       (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
       (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
@@ -291,7 +290,6 @@ let _=
 <Fonts> or <Output> or <Fonts/Sfnt>: include
 <Fonts/unicode_ranges.cm{i,x,o}>:unicode_ranges
 <Break.ml>:rectypes
-<rbuffer.cmi>:not_hygienic
 <Fonts/Sfnt/make_unicode_ranges.*>:use_str
 "
       (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
@@ -308,14 +306,10 @@ let _=
        if pack="" then "" else ","^pack);
     close_out tags_typography;
 
-    let tags_pdf=open_out "src/Pdf/_tags" in
-    Printf.fprintf tags_pdf "<Typography.cmi>:not_hygienic
-";
-    close_out tags_pdf;
-
     (* binaries *)
     Printf.fprintf out "\t#binaries\n";
-    Printf.fprintf out "\t make -C src/Rbuffer install DESTDIR=$(DESTDIR)\n";
+    Printf.fprintf out "\tmake -C src/Rbuffer install DESTDIR=$(DESTDIR)\n";
+    Printf.fprintf out "\trm -f src/Drivers/Typography.cmi\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl then

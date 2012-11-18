@@ -11,6 +11,7 @@ dispatch begin function
         end);
 
     (* flag ["ocaml";"compile";"rectypes"] & A"-rectypes"; *)
+    flag ["ocaml";"compile"] & S[A"-I";A"../../Rbuffer"];
     flag ["ocaml";"compile";"rectypes"] & A"-rectypes";
     flag ["ocaml";"pack"] & S[A"-linkall"];
     flag ["ocaml";"link"] & S[A"-linkall"];
