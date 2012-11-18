@@ -451,6 +451,7 @@ svg.style.height=(%g*size)+'px';
   Rbuffer.add_string html (
     Printf.sprintf "function loadSlide(n,state,effect){
 if(n>=0 && n<%d && state>=0 && state<states[n]) {
+    location.hash=n+\"_\"+state;
     xhttp=new XMLHttpRequest();
     xhttp.open(\"GET\",\"%s_\"+n+\"_\"+state+\".svg\",false);
     xhttp.send();
@@ -495,7 +496,13 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
 
   Rbuffer.add_string html (
     Printf.sprintf "window.onload=function(){
-resize();loadSlide(0,0)
+var h0=0,h1=0;
+if(location.hash){
+var i=location.hash.indexOf(\"_\");
+h0=location.hash?parseInt(location.hash.substring(1,i)):0;
+h1=location.hash?parseInt(location.hash.substring(i+1)):0;
+}
+resize();loadSlide(h0,h1)
 };
 window.onkeydown=function(e){
 //console.log(e);
