@@ -224,19 +224,10 @@ let slides parameters str tree max_level=
                   let num=boxify_scoped env_num
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
 
-                  let rec prefix u v=match u,v with
-                    | [],_->true
-                    | hu::_,hv::_ when hu<>hv->false
-                    | _::su,_::sv->prefix su sv
-                    | _,[]->false
-                  in
-
-
                   let name=boxify_scoped env' s.displayname in
 
 
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
-                  let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
                   let cont=
                     (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
                        (draw_boxes env num) else [])@
