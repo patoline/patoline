@@ -77,15 +77,15 @@ Format/%.cma:DefaultFormat.cma Typography.cma Format/%.ml Format/Typography.cmi
 	make -C Format $(shell basename $@)
 
 
-Typography/Typography.cma:Typography Rbuffer/rbuffer.cma
+Typography/Typography.cma:Typography Typography/rbuffer.cmi
+	make -C Typography _build/Typography.cma
+Typography/Typography.cmxa:Typography Typography/rbuffer.cmi
+	make -C Typography _build/Typography.cmxa
+Typography/Typography.p.cmxa:Typography Typography/rbuffer.cmi
+	make -C Typography _build/Typography.p.cmxa
+
+Typography/buffer.cmi:Rbuffer/rbuffer.cma
 	cp Rbuffer/rbuffer.cmi Typography
-	make -C Typography Typography.cma
-Typography/Typography.cmxa:Typography Rbuffer/rbuffer.cmxa
-	cp Rbuffer/rbuffer.cmi Typography
-	make -C Typography Typography.cmxa
-Typography/Typography.p.cmxa:Typography Rbuffer/rbuffer.p.cmxa
-	cp Rbuffer/rbuffer.cmi Typography
-	make -C Typography Typography.p.cmxa
 
 Typography/Typography.cmi:Typography.cmxa
 
@@ -117,7 +117,8 @@ doc:
 	mkdir -p doc
 	ocamlfind ocamldoc -package camomile -html -d doc -pp cpp -I Typography -I Typography/Output Typography/Document.ml
 
-
+install:
+	make -C .. install
 clean:
 	make -C Typography clean
 	make -C Format clean
