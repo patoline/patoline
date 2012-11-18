@@ -3,7 +3,7 @@ let _=
   let suite=Str.regexp "[ \t]*[^\t]*\t\\([0-9A-F]*\\)-\\([0-9A-F]*\\)" in
   let m0=ref max_int in
   let m1=ref 0 in
-  let i=open_in "unicode" in
+  let i=open_in Sys.argv.(1) in
   let rec read_all last ranges=
     try
       let l=input_line i in
@@ -40,7 +40,7 @@ let _=
     let x=take n l in
     (x, !fin)
   in
-  let file=open_out "unicode_ranges.ml" in
+  let file=open_out (Filename.concat (Filename.dirname Sys.argv.(1)) "unicode_ranges.ml") in
   let rec make_program x y l=match l with
       []->()
     | [a,b,c]->(
@@ -52,7 +52,11 @@ let _=
             if c=y then Printf.sprintf "if k>=%d then " b
             else Printf.sprintf "if k>=%d && k<=%d then " b c
       in
-      Printf.fprintf file "%su%d:= !u%d lor %d;\n" test (a/32) (a/32) (1 lsl bit)
+#ifdef INT32
+        Printf.fprintf file "%su%d:= Int32.logor !u%d (%sl);\n" test (a/32) (a/32) (Int32.to_string (Int32.shift_left 1l bit))
+#else
+        Printf.fprintf file "%su%d:= !u%d lor %d;\n" test (a/32) (a/32) (1 lsl bit)
+#endif
     )
     | l->(
       let n=List.length l in

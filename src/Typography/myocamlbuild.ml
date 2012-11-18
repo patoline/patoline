@@ -6,7 +6,8 @@ dispatch begin function
         ~prod:"Fonts/Sfnt/unicode_ranges.ml"
         ~deps:["Fonts/Sfnt/make_unicode_ranges.ml";"Fonts/Sfnt/unicode"]
         begin fun env _build->
-          Cmd(S[A"cd";A"Fonts/Sfnt";Sh";";A"ocaml";A"str.cma";A"make_unicode_ranges.ml"])
+          let _=_build [["Fonts/Sfnt/make_unicode_ranges.byte"]] in
+          Cmd(S[A"Fonts/Sfnt/make_unicode_ranges.byte";A"Fonts/Sfnt/unicode"])
         end);
 
     (* flag ["ocaml";"compile";"rectypes"] & A"-rectypes"; *)

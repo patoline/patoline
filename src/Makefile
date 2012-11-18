@@ -84,7 +84,7 @@ Typography/Typography.cmxa:Typography Typography/rbuffer.cmi
 Typography/Typography.p.cmxa:Typography Typography/rbuffer.cmi
 	make -C Typography _build/Typography.p.cmxa
 
-Typography/buffer.cmi:Rbuffer/rbuffer.cma
+Typography/rbuffer.cmi:Rbuffer/rbuffer.cma
 	cp Rbuffer/rbuffer.cmi Typography
 
 Typography/Typography.cmi:Typography.cmxa
@@ -119,6 +119,7 @@ doc:
 
 install:
 	make -C .. install
+
 clean:
 	make -C Typography clean
 	make -C Format clean

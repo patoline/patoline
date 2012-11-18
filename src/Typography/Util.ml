@@ -50,6 +50,27 @@ let strInt2 s i x=
   s.[i]<-char_of_int ((x lsr 8) land 0xff);
   s.[i+1]<-char_of_int (x land 0xff)
 
+#ifdef INT32
+
+let strInt4 s i x=
+  let a=Int32.shift_right x 8 in
+  let b=Int32.shift_right a 8 in
+  let c=Int32.shift_right b 8 in
+  s.[i]<-char_of_int (Int32.to_int (Int32.logand c 0xffl));
+  s.[i+1]<-char_of_int (Int32.to_int (Int32.logand b 0xffl));
+  s.[i+2]<-char_of_int (Int32.to_int (Int32.logand a 0xffl));
+  s.[i+3]<-char_of_int (Int32.to_int (Int32.logand x 0xffl))
+
+let strInt4_int s i x=
+  let a=x lsr 8 in
+  let b=a lsr 8 in
+  let c=b lsr 8 in
+  s.[i]<-char_of_int (c land 0xff);
+  s.[i+1]<-char_of_int (b land 0xff);
+  s.[i+2]<-char_of_int (a land 0xff);
+  s.[i+3]<-char_of_int (x land 0xff)
+#else
+
 let strInt4 s i x=
   let a=x lsr 8 in
   let b=a lsr 8 in
@@ -58,7 +79,9 @@ let strInt4 s i x=
   s.[i+1]<-char_of_int (b land 0xff);
   s.[i+2]<-char_of_int (a land 0xff);
   s.[i+3]<-char_of_int (x land 0xff)
+let strInt4_int=strInt4
 
+#endif
 
 let buf2="  "
 let writeInt2 f x=
@@ -78,6 +101,28 @@ let bufInt2 b x=
   Rbuffer.add_char b (char_of_int ((x lsr 8) land 0xff));
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
+#ifdef INT32
+
+let bufInt4 b x=
+  let u=Int32.shift_right x 8 in
+  let v=Int32.shift_right u 8 in
+  let w=Int32.shift_right v 8 in
+  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand w 0xffl)));
+  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand v 0xffl)));
+  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand u 0xffl)));
+  Rbuffer.add_char b (char_of_int (Int32.to_int (Int32.logand x 0xffl)))
+
+let bufInt4_int b x=
+  let u=x lsr 8 in
+  let v=u lsr 8 in
+  let w=v lsr 8 in
+  Rbuffer.add_char b (char_of_int (w land 0xff));
+  Rbuffer.add_char b (char_of_int (v land 0xff));
+  Rbuffer.add_char b (char_of_int (u land 0xff));
+  Rbuffer.add_char b (char_of_int (x land 0xff))
+
+#else
+
 let bufInt4 b x=
   let u=x lsr 8 in
   let v=u lsr 8 in
@@ -87,7 +132,27 @@ let bufInt4 b x=
   Rbuffer.add_char b (char_of_int (u land 0xff));
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
+let bufInt4_int=bufInt4
 
+#endif
+
+#ifdef INT32
+let int32_of_char x=Int32.of_int (int_of_char x)
+let readInt4 f=
+  really_input f buf 0 4;
+  let a=Int32.shift_left (int32_of_char buf.[0]) 8 in
+  let b=Int32.shift_left (Int32.logor a (int32_of_char buf.[1])) 8 in
+  let c=Int32.shift_left (Int32.logor b (int32_of_char buf.[2])) 8 in
+  let d=Int32.logor c (int32_of_char buf.[3]) in
+  d
+let readInt4_int f=
+  really_input f buf 0 4;
+  let a=(int_of_char buf.[0]) lsl 8 in
+  let b=(a lor (int_of_char buf.[1])) lsl 8 in
+  let c=(b lor (int_of_char buf.[2])) lsl 8 in
+  let d=c lor (int_of_char buf.[3]) in
+    d
+#else
 let readInt4 f=
   really_input f buf 0 4;
   let a=(int_of_char buf.[0]) lsl 8 in
@@ -95,7 +160,8 @@ let readInt4 f=
   let c=(b lor (int_of_char buf.[2])) lsl 8 in
   let d=c lor (int_of_char buf.[3]) in
     d
-
+let readInt4_int=readInt4
+#endif
 
 let int16 x=if x<=0x7f then x else x-0x10000
 

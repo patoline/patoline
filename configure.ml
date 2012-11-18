@@ -13,6 +13,7 @@ let hyphen_dirs=ref []
 let lang=ref "FR"
 let ban_comic_sans=ref false
 let use_camlimages=ref true
+let int32=ref (Sys.word_size=32)
 
 let avail_lang=
   let f=open_in "src/Typography/TypoLanguage.ml" in
@@ -237,11 +238,12 @@ let _=
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
 
     let make=open_out "src/Makefile.config" in
-    Printf.fprintf make "CPP='cpp -w %s%s%s%s'\n"
-        (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
-        (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
-        (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
-        (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
+    Printf.fprintf make "CPP='cpp -w %s%s%s%s%s'\n"
+      (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
+      (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
+      (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
+      (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
+      (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
     Printf.fprintf make "PACK=-package %s\n"
       (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
                                          Package "camlimages.all_formats"; Package "cairo"]));
@@ -266,9 +268,10 @@ let _=
     close_out make;
 
     let tags_format=open_out "src/Format/_tags" in
-    Printf.fprintf tags_format "<**/*.ml{i,}>:pp(cpp -w %s%s%s%s)%s
+    Printf.fprintf tags_format "<**/*.ml{i,}>:pp(cpp -w %s%s%s%s%s)%s
 <Typography.cmi>:not_hygienic
 "
+      (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
       (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
       (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
       (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
@@ -284,12 +287,14 @@ let _=
 
 
     let tags_typography=open_out "src/Typography/_tags" in
-    Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -w %s%s%s%s)%s,for-pack(Typography)
+    Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -w %s%s%s%s%s)%s,for-pack(Typography)
 <Fonts> or <Output> or <Fonts/Sfnt>: include
 <Fonts/unicode_ranges.cm{i,x,o}>:unicode_ranges
 <Break.ml>:rectypes
 <rbuffer.cmi>:not_hygienic
+<Fonts/Sfnt/make_unicode_ranges.*>:use_str
 "
+      (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
       (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
       (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
       (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
@@ -304,7 +309,7 @@ let _=
     close_out tags_typography;
 
     let tags_pdf=open_out "src/Pdf/_tags" in
-    Printf.fprintf tags_typography "<Typography.cmi>:not_hygienic
+    Printf.fprintf tags_pdf "<Typography.cmi>:not_hygienic
 ";
     close_out tags_pdf;
 

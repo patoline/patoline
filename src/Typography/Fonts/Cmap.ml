@@ -226,7 +226,7 @@ let write_cmap ?(formats=[0;4;6]) ?(lang=0) cmap buf0=
   List.iter (fun b->
     bufInt2 buf0 3;                     (* windows *)
     bufInt2 buf0 1;                     (* unicode bmp *)
-    bufInt4 buf0 (!total);
+    bufInt4_int buf0 (!total);
     total:= !total+Rbuffer.length b
   ) bufs;
   List.iter (Rbuffer.add_buffer buf0) bufs
@@ -238,7 +238,7 @@ let read_cmap file a=
   let rec read_cmap table cmap=
     if table>=numTables then cmap else (
       seek_in file (a+8+8*table);
-      let offset=a+readInt4 file in
+      let offset=a+readInt4_int file in
       seek_in file offset;
       let t=readInt2 file in
       (match t with

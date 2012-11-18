@@ -30,8 +30,8 @@ let tableLookup table file off=
       really_input file tableName 0 4;
       if middle<=i then
         if tableName=table then
-          ((seek_in file (off+offsetTable+i*dirSize+8);readInt4 file),
-           (seek_in file (off+offsetTable+i*dirSize+12);readInt4 file))
+          ((seek_in file (off+offsetTable+i*dirSize+8);readInt4_int file),
+           (seek_in file (off+offsetTable+i*dirSize+12);readInt4_int file))
         else
           raise (Table_not_found table)
       else
@@ -189,7 +189,7 @@ let italicAngle f=
   in
   let (a,b)=tableLookup "post" file offset0 in
   seek_in file (a+4);
-  float_of_int (readInt4 file)
+  (float_of_int (readInt4_int file))/.65536.
 
 let ascender f=
   let file,offset0=match f with
@@ -228,7 +228,7 @@ let glyph_of_uchar font0 char0=
   let rec read_tables table=
     if table>=numTables then 0 else (
       seek_in file (a+8+8*table);
-      let offset=a+readInt4 file in
+      let offset=a+readInt4_int file in
       seek_in file offset;
       let t=readInt2 file in
       (match t with
@@ -378,7 +378,7 @@ let outlines gl=match gl with
 
     let rec fetch_outlines glyph_index=
       if locformat=0 then seek_in file (a+glyph_index*2) else seek_in file (a+glyph_index*4);
-      let off=if locformat=0 then (readInt2 file) lsl 1 else readInt4 file in
+      let off=if locformat=0 then (readInt2 file) lsl 1 else readInt4_int file in
       seek_in file (c+off);
       let numberOfContours=sreadInt2 file in
       if numberOfContours>0 then (        (* simple glyph *)
@@ -1206,8 +1206,8 @@ let fontInfo font=
       really_input file newTable 0 4;
       (* Printf.fprintf stderr "%S newTable=%S\n" fileName newTable;flush stderr; *)
       let _ (* checkSum *)=readInt4 file in
-      let offset=readInt4 file in
-      let length=readInt4 file in
+      let offset=readInt4_int file in
+      let length=readInt4_int file in
       seek_in file (off+offset);
       let buf=String.create length in
       really_input file buf 0 length;
@@ -1273,6 +1273,43 @@ let fontInfo font=
 
 
 
+#ifdef INT32
+
+let rec checksum32 x=
+  let cs=ref 0l in
+  for i=0 to Rbuffer.length x-1 do
+    cs:=Int32.add !cs (Int32.of_int (int_of_char (Rbuffer.nth x i)))
+  done;
+  !cs
+let rec str_checksum32 x=
+  let cs=ref 0l in
+  let i=ref 0 in
+  while !i<String.length x do
+    let a=Int32.of_int (int_of_char x.[!i]) in
+    let b=if !i+1<String.length x then Int32.of_int (int_of_char (x.[!i+1])) else 0l in
+    let c=if !i+2<String.length x then Int32.of_int (int_of_char (x.[!i+2])) else 0l in
+    let d=if !i+3<String.length x then Int32.of_int (int_of_char (x.[!i+3])) else 0l in
+    cs:=Int32.add !cs (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left a 8) b) 8) c) 8) d);
+    i:= !i+4
+  done;
+  !cs
+let rec buf_checksum32 x=
+  let cs=ref 0l in
+  let i=ref 0 in
+  while !i<Rbuffer.length x do
+    let a=Int32.of_int (int_of_char (Rbuffer.nth x !i)) in
+    let b=if !i+1<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+1))) else 0l in
+    let c=if !i+2<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+2))) else 0l in
+    let d=if !i+3<Rbuffer.length x then Int32.of_int (int_of_char (Rbuffer.nth x (!i+3))) else 0l in
+    cs:=Int32.add !cs (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left (Int32.logor (Int32.shift_left a 8) b) 8) c) 8) d);
+    i:= !i+4
+  done;
+  !cs
+
+let total_checksum a b c=
+  Int32.sub (-1313820742l) (Int32.add a (Int32.add b c))
+
+#else
 
 let rec checksum32 x=
   let cs=ref 0 in
@@ -1280,7 +1317,6 @@ let rec checksum32 x=
     cs:= (!cs+int_of_char (Rbuffer.nth x i)) land 0xffffffff
   done;
   !cs
-
 let rec str_checksum32 x=
   let cs=ref 0 in
   let i=ref 0 in
@@ -1293,7 +1329,6 @@ let rec str_checksum32 x=
     i:= !i+4
   done;
   !cs
-
 let rec buf_checksum32 x=
   let cs=ref 0 in
   let i=ref 0 in
@@ -1306,6 +1341,13 @@ let rec buf_checksum32 x=
     i:= !i+4
   done;
   !cs
+
+let total_checksum a b c=
+  (-1313820742 - (a+b+c)) land 0xffffffff
+
+#endif
+
+
 
 
 let write_cff fontInfo=
@@ -1329,25 +1371,24 @@ let write_cff fontInfo=
       Rbuffer.add_string buf_headers k;
       let cs=StrMap.find k checksums in
       bufInt4 buf_headers cs;
-      bufInt4 buf_headers (12+16*StrMap.cardinal fontInfo.tables+Rbuffer.length buf_tables);
-      bufInt4 buf_headers (String.length a);
+      bufInt4_int buf_headers (12+16*StrMap.cardinal fontInfo.tables+Rbuffer.length buf_tables);
+      bufInt4_int buf_headers (String.length a);
       Rbuffer.add_string buf_tables a
     ) fontInfo.tables ()
   in
   (try
      let buf_head=StrMap.find "head" fontInfo.tables in
-     strInt4 buf_head 8 0;
+     strInt4_int buf_head 8 0;
      let checksums=StrMap.map (fun a->str_checksum32 a) fontInfo.tables in
      write_tables checksums;
-     let total_checksum=
-       (buf_checksum32 buf
-        +buf_checksum32 buf_headers
-        +buf_checksum32 buf_tables) land 0xffffffff
+     let check=total_checksum
+       (buf_checksum32 buf)
+       (buf_checksum32 buf_headers)
+       (buf_checksum32 buf_tables)
      in
      Rbuffer.clear buf_tables;
      Rbuffer.clear buf_headers;
-     let check=Int32.sub (Int32.of_int (-1313820742)) (Int32.of_int total_checksum) in
-     strInt4 buf_head 8 (Int32.to_int check);
+     strInt4 buf_head 8 check;
      (* Printf.fprintf stderr "total checksum=%x %x\n" (total_checksum) (Int32.to_int check); *)
      write_tables checksums
    with
@@ -1432,7 +1473,11 @@ let make_tables font fontInfo cmap glyphs_idx=
      done;
 
      let buf_hhea=StrMap.find "hhea" fontInfo_tables in
+#ifdef INT32
+     strInt4 buf_hhea 0 0x00010000l;        (* Version *)
+#else
      strInt4 buf_hhea 0 0x00010000;        (* Version *)
+#endif
      strInt2 buf_hhea 10 !advanceWidthMax;  (* advanceWidthMax (hmtx) *)
      strInt2 buf_hhea 12 (round !minLSB);           (* minLeftSideBearing *)
      strInt2 buf_hhea 14 (round !minRSB);           (* minRightSideBearing *)
@@ -1527,10 +1572,17 @@ let make_tables font fontInfo cmap glyphs_idx=
      strInt2 buf_os2 0 3;               (* version *)
 
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
+#ifdef INT32
+     let u1=ref 0l in
+     let u2=ref 0l in
+     let u3=ref 0l in
+     let u4=ref 0l in
+#else
      let u1=ref 0 in
      let u2=ref 0 in
      let u3=ref 0 in
      let u4=ref 0 in
+#endif
      let _=IntMap.fold (fun k _ _->Unicode_ranges.unicode_range u1 u2 u3 u4 k) cmap () in
      strInt4 buf_os2 42 !u1;
      strInt4 buf_os2 46 !u2;
@@ -1686,7 +1738,7 @@ let make_tables font fontInfo cmap glyphs_idx=
                   else
                     getInt4 buf_loca (4*old_index+4)
               in
-              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4 loca (Rbuffer.length glyf);
+              if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4_int loca (Rbuffer.length glyf);
               let str=String.sub buf_glyf off0 (off1-off0) in
               if String.length str>0 then (
                 let numberOfContours=sgetInt2 str 0 in
@@ -1710,7 +1762,7 @@ let make_tables font fontInfo cmap glyphs_idx=
               Rbuffer.add_string glyf str
             done;
 
-            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4 loca (Rbuffer.length glyf);
+            if locformat=0 then bufInt2 loca (Rbuffer.length glyf/2) else bufInt4_int loca (Rbuffer.length glyf);
             fontInfo.tables<-StrMap.add "loca" (Rbuffer.contents loca) fontInfo.tables;
             fontInfo.tables<-StrMap.add "glyf" (Rbuffer.contents glyf) fontInfo.tables
           with

@@ -15,18 +15,40 @@ val readInt : in_channel -> int -> int
 val readInt2 : in_channel -> int
 (** reads a 16-bit, signed big endian int *)
 val sreadInt2 : in_channel -> int
-(** reads a 32-bit, big endian int *)
-val readInt4 : in_channel -> int
 
+(** reads a 32-bit, big endian int *)
+#ifdef INT32
+val readInt4 : in_channel -> Int32.t
+val readInt4_int : in_channel -> int
+#else
+val readInt4 : in_channel -> int
+val readInt4_int : in_channel -> int
+#endif
 val strInt2 : string -> int -> int -> unit
+
+#ifdef INT32
+val strInt4 : string -> int -> Int32.t -> unit
+val strInt4_int : string -> int -> int -> unit
+#else
 val strInt4 : string -> int -> int -> unit
+val strInt4_int : string -> int -> int -> unit
+#endif
 
 val writeInt2 : out_channel -> int -> unit
+#ifdef INT32
+val writeInt4 : out_channel -> Int32.t -> unit
+#else
 val writeInt4 : out_channel -> int -> unit
+#endif
 
 val bufInt1 : Rbuffer.t -> int -> unit
 val bufInt2 : Rbuffer.t -> int -> unit
+#ifdef INT32
+val bufInt4 : Rbuffer.t -> Int32.t -> unit
+#else
 val bufInt4 : Rbuffer.t -> int -> unit
+#endif
+val bufInt4_int : Rbuffer.t -> int -> unit
 
   (** converts a 16 bit integer in two's complement representation to a
       caml int *)
