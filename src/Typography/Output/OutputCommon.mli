@@ -18,6 +18,7 @@ val yellow : color
 val gray : color
 
 type path_parameters = {
+  path_order : int;
   close : bool;
   strokingColor : color option;
   fillColor : color option;
@@ -30,11 +31,12 @@ val default : path_parameters
 type glyph = {
   glyph_x : float;
   glyph_y : float;
+  glyph_order : int;
   glyph_color : color;
   glyph_size : float;
   glyph : Fonts.glyph;
 }
-type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
+type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
 type metadata=
     Contributor
   | Coverage
@@ -57,6 +59,7 @@ type link = {
   mutable link_y0 : float;
   mutable link_x1 : float;
   mutable link_y1 : float;
+  link_order : int;
   uri:string;is_internal:bool;
   dest_page : int;
   dest_x : float;
@@ -64,12 +67,18 @@ type link = {
   link_contents : contents list
 }
 
+and states={
+  states_contents:contents list;
+  states_states:Util.IntSet.t;
+  states_order:int
+}
+
 and contents =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
   | Link of link
   | Image of image
-  | States of contents list*Util.IntSet.t
+  | States of states
 
 val translate : float -> float -> contents -> contents
 val resize : float -> contents -> contents
@@ -106,3 +115,5 @@ val output_to_prime :
 val output_from_prime : 
   (?structure:structure -> 'b array array -> 'c -> 'd) ->
     ?structure:structure -> 'b array -> 'c -> 'd
+
+val drawing_sort : contents list -> contents list

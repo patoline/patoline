@@ -777,7 +777,8 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
          image_width=fw;
          image_height=fh;
          image_x=0.;
-         image_y=0.
+         image_y=0.;
+         image_order=0
         }
   in
   let img={
@@ -1020,6 +1021,7 @@ let draw_boxes env l=
     )
     | User (BeginURILink l)::s->(
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 link_order=0;
                  dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                  link_contents=[] }
       in
@@ -1034,6 +1036,7 @@ let draw_boxes env l=
             Not_found->(-1)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                 link_order=0;
                  dest_page=dest_page;
                  dest_x=0.;dest_y=0.;is_internal=true;
                  link_contents=[]

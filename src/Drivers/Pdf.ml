@@ -406,9 +406,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                  (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
 #endif
 )
-        | States (a,b)->List.iter output_contents a
+        | States s->List.iter output_contents s.states_contents
       in
-        List.iter output_contents pages.(page).pageContents;
+        List.iter output_contents (drawing_sort pages.(page).pageContents);
         close_text ();
         (* Objets de la page *)
         let contentObj=beginObject () in

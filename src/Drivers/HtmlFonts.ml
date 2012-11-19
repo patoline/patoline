@@ -48,8 +48,8 @@ let build_font_cache pages=
       )
       | Link l::s->
         make_fonts i s (make_fonts (-2) l.link_contents fonts)
-      | States (a,b)::s->
-        make_fonts i s (make_fonts (-2) a fonts)
+      | States st::s->
+        make_fonts i s (make_fonts (-2) st.states_contents fonts)
       | _::s->make_fonts i s fonts
   in
   let f=make_fonts (-1) [] StrMap.empty in

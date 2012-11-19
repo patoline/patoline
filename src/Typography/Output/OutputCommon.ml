@@ -45,6 +45,7 @@ type metadata=
 
 
 type path_parameters= {
+  path_order:int;
   close:bool;
   strokingColor:color option;
   fillColor:color option;
@@ -53,26 +54,31 @@ type path_parameters= {
   lineWidth:float;
   dashPattern:float list
 }
-
-let default= { close=false;strokingColor=Some black;fillColor=None;
+let default= { path_order=0;close=false;strokingColor=Some black;fillColor=None;
                lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=0.1;
                dashPattern=[] }
 
 
-type glyph={ glyph_x:float; glyph_y:float; glyph_color: color; glyph_size:float;
+type glyph={ glyph_x:float; glyph_y:float; glyph_order:int; glyph_color: color; glyph_size:float;
              glyph:Fonts.glyph }
-type image= { image_file:string; image_x:float; image_y:float; image_height:float;image_width:float }
+type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
+             link_order:int;
              uri:string;is_internal:bool;
              dest_page:int; dest_x:float; dest_y:float;
              link_contents:contents list}
+and states={
+  states_contents:contents list;
+  states_states:Util.IntSet.t;
+  states_order:int
+}
 
 and contents=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
   | Image of image
-  | States of contents list*Util.IntSet.t
+  | States of states
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
@@ -83,7 +89,7 @@ let rec translate x y=function
     link_contents=List.map (translate x y) l.link_contents
   }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
-  | States (a,b)->States ((List.map (translate x y) a), b)
+  | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
@@ -96,7 +102,7 @@ let rec resize alpha=function
   }
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
-  | States (a,b)->States ((List.map (resize alpha) a), b)
+  | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
@@ -139,7 +145,7 @@ let bounding_box_opt opt l=
           (max x1 (i.image_x+.i.image_width))
           (max y1 (i.image_y+.i.image_height)) s
 
-    | States (a,b)::s->bb x0 y0 x1 y1 (a@s)
+    | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
 
     | _::s -> bb x0 y0 x1 y1 s
@@ -209,3 +215,27 @@ let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
 			   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName =
   output ~structure (Array.map (fun x -> [|x|]) pages) fileName
+
+
+let drawing_sort l=
+  let drawing_order x=match x with
+      Glyph g->g.glyph_order
+    | Path (p,_)->p.path_order
+    | Link l->l.link_order
+    | Image i->i.image_order
+    | States s->s.states_order
+  in
+  let rec make_list t acc=match t with
+      []->acc
+    | States h::s->
+      let m=List.fold_left (fun m x->
+        let l=try Util.IntMap.find (drawing_order x) m with Not_found->[] in
+        Util.IntMap.add (drawing_order x) (x::l) m
+      ) Util.IntMap.empty h.states_contents
+      in
+      make_list s (Util.IntMap.fold (fun k a l->
+        States { h with states_order=k;states_contents=a }::l)
+                     m acc)
+    | h::s->make_list s (h::acc)
+  in
+  List.sort (fun a b->compare (drawing_order a) (drawing_order b)) (make_list l [])

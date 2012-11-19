@@ -335,6 +335,7 @@ let glyphCache cur_font gl=
           (let glyph=Fonts.loadGlyph cur_font gl in
            let loaded={ glyph=glyph;
                         glyph_x=0.;glyph_y=0.;
+                        glyph_order=0;
                         glyph_color=black;
                         glyph_size=0. } in
              font:=IntMap.add gl.glyph_index loaded !font;

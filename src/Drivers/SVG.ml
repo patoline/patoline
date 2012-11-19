@@ -193,7 +193,7 @@ let draw ?fontCache w h contents=
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
            i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height i.image_file)
     )
-    | States (a,b)->List.iter output_contents a
+    | States s->List.iter output_contents s.states_contents
     | Link l->(
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -311,7 +311,7 @@ console.log(e)
     Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
     Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
       (round (w)) (round ( h));
-    let svg=draw ~fontCache:cache w h pages.(i).pageContents in
+    let svg=draw ~fontCache:cache w h (drawing_sort pages.(i).pageContents) in
     let defs=make_defs cache in
     Rbuffer.output_buffer html (assemble defs "" svg);
     Printf.fprintf html "</svg>\n";
@@ -348,7 +348,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       let w,h=pages.(j).pageFormat in
        Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
         (round (w)) (round ( h));
-      let svg=draw ~fontCache:cache w h pages.(j).pageContents in
+      let svg=draw ~fontCache:cache w h (drawing_sort pages.(j).pageContents) in
       let defs=make_defs cache in
       Rbuffer.output_buffer html (assemble defs "" svg);
       Printf.fprintf html "</svg>\n";
@@ -384,7 +384,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
       let w,h=page.pageFormat in
       Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
-      let svg=draw ~fontCache:cache w h page.pageContents in
+      let svg=draw ~fontCache:cache w h (drawing_sort page.pageContents) in
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
       file

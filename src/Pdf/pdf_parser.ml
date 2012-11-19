@@ -177,6 +177,7 @@ let parse file=
   in
   let parse_page cont x0 y0=match cont with
       Indirect (i,_)->(
+        let drawing_order=ref 0 in
         let obj=
           let off=IntMap.find i xref in
           let off'=forward_find_string "obj" off in
@@ -248,10 +249,12 @@ let parse file=
                   cur_path:=[];
                   contents:=
                     Path ({ default with
+                      path_order= !drawing_order;
                       lineWidth=mm_of_pt !curw;
                       strokingColor=None;
                       fillColor=Some !cur_fill },
                           List.map (fun x->Array.of_list (List.rev x)) !cur_paths)::(!contents);
+                  incr drawing_order;
                   cur_path:=[]
                 )
                 | "m"->(match stack with

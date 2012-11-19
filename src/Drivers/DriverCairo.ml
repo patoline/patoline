@@ -71,7 +71,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | _::s->(draw_page s)
       | []->()
     in
-    draw_page x.pageContents;
+    draw_page (drawing_sort x.pageContents);
     Cairo_png.surface_write_to_file surface (Printf.sprintf "%s%d.png" f i);
   ) pages
 
@@ -98,7 +98,8 @@ let makeImage filename cont env=
          image_width=w;
          image_height=h;
          image_x=0.;
-         image_y=cont.drawing_y0
+         image_y=cont.drawing_y0;
+         image_order=0;
         }
   in
   let img={

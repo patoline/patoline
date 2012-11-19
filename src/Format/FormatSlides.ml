@@ -793,6 +793,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         )
                         | User (BeginURILink l)->(
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                     link_order=0;
                                      dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                                      link_contents=[] }
                           in
@@ -810,6 +811,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                 Not_found->(-1)
                           in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                     link_order=0;
                                      dest_page=dest_page;is_internal=true;
                                      dest_x=0.;dest_y=0.;
                                      link_contents=[]

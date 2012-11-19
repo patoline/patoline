@@ -219,7 +219,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             | Link(l') -> 
 	      l := l'::!l
 	    | _ -> ())
-	    state.pageContents;
+	    (drawing_sort state.pageContents);
 	  !l) page)
       !pages;
   in
@@ -620,7 +620,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
-      List.iter fn !pages.(page).(state).pageContents
+      List.iter fn (drawing_sort !pages.(page).(state).pageContents)
 
 
     in
