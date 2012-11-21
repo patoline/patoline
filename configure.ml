@@ -323,7 +323,7 @@ let _=
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
         "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^
-        "src/Pdf/_build/pdf_parser.cmi  src/Pdf/_build/pdf_parser.cma  src/Pdf/_build/pdf_parser.p.cmxa"
+        "src/Pdf/_build/pdf_parser.cmi src/Pdf/_build/pdf_parser.p.cmxa"
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
@@ -335,7 +335,7 @@ let _=
       Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* ocaml-bibi *)
-      let bibi_sources="src/ocaml-bibi/bibi.cma src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
+      let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
       in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);

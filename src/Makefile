@@ -16,12 +16,12 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Pdf:Drivers:Format
 
-all:native byte prof
+all:native prof
 
-native:Typography/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS:.ml=.cmxa) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
-byte:Typography/Typography.cma ocaml-bibi/bibi.cma $(FORMAT:.ml=.cma) $(DRIVERS:.ml=.cma) Pdf/pdf_parser.cma
+native:Typography/_build/Typography.cmxa $(FORMAT:.ml=.cmxa) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
+byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(FORMAT:.ml=.cma) $(DRIVERS:.cmxa=.cma) Pdf/pdf_parser.cma
 
-prof:Typography/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(FORMAT:.mllib=.p.cmxa) Pdf/pdf_parser.p.cmxa
+prof:Typography/_build/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(FORMAT:.mllib=.p.cmxa) Pdf/pdf_parser.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -31,50 +31,49 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 
-ocaml-bibi/bibi.cma:Typography/Typography.cma ocaml-bibi
+ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
-ocaml-bibi/bibi.cmxa:Typography/Typography.cmxa ocaml-bibi
+ocaml-bibi/bibi.cmxa:Typography/_build/Typography.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.cmxa
-ocaml-bibi/bibi.p.cmxa:Typography/Typography.p.cmxa ocaml-bibi
+ocaml-bibi/bibi.p.cmxa:Typography/_build/Typography.p.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.p.cmxa
 
 
-proof/proof:proof/Typography.cmi Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
+proof/proof:Drivers/Pdf.cmxa proof/proof.ml Rbuffer/rbuffer.cmxa
 	cd proof; $(CAMLOPT) -I ../Typography/_build -I ../Drivers -I ../Rbuffer -linkpkg -o proof rbuffer.cmxa ../Typography/_build/Typography.cmxa ../Drivers/Pdf.cmxa proof.ml
 
-proof/Typography.cmi:Typography/_build/Typography.cmi
-	cp Typography/_build/Typography.cmi proof
 
-Pdf/pdf_parser.cmxa:Typography/Typography.cmxa
+Pdf/pdf_parser.cmxa:Typography/_build/Typography.cmxa
 	make -C Pdf pdf_parser.cmxa
-Pdf/pdf_parser.cma:Typography/Typography.cma
+Pdf/pdf_parser.cma:Typography/_build/Typography.cma
 	make -C Pdf pdf_parser.cma
-Pdf/pdf_parser.p.cmxa:Typography/Typography.p.cmxa
+Pdf/pdf_parser.p.cmxa:Typography/_build/Typography.p.cmxa
 	make -C Pdf pdf_parser.p.cmxa
 
-Format/DefaultFormat.cmxa:Format Typography.cmxa
+.PHONY:Format/DefaultFormat.cma Format/DefaultFormat.p.cmxa Format/DefaultFormat.cmxa
+Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
 	make -C Format DefaultFormat.cmxa
-Format/DefaultFormat.cma:Format Typography.cma
+Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
 	make -C Format DefaultFormat.cma
-Format/DefaultFormat.p.cmax:Format Typography.p.cmxa
+Format/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
-Format/%.cmxa:DefaultFormat.cmxa Typography.cmxa Format/%.ml
+Format/%.cmxa:DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/%.p.cmxa:DefaultFormat.cmxa Typography.p.cmxa Format/%.ml
+Format/%.p.cmxa:DefaultFormat.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/%.cma:DefaultFormat.cma Typography.cma Format/%.ml
+Format/%.cma:DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
 	make -C Format $(shell basename $@)
 
-
-Typography/Typography.cma:Typography Rbuffer/rbuffer.cma
+.PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
+Typography/_build/Typography.cma:Rbuffer/rbuffer.cma
 	make -C Typography _build/Typography.cma
-Typography/Typography.cmxa:Typography Rbuffer/rbuffer.cmxa
+Typography/_build/Typography.cmxa:Rbuffer/rbuffer.cmxa
 	make -C Typography _build/Typography.cmxa
-Typography/Typography.p.cmxa:Typography Rbuffer/rbuffer.p.cmxa
+Typography/_build/Typography.p.cmxa:Rbuffer/rbuffer.p.cmxa
 	make -C Typography _build/Typography.p.cmxa
 
-Typography/Typography.cmi:Typography.cmxa
+Typography/_build/Typography.cmi:Typography/_build/Typography.cma
 
 Rbuffer/rbuffer.cma:Rbuffer
 	make -C Rbuffer rbuffer.cma
@@ -83,11 +82,11 @@ Rbuffer/rbuffer.cmxa:Rbuffer
 Rbuffer/rbuffer.p.cmxa:Rbuffer
 	make -C Rbuffer rbuffer.p.cmxa
 
-Drivers/%.cmxa:Drivers Typography/Typography.cmxa
+Drivers/%.cmxa:Typography/_build/Typography.cmxa Drivers
 	make -C Drivers $(shell basename $@)
-Drivers/%.cma:Drivers Typography/Typography.cma
+Drivers/%.cma:Typography/_build/Typography.cma Drivers
 	make -C Drivers $(shell basename $@)
-Drivers/%.p.cmxa:Drivers Typography/Typography.p.cmxa
+Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
 	make -C Drivers $(shell basename $@)
 
 #Drivers/Typography.cmi:Typography/_build/Typography.cmi

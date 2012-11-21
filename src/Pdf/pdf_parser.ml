@@ -249,7 +249,6 @@ let parse file=
                   cur_path:=[];
                   contents:=
                     Path ({ default with
-                      path_order= !drawing_order;
                       lineWidth=mm_of_pt !curw;
                       strokingColor=None;
                       fillColor=Some !cur_fill },

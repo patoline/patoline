@@ -192,10 +192,11 @@ module Format=functor (D:Document.DocumentStructure)->(
     let sourcePosition(file,line,column,char) =
       [tT (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
 
-    let node l=
+    let node ?(node_env=(fun env->env)) l=
       Document.Node
         {Document.empty with
-           Document.children=List.fold_left
+          Document.node_env=node_env;
+          Document.children=List.fold_left
             (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
       []
 
