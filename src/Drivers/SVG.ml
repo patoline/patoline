@@ -239,90 +239,6 @@ let draw ?fontCache w h contents=
 
   svg_buf
 
-          (*
-            "font-family=\"%s\" font-size=\"%gpx\" "
-            fontName
-            (size));
-          (* | _->() *)
-            );
-            Rbuffer.add_string svg_buf "stroke=\"none\">";
-          *)
-
-
-
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName=
-
-  let fileName = filename fileName in
-  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
-
-  for i=0 to Array.length pages-1 do
-    let chop=Filename.chop_extension fileName in
-    let chop_file=Filename.basename chop in
-    let html_name=Printf.sprintf "%s%d.html" chop i in
-    let w,h=pages.(i).pageFormat in
-    let html=open_out html_name in
-    let noscript=false in
-    Printf.fprintf html
-      "<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-<meta charset=\"utf-8\">
-<title>%s</title>"      structure.name;
-    if not noscript then
-      Printf.fprintf html "<script>
-resize=function(){
-sizex=(window.innerWidth)/%g;
-sizey=(window.innerHeight)/%g;
-size=sizex>sizey ? sizey : sizex;
-svg=document.getElementById(\"svg\");
-svg.style.width=(%g*size)+'px';
-svg.style.height=(%g*size)+'px';
-console.log(svg.style.width,svg.style.height);
-};
-//window.onresize=function(e){resize()};
-window.onload=function(){resize()};
-window.onkeydown=function(e){
-%s
-%s
-console.log(e)
-}
-</script>"
-      w h (w-.10.) (h-.10.)
-        (if i>0 then
-            Printf.sprintf "if(e.keyCode==37 || e.keycode==38){document.location.href=\"%s%d.html\"} // left" chop_file (i-1)
-         else "")
-        (if i<Array.length pages-1 then
-            Printf.sprintf "if(e.keyCode==39 || e.keycode==40){document.location.href=\"%s%d.html\"} //right" chop_file (i+1)
-         else "");
-
-    Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
-    if noscript then (
-      Printf.fprintf html "<div style=\"margin:0;padding:0;width:100%%;\">%s%s%s</div>"
-        (if i=0 then "" else
-            Printf.sprintf "<a href=\"%s\">Précédent</a>"
-              (Printf.sprintf "%s%d.html" chop_file (i-1)))
-        (if i<>0 && i<>Array.length pages-1 then " " else "")
-        (if i=Array.length pages-1 then "" else
-            Printf.sprintf "<a href=\"%s\">Suivant</a>"
-              (Printf.sprintf "%s%d.html" chop_file (i+1)));
-    );
-    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
-    Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
-      (round (w)) (round ( h));
-    let svg=draw ~fontCache:cache w h (drawing_sort pages.(i).pageContents) in
-    let defs=make_defs cache in
-    Rbuffer.output_buffer html (assemble defs "" svg);
-    Printf.fprintf html "</svg>\n";
-    Printf.fprintf html "</div></body></html>";
-    close_out html
-  done;
-  Printf.fprintf stderr "File %s written.\n" fileName;
-  flush stderr
-
-
-
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -504,6 +420,7 @@ h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
 resize();loadSlide(h0,h1)
 };
+window.onhashchange=function(){window.onload()};
 window.onkeydown=function(e){
 //console.log(e);
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
