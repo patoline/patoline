@@ -216,6 +216,13 @@ let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     pages fileName =
   output ~structure (Array.map (fun x -> [|x|]) pages) fileName
 
+let in_order i x=match x with
+    Glyph g->Glyph { g with glyph_order=i }
+  | Path (p,t)->Path ({p with path_order=i},t)
+  | Link l->Link { l with link_order=i }
+  | Image a->Image { a with image_order=i }
+  | States s->States { s with states_order=i }
+
 
 let drawing_sort l=
   let drawing_order x=match x with

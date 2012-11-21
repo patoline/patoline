@@ -123,7 +123,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let w=max mes (minip.(0).drawing_nominal_width+.margin) in
             let dr={tit with
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(tit.drawing_contents w)@frame)
+              drawing_contents=(fun w->(List.map (in_order 1) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->[Drawing dr]);Env (fun _->env2)]
           with
@@ -666,7 +666,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                        displayname@
                        [bB (fun _->[User EndLink])])
                 )
-
               ) toc
               in
               let total=IntMap.fold (fun _ a m->
@@ -704,7 +703,8 @@ module Format=functor (D:Document.DocumentStructure)->(
               ]
               in
               let drawn=IntMap.fold (fun _ a m->
-                cont:=(List.map (fun x->translate m y_menu (OutputCommon.resize alpha x))
+                cont:=(List.map (fun x->in_order 1
+                  (translate m y_menu (OutputCommon.resize alpha x)))
                          (draw_boxes env_final a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w

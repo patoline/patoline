@@ -116,4 +116,5 @@ val output_from_prime :
   (?structure:structure -> 'b array array -> 'c -> 'd) ->
     ?structure:structure -> 'b array -> 'c -> 'd
 
+val in_order : int -> contents -> contents
 val drawing_sort : contents list -> contents list
