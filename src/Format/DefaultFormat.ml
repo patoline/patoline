@@ -1265,6 +1265,10 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
 
+            let opt_pages=
+              if Array.length opt_pages>0 then opt_pages else
+                [|[default_params,uselessLine]|]
+            in
             let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
             let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in
             let par=ref (-1) in

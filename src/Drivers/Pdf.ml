@@ -44,7 +44,9 @@ let stream buf=
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
-
+  let pages=if Array.length pages>0 then pages else
+      [|{pageFormat=(0.,0.);pageContents=[]}|]
+  in
   let fileName = filename fileName in
   if Sys.file_exists fileName then Unix.unlink fileName;
   let outChan=open_out_bin fileName in
