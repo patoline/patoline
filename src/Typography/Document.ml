@@ -1205,7 +1205,7 @@ let flatten env0 fixable str=
 
 let rec make_struct positions tree=
   match tree with
-      Node s -> (
+      Node s when s.node_paragraph>=0 && s.node_paragraph<Array.length positions -> (
         let (p,x,y)=positions.(s.node_paragraph) in
         let rec make=function
             []->[]
@@ -1222,6 +1222,22 @@ let rec make_struct positions tree=
             OutputCommon.struct_y=y;
             OutputCommon.substructures=a }
       )
+    | Node s -> (
+      let rec make=function
+      []->[]
+        | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)
+        | _ :: s->make s
+      in
+      let a=Array.of_list (make (IntMap.bindings s.children)) in
+      { OutputCommon.name=s.name;
+        OutputCommon.metadata=[];
+	OutputCommon.displayname=s.boxified_displayname;
+        OutputCommon.tags=s.node_tags;
+        OutputCommon.page=0;
+        OutputCommon.struct_x=0.;
+        OutputCommon.struct_y=0.;
+        OutputCommon.substructures=a }
+    )
     | _->
         { OutputCommon.name="";
           OutputCommon.metadata=[];
