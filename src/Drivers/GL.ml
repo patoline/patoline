@@ -565,7 +565,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       List.iter fn link.link_contents
     )
 
-    | States (a,s) -> assert false
+    | States (s) -> assert false
 	
     | Image i -> 
       Gl.enable `texture_2d;
@@ -620,7 +620,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
-      List.iter fn (drawing_sort !pages.(page).(state).pageContents)
+      List.iter fn (drawing_sort !pages.(page).(state).pageContents);
 
 
     in

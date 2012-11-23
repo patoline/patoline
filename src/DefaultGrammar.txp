@@ -90,8 +90,8 @@
 \Add_addition_like{\mp}{∓}
 \Add_addition_like{\union \cup ∪}{∪}
 \Add_addition_like{\inter \cap ∩}{∩}
-\Add_addition_like{\squareunion \sqaurecup ⊔}(MathFonts.asana "⊔" 862)
-\Add_addition_like{\squareinter \squarecap ⊓}(MathFonts.asana "⊓" 861)
+\Add_addition_like{\squareunion \squarecup ⊓}(MathFonts.asana "⊓" 861)
+\Add_addition_like{\squareinter \sqaurecap ⊔}(MathFonts.asana "⊔" 862)
 
 \Add_addition_like{\mod}( fun env st->(Maths.glyphs "mod" (Maths.change_fonts env env.font) st) )
 \Add_addition_like{\vee ∨}(MathFonts.asana "∨" 754)
