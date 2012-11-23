@@ -52,18 +52,18 @@ Pdf/pdf_parser.p.cmxa:Typography/_build/Typography.p.cmxa
 
 .PHONY:Format/_build/DefaultFormat.cma Format/_build/DefaultFormat.p.cmxa Format/_build/DefaultFormat.cmxa
 Format/_build/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
-	make -C Format _build/DefaultFormat.cmxa
+	make -C Format DefaultFormat.cmxa
 Format/_build/DefaultFormat.cma:Format Typography/_build/Typography.cma
-	make -C Format _build/DefaultFormat.cma
+	make -C Format DefaultFormat.cma
 Format/_build/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
-	make -C Format _build/DefaultFormat.p.cmxa
+	make -C Format DefaultFormat.p.cmxa
 
 Format/_build/%.cmxa:Format/_build/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
-	make -C Format _build/$(shell basename $@)
+	make -C Format $(shell basename $@)
 Format/_build/%.p.cmxa:Format/_build/DefaultFormat.p.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
-	make -C Format _build/$(shell basename $@)
+	make -C Format $(shell basename $@)
 Format/_build/%.cma:Format/_build/DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
-	make -C Format _build/$(shell basename $@)
+	make -C Format $(shell basename $@)
 
 .PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
 Typography/_build/Typography.cma:Rbuffer/rbuffer.cma
