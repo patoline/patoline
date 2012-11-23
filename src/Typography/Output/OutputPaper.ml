@@ -9,7 +9,7 @@ open Util
 module Buf=UTF8.Buf
 
 
-type page = { mutable pageFormat:float*float; mutable pageContents:contents list }
+type page = { mutable pageFormat:float*float; mutable pageContents:raw list }
 
 let defaultPage={pageFormat=(0.,0.);pageContents=[]}
 

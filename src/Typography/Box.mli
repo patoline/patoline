@@ -16,7 +16,7 @@ and drawingBox = {
   drawing_y0 : float;
   drawing_y1 : float;
   drawing_badness : float -> float;
-  drawing_contents : float -> OutputCommon.contents list;
+  drawing_contents : float -> OutputCommon.raw list;
 }
 and hyphenBox = {
   hyphen_normal : box array;
@@ -62,9 +62,9 @@ module UserMap :
     val map : ('a -> 'b) -> 'a t -> 'b t
     val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
   end
-val drawing : ?offset:float -> OutputCommon.contents list -> drawingBox
+val drawing : ?offset:float -> OutputCommon.raw list -> drawingBox
 val drawing_inline :
-  ?offset:float -> OutputCommon.contents list -> drawingBox
+  ?offset:float -> OutputCommon.raw list -> drawingBox
 val drawing_blit : drawingBox -> float -> float -> drawingBox -> drawingBox
 val is_glyph : box -> bool
 val is_glue : box -> bool

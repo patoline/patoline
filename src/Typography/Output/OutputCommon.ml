@@ -66,14 +66,14 @@ type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;m
              link_order:int;
              uri:string;is_internal:bool;
              dest_page:int; dest_x:float; dest_y:float;
-             link_contents:contents list}
+             link_contents:raw list}
 and states={
-  states_contents:contents list;
+  states_contents:raw list;
   states_states:Util.IntSet.t;
   states_order:int
 }
 
-and contents=
+and raw=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
@@ -184,7 +184,7 @@ let circle r=
 
 type structure= { mutable name:string;
                   mutable metadata : (metadata*string) list;
-		  mutable displayname:contents list;
+		  mutable displayname:raw list;
                   mutable tags:(string*string) list;
                   mutable page:int;
                   mutable struct_x:float;

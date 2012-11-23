@@ -20,7 +20,7 @@ type box=
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
                    drawing_max_width:float; drawing_y0:float; drawing_y1:float;
                    drawing_badness : float -> float;
-                   drawing_contents:float -> OutputCommon.contents list }
+                   drawing_contents:float -> OutputCommon.raw list }
 
 
 and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) array }

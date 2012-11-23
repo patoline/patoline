@@ -127,7 +127,7 @@ end
 type node={
   name:string;
   displayname:content list;
-  mutable boxified_displayname:contents list;
+  mutable boxified_displayname:raw list;
   children:tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
   node_tags:(string*string) list;
   node_env:environment -> environment; (** Changement d'environnement quand on rentre dans le nœud *)

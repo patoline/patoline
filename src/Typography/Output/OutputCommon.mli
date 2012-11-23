@@ -1,4 +1,4 @@
-(** Types des dessins, de la structure du document,… La bonne méthode pour dessiner dans un document est d'utiliser {!Box.drawingBox} sur une liste de {!contents} *)
+(** Types des dessins, de la structure du document,… La bonne méthode pour dessiner dans un document est d'utiliser {!Box.drawingBox} sur une liste de {!raw} *)
 type lineCap = Butt_cap | Round_cap | Proj_square_cap
 type lineJoin = Miter_join | Round_join | Bevel_join
 type rgb = { red : float; green : float; blue : float; }
@@ -64,34 +64,34 @@ type link = {
   dest_page : int;
   dest_x : float;
   dest_y : float;
-  link_contents : contents list
+  link_contents : raw list
 }
 
 and states={
-  states_contents:contents list;
+  states_contents:raw list;
   states_states:Util.IntSet.t;
   states_order:int
 }
 
-and contents =
+and raw =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
   | Link of link
   | Image of image
   | States of states
 
-val translate : float -> float -> contents -> contents
-val resize : float -> contents -> contents
+val translate : float -> float -> raw -> raw
+val resize : float -> raw -> raw
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
   ignore_after_glyphWidth : bool;
   ignore_under_base_line : bool}
 
-val bounding_box_opt : bounding_box_opt -> contents list -> float * float * float * float
-val bounding_box : contents list -> float * float * float * float
-val bounding_box_kerning : contents list -> float * float * float * float
-val bounding_box_full : contents list -> float * float * float * float
+val bounding_box_opt : bounding_box_opt -> raw list -> float * float * float * float
+val bounding_box : raw list -> float * float * float * float
+val bounding_box_kerning : raw list -> float * float * float * float
+val bounding_box_full : raw list -> float * float * float * float
 
 val circle : float -> (float array * float array) array
 val rectangle : (float*float) -> (float*float)->(float array * float array) array
@@ -99,7 +99,7 @@ val rectangle : (float*float) -> (float*float)->(float array * float array) arra
 type structure = {
   mutable name : string;
   mutable metadata : (metadata*string) list;
-  mutable displayname : contents list;
+  mutable displayname : raw list;
   mutable tags:(string*string) list;
   mutable page : int;
   mutable struct_x : float;
@@ -116,5 +116,5 @@ val output_from_prime :
   (?structure:structure -> 'b array array -> 'c -> 'd) ->
     ?structure:structure -> 'b array -> 'c -> 'd
 
-val in_order : int -> contents -> contents
-val drawing_sort : contents list -> contents list
+val in_order : int -> raw -> raw
+val drawing_sort : raw list -> raw list

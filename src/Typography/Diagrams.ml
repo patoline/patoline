@@ -669,7 +669,7 @@ end
 	       ]
   type gentity = { curve : Curve.t ;	(* The curve is used to determine the start and end of edges *)
 		   anchor : anchor -> Point.t ; (* Anchors are used for relative placement *)
-		   contents : OutputCommon.contents list (* What's needed to actually draw the node *)
+		   contents : OutputCommon.raw list (* What's needed to actually draw the node *)
 		 } 
 
   (* Casting points into gentities *)
@@ -701,7 +701,7 @@ end
       bb : float * float * float * float ;
       center : Point.t ;
       pdfAnchor: Point.t ;
-      node_contents : OutputCommon.contents list ;
+      node_contents : OutputCommon.raw list ;
 
       (* textDepth : float ; *)
       (* textHeight : float ; *)
