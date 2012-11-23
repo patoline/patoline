@@ -5,11 +5,11 @@ CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -package dyp $(PACK)
 patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Parser.cmx Build.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 
-PatolineGL:PatolineGL.ml ../Typography/Typography.cmxa ../Drivers/GL.cmxa
-	$(CAMLOPT) -package $(PACK_DRIVER_GL) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/Typography.cmxa GL.cmxa  -o $@ $<
+PatolineGL:PatolineGL.ml ../Typography/_build/Typography.cmxa ../Drivers/GL.cmxa
+	$(CAMLOPT) -package $(PACK_DRIVER_GL) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa GL.cmxa  -o $@ $<
 
-PatolineGL2:PatolineGL2.ml ../Typography/Typography.cmxa ../Drivers/GL2.cmxa
-	$(CAMLOPT) -package $(PACK_DRIVER_GL2) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/Typography.cmxa gtkInit.cmx GL2.cmxa  -o $@ $<
+PatolineGL2:PatolineGL2.ml ../Typography/_build/Typography.cmxa ../Drivers/GL2.cmxa
+	$(CAMLOPT) -package $(PACK_DRIVER_GL2) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa gtkInit.cmx GL2.cmxa  -o $@ $<
 
 Main.cmx:Generateur.cmx SimpleGenerateur.cmx Main.ml Build.cmx
 	ocamlopt -thread -rectypes -I +threads -c -o Main.cmx Main.ml

@@ -1,6 +1,6 @@
 include Makefile.config
 
-FORMAT=$(shell ls Format/Format*.ml) Format/LMFormat.ml
+FORMAT=Format/_build/FormatArticle.ml  Format/_build/FormatLetter.ml  Format/_build/FormatSlides.ml Format/_build/LMFormat.ml
 
 
 ifdef PACK_DRIVER_GL
@@ -50,20 +50,20 @@ Pdf/pdf_parser.cma:Typography/_build/Typography.cma
 Pdf/pdf_parser.p.cmxa:Typography/_build/Typography.p.cmxa
 	make -C Pdf pdf_parser.p.cmxa
 
-.PHONY:Format/DefaultFormat.cma Format/DefaultFormat.p.cmxa Format/DefaultFormat.cmxa
-Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
-	make -C Format DefaultFormat.cmxa
-Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
-	make -C Format DefaultFormat.cma
-Format/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
-	make -C Format DefaultFormat.p.cmxa
+.PHONY:Format/_build/DefaultFormat.cma Format/_build/DefaultFormat.p.cmxa Format/_build/DefaultFormat.cmxa
+Format/_build/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
+	make -C Format _build/DefaultFormat.cmxa
+Format/_build/DefaultFormat.cma:Format Typography/_build/Typography.cma
+	make -C Format _build/DefaultFormat.cma
+Format/_build/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
+	make -C Format _build/DefaultFormat.p.cmxa
 
-Format/%.cmxa:DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
-	make -C Format $(shell basename $@)
-Format/%.p.cmxa:DefaultFormat.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
-	make -C Format $(shell basename $@)
-Format/%.cma:DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
-	make -C Format $(shell basename $@)
+Format/_build/%.cmxa:DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
+	make -C Format _build/$(shell basename $@)
+Format/_build/%.p.cmxa:DefaultFormat.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
+	make -C Format _build/$(shell basename $@)
+Format/_build/%.cma:DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
+	make -C Format _build/$(shell basename $@)
 
 .PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
 Typography/_build/Typography.cma:Rbuffer/rbuffer.cma
