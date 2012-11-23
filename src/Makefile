@@ -58,11 +58,11 @@ Format/_build/DefaultFormat.cma:Format Typography/_build/Typography.cma
 Format/_build/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
 	make -C Format _build/DefaultFormat.p.cmxa
 
-Format/_build/%.cmxa:DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
+Format/_build/%.cmxa:Format/_build/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
 	make -C Format _build/$(shell basename $@)
-Format/_build/%.p.cmxa:DefaultFormat.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
+Format/_build/%.p.cmxa:Format/_build/DefaultFormat.p.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
 	make -C Format _build/$(shell basename $@)
-Format/_build/%.cma:DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
+Format/_build/%.cma:Format/_build/DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
 	make -C Format _build/$(shell basename $@)
 
 .PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
