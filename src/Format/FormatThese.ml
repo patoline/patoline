@@ -348,6 +348,16 @@ end
        end)
     include Th
   end
+  module Env_exercise=struct
+    module Th=Default.Make_theorem
+      (struct
+         let refType="exercise"
+         let counter="exercise"
+         let counterLevel=3
+         let display num=alternative Bold [tT (Printf.sprintf "Exercise %s" num); tT " "]
+       end)
+    include Th
+  end
 
   open Util
 
