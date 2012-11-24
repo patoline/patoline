@@ -9,6 +9,7 @@ exception Outdated
 
 let set_newline nb l =
   let pos = l.lex_curr_p in
+  let nb=if pos.pos_cnum=1 then nb-1 else nb in
   let npos = { pos with pos_lnum = pos.pos_lnum + nb; pos_bol = pos.pos_cnum } in
   l.lex_curr_p <- npos
 
@@ -562,22 +563,20 @@ main lexer =
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   "=="'='?'='?'='?'='?'='?'='?'='?'='? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
   "--"'-'?'-'?'-'?'-'?'-'?'-'?'-'?'-'? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
-  newline ('='|'-') ">" -> START_SECTION { 
-    set_newline 1 (std_lexbuf lexbuf); 
-    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
+
+  newline ('='|'-') ">" -> START_SECTION {
+    set_newline 1 (std_lexbuf lexbuf);
+    let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1)
+  }
+  newline ("=========="'='*) -> TITLE {
+    let l = Dyp.lexeme lexbuf in
+    set_newline 1 (std_lexbuf lexbuf);
+    String.sub l 1 (String.length l - 1)
+  }
+
   newline ('='|'-') "<" -> END_SECTION { 
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  newline? ("=========="'='*) -> TITLE {
-    let pos = (std_lexbuf lexbuf).lex_curr_p in
-    let l = Dyp.lexeme lexbuf in
-    if l.[0]='\n' then (
-      set_newline 1 (std_lexbuf lexbuf);
-      String.sub l 1 (String.length l - 1)
-     ) else (
-      if pos.pos_cnum<>String.length l then raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_text)) else l
-     )
-    }
 
   newline ("----------"'-'*) -> TITLESEP {
     set_newline 1 (std_lexbuf lexbuf); 
@@ -1146,8 +1145,7 @@ ntext_save_grammar:
 
 ntext:
   | paragraph<p> 
-     @{ 
-       let _,_,m = layout_info dyp 1 1 in
+     @{let _,_,m = layout_info dyp 1 1 in
        let options = { default_paragraph_options with center_paragraph = m >= 4 } in
        ([Paragraph(options, p)], []), [ Keep_grammar; Local_data dyp.last_local_data ] }
   | atomelt<t,r> 

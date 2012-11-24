@@ -30,7 +30,7 @@ let spec =
      dirs := x :: !dirs),
     message (Cli Dirs));
    ("--recompile",Arg.Unit(fun ()->recompile:=true),message (Cli Recompile));
-   ("--no-grammar",Arg.Unit (fun ()->Config.grammarspath:=[]), message (Cli No_grammar));
+   ("--no-grammar",Arg.Unit (fun ()->Parser.grammar:=None), message (Cli No_grammar));
    ("--format",Arg.String
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
    ("--driver",Arg.String
@@ -142,6 +142,7 @@ let rec read_options_from_source_file fread =
   let directories = ref [] in
 
   let nothing = Str.regexp "^[ \t]*\\((\\*.*\\*)\\)?[ \t\r]*$" in
+  let blank=Str.regexp "^[ \t]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_grammar = Str.regexp "^[ \t]*(\\*[ \t]*#GRAMMAR[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
@@ -207,7 +208,9 @@ let rec read_options_from_source_file fread =
        directories := dirs_ ; 
        dirs := (compact (dirs_ @ !dirs)) ;
        pump ())
-    else if Str.string_match nothing s 0 then pump ()
+    else if Str.string_match nothing s 0
+        || Str.string_match blank s 0
+    then pump ()
   in
   seek_in fread 0;
   (try
@@ -306,12 +309,13 @@ and patoline_rule objects h=
       in
       if options_have_changed || compilation_needed [source] [h] then (
 	let dirs_=str_dirs opts in
-        let cmd=Printf.sprintf "%s %s %s--ml%s%s%s --driver %s%s '%s'"
+        let cmd=Printf.sprintf "%s %s %s--ml%s%s%s%s --driver %s%s '%s'"
           !patoline
           dirs_
           (if opts.noamble then "--noamble " else "")
           (if opts.format<>"DefaultFormat" then " --format " else "")
           (if opts.format<>"DefaultFormat" then opts.format else "")
+          (if !Parser.grammar=None then " --no-grammar" else "")
 	  (if !Generateur.edit_link then " --edit-link" else "")
 	  opts.driver
           (if Filename.check_suffix h ".ttml" then " -c" else "")
@@ -466,11 +470,6 @@ and process_each_file l=
           SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
         ) else (
           let opts=read_options_from_source_file fread in
-          Parser.fprint_caml_buf :=
-            (fun ld gr buf s e txps opos ->
-              let pos = pos_in fread in
-              Generateur.print_caml_buf (Parser.pp ()) ld gr (Generateur.Source.of_in_channel fread) buf s e txps opos;
-              seek_in fread pos);
           let suppl=
             Printf.sprintf "(* #PACKAGES %s *)%s%s%s\n"
 	      (String.concat "," opts.packages)

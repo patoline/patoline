@@ -363,7 +363,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
   | [] -> 
     let size = e - s in
     (* let _ = Buffer.add_buffer buf (op.Source.sub_buffer 0 size) in *)
-    let buf'=String.create size in
+    let buf'=String.make size (char_of_int 0) in
     let _= op s buf' 0 size in
     Printf.bprintf buf "%s" buf'
   | (style, s',e',line,col) :: txps' -> begin
@@ -602,8 +602,36 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
     (*     []-> Printf.fprintf stderr "no input files\n" *)
     (*   | h::_-> *)
     (* let op=open_in h in *)
+
+      (* On commence par copier le fichier avec un \n au début *)
+      let ftmp=Filename.temp_file (Filename.basename filename) "" in
+      let _=
+        let x=open_out_bin ftmp in
+        output_char x '\n';
+        let str=String.create 1000 in
+        let rec copy_files ()=
+          let n=input from str 0 (String.length str) in
+          if n>0 then (
+            output x str 0 n;
+            copy_files ()
+          ) else (
+            close_out x;
+            close_in from
+          )
+        in
+        copy_files ()
+      in
+      let from'=open_in ftmp in
+
+      Parser.fprint_caml_buf :=
+        (fun ld gr buf s e txps opos ->
+          let pos = pos_in from' in
+          print_caml_buf (Parser.pp ()) ld gr (Source.of_in_channel from') buf s e txps opos;
+          seek_in from' pos);
+
+
       let parser_pp = Parser.pp () in
-      let lexbuf=Dyp.from_channel parser_pp from in
+      let lexbuf=Dyp.from_channel parser_pp from' in
       let l = Dyp.std_lexbuf lexbuf in
       l.lex_curr_p <- { l.lex_curr_p with pos_fname = filename };
       try
@@ -612,7 +640,7 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
         Printf.fprintf stderr "%s\n" 
 	  (Language.message (Language.End_of_parsing nbdocs));
         flush stderr;
-        let source = Source.of_in_channel from in
+        let source = Source.of_in_channel from' in
         let tmp_pos=
           incr moduleCounter;
           !moduleCounter
