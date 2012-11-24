@@ -206,8 +206,8 @@ let draw ?fontCache w h contents=
 
       if l.is_internal then (
         Rbuffer.add_string svg_buf
-          (Printf.sprintf "<a xlink:href=\"#\" onclick=\"gotoSlide(%d)\">"
-             l.dest_page
+          (Printf.sprintf "<a xlink:href=\"#%d_%d\">"
+             l.dest_page 0
           );
       ) else (
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
