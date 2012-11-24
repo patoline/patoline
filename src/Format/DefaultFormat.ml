@@ -1294,22 +1294,17 @@ module Format=functor (D:Document.DocumentStructure)->(
                       []->[]
                     | (Link h)::s->(
                       if cont then continued_link:=Some (Link h);
-                      Link { h with link_contents=List.rev u }
+                      let x0,y0,x1,y1=bounding_box u in
+                      Link { h with
+                        link_x0=x0;link_y0=y0;
+                        link_x1=x1;link_y1=y1;
+                        link_contents=List.rev u
+                      }
                     )::s
                     | h::s->link_contents (h::u) s
                   in
                   page.pageContents<-link_contents [] page.pageContents;
-                  (match !urilinks with
-                      None->(
-                        match !crosslinks with
-                            []->()
-                          | (_,h,_)::s->crosslink_opened:=false
-                      )
-                    | Some h->(
-                      page.pageContents<-Link h::page.pageContents;
-                      urilinks:=None;
-                    )
-                  )
+                  crosslink_opened:=false;
                 )
               in
 
@@ -1403,7 +1398,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                                    dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                                    link_contents=[] }
                         in
-                        urilinks:=Some link;
+                        crosslinks:=(i, link, l) :: !crosslinks;
+                        crosslink_opened:=true;
                         page.pageContents<-Link link::page.pageContents;
                         0.
                       )
@@ -1415,17 +1411,17 @@ module Format=functor (D:Document.DocumentStructure)->(
                                  }
                         in
                         crosslinks:=(i, link, l) :: !crosslinks;
-                        page.pageContents<-Link link::page.pageContents;
                         crosslink_opened:=true;
+                        page.pageContents<-Link link::page.pageContents;
+                        0.
+                      )
+                      | User EndLink->(
+                        endlink false;
                         0.
                       )
                       | User (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
                         destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
-                        0.
-                      )
-                      | User EndLink->(
-                        endlink false;
                         0.
                       )
                       | User (Footnote (_,g))->(
@@ -1435,12 +1431,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                       | b->box_width comp b
                   in
-                  urilinks:=(match !urilinks with
-                      None->None
-                    | Some h->
-                      page.pageContents<-Link h::page.pageContents;
-                      Some { h with link_x0=param.left_margin;link_x1=param.left_margin;
-                        link_y0=y;link_y1=y });
+
+                  (* Si un lien est commencé sur la ligne précédente,
+                     le reprendre *)
                   if !crosslink_opened then
                     crosslinks:=(match !crosslinks with
                         []->[]
@@ -1448,7 +1441,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                         (a, { h with link_x0=param.left_margin;link_x1=param.left_margin;
                           link_y0=y;link_y1=y }, c)::(a,h,c)::s);
 
-                  let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                  (* Écrire la page *)
+                  let _=
+                    fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line
+                  in
+
+                  (* Fermer les liens, et préparer la continuation sur
+                     la prochaine ligne. *)
                   endlink true;
                   (match !continued_link with
                       None->()
@@ -1458,14 +1457,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                       continued_link:=None
                     )
                   );
-
-                  (match !urilinks with
-                      None->()
-                    | Some h->h.link_x1<-x1);
-                  if !crosslink_opened then
-                    (match !crosslinks with
-                        []->()
-                      | (_,h,_)::_->h.link_x1<-x1)
                 )
               done;
 
