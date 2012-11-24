@@ -535,13 +535,14 @@ and output_list parser_pp from where no_indent lvl docs =
 	| String s -> Printf.fprintf where "%s" s
 
 	| Struct(title, numbered, docs) ->
-	  let num = if numbered then "" else " ~numbered:false" in
+	  let num = if numbered=Toc_num then "" else " ~numbered:false" in
+          let toc = if numbered=Not_in_toc then " ~in_toc:false" else "" in
 	  let print_title where title = 
 	      print_contents parser_pp from where title
 	  in
 	  (match docs with
 	      Relative docs ->
-		Printf.fprintf where "let _ = newStruct%s D.structure %a;;\n\n" num print_title title;
+		Printf.fprintf where "let _ = newStruct%s%s D.structure %a;;\n\n" num toc print_title title;
 		output_list parser_pp from where true (!lvl + 1) docs;
 		Printf.fprintf where "let _ = go_up D.structure ;;(* 2 *)\n\n"
 	     | Absolute l ->

@@ -77,13 +77,15 @@ and 'a structType = Absolute of int | Relative of 'a doc list
 and paragraph_options = { 
     center_paragraph : bool; indent_paragraph : bool }
 
+and toc=Toc_num | Toc_unnum | Not_in_toc
+
 and 'a doc =
      Paragraph of paragraph_options * 'a content list
    | Caml of local_data * 'a * int * int * (texprime_section * int * int * int * int) list 
      * (string * int * int)
    | Math of string * 'a math
    | Verbatim of string option * string option * string list
-   | Struct of 'a content list * bool * 'a structType
+   | Struct of 'a content list * toc * 'a structType
    | Macro of [ `Single | `Module | `Begin | `End | `Include | `Preproc ] * string 
      * 'a doc list * macro_info list
    | Preproc of string
@@ -564,7 +566,7 @@ main lexer =
   "=="'='?'='?'='?'='?'='?'='?'='?'='? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
   "--"'-'?'-'?'-'?'-'?'-'?'-'?'-'?'-'? -> END_ABS_SECTION { Dyp.lexeme lexbuf }
 
-  newline ('='|'-') ">" -> START_SECTION {
+  newline ('='|'-'|'.') ">" -> START_SECTION {
     set_newline 1 (std_lexbuf lexbuf);
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1)
   }
@@ -574,7 +576,7 @@ main lexer =
     String.sub l 1 (String.length l - 1)
   }
 
-  newline ('='|'-') "<" -> END_SECTION { 
+  newline ('='|'-'|'.') "<" -> END_SECTION { 
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
 
@@ -1030,14 +1032,26 @@ atomelt:
         Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
       | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
-      ([Struct(title, o.[0] = '=', Relative content)],rules),
+      ([Struct(title,
+               (match o.[0] with
+                   '='->Toc_num
+                 | '-'->Toc_unnum
+                 | '.'->Not_in_toc
+                 | _->raise Giveup),
+               Relative content)],rules),
 	[ Keep_grammar; Local_data dyp.last_local_data ]
     }
   | ABS_SECTION<o> paragraph<title> END_ABS_SECTION<c>
     { let level = String.length o in
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
-      [Struct(title,  o.[0] = '=', Absolute (level - 1))], [] }
+      [Struct(title,
+              (match o.[0] with
+                  '='->Toc_num
+                | '-'->Toc_unnum
+                | '.'->Not_in_toc
+                 | _->raise Giveup),
+              Absolute (level - 1))], [] }
   | VERBATIM [ - (space*) - (ident) ]?<lang> [ - (space*) - string ]?<filename>  [ - (space*)]? -
     verbatim_lines<ls> - VERBATIM
     { [Verbatim(None, None (*lang, filename*), List.rev ls)], [] }
