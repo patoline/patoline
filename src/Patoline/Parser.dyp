@@ -593,6 +593,8 @@ verb_text:
   | verb_text<t> - ("\\"[^'{''}''\\'])<s>  { TC("",s)::t }
   | verb_text<t> - "\\}"  { TC("","}")::t }
   | verb_text<t> - "\\{"  { TC("","{")::t }
+  | verb_text<t> - "\\("  { TC("","(")::t }
+  | verb_text<t> - "\\)"  { TC("",")")::t }
   | verb_text<t> - "{" - verb_text<t'> - "}"  { TC("","}")::t'@(TC("","{")::t) }
   | verb_text<t> - ([^'\\''{''}']*)<s>  { TC("", s)::t }
  
@@ -607,6 +609,7 @@ parelt:
   | "~"  { [TC("", " ")], false }
   | "\\_"  { [TC("", "_")],false }
   | "\\~"  { [TC("", "~")], false }
+  | "\\ "  { [TC("", " ")], false }
   | "\\verb{" verb_text<t> "}"
     { [MC(`Single, "verb", [sParagraph(List.rev t)], [])], false }
   | "_" paragraph_aux<p,false> "_"
