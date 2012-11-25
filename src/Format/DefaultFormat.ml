@@ -330,7 +330,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           Node n->
             let par=Paragraph {
               par_contents=n.displayname;
-              par_env=resize_env 3.;
+              par_env=(fun env->resize_env (env.size*.3.) env);
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=

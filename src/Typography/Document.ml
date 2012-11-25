@@ -463,8 +463,8 @@ let family fam t =
 
 let resize_env fsize env=
   { env with
-      size=env.size*.fsize;
-      lead=env.lead*.fsize }
+      size=fsize;
+      lead=env.lead*.fsize/.env.size }
 
 (* Changer de taille dans un scope *)
 let size fsize t=
