@@ -986,6 +986,12 @@ math:
       { app_ind d (Symbol op) } atom
   | "{" negation<_,op,d> "}"
       { app_ind d (Symbol op) } atom
+  | "{" punctuation<_,op,d> "}"
+      { app_ind d (Symbol op) } atom
+  | "{" operator<m> "}"
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
+  | "{" limits_operator<m> "}"
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | symbol<_,name,d>
       { app_ind d (Symbol(name)) } atom
 
