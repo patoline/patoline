@@ -7,9 +7,9 @@ type color=
 let rgb a b c=RGB { red=a;green=b;blue=c }
 
 let mix x a b=match a,b with
-    RGB ra, RGB rb->RGB { red=(x*.ra.red+.(100.-.x)*.rb.red)/.100.;
-                          green=(x*.ra.green+.(100.-.x)*.rb.green)/.100.;
-                          blue=(x*.ra.blue+.(100.-.x)*.rb.blue)/.100.
+    RGB ra, RGB rb->RGB { red=(x*.ra.red+.(1.-.x)*.rb.red);
+                          green=(x*.ra.green+.(1.-.x)*.rb.green);
+                          blue=(x*.ra.blue+.(1.-.x)*.rb.blue)
                         }
 
 let black=RGB { red=0.;green=0.;blue=0. }
@@ -22,7 +22,7 @@ let orange=RGB{red=1.;green=0.5;blue=0.}
 let purple=RGB{red=0.5;green=0.;blue=1.}
 let pink=RGB{red=1.;green=0.;blue=0.5}
 let yellow=RGB{red=1.;green=1.;blue=0.}
-let gray=mix 50. white black
+let gray=mix 0.5 white black
 
 
 type metadata=
