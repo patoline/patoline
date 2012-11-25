@@ -263,7 +263,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     let postprocess_tree tree=
-
+      let has_institute=ref false in
+      let has_author=ref false in
       let with_institute=match tree with
           Node n->(try
                      let cont=[tT (List.assoc "Institute" n.node_tags)] in
@@ -285,6 +286,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_states=IntSet.empty;
                        par_paragraph=(-1) }
                      in
+                     has_institute:=true;
                      fst (up (newChildBefore (tree,[]) par))
             with
                 Not_found->tree)
@@ -302,8 +304,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_parameters=
                          (fun a b c d e f g line->
                            { (center a b c d e f g line) with
-                             min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
-                                 2.*.a.normalLead else 0.;
+                             min_lines_after=
+                               if line.lineEnd>=Array.length b.(line.paragraph) then
+                                 if !has_institute then
+                                   2
+                                 else
+                                   4
+                               else 1;
                              min_height_before=if line.lineEnd>=Array.length b.(line.paragraph) then
                                  2.*.a.normalLead else 0.
                            });
@@ -312,6 +319,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                        par_states=IntSet.empty;
                        par_paragraph=(-1) }
                      in
+                     has_author:=true;
                      fst (up (newChildBefore (with_institute,[]) par))
             with
                 Not_found->with_institute)
@@ -328,8 +336,13 @@ module Format=functor (D:Document.DocumentStructure)->(
               par_parameters=
                 (fun a b c d e f g line->
                   { (center a b c d e f g line) with
-                    min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then
-                        a.normalLead else 0.;
+                    min_lines_after=
+                      if line.lineEnd>=Array.length b.(line.paragraph) then
+                        if !has_author || !has_institute then
+                          2
+                        else
+                          4
+                      else 1;
                     min_height_before=0. });
               par_badness=(badness);
               par_completeLine=Complete.normal;
