@@ -600,11 +600,10 @@ verb_text:
  
 parelt:
     in_par_macro<m> { m, false }
-  | "$" math<m> "$" { [FC(get_pos_as_string dyp 1, false,m)], false }
-  | "[$" math<m> "$]" { [FC(get_pos_as_string dyp 1, false, MathMacro("displayStyle",[m]))], false }
   | line<w> { [TC (get_pos_as_string dyp 1, w)], false }
   | "\\{" { [TC("","{")], false }
   | "\\\\"  { [TC("", "\\")], false }
+  | "\\$"  { [TC("", "$")], false }
   | "\\}"  { [TC("", "}")], false }
   | "~"  { [TC("", " ")], false }
   | "\\_"  { [TC("", "_")],false }
@@ -614,6 +613,8 @@ parelt:
     { [MC(`Single, "verb", [sParagraph(List.rev t)], [])], false }
   | "_" paragraph_aux<p,false> "_"
     { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)], [])], true }
+  | "$" math<m> "$" { [FC(get_pos_as_string dyp 1, false,m)], false }
+  | "[$" math<m> "$]" { [FC(get_pos_as_string dyp 1, false, MathMacro("displayStyle",[m]))], false }
 
 
 paragraph_aux:
