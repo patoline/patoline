@@ -95,8 +95,8 @@ Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
 
-DefaultGrammar.cmx:Format/_build/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
-	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography/_build -I Format/_build -I Drivers/_build DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
+DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
+	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography/_build -I Format -I Drivers/_build DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
 
 .PHONY :doc
 doc:

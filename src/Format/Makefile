@@ -1,17 +1,16 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../../Typography/_build -I ../Rbuffer $(PACK)
-CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../../Typography/_build -I ../Rbuffer $(PACK)
+CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -I ../Typography/_build -I ../Rbuffer $(PACK)
+CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography/_build -I ../Rbuffer $(PACK)
 
 all:
 
-%.cmxa:
-	ocamlbuild -use-ocamlfind $@
-#	$(CAMLOPT) -a -o $@ Euler.cmx Numerals.cmx TableOfContents.cmx Sections.cmx DefaultFormat.ml
-%.cma:
-	ocamlbuild -use-ocamlfind $@
-#	$(CAMLC) -a -o $@ Euler.cmo Numerals.cmo TableOfContents.cmo Sections.cmo DefaultFormat.ml
+DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+	$(CAMLOPT) -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+
+%.cmxa:DefaultFormat.cmxa %.ml
+	$(CAMLOPT) -a -o $@ $*.ml
 
 
 clean:
-	rm -Rf *~ _build
+	rm -Rf *~ *.cm[oixa] *.cmxa

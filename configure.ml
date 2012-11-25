@@ -267,24 +267,6 @@ let _=
 
     close_out make;
 
-    let tags_format=open_out "src/Format/_tags" in
-    Printf.fprintf tags_format "<**/*.ml{i,}>:pp(cpp -w %s%s%s%s%s)%s
-"
-      (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
-      (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
-      (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
-      (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
-      (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "")
-
-      (let pack=String.concat ","
-         (List.map (fun x->Printf.sprintf "package(%s)" x)
-            (gen_pack_line [Package "camomile"; Package "zip";
-                            Package "camlimages.all_formats"; Package "cairo"]))
-       in
-       if pack="" then "" else ","^pack);
-    close_out tags_format;
-
-
     let tags_typography=open_out "src/Typography/_tags" in
     Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -w %s%s%s%s%s)%s,for-pack(Typography)
 <Fonts> or <Output> or <Fonts/Sfnt>: include
@@ -319,7 +301,7 @@ let _=
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
-        "src/Format/_build/*Format*.cmxa src/Format/_build/*Format*.a src/Format/_build/*Format*.cmi "^
+        "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
         "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^

@@ -1,4 +1,3 @@
-(* #PACKAGES bibi *)
 open Typography
 open Typography.Fonts
 open Typography.Fonts.FTypes
@@ -73,8 +72,6 @@ let skip x=bB (fun env->let w=env.size*.x in [glue w w w])
 (*     @(cacaps) *)
 (*     @(fam Demi demi) *)
 
-
-module Euler=DefaultFormat.Euler
 
 module Format=functor (D:DocumentStructure)->struct
 
