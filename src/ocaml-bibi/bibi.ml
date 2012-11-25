@@ -258,7 +258,9 @@ exception No_bib of string
 let bib:((int*content list) IntMap.t) ref=ref IntMap.empty
 let revbib:((int*content list) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
-let bibfile= ref "biblio.bibi"
+let bibfile_= ref None
+
+let bibfile x=bibfile_:=Some x
 
 let no_results x=match Typography.TypoLanguage.lang with
     `FR->Printf.sprintf "La requête n'a pas donné de résultats :\n%s" x
@@ -305,15 +307,13 @@ let authorFile bibfile x=match author bibfile (sprintf "name LIKE '%%%s%%'" x) w
     []->Printf.fprintf stderr "Unknown author %S\n" x;raise Not_found
   | h::_->[tT (snd (make_name h))]
 
-let cite x=citeFile !bibfile x
+let cite x=match !bibfile_ with
+    None->failwith "Bibi: no bibliographic source defined"
+  | Some y->citeFile y x
 
 open Util
 open Box
 open Line
-
-module type Format=sig
-  val parameters: environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters
-end
 
 module TheBibliography (D : DocumentStructure) = struct
   let _ =

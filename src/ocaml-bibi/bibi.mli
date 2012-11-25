@@ -10,6 +10,7 @@ val insert_author : Sqlite3.db -> string -> int64
 val insert_publisher : Sqlite3.db -> string -> int64
 val make_name : string -> string * string
 val intercalate : 'a -> 'a list -> 'a list
+val bibfile : string -> unit
 val dbCite :
   Sqlite3.db ->
   bool -> string -> (int*Typography.Document.content list) list
