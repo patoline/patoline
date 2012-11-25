@@ -170,6 +170,65 @@ let font_size_ratio font1 font2 =
   in
   x_h font1 /. x_h font2
 
+let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
+  let page_footnotes=ref 0 in
+  let measure=IntMap.fold (fun i aa m->match aa with
+      Break.Placed a->
+        (if line.page=a.page &&
+           line.height<=
+           a.height -.figures.(i).drawing_y0
+         && line.height>=
+           a.height-. figures.(i).drawing_y1
+         then
+            env.normalMeasure -. figures.(i).drawing_nominal_width
+         else m)
+    | _->m
+  ) last_figures env.normalMeasure
+  in
+  UserMap.iter (fun k a->
+    match k with
+        Footnote _ when a.page=line.page -> incr page_footnotes
+      | _->()
+  ) last_users;
+  let footnote_h=fold_left_line paragraphs (fun fn box->match box with
+      User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
+    | _->fn) 0. line
+  in
+  { measure=measure;
+    page_height=min  240. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
+    -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
+    left_margin=env.normalLeftMargin;
+    local_optimization=0;
+    min_page_before=0;
+    min_page_after=0;
+    next_acceptable_height=(fun node params nextNode nextParams height->
+      if node==nextNode then
+        let min_height=node.height+.params.min_height_after in
+        env.lead*.(ceil (min_height/.env.lead))
+      else
+        if node.page=nextNode.page then (
+          let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
+          let h0=min_height/.env.lead in
+          let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
+              env.lead*.ceil h0
+          in
+          h
+        ) else (
+          let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
+          env.lead*.(ceil (min_height/.env.lead))
+        )
+    );
+    min_height_before=0.;
+    min_height_after=0.;
+    not_last_line=false;
+    not_first_line=false;
+    min_lines_before=1;
+    min_lines_after=0;
+    absolute=false
+  }
+
+
+
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
@@ -200,63 +259,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
       []
 
-
-    let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
-      let page_footnotes=ref 0 in
-      let measure=IntMap.fold (fun i aa m->match aa with
-          Break.Placed a->
-            (if line.page=a.page &&
-               line.height<=
-               a.height -.figures.(i).drawing_y0
-             && line.height>=
-               a.height-. figures.(i).drawing_y1
-             then
-                env.normalMeasure -. figures.(i).drawing_nominal_width
-             else m)
-        | _->m
-      ) last_figures env.normalMeasure
-      in
-      UserMap.iter (fun k a->
-        match k with
-            Footnote _ when a.page=line.page -> incr page_footnotes
-          | _->()
-      ) last_users;
-      let footnote_h=fold_left_line paragraphs (fun fn box->match box with
-          User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
-        | _->fn) 0. line
-      in
-      { measure=measure;
-        page_height=min  240. (if line.page_line <= 0 then 45.*.env.normalLead else last_parameters.page_height)
-        -. (if footnote_h>0. && !page_footnotes=0 then (footnote_h+.env.footnote_y) else footnote_h);
-        left_margin=env.normalLeftMargin;
-        local_optimization=0;
-        min_page_before=0;
-        min_page_after=0;
-        next_acceptable_height=(fun node params nextNode nextParams height->
-          if node==nextNode then
-            let min_height=node.height+.params.min_height_after in
-            env.lead*.(ceil (min_height/.env.lead))
-          else
-            if node.page=nextNode.page then (
-              let min_height=max (nextNode.height+.env.lead) (node.height +. max params.min_height_after nextParams.min_height_before) in
-              let h0=min_height/.env.lead in
-              let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
-                  env.lead*.ceil h0
-              in
-              h
-            ) else (
-              let min_height=nextNode.height+.max nextParams.min_height_before env.lead in
-              env.lead*.(ceil (min_height/.env.lead))
-            )
-        );
-        min_height_before=0.;
-        min_height_after=0.;
-        not_last_line=false;
-        not_first_line=false;
-        min_lines_before=1;
-        min_lines_after=0;
-        absolute=false
-      }
+    let parameters=parameters
     let center = do_center parameters
     let ragged_right = do_ragged_right parameters
     let ragged_left = do_ragged_left parameters

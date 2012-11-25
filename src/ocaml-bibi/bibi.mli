@@ -19,14 +19,4 @@ val bibitem :
 val author:string->string->string list
 val authorCite : string -> string -> string
 val cite : string -> Typography.Document.content list
-module type Format=sig
-  val parameters :
-    Typography.Document.environment ->
-    Typography.Box.box array array ->
-    Typography.Box.drawingBox array ->
-    Typography.Line.parameters ->
-    Typography.Break.figurePosition Typography.Util.IntMap.t ->
-    Typography.Line.line Typography.Box.UserMap.t ->
-    Typography.Line.line -> Typography.Line.line -> Typography.Line.parameters
-end
-module TheBibliography : functor (F:Format)-> functor (D : Typography.Document.DocumentStructure) -> sig end
+module TheBibliography : functor (D : Typography.Document.DocumentStructure) -> sig end
