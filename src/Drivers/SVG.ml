@@ -264,7 +264,24 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       let w,h=pages.(j).pageFormat in
        Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
         (round (w)) (round ( h));
-      let svg=draw ~fontCache:cache w h (drawing_sort pages.(j).pageContents) in
+
+      let sorted_pages=
+
+        let x=List.fold_left (fun m x->
+          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+          IntMap.add (drawing_order x) (x::m') m
+        ) IntMap.empty pages.(j).pageContents
+        in
+        let comp a b=match a,b with
+            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+              else compare ga.glyph_y gb.glyph_y
+          | Glyph ga,_-> -1
+          | _,Glyph gb->1
+          | _->0
+        in
+        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
+      in
+      let svg=draw ~fontCache:cache w h sorted_pages in
       let defs=make_defs cache in
       Rbuffer.output_buffer html (assemble defs "" svg);
       Printf.fprintf html "</svg>\n";
@@ -300,7 +317,22 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
       let w,h=page.pageFormat in
       Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
-      let svg=draw ~fontCache:cache w h (drawing_sort page.pageContents) in
+      let sorted_pages=
+        let x=List.fold_left (fun m x->
+          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+          IntMap.add (drawing_order x) (x::m') m
+        ) IntMap.empty page.pageContents
+        in
+        let comp a b=match a,b with
+            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+              else compare ga.glyph_y gb.glyph_y
+          | Glyph ga,_-> -1
+          | _,Glyph gb->1
+          | _->0
+        in
+        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
+      in
+      let svg=draw ~fontCache:cache w h sorted_pages in
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
       file

@@ -117,4 +117,5 @@ val output_from_prime :
     ?structure:structure -> 'b array -> 'c -> 'd
 
 val in_order : int -> raw -> raw
+val drawing_order : raw -> int
 val drawing_sort : raw list -> raw list

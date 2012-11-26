@@ -224,14 +224,14 @@ let in_order i x=match x with
   | States s->States { s with states_order=i }
 
 
+let drawing_order x=match x with
+    Glyph g->g.glyph_order
+  | Path (p,_)->p.path_order
+  | Link l->l.link_order
+  | Image i->i.image_order
+  | States s->s.states_order
+
 let drawing_sort l=
-  let drawing_order x=match x with
-      Glyph g->g.glyph_order
-    | Path (p,_)->p.path_order
-    | Link l->l.link_order
-    | Image i->i.image_order
-    | States s->s.states_order
-  in
   let rec make_list t acc=match t with
       []->acc
     | States h::s->
