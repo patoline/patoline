@@ -5,7 +5,7 @@ CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography/_build -I ../Rbuffer $(PACK
 
 all:
 
-DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
 
 %.cmxa:DefaultFormat.cmxa %.ml

@@ -23,25 +23,24 @@ ifeq ($(UNAME), Darwin)
 CFLAGS=-fPIC -framework GLUT -framework OpenGL
 endif
 
-
-Html.cmxa:Html.cmx
+Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
-SVG.cmxa:SVG.cmx HtmlFonts.cmx
+SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
-GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx
+GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx GL.cmx 
-Image.cmxa:GL.cmx Image.cmx
+Image.cmxa:GL.cmx Image.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
-Pdf.cmxa:Pdf.cmx
+Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ Pdf.cmx
-Bin.cmxa:Bin.cmx
+Bin.cmxa:Bin.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ Bin.cmx
-GL2.cmxa:GL2.cmx
+GL2.cmxa:GL2.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ GL2.cmx
-Net.cmxa:Net.cmx
+Net.cmxa:Net.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ Net.cmx
 
-DriverCairo.cmxa:DriverCairo.cmx
+DriverCairo.cmxa:DriverCairo.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ DriverCairo.cmx
 
 DriverCairo.cmx:DriverCairo.ml

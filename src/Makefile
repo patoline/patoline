@@ -33,7 +33,7 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 
 ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi
 	make -C ocaml-bibi bibi.cma
-ocaml-bibi/bibi.cmxa:Typography/_build/Typography.cmxa ocaml-bibi
+ocaml-bibi/bibi.cmxa:Typography/_build/Typography.cmi ocaml-bibi
 	make -C ocaml-bibi bibi.cmxa
 ocaml-bibi/bibi.p.cmxa:Typography/_build/Typography.p.cmxa ocaml-bibi
 	make -C ocaml-bibi bibi.p.cmxa
