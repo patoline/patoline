@@ -3,6 +3,7 @@ open Lexing
 open Dyp
 open Config
 open Util
+(* open UnicodeScripts *)
 
 exception Syntax_Error of Lexing.position * Language.syntax_error
 exception Outdated
