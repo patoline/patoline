@@ -992,6 +992,11 @@ math:
       { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | "{" limits_operator<m> "}"
       { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
+
+  | "{" left<m> "}"
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
+  | "{" right<m> "}"
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | symbol<_,name,d>
       { app_ind d (Symbol(name)) } atom
 
