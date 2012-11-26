@@ -8,8 +8,14 @@ all:
 DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
 
+DefaultFormat.p.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+	$(CAMLOPT) -p -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+
 %.cmxa:DefaultFormat.cmxa %.ml
 	$(CAMLOPT) -a -o $@ $*.ml
+
+%.p.cmxa:DefaultFormat.p.cmxa %.ml
+	$(CAMLOPT) -p -a -o $@ $*.ml
 
 
 clean:
