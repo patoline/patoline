@@ -274,7 +274,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         in
         let comp a b=match a,b with
             Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-              else compare ga.glyph_y gb.glyph_y
+              else compare gb.glyph_y ga.glyph_y
           | Glyph ga,_-> -1
           | _,Glyph gb->1
           | _->0
@@ -325,7 +325,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
         in
         let comp a b=match a,b with
             Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-              else compare ga.glyph_y gb.glyph_y
+              else compare gb.glyph_y ga.glyph_y
           | Glyph ga,_-> -1
           | _,Glyph gb->1
           | _->0
