@@ -100,8 +100,7 @@ DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttm
 
 .PHONY :doc
 doc:
-	mkdir -p doc
-	ocamlfind ocamldoc -package camomile -html -d doc -pp cpp -I Typography -I Typography/Output Typography/Document.ml
+	make -C Typography doc
 
 install:
 	make -C .. install

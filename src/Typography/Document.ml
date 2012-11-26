@@ -1,5 +1,5 @@
-(** Le type du contenu, et comment on le transforme en boîtes. *)
-let _=Gc.set {(Gc.get ()) with Gc.minor_heap_size=1 lsl 20 }
+(** The types of document structures, environments, and how to convert them to boxes. *)
+
 open Config
 open Util
 open Fonts
@@ -38,9 +38,6 @@ let make_ligature l gl x=
 type fontFamily = (fontAlternative * ((font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t * (font*(string->string)*(glyph_id list -> glyph_id list)*(glyph_ids list -> glyph_ids list)) Lazy.t)) list
 
 
-(** Module de typesetting Ce module contient une map des boîtes
-    user, mais ne fait aucune hypothèse de plus sur le type
-    user.*)
 module TS=Break.Make
   (struct
      type t=line
@@ -123,18 +120,20 @@ module Mathematical=struct
     | ScriptScript'
 end
 
-(** Structure du document. Un [node] est un nœud interne de l'arbre. *)
+(** Document structure. A [node] is an internal node of the document tree. *)
 type node={
   name:string;
   displayname:content list;
   mutable boxified_displayname:raw list;
-  children:tree IntMap.t;       (** Les [int] qui sont là n'ont rien à voir avec la numérotation officielle, c'est juste un tableau extensible. *)
+  children:tree IntMap.t;       (** The [int] there have nothing to do with section numbering. This only implements an extensible array *)
   node_tags:(string*string) list;
-  node_env:environment -> environment; (** Changement d'environnement quand on rentre dans le nœud *)
-  node_post_env:environment -> environment -> environment;(** Changement d'environnement quand on en sort *)
-  node_states:Util.IntSet.t;
+  node_env:environment -> environment; (** Environment modification function at node beginning. *)
+  node_post_env:environment -> environment -> environment;(** Environment modification when getting out of the node. *)
+  node_states:Util.IntSet.t;                              (** The page states in which the contents of this node appears. *)
   mutable node_paragraph:int;
 }
+
+(** The first type of leaves in a document: paragraphs. *)
 and paragraph={
   par_contents:content list;
   par_env:environment -> environment;
@@ -145,17 +144,24 @@ and paragraph={
   par_states:Util.IntSet.t;
   mutable par_paragraph:int
 }
+
+(** Figure definitions. *)
 and figuredef={
   fig_contents:environment->drawingBox;
   fig_env:environment -> environment;
   fig_post_env:environment -> environment -> environment;
   fig_parameters:environment -> box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line UserMap.t -> line -> line -> parameters
 }
+
+(** This is the type of document trees. *)
 and tree=
     Node of node
   | Paragraph of paragraph
   | FigureDef of figuredef
 
+(** Environments. These are typically folded on document trees, and
+    control many different things about the fonts, counters, or
+    labels. *)
 and environment={
   fontFamily:fontFamily;
   fontMonoFamily:fontFamily;
@@ -184,16 +190,26 @@ and environment={
   show_boxes:bool;
 }
 
-(** {3 Contenu} *)
+(** {3 Contents} *)
 
 and content=
     B of (environment->box list) * box list option ref
-                                              (** Une liste de boîtes, dépendante de l'environnement *)
+  (** A list of boxes, depending on the environment. The second
+      parameters is a cache, in the case we should iterate compilation
+      to resolve the names. *)
   | C of (environment->content list)
-  | T of string*(box list IntMap.t option) ref        (** Un texte simple *)
-  | FileRef of (string*int*int)               (** Un texte simple, récupéré d'un fichier à l'exécution et donné par position de départ et taille *)
-  | Env of (environment -> environment) (** Une modification de l'environnement (par exemple des compteurs *)
-  | Scoped of (environment->environment)*(content list) (** Comme son nom et son type l'indiquent *)
+  (** A contents list depending on the environment. This may be used
+      for instance to typeset the state of a counter. *)
+  | T of string*(box list IntMap.t option) ref
+  (** Simple text. *)
+  | FileRef of (string*int*int)
+  (** Also simple text, converted to [T] by reading the corresponding
+      file at given offset, for the given number of bytes. *)
+  | Env of (environment -> environment)
+  (** An environment modification function, for instance to register a
+      name or modify the state of a counter. *)
+  | Scoped of (environment->environment)*(content list)
+(** A scoped environment transformation, applied on a small list of contents. *)
 
 
 let bB f = B(f,ref None)
@@ -380,6 +396,9 @@ let doc_graph out t0=
        | _->());
     Printf.fprintf out "}\n"
 
+
+(** {3 Environment transformations} *)
+
 let change_env t fenv=match t with
     (Node n,l)->(Node { n with node_env=fun x->fenv (n.node_env x) }, l)
   | (Paragraph n,l)->(Paragraph { n with par_env=fun x->fenv (n.par_env x) }, l)
@@ -490,6 +509,9 @@ let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=max p
 let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=max p.min_page_after x })])]
 let linesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_lines_before=max p.min_lines_before x })])]
 let linesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_lines_after=max p.min_lines_after x })])]
+let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
+let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
+
 let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 let hfill () = [bB (fun env-> let x = env.normalMeasure in [glue 0. (0.5 *. x) x])]
 
@@ -558,7 +580,7 @@ let badness
       +. (1000.*.(abs_float (comp_i-.comp_j)))
   )
 
-(*********************************************************************)
+(** {3 Figures} *)
 
 let figure str parameters ?(name="") drawing=
   str:=up (newChildAfter !str (
@@ -616,9 +638,9 @@ let beginFigure name=
 
 (****************************************************************)
 
+(** {3 Editing document trees} *)
 
-
-
+(** Adds a new paragraph with the given parameters, just below the current [node]. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters par=
   match !str with
       Paragraph p,path->
@@ -632,6 +654,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters 
           str:=up (newChildAfter !str para)
 
 
+(** Adds a new node, just below the last one. *)
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   let name = match label with
       None -> string_of_contents displayname
@@ -676,6 +699,10 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
   }
   in
     str:=newChildAfter !str para
+
+(** {3 References, labels and links} *)
+
+
 
 let pageref x=
   [C (fun env->
@@ -751,8 +778,8 @@ let sectref x=generalRef "_structure" x
 
 let extLink a b=bB (fun _->[User (BeginURILink a)])::b@[bB (fun _->[User EndLink])]
 let link a b=bB (fun _->[User (BeginLink a)])::b@[bB (fun _->[User EndLink])]
-let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
-let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
+
+(** {3 Images} *)
 
 #ifdef CAMLIMAGES
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
@@ -810,14 +837,13 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:
 let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile=
   [bB (fun env->[Drawing (image ~scale ~width ~height imageFile env)])]
 
-(** {3 Boitification et "classes" de documents}*)
+(** {3 Boxification}*)
 
-(** Comment on cache des trucs à ocamldoc mais pas à caml ? Ça pourrait être utilisé ici *)
 let sources=ref StrMap.empty
 let rStdGlue:(float*box) ref=ref (0.,glue 0. 0. 0.)
 
 (* let ambientBuf=ref ([||],0) *)
-(** Fabrique une glue à partir d'une espace en unicode *)
+(** Makes a glue from the unicode character code given in the argument. *)
 let makeGlue env x0=
   let stdGlue=
     (if fst !rStdGlue <> env.size then rStdGlue:=(env.size, glue (2.*.env.size/.9.) (env.size/.3.) (env.size/.2.)));
@@ -866,7 +892,7 @@ let makeGlue env x0=
         | 0xfeff->(glue 0. 0. 0.)
         | _->stdGlue
 
-
+(** Converts a [string] to a list of glyphs, according to the environment. *)
 let rec gl_of_str env string=
   try
     hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
@@ -905,10 +931,7 @@ let mappend m x=
 
 module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
 
-(** La sémantique de cette fonction par rapport aux espaces n'est pas
-    évidente. S'il n'y a que des espaces, seul le dernier est pris en
-    compte. Sinon, le dernier de la suite d'espaces entre deux mots
-    consécutifs est pris en compte *)
+(** Converts a list of contents into a list of boxes, which is the next Patoline layer. *)
 let boxify buf nbuf fixable env0 l=
   let rec boxify keep_cache env=function
       []->env
@@ -986,13 +1009,15 @@ let boxify buf nbuf fixable env0 l=
   in
   boxify true env0 l
 
+(** The same as boxify, but discards the final environment. *)
 let boxify_scoped env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
   let _=boxify buf nbuf (ref false) env x in
     Array.to_list (Array.sub !buf 0 !nbuf)
 
-
+(** Typesets boxes on a single line, then converts them to a list of basic
+    drawing elements: [OutputCommon.raw]. *)
 let draw_boxes env l=
   let rec draw_boxes x y dr l=match l with
       []->dr,x
@@ -1060,8 +1085,13 @@ let draw_boxes env l=
   fst (draw_boxes 0. 0. [] l)
 
 
+(** Composes [boxify] and [draw_boxes] *)
+let draw env x=
+  let buf=ref [||] in
+  let nbuf=ref 0 in
+  let env'=boxify buf nbuf (ref false) env x in
+  draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
 
-let draw env x=draw_boxes env (boxify_scoped env x)
 
 
 
@@ -1087,7 +1117,8 @@ module type Format=sig
 end
 
 
-
+(** "flattens" a document tree to an array of paragraphs, a paragraph
+    being an array of boxes. *)
 let flatten env0 fixable str=
   let paragraphs=ref [] in
   let trees=ref [] in
@@ -1105,14 +1136,14 @@ let flatten env0 fixable str=
   let add_paragraph env tree path p=
     nbuf:= !frees;
     let v=boxify buf nbuf fixable env p.par_contents in
-      paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
-      trees:=(tree,path)::(!trees);
-      compl:=(p.par_completeLine env)::(!compl);
-      param:=(p.par_parameters env)::(!param);
-      bads:=(p.par_badness env)::(!bads);
-      incr n;
-      frees:=0;
-      v
+    paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
+    trees:=(tree,path)::(!trees);
+    compl:=(p.par_completeLine env)::(!compl);
+    param:=(p.par_parameters env)::(!param);
+    bads:=(p.par_badness env)::(!bads);
+    incr n;
+    frees:=0;
+    v
   in
 
   let rec flatten flushes env_ path tree=
@@ -1123,65 +1154,71 @@ let flatten env0 fixable str=
           add_paragraph env_ tree path p
         )
       | FigureDef f -> (
-          let env1=f.fig_env env_ in
-          let n=IntMap.cardinal !figures in
-          fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
-          figures:=IntMap.add n (f.fig_contents env1) !figures;
-          figure_trees:=IntMap.add n (tree,path) !figure_trees;
-          append buf frees (BeginFigure n);
-          f.fig_post_env env_ env1
+        let env1=f.fig_env env_ in
+        let n=IntMap.cardinal !figures in
+        fig_param:=IntMap.add n (f.fig_parameters env1) !fig_param;
+        figures:=IntMap.add n (f.fig_contents env1) !figures;
+        figure_trees:=IntMap.add n (tree,path) !figure_trees;
+        append buf frees (BeginFigure n);
+        f.fig_post_env env_ env1
       )
       | Node s-> (
-          let env={ env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
-              env_.counters }
+        let env=
+          let level=
+            try
+              List.length (snd (StrMap.find "_structure" env_.counters))
+            with Not_found->0
           in
-          s.node_paragraph <- List.length !paragraphs;
-          s.boxified_displayname <- draw_boxes env (boxify_scoped env s.displayname);
-          let flushes'=ref [] in
-          let flat_children k a (is_first,indent, env1)=match a with
-              Paragraph p->(
-                let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
-                  Paragraph { p with par_contents=
-                        (if is_first then (
-                           let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
-                             [Env (fun env->
-                                     let w=try let (_,_,w)=StrMap.find name (names env) in w with
-                                         Not_found -> uselessLine in
-                                       { env with names=StrMap.add name (env.counters, "_", w)
-                                           (names env) });
-                              bB (fun _->[User (Label name)])
-                             ]
-                         ) else [])@
-                          (if indent then [bB (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
-                              }
-                  ) in
-                    false,true, p.par_post_env env1 env2
-                )
-              | FigureDef f as h->(
-                  let env2=flatten flushes' env1 ((k,tree)::path) h in
-                  let num=try
-                    match StrMap.find "_figure" env2.counters with
-                        _,h::_->h
-                      | _->0
-                  with
-                      Not_found ->0
-                  in
-                    flushes':=FlushFigure num::(!flushes');
-                    is_first,indent,env2
-                )
-              | Node h as tr->(
-                  let env2=h.node_env env1 in
-                  let env3=flatten flushes' env2 ((k,tree)::path) tr in
-                    is_first,(not (List.mem_assoc "Structural" h.node_tags)),
-                  h.node_post_env env1 env3
-                )
+          { env_ with counters=StrMap.map (fun (lvl,l)->if lvl>level then lvl,[] else lvl,l)
+              env_.counters }
+        in
+        s.node_paragraph <- List.length !paragraphs;
+        s.boxified_displayname <- draw_boxes env (boxify_scoped env s.displayname);
+        let flushes'=ref [] in
+        let flat_children k a (is_first,indent, env1)=match a with
+            Paragraph p->(
+              let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
+                Paragraph { p with par_contents=
+                    (if is_first then (
+                      let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
+                      [Env (fun env->
+                        let w=try let (_,_,w)=StrMap.find name (names env) in w with
+                            Not_found -> uselessLine in
+                        { env with names=StrMap.add name (env.counters, "_", w)
+                            (names env) });
+                       bB (fun _->[User (Label name)])
+                      ]
+                     ) else [])@
+                      (if indent then [bB (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
+                          }
+              ) in
+              false,true, p.par_post_env env1 env2
+            )
+          | FigureDef f as h->(
+            let env2=flatten flushes' env1 ((k,tree)::path) h in
+            let num=try
+                      match StrMap.find "_figure" env2.counters with
+                          _,h::_->h
+                        | _->0
+              with
+                  Not_found ->0
             in
-            let _,_,env2=IntMap.fold flat_children s.children (true,false,env) in
-              paragraphs:=(match !paragraphs with
-                               []->[]
-                             | h::s->Array.append h (Array.of_list !flushes')::s);
-              env2
+            flushes':=FlushFigure num::(!flushes');
+            is_first,indent,env2
           )
+          | Node h as tr->(
+            let env2=h.node_env env1 in
+            let env3=flatten flushes' env2 ((k,tree)::path) tr in
+            is_first,(not (List.mem_assoc "Structural" h.node_tags)),
+            h.node_post_env env1 env3
+          )
+        in
+        let _,_,env2=IntMap.fold flat_children s.children (true,false,env) in
+        paragraphs:=(match !paragraphs with
+            []->[]
+          | h::s->Array.append h (Array.of_list !flushes')::s);
+        env2
+      )
   in
   let env1=match str with
       Node n->n.node_env env0
@@ -1193,33 +1230,33 @@ let flatten env0 fixable str=
     (IntMap.cardinal !figures)
     (fun i->IntMap.find i !fig_param)
   in
-    (env2, params,
-     Array.of_list (List.rev !param),
-     Array.of_list (List.rev !compl),
-     Array.of_list (List.rev !bads),
-     Array.of_list (List.rev !paragraphs),
-     Array.of_list (List.rev !trees),
-     Array.of_list (List.map snd (IntMap.bindings !figures)),
-     Array.of_list (List.map snd (IntMap.bindings !figure_trees)))
+  (env2, params,
+   Array.of_list (List.rev !param),
+   Array.of_list (List.rev !compl),
+   Array.of_list (List.rev !bads),
+   Array.of_list (List.rev !paragraphs),
+   Array.of_list (List.rev !trees),
+   Array.of_list (List.map snd (IntMap.bindings !figures)),
+   Array.of_list (List.map snd (IntMap.bindings !figure_trees)))
 
 let rec make_struct positions tree=
   match tree with
       Node s when s.node_paragraph>=0 && s.node_paragraph<Array.length positions -> (
         let (p,x,y)=positions.(s.node_paragraph) in
         let rec make=function
-            []->[]
+        []->[]
           | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)
           | _ :: s->make s
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
-          { OutputCommon.name=s.name;
-            OutputCommon.metadata=[];
-	    OutputCommon.displayname=s.boxified_displayname;
-            OutputCommon.tags=s.node_tags;
-            OutputCommon.page=p;
-            OutputCommon.struct_x=x;
-            OutputCommon.struct_y=y;
-            OutputCommon.substructures=a }
+        { OutputCommon.name=s.name;
+          OutputCommon.metadata=[];
+	  OutputCommon.displayname=s.boxified_displayname;
+          OutputCommon.tags=s.node_tags;
+          OutputCommon.page=p;
+          OutputCommon.struct_x=x;
+          OutputCommon.struct_y=y;
+          OutputCommon.substructures=a }
       )
     | Node s -> (
       let rec make=function
@@ -1238,21 +1275,22 @@ let rec make_struct positions tree=
         OutputCommon.substructures=a }
     )
     | _->
-        { OutputCommon.name="";
-          OutputCommon.metadata=[];
-	  OutputCommon.displayname=[];
-          OutputCommon.tags=[];
-          OutputCommon.page=0;
-          OutputCommon.struct_x=0.;
-          OutputCommon.struct_y=0.;
-          OutputCommon.substructures=[||] }
+      { OutputCommon.name="";
+        OutputCommon.metadata=[];
+	OutputCommon.displayname=[];
+        OutputCommon.tags=[];
+        OutputCommon.page=0;
+        OutputCommon.struct_x=0.;
+        OutputCommon.struct_y=0.;
+        OutputCommon.substructures=[||] }
 
+(** Adds a tag to the given structure. *)
 let tag str tags=
   match str with
       Node n->Node { n with node_tags=tags@n.node_tags }
     | _->Node { empty with node_tags=tags; children=IntMap.singleton 0 str }
 
-
+(** Label updating after optimization. *)
 let update_names env figs user=
   let user=UserMap.fold (UserMap.add) user env.user_positions in
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
@@ -1285,6 +1323,7 @@ let update_names env figs user=
     flush stderr;
     env',!needs_reboot
 
+(** Resets all the counters, preserving their levels. *)
 let reset_counters env=
   { env with
     counters=StrMap.map (fun (l,_)->(l,[])) env.counters }

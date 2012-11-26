@@ -3,6 +3,9 @@ include ../Makefile.config
 CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbuffer $(PACK)
 CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbuffer $(PACK)
 
+DOCDIR=Typography.doc
+CAMLDOC=ocamlfind ocamldoc -d $(DOCDIR) -html -charset UTF-8 -package camomile,rbuffer -rectypes -pp 'cpp -w' -I _build -I _build/Output -I _build/Fonts
+
 .PHONY:_build/Typography.cmx _build/Typography.cmo _build/Typography.p.cmx
 
 _build/Typography.cmxa:_build/Typography.cmx
@@ -19,6 +22,11 @@ _build/Typography.p.cmxa:_build/Typography.p.cmx
 	cd _build;ocamlopt -a -o Typography.p.cmxa Typography.p.cmx
 _build/Typography.p.cmx:
 	ocamlbuild -use-ocamlfind -classic-display Typography.p.cmx
+
+doc:
+	mkdir -p $(DOCDIR)
+	$(CAMLDOC) Document.ml Box.ml Diagrams.ml Util.ml Fonts.ml Fonts/FTypes.ml Complete.ml Badness.ml Hyphenate.ml Line.ml Break.ml Output/OutputCommon.ml Bezier.ml Output/OutputPaper.ml Output/OutputDrawing.ml
+
 
 
 clean:
