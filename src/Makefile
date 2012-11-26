@@ -1,6 +1,6 @@
 include Makefile.config
 
-FORMAT=Format/FormatArticle.ml  Format/FormatLetter.ml  Format/FormatSlides.ml Format/LMFormat.ml
+FORMAT=Format/FormatArticle.ml  Format/FormatLetter.ml  Format/FormatSlides.ml Format/LMFormat.ml Format/FormatThese.ml
 
 
 ifdef PACK_DRIVER_GL
@@ -50,19 +50,18 @@ Pdf/pdf_parser.cma:Typography/_build/Typography.cma
 Pdf/pdf_parser.p.cmxa:Typography/_build/Typography.p.cmxa
 	make -C Pdf pdf_parser.p.cmxa
 
-.PHONY:Format/_build/DefaultFormat.cma Format/_build/DefaultFormat.p.cmxa Format/_build/DefaultFormat.cmxa
-Format/_build/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
+Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
 	make -C Format DefaultFormat.cmxa
-Format/_build/DefaultFormat.cma:Format Typography/_build/Typography.cma
+Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
 	make -C Format DefaultFormat.cma
-Format/_build/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
+Format/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
-Format/_build/%.cmxa:Format/_build/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
+Format/%.cmxa:Format/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/_build/%.p.cmxa:Format/_build/DefaultFormat.p.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
+Format/%.p.cmxa:Format/DefaultFormat.p.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/_build/%.cma:Format/_build/DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
+Format/%.cma:Format/DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
 	make -C Format $(shell basename $@)
 
 .PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
