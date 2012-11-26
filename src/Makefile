@@ -1,6 +1,6 @@
 include Makefile.config
 
-FORMAT=Format/_build/FormatArticle.ml  Format/_build/FormatLetter.ml  Format/_build/FormatSlides.ml Format/_build/LMFormat.ml
+FORMAT=Format/FormatArticle.ml  Format/FormatLetter.ml  Format/FormatSlides.ml Format/LMFormat.ml
 
 
 ifdef PACK_DRIVER_GL
