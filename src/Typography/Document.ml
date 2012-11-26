@@ -1172,7 +1172,8 @@ let flatten env0 fixable str=
               | Node h as tr->(
                   let env2=h.node_env env1 in
                   let env3=flatten flushes' env2 ((k,tree)::path) tr in
-                    is_first,false, h.node_post_env env1 env3
+                    is_first,(not (List.mem_assoc "Structural" h.node_tags)),
+                  h.node_post_env env1 env3
                 )
             in
             let _,_,env2=IntMap.fold flat_children s.children (true,false,env) in
