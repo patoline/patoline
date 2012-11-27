@@ -17,10 +17,10 @@ VPATH=Typography:Pdf:Drivers:Format
 
 all:native prof
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/_build/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
-byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/_build/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/pdf_parser.cma
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
+byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/pdf_parser.cma
 
-prof:Typography/_build/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(addprefix Format/_build/,$(FORMAT:.ml=.p.cmxa)) Pdf/pdf_parser.p.cmxa
+prof:Typography/_build/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/pdf_parser.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -54,7 +54,7 @@ Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
 Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
 	make -C Format DefaultFormat.cma
 
-Format/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
+Format/DefaultFormat.p.cmxa:Format Typography/_build/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
 Format/%.cmxa:Format/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
