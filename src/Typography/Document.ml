@@ -839,8 +839,11 @@ let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imag
 
 (** {3 Boxification}*)
 
+
+(**/**)
 let sources=ref StrMap.empty
 let rStdGlue:(float*box) ref=ref (0.,glue 0. 0. 0.)
+(**/**)
 
 (* let ambientBuf=ref ([||],0) *)
 (** Makes a glue from the unicode character code given in the argument. *)

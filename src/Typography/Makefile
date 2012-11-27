@@ -4,7 +4,7 @@ CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbu
 CAMLC=ocamlfind ocamlc -pp $(CPP) -I Fonts -I Output -I Fonts/Sfnt -I ../Rbuffer $(PACK)
 
 DOCDIR=Typography.doc
-CAMLDOC=ocamlfind ocamldoc -d $(DOCDIR) -html -charset UTF-8 -package camomile,rbuffer -rectypes -pp 'cpp -w' -I _build -I _build/Output -I _build/Fonts
+CAMLDOC=ocamlfind ocamldoc -d $(DOCDIR) -html -charset UTF-8 -package camomile,rbuffer -rectypes -pp 'cpp -C -w' -I _build -I _build/Output -I _build/Fonts
 
 .PHONY:_build/Typography.cmx _build/Typography.cmo _build/Typography.p.cmx
 
