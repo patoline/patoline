@@ -911,7 +911,7 @@ let rec gl_of_str env string=
           with
               Not_found_in_family->[](* raise (Glyph_not_found g) *)
       )
-
+(**/**)
 let append buf nbuf x=
   let arr=
     if !nbuf>=Array.length !buf then
@@ -933,6 +933,7 @@ let mappend m x=
 
 
 module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
+(**/**)
 
 (** Converts a list of contents into a list of boxes, which is the next Patoline layer. *)
 let boxify buf nbuf fixable env0 l=
