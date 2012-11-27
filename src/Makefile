@@ -1,7 +1,6 @@
 include Makefile.config
 
-FORMAT=Format/FormatArticle.ml  Format/FormatLetter.ml  Format/FormatSlides.ml Format/LMFormat.ml
-
+FORMAT=$(shell cd Format; ls Format*.ml) LMFormat.ml
 
 ifdef PACK_DRIVER_GL
 NATIVE_EXTRA+=Patoline/PatolineGL
@@ -54,7 +53,8 @@ Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
 	make -C Format DefaultFormat.cmxa
 Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
 	make -C Format DefaultFormat.cma
-Format/_build/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
+
+Format/DefaultFormat.p.cmax:Format Typography/_build/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
 Format/%.cmxa:Format/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
