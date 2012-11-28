@@ -16,8 +16,12 @@ Main.cmx:Generateur.cmx SimpleGenerateur.cmx Main.ml Build.cmx
 
 Generateur.cmx:Parser.cmx Generateur.ml Build.cmx
 Parser.cmx:Parser.ml Config.cmx Language.cmx Util.cmx
-Parser.ml:Parser.dyp
-	dypgen --no-mli --merge-warning Parser.dyp
+SubSuper.dyp:UnicodeScripts.ml UnicodeData.txt
+	ocaml -I +camomile bigarray.cma camomileLibrary.cma UnicodeScripts.ml
+Parser.ml:Parser.dyp SubSuper.dyp
+	cat  Parser.dyp SubSuper.dyp > tmp.dyp
+	dypgen --no-mli --merge-warning tmp.dyp
+	mv tmp.ml Parser.ml
 
 Parser.cmx:Parser.ml
 	$(CAMLOPT) -rectypes -c -o $@ $<
@@ -34,4 +38,4 @@ Build.cmi:Build.mli Util.cmi
 	$(CAMLOPT) -thread -c -o $@ $<
 
 clean:
-	rm -f *~ \#*\# *.o *.cm[iox] Parser.ml
+	rm -f *~ \#*\# *.o *.cm[iox] Parser.ml SubSuper.dyp

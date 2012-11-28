@@ -1,9 +1,9 @@
 (provide 'patoline-input)
 (require 'quail)
 (quail-define-package
- "Patoline" "Patoline" "x⃗" nil
+ "Patoline" "Patoline" "x⃗" t
  "A transliteration scheme for Patoline."
- nil t t t t nil nil nil nil nil t)
+ nil t t t t nil t nil nil nil t)
 (quail-define-rules
 ("^>" ?⃗)
 ("^<" ?⃖)

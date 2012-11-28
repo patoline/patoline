@@ -3,7 +3,6 @@ open Lexing
 open Dyp
 open Config
 open Util
-(* open UnicodeScripts *)
 
 exception Syntax_Error of Lexing.position * Language.syntax_error
 exception Outdated
@@ -748,6 +747,26 @@ rightind:
       { fun i -> { i with up_right = Some m1 } }
   | "_" - math(<=atom)<m1>
       { fun i -> { i with down_right = Some m1 } }
+  | subscripts<s> {
+      let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+      let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
+      match obj with
+      | (Obj_allmath docs, _) :: _ -> (fun i -> { i with down_right = Some docs })
+      | _ -> assert false }
+  | superscripts<s> {
+      let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+      let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
+      match obj with
+      | (Obj_allmath docs, _) :: _ -> (fun i -> { i with up_right = Some docs })
+      | _ -> assert false }
+
+subscripts:
+    subscript<s> { s }
+  | subscripts<s'> - subscript<s> { s' ^ s }
+
+superscripts:
+    superscript<s> { s }
+  | superscripts<s'> - superscript<s> { s' ^ s }
 
 allmath:
    math<m> eof { m }

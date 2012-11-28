@@ -41,10 +41,11 @@ let rec string_forall i len p s =
 
 
 let is_superscript c = 
-  string_forall 0 11 (fun char i -> char = "SUPERSCRIPT".[i]) c.(1)
+  String.length c.(5) > 7 && String.sub c.(5) 0 7 = "<super>"
 
 let is_subscript c = 
-  string_forall 0 9 (fun char i -> char = "SUBSCRIPT".[i]) c.(1)
+  String.length c.(5) > 5 && String.sub c.(5) 0 5 = "<sub>"
+
 
 let _ = try
 	  while true do
@@ -59,6 +60,41 @@ let _ = try
 	  done
   with End_of_file -> ()
 
-
 let _ = close_in file
 
+let id x = x
+
+let superscripts = 
+  List.map (fun c -> 
+    c.(1),
+    Scanf.sscanf c.(0) " %x" id, 
+    Scanf.sscanf (String.sub c.(5) 7 (String.length c.(5) - 7)) " %x" id) !superscripts
+
+let subscripts = 
+  List.map (fun c -> 
+    c.(1),
+    Scanf.sscanf c.(0) " %x" id, 
+    Scanf.sscanf (String.sub c.(5) 5 (String.length c.(5) - 5)) " %x" id) !subscripts
+
+(*
+let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') subscripts
+let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') superscripts
+*)
+
+let ch = open_out "SubSuper.dyp"
+
+let rec int_to_bytes n =
+  String.escaped (CamomileLibrary.UTF8.init 1 (fun _ ->  CamomileLibrary.UChar.chr n))
+
+let _ = 
+  Printf.fprintf ch "\n";
+  Printf.fprintf ch "subscript:\n";
+  List.iter (fun (c,h,h') ->
+    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (int_to_bytes h) (int_to_bytes h')) subscripts;
+  Printf.fprintf ch "\n";
+  Printf.fprintf ch "superscript:\n";
+  List.iter (fun (c,h,h') ->
+    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (int_to_bytes h) (int_to_bytes h')) superscripts;
+  close_out ch  
+
+    
