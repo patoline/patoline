@@ -8,7 +8,6 @@ open HtmlFonts
 
 exception Bezier_degree
 
-let filename x= try (Filename.chop_extension x)^".html" with _ -> x^".html"
 
 
 let assemble style title svg=
@@ -244,7 +243,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  let fileName = filename fileName in
   let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
   HtmlFonts.output_fonts cache;
   let chop=Filename.chop_extension fileName in
@@ -401,7 +399,7 @@ svg.style.height=(%g*size)+'px';
 if(n>=0 && n<%d && state>=0 && state<states[n]) {
     location.hash=n+\"_\"+state;
     xhttp=new XMLHttpRequest();
-    xhttp.open(\"GET\",\"%s_\"+n+\"_\"+state+\".svg\",false);
+    xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
     xhttp.send();
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
@@ -437,7 +435,6 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
     current_state=state;
 }}"
       (Array.length pages)
-      (Filename.basename prefix)
       w
       h
   );
@@ -532,13 +529,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let prefix=try Filename.chop_extension filename with _->filename in
   let svg_files,cache=buffered_output' ~structure:structure pages prefix in
   let html=basic_html cache structure pages prefix in
-  let o=open_out (prefix^".html") in
+  let rec unlink_rec dir=
+    if Sys.file_exists dir then (
+      if Sys.is_directory dir then (
+        Array.iter (fun x->unlink_rec (Filename.concat dir x)) (Sys.readdir dir);
+        Unix.rmdir dir
+      ) else
+        Unix.unlink dir
+    );
+  in
+  unlink_rec prefix;
+  Unix.mkdir prefix 0o755;
+  let o=open_out (Filename.concat (Filename.basename prefix) "index.html") in
   Rbuffer.output_buffer o html;
   close_out o;
 
   Array.iteri (fun i->
     Array.iteri (fun j x->
-      let o=open_out (Printf.sprintf "%s_%d_%d.svg" prefix i j) in
+      let o=open_out (Filename.concat (Filename.basename prefix) (Printf.sprintf "%d_%d.svg" i j)) in
       Rbuffer.output_buffer o x;
       close_out o
     )
