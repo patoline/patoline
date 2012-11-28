@@ -304,8 +304,10 @@ let _=
         "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
-        "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^
-        "src/Pdf/_build/pdf_parser.cmi src/Pdf/_build/pdf_parser.p.cmxa"
+        "src/Pdf/pdf_parser.cmxa src/Pdf/pdf_parser.a  "^
+        "src/Pdf/pdf_parser.cmi src/Pdf/pdf_parser.p.cmxa"
+        (* "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^ *)
+        (* "src/Pdf/_build/pdf_parser.cmi src/Pdf/_build/pdf_parser.p.cmxa" *)
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
