@@ -118,7 +118,7 @@
 \Add_product_like{\divide ÷}{÷}
 \Add_product_like{\otimes ⊗}{⊗}
 \Add_product_like{\odot ⊙}{⊙}
-\Add_product_like{\bullet ∙ •}{∙}
+\Add_product_like{\bullet ∙}{∙}
 \Add_product_like{\circ ∘}{∘}
 \Add_product_like{\wedge \gcd ∧}(MathFonts.asana "∧" 753)
 \Add_product_like{\star ∗}{∗}
