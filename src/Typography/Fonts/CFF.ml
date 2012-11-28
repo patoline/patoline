@@ -786,14 +786,21 @@ let subset(* _encoded *) font info cmap gls=
          http://www.adobe.com/devnet/opentype/archives/glyph.html
          pour savoir comment on les nomme. *)
       let str=String.make (2*Array.length gls-1) (char_of_int 0) in
-      let glbuf=Buffer.create 50 in
+      let glbuf=Buffer.create 64 in
       let altmap=ref StrMap.empty in
       let names=Array.make (Array.length gls) "" in
       let alternates=Array.make (Array.length gls) 0 in
       for i=1 to Array.length gls-1 do
-        let b=gls.(i).glyph_utf8 in
+        let b=if String.length gls.(i).glyph_utf8 > 0 then
+            gls.(i).glyph_utf8
+          else
+            " "                         (* De toute façon, il y a les .alt%d *)
+        in
         let rec make_name i=
-          if UTF8.out_of_range b i then Buffer.contents glbuf else
+          (* Un truc non documenté par adobe : évidemment, les noms de
+             glyphs trop longs ne sont pas acceptés par les
+             imprimantes. D'où le "i>=8". *)
+          if UTF8.out_of_range b i || i>=8 then Buffer.contents glbuf else
             (let x=UChar.code (UTF8.look b i) in
              Buffer.add_string glbuf (Printf.sprintf "uni%04X" x);
              make_name (UTF8.next b i))
