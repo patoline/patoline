@@ -15,7 +15,7 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Pdf:Drivers:Format
 
-all:native prof
+all:native prof DefaultGrammar.pdf
 
 native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
 byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/pdf_parser.cma
@@ -93,9 +93,15 @@ Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
 
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
+DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
+	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
 
 DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
-	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography/_build -I Format -I Drivers/_build DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
+	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography/_build -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
+
+DefaultGrammar.pdf:DefaultGrammar.tml Drivers/Pdf.cmxa
+	$(CAMLOPT) -o DefaultGrammar.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -impl DefaultGrammar.tml
+	./DefaultGrammar.tmx
 
 .PHONY :doc
 doc:
