@@ -1,6 +1,7 @@
 include ../Makefile.config
 
 CAMLOPT=ocamlfind ocamlopt -pp "cpp -w" -package dyp $(PACK)
+CAMLC=ocamlfind ocamlc -pp "cpp -w" -package dyp $(PACK)
 
 patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Parser.cmx Build.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
@@ -17,7 +18,8 @@ Main.cmx:Generateur.cmx SimpleGenerateur.cmx Main.ml Build.cmx
 Generateur.cmx:Parser.cmx Generateur.ml Build.cmx
 Parser.cmx:Parser.ml Config.cmx Language.cmx Util.cmx
 SubSuper.dyp:UnicodeScripts.ml UnicodeData.txt
-	ocaml -I +camomile bigarray.cma camomileLibrary.cma UnicodeScripts.ml
+	$(CAMLC) -o UnicodeScripts -package bigarray -package camomile -linkpkg UnicodeScripts.ml
+	./UnicodeScripts
 Parser.ml:Parser.dyp SubSuper.dyp
 	cat  Parser.dyp SubSuper.dyp > tmp.dyp
 	dypgen --no-mli --merge-warning tmp.dyp
