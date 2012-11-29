@@ -1193,7 +1193,9 @@ let flatten env0 fixable str=
                        bB (fun _->[User (Label name)])
                       ]
                      ) else [])@
-                      (if indent then [bB (fun env->(p.par_env env).par_indent)] else []) @ p.par_contents
+                      (if indent then [bB (fun env->(p.par_env env).par_indent);
+                                       Env (fun env->{env with par_indent=[]})] else [])
+                              @ p.par_contents
                           }
               ) in
               false,true, p.par_post_env env1 env2

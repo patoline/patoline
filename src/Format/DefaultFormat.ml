@@ -415,7 +415,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   par_states=IntSet.empty;
                   par_paragraph=(-1)}, [])
 
-    module Env_Noindent=struct
+    module Env_noindent=struct
       let do_begin_env ()=()
       let do_end_env ()=()
       let newPar str ~environment complete params contents=
@@ -423,6 +423,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           complete params contents
     end
 
+    let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
 
 
     let defaultEnv:environment=
