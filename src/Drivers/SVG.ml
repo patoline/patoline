@@ -61,11 +61,11 @@ let make_defs fontCache=
   def_buf
 
 
-let draw ?fontCache w h contents=
+let draw ?fontCache prefix w h contents=
   let svg_buf=Rbuffer.create 256 in
 
   let fontCache=match fontCache with
-      None->build_font_cache [|contents|]
+      None->build_font_cache prefix [|contents|]
     | Some x->x
   in
   (* Une petite burocratie pour gérer les particularités d'html/svg/etc *)
@@ -243,9 +243,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
-  HtmlFonts.output_fonts cache;
   let chop=Filename.chop_extension fileName in
+  let cache=build_font_cache chop (Array.map (fun x->x.pageContents) pages) in
+  HtmlFonts.output_fonts cache;
   let i=ref 0 in
   while !i<Array.length pages do
     let html_name=Printf.sprintf "%s%d.html" chop !i in
@@ -279,7 +279,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         in
         IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
       in
-      let svg=draw ~fontCache:cache w h sorted_pages in
+      let svg=draw ~fontCache:cache chop w h sorted_pages in
       let defs=make_defs cache in
       Rbuffer.output_buffer html (assemble defs "" svg);
       Printf.fprintf html "</svg>\n";
@@ -306,7 +306,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
     ) m0 x
   ) 0 pages
   in
-  let cache=build_font_cache (Array.map (fun x->x.pageContents) all_pages) in
+  let cache=build_font_cache prefix (Array.map (fun x->x.pageContents) all_pages) in
 
   let svg_files=Array.map (fun pi->
     Array.map (fun page->
@@ -330,7 +330,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
         in
         IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
       in
-      let svg=draw ~fontCache:cache w h sorted_pages in
+      let svg=draw ~fontCache:cache prefix w h sorted_pages in
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
       file
@@ -527,8 +527,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages filename=
   let prefix=try Filename.chop_extension filename with _->filename in
-  let svg_files,cache=buffered_output' ~structure:structure pages prefix in
-  let html=basic_html cache structure pages prefix in
   let rec unlink_rec dir=
     if Sys.file_exists dir then (
       if Sys.is_directory dir then (
@@ -540,6 +538,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   unlink_rec prefix;
   Unix.mkdir prefix 0o755;
+
+  let svg_files,cache=buffered_output' ~structure:structure pages prefix in
+  let html=basic_html cache structure pages prefix in
   let o=open_out (Filename.concat (Filename.basename prefix) "index.html") in
   Rbuffer.output_buffer o html;
   close_out o;

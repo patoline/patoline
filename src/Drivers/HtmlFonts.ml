@@ -17,7 +17,7 @@ type font_cache={
 }
 
 
-let build_font_cache pages=
+let build_font_cache prefix pages=
   let rec make_fonts i l fonts=
     match l with
         []->(
@@ -98,7 +98,7 @@ let build_font_cache pages=
 
       let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
       let info=Fonts.fontInfo font in
-      let filename=full^".otf" in
+      let filename=Filename.concat prefix (full^".otf") in
       families:=StrMap.add (full) (StrMap.cardinal !families) !families;
       let rec make_bindings i b=
         if i>=Array.length glyphs then b else (

@@ -21,7 +21,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   (* Pour chaque police, on associe au premier caractère c du glyphe
      la map de tous les glyphs qui commencent par c vers le numéro de
      sous-police où on doit stocker ce glyphe. *)
-  let cache=build_font_cache (Array.map (fun x->x.pageContents) pages) in
+  let cache=build_font_cache (Filename.dirname fileName) (Array.map (fun x->x.pageContents) pages) in
 
   for i=0 to Array.length pages-1 do
     let html_name= ((Filename.chop_extension fileName)^(Printf.sprintf "%d" i)^".html") in
