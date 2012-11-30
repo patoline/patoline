@@ -69,18 +69,18 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       n+1
   in
   let endObject pdf=fprintf outChan "\nendobj\n" in
-  let pdf_string str=
-    let str'=String.create (2+2*UTF8.length str) in
-      str'.[0]<-'\254';str'.[1]<- '\255';
-      let rec fill idx i=
-        if UTF8.out_of_range str idx then str' else (
-          let code=UChar.code (UTF8.look str idx) in
-            str'.[i]<-(char_of_int ((code lsr 8) land 0xff));
-            str'.[i+1]<-(char_of_int (code land 0xff));
-            fill (UTF8.next str idx) (i+2)
-        )
-      in
-        fill (UTF8.first str) 2
+  let pdf_string utf=
+    let buf=Rbuffer.create 1000 in
+    let rec fill i=
+      try
+        if UChar.uint_code (UTF8.look utf i)<=0xff then
+          Rbuffer.add_string buf (sprintf "%02x" (UChar.uint_code (UTF8.look utf i)));
+        fill (UTF8.next utf i)
+      with
+          _->()
+    in
+    fill 0;
+    Rbuffer.contents buf
   in
   let addFont font=
     try StrMap.find (Fonts.uniqueName font) !fonts with
@@ -836,7 +836,7 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
           incr count;
 
           resumeObject hijosObjs.(i);
-          fprintf outChan "<< /Title (%s) /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
+          fprintf outChan "<< /Title <%s> /Parent %d 0 R " (pdf_string str.substructures.(i).name) par;
           if i>0 then fprintf outChan "/Prev %d 0 R " hijosObjs.(i-1);
           if i<Array.length str.substructures-1 then fprintf outChan "/Next %d 0 R " hijosObjs.(i+1);
           if a>0 then
