@@ -7,7 +7,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     pages fileName=
 
 
-  let factor=20. in
+  let factor=10. in
   let f=try Filename.chop_extension fileName with _->fileName in
   Array.iteri (fun i x->
     let width,height=x.pageFormat in
