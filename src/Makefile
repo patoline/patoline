@@ -17,7 +17,8 @@ VPATH=Typography:Pdf:Drivers:Format
 
 all:native prof DefaultGrammar.pdf
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx DefaultGrammar.tgx ocaml-bibi/bibi.cmxa proof/proof Pdf/pdf_parser.cmxa $(NATIVE_EXTRA)
+
 byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/pdf_parser.cma
 
 prof:Typography/_build/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/pdf_parser.p.cmxa
@@ -94,6 +95,9 @@ Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
 DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
 DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
+	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
+
+DefaultGrammar.tgx:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
 
 DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
