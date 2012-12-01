@@ -340,7 +340,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
             match res0 with
                 Node node->
-                  D.structure:=follow (top (Node {node with displayname=size 1.2 (bold M.arg1);name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
+                  D.structure:=follow (top (Node {node with displayname=size (defaultEnv.size*.1.2) (bold M.arg1);name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
               | _->assert false
           let do_end_env ()=()
         end

@@ -352,8 +352,8 @@ let basic_html cache structure pages prefix=
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title>\n";
   Rbuffer.add_string html (Printf.sprintf "<script>
-var current_slide=0;
-var current_state=0;
+var current_slide= -1;
+var current_state= -1;
 resize=function(){
 sizex=(window.innerWidth)/%g;
 sizey=(window.innerHeight)/%g;
@@ -396,8 +396,7 @@ svg.style.height=(%g*size)+'px';
 
   Rbuffer.add_string html (
     Printf.sprintf "function loadSlide(n,state,effect){
-if(n>=0 && n<%d && state>=0 && state<states[n]) {
-    location.hash=n+\"_\"+state;
+if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state)) {
     xhttp=new XMLHttpRequest();
     xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
     xhttp.send();
@@ -433,6 +432,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n]) {
     }
     current_slide=n;
     current_state=state;
+    location.hash=n+\"_\"+state;
 }}"
       (Array.length pages)
       w
@@ -447,9 +447,21 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
-resize();loadSlide(h0,h1)
+resize();
+console.log(h0,h1);
+loadSlide(h0,h1)
 };
-window.onhashchange=function(){window.onload()};
+
+window.onhashchange=function(){
+var h0=0,h1=0;
+if(location.hash){
+var i=location.hash.indexOf(\"_\");
+h0=location.hash?parseInt(location.hash.substring(1,i)):0;
+h1=location.hash?parseInt(location.hash.substring(i+1)):0;
+}
+loadSlide(h0,h1)
+};
+
 window.onkeydown=function(e){
 //console.log(e);
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
@@ -472,7 +484,6 @@ loadSlide(current_slide,current_state);
 }
 
 function gotoSlide(n){
-console.log(\"gotoSlide\",n);
 if(n>current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)})
 else if(n<current_slide)
@@ -532,12 +543,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       if Sys.is_directory dir then (
         Array.iter (fun x->unlink_rec (Filename.concat dir x)) (Sys.readdir dir);
         Unix.rmdir dir
-      ) else
+      ) else (
+        Printf.fprintf stderr "unlink : %S\n" dir;
         Unix.unlink dir
+      )
     );
   in
-  unlink_rec prefix;
-  Unix.mkdir prefix 0o755;
+  (try
+     unlink_rec prefix;
+     Unix.mkdir prefix 0o755;
+   with
+       _->());
 
   let svg_files,cache=buffered_output' ~structure:structure pages prefix in
   let html=basic_html cache structure pages prefix in
