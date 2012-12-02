@@ -175,6 +175,11 @@ let _=
   hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
   plugins_dirs:= !plugins_dir ::(!plugins_dirs);
 
+  if not (ocamlfind_has "camomile") then (
+    Printf.fprintf stderr "Package camomile missing.\n";
+    exit 1
+  );
+
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config.ml" in
