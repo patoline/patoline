@@ -208,11 +208,18 @@
 	     (paren-set-mode 'blink-paren t))
     (show-paren-mode 'mixed))
   (setq case-fold-search nil)
+  (setq mmm-primary-mode-entry-hook 
+	(list (lambda () (set-input-method "Patoline"))))
   (run-hooks 'patoline-mode-hook)
 )
 
 (require 'mmm-mode nil t)
 (require 'tuareg nil t)
+
+
+(defvar mmm-tuareg-mode-submode-hook
+  (list (lambda () (overlay-put mmm-current-overlay 'entry-hook
+				(list (lambda () (set-input-method "ucs")))))))
 
 (if (and (featurep 'mmm-mode) (featurep 'tuareg))
     (progn 
