@@ -218,8 +218,14 @@
 
 
 (defvar mmm-tuareg-mode-submode-hook
-  (list (lambda () (overlay-put mmm-current-overlay 'entry-hook
+  (list (lambda () (set-input-method "ucs"))
+	(lambda () (overlay-put mmm-current-overlay 'entry-hook
 				(list (lambda () (set-input-method "ucs")))))))
+
+(defvar mmm-patoline-mode-submode-hook
+  (list (lambda () (set-input-method "Patoline"))
+	(lambda () (overlay-put mmm-current-overlay 'entry-hook
+				(list (lambda () (set-input-method "Patoline")))))))
 
 (if (and (featurep 'mmm-mode) (featurep 'tuareg))
     (progn 
@@ -227,6 +233,7 @@
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-tuareg)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-tuareg)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-sml)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-quote-args)
       (mmm-add-classes
        '((patoline-tuareg
 	  :submode tuareg-mode
@@ -242,6 +249,12 @@
 	  :submode sml-mode
 	  :front "^###[ \t]*SML"
 	  :back "^###")
+       (patoline-quote-args
+	  :submode patoline-mode
+	  :front "<[<$]"
+	  :back "[$>]>"
+	  :insert ((?m patoline-mode nil @ "<$"  @ " " _ " " @ "$>" @)
+		   (?t patoline-mode nil @ "<<"  @ " " _ " " @ ">>" @)))
 	 ))))
 
 (setq comment-start "(*")
