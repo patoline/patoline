@@ -100,20 +100,32 @@ let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') subscripts
 let _ = List.iter (fun (c,h,h') -> Printf.printf "%s %x %x\n" c h h') superscripts
 *)
 
+let int_to_bytes n =
+  CamomileLibrary.UTF8.init 1 (fun _ ->  CamomileLibrary.UChar.chr n)
+
+let esc_int_to_bytes n =
+  String.escaped (int_to_bytes n)
+
+
 let ch = open_out "SubSuper.dyp"
 
-let rec int_to_bytes n =
-  String.escaped (CamomileLibrary.UTF8.init 1 (fun _ ->  CamomileLibrary.UChar.chr n))
-
 let _ = 
-  Printf.fprintf ch "\n";
+(*  Printf.fprintf ch "%%parser\n";*)
   Printf.fprintf ch "subscript:\n";
   List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (int_to_bytes h) (int_to_bytes h')) subscripts;
+    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) subscripts;
   Printf.fprintf ch "\n";
   Printf.fprintf ch "superscript:\n";
   List.iter (fun (c,h,h') ->
-    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (int_to_bytes h) (int_to_bytes h')) superscripts;
+    Printf.fprintf ch "|\"%s\" { \"%s\" }\n" (esc_int_to_bytes h) (esc_int_to_bytes h')) superscripts;
   close_out ch  
 
     
+let ch = open_out "../../emacs/SubSuper.el" 
+
+let _ =
+  List.iter (fun (c,h,h') ->
+    Printf.fprintf ch "(\"_%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) subscripts;
+  List.iter (fun (c,h,h') ->
+    Printf.fprintf ch "(\"^%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) superscripts;
+  close_out ch  

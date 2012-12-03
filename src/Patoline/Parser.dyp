@@ -757,27 +757,39 @@ leftind:
   | math(<=atom)<m2> - "__" 
       { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
 
-rightind:
-  | "^" - math(<=atom)<m1> - "_" - math(<=atom)<m2>
-      { fun i -> { i with up_right = Some m1; down_right = Some m2 } }
-  | "_" - math(<=atom)<m1> - "^" - math(<=atom)<m2>
-      { fun i -> { i with up_right = Some m2; down_right = Some m1 } }
-  | "^" - math(<=atom)<m1>
-      { fun i -> { i with up_right = Some m1 } }
-  | "_" - math(<=atom)<m1>
-      { fun i -> { i with down_right = Some m1 } }
+subind:
+  | "_" - math(<=atom)<m1> { m1 }
   | subscripts<s> {
-      let lexbuf = Dyp.from_string dyp.parser_pilot s in	
-      let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
-      match obj with
-      | (Obj_allmath docs, _) :: _ -> (fun i -> { i with down_right = Some docs })
-      | _ -> assert false }
+      try
+(*        Printf.fprintf stderr "ind: %s\n" s;*)
+        let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+        let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
+        match obj with
+        | (Obj_allmath docs, _) :: _ -> docs
+        | _ -> assert false
+      with _ -> raise Giveup }
+
+superind:
+  | "^" - math(<=atom)<m1> { m1 }
   | superscripts<s> {
-      let lexbuf = Dyp.from_string dyp.parser_pilot s in	
-      let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
-      match obj with
-      | (Obj_allmath docs, _) :: _ -> (fun i -> { i with up_right = Some docs })
-      | _ -> assert false }
+      try
+(*        Printf.fprintf stderr "exp: %s\n" s;*)
+        let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+        let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
+        match obj with
+        | (Obj_allmath docs, _) :: _ -> docs
+        | _ -> assert false
+      with _ -> raise Giveup }
+
+rightind:
+  | superind<m1> - subind<m2>
+      { fun i -> { i with up_right = Some m1; down_right = Some m2 } }
+  | subind<m1> - superind<m2>
+      { fun i -> { i with up_right = Some m2; down_right = Some m1 } }
+  | superind<m1>
+      { fun i -> { i with up_right = Some m1 } }
+  | subind<m1>
+      { fun i -> { i with down_right = Some m1 } }
 
 subscripts:
     subscript<s> { s }
