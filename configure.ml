@@ -225,7 +225,7 @@ let _=
     List.iter (fun txp ->
       Printf.fprintf out "\tcd tests; ../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts --format FormatArticle %s\n" txp) tests;
 
-    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tcd emacs; cat patoline-input.pre ../src/quail.el patoline-input.post > patoline-input.el\n";
+    Printf.fprintf out ".PHONY: emacs\nemacs:\n\tmake -C emacs\n";
 
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
@@ -328,8 +328,8 @@ let _=
         "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
-        "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^
-        "src/Pdf/_build/pdf_parser.cmi src/Pdf/_build/pdf_parser.p.cmxa"
+        "src/Pdf/pdf_parser.cmxa src/Pdf/pdf_parser.a  "^
+        "src/Pdf/pdf_parser.cmi src/Pdf/pdf_parser.p.cmxa"
         (* "src/Pdf/_build/pdf_parser.cmxa src/Pdf/_build/pdf_parser.a  "^ *)
         (* "src/Pdf/_build/pdf_parser.cmi src/Pdf/_build/pdf_parser.p.cmxa" *)
     in
