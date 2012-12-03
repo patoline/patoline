@@ -176,6 +176,12 @@ let rec dbCite db subcitation req=
                     | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); raise Not_found)
               )
           in
+          let booktitle=match jour,row.(field_num "booktitle") with
+              [], Some j->(
+                [tT "in: ";tT j]
+              )
+            | a,_->a
+          in
           let pub=match row.(field_num "publisher") with
               None->[]
             | Some j->(
@@ -220,7 +226,7 @@ let rec dbCite db subcitation req=
           results:=(int_of_string id_,
                     List.concat (intercalate [tT ", "]
                                    (List.filter (function []->false | _->true)
-                                      (auteurs@[titre;ed;jour]@pub_in@[chap;volume;pub;pages;editors;doctype]))))
+                                      (auteurs@[titre;ed;booktitle]@pub_in@[chap;volume;pub;pages;editors;doctype]))))
             :: (!results)
         )
   in
