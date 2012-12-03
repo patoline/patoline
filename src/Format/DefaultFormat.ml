@@ -1063,14 +1063,31 @@ module Format=functor (D:Document.DocumentStructure)->(
         D.structure:=newChildAfter !D.structure (Node empty);
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
+      let do_end_env ()=
 
-      let do_end_env () =
+        let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
+        let p=find_last is_paragraph stru in
+        let a,b=follow (stru,path) p in
+        let a'=match a with
+            Paragraph p->
+              Paragraph { p with
+                par_parameters=(fun a b c d e f g line->
+                  let pp=(p.par_parameters a b c d e f g line) in
+                  { pp with
+                    min_lines_after=
+                      if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
+                  });
+              }
+          | _->assert false
+        in
+        D.structure:=up_n (List.length p) (a',b);
+
         D.structure :=
-          up (change_env (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+          up (change_env !D.structure
                 (fun x->{ x with
-                            normalLeftMargin=(x.normalLeftMargin
-                                              +.(x.normalMeasure-.120.)/.2.);
-                            normalMeasure=120. }));
+                  normalLeftMargin=(x.normalLeftMargin
+                                    +.(x.normalMeasure-.120.)/.2.);
+                  normalMeasure=120. }));
         env_stack:=List.tl !env_stack
 
     end

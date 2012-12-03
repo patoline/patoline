@@ -324,6 +324,49 @@ let lastChild (t,cxt)=try
 with
     Not_found -> (t,cxt)
 
+exception Found
+
+(** Finds the last node satisfying a given predicate in a document tree. *)
+let find_last f tr=
+  let result=ref None in
+  let rec find_last path tr=match tr with
+    | x when f tr->(
+      result:=Some (List.rev path);
+      raise Found
+    )
+    | Node n->(
+        let k1,_=IntMap.max_binding n.children in
+        let k0,_=IntMap.min_binding n.children in
+        for i=k1 downto k0 do
+          try
+            find_last (i::path) (IntMap.find i n.children);
+          with
+              Not_found -> ()
+        done;
+      )
+    | _->raise Not_found
+  in
+  try
+    find_last [] tr;
+    raise Not_found
+  with
+      Found->(
+        match !result with
+            None->raise Not_found
+          | Some a->a
+      )
+
+(** Is the node a paragraph ? *)
+let is_paragraph x=match x with
+    Paragraph _->true
+  | _->false
+
+(** Is the node an internal node ? *)
+let is_node x=match x with
+    Node _->true
+  | _->false
+
+
 let rec newChildAfter (t,cxt) chi=
   match t with
       Node x->(chi, (next_key x.children,t)::cxt)
@@ -364,6 +407,8 @@ let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 let rec follow t l=match l with
     []->t
   | a::s->follow (child t a) s
+
+let rec up_n n tr=if n<=0 then tr else up_n (n-1) (up tr)
 
 (* La structure actuelle *)
 (* let str=Printf.printf "str : init\n";ref [(Node empty,[])] *)
