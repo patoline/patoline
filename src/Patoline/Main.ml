@@ -193,7 +193,13 @@ let rec read_options_from_source_file fread =
       Mutex.lock m;
       if not (StrMap.mem name !n) then (
         n:=StrMap.add name () !n;
-        Dynlink.loadfile name;
+        try
+          Dynlink.loadfile name;
+        with
+            Dynlink.Error e->(
+              Printf.fprintf stderr "Dynlink error: %s\n" (Dynlink.error_message e);
+              exit 1
+            )
       );
       Mutex.unlock m;
       pump ()
@@ -438,7 +444,7 @@ and patoline_rule objects h=
     let objs=breadth_first [h] [] in
     if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s %s -linkpkg -o '%s' %s -impl '%s'"
+      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s %s %s -o '%s' %s -impl '%s'"
         !ocamlopt
         !extras
         (String.concat " " opts.comp_opts)
@@ -446,6 +452,7 @@ and patoline_rule objects h=
          if pack<>"" then "-package "^pack else "")
         dirs_
         (if Filename.check_suffix h ".cmxs" then "-shared" else "")
+        (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg")
         h
         (String.concat " " objs)
         source

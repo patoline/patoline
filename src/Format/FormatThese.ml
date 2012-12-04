@@ -129,31 +129,33 @@ let postprocess_tree tree=
             [bB (fun env->
               let h= -.env.size/.phi in
               let x0= -.env.size/.phi in
+              let sz=2.5 in
               let text=
-                (List.map (OutputCommon.in_order 1)
-                   (draw {env with size=env.size*.3.} n.displayname))
+                let dr=(minipage {env with normalLeftMargin=0.;size=env.size*.sz}
+                          (paragraph n.displayname)).(0)
+                in
+                List.map (OutputCommon.in_order 1)
+                  (dr.drawing_contents dr.drawing_nominal_width)
               in
+
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
               let num=List.map (OutputCommon.in_order 1)
-                (draw {env with size=env.size*.4.;fontColor=OutputCommon.gray }
+                (draw {env with size=env.size*.(sz-.h);fontColor=OutputCommon.gray }
                    [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                              (List.rev (drop 1 b))))])
               in
               let _,_,x1,_=OutputCommon.bounding_box num in
-              let dr_text=drawing text in
-              let dr=dr_text in
-              (* let dr={dr_text with *)
-              (*   drawing_contents= *)
-              (*     (fun w-> *)
-              (*       (OutputCommon.Path (OutputCommon.default, *)
-              (*                           [[| [| x0;env.normalMeasure|],[|h;h|] |]])):: *)
-              (*         (dr_text.drawing_contents w) *)
-              (*     ) *)
-              (* } in *)
               let w=env.size in
-              [Drawing (drawing ~offset:h num);
-               glue w w w;
-               User AlignmentMark;
+              let dr=drawing (
+                (List.map (OutputCommon.translate (-.w-.x1) h)num)@
+                  text
+              )
+              in
+              let dr={dr with drawing_contents=(fun w_->
+                List.map (OutputCommon.translate (-.w-.x1) 0.) (dr.drawing_contents w_)
+              )}
+              in
+              [User AlignmentMark;
                Drawing (dr);
                User (Structure path)]
 
