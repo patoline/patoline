@@ -1,4 +1,4 @@
-(*
+/*
   Copyright Tom Hirschowitz, Florian Hatat, Pierre-Etienne Meunier,
   Christophe Raffalli and others, 2012.
 
@@ -16,7 +16,7 @@
 
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
+*/
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>

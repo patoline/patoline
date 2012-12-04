@@ -17,9 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-
-let license="(*
-  Copyright Tom Hirschowitz, Florian Hatat, Pierre-Etienne Meunier,
+let license="  Copyright Tom Hirschowitz, Florian Hatat, Pierre-Etienne Meunier,
   Christophe Raffalli and others, 2012.
 
   This file is part of Patoline.
@@ -36,7 +34,6 @@ let license="(*
 
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
 "
 
 let _=
@@ -47,14 +44,17 @@ let _=
       let c1=input_char fi in
       let str=String.create 1000 in
       let offset=
-        if c0='(' && c1='*' then (
+        if (c0='(' || c0='/') && c1='*' then (
           let rec find_comment_end ls j=
             if j>=ls-1 then (
               let ls'=input fi str 0 (String.length str) in
               if ls'=0 then 0 else
                 find_comment_end ls' 0
             ) else (
-              if str.[j]='*' && str.[j+1]=')' then j+3 else
+              if str.[j]='*' &&
+                ((c0='(' && str.[j+1]=')')||
+                    (c0='/' && str.[j+1]='/'))
+              then j+3 else
                 find_comment_end ls (j+1)
             )
           in
@@ -67,7 +67,20 @@ let _=
       seek_in fi offset;
       let fo_=Printf.sprintf "%s.tmp" Sys.argv.(i) in
       let fo=open_out fo_ in
-      let _=output fo license 0 (String.length license) in
+      (if Filename.check_suffix Sys.argv.(i) ".dyp" ||
+          Filename.check_suffix Sys.argv.(i) ".c"
+       then (
+         Printf.fprintf fo "/*\n";
+         let _=output fo license 0 (String.length license) in
+         Printf.fprintf fo "*/\n"
+       ) else
+          if Filename.check_suffix Sys.argv.(i) ".ml" ||
+            Filename.check_suffix Sys.argv.(i) ".txp" then (
+            Printf.fprintf fo "(*\n";
+            let _=output fo license 0 (String.length license) in
+            Printf.fprintf fo "*)\n"
+          ) else ()
+      );
       let str=String.create 1000 in
       let rec copy ()=
         let x=input fi str 0 (String.length str) in
