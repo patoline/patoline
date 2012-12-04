@@ -105,20 +105,28 @@ let postprocess_tree tree=
   in
   let rec sectionize path=function
       Node n when List.mem_assoc "Structural" n.node_tags ->
-        Printf.fprintf stderr "structural : %S [%s]\n" n.name
-        (String.concat "," (List.map string_of_int path));
         let section_name=
-          if List.mem_assoc "Numbered" n.node_tags  then
-            [C (fun env->
-                  let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-                  bB (fun _->[User (Structure path)])
-                  ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
-                  ::tT " "
-                  ::n.displayname
-               )]
-          else
-            bB (fun env->[User (Structure path)])::
-              n.displayname
+          if path=[] then (
+            bB (fun _->
+
+
+              [User (Structure path)]
+
+
+            )
+          ) else (
+            if List.mem_assoc "Numbered" n.node_tags  then
+              [C (fun env->
+                let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                bB (fun _->[User (Structure path)])
+                ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
+                ::tT " "
+                ::n.displayname
+              )]
+            else
+              bB (fun env->[User (Structure path)])::
+                n.displayname
+          )
         in
         let par=Paragraph {
           par_contents=section_name;
@@ -147,8 +155,12 @@ let postprocess_tree tree=
                     minimal+((g.page+minimal) mod 2)
                   ) else param.min_page_before
                 );
-                min_height_before=if line.lineStart=0 then a.normalLead else 0.;
-                min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
+                min_lines_before=2;
+                min_lines_after=
+                  if path=[] then
+                    if line.lineEnd>=Array.length b.(line.paragraph) then 3 else 0
+                  else
+                    if line.lineEnd>=Array.length b.(line.paragraph) then 2 else 0;
                 not_last_line=true });
           par_completeLine=Complete.normal }
         in
