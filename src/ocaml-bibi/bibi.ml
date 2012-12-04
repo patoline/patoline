@@ -232,9 +232,14 @@ let rec dbCite db subcitation req=
           let editors=if pub_in=[] then (
             match gets "editors" db id with
                 []->[]
-              | h::s as l->
+              | _::s as l->
                   tT (String.concat ", "
-                       (List.map (fun n->let (x,y)=make_name n in sprintf "%s %s" x y) l))::
+                       (List.map (fun n->
+                         let (x,y)=make_name n in
+                         sprintf "%s%s%s"
+                           x
+                           (if x<>"" && y<>"" then " " else "")
+                           y) l))::
                     [tT (if s=[] then " (ed.)" else " (eds.)")]
           ) else []
           in
