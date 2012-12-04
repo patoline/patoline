@@ -126,13 +126,38 @@ let postprocess_tree tree=
       Node n when List.mem_assoc "Structural" n.node_tags ->
         let section_name=
           if path=[] then (
-            bB (fun _->
+            [bB (fun env->
+              let h= -.env.size/.phi in
+              let x0= -.env.size/.phi in
+              let text=
+                (List.map (OutputCommon.in_order 1)
+                   (draw {env with size=env.size*.3.} n.displayname))
+              in
+              let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+              let num=List.map (OutputCommon.in_order 1)
+                (draw {env with size=env.size*.4.;fontColor=OutputCommon.gray }
+                   [tT (String.concat "." (List.map (fun x->string_of_int (x+1))
+                                             (List.rev (drop 1 b))))])
+              in
+              let _,_,x1,_=OutputCommon.bounding_box num in
+              let dr_text=drawing text in
+              let dr=dr_text in
+              (* let dr={dr_text with *)
+              (*   drawing_contents= *)
+              (*     (fun w-> *)
+              (*       (OutputCommon.Path (OutputCommon.default, *)
+              (*                           [[| [| x0;env.normalMeasure|],[|h;h|] |]])):: *)
+              (*         (dr_text.drawing_contents w) *)
+              (*     ) *)
+              (* } in *)
+              let w=env.size in
+              [Drawing (drawing ~offset:h num);
+               glue w w w;
+               User AlignmentMark;
+               Drawing (dr);
+               User (Structure path)]
 
-
-              [User (Structure path)]
-
-
-            )
+            )]
           ) else (
             if List.mem_assoc "Numbered" n.node_tags  then
               [C (fun env->
@@ -163,24 +188,48 @@ let postprocess_tree tree=
                                              user_positions=env2.user_positions });
           par_badness=badness;
           par_parameters=
-            (fun a b c d e f g line->
-              let param=(if path=[] then center a b c d e f g line else
-                   parameters a b c d e f g line)
-              in
-              { param with
-                min_page_before = (
-                  if path=[] && line.lineStart<=0 then (
-                    let minimal=max param.min_page_before 1 in
-                    minimal+((g.page+minimal) mod 2)
-                  ) else param.min_page_before
-                );
-                min_lines_before=2;
-                min_lines_after=
-                  if path=[] then
-                    if line.lineEnd>=Array.length b.(line.paragraph) then 3 else 0
-                  else
-                    if line.lineEnd>=Array.length b.(line.paragraph) then 2 else 0;
-                not_last_line=true });
+            if path=[] then
+              (fun env a1 a2 a3 a4 a5 a6 line->
+                let p=parameters env a1 a2 a3 a4 a5 a6 line in
+                if not p.absolute && line.lineStart=0 then (
+                  let rec findMark w j=
+                    if j>=line.lineEnd then 0. else
+                      if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                        let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
+                        findMark (w+.ww) (j+1)
+                  in
+                  let w=findMark 0. 0 in
+                  { p with
+                    left_margin=p.left_margin-.w;
+                    min_lines_after=if line.lineEnd>=Array.length a1.(line.paragraph) then 4 else 1;
+                    min_page_before = (
+                      if path=[] && line.lineStart<=0 then (
+                        let minimal=max p.min_page_before 1 in
+                        minimal+((line.page+minimal) mod 2)
+                      ) else p.min_page_before
+                    );
+                    measure=p.measure+.w }
+                ) else
+                  p
+              )
+            else
+              (fun a b c d e f g line->
+                let param=parameters a b c d e f g line in
+                { param with
+                  min_page_before = (
+                    if path=[] && line.lineStart<=0 then (
+                      let minimal=max param.min_page_before 1 in
+                      minimal+((g.page+minimal) mod 2)
+                    ) else param.min_page_before
+                  );
+                  min_lines_before=2;
+                  min_lines_after=
+                    if path=[] then
+                      if line.lineEnd>=Array.length b.(line.paragraph) then 3 else 0
+                    else
+                      if line.lineEnd>=Array.length b.(line.paragraph) then 2 else 0;
+                  not_last_line=true }
+              );
           par_completeLine=Complete.normal }
         in
           Node { n with children=
