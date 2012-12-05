@@ -171,7 +171,7 @@
 (defvar patoline-mode-map
   (let ((patoline-mode-map (make-sparse-keymap)))
     (define-key patoline-mode-map "\C-c\C-c" 'patoline-compile)
-    (define-key patoline-mode-map "\C-c\C-e" 'patoline-make)
+;    (define-key patoline-mode-map "\C-c\C-e" 'patoline-make)
     (define-key patoline-mode-map "\C-c\C-a" 'patoline-env)
     (define-key patoline-mode-map "\C-c\C-v" 'patoline-glview)
     (define-key patoline-mode-map "\C-c\C-p" 'patoline-view)
