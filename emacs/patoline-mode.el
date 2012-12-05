@@ -59,16 +59,46 @@
   (interactive)
   (display-buffer patoline-program-buffer t 'visible))
 
-(defvar patoline-compile-format
-  "patoline --edit-link --driver Bin \"%s\""
-  "What to do to compile patoline document. Examples [patoline \"%s\"], [make]")
+(defun patoline-compile-format ()
+  (let
+      ((el (if patoline-compile-edit-link "--edit-link" "")))    
+    (format "patoline %s --driver %s \"%%s\"" el patoline-compile-driver)))
+  
+(defvar patoline-compile-edit-link
+  t
+  "If t patoline should produce link for edition")
+
+(defvar patoline-compile-driver
+  "Bin"
+  "Patoline driver to use when compiling (Pdf, Bin, ...)")
+
+(defvar patoline-drivers-list
+  (list "Pdf" "Bin" "SVG")
+  "List of patoline supported driver")
+
+(defun patoline-set-driver (driver)
+  (interactive)
+  (setq patoline-compile-driver driver)
+  (patoline-update-driver-menu))
+
+(defun patoline-update-driver-menu ()
+  (easy-menu-change
+   '("Patoline") "Driver"
+   (mapcar (lambda (driver)
+	     (vector driver
+		     (list 'patoline-set-driver driver)
+		     ':style 'toggle
+		     ':selected (equal patoline-compile-driver driver)
+		     ':active t))
+	   patoline-drivers-list)))
+		     
 
 (defun patoline-compile ()
   "compile the current buffer with patoline"
   (interactive)
   (save-buffer)
   (save-excursion
-    (let ((cmd-format (read-from-minibuffer "compile: " patoline-compile-format)))
+    (let ((cmd-format (read-from-minibuffer "compile: " (patoline-compile-format))))
       (setq patoline-compile-format cmd-format)
       (let ((cmd (format cmd-format (file-name-nondirectory buffer-file-name)))
 	    (dir-name (file-name-directory buffer-file-name)))
@@ -118,7 +148,7 @@
 		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd))))))))
 
 (defun patoline-glview ()
-  "view the pdf corresponding to the current buffer"
+  "view the binary output corresponding to the current buffer"
   (interactive)
   (let ((file-name 
 	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".bin")))
@@ -139,16 +169,15 @@
 	(forward-char)))))
 
 (defvar patoline-mode-map
-  (let ((patoline-mode-map (make-keymap)))
-    (progn
-      (define-key patoline-mode-map (kbd "C-c C-c") 'patoline-compile)
-      (define-key patoline-mode-map (kbd "C-c C-e") 'patoline-make)
-      (define-key patoline-mode-map (kbd "C-c C-a") 'patoline-env)
-      (define-key patoline-mode-map (kbd "C-c C-v") 'patoline-glview)
-      (define-key patoline-mode-map (kbd "C-c C-p") 'patoline-view)
-      (define-key patoline-mode-map (kbd "C-c C-s") 'patoline-forward-search)
-      (define-key patoline-mode-map (kbd "C-c C-l") 'display-program-buffer)
-    patoline-mode-map))
+  (let ((patoline-mode-map (make-sparse-keymap)))
+    (define-key patoline-mode-map "\C-c\C-c" 'patoline-compile)
+    (define-key patoline-mode-map "\C-c\C-e" 'patoline-make)
+    (define-key patoline-mode-map "\C-c\C-a" 'patoline-env)
+    (define-key patoline-mode-map "\C-c\C-v" 'patoline-glview)
+    (define-key patoline-mode-map "\C-c\C-p" 'patoline-view)
+    (define-key patoline-mode-map "\C-c\C-s" 'patoline-forward-search)
+    (define-key patoline-mode-map "\C-c\C-l" 'display-program-buffer)
+    patoline-mode-map)
   "Keymap for PATOLINE major mode")
 
 (add-hook 'patoline-mode-hook (lambda () (flyspell-mode t)))
@@ -210,6 +239,7 @@
   (setq case-fold-search nil)
   (setq mmm-primary-mode-entry-hook 
 	(list (lambda () (set-input-method "Patoline"))))
+  (patoline-build-menu)
   (run-hooks 'patoline-mode-hook)
 )
 
@@ -227,18 +257,152 @@
 	(lambda () (overlay-put mmm-current-overlay 'entry-hook
 				(list (lambda () (set-input-method "Patoline")))))))
 
+(defvar mmm-patoline-subregions nil)
+
+(defun mmm-patoline-back (limit mode)
+  (setq mmm-patoline-subregions nil)
+  (setq mmm-patoline-parsing t)
+  (let ((depth 1)
+	(subs nil)
+	(ret nil))
+    (while (> depth 0)
+      (let ((regexp (case mode
+		      ('caml "[]})({[\"]\\|<[$<]")
+		      ('string "\\\\?\"")
+		      ('text "\\\\[Cc]aml(\\|>>")
+		      ('math "\\\\[Cc]aml(\\|\\$>"))))
+	(message "back: %S %S %S %S %S"  mode depth (point) subs mmm-patoline-subregions )
+	(setq ret (search-forward-regexp regexp limit))
+	(let ((m (match-string 0))
+	      (pos (cons (match-beginning 0) (match-end 0))))
+	  (message m)
+	  (cond 
+	    ((equal m "\\Caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
+	    ((equal m "\\caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
+	    ((equal m "(") (setq depth (+ depth 1) subs (cons nil subs)))
+	    ((equal m "{") (setq depth (+ depth 1)))
+	    ((equal m "[") (setq depth (+ depth 1)))
+	    ((equal m ")") 
+	      (if (and (> depth 1) (car subs))
+		  (progn 
+		    (setq mmm-patoline-subregions 
+			  (cons (list 'patoline-tuareg (cdr (car subs)) pos)
+				mmm-patoline-subregions))
+		    (setq mode (car (car subs)))))
+	      (setq depth (- depth 1) subs (cdr subs)))
+	    ((equal m "}") (setq depth (- depth 1)))
+	    ((equal m "]") (setq depth (- depth 1)))
+	    ((equal m "<<") (setq depth (+ depth 1) subs (cons pos subs) mode 'text))
+	    ((equal m "<$") (setq depth (+ depth 1) subs (cons pos subs) mode 'math))
+	    ((equal m ">>") 
+	      (if (> depth 1)
+		  (setq mmm-patoline-subregions 
+			(cons (list 'patoline-quote-text-args (car subs) pos)
+			      mmm-patoline-subregions)))
+	      (setq depth (- depth 1) subs (cdr subs) mode 'caml))
+
+	    ((equal m "$>")
+	     (if (> depth 1) 
+		 (setq mmm-patoline-subregions 
+		       (cons (list 'patoline-quote-math-args (car subs) pos)
+			     mmm-patoline-subregions)))
+	     (setq depth (- depth 1) subs (cdr subs) mode 'caml))
+	    ((equal m "\"") 
+	     (if (equal mode 'string)
+		 (setq depth (- depth 1) mode 'caml)
+	       (setq depth (+ depth 1) mode 'string)))))))
+    ret))
+
+(defun mmm-make-region-by-class (class beg end)
+  (let ((class (mmm-get-class-spec class))
+	(front (car beg))
+	(back (cdr end))
+	(beg (cdr beg))
+	(end (car end))
+	match-face match-name face front-form back-form)
+    (message "make-region %S %S %S" (plist-get class :submode) beg end)
+    (setq front-form (regexp-quote (buffer-substring front beg)))
+    (setq back-form (regexp-quote (buffer-substring end back)))
+    (setq match-face (plist-get class :match-face))
+    (setq match-name (plist-get class :match-name))
+    (setq face
+	  (cond ((functionp match-face)
+		 (mmm-save-all
+		  (funcall match-face front-form)))
+		(match-face
+		 (cdr (assoc front-form match-face)))
+		(t
+		 (plist-get class :face))))
+    (setq name
+	  (cond ((plist-get class :skel-name)
+		 ;; Optimize the name to the user-supplied str
+		 ;; if we are so instructed.
+		 str)
+		;; Call it if it is a function
+		((functionp match-name)
+		 (mmm-save-all (funcall match-name front-form)))
+		;; Now we know it's a string, does it need to
+		;; be formatted?
+		((plist-get class :save-name)
+		 ;; Yes.  Haven't done a match before, so
+		 ;; match the front regexp against the given
+		 ;; form to format the string
+		 (string-match (plist-get class :front)
+			       front-form)
+		 (mmm-format-matches match-name front-form))
+		(t
+		 ;; No, just use it as-is
+		 match-name)))
+    (mmm-make-region
+     (plist-get class :submode) beg end
+					;   :face face
+					;   :name name
+     :front front
+     :back back
+     :match-front front-form
+     :match-back  back-form
+     :evaporation 'front
+     :beg-sticky t :end-sticky t
+     :creation-hook (plist-get class :creation-hook))))
+
+(defvar mmm-patoline-lock nil)
+
+(defun mmm-patoline-enable-sub-regions ()
+  (if (not mmm-patoline-lock)
+      (progn 
+	(message "enable: %S" mmm-patoline-subregions)
+	(setq mmm-patoline-lock t)
+	(dolist (args mmm-patoline-subregions)
+	  (message "apply: %S" args)
+	  (ignore-errors (apply 'mmm-make-region-by-class args)))
+	(setq mmm-patoline-lock nil)
+	(setq mmm-patoline-subregions nil))))
+
+(defun mmm-patoline-caml-back (limit)
+  (mmm-patoline-back limit 'caml)) 
+
+(defun mmm-patoline-math-back (limit)
+  (mmm-patoline-back limit 'math)) 
+
+(defun mmm-patoline-text-back (limit)
+  (mmm-patoline-back limit 'text)) 
+
 (if (and (featurep 'mmm-mode) (featurep 'tuareg))
     (progn 
       (setq mmm-global-mode 'maybe)
+      (setq mmm-patoline-lock nil)
+      (setq mmm-patoline-subregions nil)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-tuareg)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-tuareg)
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-verb-sml)
-      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-quote-args)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-quote-math-args)
+      (mmm-add-mode-ext-class nil "\\.txp" 'patoline-quote-text-args)
       (mmm-add-classes
        '((patoline-tuareg
 	  :submode tuareg-mode
-	  :front "\\\\\\([Cc]aml\\)\\|\\(diagram\\)("
-	  :back "^)"
+	  :front "\\\\\\([Cc]aml\\|diagram\\)("
+	  :back (lambda (limit) (mmm-patoline-back limit 'caml))
+	  :creation-hook (lambda () (mmm-patoline-enable-sub-regions))
 	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)
 		   (?d tuareg-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
        (patoline-verb-tuareg
@@ -249,13 +413,31 @@
 	  :submode sml-mode
 	  :front "^###[ \t]*SML"
 	  :back "^###")
-       (patoline-quote-args
+       (patoline-quote-text-args
 	  :submode patoline-mode
-	  :front "<[<$]"
-	  :back "[$>]>"
+	  :front (lambda (limit) nil)
+	  :back (lambda (limit) nil)
+	  :insert ((?m patoline-mode nil @ "<$"  @ " " _ " " @ "$>" @)
+		   (?t patoline-mode nil @ "<<"  @ " " _ " " @ ">>" @)))
+       (patoline-quote-math-args
+	  :submode patoline-mode
+	  :front (lambda (limit) nil)
+	  :back (lambda (limit) nil)
 	  :insert ((?m patoline-mode nil @ "<$"  @ " " _ " " @ "$>" @)
 		   (?t patoline-mode nil @ "<<"  @ " " _ " " @ ">>" @)))
 	 ))))
 
 (setq comment-start "(*")
 (setq comment-end "*)")
+
+(defun patoline-build-menu ()
+  (easy-menu-define
+   patoline-mode-menu (list patoline-mode-map)
+   "Patoline Mode Menu."
+   '("Patoline"
+     ["Compile..." patoline-compile t]
+     ["View Pdf..." patoline-view t]
+     ["View Bin..." patoline-glview t]
+     ("Driver" ["Dummy" nil t])))
+  (easy-menu-add patoline-mode-menu)
+  (patoline-update-driver-menu))
