@@ -13,6 +13,8 @@ pdf_parser.cma:obj_lexer.cmo obj_parser.cmo pdf_parser.cmo
 obj_lexer.ml:obj_parser.cmo
 obj_parser.mly:pdfutil.cmo
 obj_parser.cmo:obj_parser.cmi
+obj_parser.cmi:obj_parser.mli
+obj_parser.mli:obj_parser.ml
 obj_parser.cmx:obj_parser.cmi
 obj_parser.p.cmx:obj_parser.cmi
 
