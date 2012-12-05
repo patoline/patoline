@@ -73,13 +73,20 @@
   "Patoline driver to use when compiling (Pdf, Bin, ...)")
 
 (defvar patoline-drivers-list
-  (list "Pdf" "Bin" "SVG" "Html" "DriverCairo" "Image")
+  '("Pdf" "Bin" "SVG" "Html" "DriverCairo" "Image")
   "List of patoline supported driver")
 
+(defvar patoline-options-list
+  '(("Edtion link" . 'patoline-compile-edit-link))
+  "List of supported toggle options")
+
 (defun patoline-set-driver (driver)
-  (interactive)
   (setq patoline-compile-driver driver)
   (patoline-update-driver-menu))
+
+(defun patoline-toggle-option (opt)
+  (set opt (not (symbol-value opt)))
+  (patoline-update-option-menu))
 
 (defun patoline-update-driver-menu ()
   (easy-menu-change
@@ -92,6 +99,17 @@
 		     ':active t))
 	   patoline-drivers-list)))
 		     
+(defun patoline-update-option-menu ()
+  (easy-menu-change
+   '("Patoline") "Options"
+   (mapcar (lambda (option)
+	     (message "toggle %S %S" (cdr option) (eval (cdr option)))
+	     (vector (car option)
+		     (list 'patoline-toggle-option (cdr option))
+		     ':style 'toggle
+		     ':selected (nth 1 (cdr option))
+		     ':active t))
+	   patoline-options-list)))
 
 (defun patoline-compile ()
   "compile the current buffer with patoline"
@@ -438,6 +456,8 @@
      ["Compile..." patoline-compile t]
      ["View Pdf..." patoline-view t]
      ["View Bin..." patoline-glview t]
-     ("Driver" ["Dummy" nil t])))
+     ("Driver" ["Dummy" nil t])
+     ("Options" ["Dummy" nil t])))
   (easy-menu-add patoline-mode-menu)
-  (patoline-update-driver-menu))
+  (patoline-update-driver-menu)
+  (patoline-update-option-menu))
