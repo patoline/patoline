@@ -101,8 +101,8 @@
 
 \Add_relation{\succ ≻}(MathFonts.asana "\\succ" 837)
 \Add_relation{\pred ≺}(MathFonts.asana "\\pred" 836)
-\Add_relation{\succeq ≻}(MathFonts.asana "\\succeq" 839)
-\Add_relation{\predeq ≺}(MathFonts.asana "\\predeq" 838)
+\Add_relation{\succeq ≽}(MathFonts.asana "\\succeq" 839)
+\Add_relation{\predeq ≼}(MathFonts.asana "\\predeq" 838)
 
 \Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 1620)
 \Add_relation{\vdash ⊢ |-}{⊢}
