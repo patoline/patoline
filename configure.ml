@@ -118,12 +118,15 @@ let ocamlnet_needs =
 
 let patoline_driver_gl =
   { name = "GL";
-    needs = (Package "str")::(Package "lablgtk2")::(Package "camlimages.all_formats")::(Package
-    "lablgtk2-gl.gtkgl")::(Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
+    needs =(Package "str")::(Package "camlimages.all_formats")::
+      (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
     suggests = [] }
 
 let patoline_driver_gl2 =
-  { patoline_driver_gl with name = "GL2" }
+  { patoline_driver_gl with
+    name = "GL2";
+    needs = (Package "lablgtk2")::(Package"lablgtk2-gl.gtkgl")::patoline_driver_gl.needs
+  }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
