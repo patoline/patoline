@@ -73,7 +73,7 @@
   "Patoline driver to use when compiling (Pdf, Bin, ...)")
 
 (defvar patoline-drivers-list
-  (list "Pdf" "Bin" "SVG")
+  (list "Pdf" "Bin" "SVG" "Html" "DriverCairo" "Image")
   "List of patoline supported driver")
 
 (defun patoline-set-driver (driver)
