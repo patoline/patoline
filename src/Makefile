@@ -17,7 +17,7 @@ VPATH=Typography:Pdf:Drivers:Format
 
 all:native prof DefaultGrammar.pdf
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) Patoline/patoline DefaultGrammar.cmx DefaultGrammar.tgx ocaml-bibi/bibi.cmxa proof/proof Pdf/_build/pdf_parser.cmxa $(NATIVE_EXTRA)
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) $(PATOLINE) DefaultGrammar.cmx DefaultGrammar.tgx ocaml-bibi/bibi.cmxa proof/proof Pdf/_build/pdf_parser.cmxa $(NATIVE_EXTRA)
 
 byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
 

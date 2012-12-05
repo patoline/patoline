@@ -201,6 +201,9 @@ let _=
     Printf.fprintf stderr "Package camomile missing.\n";
     exit 1
   );
+  let has_dypgen=
+    (ocamlfind_has "dyp") && (Sys.command "dypgen"=0)
+  in
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
@@ -271,6 +274,10 @@ let _=
       (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
       (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
       (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
+    (if has_dypgen then
+        Printf.fprintf make "PATOLINE=Patoline/patoline\n"
+     else
+        Printf.fprintf make "PATOLINE=\n");
     Printf.fprintf make "PACK=-package %s\n"
       (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
                                          Package "camlimages.all_formats"; Package "cairo"]));
