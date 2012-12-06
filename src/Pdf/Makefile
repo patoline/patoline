@@ -10,6 +10,9 @@ pdf_parser.p.cmxa:obj_lexer.p.cmx obj_parser.p.cmx pdf_parser.p.cmx
 pdf_parser.cma:obj_lexer.cmo obj_parser.cmo pdf_parser.cmo
 	$(OCAMLC) -a -o pdf_parser.cma obj_lexer.cmo obj_parser.cmo pdf_parser.cmo
 
+pdf_parser.cmx:obj_parser.cmx obj_lexer.cmx
+pdf_parser.p.cmx:obj_parser.p.cmx obj_lexer.p.cmx
+pdf_parser.cmo:obj_parser.cmo obj_lexer.cmo
 obj_lexer.ml:obj_parser.cmo
 obj_parser.mly:pdfutil.cmo
 obj_parser.cmo:obj_parser.cmi
