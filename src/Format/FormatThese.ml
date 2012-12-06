@@ -91,12 +91,12 @@ let skip x=bB (fun env->let w=env.size*.x in [glue w w w])
 (*     @(cacaps) *)
 (*     @(fam Demi demi) *)
 
+include (DefaultFormat:module type of DefaultFormat with module Format:=DefaultFormat.Format)
 
 module Format=functor (D:DocumentStructure)->struct
 
   module Default=DefaultFormat.Format(D)
   include (Default:module type of Default with module Output:=Default.Output)
-  module MathFonts=DefaultFormat.MathFonts
 
 
 
@@ -207,7 +207,7 @@ let postprocess_tree tree=
                     min_page_before = (
                       if path=[] && line.lineStart<=0 then (
                         let minimal=max p.min_page_before 1 in
-                        minimal+((line.page+minimal) mod 2)
+                        minimal+((1+max 0 line.page+minimal) mod 2)
                       ) else p.min_page_before
                     );
                     measure=p.measure+.w }

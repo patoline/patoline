@@ -46,8 +46,7 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
   in
   let rec break_next j sum_min sum_nom sum_max y0 y1 only_impossible result=
     if j>=Array.length paragraphs.(line.paragraph) then (
-
-      if sum_min<=measure || (allow_impossible && only_impossible) then (
+      if sum_min<=measure || (allow_impossible && result=[]) then (
         { line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max;
             line_y0=y0; line_y1=y1
         }::
@@ -81,7 +80,6 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
       in
         if sum_max >= measure || allow_impossible then
           match paragraphs.(line.paragraph).(j) with
-
               Glue _ when (sum_min <= measure) && j>line.lineStart ->
                 break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
                   (min y0 y0') (max y1 y1')
@@ -93,11 +91,17 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
                    }::(if only_impossible then [] else result))
 
             | Glue _ when allow_impossible && only_impossible && j>line.lineStart ->
-                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                     nom_width=sum_nom; max_width=sum_max;
-                     line_y0=y0;
-                     line_y1=y1;
-                 }]
+              break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
+                (min y0 y0') (max y1 y1')
+                (only_impossible && result0=[])
+                (if result0=[] && result=[] then
+                    [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
+                      nom_width=sum_nom; max_width=sum_max;
+                      line_y0=y0;
+                      line_y1=y1;
+                     }]
+                 else
+                    result0@result)
             | _ ->
                 break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
                   (min y0 y0') (max y1 y1')
@@ -106,7 +110,15 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
         else
           break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
             (min y0 y0') (max y1 y1')
-            (only_impossible && result0=[]) (result0@result)
+            (only_impossible && result0=[])
+            (if (result0=[] && result=[]) || only_impossible then
+                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
+                  nom_width=sum_nom; max_width=sum_max;
+                  line_y0=y0;
+                  line_y1=y1;
+                 }]
+             else
+                result0@result)
     )
   in
     if line.hyphenStart>=0 then (
