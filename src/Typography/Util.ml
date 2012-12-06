@@ -301,3 +301,18 @@ let open_in_cached f=
 #else
   open_in_bin_cached f
 #endif
+
+let copy_file a b=
+  let fa=open_in a in
+  let fb=open_out b in
+  let s=String.create 1000 in
+  let rec copy ()=
+    let x=input fa s 0 (String.length s) in
+    if x>0 then (
+      output fb s 0 x;
+      copy ()
+    )
+  in
+  copy ();
+  close_in fa;
+  close_out fb

@@ -207,9 +207,20 @@ let draw ?fontCache prefix w h contents=
         Rbuffer.add_string svg_buf "</text>\n";
         opened_text:=false
       );
+      let f_=Filename.basename i.image_file in
+      let f=try Filename.chop_extension f_ with _->f_ in
+      let ext=String.sub i.image_file (String.length f)
+        (String.length i.image_file-String.length f)
+      in
+      let rec nonexistent i=
+        let name=Printf.sprintf "%s%d%s" f i ext in
+        if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name
+      in
+      let name=nonexistent 0 in
+      copy_file i.image_file (Filename.concat prefix name);
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
-           i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height i.image_file)
+           i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height name)
     )
     | States s->List.iter output_contents s.states_contents
     | Link l->(
@@ -332,7 +343,9 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
       let file=Rbuffer.create 10000 in
         (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
       let w,h=page.pageFormat in
-      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?><svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
+      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
       let sorted_pages=
         let x=List.fold_left (fun m x->
@@ -359,6 +372,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   svg_files,cache
 
 
+
 let basic_html cache structure pages prefix=
   let html=Rbuffer.create 10000 in
   let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
@@ -366,6 +380,7 @@ let basic_html cache structure pages prefix=
     "<!DOCTYPE html>
 <html lang=\"en\">
 <head>
+<link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\">
 <meta charset=\"utf-8\">
 <title>";
   Rbuffer.add_string html structure.name;
@@ -522,9 +537,13 @@ else if(n<current_slide)
   Rbuffer.add_string html (Printf.sprintf "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
   let style=make_defs cache in
-  Rbuffer.add_string html "<defs><style type=\"text/css\">\n<![CDATA[\n";
-  Rbuffer.add_buffer html style;
-  Rbuffer.add_string html "]]>\n</style></defs>";
+  let ststr=(Filename.concat prefix "style.css") in
+  let o=open_out (Filename.concat prefix "style.css") in
+  Rbuffer.output_buffer o style;
+  close_out o;
+  Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"";
+  Rbuffer.add_string html ststr;
+  Rbuffer.add_string html "\"/>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
   html
@@ -563,7 +582,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         Array.iter (fun x->unlink_rec (Filename.concat dir x)) (Sys.readdir dir);
         Unix.rmdir dir
       ) else (
-        Printf.fprintf stderr "unlink : %S\n" dir;
         Unix.unlink dir
       )
     );
