@@ -268,17 +268,18 @@ let bibitem bib req=
     ignore (db_close db);
     res
 
-let author bib auth=
+let author_ bib auth=
   let db=db_open bib in
   let r=sprintf "SELECT name FROM authors WHERE %s" auth in
   let auths=ref [] in
-    (match exec db ~cb:(fun row _->match row.(0) with
-                            Some a->auths:=a::(!auths)
-                          | _->()) r with
-         Rc.OK->()
-       | rr ->(fprintf stderr "%s\n%s\n" (Rc.to_string rr) (errmsg db); raise (Bib_error r)));
-    ignore (db_close db);
-    !auths
+  (match exec db ~cb:(fun row _->match row.(0) with
+      Some a->auths:=a::(!auths)
+    | _->()) r with
+      Rc.OK->()
+    | rr ->(fprintf stderr "%s\n%s\n" (Rc.to_string rr) (errmsg db); raise (Bib_error r)));
+  ignore (db_close db);
+  !auths
+
 (* let _=List.iter (fun (a,x)->printf "%s : %s\n" a (Document.string_of_contents x)) *)
 (*   (cite "biblio" "title LIKE '%arameterized%'") *)
 
@@ -333,13 +334,17 @@ let authorCite x y=
   sprintf "%s id IN (SELECT article FROM authors_publications WHERE author IN (SELECT id FROM authors WHERE %s))"
     (if y="" then "" else sprintf "(%s) AND" y) x
 
-let authorFile bibfile x=match author bibfile (sprintf "name LIKE '%%%s%%'" x) with
+let authorFile bibfile x=match author_ bibfile (sprintf "name LIKE '%%%s%%'" x) with
     []->Printf.fprintf stderr "Unknown author %S\n" x;raise Not_found
   | h::_->[tT (snd (make_name h))]
 
 let cite x=match !bibfile_ with
     None->failwith "Bibi: no bibliographic source defined"
   | Some y->citeFile y x
+
+let author x=match !bibfile_ with
+    None->failwith "Bibi: no bibliographic source defined"
+  | Some y->authorFile y x
 
 open Util
 open Box

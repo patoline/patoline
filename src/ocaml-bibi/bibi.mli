@@ -17,7 +17,7 @@ val dbCite :
 val bibitem :
   string -> string
    -> (int*Typography.Document.content list) list
-val author:string->string->string list
+val author:string->Typography.Document.content list
 val authorCite : string -> string -> string
 val cite : string -> Typography.Document.content list
 module TheBibliography : functor (D : Typography.Document.DocumentStructure) -> sig end
