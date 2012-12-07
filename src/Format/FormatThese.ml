@@ -126,16 +126,19 @@ let postprocess_tree tree=
       Node n when List.mem_assoc "Structural" n.node_tags ->
         let section_name=
           if path=[] then (
-            [bB (fun env->
+            [C (fun env->
               let h= -.env.size/.phi in
               let x0= -.env.size/.phi in
               let sz=2.5 in
-              let text=
-                let dr=(minipage {env with normalLeftMargin=0.;size=env.size*.sz}
-                          (paragraph n.displayname)).(0)
-                in
-                List.map (OutputCommon.in_order 1)
-                  (dr.drawing_contents dr.drawing_nominal_width)
+
+              let buf=ref [||] in
+              let nbuf=ref 0 in
+              let env'=boxify buf nbuf (ref false) env n.displayname in
+              let boxes=Array.to_list (Array.sub !buf 0 !nbuf) in
+              let users=
+                List.filter (fun x->match x with
+                    User _->true | _->false)
+                  boxes
               in
 
               let num=
@@ -148,23 +151,35 @@ let postprocess_tree tree=
                 else
                   []
               in
-              let x1=if num=[] then 0. else
-                  let _,_,x1,_=OutputCommon.bounding_box num in x1
+              let x0,x1=if num=[] then 0.,0. else
+                  let x0,_,x1,_=OutputCommon.bounding_box num in x0,x1
               in
               let w=if num=[] then 0. else env.size in
+
+              let text=
+                let dr=(minipage {env with normalLeftMargin=0.;
+                  normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
+                  size=env.size*.sz}
+                          (paragraph n.displayname)).(0)
+                in
+                List.map (OutputCommon.in_order 1)
+                  (dr.drawing_contents dr.drawing_nominal_width)
+              in
               let dr=drawing (
                 (List.map (OutputCommon.translate (-.w-.x1) h)num)@
                   text
               )
               in
               let dr={dr with drawing_contents=(fun w_->
-                List.map (OutputCommon.translate (-.w-.x1) 0.) (dr.drawing_contents w_)
+                List.map (OutputCommon.translate ((x0-.x1)/.2.) 0.) (dr.drawing_contents w_)
               )}
               in
-              [User AlignmentMark;
-               Drawing (dr);
-               User (Structure path)]
-
+              bB (fun _->
+                users@
+                  [User (Structure path);
+                   User AlignmentMark;
+                   Drawing (dr)])::
+                Env(fun _->env')::[]
             )]
           ) else (
             if List.mem_assoc "Numbered" n.node_tags  then

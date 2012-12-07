@@ -120,7 +120,13 @@ let centered parameters str tree _=
 
 let these parameters str tree max_level=
 
-  newPar str ~environment:(fun x->{x with par_indent=[]; lead=phi*.x.lead }) Complete.normal parameters [
+  let params a b c d e f g line=
+    if line.lineStart=0 then
+      parameters { a with lead=a.lead/.1.5 } b c d e f g line
+    else
+      parameters a b c d e f g line
+  in
+  newPar str ~environment:(fun x->{x with par_indent=[];lead=1.5*.x.lead}) Complete.normal params [
     bB (
       fun env->
         let rec toc env0 path tree=
