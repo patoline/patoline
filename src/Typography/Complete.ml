@@ -78,7 +78,7 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
               hyphenation 0 [])
           | _ -> []
       in
-        if sum_max >= measure || allow_impossible then
+        if sum_max >= measure then
           match paragraphs.(line.paragraph).(j) with
               Glue _ when (sum_min <= measure) && j>line.lineStart ->
                 break_next (j+1) (sum_min+.a) (sum_nom+.b) (sum_max+.c)
@@ -91,17 +91,14 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
                    }::(if only_impossible then [] else result))
 
             | Glue _ when allow_impossible && only_impossible && j>line.lineStart ->
-              break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
-                (min y0 y0') (max y1 y1')
-                (only_impossible && result0=[])
-                (if result0=[] && result=[] then
-                    [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                      nom_width=sum_nom; max_width=sum_max;
-                      line_y0=y0;
-                      line_y1=y1;
-                     }]
-                 else
-                    result0@result)
+              if result=[] && result0=[] then
+                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
+                  nom_width=sum_nom; max_width=sum_max;
+                  line_y0=y0;
+                  line_y1=y1;
+                 }]
+              else
+                result@result0
             | _ ->
                 break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
                   (min y0 y0') (max y1 y1')
@@ -111,14 +108,15 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
           break_next (j+1) (sum_min+. a) (sum_nom+.b) (sum_max+. c)
             (min y0 y0') (max y1 y1')
             (only_impossible && result0=[])
-            (if (result0=[] && result=[]) || only_impossible then
-                [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
-                  nom_width=sum_nom; max_width=sum_max;
-                  line_y0=y0;
-                  line_y1=y1;
-                 }]
-             else
-                result0@result)
+            (match paragraphs.(line.paragraph).(j) with
+                Glue _ when allow_impossible &&
+                    ((result0=[] && result=[]) || only_impossible) ->
+                  [{ line with lineEnd=j; hyphenEnd=(-1); min_width=sum_min;
+                    nom_width=sum_nom; max_width=sum_max;
+                    line_y0=y0;
+                    line_y1=y1;
+                  }]
+              | _->result0@result)
     )
   in
     if line.hyphenStart>=0 then (
