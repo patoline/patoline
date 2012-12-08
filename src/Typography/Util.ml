@@ -253,14 +253,6 @@ let unspace s=
 
 let compose f g x=f (g x)
 
-let is_substring s1 s0 i0=
-  let rec sub i j=
-    if i>String.length s0-String.length s1 then -1 else
-      if j>=String.length s1 then i else
-        if s0.[i+j]=s1.[j] then sub i (j+1) else
-          sub (i+1) 0
-  in
-    sub i0 0
 
 
 module IntMap=Map.Make (struct type t=int let compare=compare end)

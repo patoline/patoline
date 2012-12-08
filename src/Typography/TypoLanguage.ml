@@ -25,6 +25,10 @@ type message=
   | No_solution of string
   | Opt_error of optimization_error
   | Normal
+#ifdef BAN_COMIC_SANS
+  | Ban_comic_sans
+#endif
+
 and optimization_error=
     Overfull_line of (line*string)
   | Widow of (line*string)
@@ -38,6 +42,9 @@ let message=function
   | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine \n\t%s\n\t%s" (sprint_linef line) s
+#ifdef BAN_COMIC_SANS
+  | Ban_comic_sans->"Votre choix de police (comic sans) est moche.\nConsultez http://bancomicsans.com pour plus d'informations\n"
+#endif
   | _->""
 #else
 #define LANG_EN
@@ -48,5 +55,8 @@ let message=function
   | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine \n\t%s\n\t%s" (sprint_linef line) s
+#ifdef BAN_COMIC_SANS
+  | Ban_comic_sans->"Bad taste detected in font choice.\nPlease go to http://bancomicsans.com for more informations\n"
+#endif
   | _->""
 #endif

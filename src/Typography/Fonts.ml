@@ -49,10 +49,6 @@ let uniqueName  ?index:(index=0) f=
       CFF x->CFF.uniqueName x
     | Opentype x->Opentype.uniqueName x
 
-#ifdef BAN_COMIC_SANS
-exception Comic_sans
-#endif
-
 let loadFont ?offset:(off=0) ?size:(_=0) f=
   let size=let i=Util.open_in_bin_cached f in in_channel_length i in
   let font=if Filename.check_suffix f ".otf" || Filename.check_suffix f ".ttf" then
@@ -63,12 +59,23 @@ let loadFont ?offset:(off=0) ?size:(_=0) f=
     raise Not_supported
   in
 #ifdef BAN_COMIC_SANS
-  let low=(String.lowercase (fontName font)) in
-  let comic=Util.is_substring "comic" low 0 in
+  let is_substring s1 s0 i0=
+    let rec sub i j=
+      if i>String.length s0-String.length s1 then -1 else
+        if j>=String.length s1 then i else
+          if s0.[i+j]=s1.[j] then sub i (j+1) else
+            sub (i+1) 0
+    in
+    sub i0 0
+  in
+  let low=(String.lowercase (fontName font).full_name) in
+  let comic=is_substring "comic" low 0 in
     if comic<0 then font else
-      let sans=Util.is_substring "sans" low comic in
-        if sans<0 then font else
-          raise Comic_sans
+      let sans=is_substring "sans" low comic in
+      if sans<0 then font else (
+        output_string stderr (TypoLanguage.message TypoLanguage.Ban_comic_sans);
+        exit 1
+      )
 #else
     font
 #endif

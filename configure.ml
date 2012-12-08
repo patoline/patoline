@@ -17,6 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
+#load "unix.cma"
+
 let prefix=ref "/usr/local/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
@@ -65,6 +68,8 @@ let is_substring s1 s0=
   in
     sub 0 0
 
+let configure_environment=Unix.environment ()
+
 (* Querying ocamlfind packages, and caching results.
  * Returns type is (bool * string) where the boolean indicates whether
  * ocamlfound the package, and string is its actual name (a package may have
@@ -85,19 +90,37 @@ let ocamlfind_query =
       Hashtbl.find checked pack
     with
       Not_found ->
+        let liste=
+            (
+              try List.find (fun l -> List.hd l = pack) ocamlfind_aliases
+              with Not_found -> [pack]
+            )
+        in
+        (match liste with
+            h::_->Printf.printf "Looking for package %s..." h
+          | _->());
         let res =
           List.fold_left
            (fun res pack_alias ->
-             if fst res || Sys.command ("ocamlfind query " ^ pack_alias) <> 0 then
+             let ci,co,ce=Unix.open_process_full (Printf.sprintf "ocamlfind query %s" pack_alias) configure_environment in
+             let str=String.create 100 in
+             while input ci str 0 (String.length str) > 0 do () done;
+             while input ce str 0 (String.length str) > 0 do () done;
+             let st=Unix.close_process_full (ci,co,ce) in
+             if fst res || st <> (Unix.WEXITED 0) then
                res
-             else (true, pack_alias)
+             else (
+               (true, pack_alias)
+             )
            )
-           (false, "")
-           (
-             try List.find (fun l -> List.hd l = pack) ocamlfind_aliases
-             with Not_found -> [pack]
-           )
-        in Hashtbl.add checked pack res;
+            (false, "")
+            liste
+        in
+        Hashtbl.add checked pack res;
+        if (fst res) then
+          Printf.printf " found (%s)\n" (snd res)
+        else
+          Printf.printf " not found\n";
         res
 
 (* Is a package ocamlfindable? *)
@@ -197,13 +220,22 @@ let _=
   hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
   plugins_dirs:= !plugins_dir ::(!plugins_dirs);
 
+  let has_dypgen=
+    let ci,co,ce=Unix.open_process_full "dypgen" configure_environment in
+    let str=String.create 100 in
+    while input ci str 0 (String.length str) > 0 do () done;
+    while input ce str 0 (String.length str) > 0 do () done;
+    let st=Unix.close_process_full (ci, co, ce) in
+    if (ocamlfind_has "dyp") && (st = (Unix.WEXITED 0)) then (
+      true
+    ) else false
+  in
+
   if not (ocamlfind_has "camomile") then (
-    Printf.fprintf stderr "Package camomile missing.\n";
+    Printf.fprintf stderr "error: package camomile missing.\n";
     exit 1
   );
-  let has_dypgen=
-    (ocamlfind_has "dyp") && (Sys.command "dypgen"=0)
-  in
+
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
