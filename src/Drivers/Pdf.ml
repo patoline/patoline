@@ -88,18 +88,22 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       n+1
   in
   let endObject pdf=fprintf outChan "\nendobj\n" in
+  let pdf_string_buf=Rbuffer.create 1000 in
   let pdf_string utf=
-    let buf=Rbuffer.create 1000 in
+    Rbuffer.clear pdf_string_buf;
     let rec fill i=
       try
-        if UChar.uint_code (UTF8.look utf i)<=0xff then
-          Rbuffer.add_string buf (sprintf "%02x" (UChar.uint_code (UTF8.look utf i)));
+        let code= (UTF8.look utf i) in
+        (if is_space code then
+            Rbuffer.add_string pdf_string_buf "20"
+         else if UChar.uint_code code<=0xff then
+           Rbuffer.add_string pdf_string_buf (sprintf "%02x" (UChar.uint_code code)));
         fill (UTF8.next utf i)
       with
           _->()
     in
     fill 0;
-    Rbuffer.contents buf
+    Rbuffer.contents pdf_string_buf
   in
   let addFont font=
     try StrMap.find (Fonts.uniqueName font) !fonts with
