@@ -157,7 +157,8 @@ let postprocess_tree tree=
               let w=if num=[] then 0. else env.size in
 
               let text=
-                let dr=(minipage {env with normalLeftMargin=0.;
+                let dr=(minipage {env with hyphenate=(fun _->[||]);
+                  normalLeftMargin=0.;
                   normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
                   size=env.size*.sz}
                           (paragraph n.displayname)).(0)
@@ -203,6 +204,7 @@ let postprocess_tree tree=
 
                      { (envAlternative (Fonts.Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
+                       hyphenate=(fun _->[||]);
                          size=(if List.length b=1 then sqrt phi else
                                  if List.length b <= 2 then sqrt (sqrt phi) else
                                    if List.length b = 3 then sqrt (sqrt (sqrt phi)) else 1.)*.env.size;
