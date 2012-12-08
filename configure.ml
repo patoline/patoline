@@ -447,8 +447,8 @@ let _=
               then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
           Array.iter (make_meta_part "src/Drivers") (Sys.readdir "src/Drivers");
           close_out meta;
-          Printf.printf "\nConfigure finished\n
-You can now build by doing:
+          Printf.printf "\nGood news: you can use Patoline !\n
+Now build it by doing:
 	make
 	make install
 
