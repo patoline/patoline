@@ -110,13 +110,14 @@ let command cmd args=
   let str=String.create 1000 in
   let rec read_all chans=
     if chans<>[] then (
-      let a,b,c=Unix.select chans [] chans (1.) in
+      let a,b,c=Unix.select chans [] chans (-.1.) in
       match a,c with
           ha::_ , _->(
             let x=Unix.read ha str 0 (String.length str) in
-            (if ha==b_in then
-                Rbuffer.add_substring buf_out str 0 x
-             else
+            (if ha==b_in then (
+              output stdout str 0 x;flush stdout;
+              Rbuffer.add_substring buf_out str 0 x
+             ) else
                 Rbuffer.add_substring buf_err str 0 x);
             if x>0 then
               read_all chans
@@ -126,7 +127,6 @@ let command cmd args=
             )
           )
         | _, hc::_->(
-          Unix.close hc;
           read_all (List.filter (fun ch->not (ch==hc)) chans)
         )
         | [],[]->(
