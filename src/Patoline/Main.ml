@@ -197,7 +197,7 @@ let rec read_options_from_source_file fread =
           Dynlink.loadfile name;
         with
             Dynlink.Error e->(
-              Printf.fprintf stderr "Dynlink error: %s\n" (Dynlink.error_message e);
+              output_string stderr (Language.message (Language.Dynlink_error (Dynlink.error_message e)));
               exit 1
             )
       );

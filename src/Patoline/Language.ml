@@ -29,6 +29,7 @@ type message=
   | Unknown_command of string
   | Cli of command_line
   | Image of image
+  | Dynlink_error of string
 
 and syntax_error=
     Parse_error
@@ -60,7 +61,7 @@ and command_line=
   | Remaining
   | No_line_directive
   | Recompile
-  | CCOpts 
+  | CCOpts
   | TopOpts
 
 and image =
@@ -68,7 +69,7 @@ and image =
   | Height
   | IFormat
   | RGB | BGR | VRGB | VBGR
- 
+
 #ifdef LANG_FR
 let lang=`FR
 let message=function
@@ -123,6 +124,9 @@ let message=function
     | BGR -> "active l'antialiasing pour les écrans BGR"
     | VRGB -> "active l'antialiasing pour les écrans VRGB"
     | VBGR -> "active l'antialiasing pour les écrans VBGR")
+  | Dynlink_error err->(
+    Printf.sprintf "Erreur d'édition de liens dynamique :\n%s\n" err
+  )
 
 #else
 #define LANG_EN
@@ -179,5 +183,8 @@ let message=function
     | BGR -> "subpixel antialiasing for BGR screen"
     | VRGB -> "subpixel antialiasing for VRGB screen"
     | VBGR -> "subpixel antialiasing for VBGR screen")
+  | Dynlink_error err->(
+    Printf.sprintf "Dynamic linking error :\n%s\n" err
+  )
 
 #endif
