@@ -15,9 +15,9 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Pdf:Drivers:Format
 
-all:native prof DefaultGrammar.pdf
+all:native prof
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) $(PATOLINE) DefaultGrammar.cmx DefaultGrammar.tgx ocaml-bibi/bibi.cmxa proof/proof Pdf/_build/pdf_parser.cmxa $(NATIVE_EXTRA)
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) $(PATOLINE) ocaml-bibi/bibi.cmxa proof/proof Pdf/_build/pdf_parser.cmxa $(NATIVE_EXTRA) DefaultGrammar.tgx
 
 byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
 
@@ -92,20 +92,13 @@ Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
 #Drivers/Typography.cmi:Typography/_build/Typography.cmi
 #	cp Typography/_build/Typography.cmi Drivers
 
-DefaultGrammar.ttml:DefaultGrammar.txp Patoline/patoline
-	Patoline/patoline --no-grammar --ml -c DefaultGrammar.txp
 DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
 
-DefaultGrammar.tgx:DefaultGrammar.txp Patoline/patoline
-	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
-
-DefaultGrammar.cmx:Format/DefaultFormat.cmxa Drivers/Pdf.cmxa DefaultGrammar.ttml
-	$(CAMLOPT) -c -o DefaultGrammar.cmx -I Rbuffer -I Typography/_build -I Format -I Drivers DefaultFormat.cmxa Typography.cmxa Pdf.cmxa -impl DefaultGrammar.ttml
-
-DefaultGrammar.pdf:DefaultGrammar.tml Drivers/Pdf.cmxa
+DefaultGrammar.tgx:DefaultGrammar.tml Patoline/patoline
 	$(CAMLOPT) -o DefaultGrammar.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -impl DefaultGrammar.tml
 	./DefaultGrammar.tmx
+
 
 .PHONY :doc
 doc:
@@ -122,4 +115,4 @@ clean:
 	make -C ocaml-bibi clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd proof; rm -f *~ \#*\# *.cm[xoi] *.o
-	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.o *.a
+	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.ttml *.o *.a
