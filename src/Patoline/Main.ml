@@ -24,8 +24,8 @@ let run = ref true
 let cmd_line = ref []
 let no_grammar=ref false
 let deps_only=ref false
-let extras = ref ""
-let extrastop = ref ""
+let extras = ref []
+let extras_top = ref []
 let cmd_line_format = ref false
 let cmd_line_driver= ref false
 let format=ref "DefaultFormat"
@@ -68,9 +68,9 @@ let spec =
    ("--ocamlopt",Arg.String (fun s->ocamlopt:=s), message (Cli Ocamlopt));
    ("-j",Arg.Int (fun s->Build.j:=max !Build.j s), message (Cli Parallel));
    ("--quiet", Arg.Unit (fun ()->quiet:=true), message (Cli Quiet));
-   ("--",Arg.Rest (fun s -> extras := !extras ^ " " ^s), message (Cli Remaining));
-   ("--topopts",Arg.String (fun s -> extrastop := !extrastop ^ " " ^ s), message (Cli TopOpts));
-   ("--ccopts",Arg.String (fun s -> extras := !extras ^ " " ^ s), message (Cli CCOpts));
+   ("--",Arg.Rest (fun s -> extras := s:: !extras), message (Cli Remaining));
+   ("--topopts",Arg.String (fun s -> extras_top := s:: !extras_top), message (Cli TopOpts));
+   ("--ccopts",Arg.String (fun s -> extras := s:: !extras), message (Cli CCOpts));
    ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
   ]
 
@@ -95,10 +95,10 @@ type options={
 
 let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (!dirs (* @ opts.directories *))))
 module StringSet = Set.Make(struct type t = string let compare = compare end)
-let compact l = 
+let compact l =
   let s = List.fold_right StringSet.add l StringSet.empty in
   StringSet.elements s
-  
+
 
 let last_options_used file=
   let fread=open_in file in
@@ -126,7 +126,7 @@ let last_options_used file=
 
 
 
-let add_format opts = 
+let add_format opts =
   let packages=
     (if opts.format <> "DefaultFormat" &&
         (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
@@ -225,12 +225,28 @@ let rec read_options_from_source_file fread =
       noamble:=true;
       pump ()
     )
-    else if Str.string_match add_compilation_option s 0 then (comp_opts := (Str.matched_group 1 s)::(!comp_opts); pump ())
+    else if Str.string_match add_compilation_option s 0 then (
+      let str=Str.matched_group 1 s in
+      let re=Str.regexp "\"\\(\\\"\\|[^\"]\\)*\"\\|\\([^ \t\n]+\\)" in
+      let rec getopts i res=
+        let next,j=
+          try
+            let _=Str.search_forward re str i in
+            let j=Str.match_end () in
+            Str.matched_group 1 str, j
+          with
+              Not_found->"",0
+        in
+        if next="" then res else getopts (max (i+1) j) (next::res)
+      in
+      let opts=getopts 0 [] in
+      comp_opts := (List.rev opts)@(!comp_opts);
+      pump ())
     else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
-    else if Str.string_match add_directories s 0 then 
+    else if Str.string_match add_directories s 0 then
       (let dirs_ = Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)
-       in 
-       directories := dirs_ ; 
+       in
+       directories := dirs_ ;
        dirs := (compact (dirs_ @ !dirs)) ;
        pump ())
     else if Str.string_match nothing s 0
@@ -269,16 +285,17 @@ and make_deps source=
   in
   if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
   let in_deps=Unix.open_process_in cmd in
-  let buf=Buffer.create 100 in
-  let s=String.create 100 in
-  (try
-     while true do
-       let i=input in_deps s 0 (String.length s) in
-       Buffer.add_substring buf s 0 i;
-       if i<String.length s then raise End_of_file
-     done
-   with
-       End_of_file->());
+  let buf=Buffer.create 1000 in
+  let s=String.create 1000 in
+  let rec read_all ()=
+    let i=input in_deps s 0 (String.length s) in
+    if i>0 then (
+      Buffer.add_substring buf s 0 i;
+      read_all ()
+    )
+  in
+  read_all ();
+  close_in in_deps;
   let cont=Buffer.contents buf in
   let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(\\(.*\\\n\\)*\\)$") in
   (try
@@ -286,7 +303,6 @@ and make_deps source=
      ldeps:=(Str.split (Str.regexp "[\n\t\r\\ ]+") (Str.matched_group 1 cont))@(!ldeps);
    with
        Not_found->());
-  close_in in_deps;
   Build.sem_up Build.sem;
   !ldeps
 
@@ -334,22 +350,26 @@ and patoline_rule objects h=
       in
       if options_have_changed || compilation_needed [source] [h] then (
 	let dirs_=str_dirs opts in
-        let cmd=Printf.sprintf "%s %s %s--ml%s%s%s%s --driver %s%s '%s'"
-          !patoline
-          dirs_
-          (if opts.noamble then "--noamble " else "")
-          (if opts.format<>"DefaultFormat" then " --format " else "")
-          (if opts.format<>"DefaultFormat" then opts.format else "")
-          (if !Parser.grammar=None then " --no-grammar" else "")
-	  (if !Generateur.edit_link then " --edit-link" else "")
-	  opts.driver
-          (if Filename.check_suffix h ".ttml" then " -c" else "")
-          source
+        let cmd= !patoline in
+        let args_l=List.filter (fun x->x<>"")
+          [cmd;
+           dirs_;
+           (if opts.noamble then "--noamble" else "");
+
+           (if opts.format<>"DefaultFormat" then "--format" else "");
+           (if opts.format<>"DefaultFormat" then opts.format else "");
+
+           "--ml";
+           (if !Parser.grammar=None then "--no-grammar" else "");
+	   (if !Generateur.edit_link then "--edit-link" else "");
+	   "--driver";opts.driver;
+           (if Filename.check_suffix h ".ttml" then "-c" else "");
+           source]
         in
-        if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
-        let err=Build.command cmd in
+        if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+        let err=Build.command cmd (Array.of_list args_l) in
         if err<>0 then (
-          failwith ("error : "^h)
+          exit err
         )
       );
       true
@@ -382,21 +402,24 @@ and patoline_rule objects h=
       let opts= add_format (read_options_from_source_file i) in
       let dirs_=str_dirs opts in
       close_in i;
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s -c -o '%s' -impl '%s'"
-        !ocamlopt
-        !extras
-        (String.concat " " opts.comp_opts)
-        (let pack=String.concat "," (List.rev (opts.packages)) in
-         if pack<>"" then "-package "^pack else "")
-        dirs_
-        h
-        source
-      in
 
-      if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
-      let err=Build.command cmd in
+      let cmd="ocamlfind" in
+      let args_l=List.filter (fun x->x<>"")
+        ([ cmd;
+           !ocamlopt]@(!extras)@
+            opts.comp_opts@
+            (let pack=String.concat "," (List.rev (opts.packages)) in
+             if pack<>"" then ["-package";pack] else [])@
+            [dirs_;
+             "-c";"-o";h;
+             "-impl";source ])
+      in
+      let args=Array.of_list (args_l) in
+
+      if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+      let err=Build.command cmd args in
       if err<>0 then (
-        failwith ("error : "^h)
+        exit err
       )
     );
     true
@@ -444,25 +467,27 @@ and patoline_rule objects h=
     let objs=breadth_first [h] [] in
     if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
-      let cmd=Printf.sprintf "ocamlfind %s %s %s %s %s %s %s -o '%s' %s -impl '%s'"
-        !ocamlopt
-        !extras
-        (String.concat " " opts.comp_opts)
-        (let pack=String.concat "," (List.rev (opts.packages)) in
-         if pack<>"" then "-package "^pack else "")
-        dirs_
-        (if Filename.check_suffix h ".cmxs" then "-shared" else "")
-        (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg")
-        h
-        (String.concat " " objs)
-        source
+      let cmd="ocamlfind" in
+      let args_l=List.filter (fun x->x<>"")
+        ([cmd;
+          !ocamlopt]@
+            (!extras)@
+            opts.comp_opts@
+            (let pack=String.concat "," (List.rev (opts.packages)) in
+             if pack<>"" then ["-package";pack] else [])@
+            [dirs_;
+             (if Filename.check_suffix h ".cmxs" then "-shared" else "");
+             (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
+             "-o";h;
+             (String.concat " " objs);
+             "-impl";source])
       in
       Mutex.unlock mut;
 
-      if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
-      let err=Build.command cmd in
+      if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+      let err=Build.command cmd (Array.of_list args_l) in
       if err<>0 then (
-        failwith ("error : "^h)
+        exit err
       )
     );
     end;
@@ -484,8 +509,9 @@ and process_each_file l=
         Build.sem_set Build.sem !Build.j;
         Build.build cmd;
         if !run && Sys.file_exists cmd then (
-          Printf.fprintf stdout "'%s' %s\n" cmd !extrastop;flush stdout;
-          let _=Build.command ("'"^cmd^"' "^ !extrastop) in
+          extras_top:=List.rev !extras_top;
+          Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
+          let _=Build.command cmd (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top))) in
           ()
         )
       ) else (

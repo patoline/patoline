@@ -12,7 +12,7 @@ val sem_down : sem -> unit
 val sem_create : int -> sem
 val sem_set : sem -> int -> unit
 val sem : sem
-val command : string -> int
+val command : string -> string array -> int
 type rule_t = Node of rule_t * rule_t | Leaf of (string -> bool)
 val rules : rule_t ref
 val macros : (string->string) Util.StrMap.t ref

@@ -77,11 +77,82 @@ let sem_set mut y=
 
 
 let sem=sem_create 1
-let command cmd=
+
+let mpids=Mutex.create ()
+let pids=ref IntSet.empty
+let stop_all ()=
+  Mutex.lock mpids;
+#ifndef __WINDOWS__
+  IntSet.iter (fun x->
+    Printf.fprintf stderr "killing child %d\n" x;flush stderr;
+    Unix.kill x Sys.sigkill
+  ) !pids;
+#endif
+  Mutex.unlock mpids
+
+let command cmd args=
   sem_down sem;
-  let err=Sys.command cmd in
+  Mutex.lock mpids;
+  let a_in,a_out=Unix.pipe () in
+  let b_in,b_out=Unix.pipe () in
+  let c_in,c_out=Unix.pipe () in
+  let pid=Unix.create_process cmd args a_in b_out c_out in
+  Unix.close a_in;
+  Unix.close a_out;
+  Unix.close b_out;
+  Unix.close c_out;
+  pids:=IntSet.add pid !pids;
+  Mutex.unlock mpids;
+
+  let buf_out=Rbuffer.create 1000 in
+  let buf_err=Rbuffer.create 1000 in
+
+  let str=String.create 1000 in
+  let rec read_all chans=
+    if chans<>[] then (
+      let a,b,c=Unix.select chans [] chans (1.) in
+      match a,c with
+          ha::_ , _->(
+            let x=Unix.read ha str 0 (String.length str) in
+            (if ha==b_in then
+                Rbuffer.add_substring buf_out str 0 x
+             else
+                Rbuffer.add_substring buf_err str 0 x);
+            if x>0 then
+              read_all chans
+            else (
+              Unix.close ha;
+              read_all (List.filter (fun ch->not (ch==ha)) chans)
+            )
+          )
+        | _, hc::_->(
+          Unix.close hc;
+          read_all (List.filter (fun ch->not (ch==hc)) chans)
+        )
+        | [],[]->(
+          read_all chans
+        )
+    )
+  in
+  read_all [b_in;c_in];
+
+  let _,stat=Thread.wait_pid pid in
+
+  Rbuffer.output_buffer stdout buf_out;
+  Rbuffer.output_buffer stderr buf_err;
+  Mutex.lock mpids;
+  pids:=IntSet.remove pid !pids;
+  Mutex.unlock mpids;
+
   sem_up sem;
-  err
+  match stat with
+      Unix.WEXITED err->
+        if err=0 then 0 else (
+          stop_all ();
+          1
+        )
+    | Unix.WSIGNALED _
+    | Unix.WSTOPPED _->(stop_all ();1)
 
 type rule_t=Node of rule_t*rule_t | Leaf of (string->bool)
 
