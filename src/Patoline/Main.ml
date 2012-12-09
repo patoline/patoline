@@ -227,17 +227,20 @@ let rec read_options_from_source_file fread =
     )
     else if Str.string_match add_compilation_option s 0 then (
       let str=Str.matched_group 1 s in
-      let re=Str.regexp "\"\\(\\\"\\|[^\"]\\)*\"\\|\\([^ \t\n]+\\)" in
+      let restr="\\(\"\\(\\\"\\|[^\"]\\)*\"\\)\\|\\([^ \t\n\"]+\\)" in
+      let re=Str.regexp restr in
       let rec getopts i res=
         let next,j=
           try
             let _=Str.search_forward re str i in
+            let i'=Str.match_beginning () in
             let j=Str.match_end () in
-            Str.matched_group 1 str, j
+            let gr=String.sub str i' (j-i') in
+            gr, j
           with
-              Not_found->"",0
+              Not_found->"",(-1)
         in
-        if next="" then res else getopts (max (i+1) j) (next::res)
+        if j<0 then res else getopts (max (i+1) j) (next::res)
       in
       let opts=getopts 0 [] in
       comp_opts := (List.rev opts)@(!comp_opts);
@@ -366,7 +369,10 @@ and patoline_rule objects h=
            (if Filename.check_suffix h ".ttml" then "-c" else "");
            source]
         in
-        if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+        if not !quiet then (Printf.fprintf stdout "%s\n"
+                              (String.concat " "
+                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                            flush stdout);
         let err=Build.command cmd (Array.of_list args_l) in
         if err<>0 then (
           exit err
@@ -404,10 +410,14 @@ and patoline_rule objects h=
       close_in i;
 
       let cmd="ocamlfind" in
+
+      let comp_opts=
+        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+      in
       let args_l=List.filter (fun x->x<>"")
         ([ cmd;
            !ocamlopt]@(!extras)@
-            opts.comp_opts@
+            comp_opts@
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
             [dirs_;
@@ -416,7 +426,11 @@ and patoline_rule objects h=
       in
       let args=Array.of_list (args_l) in
 
-      if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+      if not !quiet then (Printf.fprintf stdout "%s\n"
+                              (String.concat " "
+                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+
+                          flush stdout);
       let err=Build.command cmd args in
       if err<>0 then (
         exit err
@@ -468,23 +482,29 @@ and patoline_rule objects h=
     if compilation_needed (source::objs) [h] then (
       let dirs_=str_dirs opts in
       let cmd="ocamlfind" in
+      let comp_opts=
+        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+      in
       let args_l=List.filter (fun x->x<>"")
         ([cmd;
           !ocamlopt]@
             (!extras)@
-            opts.comp_opts@
+            comp_opts@
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
             [dirs_;
              (if Filename.check_suffix h ".cmxs" then "-shared" else "");
              (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
-             "-o";h;
-             (String.concat " " objs);
-             "-impl";source])
+             "-o";h]@
+            objs@
+            ["-impl";source])
       in
       Mutex.unlock mut;
 
-      if not !quiet then (Printf.fprintf stdout "%s\n" (String.concat " " args_l);flush stdout);
+      if not !quiet then (Printf.fprintf stdout "%s\n"
+                              (String.concat " "
+                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                          flush stdout);
       let err=Build.command cmd (Array.of_list args_l) in
       if err<>0 then (
         exit err

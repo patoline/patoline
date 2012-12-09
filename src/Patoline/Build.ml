@@ -84,8 +84,8 @@ let stop_all ()=
   Mutex.lock mpids;
 #ifndef __WINDOWS__
   IntSet.iter (fun x->
-    Printf.fprintf stderr "killing child %d\n" x;flush stderr;
-    Unix.kill x Sys.sigkill
+    (* Printf.fprintf stderr "killing child %d\n" x;flush stderr; *)
+    Unix.kill x Sys.sigkill;
   ) !pids;
 #endif
   Mutex.unlock mpids
