@@ -93,7 +93,7 @@ type options={
   noamble:bool
 }
 
-let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (!dirs (* @ opts.directories *))))
+let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (opts.directories)))
 module StringSet = Set.Make(struct type t = string let compare = compare end)
 let compact l =
   let s = List.fold_right StringSet.add l StringSet.empty in
