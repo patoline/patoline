@@ -676,7 +676,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 	    paragraph ((
               [ tT "Figure"; tT " ";
                 tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
-              @(if caption=[] then [] else tT" "::tT"-"::tT" "::caption)
+              @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
             )))
 	in
         let caption= caption.(0) in
