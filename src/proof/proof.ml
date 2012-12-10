@@ -59,7 +59,7 @@ let _=
                  (min y0 (Fonts.glyph_y0 gl)) (max y1 (Fonts.glyph_y1 gl))
                  (
                    if not bezier_au_lieu_des_glyphs then
-                     Glyph { glyph_x=x;glyph_y=0.;glyph_order=0;glyph_color=black;glyph_size=size; glyph=gl }::l
+                     Glyph { glyph_x=x;glyph_y=0.;glyph_kx=x;glyph_ky=0.;glyph_order=0;glyph_color=black;glyph_size=size; glyph=gl }::l
                    else
                      translate x 0.
                        (resize (size/.1000.)

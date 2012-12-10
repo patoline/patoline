@@ -107,3 +107,6 @@ val print_box_type : out_channel -> box -> unit
 val print_text_line : box array array -> Line.line -> unit
 val text_box : box -> string
 val text_line : box array array -> Line.line -> string
+val vkern_as : ('a -> 'b -> box list) ->
+           ('a -> 'b -> box list) -> 'a -> 'b -> box list
+

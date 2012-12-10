@@ -30,7 +30,9 @@ type path_parameters = {
 val default : path_parameters
 type glyph = {
   glyph_x : float;
+  glyph_kx : float;
   glyph_y : float;
+  glyph_ky : float;
   glyph_order : int;
   glyph_color : color;
   glyph_size : float;

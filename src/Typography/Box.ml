@@ -204,6 +204,37 @@ let rec resize l=function
                            kern_contents=resize l x.kern_contents }
   | x->x
 
+(* vertically kern g as g' *)
+let vkern_as gs gs' envs st =
+  let gs = gs envs st in
+  let gs' = gs' envs st in
+  let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
+    | [] -> (sy/.float nb,mi,sk/.float nb,ma)
+    | GlyphBox g::gs -> 
+	let acc = 
+	  sy +. g.glyph_y,
+	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+	  sk +. g.glyph_ky,
+	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+	  nb + 1
+	in vbox' acc gs
+	| _ -> failwith "vkern on non glyph"
+  in	  
+  let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
+  let y,yl,y0,yh = vbox gs in
+  let y',yl',y0',yh' = vbox gs' in
+  let s = (yh' -. yl') /. (yh -. yl) in
+  let dy = (y' +. yl') -. (y +. yl) *. s in
+  List.map (function 
+      GlyphBox g -> GlyphBox {
+	g with 
+	  glyph_size = g.glyph_size *. s;
+	  glyph_y = g.glyph_y *. s +. dy;
+	  glyph_ky = y0'; 
+	  glyph_x = g.glyph_x *. s;
+	  glyph_kx = g.glyph_kx *. s;
+      }
+    | _ -> failwith "vkern on non glyph") gs
 
 let fold_left_line paragraphs f x0 line=
   if line.paragraph>=Array.length paragraphs || line.paragraph<0 then x0 else (
@@ -354,6 +385,7 @@ let glyphCache cur_font gl=
           (let glyph=Fonts.loadGlyph cur_font gl in
            let loaded={ glyph=glyph;
                         glyph_x=0.;glyph_y=0.;
+                        glyph_kx=0.;glyph_ky=0.;
                         glyph_order=0;
                         glyph_color=black;
                         glyph_size=0. } in

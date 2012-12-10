@@ -77,8 +77,7 @@ let default= { path_order=0;close=false;strokingColor=Some black;fillColor=None;
                lineCap=Butt_cap; lineJoin=Miter_join; lineWidth=0.1;
                dashPattern=[] }
 
-
-type glyph={ glyph_x:float; glyph_y:float; glyph_order:int; glyph_color: color; glyph_size:float;
+type glyph={ glyph_x:float; glyph_kx:float; glyph_y:float; glyph_ky:float; glyph_order:int; glyph_color: color; glyph_size:float;
              glyph:Fonts.glyph }
 type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
@@ -100,7 +99,7 @@ and raw=
   | States of states
 
 let rec translate x y=function
-    Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y }
+    Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }
   | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)
   | Link l -> Link { l with
     link_x0=l.link_x0+.x; link_y0=l.link_y0+.y;
@@ -111,7 +110,8 @@ let rec translate x y=function
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
 
 let rec resize alpha=function
-    Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_size=g.glyph_size*.alpha }
+    Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
+      glyph_size=g.glyph_size*.alpha }
   | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha },
                        List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
   | Link l -> Link { l with
@@ -123,6 +123,7 @@ let rec resize alpha=function
                        image_height=i.image_height*.alpha }
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
 
+
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
   ignore_after_glyphWidth : bool;
@@ -132,17 +133,19 @@ let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
       []->(x0,y0,x1,y1)
     | Glyph g::s->(
-        let x0'=g.glyph_x +. 
-	  (if opt.ignore_negative_abcisse then 0.0 else Fonts.glyph_x0 g.glyph) 
-          *. g.glyph_size/.1000. in
-        let x1'=g.glyph_x +.
-	  (if opt.ignore_after_glyphWidth then Fonts.glyphWidth g.glyph else Fonts.glyph_x1 g.glyph)
-	  *. g.glyph_size /.1000. in
-        let y0'=g.glyph_y +. 
-	  (if opt.ignore_under_base_line then 0.0 else Fonts.glyph_y0 g.glyph)
-	  *. g.glyph_size /.1000. in
-        let y1'=g.glyph_y +. g.glyph_size*.Fonts.glyph_y1 g.glyph/.1000. in
-          bb (min x0 x0') (min y0 y0') (max x1 x1') (max y1 y1') s
+      let x0'=
+	if opt.ignore_negative_abcisse then g.glyph_kx else g.glyph_x +. Fonts.glyph_x0 g.glyph *. g.glyph_size/.1000.
+      in
+      let x1'=g.glyph_x +.
+	(if opt.ignore_after_glyphWidth then Fonts.glyphWidth g.glyph else Fonts.glyph_x1 g.glyph) *. g.glyph_size /.1000.
+      in
+      let y0'=
+	if opt.ignore_under_base_line then g.glyph_ky else g.glyph_y +. Fonts.glyph_y0 g.glyph *. g.glyph_size /.1000.
+      in
+      let y1'=
+	g.glyph_y +.Fonts.glyph_y1 g.glyph *.  g.glyph_size/.1000.
+      in
+      bb (min x0 x0') (min y0 y0') (max x1 x1') (max y1 y1') s
       )
     | Path (_,ps)::s->(
         let x0'=ref x0 in

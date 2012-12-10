@@ -1,0 +1,25 @@
+
+There is a problem with the ``white square bracket'' of the Asana math font:  
+
+$$\orig_left_white_square_bracket A \orig_right_white_square_bracket < [A] <  \orig_left_white_square_bracket[A]\orig_right_white_square_bracket$$
+
+This glyph does not have in the font the same base line not the same size as the normal square bracket and this brakes the 
+typesetting of Math formula. Clearly having a correct font would be the best solution, But there are not so many
+such a font !
+
+So patoline allows to fix this:
+ 
+$$〚[[A]]〛$$
+
+$$((x+y)) + ((x)) + ((y)) + ((f(x))) + ((f)) + ({.})$$
+
+$$[[(A)]] < 〚[(A)]〛 < [(〚A〛)]$$ 
+
+Here we try large sizes, in the last example, the size are not sufficient:
+
+$$〚∫ₐᵇcos(t) d t〛 < [∫ₐᵇcos(t) d t] <  (∫ₐᵇcos(t) d t) + (x) + (1 \over 2)$$
+
+$$〚{∫ₐᵇcos(t) d t}\over x 〛 < [{∫ₐᵇcos(t) d t}\over x] <  ({∫ₐᵇcos(t) d t}\over x) + (x) + (1 \over 2)$$
+
+$$〚x \over{∫ₐᵇcos(t) d t} 〛 < [x \over{∫ₐᵇcos(t) d t}] <  (x \over {∫ₐᵇcos(t) d t}) + (x) + (1 \over 2)$$
+
