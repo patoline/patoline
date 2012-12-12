@@ -93,7 +93,31 @@ type options={
   noamble:bool
 }
 
-let str_dirs opts = (String.concat " " (List.map (fun dir -> ("-I " ^ dir)) (opts.directories)))
+let str_dirs optsdirs =
+  let rec make_dirs l res=match l with
+      []->List.rev res
+    | h::s->make_dirs s (h::"-I"::res)
+  in
+  make_dirs optsdirs []
+
+let getopts str=
+  let restr="\\(\"\\(\\\"\\|[^\"]\\)*\"\\)\\|\\([^ \t\n\"]+\\)" in
+  let re=Str.regexp restr in
+  let rec getopts i res=
+    let next,j=
+      try
+        let _=Str.search_forward re str i in
+        let i'=Str.match_beginning () in
+        let j=Str.match_end () in
+        let gr=String.sub str i' (j-i') in
+        gr, j
+      with
+          Not_found->"",(-1)
+    in
+    if j<0 then List.rev res else getopts (max (i+1) j) (next::res)
+  in
+  getopts 0 []
+
 module StringSet = Set.Make(struct type t = string let compare = compare end)
 let compact l =
   let s = List.fold_right StringSet.add l StringSet.empty in
@@ -227,31 +251,18 @@ let rec read_options_from_source_file fread =
     )
     else if Str.string_match add_compilation_option s 0 then (
       let str=Str.matched_group 1 s in
-      let restr="\\(\"\\(\\\"\\|[^\"]\\)*\"\\)\\|\\([^ \t\n\"]+\\)" in
-      let re=Str.regexp restr in
-      let rec getopts i res=
-        let next,j=
-          try
-            let _=Str.search_forward re str i in
-            let i'=Str.match_beginning () in
-            let j=Str.match_end () in
-            let gr=String.sub str i' (j-i') in
-            gr, j
-          with
-              Not_found->"",(-1)
-        in
-        if j<0 then res else getopts (max (i+1) j) (next::res)
-      in
-      let opts=getopts 0 [] in
-      comp_opts := (List.rev opts)@(!comp_opts);
+      let opts=getopts str in
+      comp_opts := opts@(!comp_opts);
       pump ())
     else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
+
     else if Str.string_match add_directories s 0 then
       (let dirs_ = Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)
        in
        directories := dirs_ ;
        dirs := (compact (dirs_ @ !dirs)) ;
        pump ())
+
     else if Str.string_match nothing s 0
         || Str.string_match blank s 0
     then pump ()
@@ -278,12 +289,12 @@ and make_deps source=
   let opts=read_options_from_source_file in_s in
   close_in in_s;
 
-  let dirs_=str_dirs opts in
+  let dirs_=str_dirs (!dirs@opts.directories) in
   let cmd=Printf.sprintf
     "ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
     (let pack=String.concat "," (List.rev opts.packages) in
      if pack<>"" then "-package "^pack else "")
-    dirs_
+    (String.concat " " dirs_)
     source
   in
   if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
@@ -352,22 +363,21 @@ and patoline_rule objects h=
               ))
       in
       if options_have_changed || compilation_needed [source] [h] then (
-	let dirs_=str_dirs opts in
+	let dirs_=str_dirs (!dirs@opts.directories) in
         let cmd= !patoline in
         let args_l=List.filter (fun x->x<>"")
-          [cmd;
-           dirs_;
-           (if opts.noamble then "--noamble" else "");
-
-           (if opts.format<>"DefaultFormat" then "--format" else "");
-           (if opts.format<>"DefaultFormat" then opts.format else "");
-
-           "--ml";
-           (if !Parser.grammar=None then "--no-grammar" else "");
-	   (if !Generateur.edit_link then "--edit-link" else "");
-	   "--driver";opts.driver;
-           (if Filename.check_suffix h ".ttml" then "-c" else "");
-           source]
+          (cmd::
+             dirs_@
+             [(if opts.noamble then "--noamble" else "");
+              (if opts.format<>"DefaultFormat" then "--format" else "");
+              (if opts.format<>"DefaultFormat" then opts.format else "");
+              "--ml";
+              (if !Parser.grammar=None then "--no-grammar" else "");
+	      (if !Generateur.edit_link then "--edit-link" else "");
+	      "--driver";opts.driver;
+              (if Filename.check_suffix h ".ttml" then "-c" else "");
+              source]
+          )
         in
         if not !quiet then (Printf.fprintf stdout "%s\n"
                               (String.concat " "
@@ -406,7 +416,7 @@ and patoline_rule objects h=
     if compilation_needed (source::cmis) [pref^".cmx";pref^".cmi"] then (
       let i=open_in source in
       let opts= add_format (read_options_from_source_file i) in
-      let dirs_=str_dirs opts in
+      let dirs_=str_dirs (!dirs@opts.directories) in
       close_in i;
 
       let cmd="ocamlfind" in
@@ -416,12 +426,13 @@ and patoline_rule objects h=
       in
       let args_l=List.filter (fun x->x<>"")
         ([ cmd;
-           !ocamlopt]@(!extras)@
+           !ocamlopt]@
+            (List.concat (List.map getopts !extras))@
             comp_opts@
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
-            [dirs_;
-             "-c";"-o";h;
+            dirs_@
+            ["-c";"-o";h;
              "-impl";source ])
       in
       let args=Array.of_list (args_l) in
@@ -480,7 +491,7 @@ and patoline_rule objects h=
     in
     let objs=breadth_first [h] [] in
     if compilation_needed (source::objs) [h] then (
-      let dirs_=str_dirs opts in
+      let dirs_=str_dirs (!dirs@opts.directories) in
       let cmd="ocamlfind" in
       let comp_opts=
         List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
@@ -488,12 +499,12 @@ and patoline_rule objects h=
       let args_l=List.filter (fun x->x<>"")
         ([cmd;
           !ocamlopt]@
-            (!extras)@
+            (List.concat (List.map getopts !extras))@
             comp_opts@
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
-            [dirs_;
-             (if Filename.check_suffix h ".cmxs" then "-shared" else "");
+            dirs_@
+            [(if Filename.check_suffix h ".cmxs" then "-shared" else "");
              (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
              "-o";h]@
             objs@
