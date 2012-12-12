@@ -433,7 +433,27 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 )
         | States s->List.iter output_contents s.states_contents
       in
-        List.iter output_contents (drawing_sort pages.(page).pageContents);
+      let sorted_pages=
+
+        let x=List.fold_left (fun m x->
+          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+          IntMap.add (drawing_order x) (x::m') m
+        ) IntMap.empty pages.(page).pageContents
+        in
+        let comp a b=match a,b with
+            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+              else compare gb.glyph_y ga.glyph_y
+          | Glyph ga,_-> -1
+          | _,Glyph gb->1
+          | _->0
+        in
+        let subsort a=match a with
+            Link l->Link { l with link_contents=List.sort comp l.link_contents }
+          | b->b
+        in
+        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+      in
+        List.iter output_contents sorted_pages;
         close_text ();
         (* Objets de la page *)
         let contentObj=beginObject () in

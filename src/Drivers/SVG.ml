@@ -307,7 +307,11 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           | _,Glyph gb->1
           | _->0
         in
-        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
+        let subsort a=match a with
+            Link l->Link { l with link_contents=List.sort comp l.link_contents }
+          | b->b
+        in
+        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
       in
       let svg=draw ~fontCache:cache chop w h sorted_pages in
       let defs=make_defs cache in
@@ -360,7 +364,11 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
           | _,Glyph gb->1
           | _->0
         in
-        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp l)) x) []
+        let subsort a=match a with
+            Link l->Link { l with link_contents=List.sort comp l.link_contents }
+          | b->b
+        in
+        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
       in
       let svg=draw ~fontCache:cache prefix w h sorted_pages in
       Rbuffer.add_buffer file svg;
