@@ -23,13 +23,13 @@ ifeq ($(UNAME), Darwin)
 CFLAGS=-fPIC -framework GLUT -framework OpenGL
 endif
 
-Html.cmxa:Html.cmx ../Typography/_build/Typography.cmxa
+Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
-SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmxa
+SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
-GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmxa
+GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx GL.cmx 
-Image.cmxa:GL.cmx Image.cmx ../Typography/_build/Typography.cmxa
+Image.cmxa:GL.cmx Image.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Pdf.cmx
