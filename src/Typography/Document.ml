@@ -121,7 +121,10 @@ module Mathematical=struct
      Bezier curve until the thickness of the polygon is less than x *)
     precise_kerning:float option;
     priorities:float array;
-    priority_unit:float
+    priority_unit:float;
+    delimiter_up_tolerance:float;
+    delimiter_down_tolerance:float;
+      
   }
   and environment=env array             (* doit etre de taille 8 *)
   and style=

@@ -162,8 +162,11 @@ let default_env=
       kerning=true;
       precise_kerning=Some 1e-2;
       priorities=[| 4.;3.;2.;1. |];
-      priority_unit=1./.8.
-    }
+      priority_unit=1./.8.;
+      delimiter_up_tolerance=0.05;
+      delimiter_down_tolerance=0.05;
+   }
+
 let msubst m x=List.map (fun x->try
                            { x with glyph_index=IntMap.find x.glyph_index m }
                          with
@@ -176,13 +179,15 @@ let displaySubst=Lazy.lazy_from_fun
          778,779;
          275,779])
 
+let default_env2 = { default_env with delimiter_up_tolerance=0.3; delimiter_down_tolerance=0.15; }
+
 let default=[|
   { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
   { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
-  default_env;
-  default_env;
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=4./.9. };
-  { default_env with mathsSize=4./.9. }
+  default_env2;
+  default_env2;
+  { default_env2 with mathsSize=2./.3. };
+  { default_env2 with mathsSize=2./.3. };
+  { default_env2 with mathsSize=4./.9. };
+  { default_env2 with mathsSize=4./.9. }
 |]

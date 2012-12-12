@@ -591,7 +591,7 @@ let rec draw env_stack mlist=
                                      check_inf x1_l_,
                                      check_inf y1_l_)
           in
-          (* FIXME : mettre les coefs and mathEnvs *)
+          (* FIXME : mettre les coefs dans mathEnvs *)
 	  let factor = if op.op_limits then
 	      if (style=Display || style=Display') then 0.75 else 0.5
 	    else
@@ -835,15 +835,16 @@ let open_close left right env_ style box=
       | [] -> [], (0.0, 0.0, 0.0, 0.0)
       | (d, (dx0,dy0,dx1,dy1 as dd)) :: l ->
 	(* FIXME: 0.05 should be in env *)
-	let delta =  (dy1 -. dy0) *. 0.05 in
-	if l = [] or (y1 <=  dy1 +. delta && y0 >= dy0 -. delta) then
+	let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
+	let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
+	if l = [] or (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
 	   (d,dd) else select_size l
     in
     select_size ll, select_size lr
   in
   
-  let (x0_l,y0_l,x1_l,y1_l)=bounding_box_full left in
-  let (x0_r,y0_r,x1_r,y1_r)=bounding_box_full right in
+  let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+  let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
 
   let dist0 = if left = [] then 0.0 else 
       adjust_space env (s*.env.open_dist) (-.x1_l+.x0_l) left mid in

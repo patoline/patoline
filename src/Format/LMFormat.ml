@@ -115,16 +115,19 @@ module LMMath = struct
     "lmodern/lmmath.otf"));
     mathsSubst = italicsubst }
 
+let default_env2 = { default_env with delimiter_up_tolerance=0.3; delimiter_down_tolerance=0.15; }
+
 let default=[|
-  default_env;
-  default_env;
-  default_env;
-  default_env;
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=2./.3. };
-  { default_env with mathsSize=4./.9. };
-  { default_env with mathsSize=4./.9. }
+  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
+  { default_env with mathsSubst=msubst (Lazy.force displaySubst) };
+  default_env2;
+  default_env2;
+  { default_env2 with mathsSize=2./.3. };
+  { default_env2 with mathsSize=2./.3. };
+  { default_env2 with mathsSize=4./.9. };
+  { default_env2 with mathsSize=4./.9. }
 |]
+
 end
 
 module MakeFormat (D:Document.DocumentStructure)
