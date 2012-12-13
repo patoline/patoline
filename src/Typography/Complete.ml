@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Box
-open Line
+open Layout
 open Util
 open Break
 open Document
@@ -31,7 +31,7 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
       if not (IntMap.is_empty figures_) then
         match IntMap.max_binding figures_ with
             (fig,Placed fig_line)->(
-              if line.page=fig_line.page &&
+              if page line=page fig_line &&
                 line.height<=
                 fig_line.height -. figures.(fig).drawing_y0
                 && line.height>=fig_line.height -. figures.(fig).drawing_y1

@@ -19,7 +19,7 @@
 *)
 open Printf
 open Lexing
-open Line
+open Layout
 
 type message=
   | No_solution of string

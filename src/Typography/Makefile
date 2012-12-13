@@ -25,7 +25,7 @@ _build/Typography.p.cmx:
 
 doc:
 	mkdir -p $(DOCDIR)
-	$(CAMLDOC) Document.ml Maths.ml Box.ml Diagrams.ml Util.ml Fonts.ml Fonts/FTypes.ml Complete.ml Badness.ml Hyphenate.ml Line.ml Break.ml Output/OutputCommon.ml Bezier.ml Output/OutputPaper.ml Output/OutputDrawing.ml
+	$(CAMLDOC) Document.ml Maths.ml Box.ml Diagrams.ml Util.ml Fonts.ml Fonts/FTypes.ml Complete.ml Badness.ml Hyphenate.ml Layout.ml Break.ml Output/OutputCommon.ml Bezier.ml Output/OutputPaper.ml Output/OutputDrawing.ml
 
 
 

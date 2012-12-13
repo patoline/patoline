@@ -348,7 +348,7 @@ let author x=match !bibfile_ with
 
 open Util
 open Box
-open Line
+open Layout
 
 module TheBibliography (D : DocumentStructure) = struct
   let _ =

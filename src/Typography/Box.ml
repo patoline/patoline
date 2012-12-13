@@ -33,7 +33,7 @@ type box=
   | User of user
   | BeginFigure of int
   | FlushFigure of int
-  | Parameters of (Line.parameters->Line.parameters)
+  | Parameters of (Layout.parameters->Layout.parameters)
   | Empty
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
@@ -59,7 +59,7 @@ and user=
   | AlignmentMark
 
 module UserMap=Map.Make(struct type t=user let compare=compare end)
-open Line
+open Layout
 
 let drawing ?offset:(offset=0.) cont=
   let (a,b,c,d)=OutputCommon.bounding_box cont in

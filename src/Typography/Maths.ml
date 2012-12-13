@@ -821,7 +821,6 @@ let open_close left right env_ style box=
   let mid=draw_boxes env_ box in
   let (x0,y0,x1,y1)=bounding_box_kerning mid in
   let (x0',y0',x1',y1')=bounding_box_full mid in
-  let middle = (y1 +. y0) /. 2.0 in
 
   let (left, (x0_l',y0_l',x1_l',y1_l')), 
       (right, (x0_r',y0_r',x1_r',y1_r')) =

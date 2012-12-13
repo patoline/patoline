@@ -1,10 +1,11 @@
-type figurePosition = Placed of Line.line | Flushed | Begun
+val is_last : Box.box array -> int -> bool
+type figurePosition = Placed of Layout.line | Flushed | Begun
 module type Line =
   sig type t val compare : t -> t -> int val hash : t -> int end
 module Make :
   functor
     (L : sig
-           type t = Line.line
+           type t = Layout.line
            val compare : t -> t -> int
            val hash : t -> int
          end) ->
@@ -42,7 +43,8 @@ module Make :
         end
       module ColMap :
         sig
-          type key = float * float * Line.line * float * float * Line.line
+          type key =
+              float * float * Layout.line * float * float * Layout.line
           type +'a t
           val empty : 'a t
           val is_empty : 'a t -> bool
@@ -71,39 +73,45 @@ module Make :
           val map : ('a -> 'b) -> 'a t -> 'b t
           val mapi : (key -> 'a -> 'b) -> 'a t -> 'b t
         end
+      val print_graph :
+        string ->
+        'a ->
+        ('b * 'c * 'd * 'e * 'f * LineMap.key * 'g * 'h) LineMap.t ->
+        ('i * LineMap.key) list -> unit
       val typeset :
         completeLine:(Box.box array array ->
                       Box.drawingBox array ->
                       figurePosition Util.IntMap.t ->
-                      L.t Box.UserMap.t -> Line.line -> bool -> L.t list)
+                      L.t Box.UserMap.t -> Layout.line -> bool -> L.t list)
                      array ->
         figures:Box.drawingBox array ->
         figure_parameters:(Box.box array array ->
                            Box.drawingBox array ->
-                           Line.parameters ->
+                           Layout.parameters ->
                            figurePosition Util.IntMap.t ->
                            L.t Box.UserMap.t ->
-                           LineMap.key -> Line.line -> Line.parameters)
+                           LineMap.key -> Layout.line -> Layout.parameters)
                           array ->
         parameters:(Box.box array array ->
                     Box.drawingBox array ->
-                    Line.parameters ->
+                    Layout.parameters ->
                     figurePosition Util.IntMap.t ->
                     L.t Box.UserMap.t ->
-                    LineMap.key -> L.t -> Line.parameters)
+                    LineMap.key -> L.t -> Layout.parameters)
                    array ->
+        new_page:(Layout.frame_zipper -> Layout.frame_zipper) array ->
         badness:(Box.box array array ->
                  Box.drawingBox array ->
                  figurePosition Util.IntMap.t ->
                  LineMap.key ->
                  Box.box array ->
                  int ->
-                 Line.parameters ->
+                 Layout.parameters ->
                  float ->
                  L.t ->
-                 Box.box array -> int -> Line.parameters -> float -> float)
+                 Box.box array -> int -> Layout.parameters -> float -> float)
                 array ->
         Box.box array array ->
-        TypoLanguage.message list * (Line.parameters * L.t) list array *
+        TypoLanguage.message list * Layout.placed_line list array *
         figurePosition Util.IntMap.t * L.t Box.UserMap.t
     end

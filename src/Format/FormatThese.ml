@@ -24,7 +24,7 @@ open Typography.Document
 open Typography.Util
 open CamomileLibrary
 open Typography.Box
-open Typography.Line
+open Typography.Layout
 open Printf
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
@@ -230,7 +230,7 @@ let postprocess_tree tree=
                     min_page_before = (
                       if path=[] && line.lineStart<=0 then (
                         let minimal=max p.min_page_before 1 in
-                        minimal+((1+max 0 line.page+minimal) mod 2)
+                        minimal+((1+max 0 (page line)+minimal) mod 2)
                       ) else p.min_page_before
                     );
                     measure=p.measure+.w }
@@ -244,7 +244,7 @@ let postprocess_tree tree=
                   min_page_before = (
                     if path=[] && line.lineStart<=0 then (
                       let minimal=max param.min_page_before 1 in
-                      minimal+((g.page+minimal) mod 2)
+                      minimal+((page g+minimal) mod 2)
                     ) else param.min_page_before
                   );
                   min_lines_before=2;
@@ -255,6 +255,7 @@ let postprocess_tree tree=
                       if line.lineEnd>=Array.length b.(line.paragraph) then 2 else 0;
                   not_last_line=true }
               );
+          par_new_page=Document.new_page;
           par_completeLine=Complete.normal }
         in
           Node { n with children=
@@ -274,7 +275,7 @@ let postprocess_tree tree=
 module Output (M:OutputPaper.Driver)=struct
   module Def=Default.Output(M)
   include Def
-  let output out_params structure defaultEnv file=
+  let output out_params (structure:Document.tree) (defaultEnv:Document.environment) file=
     Def.basic_output out_params (postprocess_tree structure) defaultEnv file
 end
 

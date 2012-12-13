@@ -24,7 +24,7 @@ open Fonts
 open Fonts.FTypes
 open OutputCommon
 open Box
-open Line
+open Layout
 open CamomileLibrary
 
 type fontAlternative = Regular | Bold | Caps | Demi
@@ -80,9 +80,6 @@ module TS=Break.Make
 
            if a.isFigure<b.isFigure then -1 else
              if a.isFigure>b.isFigure then 1 else
-
-           if a.page<b.page then -1 else
-             if a.page>b.page then 1 else
 
            if a.height<b.height then -1 else
              if a.height>b.height then 1 else
@@ -156,9 +153,10 @@ and paragraph={
   par_contents:content list;
   par_env:environment -> environment;
   par_post_env:environment -> environment -> environment;
-  par_parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters;
-  par_badness: environment -> box array array -> drawingBox array->Break.figurePosition IntMap.t -> Line.line -> Box.box array -> int -> Line.parameters -> float -> Line.line -> Box.box array -> int -> Line.parameters -> float -> float;
-  par_completeLine:environment -> box array array -> drawingBox array -> Break.figurePosition IntMap.t ->line UserMap.t -> line -> bool -> line list;
+  par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters;
+  par_new_page:environment->Layout.frame_zipper->Layout.frame_zipper;
+  par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> float;
+  par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line UserMap.t -> line -> bool -> line list;
   par_states:Util.IntSet.t;
   mutable par_paragraph:int
 }
@@ -168,7 +166,7 @@ and figuredef={
   fig_contents:environment->drawingBox;
   fig_env:environment -> environment;
   fig_post_env:environment -> environment -> environment;
-  fig_parameters:environment -> box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line UserMap.t -> line -> line -> parameters
+  fig_parameters:environment -> Box.box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line UserMap.t -> line -> line -> parameters
 }
 
 (** This is the type of document trees. *)
@@ -197,6 +195,7 @@ and environment={
   normalMeasure:float;
   normalLead:float;
   normalLeftMargin:float;
+  normalPageFormat:float*float;
   par_indent:box list;
   hyphenate:string->(string*string) array;
   word_substitutions:string->string;
@@ -614,7 +613,7 @@ let badness
 
   if node_j.paragraph>=Array.length paragraphs then 0. else (
     let v_bad=
-      if node_i.page=node_j.page then (
+      if page node_i=page node_j then (
         Badness.v_badness
           (node_j.height-.node_i.height)
           line_i max_i params_i comp_i
@@ -626,8 +625,8 @@ let badness
       (Badness.h_badness paragraphs params_j.measure node_j comp_j)
       +. v_bad
         (* Page pas assez remplie *)
-      +. (if node_i.page<>node_j.page &&
-            node_i.height<>params_i.page_height then 10000. else 0.)
+      +. (if page node_i<>page node_j &&
+            node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
         (* Cesures *)
       +. (if node_j.hyphenEnd >=0 then
           (if node_j.hyphenStart >=0 then
@@ -703,15 +702,31 @@ let beginFigure name=
 
 (** {3 Editing document trees} *)
 
+(**/**)
+let new_page env t=
+  let zip=Layout.make_page env.normalPageFormat (frame_top t) in
+  let w=(fst zip).frame_x1-.(fst zip).frame_x0
+  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
+  let x0=env.normalLeftMargin in
+  let y0=((fst zip).frame_y0+.1.*.h/.9.) in
+  let x1=x0+.env.normalMeasure in
+  let y1=((fst zip).frame_y1-.1.*.h/.9.) in
+  frame x0 y0 x1 y1 zip
+(**/**)
+
+
+
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
-let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters par=
+let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(new_page=new_page) complete parameters par=
   match !str with
       Paragraph p,path->
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-                            par_parameters=parameters; par_badness=badness;
+                            par_parameters=parameters;
+                            par_new_page=new_page;
+                            par_badness=badness;
                             par_completeLine=complete; par_states=IntSet.empty; par_paragraph=(-1) }
         in
           str:=up (newChildAfter !str para)
@@ -773,7 +788,7 @@ let pageref x=
       env_accessed:=true;
       let (_,_,node)=StrMap.find x (names env) in
       [bB (fun _->[User (BeginLink x)]);
-       tT (string_of_int (1+node.page));
+       tT (string_of_int (1+page node));
        bB (fun _->[User EndLink])]
     with Not_found -> []
   )]
@@ -1123,7 +1138,7 @@ let draw_boxes env l=
       let dest_page=
         try
           let line=UserMap.find (Label l) env.user_positions in
-          line.page
+          page line
         with
             Not_found->(-1)
       in
@@ -1193,6 +1208,7 @@ let flatten env0 fixable str=
   let figure_trees=ref IntMap.empty in
   let fig_param=ref IntMap.empty in
   let param=ref [] in
+  let new_page=ref [] in
   let compl=ref [] in
   let bads=ref [] in
   let n=ref 0 in
@@ -1207,6 +1223,7 @@ let flatten env0 fixable str=
     trees:=(tree,path)::(!trees);
     compl:=(p.par_completeLine env)::(!compl);
     param:=(p.par_parameters env)::(!param);
+    new_page:=(p.par_new_page env)::(!new_page);
     bads:=(p.par_badness env)::(!bads);
     incr n;
     frees:=0;
@@ -1214,7 +1231,6 @@ let flatten env0 fixable str=
   in
 
   let rec flatten flushes env_ path tree=
-    let level=List.length path in
     match tree with
         Paragraph p -> (
           p.par_paragraph <- List.length !paragraphs;
@@ -1301,6 +1317,7 @@ let flatten env0 fixable str=
   in
   (env2, params,
    Array.of_list (List.rev !param),
+   Array.of_list (List.rev !new_page),
    Array.of_list (List.rev !compl),
    Array.of_list (List.rev !bads),
    Array.of_list (List.rev !paragraphs),

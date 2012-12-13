@@ -24,7 +24,7 @@ open Typography.Fonts.FTypes
 open Typography.Util
 open Typography.Fonts
 open Typography.Box
-open Typography.Line
+open Typography.Layout
 open CamomileLibrary
 
 let _=Random.self_init ()
@@ -214,6 +214,7 @@ module MakeFormat (D:Document.DocumentStructure)
           normalMeasure=150.;
           normalLead=13./.10.*.fsize;
           normalLeftMargin=(fst a4-.150.)/.2.;
+          normalPageFormat=Default.defaultEnv.normalPageFormat;
           par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                                   drawing_max_width= 4.0 *. phi;
                                   drawing_y0=0.;drawing_y1=0.;

@@ -22,7 +22,6 @@ open Printf
 open Fonts.FTypes
 open OutputCommon
 open Box
-open Line
 open Document
 open Util
 module Buf=UTF8.Buf

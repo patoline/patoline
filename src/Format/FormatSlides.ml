@@ -27,7 +27,7 @@ open Typography.Box
 open Typography.Fonts
 open Typography.Fonts.FTypes
 open CamomileLibrary
-open Typography.Line
+open Typography.Layout
 open Typography.Document
 
 module MathFonts=DefaultFormat.MathFonts
@@ -342,9 +342,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let parameters env b c d e f g line=
       { (Default.parameters env b c d e f g line) with
-        page_height=2.*.slideh;
+        (* page_height=2.*.slideh; *)
         next_acceptable_height=
-          (fun a b c d e->max e (a.height+.env.lead));
+          (fun a b c d e->max e (a.height-.env.lead));
         min_lines_before=1
       }
 
@@ -438,8 +438,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
-                user_positions=UserMap.add (Label labl) { uselessLine with page=List.length !slides } env0.user_positions
-                }
+                user_positions=UserMap.add (Label labl) uselessLine (* { uselessLine with page=List.length !slides } *)
+                  env0.user_positions
+              }
             in
             if List.length path=1 then (
               match tree with
@@ -464,7 +465,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let max_state=get_max_state tree in
 
                   let fixable=ref false in
-                  let env1,fig_params0,params0,compl0,badnesses0,paragraphs0,_,
+                  let env1,fig_params0,params0,new_page0,compl0,badnesses0,paragraphs0,_,
                     figures0,figure_trees0=flatten env0 fixable tree
                   in
 
@@ -495,6 +496,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       let params=
                         if IntMap.is_empty !par_map then [||] else
                           Array.make (IntMap.cardinal !par_map) params0.(0)
+                      and new_page=
+                        if IntMap.is_empty !par_map then [||] else
+                          Array.make (IntMap.cardinal !par_map) new_page0.(0)
                       and paragraphs=
                         if IntMap.is_empty !par_map then [||] else
                           Array.make (IntMap.cardinal !par_map) paragraphs0.(0)
@@ -516,12 +520,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                         ~figure_parameters:fig_params
                         ~figures:figures
                         ~parameters:params
+                        ~new_page:new_page
                         ~badness:badnesses
                         paragraphs
                       in
                       opts.(state)<-
-                        List.map (fun (param,parag)->
-                          (param, { parag with paragraph=IntMap.find parag.paragraph !par_map })
+                        List.map (fun l->
+                          { l with
+                            line={ l.line with paragraph=IntMap.find l.line.paragraph !par_map }
+                          }
                         ) (if Array.length opt_pages>0 then opt_pages.(0) else []);
 
                       let env2,reboot'=update_names env1 figs' user' in
@@ -544,9 +551,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                     (Array.length paragraphs0) infinity
                   in
                   for i=0 to Array.length opts-1 do
-                    List.iter (fun (_,line)->
-                      if line.lineStart=0 then (
-                        par_current.(i).(line.paragraph)<-line.height;
+                    List.iter (fun l->
+                      if l.line.lineStart=0 then (
+                        par_current.(i).(l.line.paragraph)<-l.line.height;
                       )
                     ) opts.(i)
                   done;
@@ -583,9 +590,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                   (*  *)
                   for i=0 to Array.length opts-1 do
                     opts.(i)<-List.map
-                      (fun (a,b)->(a,{ b with
-                        height=b.height+.par_pos.(b.paragraph)-.par_current.(i).(b.paragraph)
-                      }))
+                      (fun l->{ l with
+                        line=
+                          { l.line with
+                            height=l.line.height+.par_pos.(l.line.paragraph)-.
+                              par_current.(i).(l.line.paragraph)
+                          }
+                      })
                       opts.(i)
                   done;
 
@@ -595,15 +606,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                   in
                   let rec make_lineGaps h l=match l with
                       []->[]
-                    | (p,u)::v->(p,{ u with height=u.height+.h })::
+                    | l::v->{ l with line={ l.line with height=l.line.height+.h }}::
                       (make_lineGaps (h+.linegap) v)
                   in
                   let rec extrema m0 m1 l=match l with
                       []->if m0=infinity then 0.,0. else m0,m1
-                    | (_,h)::s->
-                      print_text_line paragraphs0 h;
-                      let m0',m1'=Box.line_height paragraphs0 figures0 h in
-                      extrema (min m0 (m0'-.h.height)) (max m1 (m1'-.h.height)) s
+                    | h::s->
+                      print_text_line paragraphs0 h.line;
+                      let m0',m1'=Box.line_height paragraphs0 figures0 h.line in
+                      extrema (min m0 (m0'-.h.line.height)) (max m1 (m1'-.h.line.height)) s
                   in
                   let text_h states=
                     (* Pour chaque paragraphe, calculer la plus petite marge
@@ -612,14 +623,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                     for i=0 to Array.length states-1 do
                       let m0,m1=extrema infinity (-.infinity) states.(i) in
                       let h=hoffset+.max 0. ((slideh-.hoffset-.(m1-.m0))/.2.) in
-                      List.iter (fun (_,l)->
-                        if l.lineStart=0 && l.hyphenStart<0 then
-                          marges.(l.paragraph)<-min marges.(l.paragraph) h
+                      List.iter (fun l->
+                        if l.line.lineStart=0 && l.line.hyphenStart<0 then
+                          marges.(l.line.paragraph)<-min marges.(l.line.paragraph) h
                       ) states.(i)
                     done;
-                    Array.map (List.map (fun (p,l)->
-                      p,{l with
-                        height=l.height+.marges.(l.paragraph)})) states
+                    Array.map (List.map (fun l->
+                      { l with
+                        line={l.line with
+                          height=l.line.height+.marges.(l.line.paragraph)}}
+                    )) states
                   in
                   let opts=Array.map (make_lineGaps 0.) opts in
                   let opts=text_h opts in
@@ -765,7 +778,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let destinations=ref StrMap.empty in
                 let urilinks=ref None in
                 for j=0 to Array.length pp-1 do
-                  let param,line=pp.(j) in
+                  let param=pp.(j).line_params
+                  and line=pp.(j).line in
                   let y=h-.line.height in
 
                   if line.isFigure then (
@@ -825,7 +839,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                             try
                               let line=UserMap.find (Label l) env_final.user_positions in
                               print_text_line paragraphs line;
-                              line.page
+                              Layout.page line
                             with
                                 Not_found->(-1)
                           in
