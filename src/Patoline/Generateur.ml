@@ -176,7 +176,10 @@ let rec print_math_buf parser_pp op buf m =
           (print_math_expr no_ind) a (print_math_expr no_ind) b
       | Apply(f,a) ->
 	let ind_left, ind_right = split_ind indices in
+	Printf.bprintf buf "[Maths.bin_invisible 4 (%a) (%a)]" (print_math_expr ind_left) f (print_math_expr ind_right) a
+(*	
 	Printf.bprintf buf "(%a)@(%a)" (print_math_expr ind_left) f (print_math_expr ind_right) a 
+*)
       | MathMacro (macro, args) ->
 	wrap_deco_math_default buf indices
 	  (fun buf ->

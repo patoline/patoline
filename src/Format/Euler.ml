@@ -161,10 +161,12 @@ let default_env=
       sqrt_dist=0.2;
       kerning=true;
       precise_kerning=Some 1e-2;
-      priorities=[| 4.;3.;2.;1. |];
+      priorities=[| 4.;3.;2.;1.;0.5|];
       priority_unit=1./.8.;
       delimiter_up_tolerance=0.05;
       delimiter_down_tolerance=0.05;
+      op_tolerance = 0.75;
+      op_limits_tolerance = 1.25;
    }
 
 let msubst m x=List.map (fun x->try
@@ -179,7 +181,12 @@ let displaySubst=Lazy.lazy_from_fun
          778,779;
          275,779])
 
-let default_env2 = { default_env with delimiter_up_tolerance=0.3; delimiter_down_tolerance=0.15; }
+let default_env2 = { default_env with
+  delimiter_up_tolerance=0.3;
+  delimiter_down_tolerance=0.15;
+  op_tolerance = 0.5;
+  op_limits_tolerance = 0.95;
+ }
 
 let default=[|
   { default_env with mathsSubst=msubst (Lazy.force displaySubst) };

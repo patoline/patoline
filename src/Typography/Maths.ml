@@ -591,11 +591,9 @@ let rec draw env_stack mlist=
                                      check_inf x1_l_,
                                      check_inf y1_l_)
           in
-          (* FIXME : mettre les coefs dans mathEnvs *)
 	  let factor = if op.op_limits then
-	      if (style=Display || style=Display') then 0.75 else 0.5
-	    else
-	      if (style=Display || style=Display') then 1.5 else 1.0
+	      mathsEnv.op_limits_tolerance else
+	      mathsEnv.op_tolerance
 	  in
 	  let op_noad_choice = 
 	    let ll = op.op_noad.nucleus in
@@ -608,7 +606,7 @@ let rec draw env_stack mlist=
 	      | [] -> assert false
 	      | [c] -> c
 	      | (left, (x0,y0,x1,y1)) as c :: l ->
-		if (y1 -. y0) /.factor >= y1_l -. y0_l &&  (y1 -. y0) /. factor >= y1_r -. y0_r then c	else
+		if (y1 -. y0) >= factor *. (y1_l -. y0_l) &&  (y1 -. y0) >= factor *. (y1_r -. y0_r) then c	else
 		  fn  l	      
 	    in
 	    fst (fn lc)

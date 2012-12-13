@@ -204,6 +204,32 @@ let rec resize l=function
                            kern_contents=resize l x.kern_contents }
   | x->x
 
+(* vertically re_kern g with p percent under baseline *)
+let vkern_percent_under gs p envs st =
+  let gs = gs envs st in
+  let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
+    | [] -> (sy/.float nb,mi,sk/.float nb,ma)
+    | GlyphBox g::gs -> 
+	let acc = 
+	  sy +. g.glyph_y,
+	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+	  sk +. g.glyph_ky,
+	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+	  nb + 1
+	in vbox' acc gs
+	| _ -> failwith "vkern on non glyph"
+  in	  
+  let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
+  let y,yl,y0,yh = vbox gs in
+  let dy = p *. (yh -. yl) -. (y0 -. yl) in
+  List.map (function 
+      GlyphBox g -> GlyphBox {
+	g with 
+	  glyph_y = g.glyph_y -. dy;
+	  glyph_ky = 0.0; 
+      }
+    | _ -> failwith "vkern on non glyph") gs
+
 (* vertically kern g as g' *)
 let vkern_as gs gs' envs st =
   let gs = gs envs st in

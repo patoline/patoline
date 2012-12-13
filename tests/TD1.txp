@@ -105,17 +105,17 @@ Déterminer la nature des séries numériques suivantes~:
 
 \vspaceBefore(3.0)
 \begin{center}
-$< \ser{\frac{n}{n+1}}{n}{0} >$,  
-$<\ser{\sqrt{n+1} - \sqrt{n}}{n}{0} >$, 
-$<\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0} >$, 
-$<\ser{\frac{1}{{n!}^{1 \over n}}}{n}{1} >$, 
-$<\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1} >$,
+[$ \ser{\frac{n}{n+1}}{n}{0} $],  
+[$\ser{\sqrt{n+1} - \sqrt{n}}{n}{0} $], 
+[$\ser{(-1 / 4)^{n} + (3 / 4)^{n}}{n}{0} $], 
+[$\ser{\frac{1}{{n!}^{1 \over n}}}{n}{1} $], 
+[$\ser{\frac{ln{(1 + 1 / n)}}{n}}{n}{1} $],
 
-$<\ser{\frac{ln(n)}{n 2^n}}{n}{1}>$,
-$<\ser{\frac{ln(1 + n)}{n^3}}{n}{1}>$, 
-$<\ser{sin(\frac{1}{n})}{n}{1}>$, 
-$<\ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1}>$,
-$<\ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0}>$ avec $<\mathrm{a} > 0>$.
+[$\ser{\frac{ln(n)}{n 2^n}}{n}{1}$],
+[$\ser{\frac{ln(1 + n)}{n^3}}{n}{1}$], 
+[$\ser{sin(\frac{1}{n})}{n}{1}$], 
+[$\ser{\frac{1}{n} - \frac{1}{n + \mathrm{a}}}{n}{1}$],
+[$\ser{\frac{1}{n + \mathrm{a}^{n}}}{n}{0}$] avec [$\mathrm{a} > 0$].
 \end{center}
 
 
@@ -124,14 +124,14 @@ Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-$< \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}>$, 
-$< \ser{\frac{1}{n^{n}}}{n}{0} >$, 
-$< \ser{\frac{n!}{n^{n}}}{n}{0} >$, 
-$< \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} >$,
+[$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}$], 
+[$ \ser{\frac{1}{n^{n}}}{n}{0} $], 
+[$ \ser{\frac{n!}{n^{n}}}{n}{0} $], 
+[$ \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} $],
 
-$< \ser{\frac{(n + 1)2^{n}}{n!}}{n}{0} >$, 
-$< \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} >$ et
-$< \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}>$.
+[$ \ser{\frac{(n + 1)2^{n}}{n!}}{n}{0} $], 
+[$ \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} $] et
+[$ \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}$].
 \end{center}
 
 \item
@@ -139,11 +139,11 @@ Calculer les sommes des séries numériques suivantes après avoir montré qu'el
 
 \vspaceBefore(3.0)
 \begin{center}
-$< \ser{\frac{1}{n (n + 2)}}{n}{1} >$, 
-$< \ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2} >$, 
-$< \ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1} >$, 
-$< \ser{n a^{n}}{n}{1} >$ et
-$<\ser{\frac{a^{n}}{n}}{n}{1}>$ avec  $<a \in [0 , 1\right[>$.
+[$ \ser{\frac{1}{n (n + 2)}}{n}{1} $], 
+[$ \ser{\frac{(-1)^{n}}{n^{2} - 1}}{n}{2} $], 
+[$ \ser{\frac{1}{n (n + 1) (n + 2)}}{n}{1} $], 
+[$ \ser{n a^{n}}{n}{1} $] et
+[$\ser{\frac{a^{n}}{n}}{n}{1}$] avec  [$a \in [0 , 1\right[$].
 \end{center}
 
 \item
@@ -151,11 +151,11 @@ Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-$< \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0} >$, 
-$< \ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1} >$, 
-$< \ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1} >$, 
-$< \ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} >$ et
-$< \ser{\frac{sin(n)}{n}}{n}{1} >$.
+[$ \ser{(-1)^{n} \frac{2 n}{4 n^{2} - 3}}{n}{0} $], 
+[$ \ser{\frac{sin(\sqrt{n})}{n \sqrt{n}}}{n}{1} $], 
+[$ \ser{\frac{(-1)^{n}}{n - ln{n}}}{n}{1} $], 
+[$ \ser{\frac{cos(n) + (-1)^{n} n^{2}}{n^{3}}}{n}{1} $] et
+[$ \ser{\frac{sin(n)}{n}}{n}{1} $].
 \end{center}
 
 \item
@@ -163,10 +163,10 @@ Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-$< \ser{\frac{1}{n * ln(n)}}{n}{2} >$, 
-$< \ser{\frac{1}{n^{1 \over 3} * ln(n)}}{n}{2} >$,
-$< \ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1} >$ et
-$< \ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}>$.
+[$ \ser{\frac{1}{n * ln(n)}}{n}{2} $], 
+[$ \ser{\frac{1}{n^{1 \over 3} * ln(n)}}{n}{2} $],
+[$ \ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1} $] et
+[$ \ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}$].
 \end{center}
 
 
