@@ -998,7 +998,12 @@ let make_sqrt env_ style box=
         in
         if dx0<dx1 then (dx1,dx0) else (dx0,dx1)
       in
-      let xmax=max (bx1-.bx0) (Fonts.glyphWidth gl*.s/.1000.) in
+      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
+      let sp=adjust_space ~absolute:false env (2.*.env.sqrt_dist*.s) (-.infinity)
+        [translate 0. ty (Path (default,[out]))]
+        under
+      in
+      let xmax=(bx1-.bx0) +. sp +. env.sqrt_dist*.s in
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
@@ -1008,8 +1013,6 @@ let make_sqrt env_ style box=
         |]
       in
       let path=Array.concat [path0; path2; path1] in
-      let tx=(xmax-.(bx1-.bx0))/.2. +. dx0 in
-      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
       let p=
         translate 0. ty
           (Path ({default with strokingColor=None;fillColor=Some black},
@@ -1024,10 +1027,8 @@ let make_sqrt env_ style box=
          drawing_y0=b;
          drawing_y1=d;
          drawing_badness=(fun _->0.);
-         drawing_contents=
-           (fun _->p::
-              (List.map (translate tx 0.) under))
-       }]
+         drawing_contents=(fun _->p::List.map (translate (dx0+.sp-.bx0) 0.) under);
+      }]
     ) else (
       (* Il faut rallonger *)
       let vx=dy1-.dy0
@@ -1036,7 +1037,12 @@ let make_sqrt env_ style box=
                       +.Fonts.glyph_y0 gl*.s/.1000.
                       -.Fonts.glyph_y1 gl*.s/.1000.))/.vy in
       let tt'= tt+. ((dd-. (dy1-.dy0))/.(vy*.phi)) in
-      let xmax=bx1-.bx0 in
+      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
+      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.infinity)
+        [translate 0. ty (Path (default,[out]))]
+        under
+      in
+      let xmax=(bx1-.bx0) +.sp +. env.sqrt_dist*.s in
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
@@ -1048,8 +1054,6 @@ let make_sqrt env_ style box=
         |]
       in
       let path=Array.concat [path0; path2; path1] in
-      let tx=(xmax-.(bx1-.bx0))/.2. +. dx0 +. vx*.tt in
-      let ty=by0-.env.sqrt_dist*.(phi-.1.) in
       let p=
         translate 0. ty
           (Path ({default with strokingColor=None;fillColor=Some black},
@@ -1058,19 +1062,16 @@ let make_sqrt env_ style box=
       in
       let (a,b,c,d)=bounding_box [p] in
       [Drawing {
-         drawing_min_width=c-.a;
-         drawing_nominal_width=c-.a;
-         drawing_max_width=c-.a;
-         drawing_y0=b;
-         drawing_y1=d;
-         drawing_badness=(fun _->0.);
-         drawing_contents=
-           (fun _->p::
-              (List.map (translate tx 0.) under))
-       }]
+        drawing_min_width=c-.a;
+        drawing_nominal_width=c-.a;
+        drawing_max_width=c-.a;
+        drawing_y0=b;
+        drawing_y1=d;
+        drawing_badness=(fun _->0.);
+        drawing_contents=(fun _->p::(List.map (translate (dx0+.sp-.bx0) 0.) under))
+      }]
     )
   in
   p
-
 
 let sqrt x=[Decoration (make_sqrt,x)]
