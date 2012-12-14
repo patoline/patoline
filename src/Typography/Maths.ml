@@ -548,9 +548,13 @@ let rec draw env_stack mlist=
         let bb=draw_boxes env (draw (denominatorStyle style env_stack) f.denominator) in
           let x0a,y0a,x1a,y1a=bounding_box ba in
           let x0b,y0b,x1b,y1b=bounding_box bb in
+          let x0a',y0a',x1a',y1a'=bounding_box_full ba in
+          let x0b',y0b',x1b',y1b'=bounding_box_full bb in
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
-          let w=max wa wb in
+	  let w = max wa wb in
+          let w'=max (x1a'-.x0a') (x1b'-.x0b') in
+          let w' = w' +. (w'-.w)/.2.  in
 
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
@@ -561,7 +565,7 @@ let rec draw env_stack mlist=
                        drawing_contents=(fun _->
                                            (if ln.lineWidth = 0. then [] else
                                               [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize*.env.size},
-                                                     [ [|line (0.,hx) (w,hx)|] ]) ])@
+                                                     [ [|line (0.,hx) (w',hx)|] ]) ])@
                                              (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
                                              (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
                                         ) }) :: (draw env_stack s)
@@ -893,7 +897,7 @@ let make_sqrt env_ style box=
   let env=env_style env_.mathsEnvironment style in
   let s=env.mathsSize*.env_.size in
   let under=draw_boxes env_ box in
-  let (bx0,by0,bx1,by1)=bounding_box under in
+  let (bx0,by0,bx1,by1)=bounding_box_full under in
 
   let f=Fonts.loadFont (findFont "../Fonts/Euler/euler.otf") in
   sqrts:=Array.map (fun x->Fonts.loadGlyph f { glyph_utf8="\\sqrt";glyph_index=x })

@@ -268,13 +268,13 @@ let _=
     Printf.fprintf out "install:\n";
     Printf.fprintf out "\t#fonts\n";
     let rec read_fonts dir =
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape (Filename.concat !fonts_dir dir));
+      Printf.fprintf out "\tinstall -p -m 755 -d $(DESTDIR)%s\n" (escape (Filename.concat !fonts_dir dir));
       List.iter (fun f->
         let f = Filename.concat dir f in
         if Sys.is_directory f
         then read_fonts f
         else if Filename.check_suffix f ".otf" then
-          Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n"
+          Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n"
             (escape (Filename.concat fonts_src_dir f))
             (escape (Filename.concat !fonts_dir f))
             ) (Array.to_list (Sys.readdir dir))
@@ -286,17 +286,18 @@ let _=
 
     (* Grammars *)
     Printf.fprintf out "\t#grammars\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !grammars_dir);
-    Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" 
+    Printf.fprintf out "\tinstall -p -m 755 -d $(DESTDIR)%s\n" (escape !grammars_dir);
+    Printf.fprintf out "\tinstall -p -m 644 %s %s $(DESTDIR)%s\n" 
+      (escape (Filename.concat grammars_src_dir "DefaultGrammar.txp")) 
       (escape (Filename.concat grammars_src_dir "DefaultGrammar.tgx")) 
       (escape (List.hd !grammars_dirs));
 
     (* Hyphenation *)
     Printf.fprintf out "\t#hyphenation\n";
-    Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !hyphen_dir);
+    Printf.fprintf out "\tinstall -p -m 755 -d $(DESTDIR)%s\n" (escape !hyphen_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".hdict" then
-                   Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
+                   Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n" (escape (Filename.concat hyphen_src_dir x)) (escape !hyphen_dir)
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
 
     let make=open_out "src/Makefile.config" in
@@ -361,11 +362,11 @@ let _=
     Printf.fprintf out "\tmake -C src/Rbuffer install DESTDIR=$(DESTDIR)\n";
     Printf.fprintf out "\trm -f src/Drivers/Typography.cmi\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -p -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl then
-      Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl2 then
-      Printf.fprintf out "\tinstall -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
@@ -378,33 +379,33 @@ let _=
         (* "src/Pdf/pdf_parser.cmi src/Pdf/pdf_parser.p.cmxa" *)
     in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/Typography\n" sources (escape !ocaml_lib_dir);
 
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (escape !ocaml_lib_dir);
 
 
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/Typography\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
-      Printf.fprintf out "\tinstall -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+      Printf.fprintf out "\tinstall -p -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* ocaml-bibi *)
       let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
       in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);
 
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
-      Printf.fprintf out "\tinstall -m 644 src/ocaml-bibi/META %s $(DESTDIR)%s/bibi\n" bibi_sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+      Printf.fprintf out "\tinstall -p -m 644 src/ocaml-bibi/META %s $(DESTDIR)%s/bibi\n" bibi_sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* proof *)
-      Printf.fprintf out "\tinstall -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
+      Printf.fprintf out "\tinstall -p -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
       (* Plugins *)
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
-      Printf.fprintf out "\tinstall -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
+      Printf.fprintf out "\tinstall -p -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
 
       (* emacs *)
       Printf.fprintf out "\tcd emacs; install -m 755 -d $(DESTDIR)%s\n" emacsdir;
-      Printf.fprintf out "\tcd emacs; install -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
+      Printf.fprintf out "\tcd emacs; install -p -m 644 *.el $(DESTDIR)%s/\n" emacsdir;
 
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (

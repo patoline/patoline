@@ -23,10 +23,10 @@ rope.cma:rope.ml rope.cmi
 	ocamlc -o $@ $<
 
 install:rbuffer.cmxa rbuffer.p.cmxa rbuffer.cma rope.cmxa rope.p.cmxa rope.cma
-	install -d $(INST)
-	install rbuffer.cmxa rbuffer.p.cmxa rbuffer.a rbuffer.cmi rbuffer.cma $(INST)
-	install rope.cmxa rope.p.cmxa rope.a rope.cmi rope.cma $(INST)
-	install META $(INST)
+	install -p -d $(INST)
+	install -p rbuffer.cmxa rbuffer.p.cmxa rbuffer.a rbuffer.cmi rbuffer.cma $(INST)
+	install -p rope.cmxa rope.p.cmxa rope.a rope.cmi rope.cma $(INST)
+	install -p META $(INST)
 
 clean:
 	rm -f *~ *.cm[oixa] *.a *.cmxa *.o
