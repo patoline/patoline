@@ -325,7 +325,7 @@ and compilation_needed sources targets=
   if !recompile then true else (
     let max_sources=List.fold_left (fun m f->
       if Sys.file_exists f then max m (Unix.stat f).Unix.st_mtime else infinity
-    ) (-.infinity) sources
+    ) (-.infinity) (Sys.executable_name::sources)
     in
     let min_targets=List.fold_left (fun m f->
       if Sys.file_exists f then min m (Unix.stat f).Unix.st_mtime else (-.infinity)
@@ -352,7 +352,13 @@ and patoline_rule objects h=
       let in_s=open_in source in
       let opts=read_options_from_source_file in_s in
       close_in in_s;
-      List.iter Build.build opts.deps;
+      List.iter (fun x->
+        if x<>h then Build.build x
+      ) (
+        match !Parser.grammar with
+            None->opts.deps
+          | Some def->(Parser.findGrammar (def^Parser.gram_ext))::opts.deps
+      );
 
       let options_have_changed=
         (not (Sys.file_exists h)) ||

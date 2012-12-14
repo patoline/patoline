@@ -115,7 +115,7 @@ let command cmd args=
           ha::_ , _->(
             let x=Unix.read ha str 0 (String.length str) in
             (if ha==b_in then (
-              output stdout str 0 x;flush stdout;
+              (* output stdout str 0 x;flush stdout; *)
               Rbuffer.add_substring buf_out str 0 x
              ) else
                 Rbuffer.add_substring buf_err str 0 x);
