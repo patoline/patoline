@@ -1270,8 +1270,10 @@ grammar:
 	    close_in ic;
 	    [ Local_data local_data; Parser grammar ]
           with
-            | e ->(Printf.fprintf stderr "No Grammar Loaded (%s: %s). Pwd = %S\n"
-		     (filename^gram_ext) (Printexc.to_string e) (Sys.getcwd ()); [])
+            | e ->(Printf.fprintf stderr "%s\n"
+                     (Language.message (Language.No_grammar_loaded
+                                          (filename^gram_ext,Printexc.to_string e)));
+                   [])
         )
       | _->[]
       in
