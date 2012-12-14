@@ -191,7 +191,7 @@ let font_size_ratio font1 font2 =
 
 let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
   let page_footnotes=ref 0 in
-  let frame_measure=(fst line.layout).frame_x1-.(fst line.layout).frame_x0+.env.normalMeasure in
+  let frame_measure=env.normalMeasure in
   let measure=IntMap.fold (fun i aa m->match aa with
       Break.Placed a->
         (if page line=page a &&
@@ -500,7 +500,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           footnote_y=10.;
           size=fsize;
           lead=13./.10.*.fsize;
-          normalMeasure=0.;
+          normalMeasure=(fst a4)*.7./.9.;
           normalLead=13./.10.*.fsize;
           normalLeftMargin=0.;
           normalPageFormat=a4;
@@ -713,7 +713,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                (fun i x->
                   Array.mapi (fun j y->
                                 let minip=(minipage
-                                             { env with normalMeasure=0. } y).(0) in
+                                             { env with normalMeasure=env.normalMeasure } y).(0) in
                                   widths.(j)<-max widths.(j) (minip.drawing_max_width);
                                   heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
                                   minip
@@ -1110,9 +1110,10 @@ module Format=functor (D:Document.DocumentStructure)->(
 
         D.structure:=
           up (change_env !D.structure
-                (fun x->{ x with
-                  normalLeftMargin=(fst x.normalPageFormat)/.18.;
-                  normalMeasure= -.1.*.(fst x.normalPageFormat)/.9. }));
+                (fun x->
+                  { x with
+                    normalLeftMargin=x.normalLeftMargin+.(fst x.normalPageFormat)/.9.;
+                    normalMeasure=x.normalMeasure-.2.*.(fst x.normalPageFormat)/.9.}));
         env_stack:=List.tl !env_stack
 
     end

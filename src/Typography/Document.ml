@@ -711,9 +711,9 @@ let new_page env t=
   let zip=Layout.make_page env.normalPageFormat (frame_top t) in
   let w=(fst zip).frame_x1-.(fst zip).frame_x0
   and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
-  let x0=((fst zip).frame_x0+.1.*.h/.9.) in
+  let x0=((fst zip).frame_x0+.1.*.w/.9.) in
   let y0=((fst zip).frame_y0+.1.*.h/.9.) in
-  let x1=((fst zip).frame_x1-.1.*.h/.9.) in
+  let x1=((fst zip).frame_x1-.1.*.w/.9.) in
   let y1=((fst zip).frame_y1-.1.*.h/.9.) in
   frame x0 y0 x1 y1 zip
 (**/**)
