@@ -25,7 +25,7 @@ open Document
 (** {[normal]} measure paragraphs figures {already placed figures} {already placed user boxes}
 {beginning of line to complete} {is this a desperate try ?} *)
 let normal env paragraphs figures last_figures last_users line allow_impossible=
-  let mes0=env.normalMeasure in
+  let mes0=(fst line.layout).frame_x1-.(fst line.layout).frame_x0+.env.normalMeasure in
   let measure=
     let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in
       if not (IntMap.is_empty figures_) then

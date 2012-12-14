@@ -191,6 +191,7 @@ let font_size_ratio font1 font2 =
 
 let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
   let page_footnotes=ref 0 in
+  let frame_measure=(fst line.layout).frame_x1-.(fst line.layout).frame_x0+.env.normalMeasure in
   let measure=IntMap.fold (fun i aa m->match aa with
       Break.Placed a->
         (if page line=page a &&
@@ -199,10 +200,10 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
          && line.height>=
            a.height-. figures.(i).drawing_y1
          then
-            env.normalMeasure -. figures.(i).drawing_nominal_width
+            frame_measure -. figures.(i).drawing_nominal_width
          else m)
     | _->m
-  ) last_figures env.normalMeasure
+  ) last_figures frame_measure
   in
   UserMap.iter (fun k a->
     match k with
@@ -214,7 +215,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
     | _->fn) 0. line
   in
   { measure=measure;
-    left_margin=0.;
+    left_margin=env.normalLeftMargin;
     local_optimization=0;
     min_page_before=0;
     min_page_after=0;
@@ -499,9 +500,9 @@ module Format=functor (D:Document.DocumentStructure)->(
           footnote_y=10.;
           size=fsize;
           lead=13./.10.*.fsize;
-          normalMeasure=150.;
+          normalMeasure=0.;
           normalLead=13./.10.*.fsize;
-          normalLeftMargin=(fst a4-.150.)/.2.;
+          normalLeftMargin=0.;
           normalPageFormat=a4;
           par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                                   drawing_max_width= 4.0 *. phi;
@@ -712,7 +713,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                (fun i x->
                   Array.mapi (fun j y->
                                 let minip=(minipage
-                                             { env with normalMeasure=widths0.(j) } y).(0) in
+                                             { env with normalMeasure=0. } y).(0) in
                                   widths.(j)<-max widths.(j) (minip.drawing_max_width);
                                   heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
                                   minip
@@ -1100,19 +1101,18 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let pp=(p.par_parameters a b c d e f g line) in
                   { pp with
                     min_lines_after=
-                      if line.lineEnd>=Array.length b then 2 else pp.min_lines_after;
+                      if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
                   });
               }
           | _->assert false
         in
         D.structure:=up_n (List.length p) (a',b);
 
-        D.structure :=
+        D.structure:=
           up (change_env !D.structure
                 (fun x->{ x with
-                  normalLeftMargin=(x.normalLeftMargin
-                                    +.(x.normalMeasure-.120.)/.2.);
-                  normalMeasure=120. }));
+                  normalLeftMargin=(fst x.normalPageFormat)/.18.;
+                  normalMeasure= -.1.*.(fst x.normalPageFormat)/.9. }));
         env_stack:=List.tl !env_stack
 
     end

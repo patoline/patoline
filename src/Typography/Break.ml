@@ -351,7 +351,7 @@ module Make (L:Line with type t=Layout.line)=(
               in
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
-              let min_page_before=ref 0 in
+              let min_page_before=ref max_int in
               let height_problem=ref true in
               let rec fix layout height n_iter=
                 let nextNode={
@@ -383,7 +383,7 @@ module Make (L:Line with type t=Layout.line)=(
                         Parameters fp->fp p
                       | _->p) nextParams nextNode
                     in
-                    min_page_before:=max !min_page_before nextParams.min_page_before;
+                    min_page_before:=min !min_page_before nextParams.min_page_before;
                     if (n_iter>= nextParams.min_lines_before && n_iter>=lastParameters.min_lines_after) || page nextNode>page node then (
                       let comp1=comp paragraphs nextParams.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                       let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
@@ -546,7 +546,7 @@ module Make (L:Line with type t=Layout.line)=(
                   in
                   List.iter make_next_node (compl);
                   if !local_opt=[] && !extreme_solutions=[] then
-                    if frame_page layout<=page node+1+(max lastParameters.min_page_after !min_page_before) then (
+                    if frame_page layout<=page node+1+max lastParameters.min_page_after !min_page_before then (
                       let next_h=nextParams.next_acceptable_height node lastParameters nextNode nextParams !minimal_tried_height in
                         (* Printf.fprintf stderr "%f %f\n" next_h node.height; *)
                       fix layout

@@ -356,8 +356,8 @@ and patoline_rule objects h=
         if x<>h then Build.build x
       ) (
         match !Parser.grammar with
-            None->opts.deps
-          | Some def->(Parser.findGrammar (def^Parser.gram_ext))::opts.deps
+            Some def when def<>"DefaultGrammar"->(Parser.findGrammar (def^Parser.gram_ext))::opts.deps
+          | _->opts.deps
       );
 
       let options_have_changed=

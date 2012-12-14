@@ -551,7 +551,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	      (* else *)
 	    "Patoline_Format.parameters"
 	  in
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n" 
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s ~new_page:new_page Complete.normal %s %a;;\n" 
 	    env param (print_contents parser_pp from) p
 	| Caml(ld,gr,s,e,txps,pos) -> print_caml parser_pp ld gr from where s e txps pos
 	| String s -> Printf.fprintf where "%s" s
