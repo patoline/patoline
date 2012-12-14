@@ -998,7 +998,7 @@ let make_sqrt env_ style box=
         in
         if dx0<dx1 then (dx1,dx0) else (dx0,dx1)
       in
-      let xmax=max (bx1-.bx0) (Fonts.glyphWidth gl*.s/.1000.)/.phi in
+      let xmax=max (bx1-.bx0) (Fonts.glyphWidth gl*.s/.1000.) in
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
@@ -1041,7 +1041,7 @@ let make_sqrt env_ style box=
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
         [|[|dx0;dx0+.tt*.vx|], [|dy0;dy0+.tt*.vy|];
-          [|dx0+.tt*.vx+.xmax;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy0+.tt*.vy|];
+          [|dx0+.tt*.vx;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy0+.tt*.vy|];
           [|dx0+.tt*.vx+.xmax;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy1+.tt'*.vy|];
           [|dx0+.tt*.vx+.xmax;dx1+.tt'*.vx|], [|dy1+.tt'*.vy;dy1+.tt'*.vy|];
           [|dx1+.tt'*.vx; dx1|], [|dy1+.tt'*.vy; dy1|]
