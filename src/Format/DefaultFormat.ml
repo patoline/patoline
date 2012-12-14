@@ -940,9 +940,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                (fun env->
                   let lvl,cou=try StrMap.find "enumerate" env.counters with Not_found-> -1,[] in
                     { env with
-                        normalMeasure=env.normalMeasure-.tiret_w env;
-                        normalLeftMargin=env.normalLeftMargin+.tiret_w env;
-                        counters=StrMap.add "enumerate" (lvl,(-1)::cou) env.counters }
+                      normalMeasure=env.normalMeasure-.tiret_w env;
+                      normalLeftMargin=env.normalLeftMargin+.tiret_w env;
+                      counters=StrMap.add "enumerate" (lvl,(-1)::cou) env.counters }
                );
                     node_post_env=
                (fun env0 env1->

@@ -325,6 +325,7 @@ module Make (L:Line with type t=Layout.line)=(
                 in
                 if placable then place_figure ();
               );
+              let page0=if snd node.layout=[] then 0 else page node in
               let layout0,h0=
                 if snd node.layout=[] then
                   let zip=new_page.(pi) node.layout in
@@ -353,7 +354,6 @@ module Make (L:Line with type t=Layout.line)=(
               let min_page_before=ref 0 in
               let height_problem=ref true in
               let rec fix layout height n_iter=
-                (* Printf.fprintf stderr "fix : %d %f\n" (frame_page layout) height;flush stderr; *)
                 let nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
                   hyphenStart= node.hyphenEnd; hyphenEnd= (-1);
@@ -368,8 +368,8 @@ module Make (L:Line with type t=Layout.line)=(
                 let nextParams=parameters.(pi)
                   paragraphs figures lastParameters lastFigures lastUser node nextNode
                 in
-                if height<(fst node.layout).frame_y0
-                  || frame_page layout < page node+nextParams.min_page_before
+                if height<(fst layout).frame_y0
+                  || frame_page layout < page0+nextParams.min_page_before
                 then (
                   let np=new_page.(pi) layout in
                   fix np (fst np).frame_y1 (n_iter+1)
