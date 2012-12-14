@@ -55,6 +55,7 @@ let spec =
    ("--driver",Arg.String
      (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
    ("-c",Arg.Unit (fun ()->
+     compile:=false;run:= false;
      if !amble<> Generateur.Noamble then
        amble:=Generateur.Separate
     ), message (Cli Separately));
@@ -86,6 +87,7 @@ let dynlinked=(Mutex.create (), ref StrMap.empty)
 type options={
   deps:string list;
   format:string;
+  grammar:string option;
   driver:string;
   comp_opts:string list;
   packages:string list;
@@ -178,6 +180,7 @@ let add_format opts =
 let rec read_options_from_source_file fread =
   let deps=ref [] in
   let format=ref !format in
+  let grammar=ref (Some "DefaultGrammar") in
   let driver=ref !driver in
   let noamble=ref false in
   let comp_opts=ref [] in
@@ -233,8 +236,7 @@ let rec read_options_from_source_file fread =
       pump ()
     )
     else if Str.string_match set_grammar s 0 then (
-      if Str.matched_group 1 s="" then Parser.grammar:=None else Parser.grammar:=Some (Str.matched_group 1 s);
-      deps := (Str.matched_group 1 s ^ Parser.gram_ext) :: !deps;
+      if Str.matched_group 1 s="" then grammar:=None else grammar:=Some (Str.matched_group 1 s);
       pump ()
     )
     else if Str.string_match set_format s 0 then (
@@ -274,6 +276,7 @@ let rec read_options_from_source_file fread =
   seek_in fread 0;
   {
     deps= !deps;
+    grammar= !grammar;
     format= !format;
     driver= !driver;
     comp_opts= !comp_opts;
@@ -349,52 +352,59 @@ and patoline_rule objects h=
   if Filename.check_suffix h ".ttml" || Filename.check_suffix h ".tml" || Filename.check_suffix h Parser.gram_ext then
     (
       let source=(Filename.chop_extension h)^".txp" in
-      let in_s=open_in source in
-      let opts=read_options_from_source_file in_s in
-      close_in in_s;
-      List.iter (fun x->
-        if x<>h then Build.build x
-      ) (
-        match !Parser.grammar with
-            Some def when def<>"DefaultGrammar"->(Parser.findGrammar (def^Parser.gram_ext))::opts.deps
-          | _->opts.deps
-      );
+      if Sys.file_exists source then (
+        let in_s=open_in source in
+        let opts=read_options_from_source_file in_s in
+        close_in in_s;
 
-      let options_have_changed=
-        (not (Sys.file_exists h)) ||
-          ((Filename.check_suffix h ".tml") &&
-              (
-                let last_format,last_driver=last_options_used h in
-                (last_format<> !format || last_driver<> !driver)
-              ))
-      in
-      if options_have_changed || compilation_needed [source] [h] then (
-	let dirs_=str_dirs (!dirs@opts.directories) in
-        let cmd= !patoline in
-        let args_l=List.filter (fun x->x<>"")
-          (cmd::
-             dirs_@
-             [(if opts.noamble then "--noamble" else "");
-              (if opts.format<>"DefaultFormat" then "--format" else "");
-              (if opts.format<>"DefaultFormat" then opts.format else "");
-              "--ml";
-              (if !Parser.grammar=None then "--no-grammar" else "");
-	      (if !Generateur.edit_link then "--edit-link" else "");
-	      "--driver";opts.driver;
-              (if Filename.check_suffix h ".ttml" then "-c" else "");
-              source]
-          )
+        (match opts.grammar with
+            Some def when def<>"DefaultGrammar"->
+              Build.build (def^Parser.gram_ext)
+          | _->()
+        );
+
+        List.iter (fun x->
+          if x<>h then Build.build x
+        ) opts.deps;
+
+        let options_have_changed=
+          (not (Sys.file_exists h)) ||
+            ((Filename.check_suffix h ".tml") &&
+                (
+                  let last_format,last_driver=last_options_used h in
+                  (last_format<> !format || last_driver<> !driver)
+                ))
         in
-        if not !quiet then (Printf.fprintf stdout "%s\n"
-                              (String.concat " "
-                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
-                            flush stdout);
-        let err=Build.command cmd (Array.of_list args_l) in
-        if err<>0 then (
-          exit err
-        )
-      );
-      true
+        if options_have_changed || compilation_needed [source] [h] then (
+	  let dirs_=str_dirs (!dirs@opts.directories) in
+          let cmd= !patoline in
+          let args_l=List.filter (fun x->x<>"")
+            (cmd::
+               dirs_@
+               [(if opts.noamble then "--noamble" else "");
+                (if opts.format<>"DefaultFormat" then "--format" else "");
+                (if opts.format<>"DefaultFormat" then opts.format else "");
+                "--ml";
+                (if opts.grammar=None then "--no-grammar" else "");
+	        (if !Generateur.edit_link then "--edit-link" else "");
+	        "--driver";opts.driver;
+                (if Filename.check_suffix h ".ttml" then "-c" else "");
+                source]
+            )
+          in
+          if not !quiet then (Printf.fprintf stdout "%s\n"
+                                (String.concat " "
+                                   (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                              flush stdout);
+          let err=Build.command cmd (Array.of_list args_l) in
+          if err<>0 then (
+            exit err
+          )
+        );
+        true
+      ) else (
+        Filename.check_suffix h Parser.gram_ext
+      )
     )
   else if Filename.check_suffix h ".ml" || Filename.check_suffix h ".mli" then (
     Sys.file_exists h;
@@ -459,12 +469,14 @@ and patoline_rule objects h=
     let raw_h=(Filename.chop_extension h) in
     let source=if Filename.check_suffix h ".tmx" then raw_h^".tml" else raw_h^".ml"in
     let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
-    Build.build source;
 
     let in_s=open_in source_txp in
     let opts=add_format (read_options_from_source_file in_s) in
     close_in in_s;
-    List.iter Build.build opts.deps;
+    List.iter (fun x->
+      Build.build x
+    ) opts.deps;
+    Build.build source;
 
     if not opts.noamble then begin
 
@@ -548,34 +560,59 @@ and process_each_file l=
         if !run && Sys.file_exists cmd then (
           extras_top:=List.rev !extras_top;
           Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
-          let _=Build.command cmd (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top))) in
+          let pid=Unix.create_process cmd
+            (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
+            Unix.stdin
+            Unix.stdout
+            Unix.stderr
+          in
+          let _=Unix.waitpid [] pid in
           ()
         )
       ) else (
-        let where_ml = open_out (mlname_of f) in
-        let fread = open_in f in
-        Parser.out_grammar_name:=Filename.chop_extension f;
-        if Filename.check_suffix f "txt" then (
-          SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
+        if Sys.file_exists f then (
+          let fread = open_in f in
+          let where_ml = open_out (mlname_of f) in
+          Parser.out_grammar_name:=Filename.chop_extension f;
+          if Filename.check_suffix f "txt" then (
+            SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
+          ) else (
+
+            let opts=read_options_from_source_file fread in
+            Parser.grammar:=opts.grammar;
+            (match opts.grammar with
+                Some def when def<>"DefaultGrammar"->(
+                  Build.build (def^Parser.gram_ext)
+                )
+              | _->()
+            );
+            List.iter (fun x->
+              if x<>f then Build.build x
+            ) opts.deps;
+
+
+            let suppl=
+              Printf.sprintf "(* #PACKAGES %s *)%s%s%s\n"
+	        (String.concat "," opts.packages)
+	        (if opts.directories <> [] then
+		    (Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
+	         else "")
+	        (if opts.comp_opts <> [] then
+		    (Printf.sprintf "\n(* #COMPILATION %s *)" (String.concat " " opts.comp_opts))
+	         else "")
+	        (if opts.noamble then
+		    Printf.sprintf "\n(* #NOAMBLE *)"
+	         else "")
+            in
+            Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
+          );
+          close_out where_ml;
+          close_in fread;
         ) else (
-          let opts=read_options_from_source_file fread in
-          let suppl=
-            Printf.sprintf "(* #PACKAGES %s *)%s%s%s\n"
-	      (String.concat "," opts.packages)
-	      (if opts.directories <> [] then
-		  (Printf.sprintf "\n(* #DIRECTORIES %s *)" (String.concat "," opts.directories))
-	       else "")
-	      (if opts.comp_opts <> [] then
-		  (Printf.sprintf "\n(* #COMPILATION %s *)" (String.concat " " opts.comp_opts))
-	       else "")
-	      (if opts.noamble then
-		  Printf.sprintf "\n(* #NOAMBLE *)"
-	       else "")
-          in
-          Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
-        );
-        close_out where_ml;
-        close_in fread;
+          Printf.fprintf stderr "%s\n"
+            (Language.message (Language.Unexisting_file f));
+          exit 1
+        )
       )
     ) l
 
