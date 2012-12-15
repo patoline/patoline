@@ -155,6 +155,7 @@ let patoline_driver_gl2 =
  * Add yours to this list in order to build it. *)
 let patoline_drivers =
   [
+    { name = "None"; needs = []; suggests = [] };
     { name = "Pdf"; needs = []; suggests = [Package "zip"] };
     { name = "Bin"; needs = []; suggests = [] };
     { name = "Html"; needs = []; suggests = [] };

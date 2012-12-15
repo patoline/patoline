@@ -39,6 +39,8 @@ GL2.cmxa:GL2.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ GL2.cmx
 Net.cmxa:Net.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Net.cmx
+None.cmxa:None.cmx ../Typography/_build/Typography.cmxa
+	$(CAMLOPT) -a -o $@ None.cmx
 
 DriverCairo.cmxa:DriverCairo.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ DriverCairo.cmx
