@@ -5,10 +5,10 @@ CAMLC=ocamlfind ocamlc -pp "cpp -w" -I ../Typography/_build -I ../Rbuffer $(PACK
 
 all:
 
-DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml ../Typography/_build/Typography.cmi
+DefaultFormat.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml ../Typography/_build/Typography.cmi ../Typography/_build/Typography.cmx
 	$(CAMLOPT) -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
 
-DefaultFormat.p.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
+DefaultFormat.p.cmxa:Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml  ../Typography/_build/Typography.cmi ../Typography/_build/Typography.cmx
 	$(CAMLOPT) -p -a -o $@ Euler.ml Numerals.ml TableOfContents.ml Sections.ml DefaultFormat.ml
 
 %.cmxa:DefaultFormat.cmxa %.ml

@@ -57,7 +57,7 @@ Image.cmx:Image.ml GL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
 	$(CAMLOPT) -package netcgi2,nethttpd,$(PACK_DRIVER_GL) -c -o $@ $<
 
-%.cmx:%.ml ../Typography/_build/Typography.cmi
+%.cmx:%.ml ../Typography/_build/Typography.cmi ../Typography/_build/Typography.cmx
 	$(CAMLOPT) -c -o $@ $<
 
 clean:
