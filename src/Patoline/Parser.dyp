@@ -481,7 +481,7 @@ let utf8_char =
 let space = [' ' '\t' '\r']
 let newline = '\n'
 
-let string = '"' ([^'"'] | "\\\"")* '"'
+let string = '"' ([^ '\\' '"'] | ("\\" _) )* '"'
 let num = ['0'-'9']+('.'['0'-'9']+)?
 
 let verbatim_line = '#'? '#'? [^'\n' '\r' '#'] [^'\n''\r']*
@@ -504,7 +504,10 @@ rule comment = parse
   | '(' '*' {  push_comment (); comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_comment)) }
   | newline {  set_newline 1 (std_lexbuf lexbuf); comment lexbuf }
-  | string {  comment lexbuf }
+  | string {  
+      String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
+        (Dyp.lexeme lexbuf);
+      comment lexbuf }
   | _ {  comment lexbuf }
 
 and caml txps= parse
@@ -535,7 +538,6 @@ and caml txps= parse
 	      caml ((TxpText, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
   | eof { [] }
   | newline { set_newline 1 (std_lexbuf lexbuf); caml txps lexbuf }
-  | string { caml txps lexbuf }
   | _ { caml txps lexbuf }
 
 and texprime_math= parse
@@ -545,7 +547,10 @@ and texprime_math= parse
   | '<' '$' { push_texprime_math (); texprime_math lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_math)) }
   | newline { set_newline 1 (std_lexbuf lexbuf); texprime_math lexbuf }
-  | string { texprime_math lexbuf }
+  | string { 
+          String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
+            (Dyp.lexeme lexbuf);
+          texprime_math lexbuf }
   | _ { texprime_math lexbuf }
 
 and texprime_text= parse
@@ -555,7 +560,10 @@ and texprime_text= parse
   | '<''<' {  push_texprime_text (); texprime_text lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_text)) }
   | newline {  set_newline 1 (std_lexbuf lexbuf); texprime_text lexbuf }
-  | string {  texprime_text lexbuf }
+  | string {
+           String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
+            (Dyp.lexeme lexbuf);
+           texprime_text lexbuf }
   | _ {  texprime_text lexbuf }
 
 main lexer =
