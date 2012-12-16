@@ -126,6 +126,7 @@ module Mathematical=struct
     delimiter_down_tolerance:float;
     op_tolerance:float;
     op_limits_tolerance:float;
+    punctuation_factor:float;
   }
   and environment=env array             (* doit etre de taille 8 *)
   and style=

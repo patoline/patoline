@@ -961,10 +961,10 @@ math:
       { 
         match c, p with
         | None, None -> Binary(1,app_ind dq (Prefix(3,m,false,v)),false,SimpleSym "",false,b)
-        | None, Some(_,p,d) -> app_ind d (Binary(0,app_ind dq (Prefix(3,m,false,v)),true,p,false,b))
+        | None, Some(_,p,d) -> app_ind d (Binary(1,app_ind dq (Prefix(3,m,false,v)),true,p,false,b))
         | Some(r,e,d), None -> Binary(1,app_ind dq (Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e)))),
 	                         false,SimpleSym "",false,b)
-        | Some(r,e,d), Some(_,p,d') -> app_ind d' (Binary(0,app_ind dq (Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e)))),
+        | Some(r,e,d), Some(_,p,d') -> app_ind d' (Binary(1,app_ind dq (Prefix(2,m,false,app_ind d (Binary(2,v,false,r,false,e)))),
 	                         true,p,false,b))
       } operator
 
@@ -1013,7 +1013,7 @@ math:
   | math(<=impl)<a> arrow<_,op,d> math(<impl)<b> 
       { app_ind d (Binary(0, a, false, op, false, b)) } impl
   | math(<=punc)<a> punctuation<_,op,d> math(<punc)<b> 
-      { app_ind d (Binary(2, a, true, op, false, b)) } punc
+      { app_ind d (Binary(1, a, true, op, false, b)) } punc
 
   | "{" addition_like<_,op,d> "}"
       { app_ind d (Symbol op) } atom

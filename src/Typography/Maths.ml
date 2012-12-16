@@ -487,28 +487,37 @@ let rec draw env_stack mlist=
 		let box_op = draw_boxes env op in
 		let (x0,_,x1,_) = bounding_box_full box_op in
 		assert (x0 <= x1);
-		let (x0',_,x1',_) = bounding_box_kerning box_op in
 		let dist0 =
 		  if bin_left = [] then 0.0 else
-		  let space, m_r = if no_sp_left then 
+		  let space, m_l = if no_sp_left then 
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
-			(1.5 *. abs_float(x0 -. x0')), m_l
+			(mathsEnv.punctuation_factor *. space), m_l
 		    else space,m_l in
-		  adjust_space mathsEnv space (m_r +. space) box_left box_op
+		  adjust_space mathsEnv space (m_l +. space) box_left box_op
 		in
 		let dist1 =
 		  if bin_right= [] then 0.0 else
-		  let space, m_r = if no_sp_right then 1.5 *. abs_float(x1 -. x1'), m_r
+		  let space, m_r = if no_sp_right then
+		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
+			(mathsEnv.punctuation_factor *. space),m_r
 		    else space,m_r in
 		  adjust_space mathsEnv space (m_r +. space) box_op box_right
 		in
 		(* computes distance left - right to avoid collisions above binary symbols *)
 		let dist2 = 
 		  if bin_left = [] or bin_right = [] then -. infinity else
-		    let space = space /. 3.0 in
 		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
 		in
-		let dist1 = max dist1 (dist2 -. dist0 -. (x1 -. x0)) in
+		let dist0, dist1 = 
+		  let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
+		  if delta > 0.0 then
+		    let l = if no_sp_left then mathsEnv.punctuation_factor else 1.0 in
+		    let r = if no_sp_right then mathsEnv.punctuation_factor else 1.0 in
+		    dist0 +. delta *. l /. (l +. r),
+		    dist1 +. delta *. r /. (l +. r)
+		  else
+		    dist0, dist1
+		in
 		let gl0=
 		  if bin_left = [] then [] else (
 		    match glue dist0 dist0 dist0 with
@@ -552,9 +561,32 @@ let rec draw env_stack mlist=
           let x0b',y0b',x1b',y1b'=bounding_box_full bb in
           let wa=x1a-.x0a in
           let wb=x1b-.x0b in
-	  let w = max wa wb in
-          let w'=max (x1a'-.x0a') (x1b'-.x0b') in
-          let w' = w' +. (w'-.w)/.2.  in
+          let wa'=x1a'-.x0a' in
+          let wb'=x1b'-.x0b' in
+	  let w = max wa' wb' in
+	  let dxa,dxb =
+	    try if wa' > wb' then (
+	      let dx = (w -. wb) /. 2. in
+	      if dx +. x0b' < 0.0 or dx +. x1b' > w then raise Exit;
+	      x0a-.x0a', dx )
+	    else (
+		let dx = (w -. wa) /. 2. in
+		if dx +. x0a' < 0.0 or dx +. x1a' > w then raise Exit;
+		dx , x0b-.x0b')
+	    with Exit ->
+		x0a-.x0a'+.(w -. wa')/.2.0, x0b-.x0b'+.(w -. wb')/.2.0
+	  in
+	  let w, dxa, dxb =
+            let min_width=
+              let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
+                ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) '+'}) in
+              mathsEnv.mathsSize*.env.size*.(Fonts.glyph_x1 x-.Fonts.glyph_x0 x)/.1000.
+            in
+	    if w < min_width then
+	      min_width, dxa +. (min_width -. w)/.2., dxb +. (min_width -. w)/.2.
+	    else
+	      w,dxa,dxb
+          in
 
             Drawing ({ drawing_min_width=w;
                        drawing_nominal_width=w;
@@ -565,9 +597,9 @@ let rec draw env_stack mlist=
                        drawing_contents=(fun _->
                                            (if ln.lineWidth = 0. then [] else
                                               [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize*.env.size},
-                                                     [ [|line (0.,hx) (w',hx)|] ]) ])@
-                                             (List.map (translate ((w-.wa)/.2.) (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
-                                             (List.map (translate ((w-.wb)/.2.) (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
+                                                     [ [|line (0.,hx) (w,hx)|] ]) ])@
+                                             (List.map (translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
+                                             (List.map (translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
                                         ) }) :: (draw env_stack s)
         )
       | Operator op::s ->(

@@ -1,0 +1,30 @@
+
+
+\Caml(
+let caml x = x
+let ser u n i = <$ \sum_{\n ≥ \i } \u $>
+let frac u v = <$ \u \over \v $>
+let unit = []
+)
+
+$$f(x,y)$$
+
+$$f({1 \over T}, {1 \over U})$$
+
+Alors: ${1\over T}, x,y$, bla bla, bla.
+
+$$\sqrt{T}, {1\over T}, x,y$$
+ 
+\begin{center}
+$$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}, 
+ \ser{\frac{1}{n^{n}}}{n}{0} , 
+ \ser{\frac{n!}{n^{n}}}{n}{0} , 
+ \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} ,
+
+ \ser{\frac{(n + 1) 2^{n}}{n!}}{n}{0} , 
+ \ser{\frac{(2 n)!}{n^{2 n}}}{n}{0} ,
+ \ser{\frac{n^{n}}{(n!)^{2}}}{n}{0}$$
+\end{center}
+
+$$A^{⊥⊥},B$$
+

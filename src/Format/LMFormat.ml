@@ -118,8 +118,8 @@ module LMMath = struct
   let default_env2 = { default_env with
     delimiter_up_tolerance=0.3;
     delimiter_down_tolerance=0.15;
-    op_tolerance = 0.5;
-    op_limits_tolerance = 0.95;
+    op_tolerance = 0.95;
+    op_limits_tolerance = 0.5;
   }
     
   let default=[|

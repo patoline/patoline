@@ -165,8 +165,9 @@ let default_env=
       priority_unit=1./.8.;
       delimiter_up_tolerance=0.05;
       delimiter_down_tolerance=0.05;
-      op_tolerance = 0.75;
-      op_limits_tolerance = 1.25;
+      op_tolerance = 1.25;
+      op_limits_tolerance = 0.75;
+      punctuation_factor = 0.66;
    }
 
 let msubst m x=List.map (fun x->try
@@ -184,8 +185,8 @@ let displaySubst=Lazy.lazy_from_fun
 let default_env2 = { default_env with
   delimiter_up_tolerance=0.3;
   delimiter_down_tolerance=0.15;
-  op_tolerance = 0.5;
-  op_limits_tolerance = 0.95;
+  op_tolerance = 0.95;
+  op_limits_tolerance = 0.5;
  }
 
 let default=[|
