@@ -401,7 +401,7 @@ let rec draw env_stack mlist=
                   if mathsEnv.kerning then
 		    let ll = List.map (translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
-		    let m = max ((x0 -. x1) /. 2.) ((x0' -. x1') /. 2.) in
+		    let m = max ((x0 -. x1) /. 2.) (x0' -. x1') in
                     if i mod 2 = 0 && xoff.(i) <> infinity && xoff.(i) <> -.infinity then 
 		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
 		    else
