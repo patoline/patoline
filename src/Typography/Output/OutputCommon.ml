@@ -169,8 +169,6 @@ let bounding_box_opt opt l=
 
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
-
-    | _::s -> bb x0 y0 x1 y1 s
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
