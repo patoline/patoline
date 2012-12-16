@@ -102,16 +102,18 @@ let ocamlfind_query =
         let res =
           List.fold_left
            (fun res pack_alias ->
-             let ci,co,ce=Unix.open_process_full (Printf.sprintf "ocamlfind query %s" pack_alias) configure_environment in
-             let str=String.create 100 in
-             while input ci str 0 (String.length str) > 0 do () done;
-             while input ce str 0 (String.length str) > 0 do () done;
-             let st=Unix.close_process_full (ci,co,ce) in
-             if fst res || st <> (Unix.WEXITED 0) then
+             let ci,ci'=Unix.pipe () in
+             let co,co'=Unix.pipe () in
+             let ce,ce'=Unix.pipe () in
+             let i=Unix.create_process "ocamlfind" [|"ocamlfind";"query";pack_alias|] ci' co ce in
+             Unix.close co;
+             Unix.close ce;
+             Unix.close ci';
+             let _,st=Unix.waitpid [] i in
+             if fst res || st <> (Unix.WEXITED 0) then (
                res
-             else (
+             ) else
                (true, pack_alias)
-             )
            )
             (false, "")
             liste
@@ -222,12 +224,15 @@ let _=
   plugins_dirs:= !plugins_dir ::(!plugins_dirs);
 
   let has_dypgen=
-    let ci,co,ce=Unix.open_process_full "dypgen" configure_environment in
-    let str=String.create 100 in
-    while input ci str 0 (String.length str) > 0 do () done;
-    while input ce str 0 (String.length str) > 0 do () done;
-    let st=Unix.close_process_full (ci, co, ce) in
-    if (ocamlfind_has "dyp") && (st = (Unix.WEXITED 0)) then (
+    let ci,ci'=Unix.pipe () in
+    let co,co'=Unix.pipe () in
+    let ce,ce'=Unix.pipe () in
+    let i=Unix.create_process "dypgen" [|"dypgen"|] ci' co ce in
+    Unix.close co;
+    Unix.close ce;
+    Unix.close ci';
+    let _,st=Unix.waitpid [] i in
+    if (ocamlfind_has "dyp") && st = (Unix.WEXITED 0) then (
       true
     ) else false
   in
@@ -236,7 +241,7 @@ let _=
     Printf.fprintf stderr "error: package camomile missing.\n";
     exit 1
   );
-
+  let has_sqlite3=ocamlfind_has "sqlite3" in
 
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
@@ -334,6 +339,10 @@ let _=
     )
     ok_drivers;
 
+    (* Enable compilation of ocaml-bibi if sqlite3 is installed *)
+    if has_sqlite3 then (
+      Printf.fprintf make "BIBI=ocaml-bibi/bibi.cmxa ocaml-bibi/bibi.p.cmxa ocaml-bibi/bibi.cma\n"
+    );
     close_out make;
 
     let tags_typography=open_out "src/Typography/_tags" in
@@ -389,14 +398,14 @@ let _=
       Printf.fprintf out "\tinstall -p -m 644 src/Typography/META %s $(DESTDIR)%s/Typography\n" sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
       (* ocaml-bibi *)
-      let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
-      in
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);
-
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
-      Printf.fprintf out "\tinstall -p -m 644 src/ocaml-bibi/META %s $(DESTDIR)%s/bibi\n" bibi_sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
-
+      if has_sqlite3 then (
+        let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
+        in
+        Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (escape !ocaml_lib_dir);
+        Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);
+        Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+        Printf.fprintf out "\tinstall -p -m 644 src/ocaml-bibi/META %s $(DESTDIR)%s/bibi\n" bibi_sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir)
+      );
       (* proof *)
       Printf.fprintf out "\tinstall -p -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 

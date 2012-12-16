@@ -15,13 +15,13 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Pdf:Drivers:Format
 
-all:native prof
+all:native prof $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) ocaml-bibi/bibi.cmxa proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) DefaultGrammar.tgx
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) DefaultGrammar.tgx
 
-byte:Typography/_build/Typography.cma ocaml-bibi/bibi.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
+byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
 
-prof:Typography/_build/Typography.p.cmxa ocaml-bibi/bibi.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa
+prof:Typography/_build/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
