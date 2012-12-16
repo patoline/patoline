@@ -211,7 +211,7 @@ let slave_html cache structure pages prefix=
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
   Rbuffer.add_string html (Printf.sprintf "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
-  let style=SVG.make_defs cache in
+  let style=SVG.make_defs "" cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\">\n<![CDATA[\n";
   Rbuffer.add_buffer html style;
   Rbuffer.add_string html "]]>\n</style></defs><title>";
@@ -304,7 +304,7 @@ let master_html cache structure pages prefix=
 <td style=\"width:%s;padding:0;\">" (if with_time then "50%%" else "100%%"));
   Rbuffer.add_string html (Printf.sprintf "<svg viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
-  let style=SVG.make_defs cache in
+  let style=SVG.make_defs "" cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\">\n<![CDATA[\n";
   Rbuffer.add_buffer html style;
   Rbuffer.add_string html "]]>\n</style></defs><title>";

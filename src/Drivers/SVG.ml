@@ -24,7 +24,7 @@ open OutputCommon
 open OutputPaper
 open Util
 open HtmlFonts
-
+open Box
 exception Bezier_degree
 
 
@@ -55,7 +55,7 @@ let standalone w h style title svg=
   svg_buf
 
 
-let make_defs fontCache=
+let make_defs prefix fontCache=
   let def_buf=Rbuffer.create 256 in
   StrMap.iter (fun full class_name->
     Rbuffer.add_string def_buf
@@ -269,63 +269,6 @@ let draw ?fontCache prefix w h contents=
   svg_buf
 
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName=
-
-  let chop=Filename.chop_extension fileName in
-  let cache=build_font_cache chop (Array.map (fun x->x.pageContents) pages) in
-  HtmlFonts.output_fonts cache;
-  let i=ref 0 in
-  while !i<Array.length pages do
-    let html_name=Printf.sprintf "%s%d.html" chop !i in
-    let html=open_out html_name in
-    Printf.fprintf html
-      "<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-<meta charset=\"utf-8\">
-<title>%s</title>"      structure.name;
-    Printf.fprintf html "</head><body style=\"margin:0;padding:0;\">";
-    Printf.fprintf html "<div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;width:100%%;\">";
-    for j= !i to min (!i+10) (Array.length pages-1) do
-      let w,h=pages.(j).pageFormat in
-       Printf.fprintf html "<svg viewBox=\"0 0 %d %d\" style=\"width:100%%;\">"
-        (round (w)) (round ( h));
-
-      let sorted_pages=
-
-        let x=List.fold_left (fun m x->
-          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
-          IntMap.add (drawing_order x) (x::m') m
-        ) IntMap.empty pages.(j).pageContents
-        in
-        let comp a b=match a,b with
-            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-              else compare gb.glyph_y ga.glyph_y
-          | Glyph ga,_-> -1
-          | _,Glyph gb->1
-          | _->0
-        in
-        let subsort a=match a with
-            Link l->Link { l with link_contents=List.sort comp l.link_contents }
-          | b->b
-        in
-        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
-      in
-      let svg=draw ~fontCache:cache chop w h sorted_pages in
-      let defs=make_defs cache in
-      Rbuffer.output_buffer html (assemble defs "" svg);
-      Printf.fprintf html "</svg>\n";
-    done;
-    Printf.fprintf html "</div></body></html>";
-    close_out html;
-    i:= !i+10
-  done;
-  Printf.fprintf stderr "File %s written.\n" fileName;
-  flush stderr
-
-
 
 let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -378,8 +321,6 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   ) pages
   in
   svg_files,cache
-
-
 
 let basic_html cache structure pages prefix=
   let html=Rbuffer.create 10000 in
@@ -544,7 +485,7 @@ else if(n<current_slide)
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
   Rbuffer.add_string html (Printf.sprintf "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
 
-  let style=make_defs cache in
+  let style=make_defs "" cache in
   let ststr=(Filename.concat prefix "style.css") in
   let o=open_out (Filename.concat prefix "style.css") in
   Rbuffer.output_buffer o style;
@@ -554,28 +495,6 @@ else if(n<current_slide)
   Rbuffer.add_string html "\"/>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
-  html
-
-
-
-let onepage_html cache structure pages svg_files=
-  let html=Rbuffer.create 10000 in
-  Rbuffer.add_string html
-    "<!DOCTYPE html>
-<html lang=\"en\">
-<head>
-<meta charset=\"utf-8\">
-<title>";
-  Rbuffer.add_string html structure.name;
-  Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\">";
-
-  Array.iteri (fun i->
-    Array.iteri (fun j x->
-      Rbuffer.add_buffer html x;
-    )
-  ) svg_files;
-
-  Rbuffer.add_string html "</div></body></html>";
   html
 
 
@@ -619,3 +538,48 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages filename=
   output' ~structure (Array.map (fun x->[|x|]) pages) filename
+
+
+
+
+
+let images prefix env conts=
+
+  (if Sys.file_exists prefix && not (Sys.is_directory prefix) then
+    Unix.unlink prefix;
+  );
+  (if not (Sys.file_exists prefix) then
+      Unix.mkdir prefix 0o755);
+
+  let conts_box=Array.map (fun x->Document.boxify_scoped env x) conts in
+  let raws=Array.map (fun cont->Document.draw_boxes env cont) conts_box in
+  let cache=build_font_cache prefix raws in
+  let css_file=Filename.concat prefix "style.css" in
+
+
+  let r=Rbuffer.create 1000 in
+  let imgs=Array.mapi (fun i x->
+    Rbuffer.clear r;
+    let _,w,_=boxes_interval (Array.of_list conts_box.(i)) in
+    let x0,y0,x1,y1=bounding_box_full raws.(i) in
+    let h=y1-.y0 in
+    Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"margin-bottom:%gmm;\">"
+                            w (y1-.y0)
+                            (floor x0) (h-.y1) (ceil (x1-.x0)) (h)
+                            y0);
+
+    let dr=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
+    HtmlFonts.output_fonts cache;
+
+    (* Rbuffer.add_string r (Printf.sprintf "<defs><style type=\"text/css\" src=\"%s\"/></defs>" css_file); *)
+    Rbuffer.add_string r "<title></title>";
+    Rbuffer.add_buffer r dr;
+    Rbuffer.add_string r "</svg>\n";
+    Rbuffer.contents r;
+  ) conts
+  in
+  let style=make_defs prefix cache in
+  let css=open_out css_file in
+  Rbuffer.output_buffer css style;
+  close_out css;
+  imgs
