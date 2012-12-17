@@ -27,21 +27,21 @@ open Document
 let normal env paragraphs figures last_figures last_users line allow_impossible=
   let mes0=env.normalMeasure in
   let measure=
-    let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in
-      if not (IntMap.is_empty figures_) then
-        match IntMap.max_binding figures_ with
-            (fig,Placed fig_line)->(
-              if page line=page fig_line &&
-                line.height<=
-                fig_line.height -. figures.(fig).drawing_y0
-                && line.height>=fig_line.height -. figures.(fig).drawing_y1
-              then
-                mes0 -. figures.(fig).drawing_nominal_width
-              else
-                mes0
-            )
-          | _->assert false
-      else
+    (* let figures_=IntMap.filter (fun _ a->match a with Placed _->true |_->false) last_figures in *)
+    (*   if not (IntMap.is_empty figures_) then *)
+    (*     match IntMap.max_binding figures_ with *)
+    (*         (fig,Placed fig_line)->( *)
+    (*           if page line=page fig_line && *)
+    (*             line.height<= *)
+    (*             fig_line.height -. figures.(fig).drawing_y0 *)
+    (*             && line.height>=fig_line.height -. figures.(fig).drawing_y1 *)
+    (*           then *)
+    (*             mes0 -. figures.(fig).drawing_nominal_width *)
+    (*           else *)
+    (*             mes0 *)
+    (*         ) *)
+    (*       | _->assert false *)
+    (*   else *)
         mes0
   in
   let rec break_next j sum_min sum_nom sum_max y0 y1 only_impossible result=
