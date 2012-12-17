@@ -209,6 +209,7 @@ and environment={
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   user_positions:line UserMap.t;
   show_boxes:bool;
+  show_frames:bool;
 }
 
 (** {3 Contents} *)

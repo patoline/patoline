@@ -515,6 +515,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           names=StrMap.empty;
           user_positions=UserMap.empty;
 	  show_boxes=false;
+	  show_frames=false;
         }
 
 
@@ -1382,7 +1383,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     draw_frames (Layout.frame_up (t,cxt))
                   )
                 in
-                draw_frames line.layout;
+                if env.show_frames then draw_frames line.layout;
                 (* * *)
 
 

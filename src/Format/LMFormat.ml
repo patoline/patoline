@@ -237,6 +237,7 @@ module MakeFormat (D:Document.DocumentStructure)
           names=StrMap.empty;
           user_positions=UserMap.empty;
 	  show_boxes=false;
+	  show_frames=false;
         }
 
 end
