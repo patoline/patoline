@@ -159,7 +159,6 @@ and paragraph={
   par_env:environment -> environment;
   par_post_env:environment -> environment -> environment;
   par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters;
-  par_new_page:environment->Layout.frame_zipper->Layout.frame_zipper;
   par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> float;
   par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line UserMap.t -> line -> bool -> line list;
   par_states:Util.IntSet.t;
@@ -208,6 +207,7 @@ and environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
+  new_page:Layout.frame_zipper->Layout.frame_zipper;
   user_positions:line UserMap.t;
   show_boxes:bool;
   show_frames:bool;
@@ -297,6 +297,17 @@ let tags=function
   | _->[]
 (****************************************************************)
 
+(**/**)
+let default_new_page pageFormat t=
+  let zip=Layout.make_page pageFormat (frame_top t) in
+  let w=(fst zip).frame_x1-.(fst zip).frame_x0
+  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
+  let x0=((fst zip).frame_x0+.2.*.w/.9.) in
+  let y0=((fst zip).frame_y0+.1.*.h/.6.) in
+  let x1=((fst zip).frame_x1-.2.*.w/.9.) in
+  let y1=((fst zip).frame_y1-.1.*.h/.6.) in
+  frame x0 y0 x1 y1 zip
+(**/**)
 
 
 (* Le jeu est de construire la structure de document suivante :
@@ -708,22 +719,11 @@ let beginFigure name=
 
 (** {3 Editing document trees} *)
 
-(**/**)
-let new_page env t=
-  let zip=Layout.make_page env.normalPageFormat (frame_top t) in
-  let w=(fst zip).frame_x1-.(fst zip).frame_x0
-  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
-  let x0=((fst zip).frame_x0+.2.*.w/.9.) in
-  let y0=((fst zip).frame_y0+.1.*.h/.6.) in
-  let x1=((fst zip).frame_x1-.2.*.w/.9.) in
-  let y1=((fst zip).frame_y1-.1.*.h/.6.) in
-  frame x0 y0 x1 y1 zip
-(**/**)
 
 
 
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
-let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(new_page=new_page) complete parameters par=
+let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters par=
   match !str with
       Paragraph p,path->
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
@@ -731,7 +731,6 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(new_page=new_page)
         let para=Paragraph {par_contents=par; par_env=environment;
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
                             par_parameters=parameters;
-                            par_new_page=new_page;
                             par_badness=badness;
                             par_completeLine=complete; par_states=IntSet.empty; par_paragraph=(-1) }
         in
@@ -1214,7 +1213,7 @@ let flatten env0 fixable str=
   let figure_trees=ref IntMap.empty in
   let fig_param=ref IntMap.empty in
   let param=ref [] in
-  let new_page=ref [] in
+  let new_page_list=ref [] in
   let compl=ref [] in
   let bads=ref [] in
   let n=ref 0 in
@@ -1229,7 +1228,7 @@ let flatten env0 fixable str=
     trees:=(tree,path)::(!trees);
     compl:=(p.par_completeLine env)::(!compl);
     param:=(p.par_parameters env)::(!param);
-    new_page:=(p.par_new_page env)::(!new_page);
+    new_page_list:=(env.new_page)::(!new_page_list);
     bads:=(p.par_badness env)::(!bads);
     incr n;
     frees:=0;
@@ -1323,7 +1322,7 @@ let flatten env0 fixable str=
   in
   (env2, params,
    Array.of_list (List.rev !param),
-   Array.of_list (List.rev !new_page),
+   Array.of_list (List.rev !new_page_list),
    Array.of_list (List.rev !compl),
    Array.of_list (List.rev !bads),
    Array.of_list (List.rev !paragraphs),

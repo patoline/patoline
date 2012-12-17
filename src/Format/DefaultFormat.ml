@@ -301,7 +301,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                              min_lines_before=if g.lineEnd>=Array.length b.(g.paragraph) then
                                  1 else 0
                            });
-                       par_new_page=(Document.new_page);
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
                        par_states=IntSet.empty;
@@ -335,7 +334,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                              min_height_before=if line.lineEnd>=Array.length b.(line.paragraph) then
                                  2.*.a.normalLead else 0.
                            });
-                       par_new_page=(Document.new_page);
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
                        par_states=IntSet.empty;
@@ -361,12 +359,11 @@ module Format=functor (D:Document.DocumentStructure)->(
                     min_lines_after=
                       if n.displayname<>[] && line.lineEnd>=Array.length b.(line.paragraph) then
                         if !has_author || !has_institute then
-                          2
+                          3
                         else
-                          4
+                          6
                       else 1;
                     min_height_before=0. });
-              par_new_page=(Document.new_page);
               par_badness=(badness);
               par_completeLine=Complete.normal;
               par_states=IntSet.empty;
@@ -408,7 +405,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 min_height_before=if line.lineStart=0 then a.normalLead else 0.;
                 min_height_after=if line.lineEnd>=Array.length b.(line.paragraph) then a.normalLead else 0.;
                 not_last_line=true });
-          par_new_page=(Document.new_page);
           par_badness=(badness);
           par_completeLine=Complete.normal;
           par_states=IntSet.empty;
@@ -433,14 +429,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                      user_positions=env2.user_positions });
                   par_badness=(badness);
                   par_parameters=parameters; par_completeLine=Complete.normal;
-                  par_new_page=(Document.new_page);
                   par_states=IntSet.empty;
                   par_paragraph=(-1)}, [])
 
     module Env_noindent=struct
       let do_begin_env ()=()
       let do_end_env ()=()
-      let newPar str ~environment complete params contents=
+      let newPar str ~environment ~new_page complete params contents=
         Document.newPar str ~environment:(fun x->{x with par_indent = []})
           complete params contents
     end
@@ -514,6 +509,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           counters=StrMap.empty;
           names=StrMap.empty;
           user_positions=UserMap.empty;
+          new_page=Document.default_new_page a4;
 	  show_boxes=false;
 	  show_frames=false;
         }
@@ -639,13 +635,13 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     let minipage env str=
-      let env',fig_params,params,new_page,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
-        ~new_page:new_page
+        ~new_page:new_page_list
         ~badness:bads
         pars
       in
@@ -654,13 +650,13 @@ module Format=functor (D:Document.DocumentStructure)->(
          pages)
 
     let minipage' env str=
-      let env',fig_params,params,new_page,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
-        ~new_page:new_page
+        ~new_page:new_page_list
         ~badness:bads
         pars
       in
@@ -1291,14 +1287,14 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec resolve i env0=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let fixable=ref false in
-          let env1,fig_params,params,new_page,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
+          let env1,fig_params,params,new_page_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
           let (logs,opt_pages,figs',user')=TS.typeset
             ~completeLine:compl
             ~figure_parameters:fig_params
             ~figures:figures
             ~parameters:params
-            ~new_page:new_page
+            ~new_page:new_page_list
             ~badness:badness
             paragraphs
           in

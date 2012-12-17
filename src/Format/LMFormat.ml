@@ -236,6 +236,7 @@ module MakeFormat (D:Document.DocumentStructure)
              "figure",(2,[0])];
           names=StrMap.empty;
           user_positions=UserMap.empty;
+          new_page=Document.default_new_page a4;
 	  show_boxes=false;
 	  show_frames=false;
         }

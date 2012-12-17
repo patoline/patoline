@@ -108,17 +108,19 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 (\"--\",Arg.Rest (fun x->_args:=x:: !_args),\"Other arguments\")
 ]
 
-let _=Arg.parse _spec ignore \"Usage :\";;" format driver format
+let _=Arg.parse _spec ignore \"Usage :\";;
+let defaultEnv=Patoline_Format.defaultEnv;;\n" format driver format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
-open Patoline_Format;;\n" format format
+open Patoline_Format;;
+let defaultEnv=Patoline_Format.defaultEnv;;\n" format format
           | _->""
         ))
 
 
 let postambule driver outfile = Printf.sprintf "
-let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) Patoline_Format.defaultEnv %S
+let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S
 " outfile
 
 module Source = struct
@@ -553,7 +555,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	      (* else *)
 	    "Patoline_Format.parameters"
 	  in
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s ~new_page:new_page Complete.normal %s %a;;\n" 
+	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n"
 	    env param (print_contents parser_pp from) p
 	| Caml(ld,gr,s,e,txps,pos) -> print_caml parser_pp ld gr from where s e txps pos
 	| String s -> Printf.fprintf where "%s" s

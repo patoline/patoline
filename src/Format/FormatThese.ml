@@ -255,7 +255,6 @@ let postprocess_tree tree=
                       if line.lineEnd>=Array.length b.(line.paragraph) then 2 else 0;
                   not_last_line=true }
               );
-          par_new_page=Document.new_page;
           par_completeLine=Complete.normal }
         in
           Node { n with children=
