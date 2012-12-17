@@ -1400,7 +1400,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                               [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                   (param.left_margin+.fig.drawing_nominal_width,
                                                    y+.fig.drawing_y1)]) :: page.pageContents;
-                  page.pageContents<- (List.map (translate param.left_margin y)
+                  page.pageContents<- (List.map (translate ((fst pp.(j).line.layout).frame_x0+.param.left_margin) y)
                                          (fig.drawing_contents fig.drawing_nominal_width))
                   @ page.pageContents;
 

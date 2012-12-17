@@ -255,10 +255,12 @@ module Make (L:Line with type t=Layout.line)=(
               in
               let nextNode={nextNode with height=next_h } in
               register (Some cur_node) nextNode
-                (lastBadness+.badness.(node.paragraph) paragraphs figures
-                   lastFigures
-                   node !haut 0 lastParameters 0.
-                   nextNode !bas 0 params 0.)
+                (lastBadness+.
+                   if node.paragraph<Array.length paragraphs then badness.(node.paragraph) paragraphs figures
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.
+                   else 0.)
                 TypoLanguage.Normal
                 params
                 0.;
@@ -280,10 +282,12 @@ module Make (L:Line with type t=Layout.line)=(
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser node nextNode in
 
               register (Some cur_node) nextNode
-                (lastBadness+.badness.(node.paragraph) paragraphs figures
-                   lastFigures
-                   node !haut 0 lastParameters 0.
-                   nextNode !bas 0 params 0.)
+                (lastBadness+.
+                   if node.paragraph<Array.length paragraphs then badness.(node.paragraph) paragraphs figures
+                     lastFigures
+                     node !haut 0 lastParameters 0.
+                     nextNode !bas 0 params 0.
+                   else 0.)
                 TypoLanguage.Normal
                 params
                 0.;
@@ -295,16 +299,17 @@ module Make (L:Line with type t=Layout.line)=(
             if node.paragraph>=Array.length paragraphs then (0,node.paragraph) else
               if (node.hyphenEnd<0 && node.lineEnd+1>=
                     Array.length paragraphs.(node.paragraph)) then
-                (0,min (node.paragraph+1) (Array.length paragraphs))
+                (0,node.paragraph+1)
               else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else
                 (node.lineEnd, node.paragraph)
           in
           if pi >= Array.length paragraphs then (
             (* The game is over. Place remaining figures. *)
-            if node.lastFigure+1>=Array.length figures then
+            if node.lastFigure+1>=Array.length figures then (
               register_endNode ()
-            else
+            ) else (
               place_figure ()
+            )
           ) else (
             (* Move to next nodes. *)
             let flushed=
@@ -368,7 +373,7 @@ module Make (L:Line with type t=Layout.line)=(
                 let nextParams=parameters.(pi)
                   paragraphs figures lastParameters lastFigures lastUser node nextNode
                 in
-                if height<(fst layout).frame_y0
+                if (height<(fst layout).frame_y0)
                   || frame_page layout < page0+nextParams.min_page_before
                 then (
                   let np=new_page.(pi) layout in

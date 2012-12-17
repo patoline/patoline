@@ -167,7 +167,7 @@ let postprocess_tree tree=
                   (dr.drawing_contents dr.drawing_nominal_width)
               in
               let dr=drawing (
-                (List.map (OutputCommon.translate (-.w-.x1) h)num)@
+                (List.map (OutputCommon.translate (-.w-.x1) h) num)@
                   text
               )
               in
@@ -228,6 +228,7 @@ let postprocess_tree tree=
                     left_margin=p.left_margin-.w;
                     min_lines_after=if line.lineEnd>=Array.length a1.(line.paragraph) then 4 else 1;
                     min_page_before = (
+                      if line.paragraph=0 then 0 else
                       if path=[] && line.lineStart<=0 then (
                         let minimal=max p.min_page_before 1 in
                         minimal+((1+max 0 (page line)+minimal) mod 2)
