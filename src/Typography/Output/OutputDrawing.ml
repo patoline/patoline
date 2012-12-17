@@ -33,16 +33,15 @@ let output paragraphs figures env (opt_pages:placed_line list array)=
     let y1=ref (-.infinity) in
     let x0=ref infinity in
     let x1=ref (-.infinity) in
-    let first_y=List.fold_left (fun m l->min m l.line.height) infinity p in
     List.iter (
       fun l->
-        let y= first_y-.l.line.height in
+        let y=l.line.height in
         if l.line.isFigure then (
           let fig=figures.(l.line.lastFigure) in
           y1:=max !y1 y;
-          y0':=min !y0' (y-.fig.drawing_y1+.fig.drawing_y0);
-          y0:=min !y0 (y-.fig.drawing_y1+.fig.drawing_y0);
-          pageContents := (List.map (translate l.line_params.left_margin (y-.fig.drawing_y1))
+          y0':=min !y0' (fig.drawing_y1+.fig.drawing_y0);
+          y0:=min !y0 (fig.drawing_y1+.fig.drawing_y0);
+          pageContents := (List.map (translate l.line_params.left_margin (fig.drawing_y1))
                              (fig.drawing_contents fig.drawing_nominal_width)) @ !pageContents
         ) else if l.line.paragraph<Array.length paragraphs then (
           let (yy0,yy1)=line_height paragraphs figures l.line in
