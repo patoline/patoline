@@ -352,7 +352,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           Node n->
             let par=Paragraph {
               par_contents=n.displayname;
-              par_env=(fun env->resize_env (env.size*.3.) env);
+              par_env=(fun env->resize_env (env.size*.2.) {env with hyphenate=(fun _->[||])});
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=
@@ -500,7 +500,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           footnote_y=10.;
           size=fsize;
           lead=13./.10.*.fsize;
-          normalMeasure=(fst a4)*.7./.9.;
+          normalMeasure=(fst a4)*.5./.9.;
           normalLead=13./.10.*.fsize;
           normalLeftMargin=0.;
           normalPageFormat=a4;
