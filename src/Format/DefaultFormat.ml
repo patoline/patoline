@@ -1637,6 +1637,10 @@ module MathsFormat=struct
         = Mathematical.Display })::a
     )]
 
+    let mathsize alpha a=[Maths.Scope(
+      fun _ _->Maths.Env (fun env-> { env with size=alpha })::a
+    )]
+
     let oline a=
       [Maths.Ordinary
          (Maths.noad

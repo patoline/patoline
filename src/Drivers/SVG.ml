@@ -69,11 +69,15 @@ let make_defs prefix fontCache=
     );
     (match col with
         RGB fc ->
-          Rbuffer.add_string def_buf
-            (Printf.sprintf "fill:#%02x%02x%02x; "
-               (round (255.*.fc.red))
-               (round (255.*.fc.green))
-               (round (255.*.fc.blue)))
+          if fc.red<>0. || fc.green<>0. || fc.blue<>0. then
+            let r=min 1. (max 0. fc.red)
+            and g=min 1. (max 0. fc.green)
+            and b=min 1. (max 0. fc.blue) in
+            Rbuffer.add_string def_buf
+              (Printf.sprintf "fill:#%02x%02x%02x; "
+                 (round (255.*.r))
+                 (round (255.*.g))
+                 (round (255.*.b)))
     );
     Rbuffer.add_string def_buf "}\n";
   ) fontCache.classes;
@@ -294,25 +298,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
-      let sorted_pages=
-        let x=List.fold_left (fun m x->
-          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
-          IntMap.add (drawing_order x) (x::m') m
-        ) IntMap.empty page.pageContents
-        in
-        let comp a b=match a,b with
-            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-              else compare gb.glyph_y ga.glyph_y
-          | Glyph ga,_-> -1
-          | _,Glyph gb->1
-          | _->0
-        in
-        let subsort a=match a with
-            Link l->Link { l with link_contents=List.sort comp l.link_contents }
-          | b->b
-        in
-        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
-      in
+      let sorted_pages=OutputCommon.sort_raw page.pageContents in
       let svg=draw ~fontCache:cache prefix w h sorted_pages in
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
@@ -553,6 +539,28 @@ let images prefix env conts=
 
   let conts_box=Array.map (fun x->Document.boxify_scoped env x) conts in
   let raws=Array.map (fun cont->Document.draw_boxes env cont) conts_box in
+  let raws=
+    Array.map (fun cont->
+      let x=List.fold_left (fun m x->
+        let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+        IntMap.add (drawing_order x) (x::m') m
+      ) IntMap.empty cont
+      in
+      let comp a b=match a,b with
+          Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+            else compare gb.glyph_y ga.glyph_y
+        | Glyph ga,_-> -1
+        | _,Glyph gb->1
+        | _->0
+      in
+      let subsort a=match a with
+          Link l->Link { l with link_contents=List.sort comp l.link_contents }
+        | b->b
+      in
+      IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+
+    ) raws
+  in
   let cache=build_font_cache prefix raws in
   let css_file=Filename.concat prefix "style.css" in
 
@@ -562,11 +570,12 @@ let images prefix env conts=
     Rbuffer.clear r;
     let _,w,_=boxes_interval (Array.of_list conts_box.(i)) in
     let x0,y0,x1,y1=bounding_box_full raws.(i) in
-    let h=y1-.y0 in
-    Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"margin-bottom:%gmm;\">"
-                            w (y1-.y0)
-                            (floor x0) (h-.y1) (ceil (x1-.x0)) (h)
-                            y0);
+    let h=(y1-.y0) in
+    Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"margin-bottom:%gmm;padding-top:0.3em;\">"
+                            (ceil (x1-.floor x0))
+                            (y1-.y0)
+                            (floor x0) (h-.y1) (ceil (x1-.floor x0)) (y1-.y0)
+                            (y0));
 
     let dr=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
     HtmlFonts.output_fonts cache;

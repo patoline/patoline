@@ -34,9 +34,11 @@ type font_cache={
   fontFamilies:int StrMap.t;
   mutable classes:int ClassMap.t
 }
-
+let rand=ref 0
 
 let build_font_cache prefix pages=
+  Random.self_init ();
+  rand:=(Random.int 0xffff);
   let rec make_fonts i l fonts=
     match l with
         []->(
@@ -115,7 +117,7 @@ let build_font_cache prefix pages=
       let glyphs=Array.of_list glyphList in
       let instance=fontInstance font in
 
-      let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
+      let full=Printf.sprintf "%s_%d_%d_%d" (Fonts.fontName font).postscript_name instance subfont !rand in
       let info=Fonts.fontInfo font in
       let filename=Filename.concat prefix (full^".otf") in
       families:=StrMap.add (full) (StrMap.cardinal !families) !families;
@@ -163,7 +165,8 @@ let className cache gl_=
   let instance=inst_num in
   (*  *)
 
-  let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in
+  let full=Printf.sprintf "%s_%d_%d_%d" (Fonts.fontName font).postscript_name instance subfont !rand in
+  (* let full=(Fonts.fontName font).postscript_name^"_"^(string_of_int instance)^"_"^(string_of_int subfont) in *)
   let fam=StrMap.find full cache.fontFamilies in
 
   try
