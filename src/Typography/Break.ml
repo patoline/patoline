@@ -512,6 +512,17 @@ module Make (L:Line with type t=Layout.line)=(
                                         (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
                                         nextParams,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                           )
+                        ) else  if nextNode.max_width < (nextParams).measure && allow_impossible then (
+                          minimal_tried_height:=min !minimal_tried_height height';
+                          if (height<=height')  then (
+                            let bad=(lastBadness+.
+                                       badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
+                                       nextNode !bas !max_bas nextParams comp1) in
+                            local_opt:=(nextNode,
+                                        max 0. bad,
+                                        (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (nextNode,text_line paragraphs nextNode))),
+                                        nextParams,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                          )
                         ) else (
                           minimal_tried_height:=min !minimal_tried_height height';
                           if (height<=height') then (

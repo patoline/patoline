@@ -31,6 +31,7 @@ type message=
 
 and optimization_error=
     Overfull_line of (line*string)
+  | Underfull_line of (line*string)
   | Widow of (line*string)
   | Orphan of (line*string)
 
@@ -41,7 +42,8 @@ let message=function
   | No_solution str->"Pas de solution, document vide"
   | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine :\n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Underfull_line (line,s))->Printf.sprintf "Ligne pas assez remplie \n\t%s\n\t%s" (sprint_linef line) s
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Votre choix de police (comic sans) est moche.\nConsultez http://bancomicsans.com pour plus d'informations\n"
 #endif
@@ -50,11 +52,12 @@ let message=function
 #define LANG_EN
 let lang=`EN
 let message=function
-  | No_solution str when String.length str>0->sprintf "Pas de solution, document incomplet. Dernière ligne:\n%s" str
-  | No_solution str->"Pas de solution, document vide"
-  | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine \n\t%s\n\t%s" (sprint_linef line) s
+  | No_solution str when String.length str>0->sprintf "No solution, empty document. Last line:\n%s" str
+  | No_solution str->"No solution, empty document."
+  | Opt_error (Widow (line,s))->Printf.sprintf "Widow : \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Orphan (line,s))->Printf.sprintf "Orphan : \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Overfull line: \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Underfull line: \n\t%s\n\t%s" (sprint_linef line) s
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Bad taste detected in font choice.\nPlease go to http://bancomicsans.com for more informations\n"
 #endif
