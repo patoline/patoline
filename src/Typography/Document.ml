@@ -302,9 +302,9 @@ let default_new_page pageFormat t=
   let zip=Layout.make_page pageFormat (frame_top t) in
   let w=(fst zip).frame_x1-.(fst zip).frame_x0
   and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
-  let x0=((fst zip).frame_x0+.2.*.w/.9.) in
+  let x0=((fst zip).frame_x0+.1.*.w/.6.) in
   let y0=((fst zip).frame_y0+.1.*.h/.6.) in
-  let x1=((fst zip).frame_x1-.2.*.w/.9.) in
+  let x1=((fst zip).frame_x1-.1.*.w/.6.) in
   let y1=((fst zip).frame_y1-.1.*.h/.6.) in
   frame x0 y0 x1 y1 zip
 (**/**)

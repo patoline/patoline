@@ -220,21 +220,26 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
     min_page_before=0;
     min_page_after=0;
     next_acceptable_height=(fun node params nextNode nextParams height->
-      if node==nextNode then
+      if node==nextNode then (
         let min_height=node.height-.params.min_height_after in
-        env.lead*.(floor (min_height/.env.lead))
-      else
-        if page node=page nextNode then (
+        let h0=min_height/.env.lead in
+        let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+        env.lead*.h1
+      ) else
+        let d=if page node=page nextNode then (
           let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
           let h0=min_height/.env.lead in
-          let h=if h0-.floor h0 < 1e-10 then env.lead*.floor h0 else
-              env.lead*.floor h0
-          in
-          h
+          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+          env.lead*.h1
         ) else (
-          let min_height=nextNode.height-.max nextParams.min_height_before env.lead in
-          env.lead*.(floor (min_height/.env.lead))
+          let l=(fst nextNode.layout).frame_y1 in
+          let min_height=(nextNode.height-. env.lead) in
+          let h0=(floor (min_height/.env.lead)) in
+          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+          env.lead*.h1
         )
+        in
+        d
     );
     min_height_before=0.;
     min_height_after=0.;
@@ -469,7 +474,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                   List.iter (Printf.fprintf stderr "%s\n") p;
                                   fun x->[||])
       in
-      let fsize=3.8 in
+      let fsize=3.7 in
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
         {
@@ -495,7 +500,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           footnote_y=10.;
           size=fsize;
           lead=13./.10.*.fsize;
-          normalMeasure=(fst a4)*.5./.9.;
+          normalMeasure=(fst a4)*.2./.3.;
           normalLead=13./.10.*.fsize;
           normalLeftMargin=0.;
           normalPageFormat=a4;
@@ -1109,8 +1114,8 @@ module Format=functor (D:Document.DocumentStructure)->(
           up (change_env !D.structure
                 (fun x->
                   { x with
-                    normalLeftMargin=x.normalLeftMargin+.(fst x.normalPageFormat)/.9.;
-                    normalMeasure=x.normalMeasure-.2.*.(fst x.normalPageFormat)/.9.}));
+                    normalLeftMargin=x.normalLeftMargin+.(fst x.normalPageFormat)/.18.;
+                    normalMeasure=x.normalMeasure-.2.*.(fst x.normalPageFormat)/.18.}));
         env_stack:=List.tl !env_stack
 
     end
