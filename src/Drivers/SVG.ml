@@ -570,8 +570,10 @@ let images prefix env conts=
     Rbuffer.clear r;
     let _,w,_=boxes_interval (Array.of_list conts_box.(i)) in
     let x0,y0,x1,y1=bounding_box_full raws.(i) in
+    let y0=y0-.0.2 in
+    let y1=y1+.0.2 in
     let h=(y1-.y0) in
-    Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"margin-bottom:%gmm;padding-top:0.3em;\">"
+    Rbuffer.add_string r (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" overflow=\"visible\" width=\"%gmm\" height=\"%gmm\" viewBox=\"%g %g %g %g\" style=\"margin-bottom:%gmm;\">"
                             (ceil (x1-.floor x0))
                             (y1-.y0)
                             (floor x0) (h-.y1) (ceil (x1-.floor x0)) (y1-.y0)
