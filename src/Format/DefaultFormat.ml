@@ -440,7 +440,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module Env_noindent=struct
       let do_begin_env ()=()
       let do_end_env ()=()
-      let newPar str ~environment ~new_page complete params contents=
+      let newPar str ~environment complete params contents=
         Document.newPar str ~environment:(fun x->{x with par_indent = []})
           complete params contents
     end
