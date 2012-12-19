@@ -34,7 +34,6 @@ let set_newline nb l =
 
 (* very important to allow using regexp for special combination of characteres *)
 let dypgen_choose_token = `all
-
 let dyp_merge = keep_one
 
 let findGrammar f=findPath f ("." :: (!grammarspath))
@@ -125,14 +124,6 @@ let default_paragraph_options = { center_paragraph = false; indent_paragraph = t
 let sParagraph c = Paragraph(default_paragraph_options, c)
 let niParagraph c = Paragraph({default_paragraph_options with indent_paragraph = false}, c)
 
-let comment_depth = ref 0 let push_comment () = incr comment_depth
-let caml_depth = ref 0 let push_caml () = incr caml_depth
-let texprime_math_depth = ref 0 let push_texprime_math () = incr texprime_math_depth
-let texprime_text_depth = ref 0 let push_texprime_text () = incr texprime_text_depth
-let pop_comment () = decr comment_depth; !comment_depth = 0
-let pop_caml () = decr caml_depth; !caml_depth
-let pop_texprime_math () = decr texprime_math_depth; !texprime_math_depth = 0
-let pop_texprime_text () = decr texprime_text_depth; !texprime_text_depth = 0
 
 let concat words =
     let non_word  = [  "#"; "(" ; ")" ; "[" ; "]" ; "{" ; "}" ; "$"; "\""; "^"; "_"; "-"  ] in
@@ -500,8 +491,8 @@ let word = utf8_char+
 let line = sword | (word (space+ word)*)
 
 rule comment = parse
-    '*' ')' {  if pop_comment () then () else comment lexbuf }
-  | '(' '*' {  push_comment (); comment lexbuf } 
+    '*' ')' {  () }
+  | '(' '*' {  comment lexbuf; comment lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_comment)) }
   | newline {  set_newline 1 (std_lexbuf lexbuf); comment lexbuf }
   | string {  
@@ -512,26 +503,22 @@ rule comment = parse
 
 and caml txps= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
-  | ')' { if pop_caml () <= 0 then txps else caml txps lexbuf } 
+  | ')' { txps } 
   | string {
         String.iter (fun c->if c='\n' then set_newline 1 (std_lexbuf lexbuf))
           (Dyp.lexeme lexbuf);
         caml txps lexbuf
     }
-  | '(' '*' { push_comment (); flush stdout; comment lexbuf; caml txps lexbuf } 
-  | '(' { push_caml (); caml txps lexbuf } 
+  | '(' '*' { comment lexbuf; caml txps lexbuf } 
+  | '(' { let txps = caml txps lexbuf in caml txps lexbuf } 
   | '<' '$' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
-	      push_texprime_math () ; 
-	      flush stdout; 
 	      texprime_math lexbuf; 
 	      (* FIXME : why +2 below ? *)
 	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
 	      caml ((TxpMath, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
   | '<' '<' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
-	      push_texprime_text () ; 
-	      flush stdout; 
 	      texprime_text lexbuf; 
 	      (* FIXME : why +2 below ? *)
 	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
@@ -542,9 +529,9 @@ and caml txps= parse
 
 and texprime_math= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
-  | '$' '>' { if pop_texprime_math () then () else texprime_math lexbuf }
-  | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_math lexbuf } 
-  | '<' '$' { push_texprime_math (); texprime_math lexbuf } 
+  | '$' '>' { () } 
+  | '(' '*' { comment lexbuf; texprime_math lexbuf } 
+  | '<' '$' { texprime_math lexbuf; texprime_math lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_math)) }
   | newline { set_newline 1 (std_lexbuf lexbuf); texprime_math lexbuf }
   | string { 
@@ -555,9 +542,9 @@ and texprime_math= parse
 
 and texprime_text= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
-  | '>''>' {  if pop_texprime_text () then () else texprime_text lexbuf }
-  | '(' '*' { push_comment (); flush stdout; comment lexbuf; texprime_text lexbuf } 
-  | '<''<' {  push_texprime_text (); texprime_text lexbuf } 
+  | '>' '>' { () }
+  | '(' '*' { comment lexbuf; texprime_text lexbuf } 
+  | '<' '<' {  texprime_text lexbuf; texprime_text lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_text)) }
   | newline {  set_newline 1 (std_lexbuf lexbuf); texprime_text lexbuf }
   | string {
@@ -572,12 +559,11 @@ main lexer =
   '\\' "Include" -> INCLUDE
   '\\' ident
     -> MACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
-  '(' '*' -> { push_comment (); comment lexbuf }
+  '(' '*' -> { comment lexbuf }
   '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
 		    let lstart = l.lex_start_p.pos_lnum in 
 		    let cstart = start - l.lex_start_p.pos_bol in 
-		    push_caml ();
 		    let txps= caml [] lexbuf in
 (*		    Printf.fprintf stderr "%d, %d\n" start l.lex_start_p.pos_cnum;*)
 		    start, (l.lex_start_p.pos_fname, lstart, cstart),
@@ -611,6 +597,8 @@ main lexer =
     set_newline 1 (std_lexbuf lexbuf); 
     let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   newline "###" -> VERBATIM { set_newline 1 (std_lexbuf lexbuf) }
+
+  eof -> EOF
 
 %parser
 
@@ -659,7 +647,7 @@ paragraph:
 oparagraph: {[]} | paragraph<p> {p}
 
 allparagraph:
-   paragraph<p> eof { p }
+   paragraph<p> "#$@#$@" { p }
 
 word_macro: MACRO<name>
   { let test =
@@ -808,7 +796,7 @@ superscripts:
   | superscripts<s'> - superscript<s> { s' ^ s }
 
 allmath:
-   math<m> eof { m }
+   math<m> "#$@#$@" { m }
 
 var_or_symbol:
    (mathvar)<name>
@@ -1298,8 +1286,8 @@ caml_header:
 
 
 main:
-  grammar [caml_header]<a> [title]<p> text<t,_> eof
+  grammar [caml_header]<a> [title]<p> text<t,_> EOF
     { (Some a, Some p, List.rev t) }
 
-  | grammar [title]?<p> text<t,_> eof
+  | grammar [title]?<p> text<t,_> EOF
       { (None, p, List.rev t) }

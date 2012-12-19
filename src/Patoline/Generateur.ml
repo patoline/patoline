@@ -408,19 +408,20 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
     let input =
       let count = ref 0 in
       let s'' = ref s' in
+      let ended = ref false in
       fun s n ->
     	let n' = min n (size_txp - !count) in
 	if n' > 0 then begin
-    	  let _ = if n' > 0 then op !s'' s 0 n' else () in
+    	  let _ = op !s'' s 0 n' in
       	  (*Printf.fprintf stderr "Arguments to blit: \"%s\" %d %d.\n" s 0 n' ; *)
     	  (*flush stderr ; *)
   	  let _ = (count := n' + !count) in
     	  let _ = (s'' := n' + !s'') in
     	  n'
-	end else begin
-    	  (*Printf.fprintf stderr "End of stream\n" ; *)
-    	  (*flush stderr ; *)
-	  0
+	(* FIXME: contournement provisoire d'un bug dypgen *)
+	end else if !ended then 0 else begin
+	  ended := true;
+	  String.blit "#$@#$@" 0 s 0 6; 6
 	end
     in
     let lexbuf_txp = Dyp.from_function (parser_pp) input in
@@ -433,7 +434,6 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
 	(* Printf.fprintf stderr "Calling Dypgen.\n" ; flush stderr ; *)
 	let parser_pilot = { (parser_pp) with Dyp.pp_ld = ld ; Dyp.pp_dev = gr;  } in
 	let txp = Dyp.lexparse parser_pilot "allmath" lexbuf_txp in
-	(* Printf.fprintf stderr "End Dypgen.\n" ; flush stderr ; *)
 	match txp with
 	  | (Obj_allmath docs, _) :: _ -> 
 	    let sub_input source_pos dest pos size =
