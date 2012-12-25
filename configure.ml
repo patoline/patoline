@@ -336,7 +336,7 @@ let _=
 
     (* Enable compilation of ocaml-bibi if sqlite3 is installed *)
     if has_sqlite3 then (
-      Printf.fprintf make "BIBI=ocaml-bibi/bibi.cmxa ocaml-bibi/bibi.p.cmxa ocaml-bibi/bibi.cma\n"
+      Printf.fprintf make "BIBI=ocaml-bibi/bibi.cmxa ocaml-bibi/bibi.cma\n"
     );
     close_out make;
 
@@ -379,7 +379,7 @@ let _=
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
         "src/Pdf/pdf_parser.cmxa src/Pdf/pdf_parser.a  "^
-        "src/Pdf/pdf_parser.cmi src/Pdf/pdf_parser.p.cmxa"
+        "src/Pdf/pdf_parser.cmi "
         (* "src/Pdf/pdf_parser.cmxa src/Pdf/pdf_parser.a  "^ *)
         (* "src/Pdf/pdf_parser.cmi src/Pdf/pdf_parser.p.cmxa" *)
     in
@@ -394,7 +394,7 @@ let _=
 
       (* ocaml-bibi *)
       if has_sqlite3 then (
-        let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.p.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
+        let bibi_sources="src/ocaml-bibi/bibi.cmxa src/ocaml-bibi/bibi.cmi src/ocaml-bibi/bibi.a"
         in
         Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/bibi\n" (escape !ocaml_lib_dir);
         Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/bibi\n" bibi_sources (escape !ocaml_lib_dir);

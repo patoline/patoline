@@ -15,13 +15,13 @@ CAMLC=ocamlfind ocamlc $(PACK)
 
 VPATH=Typography:Pdf:Drivers:Format
 
-all:native prof $(BIBI)
+all:native $(BIBI)
 
 native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) DefaultGrammar.tgx
 
 byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
 
-prof:Typography/_build/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa
+prof:Typography/_build.p/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -31,11 +31,11 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 
-ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi
+ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi Format/DefaultFormat.cma
 	make -C ocaml-bibi bibi.cma
-ocaml-bibi/bibi.cmxa:Typography/_build/Typography.cmi ocaml-bibi
+ocaml-bibi/bibi.cmxa:Typography/_build/Typography.cmi ocaml-bibi Format/DefaultFormat.cmxa
 	make -C ocaml-bibi bibi.cmxa
-ocaml-bibi/bibi.p.cmxa:Typography/_build/Typography.p.cmxa ocaml-bibi
+ocaml-bibi/bibi.p.cmxa:Typography/_build.p/Typography.p.cmxa ocaml-bibi Format/DefaultFormat.p.cmxa
 	make -C ocaml-bibi bibi.p.cmxa
 
 
@@ -47,7 +47,7 @@ Pdf/_build/pdf_parser.cmxa:Typography/_build/Typography.cmxa
 	make -C Pdf pdf_parser.cmxa
 Pdf/_build/pdf_parser.cma:Typography/_build/Typography.cma
 	make -C Pdf pdf_parser.cma
-Pdf/_build/pdf_parser.p.cmxa:Typography/_build/Typography.p.cmxa
+Pdf/_build/pdf_parser.p.cmxa:Typography/_build.p/Typography.p.cmxa
 	make -C Pdf pdf_parser.p.cmxa
 
 Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
@@ -55,23 +55,23 @@ Format/DefaultFormat.cmxa:Format Typography/_build/Typography.cmxa
 Format/DefaultFormat.cma:Format Typography/_build/Typography.cma
 	make -C Format DefaultFormat.cma
 
-Format/DefaultFormat.p.cmxa:Format Typography/_build/Typography.p.cmxa
+Format/DefaultFormat.p.cmxa:Format Typography/_build.p/Typography.p.cmxa
 	make -C Format DefaultFormat.p.cmxa
 
 Format/%.cmxa:Format/DefaultFormat.cmxa Typography/_build/Typography.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
-Format/%.p.cmxa:Format/DefaultFormat.p.cmxa Typography/_build/Typography.p.cmxa Format/%.ml
+Format/%.p.cmxa:Format/DefaultFormat.p.cmxa Typography/_build.p/Typography.p.cmxa Format/%.ml
 	make -C Format $(shell basename $@)
 Format/%.cma:Format/DefaultFormat.cma Typography/_build/Typography.cma Format/%.ml
 	make -C Format $(shell basename $@)
 
-.PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build/Typography.p.cmxa
+.PHONY:Typography/_build/Typography.cma Typography/_build/Typography.cmxa Typography/_build.p/Typography.p.cmxa
 Typography/_build/Typography.cma:Rbuffer/rbuffer.cma
 	make -C Typography _build/Typography.cma
 Typography/_build/Typography.cmxa:Rbuffer/rbuffer.cmxa
 	make -C Typography _build/Typography.cmxa
-Typography/_build/Typography.p.cmxa:Rbuffer/rbuffer.p.cmxa
-	make -C Typography _build/Typography.p.cmxa
+Typography/_build.p/Typography.p.cmxa:Rbuffer/rbuffer.p.cmxa
+	make -C Typography _build.p/Typography.p.cmxa
 
 Typography/_build/Typography.cmi:Typography/_build/Typography.cma
 
@@ -86,7 +86,7 @@ Drivers/%.cmxa:Typography/_build/Typography.cmxa Drivers
 	make -C Drivers $(shell basename $@)
 Drivers/%.cma:Typography/_build/Typography.cma Drivers
 	make -C Drivers $(shell basename $@)
-Drivers/%.p.cmxa:Typography/_build/Typography.p.cmxa Drivers
+Drivers/%.p.cmxa:Typography/_build.p/Typography.p.cmxa Drivers
 	make -C Drivers $(shell basename $@)
 
 #Drivers/Typography.cmi:Typography/_build/Typography.cmi
@@ -97,7 +97,7 @@ DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
 
 DefaultGrammar.tgx:DefaultGrammar.tml Patoline/patoline
 	$(CAMLOPT) -o DefaultGrammar.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx
+	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts
 
 
 .PHONY :doc

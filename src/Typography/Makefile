@@ -18,10 +18,10 @@ _build/Typography.cma:_build/Typography.cmo
 _build/Typography.cmo: $(FILES) ../Rbuffer/rbuffer.cma
 	ocamlbuild -use-ocamlfind -classic-display Typography.cmo
 
-_build/Typography.p.cmxa:_build/Typography.p.cmx
-	cd _build;ocamlopt -a -o Typography.p.cmxa Typography.p.cmx
-_build/Typography.p.cmx: $(FILES) ../Rbuffer/rbuffer.cmxa
-	ocamlbuild -use-ocamlfind -classic-display Typography.p.cmx
+_build.p/Typography.p.cmxa:_build.p/Typography.p.cmx
+	cd _build.p;ocamlopt -a -o Typography.p.cmxa Typography.p.cmx
+_build.p/Typography.p.cmx: $(FILES) ../Rbuffer/rbuffer.cmxa
+	ocamlbuild -build-dir _build.p -use-ocamlfind -classic-display Typography.p.cmx
 
 doc:
 	mkdir -p $(DOCDIR)

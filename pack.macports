@@ -3,7 +3,7 @@ mkdir -p ../ports/ml/ocaml-patoline
 cp Portfile ../ports/ml/ocaml-patoline
 init_dir=$(pwd)
 version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
-darcs dist -d patoline
+darcs dist -d patoline --set-scripts-executable
 mv patoline.tar.gz /tmp
 cd /tmp
 tar -xzf patoline.tar.gz

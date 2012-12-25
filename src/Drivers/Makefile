@@ -20,7 +20,7 @@ ifeq ($(UNAME), Linux)
 CFLAGS=-fPIC
 endif
 ifeq ($(UNAME), Darwin)
-CFLAGS=-fPIC -framework GLUT -framework OpenGL
+CFLAGS=-I$(shell ocamlc -where) -fPIC -framework GLUT -framework OpenGL
 endif
 
 Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi

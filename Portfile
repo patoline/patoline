@@ -14,12 +14,14 @@ homepage            http://www.patoline.com
 master_sites        file:///Users/pe/Projets/patoline
 
 
-checksums           sha256  2829fcb7393bac85925090b286b1f9c3cd3fbbf8e7f35796ef4131322509aa53
+checksums           sha256 40797c9d9a36bb0c802e80a1a4109cc9bb22750897f3be1b46058077609ec444
 
 depends_lib         port:ocaml \
                     port:ocaml-camomile \
                     port:ocaml-dypgen \
                     port:ocaml-findlib
 
-configure.pre_args      {}
-configure.cmd           { ./configure --prefix ${destroot}${prefix} --extra-fonts-dir /Library/Fonts }
+configure.pre_args      --prefix ${prefix} \
+                        --extra-fonts-dir /Library/Fonts
+
+use_parallel_build  no

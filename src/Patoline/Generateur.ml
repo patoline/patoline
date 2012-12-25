@@ -77,8 +77,9 @@ let preambule format driver suppl amble filename=
       Printf.sprintf
         "(* #FORMAT %s *)
 (* #DRIVER %s *)
-%s
 open Typography
+%s
+%s
 open Typography.Util
 open Typography.Box
 open Typography.Config
@@ -89,17 +90,10 @@ open DefaultFormat.MathsFormat
 "
         format
         driver
-        suppl
         (match amble with
-            Main->
-              Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
-module Patoline_Format=%s.Format(D);;
-module Patoline_Output=Patoline_Format.Output(%s)
-open %s;;
-open Patoline_Format;;
+            Main->"let _args=ref []
 let _driver=ref \"Pdf\"
 let _atmost=ref 3
-let _args=ref []
 let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
 (\"--extra-hyph-dir\",Arg.String (fun x->Config.hyphenpath:=x::(!Config.hyphenpath)), \"Adds directories to the search path for hyphenation dictionaries\");
 (\"--extra-plugins-dir\",Arg.String (fun x->Config.pluginspath:=x::(!Config.pluginspath)), \"Adds directories to the plugins search path\");
@@ -109,6 +103,17 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 ]
 
 let _=Arg.parse _spec ignore \"Usage :\";;
+"
+          | _->""
+        )
+        suppl
+        (match amble with
+            Main->
+              Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
+module Patoline_Format=%s.Format(D);;
+module Patoline_Output=Patoline_Format.Output(%s)
+open %s;;
+open Patoline_Format;;
 let defaultEnv=Patoline_Format.defaultEnv;;\n" format driver format
           | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
