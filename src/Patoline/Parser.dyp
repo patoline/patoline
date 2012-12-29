@@ -1088,13 +1088,13 @@ verbatim_lines:
 
 atomelt:
   /* Section */
-  | START_SECTION<o> paragraph<title> text<content,rules> END_SECTION<c>
+  | START_SECTION<o> [paragraph]?<title> text<content,rules> END_SECTION<c>
     @{ let content = List.rev content in
-      (match content with 
+      (match content with
         Paragraph _:: _ -> if not (layout_parskip dyp 2 3) then raise Giveup
       | _ -> ());
       if o.[0] <> c.[0] then raise Giveup;
-      ([Struct(title,
+      ([Struct((match title with None->[] | Some a->a),
                (match o.[0] with
                    '='->Toc_num
                  | '-'->Toc_unnum
@@ -1103,11 +1103,11 @@ atomelt:
                Relative content)],rules),
 	[ Keep_grammar; Local_data dyp.last_local_data ]
     }
-  | ABS_SECTION<o> paragraph<title> END_ABS_SECTION<c>
+  | ABS_SECTION<o> [paragraph?]<title> END_ABS_SECTION<c>
     { let level = String.length o in
       if level >= 10 then raise Giveup;
       if c <> o then raise Giveup;
-      [Struct(title,
+      [Struct((match title with None->[] | Some a->a),
               (match o.[0] with
                   '='->Toc_num
                 | '-'->Toc_unnum
