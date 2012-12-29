@@ -1447,9 +1447,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           x'+.w) 0. h.hyphen_normal)
                       )
                       | GlyphBox a->(
-                        page.pageContents<-
-                          (OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y })
-                        :: page.pageContents;
+                        page.pageContents<-translate x y (Glyph a):: page.pageContents;
                         a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                       )
                       | Glue g
@@ -1489,7 +1487,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                       | User (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
-                        destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
+                        destinations:=StrMap.add l
+                          (i,(fst line.layout).frame_x0+.param.left_margin,
+                           y+.y0,y+.y1) !destinations;
                         0.
                       )
                       (* | User (Footnote (_,g))->( *)
