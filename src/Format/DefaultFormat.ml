@@ -320,7 +320,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       let with_author=match with_institute with
           Node n->(try
-                     let cont=[tT (List.assoc "Author" n.node_tags)] in
+                     let cont=[tT (List.assoc "author" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
                        par_env=(fun env->{env with par_indent=[]});
@@ -379,9 +379,9 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
 
       let rec sectionize path=function
-      Node n when List.mem_assoc "Structural" n.node_tags ->
+      Node n when List.mem_assoc "structural" n.node_tags ->
         let section_name=
-          if List.mem_assoc "Numbered" n.node_tags  then
+          if List.mem_assoc "numbered" n.node_tags  then
             [C (fun env->
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
               bB (fun _->[User (Structure path)])
@@ -527,16 +527,16 @@ module Format=functor (D:Document.DocumentStructure)->(
 	let t0',path=
           match top !str with
             Node n,path ->
-	      if List.mem_assoc "MainTitle" n.node_tags then
+	      if List.mem_assoc "maintitle" n.node_tags then
 		raise Exit;
 	      Node { n with
                 name=name;
-                node_tags=("MainTitle","")::("Structural","")::("InTOC","")::extra_tags@n.node_tags;
+                node_tags=("maintitle","")::("structural","")::("intoc","")::extra_tags@n.node_tags;
                 displayname = displayname},path
           | t,path->
 	    Node { empty with
               name=name;
-              node_tags=["Structural","";"InTOC",""];
+              node_tags=["structural","";"intoc",""];
               displayname=displayname;
 	      children=IntMap.singleton 1 t;
               node_env=(fun x->x);
@@ -944,24 +944,25 @@ module Format=functor (D:Document.DocumentStructure)->(
     module Enumerate = functor (M:Enumeration)->struct
       let do_begin_env ()=
         D.structure:=newChildAfter (!D.structure)
-          (Node { empty with node_env=
-               (fun env->
-                  let lvl,cou=try StrMap.find "enumerate" env.counters with Not_found-> -1,[] in
-                    { env with
-                      normalMeasure=env.normalMeasure-.tiret_w env;
-                      normalLeftMargin=env.normalLeftMargin+.tiret_w env;
-                      counters=StrMap.add "enumerate" (lvl,(-1)::cou) env.counters }
-               );
-                    node_post_env=
-               (fun env0 env1->
-                  let cou=try
-                    let lvl,enum=StrMap.find "enumerate" env1.counters in
-                      StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
+          (Node { empty with
+            node_env=
+              (fun env->
+                let lvl,cou=try StrMap.find "enumerate" env.counters with Not_found-> -1,[] in
+                { env with
+                  normalMeasure=env.normalMeasure-.tiret_w env;
+                  normalLeftMargin=env.normalLeftMargin+.tiret_w env;
+                  counters=StrMap.add "enumerate" (lvl,(-1)::cou) env.counters }
+              );
+            node_post_env=
+              (fun env0 env1->
+                let cou=try
+                          let lvl,enum=StrMap.find "enumerate" env1.counters in
+                          StrMap.add "enumerate" (lvl,drop 1 enum) env1.counters
                   with Not_found-> env1.counters
-                  in
-                    { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou });
-                    node_tags=("structure","")::empty.node_tags
-                });
+                in
+                { env0 with names=env1.names;user_positions=env1.user_positions;counters=cou });
+            node_tags=("structure","")::empty.node_tags;
+          });
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       module Item=struct

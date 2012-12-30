@@ -545,9 +545,9 @@ and output_list parser_pp from where no_indent lvl docs =
       let next_no_indent = ref false in
       (match doc with
 	| Paragraph(options, p) ->
-	  let env = if no_indent or not options.indent_paragraph 
-	    then "(fun x -> { x with par_indent = [] })" 
-	    else "(fun x -> x)"
+	  let env = if no_indent or not options.indent_paragraph
+	    then "~environment:(fun x -> { x with par_indent = [] })"
+	    else ""
 	  in
 	  let param =
               (* FIXME : cette option ne marche pas, il y a un
@@ -560,7 +560,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	      (* else *)
 	    "Patoline_Format.parameters"
 	  in
-	  Printf.fprintf where "let _ = newPar D.structure ~environment:%s Complete.normal %s %a;;\n"
+	  Printf.fprintf where "let _ = newPar D.structure %s Complete.normal %s %a;;\n"
 	    env param (print_contents parser_pp from) p
 	| Caml(ld,gr,s,e,txps,pos) -> print_caml parser_pp ld gr from where s e txps pos
 	| String s -> Printf.fprintf where "%s" s

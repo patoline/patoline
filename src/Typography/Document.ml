@@ -453,8 +453,8 @@ let doc_graph out t0=
   Printf.fprintf out "digraph {\n";
   let rec do_it path t=
     let col=
-      if List.mem_assoc "Structural" t.node_tags then
-        if List.mem_assoc "Numbered" t.node_tags then "blue" else "red" else "black"
+      if List.mem_assoc "structural" t.node_tags then
+        if List.mem_assoc "numbered" t.node_tags then "blue" else "red" else "black"
     in
     Printf.fprintf out "%s [label=\"%s\", color=\"%s\"];\n" path t.name col;
     let mb=try fst (IntMap.min_binding t.children) with Not_found->0 in
@@ -751,7 +751,7 @@ let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =
     empty with
       name=name;
       displayname =[C (fun _->env_accessed:=true;displayname)];
-      node_tags= (if in_toc then ["InTOC",""] else []) @ ["Structural",""] @(if numbered then ["Numbered",""] else []);
+      node_tags= (if in_toc then ["intoc",""] else []) @ ["structural",""] @(if numbered then ["numbered",""] else []);
       node_env=(
         fun env->
           { env with
@@ -1299,7 +1299,10 @@ let flatten env0 fixable str=
           | Node h as tr->(
             let env2=h.node_env env1 in
             let env3=flatten flushes' env2 ((k,tree)::path) tr in
-            is_first,(not (List.mem_assoc "Structural" h.node_tags)),
+            (is_first),
+            (not (List.mem_assoc "structural" h.node_tags) &&
+               not (List.mem_assoc "structure" h.node_tags)
+            ),
             h.node_post_env env1 env3
           )
         in
@@ -1336,7 +1339,7 @@ let rec make_struct positions tree=
         let (p,x,y)=positions.(s.node_paragraph) in
         let rec make=function
         []->[]
-          | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)
+          | (_,Node u)::s when List.mem_assoc "intoc" u.node_tags -> (make_struct positions (Node u))::(make s)
           | _ :: s->make s
         in
         let a=Array.of_list (make (IntMap.bindings s.children)) in
@@ -1352,7 +1355,7 @@ let rec make_struct positions tree=
     | Node s -> (
       let rec make=function
       []->[]
-        | (_,Node u)::s when List.mem_assoc "InTOC" u.node_tags -> (make_struct positions (Node u))::(make s)
+        | (_,Node u)::s when List.mem_assoc "intoc" u.node_tags -> (make_struct positions (Node u))::(make s)
         | _ :: s->make s
       in
       let a=Array.of_list (make (IntMap.bindings s.children)) in
