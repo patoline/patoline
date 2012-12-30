@@ -714,18 +714,22 @@ module Format=functor (D:Document.DocumentStructure)->(
              let tab_formatted=Array.mapi
                (fun i x->
                   Array.mapi (fun j y->
-                                let minip=(minipage
-                                             { env with normalMeasure=env.normalMeasure } y).(0) in
-                                  widths.(j)<-max widths.(j) (minip.drawing_max_width);
-                                  heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
-                                  minip
-                             ) x
+                    let minip=(minipage
+                                 { env with normalMeasure=widths0.(j) } y).(0) in
+                    widths.(j)<-max widths.(j) (minip.drawing_max_width);
+                    heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
+                    minip
+                  ) x
                )
                tab
              in
+             for i=0 to Array.length heights-1 do
+               heights.(i)<-(ceil (heights.(i)/.env.normalLead))*.env.normalLead
+             done;
              let contents=ref [] in
              let x=ref 0. in
              let y=ref 0. in
+             let max_x=ref 0. in
              let max_y=ref (-.infinity) in
              let min_y=ref infinity in
              let ymin=ref 0. in
@@ -735,18 +739,19 @@ module Format=functor (D:Document.DocumentStructure)->(
                  ymin:=0.;
                  ymax:= -.infinity;
                  let conts=ref [] in
-                   for j=0 to Array.length tab_formatted.(i)-1 do
-                     let cont=tab_formatted.(i).(j) in
-                       conts:=(List.map (OutputCommon.translate !x 0.)
-                                 (cont.drawing_contents (widths.(j)))) @ (!conts);
-                       ymin := min !ymin cont.drawing_y0;
-                       ymax := max !ymax cont.drawing_y1;
-                       x:= !x +. widths.(j) +. params.h_spacing
-                   done;
-                   contents:=(List.map (OutputCommon.translate 0. !y) !conts)@(!contents);
-                   max_y:=max !max_y (!y+. !ymax);
-                   min_y:=min !min_y (!y+. !ymin);
-                   y:=(!y)-. !ymax +. !ymin;
+                 for j=0 to Array.length tab_formatted.(i)-1 do
+                   let cont=tab_formatted.(i).(j) in
+                   conts:=(List.map (OutputCommon.translate !x 0.)
+                             (cont.drawing_contents (widths.(j)))) @ (!conts);
+                   ymin := min !ymin cont.drawing_y0;
+                   ymax := max !ymax cont.drawing_y1;
+                   x:= !x +. widths0.(j) +. params.h_spacing
+                 done;
+                 max_x:=max !x !max_x;
+                 contents:=(List.map (OutputCommon.translate 0. !y) !conts)@(!contents);
+                 max_y:=max !max_y (!y+. !ymax);
+                 min_y:=min !min_y (!y+. !ymin);
+                 y:=(!y)-. heights.(i)-.params.v_spacing;
                done;
 
                [Drawing {

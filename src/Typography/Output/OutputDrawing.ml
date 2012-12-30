@@ -33,11 +33,11 @@ let output paragraphs figures env (opt_pages:placed_line list array)=
     let y1=ref (-.infinity) in
     let x0=ref infinity in
     let x1=ref (-.infinity) in
-    let yy0=ref (-.infinity) in
+    let top_y=ref (-.infinity) in
     List.iter (
       fun l->
         let y=l.line.height in
-        yy0:=max !yy0 y;
+        top_y:=max !top_y y;
         if l.line.isFigure then (
           let fig=figures.(l.line.lastFigure) in
           y1:=max !y1 y;
@@ -80,13 +80,13 @@ let output paragraphs figures env (opt_pages:placed_line list array)=
           x1:=max !x1 (fold_left_line paragraphs (fun x b->x+.draw_box x y b) l.line_params.left_margin l.line)
         )
     ) p;
-    if !yy0=(-.infinity) then yy0:=0.;
+    if !top_y=(-.infinity) then top_y:=0.;
     { drawing_min_width= !x1-. !x0;
       drawing_nominal_width= !x1-. !x0;
       drawing_max_width= !x1-. !x0;
-      drawing_y0= !y0 -. !yy0;
-      drawing_y1= max env.normalLead (!y1-. !yy0);
+      drawing_y0= !y0 -. !top_y;
+      drawing_y1= (!y1-. !top_y);
       drawing_badness=(fun _->0.);
-      drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !yy0)) !pageContents) }
+      drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) !pageContents) }
   in
   Array.mapi draw_page opt_pages
