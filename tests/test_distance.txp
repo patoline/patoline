@@ -11,6 +11,8 @@ open Fonts.FTypes
 
 \Caml(
 
+let _ = Distance.debug := true
+
 let get_char env c = 
     let x=Fonts.loadGlyph (Lazy.force env.mathsEnvironment.(0).mathsFont)
       ({empty_glyph with glyph_index=Fonts.glyph_of_char
@@ -77,10 +79,10 @@ let testBeta beta a = [Scope(
 
 
 \Caml(
-let beta=0.666
+let beta=0.5
 )
 
-$\testBeta(beta){A A V(a)[T]}$ $\testBeta(0.00){A A V(a)}$
+$\testBeta(beta){A A V(a)}$ $\testBeta(0.00){A A V(a)}$
 
 $\testBeta(beta){A × V(a)}$ $\testBeta(0.00){A × V(a)}$
 
@@ -92,3 +94,6 @@ $\testBeta(beta){A ∧ V(a)}$ $\testBeta(0.00){A ∧ V(a)}$
 
 $\testBeta(beta){A ∨ V(a)}$ $\testBeta(0.00){A ∨ V(a)}$
 
+$\testBeta(beta){{>} > {<} < {>}}$
+
+$\testBeta(0.00){{>} > {<} < {>}}$

@@ -1655,7 +1655,7 @@ module MathsFormat=struct
             (fun envs st->
                let dr=draw_boxes envs (Maths.draw [envs] a) in
                let env=Maths.env_style envs.mathsEnvironment st in
-               let (x0,y0,x1,y1)=OutputCommon.bounding_box dr in
+               let (x0,y0,x1,y1)=OutputCommon.bounding_box_full dr in
                let drawn=(drawing ~offset:y0 dr) in
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize in
                  [Box.Drawing {
@@ -1689,7 +1689,7 @@ module MathsFormat=struct
                                       w+.w_x) 0. boxes)
                in
                let dr=draw_boxes envs boxes in
-               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
+               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box_full dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in
                let font=Lazy.force (env.Mathematical.mathsFont) in
@@ -1739,7 +1739,7 @@ module MathsFormat=struct
                                       w+.w_x) 0. boxes)
                in
                let dr=draw_boxes envs boxes in
-               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box dr in
+               let (x0_,y0_,x1_,y1_)=OutputCommon.bounding_box_full dr in
 
                let env=Maths.env_style envs.mathsEnvironment st in
                let font=Lazy.force (env.Mathematical.mathsFont) in

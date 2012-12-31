@@ -758,7 +758,7 @@ subind:
   | subscripts<s> {
       try
 (*        Printf.fprintf stderr "ind: %s\n" s;*)
-        let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+        let lexbuf = Dyp.from_string dyp.parser_pilot (s^"#$@#$@") in	
         let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
         match obj with
         | (Obj_allmath docs, _) :: _ -> docs
@@ -770,7 +770,7 @@ superind:
   | superscripts<s> {
       try
 (*        Printf.fprintf stderr "exp: %s\n" s;*)
-        let lexbuf = Dyp.from_string dyp.parser_pilot s in	
+        let lexbuf = Dyp.from_string dyp.parser_pilot (s^"#$@#$@") in	
         let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
         match obj with
         | (Obj_allmath docs, _) :: _ -> docs

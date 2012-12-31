@@ -157,6 +157,8 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
   let profile_left = Distance.bezier_profile dir epsilon bezier_left in
   let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
 
+  if profile_left = [] || profile_right = [] then 0.0 else
+
   let delta =
     let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
     x1_l -. x0_l
@@ -1005,7 +1007,7 @@ let make_sqrt env_ style box=
                       -.Fonts.glyph_y1 gl*.s/.1000.))/.vy in
       let tt'= tt+. ((dd-. (dy1-.dy0))/.(vy*.phi)) in
       let ty=by0-.env.sqrt_dist*.(phi-.1.) in
-      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.infinity)
+      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.env.sqrt_dist*.s)
         [translate 0. ty (Path (default,[out]))]
         under
       in

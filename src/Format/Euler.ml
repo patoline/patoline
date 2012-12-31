@@ -169,7 +169,7 @@ let default_env=
       op_limits_tolerance = 0.75;
       punctuation_factor = 0.66;
       optical_alpha = 3.1416 /. 4.;
-      optical_beta = 2. /. 3.;
+      optical_beta = 1. /. 2.;
    }
 
 let msubst m x=List.map (fun x->try
