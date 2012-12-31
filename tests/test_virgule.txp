@@ -16,7 +16,7 @@ Alors: ${1\over T}, x,y$, bla bla, bla.
 $$\sqrt{T}, {1\over T}, x,y$$
  
 \begin{center}
-$$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0}, 
+$$ \ser{ (  \frac{2 n}{3 n + 2}  )^{n^{2²}}}{n}{0}, 
  \ser{\frac{1}{n^{n}}}{n}{0} , 
  \ser{\frac{n!}{n^{n}}}{n}{0} , 
  \ser{\frac{(n!)^{2}}{(2 n)!}}{n}{0} ,
@@ -28,3 +28,8 @@ $$ \ser{ (  \frac{2 n}{3 n + 2}  )^{ n}}{n}{0},
 
 $$A^{⊥⊥},B$$
 
+
+
+$$A^{⊥⊥⊥⊥},a$$
+
+$$A^{⊥⊥⊥⊥⊥⊥},B$$

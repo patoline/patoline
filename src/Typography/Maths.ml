@@ -142,124 +142,48 @@ let rec bezier_of_boxes=function
       (List.concat (List.map Array.to_list p))@(bezier_of_boxes s)
   | _::s->bezier_of_boxes s
 
-let rec cut l n=
-  if n=0 then [],l else
-    match l with
-        []->[],[]
-      | h::s->let a,b=cut s (n-1) in h::a,s
-
-let dist xa ya xb yb=sqrt ((xa-.xb)*.(xa-.xb) +. (ya-.yb)*.(ya-.yb))
-
-let interval_point_dist (xa,ya) (xb,yb) (x,y) =
-  let xv = xb -. xa and yv = yb -. ya in
-  let xw = x -. xa and yw = y -. ya in
-  let u = (xv *. xw +. yv *. yw) /. (xv *. xv +. yv *. yv) in
-  if 0.0 <= u && u <= 1.0 then
-    let xm = xb *. u +. xa *. (1.0 -. u) -. x
-    and ym = yb *. u +. ya *. (1.0 -. u) -. y in
-    sqrt (xm *. xm +. ym *. ym)
-  else if u < 0.0 then 
-    sqrt (xw *. xw +. yw *. yw)
-  else
-    let xm = x -. xb and ym = y -. yb in
-    sqrt (xm *. xm +. ym *. ym)
-
-let interval_interval_dist (xa,ya) (xb,yb) (xa',ya') (xb',yb') =
-  (* We assume the interval do not intersect and therefore, the distance is
-     positive *)
-  min (min (interval_point_dist (xa,ya) (xb,yb) (xa',ya'))
-	 (interval_point_dist (xa,ya) (xb,yb) (xb',yb')))
-    (min (interval_point_dist (xa',ya') (xb',yb') (xa,ya))
-       (interval_point_dist (xa',ya') (xb',yb') (xb,yb)))
-
-let min_dist' d (xa,ya) (xb,yb)=
-  let d'=ref d in
-  for i=0 to Array.length xa-1 do
-    for j=0 to Array.length xb-1 do
-      let pa = if i = Array.length xa-1 then (xa.(0), ya.(0)) else (xa.(i+1), ya.(i+1)) in
-      let pb = if j = Array.length xb-1 then (xb.(0), yb.(0)) else (xb.(j+1), yb.(j+1)) in
-      d':=min !d' (interval_interval_dist  (xa.(i), ya.(i)) pa
-		                           (xb.(j), yb.(j)) pb)
-    done
-  done;
-  !d'
-    
-let min_dist d (xa,ya) (xb,yb)=
-  let dn = Bezier.distance (xa,ya) (xb,yb) in
-  let d0 = Bezier.distance1 (xa.(0),ya.(0)) (xb,yb) in
-  let d1 = Bezier.distance1 (xa.(Array.length xa-1),ya.(Array.length ya-1)) (xb,yb) in
-  let d2 = Bezier.distance1 (xb.(0),yb.(0)) (xa,ya) in
-  let d3 = Bezier.distance1 (xb.(Array.length xb-1),yb.(Array.length yb-1)) (xa,ya) in
-    min (min d dn) (min (min d0 d1) (min d2 d3))
-
-let max_array x =
-  Array.fold_left max (-. infinity) x
-
-let min_array x =
-  Array.fold_left min (infinity) x
-
-
-let min_dist_left_right precise l1 l2 =
-  let l1 = match precise with
-      None -> l1
-    | Some t ->
-      List.fold_left (fun acc b -> Bezier.subdivise t b @ acc) [] l1
-  in
-  let l2 = match precise with
-      None -> l2
-    | Some t -> List.fold_left (fun acc b -> Bezier.subdivise t b @ acc) [] l2
-  in
-  let l1 = List.map (fun (x,y) -> max_array x, (x, y)) l1 in
-  let l2 = List.map (fun (x,y) -> min_array x, (x, y)) l2 in
-  let l1 = List.sort (fun (x,_) (x',_) -> compare x' x) l1 in
-  let l2 = List.sort (fun (x,_) (x',_) -> compare x x') l2 in
-
-  let min_dist = if precise = None then min_dist else min_dist' in
-  let rec fn acc l1 l2 =
-    match l1, l2 with
-      ((x,a)::l1') as l1, (y,b)::l2 ->
-	if (y -. x) >= acc then acc else
-	  let acc = min_dist acc a b in
-	  let rec gn acc l1 =
-	    match l1 with
-	      (x,a)::l1' ->
-		if (y -. x) >= acc then acc else
-		  let acc = min_dist acc a b in
-		  gn acc l1'
-	    | [] -> acc
-	  in
-	  let acc = gn acc l1' in
-	  fn acc l1 l2
-    | _ -> acc
-  in
-  fn infinity l1 l2
-
 let adjust_space ?(absolute=false) env target minimum box_left box_right =
-
+(*  Printf.printf "start adjust\n";*)
   if not env.kerning then target else
   
-  let epsilon = 5e-2 in
+  let epsilon = env.precise_kerning in
+  let alpha = env.optical_alpha in
+  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let beta =  env.optical_beta in
+
   let bezier_left = bezier_of_boxes box_left in
   let bezier_right = bezier_of_boxes box_right in
+  let profile_left = Distance.bezier_profile dir epsilon bezier_left in
+  let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
 
   let delta =
     let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
     x1_l -. x0_l
   in
   
-  let rec fn space =
-    let ll = List.map (fun (x,y)->Array.map (fun x0-> x0 +. space +. delta) x, y) bezier_right in
-    
-    let dist = min_dist_left_right env.precise_kerning bezier_left ll in
-    let new_space = space +. target -. dist in
-    if !debug_kerning then
-      Printf.printf "space = %f, new_space = %f, dist = %f, target = %f, minimum = %f\n"
-	space new_space dist target minimum;
-    if new_space < minimum then minimum else
-    if dist <= target +. epsilon then new_space else
-      fn new_space
+  let d space = 
+    let pr = List.map (fun (x,y) -> (x+.space+.delta,y)) profile_right in
+    let r = Distance.distance beta dir profile_left pr in
+(*    Printf.printf "s = %f => d = %f\n" space r; *)
+    r
   in
-  let r = fn target in
+
+  let db = d target in
+  let da = d minimum in
+
+(*  Printf.printf "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;*)
+
+  if da > target then minimum else if db < target then target else
+
+  let rec fn sa da sb db  =
+    let sc = (sa +. sb) /. 2.0 in
+    let dc = d sc in
+    if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+    else if dc < target then fn sc dc sb db 
+    else fn sa da sc dc
+  in
+  let r = fn minimum da target db in
   if absolute then r +. delta else r
 
 let line (a,b) (c,d)=[|a;c|], [|b;d|]
@@ -401,7 +325,7 @@ let rec draw env_stack mlist=
                   if mathsEnv.kerning then
 		    let ll = List.map (translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
-		    let m = max ((x0 -. x1) /. 2.) (x0' -. x1') in
+		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
                     if i mod 2 = 0 && xoff.(i) <> infinity && xoff.(i) <> -.infinity then 
 		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
 		    else
@@ -456,17 +380,15 @@ let rec draw env_stack mlist=
 	  let bin_right = draw env_stack b.bin_right in
 	  let box_left = draw_boxes env bin_left in
 	  let box_right = draw_boxes env bin_right in
-          let (x0_r,y0_r,x1_r,y1_r)=bounding_box box_right in
-          let (x0_l,y0_l,x1_l,y1_l)=bounding_box box_left in
-	  let m_l = (x0_l -. x1_l)/.2.0 in
-	  let m_r = (x0_r -. x1_r)/.2.0 in
+          let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning box_right in
+          let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
 
 	    match b.bin_drawing with
 	        Invisible ->
 		  let space = (mathsEnv.mathsSize*.env.size*.mathsEnv.invisible_binary_factor)*.
 		    (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor
 		  in
-		  let dist = adjust_space mathsEnv space 0.0 box_left box_right in
+		  let dist = adjust_space mathsEnv space (max ((x0_r -. x1_r) /. 2.0)((x0_l -. x1_l) /. 2.0)) box_left box_right in
 		  let gl0=glue dist dist dist in
 		  let gl0=match gl0 with
 		      Box.Glue x->Drawing
@@ -486,33 +408,36 @@ let rec draw env_stack mlist=
 		let op = draw env_stack [Ordinary op] in
 		let box_op = draw_boxes env op in
 		let (x0,_,x1,_) = bounding_box_full box_op in
+		let (x0',_,x1',_) = bounding_box_kerning box_op in
 		assert (x0 <= x1);
 		let dist0 =
 		  if bin_left = [] then 0.0 else
-		  let space, m_l = if no_sp_left then 
+		  let space = if no_sp_left then 
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
-			(mathsEnv.punctuation_factor *. space), m_l
-		    else space,m_l in
-		  adjust_space mathsEnv space (m_l +. space) box_left box_op
+			(mathsEnv.punctuation_factor *. space)
+		    else space in
+		  adjust_space mathsEnv space (x0 -. x1') box_left box_op
 		in
 		let dist1 =
 		  if bin_right= [] then 0.0 else
-		  let space, m_r = if no_sp_right then
+		  let space = if no_sp_right then
 		      max (mathsEnv.mathsSize*.env.size*.mathsEnv.denominator_spacing)
-			(mathsEnv.punctuation_factor *. space),m_r
-		    else space,m_r in
-		  adjust_space mathsEnv space (m_r +. space) box_op box_right
+			(mathsEnv.punctuation_factor *. space)
+		    else space in
+		  adjust_space mathsEnv space  (x0' -. x1) box_op box_right
 		in
 		(* computes distance left - right to avoid collisions above binary symbols *)
 		let dist2 = 
 		  if bin_left = [] or bin_right = [] then -. infinity else
+		    let m_l = (x0_l -. x1_l)/.2.0 in
+		    let m_r = (x0_r -. x1_r)/.2.0 in
 		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
 		in
 		let dist0, dist1 = 
 		  let delta = (dist2 -. dist0 -. dist1 -. (x1 -. x0)) in
 		  if delta > 0.0 then
-		    let l = if no_sp_left then mathsEnv.punctuation_factor else 1.0 in
-		    let r = if no_sp_right then mathsEnv.punctuation_factor else 1.0 in
+		    let l = if no_sp_left then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
+		    let r = if no_sp_right then 0.0 (*mathsEnv.punctuation_factor*) else 1.0 in
 		    dist0 +. delta *. l /. (l +. r),
 		    dist1 +. delta *. r /. (l +. r)
 		  else
@@ -780,11 +705,17 @@ let dist_boxes env precise a b=
   let bezier_left=bezier_of_boxes left in
   let right=draw_boxes env b in
   let bezier_right=bezier_of_boxes right in
-  let (x0_r,y0_r,x1_r,y1_r)=bounding_box right in
-  let (x0_l,y0_l,x1_l,y1_l)=bounding_box left in
-  let lr = List.map (fun (x,y)->Array.map (fun x0->x0+.x1_l-.x0_r) x, y) bezier_right in
-  min_dist_left_right precise bezier_left lr
 
+  let alpha = env.mathsEnvironment.(0).optical_alpha in
+  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let beta =  env.mathsEnvironment.(0).optical_beta in
+
+  let epsilon = 5e-2 in
+  let profile_left = Distance.bezier_profile dir epsilon bezier_left in
+  let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
+
+  Distance.distance beta dir profile_left profile_right
 
 let glyphs (c:string) envs st=
   let env=env_style envs.mathsEnvironment st in
@@ -1035,7 +966,7 @@ let make_sqrt env_ style box=
         if dx0<dx1 then (dx1,dx0) else (dx0,dx1)
       in
       let ty=by0-.env.sqrt_dist*.(phi-.1.) in
-      let sp=adjust_space ~absolute:false env (2.*.env.sqrt_dist*.s) (-.infinity)
+      let sp=adjust_space ~absolute:false env (2.*.env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
         [translate 0. ty (Path (default,[out]))]
         under
       in

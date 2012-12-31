@@ -119,7 +119,7 @@ module Mathematical=struct
     kerning:bool;
   (* None means precise, Some x mean unprecise, but subdivise 
      Bezier curve until the thickness of the polygon is less than x *)
-    precise_kerning:float option;
+    precise_kerning:float;
     priorities:float array;
     priority_unit:float;
     delimiter_up_tolerance:float;
@@ -127,6 +127,8 @@ module Mathematical=struct
     op_tolerance:float;
     op_limits_tolerance:float;
     punctuation_factor:float;
+    optical_alpha:float;
+    optical_beta:float;
   }
   and environment=env array             (* doit etre de taille 8 *)
   and style=

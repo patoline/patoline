@@ -160,14 +160,16 @@ let default_env=
       right_op_dist = 0.25;
       sqrt_dist=0.1;
       kerning=true;
-      precise_kerning=Some 1e-2;
-      priorities=[| 4.;3.;2.;1.;0.5|];
-      priority_unit=1./.8.;
+      precise_kerning= 1e-2;
+      priorities=[| 5.;4.;3.;2.;1.|];
+      priority_unit=1./.9.;
       delimiter_up_tolerance=0.05;
       delimiter_down_tolerance=0.05;
       op_tolerance = 1.25;
       op_limits_tolerance = 0.75;
       punctuation_factor = 0.66;
+      optical_alpha = 3.1416 /. 4.;
+      optical_beta = 2. /. 3.;
    }
 
 let msubst m x=List.map (fun x->try

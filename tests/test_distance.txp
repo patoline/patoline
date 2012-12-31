@@ -1,0 +1,94 @@
+\Caml(
+open Diagrams
+open Typography.Distance
+open Typography
+open Document
+open Document.Mathematical
+open Maths
+open Fonts
+open Fonts.FTypes
+)
+
+\Caml(
+
+let get_char env c = 
+    let x=Fonts.loadGlyph (Lazy.force env.mathsEnvironment.(0).mathsFont)
+      ({empty_glyph with glyph_index=Fonts.glyph_of_char
+	  (Lazy.force env.mathsEnvironment.(0).mathsFont) c})
+    in
+    List.flatten (Fonts.outlines x)
+
+let mkEdge path profile = 
+  let first = let x, y = List.hd profile in x/.100.,y/.100. in
+  let profile = List.map (fun (x,y) -> 
+    [x/.100.,y/.100.]) (List.tl profile) in
+  path Edge.([draw;paramsOf{default_params with close=false; fillColor=None;strokingColor=Some red;}]) first profile
+
+
+let profile dirs c=<<
+
+\diagram(
+let curves = get_char env c
+let profile = bezier_profile dirs 3.0 curves
+let _ = mkEdge path profile
+) >>
+
+let dirRight = ((-1.0,1.0),(-1.0,-1.0))
+let dirLeft = ((1.0,-1.0),(1.0,1.0))
+let rightProfile = profile dirRight
+let leftProfile =profile dirLeft
+
+let profiles c = << \leftProfile(c) \rightProfile(c) \hspace(0.5) >>
+)
+
+\profiles('X')  \profiles('O') \profiles('A') \profiles('C')
+\profiles('P') \profiles('G') \profiles('Q') \profiles('S')
+
+(*$X O A C P G Q S$*)
+
+
+\Caml(
+let bissectrice env path c1 space c2 =
+  let c1 = get_char env c1 and c2 = get_char env c2 in
+  let p1 = bezier_profile dirRight 3.0 c1 in
+  let p2 = bezier_profile dirLeft 3.0 c2 in
+  let p2 = List.map (fun (x,y) -> (x+.space,y)) p2 in
+
+  let _ = mkEdge path p1 in
+  let _ = mkEdge path p2 in
+  let b = bissectrice_profile dirRight p1 p2 in
+  let b = List.map (fun (l,i,r) -> i) b in
+  let _ = mkEdge path b in
+  ()
+)
+
+\diagram(
+  let _ = bissectrice env path 'X' 600.0 'O'
+)
+
+\Caml(
+let testBeta beta a = [Scope(
+                    fun _ _-> Env (fun env-> { env with
+		      mathsEnvironment = Array.map (fun e -> {
+			e with
+			  optical_beta = beta
+		      }) env.mathsEnvironment;})::a
+                  )])
+
+
+\Caml(
+let beta=0.666
+)
+
+$\testBeta(beta){A A V(a)[T]}$ $\testBeta(0.00){A A V(a)}$
+
+$\testBeta(beta){A × V(a)}$ $\testBeta(0.00){A × V(a)}$
+
+$\testBeta(beta){A + V(a)}$ $\testBeta(0.00){A + V(a)}$
+
+$\testBeta(beta){A - V(a)}$ $\testBeta(0.00){A - V(a)}$
+
+$\testBeta(beta){A ∧ V(a)}$ $\testBeta(0.00){A ∧ V(a)}$
+
+$\testBeta(beta){A ∨ V(a)}$ $\testBeta(0.00){A ∨ V(a)}$
+

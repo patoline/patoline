@@ -27,7 +27,7 @@ let defaultEnv = { defaultEnv with
 
   mathsEnvironment = Array.map (fun e -> {
     e with
-    precise_kerning = Some 1e-2;
+    precise_kerning = 1e-2;
   }) defaultEnv.mathsEnvironment;}
 )
 
@@ -43,3 +43,4 @@ $$f(x,y) = \prod_{i=0}^n (\sum_{j=0}^n (i + x)(j + y))$$
 $$α⃗ (x⃗ + y⃗) = α⃗ x⃗ + α⃗ y⃗$$
 $$[a, b\right[, (a \over b\right., (a\}$$ 
 $$1 \over 2$$
+$$A ∧ V$$
