@@ -138,7 +138,7 @@ let rec box_interval=function
   | Kerning x->
       let (a,b,c)=box_interval x.kern_contents in
       let sz=box_size x.kern_contents in
-        (a +. x.advance_width*.sz/.1000., b +. x.advance_width*.sz/.1000., c+. x.advance_width*.sz/.1000.)
+        (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
   | _->(0.,0.,0.)
 and boxes_interval boxes=
@@ -439,11 +439,11 @@ let glyph_of_string substitution_ positioning_ font fsize fcolor str =
                                        kern_y0=h.kern_y0 +. h'.kern_y0;
                                        kern_contents=h'.kern_contents }::s)
            | GlyphID c->(let y=glyphCache font c in
-                            Kerning { advance_height=h.advance_height*.(fsize)/.1000.;
-                                      advance_width=h.advance_width*.(fsize)/.1000.;
-                                      kern_x0=h.kern_x0*.(fsize)/.1000.;
-                                      kern_y0=h.kern_y0*.(fsize)/.1000.;
-                                      kern_contents=GlyphBox { y with glyph_color=fcolor; glyph_size=fsize } }::(kern s))
+                         Kerning { advance_height=h.advance_height*.(fsize)/.1000.;
+                                   advance_width=h.advance_width*.(fsize)/.1000.;
+                                   kern_x0=h.kern_x0*.(fsize)/.1000.;
+                                   kern_y0=h.kern_y0*.(fsize)/.1000.;
+                                   kern_contents=GlyphBox { y with glyph_color=fcolor; glyph_size=fsize } }::(kern s))
         )
     | []->[]
   in

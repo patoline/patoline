@@ -1132,10 +1132,14 @@ let rec gpos font glyphs0=
                         let size1=compute_size valueFormat1 0 in
                         let size2=compute_size valueFormat2 0 in
                         let readAll format gl=
-                          { kern_x0=if (format land 0x1) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
-                            kern_y0=if (format land 0x2) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
-                            advance_width=if (format land 0x4) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
-                            advance_height=if (format land 0x8) <> 0 then float_of_int (int16 (readInt2 file)) else 0.;
+                          let a=if (format land 0x1) <> 0 then float_of_int (int16 (readInt2 file)) else 0. in
+                          let b=if (format land 0x2) <> 0 then float_of_int (int16 (readInt2 file)) else 0. in
+                          let c=if (format land 0x4) <> 0 then float_of_int (int16 (readInt2 file)) else 0. in
+                          let d=if (format land 0x8) <> 0 then float_of_int (int16 (readInt2 file)) else 0. in
+                          { kern_x0=a;
+                            kern_y0=b;
+                            advance_width=c;
+                            advance_height=d;
                             kern_contents=gl }
                         in
                           try
@@ -1145,7 +1149,11 @@ let rec gpos font glyphs0=
                                   let x2=(x0+x1)/2 in
                                   let gl=seek_in file (off0+x2*(1+size1+size2)*2); readInt2 file in
                                     if x1-x0<=1 then
-                                      if gl=h' then readAll valueFormat1 id_h, readAll valueFormat2 id_h' else raise Not_found
+                                      if gl=h' then
+                                        let a=readAll valueFormat1 id_h in
+                                        let b=readAll valueFormat2 id_h' in
+                                        a,b
+                                      else raise Not_found
                                     else
                                       if gl>h' then pairSetTable off0 x0 x2 else pairSetTable off0 x2 x1
                                 in
@@ -1167,11 +1175,11 @@ let rec gpos font glyphs0=
                                        + (class2count*2*(size1+size2))*classdef1
                                        + 2*(size1+size2)*h'
                                      in
-                                       seek_in file (offset+index);
-                                       let a=readAll valueFormat1 id_h in
-                                       let b=readAll valueFormat2 id_h' in
-                                         (if valueFormat1<>0 then KernID a else id_h)::
-                                           (gpos ((if valueFormat2<>0 then KernID b else id_h')::s))
+                                     seek_in file (offset+index);
+                                     let a=readAll valueFormat1 id_h in
+                                     let b=readAll valueFormat2 id_h' in
+                                     (if valueFormat1<>0 then KernID a else id_h)::
+                                       (gpos ((if valueFormat2<>0 then KernID b else id_h')::s))
                                     )
                               ) else glyphs
                           with

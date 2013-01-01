@@ -116,6 +116,7 @@ let bufInt1 b x=
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt2 b x=
+  let x=max (-0x8000) (min 0x7fff x) in
   Rbuffer.add_char b (char_of_int ((x lsr 8) land 0xff));
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
@@ -181,7 +182,7 @@ let readInt4 f=
 let readInt4_int=readInt4
 #endif
 
-let int16 x=if x<=0x7f then x else x-0x10000
+let int16 x=if x<0x8000 then x else x-0x10000
 
 let round x=
   let c=ceil x in

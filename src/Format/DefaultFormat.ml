@@ -1443,9 +1443,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                         ));
                     match box with
                         Kerning kbox ->(
-                          let fact=(box_size kbox.kern_contents/.1000.) in
-                          let w=draw_box (x+.kbox.kern_x0*.fact) (y+.kbox.kern_y0*.fact) kbox.kern_contents in
-                          w+.kbox.advance_width*.fact
+                          let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) kbox.kern_contents in
+                          w+.kbox.advance_width
                         )
                       | Hyphen h->(
                         (Array.fold_left (fun x' box->
