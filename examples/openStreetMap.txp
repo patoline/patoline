@@ -1,0 +1,243 @@
+(* #PACKAGES netclient,xml-light *)
+
+====================================
+  Open Street Mapqx
+====================================
+
+Une test de l'API open street map via patoline.
+
+\Caml(
+open Http_client.Convenience;;
+open Xml
+open Diagrams
+
+let is_tag tag xml =
+  match xml with
+    Element(t,tags,xmls) when t = tag -> true
+  | _ -> false
+
+let cache = "openmap-cache"
+
+let _ = 
+  if not (Sys.file_exists cache) then
+    Unix.mkdir cache 0o700
+
+let get url =
+  Printf.printf "%s\n" url;
+  let cached_filename = Filename.concat cache (Digest.string url) in
+  let xml = if Sys.file_exists cached_filename then
+      let ch = open_in_bin cached_filename in
+      let xml = input_value ch in
+      close_in ch;
+      xml
+    else
+      let s = http_get url in
+      let xml = parse_string s in
+      let ch = open_out_bin cached_filename in
+      output_value ch xml;
+      close_out ch;
+      xml
+  in
+  match xml with
+    Element("osm",tags,xmls) ->
+      let nodes = List.filter (is_tag "node") xmls in
+      let nodes_map = Hashtbl.create 1001 in
+      List.iter (fun node ->
+	match node with
+	  Element(_,tags,xmls) ->
+	    let id = List.assoc "id" tags in
+	    let lat = float_of_string (List.assoc "lat" tags) in
+	    let lon = float_of_string (List.assoc "lon" tags) in
+	    Hashtbl.add nodes_map id (lon, lat)
+	| _ -> ()) nodes;
+      let ways = List.filter (is_tag "way") xmls in
+      let polygons = List.map (fun way ->
+	match way with
+	  Element(_,tags,xmls) ->
+	    let typ = ref `other in
+	    let name = ref "" in
+	    let points = List.fold_left (fun acc xml ->
+	      match xml with
+		Element("nd",tags,xml) ->
+		  Hashtbl.find nodes_map (List.assoc "ref" tags)::acc
+	      | Element("tag",tags,xml) ->
+		  (try match List.assoc "k" tags, List.assoc "v" tags with
+		  | ("highway", x) -> typ := `road x
+		  | ("building", x) -> typ := `building x
+		  | ("waterway", x) -> typ := `water x
+		  | ("railway", x) -> typ := `railway x
+		  | (("landuse" | "natural"), x) -> typ := `ignore
+		  | ("amenity", x) -> typ := `amenity x
+		  | ("name", x) -> name := x
+		  | _ -> ()
+		   with Not_found -> ());
+		  acc
+	      | _ -> acc) [] xmls
+	    in
+	    points, !typ, !name
+	| _ -> assert false) ways
+      in
+(*
+      Printf.printf "%d nodes, %d ways\n" (List.length nodes) (List.length ways);
+      List.iter (fun polygon ->
+	List.iter (fun (lat,lon) ->
+	  Printf.printf "(%f,%f) " lat lon) polygon;
+	Printf.printf "\n") polygons
+*)
+      polygons
+  | _ -> assert false
+
+
+)
+
+\vspaceBefore(20.0)
+\begin{center}
+\diagram(
+
+let pi = 2.0 *. acos(0.0)
+let lon_min = 5.905
+let lon_max = 5.925
+let f x = log(tan(pi/.4.0 +. x*.pi/.360.0))
+let g x = x *. pi /. 180.0
+let lat_min = 45.566
+let lat_max = 45.576
+let y_min = f lat_min
+let y_max = f lat_max
+let x_min = g lon_min
+let x_max = g lon_max
+
+let s' = 100.0
+let s = s' *.  (y_max -. y_min) /. (x_max -. x_min)
+let lon_delta = s' /. (x_max -. x_min)
+let lat_delta = s /. (y_max -. y_min)
+let _ = Printf.printf "%f %f %f %f\n" s' s lon_delta lat_delta
+ 
+let polygons =
+  get (Printf.sprintf 
+  "http://api.openstreetmap.org/api/0.6/map?bbox=%.3f,%.3f,%.3f,%.3f" lon_min lat_min lon_max lat_max)
+
+let scale (x, y) =
+    let x = (g x -. x_min) *. lon_delta in
+    let y = (f y -. y_min) *. lat_delta in
+    Printf.printf "(%f, %f)\n" x y;
+    (x, y)
+
+let inside (x,y) =
+  0.0 <= x && x <= s' && 0.0 <= y && y <= s
+
+let intercept (x,y as p) (x',y' as p') =
+  assert (inside p);
+  assert (not (inside p'));
+    try 
+      if (x' < 0.0) then
+	let alpha = x /. (x -. x') in
+	let y0 = y' *. alpha +. (1.0 -. alpha) *. y in
+	if 0.0 <= y0 && y0 <= s then (0.0, y0) else raise Exit  
+      else raise Exit  
+    with Exit ->
+    try 
+      if (y' < 0.0) then
+	let alpha = y /. (y -. y') in
+	let x0 = x' *. alpha +. (1.0 -. alpha) *. x in
+	if 0.0 <= x0 && x0 <= s' then (x0, 0.0) else raise Exit  
+      else raise Exit  
+    with Exit ->
+    try 
+      if (x' > s') then
+	let alpha = (s' -. x) /. (x' -. x) in
+	let y0 = y' *. alpha +. (1.0 -. alpha) *. y in
+	if 0.0 <= y0 && y0 <= s then (s', y0) else raise Exit  
+      else raise Exit  
+    with Exit ->
+    try
+      if (y' > s) then
+	let alpha = (s -. y) /. (y' -. y) in
+	let x0 = x' *. alpha +. (1.0 -. alpha) *. x in
+	if 0.0 <= x0 && x0 <= s' then (x0, s) else raise Exit  
+      else raise Exit  
+    with Exit -> assert false
+
+let filter l =
+  let first = List.hd l in
+  let rec fn acc l = match l with
+      x::(y::_ as l) -> 
+	let acc = 
+	  match inside x, inside y with
+	    true, false -> intercept x y::x::acc
+	  | false, true -> intercept y x::acc
+	  | true, true -> x::acc
+	  | false, false -> acc
+	in
+	fn acc l
+    | [x] when first = x ->
+	let acc = 
+	  let y = first in
+	  match inside x, inside y with
+	    true, false -> intercept x y::x::acc
+	  | false, true -> intercept y x::acc
+	  | true, true -> x::acc
+	  | false, false -> acc
+	in
+	if not (inside x) && acc <> [] then 
+	  List.hd acc::List.rev acc
+	else
+	  List.rev acc
+    | [x] ->
+      let acc = if inside x then x::acc else acc in
+      List.rev acc
+  in fn [] l
+	    
+let mkpath (l0,t,name) =
+  (match t with
+    `road x -> Printf.printf "road\n";
+  | `water x -> Printf.printf "water\n";
+  | `building x -> Printf.printf "building\n";
+  | `amenity x -> Printf.printf "amenity\n";
+  | `railway x -> Printf.printf "railway\n";
+  | `other ->  Printf.printf "other\n";
+  | `ignore ->  Printf.printf "ignore\n");
+  let l = filter (List.map scale l0) in
+  if List.length l <> List.length l0 then begin
+    Printf.printf "after filter:\n";
+    List.iter (fun (x,y) -> Printf.printf "(%f,%f)\n" x y) l;
+  end;
+
+  if List.length l > 1 && t <> `ignore && t <> `other then begin
+    let first = List.hd l in
+    let others = List.map (fun p -> [p]) (List.tl l) in
+    let close = match t with
+      `road _ | `water _ | `railway _ -> false
+    | _ -> true
+    in
+    let fillColor = match t with
+      `road _ | `water _ | `railway _-> None
+    | `building _ -> Some(mix 0.5 black white)
+    | `amenity _ -> Some(mix 0.25 black white)
+    | _ -> Some red
+    in
+    let strokingColor = match t with
+    | `building _ | `amenity _ -> None
+    | `road _ -> Some black
+    | `water _ -> Some blue
+    | `railway _ -> Some (mix 0.5 blue green)
+    | _ -> Some red
+    in
+    let f = if fillColor = None then [] else [Edge.(fill)] in
+    let e = path Edge.(f@[draw;paramsOf{default_params with close; fillColor;strokingColor}])  first others in
+(*
+    if name <> "" then begin
+      let middle = e.anchor (`Temporal 0.5) in
+      let dr=minipage env (newPar [tT name] in
+      let _ = Node.(make_output
+		      [outerSep 0.2 ; innerSep 0.; 
+		       anchor `Base; at middle] (draw_boxes env dr))
+      in ()
+    end;
+*) ()
+  end
+let _ = 
+  List.map (fun pol -> mkpath pol) polygons
+)
+\end{center}
+
+
