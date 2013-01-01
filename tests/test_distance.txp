@@ -11,7 +11,7 @@ open Fonts.FTypes
 
 \Caml(
 
-let _ = Distance.debug := true
+let _ = Distance.debug := false
 
 let get_char env c = 
     let x=Fonts.loadGlyph (Lazy.force env.mathsEnvironment.(0).mathsFont)
@@ -94,6 +94,59 @@ $\testBeta(beta){A ∧ V(a)}$ $\testBeta(0.00){A ∧ V(a)}$
 
 $\testBeta(beta){A ∨ V(a)}$ $\testBeta(0.00){A ∨ V(a)}$
 
-$\testBeta(beta){{>} > {<} < {>}}$
+$\testBeta(0.00){{β = 0.0} > {<}}$
 
-$\testBeta(0.00){{>} > {<} < {>}}$
+$\testBeta(0.00){{β = 0.0} < {>}}$
+
+$\testBeta(0.10){{β = 0.1} > {<}}$
+
+$\testBeta(0.10){{β = 0.1} < {>}}$
+
+$\testBeta(0.20){{β = 0.2} > {<}}$
+
+$\testBeta(0.20){{β = 0.2} < {>}}$
+
+$\testBeta(0.30){{β = 0.3} > {<}}$
+
+$\testBeta(0.30){{β = 0.3} < {>}}$
+
+$\testBeta(0.4){{β = 0.4} > {<}}$
+
+$\testBeta(0.4){{β = 0.4} < {>}}$
+
+$\testBeta(0.5){{β = 0.5} > {<}}$
+
+$\testBeta(0.5){{β = 0.5} < {>}}$
+
+$\testBeta(0.6){{β = 0.6} > {<}}$
+
+$\testBeta(0.6){{β = 0.6} < {>}}$
+
+$\testBeta(0.70){{β = 0.7} > {<}}$
+
+$\testBeta(0.70){{β = 0.7} < {>}}$
+
+$\testBeta(0.80){{β = 0.8} > {<}}$
+
+$\testBeta(0.80){{β = 0.8} < {>}}$
+
+$\testBeta(0.00){{β = 0.0} 〈t〉 (t)}$
+
+$\testBeta(0.10){{β = 0.1} 〈t〉 (t)}$
+
+$\testBeta(0.20){{β = 0.2} 〈t〉 (t)}$
+
+$\testBeta(0.30){{β = 0.3} 〈t〉 (t)}$
+
+$\testBeta(0.40){{β = 0.4} 〈t〉 (t)}$
+
+$\testBeta(0.50){{β = 0.5} 〈t〉 (t)}$
+
+$\testBeta(0.60){{β = 0.6} 〈t〉 (t)}$
+
+$\testBeta(0.70){{β = 0.7} 〈t〉 (t)}$
+
+$\testBeta(0.80){{β = 0.8} 〈t〉 (t)}$
+
+$\testBeta(0.90){{β = 0.9} 〈t〉 (t)}$
+

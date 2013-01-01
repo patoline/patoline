@@ -135,18 +135,25 @@ let profil_union (dsup, dinf) c1 c2 =
     | p'::_ -> if norm2 (p -- p') < 1e-6 then l else p::l
   in
 
+  let strip p l s = match l with
+      [] -> [], s
+    | q::l when norm2 (q -- p) < 1e-8 -> l, next dsup q l
+    | _ -> l, s
+  in
+
 (*   Printf.fprintf stdout "\nStart\n"; *)
   (*c1 et c2 trié selon la direction d' *)
   let rec fn acc c1 s1 c2 s2 = 
-
-
-(*     Printf.fprintf stdout "acc = %a,\n c1 = %a, s1 = %a,\n c2 = %a, s2 = %a\n\n"
+(*
+    if !debug then begin
+     Printf.fprintf stderr "acc = %a,\n c1 = %a, s1 = %a,\n c2 = %a, s2 = %a\n\n"
       print_pt' acc
       print_pt' c1
       print_obj s1
       print_pt' c2
-      print_obj s2;*)
-
+      print_obj s2;
+    end;
+*)
     match c1, c2 with
     | [], [] -> List.rev acc
     | p1::__, p2::c2' when dot_prod p1 dsup' >= dot_prod p2 dsup' ->
@@ -156,6 +163,8 @@ let profil_union (dsup, dinf) c1 c2 =
       let s1' = next dsup p1 c1' in
       (try 
 	let i = inter s1' s2 in
+	let c2, s2 = strip i c2 s2 in
+	let c1', s1' = strip i c1' s1' in
 	fn (cons i (cons p1 acc)) c2 s2 c1' s1'
       with 
 	Not_found ->
@@ -183,15 +192,26 @@ let segment_profile (dsup,dinf) (p,q) =
 let bezier_profile (dsup,dinf) epsilon curves =
   if !debug then begin
     Printf.fprintf stderr "Compute profile:\n";
-      List.iter (fun (xa, ya) ->
-	Printf.fprintf stderr "["; 
-	Array.iteri (fun i x -> Printf.fprintf stderr "(%f, %f)" x ya.(i))
-          xa;
-	Printf.fprintf stderr "]  ") curves;
-      Printf.fprintf stderr "\n";
+    List.iter (fun (xa, ya) ->
+      Printf.fprintf stderr "["; 
+      Array.iteri (fun i x -> Printf.fprintf stderr "(%f, %f)" x ya.(i))
+        xa;
+      Printf.fprintf stderr "]  ") curves;
+    Printf.fprintf stderr "\n";
   end;
       
   let curves = List.fold_left (fun acc b -> Bezier.subdivise epsilon b :: acc) [] curves in
+(*
+  if !debug then begin
+    Printf.fprintf stderr "  Subdivise ==>\n";
+    List.iter (fun c -> List.iter (fun (xa, ya) ->
+      Printf.fprintf stderr "["; 
+      Array.iteri (fun i x -> Printf.fprintf stderr "(%f, %f)" x ya.(i))
+          xa;
+      Printf.fprintf stderr "]  ") c) curves;
+    Printf.fprintf stderr "\n";
+  end;
+*)
   let r = List.fold_left (fun acc curve ->
     let curve = Array.of_list curve in
     let rec gn i j =
@@ -234,6 +254,11 @@ let project p o =
   if not (in_range o s) then raise Not_found else
   comblin 1.0 q s v
 
+let in_circle a b c m =
+  let x = 1. /. 3. in
+  let g = comblin 1.0 (comblin x a x b) x c in
+  norm2 (g -- m) <= norm2 (g -- a)
+  
 (* assume profile2 uses (-dsup, -dinf), hence the list reversal *)
 let bissectrice_profile (dsup,dinf) profile1 profile2 =
 (*
@@ -342,12 +367,12 @@ let bissectrice_profile (dsup,dinf) profile1 profile2 =
 	    (*Printf.printf "Cas p1 = %a, i12 = %a, p2 = %a\n" print_pt p1 print_pt i1 print_pt p2;*)
 	    fn ((p1,i1, p2)::acc) (l', false, r') c1' c2')
 	  else if x1 > x2 then (
-	    if !debug then Printf.fprintf stderr "inter %a %a\n" print_obj (Line(i1,i1--p1)) print_obj r;
+	    (*if !debug then Printf.fprintf stderr "inter %a %a\n" print_obj (Line(i1,i1--p1)) print_obj r;*)
 	    let n2 = inter (Line(i1,i1--p1)) r in
 	    (*Printf.printf "Cas p1 = %a, i1 = %a, n2 = %a\n" print_pt p1 print_pt i1 print_pt n2;*)
 	    fn ((p1,i1,n2)::acc) (l', false, Segment(p2,n2)) c1' c2)
 	  else (
-	    if !debug then Printf.fprintf stderr "inter %a %a\n" print_obj (Line(i2,i2--p2)) print_obj l;
+	    (*if !debug then Printf.fprintf stderr "inter %a %a\n" print_obj (Line(i2,i2--p2)) print_obj l;*)
 	    let n1 = inter (Line(i2,i2--p2)) l in
 	    (*Printf.printf "Cas n1 = %a, i2 = %a, p2 = %a\n" print_pt n1 print_pt i2 print_pt p2;*)
 	    fn ((n1,i2,p2)::acc) (Segment(p1,n1), false, r') c1 c2')
@@ -390,8 +415,7 @@ let bissectrice_profile (dsup,dinf) profile1 profile2 =
 		  print_pt o1 print_pt (middle o1 p2) print_pt p2;*)
 		fn ((o1,middle o1 p2,p2)::acc) (l, false, r') c1 c2'
 	      | p1::c1', p2::c2' ->
-		let vert = rotate_90 (o1 -- o2) in
-		if dot_prod p1 vert > dot_prod p2 vert then
+		if in_circle o1 o2 p2 p1 then
 		  let l' = renverse (next dsup p1 c1') in
 		  (*Printf.printf "Cas p1 = %a, mid = %a, o2 = %a\n"
 		    print_pt p1 print_pt (middle p1 o2) print_pt o2;*)
@@ -424,7 +448,7 @@ let add_dprofile a p q l =
   in
   fn [] l
 
-let area2 o1 p1 o2 p2 =
+let area o1 p1 o2 p2 =
   let r =
     det22 (o2 -- o1) (p1 -- o1) +.
       det22 (o2 -- p1) (p2 -- p1)
@@ -442,7 +466,7 @@ let add_pqprofile o1 p1 o2 p2 l =
     print_pt o2
     print_pt p1
     print_pt p2;*)
-  let s = area2 o1 p1 o2 p2 in
+  let s = area o1 p1 o2 p2 in
   let a = norm (o2 -- o1) in
   let b = norm (p2 -- p1) in
   let a,b,o1,o2,p1,p2 =
@@ -459,12 +483,12 @@ let add_pqprofile o1 p1 o2 p2 l =
     add_dprofile a h 0.0 (add_dprofile b (-.h) 0.0 l) 
   end else begin
     let d2 = det22 (p2 -- p1) (o2 -- o1) in
-    (*Printf.printf "  d2 = %f\n" d2; *)
-    assert (abs_float d2 < 1e-6);
+    if not (abs_float d2 < 1e-5) then (
+      Printf.printf "  bad trapezz: d2 = %f\n" d2; 
+      assert false);
     let c = norm (middle o2 o1 -- middle p2 p1) in
-    let p' = c /. (b -. a) in
-    let a' = a *. p' in
-    let p = p' /. 2. in    
+    let p = c /. (b -. a) in
+    let a' = a *. p in
     add_dprofile a a' p (add_dprofile b (-.a') (-.p) l) 
   end
   
@@ -506,7 +530,9 @@ let add_allprofile l =
   let d = norm (o2 -- o1) in
   fn (d, add_dprofile d d 0.5 []) l
 
-let find_distance0 area l =
+let find_distance0 alpha m l =
+  let area = m *. m *. alpha in
+
   let rec fn curd curh curarea curp l =
     (*Printf.printf "curd = %f, curh = %f, curarea = %f, curp = %f\n" curd curh curarea curp;*)
     if area < curarea then
@@ -524,7 +550,7 @@ let find_distance0 area l =
   in
   fn 0.0 0.0 0.0 0.0 l
 
-let find_distance2 alpha l =
+let find_distance2 alpha _m l =
   let rec fn curd curh curarea curp l =
    (*Printf.printf "curd = %f, curh = %f, curarea = %f, curp = %f\n" curd curh curarea curp;*)
    (* (curh *x + curp /2 * x^2 + curarea = alpha * (curd + x)^2  *)
@@ -552,6 +578,8 @@ let find_distance2 alpha l =
   in
   fn 0.0 0.0 0.0 0.0 l
 
+let distance_type = (`d2 : [`d0 | `d2]) 
+
 let distance alpha (dsup,dinf) profile1 profile2 =
   if !debug then begin
     Printf.fprintf stderr "distance:\n  left: ";
@@ -566,11 +594,15 @@ let distance alpha (dsup,dinf) profile1 profile2 =
       try
 	let b = bissectrice_profile (dsup,dinf) profile1 profile2 in
 	let m,l = add_allprofile b in
-      (*Printf.printf "m = %f\n" m;
-	List.iter (fun (a,h,p) -> Printf.printf "a = %f h = %f, p = %f -- " a h p) l;
-	Printf.printf "\n"; *)
-      (*let area = m *. m *. alpha in*)
-	if m <= 0.0 then 0.0 else find_distance2 alpha l
+      if !debug then (Printf.fprintf stderr "m = %f\n" m;
+	List.iter (fun (a,h,p) -> Printf.fprintf stderr "a = %f h = %f, p = %f -- " a h p) l;
+	Printf.fprintf stderr "\n"); 
+
+	if m <= 0.0 then 0.0 else 
+	  match distance_type with
+	    `d0 ->
+	      find_distance0 alpha m l
+	  | `d2 -> find_distance2 alpha m l
       with
 	Exit -> 0.0
       | Bad -> infinity

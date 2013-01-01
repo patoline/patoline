@@ -789,23 +789,23 @@ let open_close left right env_ style box=
   let (x0,y0,x1,y1)=bounding_box_kerning mid in
   let (x0',y0',x1',y1')=bounding_box_full mid in
 
-  let (left, (x0_l',y0_l',x1_l',y1_l')), 
-      (right, (x0_r',y0_r',x1_r',y1_r')) =
+  let (left',left, (x0_l',y0_l',x1_l',y1_l')), 
+      (right',right, (x0_r',y0_r',x1_r',y1_r')) =
     let ll = left env_ style and lr = right env_ style in
     let boxes = List.map (fun d ->
-      let d=draw_boxes env_ d in
-      (d, bounding_box_full d))
+      let d'=draw_boxes env_ d in
+      (d, d', bounding_box_full d'))
     in
     let ll = boxes ll in
     let lr = boxes lr in
     let rec select_size = function
-      | [] -> [], (0.0, 0.0, 0.0, 0.0)
-      | (d, (dx0,dy0,dx1,dy1 as dd)) :: l ->
+      | [] -> [], [], (0.0, 0.0, 0.0, 0.0)
+      | (d, d', (dx0,dy0,dx1,dy1 as dd)) :: l ->
 	(* FIXME: 0.05 should be in env *)
 	let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
 	let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
 	if l = [] or (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
-	   (d,dd) else select_size l
+	   (d,d',dd) else select_size l
     in
     select_size ll, select_size lr
   in
@@ -826,35 +826,32 @@ let open_close left right env_ style box=
       x0_l x1_l x0 x1 x0_r x1_r y0_l y1_l y0_r y1_r;
     Printf.printf "full: (%f,%f) (%f,%f) (%f,%f) (%f,%f) (%f,%f)\n"
       x0_l' x1_l' x0' x1' x0_r' x1_r' y0_l' y1_l' y0_r' y1_r';
+    Printf.printf "dists: %f %f\n" dist0 dist1;
   end;
 
-    (if left = [] then  [] else  [Drawing {
-       drawing_min_width=x1_l +. dist0;
-       drawing_nominal_width=x1_l +.dist0;
-       drawing_max_width=x1_l +. dist0;
-       drawing_y0=y0_l';
-       drawing_y1=y1_l';
-       drawing_badness=(fun _->0.);
-       drawing_contents=(fun _-> left) (*  @ [(Path ({ default with lineWidth = 0.01 ; close = true},  
-        [rectangle (x0_l,y0_l) (x1_l,y1_l)]))] *) }])@
-    (Drawing {
-       drawing_min_width=x1 +. dist1;
-       drawing_nominal_width=x1 +. dist1;
-       drawing_max_width=x1 +. dist1;
-       drawing_y0=y0;
-       drawing_y1=y1;
-       drawing_badness=(fun _->0.);
-       drawing_contents=(fun _-> mid);})::
-    (if right = [] then  [] else
-     [Drawing {
-         drawing_min_width=x1_r;
-         drawing_nominal_width=x1_r;
-         drawing_max_width=x1_r;
-         drawing_y0=y0_r';
-         drawing_y1=y1_r';
-         drawing_badness=(fun _->0.);
-         drawing_contents=(fun _->  right);}])
+  let gl0=
+    if left = [] then [] else (
+      match glue dist0 dist0 dist0 with
+	Box.Glue x->
+	  [Drawing { x with
+            drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
+          }]
+      | x->assert false
+    )
+  in
+  let gl1 =
+    if right = [] then [] else (
+      match glue dist1 dist1 dist1 with
+	Box.Glue x->
+	  [Box.Glue { x with
+            drawing_badness=(fun w->100.*.(knuth_h_badness dist1 w))
+          }]
+      | x->assert false
+    )
+  in
 
+
+  (left'@gl0@box@gl1@right')
 
 let sqrts=ref [||]
 
