@@ -1436,7 +1436,7 @@ let make_tables font fontInfo cmap glyphs_idx=
     StrMap.filter (fun k _->
       match k with
           "cmap" | "hmtx" | "hhea" | "head" | "maxp"
-        | "OS/2" | "CFF " | "GSUB" | "name" | "post"
+        | "OS/2" | "CFF " | "GSUB" | "GPOS" | "name" | "post"
         | "cvt " | "fpgm" | "glyf" | "loca" | "prep" -> true
         | _->(
           (* Printf.fprintf stderr "excluded table : %S\n" k;flush stderr; *)
@@ -1861,3 +1861,11 @@ let setName info name=
 let subset font info cmap glyphs=
   make_tables font info cmap glyphs;
   write_cff info
+
+open Opentype_layout
+let add_kerning info kerning_pairs=
+  let scr=StrMap.singleton "latn" StrMap.empty in
+  let feat=[|{tag="kern";lookups=[0]}|] in
+  let lookups=[|make_kerning kerning_pairs|] in
+  let buf=write_layout scr feat lookups in
+  info.tables<-StrMap.add "GPOS" buf info.tables

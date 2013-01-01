@@ -17,7 +17,9 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
+
 open Util
+
 (* Deux scripts ne peuvent pas avoir un langage en commun (ou alors il
    faut le dupliquer, sinon on ne peut pas calculer les offsets
    relatifs au début de la table de scripts/de langage.
@@ -196,5 +198,89 @@ let make_ligatures ligarray=
     Rbuffer.add_buffer buf_subtables coverage_buffer;
     Rbuffer.add_buffer buf_subtables ligatureset_buf;
   done;
+  Rbuffer.add_buffer buf buf_subtables;
+  buf
+
+open FTypes
+let make_kerning pairs=
+  let buf=Rbuffer.create 256 in
+  bufInt2 buf 2;                        (* pair adjustment *)
+  bufInt2 buf 0;                        (* flags *)
+  bufInt2 buf 1;                        (* subtable count *)
+
+  let buf_subtables=Rbuffer.create 256 in
+  bufInt2 buf (8+Rbuffer.length buf_subtables);   (* offset vers la subtable *)
+
+
+  let valueformat1=List.fold_left (fun k (_,_,k1,_)->
+    (if k1.kern_x0<>0.        then 1 else 0) lor
+    (if k1.kern_y0<>0.        then 2 else 0) lor
+    (if k1.advance_width<>0.  then 4 else 0) lor
+    (if k1.advance_height<>0. then 8 else 0)
+  ) 0 pairs
+  and valueformat2=List.fold_left (fun k (_,_,_,k2)->
+    (if k2.kern_x0<>0.        then 1 else 0) lor
+    (if k2.kern_y0<>0.        then 2 else 0) lor
+    (if k2.advance_width<>0.  then 4 else 0) lor
+    (if k2.advance_height<>0. then 8 else 0)
+  ) 0 pairs
+  in
+  let nformat1=
+    (if valueformat1 land 1=0 then 0 else 1)+
+    (if valueformat1 land 2=0 then 0 else 1)+
+    (if valueformat1 land 4=0 then 0 else 1)+
+    (if valueformat1 land 8=0 then 0 else 1)
+  and nformat2=
+    (if valueformat2 land 1=0 then 0 else 1)+
+    (if valueformat2 land 2=0 then 0 else 1)+
+    (if valueformat2 land 4=0 then 0 else 1)+
+    (if valueformat2 land 8=0 then 0 else 1)
+  in
+
+  (* Maintenant on écrit la subtable *)
+  let ipairs=List.fold_left (fun m k->
+    let (a,b,x,y)=k in
+    let autres=try IntMap.find a m with Not_found->[] in
+    IntMap.add a (k::autres) m
+  ) IntMap.empty pairs
+  in
+  let coverage_buffer=coverage ipairs in
+  bufInt2 buf_subtables 1;                               (* SubstFormat *)
+  bufInt2 buf_subtables (10+2*IntMap.cardinal ipairs);   (* coverage *)
+  bufInt2 buf_subtables valueformat1;
+  bufInt2 buf_subtables valueformat2;
+  bufInt2 buf_subtables (IntMap.cardinal ipairs);
+  let pairs_buf=Rbuffer.create 256 in
+  let make_value buffer format k=
+    Printf.fprintf stderr "make_value : %f %f %f %f\n" k.kern_x0 k.kern_y0 k.advance_width k.advance_height;flush stderr;
+    if format land 1<>0 then (
+      bufInt2 buffer (round k.kern_x0);
+    );
+    if format land 2<>0 then (
+      bufInt2 buffer (round k.kern_y0);
+    );
+    if format land 4<>0 then (
+      bufInt2 buffer (round k.advance_width);
+    );
+    if format land 8<>0 then (
+      bufInt2 buffer (round k.advance_height);
+    );
+  in
+  IntMap.iter (fun _ p->
+    let p=List.sort (fun (_,a,_,_) (_,b,_,_)->compare a b) p in
+    bufInt2 buf_subtables (10+2*IntMap.cardinal ipairs
+                           +Rbuffer.length coverage_buffer
+                           +Rbuffer.length pairs_buf);
+    (* p est une liste de paires commençant par le même glyph *)
+    bufInt2 pairs_buf (List.length p);
+    let off0=2+(nformat1+nformat2)*2*(List.length p) in
+    List.iter (fun (_,b,x,y)->
+      bufInt2 pairs_buf b;
+      make_value pairs_buf valueformat1 x;
+      make_value pairs_buf valueformat2 y;
+    ) p;
+  ) ipairs;
+  Rbuffer.add_buffer buf_subtables coverage_buffer;
+  Rbuffer.add_buffer buf_subtables pairs_buf;
   Rbuffer.add_buffer buf buf_subtables;
   buf
