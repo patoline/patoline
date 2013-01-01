@@ -39,16 +39,22 @@
 \Add_right{ \} }(List.map (MathFonts.asana "}") [95;3355;3356;3357])
 \Add_left{ [ }(List.map (MathFonts.asana "[") [61;3340;3341;3342])
 \Add_right{ ] }(List.map (MathFonts.asana "]") [63;3343;3344;3345])
-\Add_left{ \langle < 〈}(List.map (MathFonts.asana "\\left_angle") [3239;3240;3241])
-\Add_right{ \rangle > 〉}(List.map (MathFonts.asana "\\right_angle") [3226;3227;3228])
+\Add_left{ \langle < 〈}(List.map2
+				     (fun g g' -> vkern_as (MathFonts.euler "\\left_angle" g)
+				          (MathFonts.asana "[" g'))
+				      [1803;1807;1809;1811(*;1813*)][10;3346;3347;3348])
+\Add_right{ \rangle > 〉}(List.map2
+				     (fun g g' -> vkern_as (MathFonts.euler "\\left_angle" g)
+				          (MathFonts.asana "[" g'))
+				       [1804;1808;1810;1812(*;1814*)] [11;3349;3350;3351])
 \Add_left{ \labs | }(List.map (MathFonts.asana "|") [749;3316;3317;3318;3319])
 \Add_right{ \rabs | }(List.map (MathFonts.asana "|") [749;3316;3317;3318;3319])
 \Add_left{ || }(List.map (MathFonts.asana "\\left_double_bar") [385;3308;3309;3310;3311])
 \Add_right{ || }(List.map (MathFonts.asana "\\right_double_bar") [385;3308;3309;3310;3311])
-\Add_left{\lceil ⌈}(List.map (MathFonts.asana "\\left_ceiling") [3328;3329;3330])
-\Add_right{\rceil ⌉}(List.map (MathFonts.asana "\\right_ceiling") [3331;3332;3333])
-\Add_left{\lfloor ⌊}(List.map (MathFonts.asana "\\left_floor") [3334;3335;3336])
-\Add_right{\rfloor ⌋}(List.map (MathFonts.asana "\\right_floor") [3337;3338;3339])
+\Add_left{\lceil ⌈}(List.map (MathFonts.asana "\\left_ceiling") [974;3328;3329;3330])
+\Add_right{\rceil ⌉}(List.map (MathFonts.asana "\\right_ceiling") [975;3331;3332;3333])
+\Add_left{\lfloor ⌊}(List.map (MathFonts.asana "\\left_floor") [976;3334;3335;3336])
+\Add_right{\rfloor ⌋}(List.map (MathFonts.asana "\\right_floor") [977;3337;3338;3339])
 \Add_left{\left_white_square_bracket 〚} (List.map2
 				     (fun g g' -> vkern_as (MathFonts.asana "\\left_white_square_bracket" g)
 				          (MathFonts.asana "[" g'))
@@ -156,7 +162,7 @@
 \Add_product_like{\wedge \gcd ∧}(MathFonts.asana "∧" 753)
 \Add_product_like{\star ∗}{∗}
 \Add_product_like{\seq}{;}
-\Add_product_like{\para |}{|}
+\Add_product_like{\para}{|}
 
 =<
 
