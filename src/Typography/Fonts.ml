@@ -185,3 +185,7 @@ let subset font info b c=match font,info with
   | Opentype x,OpentypeInfo y->
     Opentype.subset x y b c
   | _->assert false
+
+let add_kerning info a=match info with
+    CFFInfo i->CFF.add_kerning i a
+  | OpentypeInfo i->Opentype.add_kerning i a

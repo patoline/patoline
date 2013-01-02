@@ -129,6 +129,7 @@ let build_font_cache prefix pages=
                 IntMap.add (UChar.code (UTF8.look gl.glyph_utf8 0)) i b)
         )
       in
+      Fonts.add_kerning info [];
       let buf=Fonts.subset font info (make_bindings 1 IntMap.empty) glyphs in
       fontBuffers:=StrMap.add filename buf !fontBuffers;
     ) sub_fonts
