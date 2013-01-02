@@ -657,7 +657,11 @@ word_macro: MACRO<name>
      not (List.mem_assoc name dyp.local_data.par_macros)
     in
     if not test then raise Giveup;
-    name }    
+    let nb = 
+      try	     
+      	get_nbargs name dyp.local_data.word_macros
+      with Not_found -> -2
+    in name, nb }    
 
 par_macro: MACRO<name>
   { let test =
@@ -668,7 +672,12 @@ par_macro: MACRO<name>
       not (List.mem_assoc name dyp.local_data.word_macros)
     in
     if not test then raise Giveup;
-    name }    
+    let nb =
+        try	
+	  get_nbargs name dyp.local_data.par_macros
+      with Not_found -> -2
+    in
+    name, nb }    
       
 test<b>:
 	{ if not b then raise Giveup; }
@@ -709,20 +718,6 @@ readenvargs<macro>:
 	    with Not_found -> -2
       }
 
-readwordargs<macro>:
-      { 
-            try	
-      	      get_nbargs macro dyp.local_data.word_macros
-	    with Not_found -> -2
-      }
-
-readparargs<macro>:
-      { 
-            try	
-      	      get_nbargs macro dyp.local_data.par_macros
-	    with Not_found -> -2
-      }
-
 topmacro:
     BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" 
     - readenvargs{name}<nb> - args{nb}<a>
@@ -732,13 +727,13 @@ topmacro:
       { Macro(`End, name, [], []) }
   | INCLUDE "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { Macro(`Include,name,[], []) }
-  | par_macro<name> - readparargs{name}<nb> - args{nb}<a>
+  | par_macro<name,nb> - args{nb}<a>
       {	let name, args = test_pargs dyp name a in
         Macro(`Module, name, args, get_pminfo dyp name) }
 
 
 in_par_macro:
-  | word_macro<name> - readwordargs{name}<nb> - args{nb}<a>
+  | word_macro<name,nb> - args{nb}<a>
       { 
         let name, args = test_wargs dyp name a in
         [MC(`Single, name, args, get_wminfo dyp name)] }  macro

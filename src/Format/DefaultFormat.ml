@@ -1643,6 +1643,18 @@ module MathsFormat=struct
       fun _ _->Maths.Env (fun env-> { env with size=alpha })::a
     )]
 
+    let mathSpace x =
+      [Maths.Scope (fun env style ->
+	let mathsEnv=Maths.env_style env.mathsEnvironment style in
+	let x = x *. mathsEnv.Mathematical.mathsSize *. env.size in
+	[Maths.Glue { drawing_min_width= x;
+		    drawing_max_width= x;
+		    drawing_y0=infinity; drawing_y1= -.infinity;
+		    drawing_nominal_width= x;
+		    drawing_width_fixed = true;
+		    drawing_contents=(fun _->[]);
+		    drawing_badness=knuth_h_badness x }])]
+
     let oline a=
       [Maths.Ordinary
          (Maths.noad

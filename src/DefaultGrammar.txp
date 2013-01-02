@@ -446,12 +446,15 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_math_macro{\sqrt}{ arity = 1 name = Maths.sqrt }
 \Configure_math_macro{\cal}{ arity = 1 name = mathcal }
 \Configure_math_macro{\bold}{ arity = 1 name = mathbold }
+
+\Configure_word_macro{\hspace}{ arity = 1 eat_right eat_left}
+\Configure_math_macro{\hspace}{ arity = 1 name = mathSpace }
+
 \Configure_paragraph_macro{\item}{ eat_right }
 \Configure_paragraph_macro{\tableOfContents}{}
-\Configure_word_macro{\label}{ eat_right
-                               eat_left }
-\Configure_word_macro{\hand}{ eat_right
-                               eat_left }
+
+\Configure_word_macro{\label}{ eat_right eat_left }
+\Configure_word_macro{\hand}{ eat_right eat_left }
 \Configure_word_macro{\sourcePosition}{ arity = 1 give_position }
 
 \Configure_environment{genumerate}{ arg_1 = genumerate }
