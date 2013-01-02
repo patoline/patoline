@@ -116,7 +116,6 @@ let bufInt1 b x=
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
 let bufInt2 b x=
-  let x=max (-0x8000) (min 0x7fff x) in
   Rbuffer.add_char b (char_of_int ((x lsr 8) land 0xff));
   Rbuffer.add_char b (char_of_int (x land 0xff))
 
