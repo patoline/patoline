@@ -1539,7 +1539,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                                                            [| !footnote_y-.env.footnote_y;
                                                                                               !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
               );
-              (* out_params.pageNumbers page env i; *)
+
+
+              let num=boxify_scoped defaultEnv [tT (string_of_int (i+1))] in
+              let _,w,_=boxes_interval (Array.of_list num) in
+              page.pageContents<-
+                List.map (translate ((fst page.pageFormat-.w)/.2.) 30.)
+                (draw_boxes env num)
+                @page.pageContents;
+
               page.pageContents<-List.rev page.pageContents
             in
             for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
