@@ -99,6 +99,16 @@ DefaultGrammar.tgx:DefaultGrammar.tml Patoline/patoline
 	$(CAMLOPT) -o DefaultGrammar.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -impl DefaultGrammar.tml
 	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts
 
+.PHONY: test.pdf
+
+test.pdf:test.txp Format/DefaultFormat.cmxa Drivers/Pdf.cmxa
+	Patoline/patoline --ml test.txp
+	$(CAMLOPT) -o test.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa str.cmxa FormatThese.cmxa Pdf.cmxa -linkpkg -impl test.tml
+	./test.tmx
+
+test:test.ml Typography/_build/Typography.cmxa
+	$(CAMLOPT) -o test -I Rbuffer -I Typography/_build rbuffer.cmxa Typography.cmxa -linkpkg test.ml
+
 
 .PHONY :doc
 doc:
