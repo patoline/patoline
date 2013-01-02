@@ -273,7 +273,7 @@ and print_math_par_buf parser_pp op buf display m =
   (* Printf.fprintf stderr "Entering print_math_par_buf.\n" ; flush stderr ; *)
   let style = if display then "Mathematical.Display" else "env0.mathStyle" in
   Printf.bprintf buf
-    "[bB (fun env0 -> Maths.draw [ { env0 with mathStyle = %s } ] ("
+    "[bB (fun env0 -> Maths.kdraw [ { env0 with mathStyle = %s } ] ("
     style ;
   print_math_buf parser_pp op buf m;
   Printf.bprintf buf "))] "

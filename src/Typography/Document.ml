@@ -1038,6 +1038,7 @@ let mappend m x=
 module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
 (**/**)
 
+
 (** Converts a list of contents into a list of boxes, which is the next Patoline layer. *)
 let boxify buf nbuf fixable env0 l=
   let rec boxify keep_cache env=function
@@ -1116,13 +1117,6 @@ let boxify buf nbuf fixable env0 l=
   in
   boxify true env0 l
 
-(** The same as boxify, but discards the final environment. *)
-let boxify_scoped env x=
-  let buf=ref [||] in
-  let nbuf=ref 0 in
-  let _=boxify buf nbuf (ref false) env x in
-    Array.to_list (Array.sub !buf 0 !nbuf)
-
 (** Typesets boxes on a single line, then converts them to a list of basic
     drawing elements: [OutputCommon.raw]. *)
 let draw_boxes env l=
@@ -1192,11 +1186,129 @@ let draw_boxes env l=
   fst (draw_boxes 0. 0. [] l)
 
 
+let rec bezier_of_boxes=function
+    []->[]
+  | Glyph g::s->
+      let out=Fonts.outlines g.glyph in
+        (List.map (fun (x,y)->Array.map (fun xx->g.glyph_x+.xx *. g.glyph_size/.1000.) x,
+                     Array.map (fun xx->g.glyph_y+.xx *. g.glyph_size/.1000.) y)
+           (List.concat out)) @ (bezier_of_boxes s)
+  | Path (_,p)::s->
+      (List.concat (List.map Array.to_list p))@(bezier_of_boxes s)
+  | _::s->Printf.fprintf stderr "ignore\n"; bezier_of_boxes s
+
+let adjust_width env buf nbuf =
+  (* FIXME : à prendre dans l'env *)
+  let alpha = 3.1416 /. 4. in
+  let beta = 0.5 in 
+  let epsilon = 5e-2 in
+  let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
+  let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let buf = !buf in
+  let i0 = ref 0 in
+  while !i0 < !nbuf do
+    match buf.(!i0) with
+      Drawing x as x0-> (
+	let adjust = ref (if x.drawing_width_fixed then None else Some(x0,!i0)) in
+	let min = ref 0.0 in
+	let nominal = ref 0.0 in
+	let max = ref 0.0 in
+	incr i0;
+	try while !i0 < !nbuf do
+	  match buf.(!i0) with
+	  | User _ -> incr i0
+	  | Glue x as b when not x.drawing_width_fixed ->
+	    min := !min +.  x.drawing_min_width;
+	    max := !max +.  x.drawing_max_width;
+	    nominal := !nominal +. x.drawing_nominal_width;
+	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+	    incr i0
+	  | Drawing y as y0 -> (
+	    match !adjust with
+	    | None -> raise Exit
+	    | Some (b,i) -> 
+	      let left = draw_boxes env [x0] in
+	      let right = draw_boxes env [y0] in
+	      let bezier_left = bezier_of_boxes left in
+	      let bezier_right = bezier_of_boxes right in
+	      let profile_left = Distance.bezier_profile dir epsilon bezier_left in
+	      let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
+
+	      let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
+
+	      let delta = x1_l -. x0_l in
+	
+	      let d space = 
+		let pr = List.map (fun (x,y) -> (x+.space+.delta,y)) profile_right in
+		let r = Distance.distance beta dir profile_left pr in
+	  (*    Printf.printf "s = %f => d = %f\n" space r; *)
+		r
+	      in
+	
+	      let char_space = env.normalLead /. 13. in
+	      
+	      let min' = !min -. (Pervasives.min (x1_l -. x0_l) (x1_r -. x0_r)) in
+	      let max' = if !max < 2. *. char_space then 2. *. char_space else !max in
+ 	      let nominal' = if !nominal < char_space then char_space else !nominal in
+	      let da = d min' in
+	      let db = d max' in
+	      let target = nominal' in
+	      
+	      Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
+
+	      let r  =
+		if da > target then min' else
+		  if db < target then max' else (
+		    
+		    let rec fn sa da sb db  =
+		      let sc = (sa +. sb) /. 2.0 in
+		      let dc = d sc in
+		      if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+		      else if dc < target then fn sc dc sb db 
+		      else fn sa da sc dc
+		    in
+		    fn !min da max' db)
+												    
+	      in
+	 
+	      Printf.fprintf stderr "end Adjust: r = %f\n" r;
+   
+	      buf.(i) <- 
+		(match b with
+		| Drawing x -> Drawing { x with 
+		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		  drawing_min_width = r -. !min +. x.drawing_min_width;
+		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		}
+		| Glue x -> Glue { x with
+		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		  drawing_min_width = r -. !min +. x.drawing_min_width;
+		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		}
+		| _ -> assert false);
+	      raise Exit)
+	    | _ -> 
+	      incr i0;
+	      raise Exit
+	  done with Exit -> ())
+    | _ -> incr i0
+  done
+
+(** The same as boxify, but discards the final environment. *)
+let boxify_scoped env x=
+  let buf=ref [||] in
+  let nbuf=ref 0 in
+  let _=boxify buf nbuf (ref false) env x in
+  adjust_width env buf nbuf;
+    Array.to_list (Array.sub !buf 0 !nbuf)
+
 (** Composes [boxify] and [draw_boxes] *)
 let draw env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
   let env'=boxify buf nbuf (ref false) env x in
+  adjust_width env buf nbuf;
   draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
 
 
@@ -1244,6 +1356,7 @@ let flatten env0 fixable str=
   let add_paragraph env tree path p=
     nbuf:= !frees;
     let v=boxify buf nbuf fixable env p.par_contents in
+    adjust_width env buf nbuf;
     paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
     trees:=(tree,path)::(!trees);
     compl:=(p.par_completeLine env)::(!compl);

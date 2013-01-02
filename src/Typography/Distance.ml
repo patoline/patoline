@@ -484,7 +484,7 @@ let add_pqprofile o1 p1 o2 p2 l =
   end else begin
     let d2 = det22 (p2 -- p1) (o2 -- o1) in
     if not (abs_float d2 < 1e-5) then (
-      Printf.printf "  bad trapezz: d2 = %f\n" d2; 
+      Printf.printf "  bad trapeze: d2 = %f\n" d2; 
       assert false);
     let c = norm (middle o2 o1 -- middle p2 p1) in
     let p = c /. (b -. a) in

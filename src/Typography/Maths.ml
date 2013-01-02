@@ -143,7 +143,6 @@ let rec bezier_of_boxes=function
   | _::s->bezier_of_boxes s
 
 let adjust_space ?(absolute=false) env target minimum box_left box_right =
-(*  Printf.printf "start adjust\n";*)
   if not env.kerning then target else
   
   let epsilon = env.precise_kerning in
@@ -174,18 +173,22 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
   let db = d target in
   let da = d minimum in
 
-(*  Printf.printf "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;*)
+  if !debug_kerning then Printf.fprintf stderr "start Adjust: min = %f => %f, target = %f => %f\n" minimum da target db;
 
-  if da > target then minimum else if db < target then target else
+  let r = 
+    if da > target then minimum else if db < target then target else
 
-  let rec fn sa da sb db  =
-    let sc = (sa +. sb) /. 2.0 in
-    let dc = d sc in
-    if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
-    else if dc < target then fn sc dc sb db 
-    else fn sa da sc dc
+	let rec fn sa da sb db  =
+	  let sc = (sa +. sb) /. 2.0 in
+	  let dc = d sc in
+	  if abs_float (dc -. target) < epsilon || (sb -. sa) < epsilon then sc
+	  else if dc < target then fn sc dc sb db 
+	  else fn sa da sc dc
+	in
+	fn minimum da target db
   in
-  let r = fn minimum da target db in
+
+  if !debug_kerning then Printf.fprintf stderr "Adjust => %f\n" r;
   if absolute then r +. delta else r
 
 let line (a,b) (c,d)=[|a;c|], [|b;d|]
@@ -196,7 +199,7 @@ let rec contents=function
   | _->""
 
 
-let rec draw env_stack mlist=
+let rec draw env_stack mlist =
   let env=match env_stack with []->assert false | h::s->h in
   let style = env.mathStyle in
   let mathsEnv=env_style env.mathsEnvironment style in
@@ -328,7 +331,7 @@ let rec draw env_stack mlist=
 		    let ll = List.map (translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
 		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
-                    if i mod 2 = 0 && xoff.(i) <> infinity && xoff.(i) <> -.infinity then 
+                    if i mod 2 = 0 then 
 		      adjust_space ~absolute:true mathsEnv xoff.(i) m box_nucleus ll
 		    else
 		      -. (adjust_space ~absolute:true mathsEnv xoff.(i) m ll box_nucleus)
@@ -707,6 +710,21 @@ let rec draw env_stack mlist=
           (rebox env style ((draw env_stack inside))) @ (draw env_stack s)
         )
 
+let kdraw env_stack mlist =
+  (* ajustement de drawing_width_fixed à la fin: peu mieux faire *)
+   let env=match env_stack with []->assert false | h::s->h in
+   let l =draw_boxes env (draw env_stack mlist) in
+   let x0,y0,x1,y1=bounding_box l in   
+   let r = x1 -. x0 in
+   [Drawing {
+     drawing_min_width=r;
+     drawing_nominal_width=r;
+     drawing_max_width=r;
+     drawing_width_fixed = false;
+     drawing_y0=y0;
+     drawing_y1=y1;
+     drawing_badness=(fun _->0.);
+     drawing_contents=(fun _-> l)}]
 
 let dist_boxes env precise a b=
   let left=draw_boxes env a in
