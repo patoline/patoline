@@ -227,6 +227,7 @@ module MakeFormat (D:Document.DocumentStructure)
                                   drawing_max_width= 4.0 *. phi;
                                   drawing_y0=0.;drawing_y1=0.;
                                   drawing_nominal_width= 4.0 *. phi;
+				  drawing_width_fixed = true;
                                   drawing_contents=(fun _->[]);
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate;

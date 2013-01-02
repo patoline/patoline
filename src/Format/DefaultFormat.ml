@@ -490,6 +490,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           normalPageFormat=a4;
           par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                                   drawing_max_width= 4.0 *. phi;
+				  drawing_width_fixed = true;
                                   drawing_y0=0.;drawing_y1=0.;
                                   drawing_nominal_width= 4.0 *. phi;
                                   drawing_contents=(fun _->[]);
@@ -742,6 +743,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   drawing_min_width= !x;
                   drawing_max_width= !x;
                   drawing_nominal_width= !x;
+		  drawing_width_fixed = true;
                   drawing_y0= !min_y;
                   drawing_y1= !max_y;
                   drawing_badness=(fun _->0.);
@@ -1036,6 +1038,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                      let x1=tiret_w env-.x0 in
                                        { drawing_min_width=tiret_w env;
                                          drawing_nominal_width=tiret_w env;
+					 drawing_width_fixed = true;
                                          drawing_max_width=tiret_w env;
                                          drawing_y0=y; drawing_y1=y;
                                          drawing_badness=(fun _->0.);
@@ -1705,7 +1708,7 @@ module MathsFormat=struct
                     drawing_nominal_width=max (w1*.size) boxes_w;
                     drawing_min_width=max (w1*.size) boxes_w;
                     drawing_max_width=max (w1*.size) boxes_w;
-
+		    drawing_width_fixed = true;
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
@@ -1755,7 +1758,7 @@ module MathsFormat=struct
                     drawing_nominal_width=max (w1*.size) boxes_w;
                     drawing_min_width=max (w1*.size) boxes_w;
                     drawing_max_width=max (w1*.size) boxes_w;
-
+		    drawing_width_fixed = true;
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);

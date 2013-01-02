@@ -88,6 +88,7 @@ module Format=functor (D:DocumentStructure)->struct
                             drawing_min_width= env.normalMeasure;
                             drawing_max_width= env.normalMeasure;
                             drawing_nominal_width= env.normalMeasure;
+			    drawing_width_fixed = true;
                             drawing_y0= min (minip_sender.drawing_y0+.y0) (minip_recip.drawing_y0+.y1);
                             drawing_y1= max (minip_sender.drawing_y1+.y0) (minip_recip.drawing_y1+.y1);
                             drawing_badness=(fun _->0.);

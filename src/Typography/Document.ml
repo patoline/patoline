@@ -913,6 +913,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
     drawing_min_width=fw;
     drawing_max_width=fw;
     drawing_nominal_width=fw;
+    drawing_width_fixed = true;
     drawing_y0=0.;
     drawing_y1=fh;
     drawing_badness=(fun _->0.);
@@ -928,6 +929,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:
     drawing_min_width=0.;
     drawing_max_width=0.;
     drawing_nominal_width=0.;
+    drawing_width_fixed = true;
     drawing_y0=0.;
     drawing_y1=0.;
     drawing_badness=(fun _->0.);

@@ -84,6 +84,7 @@ let output paragraphs figures env (opt_pages:placed_line list array)=
     { drawing_min_width= !x1-. !x0;
       drawing_nominal_width= !x1-. !x0;
       drawing_max_width= !x1-. !x0;
+      drawing_width_fixed = true;
       drawing_y0= !y0 -. !top_y;
       drawing_y1= (!y1-. !top_y);
       drawing_badness=(fun _->0.);
