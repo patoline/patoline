@@ -574,6 +574,22 @@ let color col t=
   [Scoped ((fun env->{env with fontColor=col}), t)]
 
 
+let bold a=alternative Bold a
+
+let sc a=alternative Caps a
+
+let verbEnv x =
+  { (envFamily x.fontMonoFamily x)
+    with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
+      lead = x.lead *. x.fontMonoRatio}
+
+let verb p =
+  [Scoped ((fun x ->
+    { (envFamily x.fontMonoFamily x) with size = x.size *. x.fontMonoRatio}), p)]
+
+let emph=toggleItalic
+let id x=x
+
 (****************************************************************)
 
 

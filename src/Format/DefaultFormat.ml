@@ -255,22 +255,6 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
 module Format=functor (D:Document.DocumentStructure)->(
   struct
 
-    let bold a=alternative Bold a
-
-    let sc a=alternative Caps a
-
-    let verbEnv x =
-	{ (envFamily x.fontMonoFamily x)
-	with size = x.size *. x.fontMonoRatio; normalMeasure=infinity; par_indent = [];
-	     lead = x.lead *. x.fontMonoRatio}
-
-    let verb p =
-       [Scoped ((fun x ->
-	 { (envFamily x.fontMonoFamily x) with size = x.size *. x.fontMonoRatio}), p)]
-
-    let emph=toggleItalic
-    let id x=x
-
     let sourcePosition(file,line,column,char) =
       [tT (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
 

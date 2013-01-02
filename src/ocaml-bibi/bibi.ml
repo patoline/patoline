@@ -247,10 +247,14 @@ let rec dbCite db subcitation req=
               Some "phdthesis"->[tT "PhD. thesis"]
             | _->[]
           in
+          let eprint=match row.(field_num "eprint") with
+              Some x->extLink x (verb [tT x])
+            | _->[]
+          in
           results:=(int_of_string id_,
                     List.concat (intercalate [tT ", "]
                                    (List.filter (function []->false | _->true)
-                                      (auteurs@[titre;ed;booktitle]@pub_in@[chap;volume;pub;pages;editors;doctype]))))
+                                      (auteurs@[titre;ed;booktitle]@pub_in@[chap;volume;pub;pages;editors;doctype;eprint]))))
             :: (!results)
         )
   in
