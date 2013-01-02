@@ -1799,14 +1799,14 @@ let make_tables font fontInfo cmap glyphs_idx=
   end;
 
   (* GSUB *)
-  (* begin *)
+  begin
   (*   let open Layout in *)
   (*       let scr=StrMap.singleton "latn" StrMap.empty in *)
   (*       let feat=[| {tag="dlig";lookups=[0]} |] in *)
   (*       let lookups= [| make_ligatures [| [[1;2],9] |] |] in *)
   (*       let buf=write_layout scr feat lookups in *)
-  (*       fontInfo.tables<-StrMap.add "GSUB" buf fontInfo.tables *)
-  (* end; *)
+    fontInfo.tables<-StrMap.remove "GSUB" fontInfo.tables
+  end;
 #ifdef DEBUG_TTF
   Printf.fprintf stderr "names\n";flush stderr;
 #endif

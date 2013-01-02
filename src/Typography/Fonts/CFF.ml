@@ -816,11 +816,12 @@ let subset(* _encoded *) font info cmap gls=
             " "                         (* De toute façon, il y a les .alt%d *)
         in
         let rec make_name i=
-          (* Un truc non documenté par adobe : évidemment, les noms de
-             glyphs trop longs ne sont pas acceptés par les
-             imprimantes. D'où le "i>=8". *)
-          if UTF8.out_of_range b i || i>=8 then Buffer.contents glbuf else
+          (* Oui, bien sûr, on n'est qu'en 2012, donc il y a des limites de merde sur
+             les longueurs des chaînes de caractères :
+             http://www.adobe.com/devnet-archive/opentype/archives/glyphnamelimits.html *)
+          if UTF8.out_of_range b i || (Buffer.length glbuf+8>31) then Buffer.contents glbuf else
             (let x=UChar.code (UTF8.look b i) in
+             if Buffer.length glbuf>0 then Buffer.add_string glbuf "_";
              Buffer.add_string glbuf (Printf.sprintf "uni%04X" x);
              make_name (UTF8.next b i))
         in
