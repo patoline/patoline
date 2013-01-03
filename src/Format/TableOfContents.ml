@@ -55,10 +55,10 @@ let centered parameters str tree _=
 		      chi1@flat_children (h.node_post_env env1 env') s
                     )
                 in
-                let chi=if List.mem_assoc "Numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
+                let chi=if List.mem_assoc "numbered" s.node_tags then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=drop 1 b in
-                let in_toc=List.mem_assoc "InTOC" s.node_tags in
+                let in_toc=List.mem_assoc "intoc" s.node_tags in
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
@@ -121,9 +121,6 @@ let centered parameters str tree _=
 let these parameters str tree max_level=
 
   let params a b c d e f g line=
-    if line.lineStart=0 then
-      parameters { a with lead=a.lead/.1.5 } b c d e f g line
-    else
       parameters a b c d e f g line
   in
   newPar str ~environment:(fun x->{x with par_indent=[];lead=1.5*.x.lead}) Complete.normal params [
@@ -134,7 +131,7 @@ let these parameters str tree max_level=
           match tree with
               Paragraph p -> []
             | FigureDef f -> []
-            | Node s when level <= max_level && List.mem_assoc "InTOC" s.node_tags-> (
+            | Node s when level <= max_level && List.mem_assoc "intoc" s.node_tags-> (
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -145,12 +142,12 @@ let these parameters str tree max_level=
                         flat_children (h.node_post_env env1 env') s
                     )
                 in
-                let chi=if List.mem_assoc "Numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
+                let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=(List.rev (drop 1 b)) in
                 let spacing=env.size in
-                let in_toc=List.mem_assoc "InTOC" s.node_tags in
-                let numbered=List.mem_assoc "Numbered" s.node_tags in
+                let in_toc=List.mem_assoc "intoc" s.node_tags in
+                let numbered=List.mem_assoc "numbered" s.node_tags in
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   let page=try
@@ -213,7 +210,7 @@ let slides parameters str tree max_level=
           match tree with
               Paragraph p -> []
             | FigureDef f -> []
-            | Node s when level <= max_level && List.mem_assoc "InTOC" s.node_tags-> (
+            | Node s when level <= max_level && List.mem_assoc "intoc" s.node_tags-> (
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -224,12 +221,12 @@ let slides parameters str tree max_level=
                         flat_children (h.node_post_env env1 env') s
                     )
                 in
-                let chi=if List.mem_assoc "Numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
+                let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=(List.rev (drop 1 b)) in
                 let spacing=env.size in
-                let in_toc=List.mem_assoc "InTOC" s.node_tags in
-                let numbered=List.mem_assoc "Numbered" s.node_tags in
+                let in_toc=List.mem_assoc "intoc" s.node_tags in
+                let numbered=List.mem_assoc "numbered" s.node_tags in
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
 
