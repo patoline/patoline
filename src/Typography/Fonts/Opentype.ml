@@ -1173,7 +1173,7 @@ let rec gpos font glyphs0=
                                   else
                                     (let index=16
                                        + (class2count*2*(size1+size2))*classdef1
-                                       + 2*(size1+size2)*h'
+                                       + 2*(size1+size2)*classdef2
                                      in
                                      seek_in file (offset+index);
                                      let a=readAll valueFormat1 id_h in
