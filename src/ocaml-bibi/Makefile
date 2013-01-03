@@ -1,10 +1,10 @@
 all:bibi.cmxa bibi.p.cmxa bibi.cma
 
-bibi.cmxa:bibi.cmi bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
+bibi.cmxa:bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
 	ocamlfind ocamlopt -package camomile,sqlite3 -a -o bibi.cmxa -I ../Typography/_build bibi.ml -I ../Format
-bibi.p.cmxa:bibi.cmi bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
+bibi.p.cmxa: bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
 	ocamlfind ocamlopt -package camomile,sqlite3 -p -a -o bibi.p.cmxa -I ../Typography/_build bibi.ml -I ../Format
-bibi.cma:bibi.cmi bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
+bibi.cma:bibi.ml ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
 	ocamlfind ocamlc -package camomile,sqlite3 -a -o bibi.cma -I ../Typography/_build bibi.ml -I ../Format
 
 bibi.cmi:bibi.mli ../Typography/_build/Typography.cmi ../Format/DefaultFormat.cmi
