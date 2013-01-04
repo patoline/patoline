@@ -17,7 +17,7 @@ VPATH=Typography:Pdf:Drivers:Format
 
 all:native $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) DefaultGrammar.tgx
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx
 
 byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
 
@@ -30,6 +30,8 @@ Patoline/PatolineGL:Patoline GL.cmxa
 Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
+cesure/cesure:cesure/cesure.ml
+	$(CAMLOPT) -o cesure/cesure cesure/cesure.ml
 
 ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi Format/DefaultFormat.cma
 	make -C ocaml-bibi bibi.cma

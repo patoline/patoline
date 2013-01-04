@@ -436,7 +436,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let f,str,subst,pos=selectFont alegreya Regular false in
       let hyphenate=
       	try
-        let i=open_in_bin (findHyph "en.hdict") in
+        let i=open_in_bin (findHyph "hyph-en-us.hdict") in
         let inp=input_value i in
           close_in i;
           (fun str->
