@@ -250,7 +250,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
               @[bB (fun _->[User EndLink])]
 	    in
 	    if l = [] then item@[tT"]"] else
-	      item@tT ","::fn l
+	      item@tT ", "::fn l
       in
       let l = bibitem bibfile x in
       tT"["::fn l
