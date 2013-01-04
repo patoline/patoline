@@ -66,6 +66,32 @@ let word_subst=
     ]
   )
 
+let hyphenate_dict dict=
+  try
+    let i=open_in_bin (findHyph dict) in
+    let inp=input_value i in
+    close_in i;
+    (fun str->
+      let hyphenated=Hyphenate.hyphenate inp str in
+      let pos=Array.make (List.length hyphenated-1) ("","") in
+      let rec hyph l i cur=match l with
+          []->()
+        | h::s->(
+          pos.(i)<-(cur^"-", List.fold_left (^) "" l);
+          hyph s (i+1) (cur^h)
+        )
+      in
+      match hyphenated with
+          []->[||]
+        | h::s->(hyph s 0 h; pos));
+  with
+      File_not_found (f,p)->
+	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
+         List.iter (Printf.fprintf stderr "%s\n") p;
+         fun x->[||])
+
+
+
 let alegreya=
   [ Regular,
     (Lazy.lazy_from_fun
@@ -434,30 +460,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let defaultEnv:environment=
       let f,str,subst,pos=selectFont alegreya Regular false in
-      let hyphenate=
-      	try
-        let i=open_in_bin (findHyph "hyph-en-us.hdict") in
-        let inp=input_value i in
-          close_in i;
-          (fun str->
-             let hyphenated=Hyphenate.hyphenate inp str in
-             let pos=Array.make (List.length hyphenated-1) ("","") in
-             let rec hyph l i cur=match l with
-                 []->()
-               | h::s->(
-                   pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-                   hyph s (i+1) (cur^h)
-                 )
-             in
-               match hyphenated with
-                   []->[||]
-                 | h::s->(hyph s 0 h; pos));
-      with
-          File_not_found (f,p)->
-	    (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
-                                  List.iter (Printf.fprintf stderr "%s\n") p;
-                                  fun x->[||])
-      in
       let fsize=3.7 in
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
@@ -496,7 +498,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                   drawing_nominal_width= 4.0 *. phi;
                                   drawing_contents=(fun _->[]);
                                   drawing_badness=fun _-> 0. }];
-          hyphenate=hyphenate;
+          hyphenate=hyphenate_dict "hyph-en-us.hdict";
           counters=StrMap.empty;
           names=StrMap.empty;
           user_positions=UserMap.empty;

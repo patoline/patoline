@@ -298,7 +298,9 @@ let _=
     Printf.fprintf out "\tinstall -p -m 755 -d $(DESTDIR)%s\n" (escape !hyphen_dir);
     List.iter (fun x->
                  if Filename.check_suffix x ".tex" then (
-                   Printf.fprintf out "\tsrc/cesures/cesures %s\n" (escape x);
+                   Printf.fprintf out "\tsrc/cesure/cesure %s\n"
+                     (escape (Filename.concat hyphen_src_dir x));
+
                    Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n"
                      (escape (Filename.concat hyphen_src_dir
                                 (Filename.chop_extension x^".hdict")))
@@ -373,7 +375,7 @@ let _=
     Printf.fprintf out "\trm -f src/Drivers/Typography.cmi\n";
     Printf.fprintf out "\tinstall -d $(DESTDIR)%s\n" (escape !bin_dir);
     Printf.fprintf out "\tinstall -p -m 755 src/Patoline/patoline $(DESTDIR)%s/patoline\n" (escape !bin_dir);
-    Printf.fprintf out "\tinstall -p -m 755 src/cesures/cesures $(DESTDIR)%s/cesures\n" (escape !bin_dir);
+    Printf.fprintf out "\tinstall -p -m 755 src/cesure/cesure $(DESTDIR)%s/cesure\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl then
       Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl2 then
