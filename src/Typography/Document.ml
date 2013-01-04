@@ -119,7 +119,6 @@ module Mathematical=struct
     kerning:bool;
   (* None means precise, Some x mean unprecise, but subdivise 
      Bezier curve until the thickness of the polygon is less than x *)
-    precise_kerning:float;
     priorities:float array;
     priority_unit:float;
     delimiter_up_tolerance:float;
@@ -129,6 +128,7 @@ module Mathematical=struct
     punctuation_factor:float;
     optical_alpha:float;
     optical_beta:float;
+    precise_kerning:float;
   }
   and environment=env array             (* doit etre de taille 8 *)
   and style=
@@ -213,6 +213,10 @@ and environment={
   user_positions:line UserMap.t;
   show_boxes:bool;
   show_frames:bool;
+  adjust_optical_alpha:float;
+  adjust_optical_beta:float;
+  adjust_epsilon:float;
+  adjust_min_space:float;
 }
 
 (** {3 Contents} *)
@@ -914,6 +918,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
     drawing_max_width=fw;
     drawing_nominal_width=fw;
     drawing_width_fixed = true;
+    drawing_adjust_before = false;
     drawing_y0=0.;
     drawing_y1=fh;
     drawing_badness=(fun _->0.);
@@ -930,6 +935,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:
     drawing_max_width=0.;
     drawing_nominal_width=0.;
     drawing_width_fixed = true;
+    drawing_adjust_before = false;
     drawing_y0=0.;
     drawing_y1=0.;
     drawing_badness=(fun _->0.);
@@ -1199,17 +1205,21 @@ let rec bezier_of_boxes=function
 
 let adjust_width env buf nbuf =
   (* FIXME : à prendre dans l'env *)
-  let alpha = 3.1416 /. 4. in
-  let beta = 0.5 in 
-  let epsilon = 5e-2 in
+  let alpha = env.adjust_optical_alpha in
+  let beta = env.adjust_optical_beta in 
+  let char_space = env.normalLead *. env.adjust_min_space in
+  let epsilon = env.adjust_epsilon in
   let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
   let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
   let buf = !buf in
   let i0 = ref 0 in
   while !i0 < !nbuf do
     match buf.(!i0) with
-      Drawing x as x0-> (
-	let adjust = ref (if x.drawing_width_fixed then None else Some(x0,!i0)) in
+      Drawing _ | GlyphBox _ | Hyphen _ as x0-> (
+	let adjust = ref (match x0 with
+	    Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
+	  | _ -> None)
+	in
 	let min = ref 0.0 in
 	let nominal = ref 0.0 in
 	let max = ref 0.0 in
@@ -1223,12 +1233,21 @@ let adjust_width env buf nbuf =
 	    nominal := !nominal +. x.drawing_nominal_width;
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
 	    incr i0
-	  | Drawing y as y0 -> (
+	  | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
+	    let before = 
+	      match y0 with 
+		Drawing y when !adjust = None && y.drawing_adjust_before ->
+		  adjust := Some(y0, !i0);
+		  true
+	      | _ -> false
+	    in
 	    match !adjust with
 	    | None -> raise Exit
 	    | Some (b,i) -> 
+	      (*Printf.fprintf stderr "Drawing(2): i0 = %d, fixed = %b\n" !i0 y.drawing_width_fixed;*)
 	      let left = draw_boxes env [x0] in
 	      let right = draw_boxes env [y0] in
+	      if left = [] || right = [] then raise Exit;
 	      let bezier_left = bezier_of_boxes left in
 	      let bezier_right = bezier_of_boxes right in
 	      let profile_left = Distance.bezier_profile dir epsilon bezier_left in
@@ -1242,12 +1261,9 @@ let adjust_width env buf nbuf =
 	      let d space = 
 		let pr = List.map (fun (x,y) -> (x+.space+.delta,y)) profile_right in
 		let r = Distance.distance beta dir profile_left pr in
-	  (*    Printf.printf "s = %f => d = %f\n" space r; *)
 		r
 	      in
 	
-	      let char_space = env.normalLead /. 13. in
-	      
 	      let min' = !min -. (Pervasives.min (x1_l -. x0_l) (x1_r -. x0_r)) in
 	      let max' = if !max < 2. *. char_space then 2. *. char_space else !max in
  	      let nominal' = if !nominal < char_space then char_space else !nominal in
@@ -1255,8 +1271,10 @@ let adjust_width env buf nbuf =
 	      let db = d max' in
 	      let target = nominal' in
 	      
-	      Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
+	      if !Distance.debug then
+		Printf.fprintf stderr "start Adjust: min = %f => %f, max = %f => %f, target = %f\n" min' da max' db nominal';
 
+	      let epsilon = epsilon /. 16. in
 	      let r  =
 		if da > target then min' else
 		  if db < target then max' else (
@@ -1272,31 +1290,25 @@ let adjust_width env buf nbuf =
 												    
 	      in
 	 
-	      Printf.fprintf stderr "end Adjust: r = %f\n" r;
-              if r=infinity && right=[] then (
-	        if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
-	        incr i0
-              ) else (
-                let r=if r=infinity then 0. else r in
-	        buf.(i) <- 
-		  (match b with
-		    | Drawing x -> Drawing { x with 
-		      drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		      drawing_min_width = r -. !min +. x.drawing_min_width;
-		      drawing_max_width = r -. !max +. x.drawing_max_width;
-		    }
-		    | Glue x -> Glue { x with
-		      drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		      drawing_min_width = r -. !min +. x.drawing_min_width;
-		      drawing_max_width = r -. !max +. x.drawing_max_width;
-		    }
-		    | _ -> assert false);
-	        raise Exit
-              )
-          )
-	  | _ -> 
-	    incr i0;
-	    raise Exit
+	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f\n" r;
+   
+	      buf.(i) <- 
+		(match b with
+		| Drawing x -> Drawing { x with 
+		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		  drawing_min_width = r -. !min +. x.drawing_min_width;
+		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		}
+		| Glue x -> Glue { x with
+		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		  drawing_min_width = r -. !min +. x.drawing_min_width;
+		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		}
+		| _ -> assert false);
+	      raise Exit)
+	    | _ -> 
+	      incr i0;
+	      raise Exit
 	  done with Exit -> ())
     | _ -> incr i0
   done

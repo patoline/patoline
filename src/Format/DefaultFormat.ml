@@ -491,6 +491,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
                                   drawing_max_width= 4.0 *. phi;
 				  drawing_width_fixed = true;
+				  drawing_adjust_before = false;
                                   drawing_y0=0.;drawing_y1=0.;
                                   drawing_nominal_width= 4.0 *. phi;
                                   drawing_contents=(fun _->[]);
@@ -502,6 +503,11 @@ module Format=functor (D:Document.DocumentStructure)->(
           new_page=Document.default_new_page a4;
 	  show_boxes=false;
 	  show_frames=false;
+	  adjust_optical_alpha=3.1416 /. 4.;
+	  adjust_optical_beta=0.5;
+	  adjust_epsilon=5e-2;
+	  adjust_min_space=1./.10.;
+
         }
 
 
@@ -744,6 +750,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   drawing_max_width= !x;
                   drawing_nominal_width= !x;
 		  drawing_width_fixed = true;
+		  drawing_adjust_before = false;
                   drawing_y0= !min_y;
                   drawing_y1= !max_y;
                   drawing_badness=(fun _->0.);
@@ -1039,6 +1046,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                        { drawing_min_width=tiret_w env;
                                          drawing_nominal_width=tiret_w env;
 					 drawing_width_fixed = true;
+					 drawing_adjust_before = false;
                                          drawing_max_width=tiret_w env;
                                          drawing_y0=y; drawing_y1=y;
                                          drawing_badness=(fun _->0.);
@@ -1652,6 +1660,7 @@ module MathsFormat=struct
 		    drawing_y0=infinity; drawing_y1= -.infinity;
 		    drawing_nominal_width= x;
 		    drawing_width_fixed = true;
+		    drawing_adjust_before = false;
 		    drawing_contents=(fun _->[]);
 		    drawing_badness=knuth_h_badness x }])]
 
@@ -1721,6 +1730,7 @@ module MathsFormat=struct
                     drawing_min_width=max (w1*.size) boxes_w;
                     drawing_max_width=max (w1*.size) boxes_w;
 		    drawing_width_fixed = true;
+		    drawing_adjust_before = false;
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
@@ -1771,6 +1781,7 @@ module MathsFormat=struct
                     drawing_min_width=max (w1*.size) boxes_w;
                     drawing_max_width=max (w1*.size) boxes_w;
 		    drawing_width_fixed = true;
+		    drawing_adjust_before = false;
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);

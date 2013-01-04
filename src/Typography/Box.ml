@@ -37,7 +37,8 @@ type box=
   | Empty
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
-                   drawing_max_width:float; drawing_width_fixed: bool;
+                   drawing_max_width:float; 
+		   drawing_width_fixed: bool; drawing_adjust_before: bool;
 		   drawing_y0:float; drawing_y1:float;
                    drawing_badness : float -> float;
                    drawing_contents:float -> OutputCommon.raw list }
@@ -69,6 +70,7 @@ let drawing ?offset:(offset=0.) cont=
       drawing_nominal_width=c-.a;
       drawing_max_width=c-.a;
       drawing_width_fixed = true;
+      drawing_adjust_before = false;
       drawing_y0=offset;
       drawing_y1=offset+.d-.b;
       drawing_badness=(fun _->0.);
@@ -82,6 +84,7 @@ let drawing_inline ?offset:(offset=0.) cont=
       drawing_nominal_width=c-.a;
       drawing_max_width=c-.a;
       drawing_width_fixed = true;
+      drawing_adjust_before = false;
       drawing_y0=offset+.b;
       drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
@@ -95,6 +98,7 @@ let drawing_blit a x0 y0 b=
       drawing_nominal_width = max a.drawing_nominal_width (x0+.b.drawing_nominal_width);
       drawing_max_width = w1;
       drawing_width_fixed = true;
+      drawing_adjust_before = false;
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
       drawing_badness=(fun w->
@@ -175,6 +179,7 @@ let glue a b c=
   Glue { drawing_min_width= a;
          drawing_max_width= c;
 	 drawing_width_fixed = true;
+	 drawing_adjust_before = false;
          drawing_y0=infinity; drawing_y1= -.infinity;
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
@@ -188,6 +193,7 @@ let rec resize l=function
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
 		       drawing_width_fixed = true;
+		       drawing_adjust_before = false;
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
@@ -198,6 +204,7 @@ let rec resize l=function
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
 		       drawing_width_fixed = true;
+		       drawing_adjust_before = false;
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;

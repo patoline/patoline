@@ -228,6 +228,7 @@ module MakeFormat (D:Document.DocumentStructure)
                                   drawing_y0=0.;drawing_y1=0.;
                                   drawing_nominal_width= 4.0 *. phi;
 				  drawing_width_fixed = true;
+				  drawing_adjust_before = false;
                                   drawing_contents=(fun _->[]);
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate;
@@ -240,7 +241,11 @@ module MakeFormat (D:Document.DocumentStructure)
           new_page=Document.default_new_page a4;
 	  show_boxes=false;
 	  show_frames=false;
-        }
+ 	  adjust_optical_alpha=3.1416 /. 4.;
+	  adjust_optical_beta=0.5;
+	  adjust_epsilon=5e-2;
+	  adjust_min_space=1./.10.;
+       }
 
 end
 
