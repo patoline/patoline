@@ -1298,6 +1298,10 @@ let adjust_width env buf nbuf =
 		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
 		  drawing_min_width = r -. !min +. x.drawing_min_width;
 		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		  drawing_contents = 
+		    if before then 
+		      (fun w -> List.map (translate (r -. !nominal) 0.0) (x.drawing_contents w))
+		    else x.drawing_contents
 		}
 		| Glue x -> Glue { x with
 		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
@@ -1309,6 +1313,7 @@ let adjust_width env buf nbuf =
 	    | _ -> 
 	      incr i0;
 	      raise Exit
+
 	  done with Exit -> ())
     | _ -> incr i0
   done
