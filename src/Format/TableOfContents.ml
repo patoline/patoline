@@ -127,6 +127,7 @@ let these parameters str tree max_level=
   newPar str ~environment:(fun x->{x with par_indent=[];lead=1.5*.x.lead}) Complete.normal params [
     bB (
       fun env->
+        let margin=env.size*.phi in
         let rec toc env0 path tree=
           let level=List.length path in
           match tree with
@@ -146,7 +147,7 @@ let these parameters str tree max_level=
                 let chi=if List.mem_assoc "numbered" s.node_tags || path=[] then flat_children env0 (IntMap.bindings s.children) else [] in
                 let a,b=(try StrMap.find "_structure" (env0.counters) with _-> -1,[0]) in
                 let count=(List.rev (drop 1 b)) in
-                let spacing=env.size in
+                let spacing=env.size/.phi in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in
                 if in_toc && count<>[] then (
@@ -181,8 +182,8 @@ let these parameters str tree max_level=
                       drawing_badness=(fun _->0.);
                       drawing_contents=
                         (fun _->
-                           List.map (OutputCommon.translate
-                                       (spacing*.3.*.(float_of_int (level-1)))
+                          List.map (OutputCommon.translate
+                                      (margin+.spacing*.3.*.(float_of_int (level-1)))
                                        0.) cont)
                     }::User EndLink::(glue 0. 0. 0.)::chi
                 )
