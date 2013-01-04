@@ -1211,11 +1211,16 @@ let adjust_width env buf nbuf =
   let epsilon = env.adjust_epsilon in
   let dsup,dinf as dir = (-.cos(alpha), sin(alpha)), (-.cos(alpha), -.sin(alpha)) in
   let dsup',dinf' as dir' = (cos(alpha), -.sin(alpha)), (cos(alpha), sin(alpha)) in
+  let profile_left = ref [] in
   let buf = !buf in
   let i0 = ref 0 in
   while !i0 < !nbuf do
     match buf.(!i0) with
-      Drawing _ | GlyphBox _ | Hyphen _ as x0-> (
+    | Glue x ->
+      profile_left := Distance.translate_profile !profile_left (-.x.drawing_nominal_width);
+      incr i0;
+
+    | Drawing _ | GlyphBox _ | Hyphen _ as x0-> (
 	let adjust = ref (match x0 with
 	    Drawing x -> if x.drawing_width_fixed then None else Some(x0,!i0)
 	  | _ -> None)
@@ -1223,14 +1228,26 @@ let adjust_width env buf nbuf =
 	let min = ref 0.0 in
 	let nominal = ref 0.0 in
 	let max = ref 0.0 in
+
+	let left = draw_boxes env [x0] in
+	let bezier_left = bezier_of_boxes left in
+	let profile_left' = Distance.bezier_profile dir epsilon bezier_left in
+	let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+
+	if !Distance.debug then
+	  Printf.fprintf stderr "Drawing(1): i0 = %d (%d,%d)\n" !i0 (List.length !profile_left) (List.length profile_left');
+
+	profile_left := Distance.translate_profile (Distance.profile_union dir  !profile_left  profile_left') (x0_l -. x1_l);
+
 	incr i0;
 	try while !i0 < !nbuf do
 	  match buf.(!i0) with
 	  | User _ -> incr i0
-	  | Glue x as b when not x.drawing_width_fixed ->
+	  | Glue x as b ->
 	    min := !min +.  x.drawing_min_width;
 	    max := !max +.  x.drawing_max_width;
 	    nominal := !nominal +. x.drawing_nominal_width;
+            profile_left := Distance.translate_profile !profile_left (-.x.drawing_nominal_width);
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
 	    incr i0
 	  | Drawing _ | GlyphBox _ | Hyphen _ as y0 -> (
@@ -1244,22 +1261,23 @@ let adjust_width env buf nbuf =
 	    match !adjust with
 	    | None -> raise Exit
 	    | Some (b,i) -> 
-	      (*Printf.fprintf stderr "Drawing(2): i0 = %d, fixed = %b\n" !i0 y.drawing_width_fixed;*)
-	      let left = draw_boxes env [x0] in
-	      let right = draw_boxes env [y0] in
-	      if left = [] || right = [] then raise Exit;
-	      let bezier_left = bezier_of_boxes left in
-	      let bezier_right = bezier_of_boxes right in
-	      let profile_left = Distance.bezier_profile dir epsilon bezier_left in
-	      let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
 
-	      let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning left in
+
+	      let right = draw_boxes env [y0] in
+	      let profile_left = !profile_left in
+	      let bezier_right = bezier_of_boxes right in
+	      let profile_right = Distance.bezier_profile dir' epsilon bezier_right in
+	      if !Distance.debug then
+		Printf.fprintf stderr "Drawing(2): i0 = %d (%d,%d)\n" !i0 (List.length profile_left) (List.length profile_right);
+	      if profile_left = [] || profile_right = [] then raise Exit;
+
+	      if !Distance.debug then
+		Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
+
 	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
 
-	      let delta = x1_l -. x0_l in
-	
 	      let d space = 
-		let pr = List.map (fun (x,y) -> (x+.space+.delta,y)) profile_right in
+		let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
 		let r = Distance.distance beta dir profile_left pr in
 		r
 	      in
@@ -1290,23 +1308,21 @@ let adjust_width env buf nbuf =
 												    
 	      in
 	 
-	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f\n" r;
+	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f\n nominal = %f" r !nominal;
    
 	      buf.(i) <- 
 		(match b with
 		| Drawing x -> Drawing { x with 
-		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		  drawing_min_width = r -. !min +. x.drawing_min_width;
-		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		  drawing_nominal_width = r +. x.drawing_nominal_width;
+		  drawing_min_width = r +. x.drawing_min_width;
+		  drawing_max_width = r +. x.drawing_max_width;
 		  drawing_contents = 
 		    if before then 
 		      (fun w -> List.map (translate (r -. !nominal) 0.0) (x.drawing_contents w))
 		    else x.drawing_contents
 		}
 		| Glue x -> Glue { x with
-		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		  drawing_min_width = r -. !min +. x.drawing_min_width;
-		  drawing_max_width = r -. !max +. x.drawing_max_width;
+		  drawing_nominal_width = r +. x.drawing_nominal_width;
 		}
 		| _ -> assert false);
 	      raise Exit)

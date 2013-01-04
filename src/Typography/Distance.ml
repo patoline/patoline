@@ -113,7 +113,7 @@ let next dsup p c =  match c with
     [] -> HalfLine(p,dsup,true)
   | p'::_ -> Segment(p,p') 
 
-let profil_union (dsup, dinf) c1 c2 =
+let profile_union (dsup, dinf) c1 c2 =
   match c1,c2 with
     [],_ -> c2
   | _,[] -> c1
@@ -173,11 +173,11 @@ let profil_union (dsup, dinf) c1 c2 =
   in fn [] c1 s1 c2 s2
 
 (*
-let test0 = profil_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0)] [(0.0,2.0)]
-let test1 = profil_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(0.0,2.0)] [0.5,1.0]
-let test2 = profil_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(0.0,2.0)] [(0.0,2.0);(-1.0,4.0)]
-let test3 = profil_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(-1.0,2.0)] [(-1.0,2.0);(-1.0,4.0)]
-let test4 = profil_union ((-1.0,1.0), (-1.0,-1.0)) test2 test3
+let test0 = profile_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0)] [(0.0,2.0)]
+let test1 = profile_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(0.0,2.0)] [0.5,1.0]
+let test2 = profile_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(0.0,2.0)] [(0.0,2.0);(-1.0,4.0)]
+let test3 = profile_union ((-1.0,1.0), (-1.0,-1.0)) [(0.0,0.0);(-1.0,2.0)] [(-1.0,2.0);(-1.0,4.0)]
+let test4 = profile_union ((-1.0,1.0), (-1.0,-1.0)) test2 test3
 *)
 
 
@@ -221,9 +221,9 @@ let bezier_profile (dsup,dinf) epsilon curves =
 	segment_profile (dsup, dinf) ((xa.(0), ya.(0)), (xa.(len - 1), ya.(len - 1)))
       ) else (
 	let k = (i + j) / 2 in
-	profil_union (dsup,dinf) (gn i k) (gn (k+1) j))
+	profile_union (dsup,dinf) (gn i k) (gn (k+1) j))
     in
-    profil_union (dsup, dinf) acc (gn 0 (Array.length curve - 1))) [] curves
+    profile_union (dsup, dinf) acc (gn 0 (Array.length curve - 1))) [] curves
   in
   if !debug then begin
     Printf.fprintf stderr "  ==>";
@@ -259,6 +259,9 @@ let in_circle a b c m =
   let g = comblin 1.0 (comblin x a x b) x c in
   norm2 (g -- m) <= norm2 (g -- a)
   
+let translate_profile p dx =
+  List.map (fun (x,y) -> (x +. dx, y)) p
+
 (* assume profile2 uses (-dsup, -dinf), hence the list reversal *)
 let bissectrice_profile (dsup,dinf) profile1 profile2 =
 (*

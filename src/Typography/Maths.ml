@@ -725,18 +725,6 @@ let kdraw env_stack mlist =
        Box.Glue x -> Box.Glue { x with drawing_width_fixed = false; drawing_badness=(fun _->infinity);}
      | _ -> assert false 
    in gl::l@[gl]
-(*
-   [Drawing {
-     drawing_min_width=r;
-     drawing_nominal_width=r;
-     drawing_max_width=r;
-     drawing_width_fixed = false;
-     drawing_adjust_before = true;	       
-     drawing_y0=y0;
-     drawing_y1=y1;
-     drawing_badness=(fun _->0.);
-     drawing_contents=(fun _-> l)}]
-*)
 
 let dist_boxes env precise a b=
   let left=draw_boxes env a in
