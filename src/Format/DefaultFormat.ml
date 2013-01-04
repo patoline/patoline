@@ -301,7 +301,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let has_institute=ref false in
       let has_author=ref false in
       let with_institute=match tree with
-          Node n->(try
+          Node n when not (List.mem_assoc "title already typset" n.node_tags)->(try
                      let cont=[tT (List.assoc "Institute" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
@@ -329,7 +329,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
 
       let with_author=match with_institute with
-          Node n->(try
+          Node n when not (List.mem_assoc "title already typset" n.node_tags)->(try
                      let cont=[tT (List.assoc "author" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
@@ -362,7 +362,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
 
       let with_title=match tree with
-          Node n->
+          Node n when not (List.mem_assoc "title already typeset" n.node_tags)->
             let par=Paragraph {
               par_contents=n.displayname;
               par_env=(fun env->resize_env (env.size*.2.) {env with hyphenate=(fun _->[||])});
@@ -1275,6 +1275,29 @@ module Format=functor (D:Document.DocumentStructure)->(
 	D.structure := up (retag (last_par (add_name stru),path));
         env_stack:=List.tl !env_stack
     end
+
+
+    module Env_title=struct
+      let title ()=
+        match fst (top !D.structure) with
+            Node n->n.displayname
+          | _->[]
+
+      let do_begin_env ()=
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+
+      let do_end_env ()=
+        D.structure:=
+          (match fst (top !D.structure) with
+              Node n->
+                Node { n with node_tags=("title already typeset","")::n.node_tags },[]
+            | x->x,[]);
+	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack));
+        env_stack:=List.tl !env_stack
+    end
+
+
 
     module Output(M:OutputPaper.Driver)=struct
       (** Output routines. An output routine is just a functor taking a driver module *)
