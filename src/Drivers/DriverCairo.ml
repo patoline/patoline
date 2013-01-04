@@ -125,6 +125,7 @@ let makeImage filename cont env=
     drawing_min_width=w;
     drawing_max_width=w;
     drawing_nominal_width=w;
+    drawing_width_fixed=true;
     drawing_y0=cont.drawing_y0;
     drawing_y1=cont.drawing_y1;
     drawing_badness=(fun _->0.);

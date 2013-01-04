@@ -291,6 +291,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             isText:=true;
             let gx=pt_of_mm gl.glyph_x in
             let gy=pt_of_mm gl.glyph_y in
+            let gx=match classify_float gx with FP_nan | FP_infinite->0.
+              | _->gx
+            in
+            let gy=match classify_float gy with FP_nan | FP_infinite->0.
+              | _->gy
+            in
             let size=pt_of_mm gl.glyph_size in
 
 

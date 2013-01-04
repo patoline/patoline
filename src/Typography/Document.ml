@@ -1273,24 +1273,30 @@ let adjust_width env buf nbuf =
 	      in
 	 
 	      Printf.fprintf stderr "end Adjust: r = %f\n" r;
-   
-	      buf.(i) <- 
-		(match b with
-		| Drawing x -> Drawing { x with 
-		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		  drawing_min_width = r -. !min +. x.drawing_min_width;
-		  drawing_max_width = r -. !max +. x.drawing_max_width;
-		}
-		| Glue x -> Glue { x with
-		  drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
-		  drawing_min_width = r -. !min +. x.drawing_min_width;
-		  drawing_max_width = r -. !max +. x.drawing_max_width;
-		}
-		| _ -> assert false);
-	      raise Exit)
-	    | _ -> 
-	      incr i0;
-	      raise Exit
+              if r=infinity && right=[] then (
+	        if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+	        incr i0
+              ) else (
+                let r=if r=infinity then 0. else r in
+	        buf.(i) <- 
+		  (match b with
+		    | Drawing x -> Drawing { x with 
+		      drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		      drawing_min_width = r -. !min +. x.drawing_min_width;
+		      drawing_max_width = r -. !max +. x.drawing_max_width;
+		    }
+		    | Glue x -> Glue { x with
+		      drawing_nominal_width = r -. !nominal +. x.drawing_nominal_width;
+		      drawing_min_width = r -. !min +. x.drawing_min_width;
+		      drawing_max_width = r -. !max +. x.drawing_max_width;
+		    }
+		    | _ -> assert false);
+	        raise Exit
+              )
+          )
+	  | _ -> 
+	    incr i0;
+	    raise Exit
 	  done with Exit -> ())
     | _ -> incr i0
   done
@@ -1301,7 +1307,7 @@ let boxify_scoped env x=
   let nbuf=ref 0 in
   let _=boxify buf nbuf (ref false) env x in
   adjust_width env buf nbuf;
-    Array.to_list (Array.sub !buf 0 !nbuf)
+  Array.to_list (Array.sub !buf 0 !nbuf)
 
 (** Composes [boxify] and [draw_boxes] *)
 let draw env x=
