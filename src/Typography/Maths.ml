@@ -466,7 +466,7 @@ let rec draw env_stack mlist =
 		    match glue dist1 dist1 dist1 with
 		        Box.Glue x->
 		          [Box.Glue { x with
-                            drawing_badness=(fun w->100.*.(knuth_h_badness dist1 w))
+                            drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w))
                           }]
 		      | x->assert false
                   )
@@ -720,9 +720,12 @@ let rec draw env_stack mlist =
 let kdraw env_stack mlist =
   (* ajustement de drawing_width_fixed à la fin: peu mieux faire *)
    let env=match env_stack with []->assert false | h::s->h in
-   let l =draw_boxes env (draw env_stack mlist) in
-   let x0,y0,x1,y1=bounding_box l in   
-   let r = x1 -. x0 in
+   let l =draw env_stack mlist in
+   let gl = match glue 0.0 0.0 0.0 with
+       Box.Glue x -> Box.Glue { x with drawing_width_fixed = false; drawing_badness=(fun _->infinity);}
+     | _ -> assert false 
+   in gl::l@[gl]
+(*
    [Drawing {
      drawing_min_width=r;
      drawing_nominal_width=r;
@@ -733,6 +736,7 @@ let kdraw env_stack mlist =
      drawing_y1=y1;
      drawing_badness=(fun _->0.);
      drawing_contents=(fun _-> l)}]
+*)
 
 let dist_boxes env precise a b=
   let left=draw_boxes env a in
@@ -864,20 +868,14 @@ let open_close left right env_ style box=
   let gl0=
     if left = [] then [] else (
       match glue dist0 dist0 dist0 with
-	Box.Glue x->
-	  [Drawing { x with
-            drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
-          }]
+	Box.Glue x-> [Drawing x]
       | x->assert false
     )
   in
   let gl1 =
     if right = [] then [] else (
       match glue dist1 dist1 dist1 with
-	Box.Glue x->
-	  [Box.Drawing { x with
-            drawing_badness=(fun w->100.*.(knuth_h_badness dist1 w))
-          }]
+	Box.Glue x-> [Drawing x]
       | x->assert false
     )
   in

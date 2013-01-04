@@ -506,7 +506,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 	  adjust_optical_alpha=3.1416 /. 4.;
 	  adjust_optical_beta=0.5;
 	  adjust_epsilon=5e-2;
-	  adjust_min_space=1./.10.;
+	  adjust_min_space=1./.15.;
 
         }
 
