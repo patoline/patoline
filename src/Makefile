@@ -17,11 +17,11 @@ VPATH=Typography:Pdf:Drivers:Format
 
 all:native $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx
 
-byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma
+byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma plot/plot.cma
 
-prof:Typography/_build.p/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa
+prof:Typography/_build.p/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa plot/plot.p.cmxa
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -93,6 +93,13 @@ Drivers/%.p.cmxa:Typography/_build.p/Typography.p.cmxa Drivers
 
 #Drivers/Typography.cmi:Typography/_build/Typography.cmi
 #	cp Typography/_build/Typography.cmi Drivers
+
+plot/plot.cmxa:plot Format/DefaultFormat.cmxa
+	make -C plot plot.cmxa
+plot/plot.cma:plot Format/DefaultFormat.cmaa
+	make -C plot plot.cma
+plot/plot.p.cmxa:plot Format/DefaultFormat.p.cmxa
+	make -C plot plot.p.cmxa
 
 DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
