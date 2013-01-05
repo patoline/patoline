@@ -57,8 +57,10 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
 
           | h::s when
               only_impossible
-              && (abs_float (measure-.h.min_width)) > (abs_float (sum_min-.measure))
-              && abs_float (sum_min-.measure) < env.size->
+              &&
+                (((abs_float (measure-.h.min_width)) > (abs_float (sum_min-.measure))
+                  && abs_float (sum_min-.measure) < env.size)
+                 || result=[])->
             [{ line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max;
               line_y0=y0; line_y1=y1
              }]
