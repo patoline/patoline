@@ -414,7 +414,7 @@ let _=
       let plot_sources="src/plot/bibi.cmxa src/plot/bibi.cmi src/plot/bibi.a"
       in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patoplot\n" (escape !ocaml_lib_dir);
-      Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/patoplot\n" bibi_sources (escape !ocaml_lib_dir);
+      Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/patoplot\n" plot_sources (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patoplot\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
       Printf.fprintf out "\tinstall -p -m 644 src/plot/META %s $(DESTDIR)%s/patoplot\n" plot_sources (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
 
