@@ -411,7 +411,7 @@ let _=
       );
 
       (* patoplot *)
-      let plot_sources="src/plot/bibi.cmxa src/plot/bibi.cmi src/plot/bibi.a"
+      let plot_sources="src/plot/plot.cmxa src/plot/plot.cmi src/plot/plot.a"
       in
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patoplot\n" (escape !ocaml_lib_dir);
       Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s/patoplot\n" plot_sources (escape !ocaml_lib_dir);
