@@ -518,7 +518,7 @@ let rec draw env_stack mlist =
 	    if w < min_width then
 	      min_width, dxa +. (min_width -. w)/.2., dxb +. (min_width -. w)/.2.
 	    else
-	      w,dxa,dxb
+	      w+.min_width/.2.,dxa+.min_width/.4.,dxb+.min_width/.4.
           in
 
             Drawing ({ drawing_min_width=w;
@@ -722,7 +722,7 @@ let kdraw env_stack mlist =
    let env=match env_stack with []->assert false | h::s->h in
    let l =draw env_stack mlist in
    let gl = match glue 0.0 0.0 0.0 with
-       Box.Glue x -> Box.Glue { x with drawing_width_fixed = false; drawing_badness=(fun _->infinity);}
+       Box.Glue x -> Box.Drawing { x with drawing_width_fixed = false;}
      | _ -> assert false 
    in gl::l@[gl]
 

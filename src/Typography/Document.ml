@@ -1243,6 +1243,10 @@ let adjust_width env buf nbuf =
 	try while !i0 < !nbuf do
 	  match buf.(!i0) with
 	  | User _ -> incr i0
+	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
+	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
+	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
+	    incr i0
 	  | Glue x as b ->
 	    min := !min +.  x.drawing_min_width;
 	    max := !max +.  x.drawing_max_width;
@@ -1274,17 +1278,20 @@ let adjust_width env buf nbuf =
 	      if !Distance.debug then
 		Printf.fprintf stderr "Drawing(2b): i0 = %d\n" !i0;
 
-	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
-
 	      let d space = 
 		let pr = List.map (fun (x,y) -> (x+.space,y)) profile_right in
 		let r = Distance.distance beta dir profile_left pr in
 		r
 	      in
 	
-	      let min' = !min -. (Pervasives.min (x1_l -. x0_l) (x1_r -. x0_r)) in
-	      let max' = if !max < 2. *. char_space then 2. *. char_space else !max in
- 	      let nominal' = if !nominal < char_space then char_space else !nominal in
+	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
+	      let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
+	      let (x0_l',y0_l',x1_l',y1_l')=bounding_box_full left in
+
+
+ 	      let nominal' = !nominal +. char_space in
+	      let min' = Pervasives.min  (Pervasives.max (x0_r -. x1_r) (x0_l -. x1_l))  (!min -. nominal') in
+	      let max' = Pervasives.max (2. *. char_space) (!max -. nominal') in
 	      let da = d min' in
 	      let db = d max' in
 	      let target = nominal' in
@@ -1304,25 +1311,29 @@ let adjust_width env buf nbuf =
 		      else if dc < target then fn sc dc sb db 
 		      else fn sa da sc dc
 		    in
-		    fn !min da max' db)
+		    fn min' da max' db)
 												    
 	      in
 	 
-	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f\n nominal = %f" r !nominal;
+(*	      let r = r -. x0_r' +. x0_r -. x1_l +. x1_l' in*)
+
+	      if !Distance.debug then Printf.fprintf stderr "end Adjust: r = %f nominal = %f" r !nominal;
    
 	      buf.(i) <- 
 		(match b with
+		| Drawing x when before -> Drawing { x with 
+		  drawing_contents = 
+		      (fun w -> List.map (translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+		}
 		| Drawing x -> Drawing { x with 
 		  drawing_nominal_width = r +. x.drawing_nominal_width;
 		  drawing_min_width = r +. x.drawing_min_width;
 		  drawing_max_width = r +. x.drawing_max_width;
-		  drawing_contents = 
-		    if before then 
-		      (fun w -> List.map (translate (r -. !nominal) 0.0) (x.drawing_contents w))
-		    else x.drawing_contents
 		}
 		| Glue x -> Glue { x with
 		  drawing_nominal_width = r +. x.drawing_nominal_width;
+		  drawing_min_width = r +. x.drawing_min_width;
+		  drawing_max_width = r +. x.drawing_max_width;
 		}
 		| _ -> assert false);
 	      raise Exit)

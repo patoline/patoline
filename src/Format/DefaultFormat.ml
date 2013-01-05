@@ -506,9 +506,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 	  show_boxes=false;
 	  show_frames=false;
 	  adjust_optical_alpha=3.1416 /. 4.;
-	  adjust_optical_beta=0.5;
+	  adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *) 
 	  adjust_epsilon=5e-2;
-	  adjust_min_space=1./.15.;
+	  adjust_min_space=1./.10.;
 
         }
 

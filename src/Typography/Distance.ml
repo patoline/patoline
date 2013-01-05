@@ -260,7 +260,9 @@ let in_circle a b c m =
   norm2 (g -- m) <= norm2 (g -- a)
   
 let translate_profile p dx =
-  List.map (fun (x,y) -> (x +. dx, y)) p
+  if dx <> infinity && dx <> -. infinity then 
+    List.map (fun (x,y) -> (x +. dx, y)) p
+  else []
 
 (* assume profile2 uses (-dsup, -dinf), hence the list reversal *)
 let bissectrice_profile (dsup,dinf) profile1 profile2 =
