@@ -31,7 +31,7 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 cesure/cesure:cesure/cesure.ml
-	$(CAMLOPT) -o cesure/cesure cesure/cesure.ml
+	$(CAMLOPT) -I Typography/_build -I Rbuffer -o cesure/cesure rbuffer.cmxa Typography.cmxa str.cmxa -linkpkg cesure/cesure.ml
 
 ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi Format/DefaultFormat.cma
 	make -C ocaml-bibi bibi.cma
