@@ -510,6 +510,8 @@ module CitationInt=struct
   let citation_format i _=[tT (string_of_int i)]
 end
 module CitationNames=struct
+  let doublons:(string list, int IntMap.t) Hashtbl.t=Hashtbl.create 200
+
   let citation_format i row=
     match !bibfile_ with
         None->failwith "Bibi: no bibliographic source defined"
@@ -520,27 +522,48 @@ module CitationNames=struct
           | Some id_->(
             let id=Int64.of_string id_ in
             let date=match (row.(field_num "date")) with
-                None->[]
+                None->""
               | Some x->(
                 let year=Str.regexp ".*\\(^\\|[^0-9]\\)\\([0-9][0-9][0-9][0-9]*\\).*" in
                 if Str.string_match year x 0 then
-                  [tT (" "^Str.matched_group 2 x)]
+                  Str.matched_group 2 x
                 else
                   let year'=Str.regexp "\\(^\\|\\(.*[^0-9]\\)\\)\\([0-9]*\\)" in
                   if Str.string_match year' x 0 then
-                    [tT (" "^Str.matched_group 2 x)]
+                    Str.matched_group 2 x
                   else
-                    [tT (" "^x)]
+                    x
               )
             in
+            let aut=gets "authors" db id in
             let auteurs=
-              let aut=gets "authors" db id in
               (List.map (fun n->
                 let (_,y)=make_name n in
                 [tT y]
                ) aut)
             in
-            List.concat (intercalate [tT ", "] auteurs) @ date
+
+            let h=try Hashtbl.find doublons (date::aut) with _->IntMap.empty in
+            if not (IntMap.mem (int_of_string id_) h) then (
+              Hashtbl.add doublons (date::aut)
+                (IntMap.add (int_of_string id_) (1+IntMap.cardinal h) h)
+            );
+            let rec subnum_of_int x buf=
+              if x=0 then String.concat "" buf else
+                let s=String.make 1 (char_of_int (int_of_char 'a'+(x-1) mod 26)) in
+                subnum_of_int (x/26) (s::buf)
+            in
+            [C (fun _->
+              let n=try
+                      let l=Hashtbl.find doublons (date::aut) in
+                      if IntMap.cardinal l<=1 then [] else
+                        [tT (subnum_of_int (IntMap.find (int_of_string id_) l) [])]
+                with
+                    Not_found->[]
+              in
+              List.concat (intercalate [tT ", "] auteurs)
+              @ (if date<>"" then [tT (" "^date)] else []) @ n
+            )]
           )
       )
 end
