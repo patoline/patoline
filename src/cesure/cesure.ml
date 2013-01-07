@@ -60,7 +60,7 @@ let _=
       close_in i;
       p,e
     in
-    let tree0 = List.fold_left insert (Node ([||],C.empty)) patterns in
+    let tree0 = List.fold_left insert empty patterns in
     let tree = List.fold_left insert_exception tree0 hyphenations in
     let o=open_out ((try Filename.chop_extension Sys.argv.(i)
       with _->Sys.argv.(i))^".hdict")

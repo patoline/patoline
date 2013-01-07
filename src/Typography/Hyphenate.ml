@@ -23,20 +23,20 @@ open CamomileLibrary
 module C=Map.Make (struct type t=UChar.t let compare=compare end)
 
 type ptree=
-    Node of (int array)*(ptree C.t)
+    Node of (string)*(ptree C.t)
   | Exception of (string list)*(ptree C.t)
 
 let is_num c = c>=int_of_char '0' && c<=int_of_char '9'
 
 let insert tree a=
-  let breaks0=Array.make (String.length a) 0 in
+  let breaks0=String.make (String.length a) '0' in
   let j=ref 0 in
 
   let rec fill_breaks i=
     if i<String.length a then (
       let c=UChar.code (UTF8.look a i) in
       if is_num c then (
-        breaks0.(i- !j)<-c-int_of_char '0';
+        breaks0.[i- !j]<-char_of_int (c-int_of_char '0');
         incr j
       );
       fill_breaks (UTF8.next a i)
@@ -44,7 +44,7 @@ let insert tree a=
   in
   fill_breaks 0;
 
-  let breaks=Array.sub breaks0 0 (Array.length breaks0 - !j) in
+  let breaks=String.sub breaks0 0 (String.length breaks0 - !j) in
 #ifdef DEBUG
   Array.iter (Printf.fprintf stderr "%d ") breaks;
   Printf.fprintf stderr "\n";
@@ -53,17 +53,17 @@ let insert tree a=
     if i>=String.length a then (
       match tree with
           Node (_,t)->Node (breaks, t)
-        | _->tree
+        | _->tree                       (* Si ce motif est déjà une exception, on ne fait rien *)
     ) else (
       if is_num (UChar.code (UTF8.look a i)) then
         insert (UTF8.next a i) tree
       else
         (match tree with
             Node (x,t)->
-              (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ([||], C.empty) in
+              (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
                Node (x, C.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
           | Exception (x,t)->
-            (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ([||], C.empty) in
+            (let tree'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
              Exception (x, C.add (UTF8.look a i) (insert (UTF8.next a i) tree') t))
         )
     )
@@ -76,12 +76,12 @@ let insert_exception tree a0=
   let rec insert i = function
       Exception (_,_) as t when i>=String.length a-1 -> t
     | Exception (x,t)->(
-      let t'=try C.find (UTF8.look a i) t with Not_found->Node ([||], C.empty) in
+      let t'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
       Exception (x, C.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
     )
     | Node (x,t) when i>=String.length a-1 -> Exception (a0,t)
     | Node (x,t)->(
-      let t'=try C.find (UTF8.look a i) t with Not_found->Node ([||], C.empty) in
+      let t'=try C.find (UTF8.look a i) t with Not_found->Node ("", C.empty) in
       Node (x, C.add (UTF8.look a i) (insert (UTF8.next a i) t') t)
     )
   in
@@ -108,7 +108,7 @@ let hyphenate tree a0=
         String.blit a0 0 a 1 (String.length a0);
         a.[0]<-'.';
         a.[String.length a-1]<-'.';
-        let breaks=Array.create (String.length a+1) 0 in
+        let breaks=String.make (String.length a+1) (char_of_int 0) in
         let rec hyphenate i j t=if j<=String.length a then
             match t with
               | Exception (x,_) when i=0 && j=String.length a-1->(
@@ -123,9 +123,9 @@ let hyphenate tree a0=
                   with
                       _->())
               | Node (x,t) -> (
-                if Array.length x>0 then (
+                if String.length x>0 then (
                   let rec fill_breaks k=
-                    breaks.(i+k)<-max breaks.(i+k) x.(k);
+                    breaks.[i+k]<-max breaks.[i+k] x.[k];
                     fill_breaks (UTF8.next a (i+k)-i)
                   in
                   fill_breaks 0
@@ -146,10 +146,6 @@ let hyphenate tree a0=
         in
         hyphenate_word 0;
 
-#ifdef DEBUG
-        Array.iter (Printf.fprintf stderr "%d ") breaks;
-        Printf.fprintf stderr "\n";
-#endif
         (* Nombre de lettres entre i inclus et j exclus *)
         let count a i j=
           let rec count k n=if k>=j then n else
@@ -160,7 +156,8 @@ let hyphenate tree a0=
 
         let rec make_hyphens i j k=
           if j>=String.length a-1 then [String.sub a i (min (String.length a-1) j-i)] else
-            if (breaks.(j+1)) mod 2 = 1 && k>=3 && count a j (String.length a-1) >= 1 then
+            if (int_of_char breaks.[j+1]) mod 2 = 1 && k>=3 &&
+              count a j (String.length a-1) >= 1 then
               (String.sub a i (UTF8.next a j-i)) ::
                 make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
             else
@@ -168,7 +165,7 @@ let hyphenate tree a0=
         in
         make_hyphens 1 1 0
       )
-let empty=Node ([||], C.empty)
+let empty=Node ("", C.empty)
 
 #ifdef DEBUG
 let _=
