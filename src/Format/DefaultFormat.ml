@@ -1215,7 +1215,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                               let pp=(p.par_parameters a b c d e f g line) in
                               { pp with
                                 min_lines_after=
-                                  if line.lineEnd>=Array.length b then 2 else pp.min_lines_after;
+                                  if line.lineEnd>=Array.length b.(line.paragraph) then 2 else pp.min_lines_after;
                               });
               }
           | Node n->(try
