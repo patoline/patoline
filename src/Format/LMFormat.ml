@@ -196,7 +196,7 @@ module MakeFormat (D:Document.DocumentStructure)
       let fsize=3.8 in
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
-        {
+        { defaultEnv with
           fontFamily=lmroman;
           fontMonoFamily=lmmono;
 	  fontMonoRatio=1.0;

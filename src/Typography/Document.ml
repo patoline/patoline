@@ -210,6 +210,8 @@ and environment={
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   new_page:Layout.frame_zipper->Layout.frame_zipper;
+  new_line:environment->line->parameters->
+           line->parameters->float->float;
   user_positions:line UserMap.t;
   show_boxes:bool;
   show_frames:bool;
@@ -1396,6 +1398,7 @@ let flatten env0 fixable str=
   let fig_param=ref IntMap.empty in
   let param=ref [] in
   let new_page_list=ref [] in
+  let new_line_list=ref [] in
   let compl=ref [] in
   let bads=ref [] in
   let n=ref 0 in
@@ -1412,6 +1415,7 @@ let flatten env0 fixable str=
     compl:=(p.par_completeLine env)::(!compl);
     param:=(p.par_parameters env)::(!param);
     new_page_list:=(env.new_page)::(!new_page_list);
+    new_line_list:=(env.new_line env)::(!new_line_list);
     bads:=(p.par_badness env)::(!bads);
     incr n;
     frees:=0;
@@ -1509,6 +1513,7 @@ let flatten env0 fixable str=
   (env2, params,
    Array.of_list (List.rev !param),
    Array.of_list (List.rev !new_page_list),
+   Array.of_list (List.rev !new_line_list),
    Array.of_list (List.rev !compl),
    Array.of_list (List.rev !bads),
    Array.of_list (List.rev !paragraphs),

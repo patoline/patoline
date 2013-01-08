@@ -100,6 +100,8 @@ module Make :
                     LineMap.key -> L.t -> Layout.parameters)
                    array ->
         new_page:(Layout.frame_zipper -> Layout.frame_zipper) array ->
+        new_line:(Layout.line->Layout.parameters->
+                  Layout.line->Layout.parameters->float->float) array ->
         badness:(Box.box array array ->
                  Box.drawingBox array ->
                  figurePosition Util.IntMap.t ->
@@ -112,6 +114,7 @@ module Make :
                  Box.box array -> int -> Layout.parameters -> float -> float)
                 array ->
         Box.box array array ->
-        TypoLanguage.message list * Layout.placed_line list array *
-        figurePosition Util.IntMap.t * L.t Box.UserMap.t
+        TypoLanguage.message list *
+          ((Layout.frame_zipper*Layout.placed_line list) array) *
+          figurePosition Util.IntMap.t * L.t Box.UserMap.t
     end

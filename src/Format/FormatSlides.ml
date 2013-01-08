@@ -84,14 +84,10 @@ module Format=functor (D:Document.DocumentStructure)->(
 
       let do_end_env ()=
         let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
-        let params par a b c d e f g h=
-          let p=par a b c d e f g h in
-          let def=Default.parameters a b c d e f g h in
-          { p with next_acceptable_height=def.next_acceptable_height }
-        in
+        let par_env env={env with new_line=Default.defaultEnv.new_line } in
         let rec map_params t=match t with
             Node n->Node {n with children=IntMap.map map_params n.children}
-          | Paragraph p->Paragraph { p with par_parameters=params p.par_parameters }
+          | Paragraph p->Paragraph { p with par_env=par_env }
           | _->t
         in
         (* Fabriquer un paragraphe qui va bien *)
@@ -332,6 +328,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         normalLead=Default.defaultEnv.size*.1.3;
         lead=Default.defaultEnv.size*.1.3;
         par_indent=[];
+        new_line=(fun env a b c d e->max e (a.height-.env.lead));
     }
 
     (* in slides, werbatim with a smaller lead *)
@@ -342,10 +339,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let parameters env b c d e f g line=
       { (Default.parameters env b c d e f g line) with
-        (* page_height=2.*.slideh; *)
-        next_acceptable_height=
-          (fun a b c d e->max e (a.height-.env.lead));
         min_lines_before=1
+        (* page_height=2.*.slideh; *)
       }
 
     module type Title = sig
@@ -444,7 +439,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             if List.length path=1 then (
               match tree with
-                  Node n when List.mem_assoc "InTOC" n.node_tags->(
+                  Node n when List.mem_assoc "intoc" n.node_tags->(
                     toc:=(n.name,n.displayname,path,env0)::(!toc)
                   )
                 | _->()
@@ -465,7 +460,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let max_state=get_max_state tree in
 
                   let fixable=ref false in
-                  let env1,fig_params0,params0,new_page0,compl0,badnesses0,paragraphs0,_,
+                  let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
                     figures0,figure_trees0=flatten env0 fixable tree
                   in
 
@@ -499,6 +494,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       and new_page=
                         if IntMap.is_empty !par_map then [||] else
                           Array.make (IntMap.cardinal !par_map) new_page0.(0)
+                      and new_line=
+                        if IntMap.is_empty !par_map then [||] else
+                          Array.make (IntMap.cardinal !par_map) new_line0.(0)
                       and paragraphs=
                         if IntMap.is_empty !par_map then [||] else
                           Array.make (IntMap.cardinal !par_map) paragraphs0.(0)
@@ -521,6 +519,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         ~figures:figures
                         ~parameters:params
                         ~new_page:new_page
+                        ~new_line:new_line
                         ~badness:badnesses
                         paragraphs
                       in
@@ -529,7 +528,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           { l with
                             line={ l.line with paragraph=IntMap.find l.line.paragraph !par_map }
                           }
-                        ) (if Array.length opt_pages>0 then opt_pages.(0) else []);
+                        ) (if Array.length opt_pages>0 then snd opt_pages.(0) else []);
 
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
@@ -912,10 +911,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                     incr slide_num;
                     sl
                   )
-                | Node n when List.mem_assoc "InTOC" n.node_tags->
+                | Node n when List.mem_assoc "intoc" n.node_tags->
                   let sub=IntMap.fold (fun _ a m->
                     match a with
-                        Node _ when List.mem_assoc "InTOC" n.node_tags->(make_structure a)::m
+                        Node _ when List.mem_assoc "intoc" n.node_tags->(make_structure a)::m
                       | _->m
                   ) n.children []
                   in

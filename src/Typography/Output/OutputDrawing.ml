@@ -27,10 +27,10 @@ open Break
 open Util
 
 type page={mutable pageContents:raw list}
-let output paragraphs figures env (opt_pages:placed_line list array)=
+let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) array)=
 
   let opt_pages=
-    if Array.length opt_pages>0 then opt_pages else
+    if Array.length opt_pages>0 then (Array.map snd opt_pages) else
       [|[{line_params=default_params;
           line=uselessLine}]|]
   in
@@ -290,4 +290,5 @@ let output paragraphs figures env (opt_pages:placed_line list array)=
       drawing_badness=(fun _->0.);
       drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) page.pageContents) }
   in
-  Array.mapi draw_page opt_pages
+  (* Array.mapi (fun i (a,b)->draw_page i b) opt_pages *)
+  Array.mapi (fun i b->draw_page i b) opt_pages

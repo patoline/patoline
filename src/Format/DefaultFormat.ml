@@ -240,33 +240,11 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
       User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
     | _->fn) 0. line
   in
-  { measure=measure;
+  let p={ measure=measure;
     left_margin=env.normalLeftMargin;
     local_optimization=0;
     min_page_before=0;
     min_page_after=0;
-    next_acceptable_height=(fun node params nextNode nextParams height->
-      if node==nextNode then (
-        let min_height=node.height-.params.min_height_after in
-        let h0=min_height/.env.lead in
-        let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-        env.lead*.h1
-      ) else
-        let d=if page node=page nextNode then (
-          let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
-          let h0=min_height/.env.lead in
-          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-          env.lead*.h1
-        ) else (
-          let l=(fst nextNode.layout).frame_y1 in
-          let min_height=(nextNode.height-. env.lead) in
-          let h0=(floor (min_height/.env.lead)) in
-          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-          env.lead*.h1
-        )
-        in
-        d
-    );
     min_height_before=0.;
     min_height_after=0.;
     not_last_line=false;
@@ -275,6 +253,14 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
     min_lines_after=0;
     absolute=false
   }
+  in
+  fold_left_line paragraphs (fun p0 x->match x with
+      Parameters fp->(
+        let p1=fp p0 in
+        p1
+      )
+    | _->p0
+  ) p line
 
 
 
@@ -362,7 +348,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       in
 
       let with_title=match tree with
-          Node n when not (List.mem_assoc "title already typeset" n.node_tags)->
+          Node n when not (List.mem_assoc "title already typeset" n.node_tags)
+              && n.displayname<>[]->
             let par=Paragraph {
               par_contents=n.displayname;
               par_env=(fun env->resize_env (env.size*.2.) {env with hyphenate=(fun _->[||])});
@@ -503,10 +490,34 @@ module Format=functor (D:Document.DocumentStructure)->(
           names=StrMap.empty;
           user_positions=UserMap.empty;
           new_page=Document.default_new_page a4;
+          new_line=(fun env node params nextNode nextParams height->
+            if node==nextNode then (
+              let min_height=min height (node.height-.params.min_height_after) in
+              let h0=min_height/.env.lead in
+              let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+              let next_height=env.lead*.h1 in
+              let hh=if next_height>=height then next_height-.env.lead else next_height in
+              hh
+            ) else
+              let d=if page node=page nextNode then (
+                let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
+                let h0=min_height/.env.lead in
+                let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                env.lead*.h1
+              ) else (
+                let l=(fst nextNode.layout).frame_y1 in
+                let min_height=(nextNode.height-. env.lead) in
+                let h0=(floor (min_height/.env.lead)) in
+                let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                env.lead*.h1
+              )
+              in
+              d
+          );
 	  show_boxes=false;
 	  show_frames=false;
 	  adjust_optical_alpha=3.1416 /. 4.;
-	  adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *) 
+	  adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *)
 	  adjust_epsilon=5e-2;
 	  adjust_min_space=1./.10.;
 
@@ -633,13 +644,14 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     let minipage env str=
-      let env',fig_params,params,new_page_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
         ~new_page:new_page_list
+        ~new_line:new_line_list
         ~badness:bads
         pars
       in
@@ -648,13 +660,14 @@ module Format=functor (D:Document.DocumentStructure)->(
          pages)
 
     let minipage' env str=
-      let env',fig_params,params,new_page_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
         ~figures:figures
         ~parameters:params
         ~new_page:new_page_list
+        ~new_line:new_line_list
         ~badness:bads
         pars
       in
@@ -1318,7 +1331,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec resolve i env0=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let fixable=ref false in
-          let env1,fig_params,params,new_page_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
+          let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
           let (logs,opt_pages,figs',user')=TS.typeset
             ~completeLine:compl
@@ -1326,6 +1339,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             ~figures:figures
             ~parameters:params
             ~new_page:new_page_list
+            ~new_line:new_line_list
             ~badness:badness
             paragraphs
           in
@@ -1338,11 +1352,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
 
-            let opt_pages=
-              if Array.length opt_pages>0 then opt_pages else
-                [|[{line_params=default_params;
-                    line=uselessLine}]|]
-            in
             let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
             let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in
             let par=ref (-1) in
@@ -1353,14 +1362,17 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let continued_link=ref None in
 
-            let draw_page i p=
-              pages.(i)<-{ pageFormat=a4; pageContents=[] };
+            let draw_page i (layout,p)=
+              let rec page_level lo=
+                match snd lo with
+                    _::_::_->page_level (frame_up lo)
+                  | _->lo
+              in
+              let lo=fst (page_level layout) in
+              pages.(i)<-{ pageFormat=(lo.frame_x1-.lo.frame_x0,lo.frame_y1-.lo.frame_y0);
+                           pageContents=[] };
 
               let page=pages.(i) in
-              let footnotes=ref [] in
-              let footnote_y=ref (-.infinity) in
-              let pp=Array.of_list p in
-              let w,h=page.pageFormat in
 
               let endlink cont=
                 continued_link:=None;
@@ -1392,6 +1404,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                 )
               );
 
+              let footnotes=ref [] in
+              let footnote_y=ref (-.infinity) in
+              let pp=Array.of_list p in
+              let w,h=page.pageFormat in
               (* Affichage des frames (demouchage) *)
               let h=Hashtbl.create 100 in
 

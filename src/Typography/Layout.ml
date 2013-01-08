@@ -127,7 +127,7 @@ type line= {
 
 let uselessLine=
   { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= 0.;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
+    lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
     min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
 
 let sprint_linef l=
@@ -154,8 +154,6 @@ let page l=frame_page l.layout
 type parameters={ measure:float;
                   left_margin:float;
                   local_optimization:int;
-                  next_acceptable_height:line->parameters->
-                                         line->parameters->float->float;
                   min_height_before:float;
                   min_height_after:float;
                   min_page_before:int;
@@ -170,7 +168,6 @@ type parameters={ measure:float;
 let default_params={ measure=0.;
                      left_margin=0.;
                      local_optimization=0;
-                     next_acceptable_height=(fun _ _ h _ _->h.height);
                      min_height_before=0.;
                      min_height_after=0.;
                      min_page_before=0;
