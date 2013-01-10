@@ -368,6 +368,7 @@ module Make (L:Line with type t=Layout.line)=(
               let height_problem=ref true in
 
               let rec fix layouts height n_iter=
+                (* Printf.fprintf stderr "%d fix %f\n" n_iter height;flush stderr; *)
                 let layout=List.hd layouts in
                 let nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
@@ -383,6 +384,7 @@ module Make (L:Line with type t=Layout.line)=(
 
                 if (height<(fst layout).frame_y0) then (
                   let np=new_page.(pi) layout in
+                  (* Printf.fprintf stderr "new page\n";flush stderr; *)
                   fix (np::layouts) (fst np).frame_y1 (n_iter+1)
                 ) else (
                   let make_next_node nextNode=
@@ -565,11 +567,13 @@ module Make (L:Line with type t=Layout.line)=(
                     if frame_page layout<=page node+1+max lastParameters.min_page_after !min_page_before then (
                       if height<(fst layout).frame_y0 then (
                         let np=new_page.(pi) layout in
+                        (* Printf.fprintf stderr "new_page (2)\n";flush stderr; *)
                         fix (np::layouts) (fst np).frame_y1 (n_iter+1)
                       ) else (
                         let next_h=new_line.(pi) node lastParameters
                           node lastParameters layout height
                         in
+                        (* Printf.fprintf stderr "next_acceptable %f %f\n" height next_h;flush stderr; *)
                         fix layouts
                           next_h
                           (n_iter+1)

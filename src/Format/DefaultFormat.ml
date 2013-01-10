@@ -497,18 +497,21 @@ module Format=functor (D:Document.DocumentStructure)->(
               let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
               let next_height=env.lead*.h1 in
               let hh=if next_height>=height then next_height-.env.lead else next_height in
+              (* Printf.fprintf stderr "cas 1 %f\n" hh;flush stderr; *)
               hh
             ) else
               let d=if node.layout=layout then (
                 let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
                 let h0=min_height/.env.lead in
                 let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                (* Printf.fprintf stderr "cas 2.1 %f %f %f \n" min_height h0 h1;flush stderr; *)
                 env.lead*.h1
               ) else (
                 let l=(fst layout).frame_y1 in
                 let min_height=(height-. env.lead) in
                 let h0=(floor (min_height/.env.lead)) in
                 let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                (* Printf.fprintf stderr "cas 2.2 %f %f %f %f\n" l min_height h0 h1;flush stderr; *)
                 env.lead*.h1
               )
               in
