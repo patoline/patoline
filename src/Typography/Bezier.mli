@@ -1,6 +1,3 @@
-(** Fonctions de manipulation des courbes de Bézier à deux
-    dimensions. Certaines fonctions utilisent le fait que les deux
-    composantes soient de même taille *)
 type curve = float array * float array
 
 (** Coordonée du i-eme point de contrôle *)

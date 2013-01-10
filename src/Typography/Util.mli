@@ -1,4 +1,3 @@
-(** Auxiliary functions *)
 
 exception File_not_found of (string * string list)
 val findPath : string -> string list -> string

@@ -1,6 +1,6 @@
 (*
-  Copyright Tom Hirschowitz, Florian Hatat, Pierre-Etienne Meunier,
-  Christophe Raffalli and others, 2012.
+  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
 
   This file is part of Patoline.
 
@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-let license="  Copyright Tom Hirschowitz, Florian Hatat, Pierre-Etienne Meunier,
-  Christophe Raffalli and others, 2012.
+let license="  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
 
   This file is part of Patoline.
 
