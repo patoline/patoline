@@ -77,8 +77,8 @@ let preambule format driver suppl amble filename=
       Printf.sprintf
         "(* #FORMAT %s *)
 (* #DRIVER %s *)
-open Typography
 %s
+open Typography
 %s
 open Typography.Util
 open Typography.Box
@@ -90,6 +90,7 @@ open DefaultFormat.MathsFormat
 "
         format
         driver
+        suppl
         (match amble with
             Main->"let _args=ref []
 let _driver=ref \"Pdf\"
@@ -106,7 +107,6 @@ let _=Arg.parse _spec ignore \"Usage :\";;
 "
           | _->""
         )
-        suppl
         (match amble with
             Main->
               Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
