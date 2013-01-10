@@ -1606,7 +1606,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let info_black = Transfo.transform [shorten delta delta] { info with curves = black_paths } in
 	  { info_black with 
 	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
-	    curves = (info_black.curves @ info_white.curves) }) })
+	    curves = (info_white.curves @ info_black.curves) }) })
 
       let base_arrow head_params transfos edge_info=
 	let info = edge_info.tip_info in
