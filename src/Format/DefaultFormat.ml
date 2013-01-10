@@ -490,8 +490,8 @@ module Format=functor (D:Document.DocumentStructure)->(
           names=StrMap.empty;
           user_positions=UserMap.empty;
           new_page=Document.default_new_page a4;
-          new_line=(fun env node params nextNode nextParams height->
-            if node==nextNode then (
+          new_line=(fun env node params nextNode nextParams layout height->
+            if node==nextNode && node.layout==layout then (
               let min_height=min height (node.height-.params.min_height_after) in
               let h0=min_height/.env.lead in
               let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
@@ -499,14 +499,14 @@ module Format=functor (D:Document.DocumentStructure)->(
               let hh=if next_height>=height then next_height-.env.lead else next_height in
               hh
             ) else
-              let d=if page node=page nextNode then (
+              let d=if node.layout=layout then (
                 let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
                 let h0=min_height/.env.lead in
                 let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
                 env.lead*.h1
               ) else (
-                let l=(fst nextNode.layout).frame_y1 in
-                let min_height=(nextNode.height-. env.lead) in
+                let l=(fst layout).frame_y1 in
+                let min_height=(height-. env.lead) in
                 let h0=(floor (min_height/.env.lead)) in
                 let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
                 env.lead*.h1

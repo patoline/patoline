@@ -251,7 +251,7 @@ module Make (L:Line with type t=Layout.line)=(
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser node nextNode in
               let next_h=new_line.(nextNode.paragraph) node lastParameters
-                nextNode params 0.
+                nextNode params node.layout 0.
               in
               let nextNode={nextNode with height=next_h } in
               register (Some cur_node) nextNode
@@ -568,7 +568,7 @@ module Make (L:Line with type t=Layout.line)=(
                         fix (np::layouts) (fst np).frame_y1 (n_iter+1)
                       ) else (
                         let next_h=new_line.(pi) node lastParameters
-                          node lastParameters height
+                          node lastParameters layout height
                         in
                         fix layouts
                           next_h

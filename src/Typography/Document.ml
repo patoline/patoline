@@ -211,7 +211,7 @@ and environment={
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
   new_page:Layout.frame_zipper->Layout.frame_zipper;
   new_line:environment->line->parameters->
-           line->parameters->float->float;
+           line->parameters->Layout.frame_zipper->float->float;
   user_positions:line UserMap.t;
   show_boxes:bool;
   show_frames:bool;

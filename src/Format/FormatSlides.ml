@@ -328,7 +328,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         normalLead=Default.defaultEnv.size*.1.3;
         lead=Default.defaultEnv.size*.1.3;
         par_indent=[];
-        new_line=(fun env a b c d e->max e (a.height-.env.lead));
+        new_line=(fun env a b c d e f->min f (a.height-.env.lead));
     }
 
     (* in slides, werbatim with a smaller lead *)

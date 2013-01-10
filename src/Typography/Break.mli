@@ -101,7 +101,8 @@ module Make :
                    array ->
         new_page:(Layout.frame_zipper -> Layout.frame_zipper) array ->
         new_line:(Layout.line->Layout.parameters->
-                  Layout.line->Layout.parameters->float->float) array ->
+                  Layout.line->Layout.parameters->Layout.frame_zipper->
+                  float->float) array ->
         badness:(Box.box array array ->
                  Box.drawingBox array ->
                  figurePosition Util.IntMap.t ->
