@@ -1,0 +1,5 @@
+(* #GRAMMAR *)
+\Add_relation{∈ \in}{∈}
+\Caml(let infer x = x)
+\Build_Grammar
+$\infer{f(x)}$

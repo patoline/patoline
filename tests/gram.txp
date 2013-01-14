@@ -1,0 +1,4 @@
+(* #GRAMMAR *)
+\Add_addition_like{+}{+}
+\Build_Grammar
+$+$
