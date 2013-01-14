@@ -1,5 +1,5 @@
 (* #GRAMMAR *)
 \Add_relation{∈ \in}{∈}
-\Caml(let infer x = x)
+\Caml(let iinfer x = x)
 \Build_Grammar
-$\infer{f(x)}$
+$\iinfer{f(x)}$

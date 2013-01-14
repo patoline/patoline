@@ -1,4 +1,8 @@
-(* #GRAMMAR *)
-\Add_addition_like{+}{+}
-\Build_Grammar
 $+$
+$×$
+$→$
+$a^→$
+$a_→$
+$→^∗$
+$→ᵦ^∗$
+$→^{+}$
