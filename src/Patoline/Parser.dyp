@@ -628,8 +628,8 @@ parelt:
     { [MC(`Single, "verb", [sParagraph(List.rev t)], [])], false }
   | "_" paragraph_aux<p,false> "_"
     { [MC(`Single, "toggleItalic", [sParagraph(List.rev p)], [])], true }
-  | "$" math<m> "$" { [FC(get_pos_as_string dyp 1, false,m)], false }
-  | "[$" math<m> "$]" { [FC(get_pos_as_string dyp 1, false, MathMacro("displayStyle",[m]))], false }
+  | "$" math_toplevel<m> "$" { [FC(get_pos_as_string dyp 1, false,m)], false }
+  | "[$" math_toplevel<m> "$]" { [FC(get_pos_as_string dyp 1, false, MathMacro("displayStyle",[m]))], false }
 
 
 paragraph_aux:
@@ -701,11 +701,11 @@ mathargs<nb>:
     { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> false, []) } 
   | - "()"
     { if nb > 0 then raise Giveup; (fun (ld:local_data) gr  -> true, []) }
-  | - "{" math<m> "}"
+  | - "{" math_toplevel<m> "}"
     { if nb <> 1 then raise Giveup; (fun ld gr -> true, [m]) }
   | - CAML<s,pos,e,txps>
     { if nb <> 1 then raise Giveup; (fun ld gr -> true, [MathCaml(ld,gr,s,e,txps,pos)]) }
-  | - "{" math<m> "}" - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
+  | - "{" math_toplevel<m> "}" - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
     { (fun ld gr -> let b,l = a ld gr in b, (m::l)) }
   | - CAML<s,pos,e,txps> - test{nb>1 || nb < 0} - mathargs{nb-1}<a>
     { (fun ld gr -> let b,l = a ld gr in 
@@ -739,17 +739,17 @@ in_par_macro:
         [MC(`Single, name, args, get_wminfo dyp name)] }  macro
 
 leftind:
-  | math(<=atom)<m1> - "^^" - math(<=atom)<m2> - "__" 
+  | math_atom<m1> - "^^" - math_atom<m2> - "__" 
       { { up_right = None; up_left = Some m1; down_right = None; down_left = Some m2 } }
-  | math(<=atom)<m1> - "__" - math(<=atom)<m2> - "^^" 
+  | math_atom<m1> - "__" - math_atom<m2> - "^^" 
       { { up_right = None; up_left = Some m2; down_right = None; down_left = Some m1 } }
-  | math(<=atom)<m1> - "^^"
+  | math_atom<m1> - "^^"
       { { up_right = None; up_left = Some m1; down_right = None; down_left = None } }
-  | math(<=atom)<m2> - "__" 
+  | math_atom<m2> - "__" 
       { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
 
 subind:
-  | "_" - math(<=atom)<m1> { m1 }
+  | "_" - math_atom<m1> { m1 }
   | subscripts<s> {
       try
 (*        Printf.fprintf stderr "ind: %s\n" s;*)
@@ -761,7 +761,7 @@ subind:
       with _ -> raise Giveup }
 
 superind:
-  | "^" - math(<=atom)<m1> { m1 }
+  | "^" - math_atom<m1> { m1 }
   | superscripts<s> {
       try
 (*        Printf.fprintf stderr "exp: %s\n" s;*)
@@ -791,7 +791,7 @@ superscripts:
   | superscripts<s'> - superscript<s> { s' ^ s }
 
 allmath:
-   math<m> "#$@#$@" { m }
+   math_toplevel<m> "#$@#$@" { m }
 
 var_or_symbol:
    (mathvar)<name>
@@ -928,6 +928,17 @@ readmathargs<macro>:
 	    with Not_found -> -2
       }
 
+math_atom:
+  | math(<=atom)<m> { m } 
+  | symbol_only<s> { s }
+
+math_toplevel:
+  | math<m> { m }
+  | symbol_only<s> { s }
+  | addition_like<_,op,d> 
+      { app_ind d (Symbol op) }
+
+
 math:
    (mathvar)<name>
       { Var(name) } atom
@@ -1006,34 +1017,12 @@ math:
   | math(<=punc)<a> punctuation<_,op,d> math(<punc)<b> 
       { app_ind d (Binary(1, a, true, op, false, b)) } punc
 
-  | "{" addition_like<_,op,d> "}"
+  | "{" symbol_only<s> "}"
+      { s } atom
+
+/* Contournement d'un bug de dypgen */
+  |  "{" addition_like<_,op,d>  "}"
       { app_ind d (Symbol op) } atom
-  | "{" product_like<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" prefix<l,op,d> "}"
-      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
-	app_ind d (Symbol op) } atom
-  | "{" postfix<l,op,d> "}"
-      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
-	app_ind d (Symbol op) } atom
-  | "{" accent<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" arrow<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" connector<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" relation<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" quantifier<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" negation<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" punctuation<_,op,d> "}"
-      { app_ind d (Symbol op) } atom
-  | "{" operator<m> "}"
-      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
-  | "{" limits_operator<m> "}"
-      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
 
   | "{" left<m> "}"
       { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
@@ -1041,6 +1030,34 @@ math:
       { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | symbol<_,name,d>
       { app_ind d (Symbol(name)) } atom
+
+symbol_only:
+  |  product_like<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  prefix<l,op,d> 
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	app_ind d (Symbol op) }
+  |  postfix<l,op,d> 
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
+	app_ind d (Symbol op) }
+  |  accent<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  arrow<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  connector<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  relation<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  quantifier<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  negation<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  punctuation<_,op,d> 
+      { app_ind d (Symbol op) }
+  |  operator<m> 
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) }
+  |  limits_operator<m> 
+      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) }
 
 symbol_name:
     ([^' ''{''}''\t''\n''\r''\\''#']+)<sym>
@@ -1192,7 +1209,7 @@ atomelt:
     @{ ([Ignore], []), 
        [Local_data { dyp.local_data with env_macros = (w, o)::dyp.local_data.env_macros }]
      }
-  | "$$" math<m> "$$" { [Math(get_pos_as_string dyp 1, m)], [] }
+  | "$$" math_toplevel<m> "$$" { [Math(get_pos_as_string dyp 1, m)], [] }
   | "\\Verbose_Changes" 
     @{ ([Ignore], []), [Local_data { dyp.local_data with verbose = true }] }
   | "\\cr" { [Ignore], [] }
