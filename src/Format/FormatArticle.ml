@@ -114,6 +114,13 @@ module Env_hypothesis=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [tT ("Hypothesis "^num^"."); (tT " ")]
    end)
+module Env_remark=Default.Make_theorem
+  (struct
+    let refType="remark"
+    let counter="remark"
+    let counterLevel=0
+    let display num=alternative Bold [tT ("Remark "^num^"."); (tT " ")]
+   end)
 
 (* module Env_proof=Default.Proof *)
 
