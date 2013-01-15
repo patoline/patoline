@@ -1497,7 +1497,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	raw_edge (clip :: style) s e underlying_curve
 
       let makes style edge_list = 
-	List.map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
+	List.rev_map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
 
       let head_moustache info params = 
 	(* let _ = begin  *)
@@ -1800,9 +1800,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	node, m
 
       let make () = 
-	let contents = List.fold_right (fun gentity res -> List.rev_append gentity.contents res)
-	     !stack
+	let contents = List.fold_left (fun res gentity -> List.append gentity.contents res)
 	     []
+	     !stack
 	in
 	let fig = Box.drawing_inline contents
 	in

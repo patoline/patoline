@@ -1,0 +1,61 @@
+(*
+  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+
+  This file is part of Patoline.
+
+  Patoline is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Patoline is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
+*)
+\Caml(open Diagrams)
+
+\diagram(
+
+      let m,ms = Matrix.(matrix [centers 10. 20.] [[
+	([], <<$C$>>); 
+	([], <<$C_1$>>)
+	];[
+	([], <<$C_2$>>);
+	([], <<$CD$>>)
+      ]])
+
+
+	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	       ([], ms.(0).(0), [], ms.(1).(1));
+	     ])
+	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	       ([], ms.(0).(1), [], ms.(1).(0));
+	     ])
+)
+\diagram(
+      let m,ms = Matrix.(matrix [centers 10. 20.] [[
+	([], <<$C$>>); 
+	([], <<$C_1$>>)
+	];[
+	([], <<$C_2$>>);
+	([], <<$CD$>>)
+      ]])
+
+
+	     let _ = Edge.(edges [arrow;draw;foreground 1.] [
+	       ([], ms.(0).(0), [], ms.(1).(1));
+	       ([], ms.(0).(1), [], ms.(1).(0))
+	     ])
+
+
+ let a = Node.(node [anchor `Base;circle;fill white;draw;at (30.,30.)] <<a>>) 
+ let b = Node.(node [anchor `Base;circle;fill white;draw;at (30.,30.)] <<b>>) 
+
+
+
+)
