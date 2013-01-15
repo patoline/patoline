@@ -1497,7 +1497,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	raw_edge (clip :: style) s e underlying_curve
 
       let makes style edge_list = 
-	List.rev_map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
+	List.map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
 
       let head_moustache info params = 
 	(* let _ = begin  *)
@@ -1791,7 +1791,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let edges style edge_list = 
 	let l = Edge.makes style edge_list in
-	stack := l @ !stack ;
+	stack := List.rev_append l !stack ;
 	l
 
       let matrix style lines = 
