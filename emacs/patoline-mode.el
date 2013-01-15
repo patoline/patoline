@@ -61,8 +61,9 @@
 
 (defun patoline-compile-format ()
   (let
-      ((el (if patoline-compile-edit-link "--edit-link" "")))    
-    (format "patoline %s --driver %s \"%%s\"" el patoline-compile-driver)))
+      ((el (if patoline-compile-edit-link "--edit-link" ""))
+       (dr (if (string= patoline-compile-driver "-c") "" "--driver")))    
+    (format "patoline %s %s %s \"%%s\"" el dr patoline-compile-driver)))
   
 (defvar patoline-compile-edit-link
   t
@@ -73,8 +74,8 @@
   "Patoline driver to use when compiling (Pdf, Bin, ...)")
 
 (defvar patoline-drivers-list
-  '("Pdf" "Bin" "SVG" "Html" "DriverCairo" "Image")
-  "List of patoline supported driver")
+  '("Pdf" "Bin" "SVG" "Html" "DriverCairo" "Image" "-c")
+  "List of patoline supported drivers")
 
 (defvar patoline-options-list
   '(("Edtion link" . 'patoline-compile-edit-link))
