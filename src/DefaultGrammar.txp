@@ -55,11 +55,11 @@
 \Add_right{\rceil ⌉}(List.map (MathFonts.asana "\\right_ceiling") [975;3331;3332;3333])
 \Add_left{\lfloor ⌊}(List.map (MathFonts.asana "\\left_floor") [976;3334;3335;3336])
 \Add_right{\rfloor ⌋}(List.map (MathFonts.asana "\\right_floor") [977;3337;3338;3339])
-\Add_left{\left_white_square_bracket ⟦} (List.map2
+\Add_left{\left_white_square_bracket \llbracket ⟦} (List.map2
 				     (fun g g' -> vkern_as (MathFonts.asana "\\left_white_square_bracket" g)
 				          (MathFonts.asana "[" g'))
 				      [3320;3321;3322;3323] [61;3340;3341;3342])
-\Add_right{\right_white_square_bracket ⟧} (List.map2
+\Add_right{\right_white_square_bracket \rrbracket ⟧} (List.map2
 				     (fun g g' -> vkern_as (MathFonts.asana "\\left_white_square_bracket" g)
 				          (MathFonts.asana "[" g'))
 				      [3324;3325;3326;3327] [63;3343;3344;3345] )
