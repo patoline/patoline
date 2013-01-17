@@ -37,4 +37,4 @@ obj_parser.p.cmx:obj_parser.cmi
 	$(OCAMLC) -c -o $@ $<
 
 clean:
-	rm -Rf *~ *.o *.cmx[aoi] *.cmxa *.a
+	rm -Rf *~ *.o *.cm[xaoi] *.cmxa *.a
