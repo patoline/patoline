@@ -138,8 +138,17 @@ let rec bezier_of_boxes=function
         (List.map (fun (x,y)->Array.map (fun xx->g.glyph_x+.xx *. g.glyph_size/.1000.) x,
                      Array.map (fun xx->g.glyph_y+.xx *. g.glyph_size/.1000.) y)
            (List.concat out)) @ (bezier_of_boxes s)
-  | Path (_,p)::s->
-      (List.concat (List.map Array.to_list p))@(bezier_of_boxes s)
+  | Path (param,p)::s->
+    let l = List.concat (List.map Array.to_list p) in
+    if param.strokingColor <> None then (
+      let lw = param.lineWidth /. 2.0 in
+      let l1 = List.map (fun (xa, ya) -> Array.map (fun x -> x +. lw) xa, ya) l in
+      let l2 = List.map (fun (xa, ya) -> Array.map (fun x -> x -. lw) xa, ya) l in
+      let l3 = List.map (fun (xa, ya) -> xa, Array.map (fun x -> x +. lw) ya) l in
+      let l4 = List.map (fun (xa, ya) -> xa, Array.map (fun x -> x -. lw) ya) l in
+      l1@l2@l3@l4@(bezier_of_boxes s))
+    else
+      l@(bezier_of_boxes s)
   | _::s->bezier_of_boxes s
 
 let adjust_space ?(absolute=false) env target minimum box_left box_right =

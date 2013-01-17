@@ -154,10 +154,10 @@ let default_env=
       limit_subscript_distance= 0.15;
       limit_superscript_distance= 0.15;
       invisible_binary_factor = 1.2;
-      open_dist=0.15;
-      close_dist=0.15;
-      left_op_dist = 0.25;
-      right_op_dist = 0.25;
+      open_dist=0.2;
+      close_dist=0.2;
+      left_op_dist = 0.35;
+      right_op_dist = 0.35;
       sqrt_dist=0.1;
       kerning=true;
       precise_kerning= 1e-2;
@@ -169,7 +169,7 @@ let default_env=
       op_limits_tolerance = 0.75;
       punctuation_factor = 0.66;
       optical_alpha = 3.1416 /. 4.;
-      optical_beta = 1. /. 2.;
+      optical_beta = 0.33;
    }
 
 let msubst m x=List.map (fun x->try

@@ -242,9 +242,9 @@ module MakeFormat (D:Document.DocumentStructure)
 	  show_boxes=false;
 	  show_frames=false;
  	  adjust_optical_alpha=3.1416 /. 4.;
-	  adjust_optical_beta=0.5;
+	  adjust_optical_beta=0.2;
 	  adjust_epsilon=5e-2;
-	  adjust_min_space=1./.10.;
+	  adjust_min_space=1./.9.;
        }
 
 end
