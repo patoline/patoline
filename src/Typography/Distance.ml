@@ -64,7 +64,8 @@ let dot_prod (x,y) (x',y') =
 
 let norm2 v = dot_prod v v
 
-let near p q = 
+let near p q =
+  p == q || p = q ||
   norm2 (p -- q) /. (max (norm2 p) (norm2 q)) < 1e-9
 
 let norm v = sqrt (norm2 v)

@@ -28,17 +28,17 @@ such a font !
 
 So patoline allows to fix this:
  
-$$〚[[A]]〛$$
+$$⟦[[A]]⟧$$
 
 $$((x+y)) + ((x)) + ((y)) + ((f(x))) + ((f)) + ({.})$$
 
-$$[[(A)]] < 〚[(A)]〛 < [(〚A〛)]$$ 
+$$[[(A)]] < ⟦[(A)]⟧ < [(⟦A⟧)]$$ 
 
 Here we try large sizes, in the last example, the size are not sufficient:
 
-$$〚∫ₐᵇcos(t) d t〛 < [∫ₐᵇcos(t) d t] <  (∫ₐᵇcos(t) d t) + (x) + (1 \over 2)$$
+$$⟦∫ₐᵇcos(t) d t⟧ < [∫ₐᵇcos(t) d t] <  (∫ₐᵇcos(t) d t) + (x) + (1 \over 2)$$
 
-$$〚{∫ₐᵇcos(t) d t}\over x 〛 < [{∫ₐᵇcos(t) d t}\over x] <  ({∫ₐᵇcos(t) d t}\over x) + (x) + (1 \over 2)$$
+$$⟦{∫ₐᵇcos(t) d t}\over x ⟧ < [{∫ₐᵇcos(t) d t}\over x] <  ({∫ₐᵇcos(t) d t}\over x) + (x) + (1 \over 2)$$
 
-$$〚x \over{∫ₐᵇcos(t) d t} 〛 < [x \over{∫ₐᵇcos(t) d t}] <  (x \over {∫ₐᵇcos(t) d t}) + (x) + (1 \over 2)$$
+$$⟦x \over{∫ₐᵇcos(t) d t} ⟧ < [x \over{∫ₐᵇcos(t) d t}] <  (x \over {∫ₐᵇcos(t) d t}) + (x) + (1 \over 2)$$
 
