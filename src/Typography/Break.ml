@@ -364,7 +364,8 @@ module Make (L:Line with type t=Layout.line)=(
               in
               let local_opt=ref [] in
               let extreme_solutions=ref [] in
-              let min_page_before=ref 0 in
+              let max_min_page_before=ref 0 in
+              let min_min_page_before=ref 0 in
               let height_problem=ref true in
 
               let rec fix layouts height n_iter=
@@ -391,7 +392,8 @@ module Make (L:Line with type t=Layout.line)=(
                     let nextParams=parameters.(pi)
                       paragraphs figures lastParameters lastFigures lastUser node nextNode
                     in
-                    min_page_before:=max !min_page_before nextParams.min_page_before;
+                    max_min_page_before:=max !max_min_page_before nextParams.min_page_before;
+                    min_min_page_before:=min !min_min_page_before nextParams.min_page_before;
                     if page nextNode>=page node+nextParams.min_page_before then (
                       if (n_iter>= nextParams.min_lines_before &&
                             n_iter>=lastParameters.min_lines_after) ||
@@ -478,6 +480,7 @@ module Make (L:Line with type t=Layout.line)=(
                             && nextParams.min_page_before<=0
                           in
                           if node_is_orphan then (
+                            (* Printf.fprintf stderr "node is orphan\n"; *)
                             if allow_impossible then (
                               try
                                 let _,_,_,_,_,_,prec,_,_=cur_node in
@@ -494,6 +497,7 @@ module Make (L:Line with type t=Layout.line)=(
                                   )
                             )
                           ) else if nextNode_is_widow then (
+                            (* Printf.fprintf stderr "nextNode is widow\n"; *)
                             if allow_impossible then (
                               try
                                 let _,_,_,_,_,_,prec,_,_=cur_node in
@@ -510,25 +514,33 @@ module Make (L:Line with type t=Layout.line)=(
                                   )
                             )
                           )
-                            else if nextNode.min_width > (nextParams).measure && allow_impossible then (
-                              if (height<=height')  then (
-                                let bad=(lastBadness+.
-                                           badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
-                                           nextNode !bas !max_bas nextParams comp1) in
-                                local_opt:=(nextNode,
-                                            max 0. bad,
-                                            (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
-                                            nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                            else if nextNode.min_width > (nextParams).measure then (
+                              (* Printf.fprintf stderr "nextNode is overfull\n"; *)
+                              if allow_impossible then (
+                                if (height<=height')  then (
+                                  let bad=(lastBadness+.
+                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
+                                             nextNode !bas !max_bas nextParams comp1) in
+                                  local_opt:=(nextNode,
+                                              max 0. bad,
+                                              (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                              nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                                )
                               )
-                            ) else  if nextNode.max_width < (nextParams).measure && allow_impossible then (
-                              if (height<=height')  then (
-                                let bad=(lastBadness+.
-                                           badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
-                                           nextNode !bas !max_bas nextParams comp1) in
-                                local_opt:=(nextNode,
-                                            max 0. bad,
-                                            (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (nextNode,text_line paragraphs nextNode))),
-                                            nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                            ) else  if nextNode.max_width < (nextParams).measure
+                                && (nextNode.lineEnd<Array.length paragraphs.(nextNode.paragraph))
+                            then (
+                              (* Printf.fprintf stderr "nextNode is underfull\n"; *)
+                              if allow_impossible then (
+                                if (height<=height') then (
+                                  let bad=(lastBadness+.
+                                             badness.(nextNode.paragraph) paragraphs figures lastFigures node !haut !max_haut lastParameters comp0
+                                             nextNode !bas !max_bas nextParams comp1) in
+                                  local_opt:=(nextNode,
+                                              max 0. bad,
+                                              (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (nextNode,text_line paragraphs nextNode))),
+                                              nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
+                                )
                               )
                             ) else (
                               if (height<=height') then (
@@ -564,8 +576,8 @@ module Make (L:Line with type t=Layout.line)=(
                   in
                   List.iter make_next_node (compl);
                   if !local_opt=[] && !extreme_solutions=[] then
-                    if frame_page layout<=page node+1+max lastParameters.min_page_after !min_page_before then (
-                      if height<(fst layout).frame_y0 then (
+                    if frame_page layout<=page node+1+max lastParameters.min_page_after !max_min_page_before then (
+                      if height<(fst layout).frame_y0 || !min_min_page_before>0 then (
                         let np=new_page.(pi) layout in
                         (* Printf.fprintf stderr "new_page (2)\n";flush stderr; *)
                         fix (np::layouts) (fst np).frame_y1 (n_iter+1)
@@ -573,7 +585,6 @@ module Make (L:Line with type t=Layout.line)=(
                         let next_h=new_line.(pi) node lastParameters
                           node lastParameters layout height
                         in
-                        (* Printf.fprintf stderr "next_acceptable %f %f\n" height next_h;flush stderr; *)
                         fix layouts
                           next_h
                           (n_iter+1)
