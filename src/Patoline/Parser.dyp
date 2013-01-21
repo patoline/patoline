@@ -999,7 +999,7 @@ math:
   | math(<sum)<b> postfix<_,op,d>
       { app_ind d (Postfix(3,b,true,op)) } sum
   | math(<=accent)<b> accent<_,op,d>
-      { Postfix(3,b,true,op) } accent
+      { Postfix(5,b,false,op) } accent
   | math(<=prod)<a> product_like<_,op,d> math(<prod)<b> 
       { app_ind d (Binary(3, a, false, op, false, b)) } prod
   | math(<=prod)<a> math(<prod)<b>
