@@ -167,6 +167,11 @@ let adjust_space ?(absolute=false) env target minimum box_left box_right =
 
   if profile_left = [] || profile_right = [] then 0.0 else
 
+  (* translation for better precision *)
+  let sm = List.fold_left (fun acc (x, y) -> min acc x) max_float profile_left in
+  let profile_left = List.map (fun (x, y) -> (x -. sm, y)) profile_left in
+  let profile_right = List.map (fun (x, y) -> (x -. sm, y)) profile_right in
+
   let delta =
     let (x0_l,y0_l,x1_l,y1_l)=bounding_box_kerning box_left in
     x1_l -. x0_l
