@@ -104,16 +104,21 @@ module Format=functor (D:Document.DocumentStructure)->(
             let minip,env1=minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
             let minip_title,env2=minipage' {env1 with fontColor=white} (stru_title,[]) in
+            let tx=max
+              (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
+              (minip_title.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
+            in
             let tit=
               if Array.length minip_title>0 then
                 drawing_blit minip.(0) 0.
-                  (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.2.*.margin)
+                  tx
                   minip_title.(0)
               else
                 minip.(0)
             in
 
             let r=1. in
+
             let frame=
               if M.arg1=[] then [
                 Path ({default with close=true},
@@ -122,23 +127,24 @@ module Format=functor (D:Document.DocumentStructure)->(
                           (max mes minip.(0).drawing_nominal_width+.margin,
                            minip.(0).drawing_y1+.margin)]);
               ]
-              else [
+              else
+                [
                 Path ({default with close=true},
                       [rounded_corners ~r
                           (0.,minip.(0).drawing_y0-.margin)
                           (max mes minip.(0).drawing_nominal_width+.margin,
-                           tit.drawing_y1)]);
+                           tx+.minip_title.(0).drawing_y1+.margin)]);
                 Path ({default with fillColor=Some black;strokingColor=None },
                       [rounded_corners ~ne:r ~nw:r
-                          (0.,minip.(0).drawing_y1+.margin)
+                          (0.,tx+.minip_title.(0).drawing_y0-.margin)
                           (max mes minip.(0).drawing_nominal_width+.margin,
-                           tit.drawing_y1)])
+                           tx+.minip_title.(0).drawing_y1+.margin)])
               ]
             in
             let w=max mes (minip.(0).drawing_nominal_width+.margin) in
             let dr={tit with
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(List.map (in_order 1) (tit.drawing_contents w))@frame)
+              drawing_contents=(fun w->(List.map (fun a->translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->[Drawing dr]);Env (fun _->env2)]
           with
@@ -328,7 +334,19 @@ module Format=functor (D:Document.DocumentStructure)->(
         normalLead=Default.defaultEnv.size*.1.3;
         lead=Default.defaultEnv.size*.1.3;
         par_indent=[];
-        new_line=(fun env a b c d e f->min f (a.height-.env.lead));
+        new_line=(fun env node params nextNode nextParams layout height->
+          (* min height (nextNode.height-.env.lead) *)
+          height-.env.lead
+        );
+        new_page=
+        (fun t->
+          let zip=Layout.make_page (slidew,slideh) (frame_top t) in
+          let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
+          let y0=((fst zip).frame_y0+.1.*.slideh/.6.) in
+          let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
+          let y1=((fst zip).frame_y1-.1.*.slideh/.6.) in
+          frame x0 y0 x1 y1 zip
+        )
     }
 
     (* in slides, werbatim with a smaller lead *)
@@ -541,100 +559,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   let reboot',env'=typeset_states 0 !reboot env1 in
                   reboot:=reboot';
-
-                (* On colle chaque paragraphe le plus bas parmi toutes
-                   les possibilités rencontrées. *)
-                (* Position verticale de la première ligne de chaque
-                   paragraphe *)
-                  let par_current=Array.make_matrix (Array.length opts)
-                    (Array.length paragraphs0) infinity
-                  in
-                  for i=0 to Array.length opts-1 do
-                    List.iter (fun l->
-                      if l.line.lineStart=0 then (
-                        par_current.(i).(l.line.paragraph)<-l.line.height;
-                      )
-                    ) opts.(i)
-                  done;
-
-                (* offs.(i) est la différence courante, dans l'état i,
-                   entre la hauteur calculée par l'optimiseur et la
-                   vraie hauteur, pour tous les paragraphes placés
-                   jusque là. *)
-                  let offs=Array.make (Array.length opts) 0. in
-
-                (* par_pos.(p) est la position définitive du paragraphe p. *)
-                  let par_pos=Array.make (Array.length paragraphs0) 0. in
-
-                  for par=0 to Array.length paragraphs0-1 do
-
-                  (* Calculer les offsets après avoir placé le
-                     paragraphe par sur tous les états où il apparaît. *)
-                    let rec max_off i off=
-                      if i>=Array.length opts then off else (
-                        if par_current.(i).(par)<>infinity then
-                          max_off (i+1) (max (par_current.(i).(par)+.offs.(i)) off)
-                        else
-                          max_off (i+1) off
-                      )
-                    in
-                    par_pos.(par)<-max_off 0 0.;
-                  (* Mise à jour des nouvelles positions définitives *)
-                    for i=0 to Array.length opts-1 do
-                      if par_current.(i).(par)<>infinity then
-                        offs.(i)<-offs.(i)+.(par_pos.(par)-.par_current.(i).(par))
-                    done
-                  done;
-
-                  (*  *)
-                  for i=0 to Array.length opts-1 do
-                    opts.(i)<-List.map
-                      (fun l->{ l with
-                        line=
-                          { l.line with
-                            height=l.line.height+.par_pos.(l.line.paragraph)-.
-                              par_current.(i).(l.line.paragraph)
-                          }
-                      })
-                      opts.(i)
-                  done;
-
-                  (* Centrage collectif sur la page, et interligne *)
-                  let linegap=
-                    env0.normalLead/.(phi*.phi)
-                  in
-                  let rec make_lineGaps h l=match l with
-                      []->[]
-                    | l::v->{ l with line={ l.line with height=l.line.height+.h }}::
-                      (make_lineGaps (h+.linegap) v)
-                  in
-                  let rec extrema m0 m1 l=match l with
-                      []->if m0=infinity then 0.,0. else m0,m1
-                    | h::s->
-                      print_text_line paragraphs0 h.line;
-                      let m0',m1'=Box.line_height paragraphs0 figures0 h.line in
-                      extrema (min m0 (m0'-.h.line.height)) (max m1 (m1'-.h.line.height)) s
-                  in
-                  let text_h states=
-                    (* Pour chaque paragraphe, calculer la plus petite marge
-                       depuis le haut de l'écran qu'on aie vu *)
-                    let marges=Array.make (Array.length paragraphs0) infinity in
-                    for i=0 to Array.length states-1 do
-                      let m0,m1=extrema infinity (-.infinity) states.(i) in
-                      let h=hoffset+.max 0. ((slideh-.hoffset-.(m1-.m0))/.2.) in
-                      List.iter (fun l->
-                        if l.line.lineStart=0 && l.line.hyphenStart<0 then
-                          marges.(l.line.paragraph)<-min marges.(l.line.paragraph) h
-                      ) states.(i)
-                    done;
-                    Array.map (List.map (fun l->
-                      { l with
-                        line={l.line with
-                          height=l.line.height+.marges.(l.line.paragraph)}}
-                    )) states
-                  in
-                  let opts=Array.map (make_lineGaps 0.) opts in
-                  let opts=text_h opts in
                   (* Fini *)
 
 
@@ -779,7 +703,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 for j=0 to Array.length pp-1 do
                   let param=pp.(j).line_params
                   and line=pp.(j).line in
-                  let y=h-.line.height in
+                  let y=line.height in
 
                   if line.isFigure then (
                     let fig=figures.(line.lastFigure) in
