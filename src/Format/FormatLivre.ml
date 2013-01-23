@@ -128,6 +128,9 @@ module Env_exercice=Default.Make_theorem
     let counterLevel=0
     let display num=alternative Bold [tT ("Exercice "^num^"."); (tT " ")]
    end)
+    module Env_preuve = Env_gproof (struct 
+      let arg1 = italic [tT "Preuve.";bB (fun env->let w=env.size in [glue w w w])]
+    end)
 
 (* module Env_proof=Default.Proof *)
 
