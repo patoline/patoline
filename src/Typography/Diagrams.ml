@@ -1293,7 +1293,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       (* 	  { info with mainNode = node_info })}) *)
 	  
       let mainNode,main_node_pet = 
-      Pet.register "matrix main node" ~depends:[placement_pet] 
+      Pet.register "matrix main node" ~depends:[make_placement_pet] 
 	(fun pet node_transfos -> 
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    let pdf_start = 0.,0. in
@@ -1893,6 +1893,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  in fun i j -> (widths.(j), heights.(i))
 
 	let array anchors ?vertical_padding:(vpad=fun _ -> 1.) ?horizontal_padding:(hpad=fun _ -> 1.)
+	    ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
 	    (* Mettre la valeur par defaut en ex *)
 	    lines =
 	  let style i j = [Node.anchor (List.nth anchors j)] in
@@ -1911,7 +1912,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 						lines))
 	  in    
 	  math_matrix [Matrix.placement (between_borders vpad hpad style);
-		       Matrix.mainNode [at (0.,0.);anchor `SouthWest]] 
+		       Matrix.mainNode mstyle] 
 	    lines_contents 
 
 
