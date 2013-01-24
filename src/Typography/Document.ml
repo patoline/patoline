@@ -682,10 +682,11 @@ let badness
     )
     (* Badness de couper ici *)
     +. (if node_j.lineEnd<Array.length paragraphs.(node_j.paragraph)
-        && not node_j.isfigure then
+        && not node_j.isFigure then
         match paragraphs.(node_j.paragraph).(node_j.lineEnd) with
             Glue g->g.drawing_break_badness
           | _->0.
+      else 0.0
     )
     (* Différence de compression entre deux lignes consécutives *)
     +. (1000.*.(abs_float (comp_i-.comp_j)))
