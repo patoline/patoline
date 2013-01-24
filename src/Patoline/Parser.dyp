@@ -231,7 +231,7 @@ let add_multi_symbol_rule local_data rule_name rule_constr symbols symbol_value 
   let rule = (rule_name, [ Regexp regexp ], "default_priority", []) in
   let action dyp l =
     match l with
-      [ Lexeme_matched l ] -> rule_constr(symbol_value), []
+      [ Lexeme_matched l ] -> rule_constr(l,symbol_value), []
     | _ -> assert false
   in
   let has_utf8 = ref None in
@@ -804,11 +804,11 @@ var_or_symbol:
 
 left:
    "\\left" right<d> { d }
-  |"\\left." { "[]" }
+  |"\\left." { "", "[]" }
 
 right:
    "\\right" left<d> { d }
-   |"\\right." { "[]" }
+  |"\\right." { "", "[]" }
  
 
 addition_like:
@@ -946,7 +946,7 @@ math:
       { Fun(name) } atom
   | (num) <num> 
       {Num num } atom
-  | left<op> math<a> right<cl>
+  | left<_,op> math<a> right<_,cl>
       { Delim(op,a,cl) } atom
 
   | "{" math<a> "}"
@@ -1020,14 +1020,16 @@ math:
   | "{" symbol_only<s> "}"
       { s } atom
 
-/* Contournement d'un bug de dypgen */
+/* Contournement d'un bug de dypgen (il semble) si on met addition_like dans symbol_only */
   |  "{" addition_like<_,op,d>  "}"
       { app_ind d (Symbol op) } atom
 
-  | "{" left<m> "}"
-      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
-  | "{" right<m> "}"
-      { (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
+  | "{" left<l,m> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup;
+        (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
+  | "{" right<l,m> "}"
+      { if StrSet.mem l dyp.local_data.infixes then raise Giveup;
+        (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | symbol<_,name,d>
       { app_ind d (Symbol(name)) } atom
 
@@ -1046,7 +1048,7 @@ symbol_only:
       { app_ind d (Symbol op) }
   |  connector<_,op,d> 
       { app_ind d (Symbol op) }
-  |  relation<_,op,d> 
+  |  relation<l,op,d> 
       { app_ind d (Symbol op) }
   |  quantifier<_,op,d> 
       { app_ind d (Symbol op) }
@@ -1172,25 +1174,25 @@ atomelt:
     @{ add_symbol_rule dyp.local_data "accent" (fun x -> Obj_accent x) names value }
   | "\\Add_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "operator" (fun x -> Obj_operator x) names value }
+    @{ add_multi_symbol_rule dyp.local_data "operator" (fun (_,x) -> Obj_operator x) names value }
   | "\\Add_limits_operator" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "limits_operator" (fun x -> Obj_limits_operator x) names value }
+    @{ add_multi_symbol_rule dyp.local_data "limits_operator" (fun (_,x) -> Obj_limits_operator x) names value }
   | "\\Add_symbol" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_def<value>
     @{ add_symbol_rule dyp.local_data "symbol" (fun x -> Obj_symbol x) names value }
   | "\\Add_left" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) names value }
+    @{ add_multi_symbol_rule dyp.local_data "left" (fun (l,x) -> Obj_left (l,x)) names value }
   | "\\Add_left" "{" "\\{"<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "left" (fun x -> Obj_left x) [names] value }
+    @{ add_multi_symbol_rule dyp.local_data "left" (fun (l,x) -> Obj_left (l,x)) [names] value }
   | "\\Add_right" "{" [ ['\\' -]?<s> symbol_name<w> { if s = None then w else "\\"^w } ]*<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) names value }
+    @{ add_multi_symbol_rule dyp.local_data "right" (fun (l,x) -> Obj_right (l,x)) names value }
   | "\\Add_right" "{" "\\}"<names> 
     "}" symbol_defs<value>
-    @{ add_multi_symbol_rule dyp.local_data "right" (fun x -> Obj_right x) [names] value }
+    @{ add_multi_symbol_rule dyp.local_data "right" (fun (l,x) -> Obj_right (l,x)) [names] value }
   | "\\Add_combining" "{" (utf8_char)<symbol> "}" "{" MACRO<m> "}"
     @{ add_combining_symbol dyp.local_data symbol m }
   | "\\Configure_word_macro" "{" '\\' - symbol_name<w> "}" "{" macro_options<o> "}"
