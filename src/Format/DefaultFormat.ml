@@ -524,7 +524,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 	  adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *)
 	  adjust_epsilon=5e-2;
 	  adjust_min_space=1./.9.;
-
+	  math_break_badness = 250.0; (* testé juste sur tests/test_break_badness *)
         }
 
 

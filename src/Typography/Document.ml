@@ -219,6 +219,7 @@ and environment={
   adjust_optical_beta:float;
   adjust_epsilon:float;
   adjust_min_space:float;
+  math_break_badness:float; (* pas dans l'environement math, car aucun sens en dehors du TextStyle *)
 }
 
 (** {3 Contents} *)

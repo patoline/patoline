@@ -246,7 +246,14 @@ let rec contents=function
   | _->""
 
 
-let rec draw env_stack mlist =
+type draw_env = {
+  depth : int;
+  prio : int;
+}
+
+let dincr e = { depth = e.depth + 1; prio = 0 }
+  
+let rec draw draw_env env_stack mlist =
   let env=match env_stack with []->assert false | h::s->h in
   let style = env.mathStyle in
   let mathsEnv=env_style env.mathsEnvironment style in
@@ -255,13 +262,13 @@ let rec draw env_stack mlist =
 
         []->[]
       | Glue x::s->(
-	  let right=draw env_stack s in
-	  Box.Glue x :: right)
+	  let right=draw draw_env env_stack s in
+	  Box.Glue x :: right) (* in this case, if you want a badness, give it *)
       | Scope l::s->(
-          (draw env_stack (l env style))@(draw env_stack s)
+          (draw draw_env env_stack (l env style))@(draw draw_env env_stack s)
         )
       | Env f::s->
-          draw (f (List.hd env_stack)::env_stack) s
+          draw draw_env (f (List.hd env_stack)::env_stack) s
       | Ordinary n::s->(
           (* attacher les indices et les exposants n'est pas
              complètement trivial. on utilise la règle de Knuth pour
@@ -316,10 +323,10 @@ let rec draw env_stack mlist =
                 in
 
                 let sub_env=drop (List.length env_stack-1) env_stack in
-                let a=draw_boxes env (draw (superStyle style sub_env) n.superscript_right) in
-                let b=draw_boxes env (draw (superStyle style sub_env) n.superscript_left) in
-                let c=draw_boxes env (draw (subStyle style sub_env) n.subscript_right) in
-                let d=draw_boxes env (draw (subStyle style sub_env) n.subscript_left) in
+                let a=draw_boxes env (draw (dincr draw_env) (superStyle style sub_env) n.superscript_right) in
+                let b=draw_boxes env (draw (dincr draw_env) (superStyle style sub_env) n.superscript_left) in
+                let c=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_right) in
+                let d=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
                 let bb=Array.map (fun l->bounding_box [Path (OutputCommon.default, [Array.of_list l])]) bezier in
 
@@ -409,7 +416,7 @@ let rec draw env_stack mlist =
                                drawing_contents=(fun _->List.map (translate (-.a0) 0.) dr) }) ]
               ) else
                 nucleus
-        )@(draw env_stack s)
+        )@(draw draw_env env_stack s)
 
       | Binary b::s->(
 
@@ -423,6 +430,11 @@ let rec draw env_stack mlist =
           in
           let priorities=mathsEnv.priorities in
           let prio=find_priority (Binary b) in
+	  let draw_env = 
+	    if b.bin_priority > draw_env.prio then 
+	      { depth = draw_env.depth + 1; prio = b.bin_priority; }
+	    else draw_env
+	  in
           let fact=
               (priorities.(prio) -. priorities.(b.bin_priority))
               /.priorities.(b.bin_priority)
@@ -431,8 +443,8 @@ let rec draw env_stack mlist =
 	      Display | Display' | Text | Text'-> mathsEnv.priority_unit
 	    | _ -> mathsEnv.priority_unit /. 1.5
 	  in
-	  let bin_left = draw env_stack b.bin_left in
-	  let bin_right = draw env_stack b.bin_right in
+	  let bin_left = draw draw_env env_stack b.bin_left in
+	  let bin_right = draw draw_env env_stack b.bin_right in
 	  let box_left = draw_boxes env bin_left in
 	  let box_right = draw_boxes env bin_right in
           let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning box_right in
@@ -448,7 +460,7 @@ let rec draw env_stack mlist =
 		  let gl0=match gl0 with
 		      Box.Glue x->Drawing
                         { x with
-                          drawing_badness=(fun w->100.*.(knuth_h_badness dist w))
+                          drawing_badness=(fun w->100.*.(knuth_h_badness dist w));
                         }
 		    | x->assert false
 		  in
@@ -460,7 +472,7 @@ let rec draw env_stack mlist =
 
 		let space = (mathsEnv.mathsSize*.env.size)
 		  *. (1.+.fact*.fact) *. priorities.(b.bin_priority) *. style_factor in
-		let op = draw env_stack [Ordinary op] in
+		let op = draw draw_env env_stack [Ordinary op] in
 		let box_op = draw_boxes env op in
 		let (x0,_,x1,_) = bounding_box_full box_op in
 		let (x0',_,x1',_) = bounding_box_kerning box_op in
@@ -513,7 +525,8 @@ let rec draw env_stack mlist =
 		    match glue dist1 dist1 dist1 with
 		        Box.Glue x->
 		          [Box.Glue { x with
-                            drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w))
+                            drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w));
+			    drawing_break_badness = env.math_break_badness *. (float draw_env.depth)
                           }]
 		      | x->assert false
                   )
@@ -522,7 +535,7 @@ let rec draw env_stack mlist =
                 bin_left@
                   gl0@op@gl1@
                   bin_right
-      )@(draw env_stack s)
+      )@(draw draw_env env_stack s)
 
       | (Fraction f)::s->(
 
@@ -533,8 +546,8 @@ let rec draw env_stack mlist =
           mathsEnv.mathsSize*.env.size*.(Fonts.glyph_y1 x +. Fonts.glyph_y0 x +.ln.lineWidth)/.2000.
         in
 
-        let ba=draw_boxes env (draw (numeratorStyle style env_stack) f.numerator) in
-        let bb=draw_boxes env (draw (denominatorStyle style env_stack) f.denominator) in
+        let ba=draw_boxes env (draw (dincr draw_env) (numeratorStyle style env_stack) f.numerator) in
+        let bb=draw_boxes env (draw (dincr draw_env) (denominatorStyle style env_stack) f.denominator) in
           let x0a,y0a,x1a,y1a=bounding_box ba in
           let x0b,y0b,x1b,y1b=bounding_box bb in
           let x0a',y0a',x1a',y1a'=bounding_box_full ba in
@@ -583,7 +596,7 @@ let rec draw env_stack mlist =
                                                      [ [|line (0.,hx) (w,hx)|] ]) ])@
                                              (List.map (translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
                                              (List.map (translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
-                                        ) }) :: (draw env_stack s)
+                                        ) }) :: (draw draw_env env_stack s)
         )
       | Operator op::s ->(
 
@@ -596,8 +609,8 @@ let rec draw env_stack mlist =
 
           let check_inf x=if x= -.infinity || x=infinity then 0. else x in
 
-          let left=draw_boxes env (draw env_stack op.op_left_contents) in
-          let right=draw_boxes env (draw env_stack op.op_right_contents) in
+          let left=draw_boxes env (draw (dincr draw_env) env_stack op.op_left_contents) in
+          let right=draw_boxes env (draw (dincr draw_env) env_stack op.op_right_contents) in
           let (x0_r_,y0_r_,x1_r_,y1_r_)=bounding_box right in
           let (x0_r,y0_r,x1_r,y1_r)=(check_inf x0_r_,
                                      check_inf y0_r_,
@@ -647,11 +660,11 @@ let rec draw env_stack mlist =
                 else
                   op', []
               in
-              let drawn_op=draw_boxes env (draw env_stack [Ordinary op'']) in
+              let drawn_op=draw_boxes env (draw (dincr draw_env) env_stack [Ordinary op'']) in
               let x0,y0,x1,y1=bounding_box drawn_op in
 
-              let ba=draw_boxes env (draw (superStyle style env_stack) sup) in
-              let bb=draw_boxes env (draw (subStyle style env_stack) sub) in
+              let ba=draw_boxes env (draw (dincr draw_env) (superStyle style env_stack) sup) in
+              let bb=draw_boxes env (draw (dincr draw_env) (subStyle style env_stack) sub) in
 
               let x0a_,y0a_,x1a_,y1a_=bounding_box ba in
               let x0b_,y0b_,x1b_,y1b_=bounding_box bb in
@@ -714,7 +727,7 @@ let rec draw env_stack mlist =
                            (List.map (translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
-            ) else draw env_stack [Ordinary op_noad]
+            ) else draw (dincr draw_env) env_stack [Ordinary op_noad]
           in
 
 	  let box_op = draw_boxes env op_noad in
@@ -763,18 +776,20 @@ let rec draw env_stack mlist =
                  drawing_badness=(fun _->0.);
                  drawing_break_badness=0.;
                  drawing_contents=(fun _-> right)}])
-              @(draw env_stack s)
+              @(draw draw_env env_stack s)
         )
       | Decoration (rebox, inside) :: s ->(
-          (rebox env style ((draw env_stack inside))) @ (draw env_stack s)
+          (rebox env style ((draw (dincr draw_env) env_stack inside))) @ (draw draw_env env_stack s)
       )
 
       | (Custom m) :: s ->
 	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
 	let module M = (val (m) : Custom with type u = Document.environment math list) in
 	M.C.draw env style 
-	  (M.C.map (fun env style -> draw ({env with mathStyle = style} :: env_stack)) env style M.content)  
-	@ (draw env_stack s)
+	  (M.C.map (fun env style -> draw (dincr draw_env) ({env with mathStyle = style} :: env_stack)) env style M.content)  
+	@ (draw draw_env env_stack s)
+
+let draw = draw { prio = 0; depth = 0 }
 
 let kdraw env_stack mlist =
   (* ajustement de drawing_width_fixed à la fin: peu mieux faire *)
