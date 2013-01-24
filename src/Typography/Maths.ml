@@ -43,7 +43,7 @@ module type CustomT = sig
     type 'a t
     (* map sera utilisé pour déssiner les maths à l'intérieur du type et donc utilisé avec
        le type ('a math list -> box list) -> 'a math list -> box list *)
-    val map : ('a -> 'b) -> 'a t -> 'b t
+    val map : (Document.environment -> Mathematical.style -> 'a -> 'b) -> (Document.environment -> Mathematical.style -> 'a t -> 'b t)
     (* puis le résultat sera desiner avec cette fonction perso *)
     val draw : Document.environment -> Mathematical.style -> box list t -> box list
   end
@@ -769,14 +769,15 @@ let rec draw env_stack mlist =
           (rebox env style ((draw env_stack inside))) @ (draw env_stack s)
       )
 
-      | Custom m :: s ->
+      | (Custom m) :: s ->
 	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
 	let module M = (val (m) : Custom with type u = Document.environment math list) in
-	M.C.draw env style (M.C.map (draw env_stack) M.content)  @ (draw env_stack s)
+	M.C.draw env style 
+	  (M.C.map (fun env style -> draw ({env with mathStyle = style} :: env_stack)) env style M.content)  
+	@ (draw env_stack s)
 
 let kdraw env_stack mlist =
   (* ajustement de drawing_width_fixed à la fin: peu mieux faire *)
-   let env=match env_stack with []->assert false | h::s->h in
    let l =draw env_stack mlist in
    let gl = match glue 0.0 0.0 0.0 with
        Box.Glue x -> Box.Drawing { x with drawing_width_fixed = false;}
