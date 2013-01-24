@@ -37,10 +37,11 @@ type box=
   | Empty
 
 and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
-                   drawing_max_width:float; 
+                   drawing_max_width:float;
 		   drawing_width_fixed: bool; drawing_adjust_before: bool;
 		   drawing_y0:float; drawing_y1:float;
                    drawing_badness : float -> float;
+                   drawing_break_badness : float;
                    drawing_contents:float -> OutputCommon.raw list }
 
 
@@ -74,6 +75,7 @@ let drawing ?offset:(offset=0.) cont=
       drawing_y0=offset;
       drawing_y1=offset+.d-.b;
       drawing_badness=(fun _->0.);
+      drawing_break_badness=0.;
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
@@ -88,6 +90,7 @@ let drawing_inline ?offset:(offset=0.) cont=
       drawing_y0=offset+.b;
       drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
+      drawing_break_badness=0.;
       drawing_contents=(fun _->List.map (translate (-.a) offset) cont)
     }
 
@@ -101,6 +104,7 @@ let drawing_blit a x0 y0 b=
       drawing_adjust_before = false;
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
+      drawing_break_badness=0.;
       drawing_badness=(fun w->
                          let fact=w/.(w1-.w0) in
                            a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)
@@ -183,6 +187,7 @@ let glue a b c=
          drawing_y0=infinity; drawing_y1= -.infinity;
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
+         drawing_break_badness=0.;
          drawing_badness=knuth_h_badness b }
 
 let rec resize l=function
@@ -197,6 +202,7 @@ let rec resize l=function
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
+                       drawing_break_badness=0.;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
                        drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
                    }
@@ -208,6 +214,7 @@ let rec resize l=function
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
+                       drawing_break_badness=0.;
                        drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
                        drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
                    }

@@ -143,6 +143,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             let w=max mes (minip.(0).drawing_nominal_width+.margin) in
             let dr={tit with
+              drawing_y1=tit.drawing_y1+.margin;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
               drawing_contents=(fun w->(List.map (fun a->translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
             } in

@@ -484,6 +484,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                   drawing_y0=0.;drawing_y1=0.;
                                   drawing_nominal_width= 4.0 *. phi;
                                   drawing_contents=(fun _->[]);
+                                  drawing_break_badness=0.;
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate_dict "hyph-en-us.hdict";
           counters=StrMap.empty;
@@ -771,6 +772,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 		  drawing_adjust_before = false;
                   drawing_y0= !min_y;
                   drawing_y1= !max_y;
+                  drawing_break_badness=0.;
                   drawing_badness=(fun _->0.);
                   drawing_contents=(fun _-> List.map (OutputCommon.translate 0. 0.) !contents)
                 }]
@@ -1067,6 +1069,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 					 drawing_adjust_before = false;
                                          drawing_max_width=tiret_w env;
                                          drawing_y0=y; drawing_y1=y;
+                                         drawing_break_badness=0.;
                                          drawing_badness=(fun _->0.);
                                          drawing_contents=(fun _->
                                                              [OutputCommon.Path
@@ -1706,6 +1709,7 @@ module MathsFormat=struct
 		    drawing_width_fixed = true;
 		    drawing_adjust_before = false;
 		    drawing_contents=(fun _->[]);
+                    drawing_break_badness=0.;
 		    drawing_badness=knuth_h_badness x }])]
 
     let oline a=
@@ -1778,6 +1782,7 @@ module MathsFormat=struct
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
+                    drawing_break_badness=0.;
                     drawing_contents=
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with
@@ -1829,6 +1834,7 @@ module MathsFormat=struct
                     drawing_y0=y0_;
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
+                    drawing_break_badness=0.;
                     drawing_contents=
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with

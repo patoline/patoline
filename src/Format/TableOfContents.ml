@@ -96,6 +96,7 @@ let centered parameters str tree _=
 		      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
+                      drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
                       drawing_contents=(fun _->cont)
                     }::(glue 0. 0. 0.)::chi
@@ -181,6 +182,7 @@ let these parameters str tree max_level=
 		      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
+                      drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
                       drawing_contents=
                         (fun _->
@@ -270,6 +272,7 @@ let slides parameters str tree max_level=
 		      drawing_adjust_before = false;
                       drawing_y0=b;
                       drawing_y1=d;
+                      drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
                       drawing_contents=
                         (fun _->
