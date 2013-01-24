@@ -37,6 +37,26 @@ let env_style env style=match style with
   | ScriptScript->env.(6)
   | ScriptScript'->env.(7)
 
+(* M%odule définissant un type 'a t étendant les math
+   le paramètre 'a doit être compris comme une liste de math ('a math list) *)
+module type CustomT = sig
+    type 'a t
+    (* map sera utilisé pour déssiner les maths à l'intérieur du type et donc utilisé avec
+       le type ('a math list -> box list) -> 'a math list -> box list *)
+    val map : ('a -> 'b) -> 'a t -> 'b t
+    (* puis le résultat sera desiner avec cette fonction perso *)
+    val draw : Document.environment -> Mathematical.style -> box list t -> box list
+  end
+
+(* Ce module contient juste une valeur de type u C.t pour un module C:Custom qui sera par 
+   contrainte en fait de type 'a math list C.t dans la pratique, cf la definition
+   du constructeur Custom ci-dessous *)
+module type Custom = sig
+  type u
+  module C : CustomT
+  val content : u C.t
+end
+
 type ('a,'b) noad= { mutable nucleus: 'b;
                 mutable subscript_left:'a math list; mutable superscript_left:'a math list;
                 mutable subscript_right:'a math list; mutable superscript_right:'a math list }
@@ -60,6 +80,7 @@ and 'a math=
   | Fraction of 'a fraction
   | Operator of 'a operator
   | Decoration of (Document.environment -> Mathematical.style -> box list -> box list)*('a math list)
+  | Custom of (module Custom with type u = 'a math list)
 
 let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
 
@@ -83,6 +104,17 @@ let op_nolimits a b c=
 (*     glyph_x=0.;glyph_y=0.; glyph_size=size; glyph_color=black; *)
 (*     glyph=Fonts.loadGlyph font { empty_glyph with glyph_index=Fonts.glyph_of_char font c} *)
 (*   } *)
+
+(* petit functeur bien utile pour utiliser Custom *)
+module Mk_Custom = functor (C : CustomT) -> struct
+  let custom x = 
+    let module M = struct
+      type u = Document.environment math list
+      module C = C
+      let content = x
+    end in
+    Custom (module M : Custom with type u = Document.environment math list)
+end
 
 
 let cramp=function
@@ -735,7 +767,12 @@ let rec draw env_stack mlist =
         )
       | Decoration (rebox, inside) :: s ->(
           (rebox env style ((draw env_stack inside))) @ (draw env_stack s)
-        )
+      )
+
+      | Custom m :: s ->
+	(* syntaxe lourde pour OCaml 3.12 ... 4.00 serait mieux ici *)
+	let module M = (val (m) : Custom with type u = Document.environment math list) in
+	M.C.draw env style (M.C.map (draw env_stack) M.content)  @ (draw env_stack s)
 
 let kdraw env_stack mlist =
   (* ajustement de drawing_width_fixed à la fin: peu mieux faire *)
@@ -1084,4 +1121,12 @@ let make_sqrt env_ style box=
   in
   p
 
-let sqrt x=[Decoration (make_sqrt,x)]
+module CustomSqrt = struct
+  type 'a t = 'a
+  let map f x = f x
+  let draw = make_sqrt
+end
+
+let sqrt x = 
+  let module M = Mk_Custom(CustomSqrt) in
+  [M.custom x]
