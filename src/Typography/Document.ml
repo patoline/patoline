@@ -663,24 +663,32 @@ let badness
         if node_i.hyphenEnd>=0 then infinity else 0.
       )
     in
-      (Badness.h_badness paragraphs params_j.measure node_j comp_j)
-      +. v_bad
-        (* Page pas assez remplie *)
-      +. (if page node_i<>page node_j &&
-            node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
-        (* Cesures *)
-      +. (if node_j.hyphenEnd >=0 then
-          (if node_j.hyphenStart >=0 then
-              1e10
-           else
-              1e8)
-        else
-          (if node_j.hyphenStart >=0 then
-              1e8
-           else
-              0.)
-      )
-      +. (1000.*.(abs_float (comp_i-.comp_j)))
+    (Badness.h_badness paragraphs params_j.measure node_j comp_j)
+    +. v_bad
+    (* Page pas assez remplie *)
+    +. (if page node_i<>page node_j &&
+        node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
+      (* Cesures *)
+    +. (if node_j.hyphenEnd >=0 then
+        (if node_j.hyphenStart >=0 then
+            1e10
+         else
+            1e8)
+      else
+        (if node_j.hyphenStart >=0 then
+            1e8
+         else
+            0.)
+    )
+    (* Badness de couper ici *)
+    +. (if node_j.lineEnd<Array.length paragraphs.(node_j.paragraph)
+        && not node_j.isfigure then
+        match paragraphs.(node_j.paragraph).(node_j.lineEnd) with
+            Glue g->g.drawing_break_badness
+          | _->0.
+    )
+    (* Différence de compression entre deux lignes consécutives *)
+    +. (1000.*.(abs_float (comp_i-.comp_j)))
   )
 
 (** {3 Figures} *)
