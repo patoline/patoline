@@ -26,6 +26,12 @@ open Util
 exception Syntax_Error of Lexing.position * Language.syntax_error
 exception Outdated
 
+let debug_parser = ref false
+
+let give_up () = 
+    if !debug_parser then Printf.printf "give up!\n";
+    raise Giveup
+
 let set_newline nb l =
   let pos = l.lex_curr_p in
   let nb=if pos.pos_cnum=1 then nb-1 else nb in
@@ -749,16 +755,18 @@ leftind:
       { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
 
 subind:
-  | "_" - math_atom<m1> { m1 }
+  | "_" - math_atom<m1> 
+  { if !debug_parser then Printf.printf "_ math_atom in subind.\n";
+    m1 } 
   | subscripts<s> {
       try
-(*        Printf.fprintf stderr "ind: %s\n" s;*)
+        if !debug_parser then Printf.printf "subscript(%s) in subind.\n" s;
         let lexbuf = Dyp.from_string dyp.parser_pilot (s^"#$@#$@") in	
         let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
         match obj with
         | (Obj_allmath docs, _) :: _ -> docs
         | _ -> assert false
-      with _ -> raise Giveup }
+      with _ -> give_up() }
 
 superind:
   | "^" - math_atom<m1> { m1 }
@@ -929,15 +937,18 @@ readmathargs<macro>:
       }
 
 math_atom:
-  | math(<=atom)<m> { m } 
-  | symbol_only<s> { s }
+  | math(<=atom)<m>
+  { if !debug_parser then Printf.printf "math in math_atom.\n"; 
+    m }  
+  | symbol_only<s> 
+  { if !debug_parser then Printf.printf "symbol_only in math_atom.\n";
+    s }
 
 math_toplevel:
   | math<m> { m }
   | symbol_only<s> { s }
   | addition_like<_,op,d> 
       { app_ind d (Symbol op) }
-
 
 math:
    (mathvar)<name>
@@ -1018,24 +1029,26 @@ math:
       { app_ind d (Binary(1, a, true, op, false, b)) } punc
 
   | "{" symbol_only<s> "}"
-      { s } atom
-
-/* Contournement d'un bug de dypgen (il semble) si on met addition_like dans symbol_only */
-  |  "{" addition_like<_,op,d>  "}"
-      { app_ind d (Symbol op) } atom
-
+      { if !debug_parser then Printf.printf "symbol_only in math.\n";	
+        s } atom
+  | "{" addition_like<l,op,d> "}"
+      { if !debug_parser then Printf.printf "{ addition_like(%s) } in symbol_only.\n" l;
+        app_ind d (Symbol op) } atom
   | "{" left<l,m> "}"
       { if StrSet.mem l dyp.local_data.infixes then raise Giveup;
         (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
   | "{" right<l,m> "}"
       { if StrSet.mem l dyp.local_data.infixes then raise Giveup;
         (Symbol (CamlSym (Printf.sprintf "List.hd (%s)" m))) } atom
-  | symbol<_,name,d>
-      { app_ind d (Symbol(name)) } atom
+  | symbol<l,name,d>
+      { 
+      if !debug_parser then Printf.printf "symbol(%s) in math.\n" l;	
+      app_ind d (Symbol(name)) } atom  
 
 symbol_only:
-  |  product_like<_,op,d> 
-      { app_ind d (Symbol op) }
+  |  product_like<l,op,d> 
+      { if !debug_parser then Printf.printf "product_like(%s) in symbol_only.\n" l;	
+        app_ind d (Symbol op) }
   |  prefix<l,op,d> 
       { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
 	app_ind d (Symbol op) }
