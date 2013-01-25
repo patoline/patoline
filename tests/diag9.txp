@@ -1,0 +1,43 @@
+\Caml(
+open Diagrams
+
+let mathsOfDiagram =
+function
+| [] -> assert false
+| B (f,_) :: _ -> begin [Maths.Ordinary (Maths.noad (fun env style -> 
+  let env =         { env with size=env.size*.(Maths.env_style env.mathsEnvironment style).Mathematical.mathsSize }
+  in    	  
+  match f env with
+  | [] -> assert false
+  | [Drawing d] as fig -> fig
+  | (Drawing d) as fig :: _ -> [fig]
+  | _ -> assert false))]
+  end 
+| _ -> assert false
+
+let id x = x
+)
+
+\diagram(
+  let m,ms = Matrix.(matrix [] [[
+  ([],<<A>>) ;   ([],<<B>>) 
+  ];[	    
+  ([],<<A'>>) ;   ([],<<B'>>) 
+  ]])
+)
+
+$C_{C_{\id(mathsOfDiagram <<\diagram(
+  let m,ms = Matrix.(matrix [] [[
+  ([],<<A>>) ;   ([],<<B>>) 
+  ];[	    
+  ([],<<A'>>) ;   ([],<<B'>>) 
+  ]])
+)>>)}}$
+
+$C_{C_{\mathsText(<<HAHA>>)}}$
+
+$C_{\mathsText(<<HAHA>>)}$
+
+$C_{C_{H}}$
+
+$\mathsText(<<HAHA>>)$
