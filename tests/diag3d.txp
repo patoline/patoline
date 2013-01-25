@@ -1,0 +1,77 @@
+(*
+  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+
+  This file is part of Patoline.
+
+  Patoline is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Patoline is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
+*)
+\Caml(
+open Diagrams
+open Proj3d
+)
+
+\Caml(
+let cube projection = <<
+\diagram(
+ let a = Node.(node [anchor `Base;at (project projection (0.,0.,0.))] <<a>>) 
+
+ let b = Node.(node [anchor `Base;at (project projection (20.,0.,0.))] <<b>>) 
+
+ let c = Node.(node [anchor `Base;at (project projection (20.,20.,0.))] <<c>>) 
+
+ let d = Node.(node [anchor `Base;at (project projection (0.,20.,0.))] <<d>>) 
+
+ let a' = Node.(node [anchor `Base;at (project projection (0.,0.,20.))] <<a'>>) 
+
+ let b' = Node.(node [anchor `Base;at (project projection (20.,0.,20.))] <<b'>>) 
+
+ let c' = Node.(node [anchor `Base;at (project projection (20.,20.,20.))] <<c'>>) 
+
+ let d' = Node.(node [anchor `Base;at (project projection (0.,20.,20.))] <<d'>>) 
+
+
+  let asouth = (a.anchor `South)
+  let bsouth = (b.anchor `South)
+
+  let _ = edge Edge.([arrow;draw]) a b
+  let _ = edge Edge.([arrow;draw]) d c
+  let _ = edge Edge.([arrow;draw]) a d
+  let _ = edge Edge.([arrow;draw]) b c
+
+  let _ = edge Edge.([arrow;draw]) a' b'
+  let _ = edge Edge.([arrow;draw]) d' c'
+  let _ = edge Edge.([arrow;draw]) a' d'
+  let _ = edge Edge.([arrow;draw]) b' c'
+
+  let _ = edge Edge.([arrow;draw]) a' a
+  let _ = edge Edge.([arrow;draw]) b' b
+  let _ = edge Edge.([arrow;draw]) c' c
+  let _ = edge Edge.([arrow;draw]) d' d
+
+)>>)
+
+\begin{center}
+\cube(cavaliere60hd)
+\hspace(3.)
+\cube(cavaliere45hd)
+\end{center}
+
+\begin{center}
+\cube({ rot_y45d with origin_transfo_x = 10.; origin_transfo_y = 10.} )
+\hspace(3.)
+\cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.} )
+\end{center}
+
+
