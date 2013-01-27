@@ -314,9 +314,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         | _->tree
       in
 
-      let with_author=match with_institute with
+      let with_author=match tree with
           Node n when not (List.mem_assoc "title already typset" n.node_tags)->(try
-                     let cont=[tT (List.assoc "author" n.node_tags)] in
+                     let cont=[tT (List.assoc "Author" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
                        par_env=(fun env->{env with par_indent=[]});
