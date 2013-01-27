@@ -44,8 +44,8 @@ type amble=Noamble | Separate | Main
 let apply_options n arg opts = 
   let rec fn = function
   [] -> arg
-  | `Arg_pat(i,s)::_ when i = n ->
-    StrMap.find s !Build.macros arg
+  | `Arg_pat(i,s)::l when i = n ->
+    (try StrMap.find s !Build.macros arg with Not_found -> fn l)
   | _::l -> fn l
   in
   fn opts

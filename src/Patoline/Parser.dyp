@@ -717,16 +717,16 @@ mathargs<nb>:
     { (fun ld gr -> let b,l = a ld gr in 
              b, (MathCaml(ld,gr,s,e,txps,pos) :: l)) }
 
-readenvargs<macro>:
+beginenv:
+  BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
       { 
             try	
-      	      get_nbargs macro dyp.local_data.env_macros
-	    with Not_found -> -2
+      	      name, get_nbargs name dyp.local_data.env_macros
+	    with Not_found -> name, -2
       }
 
 topmacro:
-    BEGIN "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}" 
-    - readenvargs{name}<nb> - args{nb}<a>
+    beginenv<name,nb> - args{nb}<a>
       {	let name, args = test_eargs dyp name a in
         Macro(`Begin, name, args, get_eminfo dyp name) }
   | END "{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*)<name> "}"
