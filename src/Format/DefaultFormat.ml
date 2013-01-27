@@ -314,7 +314,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         | _->tree
       in
 
-      let with_author=match tree with
+      let with_author=match with_institute with
           Node n when not (List.mem_assoc "title already typset" n.node_tags)->(try
                      let cont=[tT (List.assoc "Author" n.node_tags)] in
                      let par=Paragraph {
@@ -1081,20 +1081,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                     ]
                 end)
 
-    module type Enumerate_Pattern = sig
-      val arg1 : char * (string -> content list)
-    end
+    type number_kind = 
+      Arabic | AlphaLower | AlphaUpper | RomanLower | RomanUpper
 
+    module type Enumerate_Pattern = sig
+      val arg1 : number_kind * (string -> content list)
+    end
+ 
     module Env_genumerate = functor (Pat:Enumerate_Pattern) ->
       Enumerate(struct
 	let c, f = Pat.arg1
 	let g = match c with
-	    '1' -> string_of_int
-	  | 'a' -> Numerals.alphabetic ~capital:false
-	  | 'A' -> Numerals.alphabetic ~capital:true
-	  | 'i' -> Numerals.roman ~capital:false
-	  | 'I' -> Numerals.roman ~capital:true
-	  | _ -> failwith (Printf.sprintf "bad enumerate pattern &%c" c)
+	    Arabic -> string_of_int
+	  | AlphaLower -> Numerals.alphabetic ~capital:false
+	  | AlphaUpper -> Numerals.alphabetic ~capital:true
+	  | RomanLower -> Numerals.roman ~capital:false
+	  | RomanUpper -> Numerals.roman ~capital:true
 	let from_counter x =
 	  let x = List.hd x + 1 in
 	  f (g x)
