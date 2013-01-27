@@ -1215,7 +1215,7 @@ let rec bezier_of_boxes=function
            (List.concat out)) @ (bezier_of_boxes s)
   | Path (_,p)::s->
       (List.concat (List.map Array.to_list p))@(bezier_of_boxes s)
-  | _::s->Printf.fprintf stderr "ignore\n"; bezier_of_boxes s
+  | _::s-> bezier_of_boxes s
 
 let adjust_width env buf nbuf =
   (* FIXME : à prendre dans l'env *)
