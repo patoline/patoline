@@ -8,8 +8,8 @@
 
 (defconst patoline-font-lock-keywords
   (list (cons "\\\\[a-zA-Z][a-zA-Z0-9]*\\>" 'font-lock-keyword-face)
-        (cons "^[ \t]*===*\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
-        (cons "^[ \t]*---*\\(-[^-]+\\)*[^-]+---*" 'font-lock-doc-face)
+        (cons "^[ \t]*===?=?=?=?=?=?\\([^=]+=\\)*[^=]+===*" 'font-lock-doc-face)
+        (cons "^[ \t]*---?-?-?-?-?-?\\(-[^-]+\\)*[^-]+---*" 'font-lock-doc-face)
         (cons "^[ \t]*===========*" 'font-lock-doc-face)
         (cons "^[ \t]*-----------*" 'font-lock-doc-face)
         (cons "^[ \t]*[=-]>[^\n]*\n[\r \t]*\n" 'font-lock-doc-face)
@@ -104,7 +104,7 @@
   (easy-menu-change
    '("Patoline") "Options"
    (mapcar (lambda (option)
-	     (message "toggle %S %S" (cdr option) (eval (cdr option)))
+;;	     (message "toggle %S %S" (cdr option) (eval (cdr option)))
 	     (vector (car option)
 		     (list 'patoline-toggle-option (cdr option))
 		     ':style 'toggle
@@ -221,7 +221,7 @@
   (interactive)
   (let ((line (line-number-at-pos))
 	(col (- (position-bytes (point)) (position-bytes (line-beginning-position)))))
-    (message  (format "e %d %d\n" line col))
+;;    (message  (format "e %d %d\n" line col))
     (save-excursion
       (select-patoline-view-buffer)
       (if patoline-view-process
@@ -290,11 +290,11 @@
 		      ('string "\\\\?\"")
 		      ('text "\\\\[Cc]aml(\\|>>")
 		      ('math "\\\\[Cc]aml(\\|\\$>"))))
-	(message "back: %S %S %S %S %S"  mode depth (point) subs mmm-patoline-subregions )
+;;	(message "back: %S %S %S %S %S"  mode depth (point) subs mmm-patoline-subregions )
 	(setq ret (search-forward-regexp regexp limit))
 	(let ((m (match-string 0))
 	      (pos (cons (match-beginning 0) (match-end 0))))
-	  (message m)
+;;	  (message m)
 	  (cond 
 	    ((equal m "\\Caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "\\caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
@@ -339,7 +339,7 @@
 	(beg (cdr beg))
 	(end (car end))
 	match-face match-name face front-form back-form)
-    (message "make-region %S %S %S" (plist-get class :submode) beg end)
+;;    (message "make-region %S %S %S" (plist-get class :submode) beg end)
     (setq front-form (regexp-quote (buffer-substring front beg)))
     (setq back-form (regexp-quote (buffer-substring end back)))
     (setq match-face (plist-get class :match-face))
@@ -389,10 +389,10 @@
 (defun mmm-patoline-enable-sub-regions ()
   (if (not mmm-patoline-lock)
       (progn 
-	(message "enable: %S" mmm-patoline-subregions)
+;;	(message "enable: %S" mmm-patoline-subregions)
 	(setq mmm-patoline-lock t)
 	(dolist (args mmm-patoline-subregions)
-	  (message "apply: %S" args)
+;;	  (message "apply: %S" args)
 	  (ignore-errors (apply 'mmm-make-region-by-class args)))
 	(setq mmm-patoline-lock nil)
 	(setq mmm-patoline-subregions nil))))
