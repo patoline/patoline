@@ -42,9 +42,6 @@ let cube projection = <<
  let d' = Node.(node [anchor `Base;at (project projection (0.,20.,20.))] <<d'>>) 
 
 
-  let asouth = (a.anchor `South)
-  let bsouth = (b.anchor `South)
-
   let _ = edge Edge.([arrow;draw]) a b
   let _ = edge Edge.([arrow;draw]) d c
   let _ = edge Edge.([arrow;draw]) a d
@@ -71,7 +68,7 @@ let cube projection = <<
 \begin{center}
 \cube({ rot_y45d with origin_transfo_x = 10.; origin_transfo_y = 10.} )
 \hspace(3.)
-\cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.} )
+\cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.; distance_focale = 55.} )
 \end{center}
 
 
