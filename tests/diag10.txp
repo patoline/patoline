@@ -1,0 +1,23 @@
+\Caml(open Diagrams
+let unit = [])
+
+\begin{center}
+\diagram(
+  let m,ms = array [`East ; `Main ; `West ; `West] 
+  [[    
+  <$subst_{Γ,Δ,A,B} i u$> ; <$=$> ; <$i$> ; <$si \hspace(2.) {i ≤ {\labs Γ\rabs}}$>
+];[
+  <$subst_{Γ,Δ,A,B}  i u$> ; <$=$> ; <$ren_{Γ,(Γ,Δ),A,h} u$> ;
+  <$\mathsText(<<si $i = {\labs Γ \rabs} +1$,>>)$>
+];[
+ [] ; [] ;  [] ; <$\mathsText(<<où $h$ est l'injection évidente>>)$>
+];[
+  <$subst_{Γ,Δ,A,B} i u$> ; <$=$> ; <$i-1$> ; <$si \hspace(2.) {{\labs Γ\rabs} < i}$>
+];[
+  <$subst_{Γ,Δ,A,B}  (t₁ t₂) u$> ; <$=$> ; <$ (subst_{Γ,Δ,A,B} t₁ u) (subst_{Γ,Δ,A,B} t₂ u)$>
+];[
+  <$subst_{Γ,Δ,A,B}  (λ.t) u$> ; <$=$> ; <$λ.(subst_{Γ,(Δ,C),A,D}  t u)$> ;
+<$\mathsText(<<si $B = (C ⇒ D)$.>>)$>
+]]	
+)
+\end{center}
