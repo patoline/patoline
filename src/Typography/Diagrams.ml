@@ -21,6 +21,7 @@ open Document
 module Drivers = OutputCommon
 open OutputCommon
 open Proj3d
+open Geometry
 
 let swap (x,y) = (y,x)
 let pi = 3.14159
