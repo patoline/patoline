@@ -180,11 +180,17 @@
 (* Euler doesn't seem to have all the arrows we might want.
 Wouldn't it be better to take all arrows from Asana-Math??? *)
 
+\Add_arrow{==> \Longrightarrow ⟹}{⟹}
 \Add_arrow{=> \Imply \Rightarrow ⇒}{⇒}
+\Add_arrow{--> \longrightarrow ⟶}{⟶}
 \Add_arrow{-> \imply \rightarrow →}{→}
 \Add_arrow{\ImpliedBy \Leftarrow ⇐}{⇐}
+\Add_arrow{<== \Longleftarrow ⟸}{⟸}
 \Add_arrow{<- \impliedBy \leftarrow ←}{←}
+\Add_arrow{<-- \longleftarrow ⟵}{⟵}
 \Add_arrow{<=> \Equiv \Leftrightarrow ⇔}{⇔}
+\Add_arrow{<==>\Longleftrightarrow ⟺}{⟺}
+\Add_arrow{<--> \longleftrightarrow ⟷}{⟷}
 \Add_arrow{<-> \equiv \leftrightarrow ↔}{↔}
 \Add_arrow{|-> \mapsto ↦}(MathFonts.euler "↦" 243)
 \Add_arrow{<-| \mapsfrom ↤}{↤}
