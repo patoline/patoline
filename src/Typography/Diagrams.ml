@@ -58,6 +58,16 @@ let app_default f x y default =
     | Some res -> res
     | None -> default
 
+let max_list f z l = List.fold_left 
+  (fun res x -> max res (f x))
+  z
+  l
+
+let max_list_list f z ls = 
+  List.fold_left 
+    (fun res l -> max res (max_list f z l))
+    z
+    ls
 
 module Point = struct 
   type t = float * float
@@ -154,6 +164,10 @@ module Curve = struct
     let t = a' -. i_float in
     (i, t)
 
+  let compare_lt (i,t) (j,u) = 
+    let k = compare i j in
+    if k <> 0 then k else 
+      compare t u
 
       let make_quadratic e l ll =
 	(* begin Printf.fprintf stderr "Entering make_quadratic with e = (%f,%f), l = (%f,%f), ll = (%f,%f).\n" *)
@@ -196,15 +210,19 @@ module Curve = struct
 	[[e;xl;l];[l;xr;ll]]	
 
   let intersections bezier1 beziers2 = 
-    let res, _ = List.split(List.flatten (List.map (Bezier.intersect bezier1) beziers2)) in
-    List.map (fun t -> (t,bezier1)) res
+    let _,inters = List.fold_left (fun (i,inters) bezier2_i -> 
+      let inters_i = Bezier.intersect bezier1 bezier2_i in	
+      (succ i, inters @ (List.map (fun (t1,t2) -> (t1,(i,t2,bezier2_i))) inters_i)))
+      (0,[])
+      beziers2
+    in inters
 
   let intersections beziers1 beziers2 = 
     let _, res = 
       List.fold_left
 	(fun (i, res) bezier1 -> 
 	  ((succ i),
-	   (res @ (List.map (fun (t1,t2) -> (i,t1)) (intersections bezier1 beziers2)))))
+	   (res @ (List.map (fun (t1,gt2) -> ((i,t1,bezier1),gt2)) (intersections bezier1 beziers2)))))
 	(0,[])
 	beziers1
     in res
@@ -212,8 +230,8 @@ module Curve = struct
   let latest_intersection beziers1 beziers2 =
     let inters = (intersections beziers1 beziers2) in
     let latest = List.fold_left 
-      (fun yet ((i,t) as candidate) -> match yet with
-	| None -> Some candidate
+      (fun yet ((i,t,_),_) -> match yet with
+	| None -> Some (i,t)
 	| Some (_,_) -> Some (i,t))
       None
       inters
@@ -223,7 +241,7 @@ module Curve = struct
   let earliest_intersection beziers1 beziers2 =
     match (intersections beziers1 beziers2) with
       | [] -> None
-      | (i,t) :: _ -> Some (i,t)
+      | ((i,t,_),_) :: _ -> Some (i,t)
 
   let bezier_evaluate (xs,ys) t = 
     (Bezier.eval xs t, Bezier.eval ys t)
@@ -238,7 +256,9 @@ module Curve = struct
 	  else eval_rec reste (t -. 1.)
     in eval_rec beziers t
 
-  let eval_global beziers lt = eval beziers (global_time beziers lt)
+  let eval_local beziers (i,t) = (* eval beziers (global_time beziers lt) *)
+    let bezier = List.nth beziers i in
+    bezier_evaluate bezier t
 
   let gradient curve =
     List.map (fun (xs,ys) -> (Bezier.derivee xs, Bezier.derivee ys)) curve
@@ -712,7 +732,7 @@ end
 
   module Node = struct
 
-    type node_info = { 
+    type info = { 
       params : path_parameters ;
       mainAnchor : anchor ;
 
@@ -736,12 +756,17 @@ end
       node_anchor : anchor ;
 
       at : Point.t ;
+      z : float
     }
+
+    type t = { info : info ; gentity : gentity }
 
     let default_params = { OutputCommon.default with close = false ; strokingColor=None ; 
       lineWidth = !default_line_width } 
 
-    let default = { at = (0.,0.) ; node_anchor = `Pdf ;
+    let default = { at = (0.,0.) ; 
+		    z = 0. ;
+		    node_anchor = `Pdf ;
 		    mainAnchor = `Center ; 
 		    center = (0.,0.) ;
 		    pdfAnchor = (0.,0.) ;
@@ -760,10 +785,10 @@ end
     let to_gentity info = 
       { curve = info.midCurve ; 
 	anchor = info.anchors ;
-	contents = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents
+	contents = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents 
       }
 
-    module Transfo = Transfo (struct type t = node_info let compare = compare end)
+    module Transfo = Transfo (struct type t = info let compare = compare end)
 
     open Transfo
     open Style 
@@ -800,6 +825,7 @@ end
       Pet.register "node fill" (fun pet color -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
 	  { info with params = { info.params with
+	    (* path_order = -1 ; *)
 	    fillColor = Some color } } ) })
 
     let color,color_pet = 
@@ -986,7 +1012,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      let inter = 
 		app_default Curve.latest_intersection rayon outer_curve (0,0.)
 	      in
-	      Curve.eval_global rayon inter
+	      Curve.eval_local rayon inter
 	    | `Pdf -> info.pdfAnchor
 	    | _ -> Printf.fprintf stderr "Anchor undefined for a rectangle. Returning the center instead.\n" ; 
 	      Point.middle p1 p3
@@ -999,6 +1025,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  })})
 
     let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env
+
+    let default_rectangle env = Transfo.transform [rectangle env] default
 
     (* let (default_shape : user Document.environment -> Transfo.Style.t), *)
     (*   default_shape_pet = *)
@@ -1129,14 +1157,26 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  (* Printf.fprintf stderr "node at\n" ; flush stderr ; *)
 	  translate point info)})
 
-    let make_output styles cont =
+    let at3d,at3d_pet = 
+      Pet.register "node at ... in 3d" ~depends:[anchor_pet] (fun pet projection point3d -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  (* Printf.fprintf stderr "node at\n" ; flush stderr ; *)
+	  let point = Proj3d.project projection point3d in
+	  let _,_,z = point3d in
+	  { (translate point info)
+	    with z = z })})
+
+    let make_output_node styles cont =
       let info = Transfo.transform
 	((contents_outputcommon cont) :: anchor `Center :: mainAnchor `Center :: styles) 
 	default 
-      in
-      to_gentity info
-    let make_boxified env styles cont = make_output styles (Document.draw_boxes env cont)
-    let make env styles cont = make_boxified env styles (boxify_scoped env cont)
+      in { info = info ; gentity = to_gentity info }
+      (* to_gentity info *)
+    let make_boxified_node env styles cont = make_output_node styles (Document.draw_boxes env cont)
+    let make_node env styles cont = make_boxified_node env styles (boxify_scoped env cont)
+
+    let make_output styles cont = (make_output_node styles cont).gentity
+    let make env styles cont = (make_node env styles cont).gentity
 
     let inter a b=
       let curvesa=ref [] in
@@ -1169,15 +1209,16 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let mapi f = Array.mapi (fun i line -> Array.mapi (f i) line)
 
       type info = 
-	  { mainNode : Node.node_info ;
+	  { mainNode : Node.info ;
 	    common : Node.Transfo.Style.t list ;
-	    nodes : Node.node_info matrix ;
+	    nodes : Node.info matrix ;
 	    placement : info -> int -> int -> Point.t }
+
+      type t = { info : info ; gentities : gentity * gentity array array }
 
       module Transfo = Transfo (struct type t = info let compare = compare end)
       module T = Transfo
       module S = T.Style
-      open Node
       open T
       open S
 
@@ -1214,6 +1255,23 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  { info with 
 	    common =  info.common @ node_transfos })})
 
+      let make_node_array style height width lines = 
+	  (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son centre en (0,0) *)
+	let res = Array.make_matrix height width Node.default in
+	let i = ref 0 in
+	let j = ref 0 in
+	let _ = List.iter (fun line -> 
+	  List.iter (fun node_transfo -> 
+	    let info_ij = Node.Transfo.transform (style @ node_transfo) res.(!i).(!j)
+	    in
+	    res.(!i).(!j) <- info_ij ;
+	    incr j)
+	    line ;
+	  incr i ; j := 0)
+	  lines 
+	in
+	res
+
       let makeNodes,make_nodes_pet = 
       Pet.register "matrix make nodes" ~depends:[all_nodes_pet] (fun pet lines -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
@@ -1224,20 +1282,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    lines
 	  in
 	  let height = List.length lines in
-	  (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son centre en (0,0) *)
-	  let res = Array.make_matrix height width Node.default in
-	  let i = ref 0 in
-	  let j = ref 0 in
-	  let _ = List.iter (fun line -> 
-	    List.iter (fun node_transfo -> 
-	      let info_ij = Node.Transfo.transform (info.common @ node_transfo) res.(!i).(!j)
-	      in
-	      res.(!i).(!j) <- info_ij ;
-	      incr j)
-	      line ;
-	    incr i ; j := 0)
-	    lines 
-	  in
+	  let res = make_node_array info.common height width lines in
 	  { info with nodes = res })})
 
       let contents_output lines =
@@ -1284,6 +1329,16 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      in
 	      { info' with mainNode = node_info })})
 
+      let setZ,set_z_pet = 
+	Pet.register "set matrix z coordinate" ~depends:[placement_pet;all_nodes_pet;make_nodes_pet] 
+	  (fun pet z_placement -> 
+	  { pet = pet ; transfo = (fun transfos info -> 
+	      let info' = 
+		{ info with nodes = mapi 
+		    (fun i j node_info -> { node_info with Node.z = z_placement node_info i j })
+		    info.nodes } 
+	      in info' ) })
+
       (* let mainNodeContents,main_node_contents_pet = *)
       (* 	Pet.register "matrix main node contents" ~depends:[placement_pet] (fun pet ->  *)
       (* 	{ pet = pet ; transfo = (fun transfos info ->  *)
@@ -1300,11 +1355,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    let pdf_start = 0.,0. in
 	    let node_info = Node.Transfo.transform node_transfos info.mainNode in
-	    let pdf_end = node_info.anchors `Pdf in
+	    let pdf_end = node_info.Node.anchors `Pdf in
 	    let v = Vector.of_points pdf_start pdf_end in
 	    let nodes = map (Node.translate v) info.nodes in
 	    { info with 
-	      mainNode = { node_info with node_contents = [] }; 
+	      mainNode = { node_info with Node.node_contents = [] }; 
 	      nodes = nodes })})
 	
       (* let wrap,wrap_pet =  *)
@@ -1325,17 +1380,189 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let centers y x = placement (between_centers y x)
 
-      let make env style lines =
-	let info = T.transform 
+      let transform_matrix env style lines info =
+	T.transform 
 	  (contents env lines :: 
-	     mainNode [rectangle env] :: 
+	     mainNode [Node.rectangle env] :: 
 	     (* mainNodeContents :: *)
 	     makePlacement ::
 	     allNodes [] ::
 	     (* wrap :: *)
-	     style) (default env) in
-	let m,ms = to_gentities info in
-	m, ms
+	     style) info
+
+      let make_matrix env style lines =
+	let info = transform_matrix env style lines (default env) in
+	(* let m,ms = to_gentities info in *)
+	(* m, ms *)
+	{ info = info ; gentities = to_gentities info }
+
+      let translate v matrix_info = 
+	{ matrix_info with
+	  mainNode = Node.translate v matrix_info.mainNode ;
+	  nodes = map (Node.translate v) matrix_info.nodes
+	}
+
+      let make env style lines = (make_matrix env style lines).gentities
+
+    end
+
+    module Matrix3d = struct
+
+      type info = {
+	placement : info -> int -> int -> int -> (Point.t * float) ;
+	planes : Matrix.info array ;
+	common : Node.Transfo.Style.t list ;
+	mainNode : Node.info ;
+	mainNodes : Node.Transfo.Style.t list 
+      }
+	
+      type t = { info : info ; gentities : gentity * gentity array array array }
+
+      module Transfo = Transfo (struct type t = info let compare = compare end)
+      module T = Transfo
+      module S = T.Style
+      open T
+      open S
+
+      let between_centers ?projection:(projection=Proj3d.cavaliere45bg) disty distx distz _ i j k = 
+	let z = -. (float_of_int k *. distz) in
+	(Proj3d.project projection 
+	   ((float_of_int j *. distx), 
+	    -. (float_of_int i *. disty),
+	    z)),
+	z
+
+      let default env = {
+	mainNode = Node.(default_rectangle env) ;
+	mainNodes = [Node.rectangle env] ;
+	common = Matrix.default_matrix_node env ;
+	planes = [|Matrix.default env|] ;
+	placement = (between_centers 20. 20. 20.) }
+
+      let to_gentities m3d =
+	(Node.to_gentity m3d.mainNode,
+	 Array.map (fun plane -> snd (Matrix.to_gentities plane)) m3d.planes)
+
+      let nodes_contents info = 
+	List.flatten (Array.to_list (Array.map Matrix.nodes_contents info.planes))
+
+      let to_contents info = (nodes_contents info) @ (Node.to_gentity info.mainNode).contents
+
+      let (allNodes : Node.Transfo.Style.t list -> S.t),
+	all_nodes_pet = 
+      Pet.register "matrix 3d all nodes" (fun pet node_transfos -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  { info with 
+	    common =  info.common @ node_transfos })})
+
+
+      let makeNodes,make_nodes_pet = 
+      Pet.register "matrix 3d make nodes" ~depends:[all_nodes_pet] (fun pet planes -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  (* Printf.fprintf stderr "makeNodes \n" ; flush stderr ; *)
+	  let width = max_list_list List.length 0 planes in
+	  let depth = List.length planes in
+	  let height = max_list List.length 0 planes in
+	  let arr = Array.make depth (info.planes.(0)) in
+	  Printf.fprintf stderr "makeNodes: passed info.planes.(0) without damage. \n" ; flush stderr ;
+	  (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son centre en (0,0) *)
+	  let _ =
+	    List.fold_left
+	      (fun k plane -> let res = Matrix.make_node_array info.common height width plane in 
+			      let _ =
+				arr.(k) <- { info.planes.(0) with Matrix.nodes = res } 
+			      in
+			      succ k)
+	      0
+	      planes
+	  in { info with planes = arr })})
+
+      let contents_output lines =
+	let lines' = 
+	  List.map (List.map (List.map 
+				(fun (style,contents) -> ((Node.contents_outputcommon contents)::style)))) 
+	    lines
+	in
+	makeNodes lines'
+      let contents_box env lines =
+	let lines' = 
+	  List.map (List.map (List.map 
+	       (fun (style,contents) -> 
+		 ((Node.contents_outputcommon (Document.draw_boxes env contents))::style))))
+	    lines
+	in
+	makeNodes lines'
+
+      let contents env lines =
+	let lines' = 
+	  List.map 
+	    (List.map 
+	       (List.map 
+		  (fun (style,contents) -> 
+		    ((Node.contents_outputcommon (Document.draw_boxes env (boxify_scoped env contents)))::style))))
+	    lines
+	in
+	makeNodes lines'
+
+
+      let placement, placement_pet = 
+	Pet.register "prepare 3d matrix placement" ~depends:[all_nodes_pet;make_nodes_pet] (fun pet placement -> 
+	  { pet = pet ; transfo = (fun transfos info -> { info with placement = placement }) })
+
+      let transmit, transmit_pet = 
+      Pet.register "make 3d matrix " ~depends:[all_nodes_pet;make_nodes_pet;placement_pet] (fun pet sty -> 
+	{ pet = pet ; transfo = (fun transfos 
+	  ({ mainNode = main ;
+	    mainNodes = mains ;
+	    common = style ;
+	    planes = planes ;
+	    placement = placement } as info)
+	-> 
+	  let planes' = Array.mapi
+	    (fun k matrix_info -> 
+	      let placement_k node_info i j = let (x,y),_ = placement info i j k in x,y in
+	      let z_placement_k node_info i j = let _,z = placement info i j k in z in
+	      let open Matrix in
+	      let m = Matrix.Transfo.transform
+		([(allNodes style); (placement (placement_k)); makePlacement ;
+			(setZ z_placement_k); (mainNode mains)] @ sty)
+		planes.(k) 
+	      in m)
+	    planes
+	  in
+	  { info with planes = planes' }
+	)})
+
+      let mainNode,main_node_pet = 
+      Pet.register "matrix 3d main node" ~depends:[transmit_pet]
+	(fun pet node_transfos -> 
+	  { pet = pet ; transfo = (fun transfos info -> 
+	    let nodes_contents = nodes_contents info in
+	    let pdf_start = 0.,0. in
+	    let node_info = Node.Transfo.transform 
+	      ((Node.contents_outputcommon nodes_contents) :: node_transfos) info.mainNode 
+	    in
+	    let pdf_end = node_info.Node.anchors `Pdf in
+	    let v = Vector.of_points pdf_start pdf_end in
+	    let planes' = Array.map (Matrix.translate v) info.planes in
+	    { info with 
+	      mainNode = { node_info with Node.node_contents = [] }; 
+	      planes = planes' })})
+
+      let transform_matrix env style planes info = 
+	T.transform
+	  (contents env planes ::
+	     mainNode [Node.rectangle env] :: 
+	     transmit [] ::
+	     allNodes [] ::
+	     style)
+	  info
+
+      let make_matrix env style planes = 
+	let info = transform_matrix env style planes (default env) in
+	{ info = info ; gentities = to_gentities info }
+
+      let make env style lines = (make_matrix env style lines).gentities
 
     end
 
@@ -1343,14 +1570,25 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       type tip_info = { tip_line_width : float ; is_double : bool }
 
-      type edge_info = { tip_info : tip_info ; 
+      type info = { tip_info : tip_info ; 
 			 start : gentity ;
 			 finish : gentity ;
 			 params : path_parameters ; 
+			 given_curve : Curve.t ;
 			 underlying_curve : Curve.t ;
 			 curves : (path_parameters * Curve.t) list ;
-			 decorations : (path_parameters * Curve.t) list }
-      type edge_transfo = edge_info -> edge_info
+			 decorations : (path_parameters * Curve.t) list ;
+			 z_curve : float array list
+		  }
+
+      let evaluate_z info (i,t) = match info.z_curve with
+	  [] -> 0.0
+	| l -> Bezier.eval (List.nth l i) t
+
+      type t = { info : info ; gentity : gentity }
+
+
+      type edge_transfo = info -> info
 
       (* module rec PTDef : sig *)
       (* 	module type ParameterisedEdgeTransfo = sig *)
@@ -1362,7 +1600,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       (* end = PTDef	     *)
 
 
-      module Transfo = Transfo (struct type t = edge_info let compare = compare end)
+      module Transfo = Transfo (struct type t = info let compare = compare end)
       open Transfo 
       open Style
 
@@ -1382,9 +1620,15 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	{ tip_info = default_tip_info ;
 	  start = s ; finish = e ;
 	  params = default_params ;
+	  given_curve = underlying_curve ;
 	  underlying_curve = underlying_curve ;
 	  curves = [] ; 
-	  decorations = [] }
+	  decorations = [] ;
+	  z_curve = [] }
+
+      let empty = 
+	{ (default_edge_info (coord (0.,0.)) (coord (0.,0.)) (Curve.of_point_lists [[(0.,0.)]]))
+	  with params = { OutputCommon.default with strokingColor = None } }
 
       let transform styles s e underlying_curve = 
 	let edge_info = Transfo.transform styles (default_edge_info s e underlying_curve)  in
@@ -1408,24 +1652,24 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       type controls = continue_path_spec * Point.t list (* The last list is treated differently: *)
       (* its endpoint should be provided as a node, see edge below. *)
 
+      let rec point_lists_of_edge_spec_rec res s e continues = 
+	match continues with
+	| [] -> [[s;e]]
+	| [ controls ] -> List.rev (((s :: controls) @ [e]) :: res)
+	| controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (list_last controls) e rest
+
       let point_lists_of_edge_spec s continues e =
-	let rec point_lists_of_edge_spec_rec res s e continues = 
-	  match continues with
-	    | [] -> [[s;e]]
-	    | [ controls ] -> List.rev (((s :: controls) @ [e]) :: res)
-	    | controls :: rest -> point_lists_of_edge_spec_rec ((s :: controls) :: res) (list_last controls) e rest
-	in
 	point_lists_of_edge_spec_rec [] (s.anchor `Main) (e.anchor `Main) continues
 
-      let raw_edge style s e underlying_curve =
-	let edge_info = transform style s e underlying_curve in
+      let to_gentity edge_info = 
 	let curve = edge_info.underlying_curve in
+	let given_curve = edge_info.given_curve in
 	let anchor = function
 	  | `Temporal pos -> Curve.eval curve pos
 	  | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
-	  | `CurvilinearFromStart pos -> Curve.eval underlying_curve (Curve.curvilinear underlying_curve pos)
-	  | `Start -> s.anchor `Main
-	  | `End -> e.anchor `Main
+	  | `CurvilinearFromStart pos -> Curve.eval given_curve (Curve.curvilinear given_curve pos)
+	  | `Start -> edge_info.start.anchor `Main
+	  | `End -> edge_info.finish.anchor `Main
 	  | `Center -> Curve.eval curve 0.5
 	  | _ -> Printf.fprintf stderr "Anchor undefined for an edge. Returning the center instead.\n" ; 
 	    Curve.eval curve 0.5
@@ -1438,6 +1682,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 			     edge_info.decorations))
 	}
 
+      let raw_edge style s e underlying_curve =
+	let edge_info = transform style s e underlying_curve in
+	{ info = edge_info ; gentity = to_gentity edge_info }
 
       let path_of_curve style curve = 
 	let s = coord (Curve.first curve) in 
@@ -1493,13 +1740,20 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      { edge_info with curves = [ edge_info.params, edge_info.underlying_curve ] })
 	  })
 
-      let make style s ?controls:(controls=[]) e = 
+
+      let make_edge style s ?controls:(controls=[]) e = 
 	let point_lists = point_lists_of_edge_spec s controls e in
 	let underlying_curve = Curve.of_point_lists point_lists in
 	raw_edge (clip :: style) s e underlying_curve
 
+      let make_edges style edge_list = 
+	List.map (fun (style',s,controls,e) -> make_edge (style' @ style) s ~controls:controls e) edge_list
+
+      let make style s ?controls:(controls=[]) e = 
+	(make_edge style s ~controls:controls e).gentity
+
       let makes style edge_list = 
-	List.map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
+	List.map (fun edge_info -> edge_info.gentity) (make_edges style edge_list)
 
       let head_moustache info params = 
 	(* let _ = begin  *)
@@ -1587,6 +1841,51 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let shortenS a = shorten a 0.
       let shortenE b = shorten 0. b
 
+      let zs, zs_pet =
+	Pet.register "provide a z curve (mainly for intersections)" (fun pet zs ->
+	  { pet = pet ;
+	    transfo = (fun transfos edge_info -> 
+	      { edge_info with z_curve = zs })
+	  })
+
+
+      let make_3d_edge style start ?projection:(projection=Proj3d.cavaliere45bg)
+	  ?controls:(controls=[]) ?controls3d:(controls3d=[]) finish = 
+	let xycontrols,zcontrols = 
+	  if controls3d = [] then
+	    controls,[]
+	  else
+	    let associate l = (List.map
+		     (fun ((x,y,z) as point) -> (Proj3d.project projection point,z)) l)
+	    in
+	    let split ls = List.map List.split (List.map associate ls) in
+	    (List.split (split controls3d))
+	in
+	let zstart = start.Node.info.Node.z in
+	let zfinish = finish.Node.info.Node.z in	
+	let s = start.Node.gentity in
+	let e = finish.Node.gentity in
+	let point_lists = point_lists_of_edge_spec s xycontrols e in
+	let z_curve = List.map
+	  Array.of_list 
+	  (point_lists_of_edge_spec_rec [] zstart  zfinish zcontrols) 
+	in
+	let underlying_curve = Curve.of_point_lists point_lists in
+	raw_edge (clip :: (zs z_curve) :: style) s e underlying_curve
+
+
+      let make_3d_edges style  ?projection:(projection=Proj3d.cavaliere45bg)
+	  edge_list = 
+	List.map (fun (style',s,controls,controls3d,e) -> 
+	  make_3d_edge (style' @ style) s ~controls:controls ~controls3d:controls3d e) edge_list
+
+      let make_3d style s ?controls:(controls=[]) ?controls3d:(controls3d=[])
+	  ?projection:(projection=Proj3d.cavaliere45bg) e = 
+	(make_3d_edge style s ~controls:controls ~controls3d:controls3d ~projection:projection e).gentity
+
+      let makes_3d style 	  ?projection:(projection=Proj3d.cavaliere45bg) edge_list = 
+	List.map (fun edge_info -> edge_info.gentity) (make_3d_edges style ~projection:projection edge_list)
+
 
       let double, double_pet = Pet.register ~depends:[draw_pet] "double" (fun pet margin -> 
 	{ pet = pet ; transfo = (fun transfos info ->
@@ -1598,6 +1897,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  in
 	  let white_paths = List.map (fun (params, curve) -> 
 	    { params with 
+	      (* path_order = (-1) ; *)
 	      strokingColor = Some (RGB { red=1.;green=1.;blue=1. }); 
 	      lineWidth = margin },
 	    curve)
@@ -1605,10 +1905,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  in
 	  let delta = 0.02 in
 	  let info_white = Transfo.transform [shorten delta delta] { info with curves = white_paths } in
-	  let info_black = Transfo.transform [shorten delta delta] { info with curves = black_paths } in
+	  let info_black = Transfo.transform [shorten (delta +. 0.1) (delta +. 0.1)] 
+	    { info with curves = black_paths } in
 	  { info_black with 
 	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
-	    curves = (info_white.curves @ info_black.curves) }) })
+	    curves = (info_black.curves @ info_white.curves) }) })
 
       let base_arrow head_params transfos edge_info=
 	let info = edge_info.tip_info in
@@ -1746,12 +2047,12 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let foreground, foreground_pet = 
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" 
-	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) margin ->
+	  (fun pet ?shortens:(shortens=3.) ?shortene:(shortene=3.) ?color:(color=Drivers.white) margin ->
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    let white_paths = List.map (fun (params, curve) -> 
 	      { info.params with 
 		Drivers.dashPattern = [] ;
-		Drivers.strokingColor=Some (Drivers.RGB { Drivers.red=1.;Drivers.green=1.;Drivers.blue=1. }); 
+		Drivers.strokingColor=Some color; 
 		Drivers.lineWidth=params.Drivers.lineWidth +. 2. *. margin },
 	      curve)
 	      info.curves
@@ -1762,51 +2063,240 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
 
+      let restrict info lt1 lt2 =
+	if Curve.compare_lt lt1 lt2 > 0 then begin
+	  Printf.fprintf stderr "Patofig warning: incoherent restriction of an edge; returning empty edge.\n" ; 
+	  empty 
+	end
+	else
+	{ info with
+	  start = coord (Curve.eval_local info.underlying_curve lt1) ;
+	  finish = coord (Curve.eval_local info.underlying_curve lt2) ;
+	  underlying_curve = Curve.internal_restrict info.underlying_curve lt1 lt2 ;
+	  curves = List.map (fun (params,curve) -> (params,Curve.internal_restrict curve lt1 lt2)) info.curves ;
+	  decorations = []
+	}
+
+
+      let put_forth info lt ?color:(color=OutputCommon.white) epsilon margin = 
+	let gt = Curve.global_time info.underlying_curve lt  in
+	let gt1 = gt -. epsilon in 
+	let gt2 = gt +. epsilon in 
+	let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
+	let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
+	(* let _ = Printf.fprintf stderr "lt = (%d,%f), gt = %f, \n lt1 = (%d,%f), lt2 = (%d,%f).\n" *)
+	(*   (fst lt) (snd lt) gt i t j u  *)
+	(* in *)
+	let info' = restrict info lt1 lt2 in
+      	{ info' with curves =
+      	    ({info'.params with
+      	      Drivers.dashPattern = [] ;
+      	      Drivers.strokingColor=Some color;
+      	      Drivers.lineWidth=info'.tip_info.tip_line_width +. 2. *. margin
+      	    }, info'.underlying_curve)
+      		:: info'.curves }
+
     end
       
+    type entity = 
+      Node of Node.t
+    | Matrix of Matrix.t
+    | Matrix3d of Matrix3d.t
+    | Edge of Edge.t
+    | Gentity of gentity
 
+    let entity_to_raw_list = function
+    Node node -> node.Node.gentity.contents 
+      | Matrix matrix -> 
+	let open Matrix in 
+	let { gentities = (node,ms) ; _ } = matrix in
+	List.fold_left (fun res gentity -> List.append gentity.contents res)
+	  []
+	  (node :: (List.flatten (Array.to_list (Array.map Array.to_list ms))))
+      | Matrix3d matrix -> 
+	let open Matrix3d in 
+	let { gentities = (node,planes) ; _ } = matrix in
+	List.fold_left (fun res gentity -> List.append gentity.contents res)
+	  []
+	  (node :: 
+	     List.flatten (Array.to_list (Array.map
+	     (fun plane -> (List.flatten (Array.to_list (Array.map Array.to_list plane))))
+	     planes)))
+      | Edge edge -> 
+	edge.Edge.gentity.contents 
+      | Gentity g -> g.contents 
 
 
     module Env_Diagram (Args : sig val env : environment end) = struct
-      let stack = ref []
+      let stack : entity list ref = ref []
       let env = Args.env
+      let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:OutputCommon.white x))
+      let epsilon = ref 0.1
 
-      let node style contents = 
-	let a = Node.(make env (default_shape env :: style)) contents in
-	stack := a :: !stack ;
-	a
+      let node style contents =
+	let a = Node.(make_node env (default_shape env :: style)) contents in
+	stack := (Node a) :: !stack ;
+	a.Node.gentity
 
       let coordinate p = 
 	let a = coord p in
-	let _ = stack := a :: !stack in
+	let _ = stack := (Gentity a) :: !stack in
 	a
 
-      let edge style a ?controls:(controls=[]) b =
-	let e = Edge.make style a ~controls:controls b in
-	stack := e :: !stack ;
+      let edge_info style a ?controls:(controls=[]) b =
+	let open Edge in
+	let e = make_edge style a ~controls:controls b in
+	stack := (Edge e) :: !stack ;
 	e
 
-      let path style s continues =
-	let e = Edge.path style s continues in
-	stack := e :: !stack ;
-	e
+      let edge  style a ?controls:(controls=[]) b =
+	(edge_info style a ~controls:controls b).Edge.gentity
+
+      let edges_info style edge_list = 
+	let open Edge in
+	let edges = make_edges style edge_list in
+	let res = List.fold_left (fun stack edge -> Edge edge :: stack) !stack edges in
+	(* let l = List.map (fun edge -> Edge edge) (makes style edge_list) in *)
+	(* stack := List.rev_append l !stack ; *)
+	stack := res ; 
+	edges
 
       let edges style edge_list = 
-	let l = Edge.makes style edge_list in
-	stack := List.rev_append l !stack ;
-	l
+	List.map (fun e -> e.Edge.gentity) (edges_info style edge_list)
 
-      let matrix style lines = 
-	let node, m = Matrix.make env style lines in
-	stack := node :: ((List.flatten (Array.to_list (Array.map Array.to_list m))) @ !stack) ;
-	node, m
+      let path_info style s continues =
+	let open Edge in
+	let e = path style s continues in
+	stack := Edge e :: !stack ;
+	e
+
+      let path style s continues = (path_info style s continues).Edge.gentity
+
+      let edge_info_3d style a ?controls:(controls=[]) ?controls3d:(controls3d=[]) 
+	  ?projection:(projection=Proj3d.cavaliere45bg) b =
+	let open Edge in
+	let e = make_3d_edge style a ~controls:controls ~controls3d:controls3d ~projection:projection b in
+	stack := (Edge e) :: !stack ;
+	e
+
+      let edge_3d style a ?controls:(controls=[]) ?controls3d:(controls3d=[]) 
+	  ?projection:(projection=Proj3d.cavaliere45bg) b =
+	(edge_info_3d style a ~controls:controls ~controls3d:controls3d ~projection:projection b).Edge.gentity
+
+      let edges_info_3d style ?projection:(projection=Proj3d.cavaliere45bg) edge_list = 
+	let open Edge in
+	let edges = make_3d_edges style ~projection:projection edge_list in
+	let res = List.fold_left (fun stack edge -> Edge edge :: stack) !stack edges in
+	(* let l = List.map (fun edge -> Edge edge) (makes style edge_list) in *)
+	(* stack := List.rev_append l !stack ; *)
+	stack := res ; 
+	edges
+
+      let edges_3d style ?projection:(projection=Proj3d.cavaliere45bg) edge_list = 
+	List.map (fun e -> e.Edge.gentity) (edges_info_3d style ~projection:projection  edge_list)
+
+      let matrix_info style lines = 
+	let open Matrix in
+	let matrix = make_matrix env style lines in
+	stack := Matrix matrix :: !stack ;
+	matrix
+
+      let matrix style lines = (matrix_info style lines).Matrix.gentities 
+
+      let matrix_3d_info style planes = 
+	let open Matrix3d in
+	let matrix = make_matrix env style planes in
+	stack := Matrix3d matrix :: !stack ;
+	matrix
+
+      let matrix_3d style planes = 
+	let m = matrix_3d_info style planes in
+	let ms = Array.map (fun matrix_info -> Matrix.map (fun node_info -> 
+	  Node.({info = node_info ; gentity = to_gentity node_info }))
+	  matrix_info.Matrix.nodes) Matrix3d.(m.info.planes)
+	in Matrix3d.(m.info.mainNode),ms
+
+      let all_intersections stack =
+	let rec intersections_with inters e stack = match stack with
+	  | [] -> inters
+	  | Edge e' :: stack_rest ->
+	    let open Edge in 
+	    let inters' = 
+	      List.fold_left
+		(fun inters inter -> (e,e',inter) :: inters)
+		inters
+		(Curve.intersections e.info.underlying_curve e'.info.underlying_curve)
+	    in intersections_with inters' e stack_rest
+	  | _ :: stack_rest -> intersections_with inters e stack_rest
+	in
+	let rec all_intersections_rec inters stack =
+	  match stack with
+	  | [] -> inters
+	  | Edge e :: stack_rest ->
+	    let inters_e = intersections_with [] e stack_rest in
+	    all_intersections_rec (List.rev_append inters_e inters) stack_rest
+	  | _ :: stack_rest -> all_intersections_rec inters stack_rest
+	in
+	all_intersections_rec [] stack
+
+
+      let add_intersections f = 
+	let inters = all_intersections !stack in
+	List.iter
+	  (fun (e1,e2,((i,t,b),(j,u,c))) -> 
+	    let open Edge in 
+	    let z1 = Edge.evaluate_z e1.info (i,t) in
+	    let z2 = Edge.evaluate_z e2.info (j,u) in
+	    if abs_float (z1 -. z2) > !epsilon then begin
+	      let ei,k,l = if z1 < z2 then e2,j,u else
+		  if z1 > z2 then e1,i,t 
+		  else assert false in
+	      let info' = f ei.info (k,l) 0.05 1. in
+	      stack := Edge { info = info' ; gentity = to_gentity info' } :: !stack
+	    end
+	    else ())
+	  inters
 
       let make () = 
-	let contents = List.fold_left (fun res gentity -> List.append gentity.contents res)
-	     []
-	     !stack
+	let _ = match !compute_intersections with
+	  | None -> ()
+	  | Some f -> add_intersections f
 	in
-	let fig = Box.drawing_inline contents
+	let contents = List.fold_left (fun res entity -> 
+	  match entity with 
+	    Node node -> List.append node.Node.gentity.contents res
+	  | Matrix matrix -> 
+	    let open Matrix in 
+	    let { gentities = (node,ms) ; _ } = matrix in
+	    List.fold_left (fun res gentity -> List.append gentity.contents res)
+	      res
+	      (node :: (List.flatten (Array.to_list (Array.map Array.to_list ms))))
+	  | Matrix3d matrix -> 
+	    let open Matrix3d in 
+	    let { gentities = (node,planes) ; _ } = matrix in
+	    List.fold_left (fun res gentity -> List.append gentity.contents res)
+	      res
+	      (node :: 
+		 (List.flatten (Array.to_list 
+		    (Array.map (fun plane -> (List.flatten (Array.to_list (Array.map Array.to_list plane))))
+		    planes))))
+	  | Edge edge -> 
+	  List.append edge.Edge.gentity.contents res
+	  | Gentity g -> List.append g.contents res)
+	  []
+	  !stack
+	in
+	let ordered_contents = 
+	  let rec order i res = function [] -> res 
+	    | raw :: contents -> 
+	      order (succ i) ((OutputCommon.in_order i raw) :: res) contents
+	  in
+	  order 0 [] contents
+	in
+	let _ = List.iter (fun raw -> Printf.fprintf stderr "%d ;" (drawing_order raw))
+	  ordered_contents
+	in
+	let fig = Box.drawing_inline ordered_contents
 	in
 	stack := [] ; fig
 
@@ -1924,7 +2414,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
     end
 
-
     open Box
 
 
@@ -1945,7 +2434,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr 
 		in
 		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in
-		let m,ms = Matrix.(make env
+		let m,ms = Matrix.((make_matrix env
 		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
 		   mainNode Node.([
 		   innerSep 0. ; outerSep 0. ;
@@ -1955,12 +2444,12 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		  Node.([[
 		     ([innerSep 0.;outerSep 0.], []);
 		     ([innerSep 0.;outerSep 0.], [])
-		   ]]))
+		   ]])).gentities)
 		in
 		let e, where = deco env ms in
-		let l = Node.(make_output
+		let l = Node.((make_output_node
 		  [outerSep 0.2 ; innerSep 0.; anchor `South;
-		   default_shape env ; at where] dr)
+		   default_shape env ; at where] dr).gentity)
 		in
 		let drawn = 
 		  drawing
@@ -1981,8 +2470,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       ]
 
     let xto = xarrow ~decoration:(fun env ms ->
-      let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(0) ms.(0).(1) in
+      let e = Edge.((make_edge [draw;lineWidth 0.1;arrow] ms.(0).(0) ms.(0).(1)).gentity) in
       [e], default_where ms)
     let xot = xarrow ~decoration:(fun env ms ->
-      let e = Edge.(make [draw;lineWidth 0.1;arrow]) ms.(0).(1) ms.(0).(0) in
+      let e = Edge.((make_edge [draw;lineWidth 0.1;arrow] ms.(0).(1) ms.(0).(0)).gentity) in
       [e], default_where ms)
