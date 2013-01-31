@@ -1,0 +1,115 @@
+\Caml(open Diagrams
+
+
+)
+
+\diagram(
+  let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.blue x))
+
+      let m,ms = Matrix3d.(matrix_3d [placement (between_centers ~projection:Proj3d.cavaliere60bg 60. 60. 60.)] [
+	[[
+	  ([], <<$A$>>); 
+	  ([], <<$B$>>)
+	 ];[
+	  ([], <<$C$>>);
+	  ([], <<$D$>>) 
+	]];[[
+	  ([], <<$A'$>>); 
+	  ([], <<$B'$>>)
+	 ];[
+	  ([], <<$C'$>>);
+	  ([], <<$D'$>>) 
+	]]])
+
+      let _ = Edge.(edges_3d [arrow;draw] 
+		      (List.map (fun (i,j,k,x,y,z) -> ([],ms.(i).(j).(k),[],[],ms.(x).(y).(z))) 
+			 (
+			   let map i j k list = List.map (fun (x,y,z) -> (i,j,k,x,y,z)) list in
+			   let maps list1 list_list = 
+			     List.fold_left2
+			       (fun res (i,j,k) list -> res @ (map i j k list))
+			       []
+			       list1 
+			       list_list
+			   in
+			   maps 
+			     [(0,0,0);(1,0,0);(0,1,0)]
+			     [[(1,1,1);(0,1,0);(0,0,1);(0,1,1);(1,0,0);(1,1,0);(1,0,1)];
+			      [(1,1,1);(0,0,1);(1,0,1)];
+			      [(0,0,1);(0,1,1);(1,0,0);(1,1,0);(1,0,1)]]
+			 )
+		      ))
+
+
+)
+
+\diagram(
+
+      let m,ms = Matrix3d.(matrix_3d [placement (between_centers ~projection:Proj3d.cavaliere60bd 60. 60. 60.)] [
+	[[
+	  ([], []); 
+	  ([], <<$C$>>)
+	 ];[
+	  ([], []);
+	  ([], <<$T$>>) 
+	]];[[
+	  ([], <<$M₀$>>); 
+	  ([], <<$M$>>)
+	 ];[
+	  ([], <<$P'₀$>>);
+	  ([], <<$P'$>>) 
+	]];[[
+	  ([], <<$I$>>); 
+	  ([], <<$Z$>>)
+	 ];[
+	  ([], <<$I'$>>);
+	  ([], <<$Z'$>>) 
+	]]
+	])
+
+	  let on_layer_1 i (j,k) (x,y) = (i,j,k,i,x,y)
+	  let on_layer i l = List.map (fun (j,k,x,y) -> on_layer_1 i (j,k) (x,y)) l
+	  let from_layer i z l = List.map (fun (j,k,x,y) -> (i,j,k,z,x,y)) l
+
+	  type direction = Up | Down | Left | Right
+	  let vector_of_direction = function
+	  | Up -> (0,1)
+	  | Down -> (0,-1)
+	  | Left -> (1,0)
+	  | Right -> (-1,0)
+	  let (++) (x,y) d = let i,j = vector_of_direction d in (x+i,y+j)
+	  let qof (x,y) (i,j) = (x,y,i,j)
+
+	  let square_on_layer i d1 d2 start =
+	  on_layer i 
+	  	  (let s1 = start ++ d1 in
+	  	  let s2 = start ++ d2 in
+		      [ qof start s1 ;
+		        qof start s2 ;
+	      		qof s1 (s1 ++ d2) ;
+	      		qof s2 (s2 ++ d1) ])
+
+
+	  let square_from_layer i j d1 d2 start =
+	  from_layer i j
+	  	  (let s1 = start ++ d1 in
+	  	  let s2 = start ++ d2 in
+		      [ qof start start ;
+		        qof s1 s1 ;
+		        qof s2 s2 ;
+	      		qof (s1 ++ d2) (s1 ++ d2)])
+
+
+
+      let _ = Edge.(edges_3d [arrow;draw] 
+		      (List.map (fun (i,j,k,x,y,z) -> ([],ms.(i).(j).(k),[],[],ms.(x).(y).(z))) 
+		      ([(0,0,1,1,0,0); (0,0,1,1,0,1);
+		      (0,1,1,0,0,1) ; (0,1,1,1,1,0) ; (0,1,1,1,1,1)
+		      ] 
+		      @ (square_on_layer 1 Up Right (1,0))
+		      @ (square_on_layer 2 Up Right (1,0))
+		      @ (square_from_layer 2 1 Up Right (1,0))
+		      )))
+
+
+)
