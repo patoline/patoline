@@ -106,6 +106,8 @@
 \Add_relation{≃ \simeq \equi}{≃}
 \Add_relation{\notalmostequal ≉}{≉}
 \Add_relation{∼ \sim}{∼}
+\Add_relation{≜ \eqtriangle}(MathFonts.asana "≜" 806)
+\Add_relation{≝ \eqdef}(MathFonts.asana "≝" 807)
 
 
 \Add_relation{\pitchfork ⋔}(MathFonts.asana "pitchfork" 1609)
