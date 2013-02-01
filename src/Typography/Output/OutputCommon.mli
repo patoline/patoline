@@ -6,7 +6,6 @@ val rgb:float->float->float->color
 val mix:float->color->color->color
 val black : color
 val white : color
-val black : color
 val blue : color
 val green : color
 val red : color
@@ -15,6 +14,7 @@ val pink : color
 val orange : color
 val yellow : color
 val gray : color
+val grey : color
 
 type path_parameters = {
   path_order : int;

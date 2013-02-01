@@ -62,6 +62,12 @@ let rounded_corners ?r ?(ne=0.) ?(nw=0.) ?(se=0.) ?(sw=0.) (x0,y0) (x1,y1)=
   in
   rect
 
+let toc_background = ref black
+let toc_active = ref white
+let toc_inactive = ref grey
+let block_background = ref black
+let block_foreground = ref white
+
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
@@ -75,6 +81,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                    module Make_theorem:=Default.Make_theorem)
                 with
                   module TableOfContents:=Default.TableOfContents))
+
 
     module Env_block (M:sig val arg1:Typography.Document.content list end)=struct
 
@@ -103,7 +110,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             let minip,env1=minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env2=minipage' {env1 with fontColor=white} (stru_title,[]) in
+            let minip_title,env2=minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
             let tx=max
               (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
               (minip_title.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
@@ -134,7 +141,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           (0.,minip.(0).drawing_y0-.margin)
                           (max mes minip.(0).drawing_nominal_width+.margin,
                            tx+.minip_title.(0).drawing_y1+.margin)]);
-                Path ({default with fillColor=Some black;strokingColor=None },
+                Path ({default with fillColor=Some !block_background;strokingColor=None },
                       [rounded_corners ~ne:r ~nw:r
                           (0.,tx+.minip_title.(0).drawing_y0-.margin)
                           (max mes minip.(0).drawing_nominal_width+.margin,
@@ -247,7 +254,21 @@ module Format=functor (D:Document.DocumentStructure)->(
        end)
 
 
+    module Env_remarque=Make_theorem
+      (struct
+        let refType="remarque"
+        let counter="remarque"
+        let counterLevel=0
+        let display num= [tT ("Remarque "^num^"."); (tT " ")]
+       end)
 
+    module Env_remarque_ (M:sig val arg1:content list end)=Make_theorem
+      (struct
+        let refType="remarque"
+        let counter="remarque"
+        let counterLevel=0
+        let display num= [tT ("Remarque "^num^"."); (tT " ")]@M.arg1
+       end)
 
     module Env_lemma=Make_theorem
       (struct
@@ -704,10 +725,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                   | _,[]->false
                 in
                 if prefix (List.rev b) (List.rev b0) then (
-                  let col=white in
+                  let col=(!toc_active) in
                   boxify_scoped { env with fontColor=col } displayname
                 ) else (
-                  let col=gray in
+                  let col= !toc_inactive in
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   boxify_scoped { env with fontColor=col }
                     (bB (fun _->[User (BeginLink labl)])::
@@ -746,7 +767,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 |]
               in
               let cont=ref [
-                Path ({default with fillColor=Some black},
+                Path ({default with fillColor=Some !toc_background},
                       [rect])
               ]
               in
