@@ -81,8 +81,8 @@ open Edge
 
  let b = Node.(node [anchor `Base;at (30.,0.)] <<b>>) 
 
-  let asouth = (a.anchor `South)
-  let bsouth = (b.anchor `South)
+  let asouth = (a.Node.anchor `South)
+  let bsouth = (b.Node.anchor `South)
 
   let d = 5.
 

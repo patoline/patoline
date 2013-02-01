@@ -101,7 +101,7 @@
 
 
 
-      let _ = Edge.(edges_3d [arrow;draw] 
+      let _ = Edge.(edges_3d [arrow;draw;double 1.;dashed [2.]] 
 		      (List.map (fun (i,j,k,x,y,z) -> ([],ms.(i).(j).(k),[],[],ms.(x).(y).(z))) 
 		      ([(0,0,1,1,0,0); (0,0,1,1,0,1);
 		      (0,1,1,0,0,1) ; (0,1,1,1,1,0) ; (0,1,1,1,1,1)

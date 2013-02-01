@@ -98,7 +98,7 @@ let cavaliere60hd = {
   homotetie = 1.0;
 }
 
-(* perspectiva naturelle avec rotation à droite ou à gauche autour
+(* perspective naturelle avec rotation à droite ou à gauche autour
    de l'axe des y. L'ajustement du centre est impératif *)
 
 let rot_y45d = {

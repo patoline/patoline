@@ -24,12 +24,14 @@ let xrightarrows ?margin:(margin=2.) ?width:(width=1.) ?translation:(translation
        (Maths.noad
           (fun env st->
 	    let module Fig = Env_Diagram (struct let env = env end) in
+	    let open Entity in
+	    let open Fig in
 
-            let dr=Box.draw_boxes (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
+            let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
 
 	    let (x0,_,x1,_) = OutputCommon.bounding_box dr in
 	    let width' = max width (x1 -. x0 +. 2. *. margin) in
-	    let m,ms = Matrix.(make env
+	    let matrix = Matrix.(make env
 				 [
 				   centers 0. width';
 				   mainNode Node.([anchor `Pdf; at (0.,ex env);
@@ -39,29 +41,28 @@ let xrightarrows ?margin:(margin=2.) ?width:(width=1.) ?translation:(translation
 				   (Node.([innerSep 0.;outerSep 0.;draw]), [])
 				 ]])
 	    in
+	    let m,ms = Matrix.(matrix.mainNode,matrix.nodes) in
 
 	    let translation = (if translation = -. 3000. then 2. *. ex env else translation) in
 	    let e = Edge.(make
 			    [draw;lineWidth 0.1;arrow (* Of head *)] 
-			    (coord (Vector.(+) (ms.(0).(0).anchor (`Main)) (0., -. 0.33 *. translation)))
-			    (coord (Vector.(+) (ms.(0).(1).anchor (`Main)) (0.,-. 0.33 *. translation))))
+			    (Node.coord (Vector.(+) (ms.(0).(0).Node.anchor (`Main)) (0., -. 0.33 *. translation)))
+			    (Node.coord (Vector.(+) (ms.(0).(1).Node.anchor (`Main)) (0.,-. 0.33 *. translation))))
 	    in
 	    let e' = Edge.(make
 			     [draw;lineWidth 0.1;arrow (* Of head *)] 
-			     (coord (Vector.(+) (ms.(0).(0).anchor (`Main)) (0., 0.7 *. translation)))
-			     (coord (Vector.(+) (ms.(0).(1).anchor (`Main)) (0.,0.7 *. translation))))
+			     (Node.coord (Vector.(+) (ms.(0).(0).Node.anchor (`Main)) (0., 0.7 *. translation)))
+			     (Node.coord (Vector.(+) (ms.(0).(1).Node.anchor (`Main)) (0.,0.7 *. translation))))
 	    in
-	    let middle = e'.anchor (`Temporal 0.5) in
+	    let middle = e'.Edge.anchor (`Temporal 0.5) in
 	    (* let origin = Node.(make env [circle; innerSep 0.3;fill black;anchor `Center;at (0.,0.)] []) in *)
 	    let l = Node.(make_output
 			    [outerSep 0.2 ; innerSep 0.; default_shape env ;
 			     anchor `South; at middle] dr)
 	    in
 	    let drawn = 
-	      drawing_inline
-		(List.fold_left (fun res gentity -> List.rev_append gentity.contents res)
-		   []
-		   (l :: e :: e' :: m :: (List.flatten (Array.to_list (Array.map Array.to_list ms)))))
+	      drawing_inline (to_contents
+		   [Node l ; Edge e ; Edge e' ; Matrix matrix])
 	    in 
 	    [Box.Drawing drawn] ))
   ]
@@ -76,10 +77,10 @@ $[0] \id(xrightarrows <$s,t$>) [1]$
 		       [[([],<$asthsth$>) ; ([],<$AAAAA$>) ]])
   let es = edges_anchor_mid [
     (ms.(0).(0),ms.(0).(1),[],`North,[]) ;
-    (coord (ms.(0).(0).anchor (`Angle 30.)), coord (ms.(0).(1).anchor (`Angle 150.)),[],`South,<<$s,t$>>) ;
-    (coord (ms.(0).(0).anchor (`Angle 0.)), coord (ms.(0).(1).anchor (`Angle 180.)),[],`South,[]) ; 
-    (coord (ms.(0).(0).anchor (`Angle (-. 30.))), coord (ms.(0).(1).anchor (`Angle 210.)),[],`South,[]) ; 
-    (coord (ms.(0).(0).anchor (`Angle 45.)), coord (ms.(0).(1).anchor (`Angle 135.)),[],`South,[]) ; 
-    (coord (ms.(0).(0).anchor (`Angle 90.)), coord (ms.(0).(1).anchor (`Angle 90.)),[Edge.bendLeft 30.],`South,[]) ; 
+    (Node.coord (ms.(0).(0).Node.anchor (`Angle 30.)), Node.coord (ms.(0).(1).Node.anchor (`Angle 150.)),[],`South,<<$s,t$>>) ;
+    (Node.coord (ms.(0).(0).Node.anchor (`Angle 0.)), Node.coord (ms.(0).(1).Node.anchor (`Angle 180.)),[],`South,[]) ; 
+    (Node.coord (ms.(0).(0).Node.anchor (`Angle (-. 30.))), Node.coord (ms.(0).(1).Node.anchor (`Angle 210.)),[],`South,[]) ; 
+    (Node.coord (ms.(0).(0).Node.anchor (`Angle 45.)), Node.coord (ms.(0).(1).Node.anchor (`Angle 135.)),[],`South,[]) ; 
+    (Node.coord (ms.(0).(0).Node.anchor (`Angle 90.)), Node.coord (ms.(0).(1).Node.anchor (`Angle 90.)),[Edge.bendLeft 30.],`South,[]) ; 
   ]
 )

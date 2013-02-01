@@ -20,7 +20,7 @@
 
 \Caml(
 open Diagrams
-module Env_Diagram (Arg : sig val env : user environment end) = struct
+module Env_Diagram (Arg : sig val env : environment end) = struct
   include Env_Diagram (Arg) 
 
   let my_matrix style l = 
