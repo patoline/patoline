@@ -2149,6 +2149,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let env = Args.env
       let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:OutputCommon.white x))
       let epsilon = ref 0.1
+      let margin = ref 1.0
+      let t_margin = ref 0.05
 
       let node style contents =
 	let a = Node.(make env (default_shape env :: style)) contents in
@@ -2220,13 +2222,15 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	stack := Matrix3d matrix :: !stack ;
 	matrix
 
-      let matrix_3d style planes = 
-	let m = matrix_3d_full style planes in
+      let matrix_3d_project m = 
 	let ms = Array.map 
 	  (fun matrix_info -> matrix_info.Matrix.nodes) 
 	  Matrix3d.(m.planes)
 	in
 	Matrix3d.(m.mainNode),ms
+
+      let matrix_3d style planes = 
+	matrix_3d_project (matrix_3d_full style planes)
 
       let all_intersections stack =
 	let rec intersections_with inters e stack = match stack with
@@ -2262,7 +2266,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      let ei,k,l = if z1 < z2 then e2,j,u else
 		  if z1 > z2 then e1,i,t 
 		  else assert false in
-	      let info' = f ei (k,l) 0.05 1. in
+	      let info' = f ei (k,l) !t_margin !margin in
 	      stack := Edge info' :: !stack
 	    end
 	    else ())
