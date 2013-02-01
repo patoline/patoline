@@ -38,6 +38,16 @@ let cavaliere60bg = {
   homotetie = 1.0;
 }
 
+let cavaliere30bg = {
+  distance_focale = 1e4;
+  origin_transfo_x = 3e3;
+  origin_transfo_y = 5e3;
+  origin_diag = (5.,5.,5.);
+  axe_angle = 0.0;
+  rot_angle = 0.0;
+  homotetie = 1.0;
+}
+
 let cavaliere45bd = {
   distance_focale = 1e4;
   origin_transfo_x = -4e3;

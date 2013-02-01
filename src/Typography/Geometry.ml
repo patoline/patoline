@@ -23,7 +23,7 @@ module Geo3d = struct
     x *. y' -. x' *. y)
   let norm2 v = v *+ v
   let norm v = sqrt (norm2 v)
-  let normalize v = (1. /. norm v) ** v
+  let normalize ?with_norm:(with_norm=1.) v = (with_norm /. norm v) ** v
   let det u v w = (u *^ v) *+ w
 end
 
