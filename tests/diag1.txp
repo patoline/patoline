@@ -29,7 +29,7 @@
       ]])
 
 
-	     let [delta;pi;sigma] = Edge.(edges [arrow;draw] [
+	     let [delta;pi;sigma] = Edge.(edges [draw;arrow;dashed [2.;1.]] [
 	       ([], ms.(0).(1), [], ms.(0).(0));
 	       ([], ms.(0).(1), [], ms.(0).(2));
 	       ([], ms.(0).(2), [], ms.(0).(3));

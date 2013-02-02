@@ -2137,7 +2137,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  | raw :: contents -> 
 	    order (succ i) ((OutputCommon.in_order i raw) :: res) contents
 	in
-	order 0 [] contents
+	List.rev (order 0 [] contents)
 
     end
     type entity = Entity.t

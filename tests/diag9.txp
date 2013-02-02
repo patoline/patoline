@@ -41,3 +41,82 @@ $C_{\mathsText(<<HAHA>>)}$
 $C_{C_{H}}$
 
 $\mathsText(<<HAHA>>)$
+
+\Caml(
+
+      let rdouble, rdouble_pet = 
+      let open Edge in
+      let open Edge.Transfo in
+      let open Edge.Transfo.Style in
+      Pet.register ~depends:[draw_pet] "double reverse" (fun pet margin -> 
+	{ pet = pet ; transfo = (fun transfos info ->
+	  let black_paths = List.map (fun (params, curve) -> 
+	    { params with 
+	      lineWidth = margin +. 2. *. params.lineWidth },
+	    curve)
+	    info.curves
+	  in
+	  let white_paths = List.map (fun (params, curve) -> 
+	    { params with 
+	      (* path_order = (-1) ; *)
+	      strokingColor = Some (RGB { red=1.;green=1.;blue=1. }); 
+	      lineWidth = margin },
+	    curve)
+	    info.curves
+	  in
+	  let delta = 0.02 in
+	  let info_white = Transfo.transform [shorten delta delta] { info with curves = white_paths } in
+	  let info_black = Transfo.transform [shorten (delta +. 0.1) (delta +. 0.1)] 
+	    { info with curves = black_paths } in
+	  { info_black with 
+	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
+	    curves = (info_white.curves @ info_black.curves) }) })
+
+
+let haha = mathsOfDiagram (<<
+    \diagram(
+  let m,ms = Matrix.(matrix_3d [] [
+  [[
+  ([],<<A>>) ;   ([],<<B>>) 
+  ];[	    
+  ([],<<C>>) ;   ([],<<D>>) 
+  ]];[[
+  ([],<<A'>>) ;   ([],<<B'>>) 
+  ];[	    
+  ([],<<C'>>) ;   ([],<<D'>>) 
+  ]]]
+)
+
+  let _ = Edge.(edge_3d [draw;rdouble 2.] ms.(0).(0).(0) ms.(0).(1).(0))
+  let _ = Edge.(edge_3d [draw;double 2.] ms.(0).(0).(1) ms.(0).(1).(1))
+  let _ = Edge.(edge_3d [draw] ms.(0).(0).(0) ms.(1).(1).(1))
+  let _ = Edge.(edge_3d [draw] ms.(0).(1).(0) ms.(0).(0).(1))
+    
+)
+>>)
+
+)
+
+Below, the left-hand diagram is obtained via mathsOfDiagram, 
+the right-hand one being written directly:
+\begin{center}
+$\haha()$ and    \diagram(
+  let m,ms = Matrix.(matrix_3d [] [
+  [[
+  ([],<<A>>) ;   ([],<<B>>) 
+  ];[	    
+  ([],<<C>>) ;   ([],<<D>>) 
+  ]];[[
+  ([],<<A'>>) ;   ([],<<B'>>) 
+  ];[	    
+  ([],<<C'>>) ;   ([],<<D'>>) 
+  ]]]
+)
+
+  let _ = Edge.(edge_3d [draw;rdouble 2.] ms.(0).(0).(0) ms.(0).(1).(0))
+  let _ = Edge.(edge_3d [draw;double 2.] ms.(0).(0).(1) ms.(0).(1).(1))
+  let _ = Edge.(edge_3d [draw;dashed[2.]] ms.(0).(0).(0) ms.(1).(1).(1))
+  let _ = Edge.(edge_3d [draw] ms.(0).(1).(0) ms.(0).(0).(1))
+    
+)
+\end{center}

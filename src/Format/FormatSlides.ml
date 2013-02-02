@@ -64,7 +64,7 @@ let rounded_corners ?r ?(ne=0.) ?(nw=0.) ?(se=0.) ?(sw=0.) (x0,y0) (x1,y1)=
 
 let toc_background = ref black
 let toc_active = ref white
-let toc_inactive = ref grey
+let toc_inactive = ref gray
 let block_background = ref black
 let block_foreground = ref white
 

@@ -1,0 +1,57 @@
+(* #FORMAT FormatSlides *)
+
+
+\begin{slide}
+    \begin{center}
+ \size(5.){Un jeu pour le $π$-calcul}
+
+Tom Hirschowitz
+\end{center}
+\end{slide}
+
+\begin{slide}
+\begin{center}
+\begin{env}(fun env->{env with normalMeasure=env.normalMeasure/.2.})
+    \TableOfContents
+\end{env}
+\end{center}
+\end{slide}
+
+
+== Première partie ==
+
+=== Une sous-partie ===
+
+\begin{slide}
+Salut.
+\end{slide}
+
+=== Une autre ===
+
+
+\begin{slide}
+Ah, tiens, re.
+\end{slide}
+
+
+== Seconde partie ==
+
+
+\begin{slide}
+Comment va?
+\end{slide}
+
+\begin{slide}
+\begin{definition_}{Système de factorisation dans $\cal{C}$}
+$(\cal{L},\cal{R})$ tels que\begin{itemize}
+\item $\cal{R} = \cal{L}^⊥$,
+\item $\cal{L} = ⊥^^{\cal{R}}$,
+\item tout $f$ se factorise en $r ∘ l$ avec $l ∈ \cal{L}$ et $r ∈ \cal{R}$.
+\end{itemize}
+\end{definition_}
+
+\begin{proposition}
+$\cal{L}$ est stable par pushout et par composition.
+\end{proposition}
+
+\end{slide}
