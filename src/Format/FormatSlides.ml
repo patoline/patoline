@@ -605,6 +605,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[] in
               let boxes=IntMap.map (fun (displayname,path,env)->
                 let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
+                let b0=match b0 with
+                    []->[] | _::s->s
+                in
                 let rec prefix u v=match u,v with
                   | [],_->true
                   | hu::_,hv::_ when hu<>hv->false
