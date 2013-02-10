@@ -86,8 +86,8 @@ module Format=functor (D:Document.DocumentStructure)->(
         let stru,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
         let par_env env={env with new_line=Default.defaultEnv.new_line } in
         let rec map_params t=match t with
-            Node n->Node {n with children=IntMap.map map_params n.children}
-          | Paragraph p->Paragraph { p with par_env=par_env }
+            Node n->Node {n with node_env=(fun env->par_env (n.node_env env)) }
+          | Paragraph p->Paragraph { p with par_env=(fun env->par_env (p.par_env env)) }
           | _->t
         in
         (* Fabriquer un paragraphe qui va bien *)
@@ -142,8 +142,10 @@ module Format=functor (D:Document.DocumentStructure)->(
               ]
             in
             let w=max mes (minip.(0).drawing_nominal_width+.margin) in
+            let margin_bottom_top=0.5*.env.size in
             let dr={tit with
-              drawing_y1=tit.drawing_y1+.margin;
+              drawing_y1=tit.drawing_y1+.margin_bottom_top;
+              drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
               drawing_contents=(fun w->(List.map (fun a->translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
             } in
