@@ -446,6 +446,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           let tree=structure in
           let logs=ref [] in
           let slides=ref [] in
+          let layouts=ref [defaultEnv.new_page (empty_frame,[])] in
           let reboot=ref false in
           let toc=ref [] in
           let rec typeset_structure path tree env0=
@@ -454,7 +455,10 @@ module Format=functor (D:Document.DocumentStructure)->(
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
-                user_positions=UserMap.add (Label labl) uselessLine (* { uselessLine with page=List.length !slides } *)
+                user_positions=UserMap.add (Label labl)
+                  (match !layouts with
+                      []->uselessLine
+                    | h::_->{ uselessLine with layout=h })
                   env0.user_positions
               }
             in
@@ -470,6 +474,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;
+                  layouts:=
+                    (env0.new_page (match !layouts with
+                        []->(empty_frame,[])
+                      | h::_->h))::(!layouts);
 
                   let rec get_max_state t=match t with
                       Paragraph p->(try IntSet.max_elt p.par_states with Not_found -> 0)
