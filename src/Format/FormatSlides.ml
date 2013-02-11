@@ -165,12 +165,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     end
 
-    module TableOfContents=struct
-      let do_begin_env ()=
-        let max_depth=1 in
-        TableOfContents.slides center D.structure (fst (top !D.structure)) max_depth
-      let do_end_env ()=()
-    end
 
     module Make_theorem=functor (Th:Theorem)->struct
 
@@ -352,6 +346,9 @@ module Format=functor (D:Document.DocumentStructure)->(
         )
     }
 
+    let titleStyle x=
+      size (defaultEnv.size*.1.2) (bold x)
+
     (* in slides, werbatim with a smaller lead *)
     let verbEnv x =
 	{ (envFamily x.fontMonoFamily x)
@@ -364,6 +361,34 @@ module Format=functor (D:Document.DocumentStructure)->(
         (* page_height=2.*.slideh; *)
       }
 
+    let make_toc title tt0=
+      let t0,path=tt0 in
+      let rec make_toc p t=match t with
+          Node n when p<=1 && List.mem_assoc "intoc" n.node_tags->(
+            let t1=ref (Node {empty with
+              displayname=titleStyle title;
+              node_tags=("slide","")::empty.node_tags;
+              node_env=(incr_counter "slide")
+            },[])
+            in
+            TableOfContents.slides center t1 t0 1;
+            let nn=try fst (IntMap.min_binding n.children)-1 with Not_found->0 in
+            Node { n with children=IntMap.add nn (fst (top !t1)) n.children }
+          )
+        | Node n when p=0 -> Node { n with children=IntMap.map (make_toc (p+1)) n.children }
+        | _->t
+      in
+      let t1=make_toc 0 t0 in
+      follow (t1,[]) (List.rev (List.map fst path))
+
+
+    module TableOfContents=struct
+      let do_begin_env ()=
+        let max_depth=1 in
+        TableOfContents.slides center D.structure (fst (top !D.structure)) max_depth
+      let do_end_env ()=()
+    end
+
     module type Title = sig
       val arg1 : (content list)
     end
@@ -375,7 +400,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
             match res0 with
                 Node node->
-                  D.structure:=follow (top (Node {node with displayname=size (defaultEnv.size*.1.2) (bold M.arg1);name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
+                  D.structure:=follow (top (Node {node with displayname=titleStyle (bold M.arg1);name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
               | _->assert false
           let do_end_env ()=()
         end
@@ -471,9 +496,9 @@ module Format=functor (D:Document.DocumentStructure)->(
             );
             match tree with
                 Node n when List.mem_assoc "slide" n.node_tags ->(
-                  let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
+                  (*let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
-                  close_out out;
+                  close_out out;*)
                   layouts:=
                     (env0.new_page (match !layouts with
                         []->(empty_frame,[])
@@ -564,7 +589,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                         let labl=String.concat "_" ("_"::List.map string_of_int path) in
                         UserMap.mem (Label labl) env2.user_positions
                       in
-                      typeset_states (state+1) (reboot_ || (reboot'&& !fixable) || not labl_exists) env2
+                      typeset_states (state+1)
+                        (reboot_ || (reboot' && !fixable) || not labl_exists)
+                        env2
                     )
                   in
 
@@ -572,6 +599,58 @@ module Format=functor (D:Document.DocumentStructure)->(
                   reboot:=reboot';
                   (* Fini *)
 
+                  (* Position la plus basse de la première ligne de chaque paragraphe *)
+                  let state_start=Array.make_matrix (max_state+1)
+                    (Array.length paragraphs0) infinity
+                  in
+                  let lowest_start=Array.make (Array.length paragraphs0) infinity in
+                  Array.iteri (fun i l->
+                    List.iter (fun ll->
+                      if ll.line.lineStart=0 then (
+                        state_start.(i).(ll.line.paragraph)<-ll.line.height;
+                        lowest_start.(ll.line.paragraph)<-min
+                          ll.line.height
+                          lowest_start.(ll.line.paragraph)
+                      )
+                    ) l
+                  ) opts;
+
+                  (* Premier positionnement de tout le monde ("aligné" en haut) *)
+                  let max_h=ref (-.infinity) in
+                  let max_line=ref (-.infinity) in
+                  let min_h=ref infinity in
+                  for i=0 to Array.length opts-1 do
+                    opts.(i)<-List.map (fun ll->
+
+                      max_h := max !max_h (ll.line.height)
+                      +. snd (line_height paragraphs0 [||] ll.line);
+                      max_line:=max !max_line (ll.line.height);
+                      min_h:=min !min_h (ll.line.height)
+                      +. fst (line_height paragraphs0 [||] ll.line);
+
+                      { ll with
+                        line={ ll.line with
+                          height=ll.line.height
+                          -. state_start.(i).(ll.line.paragraph)
+                          +.lowest_start.(ll.line.paragraph)
+                        }
+                      }
+                    ) opts.(i)
+                  done;
+
+                  (* Centrage collectif *)
+                  for i=0 to Array.length opts-1 do
+                    let place=(!max_line-.env0.size*.3. -. (!max_h-. !min_h))/.2. in
+                    opts.(i)<-List.map (fun ll->
+                      { ll with
+                        line={ ll.line with
+                          height=ll.line.height -. place
+                        }
+                      }
+                    ) opts.(i)
+                  done;
+
+                  (* Fin du placement vertical *)
 
                   slides:=(path,tree,paragraphs0,figures0,figure_trees0,env1,opts)::(!slides);
                   n.node_post_env env0 env1

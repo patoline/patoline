@@ -217,7 +217,7 @@ let slides parameters str tree max_level=
           match tree with
               Paragraph p -> []
             | FigureDef f -> []
-            | Node s when level <= max_level && List.mem_assoc "intoc" s.node_tags-> (
+            | Node s when level <= max_level->(
                 let rec flat_children env1=function
                     []->[]
                   | (_,(FigureDef _))::s
@@ -239,28 +239,31 @@ let slides parameters str tree max_level=
 
                   let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
 
-                  List.iter (Printf.fprintf stderr "path %d\n") path;
-                  List.iter (Printf.fprintf stderr "b0 %d\n") b0;
-                  let env'=if prefix (List.rev b) (List.rev b0) || b0=[] then
-                      env'
-                    else {env' with fontColor=OutputCommon.mix 30. env'.fontColor
-                        OutputCommon.white}
-                  in
+                  let c=0.8 in
                   let env_num=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then
-                    { env' with fontColor=OutputCommon.rgb 1. 0. 0. }
-                    else env'
+                      { env' with fontColor=OutputCommon.rgb 1. 0. 0. }
+                    else
+                      { env' with fontColor=OutputCommon.rgb c c c }
                   in
+                  let env_name=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then
+                      { env' with fontColor=OutputCommon.rgb 0. 0. 0. }
+                    else
+                      { env' with fontColor=OutputCommon.rgb c c c }
+                  in
+
                   let num=boxify_scoped env_num
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
 
-                  let name=boxify_scoped env' s.displayname in
+                  let name=boxify_scoped env_name s.displayname in
 
 
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
+                  let w0=2.*.env.size in
                   let cont=
-                    (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
-                       (draw_boxes env num) else [])@
-                      (List.map (OutputCommon.translate 0. 0.) (draw_boxes env name))
+                    (if numbered then List.map (OutputCommon.translate (w0-.w-.spacing) 0.)
+                        (draw_boxes env_num num)
+                     else [])@
+                      (List.map (OutputCommon.translate w0 0.) (draw_boxes env' name))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
                   User (BeginLink (labl))::
