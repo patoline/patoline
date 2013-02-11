@@ -416,8 +416,7 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
-resize();
-console.log(h0,h1);
+//resize();
 loadSlide(h0,h1)
 };
 
@@ -446,12 +445,18 @@ if(current_state>=states[current_slide]-1) {
 } else {
   loadSlide(current_slide,current_state+1)
 }
-} //right
-if(e.charCode==82){ //r
+} else //right
+if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
-}
-}
+} else if(e.keyCode==70) {
+var element=document.getElementById(\"svg\");
+    var requestMethod = element.requestFullScreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullScreen;
 
+    if (requestMethod) {
+        requestMethod.call(element);
+    }
+}
+}
 function gotoSlide(n){
 if(n>current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)})
