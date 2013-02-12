@@ -106,7 +106,7 @@ let centered parameters str tree _=
             | Node _->[]
         in
         let table=toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
-          [] tree
+          [] (fst (top !tree))
         in
         let x0=if !max_name<env.normalMeasure*.1./.3. then env.normalMeasure/.2.
         else !max_name+.(env.normalMeasure-. !max_w)/.2.
@@ -196,7 +196,7 @@ let these parameters str tree max_level=
             | Node _->[]
         in
         toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
-          [] tree
+          [] (fst (top !tree))
     )]
 
 
@@ -289,5 +289,5 @@ let slides parameters str tree max_level=
             | Node _->[]
         in
         toc { env with counters=StrMap.add "_structure" (-1,[0]) env.counters }
-          [] tree
+          [] (fst (top !tree))
     )]

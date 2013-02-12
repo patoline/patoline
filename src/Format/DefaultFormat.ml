@@ -561,7 +561,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module TableOfContents=struct
       let do_begin_env ()=
         let max_depth=2 in
-        TableOfContents.these center D.structure (fst (top !D.structure)) max_depth
+        TableOfContents.these center D.structure D.structure max_depth
       let do_end_env ()=()
     end
 

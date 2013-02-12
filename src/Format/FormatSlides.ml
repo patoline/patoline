@@ -397,7 +397,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               node_env=(incr_counter "slide")
             },[])
             in
-            TableOfContents.slides center t1 t0 1;
+            TableOfContents.slides center t1 (ref (t0,[])) 1;
             let nn=try fst (IntMap.min_binding n.children)-1 with Not_found->0 in
             Node { n with children=IntMap.add nn (fst (top !t1)) n.children }
           )
@@ -411,7 +411,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module TableOfContents=struct
       let do_begin_env ()=
         let max_depth=1 in
-        TableOfContents.slides center D.structure (fst (top !D.structure)) max_depth
+        TableOfContents.slides center D.structure D.structure max_depth
       let do_end_env ()=()
     end
 
