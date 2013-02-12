@@ -365,7 +365,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         (fun t->
           let zip=Layout.make_page (slidew,slideh) (frame_top t) in
           let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
-          let y0=((fst zip).frame_y0+.1.*.slideh/.6.) in
+          let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
           let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
           let y1=((fst zip).frame_y1-.1.*.slideh/.6.) in
           frame x0 y0 x1 y1 zip
@@ -665,6 +665,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                       }
                     ) opts.(i)
                   done;
+                  min_frame:=max (slideh/.6.) !min_frame;
 
                   (* Centrage collectif *)
                   for i=0 to Array.length opts-1 do
