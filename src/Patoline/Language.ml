@@ -23,7 +23,7 @@ open Lexing
 type message=
     End_of_parsing of int
   | Syntax_error of (string*position*syntax_error)
-  | Unexisting_file of string
+  | Inexistent_file of string
   | No_grammar_loaded of string*string
   | No_input_file
   | Usage
@@ -90,7 +90,7 @@ let message=function
            | Unterminated_text->"Section texte non terminée"
         )
   | No_grammar_loaded (file,msg)->sprintf "La grammaire %s n'a pas été chargée (erreur : %s)" file msg
-  | Unexisting_file file->sprintf "%s : Le fichier n'existe pas" file
+  | Inexistent_file file->sprintf "%s : Le fichier n'existe pas" file
   | No_input_file->"Pas de fichier d'entrée"
   | Usage->"Utilisation :"
   | Unknown_command c->sprintf "%s : Commande inconnue" c
@@ -150,7 +150,7 @@ let message=function
            | Unterminated_text->"Unterminated texprime text section"
         );
   | No_grammar_loaded (file,msg)->sprintf "Could not load grammar %s (error : %s)" file msg
-  | Unexisting_file file->sprintf "%s: No such file or directory" file
+  | Inexistent_file file->sprintf "%s: No such file or directory" file
   | No_input_file->"No input file"
   | Usage->"Usage:"
   | Unknown_command c->sprintf "%s: Unknown command" c

@@ -552,22 +552,26 @@ and process_each_file l=
     Printf.fprintf stderr "%s\n" (Language.message No_input_file)
   else
     List.iter (fun f->
-      if !compile then (
-        let cmd= (Filename.concat
-                    (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
-        Build.sem_set Build.sem !Build.j;
-        Build.build cmd;
-        if !run && Sys.file_exists cmd then (
-          extras_top:=List.rev !extras_top;
-          Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
-          let pid=Unix.create_process cmd
-            (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
-            Unix.stdin
-            Unix.stdout
-            Unix.stderr
-          in
-          let _=Unix.waitpid [] pid in
-          ()
+      if Sys.file_exists f then (
+        if !compile then (
+          let cmd= (Filename.concat
+                      (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
+          Build.sem_set Build.sem !Build.j;
+          Build.build cmd;
+          if !run && Sys.file_exists cmd then (
+            extras_top:=List.rev !extras_top;
+            Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
+            let pid=Unix.create_process cmd
+              (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
+              Unix.stdin
+              Unix.stdout
+              Unix.stderr
+            in
+            let _=Unix.waitpid [] pid in
+            ()
+          )
+        ) else (
+          Printf.fprintf stderr "%s\n" (Language.message (Inexistent_file f))
         )
       ) else (
         if Sys.file_exists f then (
@@ -610,7 +614,7 @@ and process_each_file l=
           close_in fread;
         ) else (
           Printf.fprintf stderr "%s\n"
-            (Language.message (Language.Unexisting_file f));
+            (Language.message (Language.Inexistent_file f));
           exit 1
         )
       )
