@@ -111,12 +111,17 @@ module Format=functor (D:Document.DocumentStructure)->(
             let minip,env1=minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
             let minip_title,env2=minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
+            if minip_title.(0).drawing_y0=infinity then
+              minip_title.(0)<-{ minip_title.(0) with drawing_y0=0.;drawing_y1=0. };
+            if minip.(0).drawing_y0=infinity then
+              minip.(0)<-{ minip.(0) with drawing_y0=0.;drawing_y1=0. };
+
             let tx=max
               (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
               (minip_title.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
             in
             let tit=
-              if Array.length minip_title>0 then
+              if M.arg1<>[] then
                 drawing_blit minip.(0) 0.
                   tx
                   minip_title.(0)
@@ -637,17 +642,19 @@ module Format=functor (D:Document.DocumentStructure)->(
                   ) opts;
 
                   (* Premier positionnement de tout le monde ("aligné" en haut) *)
+                  let max_frame=ref (-.infinity) in
+                  let min_frame=ref infinity in
                   let max_h=ref (-.infinity) in
-                  let max_line=ref (-.infinity) in
                   let min_h=ref infinity in
                   for i=0 to Array.length opts-1 do
                     opts.(i)<-List.map (fun ll->
 
-                      max_h := max !max_h (ll.line.height)
-                      +. snd (line_height paragraphs0 [||] ll.line);
-                      max_line:=max !max_line (ll.line.height);
-                      min_h:=min !min_h (ll.line.height)
-                      +. fst (line_height paragraphs0 [||] ll.line);
+                      max_frame := max !max_frame (fst ll.line.layout).frame_y1;
+                      min_frame := min !min_frame (fst ll.line.layout).frame_y0;
+
+                      let y0,y1=line_height paragraphs0 [||] ll.line in
+                      max_h := max !max_h (ll.line.height+.y1);
+                      min_h := min !min_h (ll.line.height+.y0);
 
                       { ll with
                         line={ ll.line with
@@ -661,7 +668,10 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   (* Centrage collectif *)
                   for i=0 to Array.length opts-1 do
-                    let place=(!max_line-.env0.size*.3. -. (!max_h-. !min_h))/.2. in
+                    let place=(!max_frame-. !min_frame-.(!max_h-. !min_h))/.2. in
+                    let place=match classify_float place with
+                        FP_infinite | FP_nan->0. | _->max 0. place
+                    in
                     opts.(i)<-List.map (fun ll->
                       { ll with
                         line={ ll.line with
