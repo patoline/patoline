@@ -548,12 +548,13 @@ and patoline_rule objects h=
 (* Gestion de la compilation de plusieurs fichiers patolines différents. *)
 
 and process_each_file l=
-  if l=[] then
-    Printf.fprintf stderr "%s\n" (Language.message No_input_file)
-  else
+  if l=[] then (
+    Printf.fprintf stderr "%s\n" (Language.message No_input_file);
+    exit 1
+  ) else
     List.iter (fun f->
-      if Sys.file_exists f then (
-        if !compile then (
+      if !compile then (
+        if Sys.file_exists f then (
           let cmd= (Filename.concat
                       (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
           Build.sem_set Build.sem !Build.j;
@@ -571,7 +572,8 @@ and process_each_file l=
             ()
           )
         ) else (
-          Printf.fprintf stderr "%s\n" (Language.message (Inexistent_file f))
+          Printf.fprintf stderr "%s\n" (Language.message (Inexistent_file f));
+          exit 1
         )
       ) else (
         if Sys.file_exists f then (
@@ -593,7 +595,6 @@ and process_each_file l=
             List.iter (fun x->
               if x<>f then Build.build x
             ) opts.deps;
-
 
             let suppl=
               Printf.sprintf "(* #PACKAGES %s *)%s%s%s\n"
