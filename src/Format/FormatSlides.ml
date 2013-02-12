@@ -537,11 +537,20 @@ module Format=functor (D:Document.DocumentStructure)->(
                         (try IntSet.max_elt n.node_states with Not_found->0)
                     | _->0
                   in
-                  let max_state=get_max_state tree in
 
                   let fixable=ref false in
                   let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
                     figures0,figure_trees0=flatten env0 fixable tree
+                  in
+                  let max_state=
+                    Array.fold_left (
+                      Array.fold_left (fun maxst box->match box with
+                          Drawing d | Glue d->
+                            let st1=try IntSet.max_elt d.drawing_states with Not_found -> maxst in
+                            max st1 maxst
+                        | _->maxst
+                      )
+                    ) (get_max_state tree) paragraphs0
                   in
 
                   let opts=Array.make (max_state+1) [] in
@@ -655,7 +664,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                       let y0,y1=line_height paragraphs0 [||] ll.line in
                       max_h := max !max_h (ll.line.height+.y1);
                       min_h := min !min_h (ll.line.height+.y0);
-
                       { ll with
                         line={ ll.line with
                           height=ll.line.height
@@ -867,7 +875,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                         | Glue g
                         | Drawing g ->(
                           let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                          page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+                          let cont=g.drawing_contents w in
+                          let cont_states=
+                            List.filter (fun x->match x with
+                                States s when not (IntSet.is_empty s.states_states) &&
+                                    not (IntSet.mem st s.states_states) -> false
+                              | _->true
+                            ) cont
+                          in
+                          page.pageContents<-
+                            (List.map (translate x y) cont_states) @ page.pageContents;
 		          if env.show_boxes then
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w

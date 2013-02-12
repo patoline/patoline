@@ -231,6 +231,7 @@ module MakeFormat (D:Document.DocumentStructure)
 				  drawing_adjust_before = false;
                                   drawing_contents=(fun _->[]);
                                   drawing_break_badness=0.;
+                                  drawing_states=IntSet.empty;
                                   drawing_badness=fun _-> 0. }];
           hyphenate=hyphenate;
           counters=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty

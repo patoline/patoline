@@ -42,6 +42,7 @@ and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
 		   drawing_y0:float; drawing_y1:float;
                    drawing_badness : float -> float;
                    drawing_break_badness : float;
+                   drawing_states:IntSet.t;
                    drawing_contents:float -> OutputCommon.raw list }
 
 
@@ -64,7 +65,13 @@ and user=
 module UserMap=Map.Make(struct type t=user let compare=compare end)
 open Layout
 
-let drawing ?offset:(offset=0.) cont=
+
+let drawing ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
+  let states=List.fold_left (fun st0 x->match x with
+      States s->IntSet.fold IntSet.add st0 s.states_states
+    | _->st0
+  ) states cont
+  in
   let (a,b,c,d)=OutputCommon.bounding_box cont in
     {
       drawing_min_width=c-.a;
@@ -76,10 +83,16 @@ let drawing ?offset:(offset=0.) cont=
       drawing_y1=offset+.d-.b;
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
+      drawing_states=states;
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
-let drawing_inline ?offset:(offset=0.) cont=
+let drawing_inline ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
+  let states=List.fold_left (fun st0 x->match x with
+      States s->IntSet.fold IntSet.add st0 s.states_states
+    | _->st0
+  ) states cont
+  in
   let (a,b,c,d)=OutputCommon.bounding_box cont in
     {
       drawing_min_width=c-.a;
@@ -91,6 +104,7 @@ let drawing_inline ?offset:(offset=0.) cont=
       drawing_y1=offset+.d;
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
+      drawing_states=states;
       drawing_contents=(fun _->List.map (translate (-.a) offset) cont)
     }
 
@@ -105,6 +119,7 @@ let drawing_blit a x0 y0 b=
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
       drawing_break_badness=0.;
+      drawing_states=IntSet.fold (IntSet.add) a.drawing_states b.drawing_states;
       drawing_badness=(fun w->
                          let fact=w/.(w1-.w0) in
                            a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)
@@ -188,36 +203,29 @@ let glue a b c=
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
          drawing_break_badness=0.;
+         drawing_states=IntSet.empty;
          drawing_badness=knuth_h_badness b }
 
 let rec resize l=function
     GlyphBox b -> GlyphBox { b with glyph_size= l*.b.glyph_size }
   | Hyphen x->Hyphen { hyphen_normal=Array.map (resize l) x.hyphen_normal;
                        hyphenated=Array.map (fun (a,b)->Array.map (resize l) a, Array.map (resize l) b) x.hyphenated }
-  | Drawing x -> Drawing {
+  | Drawing x -> Drawing { x with
                        drawing_min_width= x.drawing_min_width*.l;
                        drawing_max_width= x.drawing_max_width*.l;
-		       drawing_width_fixed = true;
-		       drawing_adjust_before = false;
                        drawing_y0=x.drawing_y0*.l;
                        drawing_y1=x.drawing_y1*.l;
                        drawing_nominal_width= x.drawing_nominal_width*.l;
-                       drawing_break_badness=0.;
-                       drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
                        drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
                    }
-  | Glue x -> Glue {
-                       drawing_min_width= x.drawing_min_width*.l;
-                       drawing_max_width= x.drawing_max_width*.l;
-		       drawing_width_fixed = true;
-		       drawing_adjust_before = false;
-                       drawing_y0=x.drawing_y0*.l;
-                       drawing_y1=x.drawing_y1*.l;
-                       drawing_nominal_width= x.drawing_nominal_width*.l;
-                       drawing_break_badness=0.;
-                       drawing_badness = knuth_h_badness (2.*.(x.drawing_max_width+.x.drawing_min_width)/.3.);
-                       drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
-                   }
+  | Glue x -> Glue { x with
+    drawing_min_width= x.drawing_min_width*.l;
+    drawing_max_width= x.drawing_max_width*.l;
+    drawing_y0=x.drawing_y0*.l;
+    drawing_y1=x.drawing_y1*.l;
+    drawing_nominal_width= x.drawing_nominal_width*.l;
+    drawing_contents=(fun w->List.map (OutputCommon.resize l) (x.drawing_contents w))
+  }
   | Kerning x -> Kerning { advance_width = l*.x.advance_width;
                            advance_height = l*.x.advance_height;
                            kern_x0 = l*.x.kern_x0;

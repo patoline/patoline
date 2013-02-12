@@ -262,7 +262,7 @@ let draw ?fontCache prefix w h contents=
     )
     | _->()
   in
-  List.iter output_contents contents;
+  List.iter output_contents (drawing_sort contents);
   if !opened_tspan then (
     Rbuffer.add_string svg_buf "</tspan>\n";
   );
@@ -549,7 +549,7 @@ let images prefix env conts=
       let x=List.fold_left (fun m x->
         let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
         IntMap.add (drawing_order x) (x::m') m
-      ) IntMap.empty cont
+      ) IntMap.empty (drawing_sort cont)
       in
       let comp a b=match a,b with
           Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x

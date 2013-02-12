@@ -412,6 +412,7 @@ let rec draw draw_env env_stack mlist =
                                drawing_y0=a1;
                                drawing_y1=a3;
                                drawing_break_badness=0.;
+                               drawing_states=IntSet.empty;
                                drawing_badness=(fun _->0.);
                                drawing_contents=(fun _->List.map (translate (-.a0) 0.) dr) }) ]
               ) else
@@ -590,6 +591,7 @@ let rec draw draw_env env_stack mlist =
                        drawing_y1=hx +. y1a-.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.);
                        drawing_badness=(fun _->0.);
                        drawing_break_badness=0.;
+                       drawing_states=IntSet.empty;
                        drawing_contents=(fun _->
                                            (if ln.lineWidth = 0. then [] else
                                               [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize*.env.size},
@@ -719,6 +721,7 @@ let rec draw draw_env env_stack mlist =
                     drawing_y0=miny;
                     drawing_y1=maxy;
                     drawing_break_badness=0.;
+                    drawing_states=IntSet.empty;
                     drawing_badness=(fun _->0.);
                     drawing_contents=
                       (fun _->
@@ -753,6 +756,7 @@ let rec draw draw_env env_stack mlist =
                drawing_y1=y1_l;
                drawing_badness=(fun _->0.);
                drawing_break_badness=0.;
+               drawing_states=IntSet.empty;
                drawing_contents=(fun _->left)}])
               @[Drawing {
                  drawing_min_width=x1 +. dist_r;
@@ -764,6 +768,7 @@ let rec draw draw_env env_stack mlist =
                  drawing_y1=y1;
                  drawing_badness=(fun _->0.);
                  drawing_break_badness=0.;
+                 drawing_states=IntSet.empty;
                  drawing_contents=(fun _-> box_op)}]
               @(if right = [] then [] else [Drawing {
                  drawing_min_width=x1_r;
@@ -775,6 +780,7 @@ let rec draw draw_env env_stack mlist =
                  drawing_y1=y1_r;
                  drawing_badness=(fun _->0.);
                  drawing_break_badness=0.;
+                 drawing_states=IntSet.empty;
                  drawing_contents=(fun _-> right)}])
               @(draw draw_env env_stack s)
         )
@@ -1087,6 +1093,7 @@ let make_sqrt env_ style box=
          drawing_y1=d;
          drawing_break_badness=0.;
          drawing_badness=(fun _->0.);
+         drawing_states=IntSet.empty;
          drawing_contents=(fun _->p::List.map (translate (dx0+.sp-.bx0) 0.) under);
       }]
     ) else (
@@ -1130,6 +1137,7 @@ let make_sqrt env_ style box=
         drawing_y0=b;
         drawing_y1=d;
         drawing_break_badness=0.;
+        drawing_states=IntSet.empty;
         drawing_badness=(fun _->0.);
         drawing_contents=(fun _->p::(List.map (translate (dx0+.sp-.bx0) 0.) under))
       }]
