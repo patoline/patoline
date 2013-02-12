@@ -315,22 +315,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	  if args = [] then Printf.bprintf buf " ()";
 	end ;
 	Printf.bprintf buf ") ";
-      | `Preproc -> 
-	begin
-	  match args with 
-	    | Caml (ld,gr,s,e,txps,pos) :: _ -> begin
-	      let buf' = Buffer.create 80 in
-              print_caml_buf parser_pp ld gr op buf' s e txps pos;
-	      let s = Buffer.contents buf' in 
-              let f=StrMap.find name !Build.macros in
-	      let s' = f s in
-	      (* Printf.fprintf stderr "Started from : \n %s \n" s ; *)
-	      (* Printf.fprintf stderr "Printed : \n %s \n" s' ; *)
-	      Printf.bprintf buf " ( %s ) " s'
-	    end
-	    | _ -> assert false
-	end
-      | `Module | `Begin -> 
+      | `Module | `Begin ->
         incr moduleCounter;
 	Printf.bprintf buf "module TEMP%d = struct\n" !moduleCounter;
 	let modname =if mtype = `Begin then "Env_"^name else name in
@@ -659,6 +644,15 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
         (fun ld gr buf s e txps opos ->
           let pos = pos_in from' in
           print_caml_buf (Parser.pp ()) ld gr (Source.of_in_channel from') buf s e txps opos;
+          seek_in from' pos);
+
+      Parser.fprint_preproc_buf :=
+        (fun ld gr buf s e ->
+          let pos = pos_in from' in
+          let size = e - s in
+          let buf'=String.make size (char_of_int 0) in
+          let _=  (Source.of_in_channel from') s buf' 0 size in
+          Printf.bprintf buf "%s" buf';
           seek_in from' pos);
 
 

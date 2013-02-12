@@ -13,15 +13,18 @@ endif
 CAMLOPT=ocamlfind ocamlopt $(PACK)
 CAMLC=ocamlfind ocamlc $(PACK)
 
-VPATH=Typography:Pdf:Drivers:Format
+VPATH=Typography:Pdf:Drivers:Format:cesure
 
 all:native $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx
+native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx all_plugins
 
 byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma plot/plot.cma
 
 prof:Typography/_build.p/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa plot/plot.p.cmxa
+
+all_plugins:plugins Patoline/patoline
+	make -C plugins all
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
@@ -31,7 +34,7 @@ Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2
 
 cesure/cesure:Typography/_build/Typography.cmxa cesure/cesure.ml
-	$(CAMLOPT) -I Typography/_build -I Rbuffer -o cesure/cesure rbuffer.cmxa Typography.cmxa str.cmxa -linkpkg cesure/cesure.ml
+	make -C cesure cesure
 
 ocaml-bibi/bibi.cma:Typography/_build/Typography.cma ocaml-bibi Format/DefaultFormat.cma
 	make -C ocaml-bibi bibi.cma

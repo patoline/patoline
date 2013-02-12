@@ -216,7 +216,7 @@ let _=
   if !fonts_dir="" then fonts_dir:=Filename.concat !prefix "share/patoline/fonts";
   if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
-  if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "share/patoline/plugins";
+  if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "lib/patoline/plugins";
 
   fonts_dirs:= !fonts_dir ::(!fonts_dirs);
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
@@ -422,6 +422,18 @@ let _=
       Printf.fprintf out "\tinstall -p -m 755 src/proof/proof $(DESTDIR)%s/proof\n" (escape !bin_dir);
 
       (* Plugins *)
+
+      (* Librairie d'écriture de plugins du parser *)
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patoline\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+      Printf.fprintf out "\tinstall -p -m 755 src/Patoline/META src/Patoline/Build.cmi src/Patoline/Util.cmi $(DESTDIR)%s/patoline\n" (if !ocamlfind_dir="" then "$(shell ocamlfind printconf destdir)" else escape !ocamlfind_dir);
+
+      Array.iter (fun plugin->
+        if Filename.check_suffix plugin ".cmxs" then (
+          Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n" plugin (escape !plugins_dir);
+        )
+      ) (Sys.readdir "src/plugins");
+
+
       Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
       Printf.fprintf out "\tinstall -p -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
 

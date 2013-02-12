@@ -465,7 +465,80 @@ and patoline_rule objects h=
     );
     true
   )
-  else if Filename.check_suffix h ".tmx" || Filename.check_suffix h ".cmxs" then (
+  else if Filename.check_suffix h ".cmxs" then (
+    let raw_h=(Filename.chop_extension h) in
+    let source=raw_h^".ml"in
+
+    let in_s=open_in source in
+    let opts=read_options_from_source_file in_s in
+    let opts={ opts with packages="patoline"::opts.packages } in
+    close_in in_s;
+    List.iter (fun x->
+      Build.build x
+    ) opts.deps;
+    Build.build source;
+
+    (* A ce niveau, toutes les dépendances sont indépendantes entre
+       elles. On peut les placer sur le même niveau. *)
+    let deps0=make_deps source in
+    let mut,m=objects in
+    Mutex.lock mut;
+    m:=StrMap.singleton h deps0;
+    Mutex.unlock mut;
+    let tar=List.map (Thread.create Build.build) deps0 in
+    List.iter (Thread.join) tar;
+
+    let mut,m=objects in
+    Mutex.lock mut;
+
+    let rec breadth_first h l=match h with
+        []->l
+      | _::_->
+        let rec make_next h0 l0 h=match h with
+            []->h0,l0
+          | a::b->
+            let next=try StrMap.find a !m with Not_found->[] in
+            let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+            let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+            make_next h1 l1 b
+        in
+        let h1,l1=make_next [] l h in
+        breadth_first h1 l1
+    in
+    let objs=breadth_first [h] [] in
+    if compilation_needed (source::objs) [h] then (
+      let dirs_=str_dirs (!dirs@opts.directories) in
+      let cmd="ocamlfind" in
+      let comp_opts=
+        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+      in
+      let args_l=List.filter (fun x->x<>"")
+        ([cmd;
+          !ocamlopt]@
+            (List.concat (List.map getopts !extras))@
+            comp_opts@
+            (let pack=String.concat "," (List.rev (opts.packages)) in
+             if pack<>"" then ["-package";pack] else [])@
+            dirs_@
+            [(if Filename.check_suffix h ".cmxs" then "-shared" else "");
+             (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
+             "-o";h]@
+            objs@
+            ["-impl";source])
+      in
+      Mutex.unlock mut;
+
+      if not !quiet then (Printf.fprintf stdout "%s\n"
+                            (String.concat " "
+                               (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                          flush stdout);
+      let err=Build.command cmd (Array.of_list args_l) in
+      if err<>0 then (
+        exit err
+      )
+    );
+    true
+  ) else if Filename.check_suffix h ".tmx" then (
     let raw_h=(Filename.chop_extension h) in
     let source=if Filename.check_suffix h ".tmx" then raw_h^".tml" else raw_h^".ml"in
     let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in

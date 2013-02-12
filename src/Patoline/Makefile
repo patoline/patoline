@@ -4,7 +4,7 @@ CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -package dyp -package camomile -I ../Rbuff
 CAMLC=ocamlfind ocamlc -pp $(CPP) -package dyp -package camomile -I ../Rbuffer
 
 patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
-	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Parser.cmx Build.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
+	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Build.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 
 PatolineGL:PatolineGL.ml ../Typography/_build/Typography.cmxa ../Drivers/GL.cmxa
 	$(CAMLOPT) -package $(PACK_DRIVER_GL) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa GL.cmxa  -o $@ $<
@@ -16,7 +16,7 @@ Main.cmx:Generateur.cmx SimpleGenerateur.cmx Main.ml Build.cmx
 	ocamlopt -thread -rectypes -I +threads -c -o Main.cmx Main.ml
 
 Generateur.cmx:Parser.cmx Generateur.ml Build.cmx
-Parser.cmx:Parser.ml Config.cmx Language.cmx Util.cmx
+Parser.cmx:Parser.ml Config.cmx Language.cmx Util.cmx Build.cmx
 SubSuper.dyp:UnicodeScripts.ml UnicodeData.txt
 	$(CAMLC) -o UnicodeScripts -package bigarray -package camomile -linkpkg UnicodeScripts.ml
 	./UnicodeScripts
