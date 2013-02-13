@@ -657,7 +657,19 @@ end
 	    (fun map style -> 
 	      let pet = style.pet in 
 	      let styles = if Pet.Map.mem pet map then Pet.Map.find pet map else [] in 
-	      Pet.Map.add pet (styles @ [style]) map)
+
+	      (* Here, it is not obvious what to do. Should styles override each other, or should they be applied iteratively? *)
+	      (* The initial behaviour was the latter, which I now find less attractive than the former. *)
+	      (* The reason is that, e.g., for edges below, the
+		 "arrow" style would draw two arrow heads, which, when
+		 combined with the "double" style, could be quite
+		 distant from each other because each shortens the
+		 involved edge. *)
+
+	      (* Pet.Map.add pet (styles @ [style]) map) *)
+
+	      Pet.Map.add pet [style] map)
+
 	    Pet.Map.empty
 	    styles
 	in
@@ -1918,7 +1930,8 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let info_black = Transfo.transform [shorten (delta +. 0.1) (delta +. 0.1)] 
 	    { info with curves = black_paths } in
 	  { info_black with 
-	    tip_info = { info.tip_info with tip_line_width = margin +. 2.0 *. info.params.lineWidth };
+	    tip_info = { tip_line_width = margin +. 2.0 *. info.params.lineWidth ;
+			 is_double = true };
 	    curves = (info_black.curves @ info_white.curves) }) })
 
       let base_arrow head_params transfos edge_info=
@@ -1959,7 +1972,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 					@ (Curve.make_quadratic e1 r' rr) 
 					@ (Curve.make_quadratic rr r e)) 
 	in
-	{ edge_info with decorations = edge_info.decorations @
+	{ edge_info' with decorations = edge_info'.decorations @
 	    [({ params with 
 		  close = true ; 
 		  fillColor = params.strokingColor ; 
@@ -2434,7 +2447,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
 		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr 
 		in
-		let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in
+		(* let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in *)
 		let matrix = Matrix.(make env
 		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
 		   mainNode Node.([
