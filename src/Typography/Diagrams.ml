@@ -658,7 +658,9 @@ end
 	      let pet = style.pet in 
 	      let styles = if Pet.Map.mem pet map then Pet.Map.find pet map else [] in 
 
-	      (* Here, it is not obvious what to do. Should styles override each other, or should they be applied iteratively? *)
+	      (* Here, it is not obvious what to do. Should styles
+		 override each other, or should they be applied
+		 iteratively? *)
 	      (* The initial behaviour was the latter, which I now find less attractive than the former. *)
 	      (* The reason is that, e.g., for edges below, the
 		 "arrow" style would draw two arrow heads, which, when
@@ -1600,10 +1602,12 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 			 given_curve : Curve.t ;
 			 underlying_curve : Curve.t ;
 			 curves : (path_parameters * Curve.t) list ;
-			 decorations : (path_parameters * Curve.t) list ;
+			 decorations : decoration list ;
 			 z_curve : float array list ;
 			 anchor : anchor -> Point.t
 		  }
+      and decoration = Curve of path_parameters * Curve.t
+		       | Node of Node.t
 
       let evaluate_z info (i,t) = match info.z_curve with
 	  [] -> 0.0
@@ -1655,26 +1659,9 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	{ (default_edge_info (coord (0.,0.)) (coord (0.,0.)) (Curve.of_point_lists [[(0.,0.)]]))
 	  with params = { OutputCommon.default with strokingColor = None } }
 
-
-      let make_anchors edge_info =
-      	let curve = edge_info.underlying_curve in
-      	let given_curve = edge_info.given_curve in
-      	let anchor = function
-      	  | `Temporal pos -> Curve.eval curve pos
-      	  | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
-      	  | `CurvilinearFromStart pos -> Curve.eval given_curve (Curve.curvilinear given_curve pos)
-      	  | `Start -> edge_info.start.Gentity.anchor `Main
-      	  | `End -> edge_info.finish.Gentity.anchor `Main
-      	  | `Center -> Curve.eval curve 0.5
-      	  | _ -> Printf.fprintf stderr "Anchor undefined for an edge. Returning the center instead.\n" ;
-      	    Curve.eval curve 0.5
-      	in
-	{ edge_info with anchor = anchor }
-
-
       let transform styles s e underlying_curve = 
 	let edge_info = Transfo.transform styles (default_edge_info s e underlying_curve)  in
-	make_anchors edge_info
+	edge_info
 
       let outer_curve styles curve = curve
 
@@ -1703,29 +1690,19 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let point_lists_of_edge_spec s continues e =
 	point_lists_of_edge_spec_rec [] (s.Gentity.anchor `Main) (e.Gentity.anchor `Main) continues
 
+      let decoration_to_contents edge_info = function
+	| Curve (params, curve) -> Curve.draw ~parameters:params curve
+	| Node node -> Node.to_contents node
+
       let to_contents edge_info = 
 	(List.flatten (List.map (fun (params,curve) -> (Curve.draw ~parameters:params curve)) 
 			 edge_info.curves))
-	@ (List.flatten (List.map (fun (params,curve) -> (Curve.draw ~parameters:params curve)) 
-			   edge_info.decorations))
+	@ (List.flatten (List.map (decoration_to_contents edge_info) edge_info.decorations))
 
       let to_gentity info = 
 	{ Gentity.curve = info.underlying_curve ;
 	  Gentity.anchor = info.anchor ;
 	  Gentity.contents = to_contents info }
-
-      let raw_edge style s e underlying_curve =
-	let edge_info = transform style s e underlying_curve in
-	edge_info
-
-      let path_of_curve style curve = 
-	let s = coord (Curve.first curve) in 
-	let e = coord (Curve.last curve) in 
-	raw_edge style s e curve
-
-      let path style s continues = 		
-	let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
-	path_of_curve style curve
 
       (* ******************************************************** *)
       (* We start defining new edge transfos and registering them *)
@@ -1773,16 +1750,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  })
 
 
-      let of_gentities style s ?controls:(controls=[]) e = 
-	let point_lists = point_lists_of_edge_spec s controls e in
-	let underlying_curve = Curve.of_point_lists point_lists in
-	raw_edge (clip :: style) s e underlying_curve
-
-      let make style s ?controls:(controls=[]) e = 
-	of_gentities style (Node.to_gentity s) ~controls:controls (Node.to_gentity e)
-
-      let makes style edge_list = 
-	List.map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
 
       let head_moustache info params = 
 	(* let _ = begin  *)
@@ -1878,35 +1845,6 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  })
 
 
-      let make_3d style start ?projection:(projection=Proj3d.cavaliere45bg)
-	  ?controls:(controls=[]) ?controls3d:(controls3d=[]) finish = 
-	let xycontrols,zcontrols = 
-	  if controls3d = [] then
-	    controls,[]
-	  else
-	    let associate l = (List.map
-		     (fun ((x,y,z) as point) -> (Proj3d.project projection point,z)) l)
-	    in
-	    let split ls = List.map List.split (List.map associate ls) in
-	    (List.split (split controls3d))
-	in
-	let zstart = start.Node.z in
-	let zfinish = finish.Node.z in	
-	let s = Node.to_gentity start in
-	let e = Node.to_gentity finish in
-	let point_lists = point_lists_of_edge_spec s xycontrols e in
-	let z_curve = List.map
-	  Array.of_list 
-	  (point_lists_of_edge_spec_rec [] zstart  zfinish zcontrols) 
-	in
-	let underlying_curve = Curve.of_point_lists point_lists in
-	raw_edge (clip :: (zs z_curve) :: style) s e underlying_curve
-
-
-      let makes_3d style  ?projection:(projection=Proj3d.cavaliere45bg)
-	  edge_list = 
-	List.map (fun (style',s,controls,controls3d,e) -> 
-	  make_3d (style' @ style) s ~controls:controls ~controls3d:controls3d e) edge_list
 
 
       let double, double_pet = Pet.register ~depends:[draw_pet] "double" (fun pet margin -> 
@@ -1973,7 +1911,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 					@ (Curve.make_quadratic rr r e)) 
 	in
 	{ edge_info' with decorations = edge_info'.decorations @
-	    [({ params with 
+	    [Curve ({ params with 
 		  close = true ; 
 		  fillColor = params.strokingColor ; 
 		  lineWidth = lw }, tip)]}
@@ -2013,7 +1951,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    let (la,lb) as l = Vector.normalise ~norm:width l in
 	    let (ra,rb) as r = Vector.normalise ~norm:width r in
 	    let dash = Curve.of_point_lists [[(Vector.(+) l middle);(Vector.(+) r middle)]] in 
-	    { edge_info' with decorations = edge_info'.decorations @ [edge_info'.params, dash] }
+	    { edge_info' with decorations = edge_info'.decorations @ [Curve (edge_info'.params, dash)] }
 	  )})
 
       let modTo = modToOf 0.5 1.
@@ -2084,6 +2022,93 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	      Transfo.transform [shorten shortens shortene] { info with curves = white_paths }   in
 	    { info with curves = (edge_info'.curves @ info.curves) }) })
 
+      let make_anchors, make_anchors_pet = 
+	Pet.register 
+	  ~depends:[foreground_pet;clip_pet;bend_pet;arrow_head_pet;double_pet;
+		    params_pet;draw_pet;shorten_pet;squiggle_pet;clip_pet] 
+	  "make anchors" 
+	  (fun pet ->
+	  { pet = pet ; transfo = (fun transfos edge_info -> 
+      	    let curve = edge_info.underlying_curve in
+      	    let given_curve = edge_info.given_curve in
+      	    let anchor = function
+      	      | `Temporal pos -> Curve.eval curve pos
+      	      | `Curvilinear pos -> Curve.eval curve (Curve.curvilinear curve pos)
+      	      | `CurvilinearFromStart pos -> Curve.eval given_curve (Curve.curvilinear given_curve pos)
+      	      | `Start -> edge_info.start.Gentity.anchor `Main
+      	      | `End -> edge_info.finish.Gentity.anchor `Main
+      	      | `Center -> Curve.eval curve 0.5
+      	      | _ -> Printf.fprintf stderr "Anchor undefined for an edge. Returning the center instead.\n" ;
+      		Curve.eval curve 0.5
+      	    in
+	    { edge_info with anchor = anchor })})
+
+
+
+
+      let label, label_pet = 
+	Pet.register ~depends:[draw_pet;shorten_pet;params_pet;double_pet;foreground_pet;make_anchors_pet] "label" 
+	  (fun pet env ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[]) cont ->
+	    { pet = pet ; transfo = (fun transfos info -> 
+	      let node = Node.make env (Node.at (info.anchor pos) :: style) cont in
+	      { info with decorations = info.decorations @ [Node node] }) })
+
+
+
+      let raw_edge style s e underlying_curve =
+	let edge_info = transform (make_anchors :: style) s e underlying_curve in
+	edge_info
+
+      let path_of_curve style curve = 
+	let s = coord (Curve.first curve) in 
+	let e = coord (Curve.last curve) in 
+	raw_edge style s e curve
+
+      let path style s continues = 		
+	let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
+	path_of_curve style curve
+
+
+      let of_gentities style s ?controls:(controls=[]) e = 
+	let point_lists = point_lists_of_edge_spec s controls e in
+	let underlying_curve = Curve.of_point_lists point_lists in
+	raw_edge (clip :: style) s e underlying_curve
+
+      let make style s ?controls:(controls=[]) e = 
+	of_gentities style (Node.to_gentity s) ~controls:controls (Node.to_gentity e)
+
+      let makes style edge_list = 
+	List.map (fun (style',s,controls,e) -> make (style' @ style) s ~controls:controls e) edge_list
+
+      let make_3d style start ?projection:(projection=Proj3d.cavaliere45bg)
+	  ?controls:(controls=[]) ?controls3d:(controls3d=[]) finish = 
+	let xycontrols,zcontrols = 
+	  if controls3d = [] then
+	    controls,[]
+	  else
+	    let associate l = (List.map
+		     (fun ((x,y,z) as point) -> (Proj3d.project projection point,z)) l)
+	    in
+	    let split ls = List.map List.split (List.map associate ls) in
+	    (List.split (split controls3d))
+	in
+	let zstart = start.Node.z in
+	let zfinish = finish.Node.z in	
+	let s = Node.to_gentity start in
+	let e = Node.to_gentity finish in
+	let point_lists = point_lists_of_edge_spec s xycontrols e in
+	let z_curve = List.map
+	  Array.of_list 
+	  (point_lists_of_edge_spec_rec [] zstart  zfinish zcontrols) 
+	in
+	let underlying_curve = Curve.of_point_lists point_lists in
+	raw_edge (clip :: (zs z_curve) :: style) s e underlying_curve
+
+
+      let makes_3d style  ?projection:(projection=Proj3d.cavaliere45bg)
+	  edge_list = 
+	List.map (fun (style',s,controls,controls3d,e) -> 
+	  make_3d (style' @ style) s ~controls:controls ~controls3d:controls3d e) edge_list
 
 
       let restrict info lt1 lt2 =
@@ -2298,26 +2323,39 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       open Node
       open Edge
 
-      let label e style pos contents = 
+      let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[]) cont = 
+	label env ~pos:pos ~style:((Node.anchor a) :: style) cont
+
+      let labela = label_anchor `South
+      let labelb = label_anchor `North
+      let labell = label_anchor `East
+      let labelr = label_anchor `West
+      let labelal = label_anchor `SouthEast
+      let labelar = label_anchor `SouthWest
+      let labelbl = label_anchor `NorthEast
+      let labelbr = label_anchor `NorthWest
+
+
+      let label_edge e style pos contents = 
 	node  ((Node.at (e.anchor (`Temporal pos))) :: style) 
 	  ([Scoped ((fun env -> { env with mathStyle = Mathematical.Script }), contents)])
 
-      let label_anchor e anchor pos contents = 
-	label e [Node.anchor anchor] pos contents
+      let label_edge_anchor e anchor pos contents = 
+	label_edge e [Node.anchor anchor] pos contents
 
-      let labela ?style:(style=[]) e contents = label e (anchor `South :: style) 0.5 contents
-      let labelb ?style:(style=[]) e contents = label e (anchor `North :: style) 0.5 contents
-      let labell ?style:(style=[]) e contents = label e (anchor `East :: style) 0.5 contents
-      let labelr ?style:(style=[]) e contents = label e (anchor `West :: style) 0.5 contents
-      let labelbr ?style:(style=[]) e contents = label e (anchor `NorthWest :: style) 0.5 contents
-      let labelbl ?style:(style=[]) e contents = label e (anchor `NorthEast :: style) 0.5 contents
-      let labelar ?style:(style=[]) e contents = label e (anchor `SouthWest :: style) 0.5 contents
-      let labelal ?style:(style=[]) e contents = label e (anchor `SouthEast :: style) 0.5 contents
-      let labelc ?style:(style=[]) e contents = label e (anchor `Main :: style) 0.5 contents
+      let label_edgea ?style:(style=[]) e contents = label_edge e (anchor `South :: style) 0.5 contents
+      let label_edgeb ?style:(style=[]) e contents = label_edge e (anchor `North :: style) 0.5 contents
+      let label_edgel ?style:(style=[]) e contents = label_edge e (anchor `East :: style) 0.5 contents
+      let label_edger ?style:(style=[]) e contents = label_edge e (anchor `West :: style) 0.5 contents
+      let label_edgebr ?style:(style=[]) e contents = label_edge e (anchor `NorthWest :: style) 0.5 contents
+      let label_edgebl ?style:(style=[]) e contents = label_edge e (anchor `NorthEast :: style) 0.5 contents
+      let label_edgear ?style:(style=[]) e contents = label_edge e (anchor `SouthWest :: style) 0.5 contents
+      let label_edgeal ?style:(style=[]) e contents = label_edge e (anchor `SouthEast :: style) 0.5 contents
+      let label_edgec ?style:(style=[]) e contents = label_edge e (anchor `Main :: style) 0.5 contents
 
       let edge_anchor a b style anchor pos contents = 
 	let e = edge (arrow :: draw :: style) a b in
-	let l = label_anchor e anchor pos contents in
+	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
       let edges_anchor l = 
@@ -2330,7 +2368,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let edge_anchor_of_gentities a b style anchor pos contents = 
 	let e = Edge.(of_gentities (arrow :: draw :: style) a b) in
-	let l = label_anchor e anchor pos contents in
+	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
       let edges_anchor_of_gentities l = 
@@ -2343,7 +2381,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let edge_anchor_of_edges a b style anchor pos contents = 
 	let e = Edge.(of_gentities (arrow :: draw :: style) (Edge.to_gentity a) (Edge.to_gentity b)) in
-	let l = label_anchor e anchor pos contents in
+	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
       let edges_anchor_of_edges l = 

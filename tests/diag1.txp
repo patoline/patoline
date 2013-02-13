@@ -28,7 +28,7 @@
 	([], <<$CD$>>)
       ]])
 
-	     let [delta;pi;sigma] = Edge.(edges [draw;arrow;arrow;draw(* ;dashed [2.;1.] *)] [
+	     let [delta;pi;sigma] = Edge.(edges [draw;arrow;arrow;draw (* ;dashed [2.;1.] *)] [
 	       ([], ms.(0).(1), [], ms.(0).(0));
 	       ([], ms.(0).(1), [], ms.(0).(2));
 	       ([], ms.(0).(2), [], ms.(0).(3));

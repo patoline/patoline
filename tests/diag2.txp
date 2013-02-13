@@ -19,7 +19,7 @@
 *)
 \Caml(open Diagrams
 
-let xrightarrows ?margin:(margin=2.) ?width:(width=1.) ?translation:(translation=(-. 3000.)) a =
+let xrightarrows ?margin:(marge=2.) ?width:(width=1.) ?translation:(translation=(-. 3000.)) a =
   [Maths.Ordinary
        (Maths.noad
           (fun env st->
@@ -30,7 +30,7 @@ let xrightarrows ?margin:(margin=2.) ?width:(width=1.) ?translation:(translation
             let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
 
 	    let (x0,_,x1,_) = OutputCommon.bounding_box dr in
-	    let width' = max width (x1 -. x0 +. 2. *. margin) in
+	    let width' = max width (x1 -. x0 +. 2. *. marge) in
 	    let matrix = Matrix.(make env
 				 [
 				   centers 0. width';

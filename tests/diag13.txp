@@ -1,0 +1,86 @@
+\Caml(open Diagrams
+
+let style s a = [Scoped ((fun env -> { env with mathStyle = s }), a)]
+let scriptstyle x = style Mathematical.Script x
+let scriptscriptstyle x = style Mathematical.ScriptScript x
+let displaystyle x = style Mathematical.Display x
+
+let math_style s x = Maths.Scope (fun env _ -> Maths.Env (fun env -> { env with mathStyle = s }) :: x)
+let script x = [math_style Mathematical.Script x]
+let scriptscript x = [math_style Mathematical.ScriptScript x]
+let display x = [math_style Mathematical.Display x]
+
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+
+  let my_math_matrix style l = 
+    math_matrix (Matrix.([centers 20. 20.;
+			  mainNode Node.([at (0.,ex env);anchor `Pdf])]) @ style) l
+
+  let simple_math_matrix ?style:(style=[Matrix.centers 20. 20.]) l = 
+    my_math_matrix style (List.map (fun line -> (List.map (fun contents -> ([],contents)) line)) l)
+
+  let simple_edges ?style:(style=Edge.([arrow;draw])) l = 
+    List.map fst
+    (edges_anchor_mid
+      (List.map (fun (a,b) -> (a,b,style,`South,[])) l))
+
+  let simple_edges_matrix ?style:(style=Edge.([arrow;draw])) ms l = 
+    List.map fst 
+    (edges_anchor_mid
+      (List.map (fun ((ai,aj),(bi,bj)) -> (ms.(ai).(aj),ms.(bi).(bj),style,`South,[])) l))
+
+  let edges ?style:(style=Edge.([arrow;draw])) = List.map (fun (st,s,e) -> edge (style @ st) s e) 
+
+  let edges_matrix ?style:(style=Edge.([arrow;draw])) ms l = 
+    edges ~style:style
+      (List.map (fun (st,(ai,aj),(bi,bj)) -> (st,ms.(ai).(aj),ms.(bi).(bj))) l)
+
+      let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=Node.([rectangle env])) 
+      cont =
+	label_anchor a ~pos:pos ~style:style (scriptstyle cont) 
+
+      let labela = label_anchor `South
+      let labelb = label_anchor `North
+      let labell = label_anchor `East
+      let labelr = label_anchor `West
+      let labelal = label_anchor `SouthEast
+      let labelar = label_anchor `SouthWest
+      let labelbl = label_anchor `NorthEast
+      let labelbr = label_anchor `NorthWest
+
+
+    let star_anchor a = 
+     label_anchor 
+     a 
+     ~pos:(`Temporal 1. : anchor) 
+     <<$\scriptscript{⋆}$>>
+
+    let star = star_anchor `South
+    let staral = star_anchor `SouthEast
+    let starbr = star_anchor `NorthWest
+    let starar = star_anchor `SouthWest
+
+
+end     
+
+
+)
+\begin{center}
+\diagram(
+	let m,ms = Matrix.(simple_math_matrix ~style:[centers 10. 10.] [[
+	[] ; <$M$> 
+	];[
+	<$N₁$> ; [] ; <$N₂$> 
+	];[
+	[] ; <$N$> ]]	)
+
+	let _ = edges_matrix ms  Edge.([
+	    ([labelar <<$f$>>],(0,1),(1,2)) ;
+	    ([labelbr ~style:Node.([rectangle env]) <<$g$>>],(1,2),(2,1)) ;
+	    ([double 0.6;staral],(0,1),(1,0)) ;
+	    ([double 0.6;starar],(1,0),(2,1)) ;
+	])
+
+)
+\end{center}

@@ -64,7 +64,7 @@ open Edge
 	let tail = Curve.of_point_lists (half_circle e0 (Vector.(+) e0 lnormale))
 	in
 	{ edge_info with decorations = edge_info.decorations @
-	    [params, tail]}
+	    [Curve (params, tail)]}
 
       let intoOf, into_tail_pet = 
         Edge.Transfo.(Pet.register ~depends:[double_pet;shorten_pet] "\"into\" arrow tail"
