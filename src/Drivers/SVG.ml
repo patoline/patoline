@@ -450,11 +450,23 @@ if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
 } else if(e.keyCode==70) {
 var element=document.getElementById(\"svg\");
+var fullscreenElement = document.fullScreenElement || document.mozFullScreenElement || document.webkitFullScreenElement;
+
+if(fullscreenElement){
+if(document.cancelFullScreen) {
+    document.cancelFullScreen();
+  } else if(document.mozCancelFullScreen) {
+    document.mozCancelFullScreen();
+  } else if(document.webkitCancelFullScreen) {
+    document.webkitCancelFullScreen();
+  }
+} else {
     var requestMethod = element.requestFullScreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullScreen;
 
     if (requestMethod) {
         requestMethod.call(element);
     }
+}
 }
 }
 function gotoSlide(n){
