@@ -37,10 +37,16 @@ let ex env =
     l
   in (Box.upper_y x -. Box.lower_y x) /. 2.
 
+let rec mem_compare cmp x l = match l with 
+  | [] -> false 
+  | y :: l' -> if cmp x y = 0 then true else mem_compare cmp x l'
+
 let rec list_last = function
   [] -> assert false
   | [x] -> x
   | x :: l -> list_last l
+
+let only_last l x = [x]
 
 let array_last xs = 
   let n = Array.length xs in 
@@ -475,7 +481,11 @@ end
       and Pet : sig 
 	type t 
 	val name : t -> string
-	val register : ?depends:t list -> ?codepends: t list -> string -> (t -> 'a) -> ('a * t)
+	val append : t -> Style.t list -> Style.t -> Style.t list
+	val (=) : t -> t -> bool
+	val register : ?depends:t list -> ?codepends: t list 
+	  -> ?append:(Style.t list -> Style.t -> Style.t list) 
+	  -> string -> (t -> 'a) -> ('a * t)
 	module Map : Map.S with type key = t
       end = struct
 
@@ -484,10 +494,12 @@ end
 	(* module type T = sig type arg val transfo : arg -> transfo end *)
 	(* type t = module PT *)
 
-	type t = { uid : int ; name : string }
+	type t = { uid : int ; name : string ;  append : Style.t list -> Style.t -> Style.t list }
 	type u = t
 
 	let name x = x.name
+	let append pet = pet.append
+	let (=) x y = (x.uid = y.uid)
 
 	module UPet = struct type t = u let compare x y = compare x.uid y.uid end
 
@@ -522,7 +534,7 @@ end
       (* Here is the ref to list of pets *)
 	let pets : t list ref = ref []
 
-	let compare_node node1 node2 = compare node1.id node2.id
+	let compare_node node1 node2 = UPet.compare node1.id node2.id
 
 	module NodeMap = Map.Make (struct type t = node let compare = compare_node end)
 	module PetMap = Map.Make (UPet)
@@ -541,9 +553,10 @@ end
 	  res
 
       (* We now define the API to register new edge transformations *)
-	let register ?depends:(depends=[]) ?codepends:(codepends=[]) name (f : t -> 'a) = 
+	let register ?depends:(depends=[]) ?codepends:(codepends=[]) 
+	    ?append:(append=(fun l x -> l @ [x])) name (f : t -> 'a) = 
 	  let uid = gensym () in
-	  let pet = {uid = uid;name=name} in
+	  let pet = {uid = uid;name=name;append=append} in
 	  let node = add_node pet in
 	  let _ = graph := node :: !graph in
 	  let _ = pets := pet :: !pets in
@@ -602,7 +615,7 @@ end
 	    = ref (fun x y -> 0)
 	in
 	fun () ->
-	  if !memo = !graph then !memo_res
+	  if !memo == !graph then !memo_res
 	  else
 	    let _ = memo := !graph in
 	    (* Printf.fprintf stdout "Starting with the graph:\n" ; *)
@@ -623,10 +636,10 @@ end
 		(* Printf.fprintf stdout "Comparing:\n" ; *)
 		(* let _ = print_graph [x';y'] in *)
 		(* let _ = flush stdout in *)
-		if List.mem y' x'.sons 
+		if mem_compare compare_node y' x'.sons 
 		then -1
 		else
-		  if List.mem x' y'.sons 
+		  if mem_compare compare_node x' y'.sons 
 		  then 1
 		  else begin
 		    Printf.fprintf stderr 
@@ -661,16 +674,16 @@ end
 	      (* Here, it is not obvious what to do. Should styles
 		 override each other, or should they be applied
 		 iteratively? *)
-	      (* The initial behaviour was the latter, which I now find less attractive than the former. *)
-	      (* The reason is that, e.g., for edges below, the
-		 "arrow" style would draw two arrow heads, which, when
-		 combined with the "double" style, could be quite
-		 distant from each other because each shortens the
-		 involved edge. *)
+	      (* The initial behaviour was the latter, which is useful, e.g., to
+		 accumulate styles for the main node of a matrix *)
+	      (* However, it is sometimes undesirable, e.g., for
+		 edges, the "arrow" style would draw two arrow heads,
+		 which, when combined with the "double" style, could
+		 be quite distant from each other because each
+		 shortens the involved edge. *)
+	      (* Hence, pets carry their own "append" function, which leaves the choice open *)
 
-	      (* Pet.Map.add pet (styles @ [style]) map) *)
-
-	      Pet.Map.add pet [style] map)
+	      Pet.Map.add pet (Pet.append pet styles style) map)
 
 	    Pet.Map.empty
 	    styles
@@ -1847,7 +1860,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
 
 
-      let double, double_pet = Pet.register ~depends:[draw_pet] "double" (fun pet margin -> 
+      let double, double_pet = Pet.register ~depends:[draw_pet] ~append:only_last "double" (fun pet margin -> 
 	{ pet = pet ; transfo = (fun transfos info ->
 	  let black_paths = List.map (fun (params, curve) -> 
 	    { params with 
@@ -1917,7 +1930,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 		  lineWidth = lw }, tip)]}
 
       let arrowOf, arrow_head_pet = 
-        Pet.register ~depends:[double_pet;shorten_pet] "arrow head"
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow head"
           (fun pet head_params -> 
 	     { pet = pet ; transfo = base_arrow head_params })
 
