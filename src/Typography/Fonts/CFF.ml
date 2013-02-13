@@ -510,7 +510,7 @@ let positioning _ x=x
 (*****************************************************************************)
 
 let writeIndex buf data=
-  let dataSize=Array.fold_left (fun s str->s+String.length str) 0 data in
+  let dataSize=Array.fold_left (fun s str->s+String.length str) 1 data in
   let rec offSize_ i res=if i=0 then res else offSize_ (i lsr 8) (res+1) in
   let offSize=if Array.length data=0 then 1 else offSize_ dataSize 0 in
   let count0=(Array.length data) lsr 8 in
