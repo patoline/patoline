@@ -757,7 +757,7 @@ let beginFigure name=
 
 
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
-let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters par=
+let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=IntSet.empty) complete parameters par=
   match !str with
       Paragraph p,path->
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
@@ -766,7 +766,7 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) complete parameters 
                             par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
                             par_parameters=parameters;
                             par_badness=badness;
-                            par_completeLine=complete; par_states=IntSet.empty; par_paragraph=(-1) }
+                            par_completeLine=complete; par_states=states; par_paragraph=(-1) }
         in
           str:=up (newChildAfter !str para)
 

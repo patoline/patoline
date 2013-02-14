@@ -873,7 +873,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                         )
                         | Glue g
-                        | Drawing g ->(
+                        | Drawing g when IntSet.mem st g.drawing_states || IntSet.is_empty g.drawing_states->(
                           let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                           let cont=g.drawing_contents w in
                           let cont_states=
