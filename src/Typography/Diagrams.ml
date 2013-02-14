@@ -263,8 +263,15 @@ module Curve = struct
     in eval_rec beziers t
 
   let eval_local beziers (i,t) = (* eval beziers (global_time beziers lt) *)
-    let bezier = List.nth beziers i in
-    bezier_evaluate bezier t
+    try
+      let bezier = List.nth beziers i in
+      bezier_evaluate bezier t
+    with _ -> begin
+      Printf.fprintf stderr ("Warning: attempt to evaluate an empty curve. Returning (0,0).\n") ;
+      0.,0.
+    end
+
+
 
   let gradient curve =
     List.map (fun (xs,ys) -> (Bezier.derivee xs, Bezier.derivee ys)) curve
@@ -1624,7 +1631,13 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 
       let evaluate_z info (i,t) = match info.z_curve with
 	  [] -> 0.0
-	| l -> Bezier.eval (List.nth l i) t
+	| l -> 
+	  try 
+	    let curve = (List.nth l i) in Bezier.eval curve t
+	  with _ -> begin
+	    Printf.fprintf stderr ("Warning: attempt to evaluate the z of an empty curve. Returning 0.\n") ;
+	    0.0
+	  end
 
       type t = info
 
@@ -2199,7 +2212,7 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       let stack : entity list ref = ref []
       let env = Args.env
       let compute_intersections = ref (Some (fun x -> Edge.put_forth ~color:OutputCommon.white x))
-      let epsilon = ref 0.1
+      let epsilon = ref 1.0
       let margin = ref 1.0
       let t_margin = ref 0.05
 
