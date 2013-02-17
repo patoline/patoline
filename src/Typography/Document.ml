@@ -899,7 +899,7 @@ let link a b=bB (fun _->[User (BeginLink a)])::b@[bB (fun _->[User EndLink])]
 (** {3 Images} *)
 
 #ifdef CAMLIMAGES
-let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
+let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let image=(OImages.load imageFile []) in
   let w,h=Images.size image#image in
   let fw,fh=
@@ -921,7 +921,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
          image_width=fw;
          image_height=fh;
          image_x=0.;
-         image_y=0.;
+         image_y=offset;
          image_order=0
         }
   in
@@ -931,8 +931,8 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
     drawing_nominal_width=fw;
     drawing_width_fixed = true;
     drawing_adjust_before = false;
-    drawing_y0=0.;
-    drawing_y1=fh;
+    drawing_y0=offset;
+    drawing_y1=fh+.offset;
     drawing_break_badness=0.;
     drawing_states=IntSet.empty;
     drawing_badness=(fun _->0.);
@@ -943,7 +943,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile env=
   img
 
 #else
-let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:environment)=
+let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) (_:string) (_:environment)=
   {
     drawing_min_width=0.;
     drawing_max_width=0.;
@@ -959,8 +959,8 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) (_:string) (_:
   }
 #endif
 
-let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) imageFile=
-  [bB (fun env->[Drawing (image ~scale ~width ~height imageFile env)])]
+let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
+  [bB (fun env->[Drawing (image ~scale ~width ~height ~offset imageFile env)])]
 
 (** {3 Boxification}*)
 
