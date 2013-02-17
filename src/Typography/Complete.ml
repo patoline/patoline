@@ -46,9 +46,12 @@ let normal env paragraphs figures last_figures last_users line allow_impossible=
   in
   let rec break_next j sum_min sum_nom sum_max y0 y1 only_impossible result=
     if j>=Array.length paragraphs.(line.paragraph) then (
-      if sum_min<=measure || (allow_impossible) then (
+      if sum_min<=measure || allow_impossible then (
         match result with
-            []
+            []->
+              [{ line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max;
+                line_y0=y0; line_y1=y1
+               }]
           | _ when sum_min<=measure->
             { line with lineEnd=j; min_width=sum_min; nom_width=sum_nom; max_width=sum_max;
               line_y0=y0; line_y1=y1
