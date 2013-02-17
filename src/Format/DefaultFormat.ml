@@ -434,13 +434,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                   par_states=IntSet.empty;
                   par_paragraph=(-1)}, [])
 
-    module Env_noindent=struct
-      let do_begin_env ()=()
-      let do_end_env ()=()
-      let newPar str ?(environment=(fun env->env)) complete params contents=
-        Document.newPar str ~environment:(fun x->{x with par_indent = []})
-          complete params contents
-    end
 
     let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
 
@@ -874,6 +867,21 @@ module Format=functor (D:Document.DocumentStructure)->(
         env_stack:=List.tl !env_stack
 
     end
+
+    module Env_noindent=struct
+      let do_begin_env ()=
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;
+        D.structure:=newChildAfter !D.structure
+          (Node { empty with node_tags=("noindent","")::empty.node_tags })
+
+
+      let do_end_env ()=
+	D.structure :=follow (top !D.structure) (List.rev (List.hd !env_stack)) ;
+        env_stack:=List.tl !env_stack
+    end
+
+    let noindent ()=
+      []
 
     let hfill t = [bB (fun env-> let x = env.normalMeasure in
 				  [match glue 0. env.size (x /. t) with

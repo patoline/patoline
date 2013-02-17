@@ -1436,7 +1436,7 @@ let flatten env0 fixable str=
     v
   in
 
-  let rec flatten flushes env_ path tree=
+  let rec flatten flushes env_ path noindent tree=
     match tree with
         Paragraph p -> (
           p.par_paragraph <- List.length !paragraphs;
@@ -1466,8 +1466,9 @@ let flatten env0 fixable str=
         let flushes'=ref [] in
         let flat_children k a (is_first,indent, env1)=match a with
             Paragraph p->(
-              let env2=flatten flushes' (p.par_env env1) ((k,tree)::path) (
-                Paragraph { p with par_contents=
+              let env2=flatten flushes' (p.par_env env1) ((k,tree)::path)
+                (noindent || List.mem_assoc "noindent" s.node_tags)
+                (Paragraph { p with par_contents=
                     (if is_first then (
                       let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
                       [Env (fun env->
@@ -1478,15 +1479,20 @@ let flatten env0 fixable str=
                        bB (fun _->[User (Label name)])
                       ]
                      ) else [])@
-                      (if indent then [bB (fun env->(p.par_env env).par_indent);
-                                       Env (fun env->{env with par_indent=[]})] else [])
+                      (if indent
+                          && not (List.mem_assoc "noindent" s.node_tags)
+                       then
+                          [bB (fun env->(p.par_env env).par_indent);
+                           Env (fun env->{env with par_indent=[]})]
+                       else
+                          [])
                               @ p.par_contents
                           }
               ) in
               false,true, p.par_post_env env1 env2
             )
           | FigureDef f as h->(
-            let env2=flatten flushes' env1 ((k,tree)::path) h in
+            let env2=flatten flushes' env1 ((k,tree)::path) noindent h in
             let num=try
                       match StrMap.find "_figure" env2.counters with
                           _,h::_->h
@@ -1499,7 +1505,10 @@ let flatten env0 fixable str=
           )
           | Node h as tr->(
             let env2=h.node_env env1 in
-            let env3=flatten flushes' env2 ((k,tree)::path) tr in
+            let env3=flatten flushes' env2 ((k,tree)::path)
+              (noindent || List.mem_assoc "noindent" h.node_tags)
+              tr
+            in
             (is_first),
             (not (List.mem_assoc "structural" h.node_tags) &&
                not (List.mem_assoc "structure" h.node_tags)
@@ -1519,7 +1528,7 @@ let flatten env0 fixable str=
     | Paragraph n->n.par_env env0
     | _->env0
   in
-  let env2=flatten (ref []) env1 [] str in
+  let env2=flatten (ref []) env1 [] false str in
   let params=Array.init
     (IntMap.cardinal !figures)
     (fun i->IntMap.find i !fig_param)
