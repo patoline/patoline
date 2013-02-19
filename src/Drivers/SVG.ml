@@ -331,27 +331,52 @@ svg=document.getElementById(\"svg\");
 svg.style.width=(%g*size)+'px';
 svg.style.height=(%g*size)+'px';
 };
+var seq=0;
+var queue=new Array();
+var qi=0,qj=0;
 " w h (w-.10.) (h-.10.));
 
   Rbuffer.add_string html "function slide(width,g0,g1){
-  var svg=document.getElementsByTagName(\"svg\")[0];
-  g0.setAttribute(\"transform\",\"translate(\"+width+\" 0)\");
-  svg.appendChild(g0);
-
-  var i=0;
-  var slideTimer;
-  var n=10;
-  var do_slide=function(){
-    if(i<=n){
-      g0.setAttribute(\"transform\",\"translate(\"+width*(n-i)/n+\" 0)\");
-      if(g1) g1.setAttribute(\"transform\",\"translate(\"+width*(-i)/n+\" 0)\");
-      i++;
-    } else {
-      clearInterval(slideTimer);
-      if(g1) svg.removeChild(g1);
+    var svg=document.getElementsByTagName(\"svg\")[0];
+    g0.style.transform=\"translate(\"+width+\"px,0)\";
+    g0.style.MozTransitionDuration=\"1s\";
+    g0.style.webkitTransitionDuration=\"1s\";
+    g0.style.MozTransitionProperty=\"transform\";
+    g0.style.webkitTransitionProperty=\"transform\";
+    svg.appendChild(g0);
+    if(g1){
+        g1.style.MozTransitionDuration=\"1s\";
+        g1.style.webkitTransitionDuration=\"1s\";
+        g1.style.MozTransitionProperty=\"transform\";
+        g1.style.webkitTransitionProperty=\"transform\";
     }
-  }
-  slideTimer=setInterval(do_slide,20);
+
+    setTimeout(function(){
+        g0.style.MozTransform=\"translate(0,0)\";
+        g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
+        g0.style.webkitTransform=\"translate(0,0)\";
+        g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
+    },1);
+
+    queue[qi]=g0;
+    qi++;
+
+    document.addEventListener(\"transitionend\", function(e){
+        if(e.target.id==queue[qi-1].id){
+            for(var i=qj;i<qi-1;i++){
+                svg.removeChild(queue[i]);
+            };
+            qj=qi-1;
+        }
+    });
+    g0.addEventListener(\"webkitTransitionEnd\", function(e){
+        if(e.target.id==queue[qi-1].id){
+            for(var i=qj;i<qi-1;i++){
+                svg.removeChild(queue[i]);
+            };
+            qj=qi-1;
+        }
+    });
 }";
 
   let states=Rbuffer.create 10000 in
@@ -386,7 +411,8 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
     rect.setAttribute(\"fill\",\"#ffffff\");
     rect.setAttribute(\"stroke\",\"none\");
     g.appendChild(rect);
-    g.setAttribute(\"id\",\"g\"+n+\"_\"+state);
+    seq++;
+    g.setAttribute(\"id\",\"g\"+n+\"_\"+state+\"_\"+seq);
 
     while(newSvg.firstChild) {
         if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
@@ -394,10 +420,14 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
         else
         newSvg.removeChild(newSvg.firstChild);
     }
-    var cur_g=document.getElementById(\"g\"+current_slide+\"_\"+current_state);
+    var cur_g=queue[qi-1];
     if(effect) { effect(g,cur_g); } else {
-      if(cur_g) svg.removeChild(cur_g);
-      svg.appendChild(g);
+        svg.appendChild(g);
+        for(var i=qj;i<qi;i++)
+            svg.removeChild(queue[i]);
+        queue[qi]=g;
+        qj=qi;
+        qi++;
     }
     current_slide=n;
     current_state=state;
@@ -448,25 +478,6 @@ if(current_state>=states[current_slide]-1) {
 } else //right
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
-} else if(e.keyCode==70) {
-var element=document.getElementById(\"svg\");
-var fullscreenElement = document.fullScreenElement || document.mozFullScreenElement || document.webkitFullScreenElement;
-
-if(fullscreenElement){
-if(document.cancelFullScreen) {
-    document.cancelFullScreen();
-  } else if(document.mozCancelFullScreen) {
-    document.mozCancelFullScreen();
-  } else if(document.webkitCancelFullScreen) {
-    document.webkitCancelFullScreen();
-  }
-} else {
-    var requestMethod = element.requestFullScreen || element.webkitRequestFullScreen || element.mozRequestFullScreen || element.msRequestFullScreen;
-
-    if (requestMethod) {
-        requestMethod.call(element);
-    }
-}
 }
 }
 function gotoSlide(n){
