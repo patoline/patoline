@@ -353,9 +353,11 @@ var qi=0,qj=0;
 
     setTimeout(function(){
         g0.style.MozTransform=\"translate(0,0)\";
-        g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
         g0.style.webkitTransform=\"translate(0,0)\";
-        g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
+        if(g1){
+           g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
+           g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
+        }
     },1);
 
     queue[qi]=g0;
