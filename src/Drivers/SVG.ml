@@ -402,34 +402,46 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
     var svg=document.getElementsByTagName(\"svg\")[0];
 
     newSvg=document.importNode(newSvg.rootElement,true);
-    var g=document.createElementNS(\"http://www.w3.org/2000/svg\",\"g\");
 
-    //suppression des artefacts de webkit
-    var rect=document.createElementNS(\"http://www.w3.org/2000/svg\",\"rect\");
-    rect.setAttribute(\"x\",\"0\");
-    rect.setAttribute(\"y\",\"0\");
-    rect.setAttribute(\"width\",\"%g\");
-    rect.setAttribute(\"height\",\"%g\");
-    rect.setAttribute(\"fill\",\"#ffffff\");
-    rect.setAttribute(\"stroke\",\"none\");
-    g.appendChild(rect);
-    seq++;
-    g.setAttribute(\"id\",\"g\"+n+\"_\"+state+\"_\"+seq);
-
-    while(newSvg.firstChild) {
-        if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
-        g.appendChild(newSvg.firstChild);
-        else
-        newSvg.removeChild(newSvg.firstChild);
-    }
     var cur_g=queue[qi-1];
-    if(effect) { effect(g,cur_g); } else {
-        svg.appendChild(g);
-        for(var i=qj;i<qi;i++)
-            svg.removeChild(queue[i]);
-        queue[qi]=g;
-        qj=qi;
-        qi++;
+    if(effect || !cur_g){ // si on fait un effet, ou si on c'est le premier chargement
+        var g=document.createElementNS(\"http://www.w3.org/2000/svg\",\"g\");
+        //suppression des artefacts de webkit
+        var rect=document.createElementNS(\"http://www.w3.org/2000/svg\",\"rect\");
+        rect.setAttribute(\"x\",\"0\");
+        rect.setAttribute(\"y\",\"0\");
+        rect.setAttribute(\"width\",\"%g\");
+        rect.setAttribute(\"height\",\"%g\");
+        rect.setAttribute(\"fill\",\"#ffffff\");
+        rect.setAttribute(\"stroke\",\"none\");
+        g.appendChild(rect);
+        seq++;
+        g.setAttribute(\"id\",\"g\"+n+\"_\"+state+\"_\"+seq);
+        while(newSvg.firstChild) {
+            if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
+                g.appendChild(newSvg.firstChild);
+            else
+                newSvg.removeChild(newSvg.firstChild);
+        }
+        if(effect) effect(g,cur_g)
+        else {
+            for(var i=qj;i<qi;i++)
+                svg.removeChild(queue[i]);
+            svg.appendChild(g);
+            queue[qi]=g;
+            qj=qi;
+            qi++;
+        }
+    } else { // pas d'effet, et un truc est déjà chargé
+        while(cur_g.firstChild) {
+            cur_g.removeChild(cur_g.firstChild);
+        }
+        while(newSvg.firstChild) {
+            if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
+                cur_g.appendChild(newSvg.firstChild);
+            else
+                newSvg.removeChild(newSvg.firstChild);
+        }
     }
     current_slide=n;
     current_state=state;
