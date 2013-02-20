@@ -433,6 +433,10 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
             qi++;
         }
     } else { // pas d'effet, et un truc est déjà chargé
+        for(var i=qj;i<qi-1;i++)
+            if(queue[i] && queue[i].parentNode==svg)
+                svg.removeChild(queue[i]);
+        qj=qi-1;
         while(cur_g.firstChild) {
             cur_g.removeChild(cur_g.firstChild);
         }
