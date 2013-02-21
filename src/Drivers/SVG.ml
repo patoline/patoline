@@ -338,7 +338,8 @@ var qi=0,qj=0;
 
   Rbuffer.add_string html "function slide(width,g0,g1){
     var svg=document.getElementsByTagName(\"svg\")[0];
-    g0.style.transform=\"translate(\"+width+\"px,0)\";
+    g0.style.MozTransform=\"translate(\"+width+\"px,0)\";
+    g0.style.webkitTransform=\"translate(\"+width+\"px,0)\";
     g0.style.MozTransitionDuration=\"1s\";
     g0.style.webkitTransitionDuration=\"1s\";
     g0.style.MozTransitionProperty=\"transform\";
