@@ -274,7 +274,7 @@ let _=
         let f = Filename.concat dir f in
         if Sys.is_directory f
         then read_fonts f
-        else if Filename.check_suffix f ".otf" then
+        else if Filename.check_suffix f ".otf" || Filename.check_suffix f ".ttf" then
           Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n"
             (escape (Filename.concat fonts_src_dir f))
             (escape (Filename.concat !fonts_dir f))
