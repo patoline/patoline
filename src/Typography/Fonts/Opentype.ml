@@ -1283,7 +1283,7 @@ let fontInfo font=
                     m
                   )
               with
-                  Not_found->m
+                  _->m
             in
             get_names (i+1) m'
           )
@@ -1431,6 +1431,7 @@ let write_cff fontInfo=
 
 let make_tables font fontInfo cmap glyphs_idx=
   let glyphs=Array.map (loadGlyph font) glyphs_idx in
+
   let fontInfo_tables=fontInfo.tables in
   fontInfo.tables<-
     StrMap.filter (fun k _->
@@ -1443,6 +1444,75 @@ let make_tables font fontInfo cmap glyphs_idx=
           false
         )
     ) fontInfo.tables;
+
+  (* Si certains des glyphs sont composites, rajouter les composantes
+     (truetype). Il faut faire ça avant maxp, dans le cas de TrueType *)
+  let glyphMap=
+    let rec make_glyph_map i m0=
+      if i>=Array.length glyphs_idx then m0 else (
+        let gl=glyphs_idx.(i) in
+        make_glyph_map (i+1) (IntMap.add gl.glyph_index i m0)
+      )
+    in
+    let glyphMap=make_glyph_map 0 IntMap.empty in
+    try
+      let locformat=
+        let head=StrMap.find "head" fontInfo_tables in
+        getInt2 head 50
+      in
+      let buf_loca=StrMap.find "loca" fontInfo_tables in
+      let buf_glyf=StrMap.find "glyf" fontInfo_tables in
+      (* Complétion de la police quand il manque des composantes de glyphs *)
+      let rec make_glyph_map l m0=
+        match l with
+            []->m0
+          | gl::s->(
+            (* let gl=glyphs_idx.(i) in *)
+            let off0=if locformat=0 then
+                2*(getInt2 buf_loca (2*gl))
+              else
+                getInt4 buf_loca (4*gl)
+            in
+            let off1=if locformat=0 then
+                2*(getInt2 buf_loca (2*gl+2))
+              else
+                getInt4 buf_loca (4*gl+4)
+            in
+            let m1,s1=
+              if off1<=off0 then m0,s else (
+                let numberOfContours=sgetInt2 buf_glyf off0 in
+                if numberOfContours<0 then (
+                  let rec replace_glyphs i m1 s1=
+                    let old_component=getInt2 buf_glyf (i+2) in
+                    let m2,s2=
+                      if IntMap.mem old_component m1 then m1,s1 else
+                        ((IntMap.add old_component (IntMap.cardinal m1) m1),
+                         (old_component::s1))
+                    in
+                    let flags=getInt2 buf_glyf i in
+                    if flags land TT_MORE_COMPONENTS <> 0 then (
+                      let off_args=if flags land TT_ARGS_ARE_WORDS <>0 then 4 else 2 in
+                      let off_trans=
+                        (if flags land TT_WE_HAVE_A_SCALE<>0 then 2 else
+                            if flags land TT_WE_HAVE_AN_X_AND_Y_SCALE<>0 then 4 else
+                              if flags land TT_WE_HAVE_A_TWO_BY_TWO<>0 then 8 else 0)
+                      in
+                      replace_glyphs (i+4+off_args+off_trans) m2 s2
+                    ) else m2,s2
+                  in
+                  replace_glyphs (off0+10) m0 s
+                ) else m0,s
+              )
+            in
+            make_glyph_map s1 m1
+          )
+      in
+      make_glyph_map (List.map (fun gl->gl.glyph_index) (Array.to_list glyphs_idx)) glyphMap
+    with
+        Not_found->glyphMap
+  in
+
+
 
 #ifdef DEBUG_TTF
   Printf.fprintf stderr "cmap\n"; flush stderr;
@@ -1536,11 +1606,11 @@ let make_tables font fontInfo cmap glyphs_idx=
     buf_maxp.[1]<-char_of_int 0x00;
     buf_maxp.[2]<-char_of_int 0x50;
     buf_maxp.[3]<-char_of_int 0x00;
-    strInt2 buf_maxp 4 (Array.length glyphs);
+    strInt2 buf_maxp 4 (IntMap.cardinal glyphMap);
     fontInfo.tables<-StrMap.add "maxp" buf_maxp fontInfo.tables
    ) else (
     let buf_maxp=StrMap.find "maxp" fontInfo.tables in
-    strInt2 buf_maxp 4 (Array.length glyphs);
+    strInt2 buf_maxp 4 (IntMap.cardinal glyphMap);
    ));
 
 (* post *)
@@ -1700,55 +1770,6 @@ let make_tables font fontInfo cmap glyphs_idx=
             let glyf=Rbuffer.create 256 in
             let loca=Rbuffer.create 256 in
 
-
-            let rec make_glyph_map i m0=
-              if i>=Array.length glyphs_idx then m0 else (
-                let gl=glyphs_idx.(i) in
-                make_glyph_map (i+1) (IntMap.add gl.glyph_index i m0)
-              )
-            in
-            let glyphMap=make_glyph_map 0 IntMap.empty in
-
-            (* Complétion de la police quand il manque des composantes de glyphs *)
-            let rec make_glyph_map i m0=
-              if i>=Array.length glyphs_idx then m0 else (
-                let gl=glyphs_idx.(i) in
-                let off0=if locformat=0 then
-                    2*(getInt2 buf_loca (2*gl.glyph_index))
-                  else
-                    getInt4 buf_loca (4*gl.glyph_index)
-                in
-                let off1=if locformat=0 then
-                    2*(getInt2 buf_loca (2*gl.glyph_index+2))
-                  else
-                    getInt4 buf_loca (4*gl.glyph_index+4)
-                in
-                make_glyph_map (i+1)
-                  (if off1<=off0 then m0 else (
-                    let numberOfContours=sgetInt2 buf_glyf off0 in
-                    if numberOfContours<0 then (
-                      let rec replace_glyphs i m1=
-                        let old_component=getInt2 buf_glyf (i+2) in
-                        let m2=if IntMap.mem old_component m1 then m1 else
-                            IntMap.add old_component (IntMap.cardinal m1) m1
-                        in
-                        let flags=getInt2 buf_glyf i in
-                        if flags land TT_MORE_COMPONENTS <> 0 then (
-                          let off_args=if flags land TT_ARGS_ARE_WORDS <>0 then 4 else 2 in
-                          let off_trans=
-                            (if flags land TT_WE_HAVE_A_SCALE<>0 then 2 else
-                                if flags land TT_WE_HAVE_AN_X_AND_Y_SCALE<>0 then 4 else
-                                  if flags land TT_WE_HAVE_A_TWO_BY_TWO<>0 then 8 else 0)
-                          in
-                          replace_glyphs (i+4+off_args+off_trans) m2
-                        ) else m2
-                      in
-                      replace_glyphs (off0+10) m0
-                    ) else m0
-                   ))
-              )
-            in
-            let glyphMap=make_glyph_map 0 glyphMap in
             let revGlyphMap=Array.make (IntMap.cardinal glyphMap) 0 in
             IntMap.iter (fun old_index gl->revGlyphMap.(gl)<-old_index) glyphMap;
             for i=0 to Array.length revGlyphMap-1 do
@@ -1805,7 +1826,9 @@ let make_tables font fontInfo cmap glyphs_idx=
   (*       let feat=[| {tag="dlig";lookups=[0]} |] in *)
   (*       let lookups= [| make_ligatures [| [[1;2],9] |] |] in *)
   (*       let buf=write_layout scr feat lookups in *)
-    fontInfo.tables<-StrMap.remove "GSUB" fontInfo.tables
+    fontInfo.tables<-StrMap.remove "GSUB" fontInfo.tables;
+    fontInfo.tables<-StrMap.remove "GPOS" fontInfo.tables;
+    fontInfo.tables<-StrMap.remove "GDEF" fontInfo.tables
   end;
 #ifdef DEBUG_TTF
   Printf.fprintf stderr "names\n";flush stderr;
@@ -1816,17 +1839,26 @@ let make_tables font fontInfo cmap glyphs_idx=
       let buf=Rbuffer.create 256 in
       let names=List.fold_left (fun l (language,name,str)->
         let utf16=
-          CharEncoding.recode_string
-            (CharEncoding.of_name "UTF-8")
-            (CharEncoding.of_name "UTF-16")
-            str
+          try
+            let utf16=CharEncoding.recode_string
+              (CharEncoding.of_name "UTF-8")
+              (CharEncoding.of_name "UTF-16")
+              str
+            in
+            (3,1,language,name,String.sub utf16 2 (String.length utf16-2))::l
+          with
+              _->(l)
         in
-        (1,0,language,name,CharEncoding.recode_string
-          (CharEncoding.of_name "UTF-8")
-          (CharEncoding.of_name "MACINTOSH")
-          str)::
-          (3,1,language,name,String.sub utf16 2 (String.length utf16-2))::
-          l
+        let mac=
+          try
+            (1,0,language,name,CharEncoding.recode_string
+              (CharEncoding.of_name "UTF-8")
+              (CharEncoding.of_name "MACINTOSH")
+              str)::utf16
+          with
+              _->(utf16)
+        in
+        mac
       ) [] fontInfo.names
       in
       bufInt2 buf 0;                    (* format *)

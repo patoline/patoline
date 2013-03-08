@@ -61,4 +61,4 @@ GLNet.cmx:GLNet.ml
 	$(CAMLOPT) -c -o $@ $<
 
 clean:
-	rm -f *.cm[aoix] *.cmxa *.o *.a *~ \#*\#
+	rm -f *.cm[aoix] *.cmxa *.o *.so *.a *~ \#*\#

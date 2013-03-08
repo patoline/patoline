@@ -1021,21 +1021,14 @@ let makeGlue env x0=
         | _->stdGlue
 
 (** Converts a [string] to a list of glyphs, according to the environment. *)
-let rec gl_of_str env string=
+let gl_of_str env string=
   try
     hyphenate env.hyphenate env.substitutions env.positioning env.font env.size
       env.fontColor
       (env.word_substitutions string)
   with
-      Glyph_not_found g ->(
-        let family'=List.remove_assoc env.fontAlternative env.fontFamily in
-          try
-            let font, str, subst, pos= selectFont family' env.fontAlternative env.fontItalic in
-            let env'=updateFont env font str subst pos in
-              gl_of_str env' string
-          with
-              Not_found_in_family->[](* raise (Glyph_not_found g) *)
-      )
+      Glyph_not_found g -> []
+
 (**/**)
 let append buf nbuf x=
   let arr=
