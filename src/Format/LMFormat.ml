@@ -214,7 +214,7 @@ module MakeFormat (D:Document.DocumentStructure)
                  replace_utf8 ("''") 8221
                ]
             );
-          substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) loaded_feat);
+          substitutions=(fun glyphs -> Fonts.apply_features f loaded_feat (subst glyphs));
           positioning=(fun x->pos (positioning f x));
           footnote_y=10.;
           size=fsize;

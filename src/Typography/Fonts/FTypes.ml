@@ -222,8 +222,10 @@ module type Font=(
     (** Lists all the available features of the font *)
     val font_features:font->string list
 
+    type feature_set
     (** Converts a given list of features into a list of corresponding substitutions *)
-    val select_features:font->string list->substitution list
+    val select_features:font->string list->feature_set
+    val apply_features:font->feature_set->glyph_id list->glyph_id list
 
     (** Appiles the available positioning information to a glyph
         list. This can be used for kerning, but not only *)

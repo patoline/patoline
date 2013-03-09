@@ -68,10 +68,11 @@ let centered parameters str tree _=
                     let fenv env={ env with
                                      substitutions=
                         (fun glyphs->
-                           List.fold_left (fun a b->Fonts.FTypes.apply b a)
-                             (env.substitutions glyphs)
-                             (Fonts.select_features env.font [ Fonts.Opentype.oldStyleFigures ]))
-                                 }
+                          Fonts.apply_features
+                            env.font
+                            (Fonts.select_features env.font [ Fonts.Opentype.oldStyleFigures ])
+                            (env.substitutions glyphs)
+                        )}
                     in
                     let env'=fenv env0 in
                     let name= boxify_scoped env' s.displayname in

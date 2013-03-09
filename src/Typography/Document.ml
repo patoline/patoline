@@ -506,7 +506,7 @@ let updateFont env font str subst pos=
     { env with
         font=font;
         word_substitutions=str;
-        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a) (subst glyphs) feat);
+        substitutions=(fun glyphs -> Fonts.apply_features font feat (subst glyphs));
         positioning=(fun x->pos (positioning font x)) }
 
 let change_font f env = updateFont env f (fun x->x) (fun x->x) (fun x->x)
@@ -521,8 +521,8 @@ let add_features features env=
   let feat=Fonts.select_features env.font (features@env.fontFeatures) in
     { env with
         fontFeatures=features@env.fontFeatures;
-        substitutions=(fun glyphs -> List.fold_left (fun a b->apply b a)
-                         (env.substitutions glyphs) feat);
+        substitutions=(fun glyphs -> Fonts.apply_features env.font feat
+          (env.substitutions glyphs));
     }
 
 

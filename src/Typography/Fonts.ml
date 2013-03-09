@@ -152,14 +152,22 @@ let glyph_x1 gl=
       CFFGlyph x->CFF.glyph_x1 x
     | OpentypeGlyph x->Opentype.glyph_x1 x
 
+type feature_set=
+    CFFFeature_set of CFF.feature_set
+  | OpentypeFeature_set of Opentype.feature_set
+
 let select_features a b=match a with
-    CFF x->CFF.select_features x b
-  | Opentype x->Opentype.select_features x b
+    CFF x->CFFFeature_set (CFF.select_features x b)
+  | Opentype x->OpentypeFeature_set (Opentype.select_features x b)
 
 let font_features a=match a with
     CFF x->CFF.font_features x
   | Opentype x->Opentype.font_features x
 
+let apply_features font set glyphs=match font,set with
+    CFF x,CFFFeature_set y->CFF.apply_features x y glyphs
+  | Opentype x,OpentypeFeature_set y->Opentype.apply_features x y glyphs
+  | _->glyphs
 
 let positioning f glyphs=
   match f with

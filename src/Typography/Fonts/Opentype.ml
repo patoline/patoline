@@ -798,6 +798,7 @@ let readCoverageIndex file off=
       if format=2 then format2 0 [] else
         []
 
+
 let readClass file off=
   let format=seek_in file off; readInt2 file in
     if format=1 then (
@@ -829,6 +830,8 @@ let readClass file off=
 #define GSUB_LIGATURE 4
 #define GSUB_CONTEXT 5
 #define GSUB_CHAINING 6
+#define GSUB_EXTENSION 7
+#define GSUB_REVERSE 8
 
 
 let rec readLookup file gsubOff i=
@@ -860,7 +863,7 @@ let rec readLookup file gsubOff i=
           | GSUB_MULTIPLE->(
               let coverageOff=seek_in file (offset1+2); readInt2 file in
               let cov=readCoverageIndex file (offset1+coverageOff) in
-                List.iter (fun (first_glyph,alternate)->
+                 List.iter (fun (first_glyph,alternate)->
                              let offset2=seek_in file (offset1+6+alternate*2); offset1+readInt2 file in
                              let glyphCount=seek_in file offset2; readInt2 file in
                              let arr=Array.make glyphCount 0 in
@@ -968,9 +971,190 @@ let rec readLookup file gsubOff i=
                         subst:=(Chain {before=back_arr; input=input_arr; after=ahead_arr})::(!subst)
                 );
             )
-          | _->()
+          | GSUB_REVERSE->(
+
+          )
+          | _->()                       (* Manque les types 7 et 8 *)
     done;
     List.rev !subst
+
+
+let rec applyLookup file gsubOff i glyphs=
+  let subst=ref [] in
+  let lookup= seek_in file (gsubOff+8); readInt2 file in
+  let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
+
+  let lookupType=seek_in file offset0; readInt2 file in
+  (* let lookupFlag=seek_in file (offset0+2); readInt2 file in *)
+  let subtableCount=seek_in file (offset0+4); readInt2 file in
+  let ligbuf=Buffer.create 10 in
+  let rec gpos subtable gls=if subtable>=subtableCount then gls else
+      begin
+        let gls'=
+          let offset1=seek_in file (offset0+6+subtable*2); offset0+(readInt2 file) in
+          match lookupType with
+              GSUB_SINGLE->(
+                let format=seek_in file offset1;readInt2 file in
+                let coverageOff=readInt2 file in
+                let buf=ref [] in
+                if format=1 then (
+                  let delta=readInt2 file in
+                  List.iter (fun g->
+                    try
+                      let cov=coverageIndex file (offset1+coverageOff) g.glyph_index in
+                      buf:={ g with glyph_index=g.glyph_index+delta }::(!buf)
+                    with
+                        Not_found->buf:=g::(!buf)
+                  ) gls;
+                  List.rev !buf
+                ) else if format=2 then (
+                  List.iter (fun g->
+                    try
+                      let cov=coverageIndex file (offset1+coverageOff) g.glyph_index in
+                      let gl=seek_in file (offset1+6+cov*2); readInt2 file in
+                      buf:={ g with glyph_index=gl }::(!buf)
+                    with
+                        Not_found->buf:=g::(!buf)
+                  ) gls;
+                  List.rev !buf
+                ) else gls
+              )
+              | GSUB_MULTIPLE->(
+                let coverageOff=seek_in file (offset1+2); readInt2 file in
+                let buf=ref [] in
+                List.iter (fun g->
+                  try
+                    let cov=coverageIndex file (offset1+coverageOff) g.glyph_index in
+                    let offset2=seek_in file (offset1+6+cov*2); offset1+readInt2 file in
+                    let glyphCount=seek_in file offset2; readInt2 file in
+                    for comp=0 to glyphCount-1 do
+                      if comp=0 then
+                        buf:={g with glyph_index=(readInt2 file)}::(!buf)
+                      else
+                        buf:={glyph_utf8=""; glyph_index=(readInt2 file)}::(!buf)
+                    done;
+                  with
+                      Not_found->buf:=g::(!buf)
+                ) gls;
+                List.rev !buf
+              )
+              | GSUB_ALTERNATE->(
+              (* C'est compliqué, comment on choisit l'alternative correcte ? *)
+              (* À part ça, ça marche comme GSUB_MULTIPLE, sauf qu'on
+                 ne choisit qu'un seul glyph au lieu de les prendre tous. *)
+
+              (* let coverageOff=seek_in file (offset1+2); readInt2 file in *)
+              (* let cov=readCoverageIndex file (offset1+coverageOff) in *)
+              (* List.iter (fun (first_glyph,alternate)-> *)
+              (*   let offset2=seek_in file (offset1+6+alternate*2); offset1+readInt2 file in *)
+              (*   let glyphCount=seek_in file offset2; readInt2 file in *)
+              (*   let arr=Array.make (1+glyphCount) first_glyph in *)
+              (*   for comp=1 to glyphCount do *)
+              (*     arr.(comp)<-readInt2 file; *)
+              (*   done; *)
+              (*   subst:=(Alternative arr)::(!subst) *)
+              (* ) cov *)
+              gls
+              )
+              | GSUB_LIGATURE->(
+                let coverageOff=seek_in file (offset1+2); readInt2 file in
+                let buf=ref [] in
+                let rec ligature gl=
+                  match gl with
+                      []->()
+                    | h::s->
+                      begin
+                        try
+                          let cov=coverageIndex file (offset1+coverageOff) h.glyph_index in
+                          let offset2=seek_in file (offset1+6+cov*2); offset1+readInt2 file in
+                          let ligCount=seek_in file offset2; readInt2 file in
+                          let rec all_ligs lig=
+                            if lig>=ligCount then s else (
+                              let offset3=seek_in file (offset2+2+lig*2); offset2+readInt2 file in
+                              let ligGlyph=seek_in file offset3; readInt2 file in
+                              let compCount=readInt2 file in
+                              let rec comp_glyphs l i=
+                                if i=0 then true,l else (
+                                  let x=readInt2 file in
+                                  match l with
+                                      []->false,[]
+                                    | hg::sg when hg.glyph_index<>x->false,[]
+                                    | _::sg->comp_glyphs sg (i-1)
+                                )
+                              in
+                              let applicable,next=comp_glyphs s (compCount-1) in
+                              if applicable then (
+                                Buffer.clear ligbuf;
+                                Buffer.add_string ligbuf h.glyph_utf8;
+                                let rec add_glyphs l i=
+                                  if i>0 then match l with
+                                      []->assert false
+                                    | hg::sg->(
+                                      Buffer.add_string ligbuf hg.glyph_utf8;
+                                      add_glyphs sg (i-1)
+                                    )
+                                in
+                                add_glyphs s (compCount-1);
+                                { glyph_index=ligGlyph;glyph_utf8=Buffer.contents ligbuf }::next
+                              ) else (
+                                all_ligs (lig+1)
+                              )
+                            )
+                          in
+                          ligature (all_ligs 0)
+                        with
+                            Not_found->(
+                              buf:=h::(!buf);
+                              ligature s
+                            )
+                      end
+                in
+                ligature gls;
+                List.rev !buf
+              )
+              | GSUB_REVERSE->(
+                let coverageOff=seek_in file (offset1+2);readInt2 file in
+                let btGlyphCount=readInt2 file in
+                let aheadGlyphCount=seek_in file (offset1+6+2*btGlyphCount);readInt2 file in
+                let buf=ref [] in
+                let rec process gls bt=match gls with
+                    []->()
+                  | h::s->
+                    begin
+                      try
+                        let cov=coverageIndex file (offset1+coverageOff) h.glyph_index in
+                        let rec check_bt l i=
+                          if i=0 then true else (
+                            match l with
+                                []->raise Not_found
+                              | h0::s0->
+                                let _=coverageIndex file (offset1+readInt2 file) h0.glyph_index in
+                                check_bt s0 (i-1)
+                          )
+                        in
+                        let bt_ok=seek_in file (offset1+6);check_bt bt btGlyphCount in
+                        let ahead_ok=seek_in file (offset1+8+2*btGlyphCount);
+                          check_bt s aheadGlyphCount
+                        in
+                        seek_in file (offset1+10+btGlyphCount*2+aheadGlyphCount*2+cov*2);
+                        buf:={ h with glyph_index=readInt2 file }::(!buf);
+                        process s (h::bt)
+                      with
+                          Not_found->(
+                            buf:=h::(!buf);
+                            process s (h::bt)
+                          )
+                    end
+                in
+                process gls [];
+                List.rev !buf
+              )
+              | _->gls
+        in
+        gpos (subtable+1) gls'
+      end
+  in
+  gpos 0 glyphs
 
 
 let read_gsub font=
@@ -1016,6 +1200,8 @@ let titling = "titl"
 let tabularFigures = "tnum"
 let slashedZero = "zero"
 
+type feature_set={gsubOff:int;lookups:int list}
+
 let select_features font feature_tags=try
   let (file_,off0)=otype_file font in
   let file=open_in_bin_cached file_ in
@@ -1041,10 +1227,17 @@ let select_features font feature_tags=try
             select (i+1) result
     )
   in
-  let x=List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (select 0 [])) in
-    x
+  (* let x=List.concat (List.map (fun lookup->readLookup file gsubOff lookup) (select 0 [])) in *)
+  {gsubOff=gsubOff;lookups=(select 0 [])}
+  with Table_not_found _->{gsubOff=(-1);lookups=[]}
 
-with Table_not_found _->[]
+
+let apply_features font features glyphs=
+  let (file_,off0)=otype_file font in
+  let file=open_in_bin_cached file_ in
+  List.fold_left (fun gls lookup->applyLookup file features.gsubOff lookup gls) glyphs
+    features.lookups
+
 
 let font_features font=try
   let (file_,off0)=otype_file font in

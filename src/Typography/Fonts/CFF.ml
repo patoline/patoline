@@ -503,8 +503,10 @@ let italicAngle ?index:(idx=0) font=
     with
         Not_found->0.
 
+type feature_set=unit
 let font_features _ =[]
-let select_features _ _=[]
+let select_features _ _=()
+let apply_features _ _ x=x
 let positioning _ x=x
 
 (*****************************************************************************)
