@@ -20,7 +20,7 @@ ifeq ($(UNAME), Linux)
 CFLAGS=-fPIC
 endif
 ifeq ($(UNAME), Darwin)
-CFLAGS=-I$(shell ocamlc -where) -fPIC -framework GLUT -framework OpenGL
+CFLAGS=-I$(shell ocamlc -where) -fPIC # -framework GLUT -framework OpenGL
 endif
 
 Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
@@ -28,7 +28,7 @@ Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
 GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
-	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx GL.cmx 
+	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx GL.cmx
 Image.cmxa:GL.cmx Image.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
