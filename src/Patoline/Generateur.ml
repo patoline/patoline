@@ -60,10 +60,22 @@ let _= Build.macros:=
       "in [ Drawing (Res.Lib.make ()) ])]\n")
   (StrMap.add "genumerate" (fun s->
     let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
-    let c = String.make 1 s.[pos+1] in
+    (* let c = String.make 1 s.[pos+1] in *)
+    let c = s.[pos+1] in
     let prefix = String.sub s 0 pos in
     let suffix = String.sub s (pos+2) (String.length s - pos - 2) in
-    "('"^c^"',(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))"
+    let nb_kind = begin
+      match c with
+      | '1' -> "Arabic"
+      | 'i' -> "RomanLower"
+      | 'I' -> "RomanUpper"
+      | 'a' -> "AlphaLower"
+      | 'A' -> "AlphaUpper"
+      | _ ->   (Printf.fprintf stderr "Invalid argument to genumerate: %c. Falling back to arabic.\n" c ; 
+		flush stderr ; "Arabic")
+    end in
+    (* "('"^c^"',(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))" *)
+    "("^nb_kind^",(fun num_sec -> " ^ prefix ^ "\" ^ num_sec ^ \"" ^ suffix ^ "))"
   )
   !Build.macros)
 
