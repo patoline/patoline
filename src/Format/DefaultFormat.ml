@@ -1748,7 +1748,9 @@ module MathsFormat=struct
                       drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
                       drawing_contents=
                       (fun w->
-                         OutputCommon.Path ({OutputCommon.default with OutputCommon.lineWidth=rul},
+                         OutputCommon.Path ({OutputCommon.default with
+			   OutputCommon.fillColor=Some envs.fontColor;
+			   OutputCommon.lineWidth=rul},
                                             [[|[|x0;x1|],
                                                [|y1*.sqrt phi+.2.*.rul;y1*.sqrt phi+.2.*.rul|]|]])
                          ::drawn.drawing_contents w)
@@ -1810,7 +1812,7 @@ module MathsFormat=struct
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with
                                                OutputCommon.strokingColor=None;
-                                               OutputCommon.fillColor=Some OutputCommon.black
+                                               OutputCommon.fillColor=Some envs.fontColor
                                             },arr')
                          ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]
@@ -1863,7 +1865,7 @@ module MathsFormat=struct
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with
                                                OutputCommon.strokingColor=None;
-                                               OutputCommon.fillColor=Some OutputCommon.black
+                                               OutputCommon.fillColor=Some envs.fontColor
                                             },arr')
                          ::(List.map (OutputCommon.translate (max 0. ((w1*.size-.x1_)/.2.)) 0.) dr))
                   }]

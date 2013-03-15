@@ -1078,7 +1078,7 @@ let make_sqrt env_ style box=
       let path=Array.concat [path0; path2; path1] in
       let p=
         translate 0. ty
-          (Path ({default with strokingColor=None;fillColor=Some black},
+          (Path ({default with strokingColor=None;fillColor=Some env_.fontColor},
                  [path]
                 ))
       in
