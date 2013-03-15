@@ -1750,6 +1750,7 @@ module MathsFormat=struct
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with
 			   OutputCommon.fillColor=Some envs.fontColor;
+			   OutputCommon.strokingColor=Some envs.fontColor;
 			   OutputCommon.lineWidth=rul},
                                             [[|[|x0;x1|],
                                                [|y1*.sqrt phi+.2.*.rul;y1*.sqrt phi+.2.*.rul|]|]])
