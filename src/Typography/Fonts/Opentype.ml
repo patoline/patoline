@@ -984,14 +984,19 @@ let rec applyLookup file gsubOff i glyphs=
   let lookup= seek_in file (gsubOff+8); readInt2 file in
   let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
 
-  let lookupType=seek_in file offset0; readInt2 file in
+  let lookupType0=seek_in file offset0; readInt2 file in
   (* let lookupFlag=seek_in file (offset0+2); readInt2 file in *)
   let subtableCount=seek_in file (offset0+4); readInt2 file in
   let ligbuf=Buffer.create 10 in
-  let rec gpos subtable gls=if subtable>=subtableCount then gls else
+  (* lookupType et ext sont là juste pour le type "extension", qui redéfinit les offsets *)
+  let rec gpos lookupType ext subtable gls=if subtable>=subtableCount then gls else
       begin
         let gls'=
-          let offset1=seek_in file (offset0+6+subtable*2); offset0+(readInt2 file) in
+          let offset1=
+            if ext>=0 then ext else (
+              seek_in file (offset0+6+subtable*2); offset0+(readInt2 file)
+            )
+          in
           match lookupType with
               GSUB_SINGLE->(
                 let format=seek_in file offset1;readInt2 file in
@@ -1112,49 +1117,62 @@ let rec applyLookup file gsubOff i glyphs=
                 ligature gls;
                 List.rev !buf
               )
+              | GSUB_CONTEXT->gls
+              | GSUB_CHAINING->gls
+              | GSUB_EXTENSION->(
+                let format=seek_in file offset1;readInt2 file in
+                if format=1 then (
+                  let lookupType=readInt2 file in
+                  let lookupOffset=readInt2 file in
+                  gpos lookupType (offset1+lookupOffset) subtable gls
+                ) else gls
+              )
               | GSUB_REVERSE->(
-                let coverageOff=seek_in file (offset1+2);readInt2 file in
-                let btGlyphCount=readInt2 file in
-                let aheadGlyphCount=seek_in file (offset1+6+2*btGlyphCount);readInt2 file in
-                let buf=ref [] in
-                let rec process gls bt=match gls with
-                    []->()
-                  | h::s->
-                    begin
-                      try
-                        let cov=coverageIndex file (offset1+coverageOff) h.glyph_index in
-                        let rec check_bt l i=
-                          if i=0 then true else (
-                            match l with
-                                []->raise Not_found
-                              | h0::s0->
-                                let _=coverageIndex file (offset1+readInt2 file) h0.glyph_index in
-                                check_bt s0 (i-1)
-                          )
-                        in
-                        let bt_ok=seek_in file (offset1+6);check_bt bt btGlyphCount in
-                        let ahead_ok=seek_in file (offset1+8+2*btGlyphCount);
-                          check_bt s aheadGlyphCount
-                        in
-                        seek_in file (offset1+10+btGlyphCount*2+aheadGlyphCount*2+cov*2);
-                        buf:={ h with glyph_index=readInt2 file }::(!buf);
-                        process s (h::bt)
-                      with
-                          Not_found->(
-                            buf:=h::(!buf);
-                            process s (h::bt)
-                          )
-                    end
-                in
-                process gls [];
-                List.rev !buf
+                let format=seek_in file offset1;readInt2 file in
+                if format=1 then (
+                  let coverageOff=readInt2 file in
+                  let btGlyphCount=readInt2 file in
+                  let aheadGlyphCount=seek_in file (offset1+6+2*btGlyphCount);readInt2 file in
+                  let buf=ref [] in
+                  let rec process gls bt=match gls with
+                      []->()
+                    | h::s->
+                      begin
+                        try
+                          let cov=coverageIndex file (offset1+coverageOff) h.glyph_index in
+                          let rec check_bt l i=
+                            if i=0 then true else (
+                              match l with
+                                  []->raise Not_found
+                                | h0::s0->
+                                  let _=coverageIndex file (offset1+readInt2 file) h0.glyph_index in
+                                  check_bt s0 (i-1)
+                            )
+                          in
+                          let bt_ok=seek_in file (offset1+6);check_bt bt btGlyphCount in
+                          let ahead_ok=seek_in file (offset1+8+2*btGlyphCount);
+                            check_bt s aheadGlyphCount
+                          in
+                          seek_in file (offset1+10+btGlyphCount*2+aheadGlyphCount*2+cov*2);
+                          buf:={ h with glyph_index=readInt2 file }::(!buf);
+                          process s (h::bt)
+                        with
+                            Not_found->(
+                              buf:=h::(!buf);
+                              process s (h::bt)
+                            )
+                      end
+                  in
+                  process gls [];
+                  List.rev !buf
+                ) else gls
               )
               | _->gls
         in
-        gpos (subtable+1) gls'
+        gpos (-1) (-1) (subtable+1) gls'
       end
   in
-  gpos 0 glyphs
+  gpos (-1) (-1) 0 glyphs
 
 
 let read_gsub font=
