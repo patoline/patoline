@@ -122,7 +122,11 @@ let write_layout (scripts:scripts_table) features lookups=
   end;
 
   let global_buf=Rbuffer.create 256 in
+#ifdef INT32
+  bufInt4 global_buf 0x00010000l;
+#else
   bufInt4 global_buf 0x00010000;
+#endif
   bufInt2 global_buf 10;
   let a=10+Rbuffer.length buf_scripts in
   let b=a+Rbuffer.length buf_features in
