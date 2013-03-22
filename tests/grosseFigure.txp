@@ -1,0 +1,75 @@
+
+====================================================
+Une grosse figure
+--------------------
+Tom 
+--------------------
+LAMA à plumes
+====================================================
+
+
+\Caml(open FormatArticle ;;
+open Diagrams ;;
+let drawingOfDiagram : Document.content list -> Document.environment -> Box.drawingBox = function
+| [] -> assert false
+| B (f,_) :: _ -> begin fun env -> 
+ match f env with
+  | [] -> assert false
+  | Drawing d :: _ -> d
+  | _ -> assert false
+  end 
+| _ -> assert false
+
+let card c = <$ card(\c()) $>
+
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+
+  let my_math_matrix style l = 
+    math_matrix (Matrix.([centers 20. 20.;
+			  mainNode Node.([at (0.,ex env);anchor `Pdf])]) @ style) l
+
+  let simple_math_matrix ?style:(style=[Matrix.centers 20. 20.]) l = 
+    my_math_matrix style (List.map (fun line -> (List.map (fun contents -> ([],contents)) line)) l)
+end
+
+)
+
+\Caml(let _ = figure ~name:"Grammar for labels"
+~caption:<<Grammar for labels>>
+(drawingOfDiagram (<<\diagram(
+
+let m,ms = simple_math_matrix [[
+<$1.πₙ : [[a₁,…,aₙ]] → [[a₁,…,aₙ],[a₁,…,aₙ]]$>
+
+];[
+<$1.\heartsuitₙ : [[a₁,…,aₙ]] → [[a₁,…,aₙ]]$>
+
+];[
+<$1.νₙ : (Γ ⊢ [[a₁,…,aₙ]]) → (Γ+1 ⊢ [[a₁,…,a_{n+1}]])$>
+
+];[
+<$1.ι_{n,i} : (Γ ⊢ [[a₁,…,aₙ]]) → (Γ+1 ⊢ [[a₁,…,a_{n+1}]])$>
+
+];[
+<$1.o_{n,j,k} : [[a₁,…,aₙ]] → [[a₁,…,aₙ]]$>
+
+];[
+
+<$ξ.F : (Γ ⊢ E₁ \para E₂) → (Γ' ⊢ E'₁ \para E₂)$>
+
+];[
+
+<$(\card{E₁} ⋅ ξ).F : (Γ ⊢ E₁ \para E₂) → (Γ' ⊢ E₁ \para E'₂)$>
+
+];[
+
+<$(p, \card{E₁} + q).τ_{n,i,m,j,k} : (Γ ⊢ E₁ \para E₂) → (Γ' ⊢ E₁ \para E'₂)$>
+
+];[
+
+<$(\card{E₁} + q, p).\tau_{n,i,m,j,k} : (Γ ⊢ E₁ \para E₂) → (Γ' ⊢ E₁ \para E'₂)$>
+]]
+)
+>>
+)))
