@@ -1,7 +1,7 @@
 include ../Makefile.config
 
-ifdef PACK_DRIVER_GL
-PACK:=$(PACK) -package $(PACK_DRIVER_GL)
+ifdef PACK_DRIVER_DriverGL
+PACK:=$(PACK) -package $(PACK_DRIVER_DriverGL)
 NATIVE_EXTRA+=Patoline/PatolineGL
 endif
 ifdef PACK_DRIVER_GL2
@@ -27,10 +27,10 @@ Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx Html.cmx
 SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
-GL.cmxa:GL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
-	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o GL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx GL.cmx
-Image.cmxa:GL.cmx Image.cmx ../Typography/_build/Typography.cmi
-	$(CAMLMKLIB) -o Image FrameBuffer.o GL.cmx Language.cmx Image.cmx
+DriverGL.cmxa:DriverGL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
+	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o DriverGL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx DriverGL.cmx
+Image.cmxa:DriverGL.cmx Image.cmx ../Typography/_build/Typography.cmi
+	$(CAMLMKLIB) -o Image FrameBuffer.o DriverGL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Pdf.cmx
 Bin.cmxa:Bin.cmx ../Typography/_build/Typography.cmxa
@@ -51,9 +51,9 @@ DriverCairo.cmx:DriverCairo.ml ../Typography/_build/Typography.cmx
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
-GL.cmx:GL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx Vec3.cmx
-	$(CAMLOPT) -package netcgi2,nethttpd -package $(PACK_DRIVER_GL) -c -o $@ $<
-Image.cmx:Image.ml GL.cmx ../Patoline/Language.cmx
+DriverGL.cmx:DriverGL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx Vec3.cmx
+	$(CAMLOPT) -package netcgi2,nethttpd -package $(PACK_DRIVER_DriverGL) -c -o $@ $<
+Image.cmx:Image.ml DriverGL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
 	$(CAMLOPT) -package netcgi2,nethttpd,$(PACK_DRIVER_GL) -c -o $@ $<
 

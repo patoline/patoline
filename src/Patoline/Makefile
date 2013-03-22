@@ -6,8 +6,8 @@ CAMLC=ocamlfind ocamlc -pp $(CPP) -package dyp -package camomile -I ../Rbuffer
 patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Build.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 
-PatolineGL:PatolineGL.ml ../Typography/_build/Typography.cmxa ../Drivers/GL.cmxa
-	$(CAMLOPT) -package $(PACK_DRIVER_GL) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa GL.cmxa  -o $@ $<
+PatolineGL:PatolineGL.ml ../Typography/_build/Typography.cmxa
+	$(CAMLOPT) -package $(PACK_DRIVER_DriverGL) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa DriverGL.cmxa  -o $@ $<
 
 PatolineGL2:PatolineGL2.ml ../Typography/_build/Typography.cmxa ../Drivers/GL2.cmxa
 	$(CAMLOPT) -package $(PACK_DRIVER_GL2) -linkpkg -I ../Rbuffer -I ../Drivers ../Rbuffer/rbuffer.cmxa ../Typography/_build/Typography.cmxa gtkInit.cmx GL2.cmxa  -o $@ $<

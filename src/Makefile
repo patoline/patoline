@@ -28,7 +28,7 @@ all_plugins:plugins Patoline/patoline
 
 Patoline/patoline:Patoline
 	make -C Patoline patoline
-Patoline/PatolineGL:Patoline GL.cmxa
+Patoline/PatolineGL:Patoline Drivers/DriverGL.cmxa
 	make -C Patoline PatolineGL
 Patoline/PatolineGL2:Patoline GL2.cmxa
 	make -C Patoline PatolineGL2

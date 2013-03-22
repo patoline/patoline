@@ -30,16 +30,16 @@ open Language
 let format = ref "png"
 let width = ref None
 let height = ref None
-let saa = ref GL.No_SAA
+let saa = ref DriverGL.No_SAA
 
 let spec = [
   ("--format",Arg.String (fun s -> format := s), message (Language.Image IFormat));
   ("--width",Arg.Int (fun i -> width := Some i), message (Language.Image Width));
   ("--height",Arg.Int (fun i -> height := Some i), message (Language.Image Height));
-  ("--rgb",Arg.Unit (fun () -> saa := GL.RGB_SAA), message (Language.Image RGB));
-  ("--bgr",Arg.Unit (fun () -> saa := GL.BGR_SAA), message (Language.Image BGR));
-  ("--vrgb",Arg.Unit (fun () -> saa := GL.VRGB_SAA), message (Language.Image VRGB));
-  ("--vbgr",Arg.Unit (fun () -> saa := GL.VBGR_SAA), message (Language.Image VBGR));
+  ("--rgb",Arg.Unit (fun () -> saa := DriverGL.RGB_SAA), message (Language.Image RGB));
+  ("--bgr",Arg.Unit (fun () -> saa := DriverGL.BGR_SAA), message (Language.Image BGR));
+  ("--vrgb",Arg.Unit (fun () -> saa := DriverGL.VRGB_SAA), message (Language.Image VRGB));
+  ("--vbgr",Arg.Unit (fun () -> saa := DriverGL.VBGR_SAA), message (Language.Image VBGR));
 ]
  
 let filename file = try (Filename.chop_extension file)^"_img_dir" with _->file^"_img_dir"
@@ -86,8 +86,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     ()
   in
 
-  GL.prefs := { !GL.prefs with GL.batch_cmd = Some generate; GL.server_port = None };
+  DriverGL.prefs := { !DriverGL.prefs with DriverGL.batch_cmd = Some generate; DriverGL.server_port = None };
 
-  GL.output ~structure pages fileName
+  DriverGL.output ~structure pages fileName
 
 let output' = output_to_prime output

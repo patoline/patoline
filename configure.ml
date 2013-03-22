@@ -142,7 +142,7 @@ let ocamlnet_needs =
   Package "netcgi2"; Package "cryptokit"]
 
 let patoline_driver_gl =
-  { name = "GL";
+  { name = "DriverGL";
     needs =(Package "str")::(Package "camlimages.all_formats")::
       (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
     suggests = [] }
