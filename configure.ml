@@ -429,7 +429,7 @@ let _=
 
       Array.iter (fun plugin->
         if Filename.check_suffix plugin ".cmxs" then (
-          Printf.fprintf out "\tinstall -p -m 644 %s $(DESTDIR)%s\n" plugin (escape !plugins_dir);
+          Printf.fprintf out "\tinstall -p -m 644 src/plugins/%s $(DESTDIR)%s\n" plugin (escape !plugins_dir);
         )
       ) (Sys.readdir "src/plugins");
 
