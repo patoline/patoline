@@ -270,7 +270,7 @@ module Make (L:Line with type t=Layout.line)=(
                 paragraph=if node.isFigure then node.paragraph else node.paragraph+1;
                 lastFigure=node.lastFigure+1; isFigure=true;
                 hyphenStart= -1; hyphenEnd= -1;
-                height=fig.drawing_y1;
+                height=fig.drawing_y1-.fig.drawing_y0;
                 lineStart= -1; lineEnd= -1; paragraph_height= -1;
                 page_line=node.page_line+1;
                 layout=node.layout;
