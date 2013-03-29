@@ -40,4 +40,4 @@ Build.cmi:Build.mli Util.cmi
 	$(CAMLOPT) -thread -c -o $@ $<
 
 clean:
-	rm -f *~ \#*\# *.o *.cm[iox] Parser.ml SubSuper.dyp
+	- rm -f *~ \#*\# *.o *.cm[iox] Parser.ml SubSuper.dyp patoline PatolineGL PatolineGL2

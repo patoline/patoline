@@ -2,11 +2,11 @@ include Makefile.config
 
 FORMAT=$(shell cd Format; ls Format*.ml) LMFormat.ml
 
-ifdef PACK_DRIVER_GL
+ifdef PACK_DRIVER_DriverGL
 NATIVE_EXTRA+=Patoline/PatolineGL
 endif
 
-ifdef PACK_DRIVER_GL2
+ifdef PACK_DRIVER_DriverGL2
 NATIVE_EXTRA+=Patoline/PatolineGL2
 endif
 
@@ -139,6 +139,7 @@ clean:
 	make -C Patoline clean
 	make -C ocaml-bibi clean
 	make -C Pdf clean
+	make -C cesure clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd proof; rm -f *~ \#*\# *.cm[xoi] *.o
 	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.ttml *.o *.a
