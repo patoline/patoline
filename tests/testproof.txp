@@ -1,0 +1,38 @@
+============================
+Test proofTree
+----------------------------
+Christophe Raffalli
+----------------------------
+une date
+============================
+
+\Caml(
+open ProofTree
+)
+
+$$
+\proofTree(
+Rule([
+ Rule([],
+  <$A BBB BBB BB$>, None) 
+], <$A B B$>, None)
+)
+$$
+
+$$
+\proofTree{\binary{\axiom{BBB}}{\axiom{DDD}}{C}}
+$$
+
+$$
+\proofTree{\binary{\axiom{A}}{\unary{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{C}}{X}}
+$$
+
+$$
+\proofTree{\ternary{\axiom{A}}{\unary{\unary{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{C}}{E}}{\unary{\hyp{Z}}{T}}{X}}
+$$
+
+
+$$
+\proofTree{\binary{\axiom{A}}{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{X}}
+$$
+
