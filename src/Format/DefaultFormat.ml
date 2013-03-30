@@ -927,7 +927,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     module Env_center = struct
 
       let do_begin_env ()=
-        D.structure:=newChildAfter (!D.structure) (Node empty);
+        D.structure:=newChildAfter (!D.structure) (Node { empty with node_env=(fun env->{env with par_indent=[]})});
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
 
       let do_end_env ()=
