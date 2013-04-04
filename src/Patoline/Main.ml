@@ -72,7 +72,8 @@ let spec =
    ("--",Arg.Rest (fun s -> extras := s:: !extras), message (Cli Remaining));
    ("--topopts",Arg.String (fun s -> extras_top := s:: !extras_top), message (Cli TopOpts));
    ("--ccopts",Arg.String (fun s -> extras := s:: !extras), message (Cli CCOpts));
-   ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive))
+   ("--no-line-directive", Arg.Unit (fun () -> Generateur.line_directive:=false), message (Cli No_line_directive));
+   ("--debug-parser", Arg.Unit (fun () -> Parser.debug_parser:=true), message (Cli Debug_parser));
   ]
 
 

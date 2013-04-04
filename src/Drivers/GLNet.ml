@@ -117,11 +117,23 @@ let fetch_file cgi name =
   close_in ic;
   out s    
 
+let cbs = ref ["file", fetch_file]
+
 let make_page cgi id cmd fmt width height format=
   (* Output the beginning of the page with the passed [title]. *)
   let out = cgi # output # output_string in
   out "<html>";
   out "<head>";
+  out "<style>
+    body { color: #B04040; border: 0; margin: 0; padding: 0; text-align: center; vertical-align: 	middle; }
+    .button { width: 52px; height: 52px; border: 2px solid #B0B0B0; }
+    a { color : #B04040; }
+    a:visited { color : #B04040; }
+    a:hover { color : #B0B0B0; }
+    div#leftbar { position: absolute; top: 0px; left: 0px; width: 76px; bottom:0px ; border-right: 4px solid #4040B0; padding-top:20px; padding-left: 10px; padding-right: 10px;background: #202040;  text-align: center; vertical-align: 	middle; }
+    div#rightbar { position: absolute; top: 0px; right: 0px; width: 76px; bottom: 0px; border-left: 4px solid #4040B0; padding-top: 20px ;padding-left: 10px; padding-right: 10px; background: #202040;  text-align: center; vertical-align: 	middle; }
+    div#image { position: absolute; top: 0px; left:80px; right:80px; bottom:0px; overflow:auto;}
+  </style>";
 (*  out "<link rel=\"stylesheet\" type=\"text/css\" href=\"/themes/alpinux/handheld.css\" media=\"screen and (max-device-width: 480px)\" />";
   out "<link rel=\"stylesheet\" type=\"text/css\" href=\"/themes/alpinux/handheld.css\" media=\"handheld\" />"*)
   out "<meta name=\"viewport\" content=\"width=device-width, height=device-height\"/>";
@@ -151,11 +163,14 @@ let generate_page (cgi : cgi_activation) =
     cgi # arguments;
   flush stderr;
   
-  try
-    let filename = (cgi # argument "file") # value in
-    fetch_file cgi filename
-  with
-    Not_found ->
+  let rec fn = function
+   (name, cb)::cbs ->
+    (try
+      let arg = (cgi # argument name) # value in
+      cb cgi arg
+    with
+      Not_found -> fn cbs)
+    | [] ->
   let page = 
     try Some (int_of_string ((cgi # argument "page") # value))
     with Not_found | Failure _ -> None
@@ -198,7 +213,7 @@ let generate_page (cgi : cgi_activation) =
  
 
   make_page cgi id cmd fmt width height format
-
+  in fn !cbs
 
 
 let process (cgi : cgi_activation) =

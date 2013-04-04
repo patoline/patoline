@@ -1000,11 +1000,14 @@ math_toplevel:
 
 math:
    (mathvar)<name>
-      { Var(name) } atom
+      { if !debug_parser then Printf.printf "{ mathvar(%s) } in math.\n" name;
+        Var(name) } atom
   | (['a'-'z''A'-'Z']['a'-'z''A'-'Z']+)<name> 
-      { Fun(name) } atom
+      { if !debug_parser then Printf.printf "{ fun(%s) } in math.\n" name;
+        Fun(name) } atom
   | (num) <num> 
-      {Num num } atom
+      { if !debug_parser then Printf.printf "{ num(%s) } in math.\n" num;
+        Num num } atom
   | left<_,op> math<a> right<_,cl>
       { Delim(op,a,cl) } atom
 
@@ -1097,6 +1100,9 @@ symbol_only:
   |  product_like<l,op,d> 
       { if !debug_parser then Printf.printf "product_like(%s) in symbol_only.\n" l;	
         app_ind d (Symbol op) }
+/*  |  addition_like<l,op,d> 
+      { if !debug_parser then Printf.printf "product_like(%s) in symbol_only.\n" l;	
+        app_ind d (Symbol op) } */
   |  prefix<l,op,d> 
       { if StrSet.mem l dyp.local_data.infixes then raise Giveup; 
 	app_ind d (Symbol op) }

@@ -64,6 +64,8 @@ and command_line=
   | Recompile
   | CCOpts
   | TopOpts
+  | Debug_parser
+
 
 and image =
     Width
@@ -116,7 +118,8 @@ let message=function
       | CCOpts->"Passer la chaine au compilateur caml"
       | TopOpts->"Passer la chaine à l'exécutable généré par Patoline"
       | No_line_directive->"Ne pas générer de #line dans le caml produit"
-      | Recompile->"Tout recompiler")
+      | Recompile->"Tout recompiler"
+      | Debug_parser->"Active le deboggage du parseur (developpeur)")
   | Image cli -> (
     match cli with
     | Width -> "specifie la largeur de l'image"
@@ -176,7 +179,8 @@ let message=function
       | CCOpts->"Forward the string to the ocaml compiler"
       | TopOpts->"Forward the string to the generated executable"
       | No_line_directive->"Do not add #line directives in the generated caml code"
-      | Recompile->"Recompile everything")
+      | Recompile->"Recompile everything"
+      | Debug_parser->"Activate paser debugging (developper)")
   | Image cli -> (
     match cli with
     | Width -> "specify image width"
