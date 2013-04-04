@@ -8,31 +8,63 @@ une date
 
 \Caml(
 open ProofTree
+let unit = []
+
+let proofTreeDefault = 
+  { spaceUnderRule = 0.35;
+    spaceAboveRule = 0.25;
+    minSpaceAboveRule = 0.1;
+    thicknessRule = 0.05;
+    heightName = 0.4;
+    spaceBeforeName = 0.15;
+    spaceBetweenProof = 1.5;
+    extraRule = 0.1;
+  }
+
+let proofTree = proofTree ~param:proofTreeDefault 
 )
 
 $$
 \proofTree(
 Rule([
  Rule([],
-  <$A BBB BBB BB$>, None) 
-], <$A B B$>, None)
+  <$A BBB BBB BB$>, Some <$a$>) 
+], <$A B B$>, Some <$∀ᵢ$>)
 )
 $$
 
 $$
-\proofTree{\binary{\axiom{BBB}}{\axiom{DDD}}{C}}
+\proofTree{\binary{C}{\axiomN{R₁}{BBB}}{\axiomN{R₂}{DDD}}}
 $$
 
 $$
-\proofTree{\binary{\axiom{A}}{\unary{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{C}}{X}}
+\proofTree{\binary{X}{\axiom{A}}{\unary{C}{\binary{E}{\axiom{BBBBBB}}{\axiom{DDDDDD}}}}}
 $$
 
 $$
-\proofTree{\ternary{\axiom{A}}{\unary{\unary{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{C}}{E}}{\unary{\hyp{Z}}{T}}{X}}
+\proofTree{\ternary{X}{\axiom{A}}{\unary{E}{\unary{C}{\binary{E}{\axiom{BBBBBB}}{\axiom{DDDDDD}}}}}{\unary{T}{\hyp{Z}}}}
 $$
 
 
+
 $$
-\proofTree{\binary{\axiom{A}}{\binary{\axiom{BBBBBB}}{\axiom{DDDDDD}}{E}}{X}}
+\proofTree{\binary{X}{\axiom{A}}{\binary{E}{\axiom{BBBBBB}}{\axiom{DDDDDD}}}}
+$$
+
+$$
+\proofTree{\unaryN{Abs}{(M)}{\hyp{M}}}
+$$
+
+$$
+\proofTree{
+\unaryN{Abs}{\unit ⊢ A ∨ {¬ A}}{
+\unaryN{∨ᵣ}{¬ (A ∨ {¬ A}) ⊢ A ∨ {¬ A}}{
+\unaryN{¬ᵢ}{¬ (A ∨ {¬ A}) ⊢ {¬ A}}{
+\binaryN{¬ₑ}{¬ (A ∨ {¬ A}), A ⊢ ⊥}{
+ \axiomN{Ax}{¬ (A ∨ {¬ A}), A ⊢ ¬ (A ∨ {¬ A})}
+}{
+ \unaryN{∨ₗ}{¬ (A ∨ {¬ A}), A  ⊢ A ∨ {¬ A}}{
+ \axiomN{Ax}{¬ (A ∨ {¬ A}), A ⊢ A}
+}}}}}}
 $$
 

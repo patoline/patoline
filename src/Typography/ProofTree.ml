@@ -4,6 +4,7 @@ open Document.Mathematical
 open OutputCommon
 open Box 
 open Util
+open Fonts.FTypes
 
 let rec spacing right left = 
   let above y l = match l with
@@ -43,47 +44,90 @@ type 'a proof =
     | Rule of 'a proof list * 'a * 'a option (* premices, conclusion, rule name *)
 
 let axiom x = Rule([], x, None)
-let axiom' n x = Rule([], x, Some n)
+let axiomN n x = Rule([], x, Some n)
 
 let hyp x = Hyp x
 
-let unary p c = Rule([p], c, None)
-let unary' n p c = Rule([p], c, Some n)
+let unary c p = Rule([p], c, None)
+let unaryN n c p = Rule([p], c, Some n)
 
-let binary p p' c = Rule([p;p'], c, None)
-let binary' n p p' c = Rule([p;p'], c, Some n)
+let binary c p p' = Rule([p;p'], c, None)
+let binaryN n c p p' = Rule([p;p'], c, Some n)
 
-let ternary p p' p'' c = Rule([p;p';p''], c, None)
-let ternary' n p p' p'' c = Rule([p;p';p''], c, Some n)
+let ternary c p p' p'' = Rule([p;p';p''], c, None)
+let ternaryN n c p p' p'' = Rule([p;p';p''], c, Some n)
 
-let n_ary l c = Rule(l, c, None)
-let n_ary' n l c = Rule(l, c, Some n)
+let n_ary c l = Rule(l, c, None)
+let n_aryN n c l = Rule(l, c, Some n)
+
+type paramProofTree = 
+  { spaceUnderRule : float;
+    spaceAboveRule : float;
+    minSpaceAboveRule : float;
+    thicknessRule : float;
+    heightName : float;
+    spaceBeforeName : float;
+    spaceBetweenProof : float;
+    extraRule : float;
+  }
+
+let proofTreeDefault = 
+  { spaceUnderRule = 0.35;
+    spaceAboveRule = 0.25;
+    minSpaceAboveRule = 0.05;
+    thicknessRule = 0.1;
+    heightName = 0.4;
+    spaceBeforeName = 0.15;
+    spaceBetweenProof = 1.5;
+    extraRule = 0.1;
+  }
 
 module ProofTree = struct
 
-  type 'a t = 'a proof
+  type 'a t = paramProofTree * 'a proof
 
-  let rec map = fun f e s p -> match p with
+  let rec map' = fun f e s p -> match p with
       Hyp h -> Hyp (f e s h)
     | Rule(premices, conclusion, name) ->
 	Rule(
-	  List.map (map f e s) premices, 
+	  List.map (map' f e s) premices, 
 	  f e s conclusion,
-	  match name with None -> None | Some n -> Some (f e s n))
+	  match name with None -> None | Some n -> Some (f e (cramp (scriptStyle s)) n))
 
-  let draw env_ style proof =
+  let map f e s (param, prf) = (param, map' f e s prf)
+
+  let draw env_ style (param, proof) =
     let env = env_style env_.mathsEnvironment style in
-    let s=env.mathsSize*.env_.size in
-    let ln = s*.0.05 in
-    let sb = s*.0.3 in
-    let sa = s*.0.3 in
+    let env' = env_style env_.mathsEnvironment (cramp (scriptStyle style)) in
+
+    let widthM, heightM =
+      let x=Fonts.loadGlyph (Lazy.force env.mathsFont)
+        ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env.mathsFont) 'M'}) in
+      env.mathsSize*.env_.size*.(Fonts.glyph_x1 x-.Fonts.glyph_x0 x)/.1000.,
+      env.mathsSize*.env_.size*.(Fonts.glyph_y1 x-.Fonts.glyph_y0 x)/.1000.
+    in
+    let widthSubM, heightSubM =
+      let x=Fonts.loadGlyph (Lazy.force env'.mathsFont)
+        ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env'.mathsFont) 'M'}) in
+      env'.mathsSize*.env_.size*.(Fonts.glyph_x1 x-.Fonts.glyph_x0 x)/.1000.,
+      env'.mathsSize*.env_.size*.(Fonts.glyph_y1 x-.Fonts.glyph_y0 x)/.1000.
+    in
+
+    let ln = heightM *. param.thicknessRule in
+    let sb = heightM *. param.spaceUnderRule in
+    let sa = heightM *. param.spaceAboveRule in
+    let hn = heightSubM *. param.heightName in
+    let sn = widthSubM *. param.spaceBeforeName in
+    let sp = widthM *. param.spaceBetweenProof in
+    let er = widthM *. param.extraRule in
+
     let rec fn proof =
       match proof with
 	Hyp hyp ->
 	  let hyp_box = draw_boxes env_ hyp in
 	  let cx0, cy0, cx1, cy1 = bounding_box hyp_box in
-	  let h = cy1 -. cy0 in
-	  h, [cx0, 0.0; cx0, h], cx0, [cx1, 0.0; cx1, h], cx1, hyp
+	  let h = cy1 (* -. cy0 *) in
+	  h, [cx0, cy0; cx0, h], cx0, [cx1, cy0; cx1, h], cx1, hyp
 
       | Rule(premices, conclusion, name) ->
 	  let premices_box = List.map 
@@ -92,8 +136,12 @@ module ProofTree = struct
 	    premices
 	  in
 	  let conclusion_box = draw_boxes env_ conclusion in
-	  let name_box = match name with None -> [] | Some name -> draw_boxes env_ name in
-	  
+	  let name_box = match name with
+	      None -> [] 
+	    | Some name -> draw_boxes env_ name
+	  in
+
+	  let namex0, namey0, namex1, namey1 = bounding_box name_box in
 	  let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 	  
 	  let rec gn dx = function
@@ -102,7 +150,7 @@ module ProofTree = struct
 	        h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
 	        List.map (translate dx 0.0) drawing
 	    | (h, left, mleft, right, _, drawing)::((_, left', _, _, _, _)::_ as l) ->
-	      let sp = spacing right left' +. 1.0 *. s in
+	      let sp = spacing right left' +. sp in
 	      let (h', _, _, right', mright', drawing') = gn (dx +. sp) l in
 	      max h h', htr left dx, mleft +. dx, right', mright',
 	      (List.map (translate dx 0.0) drawing @ drawing')
@@ -116,20 +164,31 @@ module ProofTree = struct
 	  let dx = (-. (cx1 +. cx0) +. (nx1 +. nx0)) /. 2.0 in
 	  let cx0 = cx0 +. dx in
 	  let cx1 = cx1 +. dx in
-	  let rx0 = min cx0 nx0 in
-	  let rx1 = max cx1 nx1 in
+	  let rx0 = min cx0 nx0 -. er in
+	  let rx1 = max cx1 nx1 +. er in
 	  
-	  let dy = cy1  -. cy0 +. sb +. ln +. sa in
+	  let sa = match left with
+	      [] -> 0.0
+	    | (_,y0)::_ -> max (param.minSpaceAboveRule -. y0) sa
+	  in
+	  let dy = cy1 +. sb +. ln +. sa in
+	  
+	  let dnx = rx1 +. sn in
+	  let dny = cy1  -. hn +. sb +. ln /. 2.0 in
 
 	  let contents _ = 
 	    [Path ({OutputCommon.default with lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
 	      (List.map (translate dx 0.0) conclusion_box) @
-	      (List.map (translate 0.0 dy) numerator)
+	      (List.map (translate 0.0 dy) numerator) @
+	      (List.map (translate dnx dny) name_box)
 	  in
 
-	  let left = (cx0, 0.0) :: (rx0, cy1  -. cy0) :: vtr left dy in
-	  let right = (cx1, 0.0) :: (rx1, cy1  -. cy0) :: vtr right dy in
-
+	  let left = (cx0, cy0) :: (rx0, cy1  (* -. cy0*)) :: vtr left dy in
+	  let right = match name with
+	      None -> (cx1, cy0) :: (rx1, cy1 (* -. cy0*)) :: vtr right dy
+            | Some _ ->
+	      (cx1, cy0) :: (dnx +. namex1 -. namex0, dny)  :: vtr right dy
+	  in
 	  let mleft = min rx0 mleft in
 	  let mright = max rx1 mright in
 	  let w = mright -. mleft in
@@ -158,6 +217,6 @@ module ProofTree = struct
   
 end
 
-let proofTree x = 
+let proofTree ?(param=proofTreeDefault) x = 
   let module M = Mk_Custom(ProofTree) in
-  [M.custom x]
+  [M.custom (param, x)]
