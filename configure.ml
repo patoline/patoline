@@ -146,12 +146,14 @@ let patoline_driver_gl =
     needs =(Package "str")::(Package "camlimages.all_formats")::
       (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
     suggests = [] }
-
+(*
 let patoline_driver_gl2 =
   { patoline_driver_gl with
-    name = "GL2";
-    needs = (Package "lablgtk2")::(Package"lablgtk2-gl.gtkgl")::patoline_driver_gl.needs
+    name = "DriverGL2";
+    needs = (Package "str")::(Package "camlimages.all_formats")::
+      (Package "lablgl")::(Package "lablgtk2")::ocamlnet_needs;
   }
+*)
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
@@ -164,7 +166,7 @@ let patoline_drivers =
     { name = "SVG"; needs = []; suggests = [] };
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = [] };
     patoline_driver_gl;
-    patoline_driver_gl2;
+(*    patoline_driver_gl2;*)
     { name = "Net"; needs = ocamlnet_needs; suggests = [] };
     { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
     patoline_driver_gl]; suggests = [] };
@@ -378,8 +380,8 @@ let _=
     Printf.fprintf out "\tinstall -p -m 755 src/cesure/cesure $(DESTDIR)%s/cesure\n" (escape !bin_dir);
     if can_build_driver patoline_driver_gl then
       Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL $(DESTDIR)%s/patolineGL\n" (escape !bin_dir);
-    if can_build_driver patoline_driver_gl2 then
-      Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);
+(*    if can_build_driver patoline_driver_gl2 then
+      Printf.fprintf out "\tinstall -p -m 755 src/Patoline/PatolineGL2 $(DESTDIR)%s/patolineGL2\n" (escape !bin_dir);*)
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^

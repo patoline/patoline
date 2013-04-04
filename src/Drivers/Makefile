@@ -5,7 +5,7 @@ PACK:=$(PACK) -package $(PACK_DRIVER_DriverGL)
 NATIVE_EXTRA+=Patoline/PatolineGL
 endif
 ifdef PACK_DRIVER_GL2
-PACK:=$(PACK) -package $(PACK_DRIVER_GL2)
+PACK:=$(PACK) -package $(PACK_DRIVER_DriverGL2)
 NATIVE_EXTRA+=Patoline/PatolineGL2
 endif
 
@@ -35,8 +35,8 @@ Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Pdf.cmx
 Bin.cmxa:Bin.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Bin.cmx
-GL2.cmxa:GL2.cmx ../Typography/_build/Typography.cmxa
-	$(CAMLOPT) -a -o $@ GL2.cmx
+DriverGL2.cmxa:DriverGL2.cmx ../Typography/_build/Typography.cmxa
+	$(CAMLOPT) -a -o $@ DriverGL2.cmx
 Net.cmxa:Net.cmx ../Typography/_build/Typography.cmxa
 	$(CAMLOPT) -a -o $@ Net.cmx
 None.cmxa:None.cmx ../Typography/_build/Typography.cmxa
