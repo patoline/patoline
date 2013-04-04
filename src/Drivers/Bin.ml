@@ -33,8 +33,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let fileName = filename fileName in
   let ch = open_out_bin fileName in
   output_value ch false;
-  output_value ch structure;
-  output_value ch pages;
+  Marshal.to_channel ch structure [Marshal.Closures];
+  Marshal.to_channel ch pages [Marshal.Closures];
   close_out ch;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
@@ -46,8 +46,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let fileName = filename fileName in
   let ch = open_out_bin fileName in
   output_value ch true;
-  output_value ch structure;
-  output_value ch pages;
+  Marshal.to_channel ch structure [Marshal.Closures];
+  Marshal.to_channel ch pages [Marshal.Closures];
   close_out ch;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
