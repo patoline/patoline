@@ -108,6 +108,7 @@ let ry = ref 0.0
 (* Handle window reshape events *)
 
 let overlay_rect (r,g,b) (x,y,x',y') =
+  Gl.disable `depth_test; (* FIXME: should not be necessary ? *)
   GlMat.load_identity ();
   GlDraw.color (r,g,b);
   GlDraw.begins `line_loop;
@@ -115,12 +116,13 @@ let overlay_rect (r,g,b) (x,y,x',y') =
   GlDraw.vertex2 (x',y');
   GlDraw.vertex2 (x',y);
   GlDraw.vertex2 (x,y);
-  GlDraw.ends ()
+  GlDraw.ends ();
+  Gl.enable `depth_test
 
 let normalize (a,b) = 
   let n = 1. /. sqrt(a*.a +. b*.b) in
-  let n = if classify_float n <> FP_normal then  ( 
-      print_string "coucou 2"; print_newline (); 1.0) else n in
+  let n = if classify_float n <> FP_normal then (
+      print_string "Normalizing null vector!"; print_newline (); 1.0) else n in
   a *. n, b *. n
 
 let dot_prod (a,b) (a',b') =
@@ -382,20 +384,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Gc.compact ();
   in
 
- 
+  let start_page_time = ref (Unix.gettimeofday ()) in
+  let cur_time = ref (Unix.gettimeofday ()) in
+  let do_animation = ref false in
 
   let mode = ref Single in
 
-    let draw_blank page state =
-      let pw,ph = !pages.(page).(state).pageFormat in
-      GlDraw.color ~alpha:0.0 (1.0, 1.0, 1.0);
-      GlDraw.begins `quads;
-      GlDraw.vertex2 (0., 0.);
-      GlDraw.vertex2 (pw, 0.);
-      GlDraw.vertex2 (pw, ph);
-      GlDraw.vertex2 (0., ph);
-      GlDraw.ends ();
-    in
+  let draw_blank page state =
+    let pw,ph = !pages.(page).(state).pageFormat in
+    GlDraw.color ~alpha:0.0 (1.0, 1.0, 1.0);
+    GlDraw.begins `quads;
+    GlDraw.vertex2 (0., 0.);
+    GlDraw.vertex2 (pw, 0.);
+    GlDraw.vertex2 (pw, ph);
+    GlDraw.vertex2 (0., ph);
+    GlDraw.ends ();
+  in
+  
+  let other_items = Hashtbl.create 13 in
 
     let draw_page page state =
       let graisse =  !prefs.graisse in
@@ -406,7 +412,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       GlFunc.depth_mask true;
       GlFBO.merge_blend2 ();
       draw_blank page state;
-
 
       let fill_bezier color lines normals =
 	let lines = List.map2 (fun l n -> List.map2 (fun (x,y,_) ((xn,yn),_) -> 
@@ -459,7 +464,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       in
 
       let rec fn = function
-      Glyph g ->
+	| Animation(_,_,ft,fr) ->
+	  do_animation := true;
+	  let t = !cur_time -. !start_page_time in
+	  let r = fr (ft t) in
+	  List.iter fn (drawing_sort r);	  
+
+	| Glyph g ->
         let x = g.glyph_x in
         let y = g.glyph_y  in
 	let size = g.glyph_size in
@@ -534,7 +545,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	List.iter2 (fun l n ->
 	  GlDraw.begins `quad_strip; 
 	  GlDraw.color color; 
-
 	  List.iter2
 	    (fun (x,y,_) ((vx, vy),_) ->
 	      let norm = sqrt (vx*.vx +. vy*.vy) in
@@ -635,13 +645,20 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.disable `texture_2d;
       in
 
-
       Gl.enable `blend;
       GlFBO.merge_blend ();
       GlFunc.depth_mask false;
       List.iter fn (drawing_sort !pages.(page).(state).pageContents);
 
+      
+      GlFunc.depth_mask true;
+      Gl.disable `blend;
+      Hashtbl.iter (fun name f ->
+	try 
+	  f () ;
+	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
 
+  
     in
 
 
@@ -755,6 +772,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   
   let draw_gl_scene () =
     let time = Sys.time () in
+    cur_time := Unix.gettimeofday ();
     saved_rectangle := None;
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
@@ -820,11 +838,62 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Glut.postRedisplay ()
   in
 
+
+  let draw_show x y w () =
+    let w = float w in
+    let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
+    let x = float x /. w *. pw and y = ph -. float y /. w *. pw in
+    let alpha = 0.0 in
+    let (x1,y1,z1) as v1 = (x +. 2.0 *. pw, y -. 2.0 *. ph, 0.5 *. min pw ph) in
+    let (x0,y0,z0) as v2 = (x +. alpha *. 2.0 *. pw, y -. alpha *. 2.0 *. ph, alpha *. 0.5 *. min pw ph) in
+    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1;
+    flush stderr;
+    let axe = Vec3.sub v2 v1 in
+    let (ax,ay,az) as r1 = Vec3.normalize (y0,(-.x0),0.0) in
+    let (bx,by,bz) as r2 = Vec3.normalize (Vec3.vecp axe r1) in
+    let prec = 32 in
+    let r = 1.0 in
+    GlDraw.color (0.8, 0.3, 0.3);
+    GlDraw.begins `quad_strip;
+    for i = 0 to prec do
+      let a = float(i) *. 2.0 *. Vec3.pi /. float(prec) in
+      let c = r *. cos(a) and s = r *. sin(a) in
+      GlDraw.vertex3 (Vec3.add v1 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
+      GlDraw.vertex3 (Vec3.add v2 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
+    done;
+    GlDraw.ends ()
+  in
+
+  let show (cgi:Netcgi.cgi_activation) _ = 
+    try
+      let out = cgi # output # output_string in
+      let x = int_of_string ((cgi # argument "show_x") # value) in
+      let y = int_of_string ((cgi # argument "show_y") # value) in
+      let w = int_of_string ((cgi # argument "show_w") # value) in
+      Printf.fprintf stderr "show %d %d %d\n" x y w;
+      flush stderr;
+      Hashtbl.replace  other_items "show" (draw_show x y w);
+      redraw()
+    with
+      Not_found | Failure _ -> 
+	Printf.fprintf stderr "Bad show request"; 
+	flush stderr
+  in
+
+  let show_end _ _ =
+    Hashtbl.remove  other_items "show";
+    redraw ();
+  in
+
+  GLNet.cbs := ("show_x", show)::("show_end", show_end)::!cbs;
+
   let dest = ref 0 in
 
   let incr_page () =
+    Hashtbl.clear other_items;
     let i, j = !cur_page, !cur_state in
     if !cur_page + 1 < !num_pages then (
+      start_page_time := Unix.gettimeofday ();
       incr cur_page;
       cur_state := 0;
       num_states := Array.length !pages.(!cur_page);
@@ -833,8 +902,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let decr_page reset_state =
+    Hashtbl.clear other_items;
     let i, j = !cur_page, !cur_state in
     if !cur_page > 0 then (
+      start_page_time := Unix.gettimeofday ();
       decr cur_page;
       num_states := Array.length !pages.(!cur_page);
       cur_state := if reset_state then 0 else !num_states - 1;
@@ -932,25 +1003,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let previous_links = ref [] in
   let next_links = ref [] in
 
-  let passive_motion_cb ~x ~y =
-    let l = find_link x y in
-    next_links := l
-  in
-  
   let show_links () =
     let l = !next_links in
     if l <> !previous_links then (
-(*      draw_gl_scene ();*)
       previous_links := l;
       (match !saved_rectangle with
 	None -> ()
-      | Some r -> GlPix.draw r);
+      | Some (r,r') -> Printf.printf "redraw\n"; flush stdout;       GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if !saved_rectangle = None then
+	 (Printf.printf "saving\n"; flush stdout;
 	 saved_rectangle := 
 	   Some (GlPix.read ~x:0 ~y:0 
 		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
-		   ~format:`rgba ~kind:`ubyte));
+		   ~format:`rgba ~kind:`ubyte
+		,GlPix.read ~x:0 ~y:0 
+		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
+		   ~format:`depth_component ~kind:`float)));
+
       List.iter (fun l ->
 	let color = 
 	  if is_edit l.uri then (
@@ -962,12 +1032,20 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    if l.uri <> "" then (0.0,0.0,1.0) else (0.0,1.0,0.0)
 	  )
 	in
+	Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;
+	flush stdout;
 	overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       ) l;
       Glut.swapBuffers ();
     )
   in
 
+  let passive_motion_cb ~x ~y =
+    let l = find_link x y in
+    flush stderr;
+    next_links := l
+  in
+  
   let goto_link l0 c0 = 
     let res = 
       Array.fold_left(fun (acc, (i,j)) linkss ->
@@ -980,7 +1058,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		let c = int_of_string (Str.matched_group 2 link.uri) in
 		if (l0 > l or (l = l0 && c0 >= c)) && 
 		  (l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
-		  l0 - l, c0 - c, Some(link, i, j)
+		  l0 - l, c0 - c, Some(link, i-1, j)
 		else
 		  acc
 	      else acc) acc links
@@ -1005,10 +1083,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | None -> fun () -> ())
   in
 
-  let rec idle_cb ~value:() =    
-    Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
-    handle_one ();
+  let rec idle_cb ~value:() =
+    Glut.timerFunc ~ms:30 ~cb:idle_cb ~value:();
+    if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
     show_links ();
+    handle_one ();
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
       match i with
@@ -1039,9 +1118,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let display_cb () = 
-    idle_cb ();
     draw_gl_scene ();
     Glut.swapBuffers ();
+    idle_cb ();
   in
     
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
@@ -1063,8 +1142,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Refresh -> ()
       end;
     let args =
-      (match width with None -> "" | Some n -> Printf.sprintf "&width=%d" n) ^
-      (match height with None -> "" | Some n -> Printf.sprintf "&height=%d" n) ^
       (match format with None -> "" | Some n -> Printf.sprintf "&format=%s" n)
     in
     let page, state = !cur_page, !cur_state in
@@ -1103,18 +1180,60 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     incr page_counter;
     let id = !page_counter in
 
-    out (Printf.sprintf "<span style=\"position:fixed;top:20px;left:20px;text-align:left;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
-	   (if !cur_page = 0 then "PREV" else
-	       Printf.sprintf "<a href=\"id%d?prev=%s\">PREV</a>" id args));
+    out "
+<script language=\"JavaScript\">
+function httpSend(theUrl) {
+    var xmlHttp = null;
+    xmlHttp = new XMLHttpRequest();
+    xmlHttp.open( \"GET\", theUrl, false );
+    xmlHttp.send( null );}
 
-    out " ";
+function show_end() {
+    httpSend(\"?show_end=\");}
 
-    out (Printf.sprintf "<span style=\"position:fixed;top:20px;right:20px;text-align:right;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\">%s</span>"
-	   (if !cur_page >= !num_pages - 1 then "NEXT" else
-	       Printf.sprintf "<a href=\"id%d?next=%s\">NEXT</a>" id args));
+function init() {
+    next = document.getElementById(\"next\");
+    if (next) next.href = next.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();
+    prev = document.getElementById(\"prev\");
+    if (prev) prev.href = prev.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();
+}
+window.onload=init;
 
-     out (Printf.sprintf "<span style=\"position:fixed;top:0px\"><IMG src=\"?file=%s\" width=%d height=%d align=\"center\"></span>" imgname w h);
-  in
+function show(event){
+	pos_x = event.offsetX?(event.offsetX):event.pageX-document.getElementById(\"slide\").offsetLeft;
+	pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById(\"slide\").offsetTop;
+	pos_w  = document.getElementById(\"slide\").offsetWidth;
+        httpSend(\"?show_x=\"+pos_x.toString()+\"&show_y=\"+pos_y.toString()+\"&show_w=\"+pos_w.toString());}
+</script>";
+
+    let button s = Printf.sprintf "<div class=\"button\">%s</div>" s in
+    out ("<div id=\"leftbar\">");
+    out (button (if !cur_page = 0 then "<a>PREV</a>" else
+	       Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=%s\">PREV</a>" id args));
+    out ("</div>");
+
+    out ("<div id=\"rightbar\">");
+    out (button (if !cur_page >= !num_pages - 1 then "<a>NEXT</a>" else
+	       Printf.sprintf "<a id=\"next\" href=\"id%d?next=%s\">NEXT</a>" id args));
+    out (button "<a onClick=\"show_end()\">NO SHOW</a>");
+
+    out ("</div>");
+(*
+     out "<span style=\"position:fixed;top:60px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM IN</a></span>";
+
+     out "<span style=\"position:fixed;top:100px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM OUT</a></span>";
+
+     out "<span style=\"position:fixed;top:140px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM END</a></span>";
+
+     out "<span style=\"position:fixed;top:60px;right:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">SHOW</a></span>";
+
+     out "<span style=\"position:fixed;top:100px;right:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\" onClick=\"show_end()q\">SHOW END</span>";
+*)
+     out ("<div id=\"image\">");
+     out (Printf.sprintf "<IMG id=\"slide\" src=\"?file=%s\" width=%d height=%d align=\"center\"onClick=\"show(event)\">" imgname w h);
+     out ("</div>");
+
+ in
 
   GLNet.make_content := make_content;
 
@@ -1188,7 +1307,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Glut.specialFunc special_cb;
 	Glut.reshapeFunc reshape_cb;
 	Glut.mouseFunc mouse_cb;
-	Glut.timerFunc ~ms:250 ~cb:idle_cb ~value:();
+	Glut.timerFunc ~ms:30 ~cb:idle_cb ~value:();
 	Glut.motionFunc motion_cb;
 	Glut.passiveMotionFunc passive_motion_cb;
 	

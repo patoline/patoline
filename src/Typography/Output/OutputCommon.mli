@@ -80,6 +80,7 @@ and raw =
   | Link of link
   | Image of image
   | States of states
+  | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
 
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw

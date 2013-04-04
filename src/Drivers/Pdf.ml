@@ -285,6 +285,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         )
       in
       let rec output_contents=function
+        | Animation(r,_,_,_) ->
+	  List.iter output_contents r
         | Glyph gl->(
             change_non_stroking_color gl.glyph_color;
             if not !isText then Rbuffer.add_string pageBuf " BT ";

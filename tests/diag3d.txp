@@ -71,4 +71,17 @@ let cube projection = <<
 \cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.; distance_focale = 55.} )
 \end{center}
 
+\begin{center}
+\animation([| "time" |])(fun t -> [|t|])([|0.0|])(fun [|t|] -> 
+   cube {distance_focale = 55.;
+   origin_transfo_x = 10.;
+   origin_transfo_y = 10.;
+   origin_transfo_z = 9.; (* boucle avec 10.0 *)
+   origin_diag = (0.,0.,0.);
+   axe_angle = 0.;
+   rot_angle = t;
+   homotetie = 1.0;})
+\end{center}
+
+
 

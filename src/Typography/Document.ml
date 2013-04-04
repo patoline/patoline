@@ -1625,3 +1625,23 @@ let update_names env figs user=
 let reset_counters env=
   { env with
     counters=StrMap.map (fun (l,_)->(l,[])) env.counters }
+
+let animation names ft f0 contents =
+  [bB (fun env -> let contents a = draw env (contents a) in
+  let contents_0 = contents f0 in
+  let r = Animation(contents_0, names, ft, contents) in
+  let (x0,y0,x1,y1)=bounding_box contents_0 in
+  let w = x1 -. x0 in
+  [Drawing {
+    drawing_min_width=w;
+    drawing_max_width=w;
+    drawing_nominal_width=w;
+    drawing_width_fixed = true;
+    drawing_adjust_before = false;
+    drawing_y0=y0;
+    drawing_y1=y1;
+    drawing_states=IntSet.empty;
+    drawing_break_badness=0.;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[r])
+  }])]

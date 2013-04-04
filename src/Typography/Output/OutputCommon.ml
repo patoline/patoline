@@ -98,6 +98,7 @@ and raw=
   | Link of link
   | Image of image
   | States of states
+  | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }
@@ -109,6 +110,7 @@ let rec translate x y=function
   }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
+  | Animation (r, names, ft, fr) -> Animation(List.map (translate x y) r, names, ft, (fun a -> List.map (translate x y) (fr a)))
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
@@ -123,6 +125,7 @@ let rec resize alpha=function
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
+  | Animation (r, names, ft, fr) -> Animation(List.map (resize alpha) r, names, ft, (fun a -> List.map (resize alpha) (fr a)))
 
 
 type bounding_box_opt = {
@@ -170,6 +173,7 @@ let bounding_box_opt opt l=
 
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
+    | Animation(r,_,_,_)::s -> bb x0 y0 x1 y1 (r@s)
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
@@ -237,20 +241,21 @@ let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     pages fileName =
   output ~structure (Array.map (fun x -> [|x|]) pages) fileName
 
-let in_order i x=match x with
+let rec in_order i x=match x with
     Glyph g->Glyph { g with glyph_order=i }
   | Path (p,t)->Path ({p with path_order=i},t)
   | Link l->Link { l with link_order=i }
   | Image a->Image { a with image_order=i }
   | States s->States { s with states_order=i }
+  | Animation(r,names,ft,fr) ->Animation(List.map (in_order i) r,names,ft,(fun a -> List.map (in_order i) (fr a))) 
 
-
-let drawing_order x=match x with
+let rec drawing_order x=match x with
     Glyph g->g.glyph_order
   | Path (p,_)->p.path_order
   | Link l->l.link_order
   | Image i->i.image_order
   | States s->s.states_order
+  | Animation(r,_,_,_) -> List.fold_left (fun acc r -> min acc (drawing_order r)) max_int r
 
 let drawing_sort l=
   let rec make_list t acc=match t with
