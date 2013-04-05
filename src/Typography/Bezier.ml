@@ -490,7 +490,7 @@ let intersect (a,b) (c,d)=
           let ya0,ya1=sort y0 y1 in
           let xc0,xc1=sort x0' x1' in
           let yc0,yc1=sort y0' y1' in
-            if xa1<xc0 || xa0 > xc1 || ya1<yc0 || ya0 > yc1 then
+            if not (xa1>=xc0 && xa0 <= xc1 && ya1>=yc0 && ya0 <= yc1) then
               inter s res
             else (
               let m1=(u1+.v1)/.2. in

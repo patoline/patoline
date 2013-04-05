@@ -113,20 +113,10 @@ module Vector = struct
   let angle v = 
     let x,y = normalise v in
     to_deg (atan2 y x)
-  let rec pipi angle = 
-    if angle <= 180. then
-      if angle >= -. 180. then angle 
-      else pipi (angle +. 360.) 
-    else pipi (angle -. 360.) 
 
-  let rec zeropi angle = 
-    if angle <= 360. then
-      if angle >= 0. then angle 
-      else pipi (angle +. 360.) 
-    else pipi (angle -. 360.) 
-
-
-  let sector v v' = zeropi (angle v' -. angle v)
+  let sector v v' = 
+    let x = mod_float (angle v' -. angle v) 360. in
+    if x < 0.0 then x +. 360. else x (* mod_float keeps the sign of the first argument *)
 
 end
 
