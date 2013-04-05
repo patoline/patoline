@@ -299,7 +299,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                      let cont=[tT (List.assoc "Institute" n.node_tags)] in
                      let par=Paragraph {
                        par_contents=cont;
-                       par_env=(fun env->env);
+                       par_env=(fun env->{env with par_indent=[]});
                        par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                          user_positions=user_positions env2 });
                        par_parameters=
@@ -360,7 +360,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               && n.displayname<>[]->
             let par=Paragraph {
               par_contents=n.displayname;
-              par_env=(fun env->resize_env (env.size*.2.) {env with hyphenate=(fun _->[||])});
+              par_env=(fun env->resize_env (env.size*.2.) {env with par_indent=[]; hyphenate=(fun _->[||])});
               par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters;
                 user_positions=user_positions env2 });
               par_parameters=

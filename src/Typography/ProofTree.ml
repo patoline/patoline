@@ -121,7 +121,7 @@ module ProofTree = struct
     let sp = widthM *. param.spaceBetweenProof in
     let er = widthM *. param.extraRule in
 
-    let rec fn proof =
+    let rec fn top proof =
       match proof with
 	Hyp hyp ->
 	  let hyp_box = draw_boxes env_ hyp in
@@ -131,14 +131,14 @@ module ProofTree = struct
 
       | Rule(premices, conclusion, name) ->
 	  let premices_box = List.map 
-	    (fun x -> let (a,b,c,d,e,f) = fn x in
+	    (fun x -> let (a,b,c,d,e,f) = fn false x in
 		      (a,b,c,d,e,draw_boxes env_ f))
 	    premices
 	  in
 	  let conclusion_box = draw_boxes env_ conclusion in
-	  let name_box = match name with
-	      None -> [] 
-	    | Some name -> draw_boxes env_ name
+	  let sn, name_box = match name with
+	      None -> 0.0, [] 
+	    | Some name -> sn, draw_boxes env_ name
 	  in
 
 	  let namex0, namey0, namex1, namey1 = bounding_box name_box in
@@ -149,10 +149,11 @@ module ProofTree = struct
 	    | [h, left, mleft, right, mright, drawing] ->
 	        h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
 	        List.map (translate dx 0.0) drawing
-	    | (h, left, mleft, right, _, drawing)::((_, left', _, _, _, _)::_ as l) ->
+	    | (h, left, mleft, right, mright, drawing)::((_, left', _, _, _, _)::_ as l) ->
+	      let mleft = mleft +. dx and mright = mright +. dx in
 	      let sp = spacing right left' +. sp in
-	      let (h', _, _, right', mright', drawing') = gn (dx +. sp) l in
-	      max h h', htr left dx, mleft +. dx, right', mright',
+	      let (h', _, mleft', right', mright', drawing') = gn (dx +. sp) l in
+	      max h h', htr left dx, min mleft mleft', right', max mright mright',
 	      (List.map (translate dx 0.0) drawing @ drawing')
 	  in
 	  
@@ -176,12 +177,6 @@ module ProofTree = struct
 	  let dnx = rx1 +. sn in
 	  let dny = cy1  -. hn +. sb +. ln /. 2.0 in
 
-	  let contents _ = 
-	    [Path ({OutputCommon.default with lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
-	      (List.map (translate dx 0.0) conclusion_box) @
-	      (List.map (translate 0.0 dy) numerator) @
-	      (List.map (translate dnx dny) name_box)
-	  in
 
 	  let left = (cx0, cy0) :: (rx0, cy1  (* -. cy0*)) :: vtr left dy in
 	  let right = match name with
@@ -190,10 +185,21 @@ module ProofTree = struct
 	      (cx1, cy0) :: (dnx +. namex1 -. namex0, dny)  :: vtr right dy
 	  in
 	  let mleft = min rx0 mleft in
-	  let mright = max rx1 mright in
+	  let mright = max (if name = None then rx1 else rx1 +. sn +. namex1) mright in
 	  let w = mright -. mleft in
 
 	  let h = h +. dy in
+
+	  let contents _ = 
+	    let l = 
+	      [Path ({OutputCommon.default with lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
+		(List.map (translate dx 0.0) conclusion_box) @
+		(List.map (translate 0.0 dy) numerator) @
+		(List.map (translate dnx dny) name_box)
+	    in
+	    Printf.printf "left = %f, right = %f, rx1 = %f\n" mleft mright (rx1 +. sn +. namex1);
+	    if top then List.map (translate (-.mleft) 0.0) l else l
+	  in
 
 	  let final = 
 	    [Drawing ({ drawing_min_width=w;
@@ -212,7 +218,7 @@ module ProofTree = struct
 
 	  (h, left, mleft, right, mright, final)
     in
-    let _, _, _, _, _, r = fn proof in
+    let _, _, _, _, _, r = fn true proof in
     r
   
 end
