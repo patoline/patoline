@@ -352,15 +352,6 @@ var qi=0,qj=0;
         g1.style.webkitTransitionProperty=\"transform\";
     }
 
-    setTimeout(function(){
-        g0.style.MozTransform=\"translate(0,0)\";
-        g0.style.webkitTransform=\"translate(0,0)\";
-        if(g1){
-           g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
-           g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
-        }
-    },1);
-
     queue[qi]=g0;
     qi++;
 
@@ -380,7 +371,16 @@ var qi=0,qj=0;
             qj=qi-1;
         }
     });
-}";
+    setTimeout(function(){
+        g0.style.MozTransform=\"translate(0,0)\";
+        g0.style.webkitTransform=\"translate(0,0)\";
+        if(g1){
+           g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
+           g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
+        }
+    },1);
+
+}\n";
 
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
