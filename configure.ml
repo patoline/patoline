@@ -311,7 +311,7 @@ let _=
               ) (Array.to_list (Sys.readdir hyphen_src_dir));
 
     let make=open_out "src/Makefile.config" in
-    Printf.fprintf make "CPP='cpp -C -w %s%s%s%s%s%s'\n"
+    Printf.fprintf make "CPP='cpp -C -ffreestanding -w %s%s%s%s%s%s'\n"
       (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
       (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
       (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
@@ -350,7 +350,7 @@ let _=
     close_out make;
 
     let tags_typography=open_out "src/Typography/_tags" in
-    Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -C -w %s%s%s%s%s%s)%s,for-pack(Typography)
+    Printf.fprintf tags_typography "<**/*.ml{i,}>:use_rbuffer,pp(cpp -C -ffreestanding -w %s%s%s%s%s%s)%s,for-pack(Typography)
 <Fonts> or <Output> or <Fonts/Sfnt>: include
 <Fonts/unicode_ranges.cm{i,x,o}>:unicode_ranges
 <Break.ml>:rectypes
