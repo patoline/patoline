@@ -438,7 +438,9 @@ and patoline_rule objects h=
       )
     )
   else if Filename.check_suffix h ".tml" then (
-    let source=(Filename.chop_extension h)^".txp" in
+    let r0=(Filename.chop_extension h) in
+    let r1=String.sub r0 0 (String.length r0-1) in
+    let source=r1^".txp" in
     if Sys.file_exists source then (
       let in_s=open_in source in
       let opts=read_options_from_source_file in_s in
@@ -449,7 +451,7 @@ and patoline_rule objects h=
         | _->()
       );
 
-      let modu=Printf.sprintf "%s_.ttml" (Filename.chop_extension h) in
+      let modu=Printf.sprintf "%s.ttml" r1 in
 
       List.iter (fun x->
         if x<>h then Build.build x
@@ -466,7 +468,7 @@ and patoline_rule objects h=
         let o=open_out h in
         let main_mod=Filename.chop_extension (Filename.basename modu) in
         main_mod.[0]<-Char.uppercase main_mod.[0];
-        Generateur.write_main_file o !format !driver "" main_mod (Filename.chop_extension h);
+        Generateur.write_main_file o !format !driver "" main_mod r1;
         close_out o;
       );
       true
@@ -606,7 +608,7 @@ and patoline_rule objects h=
     true
   ) else if Filename.check_suffix h ".tmx" then (
     let raw_h=(Filename.chop_extension h) in
-    let source=if Filename.check_suffix h ".tmx" then raw_h^".tml" else raw_h^".ml"in
+    let source=if Filename.check_suffix h ".tmx" then raw_h^"_.tml" else raw_h^".ml"in
     let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
 
     let in_s=open_in source_txp in
@@ -694,14 +696,14 @@ and process_each_file l=
     List.iter (fun f->
       if !compile then (
         if Sys.file_exists f then (
-          let cmd= (Filename.concat
-                      (Sys.getcwd ()) ((Filename.chop_extension f)^".tmx")) in
+          let cmd=(Filename.chop_extension f)^".tmx" in
           Build.sem_set Build.sem !Build.j;
           Build.build cmd;
           if !run && Sys.file_exists cmd then (
             extras_top:=List.rev !extras_top;
             Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
-            let pid=Unix.create_process cmd
+            let pid=Unix.create_process
+              (Filename.concat (Sys.getcwd ()) cmd)
               (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
               Unix.stdin
               Unix.stdout
