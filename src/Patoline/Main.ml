@@ -294,15 +294,30 @@ and make_deps source=
   close_in in_s;
 
   let dirs_=str_dirs (!dirs@opts.directories) in
-  let cmd=Printf.sprintf
-    "ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
-    (let pack=String.concat "," (List.rev opts.packages) in
-     if pack<>"" then "-package "^pack else "")
-    (String.concat " " dirs_)
-    source
+
+  let dep_filename = (Filename.chop_extension source) ^ ".dep" in
+  let date_dep =
+    try (Unix.stat dep_filename).Unix.st_mtime with Unix.Unix_error _ -> -. infinity
   in
-  if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
-  let in_deps=Unix.open_process_in cmd in
+  let date_source =
+    try (Unix.stat source).Unix.st_mtime with Unix.Unix_error _ -> infinity
+  in
+
+  let in_deps, do_dep =
+    if !recompile || date_source > date_dep then begin
+      let cmd=Printf.sprintf
+	"ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
+	(let pack=String.concat "," (List.rev opts.packages) in
+	 if pack<>"" then "-package "^pack else "")
+	(String.concat " " dirs_)
+	source
+      in
+      if not !quiet then (Printf.fprintf stdout "%s\n" cmd;flush stdout);
+      Unix.open_process_in cmd, true
+    end else 
+      open_in dep_filename, false
+  in
+
   let buf=Buffer.create 1000 in
   let s=String.create 1000 in
   let rec read_all ()=
@@ -314,7 +329,13 @@ and make_deps source=
   in
   read_all ();
   close_in in_deps;
-  let cont=Buffer.contents buf in
+  let cont = Buffer.contents buf in
+  if do_dep then begin
+    let ch = open_out dep_filename in
+    output_string ch cont;
+    close_out ch
+  end;
+
   let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(\\(.*\\\n\\)*\\)$") in
   (try
      let _=Str.search_forward str cont 0 in
