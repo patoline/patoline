@@ -205,9 +205,9 @@ module Curve = struct
 	(* end ; *)
 	[[e;xl;l];[l;xr;ll]]	
 
-  let intersections bezier1 beziers2 = 
-    let _,inters = List.fold_left (fun (i,inters) bezier2_i -> 
-      let inters_i = Bezier.intersect bezier1 bezier2_i in	
+  let intersections_aux bezier1 e1 beziers2 = 
+    let _,inters = List.fold_left (fun (i,inters) (bezier2_i, e2i) -> 
+      let inters_i = Bezier.intersect' bezier1 e1 bezier2_i e2i in	
       (succ i, inters @ (List.map (fun (t1,t2) -> (t1,(i,t2,bezier2_i))) inters_i)))
       (0,[])
       beziers2
@@ -216,14 +216,16 @@ module Curve = struct
   let intersections beziers1 beziers2 = 
     let _, res = 
       List.fold_left
-	(fun (i, res) bezier1 -> 
+	(fun (i, res) (bezier1, e1) -> 
 	  ((succ i),
-	   (res @ (List.map (fun (t1,gt2) -> ((i,t1,bezier1),gt2)) (intersections bezier1 beziers2)))))
+	   (res @ (List.map (fun (t1,gt2) -> ((i,t1,bezier1),gt2)) (intersections_aux bezier1 e1 beziers2)))))
 	(0,[])
 	beziers1
     in res
 
   let latest_intersection beziers1 beziers2 =
+    let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
+    let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     let inters = (intersections beziers1 beziers2) in
     let latest = List.fold_left 
       (fun yet ((i,t,_),_) -> match yet with
@@ -235,6 +237,8 @@ module Curve = struct
 
 
   let earliest_intersection beziers1 beziers2 =
+    let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
+    let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     match (intersections beziers1 beziers2) with
       | [] -> None
       | ((i,t,_),_) :: _ -> Some (i,t)
@@ -2287,25 +2291,30 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	matrix_3d_project (matrix_3d_full style planes)
 
       let all_intersections stack =
-	let rec intersections_with inters e stack = match stack with
+	let rec fn acc = function
+	[] -> acc
+	| Edge e::l when e.Edge.params.fillColor = None -> 
+	  let c = List.map (fun b  -> b, Bezier.extremity b) e.Edge.underlying_curve in
+	  fn ((e,c)::acc) l
+	| _::l -> fn acc l
+	in
+	let stack = fn [] stack in
+	let rec intersections_with inters e c stack = match stack with
 	  | [] -> inters
-	  | Edge e' :: stack_rest ->
-	    let open Edge in 
+	  | (e',c') :: stack_rest ->
 	    let inters' = 
 	      List.fold_left
 		(fun inters inter -> (e,e',inter) :: inters)
 		inters
-		(Curve.intersections e.underlying_curve e'.underlying_curve)
-	    in intersections_with inters' e stack_rest
-	  | _ :: stack_rest -> intersections_with inters e stack_rest
+		(Curve.intersections c c')
+	    in intersections_with inters' e c stack_rest
 	in
 	let rec all_intersections_rec inters stack =
 	  match stack with
 	  | [] -> inters
-	  | Edge e :: stack_rest ->
-	    let inters_e = intersections_with [] e stack_rest in
+	  | (e, c) :: stack_rest ->
+	    let inters_e = intersections_with [] e c stack_rest in
 	    all_intersections_rec (List.rev_append inters_e inters) stack_rest
-	  | _ :: stack_rest -> all_intersections_rec inters stack_rest
 	in
 	all_intersections_rec [] stack
 

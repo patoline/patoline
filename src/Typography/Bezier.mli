@@ -54,6 +54,10 @@ val bounding_box :
 (** Cet algorithme est une combinaison de l'algo naif sur les morceaux
     convexes des courbes, et d'un calcul de resultant pour verifer la
     sortie *)
+val extremity : float array * float array -> float list
+val intersect' :
+  float array * float array -> float list -> float array * float array -> float list -> (float * float) list
+
 val intersect :
   float array * float array -> float array * float array -> (float * float) list
 

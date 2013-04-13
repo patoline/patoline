@@ -448,16 +448,16 @@ let monomial a=
 (* let _=evalm (monomial a) 0.25 *)
 
 
-let intersect (a,b) (c,d)=
+let extremity (a, b) = 
   let eps=1e-3 in
-  let extr_a=
-    List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) eps @ bernstein_solve (derivee b) eps))) in
-  let extr_c=
-    List.filter (fun x-> x>=0. && x<=1.)
-      ((List.sort compare (0. :: 1.::bernstein_solve (derivee c) eps @ bernstein_solve (derivee d) eps))) in
+  List.filter (fun x-> x>=0. && x<=1.)
+    ((List.sort compare (0. :: 1.::bernstein_solve (derivee a) eps @ bernstein_solve (derivee b) eps)))
+
+let intersect' (a,b) extr_a (c,d) extr_c =
+  let eps=1e-3 in
   let sort x y=if x<y then (x,y) else (y,x) in
-  let rec make_intervals l1 l2=match l1,l2 with
+  let rec make_intervals l1 l2=
+    match l1,l2 with
       [],_-> []
     | [_],_->[]
     | _,[]-> []
@@ -483,7 +483,8 @@ let intersect (a,b) (c,d)=
       done;
       det resultant
     in
-    let rec inter l res=match l with
+    let rec inter l res=
+      match l with
         []->res
       | (u1,v1,x0,y0,x1,y1,u2,v2,x0',y0',x1',y1')::s ->(
           let xa0,xa1=sort x0 x1 in
@@ -523,6 +524,11 @@ let intersect (a,b) (c,d)=
                          (u1,v1,eval a u1, eval b u1, eval a v1, eval b v1,
                           u2,v2,eval c u2, eval d u2, eval c v2, eval d v2)
                       ) (make_intervals extr_a extr_c)) []
+
+let intersect ab cd = 
+  let extr_a = extremity ab in
+  let extr_c = extremity cd in
+  intersect' ab extr_a cd extr_c
 
 (* let x1=[| 0.; 100.; 200.; 200.|] *)
 (* let y1=[| 0.; 0.; 100.; 200.|] *)
@@ -689,7 +695,9 @@ exception Found
 
 let solve2 eq0 eq1=
   let eps=1e-3 in
-  let rec solve2 l r=match l with
+  let rec solve2 l r=
+
+    match l with
       []->r
     | ((u1,v1,u2,v2) as h)::s ->(
         if v1-.u1<eps && v2-.u2<eps then (
