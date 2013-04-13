@@ -197,7 +197,6 @@ module ProofTree = struct
 		(List.map (translate 0.0 dy) numerator) @
 		(List.map (translate dnx dny) name_box)
 	    in
-	    Printf.printf "left = %f, right = %f, rx1 = %f\n" mleft mright (rx1 +. sn +. namex1);
 	    if top then List.map (translate (-.mleft) 0.0) l else l
 	  in
 
