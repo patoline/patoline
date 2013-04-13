@@ -38,8 +38,8 @@ let edit_link = ref false
 let line_directive = ref true
 
 let includeList = ref []
+let moduleCounter=ref 0
 
-type amble=Noamble | Separate | Main
 
 let apply_options n arg opts = 
   let rec fn = function
@@ -82,16 +82,19 @@ let _= Build.macros:=
 
 let hashed="(Sys.executable_name^\".aux\")"
 let env_stack=ref []
-let preambule format driver suppl amble filename=
-  match amble with
-      Noamble->suppl^"\n"
-    | _->(
-      Printf.sprintf
-        "(* #FORMAT %s *)
+
+let do_include buf name=
+  incr moduleCounter;
+  includeList := name :: !includeList;
+  Printf.bprintf buf
+    "module TEMP%d=%s.Document(D);;\nopen TEMP%d;;\n" !moduleCounter name !moduleCounter
+
+
+let write_main_file where format driver suppl main_mod outfile=
+  Printf.fprintf where
+    "(* #FORMAT %s *)
 (* #DRIVER %s *)
-%s
 open Typography
-%s
 open Typography.Util
 open Typography.Box
 open Typography.Config
@@ -99,12 +102,8 @@ open Typography.Document
 open Typography.OutputCommon
 %s
 open DefaultFormat.MathsFormat
-"
-        format
-        driver
-        suppl
-        (match amble with
-            Main->"let _args=ref []
+
+let _args=ref []
 let _driver=ref \"Pdf\"
 let _atmost=ref 3
 let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Config.fontspath)),\"Adds directories to the font search path\");
@@ -116,29 +115,51 @@ let _spec = [(\"--extra-fonts-dir\",Arg.String (fun x->Config.fontspath:=x::(!Co
 ]
 
 let _=Arg.parse _spec ignore \"Usage :\";;
-"
-          | _->""
-        )
-        (match amble with
-            Main->
-              Printf.sprintf "module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
+
+module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
 module Patoline_Output=Patoline_Format.Output(%s)
 open %s;;
 open Patoline_Format;;
-let defaultEnv=Patoline_Format.defaultEnv;;\n" format driver format
-          | Separate->Printf.sprintf "module Document=functor(D:DocumentStructure)->struct
+let defaultEnv=Patoline_Format.defaultEnv;;\n
+"
+    format
+    driver
+    suppl
+    format
+    driver
+    format;
+  let buf=Buffer.create 100 in
+  do_include buf main_mod;
+  Buffer.output_buffer where buf;
+  Printf.fprintf where
+    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S\n" outfile
+
+
+
+let preambule format driver suppl filename=
+  Printf.sprintf
+    "(* #FORMAT %s *)
+(* #DRIVER %s *)
+open Typography
+open Typography.Util
+open Typography.Box
+open Typography.Config
+open Typography.Document
+open Typography.OutputCommon
+%s
+open DefaultFormat.MathsFormat
+module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
 open Patoline_Format;;
-let defaultEnv=Patoline_Format.defaultEnv;;\n" format format
-          | _->""
-        ))
+let defaultEnv=Patoline_Format.defaultEnv;;\n"
+    format
+    driver
+    suppl
+    format
+    format
 
-
-let postambule driver outfile = Printf.sprintf "
-let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S
-" outfile
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)
@@ -162,7 +183,6 @@ end
 
 let verb_files = Hashtbl.create 13
 
-let moduleCounter=ref 0
 let argsCounter=ref 0
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
@@ -372,10 +392,7 @@ and print_macro_buf parser_pp buf op mtype name args opts =
           env_stack:=List.tl !env_stack
         )
       | `Include ->
-	  incr moduleCounter;
-	  includeList := name :: !includeList;
-	  Printf.bprintf buf
-	    "module TEMP%d=%s.Document(D);;\nopen TEMP%d" !moduleCounter name !moduleCounter
+        do_include buf name
   end
 
 and print_macro parser_pp ch op mtype name args opts = begin
@@ -624,7 +641,7 @@ and output_list parser_pp from where no_indent lvl docs =
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 
-let gen_ml format driver suppl amble filename from wherename where pdfname =
+let gen_ml format driver suppl filename from wherename where pdfname =
   try
     begin
     (* match filename with *)
@@ -687,11 +704,8 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
 	    [] -> assert false
 	  | ((caml_header, pre, docs), _) :: _  ->
 	    begin
-              Printf.fprintf where "%s" (preambule format driver suppl amble filename);
-              (match amble with
-                  Main | Noamble -> ()
-                | Separate->Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n"
-                  tmp_pos);
+              Printf.fprintf where "%s" (preambule format driver suppl filename);
+              Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n" tmp_pos;
               match pre with
 		  None -> ()
 	        | Some(title, at) -> 
@@ -718,11 +732,8 @@ let gen_ml format driver suppl amble filename from wherename where pdfname =
 	    end;
 	    output_list parser_pp source where true 0 docs;
 	  (* close_in op; *)
-            match amble with
-                Main->output_string where (postambule driver pdfname)
-              | Noamble->()
-              | Separate->Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
-                tmp_pos
+            Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
+              tmp_pos
       with
         | Dyp.Syntax_error ->
 	  raise

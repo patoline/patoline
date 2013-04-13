@@ -53,6 +53,7 @@ and command_line=
   | Noamble
   | Package
   | Ml
+  | Output
   | Bin
   | Edit_link
   | Patoline
@@ -108,6 +109,7 @@ let message=function
       | Noamble->"Produit un module caml brut"
       | Package->"Rajoute le paquets dans la liste des paquets pour ocamlfind"
       | Ml->"Ne produire que le source caml"
+      | Output->"Écrire la sortie dans ce fichier"
       | Bin->"Produire le source caml et le compiler, mais pas l'éxécuter"
       | Edit_link->"Générer des liens URI de la forme \"edit:filename@line\""
       | Patoline->"Nom de l'exécutable patoline à utiliser pour les sous-documents"
@@ -169,6 +171,7 @@ let message=function
       | Noamble->"Output a raw caml file"
       | Package->"Add the package to the list of ocamlfind packages"
       | Ml->"Only output caml file"
+      | Output->"Output to this file"
       | Bin->"Output and compile caml file, but do not execute it"
       | Edit_link->"Generate URI links of the form \"edit:filename@line\""
       | Patoline->"Name of the patoline executable to use for sub-documents"

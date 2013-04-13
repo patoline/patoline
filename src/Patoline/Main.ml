@@ -17,7 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-let amble=ref Generateur.Main
+(* let amble=ref Generateur.Main *)
+let output=ref ""
 let files=ref []
 let compile = ref true
 let run = ref true
@@ -54,15 +55,18 @@ let spec =
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
    ("--driver",Arg.String
      (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
+   (*
    ("-c",Arg.Unit (fun ()->
      compile:=false;run:= false;
      if !amble<> Generateur.Noamble then
        amble:=Generateur.Separate
     ), message (Cli Separately));
    ("--noamble",Arg.Unit (fun ()->amble:=Generateur.Noamble), message (Cli Noamble));
+   *)
    ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
     message (Cli Package));
    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
+   ("-o",Arg.Set_string output, message (Cli Output));
    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), message (Cli Bin));
    ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), message (Cli Edit_link));
    ("--patoline",Arg.String (fun s->patoline:=s), message (Cli Patoline));
@@ -77,7 +81,7 @@ let spec =
   ]
 
 
-let mlname_of f = (Filename.chop_extension f)^(if !amble<>Generateur.Main then ".ttml" else ".tml")
+let mlname_of f = if !output="" then (Filename.chop_extension f)^".tml" else !output
 let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 
@@ -372,9 +376,20 @@ and compilation_needed sources targets=
   )
 
 and patoline_rule objects h=
-  if Filename.check_suffix h ".ttml" || Filename.check_suffix h ".tml" || Filename.check_suffix h Parser.gram_ext then
+  if Filename.check_suffix h ".ttml" || Filename.check_suffix h Parser.gram_ext then
     (
-      let source=(Filename.chop_extension h)^".txp" in
+      let source=
+        let r=Filename.chop_extension h in
+        let source=(r^".txp") in
+        if Sys.file_exists source then
+          source
+        else (
+          if r.[String.length r-1]='_' then
+            String.sub r 0 (String.length r-1)^".txp"
+          else
+            r
+        )
+      in
       if Sys.file_exists source then (
         let in_s=open_in source in
         let opts=read_options_from_source_file in_s in
@@ -390,13 +405,7 @@ and patoline_rule objects h=
           if x<>h then Build.build x
         ) opts.deps;
 
-        let options_have_changed=
-          (not (Sys.file_exists h)) ||
-            ((Filename.check_suffix h ".tml") &&
-                (
-                  let last_format,last_driver=last_options_used h in
-                  (last_format<> !format || last_driver<> !driver)
-                ))
+        let options_have_changed=not (Sys.file_exists h)
         in
         if options_have_changed || compilation_needed [source] [h] then (
 	  let dirs_=str_dirs (!dirs@opts.directories) in
@@ -404,14 +413,13 @@ and patoline_rule objects h=
           let args_l=List.filter (fun x->x<>"")
             (cmd::
                dirs_@
-               [(if opts.noamble then "--noamble" else "");
-                (if opts.format<>"DefaultFormat" then "--format" else "");
+               [(if opts.format<>"DefaultFormat" then "--format" else "");
                 (if opts.format<>"DefaultFormat" then opts.format else "");
                 "--ml";
                 (if opts.grammar=None then "--no-grammar" else "");
 	        (if !Generateur.edit_link then "--edit-link" else "");
 	        "--driver";opts.driver;
-                (if Filename.check_suffix h ".ttml" then "-c" else "");
+	        "-o";h;
                 source]
             )
           in
@@ -429,6 +437,41 @@ and patoline_rule objects h=
         Filename.check_suffix h Parser.gram_ext
       )
     )
+  else if Filename.check_suffix h ".tml" then (
+    let source=(Filename.chop_extension h)^".txp" in
+    if Sys.file_exists source then (
+      let in_s=open_in source in
+      let opts=read_options_from_source_file in_s in
+      close_in in_s;
+      (match opts.grammar with
+          Some def when def<>"DefaultGrammar"->
+            Build.build (def^Parser.gram_ext)
+        | _->()
+      );
+
+      let modu=Printf.sprintf "%s_.ttml" (Filename.chop_extension h) in
+
+      List.iter (fun x->
+        if x<>h then Build.build x
+      ) (modu::opts.deps);
+
+      let options_have_changed=
+        (not (Sys.file_exists h)) ||
+          (
+            let last_format,last_driver=last_options_used h in
+            (last_format<> !format || last_driver<> !driver)
+          )
+      in
+      if options_have_changed || compilation_needed [source] [h] then (
+        let o=open_out h in
+        let main_mod=Filename.chop_extension (Filename.basename modu) in
+        main_mod.[0]<-Char.uppercase main_mod.[0];
+        Generateur.write_main_file o !format !driver "" main_mod (Filename.chop_extension h);
+        close_out o;
+      );
+      true
+    ) else false
+  )
   else if Filename.check_suffix h ".ml" || Filename.check_suffix h ".mli" then (
     Sys.file_exists h;
   )
@@ -705,7 +748,8 @@ and process_each_file l=
 		    Printf.sprintf "\n(* #NOAMBLE *)"
 	         else "")
             in
-            Generateur.gen_ml opts.format opts.driver suppl !amble f fread (mlname_of f) where_ml (Filename.chop_extension f)
+            Generateur.gen_ml opts.format opts.driver suppl f fread (mlname_of f) where_ml
+              (Filename.chop_extension f)
           );
           close_out where_ml;
           close_in fread;
