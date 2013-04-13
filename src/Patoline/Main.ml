@@ -295,7 +295,8 @@ and make_deps source=
 
   let dirs_=str_dirs (!dirs@opts.directories) in
 
-  let dep_filename = (Filename.chop_extension source) ^ ".dep" in
+  let dep_filename = (Filename.chop_extension source) ^ if Filename.check_suffix source ".ttml" then ".tdep" else ".dep" in
+
   let date_dep =
     try (Unix.stat dep_filename).Unix.st_mtime with Unix.Unix_error _ -> -. infinity
   in
