@@ -94,13 +94,13 @@ let write_main_file where format driver suppl main_mod outfile=
   Printf.fprintf where
     "(* #FORMAT %s *)
 (* #DRIVER %s *)
+%s
 open Typography
 open Typography.Util
 open Typography.Box
 open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
-%s
 open DefaultFormat.MathsFormat
 
 let _args=ref []
@@ -141,13 +141,13 @@ let preambule format driver suppl filename=
   Printf.sprintf
     "(* #FORMAT %s *)
 (* #DRIVER %s *)
+%s
 open Typography
 open Typography.Util
 open Typography.Box
 open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
-%s
 open DefaultFormat.MathsFormat
 module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;

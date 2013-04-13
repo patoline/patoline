@@ -261,7 +261,9 @@ let rec read_options_from_source_file fread =
       let opts=getopts str in
       comp_opts := opts@(!comp_opts);
       pump ())
-    else if Str.string_match add_package s 0 then (packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages); pump ())
+    else if Str.string_match add_package s 0 then (
+      packages := (Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)) @ (!packages);
+      pump ())
 
     else if Str.string_match add_directories s 0 then
       (let dirs_ = Str.split (Str.regexp ",[ \t]*") (Str.matched_group 1 s)
@@ -588,8 +590,7 @@ and patoline_rule objects h=
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
             dirs_@
-            [(if Filename.check_suffix h ".cmxs" then "-shared" else "");
-             (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
+            [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
              "-o";h]@
             objs@
             ["-impl";source])
@@ -663,8 +664,7 @@ and patoline_rule objects h=
             (let pack=String.concat "," (List.rev (opts.packages)) in
              if pack<>"" then ["-package";pack] else [])@
             dirs_@
-            [(if Filename.check_suffix h ".cmxs" then "-shared" else "");
-             (if Filename.check_suffix h ".cmxs" then "" else "-linkpkg");
+            [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
              "-o";h]@
             objs@
             ["-impl";source])
