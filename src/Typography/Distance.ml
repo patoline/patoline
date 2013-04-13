@@ -322,18 +322,29 @@ let segment_profile (dsup,dinf) p q =
   | true, true -> [q; p]
   | false, false -> [p; q]
 
-let bezier_profile (dsup,dinf as dirs) epsilon curves =
+module Profile_data = struct
+  type t = (float array * float array) list * ((float * float) * (float * float)) * float
+  let compare = compare
+end
+
+module Profile_cache = Map.Make(Profile_data)
+
+let profile_cache = ref Profile_cache.empty
+
+let bezier_profile (dsup,dinf as dirs) epsilon curves0 =
   if !debug then begin
     Printf.fprintf stderr "Compute profile:\n";
     List.iter (fun (xa, ya) ->
       Printf.fprintf stderr "["; 
       Array.iteri (fun i x -> Printf.fprintf stderr "(%f, %f)" x ya.(i))
         xa;
-      Printf.fprintf stderr "]  ") curves;
+      Printf.fprintf stderr "]  ") curves0;
     Printf.fprintf stderr "\n";
   end;
-      
- let curves = List.rev (List.fold_left (fun acc b -> Bezier.subdivise epsilon b :: acc) [] curves) in
+
+  try Profile_cache.find  (curves0, dirs, epsilon) !profile_cache with Not_found ->
+
+  let curves = List.rev (List.fold_left (fun acc b -> Bezier.subdivise epsilon b :: acc) [] curves0) in
 
   if !debug then begin
     Printf.fprintf stderr "  Subdivise ==>\n";
@@ -363,6 +374,8 @@ let bezier_profile (dsup,dinf as dirs) epsilon curves =
     List.iter (fun p -> print_pt stderr p) r;
     Printf.fprintf stderr "\n";
   end;
+
+  profile_cache := Profile_cache.add (curves0, dirs, epsilon) r !profile_cache;
   r
 
 let middle p q = comblin 0.5 p 0.5 q
@@ -1066,7 +1079,16 @@ let find_distance beta m l =
   in
   fn 0.0 0.0 0.0 0.0 l
 
-let distance beta (dsup,dinf) profile1 profile2 =
+module Distance_data = struct
+  type t = (float * float) list * (float * float) list * ((float * float) * (float * float)) * float
+  let compare = compare
+end
+
+module Distance_cache = Map.Make(Distance_data)
+
+let cache_distance = ref Distance_cache.empty
+
+let distance beta (dsup,dinf as dist) profile1 profile2 =
   if !debug then begin
     Printf.fprintf stderr "distance:\n  left: ";
     List.iter (fun p -> print_pt stderr p) profile1;
@@ -1074,6 +1096,8 @@ let distance beta (dsup,dinf) profile1 profile2 =
     List.iter (fun p -> print_pt stderr p) profile2;
     Printf.fprintf stderr "\n";
   end;
+
+  try Distance_cache.find (profile1, profile2, dist, beta) !cache_distance with Not_found -> 
 
   let r = 
     if profile1 = [] || profile2 = [] then infinity else begin
@@ -1090,6 +1114,8 @@ let distance beta (dsup,dinf) profile1 profile2 =
     end
   in
   if !debug then Printf.fprintf stderr "  ==> %f\n" r;
+
+  cache_distance := Distance_cache.add  (profile1, profile2, dist, beta) r !cache_distance;
   r
 
 (*
