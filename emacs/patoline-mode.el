@@ -199,7 +199,11 @@
     patoline-mode-map)
   "Keymap for PATOLINE major mode")
 
-(add-hook 'patoline-mode-hook (lambda () (flyspell-mode t)))
+(add-hook 'patoline-mode-hook (lambda () (progn
+                                           (flyspell-mode t)
+                                           (setq comment-start "(*")
+                                           (setq comment-end "*)"))))
+
 
 (defvar patoline-mode-syntax-table
   (let ((patoline-mode-syntax-table (make-syntax-table)))
@@ -446,8 +450,6 @@
 		   (?t patoline-mode nil @ "<<"  @ " " _ " " @ ">>" @)))
 	 ))))
 
-(setq comment-start "(*")
-(setq comment-end "*)")
 
 (defun patoline-build-menu ()
   (easy-menu-define
