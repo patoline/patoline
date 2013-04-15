@@ -378,7 +378,7 @@ var qi=0,qj=0;
            g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
            g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
         }
-    },1);
+    },5);
 
 }\n";
 
