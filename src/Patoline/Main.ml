@@ -22,7 +22,6 @@ let output=ref ""
 let files=ref []
 let compile = ref true
 let run = ref true
-let cmd_line = ref []
 let no_grammar=ref false
 let deps_only=ref false
 let extras = ref []
@@ -39,9 +38,9 @@ let recompile=ref false
 let quiet=ref false
 open Language
 let spec =
-  [("--extra-fonts-dir",Arg.String (fun x->cmd_line:=("--extra-fonts-dir "^x)::(!cmd_line)),
+  [("--extra-fonts-dir",Arg.String (fun x->extras_top:=x::"--extra-fonts-dir"::(!extras_top)),
     message (Cli Extra_fonts));
-   ("--extra-hyph-dir",Arg.String (fun x->cmd_line:=("--extra-hyph-dir "^x)::(!cmd_line)),
+   ("--extra-hyph-dir",Arg.String (fun x->extras_top:=x::"--extra-hyph-dir"::(!extras_top)),
     message (Cli Extra_hyph));
 
    ("-I",Arg.String (fun x->

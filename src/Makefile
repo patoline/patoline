@@ -104,12 +104,8 @@ plot/plot.cma:plot Format/DefaultFormat.cmaa
 plot/plot.p.cmxa:plot Format/DefaultFormat.p.cmxa
 	make -C plot plot.p.cmxa
 
-DefaultGrammar.tml:DefaultGrammar.txp Patoline/patoline
-	Patoline/patoline --no-grammar --ml DefaultGrammar.txp
-
-DefaultGrammar.tgx:DefaultGrammar.tml Patoline/patoline
-	$(CAMLOPT) -o DefaultGrammar.tmx -I Rbuffer -I Typography/_build -I Format -I Drivers -I Rbuffer rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -impl DefaultGrammar.tml
-	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts
+DefaultGrammar.tgx:DefaultGrammar.txp Patoline/patoline
+	Patoline/patoline --no-grammar DefaultGrammar.txp --extra-fonts-dir ../Fonts
 
 .PHONY: test.pdf test
 
