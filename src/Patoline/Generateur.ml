@@ -135,9 +135,14 @@ let defaultEnv=Patoline_Format.defaultEnv;;\n
   Printf.fprintf where
     "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S\n" outfile
 
-
+(* FIXME: dirty use of global bariables, should pass it through all function *)
+let cache = ref ""
+let cache_buf = ref (Buffer.create 0)
+let mcache_buf = ref (Buffer.create 0)
 
 let preambule format driver suppl filename=
+  cache := "cache_" ^ (Filename.chop_extension filename);
+  cache_buf := Buffer.create 80;
   Printf.sprintf
     "(* #FORMAT %s *)
 (* #DRIVER %s *)
@@ -149,6 +154,8 @@ open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
 open DefaultFormat.MathsFormat
+let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
+let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
 module Document=functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
@@ -157,9 +164,16 @@ let defaultEnv=Patoline_Format.defaultEnv;;\n"
     format
     driver
     suppl
+    !cache
+    !cache
     format
     format
 
+
+let hash_sym = Hashtbl.create 1001
+let count_sym = ref 0
+let hash_msym = Hashtbl.create 1001
+let count_msym = ref 0
 
 module Source = struct
   type t = int -> string -> int -> int -> unit (* ; *)
@@ -192,6 +206,7 @@ let split_ind indices =
 
 let rec print_math_buf parser_pp op buf m =
   (* Printf.fprintf stderr "Entering print_math_buf.\n" ; flush stderr ; *)
+
   let rec print_math_expr indices buf m =
     match m with
 	Var name | Num name ->
@@ -242,15 +257,15 @@ let rec print_math_buf parser_pp op buf m =
 	wrap_deco_math_default buf indices
 	  (fun buf ->
 	    Printf.bprintf buf "[Maths.Decoration (Maths.open_close (%a) (%a), %a)]"
-	      print_math_multi_symbol op print_math_multi_symbol cl (print_math_expr no_ind) a)
+	      print_math_symbol (MultiSym op) print_math_symbol (MultiSym cl) (print_math_expr no_ind) a)
       | Prefix(pr, op, nsp, b) ->
 	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a,%b)) [] (%a)]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) b
       | Postfix(pr, a, nsp, op) ->
 	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a, %b)) (%a)  []]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) a
       | Limits_operator(op, a) ->
-	  Printf.bprintf buf "[Maths.op_limits [] (%a) (%a)]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.op_limits [] (%a) (%a)]" (print_math_deco (MultiSym op)) indices (print_math_expr no_ind) a
       | Operator(op, a) ->
-	  Printf.bprintf buf "[Maths.op_nolimits [] (%a) (%a)]" (print_math_deco (CamlSym op)) indices (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.op_nolimits [] (%a) (%a)]" (print_math_deco (MultiSym op)) indices (print_math_expr no_ind) a
       | MScope a->
 	  Printf.bprintf buf "[Maths.Scope (";
           List.iter (print_math_expr indices buf) a;
@@ -281,19 +296,40 @@ let rec print_math_buf parser_pp op buf m =
       let buf'=Buffer.create 100 in
         Buffer.add_string buf' "fun envs st->Maths.draw [envs] ";
         print_my_math buf';
-        print_math_deco (CamlSym (Buffer.contents buf')) buf deco;
+        print_math_deco (ComplexSym (Buffer.contents buf')) buf deco;
         Buffer.add_string buf "]"
     )
 
   and print_math_symbol buf sym=
-    match sym with
-        SimpleSym s->Printf.bprintf buf "Maths.glyphs \"%s\"" s
-      | CamlSym s->Printf.bprintf buf "(%s)" s
+    try
+      let s,b = 
+	match sym with
+          SimpleSym s->Printf.sprintf "Maths.glyphs \"%s\"" s, false
+	| MultiSym s -> Printf.sprintf "(%s)" s, true
+	| CamlSym s->Printf.sprintf "%s" s, false
+	| ComplexSym s -> Printf.bprintf buf "(%s)" s; raise Exit
+      in
+      if b then
+	try
+	  Printf.bprintf buf "!m%s.(%d)" !cache (Hashtbl.find hash_msym s)
+	with Not_found ->
+	  Hashtbl.add  hash_msym s !count_msym;
+	  Printf.bprintf !mcache_buf "(%s);\n" s;
+	  Printf.bprintf buf "!m%s.(%d)" !cache !count_msym;
+	  incr count_msym;
+      else
+	try
+	  Printf.bprintf buf "!%s.(%d)" !cache (Hashtbl.find hash_sym s)
+	with Not_found ->
+	  Hashtbl.add  hash_sym s !count_sym;
+	  Printf.bprintf !cache_buf "(%s);\n" s;
+	  Printf.bprintf buf "!%s.(%d)" !cache !count_sym;
+	  incr count_sym;
+    with
+      Exit -> ()
 
-  and print_math_multi_symbol buf  l=
-	Printf.bprintf buf "Maths.multi_glyphs (%s)" l;
-	
-  in print_math_expr no_ind buf m
+  in
+  print_math_expr no_ind buf m;
 
 and print_math parser_pp op ch m = begin
   let buf = Buffer.create 80 in
@@ -732,8 +768,8 @@ let gen_ml format driver suppl filename from wherename where pdfname =
 	    end;
 	    output_list parser_pp source where true 0 docs;
 	  (* close_in op; *)
-            Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend\n"
-              tmp_pos
+            Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = %s:=[|%s|];;\nlet _ = %s:=[|%s|];;\n"
+              tmp_pos !cache (Buffer.contents !cache_buf) ("m" ^ !cache) (Buffer.contents !mcache_buf)
       with
         | Dyp.Syntax_error ->
 	  raise

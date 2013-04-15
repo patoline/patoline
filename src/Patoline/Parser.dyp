@@ -94,7 +94,10 @@ and 'a indices = { up_right : 'a math option;
     down_left : 'a math option }
 and symbol=
     SimpleSym of string
+  | MultiSym of string 
   | CamlSym of string
+  | ComplexSym of string
+
 
 and 'a structType = Absolute of int | Relative of 'a doc list
 

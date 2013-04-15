@@ -894,7 +894,8 @@ let open_close left right env_ style box=
 
   let (left',left, (x0_l',y0_l',x1_l',y1_l')), 
       (right',right, (x0_r',y0_r',x1_r',y1_r')) =
-    let ll = left env_ style and lr = right env_ style in
+    let ll = List.map (fun l -> l env_ style) left 
+    and lr = List.map (fun r -> r env_ style) right in
     let boxes = List.map (fun d ->
       let d'=draw_boxes env_ d in
       (d, d', bounding_box_full d'))
