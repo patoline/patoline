@@ -470,7 +470,7 @@ and patoline_rule objects h=
         let o=open_out h in
         let main_mod=Filename.chop_extension (Filename.basename modu) in
         main_mod.[0]<-Char.uppercase main_mod.[0];
-        Generateur.write_main_file o !format !driver "" main_mod r1;
+        Generateur.write_main_file o opts.format opts.driver "" main_mod r1;
         close_out o;
       );
       true
