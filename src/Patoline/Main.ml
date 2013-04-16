@@ -36,6 +36,7 @@ let patoline=ref (Sys.argv.(0))
 let ocamlopt=ref "ocamlopt"
 let recompile=ref false
 let quiet=ref false
+let main_ml=ref false
 open Language
 let spec =
   [("--extra-fonts-dir",Arg.String (fun x->extras_top:=x::"--extra-fonts-dir"::(!extras_top)),
@@ -65,6 +66,7 @@ let spec =
    ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
     message (Cli Package));
    ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
+   ("--main-ml",Arg.Unit (fun () -> main_ml:=true), message (Cli MainMl));
    ("-o",Arg.Set_string output, message (Cli Output));
    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), message (Cli Bin));
    ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), message (Cli Edit_link));
@@ -693,7 +695,15 @@ and process_each_file l=
     exit 1
   ) else
     List.iter (fun f->
-      if !compile then (
+      if !main_ml then (
+	let in_s = open_in f in
+	let opts=read_options_from_source_file in_s in
+	close_in in_s;
+        let main_mod=Filename.chop_extension (Filename.basename f) in
+	let o=open_out ((Filename.chop_extension f)^"_.tml") in
+        Generateur.write_main_file o opts.format opts.driver "" main_mod (Filename.chop_extension f);
+        close_out o;
+      ) else if !compile then (
         if Sys.file_exists f then (
           let cmd=(Filename.chop_extension f)^".tmx" in
           Build.sem_set Build.sem !Build.j;

@@ -53,6 +53,7 @@ and command_line=
   | Noamble
   | Package
   | Ml
+  | MainMl
   | Output
   | Bin
   | Edit_link
@@ -108,7 +109,8 @@ let message=function
       | Separately->"Compile séparément"
       | Noamble->"Produit un module caml brut"
       | Package->"Rajoute le paquets dans la liste des paquets pour ocamlfind"
-      | Ml->"Ne produire que le source caml"
+      | Ml->"Ne produire que le source caml (.ttml)"
+      | MainMl->"Ne produire que le source principale caml (_.tml)"
       | Output->"Écrire la sortie dans ce fichier"
       | Bin->"Produire le source caml et le compiler, mais pas l'éxécuter"
       | Edit_link->"Générer des liens URI de la forme \"edit:filename@line\""
@@ -170,7 +172,8 @@ let message=function
       | Separately->"Compile separately"
       | Noamble->"Output a raw caml file"
       | Package->"Add the package to the list of ocamlfind packages"
-      | Ml->"Only output caml file"
+      | Ml->"Only output caml file (.ttml)"
+      | MainMl->"Only output caml main file (_.tml)"
       | Output->"Output to this file"
       | Bin->"Output and compile caml file, but do not execute it"
       | Edit_link->"Generate URI links of the form \"edit:filename@line\""
