@@ -87,7 +87,7 @@ let readCFFNum f=
             compute_len (i+1)
         in
         let n=compute_len 1 in
-        let arr=Array.make (2*compute_len 1) 0 in
+        let arr=Array.make (2*n) 0 in
         seek_in f pos;
         for i=0 to n-1 do
           let x=input_byte f in
@@ -859,12 +859,19 @@ let subset(* _encoded *) font info cmap gls=
     with
         Not_found -> String.make (2*Array.length gls-1) (char_of_int 0)
   in
-  let charStrings=
+  let charStrings=try
     let charStrings=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 17)) in
     let progs=Array.map (fun x->indexGet f (font.offset+charStrings) (x).glyph_index) gls in
     let buf=Rbuffer.create 100 in
     writeIndex buf progs;
     buf
+    with
+        Not_found->(
+          Printf.fprintf stderr "%s\n"
+            (TypoLanguage.message (TypoLanguage.PleaseReport "empty charstrings dict"));
+          flush stderr;
+          Rbuffer.create 0
+        )
   in
   let priv=
     match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with

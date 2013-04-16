@@ -1473,7 +1473,7 @@ let fontInfo font=
             let m'=
               try
                 match platformID,encodingID with
-                    1,0->(
+                    1,_->(
                       let utf8=CharEncoding.recode_string
                         (CharEncoding.of_name "MACINTOSH")
                         (CharEncoding.of_name "UTF-8")

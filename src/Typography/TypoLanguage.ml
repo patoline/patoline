@@ -25,6 +25,7 @@ type message=
   | No_solution of string
   | Opt_error of optimization_error
   | Normal
+  | PleaseReport of string
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans
 #endif
@@ -44,6 +45,7 @@ let message=function
   | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine :\n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Underfull_line (line,s))->Printf.sprintf "Ligne pas assez remplie \n\t%s\n\t%s" (sprint_linef line) s
+  | PleaseReport x->Printf.sprintf "Il y a quelque chose que Patoline ne gère pas normalement. Veuillez rapporter ceci par courriel à mltypography@googlegroups.com :\n%s" x
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Votre choix de police (comic sans) est moche.\nConsultez http://bancomicsans.com pour plus d'informations\n"
 #endif
@@ -58,6 +60,7 @@ let message=function
   | Opt_error (Orphan (line,s))->Printf.sprintf "Orphan : \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Overfull_line (line,s))->Printf.sprintf "Overfull line: \n\t%s\n\t%s" (sprint_linef line) s
   | Opt_error (Overfull_line (line,s))->Printf.sprintf "Underfull line: \n\t%s\n\t%s" (sprint_linef line) s
+  | PleaseReport x->Printf.sprintf "Something (not \"the impossible\", though) has happened that Patoline is not comfortable with. Please report the following by email to mltypography@googlegroups.com:\n%s" x
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Bad taste detected in font choice.\nPlease go to http://bancomicsans.com for more informations\n"
 #endif
