@@ -142,4 +142,4 @@ clean:
 	make -C cesure clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd proof; rm -f *~ \#*\# *.cm[xoi] *.o
-	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.ttml *.o *.a
+	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.ttml *.o *.a *.tmx
