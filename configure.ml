@@ -385,6 +385,7 @@ let _=
 
     let sources=
       "src/Typography/_build/Typography.cmxa src/Typography/_build/Typography.a src/Typography/_build/Typography.cmi "^
+      "src/Typography/_build/ParseMainArgs.cmx src/Typography/_build/ParseMainArgs.o src/Typography/_build/ParseMainArgs.cmi "^
         "src/Format/*Format*.cmxa src/Format/*Format*.a src/Format/*Format*.cmi "^
         "src/Drivers/*.cmxa src/Drivers/*.a src/Drivers/*.cmi "^
         "src/Patoline/Build.cmi src/Patoline/Util.cmi "^
