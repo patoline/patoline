@@ -1251,7 +1251,8 @@ let adjust_width env buf nbuf =
 	incr i0;
 	try while !i0 < !nbuf do
 	  match buf.(!i0) with
-	  | User _ -> incr i0
+	  | User AlignmentMark -> incr i0; raise Exit
+	  | User _ -> incr i0	  
 	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
 	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
