@@ -483,8 +483,8 @@ let _=
             "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
             (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
                                                Package "zip"; Package "camlimages.all_formats"]));
-          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa\"\n";
-          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma\"\n";
+          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
+          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
 
           let check_name file=
             let valid=ref (String.length file>0) in

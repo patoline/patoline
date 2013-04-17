@@ -197,7 +197,7 @@ let rec read_options_from_source_file fread =
   let blank=Str.regexp "^[ \t]*$" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
-  let set_grammar = Str.regexp "^[ \t]*(\\*[ \t]*#GRAMMAR[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
+  let set_grammar = Str.regexp "^[ \t]*(\\*[ \t]*#GRAMMAR[ \t]+\\([^ \t]*\\)[ \t]*\\*)[ \t\r]*$" in
   let set_noamble = Str.regexp "^[ \t]*(\\*[ \t]*#NOAMBLE[ \t]*\\*)[ \t\r]*$" in
   let link = Str.regexp "^[ \t]*(\\*[ \t]*#LINK[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let depends = Str.regexp "^[ \t]*(\\*[ \t]*#DEPENDS[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
@@ -592,7 +592,7 @@ and patoline_rule objects h=
              if pack<>"" then ["-package";pack] else [])@
             dirs_@
             [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
-             "-o";h]@
+             "-o";h]@["ParseMainArgs.cmx"]@
             objs@
             ["-impl";source])
       in

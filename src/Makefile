@@ -17,9 +17,9 @@ VPATH=Typography:Pdf:Drivers:Format:cesure
 
 all:native $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx all_plugins
+native:Typography/_build/Typography.cmxa Typography/_build/ParseMainArgs.cmx $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx all_plugins
 
-byte:Typography/_build/Typography.cma $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma plot/plot.cma
+byte:Typography/_build/Typography.cma Typography/_build/ParseMainArgs.cmo $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma plot/plot.cma
 
 prof:Typography/_build.p/Typography.p.cmxa $(addprefix Format/,$(FORMAT:.ml=.p.cmxa)) Pdf/_build/pdf_parser.p.cmxa plot/plot.p.cmxa
 
@@ -80,6 +80,14 @@ Typography/_build.p/Typography.p.cmxa:Rbuffer/rbuffer.p.cmxa
 
 Typography/_build/Typography.cmi:Typography/_build/Typography.cma
 
+.PHONY:Typography/_build/ParseMainArgs.cmo Typography/_build/ParseMainArgs.cmx Typography/_build.p/ParseMainArgs.p.cmx
+Typography/_build/ParseMainArgs.cmo:Rbuffer/rbuffer.cmo
+	make -C Typography _build/ParseMainArgs.cmo
+Typography/_build/ParseMainArgs.cmx:Rbuffer/rbuffer.cmx
+	make -C Typography _build/ParseMainArgs.cmx
+Typography/_build.p/ParseMainArgs.p.cmx:Rbuffer/rbuffer.p.cmx
+	make -C Typography _build.p/ParseMainArgs.p.cmx
+
 Rbuffer/rbuffer.cma:Rbuffer
 	make -C Rbuffer rbuffer.cma
 Rbuffer/rbuffer.cmxa:Rbuffer
@@ -104,12 +112,14 @@ plot/plot.cma:plot Format/DefaultFormat.cmaa
 plot/plot.p.cmxa:plot Format/DefaultFormat.p.cmxa
 	make -C plot plot.p.cmxa
 
-DefaultGrammar.tgx:DefaultGrammar.txp Patoline/patoline
-	Patoline/patoline --main-ml --driver Pdf -o DefaultGrammar_.tml DefaultGrammar.txp --extra-fonts-dir ../Fonts
-	Patoline/patoline --ml --driver Pdf -o DefaultGrammar.ttml DefaultGrammar.txp --extra-fonts-dir ../Fonts
+DefaultGrammar.tgx:DefaultGrammar.pdf
+
+DefaultGrammar.pdf:DefaultGrammar.txp Patoline/patoline
+	Patoline/patoline --main-ml --driver Pdf -o DefaultGrammar_.tml DefaultGrammar.txp
+	Patoline/patoline --ml --driver Pdf -o DefaultGrammar.ttml DefaultGrammar.txp
 	ocamlfind ocamlopt -package camomile -I Format -I Typography/_build Typography.cmxa -c -o DefaultGrammar.cmx -impl DefaultGrammar.ttml
-	ocamlfind ocamlopt -package camomile,zip,camlimages.all_formats -I Rbuffer -I Format -I Drivers -I Typography/_build rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -o DefaultGrammar.tmx DefaultGrammar.cmx -impl DefaultGrammar_.tml
-	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts
+	ocamlfind ocamlopt -package camomile,zip,camlimages.all_formats -I Rbuffer -I Format -I Drivers -I Typography/_build rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -o DefaultGrammar.tmx ParseMainArgs.cmx DefaultGrammar.cmx -impl DefaultGrammar_.tml
+	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts --extra-hyph-dir ../Hyphenation
 
 .PHONY: test.pdf test
 

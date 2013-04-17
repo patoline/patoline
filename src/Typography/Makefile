@@ -12,16 +12,22 @@ _build/Typography.cmxa:_build/Typography.cmx
 	cd _build;ocamlopt -a -o Typography.cmxa Typography.cmx
 _build/Typography.cmx: $(FILES) ../Rbuffer/rbuffer.cmxa
 	ocamlbuild -use-ocamlfind -classic-display Typography.cmx
+_build/ParseMainArgs.cmx:_build/Typography.cmxa
+	ocamlbuild -use-ocamlfind -classic-display ParseMainArgs.cmx
 
 _build/Typography.cma:_build/Typography.cmo
 	cd _build;ocamlc -a -o Typography.cma Typography.cmo
 _build/Typography.cmo: $(FILES) ../Rbuffer/rbuffer.cma
 	ocamlbuild -use-ocamlfind -classic-display Typography.cmo
+_build/ParseMainArgs.cmo:_build/Typography.cma
+	ocamlbuild -use-ocamlfind -classic-display ParseMainArgs.cmo
 
 _build.p/Typography.p.cmxa:_build.p/Typography.p.cmx
 	cd _build.p;ocamlopt -a -o Typography.p.cmxa Typography.p.cmx
 _build.p/Typography.p.cmx: $(FILES) ../Rbuffer/rbuffer.cmxa
 	ocamlbuild -build-dir _build.p -use-ocamlfind -classic-display Typography.p.cmx
+_build/ParseMainArgs.p.cmx:_build.p/Typography.p.cmxa
+	ocamlbuild -use-ocamlfind -classic-display ParseMainArgs.p.cmx
 
 doc:
 	mkdir -p $(DOCDIR)
