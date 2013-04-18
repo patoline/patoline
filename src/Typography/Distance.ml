@@ -322,15 +322,6 @@ let segment_profile (dsup,dinf) p q =
   | true, true -> [q; p]
   | false, false -> [p; q]
 
-module Profile_data = struct
-  type t = (float array * float array) list * ((float * float) * (float * float)) * float
-  let compare = compare
-end
-
-module Profile_cache = Map.Make(Profile_data)
-
-let profile_cache = ref Profile_cache.empty
-
 let bezier_profile (dsup,dinf as dirs) epsilon curves0 =
   if !debug then begin
     Printf.fprintf stderr "Compute profile:\n";
@@ -341,8 +332,6 @@ let bezier_profile (dsup,dinf as dirs) epsilon curves0 =
       Printf.fprintf stderr "]  ") curves0;
     Printf.fprintf stderr "\n";
   end;
-
-  try Profile_cache.find  (curves0, dirs, epsilon) !profile_cache with Not_found ->
 
   let curves = List.rev (List.fold_left (fun acc b -> Bezier.subdivise epsilon b :: acc) [] curves0) in
 
@@ -375,7 +364,6 @@ let bezier_profile (dsup,dinf as dirs) epsilon curves0 =
     Printf.fprintf stderr "\n";
   end;
 
-  profile_cache := Profile_cache.add (curves0, dirs, epsilon) r !profile_cache;
   r
 
 let middle p q = comblin 0.5 p 0.5 q
@@ -1079,16 +1067,8 @@ let find_distance beta m l =
   in
   fn 0.0 0.0 0.0 0.0 l
 
-module Distance_data = struct
-  type t = (float * float) list * (float * float) list * ((float * float) * (float * float)) * float
-  let compare = compare
-end
 
-module Distance_cache = Map.Make(Distance_data)
-
-let cache_distance = ref Distance_cache.empty
-
-let distance beta (dsup,dinf as dist) profile1 profile2 =
+let distance beta (dsup,dinf) profile1 profile2 =
   if !debug then begin
     Printf.fprintf stderr "distance:\n  left: ";
     List.iter (fun p -> print_pt stderr p) profile1;
@@ -1097,7 +1077,7 @@ let distance beta (dsup,dinf as dist) profile1 profile2 =
     Printf.fprintf stderr "\n";
   end;
 
-  try Distance_cache.find (profile1, profile2, dist, beta) !cache_distance with Not_found -> 
+  
 
   let r = 
     if profile1 = [] || profile2 = [] then infinity else begin
@@ -1114,8 +1094,6 @@ let distance beta (dsup,dinf as dist) profile1 profile2 =
     end
   in
   if !debug then Printf.fprintf stderr "  ==> %f\n" r;
-
-  cache_distance := Distance_cache.add  (profile1, profile2, dist, beta) r !cache_distance;
   r
 
 (*
@@ -1127,6 +1105,98 @@ let testc3 = distance 0.5 ((-1.0,1.0), (-1.0,-1.0)) [(1.0,1.0);(0.,2.);(1.,3.)] 
 let testc4 = distance 0.5 ((-1.0,1.0), (-1.0,-1.0)) [(1.0,1.0);(0.,2.);(1.,3.)] [(2.,3.5);(3.,2.5);(2.,1.5)]
 let testc5 = distance 0.5 ((-1.0,1.0), (-1.0,-1.0)) [(1.0,1.0);(0.,2.);(1.,3.)] [(2.,3.25);(3.,2.25);(2.,1.25)]
 *)
+
+module Profile_data = struct
+  type t = (float array * float array) list * ((float * float) * (float * float)) * float
+  let compare = compare
+end
+
+module Profile_cache = Map.Make(Profile_data)
+
+module Distance_data = struct
+  type t = (float * float) list * (float * float) list * ((float * float) * (float * float)) * float
+  let compare = compare
+end
+
+module Distance_cache = Map.Make(Distance_data)
+
+type distance_cache = {
+    mutable generation : int;
+    mutable profile_cache : ((float * float) list * int ref) Profile_cache.t;
+    mutable distance_cache : (float * int ref) Distance_cache.t;
+}
+
+let distance_cache = {
+  generation = 0;
+  profile_cache = Profile_cache.empty;
+  distance_cache = Distance_cache.empty;
+}
+
+let read_cache filename =
+  try 
+    let ch = open_in_bin filename in
+    let cache = input_value ch in
+    close_in ch;
+    distance_cache.generation <- cache.generation + 1;
+    distance_cache.profile_cache <- cache.profile_cache;
+    distance_cache.distance_cache <- cache.distance_cache;
+  with
+    Sys_error _ ->
+      distance_cache.generation <- 0;
+      distance_cache.profile_cache <- Profile_cache.empty;
+      distance_cache.distance_cache <-Distance_cache.empty
+
+let write_cache filename = 
+  let g = distance_cache.generation in
+  let purge (_, n) = g - !n > 10 in
+  let cache = {
+    generation = g;
+    profile_cache =
+      Profile_cache.fold (fun k t acc -> 
+	if purge t then Profile_cache.remove k acc else acc)
+	distance_cache.profile_cache
+	distance_cache.profile_cache;
+    distance_cache = 
+      Distance_cache.fold (fun k t acc -> 
+	if purge t then Distance_cache.remove k acc else acc)
+	distance_cache.distance_cache
+	distance_cache.distance_cache;
+  }
+  in
+  try
+    let ch = open_out_bin filename in
+    output_value ch cache;
+    close_out ch
+  with
+    Sys_error _ -> ()
+
+let bezier_profile dirs epsilon curves0 =
+  try 
+    let (r,g) =
+      Profile_cache.find (curves0, dirs, epsilon) distance_cache.profile_cache
+    in
+    g := distance_cache.generation;
+    r
+  with Not_found ->
+    let r = bezier_profile dirs epsilon curves0 in
+    distance_cache.profile_cache <- 
+      Profile_cache.add (curves0, dirs, epsilon)
+      (r, ref distance_cache.generation) distance_cache.profile_cache;
+    r
+
+let distance beta dirs profile1 profile2 =
+  try 
+    let (r,g) =
+      Distance_cache.find (profile1, profile2, dirs, beta) distance_cache.distance_cache
+    in
+    g := distance_cache.generation;
+    r
+  with Not_found ->
+    let r = distance beta dirs profile1 profile2 in
+    distance_cache.distance_cache <- 
+      Distance_cache.add (profile1, profile2, dirs, beta)
+      (r, ref distance_cache.generation) distance_cache.distance_cache;
+    r
 
 let translate_profile p dx =
   if dx <> infinity && dx <> -. infinity then 

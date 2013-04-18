@@ -91,6 +91,7 @@ let do_include buf name=
 
 
 let write_main_file where format driver suppl main_mod outfile=
+  let cache_name = outfile ^ ".tdx" in
   Printf.fprintf where
     "(* #FORMAT %s *)
 (* #DRIVER %s *)
@@ -101,6 +102,7 @@ open Typography.Document
 open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 
+let _ = Distance.read_cache \"%s\"
 module D=(struct let structure=ref (Node { empty with node_tags=[\"InTOC\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
 module Patoline_Output=Patoline_Format.Output(%s)
@@ -111,6 +113,7 @@ let defaultEnv=Patoline_Format.defaultEnv;;\n
     format
     driver
     suppl
+    cache_name
     format
     driver
     format;
@@ -118,7 +121,8 @@ let defaultEnv=Patoline_Format.defaultEnv;;\n
   do_include buf main_mod;
   Buffer.output_buffer where buf;
   Printf.fprintf where
-    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S\n" outfile
+    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S\n" outfile;
+  Printf.fprintf where "let _ = Distance.write_cache \"%s\"\n" cache_name
 
 (* FIXME: dirty use of global bariables, should pass it through all function *)
 let cache = ref ""
