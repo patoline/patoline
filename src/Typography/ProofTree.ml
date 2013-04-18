@@ -83,6 +83,11 @@ module ProofTree = struct
     let env = env_style env_.mathsEnvironment style in
     let env' = env_style env_.mathsEnvironment (cramp (scriptStyle style)) in
 
+    let heightx =
+      let x=Fonts.loadGlyph (Lazy.force env.mathsFont)
+        ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env.mathsFont) 'x'}) in
+      env.mathsSize*.env_.size*.(Fonts.glyph_y1 x)/.1000.
+    in
     let widthM, heightM =
       let x=Fonts.loadGlyph (Lazy.force env.mathsFont)
         ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force env.mathsFont) 'M'}) in
@@ -173,6 +178,8 @@ module ProofTree = struct
 
 	  let h = h +. dy in
 
+	  let dtop = if top then -. cy1 -. sb -. ln /. 2.0 +. heightx /. 2.0 else 0.0 in
+
 	  let contents _ = 
 	    let l = 
 	      [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
@@ -180,7 +187,7 @@ module ProofTree = struct
 		(List.map (translate 0.0 dy) numerator) @
 		(List.map (translate dnx dny) name_box)
 	    in
-	    if top then List.map (translate (-.mleft) 0.0) l else l
+	    if top then List.map (translate (-.mleft) dtop) l else l
 	  in
 
 	  let final = 
@@ -189,8 +196,8 @@ module ProofTree = struct
                        drawing_max_width=w;
 		       drawing_width_fixed = true;
 		       drawing_adjust_before = false;
-                       drawing_y0=cy0;
-                       drawing_y1=cy0 +. h;
+                       drawing_y0=cy0 +. dtop;
+                       drawing_y1=cy0 +. h +. dtop;
                        drawing_badness=(fun _->0.);
                        drawing_break_badness=0.;
                        drawing_states=IntSet.empty;
