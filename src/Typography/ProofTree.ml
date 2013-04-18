@@ -43,23 +43,6 @@ type 'a proof =
     | Hyp of 'a
     | Rule of 'a proof list * 'a * 'a option (* premices, conclusion, rule name *)
 
-let axiom x = Rule([], x, None)
-let axiomN n x = Rule([], x, Some n)
-
-let hyp x = Hyp x
-
-let unary c p = Rule([p], c, None)
-let unaryN n c p = Rule([p], c, Some n)
-
-let binary c p p' = Rule([p;p'], c, None)
-let binaryN n c p p' = Rule([p;p'], c, Some n)
-
-let ternary c p p' p'' = Rule([p;p';p''], c, None)
-let ternaryN n c p p' p'' = Rule([p;p';p''], c, Some n)
-
-let n_ary c l = Rule(l, c, None)
-let n_aryN n c l = Rule(l, c, Some n)
-
 type paramProofTree = 
   { spaceUnderRule : float;
     spaceAboveRule : float;
@@ -72,8 +55,8 @@ type paramProofTree =
   }
 
 let proofTreeDefault = 
-  { spaceUnderRule = 0.35;
-    spaceAboveRule = 0.25;
+  { spaceUnderRule = 0.4;
+    spaceAboveRule = 0.4;
     minSpaceAboveRule = 0.05;
     thicknessRule = 0.1;
     heightName = 0.4;
@@ -192,7 +175,7 @@ module ProofTree = struct
 
 	  let contents _ = 
 	    let l = 
-	      [Path ({OutputCommon.default with lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
+	      [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rx0,cy1 +. sb) (rx1, cy1 +. sb)|] ]) ] @
 		(List.map (translate dx 0.0) conclusion_box) @
 		(List.map (translate 0.0 dy) numerator) @
 		(List.map (translate dnx dny) name_box)
@@ -225,3 +208,30 @@ end
 let proofTree ?(param=proofTreeDefault) x = 
   let module M = Mk_Custom(ProofTree) in
   [M.custom (param, x)]
+
+let axiom x = Rule([], x, None)
+let axiomN n x = Rule([], x, Some n)
+let axiomR x = proofTree (Rule([], x, None))
+let axiomRN n x = proofTree (Rule([], x, Some n))
+
+let hyp x = Hyp x
+
+let unary c p = Rule([p], c, None)
+let unaryN n c p = Rule([p], c, Some n)
+let unaryR p c =  proofTree (Rule([hyp p], c, None))
+let unaryRN n p c = proofTree (Rule([hyp p], c, Some n))
+
+let binary c p p' = Rule([p;p'], c, None)
+let binaryN n c p p' = Rule([p;p'], c, Some n)
+let binaryR p p' c = proofTree (Rule([hyp p; hyp p'], c, None))
+let binaryRN n p p' c = proofTree (Rule([hyp p; hyp p'], c, Some n))
+
+let ternary c p p' p'' = Rule([p;p';p''], c, None)
+let ternaryN n c p p' p'' = Rule([p;p';p''], c, Some n)
+let ternaryR p p' p'' c = proofTree (Rule([hyp p;hyp p';hyp p''], c, None))
+let ternaryRN n p p' p'' c = proofTree (Rule([hyp p;hyp p';hyp p''], c, Some n))
+
+let n_ary c l = Rule(l, c, None)
+let n_aryN n c l = Rule(l, c, Some n)
+let n_aryR c l = proofTree (Rule(List.map hyp l, c, None))
+let n_aryRN n c l = proofTree (Rule(List.map hyp l, c, Some n))
