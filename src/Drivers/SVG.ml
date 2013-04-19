@@ -332,6 +332,7 @@ svg.style.width=(%g*size)+'px';
 svg.style.height=(%g*size)+'px';
 };
 var seq=0;
+var transQueue=new Array();
 var queue=new Array();
 var qi=0,qj=0;
 " w h (w-.10.) (h-.10.));
@@ -371,14 +372,14 @@ var qi=0,qj=0;
             qj=qi-1;
         }
     });
-    setTimeout(function(){
+    transQueue.push(function(){
         g0.style.MozTransform=\"translate(0,0)\";
         g0.style.webkitTransform=\"translate(0,0)\";
         if(g1){
            g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
            g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
         }
-    },5);
+    });
 
 }\n";
 
@@ -458,7 +459,17 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
   );
 
   Rbuffer.add_string html (
-    Printf.sprintf "window.onload=function(){
+    Printf.sprintf "
+var tout=function(){
+if(transQueue.length>0){
+var a=transQueue.pop();
+a();
+transQueue.shift();
+};
+setTimeout(tout,3);
+};
+
+window.onload=function(){
 var h0=0,h1=0;
 if(location.hash){
 var i=location.hash.indexOf(\"_\");
@@ -466,7 +477,8 @@ h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
 //resize();
-loadSlide(h0,h1)
+tout();
+loadSlide(h0,h1);
 };
 
 window.onhashchange=function(){
@@ -482,14 +494,14 @@ loadSlide(h0,h1)
 window.onkeydown=function(e){
 //console.log(e);
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
-if(current_state<=0) {
+if(current_state<=0 || e.keyCode==38) {
   loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state-1)
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
-if(current_state>=states[current_slide]-1) {
+if(current_state>=states[current_slide]-1 || e.keyCode==40) {
   loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
 } else {
   loadSlide(current_slide,current_state+1)

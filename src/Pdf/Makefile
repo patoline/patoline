@@ -1,8 +1,8 @@
 OCAMLOPT=ocamlopt -I ../Typography/_build
 OCAMLC=ocamlc -I ../Typography/_build
 
-pdf_parser.cmxa:obj_lexer.cmx obj_parser.cmx pdf_parser.cmx
-	$(OCAMLOPT) -a -o pdf_parser.cmxa obj_lexer.cmx obj_parser.cmx pdf_parser.cmx
+pdf_parser.cmxa:pdfutil.cmx obj_lexer.cmx obj_parser.cmx pdf_parser.cmx
+	$(OCAMLOPT) -a -o pdf_parser.cmxa pdfutil.cmx obj_lexer.cmx obj_parser.cmx pdf_parser.cmx
 
 pdf_parser.p.cmxa:obj_lexer.p.cmx obj_parser.p.cmx pdf_parser.p.cmx
 	$(OCAMLOPT) -p -a -o pdf_parser.p.cmxa obj_lexer.p.cmx obj_parser.p.cmx pdf_parser.p.cmx

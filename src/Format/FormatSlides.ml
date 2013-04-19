@@ -186,7 +186,6 @@ module Format=functor (D:Document.DocumentStructure)->(
       end
       module M=Default.Make_theorem(Th_)
       let blocktitle=
-        (Env (incr_counter ~level:Th_.counterLevel Th_.counter))::
         (C (fun env->
           let lvl,num=try (StrMap.find Th.counter env.counters) with
               Not_found -> -1,[0]
@@ -356,6 +355,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         normalLeftMargin=(slidew-.mes)/.2.;
         normalLead=Default.defaultEnv.size*.1.3;
         lead=Default.defaultEnv.size*.1.3;
+        hyphenate=(fun _->[||]);
         par_indent=[];
         new_line=(fun env node params nextNode nextParams layout height->
           (* min height (nextNode.height-.env.lead) *)
