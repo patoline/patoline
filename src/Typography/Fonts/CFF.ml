@@ -729,6 +729,10 @@ let subset(* _encoded *) font info cmap gls=
 
   let strings=ref StrMap.empty in
   let topDict=readDict f font.dictIndex.(0) font.dictIndex.(1) in
+  let topDict=IntMap.filter (fun k _->
+    k<32 || (k lsr 8 = 12 && k land 0xff < 30)
+  ) topDict
+  in
   let topDict=IntMap.mapi (fun op st->
     if (op<=4) || op=0xc00 then (
       let idx=int_of_num (List.hd st) in
@@ -873,17 +877,16 @@ let subset(* _encoded *) font info cmap gls=
           Rbuffer.create 0
         )
   in
-  let priv=
+  let priv=try
     match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
         offset::size::_->(
-          try
-            let m=readDict f (font.offset+int_of_num offset)
-              (font.offset+int_of_num offset+int_of_num size) in
-            m
-          with
-              Not_found | CFFNum _-> IntMap.empty
+          let m=readDict f (font.offset+int_of_num offset)
+            (font.offset+int_of_num offset+int_of_num size) in
+          m
         )
       | _-> IntMap.empty
+    with
+        Not_found | CFFNum _-> IntMap.empty
   in
   let subr=try (
     match findDict f (font.dictIndex.(0)) (font.dictIndex.(1)) 18 with
@@ -897,7 +900,6 @@ let subset(* _encoded *) font info cmap gls=
       Not_found
     | CFFNum _-> ""
   in
-
 
 
   let strIndex=Rbuffer.create 256 in
