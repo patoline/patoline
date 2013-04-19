@@ -58,7 +58,7 @@ let _= Build.macros:=
       x^
       "\n end \n"^ 
       "in [ Drawing (Res.Lib.make ()) ])]\n")
-  (StrMap.add "genumerate" (fun s->
+  (StrMap.add "genumerate_item" (fun s->
     let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
     (* let c = String.make 1 s.[pos+1] in *)
     let c = s.[pos+1] in
@@ -87,7 +87,7 @@ let do_include buf name=
   incr moduleCounter;
   includeList := name :: !includeList;
   Printf.bprintf buf
-    "module TEMP%d=%s.Document(D);;\nopen TEMP%d;;\n" !moduleCounter name !moduleCounter
+    "module TEMP%d=%s.Document(Patoline_Output)(D);;\nopen TEMP%d;;\n" !moduleCounter name !moduleCounter
 
 
 let write_main_file where format driver suppl main_mod outfile=
@@ -145,7 +145,7 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
-module Document=functor(D:DocumentStructure)->struct
+module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
 open Patoline_Format;;

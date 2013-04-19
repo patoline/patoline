@@ -479,7 +479,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Configure_word_macro{\hand}{ eat_right eat_left }
 \Configure_word_macro{\sourcePosition}{ arity = 1 give_position }
 
-\Configure_environment{genumerate}{ arg_1 = genumerate }
+\Configure_environment{genumerate}{ arg_1 = genumerate_item }
 
 \Configure_word_macro{\diagram}{ is_identity 
                                  arg_1 = diagram 

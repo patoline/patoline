@@ -271,6 +271,16 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
   ) p line
 
 
+module type Output=
+  sig
+    type output
+    val outputParams : output
+
+    val output :
+      output ->
+      Typography.Document.tree ->
+      Typography.Document.environment -> string -> unit
+  end
 
 module Format=functor (D:Document.DocumentStructure)->(
   struct
