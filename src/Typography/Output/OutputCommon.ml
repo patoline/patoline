@@ -199,6 +199,9 @@ let rectangle (xa,ya) (xb,yb)=
     [|xb;xa|],[|ya;ya|];
   |]
 
+let line (xa,ya) (xb,yb)=
+  [|xa;xb|],[|ya;yb|]
+
 let circle r=
   let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in
     [| [|-.r;-.r;-.lambda;0.|], [|0.;lambda;r;r|];

@@ -97,6 +97,7 @@ val bounding_box_full : raw list -> float * float * float * float
 
 val circle : float -> (float array * float array) array
 val rectangle : (float*float) -> (float*float)->(float array * float array) array
+val line : (float*float) -> (float*float)->(float array * float array)
 
 type structure = {
   mutable name : string;
