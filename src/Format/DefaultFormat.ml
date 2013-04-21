@@ -1684,12 +1684,48 @@ module MathFonts = struct
   let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Asana-Math/Asana-Math.otf"))
   let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
 
+  let adjusted_asana_delimiters' name ls =
+    match ls with
+      [] -> assert false
+    | x::ls ->
+      let x0 = vkern_percent_under' x 0.166 in
+      (fun envs st -> snd (x0 envs st)) :: List.map (fun x envs st -> 
+	let center, _ = x0 envs st in vkern_center x center envs st) ls
+
+  let adjusted_asana_delimiters name ls =
+    adjusted_asana_delimiters' name (List.map (asana name) ls)
+
+  (* This function is for asana delimiters that are not compatible with other
+     Asana delimiters !!! *)
+  let fix_asana_delimiters name ls =
+    let rec map2 f l1 l2 = (* allows for longer second list *)
+      match l1, l2 with
+	[], _ -> []
+      | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
+    in
+    adjusted_asana_delimiters' name (map2
+      (fun g g' -> vkern_as (asana name g)
+	(asana "[" g'))
+      ls [61;3340;3341;3342])
+
   let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Euler/euler.otf"))
   let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
+
+  let adjusted_euler_delimiters name ls =
+    let rec map2 f l1 l2 = (* allows for longer second list *)
+      match l1, l2 with
+	[], _ -> []
+      | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
+    in
+    adjusted_asana_delimiters' name (map2
+      (fun g g' -> vkern_as (euler name g)
+	(asana "[" g'))
+      ls [61;3340;3341;3342])
 
   let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "AMS/ams.otf"))
   let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
 end
+
 
 
 

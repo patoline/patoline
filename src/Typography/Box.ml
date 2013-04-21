@@ -233,8 +233,9 @@ let rec resize l=function
                            kern_contents=resize l x.kern_contents }
   | x->x
 
-(* vertically re_kern g with p percent under baseline *)
-let vkern_percent_under gs p envs st =
+(* vertically re_kern g with p percent under baseline,
+   return the center position to reuse with other symbols *)
+let vkern_percent_under' gs p envs st =
   let gs = gs envs st in
   let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
     | [] -> (sy/.float nb,mi,sk/.float nb,ma)
@@ -251,6 +252,46 @@ let vkern_percent_under gs p envs st =
   let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
   let y,yl,y0,yh = vbox gs in
   let dy = p *. (yh -. yl) -. (y0 -. yl) in
+  let center = (yh +. yl) /. 2.0 -. dy in
+  center, List.map (function 
+      GlyphBox g -> GlyphBox {
+	g with 
+	  glyph_y = g.glyph_y -. dy;
+	  glyph_ky = 0.0; 
+      }
+    | _ -> failwith "vkern on non glyph") gs
+
+let vkern_percent_under gs p envs st = snd (vkern_percent_under' gs p envs st)
+
+(* vertically re_kern g to have the center at the given height *)
+let vkern_center gs c envs st =
+  let gs = gs envs st in
+  let rec vbox' (sy,mi,sk,ma,nb) gs = match gs with
+    | [] -> (sy/.float nb,mi,sk/.float nb,ma)
+    | GlyphBox g::gs -> 
+	let acc = 
+	  sy +. g.glyph_y,
+	  min mi (g.glyph_y +. g.glyph_size/.1000.0*.Fonts.glyph_y0 g.glyph),
+	  sk +. g.glyph_ky,
+	  max ma (g.glyph_y +.  g.glyph_size/.1000.0*.Fonts.glyph_y1 g.glyph),
+	  nb + 1
+	in vbox' acc gs
+	| _ -> failwith "vkern on non glyph"
+  in	  
+  let vbox = vbox' (0.0,max_float,0.0,min_float,0) in
+  let y,yl,y0,yh = vbox gs in
+  let dy = (yh +. yl) /. 2.0 -. c in
+  List.map (function 
+      GlyphBox g -> GlyphBox {
+	g with 
+	  glyph_y = g.glyph_y -. dy;
+	  glyph_ky = 0.0; 
+      }
+    | _ -> failwith "vkern on non glyph") gs
+
+(* vertically re_kern g by a vertical translation *)
+let vkern_translate gs dy envs st =
+  let gs = gs envs st in
   List.map (function 
       GlyphBox g -> GlyphBox {
 	g with 
@@ -279,12 +320,11 @@ let vkern_as gs gs' envs st =
   let y,yl,y0,yh = vbox gs in
   let y',yl',y0',yh' = vbox gs' in
   let s = (yh' -. yl') /. (yh -. yl) in
-  let dy = (y' +. yl') -. (y +. yl) *. s in
   List.map (function 
       GlyphBox g -> GlyphBox {
 	g with 
 	  glyph_size = g.glyph_size *. s;
-	  glyph_y = g.glyph_y *. s +. dy;
+	  glyph_y = g.glyph_y *. s;
 	  glyph_ky = y0'; 
 	  glyph_x = g.glyph_x *. s;
 	  glyph_kx = g.glyph_kx *. s;

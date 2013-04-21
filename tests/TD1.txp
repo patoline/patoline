@@ -163,7 +163,7 @@ Déterminer la nature des séries numériques suivantes:
 
 \vspaceBefore(3.0)
 \begin{center}
-[$ \ser{\frac{1}{n * ln(n)}}{n}{2} $] , 
+[$ \ser{\frac{1}{n ln(n)}}{n}{2} $] , 
 [$ \ser{\frac{1}{n^{1 \over 3} * ln(n)}}{n}{2} $] ,
 [$ \ser{\frac{ln(n)}{n \sqrt{n}}}{n}{1} $] et
 [$ \ser{ln( 1 + \frac{(-1)^{n}}{\sqrt{n}}  )}{n}{2}$] .
