@@ -691,6 +691,40 @@ module Format=functor (D:Document.DocumentStructure)->(
          env'
          pages,env')
 
+    let env_stack=ref []
+
+    module Env_minipage=struct
+      let do_begin_env ()=
+        D.structure:=newChildAfter !D.structure (Node empty);
+        env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+
+      let do_end_env ()=
+	D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+        env_stack:=List.tl !env_stack;
+
+        let t,num=match !D.structure with
+            t,(h,_)::_->t,h
+          | t,[]->t,0
+        in
+        (match up !D.structure with
+            Node n,x->
+              D.structure:=(Node { n with children=IntMap.remove num n.children },x);
+          | x->D.structure:=x);
+        let cont=
+          [bB (fun env->List.map (fun x->Drawing x) (Array.to_list (minipage env (t,[]))))]
+        in
+        match lastChild !D.structure with
+            Paragraph x,y->
+              D.structure:=Paragraph {x with par_contents=x.par_contents@cont},y;
+          | _->(
+            newPar D.structure Complete.normal parameters cont;
+            D.structure:=lastChild !D.structure
+          )
+
+    end
+
+
     let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
       let drawing' env=
         let dr_=drawing env in
@@ -873,7 +907,6 @@ module Format=functor (D:Document.DocumentStructure)->(
            []
        )]
 
-    let env_stack=ref []
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
       let do_begin_env ()=
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;

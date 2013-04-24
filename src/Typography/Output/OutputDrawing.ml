@@ -54,6 +54,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
     let footnotes=ref [] in
     let footnote_y=ref (-.infinity) in
     let pp=Array.of_list p in
+    let states=ref IntSet.empty in
 
     let endlink cont=
       continued_link:=None;
@@ -179,6 +180,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
             )
             | Glue g
             | Drawing g ->(
+              states:=IntSet.fold IntSet.add g.drawing_states !states;
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
               page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
 	      if env.show_boxes then
@@ -288,7 +290,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
       drawing_y0= !y0 -. !top_y;
       drawing_y1= (!y1-. !top_y);
       drawing_badness=(fun _->0.);
-      drawing_states=IntSet.empty;
+      drawing_states= !states;
       drawing_break_badness=0.;
       drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) page.pageContents) }
   in
