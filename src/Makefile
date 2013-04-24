@@ -121,8 +121,8 @@ DefaultGrammar.tgx:DefaultGrammar.pdf
 DefaultGrammar.pdf:DefaultGrammar.txp Patoline/patoline
 	Patoline/patoline --main-ml --driver Pdf -o DefaultGrammar_.tml DefaultGrammar.txp
 	Patoline/patoline --ml --driver Pdf -o DefaultGrammar.ttml DefaultGrammar.txp
-	ocamlfind ocamlopt -package camomile -I Format -I Typography/_build Typography.cmxa -c -o DefaultGrammar.cmx -impl DefaultGrammar.ttml
-	ocamlfind ocamlopt -package camomile,zip,camlimages.all_formats -I Rbuffer -I Format -I Drivers -I Typography/_build rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -o DefaultGrammar.tmx ParseMainArgs.cmx DefaultGrammar.cmx -impl DefaultGrammar_.tml
+	ocamlfind ocamlopt $(PACK) -I Format -I Typography/_build Typography.cmxa -c -o DefaultGrammar.cmx -impl DefaultGrammar.ttml
+	ocamlfind ocamlopt $(PACK) -I Rbuffer -I Format -I Drivers -I Typography/_build rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -o DefaultGrammar.tmx ParseMainArgs.cmx DefaultGrammar.cmx -impl DefaultGrammar_.tml
 	./DefaultGrammar.tmx --extra-fonts-dir ../Fonts --extra-hyph-dir ../Hyphenation
 
 .PHONY: test.pdf test
