@@ -320,22 +320,14 @@ let basic_html cache structure pages prefix=
 <title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title>\n";
-  Rbuffer.add_string html (Printf.sprintf "<script>
+  Rbuffer.add_string html "<script>
 var current_slide= -1;
 var current_state= -1;
-resize=function(){
-sizex=(window.innerWidth)/%g;
-sizey=(window.innerHeight)/%g;
-size=sizex>sizey ? sizey : sizex;
-svg=document.getElementById(\"svg\");
-svg.style.width=(%g*size)+'px';
-svg.style.height=(%g*size)+'px';
-};
 var seq=0;
 var transQueue=new Array();
 var queue=new Array();
 var qi=0,qj=0;
-" w h (w-.10.) (h-.10.));
+";
 
   Rbuffer.add_string html "function slide(width,g0,g1){
     var svg=document.getElementsByTagName(\"svg\")[0];
@@ -465,8 +457,8 @@ if(transQueue.length>0){
 var a=transQueue.pop();
 a();
 transQueue.shift();
-};
 setTimeout(tout,3);
+};
 };
 
 window.onload=function(){
@@ -510,12 +502,14 @@ if(current_state>=states[current_slide]-1 || e.keyCode==40) {
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
 }
+tout();
 }
 function gotoSlide(n){
 if(n>current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)})
+  loadSlide(n,0,function(a,b){slide(%g,a,b)});
 else if(n<current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)})
+  loadSlide(n,0,function(a,b){slide(%g,a,b)});
+tout();
 }
 
 </script>"
