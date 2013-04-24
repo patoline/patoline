@@ -468,9 +468,8 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
-//resize();
-tout();
 loadSlide(h0,h1);
+tout();
 };
 
 window.onhashchange=function(){
@@ -502,14 +501,14 @@ if(current_state>=states[current_slide]-1 || e.keyCode==40) {
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
 }
-tout();
+setTimeout(tout,5);
 }
 function gotoSlide(n){
 if(n>current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)});
 else if(n<current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)});
-tout();
+setTimeout(tout,5);
 }
 
 </script>"
