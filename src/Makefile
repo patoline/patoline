@@ -17,7 +17,7 @@ VPATH=Typography:Pdf:Drivers:Format:cesure
 
 all:native $(BIBI)
 
-native:Typography/_build/Typography.cmxa $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx all_plugins
+native:Typography/_build/Typography.cmxa Typography/_build/ParseMainArgs.cmx $(addprefix Format/,$(FORMAT:.ml=.cmxa)) $(DRIVERS) proof/proof Pdf/_build/pdf_parser.cmxa plot/plot.cmxa $(PATOLINE) $(NATIVE_EXTRA) cesure/cesure DefaultGrammar.tgx all_plugins
 
 
 byte:Typography/_build/Typography.cma Typography/_build/ParseMainArgs.cmo $(addprefix Format/,$(FORMAT:.ml=.cma)) $(DRIVERS:.cmxa=.cma) Pdf/_build/pdf_parser.cma plot/plot.cma
