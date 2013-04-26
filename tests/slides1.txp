@@ -1,57 +1,40 @@
 (* #FORMAT FormatSlides *)
+(* #DIRECTORIES Format *)
+(* #PACKAGES Typography.DriverCairo *)
 
 
-\begin{slide}
-    \begin{center}
- \size(5.){Un jeu pour le $π$-calcul}
-
-Tom Hirschowitz
-\end{center}
-\end{slide}
-
-\begin{slide}
-\begin{center}
-\begin{env}(fun env->{env with normalMeasure=env.normalMeasure/.2.})
-    \TableOfContents
-\end{env}
-\end{center}
-\end{slide}
 
 
-== Première partie ==
 
-=== Une sous-partie ===
+(* \begin{slide} *)
+(* \begin{center} *)
+(* \begin{env}(fun env->{env with normalMeasure=env.normalMeasure/.2.}) *)
+(*     \TableOfContents *)
+(* \end{env} *)
+(* \end{center} *)
+(* \end{slide} *)
+
+
+== Contexte ==
+
+=== Motivation ===
 
 \begin{slide}
-Salut.
+
+\Title{Motivation}
+
 \end{slide}
 
-=== Une autre ===
-
+=== Le problème ===
 
 \begin{slide}
-Ah, tiens, re.
+\Title{Le problème}
+On sait pas comment projeter.
 \end{slide}
 
-
-== Seconde partie ==
-
+== Solution ==
 
 \begin{slide}
-Comment va?
+Les systèmes de facto.
 \end{slide}
 
-\begin{slide}
-\begin{definition_}{Système de factorisation dans $\cal{C}$}
-$(\cal{L},\cal{R})$ tels que\begin{itemize}
-\item $\cal{R} = \cal{L}^⊥$,
-\item $\cal{L} = ⊥^^{\cal{R}}$,
-\item tout $f$ se factorise en $r ∘ l$ avec $l ∈ \cal{L}$ et $r ∈ \cal{R}$.
-\end{itemize}
-\end{definition_}
-
-\begin{proposition}
-$\cal{L}$ est stable par pushout et par composition.
-\end{proposition}
-
-\end{slide}
