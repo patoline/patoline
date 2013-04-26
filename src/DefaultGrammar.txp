@@ -121,6 +121,7 @@
 
 \Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 1620)
 \Add_relation{\vdash ⊢ |-}{⊢}
+\Add_relation{\triangleright ▹} ( MathFonts.asana "triangle right" 893 )
 
 =<
 => Addition like symbols 
