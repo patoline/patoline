@@ -515,7 +515,7 @@ let rec draw draw_env env_stack mlist =
 		  if bin_left = [] then [] else (
 		    match glue dist0 dist0 dist0 with
 		        Box.Glue x->
-		          [Drawing { x with
+		          [Box.Drawing { x with
                             drawing_badness=(fun w->100.*.(knuth_h_badness dist0 w))
                            }]
 		      | x->assert false
@@ -525,7 +525,8 @@ let rec draw draw_env env_stack mlist =
 		  if bin_right = [] then [] else (
 		    match glue dist1 dist1 dist1 with
 		        Box.Glue x->
-		          [Box.Glue { x with
+			  let f = if no_sp_right then fun x -> Box.Drawing x else fun x -> Box.Glue x in
+		          [f { x with
                             drawing_badness=(fun w->10.*.(knuth_h_badness dist1 w));
 			    drawing_break_badness = env.math_break_badness *. (float draw_env.depth)
                           }]

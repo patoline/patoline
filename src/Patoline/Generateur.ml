@@ -250,7 +250,7 @@ let rec print_math_buf parser_pp op buf m =
       | Prefix(pr, op, nsp, b) ->
 	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a,%b)) [] (%a)]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) b
       | Postfix(pr, a, nsp, op) ->
-	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(true,%a, %b)) (%a)  []]" pr (print_math_deco op) indices nsp (print_math_expr no_ind) a
+	  Printf.bprintf buf "[Maths.bin %d (Maths.Normal(%b,%a,true)) (%a)  []]" pr nsp (print_math_deco op) indices (print_math_expr no_ind) a
       | Limits_operator(op, a) ->
 	  Printf.bprintf buf "[Maths.op_limits [] (%a) (%a)]" (print_math_deco (MultiSym op)) indices (print_math_expr no_ind) a
       | Operator(op, a) ->
