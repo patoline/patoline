@@ -739,7 +739,7 @@ let coverageIndex file off glyph=
   in
     if format=1 then format1 0 count else
       if format=2 then format2 0 count else
-        (Printf.printf "format : %d\n" format; raise Not_found)
+        (Printf.fprintf stderr "format : %d\n" format; raise Not_found)
 
 
 let class_def file off glyph=
@@ -838,7 +838,6 @@ let rec readLookup file gsubOff i=
   let subst=ref [] in
   let lookup= seek_in file (gsubOff+8); readInt2 file in
   let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
-
   let lookupType=seek_in file offset0; readInt2 file in
     (* let lookupFlag=seek_in file (offset0+2); readInt2 file in *)
   let subtableCount=seek_in file (offset0+4); readInt2 file in
@@ -940,7 +939,7 @@ let rec readLookup file gsubOff i=
             )
           | GSUB_CHAINING->(
               let format=seek_in file offset1; readInt2 file in
-                if format=1 then (
+              if format=1 then (
 
                 ) else if format=2 then (
 
@@ -983,8 +982,8 @@ let rec applyLookup file gsubOff i glyphs=
   let subst=ref [] in
   let lookup= seek_in file (gsubOff+8); readInt2 file in
   let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
-
   let lookupType0=seek_in file offset0; readInt2 file in
+
   (* let lookupFlag=seek_in file (offset0+2); readInt2 file in *)
   let subtableCount=seek_in file (offset0+4); readInt2 file in
   let ligbuf=Buffer.create 10 in
@@ -1118,7 +1117,69 @@ let rec applyLookup file gsubOff i glyphs=
                 List.rev !buf
               )
               | GSUB_CONTEXT->gls
-              | GSUB_CHAINING->gls
+              | GSUB_CHAINING->(
+                let format=seek_in file offset1; readInt2 file in
+                if format=1 then (
+                  gls
+                ) else if format=2 then (
+                  gls
+                ) else if format=3 then (
+
+                  let rec split n l r=if n=0 then List.rev l,r else match r with
+                      h::s->split (n-1) (h::l) s
+                    | []->List.rev l,[]
+                  in
+                  let rec fold_apply l r=
+                    let rec verif off i n g=if i>=n then true else
+                        match g with
+                            []->n<=0
+                          | h::s->(
+                            let ok=
+                              try
+                                let coverageOff=seek_in file (off+i*2); readInt2 file in
+                                let _=coverageIndex file (offset1+coverageOff) h.glyph_index in
+                                true
+                              with
+                                  Not_found->false
+                            in
+                            if ok then verif off (i+1) n s else false
+                          )
+                    in
+                    let backCount=seek_in file (offset1+2);readInt2 file in
+                    let offset2=offset1+4+backCount*2 in
+                    let inputCount=seek_in file offset2; readInt2 file in
+                    let offset3=offset2+2+inputCount*2 in
+                    let aheadCount=seek_in file offset3; readInt2 file in
+
+                    let offset4=offset3+2+aheadCount*2 in
+                    let substCount=seek_in file offset4; readInt2 file in
+                    let rec apply_substs i ginp=if i>=substCount then ginp else
+                      let a=readInt2 file in
+                      let b=readInt2 file in
+                      let u,v=split a [] ginp in
+                      apply_substs (i+1) (u@applyLookup file gsubOff b v)
+                    in
+
+                    let g0,g1=split inputCount [] r in
+                    if verif (offset1+4) 0 backCount l &&
+                      verif (offset2+2) 0 inputCount g0 &&
+                      verif (offset3+2) 0 aheadCount g1
+                    then (
+                      seek_in file (offset4+2);
+                      let subst=List.rev (apply_substs 0 g0) @ l in
+                      match g1 with
+                          []->List.rev subst
+                        | _->fold_apply subst g1
+                    ) else (
+                      match r with
+                          []->List.rev l
+                        | h::s->fold_apply (h::l) s
+                    )
+                  in
+                  fold_apply [] gls
+                ) else
+                    gls
+              )
               | GSUB_EXTENSION->(
                 let format=seek_in file offset1;readInt2 file in
                 if format=1 then (
@@ -1169,10 +1230,10 @@ let rec applyLookup file gsubOff i glyphs=
               )
               | _->gls
         in
-        gpos (-1) (-1) (subtable+1) gls'
+        gpos lookupType (-1) (subtable+1) gls'
       end
   in
-  gpos (-1) (-1) 0 glyphs
+  gpos lookupType0 (-1) 0 glyphs
 
 
 let read_gsub font=
@@ -1183,10 +1244,10 @@ let read_gsub font=
   let lookupCount= seek_in file (gsubOff+lookup); readInt2 file in
     (* Iteration sur les lookuptables *)
   let arr=Array.make lookupCount [] in
-    for i=0 to lookupCount-1 do
-      arr.(i)<-readLookup file gsubOff i
-    done;
-    arr
+  for i=0 to lookupCount-1 do
+    arr.(i)<-readLookup file gsubOff i
+  done;
+  arr
 
 let read_lookup font i=
   let (file_,off0)=otype_file font in
