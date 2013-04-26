@@ -45,10 +45,6 @@ let insert tree a=
   fill_breaks 0;
 
   let breaks=String.sub breaks0 0 (String.length breaks0 - !j) in
-#ifdef DEBUG
-  Array.iter (Printf.fprintf stderr "%d ") breaks;
-  Printf.fprintf stderr "\n";
-#endif
   let rec insert i tree=
     if i>=String.length a then (
       match tree with
