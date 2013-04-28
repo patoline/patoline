@@ -1,3 +1,4 @@
+(* #PACKAGES netclient,xml-light *)
 (*
   Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
   Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
@@ -18,13 +19,13 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-(* #PACKAGES netclient,xml-light *)
+
 
 ====================================
-  Open Street Mapqx
+  Open Street Map
 ====================================
 
-Une test de l'API open street map via patoline.
+Un test de l'API open street map via patoline.
 
 \Caml(
 open Http_client.Convenience;;
