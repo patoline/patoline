@@ -1073,7 +1073,11 @@ let rec applyLookup file gsubOff i glyphs=
                           let offset2=seek_in file (offset1+6+cov*2); offset1+readInt2 file in
                           let ligCount=seek_in file offset2; readInt2 file in
                           let rec all_ligs lig=
-                            if lig>=ligCount then s else (
+                            if lig>=ligCount then (
+                              (* Aucune ligature n'a été trouvée *)
+                              buf:=h::(!buf);
+                              s
+                            ) else (
                               let offset3=seek_in file (offset2+2+lig*2); offset2+readInt2 file in
                               let ligGlyph=seek_in file offset3; readInt2 file in
                               let compCount=readInt2 file in
@@ -1099,6 +1103,7 @@ let rec applyLookup file gsubOff i glyphs=
                                     )
                                 in
                                 add_glyphs s (compCount-1);
+                                (* La ligature marche, on s'arrête là. *)
                                 { glyph_index=ligGlyph;glyph_utf8=Buffer.contents ligbuf }::next
                               ) else (
                                 all_ligs (lig+1)
