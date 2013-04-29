@@ -142,18 +142,10 @@ let hyphenate tree a0=
         in
         hyphenate_word 0;
 
-        (* Nombre de lettres entre i inclus et j exclus *)
-        let count a i j=
-          let rec count k n=if k>=j then n else
-              count (UTF8.next a k) (n+1)
-          in
-          count i 0
-        in
-
+        let total=UTF8.length a in
         let rec make_hyphens i j k=
-          if j>=String.length a-1 then [String.sub a i (min (String.length a-1) j-i)] else
-            if (int_of_char breaks.[j+1]) mod 2 = 1 && k>=3 &&
-              count a (UTF8.next a j) (String.length a) > 2 then
+          if j>=String.length a then [String.sub a i (String.length a-i)] else
+            if (int_of_char breaks.[j+1]) mod 2 = 1 && k>=3 && (total-k)>=2 then
               (String.sub a i (UTF8.next a j-i)) ::
                 make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
             else
