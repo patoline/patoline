@@ -144,7 +144,7 @@ let hyphenate tree a0=
 
         let total=UTF8.length a in
         let rec make_hyphens i j k=
-          if j>=String.length a then [String.sub a i (String.length a-i)] else
+          if j>=String.length a then [String.sub a i (String.length a-i-1)] else
             if (int_of_char breaks.[j+1]) mod 2 = 1 && k>=3 && (total-k)>=2 then
               (String.sub a i (UTF8.next a j-i)) ::
                 make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
