@@ -123,7 +123,7 @@ let postprocess_tree tree=
     (* | _->tree *)
   in
   let rec sectionize path=function
-      Node n when List.mem_assoc "Structural" n.node_tags ->
+      Node n when List.mem_assoc "structural" n.node_tags ->
         let section_name=
           if path=[] then (
             [C (fun env->
@@ -142,7 +142,7 @@ let postprocess_tree tree=
               in
 
               let num=
-                if List.mem_assoc "Numbered" n.node_tags then
+                if List.mem_assoc "numbered" n.node_tags then
                   let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                   List.map (OutputCommon.in_order 1)
                     (draw {env with size=env.size*.(sz-.h);fontColor=OutputCommon.gray }
@@ -183,7 +183,7 @@ let postprocess_tree tree=
                 Env(fun _->env')::[]
             )]
           ) else (
-            if List.mem_assoc "Numbered" n.node_tags  then
+            if List.mem_assoc "numbered" n.node_tags  then
               [C (fun env->
                 let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 bB (fun _->[User (Structure path)])
