@@ -250,8 +250,12 @@ module Make (L:Line with type t=Layout.line)=(
                   line_y0=fig.drawing_y0;line_y1=fig.drawing_y1 }
               in
               let params=figure_parameters.(node.lastFigure+1) paragraphs figures lastParameters lastFigures lastUser node nextNode in
-              let next_h=new_line.(nextNode.paragraph) node lastParameters
-                nextNode params node.layout 0.
+              let next_h=
+                (* node.height+.vspace-.fig.drawing_y1 *)
+                new_line.(
+                  min nextNode.paragraph (Array.length new_line-1)
+                ) node lastParameters
+                  nextNode params node.layout 0.
               in
               let nextNode={nextNode with height=next_h } in
               register (Some cur_node) nextNode
