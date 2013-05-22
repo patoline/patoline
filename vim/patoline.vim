@@ -29,12 +29,6 @@ if exists("b:current_syntax")
   finish
 endif
 
-" Document title
-syn match patoHeader    "=\{10}=*\s*$"
-syn match patoHeaderSep "-\{10}-*\s*$"
-hi link patoHeader     Constant
-hi link patoHeaderSep  Constant
-
 " Comments
 syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,patoPreproc
 syn keyword patoCommentTags contained TODO FIXME NOTE
@@ -43,12 +37,26 @@ hi link patoComment     Comment
 hi link patoCommentTags Todo
 hi link patoPreproc     SpecialComment
 
-" Math environment
-syn region patoMathEnv start="\$"   end="\$" contains=patoComment
-syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment
-hi link patoMathEnv Identifier
+" OCaml
+syn include @ocaml syntax/ocaml.vim
 
-" Section titles
+syn region ocamlCode matchgroup=camlEnv start="^\s*\\Caml(" end=")\s*$" contains=@ocaml
+
+syn region ocamlCode matchgroup=camlEnv start="\\\w*(" end=")" contains=@ocaml
+
+hi link camlEnv         SpecialComment
+
+" Other environments
+syn match patoEnv "^\s*\\begin{\w*}\s*$"
+syn match patoEnv "^\s*\\end{\w*}\s*$"
+syn match patoEnv "\\\w*{[^}]*}"
+
+hi link patoEnv Type
+
+" Document title, sections
+syn match patoTitle "=\{10}=*\s*$"
+syn match patoTitle "-\{10}-*\s*$"
+
 syn match patoTitle "^\s*=\{2}[^=].*[^=]=\{2}\s*$"
 syn match patoTitle "^\s*=\{3}[^=].*[^=]=\{3}\s*$"
 syn match patoTitle "^\s*=\{4}[^=].*[^=]=\{4}\s*$"
@@ -57,6 +65,7 @@ syn match patoTitle "^\s*=\{6}[^=].*[^=]=\{6}\s*$"
 syn match patoTitle "^\s*=\{7}[^=].*[^=]=\{7}\s*$"
 syn match patoTitle "^\s*=\{8}[^=].*[^=]=\{8}\s*$"
 syn match patoTitle "^\s*=\{9}[^=].*[^=]=\{9}\s*$"
+
 syn match patoTitle "^\s*-\{2}[^-].*[^-]-\{2}\s*$"
 syn match patoTitle "^\s*-\{3}[^-].*[^-]-\{3}\s*$"
 syn match patoTitle "^\s*-\{4}[^-].*[^-]-\{4}\s*$"
@@ -65,19 +74,32 @@ syn match patoTitle "^\s*-\{6}[^-].*[^-]-\{6}\s*$"
 syn match patoTitle "^\s*-\{7}[^-].*[^-]-\{7}\s*$"
 syn match patoTitle "^\s*-\{8}[^-].*[^-]-\{8}\s*$"
 syn match patoTitle "^\s*-\{9}[^-].*[^-]-\{9}\s*$"
+
+syn match patoTitle "^\s*->.*$"
+syn match patoTitle "^\s*-<\s*$"
+
+syn match patoTitle "^\s*=>.*$"
+syn match patoTitle "^\s*=<\s*$"
+
+syn match patoTitle "^\s*\.>.*$"
+syn match patoTitle "^\s*\.<\s*$"
+
+syn region patoItemize matchgroup=patoTitle start="^\s*\\begin{itemize}\s*$" end="^\s*\\end{itemize}\s*$" contains=ALL
+syn match patoTitle "^\s*\\item\s"
+
 hi link patoTitle Constant
 
-" Environments
-syn match patoEnv "^\s*\\begin{\w*}\s*$"
-syn match patoEnv "^\s*\\end{\w*}\s*$"
-hi link patoEnv Constant
+" Math environment
+syn region patoMathEnv start="\$"   end="\$" contains=patoComment
+syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment
+hi link patoMathEnv Identifier
 
-syn match patoItem "^\s*\\item"
-hi link patoItem Constant
+" Verbatim environment
+syn region patoVerb start="###" end="###"
+syn region patoVerb start="\\verb{" end="}"
+syn match patoVerb "\\\$"
+syn match patoVerb "\\\\"
 
-" OCaml
-syn include @ocaml syntax/ocaml.vim
-syn region ocamlCode matchgroup=Snip start="\\Caml(" end=")\n" contains=@ocaml
-hi link Snip SpecialComment
+hi link patoVerb Keyword
 
 let b:current_syntax = "patoline"
