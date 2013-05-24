@@ -347,21 +347,13 @@ var qi=0,qj=0;
 
     queue[qi]=g0;
     qi++;
-
+    var qqi=qi;
     document.addEventListener(\"transitionend\", function(e){
-        if(e.target.id==queue[qi-1].id){
-            for(var i=qj;i<qi-1;i++){
+        if(e.target.id==queue[qqi-1].id){
+            for(var i=qj;i<qqi-1;i++){
                 svg.removeChild(queue[i]);
             };
-            qj=qi-1;
-        }
-    });
-    g0.addEventListener(\"webkitTransitionEnd\", function(e){
-        if(e.target.id==queue[qi-1].id){
-            for(var i=qj;i<qi-1;i++){
-                svg.removeChild(queue[i]);
-            };
-            qj=qi-1;
+            qj=qqi-1;
         }
     });
     transQueue.push(function(){
@@ -452,12 +444,13 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
 
   Rbuffer.add_string html (
     Printf.sprintf "
+var to=50;
 var tout=function(){
 if(transQueue.length>0){
 var a=transQueue.pop();
 a();
 transQueue.shift();
-setTimeout(tout,3);
+setTimeout(tout,to);
 };
 };
 
@@ -501,14 +494,14 @@ if(current_state>=states[current_slide]-1 || e.keyCode==40) {
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
 }
-setTimeout(tout,5);
+setTimeout(tout,to);
 }
 function gotoSlide(n){
 if(n>current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)});
 else if(n<current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)});
-setTimeout(tout,5);
+setTimeout(tout,to);
 }
 
 </script>"
