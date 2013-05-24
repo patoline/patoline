@@ -666,7 +666,7 @@ and output_list parser_pp from where no_indent lvl docs =
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 
-let gen_ml format driver suppl filename from wherename where pdfname =
+let gen_ml noamble format driver suppl filename from wherename where pdfname =
   try
     begin
     (* match filename with *)
@@ -729,8 +729,10 @@ let gen_ml format driver suppl filename from wherename where pdfname =
 	    [] -> assert false
 	  | ((caml_header, pre, docs), _) :: _  ->
 	    begin
-              Printf.fprintf where "%s" (preambule format driver suppl filename);
-              Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n" tmp_pos;
+              if not noamble then (
+                Printf.fprintf where "%s" (preambule format driver suppl filename);
+                Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n" tmp_pos;
+              );
               match pre with
 		  None -> ()
 	        | Some(title, at) -> 
@@ -757,8 +759,9 @@ let gen_ml format driver suppl filename from wherename where pdfname =
 	    end;
 	    output_list parser_pp source where true 0 docs;
 	  (* close_in op; *)
-            Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = %s:=[|%s|];;\nlet _ = %s:=[|%s|];;\n"
-              tmp_pos !cache (Buffer.contents !cache_buf) ("m" ^ !cache) (Buffer.contents !mcache_buf)
+            if not noamble then
+              Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = %s:=[|%s|];;\nlet _ = %s:=[|%s|];;\n"
+                tmp_pos !cache (Buffer.contents !cache_buf) ("m" ^ !cache) (Buffer.contents !mcache_buf)
       with
         | Dyp.Syntax_error ->
 	  raise

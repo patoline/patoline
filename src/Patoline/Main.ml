@@ -420,10 +420,13 @@ and patoline_rule objects h=
                 (if opts.format<>"DefaultFormat" then opts.format else "");
                 "--ml";
                 (if opts.grammar=None then "--no-grammar" else "");
-	        (if !Generateur.edit_link then "--edit-link" else "");
-	        "--driver";opts.driver;
-	        "-o";h;
-                source]
+	        (if !Generateur.edit_link then "--edit-link" else "")
+	       ]
+	     @(if Filename.check_suffix h Parser.gram_ext then []
+               else
+                 ["--driver";opts.driver;
+                  "-o";h])
+             @[source]
             )
           in
           if not !quiet then (Printf.fprintf stdout "%s\n"
@@ -759,7 +762,7 @@ and process_each_file l=
 		    Printf.sprintf "\n(* #NOAMBLE *)"
 	         else "")
             in
-            Generateur.gen_ml opts.format opts.driver suppl f fread (mlname_of f) where_ml
+            Generateur.gen_ml opts.noamble opts.format opts.driver suppl f fread (mlname_of f) where_ml
               (Filename.chop_extension f)
           );
           close_out where_ml;
