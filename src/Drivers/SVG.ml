@@ -444,7 +444,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
 
   Rbuffer.add_string html (
     Printf.sprintf "
-var to=50;
+var to=25;
 var tout=function(){
 if(transQueue.length>0){
 var a=transQueue.pop();
