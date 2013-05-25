@@ -437,7 +437,7 @@ let _=
       ) (Sys.readdir "src/plugins");
 
 
-      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
+      Printf.fprintf out "\tinstall -m 755 -d $(DESTDIR)%s\n" (escape !plugins_dir);
       Printf.fprintf out "\tinstall -p -m 644 src/Drivers/patonet.ml $(DESTDIR)%s/patonet.ml\n" (escape !plugins_dir);
 
       (* emacs *)
