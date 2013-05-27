@@ -24,7 +24,8 @@ exception File_not_found of (string*string list)
 (** Chercher un fichier dans un chemin *)
 let findPath f path=
   let rec findPath f=function
-      []->(List.iter (Printf.printf "%s\n") path;raise (File_not_found (f,path)))
+      []->(Printf.printf "%s\n" (TypoLanguage.message (TypoLanguage.FileNotFound f));
+           List.iter (Printf.printf "%s\n") path;raise (File_not_found (f,path)))
     | h::s when Sys.file_exists (Filename.concat h f)->(Filename.concat h f)
     | h::s -> (findPath f s)
   in

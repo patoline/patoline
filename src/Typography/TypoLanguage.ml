@@ -26,6 +26,7 @@ type message=
   | Opt_error of optimization_error
   | Normal
   | PleaseReport of string
+  | FileNotFound of string
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans
 #endif
@@ -49,6 +50,7 @@ let message=function
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Votre choix de police (comic sans) est moche.\nConsultez http://bancomicsans.com pour plus d'informations\n"
 #endif
+  | FileNotFound s->Printf.sprintf "Le fichier \"%s\" n'a pas été trouvé\n"
   | _->""
 #else
 #define LANG_EN
@@ -64,5 +66,6 @@ let message=function
 #ifdef BAN_COMIC_SANS
   | Ban_comic_sans->"Bad taste detected in font choice.\nPlease go to http://bancomicsans.com for more informations\n"
 #endif
+  | FileNotFound s->Printf.sprintf "File \"%s\" was not found\n"
   | _->""
 #endif
