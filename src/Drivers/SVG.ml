@@ -341,7 +341,7 @@ if(n>current_slide)
 else if(n<current_slide)
   loadSlide(n,0,function(a,b){slide(%g,a,b)});
 setTimeout(tout,to);
-}" w (-.w) w (-.w)
+}" (-.w) w (-.w) w
     | Some x->x
   in
 
@@ -417,7 +417,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
   xhttp.send();
-  if(xhttp.status==200){
+  if(xhttp.status==200 || xhttp.status==0){
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
 
