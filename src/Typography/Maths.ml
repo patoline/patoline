@@ -18,6 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open CamomileLibrary
+open ConfigUtil
 open Util
 open OutputCommon
 open Box

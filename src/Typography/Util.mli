@@ -1,9 +1,3 @@
-
-exception File_not_found of (string * string list)
-val findPath : string -> string list -> string
-val findFont : string -> string
-val findGrammar : string -> string
-val findHyph : string -> string
 val pt_of_mm : float -> float
 val mm_of_pt : float -> float
 val a4 : float * float

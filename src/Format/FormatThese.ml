@@ -22,6 +22,7 @@ open Typography.Fonts
 open Typography.Fonts.FTypes
 open Typography.Document
 open Typography.Util
+open Typography.ConfigUtil
 open CamomileLibrary
 open Typography.Box
 open Typography.Layout

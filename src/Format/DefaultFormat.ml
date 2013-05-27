@@ -22,6 +22,7 @@ open Typography.Document
 open Typography.Complete
 open Typography.Fonts.FTypes
 open Typography.Util
+open Typography.ConfigUtil
 open Typography.Fonts
 open Typography.Box
 open Typography.Layout
@@ -1714,7 +1715,7 @@ module Format=functor (D:Document.DocumentStructure)->(
   end)
 
 module MathFonts = struct
-  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Asana-Math/Asana-Math.otf"))
+  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "Asana-Math/Asana-Math.otf"))
   let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
 
   let adjusted_asana_delimiters' name ls =
@@ -1741,7 +1742,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "Euler/euler.otf"))
+  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "Euler/euler.otf"))
   let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
 
   let adjusted_euler_delimiters name ls =
@@ -1755,7 +1756,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (Typography.Util.findFont "AMS/ams.otf"))
+  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "AMS/ams.otf"))
   let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
 end
 

@@ -21,6 +21,7 @@
 open Typography.OutputCommon
 open Typography.OutputPaper
 open Typography.Util
+open Typography.ConfigUtil
 open HtmlFonts
 
 

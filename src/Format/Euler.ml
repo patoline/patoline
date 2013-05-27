@@ -127,6 +127,7 @@ open Document
 open Document.Mathematical
 open Maths
 open Util
+open ConfigUtil
 
 
 let compose f g x=f(g x)
