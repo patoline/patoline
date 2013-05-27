@@ -117,16 +117,21 @@ let resp_slave fd data=
     let c0=(fin lsl 7) lor (rsv1 lsl 6) lor (rsv2 lsl 5) lor (rsv3 lsl 4) lor opcode in
     Buffer.add_char x (char_of_int c0);
 
-    let mask=0 in
+    let mask=[|0;0;0;0|] in
+    (* mask.(0)<-Random.int 0x100; *)
+    (* mask.(1)<-Random.int 0x100; *)
+    (* mask.(2)<-Random.int 0x100; *)
+    (* mask.(3)<-Random.int 0x100; *)
+
     let payload_len=min (String.length data - !pos) packet_len in
     if payload_len<=125 then (
-      Buffer.add_char x (char_of_int ((mask lsl 7) lor payload_len));
+      Buffer.add_char x (char_of_int (payload_len));
     ) else if payload_len <= 0xffff then (
-      Buffer.add_char x (char_of_int ((mask lsl 7) lor 126));
+      Buffer.add_char x (char_of_int 126);
       Buffer.add_char x (char_of_int (payload_len lsr 8));
       Buffer.add_char x (char_of_int (payload_len land 0xff))
     ) else (
-      Buffer.add_char x (char_of_int ((mask lsl 7) lor 126));
+      Buffer.add_char x (char_of_int 127);
       Buffer.add_char x (char_of_int ((payload_len lsr 56) land 0xff));
       Buffer.add_char x (char_of_int ((payload_len lsr 48) land 0xff));
       Buffer.add_char x (char_of_int ((payload_len lsr 40) land 0xff));
@@ -136,7 +141,15 @@ let resp_slave fd data=
       Buffer.add_char x (char_of_int ((payload_len lsr 8) land 0xff));
       Buffer.add_char x (char_of_int (payload_len land 0xff))
     );
-    Buffer.add_substring x data !pos payload_len;
+    (* Buffer.add_char x (char_of_int mask.(0)); *)
+    (* Buffer.add_char x (char_of_int mask.(1)); *)
+    (* Buffer.add_char x (char_of_int mask.(2)); *)
+    (* Buffer.add_char x (char_of_int mask.(3)); *)
+
+    for i= !pos to !pos+payload_len-1 do
+      Buffer.add_char x (char_of_int (int_of_char data.[i] lxor mask.((i- !pos) land 3)))
+    done;
+    (* Buffer.add_substring x data !pos payload_len; *)
     let s=Buffer.contents x in
     let _=Unix.write fd s 0 (String.length s) in
     pos:= !pos+packet_len
@@ -215,6 +228,7 @@ let serve_css ouc=
   output_string ouc "\r\n";
   flush ouc
 
+let master_page=ref ""
 
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css=Str.regexp "/style\\.css"
@@ -225,7 +239,6 @@ let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
-let master_page=ref ""
 
 let serve addr fd=
   Unix.clear_nonblock fd;
@@ -263,6 +276,32 @@ let serve addr fd=
         Printf.fprintf ouc "Content-Length: %d\r\n" (String.length page);
         output_string ouc "\r\n";
         output_string ouc page;
+        output_string ouc "\r\n";
+        flush ouc;
+        process_req "" [] []
+
+      ) else if get="/etat" then (
+        let data=Buffer.create 1000 in
+        Buffer.add_string data "{\"slides\"=[";
+        for i=0 to Array.length slides-1 do
+          if i>0 then Buffer.add_char data ',';
+          Buffer.add_string data (Printf.sprintf "%d" (Array.length slides.(i)));
+        done;
+        Buffer.add_string data "],";
+        Buffer.add_string data (Printf.sprintf "\"slide\"=%d," present.cur_slide);
+        Buffer.add_string data (Printf.sprintf "\"state\"=%d," present.cur_state);
+        let t=
+          let time=Unix.time() in
+          if present.starttime=0. then 0. else (time-.present.starttime)
+        in
+        Buffer.add_string data (Printf.sprintf "\"time\"=%g" t);
+        Buffer.add_char data '}';
+
+        output_string ouc "HTTP/1.1 200 OK\r\n";
+        output_string ouc "Content-type: text/plain\r\n";
+        Printf.fprintf ouc "Content-Length: %d\r\n" (Buffer.length data);
+        output_string ouc "\r\n";
+        Buffer.output_buffer ouc data;
         output_string ouc "\r\n";
         flush ouc;
         process_req "" [] []
