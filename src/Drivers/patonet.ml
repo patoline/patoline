@@ -464,15 +464,24 @@ let serve addr fd=
   with
       _->(Unix.close fd)
 
+let spec=
+  [("-master",Arg.Set_string master_page,"Set the master page")]
 
 let _=
+  Arg.parse spec (fun x->()) "";
+  if !master_page="" then (
+    Random.self_init ();
+    master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));
+  );
+  if !master_page.[0]<>'/' then master_page:="/"^(!master_page);
+
   let master_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt master_sock Unix.SO_REUSEADDR true;
   let port=8080 in
   Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
   Unix.listen master_sock 100;
-  Random.self_init ();
-  master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));
+
+
   Printf.printf "Listening on port %d -- master: \"%s\"\n" port !master_page;
   flush stdout;
   let accept_connections ()=
