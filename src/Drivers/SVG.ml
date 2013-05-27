@@ -118,7 +118,7 @@ let draw ?fontCache prefix w h contents=
   let cur_cls=ref (-1) in
   let opened_text=ref false in
   let opened_tspan=ref false in
-
+  let imgs=ref StrMap.empty in
   let rec output_contents cont=match cont with
       Glyph x->(
         if not !opened_text then (
@@ -221,7 +221,7 @@ let draw ?fontCache prefix w h contents=
         if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name
       in
       let name=nonexistent 0 in
-      copy_file i.image_file (Filename.concat prefix name);
+      imgs:=StrMap.add i.image_file name !imgs;
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
            i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height name)
@@ -270,7 +270,7 @@ let draw ?fontCache prefix w h contents=
     Rbuffer.add_string svg_buf "</text>\n";
   );
 
-  svg_buf
+  svg_buf,!imgs
 
 
 
@@ -288,7 +288,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   ) 0 pages
   in
   let cache=build_font_cache prefix (Array.map (fun x->x.pageContents) all_pages) in
-
+  let imgs=ref StrMap.empty in
   let svg_files=Array.map (fun pi->
     Array.map (fun page->
       let file=Rbuffer.create 10000 in
@@ -299,18 +299,53 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
       let sorted_pages=OutputCommon.sort_raw page.pageContents in
-      let svg=draw ~fontCache:cache prefix w h sorted_pages in
+      let svg,imgs0=draw ~fontCache:cache prefix w h sorted_pages in
+      imgs:=StrMap.fold StrMap.add imgs0 !imgs;
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
       file
     ) pi
   ) pages
   in
-  svg_files,cache
+  svg_files,cache,!imgs
 
-let basic_html cache structure pages prefix=
+let basic_html ?script:(script="") ?onload:(onload="") ?onhashchange:(onhashchange="")
+    ?keyboard
+    cache structure pages prefix=
   let html=Rbuffer.create 10000 in
   let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
+  let keyboard=match keyboard with
+      None->Printf.sprintf "window.onkeydown=function(e){
+if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
+if(current_state<=0 || e.keyCode==38) {
+  loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
+} else {
+  loadSlide(current_slide,current_state-1)
+}
+} //left
+if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
+if(current_state>=states[current_slide]-1 || e.keyCode==40) {
+  loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
+} else {
+  loadSlide(current_slide,current_state+1)
+}
+} else //right
+if(e.keyCode==82){ //r
+loadSlide(current_slide,current_state);
+}
+setTimeout(tout,to);
+}
+function gotoSlide(n){
+if(n>current_slide)
+  loadSlide(n,0,function(a,b){slide(%g,a,b)});
+else if(n<current_slide)
+  loadSlide(n,0,function(a,b){slide(%g,a,b)});
+setTimeout(tout,to);
+}" w (-.w) w (-.w)
+    | Some x->x
+  in
+
+
   Rbuffer.add_string html
     "<!DOCTYPE html>
 <html lang=\"en\">
@@ -321,8 +356,8 @@ let basic_html cache structure pages prefix=
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title>\n";
   Rbuffer.add_string html "<script>
-var current_slide= -1;
-var current_state= -1;
+var current_slide=-1;
+var current_state=0;
 var seq=0;
 var transQueue=new Array();
 var queue=new Array();
@@ -379,14 +414,14 @@ var qi=0,qj=0;
   Rbuffer.add_string html (
     Printf.sprintf "function loadSlide(n,state,effect){
 if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state)) {
-    xhttp=new XMLHttpRequest();
-    xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
-    xhttp.send();
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
+  xhttp.send();
+  if(xhttp.status==200){
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
 
     var svg=document.getElementsByTagName(\"svg\")[0];
-
     newSvg=document.importNode(newSvg.rootElement,true);
 
     var cur_g=queue[qi-1];
@@ -436,6 +471,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
     current_slide=n;
     current_state=state;
     location.hash=n+\"_\"+state;
+  }
 }}"
       (Array.length pages)
       w
@@ -453,6 +489,7 @@ transQueue.shift();
 setTimeout(tout,to);
 };
 };
+%s
 
 window.onload=function(){
 var h0=0,h1=0;
@@ -461,7 +498,7 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
-loadSlide(h0,h1);
+%s
 tout();
 };
 
@@ -472,43 +509,14 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
-loadSlide(h0,h1)
+%s
 };
-
-window.onkeydown=function(e){
-//console.log(e);
-if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
-if(current_state<=0 || e.keyCode==38) {
-  loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
-} else {
-  loadSlide(current_slide,current_state-1)
-}
-} //left
-if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
-if(current_state>=states[current_slide]-1 || e.keyCode==40) {
-  loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
-} else {
-  loadSlide(current_slide,current_state+1)
-}
-} else //right
-if(e.keyCode==82){ //r
-loadSlide(current_slide,current_state);
-}
-setTimeout(tout,to);
-}
-function gotoSlide(n){
-if(n>current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)});
-else if(n<current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)});
-setTimeout(tout,to);
-}
-
+%s
 </script>"
-      (-.w)
-      w
-      w
-      (-.w)
+      script
+      (if onload="" then "loadSlide(h0,h1);" else onload)
+      (if onhashchange="" then "loadSlide(h0,h1);" else onhashchange)
+      keyboard
   );
 
   Rbuffer.add_string html "<title>";
@@ -518,15 +526,13 @@ setTimeout(tout,to);
 
   let style=make_defs "" cache in
   let ststr=(Filename.concat prefix "style.css") in
-  let o=open_out (Filename.concat prefix "style.css") in
-  Rbuffer.output_buffer o style;
-  close_out o;
+
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"";
   Rbuffer.add_string html ststr;
   Rbuffer.add_string html "\"/>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
-  html
+  html,style
 
 
 
@@ -550,10 +556,16 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
    with
        _->());
 
-  let svg_files,cache=buffered_output' ~structure:structure pages prefix in
-  let html=basic_html cache structure pages prefix in
+  let svg_files,cache,imgs=buffered_output' ~structure:structure pages prefix in
+  StrMap.fold (fun k a _->
+    copy_file k (Filename.concat prefix a)
+  ) imgs ();
+  let html,style=basic_html cache structure pages prefix in
   let o=open_out (Filename.concat (Filename.basename prefix) "index.html") in
   Rbuffer.output_buffer o html;
+  close_out o;
+  let o=open_out (Filename.concat prefix "style.css") in
+  Rbuffer.output_buffer o style;
   close_out o;
 
   Array.iteri (fun i->
@@ -624,7 +636,10 @@ let images prefix env conts=
                             (floor x0) (h-.y1) (ceil (x1-.floor x0)) (y1-.y0)
                             (y0));
 
-    let dr=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
+    let dr,imgs=draw ~fontCache:cache prefix w (y1 -. y0) raws.(i) in
+    StrMap.fold (fun k a _->
+      copy_file k a
+    ) imgs ();
     HtmlFonts.output_fonts cache;
 
     (* Rbuffer.add_string r (Printf.sprintf "<defs><style type=\"text/css\" src=\"%s\"/></defs>" css_file); *)
