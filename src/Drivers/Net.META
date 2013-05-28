@@ -1,0 +1,5 @@
+package "Net" (
+archive(byte)="Net.cma"
+archive(native)="Net.cmxa"
+requires="Typography.SVG"
+)
