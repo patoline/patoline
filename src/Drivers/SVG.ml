@@ -412,9 +412,9 @@ var qi=0,qj=0;
   Rbuffer.add_string html "];";
 
   Rbuffer.add_string html (
-    Printf.sprintf "function loadSlide(n,state,effect){
+    Printf.sprintf "xhttp=new XMLHttpRequest();
+function loadSlide(n,state,effect){
 if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state)) {
-  xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
   xhttp.send();
   if(xhttp.status==200 || xhttp.status==0){

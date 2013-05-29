@@ -156,9 +156,11 @@ let resp_slave fd data=
   done
 
 let pushto a=
-  let time=Unix.time() in
-  resp_slave a (Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g }" present.cur_slide present.cur_state (if present.starttime=0. then 0. else (time-.present.starttime)))
-
+  try
+    let time=Unix.time() in
+    resp_slave a (Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g }" present.cur_slide present.cur_state (if present.starttime=0. then 0. else (time-.present.starttime)))
+  with
+      _->()
 let push ()=
   addrs:=AddrMap.fold (fun k a m->
     try
@@ -244,225 +246,237 @@ let serve addr fd=
   Unix.clear_nonblock fd;
   let inc=Unix.in_channel_of_descr fd in
   let ouc=Unix.out_channel_of_descr fd in
-  let rec process_req get hdr reste=
-    let x=input_line inc in
-    if x.[0]='\r' then (
+  let rec requests ()=
+    let rec process_req get hdr reste=
+      let x=input_line inc in
+      if x.[0]='\r' then (
 
-      if Str.string_match svg get 0 then (
-        let i=int_of_string (Str.matched_group 1 get) in
-        let j=int_of_string (Str.matched_group 2 get) in
-        Mutex.lock mut;
-        let pi=present.cur_slide and pj=present.cur_state in
-        Mutex.unlock mut;
-        if i<pi || (i=pi && j<=pj) then
-          serve_svg i j  ouc
-        else
-          generate_error ouc;
-        process_req "" [] []
-
-      ) else if get= !master_page then (
-        output_string ouc "HTTP/1.1 200 OK\r\n";
-        output_string ouc "Content-type: text/html\r\n";
-        Printf.fprintf ouc "Content-Length: %d\r\n" (String.length master);
-        output_string ouc "\r\n";
-        output_string ouc master;
-        output_string ouc "\r\n";
-        flush ouc;
-        process_req "" [] []
-
-      ) else if get="/" then (
-        output_string ouc "HTTP/1.1 200 OK\r\n";
-        output_string ouc "Content-type: text/html\r\n";
-        Printf.fprintf ouc "Content-Length: %d\r\n" (String.length page);
-        output_string ouc "\r\n";
-        output_string ouc page;
-        output_string ouc "\r\n";
-        flush ouc;
-        process_req "" [] []
-
-      ) else if get="/etat" then (
-        let data=Buffer.create 1000 in
-        Buffer.add_string data "{\"slides\"=[";
-        for i=0 to Array.length slides-1 do
-          if i>0 then Buffer.add_char data ',';
-          Buffer.add_string data (Printf.sprintf "%d" (Array.length slides.(i)));
-        done;
-        Buffer.add_string data "],";
-        Buffer.add_string data (Printf.sprintf "\"slide\"=%d," present.cur_slide);
-        Buffer.add_string data (Printf.sprintf "\"state\"=%d," present.cur_state);
-        let t=
-          let time=Unix.time() in
-          if present.starttime=0. then 0. else (time-.present.starttime)
-        in
-        Buffer.add_string data (Printf.sprintf "\"time\"=%g" t);
-        Buffer.add_char data '}';
-
-        output_string ouc "HTTP/1.1 200 OK\r\n";
-        output_string ouc "Content-type: text/plain\r\n";
-        Printf.fprintf ouc "Content-Length: %d\r\n" (Buffer.length data);
-        output_string ouc "\r\n";
-        Buffer.output_buffer ouc data;
-        output_string ouc "\r\n";
-        flush ouc;
-        process_req "" [] []
-
-      ) else if get="/tire" then (
-        try
-          begin
-            try
-              let key=
-                let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
-                let sha=Cryptokit.Hash.sha1 () in
-                sha#add_string websocket_key;
-                sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-                base64_encode (sha#result)
-              in
-              output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-Websocket-Accept: ";
-              output_string ouc key;
-              output_string ouc "\r\n\r\n";
-              flush ouc;
-            with
-              (* Version Apple *)
-                Not_found->(
-                  let key=
-                    let wk1=List.assoc "Sec-WebSocket-Key1" hdr in
-                    let wk2=List.assoc "Sec-WebSocket-Key2" hdr in
-                    let wk1_dig=Buffer.create (String.length wk1) in
-                    let wk2_dig=Buffer.create (String.length wk1) in
-                    let wk1_sp=ref 0 in
-                    let wk2_sp=ref 0 in
-                    for i=0 to String.length wk1-1 do
-                      if wk1.[i]>='0' && wk1.[i]<='9' then Buffer.add_char wk1_dig wk1.[i]
-                      else if wk1.[i]=' ' then incr wk1_sp
-                    done;
-                    for i=0 to String.length wk2-1 do
-                      if wk2.[i]>='0' && wk2.[i]<='9' then Buffer.add_char wk2_dig wk2.[i]
-                      else if wk2.[i]=' ' then incr wk2_sp
-                    done;
-                    let wk1=int_of_string (Buffer.contents wk1_dig)/(min 1 !wk1_sp) in
-                    let wk2=int_of_string (Buffer.contents wk1_dig)/(min 1 !wk2_sp) in
-                    let k=String.create 16 in
-                    k.[0]<-(char_of_int ((wk1 lsr 24) land 0xff));
-                    k.[1]<-(char_of_int ((wk1 lsr 16) land 0xff));
-                    k.[2]<-(char_of_int ((wk1 lsr 8) land 0xff));
-                    k.[3]<-(char_of_int (wk1 land 0xff));
-
-                    k.[4]<-(char_of_int ((wk2 lsr 24) land 0xff));
-                    k.[5]<-(char_of_int ((wk2 lsr 16) land 0xff));
-                    k.[6]<-(char_of_int ((wk2 lsr 8) land 0xff));
-                    k.[7]<-(char_of_int (wk2 land 0xff));
-                    let _=input inc k 8 8 in
-                    let md5=Cryptokit.Hash.md5 () in
-                    md5#add_string k;
-                    md5#result
-                  in
-                  let orig=List.assoc "Origin" hdr in
-
-                  output_string ouc "HTTP/1.1 101 WebSocket Protocol Handshake";
-                  output_string ouc "\r\nUpgrade: WebSocket\r\nConnection: Upgrade\r\nSec-WebSocket-Origin: ";
-                  let ws=
-                    try
-                      let i=String.index orig '/' in
-                      String.sub orig (i+2) (String.length orig-i-2)
-                    with
-                        Not_found->orig
-                  in
-                  output_string ouc orig;
-                  output_string ouc "\r\nSec-WebSocket-Location: ws://";
-                  output_string ouc ws;
-                  output_string ouc "/tire\r\n\r\n";
-                  output_string ouc key;
-                  flush ouc;
-                );
-          end;
-          pushto fd;
+        if Str.string_match svg get 0 then (
+          let i=int_of_string (Str.matched_group 1 get) in
+          let j=int_of_string (Str.matched_group 2 get) in
           Mutex.lock mut;
-          addrs:=AddrMap.add addr fd !addrs;
+          let pi=present.cur_slide and pj=present.cur_state in
           Mutex.unlock mut;
+          if i<pi || (i=pi && j<=pj) then
+            serve_svg i j  ouc
+          else
+            generate_error ouc;
 
-        with
-            Not_found->(
-              Mutex.lock mut;
-              addrs:=AddrMap.add addr fd !addrs;
-              Mutex.unlock mut;
-            )
-
-      ) else if Str.string_match pousse get 0 then (
-
-        let slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-        let slide=min slide (Array.length slides-1) in
-        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-        let state=min state (Array.length slides.(slide)-1) in
-        Mutex.lock mut;
-        if present.cur_slide<>slide || present.cur_state<>state then (
-          present.cur_slide<-slide;
-          present.cur_state<-state;
-          if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-            present.starttime<-Unix.time();
-          push ();
-        );
-        Mutex.unlock mut;
-        let notfound="Ok" in
-        Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
-        (String.length notfound) notfound;
-        flush ouc;
-
-        process_req "" [] reste
-
-      ) else if Str.string_match css get 0 then (
-        serve_css ouc;
-        process_req "" [] reste
-
-      ) else if Str.string_match otf get 0 then (
-        serve_font (Str.matched_group 1 get) ouc;
-        process_req "" [] reste
-
-      ) else (
-
-        try
-          let img=List.assoc (String.sub get 1 (String.length get-1)) imgs in
-          let ext=
-            if Filename.check_suffix ".png" get then "image/png" else
-            if Filename.check_suffix ".jpeg" get then "image/jpeg" else
-            if Filename.check_suffix ".jpg" get then "image/jpg" else
-            if Filename.check_suffix ".gif" get then "image/gif" else
-              "application/octet-stream"
-          in
+        ) else if get= !master_page then (
           output_string ouc "HTTP/1.1 200 OK\r\n";
-          output_string ouc "Content-type: ";
-          output_string ouc ext;
-          Printf.fprintf ouc "\r\nContent-Length: %d\r\n" (String.length img);
+          output_string ouc "Content-type: text/html\r\n";
+          Printf.fprintf ouc "Content-Length: %d\r\n" (String.length master);
           output_string ouc "\r\n";
-          output_string ouc img;
+          output_string ouc master;
           output_string ouc "\r\n";
           flush ouc;
-          process_req "" [] []
-        with
-            Not_found->(
-              let notfound="Not found" in
-              Printf.fprintf ouc "HTTP/1.1 404 Not_found\r\nContent-length: %d\r\n\r\n%s\r\n"
-                (String.length notfound) notfound;
-              flush ouc;
-              process_req "" [] reste
-            );
-      )
 
-    ) else (
-      if hdr=[] && Str.string_match get_reg x 0 then (
-        process_req (Str.matched_group 1 x) hdr reste
-      ) else if Str.string_match header x 0 then (
-        let a=Str.matched_group 1 x in
-        let b=Str.matched_group 2 x in
-        process_req get ((a,b)::hdr) reste
+        ) else if get="/" then (
+          output_string ouc "HTTP/1.1 200 OK\r\n";
+          output_string ouc "Content-type: text/html\r\n";
+          Printf.fprintf ouc "Content-Length: %d\r\n" (String.length page);
+          output_string ouc "\r\n";
+          output_string ouc page;
+          output_string ouc "\r\n";
+          flush ouc;
+
+        ) else if get="/etat" then (
+          let data=Buffer.create 1000 in
+          Buffer.add_string data "{\"slides\"=[";
+          for i=0 to Array.length slides-1 do
+            if i>0 then Buffer.add_char data ',';
+            Buffer.add_string data (Printf.sprintf "%d" (Array.length slides.(i)));
+          done;
+          Buffer.add_string data "],";
+          Buffer.add_string data (Printf.sprintf "\"slide\"=%d," present.cur_slide);
+          Buffer.add_string data (Printf.sprintf "\"state\"=%d," present.cur_state);
+          let t=
+            let time=Unix.time() in
+            if present.starttime=0. then 0. else (time-.present.starttime)
+          in
+          Buffer.add_string data (Printf.sprintf "\"time\"=%g" t);
+          Buffer.add_char data '}';
+
+          output_string ouc "HTTP/1.1 200 OK\r\n";
+          output_string ouc "Content-type: text/plain\r\n";
+          Printf.fprintf ouc "Content-Length: %d\r\n" (Buffer.length data);
+          output_string ouc "\r\n";
+          Buffer.output_buffer ouc data;
+          output_string ouc "\r\n";
+          flush ouc;
+
+        ) else if get="/tire" then (
+          try
+            begin
+              try
+                let key=
+                  let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
+                  let sha=Cryptokit.Hash.sha1 () in
+                  sha#add_string websocket_key;
+                  sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+                  base64_encode (sha#result)
+                in
+                output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-Websocket-Accept: ";
+                output_string ouc key;
+                output_string ouc "\r\n\r\n";
+                flush ouc;
+              with
+                  (* Version Apple *)
+                  Not_found->(
+                    let key=
+                      let wk1=List.assoc "Sec-WebSocket-Key1" hdr in
+                      let wk2=List.assoc "Sec-WebSocket-Key2" hdr in
+                      let wk1_dig=Buffer.create (String.length wk1) in
+                      let wk2_dig=Buffer.create (String.length wk1) in
+                      let wk1_sp=ref 0 in
+                      let wk2_sp=ref 0 in
+                      for i=0 to String.length wk1-1 do
+                        if wk1.[i]>='0' && wk1.[i]<='9' then Buffer.add_char wk1_dig wk1.[i]
+                        else if wk1.[i]=' ' then incr wk1_sp
+                      done;
+                      for i=0 to String.length wk2-1 do
+                        if wk2.[i]>='0' && wk2.[i]<='9' then Buffer.add_char wk2_dig wk2.[i]
+                        else if wk2.[i]=' ' then incr wk2_sp
+                      done;
+                      let wk1=int_of_string (Buffer.contents wk1_dig)/(min 1 !wk1_sp) in
+                      let wk2=int_of_string (Buffer.contents wk1_dig)/(min 1 !wk2_sp) in
+                      let k=String.create 16 in
+                      k.[0]<-(char_of_int ((wk1 lsr 24) land 0xff));
+                      k.[1]<-(char_of_int ((wk1 lsr 16) land 0xff));
+                      k.[2]<-(char_of_int ((wk1 lsr 8) land 0xff));
+                      k.[3]<-(char_of_int (wk1 land 0xff));
+
+                      k.[4]<-(char_of_int ((wk2 lsr 24) land 0xff));
+                      k.[5]<-(char_of_int ((wk2 lsr 16) land 0xff));
+                      k.[6]<-(char_of_int ((wk2 lsr 8) land 0xff));
+                      k.[7]<-(char_of_int (wk2 land 0xff));
+                      let _=input inc k 8 8 in
+                      let md5=Cryptokit.Hash.md5 () in
+                      md5#add_string k;
+                      md5#result
+                    in
+                    let orig=List.assoc "Origin" hdr in
+
+                    output_string ouc "HTTP/1.1 101 WebSocket Protocol Handshake";
+                    output_string ouc "\r\nUpgrade: WebSocket\r\nConnection: Upgrade\r\nSec-WebSocket-Origin: ";
+                    let ws=
+                      try
+                        let i=String.index orig '/' in
+                        String.sub orig (i+2) (String.length orig-i-2)
+                      with
+                          Not_found->orig
+                    in
+                    output_string ouc orig;
+                    output_string ouc "\r\nSec-WebSocket-Location: ws://";
+                    output_string ouc ws;
+                    output_string ouc "/tire\r\n\r\n";
+                    output_string ouc key;
+                    flush ouc;
+                  );
+            end;
+            pushto fd;
+            Mutex.lock mut;
+            addrs:=AddrMap.add addr fd !addrs;
+            Mutex.unlock mut;
+
+          with
+              Not_found->(
+                Mutex.lock mut;
+                addrs:=AddrMap.add addr fd !addrs;
+                Mutex.unlock mut;
+              )
+
+        ) else if Str.string_match pousse get 0 then (
+
+          let asked_slide=int_of_string (Str.matched_group 1 get) in
+          let slide=max 0 asked_slide in
+          let slide=min slide (Array.length slides-1) in
+          let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+          let state=if asked_slide>slide then
+              (Array.length slides.(slide)-1)
+            else
+              min state (Array.length slides.(slide)-1)
+          in
+          Mutex.lock mut;
+          if present.cur_slide<>slide || present.cur_state<>state then (
+            present.cur_slide<-slide;
+            present.cur_state<-state;
+            if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
+              present.starttime<-Unix.time();
+            push ();
+          );
+          Mutex.unlock mut;
+          let notfound="Ok" in
+          Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
+            (String.length notfound) notfound;
+          flush ouc;
+
+          process_req "" [] reste
+
+        ) else if Str.string_match css get 0 then (
+          serve_css ouc;
+          process_req "" [] reste
+
+        ) else if Str.string_match otf get 0 then (
+          serve_font (Str.matched_group 1 get) ouc;
+          process_req "" [] reste
+
+        ) else (
+
+          try
+            let img=List.assoc (String.sub get 1 (String.length get-1)) imgs in
+            let ext=
+              if Filename.check_suffix ".png" get then "image/png" else
+                if Filename.check_suffix ".jpeg" get then "image/jpeg" else
+                  if Filename.check_suffix ".jpg" get then "image/jpg" else
+                    if Filename.check_suffix ".gif" get then "image/gif" else
+                      "application/octet-stream"
+            in
+            output_string ouc "HTTP/1.1 200 OK\r\n";
+            output_string ouc "Content-type: ";
+            output_string ouc ext;
+            Printf.fprintf ouc "\r\nContent-Length: %d\r\n" (String.length img);
+            output_string ouc "\r\n";
+            output_string ouc img;
+            output_string ouc "\r\n";
+            flush ouc;
+            process_req "" [] []
+          with
+              Not_found->(
+                let notfound="Not found" in
+                Printf.fprintf ouc "HTTP/1.1 404 Not_found\r\nContent-length: %d\r\n\r\n%s\r\n"
+                  (String.length notfound) notfound;
+                flush ouc;
+                process_req "" [] reste
+              );
+        )
+
       ) else (
-        process_req get hdr (x::reste)
-      );
-    )
+        if hdr=[] && Str.string_match get_reg x 0 then (
+          process_req (Str.matched_group 1 x) hdr reste
+        ) else if Str.string_match header x 0 then (
+          let a=Str.matched_group 1 x in
+          let b=Str.matched_group 2 x in
+          process_req get ((a,b)::hdr) reste
+        ) else (
+          process_req get hdr (x::reste)
+        );
+      )
+    in
+    let fdi=Unix.descr_of_in_channel inc in
+    let sel,_,_=Unix.select [fdi] [] [] 30. in
+    if sel<>[] then (
+      process_req "" [] [];
+    );
+    requests ()
   in
   try
-    process_req "" [] []
+    let a : unit=requests () in
+    a;
+    Thread.exit ();
   with
-      _->(Unix.close fd)
+      e->(Unix.close fd;
+          Thread.exit ())
 
 let spec=
   [("-master",Arg.Set_string master_page,"Set the master page")]

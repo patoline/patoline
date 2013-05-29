@@ -95,7 +95,6 @@ if(e.keyCode==82){ //r
   xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state),false);
   xhttp.send();
 }
-setTimeout(tout,to);
 }
 function gotoSlide(n){
   xhttp=new XMLHttpRequest();
@@ -108,7 +107,7 @@ function gotoSlide(n){
 
   let master,_=SVG.basic_html
     ~script:(websocket (fst (pages.(0)).(0).pageFormat))
-    ~onload:"start_socket();websocket.onopen=function(){xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send()};"
+    ~onload:"to=0;start_socket();websocket.onopen=function(){xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send()};"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard
     cache structure pages prefix
