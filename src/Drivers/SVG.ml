@@ -356,8 +356,9 @@ setTimeout(tout,to);
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title>\n";
   Rbuffer.add_string html "<script>
-var current_slide=-1;
+var current_slide=0;
 var current_state=0;
+var first_displayed=false;
 var seq=0;
 var transQueue=new Array();
 var queue=new Array();
@@ -414,7 +415,8 @@ var qi=0,qj=0;
   Rbuffer.add_string html (
     Printf.sprintf "xhttp=new XMLHttpRequest();
 function loadSlide(n,state,effect){
-if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state)) {
+if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state || !first_displayed)) {
+  first_displayed=true;
   xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
   xhttp.send();
   if(xhttp.status==200 || xhttp.status==0){

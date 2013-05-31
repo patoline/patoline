@@ -25,13 +25,10 @@ open Typography.ConfigUtil
 open HtmlFonts
 
 
-let websocket w=
-  Printf.sprintf "var websocket;
-function start_socket(){
-   if(websocket) websocket.close();
-   websocket=new WebSocket(\"ws://\"+location.host+\"/tire\");
-   websocket.onclose=function(evt){};
-   websocket.onmessage = function(evt) {
+let websocket is_master w=
+  Printf.sprintf "var websocket;var was_error;
+function websocket_msg(evt){
+     console.log(evt);
      var st=JSON.parse(evt.data);
      if(st.slide==current_slide || current_slide==(-1)) {
          loadSlide(st.slide,st.state);
@@ -43,8 +40,19 @@ function start_socket(){
      current_slide=st.slide;
      current_state=st.state;
      setTimeout(tout,to);
-   };
-   websocket.onerror = function(evt) { };
+};
+function websocket_err(evt){
+was_error=true;
+websocket.close();
+};
+function websocket_close(evt){if(!was_error){setTimeout(start_socket,1000)}};
+function start_socket(){
+   was_error=false;
+   if(websocket){websocket.close();delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror};
+   websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"%s);
+   websocket.onclose=websocket_close;
+   websocket.onmessage = websocket_msg;
+   websocket.onerror = websocket_err;
 };
 window.onbeforeunload = function() {
     websocket.onclose = function () {}; // disable onclose handler first
@@ -53,6 +61,7 @@ window.onbeforeunload = function() {
 "
     (-.w)
     w
+    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -60,7 +69,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let prefix=try Filename.chop_extension filename with _->filename in
   let svg_files,cache,imgs=SVG.buffered_output' ~structure:structure pages prefix in
   let html,style=SVG.basic_html
-    ~script:(websocket (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
     ~onload:"start_socket();"
     ~keyboard:""
     cache structure pages prefix
@@ -106,7 +115,7 @@ function gotoSlide(n){
 
 
   let master,_=SVG.basic_html
-    ~script:(websocket (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket true (fst (pages.(0)).(0).pageFormat))
     ~onload:"to=0;start_socket();websocket.onopen=function(){xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send()};"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard

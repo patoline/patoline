@@ -147,6 +147,7 @@ install:
 	make -C .. install
 
 clean:
+	make -C Rbuffer clean
 	make -C Typography clean
 	make -C Format clean
 	make -C Drivers clean
