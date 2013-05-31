@@ -25,7 +25,7 @@ type cmd = Next_page | Next_state | Prev_page | Prev_state | Goto of int * int |
 
 let opened_fd = ref []
 let connection_id = ref 0
- 
+
 let rec service master_sock netcgi_processor =
   try
   let (infd,_,errfd) =
@@ -317,5 +317,3 @@ let handle_one port=
   Printf.fprintf stderr "Listening on port %d\n" port;
   flush stderr;
   (fun () -> service master_sock process)
-
-

@@ -34,7 +34,6 @@ let plugins_dirs=ref []
 let hyphen_dirs=ref []
 let lang=ref "FR"
 let ban_comic_sans=ref false
-let use_camlimages=ref true
 let int32=ref (Sys.word_size=32)
 
 let avail_lang=
@@ -80,6 +79,7 @@ let ocamlfind_query =
   let ocamlfind_aliases =
     [
       ["zip"; "camlzip"];
+      ["cairo"; "ocaml-cairo"];
       ["lablgl"; "lablGL"];
       ["lablgl.glut"; "lablGL.glut"]
     ]
@@ -157,7 +157,7 @@ let patoline_driver_gl2 =
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
-let patoline_drivers =
+let r_patoline_drivers = ref
   [
     { name = "None"; needs = []; suggests = [] };
     { name = "Pdf"; needs = []; suggests = [Package "zip"] };
@@ -180,7 +180,8 @@ let rec can_build_driver d =
     | Package p -> ocamlfind_has p
     | Driver d' -> can_build_driver d'
   in List.iter (fun a -> ignore (check_need a)) d.suggests;
-  List.for_all check_need d.needs
+  List.exists (fun x->x.name==d.name) !r_patoline_drivers
+    && List.for_all check_need d.needs
 
 (* Generates contents for a -package option for ocamlfind, using the argument
  * needs.
@@ -209,9 +210,13 @@ let _=
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
-    ("--without-camlimages", Unit(fun ()->use_camlimages:=false), " disables camlimages experimental library.");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
-       (String.concat ", " (List.rev avail_lang)))
+       (String.concat ", " (List.rev avail_lang)));
+    ("--without", String (fun str->
+      r_patoline_drivers:=List.filter (fun x->
+        x.name<>str
+      ) !r_patoline_drivers
+     )," remove a driver from the list")
   ] ignore "Usage:";
   if !bin_dir="" then bin_dir:=Filename.concat !prefix "bin/";
   if !ocaml_lib_dir="" then ocaml_lib_dir:=Filename.concat !prefix "lib/ocaml";
@@ -224,7 +229,7 @@ let _=
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
   hyphen_dirs:= !hyphen_dir ::(!hyphen_dirs);
   plugins_dirs:= !plugins_dir ::(!plugins_dirs);
-
+  let patoline_drivers= !r_patoline_drivers in
   let has_dypgen=
     let ci,ci'=Unix.pipe () in
     let co,co'=Unix.pipe () in

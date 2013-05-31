@@ -23,8 +23,9 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 open Util
+#ifdef OCAMLNET
 open GLNet
-
+#endif
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
 
@@ -205,9 +206,10 @@ let add_normals closed ratio beziers =
 	List.split (ln @ [last])
     ) beziers)   
 
-
+#ifdef OCAMLNET
 let image_cache = Hashtbl.create 101
-  
+#endif
+
 let win = ref None
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -863,7 +865,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     done;
     GlDraw.ends ()
   in
-
+#ifdef OCAMLNET
   let show (cgi:Netcgi.cgi_activation) _ = 
     try
       let out = cgi # output # output_string in
@@ -879,13 +881,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Printf.fprintf stderr "Bad show request"; 
 	flush stderr
   in
-
   let show_end _ _ =
     Hashtbl.remove  other_items "show";
     redraw ();
   in
 
   GLNet.cbs := ("show_x", show)::("show_end", show_end)::!cbs;
+#endif
 
   let dest = ref 0 in
 
@@ -1076,18 +1078,23 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
   in
-
+#ifdef OCAMLNET
   let handle_one = 
     (match !prefs.server_port with
       Some port -> GLNet.handle_one port
     | None -> fun () -> ())
   in
+#else
+  let handle_one()=() in
+#endif
 
   let rec idle_cb ~value:() =
     Glut.timerFunc ~ms:30 ~cb:idle_cb ~value:();
     if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
     show_links ();
+
     handle_one ();
+    begin
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
       match i with
@@ -1114,6 +1121,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	(Printexc.to_string e)
 	(Unix.error_message nb);
       flush stderr;
+    end;
 
   in
 
@@ -1126,6 +1134,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
   in
 
+#ifdef OCAMLNET
   let make_content out id cmd fmt width height format =
     Printf.fprintf stderr "Make content\n"; flush stderr;
     if id = !page_counter then
@@ -1234,9 +1243,8 @@ function show(event){
      out ("</div>");
 
  in
-
   GLNet.make_content := make_content;
-
+#endif
   let mouse_cb ~button ~state ~x ~y =
     match button, state with
 
