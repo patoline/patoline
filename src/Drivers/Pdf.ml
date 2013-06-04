@@ -893,7 +893,8 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
           if a>0 then
             fprintf outChan "/First %d 0 R /Last %d 0 R /Count %d "
               a b (Array.length str.substructures.(i).substructures);
-          if str.substructures.(i).page>=0 then
+
+          if str.substructures.(i).page>=0 && str.substructures.(i).page<Array.length pageObjects then
             fprintf outChan "/Dest [%d 0 R /XYZ %f %f null] " pageObjects.(str.substructures.(i).page)
               (pt_of_mm str.substructures.(i).struct_x)
               (pt_of_mm str.substructures.(i).struct_y);
