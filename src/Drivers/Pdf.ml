@@ -909,7 +909,14 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
 
 
       let outlines=futureObject () in
-      let a,b=make_outlines structure (* { name=""; page=0; struct_x=0.; struct_y=0.; substructures=[|structure|] } *) outlines in
+      let a,b=make_outlines { name="";
+                              page=0; struct_x=0.; struct_y=0.;
+                              substructures=[|structure|];
+                              metadata=[];
+                              tags=[];
+                              displayname=[] } outlines
+      in
+      (*let a,b=make_outlines structure outlines in*)
 
       resumeObject outlines;
       fprintf outChan "<< /Type /Outlines /First %d 0 R /Last %d 0 R /Count %d >>" a b !count;
