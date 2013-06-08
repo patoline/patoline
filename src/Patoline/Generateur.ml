@@ -411,10 +411,12 @@ and print_macro_buf parser_pp buf op mtype name args opts =
 	    Printf.bprintf buf "let _=TEMP%d.do_end_env()\nend\n" num
 	end
       | `End ->(
-          let n,name'=List.hd !env_stack in
+	match !env_stack with
+	  [] -> failwith ("Extra \\end{"^name^"}");
+	| (n, name')::tail ->
           if name'<>name then failwith ("Environment not closed: "^name');
 	  Printf.bprintf buf "let _ = TEMP%d.do_end_env()\nend" n(* name *);
-          env_stack:=List.tl !env_stack
+          env_stack:=tail
         )
       | `Include ->
         do_include buf name

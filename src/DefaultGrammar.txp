@@ -92,7 +92,7 @@
 \Add_relation{\squaresubnoteq ⋤}(MathFonts.asana "⋤" 942)
 \Add_relation{\squaresupnoteq ⋥}(MathFonts.asana "⋥" 943)
 \Add_relation{\identical \equiv ≡}{≡}
-\Add_relation{\notidentical ≢}{≢}
+\Add_relation{\notidentical \nequiv ≢}{≢}
 \Add_relation{\almostequal ≈}{≈}
 \Add_relation{≅ \cong \iso}{≅}
 \Add_relation{≃ \simeq \equi}{≃}
@@ -202,6 +202,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_arrow{\drharpoon ⇁}{⇁}
 \Add_arrow{\tostar}{→*}
 \Add_arrow{↛ \nrightarrow}(MathFonts.asana "↛" 613)
+\Add_arrow{⇏ \nRightarrow}(MathFonts.asana "⇏" 635)
 \Add_arrow{\leadsto ↝}(MathFonts.asana "↝" 615)
 
 

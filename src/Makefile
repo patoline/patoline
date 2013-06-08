@@ -155,6 +155,8 @@ clean:
 	make -C ocaml-bibi clean
 	make -C Pdf clean
 	make -C cesure clean
+	make -C Rbuffer clean
+	make -C ../emacs clean
 	cd Drivers; rm -f *~ \#*\# *.cm[xoia] *.cmxa *.o *.a
 	cd proof; rm -f *~ \#*\# *.cm[xoi] *.o
 	rm -f *~ \#*\# *.cm[xoia] *.cmxa *.tgo *.tgx *.tml *.ttml *.o *.a *.tmx
