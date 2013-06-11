@@ -230,10 +230,10 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
   let measure=IntMap.fold (fun i aa m->match aa with
       Break.Placed a->
         (if page line=page a &&
-           line.height<=
-           a.height -.figures.(i).drawing_y0
-         && line.height>=
-           a.height-. figures.(i).drawing_y1
+           line.height>=
+           a.height+.figures.(i).drawing_y0
+         && line.height<=
+           a.height+. figures.(i).drawing_y1
          then
             frame_measure -. figures.(i).drawing_nominal_width
          else m)
