@@ -513,7 +513,7 @@ and print_caml parser_pp ld gr op (ch : out_channel) s e txps pos = begin
 end
 
 and print_ext_link pos f buf=
-  if pos = "" or not !edit_link then f buf ()
+  if pos = "" || not !edit_link then f buf ()
   else
     Printf.bprintf buf 
       "(let (file, l, c, _) = %s in extLink (\"edit:\"^file^\"@\"^string_of_int l^\"@\"^string_of_int c) %a)"
@@ -584,7 +584,7 @@ and output_list parser_pp from where no_indent lvl docs =
       let next_no_indent = ref false in
       (match doc with
 	| Paragraph(options, p) ->
-	  let env = if no_indent or not options.indent_paragraph
+	  let env = if no_indent || not options.indent_paragraph
 	    then "~environment:(fun x -> { x with par_indent = [] })"
 	    else ""
 	  in
