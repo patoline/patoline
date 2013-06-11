@@ -1091,30 +1091,44 @@ let boxify buf nbuf fixable env0 l=
               boxify keep_cache env s
             )
           | _ ->(
-              (* let buf=ref [|Empty|] in *)
-              (* let nbuf=ref 0 in *)
-              let l=ref IntMap.empty in
-              let rec cut_str i0 i=
-                if i>=String.length t then (
-                  let sub=String.sub t i0 (i-i0) in
-                  l:=mappend !l (gl_of_str env (UNF8.nfkc sub))
-                ) else (
-                  if is_space (UTF8.look t i) then (
-                    let sub=String.sub t i0 (i-i0) in
-                    l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
-                    if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
-                    cut_str (UTF8.next t i) (UTF8.next t i)
-                  ) else (
-                    cut_str i0 (UTF8.next t i)
-                  )
-                )
+            (* let buf=ref [|Empty|] in *)
+            (* let nbuf=ref 0 in *)
+            let t=try UTF8.validate t;t with _->(
+              Printf.fprintf stderr "%s\n" (TypoLanguage.message (TypoLanguage.BadEncoding t));
+              let rec count i n=if i>=String.length t then n else
+                  count (i+1) (if t.[i]>char_of_int 0x7f then n else (n+1))
               in
-              cut_str (UTF8.first t) (UTF8.first t);
-              if keep_cache then cache:=Some !l;
-              IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
-              boxify keep_cache env s
+              let tt=String.create (count 0 0) in
+              let rec filter i n=if i<String.length t then (
+                if t.[i]>char_of_int 0x7f then (tt.[n]<-t.[i]; filter (i+1) (n+1))
+                else filter (i+1) n
+              )
+              in
+              filter 0 0;tt
             )
-      )
+            in
+            let l=ref IntMap.empty in
+            let rec cut_str i0 i=
+              if i>=String.length t then (
+                let sub=String.sub t i0 (i-i0) in
+                l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
+              ) else (
+                if is_space (UTF8.look t i) then (
+                  let sub=String.sub t i0 (i-i0) in
+                  l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
+                  if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
+                  cut_str (UTF8.next t i) (UTF8.next t i)
+                ) else (
+                  cut_str i0 (UTF8.next t i)
+                )
+              )
+            in
+            cut_str 0 0;
+            if keep_cache then cache:=Some !l;
+            IntMap.iter (fun _->List.iter (append buf nbuf)) !l;
+            boxify keep_cache env s
+          )
+    )
     | FileRef (file,off,size)::s -> (
         let i=try
 	  StrMap.find file !sources
