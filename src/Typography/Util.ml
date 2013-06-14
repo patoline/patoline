@@ -222,18 +222,20 @@ let is_space x0=
   || x=0x3000
 
 let unspace s=
-  let rec rem i j=
-    if i>j then "" else
-      if is_space (UTF8.look s i) then
-        rem (UTF8.next s i) j
-      else
-        if is_space (UTF8.look s j) then
-          rem i (UTF8.prev s j)
-        else
-          String.sub s i (j-i+1)
-
+  let rec rem0 i=
+    if is_space (UTF8.look s i) then
+      rem0 (UTF8.next s i)
+    else
+      i
   in
-    rem (UTF8.first s) (UTF8.last s)
+  let rec rem1 j=
+    if is_space (UTF8.look s j) then
+      rem1 (UTF8.prev s j)
+    else
+      UTF8.next s j
+  in
+  let a=rem0 0 and b=rem1 (UTF8.last s) in
+  String.sub s a (b-a)
 
 let compose f g x=f (g x)
 

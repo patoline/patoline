@@ -139,14 +139,14 @@ open Document
 
 let rec split f n i0 i=
   if UTF8.out_of_range n i0 then [] else
-    if UTF8.out_of_range n i then
+    if UTF8.out_of_range n i then (
       [String.sub n i0 (String.length n-i0)]
-    else
+    ) else (
       if f (UTF8.look n i) then
         (String.sub n i0 (i-i0)) :: (split f n (UTF8.next n i) (UTF8.next n i))
       else
         split f n i0 (UTF8.next n i)
-
+    )
 let make_name n=
   match List.rev(split (fun x->x=UChar.of_char ',') n 0 0) with
       []->("","")
@@ -256,6 +256,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       tT"["::fn l
     with
         No_bib s->(Printf.fprintf stderr "%s\n" s;exit 1)
+      | _->[]
 
   let authorCite x y=
     sprintf "%s id IN (SELECT article FROM authors_publications WHERE author IN (SELECT id FROM authors WHERE %s))"
