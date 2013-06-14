@@ -1200,7 +1200,7 @@ atomelt:
               Absolute (level - 1))], [] }
   | VERBATIM [ - (space*) - (ident) ]?<lang> [ - (space*) - string ]?<filename>  [ - (space*)]? -
     verbatim_lines<ls> - VERBATIM
-    { [Verbatim(None, None (*lang, filename*), List.rev ls)], [] }
+    { [Verbatim(lang, filename, List.rev ls)], [] }
   /* Code Caml */
   | "\\Caml" CAML<s,pos,e,txps>
     { let ld, gr = get_local_data_and_grammar dyp in
