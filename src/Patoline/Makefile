@@ -1,7 +1,7 @@
 include ../Makefile.config
 
-CAMLOPT=ocamlfind ocamlopt -pp $(CPP) -package dyp -package camomile -I ../Rbuffer
-CAMLC=ocamlfind ocamlc -pp $(CPP) -package dyp -package camomile -I ../Rbuffer
+CAMLOPT=ocamlfind ocamlopt -pp $(CPP) $(PACKAGE_DYP) -package camomile -I ../Rbuffer
+CAMLC=ocamlfind ocamlc -pp $(CPP) $(PACKAGE_DYP) -package camomile -I ../Rbuffer
 
 patoline: Language.cmx Config.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
 	$(CAMLOPT) -linkpkg -o patoline -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa Util.cmx Language.cmx Config.cmx Build.cmx Parser.cmx Generateur.cmx SimpleGenerateur.cmx Main.cmx
