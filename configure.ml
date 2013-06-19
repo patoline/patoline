@@ -323,11 +323,11 @@ let _=
       (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
       (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
     (if has_dypgen then
-        Printf.fprintf make "PATOLINE=Patoline/patoline\n";
-        Printf.fprintf make "PACKAGE_DYP=-package dyp\n"
+        (Printf.fprintf make "PATOLINE=Patoline/patoline\n";
+        Printf.fprintf make "PACKAGE_DYP=-package dyp\n")
      else
-        Printf.fprintf make "PATOLINE=\n"
-        Printf.fprintf make "PACKAGE_DYP=\n"
+        (Printf.fprintf make "PATOLINE=\n";
+        Printf.fprintf make "PACKAGE_DYP=\n")
     );
     Printf.fprintf make "PACK=-package %s\n"
       (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
