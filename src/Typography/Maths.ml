@@ -90,7 +90,7 @@ let style x = Env (fun env -> { env with mathStyle = x })
 let fraction a b=Fraction {
   numerator=a;
   denominator=b;
-  line=(fun env style->{OutputCommon.default with lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
+  line=(fun env style->{OutputCommon.default with strokingColor=Some env.fontColor; lineWidth = (env_style env.mathsEnvironment style).default_rule_thickness})
 }
 let bin_invisible prio left right=
   Binary { bin_priority=prio; bin_drawing=Invisible; bin_left=left; bin_right=right }
