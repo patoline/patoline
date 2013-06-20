@@ -1157,3 +1157,11 @@ end
 let sqrt x = 
   let module M = Mk_Custom(CustomSqrt) in
   [M.custom x]
+
+(* Allows to modify the environment (Document.environment) in a math formula *)
+let math_env_set f m =
+  [Scope (fun _ _ -> (Env (fun env -> f env)) :: m)]
+
+(* Set the color in the math environment *)
+let mcolor col m =
+  math_env_set (fun env -> { env with fontColor = col }) m

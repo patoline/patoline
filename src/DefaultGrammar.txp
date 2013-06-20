@@ -120,7 +120,8 @@
 \Add_relation{\unlhd ⊴}(MathFonts.asana "\\unlhd" 894)
 \Add_relation{\unrhd ⊵}(MathFonts.asana "\\unrhd" 895)
 
-\Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 1620)
+\Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 883)
+\Add_relation{\urealize}(MathFonts.asana "\\urealize" 884)
 \Add_relation{\vdash ⊢ |-}{⊢}
 \Add_relation{\triangleright ▹} ( MathFonts.asana "triangle right" 893 )
 
