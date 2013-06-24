@@ -871,8 +871,7 @@ let subset(* _encoded *) font info cmap gls=
     buf
     with
         Not_found->(
-          Printf.fprintf stderr "%s\n"
-            (TypoLanguage.message (TypoLanguage.PleaseReport "empty charstrings dict"));
+          Printf.fprintf stderr "Please report the following to mltypography@googlegroups.com: empty charstrings dict\n";
           flush stderr;
           Rbuffer.create 0
         )

@@ -27,7 +27,6 @@ open Typography.Box
 open Typography.Fonts
 open Typography.Fonts.FTypes
 open CamomileLibrary
-open Typography.Layout
 open Typography.Document
 
 module MathFonts=DefaultFormat.MathFonts
@@ -363,7 +362,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         );
         new_page=
         (fun t->
-          let zip=Layout.make_page (slidew,slideh) (frame_top t) in
+          let zip=Box.make_page (slidew,slideh) (frame_top t) in
           let x0=((fst zip).frame_x0+.1.*.slidew/.6.) in
           let y0= -. slideh in          (* Un peu abusif, mais tout le contenu est censé tenir *)
           let x1=((fst zip).frame_x1-.1.*.slidew/.6.) in
@@ -506,7 +505,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
-                user_positions=UserMap.add (Label labl)
+                user_positions=MarkerMap.add (Label labl)
                   (match !layouts with
                       []->uselessLine
                     | h::_->{ uselessLine with layout=h })
@@ -622,7 +621,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
                         let labl=String.concat "_" ("_"::List.map string_of_int path) in
-                        UserMap.mem (Label labl) env2.user_positions
+                        MarkerMap.mem (Label labl) env2.user_positions
                       in
                       typeset_states (state+1)
                         (reboot_ || (reboot' && !fixable) || not labl_exists)
@@ -750,9 +749,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let col= !toc_inactive in
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   boxify_scoped { env with fontColor=col }
-                    (bB (fun _->[User (BeginLink labl)])::
+                    (bB (fun _->[Marker (BeginLink labl)])::
                        displayname@
-                       [bB (fun _->[User EndLink])])
+                       [bB (fun _->[Marker EndLink])])
                 )
               ) toc
               in
@@ -889,7 +888,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w
                         )
-                        | User (BeginURILink l)->(
+                        | Marker (BeginURILink l)->(
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                                      link_order=0;
                                      dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
@@ -899,12 +898,12 @@ module Format=functor (D:Document.DocumentStructure)->(
                           page.pageContents<-Link link::page.pageContents;
                           0.
                         )
-                        | User (BeginLink l)->(
+                        | Marker (BeginLink l)->(
                           let dest_page=
                             try
-                              let line=UserMap.find (Label l) env_final.user_positions in
+                              let line=MarkerMap.find (Label l) env_final.user_positions in
                               print_text_line paragraphs line;
-                              Layout.page line
+                              Box.page line
                             with
                                 Not_found->(-1)
                           in
@@ -920,12 +919,12 @@ module Format=functor (D:Document.DocumentStructure)->(
                           crosslink_opened:=true;
                           0.
                         )
-                        | User (Label l)->(
+                        | Marker (Label l)->(
                           let y0,y1=line_height paragraphs figures line in
                           destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
                           0.
                         )
-                        | User EndLink->(
+                        | Marker EndLink->(
                           let rec link_contents u l=match l with
                               []->[]
                             | (Link h)::s->(Link { h with

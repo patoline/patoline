@@ -25,7 +25,6 @@ open Typography.Util
 open Typography.ConfigUtil
 open CamomileLibrary
 open Typography.Box
-open Typography.Layout
 open Printf
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
@@ -138,7 +137,7 @@ let postprocess_tree tree=
               let boxes=Array.to_list (Array.sub !buf 0 !nbuf) in
               let users=
                 List.filter (fun x->match x with
-                    User _->true | _->false)
+                    Marker _->true | _->false)
                   boxes
               in
 
@@ -178,8 +177,8 @@ let postprocess_tree tree=
               in
               bB (fun _->
                 users@
-                  [User (Structure path);
-                   User AlignmentMark;
+                  [Marker (Structure path);
+                   Marker AlignmentMark;
                    Drawing (dr)])::
                 Env(fun _->env')::[]
             )]
@@ -187,13 +186,13 @@ let postprocess_tree tree=
             if List.mem_assoc "numbered" n.node_tags  then
               [C (fun env->
                 let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-                bB (fun _->[User (Structure path)])
+                bB (fun _->[Marker (Structure path)])
                 ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
                 ::tT " "
                 ::n.displayname
               )]
             else
-              bB (fun env->[User (Structure path)])::
+              bB (fun env->[Marker (Structure path)])::
                 n.displayname
           )
         in
@@ -220,7 +219,7 @@ let postprocess_tree tree=
                 if not p.absolute && line.lineStart=0 then (
                   let rec findMark w j=
                     if j>=line.lineEnd then 0. else
-                      if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                      if a1.(line.paragraph).(j) = Marker AlignmentMark then w else
                         let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
                         findMark (w+.ww) (j+1)
                   in
@@ -282,7 +281,6 @@ end
 
   let minipage=Default.minipage
   let displayedFormula=Default.displayedFormula
-  let footnote=Default.footnote
   let node=Default.node
   let paragraph=Default.paragraph
 

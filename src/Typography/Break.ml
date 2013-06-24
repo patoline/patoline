@@ -21,7 +21,6 @@ open OutputCommon
 open Util
 open CamomileLibrary
 open Box
-open Layout
 open Fonts.FTypes
 
 
@@ -44,7 +43,7 @@ module type Line=sig
   val hash:t->int
 end
 
-module Make (L:Line with type t=Layout.line)=(
+module Make (L:Line with type t=Box.line)=(
   struct
     module LineMap=Map.Make (L)
     module ColMap=Map.Make (
@@ -55,7 +54,7 @@ module Make (L:Line with type t=Layout.line)=(
 
     module H=Weak.Make(
       struct
-        type t=L.t*float*TypoLanguage.message*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*L.t UserMap.t
+        type t=L.t*float*TypoLanguage.message*parameters*(frame_zipper list)*float*(t option)*(figurePosition IntMap.t)*L.t MarkerMap.t
         let equal (a,_,_,_,_,_,_,_,_) (b,_,_,_,_,_,_,_,_)=(L.compare a b)==0
         let hash (a,_,_,_,_,_,_,_,_)=L.hash a
       end)
@@ -107,7 +106,7 @@ module Make (L:Line with type t=Layout.line)=(
       close_out f
 
     let typeset ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness paragraphs=
-      if Array.length paragraphs=0 then ([],[||],IntMap.empty,UserMap.empty) else begin
+      if Array.length paragraphs=0 then ([],[||],IntMap.empty,MarkerMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
@@ -165,9 +164,9 @@ module Make (L:Line with type t=Layout.line)=(
       let endNode=ref None in
 
       let first_parameters=parameters.(0)
-        paragraphs figures default_params IntMap.empty UserMap.empty uselessLine uselessLine
+        paragraphs figures default_params IntMap.empty MarkerMap.empty uselessLine uselessLine
       in
-      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,UserMap.empty) in
+      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -183,7 +182,7 @@ module Make (L:Line with type t=Layout.line)=(
           let register node nextNode badness log next_params next_pages comp=
             let nextUser=fold_left_line paragraphs
               (fun u box->match box with
-                  User uu->UserMap.add uu nextNode u
+                  Marker uu->MarkerMap.add uu nextNode u
                 | _->u) lastUser nextNode
             in
             let add_fig k a m=
@@ -396,6 +395,8 @@ module Make (L:Line with type t=Layout.line)=(
                     let nextParams=parameters.(pi)
                       paragraphs figures lastParameters lastFigures lastUser node nextNode
                     in
+                    let nextLayout=line_layout paragraphs nextNode layout in
+
                     max_min_page_before:=max !max_min_page_before nextParams.min_page_before;
                     min_min_page_before:=min !min_min_page_before nextParams.min_page_before;
                     if page nextNode>=page node+nextParams.min_page_before then (
@@ -405,7 +406,7 @@ module Make (L:Line with type t=Layout.line)=(
                           let comp1=comp paragraphs nextParams.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                           let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
                           let height'=
-                            if frame_page layout==page node && (not (node==uselessLine)) then (
+                            if frame_page nextLayout==page node && (not (node==uselessLine)) then (
 
                           (* Demander à toutes les lignes au-dessus de pousser nextNode le plus bas possible *)
                               let rec v_distance cur_node0 parameters comp0 min_h=
@@ -444,7 +445,7 @@ module Make (L:Line with type t=Layout.line)=(
                                        (nextParams).left_margin>=parameters.left_margin
                                        && (nextParams).left_margin+.nextNode_width<=parameters.left_margin+.node0_width
                                      in
-                                     if prec_line.layout==layout && not arret then (v_distance prec_ params comp (min h min_h)) else
+                                     if prec_line.layout==nextLayout && not arret then (v_distance prec_ params comp (min h min_h)) else
                                        min (min h min_h) (
                                          (node0.height
                                           -. max (snd (line_height paragraphs figures nextNode))
@@ -462,11 +463,11 @@ module Make (L:Line with type t=Layout.line)=(
                               in
                               v_distance cur_node lastParameters comp0 infinity
                             ) else (
-                              (fst layout).frame_y1 -. snd (line_height paragraphs figures nextNode)
+                              (fst nextLayout).frame_y1 -. snd (line_height paragraphs figures nextNode)
                             )
                           in
                           let node_is_orphan=
-                            (not (layout==node.layout))
+                            (not (nextLayout==node.layout))
                             &&
                               ((node.lineStart = 0
                                && node.lineEnd < Array.length (paragraphs.(node.paragraph))
@@ -476,7 +477,7 @@ module Make (L:Line with type t=Layout.line)=(
                             && not node.isFigure
                           in
                           let nextNode_is_widow=
-                            (not (layout==node.layout))
+                            (not (nextLayout==node.layout))
                             &&
                               ((nextNode.lineStart > 0
                                 && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph)))
@@ -490,13 +491,13 @@ module Make (L:Line with type t=Layout.line)=(
                                 let _,_,_,_,_,_,prec,_,_=cur_node in
                                 let pr,a,b,c,d,e,f,g,h=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (lastParameters.not_last_line && not c.not_last_line) then (
-                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Orphan (node, text_line paragraphs node))),
+                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Orphan (text_line paragraphs node))),
                                                       { c with min_page_after=1 },
                                                       d,e,f,g,h)::(!extreme_solutions)
                                 ) else raise Not_found
                               with
                                   Not_found->(
-                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Orphan (node,text_line paragraphs nextNode))),
+                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Orphan (text_line paragraphs nextNode))),
                                                         nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                                   )
                             )
@@ -507,13 +508,13 @@ module Make (L:Line with type t=Layout.line)=(
                                 let _,_,_,_,_,_,prec,_,_=cur_node in
                                 let pr,a,b,c,d,e,f,g,h=match prec with None->raise Not_found | Some a->a  in
                                 if node.paragraph=nextNode.paragraph || (nextParams.not_first_line) && not lastParameters.not_first_line then (
-                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Widow (nextNode,text_line paragraphs nextNode))),
+                                  extreme_solutions:=(pr,a,(TypoLanguage.Opt_error (TypoLanguage.Widow (text_line paragraphs nextNode))),
                                                       { c with min_page_after=1 },
                                                       d,e,f,g,h)::(!extreme_solutions)
                                 ) else raise Not_found
                               with
                                   Not_found->(
-                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Widow (nextNode,text_line paragraphs nextNode))),
+                                    extreme_solutions:=(nextNode,lastBadness,(TypoLanguage.Opt_error (TypoLanguage.Widow (text_line paragraphs nextNode))),
                                                         nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!extreme_solutions)
                                   )
                             )
@@ -527,7 +528,7 @@ module Make (L:Line with type t=Layout.line)=(
                                              nextNode !bas !max_bas nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
-                                              (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                                              (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                                 )
                               )
@@ -542,7 +543,7 @@ module Make (L:Line with type t=Layout.line)=(
                                              nextNode !bas !max_bas nextParams comp1) in
                                   local_opt:=(nextNode,
                                               max 0. bad,
-                                              (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (nextNode,text_line paragraphs nextNode))),
+                                              (TypoLanguage.Opt_error (TypoLanguage.Underfull_line (text_line paragraphs nextNode))),
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
                                 )
                               )
@@ -601,7 +602,7 @@ module Make (L:Line with type t=Layout.line)=(
                       extreme_solutions:=
                         (nextNode,
                          lastBadness,
-                         (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (nextNode,text_line paragraphs nextNode))),
+                         (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
                          nextParams,layouts,0.,Some cur_node,lastFigures,lastUser)::[]
                     )
                 )
@@ -691,9 +692,9 @@ module Make (L:Line with type t=Layout.line)=(
         makePages ln;
         (log, Array.map (fun (a,b)->a,List.rev b) pages, figs0,user0)
       with
-          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,UserMap.empty) else (
+          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,MarkerMap.empty) else (
             Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
-            [],[||],IntMap.empty,UserMap.empty
+            [],[||],IntMap.empty,MarkerMap.empty
           )
       end
   end)

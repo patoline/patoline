@@ -25,7 +25,6 @@ open Typography.Util
 open Typography.ConfigUtil
 open Typography.Fonts
 open Typography.Box
-open Typography.Layout
 open CamomileLibrary
 
 let _=Random.self_init ()
@@ -240,7 +239,7 @@ module MakeFormat (D:Document.DocumentStructure)
              "_figure",(-1,[0]);
              "figure",(2,[0])];
           names=StrMap.empty;
-          user_positions=UserMap.empty;
+          user_positions=MarkerMap.empty;
           new_page=Document.default_new_page a4;
 	  show_boxes=false;
 	  show_frames=false;

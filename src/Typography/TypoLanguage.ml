@@ -21,6 +21,9 @@ open Printf
 open Lexing
 open Layout
 
+type line=string
+let sprint_linef x=x
+
 type message=
   | No_solution of string
   | Opt_error of optimization_error
@@ -33,20 +36,20 @@ type message=
 #endif
 
 and optimization_error=
-    Overfull_line of (line*string)
-  | Underfull_line of (line*string)
-  | Widow of (line*string)
-  | Orphan of (line*string)
+    Overfull_line of (string)
+  | Underfull_line of (string)
+  | Widow of (string)
+  | Orphan of (string)
 
 #ifdef LANG_FR
 let lang=`FR
 let message=function
   | No_solution str when String.length str>0->sprintf "Pas de solution, document incomplet. Dernière ligne:\n%s" str
   | No_solution str->"Pas de solution, document vide"
-  | Opt_error (Widow (line,s))->Printf.sprintf "Veuve : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Orphan (line,s))->Printf.sprintf "Orphelin : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Ligne trop pleine :\n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Underfull_line (line,s))->Printf.sprintf "Ligne pas assez remplie \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Widow (s))->Printf.sprintf "Veuve : \n\t%s" (*sprint_linef line*) s
+  | Opt_error (Orphan (s))->Printf.sprintf "Orphelin : \n\t%s" (*sprint_linef line*) s
+  | Opt_error (Overfull_line (s))->Printf.sprintf "Ligne trop pleine :\n\t%s" (*sprint_linef line*) s
+  | Opt_error (Underfull_line (s))->Printf.sprintf "Ligne pas assez remplie :\n\t%s" (*sprint_linef line*) s
   | PleaseReport x->Printf.sprintf "Il y a quelque chose que Patoline ne gère pas normalement. Veuillez rapporter ceci par courriel à mltypography@googlegroups.com :\n%s" x
   | BadEncoding x->Printf.sprintf "Problème d'encodage du fichier, le texte suivant n'a pas pu être décodé :\n%S" x
 #ifdef BAN_COMIC_SANS
@@ -60,10 +63,10 @@ let lang=`EN
 let message=function
   | No_solution str when String.length str>0->sprintf "No solution, empty document. Last line:\n%s" str
   | No_solution str->"No solution, empty document."
-  | Opt_error (Widow (line,s))->Printf.sprintf "Widow : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Orphan (line,s))->Printf.sprintf "Orphan : \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Overfull line: \n\t%s\n\t%s" (sprint_linef line) s
-  | Opt_error (Overfull_line (line,s))->Printf.sprintf "Underfull line: \n\t%s\n\t%s" (sprint_linef line) s
+  | Opt_error (Widow (s))->Printf.sprintf "Widow:\n\t%s" (*sprint_linef line*) s
+  | Opt_error (Orphan (s))->Printf.sprintf "Orphan:\n\t%s" (*sprint_linef line*) s
+  | Opt_error (Overfull_line (s))->Printf.sprintf "Overfull line:\n\t%s" (*sprint_linef line*) s
+  | Opt_error (Overfull_line (s))->Printf.sprintf "Underfull line:\n\t%s" (*sprint_linef line*) s
   | PleaseReport x->Printf.sprintf "Something (not \"the impossible\", though) has happened that Patoline is not comfortable with. Please report the following by email to mltypography@googlegroups.com:\n%s" x
   | BadEncoding x->Printf.sprintf "File encoding problem, could not decode:\n%S" x
 #ifdef BAN_COMIC_SANS

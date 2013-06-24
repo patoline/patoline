@@ -21,7 +21,6 @@ open Typography
 open Typography.Document
 open Typography.Fonts.FTypes
 open Typography.Box
-open Typography.Layout
 open Typography.Util
 
 
@@ -62,7 +61,7 @@ let centered parameters str tree _=
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
-                               (1+page (UserMap.find (Label labl) (user_positions env0)))
+                               (1+page (MarkerMap.find (Label labl) (user_positions env0)))
                     with Not_found -> 0
                     in
                     let fenv env={ env with
@@ -157,7 +156,7 @@ let these parameters str tree max_level=
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   let page=try
-                             (1+page (UserMap.find (Label labl) (user_positions env0)))
+                             (1+page (MarkerMap.find (Label labl) (user_positions env0)))
                   with Not_found -> 0
                   in
                   let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
@@ -175,7 +174,7 @@ let these parameters str tree max_level=
                       (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
-                  User (BeginLink (labl))::
+                  Marker (BeginLink (labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
@@ -192,7 +191,7 @@ let these parameters str tree max_level=
                           List.map (OutputCommon.translate
                                       (margin+.spacing*.3.*.(float_of_int (level-1)))
                                        0.) cont)
-                    }::User EndLink::(glue 0. 0. 0.)::chi
+                    }::Marker EndLink::(glue 0. 0. 0.)::chi
                 )
                 else chi
               )
@@ -269,7 +268,7 @@ let slides parameters str tree max_level=
                       (List.map (OutputCommon.translate w0 0.) (draw_boxes env' name))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
-                  User (BeginLink (labl))::
+                  Marker (BeginLink (labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
@@ -286,7 +285,7 @@ let slides parameters str tree max_level=
                            List.map (OutputCommon.translate
                                        (spacing*.3.*.(float_of_int (level-1)))
                                        0.) cont)
-                    }::User EndLink::(glue 0. 0. 0.)::chi
+                    }::Marker EndLink::(glue 0. 0. 0.)::chi
                 )
                 else chi
               )

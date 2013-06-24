@@ -25,7 +25,6 @@ open Typography.Util
 open Typography.ConfigUtil
 open Typography.Fonts
 open Typography.Box
-open Typography.Layout
 open Typography.Break
 open CamomileLibrary
 let _=Random.self_init ()
@@ -240,15 +239,6 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
     | _->m
   ) last_figures frame_measure
   in
-  UserMap.iter (fun k a->
-    match k with
-        Footnote _ when page a=page line -> incr page_footnotes
-      | _->()
-  ) last_users;
-  let footnote_h=fold_left_line paragraphs (fun fn box->match box with
-      User (Footnote (_,x))->fn+.x.drawing_y1-.x.drawing_y0
-    | _->fn) 0. line
-  in
   let p={ measure=measure;
     left_margin=env.normalLeftMargin;
     local_optimization=0;
@@ -400,14 +390,14 @@ module Format=functor (D:Document.DocumentStructure)->(
           if List.mem_assoc "numbered" n.node_tags  then
             [C (fun env->
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-              bB (fun _->[User (Structure path)])
+              bB (fun _->[Marker (Structure path)])
               ::tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (drop 1 b))))
               ::tT " "
               ::n.displayname
             )]
           else
             [C(fun env->
-              bB (fun env->[User (Structure path)])::
+              bB (fun env->[Marker (Structure path)])::
                 n.displayname)]
         in
         let par=Paragraph {
@@ -502,7 +492,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           hyphenate=hyphenate_dict "hyph-en-us.hdict";
           counters=StrMap.empty;
           names=StrMap.empty;
-          user_positions=UserMap.empty;
+          user_positions=MarkerMap.empty;
           new_page=Document.default_new_page a4;
           new_line=(fun env node params nextNode nextParams layout height->
             if node==nextNode && node.layout==layout then (
@@ -826,88 +816,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 }]
           )]
 
-    let footnote l=
-      [Env (fun env->
-        let next=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
-            []->0
-          | h::_->h
-        in
-        { env with counters=StrMap.add "footnotes" (-1,[next+1]) env.counters });
-       bB (fun env0->
-         let w0=env0.size in
-         let env= { env0 with normalMeasure=env0.normalMeasure-.w0; normalLeftMargin=w0 } in
-         let count=match try snd (StrMap.find "footnotes" env.counters) with Not_found -> [] with
-             []->0
-           | h::_->h
-         in
-         let foot_num=ref (-1) in
-         let page_footnotes=ref 1 in
-         UserMap.iter (fun k a->
-           match k with
-               Footnote (i,_) when i= count -> foot_num:=page a
-             | _->()
-         ) (user_positions env);
-                 (* Y a-t-il deja des footnotes sur cette page ? *)
-         UserMap.iter (fun k a->
-           match k with
-               Footnote (i,_) when page a= !foot_num && i< count ->
-                 incr page_footnotes
-             | _->()
-         ) (user_positions env);
-                 (* Insertion d'une footnote *)
-         let str=ref (Node empty,[]) in
-
-         let params env a1 a2 a3 a4 a5 a6 line=
-           let p={(parameters env a1 a2 a3 a4 a5 a6 line) with min_height_after=0.} in
-           if not p.absolute && line.lineStart=0 then (
-             let rec findMark w j=
-               if j>=line.lineEnd then 0. else
-                 if a1.(line.paragraph).(j) = User AlignmentMark then w else
-                   let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
-                   findMark (w+.ww) (j+1)
-             in
-             let w=findMark 0. 0 in
-             { p with
-               left_margin=p.left_margin-.w;
-               measure=p.measure+.w }
-           ) else
-             p
-         in
-         let comp complete mes a1 a2 a3 a4 line a6=
-           if line.lineStart>0 then complete mes a1 a2 a3 a4 line a6 else (
-             let rec findMark w j=
-               if j>=Array.length a1.(line.paragraph) then 0. else
-                 if a1.(line.paragraph).(j) = User AlignmentMark then w else
-                   let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
-                   findMark (w+.ww) (j+1)
-             in
-             complete { mes with normalMeasure=mes.normalMeasure+.findMark 0. 0 } a1 a2 a3 a4 line a6
-           )
-         in
-
-         newPar str (comp normal) params
-           (tT (string_of_int !page_footnotes)
-            ::tT " "
-            ::bB (fun _->[User AlignmentMark])
-            ::l);
-         let a=1./.(sqrt phi) in
-         let pages=minipage { env with
-           normalLead=env.lead*.a;
-           lead=env.lead*.a;
-           size=env.size*.a }
-           (top !str)
-         in
-         if Array.length pages>0 then
-           [User (Footnote (count, pages.(0)));
-            Drawing (drawing ~offset:(env.size/.2.)
-                       (draw_boxes env (boxify_scoped { env with size=env.size/.(sqrt phi) }
-                                          [tT (string_of_int !page_footnotes)])
-                       ))
-           ]
-         else
-           []
-       )]
-
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
       let do_begin_env ()=
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;
@@ -1057,7 +965,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             if not p.absolute && line.lineStart=0 then (
               let rec findMark w j=
                 if j>=line.lineEnd then 0. else
-                  if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                  if a1.(line.paragraph).(j) = Marker AlignmentMark then w else
                     let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
                       findMark (w+.ww) (j+1)
               in
@@ -1072,7 +980,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           if line.lineStart>0 then complete mes a1 a2 a3 a4 line a6 else (
             let rec findMark w j=
               if j>=Array.length a1.(line.paragraph) then 0. else
-                if a1.(line.paragraph).(j) = User AlignmentMark then w else
+                if a1.(line.paragraph).(j) = Marker AlignmentMark then w else
                   let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
                     findMark (w+.ww) (j+1)
             in
@@ -1097,7 +1005,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     drawing_max_width=g.drawing_nominal_width }
                   in
                   let boxes=List.map (function Glue g->Glue (fix g) | Drawing g->Drawing (fix g) | x->x) bb in
-                  boxes@[User AlignmentMark])
+                  boxes@[Marker AlignmentMark])
                 in
                 is_first_par:=false;
                 item::p.par_contents
@@ -1494,7 +1402,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                       Hashtbl.add h r ();
                       page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0) (t.frame_x1,t.frame_y1)])::page.pageContents;
                     );
-                    draw_frames (Layout.frame_up (t,cxt))
+                    draw_frames (Box.frame_up (t,cxt))
                   )
                 in
                 if env.show_frames then draw_frames line.layout;
@@ -1570,7 +1478,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                         w
                       )
-                      | User (BeginURILink l)->(
+                      | Marker (BeginURILink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                                    link_order=0;
                                    dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
@@ -1581,10 +1489,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                         page.pageContents<-Link link::page.pageContents;
                         0.
                       )
-                      | User (BeginLink l)->(
+                      | Marker (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                                    link_order=0;
-                                   dest_page=Layout.page line;dest_x=0.;dest_y=0.;is_internal=true;
+                                   dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
                                    link_contents=[]
                                  }
                         in
@@ -1593,18 +1501,18 @@ module Format=functor (D:Document.DocumentStructure)->(
                         page.pageContents<-Link link::page.pageContents;
                         0.
                       )
-                      | User EndLink->(
+                      | Marker EndLink->(
                         endlink false;
                         0.
                       )
-                      | User (Label l)->(
+                      | Marker (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
                         destinations:=StrMap.add l
                           (i,(fst line.layout).frame_x0+.param.left_margin,
                            y+.y0,y+.y1) !destinations;
                         0.
                       )
-                      (* | User (Footnote (_,g))->( *)
+                      (* | Marker (Footnote (_,g))->( *)
                       (*   footnotes:= g::(!footnotes); *)
                       (*   footnote_y:=max !footnote_y (h-.topMargin-.param.page_height); *)
                       (*   0. *)

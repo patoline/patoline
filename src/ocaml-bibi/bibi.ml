@@ -247,9 +247,9 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in
 	    citeCounter:=IntMap.add a () !citeCounter;
 	    let item =
-              bB (fun _->[User (BeginLink (sprintf "_bibi_%d" (num row)))])
+              bB (fun _->[Marker (BeginLink (sprintf "_bibi_%d" (num row)))])
               ::(C.citation_format (num row) row)
-              @[bB (fun _->[User EndLink])]
+              @[bB (fun _->[Marker EndLink])]
 	    in
 	    if l = [] then item@[tT"]"] else
 	      item@tT ", "::fn l
@@ -402,7 +402,7 @@ module MarginBiblio (C:CitationStyle)=struct
       if line.lineStart=0 then (
         let rec findMark w j=
           if j>=line.lineEnd then 0. else
-            if a1.(line.paragraph).(j) = User AlignmentMark then w else
+            if a1.(line.paragraph).(j) = Marker AlignmentMark then w else
               let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
               findMark (w+.ww) (j+1)
         in
@@ -423,7 +423,7 @@ module MarginBiblio (C:CitationStyle)=struct
       else (
         let rec findMark w j=
           if j>=Array.length a1.(line.paragraph) then 0. else
-            if a1.(line.paragraph).(j) = User AlignmentMark then w else
+            if a1.(line.paragraph).(j) = Marker AlignmentMark then w else
               let (_,ww,_)=box_interval a1.(line.paragraph).(j) in
               findMark (w+.ww) (j+1)
         in
@@ -440,8 +440,8 @@ module MarginBiblio (C:CitationStyle)=struct
             (tT"["::C.citation_format i row@
                [tT"] ";
                 bB (fun env->let s=env.size/.3. in
-                             [glue s s s;User (Label (sprintf "_bibi_%d" i));
-                              User AlignmentMark])]
+                             [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
+                              Marker AlignmentMark])]
              @default_biblio_format row)
           with
               _->[]
@@ -490,9 +490,10 @@ module DefaultBiblio (C:CitationStyle)=struct
         [C (fun env->
           try
             (tT"["::C.citation_format i row@
-               [tT"] ";bB (fun env->let s=env.size/.3. in
-                             [glue s s s;User (Label (sprintf "_bibi_%d" i));
-                              User AlignmentMark])]
+               [tT"] ";bB (fun env->
+                 let s=env.size/.3. in
+                 [glue s s s;Marker (Label (sprintf "_bibi_%d" i));
+                  Marker AlignmentMark])]
              @default_biblio_format row)
           with
               _->[]

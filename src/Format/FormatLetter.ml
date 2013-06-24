@@ -23,7 +23,6 @@ open Typography.Fonts.FTypes
 open Typography.Document
 open Typography.Util
 open Typography.Box
-open Typography.Layout
 open CamomileLibrary
 open Printf
 
@@ -199,7 +198,7 @@ module Output=functor(M:Driver)->struct
                           (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
                           w
                       )
-                      | User (BeginURILink l)->(
+                      | Marker (BeginURILink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                                    link_order=0;
                                    dest_page=0;dest_x=0.;dest_y=0.;is_internal=false;
@@ -209,7 +208,7 @@ module Output=functor(M:Driver)->struct
                         page.pageContents<-Link link::page.pageContents;
                         0.
                       )
-                      | User (BeginLink l)->(
+                      | Marker (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
                                    link_order=0;
                                    dest_page=0;dest_x=0.;dest_y=0.;is_internal=true;
@@ -221,12 +220,12 @@ module Output=functor(M:Driver)->struct
                         crosslink_opened:=true;
                         0.
                       )
-                      | User (Label l)->(
+                      | Marker (Label l)->(
                         let y0,y1=line_height paragraphs figures line in
                         destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
                         0.
                       )
-                      | User EndLink->(
+                      | Marker EndLink->(
                         let rec link_contents u l=match l with
                             []->[]
                           | (Link h)::s->(Link { h with link_contents=List.rev u })::s

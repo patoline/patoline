@@ -20,7 +20,6 @@
 
 open Document
 open Box
-open Layout
 open OutputCommon
 open Fonts.FTypes
 open Break
@@ -101,7 +100,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
             Hashtbl.add h r ();
             page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0) (t.frame_x1,t.frame_y1)])::page.pageContents;
           );
-          draw_frames (Layout.frame_up (t,cxt))
+          draw_frames (Box.frame_up (t,cxt))
         )
       in
       if env.show_frames then draw_frames line.layout;
@@ -187,7 +186,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
                 page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
               w
             )
-            | User (BeginURILink l)->(
+            | Marker (BeginURILink l)->(
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                          link_order=0;
                          dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
@@ -198,10 +197,10 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
               page.pageContents<-Link link::page.pageContents;
               0.
             )
-            | User (BeginLink l)->(
+            | Marker (BeginLink l)->(
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                          link_order=0;
-                         dest_page=Layout.page line;dest_x=0.;dest_y=0.;is_internal=true;
+                         dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
                          link_contents=[]
                        }
               in
@@ -210,11 +209,11 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
               page.pageContents<-Link link::page.pageContents;
               0.
             )
-            | User EndLink->(
+            | Marker EndLink->(
               endlink false;
               0.
             )
-            | User (Label l)->(
+            | Marker (Label l)->(
               let y0,y1=line_height paragraphs figures line in
               destinations:=StrMap.add l
                 (i,(fst line.layout).frame_x0+.param.left_margin,

@@ -24,7 +24,7 @@ open Fonts
 open Fonts.FTypes
 open OutputCommon
 open Box
-open Layout
+open Box
 open CamomileLibrary
 
 type fontAlternative = Regular | Bold | Caps | Demi
@@ -160,9 +160,9 @@ and paragraph={
   par_contents:content list;
   par_env:environment -> environment;
   par_post_env:environment -> environment -> environment;
-  par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> line -> parameters;
-  par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> Layout.line -> Box.box array -> int -> Layout.parameters -> float -> float;
-  par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line UserMap.t -> line -> bool -> line list;
+  par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> line -> parameters;
+  par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Box.line -> Box.box array -> int -> Box.parameters -> float -> Box.line -> Box.box array -> int -> Box.parameters -> float -> float;
+  par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> bool -> line list;
   par_states:Util.IntSet.t;
   mutable par_paragraph:int
 }
@@ -172,7 +172,7 @@ and figuredef={
   fig_contents:environment->drawingBox;
   fig_env:environment -> environment;
   fig_post_env:environment -> environment -> environment;
-  fig_parameters:environment -> Box.box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line UserMap.t -> line -> line -> parameters
+  fig_parameters:environment -> Box.box array array -> drawingBox array -> parameters -> Break.figurePosition IntMap.t -> line MarkerMap.t -> line -> line -> parameters
 }
 
 (** This is the type of document trees. *)
@@ -209,10 +209,10 @@ and environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
-  new_page:Layout.frame_zipper->Layout.frame_zipper;
+  new_page:Box.frame_zipper->Box.frame_zipper;
   new_line:environment->line->parameters->
-           line->parameters->Layout.frame_zipper->float->float;
-  user_positions:line UserMap.t;
+           line->parameters->Box.frame_zipper->float->float;
+  user_positions:line MarkerMap.t;
   show_boxes:bool;
   show_frames:bool;
   adjust_optical_alpha:float;
@@ -308,7 +308,7 @@ let tags=function
 
 (**/**)
 let default_new_page pageFormat t=
-  let zip=Layout.make_page pageFormat (frame_top t) in
+  let zip=Box.make_page pageFormat (frame_top t) in
   let w=(fst zip).frame_x1-.(fst zip).frame_x0
   and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
   let x0=((fst zip).frame_x0+.1.*.w/.6.) in
@@ -826,9 +826,9 @@ let pageref x=
     try
       env_accessed:=true;
       let (_,_,node)=StrMap.find x (names env) in
-      [bB (fun _->[User (BeginLink x)]);
+      [bB (fun _->[Marker (BeginLink x)]);
        tT (string_of_int (1+page node));
-       bB (fun _->[User EndLink])]
+       bB (fun _->[Marker EndLink])]
     with Not_found -> []
   )]
 
@@ -859,7 +859,7 @@ let label ?(labelType="_structure") name=
     let w=try let (_,_,w)=StrMap.find name (names env) in w with Not_found -> uselessLine in
     { env with names=StrMap.add name (env.counters, labelType, w) (names env) });
    bB (fun env ->
-     [User (Label name)])
+     [Marker (Label name)])
   ]
 
 
@@ -883,18 +883,18 @@ let generalRef refType name=
             Not_found->[]
       in
       let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-      [bB (fun _->[User (BeginLink name)]);
+      [bB (fun _->[Marker (BeginLink name)]);
        tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                 (List.rev (num@sect_num))));
-       bB (fun _->[User EndLink])]
+       bB (fun _->[Marker EndLink])]
     with
         Not_found -> []
   )]
 
 let sectref x=generalRef "_structure" x
 
-let extLink a b=bB (fun _->[User (BeginURILink a)])::b@[bB (fun _->[User EndLink])]
-let link a b=bB (fun _->[User (BeginLink a)])::b@[bB (fun _->[User EndLink])]
+let extLink a b=bB (fun _->[Marker (BeginURILink a)])::b@[bB (fun _->[Marker EndLink])]
+let link a b=bB (fun _->[Marker (BeginLink a)])::b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 
@@ -1174,7 +1174,7 @@ let draw_boxes env l=
       let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
-    | User (BeginURILink l)::s->(
+    | Marker (BeginURILink l)::s->(
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                  link_order=0;
                  dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
@@ -1182,10 +1182,10 @@ let draw_boxes env l=
       in
       draw_boxes x y (Link link::dr) s
     )
-    | User (BeginLink l)::s->(
+    | Marker (BeginLink l)::s->(
       let dest_page=
         try
-          let line=UserMap.find (Label l) env.user_positions in
+          let line=MarkerMap.find (Label l) env.user_positions in
           page line
         with
             Not_found->(-1)
@@ -1199,7 +1199,7 @@ let draw_boxes env l=
       in
       draw_boxes x y (Link link::dr) s
     )
-    | User EndLink::s->(
+    | Marker EndLink::s->(
       let rec link_contents u l=match l with
           []->[]
         | (Link h)::s->(Link { h with link_contents=u })::s
@@ -1265,8 +1265,8 @@ let adjust_width env buf nbuf =
 	incr i0;
 	try while !i0 < !nbuf do
 	  match buf.(!i0) with
-	  | User AlignmentMark -> incr i0; raise Exit
-	  | User _ -> incr i0	  
+	  | Marker AlignmentMark -> incr i0; raise Exit
+	  | Marker _ -> incr i0	  
 	  | Drawing x as b when x.drawing_nominal_width = 0.0 ->
 	    if !Distance.debug then Printf.fprintf stderr "0 Drawing(2)\n";
 	    if !adjust = None && not x.drawing_width_fixed then adjust := Some(b,!i0);
@@ -1405,7 +1405,7 @@ module type Format=sig
     ?label:'a ->
     ?extra_tags:(string * string) list ->
     content list -> bool
-  val parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line UserMap.t -> line -> parameters
+  val parameters:environment -> box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> parameters
 end
 
 
@@ -1483,7 +1483,7 @@ let flatten env0 fixable str=
                             Not_found -> uselessLine in
                         { env with names=StrMap.add name (env.counters, "_", w)
                             (names env) });
-                       bB (fun _->[User (Label name)])
+                       bB (fun _->[Marker (Label name)])
                       ]
                      ) else [])@
                       (if indent
@@ -1604,7 +1604,7 @@ let tag str tags=
 
 (** Label updating after optimization. *)
 let update_names env figs user=
-  let user=UserMap.fold (UserMap.add) user env.user_positions in
+  let user=MarkerMap.fold (MarkerMap.add) user env.user_positions in
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
   let env'={ env with user_positions=user;
                names=
@@ -1621,7 +1621,7 @@ let update_names env figs user=
                               )
                          )
                        else
-                         UserMap.find (Label k) user
+                         MarkerMap.find (Label k) user
                      in
                        if pos<>c && b<>"_" then (
                          Printf.fprintf stderr "reboot : position of %S (%S) changed\n" k b
