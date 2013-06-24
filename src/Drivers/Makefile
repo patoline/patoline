@@ -28,7 +28,7 @@ Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
 DriverGL.cmxa:DriverGL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
-	$(CAMLMKLIB) -package str,netcgi2,nethttpd -o DriverGL FrameBuffer.o GlFBO.cmx GLNet.cmx Vec3.cmx DriverGL.cmx
+	$(CAMLMKLIB) -package str -o DriverGL FrameBuffer.o GlFBO.cmx Vec3.cmx DriverGL.cmx
 Image.cmxa:DriverGL.cmx Image.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -o Image FrameBuffer.o DriverGL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
@@ -51,11 +51,11 @@ DriverCairo.cmx:DriverCairo.ml ../Typography/_build/Typography.cmx
 Html.cmx:Html.ml SVG.cmx HtmlFonts.cmx
 SVG.cmx:SVG.ml HtmlFonts.cmx
 Net.cmx:Net.ml SVG.cmx HtmlFonts.cmx
-DriverGL.cmx:DriverGL.ml FrameBuffer.o GLNet.cmx GlFBO.cmx Vec3.cmx
-	$(CAMLOPT) -package netcgi2,nethttpd -package $(PACK_DRIVER_DriverGL) -c -o $@ $<
+DriverGL.cmx:DriverGL.ml FrameBuffer.o GlFBO.cmx Vec3.cmx
+	$(CAMLOPT) -package $(PACK_DRIVER_DriverGL) -c -o $@ $<
 Image.cmx:Image.ml DriverGL.cmx ../Patoline/Language.cmx
 GLNet.cmx:GLNet.ml
-	$(CAMLOPT) -package netcgi2,nethttpd,$(PACK_DRIVER_GL) -c -o $@ $<
+	$(CAMLOPT) $(PACK_DRIVER_GL) -c -o $@ $<
 
 %.cmx:%.ml ../Typography/_build/Typography.cmi ../Typography/_build/Typography.cmx
 	$(CAMLOPT) -c -o $@ $<

@@ -511,7 +511,9 @@ var i=location.hash.indexOf(\"_\");
 h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
+if(h0!=current_slide || h1!=current_state){
 %s
+}
 };
 %s
 </script>"

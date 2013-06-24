@@ -66,6 +66,8 @@ let init_gl () =
 
 let filename x=""
 
+
+
 let zoom = ref 1.0
 let dx = ref 0.0
 let dy = ref 0.0
@@ -1078,22 +1080,52 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       Glut.swapBuffers ()
   in
-#ifdef OCAMLNET
-  let handle_one = 
-    (match !prefs.server_port with
-      Some port -> GLNet.handle_one port
-    | None -> fun () -> ())
-  in
-#else
-  let handle_one()=() in
-#endif
 
-  let rec idle_cb ~value:() =
-    Glut.timerFunc ~ms:30 ~cb:idle_cb ~value:();
+
+
+
+  let reconnect ()=
+    let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    Unix.connect sock (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1",8080));
+    let fo=Unix.out_channel_of_descr sock in
+    output_string fo "GET /tire HTTP/1.1\r\n\r\n";flush fo;
+    sock
+  in
+
+  let s=String.create 1000 in
+  let handle_one sock=
+    let i,_,_ = Unix.select [sock] [] [] 0.0 in
+    match i with
+	[] -> ()
+      | i -> (
+        let fi=Unix.in_channel_of_descr sock in
+        let n=input fi s 0 (String.length s) in
+        if n>0 then (
+          let len,off=
+            if int_of_char s.[0]<=125 then int_of_char s.[0],1 else
+              if int_of_char s.[0]=126 then (int_of_char s.[1] lsl 8) lor int_of_char s.[2],3 else
+                (((((int_of_char s.[1] lsl 8) lor int_of_char s.[2]) lsl 8) lor
+                     int_of_char s.[3]) lsl 8) lor int_of_char s.[4],5
+          in
+          Printf.fprintf stderr "%d %d\n" (int_of_char s.[1]) len;flush stderr;
+          Printf.fprintf stderr "%S\n" (String.sub s 0 n);flush stderr;
+          let rec inp off l=if l>0 then (
+            let n=input fi s 0 (min l (String.length s)) in
+            Printf.fprintf stderr "recv : %s\n" (String.sub s off n);flush stderr;
+            if n>0 then inp 0 (l-n)
+          )
+          in
+          inp off (len-n)
+        )
+      )
+  in
+
+  let rec idle_cb sock ~value:()=
+    Glut.timerFunc ~ms:30 ~cb:(idle_cb sock) ~value:();
     if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
     show_links ();
 
-    handle_one ();
+    handle_one sock;
     begin
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -1125,10 +1157,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   in
 
-  let display_cb () = 
+  let display_cb sock ()=
     draw_gl_scene ();
     Glut.swapBuffers ();
-    idle_cb ();
+    idle_cb sock ();
   in
     
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
@@ -1290,7 +1322,6 @@ function show(event){
       flush stderr
     | _ -> ()
   in
-
   let main () =
     let win0 = match !win with
       None ->
@@ -1308,28 +1339,28 @@ function show(event){
 	w
     | Some w -> w
     in
+    let socket=reconnect () in
     match !prefs.batch_cmd with
       None ->
-	Glut.displayFunc display_cb;
+	Glut.displayFunc (display_cb socket);
 	Glut.keyboardFunc keyboard_cb;
 	Glut.specialFunc special_cb;
 	Glut.reshapeFunc reshape_cb;
 	Glut.mouseFunc mouse_cb;
-	Glut.timerFunc ~ms:30 ~cb:idle_cb ~value:();
+	Glut.timerFunc ~ms:30 ~cb:(idle_cb socket) ~value:();
 	Glut.motionFunc motion_cb;
 	Glut.passiveMotionFunc passive_motion_cb;
-	
 	Sys.set_signal Sys.sighup
 	  (Sys.Signal_handle
 	     (fun s ->  to_revert := true; Glut.postRedisplay ()));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
 	(try Glut.mainLoop ()
-	with e -> 
+	with e ->
 	  Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
 	  Gl.flush ();
 	  Glut.destroyWindow win0; if e <> Exit then raise e)
-    | Some f -> 
+    | Some f ->
       f get_pixes
   in
 

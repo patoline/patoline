@@ -138,8 +138,7 @@ and driver =
   { name: string; needs: driver_needs list; suggests: driver_needs list }
 
 let ocamlnet_needs =
-  [Package "netstring"; Package "netsys"; Package "unix"; Package "nethttpd";
-  Package "netcgi2"; Package "cryptokit"]
+  [Package "netstring"; Package "netsys"; Package "unix"; Package "cryptokit"]
 
 let patoline_driver_gl =
   { name = "DriverGL";

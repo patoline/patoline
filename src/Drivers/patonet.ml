@@ -317,82 +317,23 @@ let serve addr fd=
         flush ouc;
         process_req "" [] reste
 
+      ) else if get="/telecommande" then (
+
       ) else if Str.string_match tire get 0 || get="/tire" then (
         try
+          Printf.fprintf stderr "pushing\n";flush stderr;
           begin
-            try
-              let key=
-                let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
-                let sha=Cryptokit.Hash.sha1 () in
-                sha#add_string websocket_key;
-                sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-                base64_encode (sha#result)
-              in
-              output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-Websocket-Accept: ";
-              output_string ouc key;
-              output_string ouc "\r\n\r\n";
-              flush ouc;
-            with
-                (* Version Apple *)
-                Not_found->(
-                  let key=
-                    let wk1=List.assoc "Sec-WebSocket-Key1" hdr in
-                    let wk2=List.assoc "Sec-WebSocket-Key2" hdr in
-                    let wk1_dig=Buffer.create (String.length wk1) in
-                    let wk2_dig=Buffer.create (String.length wk1) in
-                    let wk1_sp=ref 0 in
-                    let wk2_sp=ref 0 in
-                    for i=0 to String.length wk1-1 do
-                      if wk1.[i]>='0' && wk1.[i]<='9' then Buffer.add_char wk1_dig wk1.[i]
-                      else if wk1.[i]=' ' then incr wk1_sp
-                    done;
-                    for i=0 to String.length wk2-1 do
-                      if wk2.[i]>='0' && wk2.[i]<='9' then Buffer.add_char wk2_dig wk2.[i]
-                      else if wk2.[i]=' ' then incr wk2_sp
-                    done;
-                    let wk1=int_of_string (Buffer.contents wk1_dig)/(max 1 !wk1_sp) in
-                    let wk2=int_of_string (Buffer.contents wk2_dig)/(max 1 !wk2_sp) in
-                    let k=String.create 16 in
-                    k.[0]<-(char_of_int ((wk1 lsr 24) land 0xff));
-                    k.[1]<-(char_of_int ((wk1 lsr 16) land 0xff));
-                    k.[2]<-(char_of_int ((wk1 lsr 8) land 0xff));
-                    k.[3]<-(char_of_int (wk1 land 0xff));
-
-                    k.[4]<-(char_of_int ((wk2 lsr 24) land 0xff));
-                    k.[5]<-(char_of_int ((wk2 lsr 16) land 0xff));
-                    k.[6]<-(char_of_int ((wk2 lsr 8) land 0xff));
-                    k.[7]<-(char_of_int (wk2 land 0xff));
-                    let _=input inc k 8 8 in
-
-                    let md5=Cryptokit.Hash.md5 () in
-                    md5#add_string k;
-                    md5#result
-                  in
-                  let orig=List.assoc "Origin" hdr in
-                  output_string ouc "HTTP/1.1 101 WebSocket Protocol Handshake\r\n";
-                  output_string ouc "Upgrade: WebSocket\r\nConnection: Upgrade\r\n";
-                  output_string ouc "Sec-WebSocket-Origin: ";
-                  let ws=
-                    try
-                      try List.assoc "Host" hdr with Not_found->(
-                        let i=String.index orig '/' in
-                        String.sub orig (i+2) (String.length orig-i-2)
-                      )
-                    with
-                        Not_found->orig
-                  in
-                  output_string ouc orig;
-                  output_string ouc "\r\nSec-WebSocket-Location: ws://";
-                  output_string ouc ws;
-                  output_string ouc get;
-                  output_string ouc "Access-Control-Allow-Origin: ";
-                  output_string ouc orig;
-                  output_string ouc "\r\n\r\n";
-
-                  output_string ouc key;
-                  output_string ouc "\r\n\r\n";
-                  flush ouc;
-                );
+            let key=
+              let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
+              let sha=Cryptokit.Hash.sha1 () in
+              sha#add_string websocket_key;
+              sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+              base64_encode (sha#result)
+            in
+            output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-Websocket-Accept: ";
+            output_string ouc key;
+            output_string ouc "\r\n\r\n";
+            flush ouc;
           end;
 
           Mutex.lock mut;
@@ -425,10 +366,9 @@ let serve addr fd=
         with
             Not_found->(
               Mutex.lock mut;
-              (try
-                 pushto fd;
-                 addrs:=AddrMap.add addr fd !addrs;
-               with _->());
+              Printf.fprintf stderr "pushing\n";flush stderr;
+              pushto fd;
+              addrs:=AddrMap.add addr fd !addrs;
               Mutex.unlock mut;
               raise Websocket
             )

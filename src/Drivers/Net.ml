@@ -28,9 +28,8 @@ open HtmlFonts
 let websocket is_master w=
   Printf.sprintf "var websocket;var was_error;
 function websocket_msg(evt){
-     console.log(evt);
      var st=JSON.parse(evt.data);
-     if(st.slide==current_slide || current_slide==(-1)) {
+     if(st.slide==current_slide || !first_displayed) {
          loadSlide(st.slide,st.state);
      } else if(st.slide<current_slide) {
          loadSlide(st.slide,st.state,function(a,b){slide(%g,a,b)})
@@ -116,7 +115,7 @@ function gotoSlide(n){
 
   let master,_=SVG.basic_html
     ~script:(websocket true (fst (pages.(0)).(0).pageFormat))
-    ~onload:"to=0;start_socket();websocket.onopen=function(){xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send()};"
+    ~onload:"to=0;start_socket();"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard
     cache structure pages prefix
