@@ -1310,7 +1310,6 @@ let adjust_width env buf nbuf =
 	
 	      let (x0_r,y0_r,x1_r,y1_r)=bounding_box_kerning right in
 	      let (x0_r',y0_r',x1_r',y1_r')=bounding_box_full right in
-	      let (x0_l',y0_l',x1_l',y1_l')=bounding_box_full left in
 
 
  	      let nominal' = !nominal +. char_space in
