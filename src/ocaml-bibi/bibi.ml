@@ -94,7 +94,9 @@ let set_auteurs db art aut=
 
 let gets table db art=
   let auteurs=ref [] in
-  let cb row _=match row.(0) with Some a->auteurs:=a::(!auteurs) | None -> () in
+  let cb row _=match row.(0) with Some a->(
+    auteurs:=a::(!auteurs)
+  ) | None -> () in
     match exec db ~cb:cb (sprintf "SELECT name FROM authors WHERE id IN (SELECT author FROM %s_publications WHERE article=%Ld)" table art) with
         Rc.OK -> List.rev !auteurs
       | r ->(fprintf stderr "gets %s : %s\n%s\n" table (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
