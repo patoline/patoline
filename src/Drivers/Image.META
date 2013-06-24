@@ -1,5 +1,0 @@
-package "Image" (
-archive(byte)="Image.cma"
-archive(native)="Image.cmxa"
-requires="Typography,Typography.GL,lablgl,lablgl.glut"
-)

@@ -481,21 +481,26 @@ let _=
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
-        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config src/Drivers/DriverGL.META\n";
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config src/Drivers/DriverGL.META src/Drivers/Image.META\n";
         close_out out;
         close_out config;
         close_out config';
 
-        let glmeta=open_out "src/Drivers/DriverGL.META" in
-          Printf.fprintf glmeta "package \"DriverGL\" (\n";
-          Printf.fprintf glmeta "archive(byte)=\"DriverGL.cma\"\n";
-          Printf.fprintf glmeta "archive(native)=\"DriverGL.cmxa\"\n";
-          let required = ["lablgl" ; "lablgl.glut" ; "netcgi2" ; "nethttpd" ; "str"] in
-          let req_real = List.map (fun s -> snd (ocamlfind_query s)) required in
-          let req_str = String.concat "," (List.filter (fun x -> x != "") req_real) in
-          Printf.fprintf glmeta "requires=\"Typography,%s\"\n" req_str;
-          Printf.fprintf glmeta ")\n";
-          close_out glmeta;
+        (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
+        let gen_meta_driver n intd extd =
+          let f = open_out ("src/Drivers/" ^ n ^ ".META") in
+            Printf.fprintf f "package \"%s\" (\n" n;
+            Printf.fprintf f "archive(byte)=\"%s.cma\"\n" n;
+            Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" n;
+            let extd_real = List.map (fun s -> snd (ocamlfind_query s)) extd in
+            let alldep = intd @ (List.filter (fun x -> x != "") extd_real) in
+            Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
+            Printf.fprintf f ")\n";
+            close_out f
+        in
+
+        let _ = gen_meta_driver "DriverGL" ["Typography"] ["lablgl" ; "lablgl.glut" ; "netcgi2" ; "nethttpd" ; "str"] in
+        let _ = gen_meta_driver "Image" ["Typography" ; "Typography.GL"] ["lablgl" ; "lablgl.glut"] in
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
