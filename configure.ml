@@ -481,10 +481,21 @@ let _=
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\tmake -C src clean\n";
-        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config\n";
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config src/Drivers/DriverGL.META\n";
         close_out out;
         close_out config;
         close_out config';
+
+        let glmeta=open_out "src/Drivers/DriverGL.META" in
+          Printf.fprintf glmeta "package \"DriverGL\" (\n";
+          Printf.fprintf glmeta "archive(byte)=\"DriverGL.cma\"\n";
+          Printf.fprintf glmeta "archive(native)=\"DriverGL.cmxa\"\n";
+          let required = ["lablgl" ; "lablgl.glut" ; "netcgi2" ; "nethttpd" ; "str"] in
+          let req_real = List.map (fun s -> snd (ocamlfind_query s)) required in
+          let req_str = String.concat "," (List.filter (fun x -> x != "") req_real) in
+          Printf.fprintf glmeta "requires=\"Typography,%s\"\n" req_str;
+          Printf.fprintf glmeta ")\n";
+          close_out glmeta;
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta

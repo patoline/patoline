@@ -1,5 +1,0 @@
-package "DriverGL" (
-archive(byte)="DriverGL.cma"
-archive(native)="DriverGL.cmxa"
-requires="Typography,lablgl,lablgl.glut,netcgi2,nethttpd,str"
-)
