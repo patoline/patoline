@@ -153,6 +153,9 @@ let patoline_driver_gl2 =
       (Package "lablgl")::(Package "lablgtk2")::ocamlnet_needs;
   }
 *)
+let patoline_driver_image =
+  { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
+    patoline_driver_gl]; suggests = [] }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
@@ -167,8 +170,7 @@ let r_patoline_drivers = ref
     patoline_driver_gl;
 (*    patoline_driver_gl2;*)
     { name = "Net"; needs = ocamlnet_needs; suggests = [] };
-    { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
-    patoline_driver_gl]; suggests = [] };
+    patoline_driver_image;
   ]
 
 (* Checks whether we can build a given driver.
@@ -492,15 +494,19 @@ let _=
             Printf.fprintf f "package \"%s\" (\n" n;
             Printf.fprintf f "archive(byte)=\"%s.cma\"\n" n;
             Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" n;
-            let extd_real = List.map (fun s -> snd (ocamlfind_query s)) extd in
-            let alldep = intd @ (List.filter (fun x -> x != "") extd_real) in
+            let alldep = intd @ (gen_pack_line extd) in
             Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
             Printf.fprintf f ")\n";
             close_out f
         in
 
-        let _ = gen_meta_driver "DriverGL" ["Typography"] ["lablgl" ; "lablgl.glut" ; "netcgi2" ; "nethttpd" ; "str"] in
-        let _ = gen_meta_driver "Image" ["Typography" ; "Typography.GL"] ["lablgl" ; "lablgl.glut"] in
+        let _ =
+          if can_build_driver patoline_driver_gl
+          then gen_meta_driver patoline_driver_gl.name ["Typography"] [Driver patoline_driver_gl] in
+
+        let _ =
+          if can_build_driver patoline_driver_image
+          then gen_meta_driver patoline_driver_image.name ["Typography"; "Typography.GL"] [Driver patoline_driver_image] in
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
