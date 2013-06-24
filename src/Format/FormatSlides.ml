@@ -968,7 +968,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   Node n when List.mem_assoc "slide" n.node_tags ->(
                     let sl=
                       let open Typography.OutputCommon in
-                          {name=(try List.assoc "name" n.node_tags with Not_found->"");
+                          {name=n.name;
                            displayname=[];metadata=[];tags=n.node_tags;
 		           page= !slide_num;struct_x=0.;struct_y=0.;
                            substructures=[||]
@@ -985,7 +985,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   ) n.children []
                   in
                   let open Typography.OutputCommon in
-                  {name=(try List.assoc "name" n.node_tags with Not_found->"");
+                  {name=n.name;
                    displayname=[];metadata=[];tags=n.node_tags;
 		   page= !slide_num;struct_x=0.;struct_y=0.;
                    substructures=Array.of_list (List.rev sub)
