@@ -3,22 +3,20 @@ mkdir -p ../ports/ml/ocaml-patoline
 cp Portfile ../ports/ml/ocaml-patoline
 init_dir=$(pwd)
 version=$(grep version src/Typography/META | sed -e "s/.*\"\([^\"]*\)\"/\1/")
+
+cat /Users/pe/Projets/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/" | sed -e "s/version\([ ]*\)\([^ ]*\)/version\1$version/" > Portfile.new
+mv Portfile.new Portfile
+cp Portfile /Users/pe/Projets/ports/ml/ocaml-patoline
+
+echo $version
 darcs dist -d patoline --set-scripts-executable
 mv patoline.tar.gz /tmp
 cd /tmp
 tar -xzf patoline.tar.gz
-cd patoline
-ocamlc -o configure configure.ml
-rm -f *.cmo *.cmi
-rm -Rf _darcs
-rm -f pack
-cd ..
 rm -Rf patoline-$version
 mv patoline patoline-$version
 tar -cvf patoline-$version.tar patoline-$version
 gzip patoline-$version.tar
-cat /Users/pe/Projets/ports/ml/ocaml-patoline/Portfile | sed -e "s/sha256[ ]*\([^ ]*\)/sha256 $(shasum -a 256 patoline-$version.tar.gz | sed -e "s/\([^\t ][^\t ]*\).*/\1/")/"  > Portfile
-mv Portfile /Users/pe/Projets/ports/ml/ocaml-patoline/
 echo $init_dir
 mv patoline-$version.tar.gz $init_dir
 cd $init_dir

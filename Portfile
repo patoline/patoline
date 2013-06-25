@@ -3,18 +3,18 @@
 PortSystem          1.0
 
 name                patoline
-version             1.0
+version             0.1
 categories          ocaml
 platforms           darwin
 license             GPL
 maintainers         pierreetienne.meunier@gmail.com
 description         A new typesetting system, programmable in ocaml.
 long_description    A new typesetting system, programmable in ocaml.
-homepage            http://www.patoline.com
-master_sites        file:///Users/pe/Projets/patoline
+homepage            http://patoline.org
+master_sites        http://patoline.org/patoline
 
 
-checksums           sha256 40797c9d9a36bb0c802e80a1a4109cc9bb22750897f3be1b46058077609ec444
+checksums           sha256 edeaa6bb1cc1dbd99a31c64cc64c8deb6ca29d4f828ab18e3677184f1074166e
 
 depends_lib         port:ocaml \
                     port:ocaml-camomile \
