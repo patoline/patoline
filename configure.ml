@@ -135,7 +135,11 @@ type driver_needs =
   | Package of string
   | Driver of driver
 and driver =
-  { name: string; needs: driver_needs list; suggests: driver_needs list }
+  { name: string;
+    needs: driver_needs list;
+    suggests: driver_needs list;
+    internals: driver_needs list;
+  }
 
 let ocamlnet_needs =
   [Package "netstring"; Package "netsys"; Package "unix"; Package "cryptokit"]
@@ -144,7 +148,9 @@ let patoline_driver_gl =
   { name = "DriverGL";
     needs =(Package "str")::(Package "camlimages.all_formats")::
       (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
-    suggests = [] }
+    suggests = [];
+    internals = [Package "Typography.GL"]
+  }
 (*
 let patoline_driver_gl2 =
   { patoline_driver_gl with
@@ -155,21 +161,21 @@ let patoline_driver_gl2 =
 *)
 let patoline_driver_image =
   { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
-    patoline_driver_gl]; suggests = [] }
+    patoline_driver_gl]; suggests = []; internals = [] }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
 let r_patoline_drivers = ref
   [
-    { name = "None"; needs = []; suggests = [] };
-    { name = "Pdf"; needs = []; suggests = [Package "zip"] };
-    { name = "Bin"; needs = []; suggests = [] };
-    { name = "Html"; needs = []; suggests = [] };
-    { name = "SVG"; needs = []; suggests = [] };
-    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = [] };
+    { name = "None"; needs = []; suggests = []; internals = [] };
+    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = [] };
+    { name = "Bin"; needs = []; suggests = []; internals = [] };
+    { name = "Html"; needs = []; suggests = []; internals = [] };
+    { name = "SVG"; needs = []; suggests = []; internals = [] };
+    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] };
     patoline_driver_gl;
 (*    patoline_driver_gl2;*)
-    { name = "Net"; needs = ocamlnet_needs; suggests = [] };
+    { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [] };
     patoline_driver_image;
   ]
 
@@ -189,10 +195,11 @@ let rec can_build_driver d =
  * This function does not require all packages in "needs" to be present. If some
  * of them are missing, they simply won't appear in the returned string.
  *)
-let gen_pack_line needs =
+let gen_pack_line ?(query=false) needs =
   let rec aux_gen = function
   | [] -> []
-  | (Package p) :: needs -> (snd (ocamlfind_query p)) :: (aux_gen needs)
+  | (Package p) :: needs ->
+      (if query then (snd (ocamlfind_query p)) else p) :: (aux_gen needs)
   | (Driver d) :: needs ->
       (aux_gen d.needs) @ (aux_gen d.suggests) @ (aux_gen needs)
   in (List.filter ((<>) "") (aux_gen needs))
@@ -489,12 +496,12 @@ let _=
         close_out config';
 
         (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
-        let gen_meta_driver n intd extd =
-          let f = open_out ("src/Drivers/" ^ n ^ ".META") in
-            Printf.fprintf f "package \"%s\" (\n" n;
-            Printf.fprintf f "archive(byte)=\"%s.cma\"\n" n;
-            Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" n;
-            let alldep = intd @ (gen_pack_line extd) in
+        let gen_meta_driver drv =
+          let f = open_out ("src/Drivers/" ^ drv.name ^ ".META") in
+            Printf.fprintf f "package \"%s\" (\n" drv.name;
+            Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
+            Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
+            let alldep = (gen_pack_line ~query:false drv.internals) @ (gen_pack_line [Driver drv]) in
             Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
             Printf.fprintf f ")\n";
             close_out f
@@ -502,11 +509,11 @@ let _=
 
         let _ =
           if can_build_driver patoline_driver_gl
-          then gen_meta_driver patoline_driver_gl.name ["Typography"] [Driver patoline_driver_gl] in
+          then gen_meta_driver patoline_driver_gl in
 
         let _ =
           if can_build_driver patoline_driver_image
-          then gen_meta_driver patoline_driver_image.name ["Typography"; "Typography.GL"] [Driver patoline_driver_image] in
+          then gen_meta_driver patoline_driver_image in
 
         let meta=open_out "src/Typography/META" in
           Printf.fprintf meta
