@@ -175,7 +175,7 @@ let r_patoline_drivers = ref
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] };
     patoline_driver_gl;
 (*    patoline_driver_gl2;*)
-    { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [] };
+    { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [Package "Typography.SVG"] };
     patoline_driver_image;
   ]
 
@@ -195,7 +195,7 @@ let rec can_build_driver d =
  * This function does not require all packages in "needs" to be present. If some
  * of them are missing, they simply won't appear in the returned string.
  *)
-let gen_pack_line ?(query=false) needs =
+let gen_pack_line ?(query=true) needs =
   let rec aux_gen = function
   | [] -> []
   | (Package p) :: needs ->
@@ -496,12 +496,15 @@ let _=
         close_out config';
 
         (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
+        let driver_generated_metas = ref [] in
         let gen_meta_driver drv =
-          let f = open_out ("src/Drivers/" ^ drv.name ^ ".META") in
+          let meta_name = "src/Drivers/" ^ drv.name ^ ".META" in
+          driver_generated_metas := meta_name :: !driver_generated_metas;
+          let f = open_out meta_name in
             Printf.fprintf f "package \"%s\" (\n" drv.name;
             Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
             Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
-            let alldep = (gen_pack_line ~query:false drv.internals) @ (gen_pack_line [Driver drv]) in
+            let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
             Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
             Printf.fprintf f ")\n";
             close_out f
