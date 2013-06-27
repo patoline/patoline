@@ -90,94 +90,103 @@ let stop_all ()=
 #endif
   Mutex.unlock mpids
 
-let command cmd args=
+let command ?builddir:(builddir=".") cmd args=
   sem_down sem;
   Mutex.lock mpids;
   let a_in,a_out=Unix.pipe () in
   let b_in,b_out=Unix.pipe () in
   let c_in,c_out=Unix.pipe () in
-  let pid=Unix.create_process cmd args a_in b_out c_out in
-  Unix.close a_in;
-  Unix.close a_out;
-  Unix.close b_out;
-  Unix.close c_out;
-  pids:=IntSet.add pid !pids;
-  Mutex.unlock mpids;
+  let pid=Unix.fork () in
+  if pid=0 then (
+      Unix.chdir builddir;
+      Unix.dup2 Unix.stdin a_in;
+      Unix.dup2 Unix.stdout b_out;
+      Unix.dup2 Unix.stderr c_out;
+      Unix.execvp cmd args;
+  ) else (
 
-  let buf_out=Rbuffer.create 1000 in
-  let buf_err=Rbuffer.create 1000 in
+    Unix.close a_in;
+    Unix.close a_out;
+    Unix.close b_out;
+    Unix.close c_out;
+    pids:=IntSet.add pid !pids;
+    Mutex.unlock mpids;
 
-  let str=String.create 1000 in
-  let rec read_all chans=
-    if chans<>[] then (
-      let a,b,c=Unix.select chans [] chans (-.1.) in
-      match a,c with
-          ha::_ , _->(
-            let x=Unix.read ha str 0 (String.length str) in
-            (if ha==b_in then (
+    let buf_out=Rbuffer.create 1000 in
+    let buf_err=Rbuffer.create 1000 in
+
+    let str=String.create 1000 in
+    let rec read_all chans=
+      if chans<>[] then (
+        let a,b,c=Unix.select chans [] chans (-.1.) in
+        match a,c with
+            ha::_ , _->(
+              let x=Unix.read ha str 0 (String.length str) in
+              (if ha==b_in then (
               (* output stdout str 0 x;flush stdout; *)
-              Rbuffer.add_substring buf_out str 0 x
-             ) else
-                Rbuffer.add_substring buf_err str 0 x);
-            if x>0 then
-              read_all chans
-            else (
-              Unix.close ha;
-              read_all (List.filter (fun ch->not (ch==ha)) chans)
+                Rbuffer.add_substring buf_out str 0 x
+               ) else
+                  Rbuffer.add_substring buf_err str 0 x);
+              if x>0 then
+                read_all chans
+              else (
+                Unix.close ha;
+                read_all (List.filter (fun ch->not (ch==ha)) chans)
+              )
             )
+          | _, hc::_->(
+            read_all (List.filter (fun ch->not (ch==hc)) chans)
           )
-        | _, hc::_->(
-          read_all (List.filter (fun ch->not (ch==hc)) chans)
-        )
-        | [],[]->(
-          read_all chans
-        )
-    )
-  in
-  read_all [b_in;c_in];
+          | [],[]->(
+            read_all chans
+          )
+      )
+    in
+    read_all [b_in;c_in];
 
-  let _,stat=Thread.wait_pid pid in
+    let _,stat=Thread.wait_pid pid in
 
-  Rbuffer.output_buffer stdout buf_out;
-  Rbuffer.output_buffer stderr buf_err;
-  Mutex.lock mpids;
-  pids:=IntSet.remove pid !pids;
-  Mutex.unlock mpids;
+    Rbuffer.output_buffer stdout buf_out;
+    Rbuffer.output_buffer stderr buf_err;
+    Mutex.lock mpids;
+    pids:=IntSet.remove pid !pids;
+    Mutex.unlock mpids;
 
-  sem_up sem;
-  match stat with
-      Unix.WEXITED err->
-        if err=0 then 0 else (
-          stop_all ();
-          1
-        )
-    | Unix.WSIGNALED _
-    | Unix.WSTOPPED _->(stop_all ();1)
+    sem_up sem;
+    match stat with
+        Unix.WEXITED err->
+          if err=0 then 0 else (
+            stop_all ();
+            1
+          )
+      | Unix.WSIGNALED _
+      | Unix.WSTOPPED _->(stop_all ();1)
+  )
 
-type rule_t=Node of rule_t*rule_t | Leaf of (string->bool)
+type rule_t=Node of rule_t*rule_t | Leaf of (string->string->bool)
 
-let rules=ref (Leaf (fun _->false))
+let rules=ref (Leaf (fun _ _->false))
 let append_rule r=rules:=Node(!rules,Leaf r)
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
-let rec build_with_rule r h=
+let rec build_with_rule ?builddir:(builddir=".") r h=
   match known h with
       Known m->(Mutex.lock m;Mutex.unlock m)
     | Not_known m->(
       (try
-         if not (r h) then
+         if not (r builddir h) then
            raise (No_rule h);
          Mutex.unlock m;
        with
            e->(Mutex.unlock m;raise e));
     )
 
-let rec build h=
+let rec build ?builddir:(builddir=".") h=
   match known h with
       Known m->(Mutex.lock m;Mutex.unlock m)
     | Not_known m->(
       (try
          let rec apply_rules t=match t with
-             Leaf l->l h
+             Leaf l->l builddir h
            | Node (a,b)->
              (let aa=apply_rules a in
               if aa then true else

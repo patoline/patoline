@@ -378,7 +378,7 @@ and compilation_needed sources targets=
     max_sources>min_targets
   )
 
-and patoline_rule objects h=
+and patoline_rule objects builddir h=
   if Filename.check_suffix h ".ttml" || Filename.check_suffix h Parser.gram_ext then
     (
       let source=
