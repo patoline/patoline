@@ -1,27 +1,34 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 # $Id$
 
 PortSystem          1.0
+PortGroup           ocaml 1.0
 
 name                patoline
 version             0.1
 categories          ocaml
 platforms           darwin
-license             GPL
-maintainers         pierreetienne.meunier@gmail.com
+license             GPL-2+
+maintainers         gmail.com:pierreetienne.meunier openmaintainer
 description         A new typesetting system, programmable in ocaml.
-long_description    A new typesetting system, programmable in ocaml.
-homepage            http://patoline.org
-master_sites        http://patoline.org/patoline
+long_description    ${description}
 
+homepage            http://${name}.org
+master_sites        http://${name}.org/darcs/${name}
 
-checksums           sha256 edeaa6bb1cc1dbd99a31c64cc64c8deb6ca29d4f828ab18e3677184f1074166e
+checksums           rmd160 01094d0c0250830112e144382750d3c12995452d \
+                    sha256 57bee3c8a0bc30ff3c546693f56b7558b55f626ec1e5b37c9d6f20fdde9df4b9
 
-depends_lib         port:ocaml \
-                    port:ocaml-camomile \
+depends_lib-append  port:ocaml-camomile \
                     port:ocaml-dypgen \
-                    port:ocaml-findlib
+                    port:ocaml-findlib \
+                    port:ocaml-sqlite3 \
+                    port:ocaml-zip
 
-configure.pre_args      --prefix ${prefix} \
-                        --extra-fonts-dir /Library/Fonts
+configure.pre_args  --prefix ${prefix} \
+                    --extra-fonts-dir /Library/Fonts
 
 use_parallel_build  no
+
+test.run            yes
+test.target         check

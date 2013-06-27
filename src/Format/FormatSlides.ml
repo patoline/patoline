@@ -967,7 +967,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   Node n when List.mem_assoc "slide" n.node_tags ->(
                     let sl=
                       let open Typography.OutputCommon in
-                          {name=n.name;
+                          {name=n.Typography.Document.name;
                            displayname=[];metadata=[];tags=n.node_tags;
 		           page= !slide_num;struct_x=0.;struct_y=0.;
                            substructures=[||]
