@@ -104,13 +104,9 @@ and placed_line=
 
 (* Layout definitions *)
 
-and frame_tag=
-    Column
-  | Decoration
-
 and frame={
   frame_children:frame IntMap.t;
-  frame_tag:frame_tag;
+  frame_tag:string;
   frame_x0:float;
   frame_y0:float;
   frame_x1:float;
@@ -136,7 +132,7 @@ let rec frame_top (t,cxt)=
 
 let empty_frame={
   frame_children=IntMap.empty;
-  frame_tag=Column;
+  frame_tag=Marshal.to_string () [];
   frame_x0=0.;
   frame_x1=0.;
   frame_y0=0.;
