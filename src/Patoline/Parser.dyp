@@ -512,6 +512,11 @@ rule comment = parse
       comment lexbuf }
   | _ {  comment lexbuf }
 
+and sll_comment = parse
+    eof { () }
+  | newline { () }
+  | _ { sll_comment lexbuf }
+
 and preproc i=parse
     "\\"['E''e'] "nd{" (['a'-'z''A'-'Z''_']['a'-'z''A'-'Z''_''0'-'9']*) "}"
       { if i>0 then preproc (i-1) lexbuf else
@@ -531,6 +536,7 @@ and caml txps= parse
         caml txps lexbuf
     }
   | '(' '*' { comment lexbuf; caml txps lexbuf } 
+  | '*' '(' { sll_comment lexbuf; caml txps lexbuf }
   | '(' { let txps = caml txps lexbuf in caml txps lexbuf } 
   | '<' '$' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
@@ -552,6 +558,7 @@ and texprime_math= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
   | '$' '>' { () } 
   | '(' '*' { comment lexbuf; texprime_math lexbuf } 
+  | '*' '(' { sll_comment lexbuf; texprime_math lexbuf }
   | '<' '$' { texprime_math lexbuf; texprime_math lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_math)) }
   | newline { set_newline 1 (std_lexbuf lexbuf); texprime_math lexbuf }
@@ -565,6 +572,7 @@ and texprime_text= parse
     '*' ')' { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unexpected_end_of_comment)) }
   | '>' '>' { () }
   | '(' '*' { comment lexbuf; texprime_text lexbuf } 
+  | '*' '(' { sll_comment lexbuf; texprime_text lexbuf }
   | '<' '<' {  texprime_text lexbuf; texprime_text lexbuf } 
   | eof { raise (Syntax_Error(Dyp.lexeme_start_p lexbuf,Language.Unterminated_text)) }
   | newline {  set_newline 1 (std_lexbuf lexbuf); texprime_text lexbuf }
@@ -600,6 +608,7 @@ main lexer =
   '\\' ident
     -> MACRO { let l = Dyp.lexeme lexbuf in String.sub l 1 (String.length l - 1) }
   '(' '*' -> { comment lexbuf }
+  '*' '(' -> { sll_comment lexbuf }
   '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
 		    let lstart = l.lex_start_p.pos_lnum in 

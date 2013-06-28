@@ -149,7 +149,7 @@ let patoline_driver_gl =
     needs =(Package "str")::(Package "camlimages.all_formats")::
       (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
     suggests = [];
-    internals = [Package "Typography.GL"]
+    internals = [] (* [Package "Typography.GL"] *)
   }
 (*
 let patoline_driver_gl2 =
