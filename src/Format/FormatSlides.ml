@@ -968,7 +968,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     let n_name = n.name in
                     let sl=
                       let open Typography.OutputCommon in
-                          {name=n.name;
+                          {name=n_name;
                            displayname=[];metadata=[];tags=n.node_tags;
 		           page= !slide_num;struct_x=0.;struct_y=0.;
                            substructures=[||]
