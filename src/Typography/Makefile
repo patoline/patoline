@@ -33,7 +33,5 @@ doc:
 	mkdir -p $(DOCDIR)
 	$(CAMLDOC) $(FILES)
 
-
-
 clean:
-	rm -Rf _build
+	rm -Rf _build _build.p

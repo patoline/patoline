@@ -553,7 +553,7 @@ let _=
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config' "%s" conf;
-        Printf.fprintf out "clean:\n\tmake -C src clean\n";
+        Printf.fprintf out "clean:\n\trm -Rf _build\n\tmake -C src clean\n";
         Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config %s\n" (String.concat " " !driver_generated_metas);
         close_out out;
         close_out config;
