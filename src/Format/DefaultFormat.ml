@@ -707,10 +707,10 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         match lastChild !D.structure with
             Paragraph x,y->
-              D.structure:=Paragraph {x with par_contents=x.par_contents@cont},y;
+              D.structure:=up(Paragraph {x with par_contents=x.par_contents@cont},y);
           | _->(
             newPar D.structure Complete.normal parameters cont;
-            D.structure:=lastChild !D.structure
+            (* D.structure:=lastChild !D.structure *)
           )
 
     end
