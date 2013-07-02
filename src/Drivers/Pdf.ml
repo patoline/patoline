@@ -39,22 +39,17 @@ type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicod
 
 #ifdef CAMLZIP
 let stream buf=
-  let tmp0=Filename.temp_file "txp_" "" in
-  let tmp1=Filename.temp_file "txp_" "" in
-  if Sys.file_exists tmp0 then Unix.unlink tmp0;
-  let f0=open_out_bin tmp0 in
-  Rbuffer.output_buffer f0 buf;
-  close_out f0;
-  let ic = open_in_bin tmp0
-  and oc = open_out_bin tmp1 in
-  Zlib.compress (fun buf -> input ic buf 0 (String.length buf))
-    (fun buf len -> output oc buf 0 len);
-  close_in ic;
-  close_out oc;
-  let f=open_in_bin tmp1 in
   let out_buf=Rbuffer.create 100000 in
-  Rbuffer.add_channel out_buf f (in_channel_length f);
-  close_in f;
+  let buf_pos=ref 0 in
+  Zlib.compress (fun zbuf->
+    let m=min (Rbuffer.length buf- !buf_pos) (String.length zbuf) in
+    for i=0 to m-1 do
+      zbuf.[i]<-Rbuffer.nth buf (!buf_pos);
+      incr buf_pos
+    done;
+    m
+  )
+    (fun buf len -> Rbuffer.add_substring out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
 #else
   let stream buf="",buf
