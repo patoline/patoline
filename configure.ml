@@ -559,6 +559,69 @@ let _=
         close_out config;
         close_out config';
 
+        (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
+        let driver_generated_metas = ref [] in
+        let gen_meta_driver drv =
+          let meta_name = "src/Drivers/" ^ drv.name ^ ".META" in
+          driver_generated_metas := meta_name :: !driver_generated_metas;
+          let f = open_out meta_name in
+            Printf.fprintf f "package \"%s\" (\n" drv.name;
+            Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
+            Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
+            let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
+            Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
+            Printf.fprintf f ")\n";
+            close_out f
+        in
+
+        let _ =
+          if can_build_driver patoline_driver_gl
+          then gen_meta_driver patoline_driver_gl in
+
+        let _ =
+          if can_build_driver patoline_driver_image
+          then gen_meta_driver patoline_driver_image in
+
+        let meta=open_out "src/Typography/META" in
+          Printf.fprintf meta
+            "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
+            (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
+                                               Package "zip"; Package "camlimages.all_formats"]));
+          Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
+          Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
+
+          let check_name file=
+            let valid=ref (String.length file>0) in
+            for i=0 to String.length file-1 do
+              valid:= !valid && ((file.[i]>='a' && file.[i]<='z')
+                                 || (file.[i]>='A' && file.[i]<='Z')
+                                 || (file.[i]>='0' && file.[i]<='9'))
+            done;
+            !valid
+          in
+          let make_meta_part dir file =
+            if Filename.check_suffix file ".ml" && check_name (Filename.chop_extension file)
+            then (
+              let base_file = Filename.chop_extension file in
+              let custom_meta = Filename.concat dir (base_file^".META") in
+              try
+                let custom_meta_fd = open_in custom_meta in
+                let buf = String.create (in_channel_length custom_meta_fd) in
+                really_input custom_meta_fd buf 0 (in_channel_length custom_meta_fd);
+                close_in custom_meta_fd;
+                Printf.fprintf meta "%s\n" buf
+              with Sys_error _ ->
+                Printf.fprintf meta
+                  "package \"%s\" (\nrequires=\"Typography\"\narchive(native)=\"%s\"\narchive(byte)=\"%s\"\n)\n"
+                  base_file (base_file^".cmxa") (base_file^".cma")
+            )
+          in
+          Array.iter
+            (fun file ->
+              if is_substring "Format" file && file <> "DefaultFormat.ml"
+              then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
+          Array.iter (make_meta_part "src/Drivers") (Sys.readdir "src/Drivers");
+          close_out meta;
           Printf.printf "\nGood news: you can use Patoline !\n
 Now build it by doing:
 	make
