@@ -514,7 +514,7 @@ rule comment = parse
 
 and sll_comment = parse
     eof { () }
-  | newline { () }
+  | newline { set_newline 1 (std_lexbuf lexbuf); () }
   | _ { sll_comment lexbuf }
 
 and preproc i=parse
