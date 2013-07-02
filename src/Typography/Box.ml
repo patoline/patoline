@@ -251,7 +251,7 @@ let drawing ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
     | _->st0
   ) states cont
   in
-  let (a,b,c,d)=OutputCommon.bounding_box cont in
+  let (a,b,c,d)=OutputCommon.bounding_box_full cont in
     {
       drawing_min_width=c-.a;
       drawing_nominal_width=c-.a;

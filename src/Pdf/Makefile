@@ -1,5 +1,5 @@
-OCAMLOPT=ocamlopt -I ../Typography/_build
-OCAMLC=ocamlc -I ../Typography/_build
+OCAMLOPT=ocamlfind ocamlopt -package camlzip -I ../Typography/_build
+OCAMLC=ocamlfind ocamlc -package camlzip -I ../Typography/_build
 
 pdf_parser.cmxa:pdfutil.cmx obj_lexer.cmx obj_parser.cmx pdf_parser.cmx
 	$(OCAMLOPT) -a -o pdf_parser.cmxa pdfutil.cmx obj_lexer.cmx obj_parser.cmx pdf_parser.cmx

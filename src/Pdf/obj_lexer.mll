@@ -15,5 +15,6 @@
       | "["            { ARRAY_BEGIN }
       | "]"            { ARRAY_END }
       | "("([^')'] | "\\)")*")" as str  { STRING str }
+      | "<"(['0'-'9''a'-'z''A'-'Z']*)">" as str  { STRING str }
 
       | eof            { raise Eof }

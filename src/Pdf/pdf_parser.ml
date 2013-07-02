@@ -28,20 +28,36 @@ open Typography.Util
 let buf=String.create 10000
 let buf_start=ref 1
 let buf_end=ref 0
-let mmap f i=
-  if !buf_start=(-1) || !buf_start>i || !buf_end <=i then (
-    let p=max 0 (min i (in_channel_length f - String.length buf)) in
-    seek_in f p;
-    let read=input f buf 0 (String.length buf) in
-    buf_start:=p;buf_end:=p+read;
-  );
-  buf.[i - !buf_start]
+
+type bu={ bu:Buffer.t;mutable bupos:int }
+type source=Buffer of bu | Stream of in_channel
+
+let seek_s f i=match f with
+    Buffer b->b.bupos<-i
+  | Stream s->seek_in s i
+
+let mmap sf i=match sf with
+    Stream f->(
+      if !buf_start=(-1) || !buf_start>i || !buf_end <=i then (
+        let p=max 0 (min i (in_channel_length f - String.length buf)) in
+        seek_in f p;
+        let read=input f buf 0 (String.length buf) in
+        buf_start:=p;buf_end:=p+read;
+      );
+      buf.[i - !buf_start]
+    )
+  | Buffer b->Buffer.nth b.bu i
+
+let source_length sf=match sf with
+    Stream f->in_channel_length f
+  | Buffer b->Buffer.length b.bu
 
 type page_tree=Node of page_tree list | Page of obj
 
 let rec print_tree t=match t with
     Node l->Printf.printf "Node [";List.iter print_tree l;Printf.printf "]\n";
   | Page l->Printf.printf "Page (";Pdfutil.print_obj l;Printf.printf ")"
+
 
 let parse file=
   let f=open_in_bin file in
@@ -50,11 +66,11 @@ let parse file=
   let pos=ref 0 in
   let rec skip_while predicate f i0=
     let rec skip i=
-      if i>= in_channel_length f || not (predicate (mmap f i)) then i else skip (i+1)
+      if i>= source_length f || not (predicate (mmap f i)) then i else skip (i+1)
     in
     skip i0
   in
-  let backward_find_string a i0=
+  let backward_find_string f a i0=
     let rec find i j=
       if i<0 then i else
         if j>=String.length a then i else
@@ -62,16 +78,16 @@ let parse file=
             find (i-1) 0
     in
     find i0 0
-  and forward_find_string a i0=
+  and forward_find_string f a i0=
     let rec find i j=
-      if i+j>=in_channel_length f then (-1) else
+      if i+j>=source_length f then (-1) else
         if j>=String.length a then i else
           if a.[j]=mmap f (i+j) then find i (j+1) else
             find (i+1) 0
     in
     find i0 0
   in
-  let read_int pos0=
+  let read_int f pos0=
     let rec read i x=
       let c=mmap f i in
       if c>='0' && c<='9' then
@@ -90,37 +106,38 @@ let parse file=
   in
   let rec find_xref f pos=
     if pos<=0 then failwith "startxref not found" else (
-      let pos1=backward_find_string "startxref" (in_channel_length f-9) in
+      let pos1=backward_find_string f "startxref" (source_length f-9) in
       if pos1>=0 then (
         let pos2=pos1+9 in
         let pos3=skip_while is_space f pos2 in
-        read_int pos3
+        read_int f pos3
       ) else
         find_xref f (pos-String.length buf)
     )
   in
-  let xref_pos=find_xref f (in_channel_length f) in
-  let pos0=skip_while is_space f (xref_pos+4) in
-  let _=read_int pos0 in
+  let sf=Stream f in
+  let xref_pos=find_xref sf (in_channel_length f) in
+  let pos0=skip_while is_space sf (xref_pos+4) in
+  let _=read_int sf pos0 in
 
-  let pos0=skip_while is_space f !pos in
-  let num_objs=read_int pos0 in
-  (* Printf.fprintf stderr "xref : %d %d\n" vers num_objs;flush stderr; *)
+  let pos0=skip_while is_space sf !pos in
+  let num_objs=read_int sf pos0 in
+  (* Printf.fprintf stderr "xref : %d\n" num_objs;flush stderr; *)
 
-  let pos0=skip_while (fun c->c<>'\n') f !pos in
-  let _=read_int (pos0+1) in            (* 0000…000 *)
-  let _=read_int (!pos+1) in            (* 65535 *)
-  let pos0=skip_while (fun c->c<>'\n') f !pos in
+  let pos0=skip_while (fun c->c<>'\n') sf !pos in
+  let _=read_int sf (pos0+1) in            (* 0000…000 *)
+  let _=read_int sf (!pos+1) in            (* 65535 *)
+  let pos0=skip_while (fun c->c<>'\n') sf !pos in
 
   let rec parse_xref pos0 i xref=
     if i>=num_objs then (
       pos:=pos0;
       xref
     ) else (
-      let off=read_int pos0 in
-      let _=read_int (!pos+1) in
+      let off=read_int sf pos0 in
+      let _=read_int sf (!pos+1) in
       (* Printf.fprintf stderr "%d %d\n" off ver;flush stderr; *)
-      let pos1=skip_while (fun c->c<>'\n') f !pos in
+      let pos1=skip_while (fun c->c<>'\n') sf !pos in
       parse_xref (1+pos1) (i+1) (IntMap.add i off xref)
     )
   in
@@ -128,8 +145,9 @@ let parse file=
   (* IntMap.iter (fun k a->Printf.fprintf stderr "xref : %d %d\n" k a;flush stderr) xref; *)
   (* Normalement, il est écrit "trailer" ici *)
   for i=0 to 6 do
-    if mmap f (!pos+i) <> "trailer".[i] then failwith "keyword trailer expected"
+    if mmap sf (!pos+i) <> "trailer".[i] then failwith "keyword trailer expected"
   done;
+  Printf.fprintf stderr "root!\n";flush stderr;
   let trailer_dict=
     seek_in f (!pos+7);
     let lexbuf = Lexing.from_channel f in
@@ -146,7 +164,7 @@ let parse file=
       | y->y
   and resolve_ref x s=
     let off=IntMap.find x xref in
-    let off'=forward_find_string "obj" off in
+    let off'=forward_find_string sf "obj" off in
     seek_in f (off'+4);
     let lexbuf = Lexing.from_channel f in
     resolve_object (Obj_parser.main Obj_lexer.token lexbuf) s
@@ -183,11 +201,11 @@ let parse file=
   let pages=make_pages pages_obj in
   let pages_arr=Array.make !n_pages { pageFormat=(0.,0.); pageContents=[] } in
 
-  let parse_number i=
-    let int=read_int i in
-    if mmap f !pos='.' then (
+  let parse_number sf i=
+    let int=read_int sf i in
+    if mmap sf !pos='.' then (
       let pos0= !pos+1 in
-      let float=read_int pos0 in
+      let float=read_int sf pos0 in
       let rec pow x i y=if i=0 then y else pow x (i-1) (y*.x) in
       let num=(float_of_int int)+.(float_of_int float)/.(pow 10. (!pos-pos0) 1.) in
       num
@@ -198,7 +216,7 @@ let parse file=
         let drawing_order=ref 0 in
         let obj=
           let off=IntMap.find i xref in
-          let off'=forward_find_string "obj" off in
+          let off'=forward_find_string sf "obj" off in
           seek_in f (off'+4);
           let lexbuf = Lexing.from_channel f in
           pos:=lexbuf.Lexing.lex_abs_pos;
@@ -215,8 +233,29 @@ let parse file=
               Number x->x
             | _->failwith "stream length not a number"
         in
-        let str=forward_find_string "stream" pos0 in
-        let pos_stream=skip_while is_space f (str+7) in
+        let str=forward_find_string sf "stream" pos0 in
+        let pos_stream=skip_while is_space sf (str+7) in
+
+        let strend=forward_find_string sf "endstream" pos_stream in
+
+        let pos_stream,stream=
+          let fil=try StrMap.find "/Filter" dict with Not_found->Array[] in
+          let iscompressed=match fil with
+              Name a->a="/FlateDecode"
+            | Array a->List.mem (Name "/FlateDecode") a
+            | _->false
+          in
+          print_obj fil;flush stdout;
+          if iscompressed then (
+            seek_in f pos_stream;
+            let out_buf=Buffer.create 10000 in
+            Zlib.uncompress (fun zbuf->input f zbuf 0 (String.length zbuf))
+              (fun buf len -> Buffer.add_substring out_buf buf 0 len);
+            0,Buffer { bu=out_buf;bupos=0 }
+          ) else
+            pos_stream,Stream f
+        in
+
         let curx=ref 0.
         and cury=ref 0.
         and curw=ref 1.
@@ -229,17 +268,17 @@ let parse file=
 
         let rec make_next_part i stack=
           (
-          let pos0=skip_while is_space f i in
+          let pos0=skip_while is_space stream i in
           if pos0<pos_stream+int_of_float len then (
-            let c=mmap f pos0 in
+            let c=mmap stream pos0 in
             if (c>='0' && c<='9') || c='.' then
-              let n=parse_number pos0 in
+              let n=parse_number stream pos0 in
               (* Printf.fprintf stderr "%g\n" n; *)
-              make_next_part (skip_while is_space f !pos) (n::stack)
+              make_next_part (skip_while is_space stream !pos) (n::stack)
             else (
               let b=Buffer.create 10 in
               let rec make_op j=
-                let cc=mmap f j in
+                let cc=mmap stream j in
                 if is_space cc then (
                   pos:=j;
                   Buffer.contents b
