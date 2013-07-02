@@ -485,7 +485,7 @@ let _=
 
       let meta=open_out "src/Typography/META" in
         Printf.fprintf meta
-          "name=\"Typography\"\nversion=\"1.0\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
+          "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
           (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
                                              Package "zip"; Package "camlimages.all_formats"]));
         Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";

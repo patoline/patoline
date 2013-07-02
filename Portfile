@@ -5,7 +5,7 @@ PortSystem          1.0
 PortGroup           ocaml 1.0
 
 name                patoline
-version             0.1
+version             1.0
 categories          ocaml
 platforms           darwin
 license             GPL-2+
@@ -16,8 +16,8 @@ long_description    ${description}
 homepage            http://${name}.org
 master_sites        http://${name}.org/darcs/${name}
 
-checksums           rmd160 01094d0c0250830112e144382750d3c12995452d \
-                    sha256 57bee3c8a0bc30ff3c546693f56b7558b55f626ec1e5b37c9d6f20fdde9df4b9
+checksums           rmd160 b098df4ac266b2d38cd735f4c571b12c55ff7ddc \
+                    sha256 0dc8c405e53e0472f0fc899106d2f06c439925b69f9abcce2b01f3630658257b
 
 depends_lib-append  port:ocaml-camomile \
                     port:ocaml-dypgen \
