@@ -16,8 +16,8 @@ long_description    ${description}
 homepage            http://${name}.org
 master_sites        http://${name}.org/darcs/${name}
 
-checksums           rmd160 b098df4ac266b2d38cd735f4c571b12c55ff7ddc \
-                    sha256 0dc8c405e53e0472f0fc899106d2f06c439925b69f9abcce2b01f3630658257b
+checksums           rmd160 c7d732e0c62f9855dc9d57ecdecbc4211e42e755 \
+                    sha256 d1164fd65a2cb1b31deaaf7cdcaf507685e33f842165ec2d85395acea557315c
 
 depends_lib-append  port:ocaml-camomile \
                     port:ocaml-dypgen \
