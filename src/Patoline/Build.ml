@@ -18,11 +18,29 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Util
-exception No_rule of string
 
+
+
+let mpids=Mutex.create ()
+let pids=ref IntSet.empty
+let stop_all ()=
+  Mutex.lock mpids;
+#ifndef __WINDOWS__
+  IntSet.iter (fun x->
+    (* Printf.fprintf stderr "killing child %d\n" x;flush stderr; *)
+    Unix.kill x Sys.sigkill;
+  ) !pids;
+#endif
+  Mutex.unlock mpids
+
+exception No_rule of string
+exception Circular_build of (string*(string list))
 let known_targets=ref StrMap.empty
 let mut_targets=Mutex.create()
 let j=ref 1
+
+
+
 type known=Known of Mutex.t | Not_known of Mutex.t
 
 let known x=
@@ -30,6 +48,7 @@ let known x=
   let resp=
     try
       let mut=StrMap.find x !known_targets in
+      known_targets:=StrMap.add x mut !known_targets;
       Known mut
     with
         Not_found->(
@@ -75,20 +94,8 @@ let sem_set mut y=
   (if mut.value>0 then Condition.signal mut.mut_signal);
   Mutex.unlock mut.mut_value
 
-
 let sem=sem_create 1
 
-let mpids=Mutex.create ()
-let pids=ref IntSet.empty
-let stop_all ()=
-  Mutex.lock mpids;
-#ifndef __WINDOWS__
-  IntSet.iter (fun x->
-    (* Printf.fprintf stderr "killing child %d\n" x;flush stderr; *)
-    Unix.kill x Sys.sigkill;
-  ) !pids;
-#endif
-  Mutex.unlock mpids
 
 let command ?builddir:(builddir=".") cmd args=
   sem_down sem;
@@ -168,33 +175,18 @@ type rule_t=Node of rule_t*rule_t | Leaf of (string->string->bool)
 let rules=ref (Leaf (fun _ _->false))
 let append_rule r=rules:=Node(!rules,Leaf r)
 let macros:(string->string) StrMap.t ref=ref StrMap.empty
-let rec build_with_rule ?builddir:(builddir=".") r h=
-  match known h with
-      Known m->(Mutex.lock m;Mutex.unlock m)
-    | Not_known m->(
-      (try
-         if not (r builddir h) then
-           raise (No_rule h);
-         Mutex.unlock m;
-       with
-           e->(Mutex.unlock m;raise e));
-    )
 
-let rec build ?builddir:(builddir=".") h=
-  match known h with
-      Known m->(Mutex.lock m;Mutex.unlock m)
-    | Not_known m->(
-      (try
-         let rec apply_rules t=match t with
-             Leaf l->l builddir h
-           | Node (a,b)->
-             (let aa=apply_rules a in
-              if aa then true else
-                let bb=apply_rules b in
-                bb)
-         in
-         (if not (apply_rules !rules) then raise (No_rule h));
-         Mutex.unlock m;
-       with
-           e->(Mutex.unlock m;raise e));
-    )
+let rec build_with_rule ?builddir:(builddir=".") r hs=
+  match hs with
+      []->()
+    | h::s->
+      match known h with
+          Known m->(Mutex.lock m;Mutex.unlock m)
+        | Not_known m->(
+          (try
+             if not (r builddir hs) then
+               raise (No_rule h);
+             Mutex.unlock m;
+           with
+               e->(Mutex.unlock m;raise e));
+        )

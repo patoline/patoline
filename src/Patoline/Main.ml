@@ -183,7 +183,7 @@ let add_format opts =
   { opts with packages = packages }
 
 
-let rec read_options_from_source_file fread =
+let rec read_options_from_source_file f fread =
   let deps=ref [] in
   let format=ref !format in
   let grammar=ref (Some "DefaultGrammar") in
@@ -215,7 +215,7 @@ let rec read_options_from_source_file fread =
         try
           let name=Util.findPath ((Filename.chop_extension n)^".ml") ("."::!Config.local_path) in
           let objects=(Mutex.create (), ref StrMap.empty) in
-          Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo"));
+          Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo")::f);
           Dynlink.adapt_filename (Filename.chop_extension name^".cmo")
         with
             File_not_found _->Util.findPath
@@ -293,11 +293,11 @@ let rec read_options_from_source_file fread =
     noamble = !noamble
   }
 
-and make_deps source=
+and make_deps pre source=
   let ldeps=ref [] in
   Build.sem_down Build.sem;
   let in_s=open_in source in
-  let opts=read_options_from_source_file in_s in
+  let opts=read_options_from_source_file pre in_s in
   close_in in_s;
 
   let dirs_=str_dirs (!dirs@opts.directories) in
@@ -378,321 +378,335 @@ and compilation_needed sources targets=
     max_sources>min_targets
   )
 
-and patoline_rule objects builddir h=
-  if Filename.check_suffix h ".ttml" || Filename.check_suffix h Parser.gram_ext then
-    (
-      let source=
-        let r=Filename.chop_extension h in
-        let source=(r^".txp") in
-        if Sys.file_exists source then
-          source
-        else (
-          if r.[String.length r-1]='_' then
-            String.sub r 0 (String.length r-1)^".txp"
-          else
-            r
-        )
-      in
-      if Sys.file_exists source then (
-        let in_s=open_in source in
-        let opts=read_options_from_source_file in_s in
-        close_in in_s;
-
-        (match opts.grammar with
-            Some def when def<>"DefaultGrammar"->
-              Build.build (def^Parser.gram_ext)
-          | _->()
-        );
-
-        List.iter (fun x->
-          if x<>h then Build.build x
-        ) opts.deps;
-
-        let options_have_changed=not (Sys.file_exists h)
-        in
-        if options_have_changed || compilation_needed [source] [h] then (
-	  let dirs_=str_dirs (!dirs@opts.directories) in
-          let cmd= !patoline in
-          let args_l=List.filter (fun x->x<>"")
-            (cmd::
-               dirs_@
-               [(if opts.format<>"DefaultFormat" then "--format" else "");
-                (if opts.format<>"DefaultFormat" then opts.format else "");
-                "--ml";
-                (if opts.grammar=None then "--no-grammar" else "");
-	        (if !Generateur.edit_link then "--edit-link" else "")
-	       ]
-	     @(if Filename.check_suffix h Parser.gram_ext then []
-               else
-                 ["--driver";opts.driver;
-                  "-o";h])
-             @[source]
-            )
-          in
-          if not !quiet then (Printf.fprintf stdout "%s\n"
-                                (String.concat " "
-                                   (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
-                              flush stdout);
-          let err=Build.command cmd (Array.of_list args_l) in
-          if err<>0 then (
-            exit err
-          )
-        );
-        true
-      ) else (
-        Filename.check_suffix h Parser.gram_ext
-      )
-    )
-  else if Filename.check_suffix h ".tml" then (
-    let r0=(Filename.chop_extension h) in
-    let r1=String.sub r0 0 (String.length r0-1) in
-    let source=r1^".txp" in
-    if Sys.file_exists source then (
-      let in_s=open_in source in
-      let opts=read_options_from_source_file in_s in
-      close_in in_s;
-      (match opts.grammar with
-          Some def when def<>"DefaultGrammar"->
-            Build.build (def^Parser.gram_ext)
-        | _->()
-      );
-
-      let modu=Printf.sprintf "%s.ttml" r1 in
-
-      List.iter (fun x->
-        if x<>h then Build.build x
-      ) (modu::opts.deps);
-
-      let options_have_changed=
-        (not (Sys.file_exists h)) ||
+and patoline_rule objects (builddir:string) (hs:string list)=
+  match hs with
+      []->true
+    | h::pretargets->
+      begin
+        if Filename.check_suffix h ".ttml" || Filename.check_suffix h Parser.gram_ext then
           (
-            let last_format,last_driver=last_options_used h in
-            (last_format<> !format || last_driver<> !driver)
+            let source=
+              let r=Filename.chop_extension h in
+              let source=(r^".txp") in
+              if Sys.file_exists source then
+                source
+              else (
+                if r.[String.length r-1]='_' then
+                  String.sub r 0 (String.length r-1)^".txp"
+                else
+                  r
+              )
+            in
+            if Sys.file_exists source then (
+              let in_s=open_in source in
+              let opts=read_options_from_source_file hs in_s in
+              close_in in_s;
+
+              (match opts.grammar with
+                  Some def when def<>"DefaultGrammar"->
+                    Build.build_with_rule (patoline_rule objects)
+                      ((def^Parser.gram_ext) :: hs)
+                | _->()
+              );
+
+              List.iter (fun x->
+                if not (List.mem x hs) then Build.build_with_rule (patoline_rule objects) (x::hs)
+              ) opts.deps;
+
+              let options_have_changed=not (Sys.file_exists h)
+              in
+              if options_have_changed || compilation_needed [source] [h] then (
+	        let dirs_=str_dirs (!dirs@opts.directories) in
+                let cmd= !patoline in
+                let args_l=List.filter (fun x->x<>"")
+                  (cmd::
+                     dirs_@
+                     [(if opts.format<>"DefaultFormat" then "--format" else "");
+                      (if opts.format<>"DefaultFormat" then opts.format else "");
+                      "--ml";
+                      (if opts.grammar=None then "--no-grammar" else "");
+	              (if !Generateur.edit_link then "--edit-link" else "")
+	             ]
+	           @(if Filename.check_suffix h Parser.gram_ext then []
+                     else
+                       ["--driver";opts.driver;
+                        "-o";h])
+                   @[source]
+                  )
+                in
+                if not !quiet then (Printf.fprintf stdout "%s\n"
+                                      (String.concat " "
+                                         (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                                    flush stdout);
+                let err=Build.command cmd (Array.of_list args_l) in
+                if err<>0 then (
+                  exit err
+                )
+              );
+              true
+            ) else (
+              Filename.check_suffix h Parser.gram_ext
+            )
           )
-      in
-      if options_have_changed || compilation_needed [source] [h] then (
-        let o=open_out h in
-        let main_mod=Filename.chop_extension (Filename.basename modu) in
-        main_mod.[0]<-Char.uppercase main_mod.[0];
-        Generateur.write_main_file o opts.format opts.driver "" main_mod r1;
-        close_out o;
-      );
-      true
-    ) else false
-  )
-  else if Filename.check_suffix h ".ml" || Filename.check_suffix h ".mli" then (
-    Sys.file_exists h;
-  )
-  else if Filename.check_suffix h ".cmx" || Filename.check_suffix h ".cmi" then (
+        else if Filename.check_suffix h ".tml" then (
+          let r0=(Filename.chop_extension h) in
+          let r1=String.sub r0 0 (String.length r0-1) in
+          let source=r1^".txp" in
+          if Sys.file_exists source then (
+            let in_s=open_in source in
+            let opts=read_options_from_source_file (source::hs) in_s in
+            close_in in_s;
+            (match opts.grammar with
+                Some def when def<>"DefaultGrammar"->
+                  Build.build_with_rule (patoline_rule objects) ((def^Parser.gram_ext) :: hs)
+              | _->()
+            );
 
-    let pref=Filename.chop_extension h in
-    let source=
-      if Filename.check_suffix h ".cmi" && Sys.file_exists (pref^".mli") then pref^".mli" else
-        if Sys.file_exists (pref^".ml") then (pref^".ml") else
-          pref^".ttml"
-    in
-    Build.build source;
+            let modu=Printf.sprintf "%s.ttml" r1 in
 
-    let deps0=make_deps source in
+            List.iter (fun x->
+              if x<>h then Build.build_with_rule (patoline_rule objects) (x::hs)
+            ) (modu::opts.deps);
 
-    let mut,m=objects in
-    Mutex.lock mut;
-    m:=StrMap.add h deps0 !m;
-    Mutex.unlock mut;
+            let options_have_changed=
+              (not (Sys.file_exists h)) ||
+                (
+                  let last_format,last_driver=last_options_used h in
+                  (last_format<> !format || last_driver<> !driver)
+                )
+            in
+            if options_have_changed || compilation_needed [source] [h] then (
+              let o=open_out h in
+              let main_mod=Filename.chop_extension (Filename.basename modu) in
+              main_mod.[0]<-Char.uppercase main_mod.[0];
+              Generateur.write_main_file o opts.format opts.driver "" main_mod r1;
+              close_out o;
+            );
+            true
+          ) else false
+        )
+        else if Filename.check_suffix h ".ml" || Filename.check_suffix h ".mli" then (
+          Sys.file_exists h;
+        )
+        else if Filename.check_suffix h ".cmx" || Filename.check_suffix h ".cmi" then (
 
-    let tar=List.map (Thread.create Build.build) deps0 in
-    List.iter (Thread.join) tar;
-    let cmis=List.map (fun x->Filename.chop_extension x^".cmi") deps0 in
-    if compilation_needed (source::cmis) [pref^".cmx";pref^".cmi"] then (
-      let i=open_in source in
-      let opts= add_format (read_options_from_source_file i) in
-      let dirs_=str_dirs (!dirs@opts.directories) in
-      close_in i;
+          let pref=Filename.chop_extension h in
+          let source=
+            if Filename.check_suffix h ".cmi" && Sys.file_exists (pref^".mli") then pref^".mli" else
+              if Sys.file_exists (pref^".ml") then (pref^".ml") else
+                pref^".ttml"
+          in
+          Build.build_with_rule (patoline_rule objects) (source::hs);
 
-      let cmd="ocamlfind" in
+          let deps0=make_deps hs source in
 
-      let comp_opts=
-        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
-      in
-      let args_l=List.filter (fun x->x<>"")
-        ([ cmd;
-           !ocamlopt]@
-            (List.concat (List.map getopts !extras))@
-            comp_opts@
-            (let pack=String.concat "," (List.rev (opts.packages)) in
-             if pack<>"" then ["-package";pack] else [])@
-            dirs_@
-            ["-c";"-o";h;
-             "-impl";source ])
-      in
-      let args=Array.of_list (args_l) in
+          let mut,m=objects in
+          Mutex.lock mut;
+          m:=StrMap.add h deps0 !m;
+          Mutex.unlock mut;
+          let tar=List.map
+            (fun x->Thread.create (Build.build_with_rule (patoline_rule objects)) (x::hs))
+            (List.filter (fun x->not (List.mem x hs)) deps0)
+          in
+          List.iter (Thread.join) tar;
 
-      if not !quiet then (Printf.fprintf stdout "%s\n"
-                              (String.concat " "
-                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+          let cmis=List.map (fun x->Filename.chop_extension x^".cmi") deps0 in
+          if compilation_needed (source::cmis) [pref^".cmx";pref^".cmi"] then (
+            let i=open_in source in
+            let opts= add_format (read_options_from_source_file hs i) in
+            let dirs_=str_dirs (!dirs@opts.directories) in
+            close_in i;
 
-                          flush stdout);
-      let err=Build.command cmd args in
-      if err<>0 then (
-        exit err
-      )
-    );
-    true
-  )
-  else if Filename.check_suffix h ".cmxs" then (
-    let raw_h=(Filename.chop_extension h) in
-    let source=raw_h^".ml"in
+            let cmd="ocamlfind" in
 
-    let in_s=open_in source in
-    let opts=read_options_from_source_file in_s in
-    let opts={ opts with packages="patoline"::opts.packages } in
-    close_in in_s;
-    List.iter (fun x->
-      Build.build x
-    ) opts.deps;
-    Build.build source;
+            let comp_opts=
+              List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+            in
+            let args_l=List.filter (fun x->x<>"")
+              ([ cmd;
+                 !ocamlopt]@
+                  (List.concat (List.map getopts !extras))@
+                  comp_opts@
+                  (let pack=String.concat "," (List.rev (opts.packages)) in
+                   if pack<>"" then ["-package";pack] else [])@
+                  dirs_@
+                  ["-c";"-o";h;
+                   "-impl";source ])
+            in
+            let args=Array.of_list (args_l) in
+
+            if not !quiet then (Printf.fprintf stdout "%s\n"
+                                  (String.concat " "
+                                     (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+
+                                flush stdout);
+            let err=Build.command cmd args in
+            if err<>0 then (
+              exit err
+            )
+          );
+          true
+        )
+        else if Filename.check_suffix h ".cmxs" then (
+          let raw_h=(Filename.chop_extension h) in
+          let source=raw_h^".ml"in
+
+          let in_s=open_in source in
+          let opts=read_options_from_source_file hs in_s in
+          let opts={ opts with packages="patoline"::opts.packages } in
+          close_in in_s;
+          List.iter (fun x->
+            Build.build_with_rule (patoline_rule objects) (x::hs)
+          ) opts.deps;
+          Build.build_with_rule (patoline_rule objects) (source::hs);
+
+          (* A ce niveau, toutes les dépendances sont indépendantes entre
+             elles. On peut les placer sur le même niveau. *)
+          let deps0=make_deps hs source in
+          let mut,m=objects in
+          Mutex.lock mut;
+          m:=StrMap.singleton h deps0;
+          Mutex.unlock mut;
+          let tar=List.map
+            (fun dep->Thread.create (Build.build_with_rule (patoline_rule objects)) (dep::hs))
+            deps0
+          in
+          List.iter (Thread.join) tar;
+
+          let mut,m=objects in
+          Mutex.lock mut;
+
+          let rec breadth_first h l=match h with
+              []->l
+            | _::_->
+              let rec make_next h0 l0 h=match h with
+                  []->h0,l0
+                | a::b->
+                  let next=try StrMap.find a !m with Not_found->[] in
+                  let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+                  let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+                  make_next h1 l1 b
+              in
+              let h1,l1=make_next [] l h in
+              breadth_first h1 l1
+          in
+          let objs=breadth_first [h] [] in
+          if compilation_needed (source::objs) [h] then (
+            let dirs_=str_dirs (!dirs@opts.directories) in
+            let cmd="ocamlfind" in
+            let comp_opts=
+              List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+            in
+            let args_l=List.filter (fun x->x<>"")
+              ([cmd;
+                !ocamlopt]@
+                  (List.concat (List.map getopts !extras))@
+                  comp_opts@
+                  (let pack=String.concat "," (List.rev (opts.packages)) in
+                   if pack<>"" then ["-package";pack] else [])@
+                  dirs_@
+                  [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
+                   "-o";h]@["ParseMainArgs.cmx"]@
+                  objs@
+                  ["-impl";source])
+            in
+            Mutex.unlock mut;
+
+            if not !quiet then (Printf.fprintf stdout "%s\n"
+                                  (String.concat " "
+                                     (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                                flush stdout);
+            let err=Build.command cmd (Array.of_list args_l) in
+            if err<>0 then (
+              exit err
+            )
+          );
+          true
+        ) else if Filename.check_suffix h ".tmx" then (
+          let raw_h=(Filename.chop_extension h) in
+          let source=if Filename.check_suffix h ".tmx" then raw_h^"_.tml" else raw_h^".ml"in
+          let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
+
+          let in_s=open_in source_txp in
+          let opts=add_format (read_options_from_source_file hs in_s) in
+          close_in in_s;
+          List.iter (fun x->
+            Build.build_with_rule (patoline_rule objects) (x::source::hs)
+          ) opts.deps;
+          Build.build_with_rule (patoline_rule objects) (source::hs);
+
+          if not opts.noamble then begin
 
     (* A ce niveau, toutes les dépendances sont indépendantes entre
        elles. On peut les placer sur le même niveau. *)
-    let deps0=make_deps source in
-    let mut,m=objects in
-    Mutex.lock mut;
-    m:=StrMap.singleton h deps0;
-    Mutex.unlock mut;
-    let tar=List.map (Thread.create Build.build) deps0 in
-    List.iter (Thread.join) tar;
+            let deps0=make_deps hs source in
+            let mut,m=objects in
+            Mutex.lock mut;
+            m:=StrMap.singleton h deps0;
+            Mutex.unlock mut;
+            let tar=List.map
+              (fun x->Thread.create (Build.build_with_rule (patoline_rule objects)) (x::hs)) deps0
+            in
+            List.iter (Thread.join) tar;
 
-    let mut,m=objects in
-    Mutex.lock mut;
+            let mut,m=objects in
+            Mutex.lock mut;
+            let rec breadth_first h l=match h with
+                []->l
+              | _::_->
+                let rec make_next h0 l0 h=match h with
+                    []->h0,l0
+                  | a::b->
+                    let next=try StrMap.find a !m with Not_found->[] in
+                    let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+                    let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+                    make_next h1 l1 b
+                in
+                let h1,l1=make_next [] l h in
+                let h2=List.filter (fun x->not (List.mem x h) && not (List.mem x l)) h1 in
+                breadth_first h2 l1
+            in
+            let objs=breadth_first [h] [] in
+            if compilation_needed (source::objs) [h] then (
+              let dirs_=str_dirs (!dirs@opts.directories) in
+              let cmd="ocamlfind" in
+              let comp_opts=
+                List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
+              in
+              let args_l=List.filter (fun x->x<>"")
+                ([cmd;
+                  !ocamlopt]@
+                    (List.concat (List.map getopts !extras))@
+                    comp_opts@
+                    (let pack=String.concat "," (List.rev (opts.packages)) in
+                     if pack<>"" then ["-package";pack] else [])@
+                    dirs_@
+                    [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
+                     "-o";h]@
+                    objs@
+                    ["-impl";source])
+              in
+              Mutex.unlock mut;
 
-    let rec breadth_first h l=match h with
-        []->l
-      | _::_->
-        let rec make_next h0 l0 h=match h with
-            []->h0,l0
-          | a::b->
-            let next=try StrMap.find a !m with Not_found->[] in
-            let h1=List.fold_left (fun h2 x->x::h2) h0 next in
-            let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
-            make_next h1 l1 b
-        in
-        let h1,l1=make_next [] l h in
-        breadth_first h1 l1
-    in
-    let objs=breadth_first [h] [] in
-    if compilation_needed (source::objs) [h] then (
-      let dirs_=str_dirs (!dirs@opts.directories) in
-      let cmd="ocamlfind" in
-      let comp_opts=
-        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
-      in
-      let args_l=List.filter (fun x->x<>"")
-        ([cmd;
-          !ocamlopt]@
-            (List.concat (List.map getopts !extras))@
-            comp_opts@
-            (let pack=String.concat "," (List.rev (opts.packages)) in
-             if pack<>"" then ["-package";pack] else [])@
-            dirs_@
-            [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
-             "-o";h]@["ParseMainArgs.cmx"]@
-            objs@
-            ["-impl";source])
-      in
-      Mutex.unlock mut;
-
-      if not !quiet then (Printf.fprintf stdout "%s\n"
-                            (String.concat " "
-                               (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
-                          flush stdout);
-      let err=Build.command cmd (Array.of_list args_l) in
-      if err<>0 then (
-        exit err
-      )
-    );
-    true
-  ) else if Filename.check_suffix h ".tmx" then (
-    let raw_h=(Filename.chop_extension h) in
-    let source=if Filename.check_suffix h ".tmx" then raw_h^"_.tml" else raw_h^".ml"in
-    let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
-
-    let in_s=open_in source_txp in
-    let opts=add_format (read_options_from_source_file in_s) in
-    close_in in_s;
-    List.iter (fun x->
-      Build.build x
-    ) opts.deps;
-    Build.build source;
-
-    if not opts.noamble then begin
-
-    (* A ce niveau, toutes les dépendances sont indépendantes entre
-       elles. On peut les placer sur le même niveau. *)
-    let deps0=make_deps source in
-    let mut,m=objects in
-    Mutex.lock mut;
-    m:=StrMap.singleton h deps0;
-    Mutex.unlock mut;
-    let tar=List.map (Thread.create Build.build) deps0 in
-    List.iter (Thread.join) tar;
-
-    let mut,m=objects in
-    Mutex.lock mut;
-
-    let rec breadth_first h l=match h with
-        []->l
-      | _::_->
-        let rec make_next h0 l0 h=match h with
-            []->h0,l0
-          | a::b->
-            let next=try StrMap.find a !m with Not_found->[] in
-            let h1=List.fold_left (fun h2 x->x::h2) h0 next in
-            let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
-            make_next h1 l1 b
-        in
-        let h1,l1=make_next [] l h in
-        breadth_first h1 l1
-    in
-    let objs=breadth_first [h] [] in
-    if compilation_needed (source::objs) [h] then (
-      let dirs_=str_dirs (!dirs@opts.directories) in
-      let cmd="ocamlfind" in
-      let comp_opts=
-        List.map (fun x->if x.[0]='"' then String.sub x 1 (String.length x-2) else x) opts.comp_opts
-      in
-      let args_l=List.filter (fun x->x<>"")
-        ([cmd;
-          !ocamlopt]@
-            (List.concat (List.map getopts !extras))@
-            comp_opts@
-            (let pack=String.concat "," (List.rev (opts.packages)) in
-             if pack<>"" then ["-package";pack] else [])@
-            dirs_@
-            [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
-             "-o";h]@
-            objs@
-            ["-impl";source])
-      in
-      Mutex.unlock mut;
-
-      if not !quiet then (Printf.fprintf stdout "%s\n"
-                              (String.concat " "
-                                 (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
-                          flush stdout);
-      let err=Build.command cmd (Array.of_list args_l) in
-      if err<>0 then (
-        exit err
-      )
-    );
-    end;
-    true
-  )
-  else false
-
+              if not !quiet then (Printf.fprintf stdout "%s\n"
+                                    (String.concat " "
+                                       (List.map (fun x->if String.contains x ' ' then Printf.sprintf "\"%s\"" x else x) args_l));
+                                  flush stdout);
+              let err=Build.command cmd (Array.of_list args_l) in
+              if err<>0 then (
+                exit err
+              )
+            );
+          end;
+          true
+        )
+          else false
+      end
 
 (* Gestion de la compilation de plusieurs fichiers patolines différents. *)
 
-and process_each_file l=
+let objects=(Mutex.create (), ref StrMap.empty)
+let process_each_file l=
   if l=[] then (
     Printf.fprintf stderr "%s\n" (Language.message No_input_file);
     exit 1
@@ -700,7 +714,7 @@ and process_each_file l=
     List.iter (fun f->
       if !main_ml then (
 	let in_s = open_in f in
-	let opts=read_options_from_source_file in_s in
+	let opts=read_options_from_source_file [f] in_s in
 	close_in in_s;
         let main_mod=Filename.chop_extension (Filename.basename f) in
 	let o=open_out ((Filename.chop_extension f)^"_.tml") in
@@ -710,7 +724,7 @@ and process_each_file l=
         if Sys.file_exists f then (
           let cmd=(Filename.chop_extension f)^".tmx" in
           Build.sem_set Build.sem !Build.j;
-          Build.build cmd;
+          Build.build_with_rule (patoline_rule objects) [cmd];
           if !run && Sys.file_exists cmd then (
             extras_top:=List.rev !extras_top;
             Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
@@ -737,16 +751,16 @@ and process_each_file l=
             SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
           ) else (
 
-            let opts=read_options_from_source_file fread in
+            let opts=read_options_from_source_file [f] fread in
             Parser.grammar:=opts.grammar;
             (match opts.grammar with
                 Some def when def<>"DefaultGrammar"->(
-                  Build.build (def^Parser.gram_ext)
+                  Build.build_with_rule (patoline_rule objects) [def^Parser.gram_ext]
                 )
               | _->()
             );
             List.iter (fun x->
-              if x<>f then Build.build x
+              if x<>f then Build.build_with_rule (patoline_rule objects) [x]
             ) opts.deps;
 
             let suppl=
@@ -808,8 +822,6 @@ let _ =
           )
         )
       | _->(
-        let objects=(Mutex.create (), ref StrMap.empty) in
-        Build.append_rule (patoline_rule objects);
         Arg.parse spec (fun x->files := x::(!files)) (Language.message Usage);
         process_each_file (List.rev !files)
       )

@@ -34,9 +34,7 @@ Generateur.cmx:Generateur.ml
 	$(CAMLOPT) -c -o $@ $<
 Util.cmi:Util.cmx
 
-Build.cmx:Build.ml Build.cmi Util.cmx
-	$(CAMLOPT) -thread -c -o $@ $<
-Build.cmi:Build.mli Util.cmi
+Build.cmx:Build.ml Util.cmx
 	$(CAMLOPT) -thread -c -o $@ $<
 
 clean:
