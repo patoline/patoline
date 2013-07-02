@@ -338,6 +338,11 @@ let _=
         (Printf.fprintf make "PATOLINE=\n";
         Printf.fprintf make "PACKAGE_DYP=\n")
     );
+    (if ocamlfind_has "zip" then
+        Printf.fprintf make "PACKAGE_ZIP=-package %s\n" (snd (ocamlfind_query "zip"))
+     else
+        Printf.fprintf make "PACKAGE_ZIP=\n"
+    );
     Printf.fprintf make "PACK=-package %s\n"
       (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
                                          Package "camlimages.all_formats"; Package "cairo"]));
