@@ -85,6 +85,8 @@ and raw =
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw
 
+val print_raw:raw -> unit
+
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
   ignore_after_glyphWidth : bool;

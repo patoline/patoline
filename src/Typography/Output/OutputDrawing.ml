@@ -98,7 +98,16 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
           let r=(t.frame_x0,t.frame_y0,t.frame_x1,t.frame_y1) in
           if not (Hashtbl.mem h r) then (
             Hashtbl.add h r ();
-            page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0) (t.frame_x1,t.frame_y1)])::page.pageContents;
+            if classify_float t.frame_x0=FP_infinite ||
+              classify_float t.frame_x0=FP_nan ||
+              classify_float t.frame_y0=FP_infinite ||
+              classify_float t.frame_y0=FP_nan ||
+              classify_float t.frame_x1=FP_infinite ||
+              classify_float t.frame_y1=FP_nan ||
+              classify_float t.frame_y1=FP_infinite ||
+              classify_float t.frame_y1=FP_nan
+            then () else
+              page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0) (t.frame_x1,t.frame_y1)])::page.pageContents;
           );
           draw_frames (Box.frame_up (t,cxt))
         )
@@ -182,7 +191,10 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
               states:=IntSet.fold IntSet.add g.drawing_states !states;
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
               page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
-	      if env.show_boxes then
+	      if env.show_boxes
+                && classify_float g.drawing_y1<>FP_infinite
+                && classify_float g.drawing_y0<>FP_infinite
+              then
                 page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
               w
             )

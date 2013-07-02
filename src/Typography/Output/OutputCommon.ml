@@ -133,6 +133,34 @@ type bounding_box_opt = {
   ignore_after_glyphWidth : bool;
   ignore_under_base_line : bool}
 
+let rec print_raw r=match r with
+  Glyph g->Printf.fprintf stderr "Glyph (%f,%f) size %f\n" g.glyph_x g.glyph_y g.glyph_size
+  | Path (_,ps)->(
+
+    let c=String.concat "," (List.map (fun p->
+      "["^(String.concat ";"
+             (Array.to_list
+                (Array.map (fun (x,y)->
+                  "[|"^(String.concat ";" (List.map string_of_float (Array.to_list x)))
+                  ^"|],[|"
+                  ^(String.concat ";" (List.map string_of_float (Array.to_list y)))
+                  ^"|]"
+                 ) p)
+             )
+      )^"]"
+    ) ps)
+    in
+    Printf.fprintf stderr "Path [%s]\n" c;
+  )
+  | Image i->
+    Printf.fprintf stderr "Image (%f,%f) (%f,%f)\n" i.image_x i.image_y (i.image_x+.i.image_width)
+      (i.image_y+.i.image_height)
+
+  | States a->List.iter print_raw a.states_contents
+  | Link l->List.iter print_raw l.link_contents
+  | Animation(r,_,_,_)->List.iter print_raw r
+
+
 let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
       []->(x0,y0,x1,y1)
