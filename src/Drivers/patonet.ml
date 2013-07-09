@@ -217,7 +217,8 @@ let generate_error ouc=
 
 let serve_font font ouc=
   try
-    let data=List.assoc ("slides/"^font) fonts in
+    let _,data=List.find (fun (a,_)->String.sub a (String.length a-String.length font) (String.length font)=font) fonts
+    in
     Printf.fprintf ouc "HTTP/1.1 200 OK\r\n";
     Printf.fprintf ouc "Content-type: font/opentype\r\n";
     Printf.fprintf ouc "Content-Length: %d\r\n" (String.length data);
