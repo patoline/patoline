@@ -11,4 +11,4 @@ patoline-input.el:  patoline-input.pre ../src/quail.el SubSuper2.el patoline-inp
 	cat patoline-input.pre ../src/quail.el SubSuper2.el patoline-input.post > patoline-input.el
 
 clean:
-	rm SubSuper2.el SubstKey patoline-input.el
+	rm -f SubSuper2.el SubstKey patoline-input.el
