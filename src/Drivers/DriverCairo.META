@@ -1,5 +1,0 @@
-package "DriverCairo" (
-archive(byte)="DriverCairo.cma"
-archive(native)="DriverCairo.cmxa"
-requires="Typography,cairo"
-)

@@ -135,10 +135,20 @@ type driver_needs =
   | Package of string
   | Driver of driver
 and driver =
-  { name: string;
+  {
+    (* Driver module name *)
+    name: string;
+    (* List of required packages to build the driver *)
     needs: driver_needs list;
+    (* List of optional packages, which improve the driver when present *)
     suggests: driver_needs list;
+    (* List of Patoline own packages (= not installed system-wide while building
+     * Patoline) needed to output a document using this driver. The code package
+     * does not need to be specified, as it is always added. *)
     internals: driver_needs list;
+    (* Says whether configure.ml should generate the driver's META file from
+     * this record, or rely on a preexisting META in the source tree. *)
+    autometa: bool;
   }
 
 let ocamlnet_needs =
@@ -149,33 +159,25 @@ let patoline_driver_gl =
     needs =(Package "str")::(Package "camlimages.all_formats")::
       (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
     suggests = [];
-    internals = [] (* [Package "Typography.GL"] *)
+    internals = []; (* [Package "Typography.GL"] *)
+    autometa = true;
   }
-(*
-let patoline_driver_gl2 =
-  { patoline_driver_gl with
-    name = "DriverGL2";
-    needs = (Package "str")::(Package "camlimages.all_formats")::
-      (Package "lablgl")::(Package "lablgtk2")::ocamlnet_needs;
-  }
-*)
 let patoline_driver_image =
   { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
-    patoline_driver_gl]; suggests = []; internals = [] }
+    patoline_driver_gl]; suggests = []; internals = []; autometa = true }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
 let r_patoline_drivers = ref
   [
-    { name = "None"; needs = []; suggests = []; internals = [] };
-    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = [] };
-    { name = "Bin"; needs = []; suggests = []; internals = [] };
-    { name = "Html"; needs = []; suggests = []; internals = [] };
-    { name = "SVG"; needs = []; suggests = []; internals = [] };
-    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] };
+    { name = "None"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = []; autometa = false };
+    { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
     patoline_driver_gl;
-(*    patoline_driver_gl2;*)
-    { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [Package "Typography.SVG"] };
+    { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
     patoline_driver_image;
   ]
 
@@ -468,25 +470,20 @@ let _=
       (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
       let driver_generated_metas = ref [] in
       let gen_meta_driver drv =
-        let meta_name = "src/Drivers/" ^ drv.name ^ ".META" in
-        driver_generated_metas := meta_name :: !driver_generated_metas;
-        let f = open_out meta_name in
-          Printf.fprintf f "package \"%s\" (\n" drv.name;
-          Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
-          Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
-          let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
-          Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
-          Printf.fprintf f ")\n";
-          close_out f
+        if can_build_driver drv && drv.autometa then begin
+          let meta_name = "src/Drivers/" ^ drv.name ^ ".META" in
+          driver_generated_metas := meta_name :: !driver_generated_metas;
+          let f = open_out meta_name in
+            Printf.fprintf f "package \"%s\" (\n" drv.name;
+            Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
+            Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
+            let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
+            Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
+            Printf.fprintf f ")\n";
+            close_out f
+        end
       in
-
-      let _ =
-        if can_build_driver patoline_driver_gl
-        then gen_meta_driver patoline_driver_gl in
-
-      let _ =
-        if can_build_driver patoline_driver_image
-        then gen_meta_driver patoline_driver_image in
+      List.iter gen_meta_driver !r_patoline_drivers;
 
       let meta=open_out "src/Typography/META" in
         Printf.fprintf meta
