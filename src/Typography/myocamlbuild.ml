@@ -29,7 +29,6 @@ dispatch begin function
           Cmd(S[A"Fonts/Sfnt/make_unicode_ranges.byte";A"Fonts/Sfnt/unicode"])
         end);
 
-    (* flag ["ocaml";"compile";"rectypes"] & A"-rectypes"; *)
     flag ["ocaml";"compile"] & S[A"-I";A"../../Rbuffer"];
     flag ["ocaml";"compile";"rectypes"] & A"-rectypes";
     flag ["ocaml";"pack"] & S[A"-linkall"];
