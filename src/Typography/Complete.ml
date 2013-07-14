@@ -18,7 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Box
-open Layout
 open Util
 open Break
 open Document

@@ -278,7 +278,6 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 
   open Util
   open Box
-  open Layout
 
   module TheBibliography (D : DocumentStructure) = struct
     let _ =
@@ -394,7 +393,6 @@ module MarginBiblio (C:CitationStyle)=struct
 
   open Util
   open Box
-  open Layout
   let w_mar=2.
   let biblio_format i row=
     let params env a1 a2 a3 a4 a5 a6 line=
@@ -462,7 +460,6 @@ module DefaultBiblio (C:CitationStyle)=struct
 
   open Util
   open Box
-  open Layout
 
   let w=phi
   let params env a1 a2 a3 a4 a5 a6 line=

@@ -19,7 +19,6 @@
 *)
 open Printf
 open Lexing
-open Layout
 
 type line=string
 let sprint_linef x=x

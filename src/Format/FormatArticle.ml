@@ -24,7 +24,6 @@ open Typography.Fonts.FTypes
 open Typography.Document
 open Util
 open Box
-open Layout
 (* open Binary *)
 open CamomileLibrary
 module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
