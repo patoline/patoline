@@ -31,70 +31,62 @@ let _=Random.self_init ()
 
 let lmroman =
   [ Regular,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmroman10-regular.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-    Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmroman10-italic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman"; slant=Italic; weight=Regular})
+      ))
+    );
     Bold,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmroman10-bold.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-    Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmroman10-bolditalic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman"; slant=Roman; weight=Bold})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman"; slant=Italic; weight=Bold})
+      ))
+    );
     Caps,
-    (simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-    "lmodern/lmromancaps10-regular.otf")),
-     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-     "lmodern/lmromancaps10-oblique.otf")));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman Caps"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Roman Caps"; slant=Italic; weight=Regular})
+      ))
+    );
   ]
 
 let lmmono =
   [ Regular,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmmono10-regular.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-    Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmmono10-italic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono"; slant=Italic; weight=Regular})
+      ))
+    );
     Bold,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmmono10-bold.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-    Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "lmodern/lmmono10-bolditalic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono"; slant=Roman; weight=Bold})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono"; slant=Italic; weight=Bold})
+      ))
+    );
     Caps,
-    (simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-    "lmodern/lmmonocaps10-regular.otf")),
-     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-     "lmodern/lmmonocaps10-oblique.otf")));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono Caps"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Latin Modern Mono Caps"; slant=Italic; weight=Regular})
+      ))
+    );
   ]
 
 module LMMath = struct
@@ -112,7 +104,7 @@ module LMMath = struct
 
   let default_env = { Euler.default_env with
     mathsFont = Lazy.lazy_from_fun (fun () -> Fonts.loadFont (findFont
-    "lmodern/lmmath.otf"));
+    FontPattern.({family = "Latin Modern Math"; slant=Roman; weight=Regular})));
     mathsSubst = italicsubst }
 
   let default_env2 = { default_env with
@@ -162,7 +154,7 @@ module MakeFormat (D:Document.DocumentStructure)
                    []->[||]
                  | h::s->(hyph s 0 h; pos));
       with
-          File_not_found (f,p)->
+          FindPath.File_not_found (f,p)->
 	    (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
                                   List.iter (Printf.fprintf stderr "%s\n") p;
                                   fun x->[||])

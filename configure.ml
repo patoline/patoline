@@ -263,6 +263,7 @@ let _=
   let out=open_out "Makefile" in
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config.ml" in
+  let mlpack=open_out "src/Typography/Typography.mlpack" in
 
   let fonts_src_dir="Fonts" in
   let grammars_src_dir="src" in
@@ -347,7 +348,8 @@ let _=
     );
     Printf.fprintf make "PACK=-package %s\n"
       (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
-                                         Package "camlimages.all_formats"; Package "cairo"]));
+                                         Package "camlimages.all_formats";
+                                         Package "cairo"; Package "fontconfig"]));
 
 
     (* Write out the list of enabled drivers *)
@@ -370,6 +372,11 @@ let _=
     if has_sqlite3 then (
       Printf.fprintf make "BIBI=ocaml-bibi/bibi.cmxa ocaml-bibi/bibi.cma\n"
     );
+
+    (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
+     * building Typograhy.cmxa. *)
+    Printf.fprintf make "FINDFONT=%s.ml\n"
+      (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
     close_out make;
 
     let tags_typography=open_out "src/Typography/_tags" in
@@ -389,7 +396,8 @@ let _=
       (let pack=String.concat ","
          (List.map (fun x->Printf.sprintf "package(%s)" x)
             (gen_pack_line [Package "camomile"; Package "zip";
-                            Package "camlimages.all_formats"; Package "cairo"]))
+                            Package "camlimages.all_formats"; Package "cairo";
+                            Package "fontconfig"]))
        in
        if pack="" then "" else ","^pack);
     close_out tags_typography;
@@ -554,12 +562,23 @@ let _=
       )
       in
         Printf.fprintf config "%s" conf;
+        Printf.fprintf config "(** Module used to query font paths *)\nlet findFont=%s.findFont fontspath\n" (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
         Printf.fprintf config' "%s" conf;
         Printf.fprintf out "clean:\n\trm -Rf _build\n\tmake -C src clean\n";
-        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config %s\n" (String.concat " " !driver_generated_metas);
+        Printf.fprintf out "distclean: clean\n\trm -f Makefile src/Typography/Config.ml src/Patoline/Config.ml src/Typography/Typography.mlpack src/Typography/META src/Makefile.config %s\n" (String.concat " " !driver_generated_metas);
+
+        (* Write Typography.mlpack *)
+        let mlpackin = open_in "src/Typography/Typography.mlpack.in" in
+        let mlpackin_len = in_channel_length mlpackin in
+        let buf = String.create mlpackin_len in
+        really_input mlpackin buf 0 mlpackin_len;
+        Printf.fprintf mlpack "%s\n%s\n" buf (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
+        close_in mlpackin;
+
         close_out out;
         close_out config;
         close_out config';
+        close_out mlpack;
 
           Printf.printf "\nGood news: you can use Patoline !\n
 Now build it by doing:

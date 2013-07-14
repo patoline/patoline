@@ -289,7 +289,9 @@ end
     [ Regular,
       (Lazy.lazy_from_fun
          (fun ()->
-            (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
+            (Fonts.loadFont
+              (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
+            ),
             (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
@@ -300,7 +302,9 @@ end
             (fun x->x)),
        Lazy.lazy_from_fun
          (fun ()->
-            (Fonts.loadFont (findFont "Alegreya/Alegreya-Italic.otf")),
+            (Fonts.loadFont
+              (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
+            ),
             (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
@@ -312,7 +316,9 @@ end
       Bold,
       (Lazy.lazy_from_fun
          (fun ()->
-            (Fonts.loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
+            (Fonts.loadFont
+              (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
+            ),
             (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
@@ -323,7 +329,9 @@ end
             (fun x->x)),
        Lazy.lazy_from_fun
          (fun ()->
-            (Fonts.loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")),
+            (Fonts.loadFont
+              (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
+            ),
             (fun x->x),
             (fun x->List.fold_left (fun a f->f a) x
                [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
@@ -332,17 +340,36 @@ end
                 make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
                ]),
             (fun x->x)));
+
       Caps,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Regular.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")));
+      (
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Alegreya SC"; slant=Roman; weight=Regular})
+        )),
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Alegreya SC"; slant=Italic; weight=Regular})
+        ))
+      );
 
       Regular,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Regular.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Italic.otf")));
-      Bold,
-      (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Bold.otf")),
-       simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-BoldItalic.otf")))
+      (
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Philosopher"; slant=Roman; weight=Regular})
+        )),
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Philosopher"; slant=Italic; weight=Regular})
+        ))
+      );
 
+      Bold,
+      (
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Philosopher"; slant=Roman; weight=Bold})
+        )),
+        simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+              FontPattern.({family="Philosopher"; slant=Italic; weight=Bold})
+        ))
+      );
     ]
 
   let replace_utf8 x y z=

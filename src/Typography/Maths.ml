@@ -961,7 +961,9 @@ let make_sqrt env_ style box=
   let under=draw_boxes env_ box in
   let (bx0,by0,bx1,by1)=bounding_box_full under in
 
-  let f=Fonts.loadFont (findFont "Euler/euler.otf") in
+  let f= Fonts.loadFont (
+    findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})
+  ) in
   sqrts:=Array.map (fun x->Fonts.loadGlyph f { glyph_utf8="\\sqrt";glyph_index=x })
     [|693;694;695;696;697|];
   let h=by1 -. by0 +. (phi)*.env.sqrt_dist*.s in

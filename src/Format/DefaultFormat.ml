@@ -85,7 +85,7 @@ let hyphenate_dict dict=
           []->[||]
         | h::s->(hyph s 0 h; pos));
   with
-      File_not_found (f,p)->
+      FindPath.File_not_found (f,p)->
 	(Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
          List.iter (Printf.fprintf stderr "%s\n") p;
          fun x->[||])
@@ -96,119 +96,136 @@ let alegreya=
   [ Regular,
     (Lazy.lazy_from_fun
        (fun ()->
-         (Fonts.loadFont (findFont "Alegreya/Alegreya-Regular.otf")),
-         (fun x->x),
-         (fun x->List.fold_left (fun a f->f a) x
-           [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-            make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-            make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-            make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-           ]),
-         (fun x->x)),
+          (Fonts.loadFont
+            (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Regular}))
+          ),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+             ]),
+          (fun x->x)),
      Lazy.lazy_from_fun
        (fun ()->
-         (Fonts.loadFont (findFont "Alegreya/Alegreya-Italic.otf")),
-         (fun x->x),
-         (fun x->List.fold_left (fun a f->f a) x
-           [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-            make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-            make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-            make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-           ]),
-         (fun x->x)));
+          (Fonts.loadFont
+            (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Regular}))
+          ),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+             ]),
+          (fun x->x)));
     Bold,
     (Lazy.lazy_from_fun
        (fun ()->
-         (Fonts.loadFont (findFont "Alegreya/Alegreya-Bold.otf")),
-         (fun x->x),
-         (fun x->List.fold_left (fun a f->f a) x
-           [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
-            make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
-            make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
-            make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
-           ]),
-         (fun x->x)),
+          (Fonts.loadFont
+            (findFont FontPattern.({family="Alegreya"; slant=Roman; weight=Bold}))
+          ),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [168;175] {glyph_utf8="fi";glyph_index=245};
+              make_ligature [168;181] {glyph_utf8="fl";glyph_index=246};
+              make_ligature [168;177] {glyph_utf8="fj";glyph_index=383};
+              make_ligature [175;177] {glyph_utf8="ij";glyph_index=176};
+             ]),
+          (fun x->x)),
      Lazy.lazy_from_fun
        (fun ()->
-         (Fonts.loadFont (findFont "Alegreya/Alegreya-BoldItalic.otf")),
-         (fun x->x),
-         (fun x->List.fold_left (fun a f->f a) x
-           [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
-            make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
-            make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
-            make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
-           ]),
-         (fun x->x)));
+          (Fonts.loadFont
+            (findFont FontPattern.({family="Alegreya"; slant=Italic; weight=Bold}))
+          ),
+          (fun x->x),
+          (fun x->List.fold_left (fun a f->f a) x
+             [make_ligature [162;170] {glyph_utf8="fi";glyph_index=477};
+              make_ligature [162;175] {glyph_utf8="fl";glyph_index=478};
+              make_ligature [162;171] {glyph_utf8="fj";glyph_index=482};
+              make_ligature [170;171] {glyph_utf8="ij";glyph_index=476};
+             ]),
+          (fun x->x)));
+
     Caps,
-    (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Regular.otf")),
-     simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Alegreya/AlegreyaSC-Italic.otf")))]
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Alegreya SC"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Alegreya SC"; slant=Italic; weight=Regular})
+      ))
+    );
+  ]
 
 let philosopher=[
   Regular,
-  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Regular.otf")),
-   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Italic.otf")));
+  (
+    simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+          FontPattern.({family="Philosopher"; slant=Roman; weight=Regular})
+    )),
+    simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+          FontPattern.({family="Philosopher"; slant=Italic; weight=Regular})
+    ))
+  );
+
   Bold,
-  (simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-Bold.otf")),
-   simpleFamilyMember (fun ()->Fonts.loadFont (findFont "Philosopher/Philosopher-BoldItalic.otf")))
+  (
+    simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+          FontPattern.({family="Philosopher"; slant=Roman; weight=Bold})
+    )),
+    simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+          FontPattern.({family="Philosopher"; slant=Italic; weight=Bold})
+    ))
+  );
 ]
 
 let texgyrecursor=
-  [ Regular,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-regular.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-     Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-italic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+  [
+    Regular,
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="TeX Gyre Cursor"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="TeX Gyre Cursor"; slant=Italic; weight=Regular})
+      ))
+    );
+
     Bold,
-    (Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-bold.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-     Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "TexGyreCursor/texgyrecursor-bolditalic.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="TeX Gyre Cursor"; slant=Roman; weight=Bold})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="TeX Gyre Cursor"; slant=Italic; weight=Bold})
+      ))
+    );
 
   ]
 
 let bitstreamverasansmono=
-  [ Regular,
-    (Lazy.lazy_from_fun
-       (fun ()->
-         (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Roman.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-     Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Oblique.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+  [
+    Regular,
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Roman; weight=Regular})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Italic; weight=Regular})
+      ))
+    );
+
     Bold,
-    (Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-Bold.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)),
-     Lazy.lazy_from_fun
-       (fun ()->
-          (Fonts.loadFont (findFont "BitstreamVeraSansMono/BitstreamVeraSansMono-BoldOb.otf")),
-          (fun x->x),
-          (fun x->x),
-          (fun x->x)));
+    (
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Roman; weight=Bold})
+      )),
+      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
+            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Italic; weight=Bold})
+      ))
+    );
 
   ]
 
@@ -1623,7 +1640,9 @@ module Format=functor (D:Document.DocumentStructure)->(
   end)
 
 module MathFonts = struct
-  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "Asana-Math/Asana-Math.otf"))
+  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+    (findFont FontPattern.({family = "Asana Math"; slant = Roman; weight = Regular})))
+
   let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
 
   let adjusted_asana_delimiters' name ls =
@@ -1650,7 +1669,8 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "Euler/euler.otf"))
+  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+    (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})))
   let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
 
   let adjusted_euler_delimiters name ls =
@@ -1664,7 +1684,8 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont (findFont "AMS/ams.otf"))
+  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+    (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
   let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
 end
 
@@ -1690,7 +1711,9 @@ module MathsFormat=struct
                        a
                   )]
 
-    let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont (findFont "AMS/ams.otf"))
+    let bbFont=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
+      (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
+
     let mathbb a=[Maths.Scope (fun _ _->Maths.Env (fun env->Maths.change_fonts 
                                                      (change_font (Lazy.force bbFont) env) (Lazy.force bbFont))::a)]
 

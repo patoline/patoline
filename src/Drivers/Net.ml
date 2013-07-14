@@ -204,7 +204,7 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet=
-    let pato=findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in
+    let pato=findPath "patonet.ml" ((!Typography.Config.pluginspath)@["."]) in
     let patof=open_in pato in
     let s=String.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);
