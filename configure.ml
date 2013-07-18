@@ -249,9 +249,7 @@ let _=
     Unix.close ce;
     Unix.close ci';
     let _,st=Unix.waitpid [] i in
-    if (ocamlfind_has "dyp") && st = (Unix.WEXITED 0) then (
-      true
-    ) else false
+    (ocamlfind_has "dyp") && st = (Unix.WEXITED 0)
   in
 
   if not (ocamlfind_has "camomile") then (
