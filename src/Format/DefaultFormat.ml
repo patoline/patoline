@@ -1774,26 +1774,30 @@ module MathsFormat=struct
                let gl_arr=Fonts.loadGlyph font utf8_arr in
                let arr=Fonts.outlines gl_arr in
                let w1=List.fold_left (List.fold_left (fun y (v,_)->max y (max v.(0) v.(Array.length v-1)))) 0. arr in
+               (* Extrema de la fleche *)
                let y0,y1=List.fold_left (List.fold_left (fun (yy0,yy1) (_,v)->
                                                            let a,b=Bezier.bernstein_extr v in
                                                              min yy0 a, max yy1 b)) (0.,0.) arr in
                let size=envs.size*.env.Mathematical.mathsSize/.(1000.*.phi) in
-               let space=env.Mathematical.default_rule_thickness in
+               let x_space0=envs.size/.12.
+               and x_space1=envs.size/.16.
+               and y_space=env.Mathematical.default_rule_thickness*.envs.size*.2. in
+
                let arr'=
                  List.map (fun x->
                              Array.of_list (List.map (fun (u,v)->
-                                                        Array.map (fun y->if y>=w1/.4. then (y*.size)+.(max 0. (x1_-.w1*.size)) else y*.size) u,
-                                                        Array.map (fun y->y*.size-.y0+.y1_+.space) v
+                                                        Array.map (fun y->if y>=w1/.4. then (y*.size)+.(max 0. (x1_-.w1*.size)+.x_space1) else y*.size-.x_space0) u,
+                                                        Array.map (fun y->y*.size-.y0+.y1_+.y_space) v
                                                      ) x)) arr
                in
                  [Box.Drawing {
                     drawing_nominal_width=max (w1*.size) boxes_w;
-                    drawing_min_width=max (w1*.size) boxes_w;
-                    drawing_max_width=max (w1*.size) boxes_w;
+                    drawing_min_width=max (w1*.size+.y_space) boxes_w;
+                    drawing_max_width=max (w1*.size+.y_space) boxes_w;
 		    drawing_width_fixed = true;
 		    drawing_adjust_before = false;
                     drawing_y0=y0_;
-                    drawing_y1=y1_+.space-.(y0+.y1)*.size;
+                    drawing_y1=y1_+.x_space1-.x_space0-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
                     drawing_break_badness=0.;
                     drawing_states=IntSet.empty;
