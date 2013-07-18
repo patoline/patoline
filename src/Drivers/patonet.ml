@@ -331,7 +331,7 @@ let serve addr fd=
               sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
               base64_encode (sha#result)
             in
-            output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-Websocket-Accept: ";
+            output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
             output_string ouc key;
             output_string ouc "\r\n\r\n";
             flush ouc;

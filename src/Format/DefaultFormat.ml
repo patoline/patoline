@@ -1769,6 +1769,7 @@ module MathsFormat=struct
 
                let env=Maths.env_style envs.mathsEnvironment st in
                let font=Lazy.force (env.Mathematical.mathsFont) in
+               (* Extraction de la fleche native de la police *)
                let utf8_arr={glyph_index=(Fonts.glyph_of_uchar font (UChar.chr 0x2192));
                              glyph_utf8="\033\146"} in
                let gl_arr=Fonts.loadGlyph font utf8_arr in
