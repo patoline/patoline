@@ -654,16 +654,19 @@ module Format=functor (D:Document.DocumentStructure)->(
     let lang_default str = split_space (fun _ -> true) (fun _ -> false) str
 
     let lang_SML s=
-      let specials = ['(';')';';'] in
-      let keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";"and";"=>";"->";"type";"|";"=";
-			  "case";"of";"datatype";"let";"rec";"end"] in
+      let specials = ['(' ; ')' ; ';' ; ','] in
+      let keywords = ["fun";"as";"fn";"*";"(";")";",";";";"val";
+		      "and";"=>";"->";"type";"|";"=";"case";"of";
+		      "datatype";"let";"rec";"end"] in
       lang_ML keywords specials s
 
     let lang_OCaml s=
-      let specials = ['(';')';';'] in
-      let keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";"and";"=>";"->";"type";"|";"=";
-		      "match";"with";"rec";"let";"begin";"end";"while";"for";"do";"done";
-		      "struct"; "sig"; "module"; "functor"] in
+      let specials = ['(' ; ')' ; ';' ; ','] in
+      let keywords = ["fun";"as";"function";"(";")";"*";";";",";"val";
+		      "and";"=>";"->";"type";"|";"=";"match";"with";
+		      "rec";"let";"begin";"end";"while";"for";"do";"done";
+		      "struct"; "sig"; "module"; "functor"; "if"; "then"; 
+		      "else"; ] in
       lang_ML keywords specials s
 
 
