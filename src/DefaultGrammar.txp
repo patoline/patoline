@@ -123,6 +123,7 @@
 \Add_relation{\realize \force ⊩}(MathFonts.asana "⊩" 883)
 \Add_relation{\urealize}(MathFonts.asana "\\urealize" 884)
 \Add_relation{\vdash ⊢ |-}{⊢}
+\Add_relation{\models \entails ⊨ |=}(MathFonts.asana "\\models" 881)
 \Add_relation{\triangleright ▹} ( MathFonts.asana "triangle right" 893 )
 
 =<
@@ -371,6 +372,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_symbol{\natural ♮}(MathFonts.asana "♮" 1061)
 \Add_symbol{\flat ♭}(MathFonts.asana "♭" 1060)
 \Add_symbol{\infty ∞}{∞}
+\Add_symbol{\partial ∂}{∂}
 \Add_symbol{\top ⊤}{⊤}
 \Add_symbol{\bottom \bot ⊥}{⊥}
 \Add_symbol{\dtop}(MathFonts.asana "\\dtop" 1626)
