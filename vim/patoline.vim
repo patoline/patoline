@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:        Patoline
 " Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
-" Last Change:     26/04/2013
+" Last Change:     20/07/2013
 " Version:         1.0
 " Original Author: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
 "
@@ -29,8 +29,11 @@ if exists("b:current_syntax")
   finish
 endif
 
+syntax spell toplevel
+
 " Comments
 syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,patoPreproc
+syn match   patoComment "\*\*(.*$" contains=patoCommentTags
 syn keyword patoCommentTags contained TODO FIXME NOTE
 syn match   patoPreproc contained "\v#\w*\s\w*"
 hi link patoComment     Comment
@@ -49,7 +52,7 @@ hi link camlEnv         SpecialComment
 " Other environments
 syn match patoEnv "^\s*\\begin{\w*}\s*$"
 syn match patoEnv "^\s*\\end{\w*}\s*$"
-syn match patoEnv "\\\w*{[^}]*}"
+syn match patoEnv "\\\w*{\_[^}]*}"
 
 hi link patoEnv Type
 
@@ -57,32 +60,32 @@ hi link patoEnv Type
 syn match patoTitle "=\{10}=*\s*$"
 syn match patoTitle "-\{10}-*\s*$"
 
-syn match patoTitle "^\s*=\{2}[^=].*[^=]=\{2}\s*$"
-syn match patoTitle "^\s*=\{3}[^=].*[^=]=\{3}\s*$"
-syn match patoTitle "^\s*=\{4}[^=].*[^=]=\{4}\s*$"
-syn match patoTitle "^\s*=\{5}[^=].*[^=]=\{5}\s*$"
-syn match patoTitle "^\s*=\{6}[^=].*[^=]=\{6}\s*$"
-syn match patoTitle "^\s*=\{7}[^=].*[^=]=\{7}\s*$"
-syn match patoTitle "^\s*=\{8}[^=].*[^=]=\{8}\s*$"
-syn match patoTitle "^\s*=\{9}[^=].*[^=]=\{9}\s*$"
+syn match patoTitle "^\s*=\{2}[^=].*[^=]=\{2}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{3}[^=].*[^=]=\{3}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{4}[^=].*[^=]=\{4}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{5}[^=].*[^=]=\{5}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{6}[^=].*[^=]=\{6}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{7}[^=].*[^=]=\{7}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{8}[^=].*[^=]=\{8}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*=\{9}[^=].*[^=]=\{9}\s*$" contains=ocamlCode
 
-syn match patoTitle "^\s*-\{2}[^-].*[^-]-\{2}\s*$"
-syn match patoTitle "^\s*-\{3}[^-].*[^-]-\{3}\s*$"
-syn match patoTitle "^\s*-\{4}[^-].*[^-]-\{4}\s*$"
-syn match patoTitle "^\s*-\{5}[^-].*[^-]-\{5}\s*$"
-syn match patoTitle "^\s*-\{6}[^-].*[^-]-\{6}\s*$"
-syn match patoTitle "^\s*-\{7}[^-].*[^-]-\{7}\s*$"
-syn match patoTitle "^\s*-\{8}[^-].*[^-]-\{8}\s*$"
-syn match patoTitle "^\s*-\{9}[^-].*[^-]-\{9}\s*$"
+syn match patoTitle "^\s*-\{2}[^-].*[^-]-\{2}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{3}[^-].*[^-]-\{3}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{4}[^-].*[^-]-\{4}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{5}[^-].*[^-]-\{5}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{6}[^-].*[^-]-\{6}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{7}[^-].*[^-]-\{7}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{8}[^-].*[^-]-\{8}\s*$" contains=ocamlCode
+syn match patoTitle "^\s*-\{9}[^-].*[^-]-\{9}\s*$" contains=ocamlCode
 
-syn match patoTitle "^\s*->.*$"
-syn match patoTitle "^\s*-<\s*$"
+syn match patoTitle "^\s*->.*$"   contains=ocamlCode
+syn match patoTitle "^\s*-<\s*$"  contains=ocamlCode
 
-syn match patoTitle "^\s*=>.*$"
-syn match patoTitle "^\s*=<\s*$"
+syn match patoTitle "^\s*=>.*$"   contains=ocamlCode
+syn match patoTitle "^\s*=<\s*$"  contains=ocamlCode
 
-syn match patoTitle "^\s*\.>.*$"
-syn match patoTitle "^\s*\.<\s*$"
+syn match patoTitle "^\s*\.>.*$"  contains=ocamlCode
+syn match patoTitle "^\s*\.<\s*$" contains=ocamlCode
 
 syn region patoItemize matchgroup=patoTitle start="^\s*\\begin{itemize}\s*$" end="^\s*\\end{itemize}\s*$" contains=ALL
 syn match patoTitle "^\s*\\item\s"
@@ -90,13 +93,13 @@ syn match patoTitle "^\s*\\item\s"
 hi link patoTitle Constant
 
 " Math environment
-syn region patoMathEnv start="\$"   end="\$" contains=patoComment
-syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment
+syn region patoMathEnv start="\$"   end="\$"   contains=patoComment,@NoSpell
+syn region patoMathEnv start="\$\$" end="\$\$" contains=patoComment,@NoSpell
 hi link patoMathEnv Identifier
 
 " Verbatim environment
-syn region patoVerb start="###" end="###"
-syn region patoVerb start="\\verb{" end="}"
+syn region patoVerb start="###" end="###"   contains=@NoSpell
+syn region patoVerb start="\\verb{" end="}" contains=@NoSpell
 syn match patoVerb "\\\$"
 syn match patoVerb "\\\\"
 
