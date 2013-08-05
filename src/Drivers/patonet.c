@@ -202,6 +202,8 @@ void do_send(struct conn*conn,void*data,int len){
 }
 
 void *answer(void *conn_){
+  // Un premier truc à faire: vérifier qu'on n'a pas déjà conn->fd
+  // dans l'arbre, et le libérer le cas échéant. Ça évitera bien des conneries.
   struct conn*conn=conn_;
   int ret;
 

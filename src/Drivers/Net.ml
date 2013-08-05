@@ -48,7 +48,10 @@ function websocket_close(evt){if(!was_error){/*setTimeout(start_socket,1000)*/}}
 function start_socket(){
    was_error=false;
    if(websocket){websocket.close();delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror};
-   websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"%s);
+   if(location.protocol==\"https:\")
+      websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"%s);
+   else
+      websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"%s);
    websocket.onclose=websocket_close;
    websocket.onmessage = websocket_msg;
    websocket.onerror = websocket_err;
@@ -60,6 +63,7 @@ window.onbeforeunload = function() {
 "
     (-.w)
     w
+    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
     (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -204,7 +208,7 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet=
-    let pato=findPath "patonet.ml" ((!Typography.Config.pluginspath)@["."]) in
+    let pato=FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in
     let patof=open_in pato in
     let s=String.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);
