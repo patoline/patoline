@@ -735,6 +735,10 @@ end
 	       | `Temporal of float	(* Between 0. and 1. (for paths) *)
 	       | `Start
 	       | `End
+
+	       | `Vertex of int
+	       | `Apex
+	       | `Edge of int
 	       ]
 
   module Gentity = struct
@@ -986,6 +990,8 @@ end
     (* 	  let bb' = (x0,y0,x1,h) in *)
     (* 	  { info with bb = bb' })}) *)
 
+
+
     let (rectangle : Document.environment -> Transfo.Style.t),
       shape_pet = 
       Pet.register "node shape" 
@@ -1166,6 +1172,179 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    outerCurve = outer_curve ;
 	    anchor = anchors
 	  })}
+
+
+  let float_div a b = 
+    let n = truncate (a /. b) in
+    let x = a -. (float_of_int n) *. b in
+    if x < 0. then (n-1, x +. b)
+    else (n, x)
+
+  let pmod_float a b = snd (float_div a b)
+    
+
+  let nat_mod a b = 
+    let x = a mod b in
+    if x < 0 then x + b else x
+
+  let scal_prod (x,y) (x',y') = x *. x' +. y *. y'
+
+    (* An isoceles triangle with apex angle [apex_angle] oriented towards [orientation] *)
+    let triangle ?orientation:(orientation=90.) ?apex_angle:(apex_angle=60.)  env =
+	{ Transfo.Style.pet = shape_pet ; Transfo.Style.transfo = (fun transfos info -> 
+
+	  let n,orient = float_div orientation 90. in
+	  
+	  let angle = (float_of_int n) *. 90. in
+	  let info' = Transfo.transform [rectangle env] info in
+
+	  if apex_angle = 0. then 
+	    begin
+	      Printf.fprintf stderr "Warning: angle shape with zero apex angle: don't know how to do this, sorry.\n 
+Doing a rectangle.\n" ;
+	      flush stderr ; info'
+	    end else
+
+	    let make_triangle ne_orig  nw_orig  sw_orig  se_orig =
+
+	      let coins = [| ne_orig ; nw_orig ; sw_orig ; se_orig |] in
+	      let shift = nat_mod n 4 in
+	      let _ = begin Printf.fprintf stderr "angle = %f.\n" angle ; flush stderr end in 
+	      let nouveaux_coins = Array.mapi
+		(fun i _ ->  coins.((i + shift) mod 4))
+		coins
+	      in
+	      let center = Point.middle ne_orig sw_orig in
+
+	      let aller v = Vector.rotate (-. angle) (Vector.translate (Vector.scal_mul (-. 1.) center) v) in
+	      let retour v = Vector.translate center (Vector.rotate angle v) in
+	      (* let aller = Vector.rotate (-. angle) in *)
+	      (* let retour = Vector.rotate angle in *)
+	      let center = aller center in
+	      let _ = begin Printf.fprintf stderr "center = %f,%f.\n" (fst center) (snd center) ; flush stderr end in 
+
+
+	      let ne = aller nouveaux_coins.(0) in
+	      let nw = aller nouveaux_coins.(1) in
+	      let sw = aller nouveaux_coins.(2) in
+	      let se = aller nouveaux_coins.(3) in
+	      let south = Point.middle sw se in
+
+	      let _ = begin Printf.fprintf stderr "ne = %f,%f.\n" (fst ne) (snd ne) ; flush stderr end in 
+	      let _ = begin Printf.fprintf stderr "sw = %f,%f.\n" (fst sw) (snd sw) ; flush stderr end in 
+
+
+	      let (u1,u2) as u = Vector.normalise (1., tan (to_rad orient)) in
+	      let v = (-. u2,u1) in
+
+	      let inter_droites (a,b,c) (a',b',c') = 
+		let det = a *. b' -. a' *. b in
+		if det = 0. then 		  
+		      (* Any point on the first line will do *)
+		    if a = 0. && b = 0. && c = 0.  then 
+			(* The "line" is all the plane; the origin will do *)
+		      0.,0.
+		    else if a <> 0. 
+		         then (-. c /. a, 0.)
+		         else 
+		           if b <> 0. 
+			   then (0., -. c /. b)
+			   else	   (* a = b = 0. but c <> 0. *)
+		           (* hopeless again *)
+			     begin Printf.fprintf stderr "Warning: attempt to find point in an empty intersection of \"lines\". Returning the origin.\n" ; flush stderr ; (0.,0.)
+			     end
+		  else 			(* non-degenerate case *)
+		      ((c' *. b -. c *. b')/. (a *. b' -. a' *. b)),
+		      ((c' *. a -. c *. a')/. (a' *. b -. a *. b'))
+	      in
+			
+	      let droite angle predicate point1 point2 =
+		let x0,y0 = if predicate angle then point1 else point2 in
+		if pmod_float angle 180. = 0. then (0., 1., -. y0)
+		else if pmod_float angle 180. = 90. then (1.,0.,-. x0)
+		else
+		  let pente = tan (to_rad angle) in
+		  let oo = y0 -. pente *. x0 in 
+		  (pente, -.1., oo)
+	      in		
+
+	      let _ = begin Printf.fprintf stderr "orient mod 180 = %f.\n" (pmod_float orient 180.) ; flush stderr end in 
+
+
+	      let ga = droite (orient -. apex_angle /. 2.) (fun angle -> pmod_float angle 180. <= 90.)
+		nw ne
+	      in
+	      let da = droite (orient +. apex_angle /. 2.) (fun angle -> pmod_float angle 180. <= 90.)
+		se ne
+	      in
+	      let gd = droite (pmod_float (orient +. 90.) 180.) (fun angle -> pmod_float angle 180. <= 90.)
+		sw sw
+	      in
+	      
+	      let apex = inter_droites ga da in
+	      let droit = inter_droites gd da in
+	      let gauche = inter_droites gd ga in
+	      
+	      let droit_final = retour droit in 
+	      let gauche_final = retour gauche in 
+	      let apex_final = retour apex in 
+
+	      let curve =
+		Curve.of_point_lists [
+		  [gauche_final;droit_final] ;
+		  [droit_final;apex_final] ;  
+		  [apex_final;gauche_final] 
+		]
+	      in
+	      ((droit_final, gauche_final,apex_final),curve)
+	    in
+	    
+	    let (x0,y0,x1,y1) as bb_boot = info'.bb in
+	    let (p1,p2,p3,p4) as outer_bb = BB.outer_points info' bb_boot in
+	    let (p1',p2',p3',p4') = BB.mid_points info' bb_boot in
+
+	    let (_,outer_curve) = make_triangle p3 p4 p1 p2 in
+	    let ((droit_final, gauche_final,apex_final),mid_curve) = make_triangle p3' p4' p1' p2' in
+
+	    let inter point angle =
+	      let angle = to_rad angle in
+	      let direction = (cos angle, sin angle) in
+	      let (vx,vy) as direction' = Vector.normalise ~norm:300. direction in 
+	      let rayon = Curve.of_point_lists [[point;Vector.(+) point direction']] in
+	      let inter = 
+		app_default Curve.latest_intersection rayon outer_curve (0,0.)
+	      in
+	      Curve.eval_local rayon inter
+	    in
+
+	    let base = info'.anchor `Base in
+	    let line = fst base, (snd base -. ex env) in
+	    let center = info'.anchor `Center in
+	    let south = inter center (-90.) in 
+	    let north = inter center 90. in 
+
+	    let rec anchors = function
+	      | `BaseEast -> inter base 0.
+	      | `BaseWest -> inter base 180.
+	      | `Line -> line
+	      | `LineEast -> inter line 0.
+	      | `LineWest -> inter line 180.
+	      | `East -> inter center 0.
+	      | `West -> inter center 180.
+	      | `North -> north
+	      | `South -> south
+	      | `SouthWest -> inter south 180.
+	      | `SouthEast -> inter south 0.
+	      | `NorthEast -> inter north 0.
+	      | `NorthWest -> inter north 180.
+	      | x -> info'.anchor x
+	    in
+	    { info' with 
+	      outerCurve = outer_curve ;
+	      midCurve = mid_curve ;
+	      anchor = anchors
+	    })}
+
 
     let translate ((xt,yt) as v) info = 
 	  let bb = BB.translate v info.bb in
