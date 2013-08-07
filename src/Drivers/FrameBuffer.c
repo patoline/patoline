@@ -283,3 +283,7 @@ CAMLprim gl_no_shader(value u) {
   glUseProgram(0);
   CAMLreturn(Val_unit);
 }
+
+void _XEatDataWords(void)
+{
+}
