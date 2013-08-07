@@ -1085,11 +1085,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
 
   let reconnect ()=
-    let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-    Unix.connect sock (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1",8080));
-    let fo=Unix.out_channel_of_descr sock in
-    output_string fo "GET /tire HTTP/1.1\r\n\r\n";flush fo;
-    sock
+    try
+       let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+       Unix.connect sock (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1",8080));
+       let fo=Unix.out_channel_of_descr sock in
+       output_string fo "GET /tire HTTP/1.1\r\n\r\n";
+       flush fo;
+       Some sock
+     with _ -> None;
   in
 
   let s=String.create 1000 in
@@ -1125,7 +1128,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
     show_links ();
 
-    handle_one sock;
+    (match sock with Some sock -> handle_one sock | None -> ());
     begin
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
