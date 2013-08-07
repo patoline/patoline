@@ -2247,7 +2247,7 @@ Doing a rectangle.\n" ;
 
       let label, label_pet = 
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet;double_pet;foreground_pet;make_anchors_pet] "label" 
-	  (fun pet env ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[]) cont ->
+	  (fun pet env ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[Node.rectangle env]) cont ->
 	    { pet = pet ; transfo = (fun transfos info -> 
 	      let node = Node.make env (Node.at (info.anchor pos) :: style) cont in
 	      { info with decorations = info.decorations @ [Node node] }) })
@@ -2527,17 +2527,36 @@ Doing a rectangle.\n" ;
       open Node
       open Edge
 
-      let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) ?style:(style=[]) cont = 
-	label env ~pos:pos ~style:((Node.anchor a) :: style) cont
+      let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) 
+	  ?shape:(shape=Node.rectangle env) 
+	  ?style:(style=[]) 
+	  cont = 
+	label env ~pos:pos ~style:((Node.anchor a) :: shape :: style) cont
 
-      let labela = label_anchor `South
-      let labelb = label_anchor `North
-      let labell = label_anchor `East
-      let labelr = label_anchor `West
-      let labelal = label_anchor `SouthEast
-      let labelar = label_anchor `SouthWest
-      let labelbl = label_anchor `NorthEast
-      let labelbr = label_anchor `NorthWest
+      let labela ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `South ~pos:pos ~shape:shape ~style:style cont
+      let labelb ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `North ~pos:pos ~shape:shape ~style:style cont
+      let labell ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `East ~pos:pos ~shape:shape ~style:style cont 
+      let labelr ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `West ~pos:pos ~shape:shape ~style:style cont
+      let labelal ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `SouthEast ~pos:pos ~shape:shape ~style:style cont
+      let labelar ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `SouthWest ~pos:pos ~shape:shape ~style:style cont
+      let labelbl ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `NorthEast ~pos:pos ~shape:shape ~style:style cont
+      let labelbr ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
+	  ?style:(style=[]) cont = 
+	label_anchor `NorthWest ~pos:pos ~shape:shape ~style:style cont
 
 
       let label_edge e style pos contents = 
