@@ -28,7 +28,7 @@ Html.cmxa:Html.cmx ../Typography/_build/Typography.cmi
 SVG.cmxa:SVG.cmx HtmlFonts.cmx ../Typography/_build/Typography.cmi
 	$(CAMLOPT) -a -o $@ HtmlFonts.cmx SVG.cmx
 DriverGL.cmxa:DriverGL.cmx FrameBuffer.o GlFBO.cmx  ../Typography/_build/Typography.cmi
-	$(CAMLMKLIB) -package str -o DriverGL FrameBuffer.o GlFBO.cmx Vec3.cmx DriverGL.cmx
+	$(CAMLMKLIB) -package str -linkpkg -o DriverGL FrameBuffer.o GlFBO.cmx Vec3.cmx DriverGL.cmx
 Image.cmxa:DriverGL.cmx Image.cmx ../Typography/_build/Typography.cmi
 	$(CAMLMKLIB) -o Image FrameBuffer.o DriverGL.cmx Language.cmx Image.cmx
 Pdf.cmxa:Pdf.cmx ../Typography/_build/Typography.cmxa
