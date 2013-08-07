@@ -129,8 +129,31 @@ let cache = ref ""
 let cache_buf = ref (Buffer.create 0)
 let mcache_buf = ref (Buffer.create 0)
 
+let ident_of_filename =
+  let len_dir_sep = String.length Filename.dir_sep in
+
+  let rec compare_sub s i s' j len =
+    if len = 0 then true else
+      if (i + len > (String.length s)) || (j + len > (String.length s')) then false else
+	if s.[i] = s'.[j] then compare_sub s (i + 1) s' (j + 1) (len - 1) 
+	else false
+  in
+
+  let underscores = String.make len_dir_sep '_' in
+
+  fun filename -> 
+  let _ = begin
+    for i = 0 to String.length filename - 1 do
+      if compare_sub filename i Filename.dir_sep 0 len_dir_sep then
+	String.blit underscores 0 filename i len_dir_sep
+      else ()
+    done
+  end ;
+  in
+  Filename.chop_extension filename
+
 let preambule format driver suppl filename=
-  cache := "cache_" ^ (Filename.chop_extension filename);
+  cache := "cache_" ^ (ident_of_filename filename);
   cache_buf := Buffer.create 80;
   Printf.sprintf
     "(* #FORMAT %s *)
