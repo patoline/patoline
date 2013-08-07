@@ -60,12 +60,13 @@ type link = {
   mutable link_y0 : float;
   mutable link_x1 : float;
   mutable link_y1 : float;
+  mutable link_closed : bool;
   link_order : int;
   uri:string;is_internal:bool;
   dest_page : int;
   dest_x : float;
   dest_y : float;
-  link_contents : raw list
+  mutable link_contents : raw list
 }
 
 and states={

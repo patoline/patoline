@@ -1177,6 +1177,7 @@ let draw_boxes env l=
     | Marker (BeginURILink l)::s->(
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                  link_order=0;
+                 link_closed=false;
                  dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                  link_contents=[] }
       in
@@ -1192,6 +1193,7 @@ let draw_boxes env l=
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                  link_order=0;
+                 link_closed=false;
                  dest_page=dest_page;
                  dest_x=0.;dest_y=0.;is_internal=true;
                  link_contents=[]
@@ -1201,8 +1203,10 @@ let draw_boxes env l=
     )
     | Marker EndLink::s->(
       let rec link_contents u l=match l with
-          []->[]
-        | (Link h)::s->(Link { h with link_contents=u })::s
+          []->List.rev u
+        | (Link h)::s when not h.link_closed->(h.link_contents<-u;
+                        h.link_closed<-true;
+                        Link h::s)
         | h::s->link_contents (h::u) s
       in
       draw_boxes x y (link_contents [] dr) s

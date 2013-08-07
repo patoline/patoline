@@ -750,8 +750,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   boxify_scoped { env with fontColor=col }
                     (bB (fun _->[Marker (BeginLink labl)])::
-                       displayname@
-                       [bB (fun _->[Marker EndLink])])
+                       displayname
+                     @[bB (fun _->[Marker EndLink])])
                 )
               ) toc
               in
@@ -831,7 +831,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
                 let destinations=ref StrMap.empty in
-                let urilinks=ref None in
                 for j=0 to Array.length pp-1 do
                   let param=pp.(j).line_params
                   and line=pp.(j).line in
@@ -890,12 +889,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                         )
                         | Marker (BeginURILink l)->(
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                     link_order=0;
+                                     link_order=0;link_closed=false;
                                      dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                                      link_contents=[] }
                           in
-                          urilinks:=Some link;
+                          crosslinks:=(i, link, l) :: !crosslinks;
                           page.pageContents<-Link link::page.pageContents;
+                          crosslink_opened:=true;
                           0.
                         )
                         | Marker (BeginLink l)->(
@@ -908,7 +908,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                 Not_found->(-1)
                           in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                     link_order=0;
+                                     link_order=0;link_closed=false;
                                      dest_page=dest_page;is_internal=true;
                                      dest_x=0.;dest_y=0.;
                                      link_contents=[]
@@ -925,25 +925,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                           0.
                         )
                         | Marker EndLink->(
-                          let rec link_contents u l=match l with
-                              []->[]
-                            | (Link h)::s->(Link { h with
-                              link_contents=List.rev u
-                            })::s
-                            | h::s->link_contents (h::u) s
-                          in
-                          page.pageContents<-link_contents [] page.pageContents;
-                          (match !urilinks with
-                              None->(
-                                match !crosslinks with
-                                    []->()
-                                  | (_,h,_)::s->crosslink_opened:=false; h.link_x1<-x
-                              )
-                            | Some h->(
-                              h.link_x1<-x;
-                              urilinks:=None;
-                            )
-                          );
+                          (match !crosslinks with
+                              []->()
+                            | (_,_,_)::s->(
+                              let rec link_contents u l=match l with
+                                  []->[]
+                                | (Link h)::s when not h.link_closed->(
+                                  h.link_contents<-List.rev u;
+                                  h.link_closed<-true;
+                                  h.link_x1<-x;
+                                  Link h::s
+                                )
+                                | h::s->link_contents (h::u) s
+                              in
+                              page.pageContents<-link_contents [] page.pageContents;
+                              crosslink_opened:=false; crosslinks:=s
+                            ));
                           0.
                         )
                         | b->box_width comp b

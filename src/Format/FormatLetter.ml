@@ -200,7 +200,7 @@ module Output=functor(M:Driver)->struct
                       )
                       | Marker (BeginURILink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                   link_order=0;
+                                   link_order=0;link_closed=false;
                                    dest_page=0;dest_x=0.;dest_y=0.;is_internal=false;
                                    link_contents=[] }
                         in
@@ -210,7 +210,7 @@ module Output=functor(M:Driver)->struct
                       )
                       | Marker (BeginLink l)->(
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
-                                   link_order=0;
+                                   link_order=0;link_closed=false;
                                    dest_page=0;dest_x=0.;dest_y=0.;is_internal=true;
                                    link_contents=[]
                                  }
@@ -228,7 +228,7 @@ module Output=functor(M:Driver)->struct
                       | Marker EndLink->(
                         let rec link_contents u l=match l with
                             []->[]
-                          | (Link h)::s->(Link { h with link_contents=List.rev u })::s
+                          | (Link h)::s->(Link { h with link_contents=List.rev u;link_closed=true })::s
                           | h::s->link_contents (h::u) s
                         in
                         page.pageContents<-link_contents [] page.pageContents;

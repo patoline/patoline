@@ -82,10 +82,11 @@ type glyph={ glyph_x:float; glyph_kx:float; glyph_y:float; glyph_ky:float; glyph
              glyph:Fonts.glyph }
 type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
+             mutable link_closed:bool;
              link_order:int;
              uri:string;is_internal:bool;
              dest_page:int; dest_x:float; dest_y:float;
-             link_contents:raw list}
+             mutable link_contents:raw list}
 and states={
   states_contents:raw list;
   states_states:Util.IntSet.t;
@@ -134,7 +135,7 @@ type bounding_box_opt = {
   ignore_under_base_line : bool}
 
 let rec print_raw r=match r with
-  Glyph g->Printf.fprintf stderr "Glyph (%f,%f) size %f\n" g.glyph_x g.glyph_y g.glyph_size
+  Glyph g->Printf.fprintf stderr "Glyph %s (%f,%f) size %f\n" (Fonts.glyphNumber g.glyph).glyph_utf8 g.glyph_x g.glyph_y g.glyph_size
   | Path (_,ps)->(
 
     let c=String.concat "," (List.map (fun p->
@@ -157,7 +158,7 @@ let rec print_raw r=match r with
       (i.image_y+.i.image_height)
 
   | States a->List.iter print_raw a.states_contents
-  | Link l->List.iter print_raw l.link_contents
+  | Link l->(Printf.fprintf stderr "Link [";List.iter print_raw l.link_contents;Printf.fprintf stderr "]\n")
   | Animation(r,_,_,_)->List.iter print_raw r
 
 

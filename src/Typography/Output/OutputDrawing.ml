@@ -66,6 +66,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
             Link { h with
               link_x0=x0;link_y0=y0;
               link_x1=x1;link_y1=y1;
+              link_closed=true;
               link_contents=List.rev u
             }
           )::s
@@ -201,6 +202,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
             | Marker (BeginURILink l)->(
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                          link_order=0;
+                         link_closed=false;
                          dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                          link_contents=[] }
               in
@@ -212,6 +214,7 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
             | Marker (BeginLink l)->(
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                          link_order=0;
+                         link_closed=false;
                          dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
                          link_contents=[]
                        }
