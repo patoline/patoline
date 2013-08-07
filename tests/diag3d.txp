@@ -23,6 +23,64 @@ open Proj3d
 )
 
 \Caml(
+let empty : Node.Transfo.Style.t list * Typography.Document.content list = ([],[])
+
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+
+  let centers ?projection:(projection=Proj3d.cavaliere45bg) z y x = 
+    Matrix3d.(placement (between_centers ~projection:projection z y x))
+
+
+let input_color=RGB{red=0.2;green=0.7;blue=0.2}
+let fork_color=RGB{red=0.7;green=0.7;blue=0.7}
+let left_fork_color=white
+let dark_blue=RGB{red=0.;green=0.;blue=0.4}
+
+let etat = Node.([circle;draw;mainAnchor `Center;anchor `Center;fill black;innerSep 0.4;outerSep 0.4],[])
+let canal = Node.([circle;draw;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
+let canal_rouge = Node.([circle;draw;color red;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
+let coordi = Node.([circle;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
+let joueur = Node.([circle;draw;mainAnchor `Center;anchor `Center;fill black;innerSep 0.6],[])
+let coup_input = 
+    Node.([draw;fill input_color;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
+let coup_fork = 
+    Node.([triangle ~orientation:270. env;draw;fill fork_color;mainAnchor `Center;anchor `Center;innerSep 0.8],[])
+let coup_fork_gauche = 
+    Node.([triangle ~orientation:270. env;draw;fill left_fork_color;mainAnchor `Center;anchor `Center;innerSep 0.8],[])
+
+end
+
+  let truc projection = <<
+\diagram(
+  (* let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.orange x)) *)
+  let _ = t_margin := 0.1
+  let _ = margin := 0.3
+
+  let matrix = Matrix3d.(matrix_3d_full 
+  [centers ~projection:projection 10. 20. 10.;
+  mainNode Node.([mainAnchor `Center;anchor `Center; at(0.,0.)])] [
+  [[ empty ; canal
+    ]];[[
+  joueur ; empty ; joueur ; canal
+  ]];[[
+  empty ; canal	
+   ]]])
+
+   let m,ms = matrix_3d_project matrix 
+
+   let links0 ms y = edges_3d Edge.([draw]) [
+        ([],ms.(1).(y).(0),[],[],ms.(2).(y).(1)) ;
+        ([],ms.(1).(y).(0),[],[],ms.(0).(y).(1)) ;
+        ([],ms.(1).(y).(2),[],[],ms.(2).(y).(1)) ;
+        ([],ms.(1).(y).(2),[],[],ms.(0).(y).(1)) ;
+        ([],ms.(1).(y).(2),[],[],ms.(1).(y).(3)) ]
+
+   let _ = links0 ms 0
+
+)
+>>
+
 let cube projection = <<
 \diagram(
  let a = Node.(node [anchor `Base;at (project projection (0.,0.,0.))] <<a>>) 

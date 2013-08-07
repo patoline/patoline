@@ -759,7 +759,8 @@ let beginFigure name=
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=IntSet.empty) complete parameters par=
   match !str with
-      Paragraph p,path->
+      Paragraph p,path-> 
+	(* Tom: j'ai l'impression que ce bout de code n'est jamais utilise. *)
         str:=up (Paragraph {p with par_contents=p.par_contents@par}, path)
     | _->
         let para=Paragraph {par_contents=par; par_env=environment;

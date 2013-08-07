@@ -55,16 +55,3 @@ $$
 \proofTree{\unaryN{Abs}{(M)}{\hyp{M}}}
 $$
 
-$$
-\proofTree{
-\unaryN{Abs}{\unit ⊢ A ∨ {¬ A}}{
-\unaryN{∨ᵣ}{¬ (A ∨ {¬ A}) ⊢ A ∨ {¬ A}}{
-\unaryN{¬ᵢ}{¬ (A ∨ {¬ A}) ⊢ {¬ A}}{
-\binaryN{¬ₑ}{¬ (A ∨ {¬ A}), A ⊢ ⊥}{
- \axiomN{Ax}{¬ (A ∨ {¬ A}), A ⊢ ¬ (A ∨ {¬ A})}
-}{
- \unaryN{∨ₗ}{¬ (A ∨ {¬ A}), A  ⊢ A ∨ {¬ A}}{
- \axiomN{Ax}{¬ (A ∨ {¬ A}), A ⊢ A}
-}}}}}}
-$$
-
