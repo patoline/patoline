@@ -154,6 +154,9 @@ module Curve = struct
 
   let local_time curve a =
     let n = List.length curve in
+    if a = 1. then 
+      (n-1,1.)
+    else
     let a' = a *. (float_of_int n) in
     let i_float = floor a' in
     let i = int_of_float i_float in
@@ -1957,7 +1960,7 @@ Doing a rectangle.\n" ;
 	(* 	 flush stderr *)
 	(* end in *)
 	if info.is_double then
-	  let short = max (params.lineWidth /. 2.) 0.6 in
+	  let short = max (params.lineWidth /. 3.) 0.6 in
 	  let thickness = params.lineWidth in
 	  let height = max (1.6 *. short) 0.8 in
 	  let width = max info.tip_line_width 1. in
@@ -2027,7 +2030,7 @@ Doing a rectangle.\n" ;
 	{ pet = pet ; transfo = (fun transfos info ->
 	  let shorten (params',curve') = 
 	    let ta = Curve.curvilinear curve' a in
-	    let tb = Curve.curvilinear curve' (-. b) in
+	    let tb = if b = 0. then 1. else Curve.curvilinear curve' (-. b) in
 	    params', Curve.restrict curve' ta tb
 	  in
 	  let _, u_curve = shorten (info.params, info.underlying_curve) in
@@ -2071,21 +2074,22 @@ Doing a rectangle.\n" ;
 			 is_double = true };
 	    curves = (info_black.curves @ info_white.curves) }) })
 
-      let base_arrow head_params transfos edge_info=
+      let base_arrow ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
 	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
-	let (da,db) as grad = Curve.eval (Curve.gradient underlying_curve) 1. in
+	let time = if head_or_tail then 1. else 0. in
+	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
 	let short, thickness, height, width, lw = head_params info params in
 	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
 
 	(* Control points on the curve *)
-	let (xe,ye) as e = Curve.eval underlying_curve 1. in
+	let (xe,ye) as e = Curve.eval underlying_curve time in
 	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
-	let edge_info' = Transfo.transform [shortenE short] edge_info in
+	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
 	let curve0 = edge_info'.underlying_curve in
 	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
-	let e0 = Curve.eval curve0 1. in
+	let e0 = Curve.eval curve0 time in
 	let ee0 = Vector.of_points e e0 in
 	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
 	let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
@@ -2121,19 +2125,9 @@ Doing a rectangle.\n" ;
 	     { pet = pet ; transfo = base_arrow head_params })
 
       let backArrowOf, backArrow_head_pet = 
-        Pet.register ~depends:[double_pet;shorten_pet] "back arrow head"
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow tail"
           (fun pet head_params -> 
-	     { pet = pet ; transfo =
-                 (fun transfos edge_info->
-                    let info={ edge_info with
-                                 underlying_curve=
-                        List.map Bezier.rev (List.rev edge_info.underlying_curve)
-                    }
-                    in
-                    let info'=base_arrow head_params transfos info in
-                    { edge_info with decorations=info'.decorations }
-                 )
-             })
+	     { pet = pet ; transfo = base_arrow ~head_or_tail:false head_params })
 
       let arrow = arrowOf head_moustache
       let arrow' = backArrowOf head_moustache
