@@ -44,6 +44,7 @@ let dyp_merge = keep_one
 
 let findGrammar f=findPath f ("." :: (!grammarspath))
 let out_grammar_name=ref ""
+let out_quail_name=ref ""
 
 let grammar=ref (Some "DefaultGrammar")
 
@@ -156,7 +157,7 @@ let local_data = {
 }
 
 let quail = Lazy.lazy_from_fun (fun () ->
-    let ch = open_out_bin "quail.el" in
+    let ch = open_out_bin !out_quail_name in
     ch)
 
 let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }

@@ -59,7 +59,7 @@ let _=
     let x=take n l in
     (x, !fin)
   in
-  let file=open_out (Filename.concat (Filename.dirname Sys.argv.(1)) "unicode_ranges.ml") in
+  let file=open_out (Filename.concat (Filename.dirname Sys.argv.(1)) "Unicode_ranges.ml") in
   let rec make_program x y l=match l with
       []->()
     | [a,b,c]->(

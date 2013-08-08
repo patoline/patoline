@@ -18,7 +18,16 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-let file = open_in "./UnicodeData.txt"
+(* First command-line argument: UnicodeData.txt input.
+ * Second command-line argument: SubSuper.dyp output.
+ * Third command-line argument: SubSuper.el output in emacs directory.
+ *)
+
+let unicodedata_file = Sys.argv.(1)
+and subsuperdyp_file = Sys.argv.(2)
+and subsuperel_file = Sys.argv.(3)
+
+let file = open_in unicodedata_file
 
 type uchar = string array
 
@@ -107,7 +116,7 @@ let esc_int_to_bytes n =
   String.escaped (int_to_bytes n)
 
 
-let ch = open_out "SubSuper.dyp"
+let ch = open_out subsuperdyp_file
 
 let _ = 
 (*  Printf.fprintf ch "%%parser\n";*)
@@ -121,11 +130,11 @@ let _ =
   close_out ch  
 
     
-let ch = open_out "../../emacs/SubSuper.el" 
+let ch = open_out subsuperel_file
 
 let _ =
   List.iter (fun (c,h,h') ->
     Printf.fprintf ch "(\"_%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) subscripts;
   List.iter (fun (c,h,h') ->
     Printf.fprintf ch "(\"^%s\" ?%s)\n" (int_to_bytes h') (int_to_bytes h)) superscripts;
-  close_out ch  
+  close_out ch

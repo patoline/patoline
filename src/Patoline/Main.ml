@@ -745,10 +745,12 @@ let process_each_file l=
       ) else (
         if Sys.file_exists f then (
           let fread = open_in f in
-          let where_ml = open_out (mlname_of f) in
+          let name_ml = mlname_of f in
+          let where_ml = open_out name_ml in
           Parser.out_grammar_name:=Filename.chop_extension f;
+          Parser.out_quail_name:=(Filename.dirname name_ml) ^ "/quail.el";
           if Filename.check_suffix f "txt" then (
-            SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread (mlname_of f) where_ml (Filename.chop_extension f)
+            SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread name_ml where_ml (Filename.chop_extension f)
           ) else (
 
             let opts=read_options_from_source_file [f] fread in
