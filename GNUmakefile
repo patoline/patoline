@@ -77,6 +77,14 @@
 # use $(d) there, since its value will probably be different from what
 # you expect.
 #
+# When building both bytecode and native code from the same .ml source
+# file, which has no corresponding .mli, both ocamlc and ocamlopt output
+# a .cmi file. This means that they must not be run in parallel,
+# otherwise we get a corrupted .cmi file. One can prevent this from
+# happening by making the .cmx native object depend on the .cmo object.
+# (The converse dependency is a wrong idea, because on some platforms we
+# cannot build the .cmx file.)
+#
 #
 # QUIET OUTPUT
 # ============
