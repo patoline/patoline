@@ -2322,11 +2322,13 @@ Doing a rectangle.\n" ;
 	let gt = Curve.global_time info.underlying_curve lt  in
 	let gt1 = gt -. epsilon in 
 	let gt2 = gt +. epsilon in 
-	let _ = begin 
-	  Printf.fprintf stderr "Putting forth from time %f to %f. " gt1 gt2 ; flush stderr
-	end in
 	let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
 	let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
+	let _ = begin 
+	  Printf.fprintf stderr "Putting forth from time (%d,%f) to (%d,%f). " i t j u ; 
+	  Printf.fprintf stderr "Number of curves: %d. " (List.length info.underlying_curve) ;
+	  flush stderr
+	end in
 	(* let _ = Printf.fprintf stderr "lt = (%d,%f), gt = %f, \n lt1 = (%d,%f), lt2 = (%d,%f).\n" *)
 	(*   (fst lt) (snd lt) gt i t j u  *)
 	(* in *)
