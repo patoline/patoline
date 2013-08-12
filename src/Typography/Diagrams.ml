@@ -2320,29 +2320,25 @@ Doing a rectangle.\n" ;
 
       let put_forth info lt ?color:(color=OutputCommon.white) epsilon margin = 
 	let gt = Curve.global_time info.underlying_curve lt  in
-	let gt1 = gt -. epsilon in 
-	let gt2 = gt +. epsilon in 
-	let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
-	let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
-	let _ = begin 
-	  Printf.fprintf stderr "Putting forth from time (%d,%f) to (%d,%f). " i t j u ; 
-	  Printf.fprintf stderr "Number of curves: %d. " (List.length info.underlying_curve) ;
-	  flush stderr
-	end in
-	(* let _ = Printf.fprintf stderr "lt = (%d,%f), gt = %f, \n lt1 = (%d,%f), lt2 = (%d,%f).\n" *)
-	(*   (fst lt) (snd lt) gt i t j u  *)
-	(* in *)
-	let info' = restrict info lt1 lt2 in
-	let _ = begin 
-	  Printf.fprintf stderr "Done.\n" ; flush stderr
-	end in
-      	{ info' with curves =
-      	    ({info'.params with
-      	      Drivers.dashPattern = [] ;
-      	      Drivers.strokingColor=Some color;
-      	      Drivers.lineWidth=info'.tip_info.tip_line_width +. 2. *. margin
-      	    }, info'.underlying_curve)
-      		:: info'.curves }
+	let cut x = min (max x 0.) 1. in
+	let gt1 = cut (gt -. epsilon) in 
+	let gt2 = cut (gt +. epsilon) in 
+	if epsilon >= 0. then
+	  let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
+	  let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
+	  let info' = restrict info lt1 lt2 in
+      	  { info' with curves =
+      	      ({info'.params with
+      		Drivers.dashPattern = [] ;
+      		Drivers.strokingColor=Some color;
+      		Drivers.lineWidth=info'.tip_info.tip_line_width +. 2. *. margin
+      	      }, info'.underlying_curve)
+      		  :: info'.curves }
+	else begin
+	  Printf.fprintf stderr "Warning: nonsensical restriction instructions. Returning empty curve.\n";
+	  flush stderr ;
+	  empty
+	  end
 
     end
 
