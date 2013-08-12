@@ -55,3 +55,7 @@ $$
 \proofTree{\unaryN{Abs}{(M)}{\hyp{M}}}
 $$
 
+$$
+\proofTree{\binaryN{Abs}{(M)}{\hyp{…}}{\hyp{M ⊢_{\mathrm{D}} M'}}}
+$$
+

@@ -132,20 +132,31 @@ module ProofTree = struct
 	  let namex0, namey0, namex1, namey1 = bounding_box name_box in
 	  let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 	  
-	  let rec gn dx = function
-  	      [] -> 0.0, [], max_float, [], -. max_float, [] 
+	  let extract_y0 l = 
+	    match l with
+	      [] -> 0.0
+	    | (_,y0)::_ -> y0
+	  in 
+
+	  let rec gn y0min dx = function
+  	      [] -> y0min, (0.0, [], max_float, [], -. max_float, [])
 	    | [h, left, mleft, right, mright, drawing] ->
-	        h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
-	        List.map (translate dx 0.0) drawing
+	      let y0min' = min y0min (extract_y0 left) in 
+	      (y0min', (
+		h, htr left dx, mleft +. dx, htr right dx, mright +. dx,
+	        List.map (translate dx 0.0) drawing))
 	    | (h, left, mleft, right, mright, drawing)::((_, left', _, _, _, _)::_ as l) ->
 	      let mleft = mleft +. dx and mright = mright +. dx in
 	      let sp = spacing right left' +. sp in
-	      let (h', _, mleft', right', mright', drawing') = gn (dx +. sp) l in
+	      let y0min' = min y0min (extract_y0 left) in 
+	      let y0min'', 
+		(h', _, mleft', right', mright', drawing') = gn y0min' (dx +. sp) l in
+	      (y0min'', (	      
 	      max h h', htr left dx, min mleft mleft', right', max mright mright',
-	      (List.map (translate dx 0.0) drawing @ drawing')
+	      (List.map (translate dx 0.0) drawing @ drawing')))
 	  in
 	  
-	  let h, left, mleft, right, mright, numerator = gn 0.0 premices_box in
+	  let y0min, (h, left, mleft, right, mright, numerator) = gn 0.0 0.0 premices_box in
 	  
 	  let nx0 = match left with [] -> cx0 | (x,_)::_ -> x in
 	  let nx1 = match right with [] -> cx1 | (x,_)::_ -> x in
@@ -156,9 +167,10 @@ module ProofTree = struct
 	  let rx0 = min cx0 nx0 -. er in
 	  let rx1 = max cx1 nx1 +. er in
 	  
-	  let sa = match left with
-	      [] -> 0.0
-	    | (_,y0)::_ -> max (param.minSpaceAboveRule -. y0) sa
+	  let sa = max (param.minSpaceAboveRule -. y0min) sa
+	    (* match left with *)
+	    (*   [] -> 0.0 *)
+	    (* | (_,y0)::_ -> max (param.minSpaceAboveRule -. y0) sa *)
 	  in
 	  let dy = cy1 +. sb +. ln +. sa in
 	  
