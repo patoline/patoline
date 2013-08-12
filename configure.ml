@@ -344,24 +344,6 @@ let _=
   in
   List.iter gen_meta_driver !r_patoline_drivers;
 
-  (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
-  let driver_generated_metas = ref [] in
-  let gen_meta_driver drv =
-    if can_build_driver drv && drv.autometa then begin
-      let meta_name = "src/Drivers/" ^ drv.name ^ "/" ^ drv.name ^ ".META" in
-      driver_generated_metas := meta_name :: !driver_generated_metas;
-      let f = open_out meta_name in
-        Printf.fprintf f "package \"%s\" (\n" drv.name;
-        Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
-        Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
-        let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
-        Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
-        Printf.fprintf f ")\n";
-        close_out f
-    end
-  in
-  List.iter gen_meta_driver !r_patoline_drivers;
-
   (* Generate the META file for Typography, which details package information
    * for Typography.cmxa/Typography.cma as well as subpackages for each format.
    * Each format in the source tree can be shipped with a custom FormatName.META
@@ -410,7 +392,9 @@ let _=
     (fun file ->
       if is_substring "Format" file && file <> "DefaultFormat.ml"
       then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
-  Array.iter (make_meta_part "src/Drivers") (Sys.readdir "src/Drivers");
+  List.iter (fun drv ->
+    make_meta_part (Filename.concat "src/Drivers" drv.name) (drv.name ^ ".ml")
+  ) !r_patoline_drivers;
   close_out meta;
 
       (* Ecriture de la configuration *)
