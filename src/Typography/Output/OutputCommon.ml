@@ -135,7 +135,7 @@ type bounding_box_opt = {
   ignore_under_base_line : bool}
 
 let rec print_raw r=match r with
-  Glyph g->Printf.fprintf stderr "Glyph %s (%f,%f) size %f\n" (Fonts.glyphNumber g.glyph).glyph_utf8 g.glyph_x g.glyph_y g.glyph_size
+  Glyph g->Printf.fprintf stderr "Glyph %s (%f,%f) size %f\n" (Fonts.glyphNumber g.glyph).FTypes.glyph_utf8 g.glyph_x g.glyph_y g.glyph_size
   | Path (_,ps)->(
 
     let c=String.concat "," (List.map (fun p->
