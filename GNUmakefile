@@ -148,6 +148,10 @@ EDITORS_DIR := editors
 .PHONY: all
 all:
 
+# Sanity tests, empty for now
+.PHONY: check
+check:
+
 # The following declarations are necessary to make $(CLEAN) and
 # $(DISTCLEAN) immediate variables (i.e., right hand side of the
 # declaration is expanded immediately). Otherwise, Rules.mk cannot use
