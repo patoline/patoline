@@ -40,10 +40,9 @@ DISTCLEAN := $(DISTCLEAN) \
 # Installing
 install: install-rbuffer
 .PHONY: install-rbuffer
-install-rbuffer: $(RBUFFER_LIBS) $(d)/META
+install-rbuffer: $(RBUFFER_LIBS) $(d)/rope.p.a $(d)/rope.a $(d)/rbuffer.p.a $(d)/rbuffer.a $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
-	install -m 644 -p $(RBUFFER_LIBS) $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
-	install -m 644 -p $(RBUFFER_DIR)/META $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
+	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
