@@ -26,7 +26,9 @@ $(DRIVERS_WITHOUT_RULES_MK): %.cmxa: %.cmx
 # Find dependencies
 -include $(DRIVERS_CMXA:.cmxa=.ml.depends)
 
-CLEAN+=$(DRIVERS_CMXA) $(DRIVERS_CMX) $(d)/*/*.cmo $(d)/*/*.cmi $(d)/*/*.o $(d)/*/*.cmx $(d)/*/*.a $(d)/*/*.so
+CLEAN+=$(DRIVERS_CMXA) $(DRIVERS_CMX) \
+       $(d)/*.cmo $(d)/*.cmi $(d)/*.o $(d)/*.cmx $(d)/*.a $(d)/*.so $(d)/*.cmxa \
+       $(d)/*/*.cmo $(d)/*/*.cmi $(d)/*/*.o $(d)/*/*.cmx $(d)/*/*.a $(d)/*/*.so
 DISTCLEAN+=$(d)/*/*.depends
 
 # Installing drivers
