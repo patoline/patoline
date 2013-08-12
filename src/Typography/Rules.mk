@@ -80,7 +80,8 @@ CLEAN += $(d)/Typography.cma $(d)/Typography.cmxa $(d)/Typography.a \
   $(d)/Output/*.cmo $(d)/Output/*.cmx $(d)/Output/*.cmi $(d)/Output/*.o \
   $(d)/Fonts/Sfnt/make_unicode_ranges.cmo $(d)/Fonts/Sfnt/make_unicode_ranges.cmi \
   $(d)/Fonts/Sfnt/make_unicode_ranges $(d)/Fonts/Sfnt/Unicode_ranges* \
-  $(d)/Fonts/Sfnt/unicode_ranges.ml
+  $(d)/Fonts/Sfnt/unicode_ranges.ml \
+  $(d)/_tags
 
 DISTCLEAN += $(wildcard $(d)/*.depends) \
 	     $(wildcard $(d)/Output/*.depends) \
