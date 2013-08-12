@@ -344,14 +344,6 @@ let _=
   in
   List.iter gen_meta_driver !r_patoline_drivers;
 
-  let meta=open_out "src/Typography/META" in
-    Printf.fprintf meta
-      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
-      (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
-                                         Package "zip"; Package "camlimages.all_formats"]));
-    Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
-    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
-
   (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
   let driver_generated_metas = ref [] in
   let gen_meta_driver drv =
@@ -370,7 +362,23 @@ let _=
   in
   List.iter gen_meta_driver !r_patoline_drivers;
 
+  (* Generate the META file for Typography, which details package information
+   * for Typography.cmxa/Typography.cma as well as subpackages for each format.
+   * Each format in the source tree can be shipped with a custom FormatName.META
+   * file, which is included as is. Otherwise, a generic entry is generated for
+   * the format.
+   *
+   * DefaultFormat.ml is excluded, since it is already embedded inside
+   * Typography.
+   *)
   let meta=open_out "src/Typography/META" in
+    Printf.fprintf meta
+      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
+      (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
+                                         Package "zip"; Package "camlimages.all_formats"]));
+    Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
+    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
+
   let check_name file=
     let valid=ref (String.length file>0) in
     for i=0 to String.length file-1 do
@@ -387,8 +395,9 @@ let _=
       let custom_meta = Filename.concat dir (base_file^".META") in
       try
         let custom_meta_fd = open_in custom_meta in
-        let buf = String.create (in_channel_length custom_meta_fd) in
-        really_input custom_meta_fd buf 0 (in_channel_length custom_meta_fd);
+        let custom_meta_len = in_channel_length custom_meta_fd in
+        let buf = String.create custom_meta_len in
+        really_input custom_meta_fd buf 0 custom_meta_len;
         close_in custom_meta_fd;
         Printf.fprintf meta "%s\n" buf
       with Sys_error _ ->
