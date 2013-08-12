@@ -1960,7 +1960,7 @@ Doing a rectangle.\n" ;
 	(* 	 flush stderr *)
 	(* end in *)
 	if info.is_double then
-	  let short = max (params.lineWidth /. 3.) 0.6 in
+	  let short = max (params.lineWidth *. 0.66) 0.6 in
 	  let thickness = params.lineWidth in
 	  let height = max (1.6 *. short) 0.8 in
 	  let width = max info.tip_line_width 1. in
@@ -2322,12 +2322,18 @@ Doing a rectangle.\n" ;
 	let gt = Curve.global_time info.underlying_curve lt  in
 	let gt1 = gt -. epsilon in 
 	let gt2 = gt +. epsilon in 
+	let _ = begin 
+	  Printf.fprintf stderr "Putting forth from time %f to %f. " gt1 gt2 ; flush stderr
+	end in
 	let (i,t) as lt1 = Curve.local_time info.underlying_curve gt1 in
 	let (j,u) as lt2 = Curve.local_time info.underlying_curve gt2 in
 	(* let _ = Printf.fprintf stderr "lt = (%d,%f), gt = %f, \n lt1 = (%d,%f), lt2 = (%d,%f).\n" *)
 	(*   (fst lt) (snd lt) gt i t j u  *)
 	(* in *)
 	let info' = restrict info lt1 lt2 in
+	let _ = begin 
+	  Printf.fprintf stderr "Done.\n" ; flush stderr
+	end in
       	{ info' with curves =
       	    ({info'.params with
       	      Drivers.dashPattern = [] ;
@@ -2507,6 +2513,20 @@ Doing a rectangle.\n" ;
 	    end
 	    else ())
 	  inters
+
+      let spit_stack () = !stack
+
+      let spit_stack_with_intersections () =
+	let tmp_stack = !stack in
+	let _ = match !compute_intersections with
+	  | None -> ()
+	  | Some f -> add_intersections f
+	in
+	let res = !stack in
+	let _ = (stack := tmp_stack) in
+	res
+
+      let include_diagram x = let _ = stack := x @ !stack in ()
 
       let make () = 
 	let _ = match !compute_intersections with

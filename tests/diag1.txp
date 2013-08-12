@@ -17,7 +17,80 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-\Caml(open Diagrams)
+\Caml(open Diagrams
+
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+  open Edge
+  open Transfo
+  open Style
+  let base_arrow ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
+	let info = edge_info.tip_info in
+	let params = edge_info.params in
+	let underlying_curve = edge_info.underlying_curve in
+	let time = if head_or_tail then 1. else 0. in
+	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
+	let short, thickness, height, width, lw = head_params info params in
+	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
+
+	(* Control points on the curve *)
+	let (xe,ye) as e = Curve.eval underlying_curve time in
+	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
+	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
+	let _ = begin
+	  Printf.fprintf stderr "shortening by %f.\n" short ; flush stderr
+	end in
+	let curve0 = edge_info'.underlying_curve in
+	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
+	let e0 = Curve.eval curve0 time in
+	let ee0 = Vector.of_points e e0 in
+	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
+	let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
+
+	let lnormale = Vector.rotate 90. (Vector.normalise grad) in
+	let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
+
+	(* Left control points *)
+	let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
+	let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
+	let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
+
+	(* Right control points *)
+	let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
+	let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
+	let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
+
+	(* Put everything together *)
+	let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
+					@ (Curve.make_quadratic ll l' e1) 
+					@ (Curve.make_quadratic e1 r' rr) 
+					@ (Curve.make_quadratic rr r e)) 
+	in
+	{ edge_info' with decorations = edge_info'.decorations @
+	    [Curve ({ params with 
+		  close = true ; 
+		  fillColor = params.strokingColor ; 
+		  lineWidth = lw }, tip)]}
+
+      let arrowOf, arrow_head_pet = 
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow head"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow head_params })
+
+      let backArrowOf, backArrow_head_pet = 
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow tail"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow ~head_or_tail:false head_params })
+
+      let arrow = arrowOf head_moustache
+      let worra = backArrowOf head_moustache
+
+
+end
+
+)
+
+
 
 \diagram(
 
@@ -26,17 +99,28 @@
 	([], <<$C_1$>>); 
 	([], <<$C_2$>>);
 	([], <<$CD$>>)
+      ];[
+	([],[]) ; ([],<<A>>) ; ([], <<B>>) 
       ]])
 
-	     let [delta;pi;sigma] = Edge.(edges [draw;arrow;arrow;draw (* ;dashed [2.;1.] *)] [
+	     let [delta;pi;sigma] = Edge.(edges [draw;worra;lineWidth 1. (* ;dashed [2.;1.] *)] [
 	       ([], ms.(0).(1), [], ms.(0).(0));
 	       ([], ms.(0).(1), [], ms.(0).(2));
 	       ([], ms.(0).(2), [], ms.(0).(3));
 	     ])
 
-	     let p = labela delta <<$p$>>
-	     let q = labela pi <<$q$>>
-	     let r = labela sigma <<$r$>>
+	     let e = Edge.(edge [draw] ms.(0).(0) ~controls:[[ms.(1).(1).Node.anchor `Center];
+							     [ms.(1).(2).Node.anchor `Center];[]] ms.(0).(3))
+
+	     let _ = Node.(node [at (delta.Edge.anchor (`Curvilinear 0.1))] <<a>>)
+	     let _ = Node.(node [at 
+				    (Curve.eval_local 
+				       e.Edge.underlying_curve 
+				       (Curve.local_time e.Edge.underlying_curve 1.))] <<x>>)
+
+	     let p = label_edgea
+	     let q = label_edgea pi <<$q$>>
+	     let r = label_edgea sigma <<$r$>>
 
 
 )
