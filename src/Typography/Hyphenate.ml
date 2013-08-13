@@ -97,11 +97,37 @@ let rec dash_hyphen s=if String.length s=0 then [] else
 
 let hyphenate tree a0=
   if String.length a0<=4 then [a0] else
+    let rec find_punct i=
+      if i>=String.length a0 then i else
+        match CamomileLibraryDefault.Camomile.UCharInfo.general_category (UTF8.look a0 i) with
+            `Cc
+          | `Cf
+          | `Cn
+          | `Co
+          | `Cs
+              (*
+          | `Mc
+          | `Me
+          | `Mn
+              *)
+          | `Pc
+          | `Pd
+          | `Pe
+          | `Pf
+          | `Pi
+          | `Po
+          | `Ps
+          | `Zl
+          | `Zp
+          | `Zs -> i
+          | _->find_punct (i+1)
+    in
+    let first_punct=find_punct 0 in
     match dash_hyphen a0 with
         _::_::_ as l->l
       | _->(
-        let a=String.create (String.length a0+2) in
-        String.blit a0 0 a 1 (String.length a0);
+        let a=String.create (first_punct+2) in
+        String.blit a0 0 a 1 first_punct;
         a.[0]<-'.';
         a.[String.length a-1]<-'.';
         let breaks=String.make (String.length a+1) (char_of_int 0) in
@@ -143,13 +169,16 @@ let hyphenate tree a0=
         hyphenate_word 0;
 
         let total=UTF8.length a in
+        Printf.fprintf stderr "a=%S\n" a;
         let rec make_hyphens i j k=
-          if j>=String.length a then [String.sub a i (String.length a-i-1)] else
-            if (int_of_char breaks.[j+1]) mod 2 = 1 && k>=3 && (total-k)>=2 then
+          if j>=String.length a then [String.sub a i (String.length a-i-1)] else (
+            Printf.fprintf stderr "%S %d %d\n" a total k;
+            if (int_of_char breaks.[j+1]) land 1 = 1 && k>=3 && (total-k)>=6 then
               (String.sub a i (UTF8.next a j-i)) ::
                 make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
             else
               make_hyphens i (UTF8.next a j) (k+1)
+          )
         in
         make_hyphens 1 1 0
       )
@@ -157,12 +186,12 @@ let empty=Node ("", C.empty)
 
 #ifdef DEBUG
 let _=
-    let i=open_in_bin ("../../Hyphenation/hyph-fr.hdict") in
+    let i=open_in_bin ("../../Hyphenation/hyph-en-us.hdict") in
     let tree=input_value i in
     close_in i;
   (* let tree0 = List.fold_left insert (Node ([||],C.empty)) ["ab3sent.";"2sent."] in *)
   (* let tree = List.fold_left insert_exception tree0 [] in *)
     List.iter (fun a->
       Printf.fprintf stderr "%S\n" a
-    )  (hyphenate tree "Université")
+    )  (hyphenate tree "questions,")
 #endif
