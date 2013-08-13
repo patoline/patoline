@@ -1447,13 +1447,17 @@ Doing a rectangle.\n" ;
       open T
       open S
 
-      let default_matrix_node env = Node.([mainAnchor `Base ; anchor `Base ; rectangle env])
-      let default_main_node env = Node.([mainAnchor `Center ; anchor `Pdf ; rectangle env])
+
+      let default_matrix_node_anchor = `Base
+      let default_matrix_node_style env = 
+	Node.([mainAnchor `Center ; anchor default_matrix_node_anchor ; rectangle env])
+      let default_main_node_style env = 
+	Node.([mainAnchor `Center ; anchor `Pdf ; rectangle env])
 
       let between_centers disty distx _ i j =
 	(float_of_int j *. distx), -. (float_of_int i *. disty) 
 
-      let default env = { mainNode = Node.default ; common = default_matrix_node env ; nodes = [||] ;
+      let default env = { mainNode = Node.default ; common = default_matrix_node_style env ; nodes = [||] ;
 			placement = (between_centers 20. 20.)}
 
       (* let to_gentities { mainNode = main ; nodes = nodes } = (Node.to_gentity main, map Node.to_gentity nodes) *)
@@ -1481,13 +1485,14 @@ Doing a rectangle.\n" ;
 	    common =  info.common @ node_transfos })})
 
       let make_node_array style height width lines = 
-	  (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son centre en (0,0) *)
+	  (* On commence par placer les noeuds de sorte que le noeud (0,0) ait son 
+	     default_matrix_node_anchor en (0,0) *)
 	let res = Array.make_matrix height width Node.default in
 	let i = ref 0 in
 	let j = ref 0 in
 	let _ = List.iter (fun line -> 
 	  List.iter (fun node_transfo -> 
-	    let info_ij = Node.Transfo.transform (style @ node_transfo) res.(!i).(!j)
+	    let info_ij = Node.Transfo.transform (style @ node_transfo) Node.default
 	    in
 	    res.(!i).(!j) <- info_ij ;
 	    incr j)
@@ -1658,7 +1663,7 @@ Doing a rectangle.\n" ;
       let default env = {
 	mainNode = Node.(default_rectangle env) ;
 	mainNodes = [Node.rectangle env] ;
-	common = Matrix.default_matrix_node env ;
+	common = Matrix.default_matrix_node_style env ;
 	planes = [|Matrix.default env|] ;
 	placement = (between_centers 20. 20. 20.) }
 
@@ -2640,20 +2645,26 @@ Doing a rectangle.\n" ;
 	  fst (node.anchor `East)
 	  -. fst (node.anchor `West)
 
-	let between_borders vpad hpad styles info = 
+	let between_borders vpad hpad anchors styles info = 
 	  let nodes = info.Matrix.nodes in 
 	  let matrix = Matrix.mapi 
 	    (fun i j node_info -> Node.Transfo.transform (styles i j) node_info) nodes 
+	  in
+	  let vector_anchor_x node a a' = 
+	    let (x,_) = node.Node.anchor a in
+	    let (x',_) = node.Node.anchor a' in
+	    x' -. x
 	  in
 	  let width = Array.length matrix.(0) in
 	  let height = Array.length matrix in
 	  let widths = Array.make width 0. in
 	  let heights = Array.make height 0. in
-	  let _ = for j = 1 to width - 1 do 
+	  let _ = begin widths.(0) <- vector_anchor_x matrix.(0).(0) `Pdf anchors.(0) end in
+	  let _ = for j = 1 to width - 1 do
 	      widths.(j) <- 	widths.(j-1)
 	      +. (hpad j)
-	      +. (fun_max (fun i -> fst (matrix.(i).(j-1).Node.anchor `East)) height)
-	      -. (fun_max (fun i -> fst (matrix.(i).(j).Node.anchor `West)) height)
+	      +. (fun_max (fun i -> vector_anchor_x matrix.(i).(j-1) (anchors.(j-1)) `East) height)
+	      +. (fun_max (fun i -> vector_anchor_x matrix.(i).(j) `West (anchors.(j))) height)
 	    done ;
 	  in
 	  let _ = 
@@ -2672,10 +2683,12 @@ Doing a rectangle.\n" ;
 	  in fun i j -> (widths.(j), heights.(i))
 
 	let array anchors ?vertical_padding:(vpad=fun _ -> 1.) ?horizontal_padding:(hpad=fun _ -> 1.)
+	    ?all_node_styles:(all_node_styles=[])
 	    ?main_node_style:(mstyle=Node.([at (0.,0.);anchor `SouthWest]))
 	    (* Mettre la valeur par defaut en ex *)
 	    lines =
-	  let style i j = [Node.anchor (List.nth anchors j)] in
+	  let style i j = [Node.anchor (List.nth anchors j); Node.at(0.,0.)] in
+	  let anchors = Array.of_list anchors in
 	  let lines_contents = List.rev (snd (List.fold_left
 						(fun (i, reslines) line ->
 						  succ i, 
@@ -2690,8 +2703,9 @@ Doing a rectangle.\n" ;
 						(0, [])
 						lines))
 	  in    
-	  math_matrix [Matrix.placement (between_borders vpad hpad style);
-		       Matrix.mainNode mstyle] 
+	  math_matrix (Matrix.placement (between_borders vpad hpad anchors style) ::
+		       Matrix.mainNode mstyle ::
+		       all_node_styles)
 	    lines_contents 
 
 
