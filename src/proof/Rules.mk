@@ -26,7 +26,7 @@ install: install-proof
 .PHONY: install-proof
 install-proof: $(d)/proof
 	install -m 755 -d $(DESTDIR)/$(INSTALL_BIN_DIR)
-	install -m 644 $^ $(DESTDIR)/$(INSTALL_BIN_DIR)
+	install -m 755 $^ $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Cleaning
 CLEAN += $(d)/*.cmo $(d)/proof $(d)/*.cmi
