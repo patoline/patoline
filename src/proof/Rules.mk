@@ -13,13 +13,13 @@ PROOF_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf -I $(RBUFFER_DIR)
 
 $(d)/%.depends: INCLUDES:=-I $(d) $(PROOF_INCLUDES)
 
-$(d)/proof: $(RBUFFER_DIR)/rbuffer.cma $(TYPOGRAPHY_DIR)/Typography.cma $(DRIVERS_DIR)/Pdf/Pdf.cmo $(d)/proof.cmo
+$(d)/proof: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
 	$(ECHO) "[LINK]   -> $@"
-	$(Q)$(OCAMLC) -linkpkg $(PACK) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
+	$(Q)$(OCAMLOPT) -linkpkg $(PACK) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
 
-$(d)/proof.cmo: %.cmo: %.ml
+$(d)/proof.cmx: %.cmx: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PROOF_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PROOF_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 # Installing
 install: install-proof
@@ -28,7 +28,7 @@ install-proof: install-bindir $(d)/proof
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Cleaning
-CLEAN += $(d)/*.cmo $(d)/proof $(d)/*.cmi
+CLEAN += $(d)/*.cmx $(d)/proof $(d)/*.cmi
 DISTCLEAN += $(d)/*.depends
 
 # Rolling back changes made at the top
