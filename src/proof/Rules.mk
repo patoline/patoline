@@ -24,9 +24,8 @@ $(d)/proof.cmo: %.cmo: %.ml
 # Installing
 install: install-proof
 .PHONY: install-proof
-install-proof: $(d)/proof
-	install -m 755 -d $(DESTDIR)/$(INSTALL_BIN_DIR)
-	install -m 755 $^ $(DESTDIR)/$(INSTALL_BIN_DIR)
+install-proof: install-bindir $(d)/proof
+	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Cleaning
 CLEAN += $(d)/*.cmo $(d)/proof $(d)/*.cmi
