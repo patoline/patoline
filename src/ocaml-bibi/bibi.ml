@@ -97,7 +97,7 @@ let gets table db art=
   let cb row _=match row.(0) with Some a->(
     auteurs:=a::(!auteurs)
   ) | None -> () in
-    match exec db ~cb:cb (sprintf "SELECT name FROM authors WHERE id IN (SELECT author FROM %s_publications WHERE article=%Ld)" table art) with
+    match exec db ~cb:cb (sprintf "select name from authors,%s_publications where %s_publications.article=%Ld and %s_publications.author=authors.id order by ordre ASC" table table art table) with
         Rc.OK -> List.rev !auteurs
       | r ->(fprintf stderr "gets %s : %s\n%s\n" table (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
 
