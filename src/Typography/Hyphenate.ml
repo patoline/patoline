@@ -169,10 +169,11 @@ let hyphenate tree a0=
         hyphenate_word 0;
 
         let total=UTF8.length a in
-        Printf.fprintf stderr "a=%S\n" a;
         let rec make_hyphens i j k=
-          if j>=String.length a then [String.sub a i (String.length a-i-1)] else (
+          if j>=String.length a then [String.sub a0 (i-1) (String.length a0-i+1)] else (
+#ifdef DEBUG
             Printf.fprintf stderr "%S %d %d\n" a total k;
+#endif
             if (int_of_char breaks.[j+1]) land 1 = 1 && k>=3 && (total-k)>=6 then
               (String.sub a i (UTF8.next a j-i)) ::
                 make_hyphens (UTF8.next a j) (UTF8.next a j) (k+1)
@@ -193,5 +194,5 @@ let _=
   (* let tree = List.fold_left insert_exception tree0 [] in *)
     List.iter (fun a->
       Printf.fprintf stderr "%S\n" a
-    )  (hyphenate tree "questions,")
+    )  (hyphenate tree "algorithms;")
 #endif
