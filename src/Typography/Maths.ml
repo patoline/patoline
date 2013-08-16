@@ -357,12 +357,12 @@ let rec draw draw_env env_stack mlist =
                         u,0.
                       ) else (
                           let v=max v  (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size) in
-                            if (u+.yb0) -. (ya1-.v) > 4.*.mathsEnv.default_rule_thickness then (
+			  let psi = (u+.yb0) -. (ya1 -. v) -. 6.*.mathsEnv.default_rule_thickness in
+			  Printf.printf "u = %f, yb0 = %f, v = %f, ya1 = %f, psi = %f\n" u yb0 v ya1 psi;
+                            if psi > 0.0 then (
                               u,v
                             ) else (
-                              let v=4.*.mathsEnv.default_rule_thickness*.mathsEnv.mathsSize*.env.size -. (u+.yb0) +. ya1 in
-                              let psi=4./.5.*.abs_float x_height*.mathsEnv.mathsSize*.env.size -. (u+.yb0) in
-                                if psi > 0. then (u+.psi, v-.psi) else (u,v)
+                              (u -. psi /. 2. , v -. psi /. 2.)
                             )
                         )
                     )
