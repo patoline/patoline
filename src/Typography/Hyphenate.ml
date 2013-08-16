@@ -120,7 +120,7 @@ let hyphenate tree a0=
           | `Zl
           | `Zp
           | `Zs -> i
-          | _->find_punct (i+1)
+          | _->find_punct (UTF8.next a0 i)
     in
     let first_punct=find_punct 0 in
     match dash_hyphen a0 with
