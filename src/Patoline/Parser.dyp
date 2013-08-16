@@ -89,8 +89,8 @@ type 'a math =
    | MScope of 'a math list
    | MathString of string
 
-and 'a indices = { up_right : 'a math option;
-    down_right : 'a math option;
+and 'a indices = { up_right : 'a math option; up_right_same_script: bool;
+    down_right : 'a math option; up_left_same_script: bool;
     up_left : 'a math option;
     down_left : 'a math option }
 and symbol=
@@ -160,7 +160,7 @@ let quail = Lazy.lazy_from_fun (fun () ->
     let ch = open_out_bin !out_quail_name in
     ch)
 
-let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
+let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None; up_right_same_script = false; up_left_same_script = false }
 
 let app_ind d m = 
     if d = no_ind then m else Indices(d,m)
@@ -805,13 +805,13 @@ in_par_macro:
 
 leftind:
   | math_atom<m1> - "^^" - math_atom<m2> - "__" 
-      { { up_right = None; up_left = Some m1; down_right = None; down_left = Some m2 } }
+      { { no_ind with up_left = Some m1; down_left = Some m2 } }
   | math_atom<m1> - "__" - math_atom<m2> - "^^" 
-      { { up_right = None; up_left = Some m2; down_right = None; down_left = Some m1 } }
+      { { no_ind with up_left = Some m2; down_left = Some m1 } }
   | math_atom<m1> - "^^"
-      { { up_right = None; up_left = Some m1; down_right = None; down_left = None } }
+      { { no_ind with up_left = Some m1; } }
   | math_atom<m2> - "__" 
-      { { up_right = None; up_left = None; down_right = None; down_left = Some m2 } }
+      { { no_ind with down_left = Some m2 } }
 
 subind:
   | "_" - math_atom<m1> 
@@ -828,24 +828,25 @@ subind:
       with _ -> give_up() }
 
 superind:
-  | "^" - math_atom<m1> { m1 }
+  | "^" - math_atom<m1> { m1, false }
+  | accent<_,op,d>  { Symbol op, true } accent
   | superscripts<s> {
       try
 (*        Printf.fprintf stderr "exp: %s\n" s;*)
         let lexbuf = Dyp.from_string dyp.parser_pilot (s^"#$@#$@") in	
         let obj = Dyp.lexparse dyp.parser_pilot "allmath" lexbuf in
         match obj with
-        | (Obj_allmath docs, _) :: _ -> docs
+        | (Obj_allmath docs, _) :: _ -> docs, false
         | _ -> assert false
       with _ -> raise Giveup }
 
 rightind:
-  | superind<m1> - subind<m2>
-      { fun i -> { i with up_right = Some m1; down_right = Some m2 } }
-  | subind<m1> - superind<m2>
-      { fun i -> { i with up_right = Some m2; down_right = Some m1 } }
-  | superind<m1>
-      { fun i -> { i with up_right = Some m1 } }
+  | superind<m1,b> - subind<m2>
+      { fun i -> { i with up_right = Some m1; down_right = Some m2; up_right_same_script = b } }
+  | subind<m1> - superind<m2,b>
+      { fun i -> { i with up_right = Some m2; down_right = Some m1; up_right_same_script = b } }
+  | superind<m1,b>
+      { fun i -> { i with up_right = Some m1; up_right_same_script = b } }
   | subind<m1>
       { fun i -> { i with down_right = Some m1 } }
 
@@ -1029,8 +1030,7 @@ math:
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, m) } ind
   | math(<ind)<m> - rightind<fi>
-      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
-        Indices(fi d, m) } ind
+      { Indices(fi no_ind, m) } ind
 
   | quantifier<_,m,dq> math(<operator)<v> [ relation<_,r,d> math(<operator)<e> {r, e, d} ]?<c> [punctuation]?<p> math(<=operator)<b>
       { 
@@ -1047,14 +1047,12 @@ math:
       { let fi = match fi with None -> (fun x -> x) | Some f -> f in
         Indices(fi i, Operator(m,b)) } operator
   | operator<m> - rightind<fi> math(<=operator)<b>
-      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
-          Indices(fi d, Operator (m,b)) } operator
+      { Indices(fi no_ind, Operator (m,b)) } operator
   | operator<m> math(<=operator)<b>
       { Operator (m,b) } operator
 
   | limits_operator<m> - rightind<fi> math(<=operator)<b>
-      { let d =  { up_right = None; up_left = None; down_right = None; down_left = None } in
-          Indices(fi d, Limits_operator (m,b)) } operator
+      { Indices(fi no_ind, Limits_operator (m,b)) } operator
   | limits_operator<m> math(<=operator)<b>
       { Limits_operator (m,b) } operator
 
@@ -1071,8 +1069,6 @@ math:
 
   | math(<sum)<b> postfix<_,op,d>
       { app_ind d (Postfix(3,b,true,op)) } sum
-  | math(<=accent)<b> accent<_,op,d>
-      { Postfix(5,b,false,op) } accent
   | math(<=prod)<a> product_like<_,op,d> math(<prod)<b> 
       { app_ind d (Binary(3, a, false, op, false, b)) } prod
   | math(<=prod)<a> math(<prod)<b>

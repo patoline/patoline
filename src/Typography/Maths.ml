@@ -58,9 +58,9 @@ module type Custom = sig
   val content : u C.t
 end
 
-type ('a,'b) noad= { mutable nucleus: 'b;
-                mutable subscript_left:'a math list; mutable superscript_left:'a math list;
-                mutable subscript_right:'a math list; mutable superscript_right:'a math list }
+type ('a,'b) noad= { nucleus: 'b;
+                subscript_left:'a math list; superscript_left:'a math list; super_left_same_script: bool;
+                subscript_right:'a math list; superscript_right:'a math list; super_right_same_script: bool }
 
 and nucleus = Document.environment -> Mathematical.style ->  box list
 and nucleuses = (Document.environment -> Mathematical.style ->  box list) list
@@ -83,7 +83,7 @@ and 'a math=
   | Decoration of (Document.environment -> Mathematical.style -> box list -> box list)*('a math list)
   | Custom of (module Custom with type u = 'a math list)
 
-let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[] }
+let noad n={ nucleus=n; subscript_left=[]; superscript_left=[]; subscript_right=[]; superscript_right=[]; super_left_same_script = false; super_right_same_script = false }
 
 let style x = Env (fun env -> { env with mathStyle = x })
 
@@ -316,36 +316,47 @@ let rec draw draw_env env_stack mlist =
                     ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'x'}) in
                     (Fonts.glyph_y1 x)/.1000.
                   in
-                    if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
+                  if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
                 in
-                let u,v= if is_letter then  0., 0. else
-                  y1 -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
-                  -.y0+. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
-                in
+                let xc_height=
+                  let x_h=let x=Fonts.loadGlyph (Lazy.force mathsEnv.mathsFont)
+			     ({empty_glyph with glyph_index=Fonts.glyph_of_char (Lazy.force mathsEnv.mathsFont) 'X'}) in
+			   (Fonts.glyph_y1 x)/.1000.
+                  in
+                  if x_h=infinity || x_h= -.infinity then 1./.phi else x_h
+		in
+
 
                 let sub_env=drop (List.length env_stack-1) env_stack in
-                let a=draw_boxes env (draw (dincr draw_env) (superStyle style sub_env) n.superscript_right) in
-                let b=draw_boxes env (draw (dincr draw_env) (superStyle style sub_env) n.superscript_left) in
+                let a=draw_boxes env (draw (dincr draw_env) (if n.super_right_same_script then sub_env else superStyle style sub_env) n.superscript_right) in
+                let b=draw_boxes env (draw (dincr draw_env) (if n.super_left_same_script then sub_env else superStyle style sub_env) n.superscript_left) in
                 let c=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_right) in
                 let d=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_left) in
                 let bezier=Array.map bezier_of_boxes [| a;b;c;d |] in
                 let bb=Array.map (fun l->bounding_box [Path (OutputCommon.default, [Array.of_list l])]) bezier in
 
-                let y_place sup sub=
+                let y_place sup sub sup' same_script =
                   let xa0,ya0,xa1,ya1=bb.(sub) in
                   let xb0,yb0,xb1,yb1=bb.(sup) in
+		  let delta = if same_script then -. yb0 else 0. in
+                  let u,v= match is_letter with
+		      true -> 
+			delta +. xc_height*.mathsEnv.mathsSize*.env.size -. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
+			mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
+		    | false -> 
+                      delta +. y1-. mathsEnv.sup_drop*.mathsEnv.mathsSize*.env.size,
+                      -.y0 +. mathsEnv.sub_drop*.mathsEnv.mathsSize*.env.size
+                  in
                     if bezier.(sup)=[] then (
-                      0., max v (max (mathsEnv.sub1*.mathsEnv.mathsSize*.env.size) (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size))
+                      0., max v (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size)
                     ) else (
-                      let p=
-                        if style=Display then mathsEnv.sup1 else
-                          if is_cramped style then mathsEnv.sup3 else mathsEnv.sup2
-                      in
-                      let u=max u (max (p*.mathsEnv.mathsSize*.env.size) (-.yb0 +. (abs_float x_height*.mathsEnv.mathsSize*.env.size)/.4.)) in
-                        if bezier.(sub)=[] then (
-                          u,0.
-                        ) else (
-                          let v=max v (mathsEnv.sub2*.mathsEnv.mathsSize*.env.size) in
+                      let u=max u
+			(delta +. (abs_float x_height*.mathsEnv.mathsSize*.env.size)/.4.)
+		      in
+                      if bezier.(sub)=[] then (
+                        u,0.
+                      ) else (
+                          let v=max v  (ya1 -. 4./.5. *. abs_float x_height*.mathsEnv.mathsSize*.env.size) in
                             if (u+.yb0) -. (ya1-.v) > 4.*.mathsEnv.default_rule_thickness then (
                               u,v
                             ) else (
@@ -358,8 +369,8 @@ let rec draw draw_env env_stack mlist =
                 in
 
 
-                let off_ya,off_yc = y_place 0 2 in
-                let off_yb,off_yd = y_place 1 3 in
+                let off_ya,off_yc = y_place 0 2 a n.super_right_same_script in
+                let off_yb,off_yd = y_place 1 3 b n.super_left_same_script in
 
                 let start =
                   let xa0,_,xa1,_=bb.(0) in

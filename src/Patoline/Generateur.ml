@@ -210,7 +210,6 @@ end
 let verb_files = Hashtbl.create 13
 
 let argsCounter=ref 0
-let no_ind = { up_right = None; up_left = None; down_right = None; down_left = None }
 
 let split_ind indices =
   { no_ind with up_left = indices.up_left; down_left = indices.down_left; },
@@ -293,8 +292,14 @@ let rec print_math_buf parser_pp op buf m =
       Printf.bprintf buf "(Maths.noad (%a))" print_math_symbol elt
     ) else begin
       Printf.bprintf buf "{ (Maths.noad (%a)) with " print_math_symbol elt;
-      if ind.up_right <> None then gn "Maths.superscript_right" ind.up_right;
-      if ind.up_left <> None then gn "Maths.superscript_left" ind.up_left;
+      if ind.up_right <> None then (
+	if ind.up_right_same_script then Printf.bprintf buf "Maths.super_right_same_script = true; "; 
+	gn "Maths.superscript_right" ind.up_right
+      );
+      if ind.up_left <> None then (
+	if ind.up_left_same_script then Printf.bprintf buf "Maths.super_left_same_script = true; "; 
+	gn "Maths.superscript_left" ind.up_left
+      );
       if ind.down_right <> None then gn "Maths.subscript_right" ind.down_right;
       if ind.down_left <> None then gn "Maths.subscript_left" ind.down_left;
       Printf.bprintf buf "}"
