@@ -25,8 +25,16 @@ let bin_dir=ref ""
 let fonts_dir=ref ""
 let grammars_dir=ref ""
 let hyphen_dir=ref ""
-let ocaml_lib_dir=ref ""
-let ocamlfind_dir=ref ""
+let ocaml_lib_dir=ref
+  (try
+    let p = Unix.open_process_in "ocamlfind printconf destdir" in
+    let res = input_line p in
+    if Unix.close_process_in p = Unix.WEXITED(0)
+    then res
+    else failwith "ocamlfind printconf destdir failed"
+  with
+  | _ -> ""
+  )
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let plugins_dir=ref ""
@@ -210,8 +218,7 @@ let _=
   parse [
     ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
     ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
-    ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
-    ("--ocamlfind-dir", Set_string ocamlfind_dir, "  directory for the caml libraries ($PREFIX/lib/ocaml/ by default; `ocamlc -where` is another sensible choice)");
+    ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries (`ocamlfind printconf destdir` by default; `ocamlc -where` is another sensible choice)");
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
     ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
     ("--plugins-dir", Set_string plugins_dir, "  directory for the plugins ($PREFIX/lib/patoline/plugins/ by default)");
