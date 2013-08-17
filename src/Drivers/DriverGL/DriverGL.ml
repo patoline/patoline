@@ -1358,11 +1358,16 @@ function show(event){
 	     (fun s ->  to_revert := true; Glut.postRedisplay ()));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
-	(try Glut.mainLoop ()
-	with e ->
-	  Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
-	  Gl.flush ();
-	  Glut.destroyWindow win0; if e <> Exit then raise e)
+	while true do 
+	  (try 
+	    Glut.mainLoop ()
+	  with 
+	  | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
+	  | e ->
+	    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+	    Gl.flush ();
+	    Glut.destroyWindow win0; if e <> Exit then raise e);
+	done; ()
     | Some f ->
       f get_pixes
   in
