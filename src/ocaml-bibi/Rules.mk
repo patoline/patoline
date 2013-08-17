@@ -42,7 +42,7 @@ $(d)/bibi.cmi: $(d)/bibi.cmo ;
 # Installing
 install: install-bibi
 .PHONY: install-bibi
-install-bibi: $(BIBI_LIBS) $(d)/bibi.a $(d)/bibi.cmi $(d)/META
+install-bibi: $(BIBI_LIBS) $(d)/bibi.a $(d)/bibi.cmi $(d)/bibi.p.a $(d)/bibi.p.cmi $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_BIBI_DIR)
 	install -m 644 $^ $(DESTDIR)/$(INSTALL_BIBI_DIR)
 
