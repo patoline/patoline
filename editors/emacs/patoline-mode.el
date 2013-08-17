@@ -38,11 +38,11 @@
       (set-buffer patoline-program-buffer)
       )))
 
-(defun select-patoline-view-buffer ()
+(defun select-patoline-view-buffer (buffer-name)
   (if (and patoline-view-buffer (buffer-live-p patoline-view-buffer))
       (set-buffer patoline-view-buffer)
     (progn
-      (setq patoline-view-buffer (get-buffer-create "*patoline-view*"))
+      (setq patoline-view-buffer (get-buffer-create (concat "*patoline-view-" buffer-name "*")))
       (set-buffer patoline-view-buffer)
       )))
 
@@ -151,6 +151,8 @@
   (interactive)
   (let ((file-name 
 	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".pdf"))
+	(buffer-name 
+	 (file-name-sans-extension (buffer-file-name (current-buffer))))
 	(cmd-format (read-from-minibuffer "view: " patoline-view-format)))
     (setq patoline-view-format cmd-format)
     (if (string-equal cmd-format "embedded")
@@ -161,23 +163,25 @@
 	    (auto-revert-mode)))
       (let ((cmd (split-string-and-unquote (format cmd-format file-name))))
 	(save-excursion
-	  (select-patoline-view-buffer)
+	  (select-patoline-view-buffer buffer-name)
 	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
-		(apply 'start-process "patoline-view" nil (car cmd) (cdr cmd))))))))
+		(apply 'start-process (concat "patoline-view-" buffer-name) nil (car cmd) (cdr cmd))))))))
 
 (defun patoline-glview ()
   "view the binary output corresponding to the current buffer"
   (interactive)
   (let ((file-name 
-	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".bin")))
+	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".bin"))
+	(buffer-name 
+	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
       (let ((cmd (split-string-and-unquote (format "patolineGL \"%s\"" file-name))))
 	(save-excursion
-	  (select-patoline-view-buffer)
+	  (select-patoline-view-buffer buffer-name)
 	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
 		(get-buffer-process
-		 (apply 'make-comint "patoline-view" (car cmd) nil (cdr cmd))))))))
+		 (apply 'make-comint (concat "patoline-view-" buffer-name) (car cmd) nil (cdr cmd))))))))
 
 (defun patoline-goto (file line col)
   (find-file file)
@@ -224,10 +228,12 @@
 (defun patoline-forward-search ()
   (interactive)
   (let ((line (line-number-at-pos))
-	(col (- (position-bytes (point)) (position-bytes (line-beginning-position)))))
+	(col (- (position-bytes (point)) (position-bytes (line-beginning-position))))
+	(buffer-name 
+	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
 ;;    (message  (format "e %d %d\n" line col))
     (save-excursion
-      (select-patoline-view-buffer)
+      (select-patoline-view-buffer buffer-name)
       (if patoline-view-process
 	  (process-send-string patoline-view-process (format "e %d %d\n" line col))))))
 
