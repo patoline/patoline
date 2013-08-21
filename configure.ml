@@ -186,6 +186,7 @@ let r_patoline_drivers = ref
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
     patoline_driver_gl;
     { name = "Net"; needs = ocamlnet_needs; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
+    { name = "Web"; needs = []; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
     patoline_driver_image;
   ]
 

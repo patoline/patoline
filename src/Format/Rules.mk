@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-FORMAT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR)
+FORMAT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR) -I $(DRIVERS_DIR)/SVG
 
 # Find dependencies
 $(d)/%.depends: INCLUDES += $(FORMAT_INCLUDES)
@@ -35,7 +35,7 @@ $(d)/DefaultFormat.p.cma: $(DEFAULT_FORMAT_ML:.ml=.p.cmo)
 
 # Other formats
 OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
-  $(d)/FormatLetter.ml $(d)/FormatSlides.ml $(d)/LMFormat.ml
+  $(d)/FormatLetter.ml $(d)/FormatSlides.ml $(d)/LMFormat.ml $(d)/FormatWeb.ml
 
 $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
 	$(ECHO) "[OPT]    $<"
