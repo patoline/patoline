@@ -129,15 +129,8 @@ module Format=functor (D:Document.DocumentStructure)->(
             | Hyphen x->Array.iter output_contents x.hyphen_normal
             | Glue g->Rbuffer.add_string buf " "
             | Drawing d->(
-              match classify_float d.drawing_y0,classify_float d.drawing_y1 with
-                | FP_normal,FP_subnormal
-                | FP_subnormal,FP_normal
-                | FP_subnormal,FP_subnormal
-                | FP_normal,FP_normal->(
-                    let i=SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in
-                    Rbuffer.add_string buf i.(0)
-                  )
-                | _->()
+              let i=SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in
+              Rbuffer.add_string buf i.(0)
             )
             | Marker (Label a)->(
               Rbuffer.add_string buf "<a name=\"";
