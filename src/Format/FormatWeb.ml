@@ -112,7 +112,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           let rec output_contents b=match b with
               GlyphBox g->(
                 let cl=className cache g in
-                if !classname<>cl then (
+                if !classname<>cl || not !span_open then (
                   if !classname<>(-1) then (
                     Rbuffer.add_string buf "</span>";
                     span_open:=false
@@ -123,6 +123,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                 );
                 Rbuffer.add_string buf ((Fonts.glyphNumber g.glyph).glyph_utf8);
               )
+            | Kerning x->output_contents x.kern_contents
+            | Hyphen x->Array.iter output_contents x.hyphen_normal
             | Glue g->Rbuffer.add_string buf " "
             | Drawing d->(
               match classify_float d.drawing_y0,classify_float d.drawing_y1 with
@@ -135,17 +137,35 @@ module Format=functor (D:Document.DocumentStructure)->(
                   )
                 | _->()
             )
+            | Marker (Label a)->(
+              Rbuffer.add_string buf "<a name=\"";
+              Rbuffer.add_string buf a;
+              Rbuffer.add_string buf "\"></a>";
+            )
+            | Marker (BeginURILink a)->(
+              Rbuffer.add_string buf "<a href=\"";
+              Rbuffer.add_string buf a;
+              Rbuffer.add_string buf "\">";
+            )
+            | Marker (BeginLink a)->(
+              Rbuffer.add_string buf "<a href=\"#";
+              Rbuffer.add_string buf a;
+              Rbuffer.add_string buf "\">";
+            )
+            | Marker EndLink->(
+              Rbuffer.add_string buf "</a>";
+            )
             | _->print_box stderr b
           in
           Array.iter (fun par->
             Rbuffer.add_string buf "<p>";
             List.iter output_contents (Array.to_list par);
+            if !span_open then (
+              Rbuffer.add_string buf "</span>";
+              span_open:=false
+            );
             Rbuffer.add_string buf "</p>";
           ) page;
-          if !span_open then (
-            Rbuffer.add_string buf "</span>";
-            span_open:=false
-          );
           buf
         ) [|pars|]
         in
