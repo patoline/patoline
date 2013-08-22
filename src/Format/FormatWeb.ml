@@ -150,7 +150,11 @@ module Format=functor (D:Document.DocumentStructure)->(
             | Marker EndLink->(
               Rbuffer.add_string buf "</a>";
             )
-            | _->print_box stderr b
+            | _->(
+              Printf.fprintf stderr "Box not shown: ";
+              print_box stderr b;
+              Printf.fprintf stderr "\n";flush stderr;
+            )
           in
           Array.iter (fun par->
             Rbuffer.add_string buf "<p>";
