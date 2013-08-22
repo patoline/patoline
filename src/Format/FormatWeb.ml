@@ -62,6 +62,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       type output=unit
       let outputParams=()
       let output out_params structure defaultEnv file=
+        let structure=Default.postprocess_tree structure in
         let prefix=file in
         let rec unlink_rec dir=
           if Sys.file_exists dir then (
@@ -81,11 +82,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 
         let fixable=ref false in
         let rec fix env n=
-          let (env',_,_,_,_,_,_,pars,_,figures,_)=flatten env fixable structure in
+          let (env,_,_,_,_,_,_,pars,_,figures,_)=flatten env fixable structure in
+          let env=reset_counters env in
           if !fixable && n>0 then
-            fix env' (n-1)
+            fix env (n-1)
           else
-            (env',pars,figures)
+            (env,pars,figures)
         in
         let (env,pars,figures)=fix defaultEnv 3 in
         let typeset_pars=
