@@ -55,17 +55,18 @@ let standalone w h style title svg=
   svg_buf
 
 
-let make_defs prefix fontCache=
+let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
-  StrMap.iter (fun full class_name->
-    Rbuffer.add_string def_buf
-      (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
-    Rbuffer.add_string def_buf full;
-    Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
-  ) fontCache.fontFamilies;
+  if output_fonts then
+    StrMap.iter (fun full class_name->
+      Rbuffer.add_string def_buf
+        (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
+      Rbuffer.add_string def_buf full;
+      Rbuffer.add_string def_buf ".otf\") format(\"opentype\"); }\n"
+    ) fontCache.fontFamilies;
   ClassMap.iter (fun (fam,size,col) k->
     Rbuffer.add_string def_buf (
-      Printf.sprintf ".c%d { font-family:f%d;font-size:%gpx;" k fam size
+      Printf.sprintf ".%s%d { font-family:f%d;font-size:%g%s;" class_prefix k fam size units
     );
     (match col with
         RGB fc ->
@@ -128,7 +129,7 @@ let draw ?fontCache prefix w h contents=
         );
 
         let cls=className fontCache x in
-        let size=x.glyph_size in
+        (* let size=x.glyph_size in *)
         if cls<> !cur_cls
           || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
           || not !opened_tspan
@@ -590,7 +591,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
 
 
-let images prefix env conts=
+let images_of_boxes ?cache ?(css="style.css") ?(output_font_defs=true) prefix env conts_box=
+
+  let raws=Array.map (fun cont->Document.draw_boxes env cont) conts_box in
 
   (if Sys.file_exists prefix && not (Sys.is_directory prefix) then
     Unix.unlink prefix;
@@ -598,8 +601,6 @@ let images prefix env conts=
   (if not (Sys.file_exists prefix) then
       Unix.mkdir prefix 0o755);
 
-  let conts_box=Array.map (fun x->Document.boxify_scoped env x) conts in
-  let raws=Array.map (fun cont->Document.draw_boxes env cont) conts_box in
   let raws=
     Array.map (fun cont->
       let x=List.fold_left (fun m x->
@@ -622,8 +623,11 @@ let images prefix env conts=
 
     ) raws
   in
-  let cache=build_font_cache prefix raws in
-  let css_file=Filename.concat prefix "style.css" in
+  let cache=match cache with
+      None->build_font_cache prefix raws
+    | Some c->c
+  in
+  let css_file=if String.length css>0 then Filename.concat prefix css else "" in
 
 
   let r=Rbuffer.create 1000 in
@@ -651,10 +655,18 @@ let images prefix env conts=
     Rbuffer.add_buffer r dr;
     Rbuffer.add_string r "</svg>\n";
     Rbuffer.contents r;
-  ) conts
+  ) conts_box
   in
   let style=make_defs prefix cache in
-  let css=open_out css_file in
-  Rbuffer.output_buffer css style;
-  close_out css;
+  if String.length css_file>0 then (
+    let css=open_out css_file in
+    Rbuffer.output_buffer css style;
+    close_out css
+  );
   imgs
+
+let images ?cache ?(css="style.css") prefix env conts=
+  let conts_box=Array.map (fun x->Document.boxify_scoped env x) conts in
+  match cache with
+      Some a->images_of_boxes ~cache:a ~css:css prefix env conts_box
+    | None->images_of_boxes ~css:css prefix env conts_box

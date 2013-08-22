@@ -88,7 +88,9 @@ module Format=functor (D:Document.DocumentStructure)->(
             (env',pars,figures)
         in
         let (env,pars,figures)=fix defaultEnv 3 in
-        let typeset_pars=Array.map (fun x->draw_boxes env (Array.to_list x)) pars in
+        let typeset_pars=
+          (Array.map (fun x->draw_boxes env (Array.to_list x)) pars)
+        in
         let cache=build_font_cache prefix typeset_pars in
         (*
         let rec fold_struct t=match t with
@@ -104,9 +106,10 @@ module Format=functor (D:Document.DocumentStructure)->(
         *)
         let classname=ref (-1) in
         let span_open=ref false in
-        let pages=Array.map (fun par->
+        let style_buffer=Rbuffer.create 1000 in
+        let pages=Array.map (fun page->
           let buf=Rbuffer.create 1000 in
-          List.iter (fun b->match b with
+          let rec output_contents b=match b with
               GlyphBox g->(
                 let cl=className cache g in
                 if !classname<>cl then (
@@ -121,24 +124,43 @@ module Format=functor (D:Document.DocumentStructure)->(
                 Rbuffer.add_string buf ((Fonts.glyphNumber g.glyph).glyph_utf8);
               )
             | Glue g->Rbuffer.add_string buf " "
-            | _->()
-          ) (Array.to_list par);
+            | Drawing d->(
+              match classify_float d.drawing_y0,classify_float d.drawing_y1 with
+                | FP_normal,FP_subnormal
+                | FP_subnormal,FP_normal
+                | FP_subnormal,FP_subnormal
+                | FP_normal,FP_normal->(
+                    let i=SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in
+                    Rbuffer.add_string buf i.(0)
+                  )
+                | _->()
+            )
+            | _->print_box stderr b
+          in
+          Array.iter (fun par->
+            Rbuffer.add_string buf "<p>";
+            List.iter output_contents (Array.to_list par);
+            Rbuffer.add_string buf "</p>";
+          ) page;
           if !span_open then (
             Rbuffer.add_string buf "</span>";
             span_open:=false
           );
           buf
-        ) pars
+        ) [|pars|]
         in
 
         let st=open_out (Filename.concat prefix "style.css") in
-        Rbuffer.output_buffer st (make_style cache);
+        Rbuffer.output_buffer st style_buffer;
+        Rbuffer.output_buffer st (SVG.make_defs prefix cache);
+        Rbuffer.output_buffer st (SVG.make_defs ~output_fonts:true ~units:"mm" ~class_prefix:"f"
+                                    prefix cache);
         close_out st;
 
         output_fonts cache;
 
         for i=0 to Array.length pages-1 do
-          let out_file=open_out (Filename.concat prefix "index.html") in
+          let out_file=open_out (Filename.concat prefix (Printf.sprintf "%d.html" i)) in
           Printf.fprintf out_file "<html><body>";
           Printf.fprintf out_file "<link rel=\"stylesheet\" href=\"style.css\">";
           Rbuffer.output_buffer out_file pages.(i);
