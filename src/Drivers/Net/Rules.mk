@@ -12,7 +12,7 @@ DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 
 $(d)/Net.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_Net) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Net.cmxa: $(d)/Net.cmx
 	$(ECHO) "[LINK]   $<"

@@ -103,7 +103,12 @@ int main (void)
                                         GNUTLS_X509_FMT_PEM);
   if (ret < 0)
     {
-      printf("No certificate or key were found\n");
+      printf("No certificate or key were found\nTo generate one, use:\n\n");
+      printf("openssl genrsa -des3 -out server.key 1024\n");
+      printf("openssl req -new -key server.key -out server.csr\n");
+      printf("cp server.key server.key.org\n");
+      printf("openssl rsa -in server.key.org -out server.key\n");
+      printf("openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt\n");
       exit(1);
     }
   generate_dh_params ();

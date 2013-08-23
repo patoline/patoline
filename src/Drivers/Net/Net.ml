@@ -208,7 +208,7 @@ function gotoSlide(n){
   Printf.fprintf o "]\n";
 *)
   let patonet=
-    let pato=FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in
+    let pato=Typography.FindPath.findPath "patonet.c" ((!Typography.Config.pluginspath)@["."]) in
     let patof=open_in pato in
     let s=String.create (in_channel_length patof) in
     really_input patof s 0 (String.length s);
@@ -217,5 +217,4 @@ function gotoSlide(n){
   in
   Printf.fprintf o "# 1 \"patonet.c\"\n%s\n" patonet;
   close_out o;
-  Printf.fprintf stdout "\nOCaml file %s.ml written. Compile with :\n\t" prefix;
-  Printf.fprintf stdout "ocamlfind ocamlopt -o %s_server -package \"cryptokit,str\" -thread -linkpkg %s_server.ml\n\n" prefix prefix
+  Printf.fprintf stdout "\nServer %s.c written. Compile with:\n\tgcc $(pkg-config --libs gnutls) -lgcrypt -o %s_server %s_server.c\n\n" prefix prefix prefix
