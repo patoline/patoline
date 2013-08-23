@@ -1,10 +1,18 @@
 usr/lib/ocaml/Typography/Bin.*
-usr/lib/ocaml/Typography/Pdf.*
-usr/lib/ocaml/Typography/SVG.*
-usr/share/patoline/hyphen/*
-usr/lib/ocaml/Typography/Typography.*
+usr/lib/ocaml/Typography/Build.cmi
 usr/lib/ocaml/Typography/DefaultFormat.*
 usr/lib/ocaml/Typography/FormatArticle.*
 usr/lib/ocaml/Typography/FormatLetter.*
-usr/lib/ocaml/Typography/LMFormat.*
-src/Format/LMFormat.META usr/lib/ocaml/Typography/META.d
+usr/lib/ocaml/Typography/FormatLivre.*
+usr/lib/ocaml/Typography/FormatSlides.*
+usr/lib/ocaml/Typography/FormatThese.*
+usr/lib/ocaml/Typography/None.*
+usr/lib/ocaml/Typography/ParseMainArgs.*
+usr/lib/ocaml/Typography/Pdf.*
+usr/lib/ocaml/Typography/pdf_parser.*
+usr/lib/ocaml/Typography/Typography.*
+usr/lib/ocaml/Typography/Util.cmi
+usr/share/patoline/hyphen/*
+usr/lib/ocaml/bibi/*
+usr/lib/ocaml/rbuffer/*
+usr/lib/ocaml/patoplot/*

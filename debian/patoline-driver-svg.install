@@ -1,0 +1,2 @@
+usr/lib/ocaml/Typography/SVG.*
+src/Drivers/SVG/SVG.META usr/lib/ocaml/Typography/META.d

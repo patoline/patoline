@@ -4,8 +4,9 @@ Priority: extra
 Maintainer: Florian Hatat <florian.hatat@univ-savoie.fr>
 Uploaders: Tom Hirschowitz <tom.hirschowitz@univ-savoie.fr>
 Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgtk2-gl-ocaml-dev, liblablgl-ocaml-dev, libcairo-ocaml-dev, libsqlite3-ocaml-dev, libocamlnet-ocaml-dev, libcryptokit-ocaml-dev
-Standards-Version: 3.9.3
-Homepage: http://www.patoline.com/
+Standards-Version: 3.9.4
+Homepage: http://www.patoline.org/
+Vcs-Darcs: http://patoline.org/darcs/patoline
 
 Package: patoline
 Architecture: any
@@ -20,19 +21,55 @@ Description: Digital typography system written in OCaml
   * Also, the choice of our favourite programming language is no more limited
     by "what compiles on all machines of the laboratory".
   * The global network has changed: today, nobody knows anyone on the net.
-
-Package: patoline-driver-gl
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, patoline, liblablgl-ocaml-dev
-Description: OpenGL output driver for Patoline
+ .
+ Patoline home page is <http://patoline.org/>.
 
 Package: patoline-fonts
 Architecture: all
+Multi-Arch: foreign
 Section: fonts
-Depends: ${shlibs:Depends}, ${misc:Depends}, fonts-oflb-asana-math | ttf-oflb-asana-math
-Description: Fonts for patoline
- This package contains core OpenType fonts for typesetting texts
- using Patoline.
+Depends: ${misc:Depends}, fonts-oflb-asana-math, fonts-philosopher, fonts-alegreya
+Description: An empty package to pull standard fonts for Patoline
+ The only purpose of this package is to depend on other font packages which
+ provide Opentype fonts used by Patoline core document formats.
+
+Package: fonts-philosopher
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Section: fonts
+Description: Philosopher font family
+ This package provides the Opentype Philosopher fonts designed by Jovanny
+ Lemonad. It has been downloaded from: <http://www.jovanny.ru/>.
+
+Package: fonts-alegreya
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Section: fonts
+Description: Alegreya font family
+ This package provides the Opentype Alegreya fonts designed by Juan Pablo Del
+ Peral. According to <http://www.fontsquirrel.com/fonts/Alegreya>:
+ .
+ Alegreya was chosen as one of 53 “Fonts of the Decade” at the ATypI Letter2
+ competition in September 2011, and one of the top 14 text type systems. It was
+ also selected in the 2nd Bienal Iberoamericana de Diseño, competition held in
+ Madrid in 2010.
+ .
+ Alegreya is a typeface originally intended for literature. Among its crowning
+ characteristics, it conveys a dynamic and varied rhythm which facilitates the
+ reading of long texts. Also, it provides freshness to the page while referring
+ to the calligraphic letter, not as a literal interpretation, but rather in a
+ contemporary typographic language.
+ .
+ The italic has just as much care and attention to detail in the design as the
+ roman. The bold weights are strong, and the Black weights are really
+ experimental for the genre. This is the Small Caps sister family that
+ complements the master Alegreya family.
+ .
+ Not only does Alegreya provide great performance, but also achieves a strong
+ and harmonious text by means of elements designed in an atmosphere of
+ diversity.
 
 Package: libtypography-ocaml-dev
 Architecture: any
@@ -41,7 +78,65 @@ Description: Library of typographic primitives for OCaml
 
 Package: patoline-mode
 Architecture: all
-Depends: xemacs21-nomule | emacsen
+Multi-Arch: foreign
+Depends: ${misc:Depends}, xemacs21-nomule | emacsen
 Recommends: patoline, patoline-driver-gl
-Description: Emacs mode for Patoline
 Enhances: patoline
+Description: Emacs mode for Patoline
+ Syntax highlighting for Patoline documents in Emacs, along with integration
+ with Patoline compilation process.
+ .
+ This mode also provides interaction the rendered output, which can be used
+ to point back to the source code corresponding to an excerpt of the output.
+
+Package: patoline-driver-gl
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, patoline, liblablgl-ocaml-dev
+Description: OpenGL output driver for Patoline
+ The SVG driver produces an executable binary file from a source document. When
+ this executable code is run, it displays on-screen the typeset document using
+ the GL API for rasterizing fonts. It embeds its own antialiasing and subpixel
+ rendering algorithms, which aim at providing a high quality output.
+
+Package: patoline-driver-svg
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Description: SVG output driver for Patoline
+ This driver typesets a Patoline document to a SVG image, which should be
+ correctly displayed by modern browsers as well as SVG viewers and editors.
+
+Package: patoline-driver-cairo
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Description: Cairo output driver for Patoline
+
+Package: patoline-driver-html
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Description: HTML output driver for Patoline
+ This driver outputs HTML5 files for a document, which should be correctly
+ parsed and displayed by recent browsers. No layout aspect (line breaking,
+ word and letter spacing) is left to the browser: the output is no idiomatic
+ HTML5, since the file tells the browser where each character should be
+ typeset.
+
+Package: patoline-driver-image
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Description: Image output driver for Patoline
+
+Package: patoline-driver-net
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Description: Net output driver for Patoline
+
+Package: patoline-format-lm
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, fonts-lmodern
+Description: Patoline format using Latin Modern fonts
+ This format attempts to provide the same internal interface as Patoline core
+ article format, while replacing output fonts with Latin Modern fonts.
+ .
+ One may use this format in a desperate attempt to trick someone into
+ thinking that a document could have been produced by (La)TeX, yet using the
+ full power of Patoline.
