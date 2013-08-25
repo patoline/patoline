@@ -927,14 +927,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                           let rec link_contents u l=match l with
                               []->u
                             | (Link h)::s when not h.link_closed->(
-                              h.link_contents<-[]; (* List.rev u; *)
+                              h.link_contents<-List.rev u;
                               h.link_closed<-true;
                               h.link_x1<-x;
                               Link h::s
                             )
                             | h::s->link_contents (h::u) s
                           in
-                          page.pageContents<-[];(* link_contents [] page.pageContents; *)
+                          page.pageContents<-link_contents [] page.pageContents;
                           crosslinks:=(match !crosslinks with []->[] | _::s->s);
                           0.
                         )
