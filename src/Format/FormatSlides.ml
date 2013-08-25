@@ -928,6 +928,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                               []->u
                             | (Link h)::s when not h.link_closed->(
                               h.link_contents<-List.rev u;
+                              let (x0,y0,x1,y1)=bounding_box u in
+                              h.link_y0<-y0;
+                              h.link_y1<-y1;
                               h.link_closed<-true;
                               h.link_x1<-x;
                               Link h::s
