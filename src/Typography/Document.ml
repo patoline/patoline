@@ -1205,9 +1205,11 @@ let draw_boxes env l=
     | Marker EndLink::s->(
       let rec link_contents u l=match l with
           []->List.rev u
-        | (Link h)::s when not h.link_closed->(h.link_contents<-u;
-                        h.link_closed<-true;
-                        List.rev_append u (Link h::s))
+        | (Link h)::s when not h.link_closed->(
+          h.link_contents<-u;
+          h.link_closed<-true;
+          Link h::s
+        )
         | h::s->link_contents (h::u) s
       in
       draw_boxes x y (link_contents [] dr) s

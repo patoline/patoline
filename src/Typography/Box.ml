@@ -721,12 +721,23 @@ let rec print_box chan=function
   | Glue _->Printf.fprintf chan " "
   | Drawing _->Printf.fprintf chan "[Drawing]"
   | Hyphen x->Array.iter (print_box chan) x.hyphen_normal
-  | Marker _->Printf.fprintf chan "[Marker]"
+  | Marker m->Printf.fprintf chan "[Marker %s]" (print_marker m)
   | BeginFigure _->Printf.fprintf chan "[BeginFigure]"
   | FlushFigure _->Printf.fprintf chan "[FlushFigure]"
   | Parameters _ ->Printf.fprintf chan "[Parameters]"
   | Layout _ ->Printf.fprintf chan "[Layout]"
   | Empty ->()
+
+and print_marker m=match m with
+    Label l->Printf.sprintf "Label %s" l
+  | FigureRef i->Printf.sprintf "FigureRef %d" i
+  | Pageref s->Printf.sprintf "PageRef %S" s
+  | Structure _->Printf.sprintf "Structure"
+  | BeginURILink s->Printf.sprintf "BeginURILink %S" s
+  | BeginLink s->Printf.sprintf "BeginLink %S" s
+  | EndLink->Printf.sprintf "EndLink"
+  | AlignmentMark->Printf.sprintf "AlignmentMark"
+
 
 let rec print_box_type chan=function
     GlyphBox _->Printf.fprintf chan "GlyphBox "

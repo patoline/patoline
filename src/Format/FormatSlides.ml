@@ -916,7 +916,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                           in
                           crosslinks:=(i, link, l) :: !crosslinks;
                           page.pageContents<-Link link::page.pageContents;
-                          crosslink_opened:=true;
                           0.
                         )
                         | Marker (Label l)->(
@@ -925,22 +924,18 @@ module Format=functor (D:Document.DocumentStructure)->(
                           0.
                         )
                         | Marker EndLink->(
-                          (match !crosslinks with
-                              []->()
-                            | (_,_,_)::s->(
-                              let rec link_contents u l=match l with
-                                  []->[]
-                                | (Link h)::s when not h.link_closed->(
-                                  h.link_contents<-List.rev u;
-                                  h.link_closed<-true;
-                                  h.link_x1<-x;
-                                  Link h::s
-                                )
-                                | h::s->link_contents (h::u) s
-                              in
-                              page.pageContents<-link_contents [] page.pageContents;
-                              crosslink_opened:=false; crosslinks:=s
-                            ));
+                          let rec link_contents u l=match l with
+                              []->u
+                            | (Link h)::s when not h.link_closed->(
+                              h.link_contents<-[]; (* List.rev u; *)
+                              h.link_closed<-true;
+                              h.link_x1<-x;
+                              Link h::s
+                            )
+                            | h::s->link_contents (h::u) s
+                          in
+                          page.pageContents<-[];(* link_contents [] page.pageContents; *)
+                          crosslinks:=(match !crosslinks with []->[] | _::s->s);
                           0.
                         )
                         | b->box_width comp b
@@ -950,7 +945,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                   )
                 done;
                 page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
-                page.pageContents<-List.rev page.pageContents;
                 states:=page:: !states
               done;
               env,Array.of_list (List.rev !states)
