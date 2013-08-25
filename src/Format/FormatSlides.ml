@@ -491,12 +491,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
       let output out_params structure defaultEnv file=
-        let rec resolve i env0=
+        let rec resolve i env_resolved=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let tree=structure in
           let logs=ref [] in
           let slides=ref [] in
-          let layouts=ref [defaultEnv.new_page (empty_frame,[])] in
+          let layouts=ref [env_resolved.new_page (empty_frame,[])] in
           let reboot=ref false in
           let toc=ref [] in
           let rec typeset_structure path tree env0=
@@ -515,7 +515,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             if List.length path=1 then (
               match tree with
                   Node n when List.mem_assoc "intoc" n.node_tags->(
-                    toc:=(n.name,n.displayname,path,env0)::(!toc)
+                    toc:=(n.name,n.displayname,path,n.node_env env0)::(!toc)
                   )
                 | _->()
             );
@@ -691,8 +691,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   (* Fin du placement vertical *)
 
-                  slides:=(path,tree,paragraphs0,figures0,figure_trees0,env1,opts)::(!slides);
-                  n.node_post_env env0 env1
+                  slides:=(path,tree,paragraphs0,figures0,figure_trees0,env',opts)::(!slides);
+                  n.node_post_env env0 env'
                 )
               | Node n->
                 n.node_post_env env0 (
@@ -704,10 +704,11 @@ module Format=functor (D:Document.DocumentStructure)->(
           in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
           let env0=match tree with
-              Node n->n.node_env defaultEnv
-            | Paragraph n->n.par_env defaultEnv
-            | _->defaultEnv
+              Node n->n.node_env env_resolved
+            | Paragraph n->n.par_env env_resolved
+            | _->env_resolved
           in
+
           let env_final=typeset_structure [] tree env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
 
@@ -720,18 +721,19 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let toc=List.fold_left (fun m (n,dis,path,env)->
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-              IntMap.add (List.hd b) (dis,path,env) m;
+              let mm=match b with []->m | _::h::_->IntMap.add h (n,dis,path,env) m in
+              mm
             ) IntMap.empty !toc
             in
-
             let y_menu=slideh-.env_final.size in
 
 
             (* Dessine la table des matières du slide où on est dans l'environnement env0 *)
             let draw_toc env0=
               (* Où est-on actuellement ? *)
-              let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[] in
-              let boxes=IntMap.map (fun (displayname,path,env)->
+              let _,b0=try StrMap.find "_structure" env0.counters with Not_found -> -1,[0] in
+              let boxes=IntMap.map (fun (n,displayname,path,env)->
+                (* Printf.fprintf stderr "draw_toc %S\n" n;flush stderr; *)
                 let _,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
                 let b0=match b0 with
                     []->[] | _::s->s
@@ -740,11 +742,18 @@ module Format=functor (D:Document.DocumentStructure)->(
                   | [],_->true
                   | hu::_,hv::_ when hu<>hv->false
                   | _::su,_::sv->prefix su sv
-                  | _,[]->false
+                  | _,[]->true
                 in
+                (*
+                Printf.fprintf stderr "b:";
+                List.iter (Printf.fprintf stderr "%d ") b;
+                Printf.fprintf stderr "\nb0:";
+                List.iter (Printf.fprintf stderr "%d ") b0;
+                Printf.fprintf stderr "\n";flush stderr;
+                *)
                 if prefix (List.rev b) (List.rev b0) then (
                   let col=(!toc_active) in
-                  boxify_scoped { env with fontColor=col } displayname
+                  boxify_scoped { env_final with fontColor=col } displayname
                 ) else (
                   let col= !toc_inactive in
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -761,7 +770,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let alpha=(min 1.0 (slidew*.0.8/.total))/.(sqrt phi) in
 	      let denom, start_space = if IntMap.cardinal toc > 1 && total > slidew *. 0.5 then
-		 (* espace fixe au bord à 0.125 slidew *) 
+		  (* espace fixe au bord à 0.125 slidew *)
 		  (float_of_int (IntMap.cardinal toc - 1)),
   		  (fun inter -> 0.125 *. slidew)
 		else

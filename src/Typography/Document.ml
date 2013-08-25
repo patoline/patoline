@@ -1619,32 +1619,36 @@ let update_names env figs user=
   let needs_reboot=ref false in (* (fil user<>fil env.user_positions) in; *)
   let env'={ env with user_positions=user;
                names=
-      StrMap.fold (fun k (a,b,c) m->try
-                     let pos=
-                       if b="_figure" then
-                         (match StrMap.find "_figure" a with
-                              _,[]->(Printf.fprintf stderr "figure not found (1):%S\n" k;
-                                   raise Not_found)
-                            | _,(h::_)->(
-                                match IntMap.find h figs with
-                                    Break.Placed l->l
-                                  | _->raise Not_found
-                              )
-                         )
-                       else
-                         MarkerMap.find (Label k) user
-                     in
-                       if pos<>c && b<>"_" then (
-                         (* Printf.fprintf stderr "reboot : position of %S (%S) changed\n" k b *)
-                       );
-                       needs_reboot:= !needs_reboot || (pos<>c);
-                       StrMap.add k (a,b,pos) m
-                   with Not_found -> ((* Printf.fprintf stderr "reboot : position of %S (%S) not found\n" k b; *)needs_reboot:=true; m)
-                  ) (names env) (names env)
+      StrMap.fold (fun k (a,b,c) m->
+        try
+          let pos=
+            if b="_figure" then
+              (match StrMap.find "_figure" a with
+                  _,[]->(Printf.fprintf stderr "figure not found (1):%S\n" k;
+                         raise Not_found)
+                | _,(h::_)->(
+                  match IntMap.find h figs with
+                      Break.Placed l->l
+                    | _->raise Not_found
+                )
+              )
+            else
+              MarkerMap.find (Label k) user
+          in
+          if pos<>c && b<>"_" then (
+            (* Printf.fprintf stderr "reboot : position of %S (%S) changed\n" k b; *)
+            (* print_line pos; *)
+            (* print_line c; *)
+          );
+          needs_reboot:= !needs_reboot || (pos<>c);
+          StrMap.add k (a,b,pos) m
+        with Not_found -> (Printf.fprintf stderr "reboot : position of %S (%S) not found\n" k b;
+                           needs_reboot:=true; m)
+      ) (names env) (names env)
            }
   in
-    flush stderr;
-    env',!needs_reboot
+  flush stderr;
+  env',!needs_reboot
 
 (** Resets all the counters, preserving their levels. *)
 let reset_counters env=
