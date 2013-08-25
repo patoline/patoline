@@ -192,21 +192,6 @@ let doc_frame={
 }
 
 
-(* Helper functions for lines *)
-
-let uselessLine=
-  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
-    lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
-    min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
-
-let sprint_linef l=
-  Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; isFigure=%b }"
-    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
-    l.isFigure
-
-let print_linef out l=Printf.fprintf out "%s\n" (sprint_linef l)
-let print_line l=print_linef stderr l
-
 let frame_page l=
   let rec last cxt=match cxt with
       [h,t]->(
@@ -219,6 +204,21 @@ let frame_page l=
   last (snd l)
 
 let page l=frame_page l.layout
+
+(* Helper functions for lines *)
+
+let uselessLine=
+  { paragraph=0; lineStart= -1; lineEnd= -1; hyphenStart= -1; hyphenEnd= -1; isFigure=false;
+    lastFigure=(-1); height= infinity;paragraph_height= -1; page_line= -1;layout=doc_frame,[];
+    min_width=0.;nom_width=0.;max_width=0.;line_y0=infinity;line_y1= -.infinity }
+
+let sprint_linef l=
+  Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; isFigure=%b; page=%d }"
+    l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
+    l.isFigure (page l)
+
+let print_linef out l=Printf.fprintf out "%s\n" (sprint_linef l)
+let print_line l=print_linef stderr l
 
 
 let default_params={ measure=0.;
