@@ -225,7 +225,7 @@ void *answer(void *conn_){
   unsigned char* websocket_answer=NULL;
 
   if(conn->use_tls){
-
+    printf("Handshake\n");
     gnutls_transport_set_int (conn->session, conn->sd);
     do
       {
@@ -239,7 +239,7 @@ void *answer(void *conn_){
         gnutls_deinit (conn->session);
         fprintf (stderr, "*** Handshake has failed (%s)\n\n",
                  gnutls_strerror (ret));
-        free(conn);
+        //free(conn);
         pthread_exit (NULL);
       }
     printf ("- Handshake was completed\n");
@@ -458,27 +458,33 @@ void *answer(void *conn_){
           }
           if(i<n_bin){
             char* repl;
+            /* Les polices sont rejetées par firefox. Peut-être qu'en faisant un seul do_send… */
             asprintf(&repl,"HTTP/1.1 200 Ok\r\nContent-Type: font/opentype\r\nContent-Length: %d\r\n\r\n",strlen_bin[i][1]);
-            do_send(conn,repl,strlen(repl));
-            do_send(conn,bin[i][1],strlen_bin[i][1]);
-            do_send(conn,"\r\n",strlen("\r\n"));
-            free(repl);
+            char* repl0=malloc(strlen(repl)+strlen_bin[i][1]);
+            memcpy(repl0,repl,strlen(repl));
+            memcpy(repl0+strlen(repl),bin[i][1],strlen_bin[i][1]);
+            /*do_send(conn,repl,strlen(repl));
+              do_send(conn,bin[i][1],strlen_bin[i][1]);*/
+            do_send(conn,repl0,strlen(repl)+strlen_bin[i][1]);
+            //free(repl);
           } else {
             char*resp="HTTP/1.1 404 Not found\r\nContent-Type: text/html;charset=utf-8\r\n\r\n<html><body><h1>Page non trouvée</h1></body></html>";
             do_send(conn,resp,strlen(resp));
           }
         }
       }
+      printf("sent !\n");
       keep_alive=0;
     }
     /* do not wait for the peer to close the connection. */
   }
-  if(!is_websocket)
-    free_conn(conn);
-  free(websocket_answer);
-  free(buffer);
-  free(line_buf);
-  free(req);
+
+  if(!is_websocket) free_conn(conn);
+  if(websocket_answer) free(websocket_answer);
+  if(buffer) free(buffer);
+  if(line_buf) free(line_buf);
+  if(req) free(req);
+
   pthread_exit(NULL);
 }
 
@@ -565,6 +571,7 @@ int websocket_send(struct conn*conn,char* data,int len){
 
 
 struct client_tree* insert(struct client_tree* tree,struct conn* conn){
+  printf("insert %p\n",tree);
   if(tree){
     tree->card++;
     if(conn->sd < tree->conn->sd){
