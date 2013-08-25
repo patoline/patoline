@@ -21,7 +21,7 @@
 type roman_digit  = { i : string ; v : string }
 
 let roman ?(capital=true) n = 
-  if n <= 0 or n > 3888 then raise (Invalid_argument "roman");
+  if n <= 0 || n > 3888 then raise (Invalid_argument "roman");
   let s = if capital then
       [| { i = "I"; v = "V" } ; { i = "X"; v = "L" }  ; { i = "C"; v = "D" } ; { i = "M"; v = "" } |]
     else

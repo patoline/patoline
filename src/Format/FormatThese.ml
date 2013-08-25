@@ -128,7 +128,6 @@ let postprocess_tree tree=
           if path=[] then (
             [C (fun env->
               let h= -.env.size/.phi in
-              let x0= -.env.size/.phi in
               let sz=2.5 in
 
               let buf=ref [||] in

@@ -434,7 +434,7 @@ end
 	    then 
 	      continue res stack
 	    else
-	      if (node.color = Visiting) or (List.for_all (fun son -> son.color = Visited) node.sons)
+	      if (node.color = Visiting) || (List.for_all (fun son -> son.color = Visited) node.sons)
 	      then let _ = node.color <- Visited in continue (node :: res) stack
 	      else 
 		let _ = node.color <- Visiting in

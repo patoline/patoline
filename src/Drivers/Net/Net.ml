@@ -78,7 +78,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     cache structure pages prefix
   in
 
-  let w,h=if Array.length pages>0 then (pages.(0)).(0).pageFormat else 0.,0. in
   let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_state<=0 || e.keyCode==38) {

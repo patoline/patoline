@@ -241,7 +241,6 @@ let font_size_ratio font1 font2 =
   x_h font1 /. x_h font2
 
 let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
-  let page_footnotes=ref 0 in
   let frame_measure=env.normalMeasure in
   let measure=IntMap.fold (fun i aa m->match aa with
       Break.Placed a->
@@ -528,7 +527,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 (* Printf.fprintf stderr "cas 2.1 %f %f %f \n" min_height h0 h1;flush stderr; *)
                 env.lead*.h1
               ) else (
-                let l=(fst layout).frame_y1 in
                 let min_height=(height-. env.lead) in
                 let h0=(floor (min_height/.env.lead)) in
                 let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
@@ -1407,7 +1405,6 @@ module Format=functor (D:Document.DocumentStructure)->(
               let footnotes=ref [] in
               let footnote_y=ref (-.infinity) in
               let pp=Array.of_list p in
-              let w,h=page.pageFormat in
               (* Affichage des frames (demouchage) *)
               let h=Hashtbl.create 100 in
 
@@ -1665,8 +1662,9 @@ module MathFonts = struct
   let fix_asana_delimiters name ls =
     let rec map2 f l1 l2 = (* allows for longer second list *)
       match l1, l2 with
-	[], _ -> []
-      | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
+	  [], _ -> []
+        | _,[] -> []
+        | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
     in
     adjusted_asana_delimiters' name (map2
       (fun g g' -> vkern_as (asana name g)
@@ -1681,6 +1679,7 @@ module MathFonts = struct
     let rec map2 f l1 l2 = (* allows for longer second list *)
       match l1, l2 with
 	[], _ -> []
+        | _,[]->[]
       | (x1::l1), (x2::l2) -> f x1 x2::map2 f l1 l2
     in
     adjusted_asana_delimiters' name (map2

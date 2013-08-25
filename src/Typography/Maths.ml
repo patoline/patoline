@@ -507,7 +507,7 @@ let rec draw draw_env env_stack mlist =
 		in
 		(* computes distance left - right to avoid collisions above binary symbols *)
 		let dist2 = 
-		  if bin_left = [] or bin_right = [] then -. infinity else
+		  if bin_left = [] || bin_right = [] then -. infinity else
 		    let m_l = (x0_l -. x1_l)/.2.0 in
 		    let m_r = (x0_r -. x1_r)/.2.0 in
 		    adjust_space mathsEnv space (max m_r m_l) box_left box_right
@@ -573,11 +573,11 @@ let rec draw draw_env env_stack mlist =
 	  let dxa,dxb =
 	    try if wa' > wb' then (
 	      let dx = (w -. wb) /. 2. in
-	      if dx +. x0b' < 0.0 or dx +. x1b' > w then raise Exit;
+	      if dx +. x0b' < 0.0 || dx +. x1b' > w then raise Exit;
 	      x0a-.x0a', dx )
 	    else (
 		let dx = (w -. wa) /. 2. in
-		if dx +. x0a' < 0.0 or dx +. x1a' > w then raise Exit;
+		if dx +. x0a' < 0.0 || dx +. x1a' > w then raise Exit;
 		dx , x0b-.x0b')
 	    with Exit ->
 		x0a-.x0a'+.(w -. wa')/.2.0, x0b-.x0b'+.(w -. wb')/.2.0
@@ -920,7 +920,7 @@ let open_close left right env_ style box=
 	(* FIXME: 0.05 should be in env *)
 	let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
 	let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
-	if l = [] or (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
+	if l = [] || (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
 	   (d,d',dd) else select_size l
     in
     select_size ll, select_size lr
