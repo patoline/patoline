@@ -1,4 +1,5 @@
 usr/lib/ocaml/Typography/Bin.*
+src/Drivers/Bin/Bin.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/Build.cmi
 usr/lib/ocaml/Typography/DefaultFormat.*
 usr/lib/ocaml/Typography/FormatArticle.*
@@ -7,8 +8,10 @@ usr/lib/ocaml/Typography/FormatLivre.*
 usr/lib/ocaml/Typography/FormatSlides.*
 usr/lib/ocaml/Typography/FormatThese.*
 usr/lib/ocaml/Typography/None.*
+src/Drivers/None/None.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/ParseMainArgs.*
 usr/lib/ocaml/Typography/Pdf.*
+src/Drivers/Pdf/Pdf.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/pdf_parser.*
 usr/lib/ocaml/Typography/Typography.*
 usr/lib/ocaml/Typography/Util.cmi

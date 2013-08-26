@@ -3,7 +3,7 @@
 libdir=/usr/lib/ocaml/Typography/
 destmeta=$libdir/META
 
-if [ "x$1" !="xupgrade" ]
+if [ "x$1" != "xupgrade" ]
 then
   printf "Removing Typography package list..."
   if rm -f $destmeta

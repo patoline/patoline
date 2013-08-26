@@ -365,7 +365,9 @@ let _=
     Printf.fprintf meta
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
       (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
-                                         Package "zip"; Package "camlimages.all_formats"]));
+                                         Package "zip";
+                                         Package "camlimages.all_formats";
+                                         Package "fontconfig"]));
     Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
     Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
 
