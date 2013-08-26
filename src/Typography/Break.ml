@@ -689,10 +689,16 @@ module Make (L:Line with type t=Box.line)=(
             | Some n->(
               makeParagraphs (match log_ with TypoLanguage.Normal -> log | _->log_::log)
                 n
-                (add_content frame (snd n0.layout) { line_params=params'; line=n0 })
+                (add_content frame
+                   (match snd n0.layout with []->[] | _::s->s)
+                   { line_params=params'; line=n0 })
             )
         in
-        let log,pages=makeParagraphs [] node0 empty_frame in
+        let layout=
+          let n0,_,_,_,_,_,_,_,_=node0 in
+          (fst (frame_top n0.layout))
+        in
+        let log,pages=makeParagraphs [] node0 layout in
         (log, pages, figs0,user0)
       with
           Not_found ->

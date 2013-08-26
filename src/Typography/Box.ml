@@ -106,7 +106,7 @@ and placed_line=
 
 and frame={
   frame_children:frame IntMap.t;
-  frame_tag:string;
+  frame_tags:string list;
   frame_x0:float;
   frame_y0:float;
   frame_x1:float;
@@ -133,7 +133,7 @@ let rec frame_top (t,cxt)=
 
 let empty_frame={
   frame_children=IntMap.empty;
-  frame_tag=Marshal.to_string () [];
+  frame_tags=[];
   frame_x0=0.;
   frame_x1=0.;
   frame_y0=0.;

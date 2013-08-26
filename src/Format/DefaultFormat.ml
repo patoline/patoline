@@ -1363,7 +1363,21 @@ module Format=functor (D:Document.DocumentStructure)->(
             let urilinks=ref None in
 
             let continued_link=ref None in
-
+            (*
+            let o=open_out "graph" in
+            Printf.fprintf o "digraph{";
+            let rec draw_graph g path=
+              Printf.fprintf o "%s[label=\"%s, %d\"];\n" path (String.concat "," g.frame_tags) (List.length (g.frame_content));
+              IntMap.iter (fun k a->
+                let next=Printf.sprintf "%s_%d" path k in
+                Printf.fprintf o "%s -> %s;\n" path next;
+                draw_graph a next
+              ) g.frame_children
+            in
+            draw_graph opt_pages "r";
+            Printf.fprintf o "}";
+            close_out o;
+            *)
             let draw_page i layout=
               let lo=layout in
               let page={ pageFormat=(lo.frame_x1-.lo.frame_x0,lo.frame_y1-.lo.frame_y0);
@@ -1599,9 +1613,16 @@ module Format=functor (D:Document.DocumentStructure)->(
               page.pageContents<-List.rev page.pageContents;
               page
             in
-            let pages=IntMap.mapi draw_page opt_pages.frame_children in
 
-            let pages=IntMap.map (fun p->
+            let rec draw_all_pages g i pages=
+              if List.mem "page" g.frame_tags then (
+                i+1, draw_page i g::pages
+              ) else (
+                IntMap.fold (fun k a (j,ps)->draw_all_pages a j ps) g.frame_children (i,pages)
+              )
+            in
+            let pages=Array.of_list (List.rev (snd (draw_all_pages opt_pages 0 []))) in
+            let pages=Array.map (fun p->
               { p with
                 pageContents=List.map (fun a->match a with
                     Link l when l.is_internal->(
@@ -1620,10 +1641,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               }
             ) pages
             in
-            let (a,b)=IntMap.max_binding pages in
-            let p=Array.make (a+1) { pageFormat=0.,0.;pageContents=[] } in
-            IntMap.iter (fun k a->p.(k)<-a) pages;
-            M.output ~structure:(make_struct positions tree) p file
+            M.output ~structure:(make_struct positions tree) pages file
           )
         in
         resolve 0 defaultEnv

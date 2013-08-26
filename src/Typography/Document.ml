@@ -308,7 +308,8 @@ let tags=function
 
 (**/**)
 let default_new_page pageFormat t=
-  let zip=Box.make_page pageFormat (frame_top t) in
+  let a,b=Box.make_page pageFormat (frame_top t) in
+  let zip={ a with frame_tags=["page"] },b in
   let w=(fst zip).frame_x1-.(fst zip).frame_x0
   and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
   let x0=((fst zip).frame_x0+.1.*.w/.6.) in
