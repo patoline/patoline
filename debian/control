@@ -76,6 +76,15 @@ Architecture: any
 Depends:  ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libdypgen-ocaml-dev (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev
 Description: Library of typographic primitives for OCaml
 
+Package: vim-syntax-patoline
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}, vim
+Recommends: vim-addons-manager, patoline
+Description: Patoline typography system - Vim highlighting syntax files
+ This package provides syntax files for editing Patoline .txp files in Vim
+ with syntax highlighting.
+
 Package: patoline-mode
 Architecture: all
 Multi-Arch: foreign
