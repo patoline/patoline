@@ -28,7 +28,7 @@ $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 	$(PATOLINE_IN_SRC) --ml --driver Pdf -o $@ $<
 
-$(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa
+$(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(OCAMLOPT) $(PACK) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
