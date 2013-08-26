@@ -721,7 +721,10 @@ module Format=functor (D:Document.DocumentStructure)->(
               D.structure:=(Node { n with children=IntMap.remove num n.children },x);
           | x->D.structure:=x);
         let cont=
-          [bB (fun env->List.map (fun x->Drawing x) (Array.to_list (minipage env (t,[]))))]
+          [bB (fun env->
+            let pages=IntMap.bindings (minipage env (t,[])) in
+            List.map (fun x->Drawing x) (List.map snd pages)
+          )]
         in
         match lastChild !D.structure with
             Paragraph x,y->
@@ -753,7 +756,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               @(if caption=[] then [] else tT" "::tT"–"::tT" "::caption)
             )))
 	in
-        let caption= caption.(0) in
+        let caption=try IntMap.find 0 caption with Not_found->empty_drawing_box in
         let fig=if caption.drawing_nominal_width<=dr.drawing_nominal_width then
           drawing_blit dr
             ((dr.drawing_nominal_width-.caption.drawing_nominal_width)/.2.)
@@ -779,8 +782,11 @@ module Format=functor (D:Document.DocumentStructure)->(
              let tab_formatted=Array.mapi
                (fun i x->
                   Array.mapi (fun j y->
-                    let minip=(minipage
-                                 { env with normalMeasure=widths0.(j) } y).(0) in
+                    let minip=try IntMap.find 0
+                                    (minipage
+                                       { env with normalMeasure=widths0.(j) } y)
+                      with _->empty_drawing_box
+                    in
                     widths.(j)<-max widths.(j) (minip.drawing_max_width);
                     heights.(i)<-max heights.(i) (minip.drawing_y1-.minip.drawing_y0);
                     minip
@@ -1350,7 +1356,6 @@ module Format=functor (D:Document.DocumentStructure)->(
             List.iter (fun x->Printf.fprintf stderr "%s\n" (Typography.TypoLanguage.message x)) logs;
 
             let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
-            let pages=Array.make (Array.length opt_pages) { pageFormat=0.,0.;pageContents=[] } in
             let par=ref (-1) in
             let crosslinks=ref [] in (* (page, link, destination) *)
             let crosslink_opened=ref false in
@@ -1359,17 +1364,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let continued_link=ref None in
 
-            let draw_page i (layout,p)=
-              let rec page_level lo=
-                match snd lo with
-                    _::_::_->page_level (frame_up lo)
-                  | _->lo
+            let draw_page i layout=
+              let lo=layout in
+              let page={ pageFormat=(lo.frame_x1-.lo.frame_x0,lo.frame_y1-.lo.frame_y0);
+                         pageContents=[] }
               in
-              let lo=fst (page_level layout) in
-              pages.(i)<-{ pageFormat=(lo.frame_x1-.lo.frame_x0,lo.frame_y1-.lo.frame_y0);
-                           pageContents=[] };
-
-              let page=pages.(i) in
 
               let endlink cont=
                 continued_link:=None;
@@ -1404,7 +1403,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
               let footnotes=ref [] in
               let footnote_y=ref (-.infinity) in
-              let pp=Array.of_list p in
+              let pp=Array.of_list (all_contents lo) in
               (* Affichage des frames (demouchage) *)
               let h=Hashtbl.create 100 in
 
@@ -1597,11 +1596,12 @@ module Format=functor (D:Document.DocumentStructure)->(
                 (draw_boxes env num)
                 @page.pageContents;
 
-              page.pageContents<-List.rev page.pageContents
+              page.pageContents<-List.rev page.pageContents;
+              page
             in
-            for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
+            let pages=IntMap.mapi draw_page opt_pages.frame_children in
 
-            let pages=Array.map (fun p->
+            let pages=IntMap.map (fun p->
               { p with
                 pageContents=List.map (fun a->match a with
                     Link l when l.is_internal->(
@@ -1620,17 +1620,10 @@ module Format=functor (D:Document.DocumentStructure)->(
               }
             ) pages
             in
-
-            (* List.iter (fun (p,link,dest)->try *)
-            (*                                 let (p',x,y0,y1)=StrMap.find dest !destinations in *)
-            (*                                 pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi } *)
-            (*                                 ::pages.(p).pageContents *)
-            (*   with *)
-            (*       Not_found->() *)
-            (* ) !crosslinks; *)
-
-
-            M.output ~structure:(make_struct positions tree) pages file
+            let (a,b)=IntMap.max_binding pages in
+            let p=Array.make (a+1) { pageFormat=0.,0.;pageContents=[] } in
+            IntMap.iter (fun k a->p.(k)<-a) pages;
+            M.output ~structure:(make_struct positions tree) p file
           )
         in
         resolve 0 defaultEnv

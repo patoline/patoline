@@ -156,11 +156,16 @@ let postprocess_tree tree=
               let w=if num=[] then 0. else env.size in
 
               let text=
-                let dr=(minipage {env with hyphenate=(fun _->[||]);
-                  normalLeftMargin=0.;
-                  normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
-                  size=env.size*.sz}
-                          (paragraph n.displayname)).(0)
+                let dr=try
+                         snd (IntMap.min_binding (
+                           minipage {env with hyphenate=(fun _->[||]);
+                             normalLeftMargin=0.;
+                             normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
+                             size=env.size*.sz}
+                             (paragraph n.displayname)
+                         ))
+                  with
+                      Not_found->empty_drawing_box
                 in
                 List.map (OutputCommon.in_order 1)
                   (dr.drawing_contents dr.drawing_nominal_width)

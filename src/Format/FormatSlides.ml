@@ -110,22 +110,30 @@ module Format=functor (D:Document.DocumentStructure)->(
             let minip,env1=minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
             let minip_title,env2=minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
-            if minip_title.(0).drawing_y0=infinity then
-              minip_title.(0)<-{ minip_title.(0) with drawing_y0=0.;drawing_y1=0. };
-            if minip.(0).drawing_y0=infinity then
-              minip.(0)<-{ minip.(0) with drawing_y0=0.;drawing_y1=0. };
+            let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box
+            in
+            let minip_title0=
+              if minip_title0.drawing_y0=infinity then
+                { minip_title0 with drawing_y0=0.;drawing_y1=0. }
+              else minip_title0
+            in
+            let minip0=try snd (IntMap.min_binding minip) with Not_found->empty_drawing_box in
+            let minip0=if minip0.drawing_y0=infinity then
+              { minip0 with drawing_y0=0.;drawing_y1=0. }
+              else minip0
+            in
 
             let tx=max
-              (minip.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
-              (minip_title.(0).drawing_y1-.minip_title.(0).drawing_y0+.3.*.margin)
+              (minip0.drawing_y1-.minip_title0.drawing_y0+.3.*.margin)
+              (minip_title0.drawing_y1-.minip_title0.drawing_y0+.3.*.margin)
             in
             let tit=
               if M.arg1<>[] then
-                drawing_blit minip.(0) 0.
+                drawing_blit minip0 0.
                   tx
-                  minip_title.(0)
+                  minip_title0
               else
-                minip.(0)
+                minip0
             in
 
             let r=1. in
@@ -134,25 +142,25 @@ module Format=functor (D:Document.DocumentStructure)->(
               if M.arg1=[] then [
                 Path ({default with close=true},
                       [rounded_corners ~r
-                          (0.,minip.(0).drawing_y0-.margin)
-                          (max mes minip.(0).drawing_nominal_width+.margin,
-                           minip.(0).drawing_y1+.margin)]);
+                          (0.,minip0.drawing_y0-.margin)
+                          (max mes minip0.drawing_nominal_width+.margin,
+                           minip0.drawing_y1+.margin)]);
               ]
               else
                 [
                 Path ({default with close=true},
                       [rounded_corners ~r
-                          (0.,minip.(0).drawing_y0-.margin)
-                          (max mes minip.(0).drawing_nominal_width+.margin,
-                           tx+.minip_title.(0).drawing_y1+.margin)]);
+                          (0.,minip0.drawing_y0-.margin)
+                          (max mes minip0.drawing_nominal_width+.margin,
+                           tx+.minip_title0.drawing_y1+.margin)]);
                 Path ({default with fillColor=Some !block_background;strokingColor=None },
                       [rounded_corners ~ne:r ~nw:r
-                          (0.,tx+.minip_title.(0).drawing_y0-.margin)
-                          (max mes minip.(0).drawing_nominal_width+.margin,
-                           tx+.minip_title.(0).drawing_y1+.margin)])
+                          (0.,tx+.minip_title0.drawing_y0-.margin)
+                          (max mes minip0.drawing_nominal_width+.margin,
+                           tx+.minip_title0.drawing_y1+.margin)])
               ]
             in
-            let w=max mes (minip.(0).drawing_nominal_width+.margin) in
+            let w=max mes (minip0.drawing_nominal_width+.margin) in
             let margin_bottom_top=0.5*.env.size in
             let dr={tit with
               drawing_y1=tit.drawing_y1+.margin_bottom_top;
@@ -494,13 +502,11 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec resolve i env_resolved=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let tree=structure in
-          let logs=ref [] in
           let slides=ref [] in
           let layouts=ref [env_resolved.new_page (empty_frame,[])] in
           let reboot=ref false in
           let toc=ref [] in
-          let rec typeset_structure path tree env0=
-            (* debug_env env0; *)
+          let rec typeset_structure path tree layout env0=
             let env0=
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               { env0 with
@@ -556,8 +562,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   (* Typesetting de tous les états *)
 
-                  let rec typeset_states state reboot_ env=
-                    if state>max_state then (reboot_,env) else (
+                  let rec typeset_states state reboot_ layout0 env=
+                    if state>max_state then (reboot_,layout0,env) else (
                       let real_par=ref 0 in
                       let par_map=ref IntMap.empty in
                       let rec make_paragraphs t=match t with
@@ -602,6 +608,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         badnesses.(k)<-badnesses0.(a);
                       ) !par_map;
                       let (logs_,opt_pages,figs',user')=TS.typeset
+                        ~initial_line:{ uselessLine with layout=(Box.frame_top layout0) }
                         ~completeLine:compl
                         ~figure_parameters:fig_params
                         ~figures:figures
@@ -614,10 +621,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                       opts.(state)<-
                         List.map (fun l->
                           { l with
-                            line={ l.line with paragraph=IntMap.find l.line.paragraph !par_map }
+                            line={ l.line with
+                              paragraph=IntMap.find l.line.paragraph !par_map;
+                            };
                           }
-                        ) (if Array.length opt_pages>0 then snd opt_pages.(0) else []);
+                        ) (all_contents (snd (IntMap.max_binding opt_pages.frame_children)));
 
+                      let next_layout=opt_pages,[] in
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
                         let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -625,11 +635,11 @@ module Format=functor (D:Document.DocumentStructure)->(
                       in
                       typeset_states (state+1)
                         (reboot_ || (reboot' && !fixable) || not labl_exists)
+                        next_layout
                         env2
                     )
                   in
-
-                  let reboot',env'=typeset_states 0 !reboot env1 in
+                  let reboot',layout',env'=typeset_states 0 !reboot (Box.frame_top layout) env1 in
                   reboot:=reboot';
                   (* Fini *)
 
@@ -692,15 +702,15 @@ module Format=functor (D:Document.DocumentStructure)->(
                   (* Fin du placement vertical *)
 
                   slides:=(path,tree,paragraphs0,figures0,figure_trees0,env',opts)::(!slides);
-                  n.node_post_env env0 env'
+                  layout',n.node_post_env env0 env'
                 )
               | Node n->
-                n.node_post_env env0 (
-                  IntMap.fold (fun k a m->typeset_structure (k::path) a m) n.children
-                    (n.node_env env0)
-                )
-              | Paragraph p->p.par_post_env env0 (p.par_env env0)
-              | FigureDef f->f.fig_post_env env0 (f.fig_env env0)
+                let l,e=IntMap.fold (fun k a (l,e)->typeset_structure (k::path) a l e) n.children
+                  (layout,n.node_env env0)
+                in
+                l,n.node_post_env env0 e
+              | Paragraph p->layout,p.par_post_env env0 (p.par_env env0)
+              | FigureDef f->layout,f.fig_post_env env0 (f.fig_env env0)
           in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
           let env0=match tree with
@@ -709,7 +719,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             | _->env_resolved
           in
 
-          let env_final=typeset_structure [] tree env0 in
+          let _,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
 
           if i < !max_iterations-1 && !reboot then (
@@ -721,7 +731,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let toc=List.fold_left (fun m (n,dis,path,env)->
               let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-              let mm=match b with []->m | _::h::_->IntMap.add h (n,dis,path,env) m in
+              let mm=match b with _::h::_->IntMap.add h (n,dis,path,env) m | _->m in
               mm
             ) IntMap.empty !toc
             in
@@ -798,7 +808,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                       [rect])
               ]
               in
-              let drawn=IntMap.fold (fun _ a m->
+              let _=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->in_order 1
                   (translate m y_menu (OutputCommon.resize alpha x)))
                          (draw_boxes env_final a))@(!cont);
@@ -831,12 +841,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                       Node n->n.displayname
                     | _->[]))
                 in
-                let (_,yy0,_,yy1)=bounding_box tit in
-                let y1=slideh-.env.size*.2. in
 
                 page.pageContents<-(List.map (translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
-                let w,h=slidew,slideh in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
                 let destinations=ref StrMap.empty in
@@ -860,8 +867,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                     let comp=compression paragraphs param line in
                     let rec draw_box x y box=
-                      let lowy=y+.lower_y box in
-                      let uppy=y+.upper_y box in
                       match box with
                           Kerning kbox ->(
                             let fact=(box_size kbox.kern_contents/.1000.) in
@@ -911,7 +916,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                           let dest_page=
                             try
                               let line=MarkerMap.find (Label l) env_final.user_positions in
-                              print_text_line paragraphs line;
                               Box.page line
                             with
                                 Not_found->(-1)
@@ -952,7 +956,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         )
                         | b->box_width comp b
                     in
-                    let x1=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
+                    let _=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
                     ()
                   )
                 done;

@@ -79,6 +79,7 @@ module Make :
         ('b * 'c * 'd * 'e * 'f * LineMap.key * 'g * 'h) LineMap.t ->
         ('i * LineMap.key) list -> unit
       val typeset :
+        ?initial_line:Box.line->
         completeLine:(Box.box array array ->
                       Box.drawingBox array ->
                       figurePosition Util.IntMap.t ->
@@ -116,6 +117,6 @@ module Make :
                 array ->
         Box.box array array ->
         TypoLanguage.message list *
-          ((Box.frame_zipper*Box.placed_line list) array) *
+          Box.frame *
           figurePosition Util.IntMap.t * L.t Box.MarkerMap.t
     end

@@ -111,10 +111,11 @@ and frame={
   frame_y0:float;
   frame_x1:float;
   frame_y1:float;
-  frame_content:box list
+  frame_content:placed_line list
 }
 
 and frame_zipper=frame*((int*frame) list)
+
 
 
 (* Helper functions for layouts *)
@@ -205,6 +206,12 @@ let frame_page l=
 
 let page l=frame_page l.layout
 
+let all_contents frame=
+  let rec collect f c=
+    IntMap.fold (fun k a m->collect a m) (f.frame_children) (f.frame_content@c)
+  in
+  collect frame []
+
 (* Helper functions for lines *)
 
 let uselessLine=
@@ -236,7 +243,12 @@ let default_params={ measure=0.;
                    }
 
 
-
+let lines_eq l0 l1=
+  ({ l0 with layout=empty_frame,[] }=
+      { l1 with layout=empty_frame,[] })
+  &&
+    (List.map snd (snd l0.layout) =
+        List.map snd (snd l1.layout))
 
 
 (* Fin des definitions *)
@@ -244,6 +256,20 @@ let default_params={ measure=0.;
 
 module MarkerMap=Map.Make(struct type t=marker let compare=compare end)
 
+let empty_drawing_box=
+    {
+      drawing_min_width=0.;
+      drawing_nominal_width=0.;
+      drawing_max_width=0.;
+      drawing_width_fixed = true;
+      drawing_adjust_before = false;
+      drawing_y0=0.;
+      drawing_y1=0.;
+      drawing_badness=(fun _->0.);
+      drawing_break_badness=0.;
+      drawing_states=IntSet.empty;
+      drawing_contents=(fun _->[])
+    }
 
 let drawing ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
   let states=List.fold_left (fun st0 x->match x with
@@ -342,8 +368,7 @@ let rec box_interval=function
   | Drawing x->x.drawing_min_width, x.drawing_nominal_width, x.drawing_max_width
   | Kerning x->
       let (a,b,c)=box_interval x.kern_contents in
-      let sz=box_size x.kern_contents in
-        (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
+      (a +. x.advance_width, b +. x.advance_width, c+. x.advance_width)
   | Hyphen x->boxes_interval x.hyphen_normal
   | _->(0.,0.,0.)
 and boxes_interval boxes=

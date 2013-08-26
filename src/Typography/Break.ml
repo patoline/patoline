@@ -105,8 +105,8 @@ module Make (L:Line with type t=Box.line)=(
       Printf.fprintf f "};\n";
       close_out f
 
-    let typeset ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness paragraphs=
-      if Array.length paragraphs=0 then ([],[||],IntMap.empty,MarkerMap.empty) else begin
+    let typeset ?(initial_line=uselessLine) ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness paragraphs=
+      if Array.length paragraphs=0 then ([],empty_frame,IntMap.empty,MarkerMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
@@ -164,9 +164,9 @@ module Make (L:Line with type t=Box.line)=(
       let endNode=ref None in
 
       let first_parameters=parameters.(0)
-        paragraphs figures default_params IntMap.empty MarkerMap.empty uselessLine uselessLine
+        paragraphs figures default_params IntMap.empty MarkerMap.empty initial_line initial_line
       in
-      let first_line=(uselessLine,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
+      let first_line=(initial_line,0.,TypoLanguage.Normal,first_parameters,[],0.,None,IntMap.empty,MarkerMap.empty) in
       let last_todo_line=ref first_line in
       let demerits=H.create (Array.length paragraphs) in
 
@@ -308,13 +308,14 @@ module Make (L:Line with type t=Box.line)=(
               else if node.hyphenEnd<0 then (node.lineEnd+1, node.paragraph) else
                 (node.lineEnd, node.paragraph)
           in
+
           if pi >= Array.length paragraphs then (
             (* The game is over. Place remaining figures. *)
             if node.lastFigure+1>=Array.length figures then (
               register_endNode ()
             ) else (
               place_figure ()
-            )
+            );
           ) else (
             (* Move to next nodes. *)
             let flushed=
@@ -335,15 +336,14 @@ module Make (L:Line with type t=Box.line)=(
                 in
                 if placable then place_figure ();
               );
-              let page0=if snd node.layout=[] then 0 else page node in
               let pages=ref lastPages in
               let layouts0,h0=
-                if snd node.layout=[] then
+                if snd node.layout=[] then (
                   let zip=new_page.(pi) node.layout in
                   let h0=(fst zip).frame_y1 in
                   pages:=zip::(!pages);
                   zip,h0
-                else
+                ) else
                   if lastParameters.min_page_after>0 then
                     let rec make_new_pages n zip=if n<=0 then zip else (
                       let zip=new_page.(pi) zip in
@@ -406,7 +406,7 @@ module Make (L:Line with type t=Box.line)=(
                           let comp1=comp paragraphs nextParams.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                           let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
                           let height'=
-                            if frame_page nextLayout==page node && (not (node==uselessLine)) then (
+                            if frame_page nextLayout==page node && (not (node==initial_line)) then (
 
                           (* Demander à toutes les lignes au-dessus de pousser nextNode le plus bas possible *)
                               let rec v_distance cur_node0 parameters comp0 min_h=
@@ -636,9 +636,10 @@ module Make (L:Line with type t=Box.line)=(
           break false !todo'
         )
       in
+
       let last_failure=ref LineMap.empty in
 
-      let todo0=LineMap.singleton uselessLine first_line in
+      let todo0=LineMap.singleton initial_line first_line in
       let r_todo=ref todo0 in
       let finished=ref false in
       let allow_impossible=ref false in
@@ -667,34 +668,39 @@ module Make (L:Line with type t=Box.line)=(
           | Some x->x
       in
       try
-        let rec makeParagraphs log node result=
+        let rec add_content fr0 path cont=
+          (* fr0 est le mec final qu'on va renvoyer *)
+          match path with
+              []->{ fr0 with frame_content=cont::fr0.frame_content }
+            | (h,_)::s->
+              { fr0 with
+                frame_children=IntMap.add h
+                  (add_content
+                     (try IntMap.find h fr0.frame_children with Not_found->empty_frame)
+                     s cont)
+                  fr0.frame_children
+              }
+        in
+        (* Remonter jusqu'en haut *)
+        let rec makeParagraphs log node frame=
           let n0,_,log_,params',_,_,next,_,_=node in
           match next with
-              None->(log,result)
+              None->log,frame
             | Some n->(
-                (* print_text_line paragraphs n0; *)
-              makeParagraphs (match log_ with TypoLanguage.Normal -> log | _->log_::log) n
-                ({line_params=params';
-                  line=n0}::result)
+              makeParagraphs (match log_ with TypoLanguage.Normal -> log | _->log_::log)
+                n
+                (add_content frame (snd n0.layout) { line_params=params'; line=n0 })
             )
         in
-        let pages=Array.map (fun x->(x,[])) (Array.of_list (List.rev layouts)) in
-        let rec makePages=function
-        []->()
-          | h::s ->(
-            pages.(page h.line) <- (fst pages.(page h.line),
-                                    h::snd pages.(page h.line));
-            makePages s
-          )
-        in
-        let log,ln=makeParagraphs [] node0 [] in
-        (* print_graph "graph_opt" paragraphs demerits ln; *)
-        makePages ln;
-        (log, Array.map (fun (a,b)->a,List.rev b) pages, figs0,user0)
+        let log,pages=makeParagraphs [] node0 empty_frame in
+        (log, pages, figs0,user0)
       with
-          Not_found -> if Array.length paragraphs=0 && Array.length figures=0 then ([],[||],IntMap.empty,MarkerMap.empty) else (
-            Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
-            [],[||],IntMap.empty,MarkerMap.empty
-          )
+          Not_found ->
+            if Array.length paragraphs=0 && Array.length figures=0 then
+              ([],empty_frame,IntMap.empty,MarkerMap.empty)
+            else (
+              Printf.fprintf stderr "%s" (TypoLanguage.message (TypoLanguage.No_solution ""));
+              [],empty_frame,IntMap.empty,MarkerMap.empty
+            )
       end
   end)

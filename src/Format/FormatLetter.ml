@@ -66,11 +66,21 @@ module Format=functor (D:DocumentStructure)->struct
                        in
                        let pars_sender=node (List.map (fun l->paragraph [tT l]) (lines_sender)) in
                        let pars_recip=node (List.map (fun l->paragraph [tT l]) (lines_recipient)) in
-                       let minip_sender=(Default.minipage { env with
-                                                              normalMeasure=w;
-                                                              par_indent=[]} pars_sender).(0) in
-                       let minip_recip=(Default.minipage { env with normalMeasure=w;
-                                                             par_indent=[] } pars_recip).(0) in
+                       let minip_sender=try
+                                          snd (IntMap.min_binding
+                                                 (Default.minipage { env with
+                                                   normalMeasure=w;
+                                                   par_indent=[]} pars_sender)
+                                          )
+                         with Not_found->empty_drawing_box
+                       in
+                       let minip_recip=try
+                                         snd (IntMap.min_binding
+                                                (Default.minipage { env with normalMeasure=w;
+                                                  par_indent=[] } pars_recip)
+                                         )
+                         with Not_found->empty_drawing_box
+                       in
                        let x0=min 0. (env.normalMeasure/.2.-.minip_sender.drawing_nominal_width) in
                        let x1=max (env.normalMeasure/.2.)
                          (env.normalMeasure-.minip_recip.drawing_nominal_width) in

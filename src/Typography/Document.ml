@@ -1640,9 +1640,9 @@ let update_names env figs user=
             (* print_line pos; *)
             (* print_line c; *)
           );
-          needs_reboot:= !needs_reboot || (pos<>c);
+          needs_reboot:= !needs_reboot || (not (lines_eq pos c));
           StrMap.add k (a,b,pos) m
-        with Not_found -> (Printf.fprintf stderr "reboot : position of %S (%S) not found\n" k b;
+        with Not_found -> ((* Printf.fprintf stderr "reboot : position of %S (%S) not found\n" k b; *)
                            needs_reboot:=true; m)
       ) (names env) (names env)
            }

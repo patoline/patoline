@@ -26,13 +26,8 @@ open Break
 open Util
 
 type page={mutable pageContents:raw list}
-let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) array)=
+let output paragraphs figures env (opt_pages:frame)=
 
-  let opt_pages=
-    if Array.length opt_pages>0 then (Array.map snd opt_pages) else
-      [|[{line_params=default_params;
-          line=uselessLine}]|]
-  in
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
 
   let par=ref (-1) in
@@ -308,5 +303,4 @@ let output paragraphs figures env (opt_pages:(frame_zipper*placed_line list) arr
       drawing_break_badness=0.;
       drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) page.pageContents) }
   in
-  (* Array.mapi (fun i (a,b)->draw_page i b) opt_pages *)
-  Array.mapi (fun i b->draw_page i b) opt_pages
+  IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children
