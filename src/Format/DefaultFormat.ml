@@ -846,6 +846,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                      Glue { Box.empty_drawing_box with
                        drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
                        drawing_badness=(fun _->infinity) }])]
+    let mathbreak=mathsText (break ())
 
 
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
@@ -903,9 +904,14 @@ module Format=functor (D:Document.DocumentStructure)->(
     end
 
     let displayedFormula a b c d e f g line=
-      { (center a b c d e f g line) with
-        min_height_before=3.*.a.lead/.4.;
-        min_height_after=3.*.a.lead/.4.;
+      let cent=center a b c d e f g line in
+      { cent with
+        min_height_before=if line.lineStart<=0 then 3.*.a.lead/.4. else cent.min_height_before;
+        min_height_after=
+          if line.lineEnd>=Array.length b.(line.paragraph) then
+            3.*.a.lead/.4.
+          else
+            cent.min_height_after;
         not_first_line=true }
 
     module Env_center = struct
