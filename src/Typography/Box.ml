@@ -143,7 +143,8 @@ let empty_frame={
 
 let make_page (w,h) t=
   let page={empty_frame with
-    frame_x0=0.;frame_y0=0.;frame_x1=w;frame_y1=h
+    frame_x0=0.;frame_y0=0.;frame_x1=w;frame_y1=h;
+    frame_tags=["page"]
   }
   in
   let m=try fst (IntMap.max_binding (fst t).frame_children) with Not_found-> -1 in
