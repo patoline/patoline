@@ -277,6 +277,11 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
     | _->p0
   ) p line
 
+let break ()=
+  [bB (fun env->[Glue { Box.empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
+                 Glue { Box.empty_drawing_box with
+                   drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
+                   drawing_badness=(fun _->infinity) }])]
 
 module type Output=
   sig
@@ -839,14 +844,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                   drawing_contents=(fun _-> List.map (OutputCommon.translate 0. 0.) !contents)
                 }]
           )]
-
-
-    let break ()=
-      [bB (fun env->[Glue { Box.empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
-                     Glue { Box.empty_drawing_box with
-                       drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
-                       drawing_badness=(fun _->infinity) }])]
-    let mathbreak=mathsText (break ())
 
 
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
