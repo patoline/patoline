@@ -840,6 +840,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                 }]
           )]
 
+
+    let break ()=
+      [bB (fun env->[Glue { Box.empty_drawing_box with drawing_min_width=0.;drawing_max_width=env.normalMeasure;drawing_nominal_width=0. };
+                     Glue { Box.empty_drawing_box with
+                       drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
+                       drawing_badness=(fun _->infinity) }])]
+
+
     module Env_env (M:sig val arg1:Document.environment->Document.environment end)=struct
       let do_begin_env ()=
         env_stack:=(List.map fst (snd !D.structure)) :: !env_stack ;
