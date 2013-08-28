@@ -158,7 +158,7 @@ let postprocess_tree tree=
               let text=
                 let dr=try
                          snd (IntMap.min_binding (
-                           minipage {env with hyphenate=(fun _->[||]);
+                           OutputDrawing.minipage {env with hyphenate=(fun _->[||]);
                              normalLeftMargin=0.;
                              normalMeasure=env.normalMeasure-.(x1-.x0)/.2.-.w;
                              size=env.size*.sz}
@@ -283,10 +283,10 @@ module Output (M:OutputPaper.Driver)=struct
     Def.basic_output out_params (postprocess_tree structure) defaultEnv file
 end
 
-  let minipage=Default.minipage
+  let minipage=OutputDrawing.minipage
   let displayedFormula=Default.displayedFormula
-  let node=Default.node
-  let paragraph=Default.paragraph
+  let node=DefaultFormat.node
+  let paragraph=DefaultFormat.paragraph
 
 
   let alegreya=

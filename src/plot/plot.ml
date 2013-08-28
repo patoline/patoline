@@ -22,7 +22,7 @@ open Typography.OutputCommon
 open Typography.Util
 open Typography.Box
 open Typography
-
+open DefaultFormat
 module Plot(D:Document.DocumentStructure)=struct
 
   let colors i n=

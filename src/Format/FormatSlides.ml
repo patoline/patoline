@@ -28,7 +28,7 @@ open Typography.Fonts
 open Typography.Fonts.FTypes
 open CamomileLibrary
 open Typography.Document
-
+open DefaultFormat
 module MathFonts=DefaultFormat.MathFonts
 module MathsFormat=DefaultFormat.MathsFormat
 
@@ -81,7 +81,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 with
                   module TableOfContents:=Default.TableOfContents))
 
-
     module Env_block (M:sig val arg1:Typography.Document.content list end)=struct
 
       let do_begin_env ()=
@@ -107,9 +106,9 @@ module Format=functor (D:Document.DocumentStructure)->(
               normalMeasure=mes-.2.*.margin
             }
             in
-            let minip,env1=minipage' env0 (map_params stru,[]) in
+            let minip,env1=OutputDrawing.minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env2=minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
+            let minip_title,env2=OutputDrawing.minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
             let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box
             in
             let minip_title0=

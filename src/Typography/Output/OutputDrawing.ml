@@ -304,3 +304,38 @@ let output paragraphs figures env (opt_pages:frame)=
       drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) page.pageContents) }
   in
   IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children
+
+
+
+
+let minipage env str=
+  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
+  let (_,pages,fig',user')=TS.typeset
+    ~completeLine:compl
+    ~figure_parameters:fig_params
+    ~figures:figures
+    ~parameters:params
+    ~new_page:new_page_list
+    ~new_line:new_line_list
+    ~badness:bads
+    pars
+  in
+  (output pars figures
+     env'
+     pages)
+
+let minipage' env str=
+  let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
+  let (_,pages,fig',user')=TS.typeset
+    ~completeLine:compl
+    ~figure_parameters:fig_params
+    ~figures:figures
+    ~parameters:params
+    ~new_page:new_page_list
+    ~new_line:new_line_list
+    ~badness:bads
+    pars
+  in
+  (output pars figures
+     env'
+     pages,env')

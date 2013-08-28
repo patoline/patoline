@@ -283,6 +283,25 @@ let break ()=
                    drawing_min_width=0.;drawing_nominal_width=0.;drawing_max_width=0.;
                    drawing_badness=(fun _->infinity) }])]
 
+
+let node ?(node_env=(fun env->env)) l=
+  Document.Node
+    {Document.empty with
+      Document.node_env=node_env;
+      Document.children=List.fold_left
+        (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
+  []
+let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
+  (Paragraph {par_contents=cont; par_env=par_env;
+              par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
+                counters=env2.counters;
+                user_positions=env2.user_positions });
+              par_badness=(badness);
+              par_parameters=parameters; par_completeLine=Complete.normal;
+              par_states=IntSet.empty;
+              par_paragraph=(-1)}, [])
+
+
 module type Output=
   sig
     type output
@@ -299,14 +318,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let sourcePosition(file,line,column,char) =
       [tT (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
-
-    let node ?(node_env=(fun env->env)) l=
-      Document.Node
-        {Document.empty with
-          Document.node_env=node_env;
-          Document.children=List.fold_left
-            (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
-      []
 
     let parameters=parameters
     let center = do_center parameters
@@ -453,16 +464,6 @@ module Format=functor (D:Document.DocumentStructure)->(
         | _->with_title
       in
       with_chapters
-
-    let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
-      (Paragraph {par_contents=cont; par_env=par_env;
-                  par_post_env=(fun env1 env2 -> { env1 with names=env2.names;
-                                                     counters=env2.counters;
-                                                     user_positions=env2.user_positions });
-                  par_badness=(badness);
-                  par_parameters=parameters; par_completeLine=Complete.normal;
-                  par_states=IntSet.empty;
-                  par_paragraph=(-1)}, [])
 
 
     let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
@@ -674,37 +675,6 @@ module Format=functor (D:Document.DocumentStructure)->(
       lang_ML keywords specials s
 
 
-    let minipage env str=
-      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
-      let (_,pages,fig',user')=TS.typeset
-        ~completeLine:compl
-        ~figure_parameters:fig_params
-        ~figures:figures
-        ~parameters:params
-        ~new_page:new_page_list
-        ~new_line:new_line_list
-        ~badness:bads
-        pars
-      in
-      (OutputDrawing.output pars figures
-         env'
-         pages)
-
-    let minipage' env str=
-      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
-      let (_,pages,fig',user')=TS.typeset
-        ~completeLine:compl
-        ~figure_parameters:fig_params
-        ~figures:figures
-        ~parameters:params
-        ~new_page:new_page_list
-        ~new_line:new_line_list
-        ~badness:bads
-        pars
-      in
-      (OutputDrawing.output pars figures
-         env'
-         pages,env')
 
     let env_stack=ref []
 
@@ -728,7 +698,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           | x->D.structure:=x);
         let cont=
           [bB (fun env->
-            let pages=IntMap.bindings (minipage env (t,[])) in
+            let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
             List.map (fun x->Drawing x) (List.map snd pages)
           )]
         in
@@ -755,7 +725,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         let _,str_counter=try StrMap.find "_structure" env.counters with Not_found -> -1,[] in
         let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
 	let caption =
-	  minipage {env with normalLeftMargin=0.} (
+	  OutputDrawing.minipage {env with normalLeftMargin=0.} (
 	    paragraph ((
               [ tT "Figure"; tT " ";
                 tT (String.concat "." (List.map (fun x->string_of_int (x+1)) (List.rev (num@sect_num)))) ]
@@ -789,7 +759,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                (fun i x->
                   Array.mapi (fun j y->
                     let minip=try IntMap.find 0
-                                    (minipage
+                                    (OutputDrawing.minipage
                                        { env with normalMeasure=widths0.(j) } y)
                       with _->empty_drawing_box
                     in

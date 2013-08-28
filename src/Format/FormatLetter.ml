@@ -43,12 +43,14 @@ module Format=functor (D:DocumentStructure)->struct
       Not_found->if s="" then [] else [s]
   let rec repeat x n=if n<=0 then [] else x::(repeat x (n-1))
 
+  let node=DefaultFormat.node
+  let paragraph=DefaultFormat.paragraph
   let postprocess_tree tree=
     fst (
       top (
         newChildBefore (tree,[])
           (fst
-             (paragraph
+             (DefaultFormat.paragraph
                 [ bB (fun env->
                        let w=env.normalMeasure/.2. in
                        let sender=match tree with
@@ -68,7 +70,7 @@ module Format=functor (D:DocumentStructure)->struct
                        let pars_recip=node (List.map (fun l->paragraph [tT l]) (lines_recipient)) in
                        let minip_sender=try
                                           snd (IntMap.min_binding
-                                                 (Default.minipage { env with
+                                                 (OutputDrawing.minipage { env with
                                                    normalMeasure=w;
                                                    par_indent=[]} pars_sender)
                                           )
@@ -76,7 +78,7 @@ module Format=functor (D:DocumentStructure)->struct
                        in
                        let minip_recip=try
                                          snd (IntMap.min_binding
-                                                (Default.minipage { env with normalMeasure=w;
+                                                (OutputDrawing.minipage { env with normalMeasure=w;
                                                   par_indent=[] } pars_recip)
                                          )
                          with Not_found->empty_drawing_box

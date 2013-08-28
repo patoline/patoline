@@ -757,7 +757,6 @@ let beginFigure name=
 
 
 
-
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
 let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=IntSet.empty) complete parameters par=
   match !str with
@@ -1402,9 +1401,6 @@ let draw env x=
   let env'=boxify buf nbuf env x in
   adjust_width env buf nbuf;
   draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
-
-
-
 
 
 
