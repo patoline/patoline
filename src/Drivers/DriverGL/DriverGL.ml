@@ -1303,7 +1303,7 @@ function show(event){
 	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
 	      l.uri l.dest_page l.dest_x l.dest_y;
 	    flush stderr;
-	    if l.uri = "" then
+	    if Str.string_match (Str.regexp "[_]*[0-9]*") l.uri 0 then
 	      begin
 		cur_page := l.dest_page;
 		cur_state := 0;

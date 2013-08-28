@@ -1151,31 +1151,33 @@ let boxify buf nbuf fixable env0 l=
 (** Typesets boxes on a single line, then converts them to a list of basic
     drawing elements: [OutputCommon.raw]. *)
 let draw_boxes env l=
-  let rec draw_boxes x y dr l=match l with
-      []->dr,x
+  let rec draw_boxes ignore_link x y dr l=match l with
+      []->ignore_link,dr,x
     | Kerning kbox::s ->(
-      let dr',x'=draw_boxes (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
-      draw_boxes (x'+.kbox.advance_width) y dr' s
+      let ignore_link',dr',x'=draw_boxes ignore_link (x+.kbox.kern_x0) (y+.kbox.kern_y0) dr [kbox.kern_contents] in
+      draw_boxes ignore_link' (x'+.kbox.advance_width) y dr' s
     )
     | Hyphen h::s->(
-      let dr1,w1=Array.fold_left (fun (dr',x') box->
-        let dr'',x''=draw_boxes x' y dr' [box] in
-        dr'',x''
-      ) (dr,x) h.hyphen_normal
+      let ignore_link1,dr1,w1=Array.fold_left (fun (ignore_link',dr',x') box->
+        draw_boxes ignore_link' x' y dr' [box] 
+      ) (ignore_link,dr,x) h.hyphen_normal
       in
-      draw_boxes w1 y dr1 s
+      draw_boxes ignore_link1 w1 y dr1 s
     )
     | GlyphBox a::s->(
       let box=OutputCommon.Glyph { a with glyph_x=a.glyph_x+.x;glyph_y=a.glyph_y+.y } in
       let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
-      draw_boxes (x+.w) y (box::dr) s
+      draw_boxes ignore_link (x+.w) y (box::dr) s
     )
     | Glue g::s
     | Drawing g ::s->(
       let w=g.drawing_nominal_width in
       let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
-      draw_boxes (x+.w) y (box@dr) s
-    )
+      draw_boxes ignore_link (x+.w) y (box@dr) s
+    ) 
+    | Marker (BeginLink _ | BeginURILink _)::s when ignore_link > 0-> 
+       draw_boxes (ignore_link+1) x y dr s
+
     | Marker (BeginURILink l)::s->(
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
                  link_order=0;
@@ -1183,7 +1185,7 @@ let draw_boxes env l=
                  dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                  link_contents=[] }
       in
-      draw_boxes x y (Link link::dr) s
+      draw_boxes 1 x y (Link link::dr) s
     )
     | Marker (BeginLink l)::s->(
       let dest_page=
@@ -1201,7 +1203,7 @@ let draw_boxes env l=
                  link_contents=[]
                }
       in
-      draw_boxes x y (Link link::dr) s
+      draw_boxes 1 x y (Link link::dr) s
     )
     | Marker EndLink::s->(
       let rec link_contents u l=match l with
@@ -1213,18 +1215,22 @@ let draw_boxes env l=
           h.link_y1<-y1;
           h.link_closed<-true;
           h.link_x1<-x;
-          Link h::s
+          List.rev u
         )
         | h::s->link_contents (h::u) s
       in
-      draw_boxes x y (link_contents [] dr) s
+      let ignore_link = ignore_link - 1 in
+      if ignore_link > 0 then
+       draw_boxes ignore_link x y dr s
+      else
+       draw_boxes 0 x y (link_contents [] dr) s
     )
 
     | b::s->
       let _,w,_=box_interval b in
-      draw_boxes (x+.w) y dr s
+      draw_boxes ignore_link (x+.w) y dr s
   in
-  fst (draw_boxes 0. 0. [] l)
+  let _,dr,_ = draw_boxes 0 0. 0. [] l in dr
 
 
 let rec bezier_of_boxes=function
