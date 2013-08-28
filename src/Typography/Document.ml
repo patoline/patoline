@@ -209,6 +209,7 @@ and environment={
   positioning:glyph_ids list -> glyph_ids list;
   counters:(int*int list) StrMap.t;     (** Niveau du compteur, état.  *)
   names:((int*int list) StrMap.t * string * line) StrMap.t; (** Niveaux de tous les compteurs à cet endroit, type, position  *)
+  fixable:bool ref;
   new_page:Box.frame_zipper->Box.frame_zipper;
   new_line:environment->line->parameters->
            line->parameters->Box.frame_zipper->float->float;
@@ -1057,7 +1058,7 @@ module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
 
 
 (** Converts a list of contents into a list of boxes, which is the next Patoline layer. *)
-let boxify buf nbuf fixable env0 l=
+let boxify buf nbuf env0 l=
   let rec boxify keep_cache env=function
       []->env
     | B (b, cache)::s->
@@ -1067,7 +1068,7 @@ let boxify buf nbuf fixable env0 l=
             let acc= !env_accessed in
             env_accessed:=false;
             let l = b env in
-            (if keep_cache && not !env_accessed then cache := Some l else fixable:=true);
+            (if keep_cache && not !env_accessed then cache := Some l else env0.fixable:=true);
             env_accessed:=acc || !env_accessed;
             l
           )
@@ -1078,7 +1079,7 @@ let boxify buf nbuf fixable env0 l=
         env_accessed:=false;
         let c = b env in
         let env'=if !env_accessed then (
-          fixable:=true;
+          env0.fixable:=true;
           boxify false env c
         ) else boxify keep_cache env c
         in
@@ -1390,7 +1391,7 @@ let adjust_width env buf nbuf =
 let boxify_scoped env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
-  let _=boxify buf nbuf (ref false) env x in
+  let _=boxify buf nbuf env x in
   adjust_width env buf nbuf;
   Array.to_list (Array.sub !buf 0 !nbuf)
 
@@ -1398,7 +1399,7 @@ let boxify_scoped env x=
 let draw env x=
   let buf=ref [||] in
   let nbuf=ref 0 in
-  let env'=boxify buf nbuf (ref false) env x in
+  let env'=boxify buf nbuf env x in
   adjust_width env buf nbuf;
   draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
 
@@ -1409,7 +1410,6 @@ let draw env x=
 
 module type DocumentStructure=sig
   val structure:(tree*(int*tree) list) ref
-  val fixable:bool ref
 end
 module type Format=sig
   val defaultEnv:environment
@@ -1429,7 +1429,7 @@ end
 
 (** "flattens" a document tree to an array of paragraphs, a paragraph
     being an array of boxes. *)
-let flatten env0 fixable str=
+let flatten env0 str=
   let paragraphs=ref [] in
   let trees=ref [] in
   let figures=ref IntMap.empty in
@@ -1447,7 +1447,7 @@ let flatten env0 fixable str=
   let frees=ref 0 in
   let add_paragraph env tree path p=
     nbuf:= !frees;
-    let v=boxify buf nbuf fixable env p.par_contents in
+    let v=boxify buf nbuf env p.par_contents in
     adjust_width env buf nbuf;
     paragraphs:=(Array.sub !buf 0 !nbuf)::(!paragraphs);
     trees:=(tree,path)::(!trees);

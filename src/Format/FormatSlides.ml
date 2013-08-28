@@ -543,9 +543,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                     | _->0
                   in
 
-                  let fixable=ref false in
                   let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
-                    figures0,figure_trees0=flatten env0 fixable tree
+                    figures0,figure_trees0=flatten env0 tree
                   in
                   let max_state=
                     Array.fold_left (
@@ -634,7 +633,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         MarkerMap.mem (Label labl) env2.user_positions
                       in
                       typeset_states (state+1)
-                        (reboot_ || (reboot' && !fixable) || not labl_exists)
+                        (reboot_ || (reboot' && !(env.fixable)) || not labl_exists)
                         next_layout
                         env2
                     )

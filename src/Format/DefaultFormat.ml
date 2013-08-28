@@ -473,7 +473,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let fsize=3.7 in
       let feat= [ Opentype.standardLigatures ] in
       let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
-        {
+      {
           fontFamily=alegreya;
           fontMonoFamily=bitstreamverasansmono (*texgyrecursor*);
 	  fontMonoRatio=font_size_ratio alegreya bitstreamverasansmono (*texgyrecursor*);
@@ -513,6 +513,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           hyphenate=hyphenate_dict "hyph-en-us.hdict";
           counters=StrMap.empty;
           names=StrMap.empty;
+          fixable=ref false;
           user_positions=MarkerMap.empty;
           new_page=Document.default_new_page a4;
           new_line=(fun env node params nextNode nextParams layout height->
@@ -674,7 +675,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
 
     let minipage env str=
-      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
@@ -690,7 +691,7 @@ module Format=functor (D:Document.DocumentStructure)->(
          pages)
 
     let minipage' env str=
-      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env D.fixable (fst str) in
+      let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
       let (_,pages,fig',user')=TS.typeset
         ~completeLine:compl
         ~figure_parameters:fig_params
@@ -1344,8 +1345,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       let basic_output _ tree defaultEnv file=
         let rec resolve i env0=
           Printf.printf "Compilation %d\n" i; flush stdout;
-          let fixable=ref false in
-          let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 fixable tree in
+          let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
           Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
           let (logs,opt_pages,figs',user')=TS.typeset
             ~completeLine:compl
@@ -1360,7 +1360,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
           let env, reboot=update_names env1 figs' user' in
           let env=reset_counters env in
-          if i < !max_iterations-1 && reboot && !fixable then (
+          if i < !max_iterations-1 && reboot && !(env.fixable) then (
             resolve (i+1) env
           ) else (
 

@@ -132,7 +132,7 @@ let postprocess_tree tree=
 
               let buf=ref [||] in
               let nbuf=ref 0 in
-              let env'=boxify buf nbuf (ref false) env n.displayname in
+              let env'=boxify buf nbuf env n.displayname in
               let boxes=Array.to_list (Array.sub !buf 0 !nbuf) in
               let users=
                 List.filter (fun x->match x with

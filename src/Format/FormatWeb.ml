@@ -80,11 +80,10 @@ module Format=functor (D:Document.DocumentStructure)->(
          with
              _->());
 
-        let fixable=ref false in
         let rec fix env n=
-          let (env,_,_,_,_,_,_,pars,_,figures,_)=flatten env fixable structure in
+          let (env,_,_,_,_,_,_,pars,_,figures,_)=flatten env structure in
           let env=reset_counters env in
-          if !fixable && n>0 then
+          if !(env.fixable) && n>0 then
             fix env (n-1)
           else
             (env,pars,figures)

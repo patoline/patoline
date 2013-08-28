@@ -103,7 +103,7 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 
 let _ = Distance.read_cache \"%s\"
-module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let fixable=ref false end:DocumentStructure)
+module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
 module Patoline_Output=Patoline_Format.Output(%s)
 open %s;;
