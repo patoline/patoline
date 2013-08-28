@@ -103,12 +103,12 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 
 let _ = Distance.read_cache \"%s\"
-module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) end:DocumentStructure)
+module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
-module Patoline_Output=Patoline_Format.Output(%s)
+module Patoline_Output=Patoline_Format.Output(%s);;
+let _=D.defaultEnv:=Patoline_Format.defaultEnv;;
 open %s;;
-open Patoline_Format;;
-let defaultEnv=Patoline_Format.defaultEnv;;\n
+open Patoline_Format;;\n
 "
     format
     driver
@@ -121,7 +121,7 @@ let defaultEnv=Patoline_Format.defaultEnv;;\n
   do_include buf main_mod;
   Buffer.output_buffer where buf;
   Printf.fprintf where
-    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) defaultEnv %S\n" outfile;
+    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) !D.defaultEnv %S\n" outfile;
   Printf.fprintf where "let _ = Distance.write_cache \"%s\"\n" cache_name
 
 (* FIXME: dirty use of global bariables, should pass it through all function *)
@@ -171,8 +171,7 @@ let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list arra
 module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct
 module Patoline_Format=%s.Format(D);;
 open %s;;
-open Patoline_Format;;
-let defaultEnv=Patoline_Format.defaultEnv;;\n"
+open Patoline_Format;;\n"
     format
     driver
     suppl
@@ -761,7 +760,7 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
 	    begin
               if not noamble then (
                 Printf.fprintf where "%s" (preambule format driver suppl filename);
-                Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure)\n" tmp_pos;
+                Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure);;\n" tmp_pos;
               );
               match pre with
 		  None -> ()

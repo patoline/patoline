@@ -1406,6 +1406,7 @@ let draw env x=
 
 module type DocumentStructure=sig
   val structure:(tree*(int*tree) list) ref
+  val defaultEnv:environment ref
 end
 module type Format=sig
   val defaultEnv:environment

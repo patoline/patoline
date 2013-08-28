@@ -302,6 +302,91 @@ let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
               par_paragraph=(-1)}, [])
 
 
+
+let defaultEnv:environment=
+  let f,str,subst,pos=selectFont alegreya Regular false in
+  let fsize=3.7 in
+  let feat= [ Opentype.standardLigatures ] in
+  let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
+  {
+    fontFamily=alegreya;
+    fontMonoFamily=bitstreamverasansmono (*texgyrecursor*);
+    fontMonoRatio=font_size_ratio alegreya bitstreamverasansmono (*texgyrecursor*);
+    fontItalic=false;
+    fontAlternative=Regular;
+    fontFeatures=feat;
+    fontColor=OutputCommon.black;
+    font=f;
+    mathsEnvironment=Euler.default;
+    mathStyle=Document.Mathematical.Text;
+    word_substitutions=
+      (fun x->List.fold_left (fun y f->f y) x
+        [
+          replace_utf8 ("``") 8220;
+          replace_utf8 ("''") 8221
+        ]
+      );
+    substitutions=(fun glyphs->Fonts.apply_features f loaded_feat (subst glyphs));
+    positioning=(fun x->pos (positioning f x));
+    footnote_y=10.;
+    size=fsize;
+    lead=13./.10.*.fsize;
+    normalMeasure=(fst a4)*.2./.3.;
+    normalLead=13./.10.*.fsize;
+    normalLeftMargin=0.;
+    normalPageFormat=a4;
+    par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
+                            drawing_max_width= 4.0 *. phi;
+			    drawing_width_fixed = true;
+			    drawing_adjust_before = false;
+                            drawing_y0=0.;drawing_y1=0.;
+                            drawing_nominal_width= 4.0 *. phi;
+                            drawing_contents=(fun _->[]);
+                            drawing_break_badness=0.;
+                            drawing_states=IntSet.empty;
+                            drawing_badness=fun _-> 0. }];
+    hyphenate=hyphenate_dict "hyph-en-us.hdict";
+    counters=StrMap.empty;
+    names=StrMap.empty;
+    fixable=ref false;
+    user_positions=MarkerMap.empty;
+    new_page=Document.default_new_page a4;
+    new_line=(fun env node params nextNode nextParams layout height->
+      if node==nextNode && node.layout==layout then (
+        let min_height=min height (node.height-.params.min_height_after) in
+        let h0=min_height/.env.lead in
+        let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+        let next_height=env.lead*.h1 in
+        let hh=if next_height>=height then next_height-.env.lead else next_height in
+              (* Printf.fprintf stderr "cas 1 %f\n" hh;flush stderr; *)
+        hh
+      ) else
+        let d=if node.layout=layout then (
+          let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
+          let h0=min_height/.env.lead in
+          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                (* Printf.fprintf stderr "cas 2.1 %f %f %f \n" min_height h0 h1;flush stderr; *)
+          env.lead*.h1
+        ) else (
+          let min_height=(height-. env.lead) in
+          let h0=(floor (min_height/.env.lead)) in
+          let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
+                (* Printf.fprintf stderr "cas 2.2 %f %f %f %f\n" l min_height h0 h1;flush stderr; *)
+          env.lead*.h1
+        )
+        in
+        d
+    );
+    show_boxes=false;
+    show_frames=false;
+    adjust_optical_alpha=3.1416 /. 4.;
+    adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *)
+    adjust_epsilon=5e-2;
+    adjust_min_space=1./.9.;
+    math_break_badness = 250.0; (* testé juste sur tests/test_break_badness *)
+  }
+
+
 module type Output=
   sig
     type output
@@ -469,89 +554,7 @@ module Format=functor (D:Document.DocumentStructure)->(
     let indent ()=[bB (fun env->env.par_indent);Env (fun env->{env with par_indent=[]})]
 
 
-    let defaultEnv:environment=
-      let f,str,subst,pos=selectFont alegreya Regular false in
-      let fsize=3.7 in
-      let feat= [ Opentype.standardLigatures ] in
-      let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
-      {
-          fontFamily=alegreya;
-          fontMonoFamily=bitstreamverasansmono (*texgyrecursor*);
-	  fontMonoRatio=font_size_ratio alegreya bitstreamverasansmono (*texgyrecursor*);
-          fontItalic=false;
-          fontAlternative=Regular;
-          fontFeatures=feat;
-          fontColor=OutputCommon.black;
-          font=f;
-          mathsEnvironment=Euler.default;
-	  mathStyle=Document.Mathematical.Text;
-          word_substitutions=
-            (fun x->List.fold_left (fun y f->f y) x
-               [
-                 replace_utf8 ("``") 8220;
-                 replace_utf8 ("''") 8221
-               ]
-            );
-          substitutions=(fun glyphs->Fonts.apply_features f loaded_feat (subst glyphs));
-          positioning=(fun x->pos (positioning f x));
-          footnote_y=10.;
-          size=fsize;
-          lead=13./.10.*.fsize;
-          normalMeasure=(fst a4)*.2./.3.;
-          normalLead=13./.10.*.fsize;
-          normalLeftMargin=0.;
-          normalPageFormat=a4;
-          par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
-                                  drawing_max_width= 4.0 *. phi;
-				  drawing_width_fixed = true;
-				  drawing_adjust_before = false;
-                                  drawing_y0=0.;drawing_y1=0.;
-                                  drawing_nominal_width= 4.0 *. phi;
-                                  drawing_contents=(fun _->[]);
-                                  drawing_break_badness=0.;
-                                  drawing_states=IntSet.empty;
-                                  drawing_badness=fun _-> 0. }];
-          hyphenate=hyphenate_dict "hyph-en-us.hdict";
-          counters=StrMap.empty;
-          names=StrMap.empty;
-          fixable=ref false;
-          user_positions=MarkerMap.empty;
-          new_page=Document.default_new_page a4;
-          new_line=(fun env node params nextNode nextParams layout height->
-            if node==nextNode && node.layout==layout then (
-              let min_height=min height (node.height-.params.min_height_after) in
-              let h0=min_height/.env.lead in
-              let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-              let next_height=env.lead*.h1 in
-              let hh=if next_height>=height then next_height-.env.lead else next_height in
-              (* Printf.fprintf stderr "cas 1 %f\n" hh;flush stderr; *)
-              hh
-            ) else
-              let d=if node.layout=layout then (
-                let min_height=min (nextNode.height-.env.lead) (node.height -. max params.min_height_after nextParams.min_height_before) in
-                let h0=min_height/.env.lead in
-                let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-                (* Printf.fprintf stderr "cas 2.1 %f %f %f \n" min_height h0 h1;flush stderr; *)
-                env.lead*.h1
-              ) else (
-                let min_height=(height-. env.lead) in
-                let h0=(floor (min_height/.env.lead)) in
-                let h1=if (ceil h0-.h0)<=1e-10 then ceil h0 else floor h0 in
-                (* Printf.fprintf stderr "cas 2.2 %f %f %f %f\n" l min_height h0 h1;flush stderr; *)
-                env.lead*.h1
-              )
-              in
-              d
-          );
-	  show_boxes=false;
-	  show_frames=false;
-	  adjust_optical_alpha=3.1416 /. 4.;
-	  adjust_optical_beta=0.2; (* kerning between math and text while spacing between word is not kerned requires a small beta *)
-	  adjust_epsilon=5e-2;
-	  adjust_min_space=1./.9.;
-	  math_break_badness = 250.0; (* testé juste sur tests/test_break_badness *)
-        }
-
+    let defaultEnv=defaultEnv
 
     let title str ?label ?(extra_tags=[]) displayname =
       let displayname=[C (fun _->env_accessed:=true;displayname)] in
