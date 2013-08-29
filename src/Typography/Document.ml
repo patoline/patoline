@@ -1207,7 +1207,7 @@ let draw_boxes env l=
     )
     | Marker EndLink::s->(
       let rec link_contents u l=match l with
-          []->List.rev u
+          []-> assert false
         | (Link h)::s when not h.link_closed->(
           h.link_contents<-u;
           let (_,y0,_,y1)=bounding_box u in
@@ -1215,7 +1215,7 @@ let draw_boxes env l=
           h.link_y1<-y1;
           h.link_closed<-true;
           h.link_x1<-x;
-          List.rev u
+          List.rev_append u s
         )
         | h::s->link_contents (h::u) s
       in
