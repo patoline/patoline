@@ -418,7 +418,7 @@ module Curve = struct
 end
 
 
-    module Graph (X : Set.OrderedType) = struct
+module Graph (X : Set.OrderedType) = struct
 	
 	type color = Visited | Visiting | Virgin
 	    
@@ -460,10 +460,10 @@ end
 
 
 
-    end
+end
 
 
-      module Transfo (X : Set.OrderedType) = struct
+module Transfo (X : Set.OrderedType) = struct
 
       module rec Style : sig
 
@@ -2365,12 +2365,14 @@ Doing a rectangle.\n" ;
 
 
     module Entity = struct       
-      type t = 
+      type raw={raw_contents:OutputCommon.raw list;raw_anchor:float*float}
+      type t =
 	Node of Node.t
       | Matrix of Matrix.t
       | Matrix3d of Matrix3d.t
       | Edge of Edge.t
       | Gentity of gentity
+      | Raw of raw
 
       let to_raw_list = function
 	| Node node -> Node.to_contents node 
@@ -2378,7 +2380,7 @@ Doing a rectangle.\n" ;
 	| Matrix3d matrix -> Matrix3d.to_contents matrix
 	| Edge edge -> Edge.to_contents edge
 	| Gentity g -> g.contents 
-
+        | Raw x->x.raw_contents
 
       let anchor entity a = match entity with
 	| Node node -> node.Node.anchor a
@@ -2386,6 +2388,7 @@ Doing a rectangle.\n" ;
 	| Matrix matrix -> (matrix.Matrix.mainNode).Node.anchor a
 	| Matrix3d matrix -> (matrix.Matrix3d.mainNode).Node.anchor a
 	| Gentity g -> g.Gentity.anchor a
+        | Raw x->x.raw_anchor
 
       let to_contents stack = 
 	let contents = List.flatten (List.rev_map to_raw_list stack) in
@@ -2436,6 +2439,13 @@ Doing a rectangle.\n" ;
 	let e = path style s continues in
 	stack := Edge e :: !stack ;
 	e
+
+      let raw (x,y) l=
+        let r= { raw_anchor=(x,y);
+                 raw_contents=List.map (OutputCommon.translate x y) l }
+        in
+        stack:=Raw r :: !stack;
+        r
 
       let edge_3d style a ?controls:(controls=[]) ?controls3d:(controls3d=[]) 
 	  ?projection:(projection=Proj3d.cavaliere45bg) b =
@@ -2491,7 +2501,7 @@ Doing a rectangle.\n" ;
       let all_intersections stack =
 	let rec fn acc = function
 	[] -> acc
-	| Edge e::l when e.Edge.params.fillColor = None -> 
+	  | Edge e::l when e.Edge.params.fillColor = None -> 
 	  let c = List.map (fun b  -> b, Bezier.extremity b) e.Edge.underlying_curve in
 	  fn ((e,c)::acc) l
 	| _::l -> fn acc l
@@ -2547,7 +2557,7 @@ Doing a rectangle.\n" ;
 
       let include_diagram x = let _ = stack := x @ !stack in ()
 
-      let make () = 
+      let make () =
 	let _ = match !compute_intersections with
 	  | None -> ()
 	  | Some f -> add_intersections f
