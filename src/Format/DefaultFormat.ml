@@ -1362,9 +1362,10 @@ module Format=functor (D:Document.DocumentStructure)->(
             Printf.fprintf o "}";
             close_out o;
             *)
+
             let draw_page i layout=
-              let lo=layout in
-              let page={ pageFormat=(lo.frame_x1-.lo.frame_x0,lo.frame_y1-.lo.frame_y0);
+              let page={ pageFormat=(layout.frame_x1-.layout.frame_x0,
+                                     layout.frame_y1-.layout.frame_y0);
                          pageContents=[] }
               in
 
@@ -1399,178 +1400,200 @@ module Format=functor (D:Document.DocumentStructure)->(
                 )
               );
 
-              let footnotes=ref [] in
-              let footnote_y=ref (-.infinity) in
-              let pp=Array.of_list (all_contents lo) in
               (* Affichage des frames (demouchage) *)
               let h=Hashtbl.create 100 in
 
+
+              let rec draw_all_frames t=
+                if env.show_frames then (
+                  let r=(t.frame_x0,t.frame_y0,t.frame_x1,t.frame_y1) in
+                  if not (Hashtbl.mem h r) then (
+                    Hashtbl.add h r ();
+                    page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0)
+                                                         (t.frame_x1,t.frame_y1)])
+                    ::page.pageContents;
+                  );
+                );
+
+
+                let rec draw_cont last_placed conts=match conts with
+                    Placed_line l::s->(
+                      if l.line.isFigure then (
+                        let fig=figures.(l.line.lastFigure) in
+                        let y=
+                          match last_placed with
+                              None->l.line.height
+                            | Some ll->
+                              try
+                                let nextl=match List.find (function Placed_line a->true | _->false) s with Placed_line l->l | _->assert false
+                                in
+                                let milieu=
+                                  (ll.line.height+.fst (line_height paragraphs figures ll.line)
+                                   +.(nextl.line.height+.snd (line_height paragraphs figures nextl.line)))/.2.
+                                in
+                                milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
+                              with Not_found->l.line.height
+                        in
+                        page.pageContents<- (List.map (translate ((fst l.line.layout).frame_x0+.l.line_params.left_margin) y)
+                                               (fig.drawing_contents fig.drawing_nominal_width))
+                        @ page.pageContents;
+
+                      ) else if l.line.paragraph<Array.length paragraphs then (
+                        let line=l.line in
+                        let param=l.line_params in
+                        if line.paragraph<> !par then (
+                          par:=line.paragraph;
+                          positions.(!par)<-
+                            (i,0.,
+                             line.height +. phi*.snd (line_height paragraphs figures line))
+                        );
+                        let comp=compression paragraphs param line in
+                        let rec draw_box x y box=
+                          let lowy=y+.lower_y box in
+                          let uppy=y+.upper_y box in
+                          (match !urilinks with
+                              None->()
+                            | Some h->(
+                              h.link_y0<-min h.link_y0 lowy;
+                              h.link_y1<-max h.link_y1 uppy
+                            ));
+                          if !crosslink_opened then
+                            (match !crosslinks with
+                                []->()
+                              | (_,h,_)::_->(
+                                h.link_y0<-min h.link_y0 lowy;
+                                h.link_y1<-max h.link_y1 uppy
+                              ));
+                          match box with
+                              Kerning kbox ->(
+                                let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) kbox.kern_contents in
+                                w+.kbox.advance_width
+                              )
+                            | Hyphen h->(
+                              (Array.fold_left (fun x' box->
+                                let w=draw_box (x+.x') y box in
+                                x'+.w) 0. h.hyphen_normal)
+                            )
+                            | GlyphBox a->(
+                              page.pageContents<-translate x y (Glyph a):: page.pageContents;
+                              a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+                            )
+                            | Glue g
+                            | Drawing g ->(
+                              let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
+                              page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+	                      if env.show_boxes then
+                                page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
+                              w
+                            )
+                            | Marker (BeginURILink l)->(
+                              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                         link_order=0;link_closed=false;
+                                         dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
+                                         link_contents=[] }
+                              in
+                              crosslinks:=(i, link, l) :: !crosslinks;
+                              crosslink_opened:=true;
+                              page.pageContents<-Link link::page.pageContents;
+                              0.
+                            )
+                            | Marker (BeginLink l)->(
+                              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                                         link_order=0;link_closed=false;
+                                         dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
+                                         link_contents=[]
+                                       }
+                              in
+                              crosslinks:=(i, link, l) :: !crosslinks;
+                              crosslink_opened:=true;
+                              page.pageContents<-Link link::page.pageContents;
+                              0.
+                            )
+                            | Marker EndLink->(
+                              endlink false;
+                              0.
+                            )
+                            | Marker (Label l)->(
+                              let y0,y1=line_height paragraphs figures line in
+                              destinations:=StrMap.add l
+                                (i,(fst line.layout).frame_x0+.param.left_margin,
+                                 y+.y0,y+.y1) !destinations;
+                              0.
+                            )
+                            | b->box_width comp b
+                        in
+                        if !crosslink_opened then
+                          crosslinks:=(match !crosslinks with
+                              []->[]
+                            | (a,h,c)::s->
+                              (a, { h with
+                                link_x0=(fst line.layout).frame_x0+.param.left_margin;
+                                link_x1=(fst line.layout).frame_x0+.param.left_margin;
+                                link_y0=line.height;link_y1=line.height }, c)::(a,h,c)::s);
+
+                          (* Écrire la page *)
+                        let _=
+                          fold_left_line paragraphs (fun x b->x+.draw_box x line.height b)
+                            ((fst line.layout).frame_x0+.param.left_margin) line
+                        in
+
+                          (* Fermer les liens, et préparer la continuation sur
+                             la prochaine ligne. *)
+                        endlink true;
+                        (match !continued_link with
+                            None->()
+                          | Some l->(
+                            page.pageContents<-l::page.pageContents;
+                            crosslink_opened:=true;
+                            continued_link:=None
+                          )
+                        )
+                      );
+                      draw_cont (Some l) s
+                    )
+                  | Raw r::s->(
+                    page.pageContents<-List.map (translate t.frame_x0 t.frame_y0) r
+                      @page.pageContents;
+                    draw_cont last_placed s
+                  )
+                  | []->()
+                in
+                draw_cont None t.frame_content;
+                IntMap.iter (fun _ a->draw_all_frames a) t.frame_children
+              in
+              draw_all_frames layout;
+
+
+              (*
               for j=0 to Array.length pp-1 do
                 let param=pp.(j).line_params
                 and line=pp.(j).line in
 
                 (* Affichage des frames (demouchage) *)
-                let rec draw_frames (t,cxt)=
-                  if cxt<>[] then (
-                    let r=(t.frame_x0,t.frame_y0,t.frame_x1,t.frame_y1) in
-                    if not (Hashtbl.mem h r) then (
-                      Hashtbl.add h r ();
-                      page.pageContents<-Path (default,[rectangle (t.frame_x0,t.frame_y0) (t.frame_x1,t.frame_y1)])::page.pageContents;
-                    );
-                    draw_frames (Box.frame_up (t,cxt))
-                  )
-                in
-                if env.show_frames then draw_frames line.layout;
                 (* * *)
 
+	        if env.show_boxes then
+                  page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
+                                            [rectangle (param.left_margin,y+.fig.drawing_y0)
+                                                (param.left_margin+.fig.drawing_nominal_width,
+                                                 y+.fig.drawing_y1)]) :: page.pageContents;
 
-                if pp.(j).line.isFigure then (
-                  let fig=figures.(pp.(j).line.lastFigure) in
-                  let y=
-                    if j>0 && j<Array.length pp-1 then
-                      let milieu=
-                        (pp.(j-1).line.height+.fst (line_height paragraphs figures pp.(j-1).line)
-                         +.(pp.(j+1).line.height+.snd (line_height paragraphs figures pp.(j+1).line)))/.2.
-                      in
-                      milieu-.(fig.drawing_y1+.fig.drawing_y0)/.2.
-                    else
-                      pp.(j).line.height
-                  in
-	          if env.show_boxes then
-                    page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 },
-                                              [rectangle (param.left_margin,y+.fig.drawing_y0)
-                                                  (param.left_margin+.fig.drawing_nominal_width,
-                                                   y+.fig.drawing_y1)]) :: page.pageContents;
-                  page.pageContents<- (List.map (translate ((fst pp.(j).line.layout).frame_x0+.param.left_margin) y)
-                                         (fig.drawing_contents fig.drawing_nominal_width))
-                  @ page.pageContents;
+                ) else
 
-                ) else if line.paragraph<Array.length paragraphs then (
 
-                  if line.paragraph<> !par then (
-                    par:=line.paragraph;
-                    positions.(!par)<-
-                      (i,0.,
-                       line.height +. phi*.snd (line_height paragraphs figures line))
-                  );
 
-                  let comp=compression paragraphs param line in
-                  let rec draw_box x y box=
-                    let lowy=y+.lower_y box in
-                    let uppy=y+.upper_y box in
-                    (match !urilinks with
-                        None->()
-                      | Some h->(
-                        h.link_y0<-min h.link_y0 lowy;
-                        h.link_y1<-max h.link_y1 uppy
-                      ));
-                    if !crosslink_opened then
-                      (match !crosslinks with
-                          []->()
-                        | (_,h,_)::_->(
-                          h.link_y0<-min h.link_y0 lowy;
-                          h.link_y1<-max h.link_y1 uppy
-                        ));
-                    match box with
-                        Kerning kbox ->(
-                          let w=draw_box (x+.kbox.kern_x0) (y+.kbox.kern_y0) kbox.kern_contents in
-                          w+.kbox.advance_width
-                        )
-                      | Hyphen h->(
-                        (Array.fold_left (fun x' box->
-                          let w=draw_box (x+.x') y box in
-                          x'+.w) 0. h.hyphen_normal)
-                      )
-                      | GlyphBox a->(
-                        page.pageContents<-translate x y (Glyph a):: page.pageContents;
-                        a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
-                      )
-                      | Glue g
-                      | Drawing g ->(
-                        let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-                        page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
-		        if env.show_boxes then
-                          page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
-                        w
-                      )
-                      | Marker (BeginURILink l)->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                   link_order=0;link_closed=false;
-                                   dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
-                                   link_contents=[] }
-                        in
-                        crosslinks:=(i, link, l) :: !crosslinks;
-                        crosslink_opened:=true;
-                        page.pageContents<-Link link::page.pageContents;
-                        0.
-                      )
-                      | Marker (BeginLink l)->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
-                                   link_order=0;link_closed=false;
-                                   dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
-                                   link_contents=[]
-                                 }
-                        in
-                        crosslinks:=(i, link, l) :: !crosslinks;
-                        crosslink_opened:=true;
-                        page.pageContents<-Link link::page.pageContents;
-                        0.
-                      )
-                      | Marker EndLink->(
-                        endlink false;
-                        0.
-                      )
-                      | Marker (Label l)->(
-                        let y0,y1=line_height paragraphs figures line in
-                        destinations:=StrMap.add l
-                          (i,(fst line.layout).frame_x0+.param.left_margin,
-                           y+.y0,y+.y1) !destinations;
-                        0.
-                      )
-                      (* | Marker (Footnote (_,g))->( *)
-                      (*   footnotes:= g::(!footnotes); *)
-                      (*   footnote_y:=max !footnote_y (h-.topMargin-.param.page_height); *)
-                      (*   0. *)
-                      (* ) *)
-                      | b->box_width comp b
-                  in
 
                   (* Si un lien est commencé sur la ligne précédente,
                      le reprendre *)
-                  if !crosslink_opened then
-                    crosslinks:=(match !crosslinks with
-                        []->[]
-                      | (a,h,c)::s->
-                        (a, { h with
-                          link_x0=(fst line.layout).frame_x0+.param.left_margin;
-                          link_x1=(fst line.layout).frame_x0+.param.left_margin;
-                          link_y0=line.height;link_y1=line.height }, c)::(a,h,c)::s);
-
-                  (* Écrire la page *)
-                  let _=
-                    fold_left_line paragraphs (fun x b->x+.draw_box x line.height b)
-                      ((fst line.layout).frame_x0+.param.left_margin) line
-                  in
-
-                  (* Fermer les liens, et préparer la continuation sur
-                     la prochaine ligne. *)
-                  endlink true;
-                  (match !continued_link with
-                      None->()
-                    | Some l->(
-                      page.pageContents<-l::page.pageContents;
-                      crosslink_opened:=true;
-                      continued_link:=None
-                    )
-                  );
-                )
               done;
+              *)
 
               endlink true;
-
               (match !urilinks with
                   None->()
                 | Some h->page.pageContents<-Link h::page.pageContents; urilinks:=None);
+
+              (*
               ignore (
                 List.fold_left (
                   fun y footnote->
@@ -1585,7 +1608,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                                                            [| !footnote_y-.env.footnote_y;
                                                                                               !footnote_y-.env.footnote_y |] |] ]))::page.pageContents
               );
-
+              *)
 
               let num=boxify_scoped defaultEnv [tT (string_of_int (i+1))] in
               let _,w,_=boxes_interval (Array.of_list num) in

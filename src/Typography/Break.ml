@@ -691,7 +691,7 @@ module Make (L:Line with type t=Box.line)=(
                 n
                 (add_content frame
                    (match snd n0.layout with []->[] | _::s->s)
-                   { line_params=params'; line=n0 })
+                   (Placed_line { line_params=params'; line=n0 }))
             )
         in
         let layout=

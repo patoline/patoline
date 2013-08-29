@@ -47,7 +47,9 @@ let output paragraphs figures env (opt_pages:frame)=
     let page={ pageContents=[] } in
     let footnotes=ref [] in
     let footnote_y=ref (-.infinity) in
-    let pp=Array.of_list p in
+    let pp=Array.of_list
+      (List.fold_left (fun m x->match x with Placed_line p->p::m|_->m) [] p)
+    in
     let states=ref IntSet.empty in
 
     let endlink cont=

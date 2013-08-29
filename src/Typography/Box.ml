@@ -103,7 +103,7 @@ and placed_line=
 
 
 (* Layout definitions *)
-
+and frame_content=Placed_line of placed_line | Raw of OutputCommon.raw list
 and frame={
   frame_children:frame IntMap.t;
   frame_tags:string list;
@@ -111,7 +111,7 @@ and frame={
   frame_y0:float;
   frame_x1:float;
   frame_y1:float;
-  frame_content:placed_line list
+  frame_content:frame_content list
 }
 
 and frame_zipper=frame*((int*frame) list)
@@ -151,12 +151,13 @@ let make_page (w,h) t=
   (page, (m+1,(fst t))::(snd t))
 
 
-let frame x0 y0 x1 y1 (t,cxt)=
+let frame ?(contents=[]) x0 y0 x1 y1 (t,cxt)=
   let i=try fst (IntMap.max_binding t.frame_children) with Not_found->(-1) in
   {empty_frame with frame_x0=x0;
     frame_y0=y0;
     frame_x1=x1;
-    frame_y1=y1
+    frame_y1=y1;
+    frame_content=contents;
   }, ((i+1,t)::cxt)
 
 let twocols (t,cxt)=
