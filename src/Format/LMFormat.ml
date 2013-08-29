@@ -127,124 +127,50 @@ module LMMath = struct
 
 end
 
+let lmEnv env=
+  let f,str,subst,pos=selectFont lmroman Regular false in
+  let fsize=3.8 in
+  let feat= [ Opentype.standardLigatures ] in
+  { env with
+    fontFamily=lmroman;
+    fontMonoFamily=lmmono;
+    fontMonoRatio=1.0;
+    fontItalic=false;
+    fontAlternative=Regular;
+    fontFeatures=feat;
+    fontColor=OutputCommon.black;
+    font=f;
+    mathsEnvironment=LMMath.default;
+    mathStyle=Document.Mathematical.Text;
+    size=fsize;
+    lead=13./.10.*.fsize;
+    normalMeasure=150.;
+    normalLead=13./.10.*.fsize;
+    normalLeftMargin=(fst a4-.150.)/.2.;
+    normalPageFormat=env.normalPageFormat;
+    par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
+                            drawing_max_width= 4.0 *. phi;
+                            drawing_y0=0.;drawing_y1=0.;
+                            drawing_nominal_width= 4.0 *. phi;
+			    drawing_width_fixed = true;
+			    drawing_adjust_before = false;
+                            drawing_contents=(fun _->[]);
+                            drawing_break_badness=0.;
+                            drawing_states=IntSet.empty;
+                            drawing_badness=fun _-> 0. }];
+    adjust_optical_alpha=3.1416 /. 4.;
+    adjust_optical_beta=0.2;
+    adjust_epsilon=5e-2;
+    adjust_min_space=1./.9.;
+  }
+
+
 module MakeFormat (D:Document.DocumentStructure)
 (Default : module type of DefaultFormat.Format(D)) =
   struct
 
     include Default
 
-    let defaultEnv:environment=
-      let f,str,subst,pos=selectFont lmroman Regular false in
-      let hyphenate=
-      	try
-        let i=open_in_bin (findHyph "en.hdict") in
-        let inp=input_value i in
-          close_in i;
-          (fun str->
-             let hyphenated=Hyphenate.hyphenate inp str in
-             let pos=Array.make (List.length hyphenated-1) ("","") in
-             let rec hyph l i cur=match l with
-                 []->()
-               | h::s->(
-                   pos.(i)<-(cur^"-", List.fold_left (^) "" l);
-                   hyph s (i+1) (cur^h)
-                 )
-             in
-               match hyphenated with
-                   []->[||]
-                 | h::s->(hyph s 0 h; pos));
-      with
-          FindPath.File_not_found (f,p)->
-	    (Printf.fprintf stderr "Warning : no hyphenation dictionary (%s not found). Path :\n" f;
-                                  List.iter (Printf.fprintf stderr "%s\n") p;
-                                  fun x->[||])
-      in
-      let replace_utf8 x y z=if String.length x>0 then (
-        let buf=Buffer.create (String.length x) in
-        let repl=UTF8.init 1 (fun _->UChar.chr y) in
-        let rec add_it i=
-          if not (UTF8.out_of_range z i) then (
-            try
-              let rec comp j=
-                if UTF8.out_of_range x j then j else
-                  if UTF8.out_of_range z (i+j) then raise Not_found else
-                    if UTF8.look z (i+j) <> UTF8.look x j then raise Not_found else
-                      comp (UTF8.next x j)
-              in
-              let j=comp 0 in
-                Buffer.add_string buf repl;
-                add_it (i+j)
-            with
-                Not_found->(
-                  Buffer.add_string buf (String.sub z i (UTF8.next z i-i));
-                  add_it (UTF8.next z i)
-                )
-          )
-        in
-          add_it 0;
-          Buffer.contents buf
-      ) else z
-      in
-      let fsize=3.8 in
-      let feat= [ Opentype.standardLigatures ] in
-      let loaded_feat=Fonts.select_features f [ Opentype.standardLigatures ] in
-        { defaultEnv with
-          fontFamily=lmroman;
-          fontMonoFamily=lmmono;
-	  fontMonoRatio=1.0;
-          fontItalic=false;
-          fontAlternative=Regular;
-          fontFeatures=feat;
-          fontColor=OutputCommon.black;
-          font=f;
-          mathsEnvironment=LMMath.default;
-	  mathStyle=Document.Mathematical.Text;
-          word_substitutions=
-            (fun x->List.fold_left (fun y f->f y) x
-               [
-                 replace_utf8 ("``") 8220;
-                 replace_utf8 ("''") 8221
-               ]
-            );
-          substitutions=(fun glyphs -> Fonts.apply_features f loaded_feat (subst glyphs));
-          positioning=(fun x->pos (positioning f x));
-          footnote_y=10.;
-          size=fsize;
-          lead=13./.10.*.fsize;
-          normalMeasure=150.;
-          normalLead=13./.10.*.fsize;
-          normalLeftMargin=(fst a4-.150.)/.2.;
-          normalPageFormat=Default.defaultEnv.normalPageFormat;
-          par_indent = [Drawing { drawing_min_width= 4.0 *. phi;
-                                  drawing_max_width= 4.0 *. phi;
-                                  drawing_y0=0.;drawing_y1=0.;
-                                  drawing_nominal_width= 4.0 *. phi;
-				  drawing_width_fixed = true;
-				  drawing_adjust_before = false;
-                                  drawing_contents=(fun _->[]);
-                                  drawing_break_badness=0.;
-                                  drawing_states=IntSet.empty;
-                                  drawing_badness=fun _-> 0. }];
-          hyphenate=hyphenate;
-          counters=List.fold_left (fun m (a,b)->StrMap.add a b m) StrMap.empty
-            ["_structure",(-1,[0]);
-             "_figure",(-1,[0]);
-             "figure",(2,[0])];
-          names=StrMap.empty;
-          user_positions=MarkerMap.empty;
-          new_page=Document.default_new_page a4;
-	  show_boxes=false;
-	  show_frames=false;
- 	  adjust_optical_alpha=3.1416 /. 4.;
-	  adjust_optical_beta=0.2;
-	  adjust_epsilon=5e-2;
-	  adjust_min_space=1./.9.;
-       }
+    let defaultEnv:environment=lmEnv Default.defaultEnv
 
-end
-
-module LMArticle = struct
-  module Format (D : DocumentStructure) =
-    FormatArticle.MakeFormat (D)
-      (MakeFormat (D) (DefaultFormat.Format(D)))
 end
