@@ -979,7 +979,6 @@ let rec readLookup file gsubOff i=
 
 
 let rec applyLookup file gsubOff i glyphs=
-  let subst=ref [] in
   let lookup= seek_in file (gsubOff+8); readInt2 file in
   let offset0=seek_in file (gsubOff+lookup+2+i*2); gsubOff+lookup+(readInt2 file) in
   let lookupType0=seek_in file offset0; readInt2 file in
@@ -1005,7 +1004,7 @@ let rec applyLookup file gsubOff i glyphs=
                   let delta=readInt2 file in
                   List.iter (fun g->
                     try
-                      let cov=coverageIndex file (offset1+coverageOff) g.glyph_index in
+                      let _(* cov *)=coverageIndex file (offset1+coverageOff) g.glyph_index in
                       buf:={ g with glyph_index=g.glyph_index+delta }::(!buf)
                     with
                         Not_found->buf:=g::(!buf)
@@ -1096,7 +1095,7 @@ let rec applyLookup file gsubOff i glyphs=
                                 Buffer.add_string ligbuf h.glyph_utf8;
                                 let rec add_glyphs l i=
                                   if i>0 then match l with
-                                      []->assert false
+                                      []->()
                                     | hg::sg->(
                                       Buffer.add_string ligbuf hg.glyph_utf8;
                                       add_glyphs sg (i-1)
@@ -1215,8 +1214,8 @@ let rec applyLookup file gsubOff i glyphs=
                                   check_bt s0 (i-1)
                             )
                           in
-                          let bt_ok=seek_in file (offset1+6);check_bt bt btGlyphCount in
-                          let ahead_ok=seek_in file (offset1+8+2*btGlyphCount);
+                          let _(* bt_ok *)=seek_in file (offset1+6);check_bt bt btGlyphCount in
+                          let _(* ahead_ok *)=seek_in file (offset1+8+2*btGlyphCount);
                             check_bt s aheadGlyphCount
                           in
                           seek_in file (offset1+10+btGlyphCount*2+aheadGlyphCount*2+cov*2);

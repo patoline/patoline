@@ -582,6 +582,7 @@ let writeCFFInt buf x=
       Rbuffer.add_char buf (char_of_int (y land 0xff))
   )
 
+exception Encoding_problem
 let writeCFFFloat buf x=
   let s=Printf.sprintf "%f" x in
   let s=if s.[String.length s-1]='.' then (String.sub s 0 (String.length s-1)) else s in
@@ -589,23 +590,26 @@ let writeCFFFloat buf x=
   let i=ref 0 in
   let parity=ref 0 in
   Rbuffer.add_char buf (char_of_int 30);
-  while !i<String.length s do
-    let nibble=
-      match s.[!i] with
-          '0'->0x0 | '1'->0x1 | '2'->0x2 | '3'->0x3 | '4'->0x4
-        | '5'->0x5 | '6'->0x6 | '7'->0x7 | '8'->0x8 | '9'->0x9
-        | '.'->0xa
-        | 'e' when s.[!i+1]='-' -> (incr i; 0xc)
-        | 'e'->0xb
-        | '-'->0xe
-        | _->assert false
-    in
-    (if !parity mod 2=0 then tmp:=nibble lsl 4 else (
-      Rbuffer.add_char buf (char_of_int (!tmp lor nibble))
-     ));
-    incr parity;
-    incr i
-  done;
+  (try
+     while !i<String.length s do
+       let nibble=
+         match s.[!i] with
+             '0'->0x0 | '1'->0x1 | '2'->0x2 | '3'->0x3 | '4'->0x4
+           | '5'->0x5 | '6'->0x6 | '7'->0x7 | '8'->0x8 | '9'->0x9
+           | '.'->0xa
+           | 'e' when s.[!i+1]='-' -> (incr i; 0xc)
+           | 'e'->0xb
+           | '-'->0xe
+           | _->raise Encoding_problem
+       in
+       (if !parity mod 2=0 then tmp:=nibble lsl 4 else (
+         Rbuffer.add_char buf (char_of_int (!tmp lor nibble))
+        ));
+       incr parity;
+       incr i
+     done;
+   with
+       Encoding_problem->());
   if !parity mod 2=0 then Rbuffer.add_char buf (char_of_int 0xff) else
     Rbuffer.add_char buf (char_of_int (!tmp lor 0xf))
 
