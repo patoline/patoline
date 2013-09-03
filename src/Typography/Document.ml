@@ -322,8 +322,6 @@ let default_new_page pageFormat t=
 let raw_new_page pageFormat t=
   let a,b=Box.make_page pageFormat (frame_top t) in
   let zip={ a with frame_tags=["page"] },b in
-  let w=(fst zip).frame_x1-.(fst zip).frame_x0
-  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
   let x0=((fst zip).frame_x0) in
   let y0=((fst zip).frame_y0) in
   let x1=((fst zip).frame_x1) in
