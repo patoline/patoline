@@ -205,7 +205,10 @@ exception No_bib of string
 let bib:((int*string option array) IntMap.t) ref=ref IntMap.empty
 let revbib:((string option array) IntMap.t) ref=ref IntMap.empty
 let citeCounter:unit IntMap.t ref=ref IntMap.empty
-let bibfile_= ref None
+let bibfile_=ref (
+  if Typography.Config.user_dir="" then None else
+    Some (Filename.concat Typography.Config.user_dir "bibi.sqlite3")
+)
 
 let bibfile x=bibfile_:=Some x
 
