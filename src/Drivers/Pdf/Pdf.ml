@@ -435,6 +435,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 #endif
 )
         | States s->List.iter output_contents s.states_contents
+        | _->()
       in
       let sorted_pages=
 

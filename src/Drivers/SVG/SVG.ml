@@ -227,6 +227,36 @@ let draw ?fontCache prefix w h contents=
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
            i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height name)
     )
+    | Video i->(
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+      let f_=Filename.basename i.video_file in
+      let f=try Filename.chop_extension f_ with _->f_ in
+      let ext=String.sub f_ (String.length f)
+        (String.length f_-String.length f)
+      in
+      let rec nonexistent i=
+        let name=Printf.sprintf "%s%d%s" f i ext in
+        if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name
+      in
+      let name=nonexistent 0 in
+      imgs:=StrMap.add i.video_file name !imgs;
+      Rbuffer.add_string svg_buf
+        (Printf.sprintf "<g transform=\"translate(%g,%g) scale(%g,%g)\"><foreignObject x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" preserveAspectRatio=\"xMinYMin slice\" href=\"%s\">
+<video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\" controls></video>
+</foreignObject></g>"
+           i.video_x (h-.i.video_y-.i.video_height)
+           (i.video_width/.(float_of_int i.video_pixel_width))
+           (i.video_height/.(float_of_int i.video_pixel_height))
+           i.video_pixel_width i.video_pixel_height name
+           name)
+    )
     | States s->List.iter output_contents s.states_contents
     | Link l->(
       if !opened_tspan then (
@@ -299,6 +329,9 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
+(*      Rbuffer.add_string file (Printf.sprintf "<html><body>
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:zhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
+                                 (round (w)) (round (h)));*)
       let sorted_pages=OutputCommon.sort_raw page.pageContents in
       let svg,imgs0=draw ~fontCache:cache prefix w h sorted_pages in
       imgs:=StrMap.fold StrMap.add imgs0 !imgs;
@@ -422,10 +455,10 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
   xhttp.send();
   if(xhttp.status==200 || xhttp.status==0){
     var parser=new DOMParser();
-    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
-
+    var newSvg=parser.parseFromString(xhttp.responseText,\"text/html\");
+console.log(newSvg);
     var svg=document.getElementsByTagName(\"svg\")[0];
-    newSvg=document.importNode(newSvg.rootElement,true);
+    newSvg=newSvg.getElementsByTagName(\"svg\")[0];
 
     var cur_g=queue[qi-1];
     if(effect || !cur_g){ // si on fait un effet, ou si on c'est le premier chargement
@@ -527,7 +560,8 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\" overflow=\"hidden\">" (round (w)) (round (h)));
+  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:zhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
+                             (round (w)) (round (h)));
 
   let style=make_defs "" cache in
   let ststr=(Filename.concat prefix "style.css") in

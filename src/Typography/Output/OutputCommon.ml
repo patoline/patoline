@@ -80,7 +80,9 @@ let default= { path_order=0;close=false;strokingColor=Some black;fillColor=None;
 
 type glyph={ glyph_x:float; glyph_kx:float; glyph_y:float; glyph_ky:float; glyph_order:int; glyph_color: color; glyph_size:float;
              glyph:Fonts.glyph }
-type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
+type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float;image_pixel_width:int;image_pixel_height:int }
+
+type video= { video_file:string; video_x:float; video_y:float; video_order:int; video_height:float;video_width:float;video_pixel_width:int;video_pixel_height:int }
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
              mutable link_closed:bool;
              link_order:int;
@@ -98,6 +100,7 @@ and raw=
   | Path of path_parameters * (Bezier.curve array list)
   | Link of link
   | Image of image
+  | Video of video
   | States of states
   | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
 
@@ -110,6 +113,7 @@ let rec translate x y=function
     link_contents=List.map (translate x y) l.link_contents
   }
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
+  | Video i->Video { i with video_x=i.video_x+.x;video_y=i.video_y+.y }
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
   | Animation (r, names, ft, fr) -> Animation(List.map (translate x y) r, names, ft, (fun a -> List.map (translate x y) (fr a)))
 
@@ -125,6 +129,8 @@ let rec resize alpha=function
   }
   | Image i->Image { i with image_width=i.image_width*.alpha;
                        image_height=i.image_height*.alpha }
+  | Video i->Video { i with video_width=i.video_width*.alpha;
+                       video_height=i.video_height*.alpha }
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
   | Animation (r, names, ft, fr) -> Animation(List.map (resize alpha) r, names, ft, (fun a -> List.map (resize alpha) (fr a)))
 
@@ -156,6 +162,9 @@ let rec print_raw r=match r with
   | Image i->
     Printf.fprintf stderr "Image (%f,%f) (%f,%f)\n" i.image_x i.image_y (i.image_x+.i.image_width)
       (i.image_y+.i.image_height)
+  | Video i->
+    Printf.fprintf stderr "Video (%f,%f) (%f,%f)\n" i.video_x i.video_y (i.video_x+.i.video_width)
+      (i.video_y+.i.video_height)
 
   | States a->List.iter print_raw a.states_contents
   | Link l->(Printf.fprintf stderr "Link [";List.iter print_raw l.link_contents;Printf.fprintf stderr "]\n")
@@ -199,6 +208,10 @@ let bounding_box_opt opt l=
         bb (min x0 i.image_x) (min y0 i.image_y)
           (max x1 (i.image_x+.i.image_width))
           (max y1 (i.image_y+.i.image_height)) s
+    | Video i::s->
+        bb (min x0 i.video_x) (min y0 i.video_y)
+          (max x1 (i.video_x+.i.video_width))
+          (max y1 (i.video_y+.i.video_height)) s
 
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
@@ -278,6 +291,7 @@ let rec in_order i x=match x with
   | Path (p,t)->Path ({p with path_order=i},t)
   | Link l->Link { l with link_order=i }
   | Image a->Image { a with image_order=i }
+  | Video a->Video { a with video_order=i }
   | States s->States { s with states_order=i }
   | Animation(r,names,ft,fr) ->Animation(List.map (in_order i) r,names,ft,(fun a -> List.map (in_order i) (fr a))) 
 
@@ -286,6 +300,7 @@ let rec drawing_order x=match x with
   | Path (p,_)->p.path_order
   | Link l->l.link_order
   | Image i->i.image_order
+  | Video i->i.video_order
   | States s->s.states_order
   | Animation(r,_,_,_) -> List.fold_left (fun acc r -> min acc (drawing_order r)) max_int r
 

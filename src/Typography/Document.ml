@@ -931,6 +931,8 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
   let i={image_file=imageFile;
          image_width=fw;
          image_height=fh;
+         image_pixel_width=w;
+         image_pixel_height=h;
          image_x=0.;
          image_y=offset;
          image_order=0
@@ -953,6 +955,56 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
   image#destroy;
   img
 
+let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
+  let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
+  let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
+
+  let image=(OImages.load (tmp^"-1.png") []) in
+  let w,h=Images.size image#image in
+  let fw,fh=
+    if width=0. then
+      if height=0. then
+        if scale=0. then
+          if env.normalMeasure<(float_of_int w)/.7. then
+            env.normalMeasure, env.normalMeasure*.(float_of_int h)/.(float_of_int w)
+          else
+            (float_of_int w)/.7.,(float_of_int h)/.7.
+        else
+          (float_of_int w)*.scale,(float_of_int h)*.scale
+      else
+        height*.(float_of_int w)/.(float_of_int h), height
+    else
+      width, width*.(float_of_int h)/.(float_of_int w)
+  in
+  let i={video_file=imageFile;
+         video_width=fw;
+         video_height=fh;
+         video_pixel_width=w;
+         video_pixel_height=h;
+         video_x=0.;
+         video_y=offset;
+         video_order=0
+        }
+  in
+  let img={
+    drawing_min_width=fw;
+    drawing_max_width=fw;
+    drawing_nominal_width=fw;
+    drawing_width_fixed = true;
+    drawing_adjust_before = false;
+    drawing_y0=offset;
+    drawing_y1=fh+.offset;
+    drawing_break_badness=0.;
+    drawing_states=IntSet.empty;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[OutputCommon.Video i])
+  }
+  in
+  image#destroy;
+  img
+
+
+
 #else
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) (_:string) (_:environment)=
   {
@@ -968,10 +1020,16 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[])
   }
+
+let video=image
 #endif
+
 
 let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
   [bB (fun env->[Drawing (image ~scale ~width ~height ~offset imageFile env)])]
+
+let includeVideo ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
+  [bB (fun env->[Drawing (video ~scale ~width ~height ~offset imageFile env)])]
 
 (** {3 Boxification}*)
 

@@ -37,7 +37,8 @@ type glyph = {
   glyph_size : float;
   glyph : Fonts.glyph;
 }
-type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float }
+type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float;image_pixel_width:int;image_pixel_height:int }
+type video= { video_file:string; video_x:float; video_y:float; video_order:int; video_height:float;video_width:float;video_pixel_width:int;video_pixel_height:int }
 type metadata=
     Contributor
   | Coverage
@@ -80,6 +81,7 @@ and raw =
   | Path of path_parameters * Bezier.curve array list
   | Link of link
   | Image of image
+  | Video of video
   | States of states
   | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
 
