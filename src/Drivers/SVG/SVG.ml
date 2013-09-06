@@ -249,7 +249,7 @@ let draw ?fontCache prefix w h contents=
       imgs:=StrMap.add i.video_file name !imgs;
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<g transform=\"translate(%g,%g) scale(%g,%g)\"><foreignObject x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" preserveAspectRatio=\"xMinYMin slice\" href=\"%s\">
-<video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\" controls></video>
+<video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\"></video>
 </foreignObject></g>"
            i.video_x (h-.i.video_y-.i.video_height)
            (i.video_width/.(float_of_int i.video_pixel_width))
@@ -456,7 +456,6 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
   if(xhttp.status==200 || xhttp.status==0){
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(xhttp.responseText,\"text/html\");
-console.log(newSvg);
     var svg=document.getElementsByTagName(\"svg\")[0];
     newSvg=newSvg.getElementsByTagName(\"svg\")[0];
 
@@ -504,6 +503,8 @@ console.log(newSvg);
                 newSvg.removeChild(newSvg.firstChild);
         }
     }
+    var videos=document.getElementsByTagName(\"video\");
+    for(var i=0;i<videos.length;i++) videos[i].controls=true;
     current_slide=n;
     current_state=state;
     location.hash=n+\"_\"+state;
