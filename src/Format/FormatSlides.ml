@@ -618,14 +618,21 @@ module Format=functor (D:Document.DocumentStructure)->(
                       in
                       opts.(state)<-
                         List.map (function Placed_line l->
-                          { l with
-                            line={ l.line with
-                              paragraph=IntMap.find l.line.paragraph !par_map;
-                            };
-                          }
+                          (try
+                             { l with
+                               line={ l.line with
+                                 paragraph=IntMap.find l.line.paragraph !par_map;
+                               };
+                             }
+                           with
+                               Not_found->l)
                           | _->assert false
-                        ) (List.filter (function Placed_line l->true | _->false)
-                             (all_contents (snd (IntMap.max_binding opt_pages.frame_children))));
+                        )
+                        (List.filter (function Placed_line l->true | _->false)
+                           (try
+                              all_contents (snd (IntMap.max_binding opt_pages.frame_children))
+                            with
+                                Not_found->[]));
 
                       let next_layout=opt_pages,[] in
                       let env2,reboot'=update_names env1 figs' user' in
