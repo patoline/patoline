@@ -1282,7 +1282,7 @@ let draw_boxes env l=
           h.link_y1<-y1;
           h.link_closed<-true;
           h.link_x1<-x;
-          List.rev_append u s
+          l
         )
         | h::s->link_contents (h::u) s
       in
