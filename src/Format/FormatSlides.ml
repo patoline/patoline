@@ -759,7 +759,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   | [],_->true
                   | hu::_,hv::_ when hu<>hv->false
                   | _::su,_::sv->prefix su sv
-                  | _,[]->true
+                  | _,[]->false
                 in
                 (*
                 Printf.fprintf stderr "b:";
@@ -768,7 +768,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 List.iter (Printf.fprintf stderr "%d ") b0;
                 Printf.fprintf stderr "\n";flush stderr;
                 *)
-                if prefix (List.rev b) (List.rev b0) then (
+                if prefix (List.rev (match b with []->[]|_::s->s)) (List.rev b0) then (
                   let col=(!toc_active) in
                   boxify_scoped { env_final with fontColor=col } displayname
                 ) else (
@@ -844,9 +844,16 @@ module Format=functor (D:Document.DocumentStructure)->(
                 page.pageContents<-draw_toc env;
 
                 let tit=
-                  draw_boxes env (boxify_scoped {env with size=0.1} (match tree with
-                      Node n->n.displayname
-                    | _->[]))
+                  match tree with
+                      Node n->(
+                        let minip,_=OutputDrawing.minipage' { env with size=0.1 }
+                          (paragraph n.displayname)
+                        in
+                        try let d=snd (IntMap.min_binding minip) in
+                            d.drawing_contents d.drawing_nominal_width
+                        with Not_found->[]
+                      )
+                    | _->[]
                 in
 
                 page.pageContents<-(List.map (translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
