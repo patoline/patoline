@@ -1469,6 +1469,17 @@ let draw env x=
   adjust_width env buf nbuf;
   draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
 
+let states st x=
+  [bB (fun env->
+    let d=draw env x in
+    let (_,off,_,_)=bounding_box d in
+    [Drawing
+        (drawing ~offset:off
+            [States { states_contents=d;
+                      states_states=List.fold_right IntSet.add st IntSet.empty;
+                      states_order=0 }]
+        )]
+  )]
 
 
 module type DocumentStructure=sig
