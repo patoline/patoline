@@ -21,16 +21,17 @@ open Typography.OutputCommon
 open Typography.OutputPaper
 open Typography.Util
 
+let pixels_per_mm=ref 10.
+
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
 
-  let factor=10. in
   let f=try Filename.chop_extension fileName with _->fileName in
   Array.iteri (fun i x->
     let width,height=x.pageFormat in
-    let widthf= (width*.factor) and heightf= (height*.factor) in
+    let widthf= (width*. !pixels_per_mm) and heightf= (height*. !pixels_per_mm) in
     let width=int_of_float widthf and height=int_of_float heightf in
     let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width ~height in
     let ctx = Cairo.create surface in
@@ -38,21 +39,21 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let rec draw_page x=match x with
         Path (param,path)::s->(
 
-          Cairo.set_line_width ctx (factor*.param.lineWidth);
+          Cairo.set_line_width ctx (!pixels_per_mm*.param.lineWidth);
           List.iter (fun morceau->
 
             let x0,y0=morceau.(0) in
-            Cairo.move_to ctx (factor*.x0.(0)) (heightf-.factor*.y0.(0));
+            Cairo.move_to ctx (!pixels_per_mm*.x0.(0)) (heightf-. !pixels_per_mm*.y0.(0));
             for i=0 to Array.length morceau-1 do
               let xi,yi=morceau.(i) in
               if Array.length xi=4 then (
                 Cairo.curve_to ctx
-                  (factor*.xi.(1)) (heightf-.factor*.yi.(1))
-                  (factor*.xi.(2)) (heightf-.factor*.yi.(2))
-                  (factor*.xi.(3)) (heightf-.factor*.yi.(3))
+                  (!pixels_per_mm*.xi.(1)) (heightf-. !pixels_per_mm*.yi.(1))
+                  (!pixels_per_mm*.xi.(2)) (heightf-. !pixels_per_mm*.yi.(2))
+                  (!pixels_per_mm*.xi.(3)) (heightf-. !pixels_per_mm*.yi.(3))
               ) else (
-                Cairo.line_to ctx (factor*.xi.(Array.length xi-1))
-                  (heightf-.factor*.yi.(Array.length yi-1))
+                Cairo.line_to ctx (!pixels_per_mm*.xi.(Array.length xi-1))
+                  (heightf-. !pixels_per_mm*.yi.(Array.length yi-1))
               )
             done;
             if param.close then Cairo.close_path ctx;
@@ -116,6 +117,8 @@ let makeImage filename cont env=
   let i={image_file=(Printf.sprintf "%s0.png" f);
          image_width=w;
          image_height=h;
+         image_pixel_width=int_of_float (w*. !pixels_per_mm);
+         image_pixel_height=int_of_float (h*. !pixels_per_mm);
          image_x=0.;
          image_y=cont.drawing_y0;
          image_order=0;
