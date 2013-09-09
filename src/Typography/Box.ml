@@ -246,12 +246,10 @@ let default_params={ measure=0.;
 
 
 let lines_eq l0 l1=
-  ({ l0 with layout=empty_frame,[] }=
-      { l1 with layout=empty_frame,[] })
-  &&
-    (List.map snd (snd l0.layout) =
-        List.map snd (snd l1.layout))
-
+  (List.map fst (snd l0.layout) =
+      List.map fst (snd l1.layout))
+    &&
+  l0.height=l1.height
 
 (* Fin des definitions *)
 

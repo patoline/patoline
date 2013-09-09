@@ -1717,7 +1717,7 @@ let update_names env figs user=
             else
               MarkerMap.find (Label k) user
           in
-          if pos<>c && b<>"_" then (
+          if not (lines_eq pos c) && b<>"_" then (
             (* Printf.fprintf stderr "reboot : position of %S (%S) changed\n" k b; *)
             (* print_line pos; *)
             (* print_line c; *)
