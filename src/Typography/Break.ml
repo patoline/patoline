@@ -369,7 +369,6 @@ module Make (L:Line with type t=Box.line)=(
               let extreme_solutions=ref [] in
               let max_min_page_before=ref 0 in
               let min_min_page_before=ref 0 in
-              let height_problem=ref true in
 
               let rec fix layouts height n_iter=
                 (* Printf.fprintf stderr "%d fix %f\n" n_iter height;flush stderr; *)
@@ -463,7 +462,7 @@ module Make (L:Line with type t=Box.line)=(
                               in
                               v_distance cur_node lastParameters comp0 infinity
                             ) else (
-                              (fst nextLayout).frame_y1 -. snd (line_height paragraphs figures nextNode)
+                              (fst nextLayout).frame_y1 -. snd (line_height paragraphs figures nextNode);
                             )
                           in
                           let node_is_orphan=
@@ -557,8 +556,6 @@ module Make (L:Line with type t=Box.line)=(
                                   local_opt:=(nextNode,
                                               max 0. bad,TypoLanguage.Normal,
                                               nextParams,layouts,comp1,Some cur_node,lastFigures,lastUser)::(!local_opt)
-                              ) else (
-                                height_problem:=true
                               )
                             )
                         )
@@ -581,7 +578,10 @@ module Make (L:Line with type t=Box.line)=(
                   in
                   List.iter make_next_node (compl);
                   if !local_opt=[] && !extreme_solutions=[] then
-                    if frame_page layout<=page node+1+max lastParameters.min_page_after !max_min_page_before then (
+                    if frame_page layout<=page node+1+max lastParameters.min_page_after !max_min_page_before
+                      || node=initial_line
+                    then (
+                      Printf.fprintf stderr "Cas %d\n" __LINE__;flush stderr;
                       if height<(fst layout).frame_y0 || !min_min_page_before>0 then (
                         let np=new_page.(pi) layout in
                         (* Printf.fprintf stderr "new_page (2)\n";flush stderr; *)
@@ -594,16 +594,19 @@ module Make (L:Line with type t=Box.line)=(
                           next_h
                           (n_iter+1)
                       )
-                    ) else if allow_impossible then (
-                      let nextNode=List.hd compl in
-                      let nextParams=parameters.(nextNode.paragraph)
-                        paragraphs figures lastParameters lastFigures lastUser node nextNode
-                      in
-                      extreme_solutions:=
-                        (nextNode,
-                         lastBadness,
-                         (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
-                         nextParams,layouts,0.,Some cur_node,lastFigures,lastUser)::[]
+                    ) else (
+                      Printf.fprintf stderr "Cas %d\n" __LINE__;flush stderr;
+                      if allow_impossible then (
+                        let nextNode=List.hd compl in
+                        let nextParams=parameters.(nextNode.paragraph)
+                          paragraphs figures lastParameters lastFigures lastUser node nextNode
+                        in
+                        extreme_solutions:=
+                          (nextNode,
+                           lastBadness,
+                           (TypoLanguage.Opt_error (TypoLanguage.Overfull_line (text_line paragraphs nextNode))),
+                           nextParams,layouts,0.,Some cur_node,lastFigures,lastUser)::[]
+                      )
                     )
                 )
               in
