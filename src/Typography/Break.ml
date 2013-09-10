@@ -370,8 +370,8 @@ module Make (L:Line with type t=Box.line)=(
               let max_min_page_before=ref 0 in
               let min_min_page_before=ref 0 in
 
-              let rec fix layouts height n_iter=
-                (* Printf.fprintf stderr "%d fix %f\n" n_iter height;flush stderr; *)
+              let rec fix layouts pages_created height n_iter=
+                (* Printf.fprintf stderr "%d / %d fix %f\n" (frame_page (List.hd layouts)) n_iter height;flush stderr; *)
                 let layout=List.hd layouts in
                 let nextNode={
                   paragraph=pi; lastFigure=node.lastFigure; isFigure=false;
@@ -388,7 +388,7 @@ module Make (L:Line with type t=Box.line)=(
                 if (height<(fst layout).frame_y0) then (
                   let np=new_page.(pi) layout in
                   (* Printf.fprintf stderr "new page\n";flush stderr; *)
-                  fix (np::layouts) (fst np).frame_y1 (n_iter+1)
+                  fix (np::layouts) (pages_created+1) (fst np).frame_y1 (n_iter+1)
                 ) else (
                   let make_next_node nextNode=
                     let nextParams=parameters.(pi)
@@ -477,6 +477,7 @@ module Make (L:Line with type t=Box.line)=(
                           in
                           let nextNode_is_widow=
                             (not (nextLayout==node.layout))
+                            && (node<>initial_line)
                             &&
                               ((nextNode.lineStart > 0
                                 && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph)))
@@ -581,13 +582,13 @@ module Make (L:Line with type t=Box.line)=(
                     if frame_page layout<=page node+1+max lastParameters.min_page_after !max_min_page_before then (
                       if height<(fst layout).frame_y0 || !min_min_page_before>0 then (
                         let np=new_page.(pi) layout in
-                        (* Printf.fprintf stderr "new_page (2)\n";flush stderr; *)
-                        fix (np::layouts) (fst np).frame_y1 (n_iter+1)
+                        fix (np::layouts) (pages_created+1) (fst np).frame_y1 (n_iter+1)
                       ) else (
                         let next_h=new_line.(pi) node lastParameters
                           node lastParameters layout height
                         in
                         fix layouts
+                          (pages_created+1)
                           next_h
                           (n_iter+1)
                       )
@@ -604,7 +605,7 @@ module Make (L:Line with type t=Box.line)=(
                     )
                 )
               in
-              (fix !pages h0 0;
+              (fix !pages 0 h0 0;
                if allow_impossible && !local_opt=[] && !extreme_solutions<>[] then (
                  List.iter (fun (nextNode,bad,log,params,pages,comp,node,figures,user)->
                    let b,_,_=LineMap.split nextNode !todo' in
