@@ -589,7 +589,7 @@ module Make (L:Line with type t=Box.line)=(
                           node lastParameters layout height
                         in
                         fix layouts
-                          (pages_created+1)
+                          pages_created
                           next_h
                           (n_iter+1)
                       )
