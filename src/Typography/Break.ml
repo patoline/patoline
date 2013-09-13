@@ -477,7 +477,7 @@ module Make (L:Line with type t=Box.line)=(
                           in
                           let nextNode_is_widow=
                             (not (nextLayout==node.layout))
-                            && (node<>initial_line)
+                            && (not (node==initial_line))
                             &&
                               ((nextNode.lineStart > 0
                                 && nextNode.lineEnd >= Array.length (paragraphs.(nextNode.paragraph)))
