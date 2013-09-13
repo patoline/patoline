@@ -957,8 +957,11 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
-  let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
-
+  if (Unix.stat (tmp^"-1.png")).Unix.st_mtime
+    < (Unix.stat imageFile).Unix.st_mtime then (
+      let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
+      ()
+    );
   let image=(OImages.load (tmp^"-1.png") []) in
   let w,h=Images.size image#image in
   let fw,fh=
