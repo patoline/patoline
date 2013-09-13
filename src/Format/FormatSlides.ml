@@ -841,7 +841,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               let states=ref [] in
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
-                page.pageContents<-draw_toc env;
+                page.pageContents<-if IntMap.cardinal toc>0 then draw_toc env else [];
 
                 let tit=
                   match tree with
