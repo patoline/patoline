@@ -36,9 +36,6 @@ let ex env =
     (function Box.GlyphBox x -> true | _ -> false)
     l
   in (Box.upper_y x -. Box.lower_y x) /. 2.
-let scale_env env =
-  let mathsEnv = Maths.env_style env.mathsEnvironment env.mathStyle in
-  mathsEnv.Mathematical.mathsSize*.env.size
 
 let rec mem_compare cmp x l = match l with 
   | [] -> false 
@@ -1918,35 +1915,6 @@ Doing a rectangle.\n" ;
       (* We start defining new edge transfos and registering them *)
       (* ******************************************************** *)
 
-
-      let paramsOf,params_pet = 
-	Pet.register "params"
-	(fun pet params ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
-	    { edge_info with params = params ;
-	    tip_info = { edge_info.tip_info with tip_line_width = params.lineWidth }})})
-
-      let dashed pattern =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
-
-      let fill = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some black }})}
-
-      let color c = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
-
-      let black = color black 
-
-      let lineWidth w = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params  with lineWidth = w } ;
-	    tip_info = { edge_info.tip_info with tip_line_width = w }})}
-
-
-
       let do_clip curve node1 node2 = 
 	let start = begin
 	  match node1.curve with
@@ -1977,7 +1945,7 @@ Doing a rectangle.\n" ;
 	Curve.internal_restrict curve start finish 
 
       let clip, clip_pet = 
-	Pet.register ~depends:[params_pet] "clip" (fun pet ->
+	Pet.register "clip" (fun pet ->
 	  { pet = pet ; transfo = (fun transfos info -> 
 	    { info with underlying_curve = do_clip info.underlying_curve info.start info.finish }) })
 
@@ -1988,6 +1956,28 @@ Doing a rectangle.\n" ;
 	      { edge_info with curves = [ edge_info.params, edge_info.underlying_curve ] })
 	  })
 
+
+
+      let head_moustache info params = 
+	(* let _ = begin  *)
+	(* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
+	(* 	   params.lineWidth info.tip_line_width ; *)
+	(* 	 flush stderr *)
+	(* end in *)
+	if info.is_double then
+	  let short = max (params.lineWidth *. 0.66) 0.6 in
+	  let thickness = params.lineWidth in
+	  let height = max (1.6 *. short) 0.8 in
+	  let width = max info.tip_line_width 1. in
+	  (short, thickness, height, width, 0.01)
+
+	else
+
+	  let short = max (0.6 *. params.lineWidth) 0.2 in
+	  let thickness = max (0.7 *. params.lineWidth) 0.2 in
+	  let height = max (2. *. short) 0.8 in
+	  let width = max (1.3 *. info.tip_line_width) 1. in
+	  (short, thickness, height, width, 0.01)
 
       let do_squiggle freq angle (xs,ys) = 
 	let beziersx' = Bezier.divide xs (2 * freq) in 
@@ -2064,8 +2054,7 @@ Doing a rectangle.\n" ;
 
 
 
-      let double, double_pet = Pet.register ~depends:[params_pet; draw_pet] 
-	~append:only_last "double" (fun pet margin -> 
+      let double, double_pet = Pet.register ~depends:[draw_pet] ~append:only_last "double" (fun pet margin -> 
 	{ pet = pet ; transfo = (fun transfos info ->
 	  let black_paths = List.map (fun (params, curve) -> 
 	    { params with 
@@ -2090,43 +2079,13 @@ Doing a rectangle.\n" ;
 			 is_double = true };
 	    curves = (info_black.curves @ info_white.curves) }) })
 
-      let head_moustache env info params = 
-	(* let _ = begin  *)
-	(* 	 Printf.fprintf stderr "Entering head: lineWidth = %f, true lineWidth = %f \n" *)
-	(* 	   params.lineWidth info.tip_line_width ; *)
-	(* 	 flush stderr *)
-	(* end in *)
-	let scale = scale_env env in
-	if info.is_double then
-	  let short = max (info.tip_line_width *. 0.15) 0.06 in
-	  let thickness = max (0.5 *. params.lineWidth) 0.06 in
-	  let height = max (1.5 *. short) 0.22 in
-	  let width = max (0.3 *. info.tip_line_width) 0.2 in
-	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr
-	  in
-	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
-
-	else
-
-	  let short = max (0.15 *. params.lineWidth) 0.06 in
-	  let thickness = max (0.18 *. params.lineWidth) 0.04 in
-	  let height = max (0.4 *. params.lineWidth) 0.23 in
-	  let width = max (0.4 *. params.lineWidth) 0.23 in
-	  (* let short = max (0.5 *. params.lineWidth) 0.2 in *)
-	  (* let thickness = max (0.6 *. params.lineWidth) 0.2 in *)
-	  (* let height = max (2. *. short) 0.6 in *)
-	  (* let width = max (1.3 *. params.lineWidth) 0.4 in *)
-	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr
-	  in
-	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
-
-      let base_arrow env ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
+      let base_arrow ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
 	let info = edge_info.tip_info in
 	let params = edge_info.params in
 	let underlying_curve = edge_info.underlying_curve in
 	let time = if head_or_tail then 1. else 0. in
 	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
-	let short, thickness, height, width, lw = head_params env info params in
+	let short, thickness, height, width, lw = head_params info params in
 	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
 
 	(* Control points on the curve *)
@@ -2166,21 +2125,22 @@ Doing a rectangle.\n" ;
 		  lineWidth = lw }, tip)]}
 
       let arrowOf, arrow_head_pet = 
-        Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
-          (fun pet env head_params -> 
-	     { pet = pet ; transfo = base_arrow env head_params })
-      let arrow env = arrowOf env head_moustache
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow head"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow head_params })
 
       let backArrowOf, backArrow_head_pet = 
-        Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow tail"
-          (fun pet env head_params -> 
-	     { pet = pet ; transfo = base_arrow env ~head_or_tail:false head_params })
-      let arrow' env = backArrowOf env head_moustache
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow tail"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow ~head_or_tail:false head_params })
+
+      let arrow = arrowOf head_moustache
+      let arrow' = backArrowOf head_moustache
 
       let modToOf,mod_to_of_pet = Pet.register ~depends:[draw_pet] "mod to"
-	(fun pet time width env ->
+	(fun pet time width ->
 	  { pet = pet ; transfo = (fun transfos edge_info ->
-	    let edge_info' = Transfo.transform [arrow env] edge_info in
+	    let edge_info' = Transfo.transform [arrow] edge_info in
 	    let underlying_curve = edge_info'.underlying_curve in
 	    let middle = Curve.eval underlying_curve time in
 	    let (da,db) = Curve.eval (Curve.gradient underlying_curve) time in
@@ -2218,6 +2178,30 @@ Doing a rectangle.\n" ;
 
       let bendLeft = bendOf
       let bendRight angle = bendOf (-. angle)
+
+      let paramsOf,params_pet = 
+	Pet.register ~codepends:[clip_pet] "params"
+	(fun pet params ->
+	  { pet = pet ; transfo = (fun transfos edge_info ->
+	    { edge_info with params = params })})
+
+      let dashed pattern =
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
+
+      let fill = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some black }})}
+
+      let color c = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
+
+      let black = color black 
+
+      let lineWidth w = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
 
 
       let foreground, foreground_pet = 
@@ -2620,7 +2604,7 @@ Doing a rectangle.\n" ;
       let label_edgec ?style:(style=[]) e contents = label_edge e (anchor `Main :: style) 0.5 contents
 
       let edge_anchor a b style anchor pos contents = 
-	let e = edge (arrow env :: draw :: style) a b in
+	let e = edge (arrow :: draw :: style) a b in
 	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
@@ -2633,7 +2617,7 @@ Doing a rectangle.\n" ;
 
 
       let edge_anchor_of_gentities a b style anchor pos contents = 
-	let e = Edge.(of_gentities (arrow env :: draw :: style) a b) in
+	let e = Edge.(of_gentities (arrow :: draw :: style) a b) in
 	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
@@ -2646,8 +2630,7 @@ Doing a rectangle.\n" ;
 
 
       let edge_anchor_of_edges a b style anchor pos contents = 
-	let e = Edge.(of_gentities (arrow env :: draw :: style) 
-			(Edge.to_gentity a) (Edge.to_gentity b)) in
+	let e = Edge.(of_gentities (arrow :: draw :: style) (Edge.to_gentity a) (Edge.to_gentity b)) in
 	let l = label_edge_anchor e anchor pos contents in
 	e,l
 
@@ -2758,15 +2741,12 @@ Doing a rectangle.\n" ;
 	  (true, 
            (Maths.noad
               (fun env st->
-		let dr=Document.draw_boxes env 
-		  (Maths.draw [{env with mathStyle = Maths.scriptStyle env.mathStyle}] a) 
-		in
+		let dr=Document.draw_boxes env (Maths.draw [{env with mathStyle = Mathematical.Script}] a) in
 		let (x0,y0,x1,y1)=match dr with [] -> (0.,0.,0.,0.) | _ -> OutputCommon.bounding_box dr 
 		in
-		let scale = 0.2*.(scale_env env) in
 		(* let _ = Printf.fprintf stderr "Bb: %f,%f,%f,%f\n" x0 y0 x1 y1 ; flush stderr in *)
 		let matrix = Matrix.(make env
-		  [placement (between_centers 1. ((x1 -. x0 +. 2. *. scale *. margin)));
+		  [placement (between_centers 1. (x1 -. x0 +. 2. *. margin));
 		   mainNode Node.([
 		   innerSep 0. ; outerSep 0. ;
 		     rectangle env ;
@@ -2801,8 +2781,8 @@ Doing a rectangle.\n" ;
       ]
 
     let xto = xarrow ~decoration:(fun env ms ->
-      let e = Edge.(make [draw;lineWidth 0.1;arrow env] ms.(0).(0) ms.(0).(1)) in
+      let e = Edge.(make [draw;lineWidth 0.1;arrow] ms.(0).(0) ms.(0).(1)) in
       [Edge e], default_where ms)
     let xot = xarrow ~decoration:(fun env ms ->
-      let e = Edge.(make [draw;lineWidth 0.1;arrow env] ms.(0).(1) ms.(0).(0)) in
+      let e = Edge.(make [draw;lineWidth 0.1;arrow] ms.(0).(1) ms.(0).(0)) in
       [Edge e], default_where ms)

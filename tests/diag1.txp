@@ -19,6 +19,74 @@
 *)
 \Caml(open Diagrams
 
+module Env_Diagram (Arg : sig val env : environment end) = struct
+  include Env_Diagram (Arg) 
+  open Edge
+  open Transfo
+  open Style
+  let base_arrow ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
+	let info = edge_info.tip_info in
+	let params = edge_info.params in
+	let underlying_curve = edge_info.underlying_curve in
+	let time = if head_or_tail then 1. else 0. in
+	let (da,db) as grad = Vector.scal_mul (if head_or_tail then 1. else -1.) (Curve.eval (Curve.gradient underlying_curve) time) in
+	let short, thickness, height, width, lw = head_params info params in
+	let thickness' = thickness -. thickness *. info.tip_line_width /. 2. /. width in
+
+	(* Control points on the curve *)
+	let (xe,ye) as e = Curve.eval underlying_curve time in
+	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
+	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
+	let _ = begin
+	  Printf.fprintf stderr "shortening by %f.\n" short ; flush stderr
+	end in
+	let curve0 = edge_info'.underlying_curve in
+	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
+	let e0 = Curve.eval curve0 time in
+	let ee0 = Vector.of_points e e0 in
+	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
+	let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
+
+	let lnormale = Vector.rotate 90. (Vector.normalise grad) in
+	let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
+
+	(* Left control points *)
+	let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
+	let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
+	let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
+
+	(* Right control points *)
+	let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
+	let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
+	let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
+
+	(* Put everything together *)
+	let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
+					@ (Curve.make_quadratic ll l' e1) 
+					@ (Curve.make_quadratic e1 r' rr) 
+					@ (Curve.make_quadratic rr r e)) 
+	in
+	{ edge_info' with decorations = edge_info'.decorations @
+	    [Curve ({ params with 
+		  close = true ; 
+		  fillColor = params.strokingColor ; 
+		  lineWidth = lw }, tip)]}
+
+      let arrowOf, arrow_head_pet = 
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow head"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow head_params })
+
+      let backArrowOf, backArrow_head_pet = 
+        Pet.register ~depends:[double_pet;shorten_pet] ~append:only_last "arrow tail"
+          (fun pet head_params -> 
+	     { pet = pet ; transfo = base_arrow ~head_or_tail:false head_params })
+
+      let arrow = arrowOf head_moustache
+      let worra = backArrowOf head_moustache
+
+
+end
 
 )
 
@@ -28,14 +96,14 @@
 
       let m,ms = Matrix.(matrix [centers 10. 20.] [[
 	([], <<$C$>>); 
-	([], <<$C_{1}$>>); 
+	([], <<$C_1$>>); 
 	([], <<$C_2$>>);
 	([], <<$CD$>>)
       ];[
 	([],[]) ; ([],<<A>>) ; ([], <<B>>) 
       ]])
 
-	     let [delta;pi;sigma] = Edge.(edges [draw;arrow env (* ;dashed [2.;1.] *)] [
+	     let [delta;pi;sigma] = Edge.(edges [draw;worra;lineWidth 1. (* ;dashed [2.;1.] *)] [
 	       ([], ms.(0).(1), [], ms.(0).(0));
 	       ([], ms.(0).(1), [], ms.(0).(2));
 	       ([], ms.(0).(2), [], ms.(0).(3));
@@ -56,49 +124,3 @@
 
 
 )
-
-$S'(p) = ⋀_{\{(v \xto{α} p) ∈ P_X\}} S(v)$
-
-(* $⋀_{0 \xto{f} 1} f$ *)
-
-\Caml(
-open Diagrams
-
-let dark_blue=RGB{red=0.;green=0.;blue=0.4}
-
-)
-
-
-
-
-\begin{center}
-\diagram(
-let nombre = 8
-let facteur_epaisseur = 0.6
-let facteur_marge = 0.6
-  let sedges ?style:(style=Edge.([arrow env;draw])) = 
-    List.map (fun (st,s,e) -> edge Edge.(style @ st) s e) 
-  let sedges_matrix ?style:(st=Edge.([arrow env;draw])) ms l = 
-    sedges ~style:st
-      (List.map (fun (st',(ai,aj),(bi,bj)) -> (st',ms.(ai).(aj),ms.(bi).(bj))) l)
-
-
-let m,ms = Matrix.(matrix [centers 8. 30.] 
-    (let rec f n = if n = 0 then [] else
-    [([],<<$C → D$>>) ; ([],<<$P$>>) ; ([],<<$S$>>); ([],<<$A$>>)] :: f (n-1) in f nombre)
-)
-
-let rec dessine taille n = 
-    if n >= nombre then () 
-    else 
-     let _ = sedges_matrix ms [
-     ([],(n,0),(n,1)) ;
-     (Edge.([draw;lineWidth (facteur_epaisseur *. taille);color dark_blue]),(n,1),(n,2)) ;
-    (Edge.([double (facteur_marge *. taille)]),(n,2),(n,3))
-    ]
-    in 
-    dessine (taille +. 1.) (n + 1) 
-
-let _ = dessine 0. 0
-)
-\end{center}
