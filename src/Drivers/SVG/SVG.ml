@@ -293,7 +293,26 @@ let draw ?fontCache prefix w h contents=
     )
     | _->()
   in
-  List.iter output_contents (drawing_sort contents);
+  let raws=
+    let x=List.fold_left (fun m x->
+      let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+      IntMap.add (drawing_order x) (x::m') m
+    ) IntMap.empty (drawing_sort contents)
+    in
+    let comp a b=match a,b with
+        Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+          else compare gb.glyph_y ga.glyph_y
+      | Glyph ga,_-> -1
+      | _,Glyph gb->1
+      | _->0
+    in
+    let subsort a=match a with
+        Link l->Link { l with link_contents=List.sort comp l.link_contents }
+      | b->b
+    in
+    IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+  in
+  List.iter output_contents raws;
   if !opened_tspan then (
     Rbuffer.add_string svg_buf "</tspan>\n";
   );
