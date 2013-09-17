@@ -58,7 +58,7 @@ install-plot: $(PATOPLOT_LIBS) $(d)/META
 CLEAN += $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi \
 	 $(d)/*.cmxa $(d)/*.cma \
 	 $(d)/*.p.cmx $(d)/*.p.cmxa \
-	 $(d)/*.o $(d)/*.a \
+	 $(d)/*.o $(d)/*.a
 DISTCLEAN += $(d)/*.depends
 
 # Rolling back changes made at the top

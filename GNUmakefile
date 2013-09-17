@@ -189,6 +189,10 @@ ifeq "$(strip $(Q))" "@"
 else
   ECHO=@\#
 endif
+
+# Force INCLUDES to be an immediate variable
+INCLUDES:=
+
 %.ml.depends: %.ml
 	$(ECHO) "[DEPS]   $< -> $@"
 	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
