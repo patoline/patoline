@@ -598,7 +598,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       List.iter fn link.link_contents
     )
 
-    | States (s) -> assert false
+    | States (s) -> 
+      if IntSet.mem !cur_state s.states_states then
+	List.iter fn s.states_contents
 	
     | Image i -> 
       Gl.enable `texture_2d;
