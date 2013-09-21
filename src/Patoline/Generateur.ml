@@ -665,7 +665,7 @@ and output_list parser_pp from where no_indent lvl docs =
 	    (fun ch -> print_math_par pos parser_pp from ch true) m
         | Ignore -> 
 	  next_no_indent := no_indent
-	| Verbatim(lang, filename, lines) ->
+	| Verbatim(lang, filename, lines, (line, file)) ->
 	  let lang = match lang with
 	      None -> "lang_default"
 	    | Some s -> "lang_"^s
@@ -682,6 +682,7 @@ and output_list parser_pp from where no_indent lvl docs =
 		  Hashtbl.add verb_files f ch;
 		  ch
 	      in
+	      Printf.fprintf ch "#%d \"%s\"\n" line (String.escaped file);
 	      List.iter (fun l ->
 		Printf.fprintf ch "%s\n" l) lines;
 	      flush ch;
