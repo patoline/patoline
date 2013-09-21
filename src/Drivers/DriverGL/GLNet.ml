@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Netcgi
 open Nethttpd_reactor
+open Netcgi
 open Printf
 
 type cmd = Next_page | Next_state | Prev_page | Prev_state | Goto of int * int | Refresh
@@ -30,7 +30,7 @@ let rec service master_sock netcgi_processor =
   try
   let (infd,_,errfd) =
     let fds = List.map fst !opened_fd in
-    Unix.select (master_sock::fds) [] fds 0.0 
+    Unix.select (master_sock::fds) [] fds (0.0) 
   in
   if errfd <> [] then
     opened_fd := List.filter (fun (fd,(id,reactor)) -> 
@@ -120,6 +120,7 @@ let fetch_file cgi name =
 let cbs = ref ["file", fetch_file]
 
 let make_page cgi id cmd fmt width height format=
+  Printf.fprintf stderr "Making page\n";
   (* Output the beginning of the page with the passed [title]. *)
   let out = cgi # output # output_string in
   out "<html>";
@@ -190,8 +191,10 @@ let generate_page (cgi : cgi_activation) =
   let cmd = match page, state, next, prev with
     | Some n, Some p, _, _ -> Goto(n,p)
     | Some n, None, _, _ -> Goto(n,0)
-    | _, _, Some _, _ -> Next_state
-    | _, _, _, Some _ -> Prev_state
+    | _, _, Some "0", _ -> Next_state
+    | _, _, _, Some "0" -> Prev_state
+    | _, _, Some "1", _ -> Next_page
+    | _, _, _, Some "1" -> Prev_page
     | _, _, _, _ -> Refresh
   in
   let fmt =
@@ -248,13 +251,14 @@ let process (cgi : cgi_activation) =
 
     generate_page cgi;
 
+    cgi # output # output_string "\n\n";
+
     (* After the page has been fully generated, we can send it to the
-     * browser. 
-     *)
+     * browser*)
+     
     cgi # output # commit_work();
   with
-      error -> ()
-(*
+      error -> 
 	(* An error has happened. Generate now an error page instead of
 	 * the current page. By rolling back the output buffer, any 
 	 * uncomitted material is deleted.
@@ -271,14 +275,14 @@ let process (cgi : cgi_activation) =
 	  ~content_type:"text/html; charset=\"iso-8859-1\""
 	  ();
 
-	begin_page cgi "Software error";
+	(*begin_page cgi "Software error";*)
         cgi # output # output_string "While processing the request an O'Caml exception has been raised:<BR>";
         cgi # output # output_string ("<TT>" ^ text(Printexc.to_string error) ^ "</TT><BR>");
-	end_page cgi;
+	(*end_page cgi;*)
 
 	(* Now commit the error page: *)
 	cgi # output # commit_work()
-*)
+
 
 
 let conf_debug() =
@@ -317,3 +321,4 @@ let handle_one port=
   Printf.fprintf stderr "Listening on port %d\n" port;
   flush stderr;
   (fun () -> service master_sock process)
+

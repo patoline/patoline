@@ -23,9 +23,9 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 open Util
-#ifdef OCAMLNET
 open GLNet
-#endif
+open Hammer
+
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
 
@@ -208,9 +208,7 @@ let add_normals closed ratio beziers =
 	List.split (ln @ [last])
     ) beziers)   
 
-#ifdef OCAMLNET
 let image_cache = Hashtbl.create 101
-#endif
 
 let win = ref None
 
@@ -869,7 +867,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     done;
     GlDraw.ends ()
   in
-#ifdef OCAMLNET
   let show (cgi:Netcgi.cgi_activation) _ = 
     try
       let out = cgi # output # output_string in
@@ -891,7 +888,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   GLNet.cbs := ("show_x", show)::("show_end", show_end)::!cbs;
-#endif
 
   let dest = ref 0 in
 
@@ -1098,7 +1094,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let s=String.create 1000 in
-  let handle_one sock=
+  let handle_one_net sock=
     let i,_,_ = Unix.select [sock] [] [] 0.0 in
     match i with
 	[] -> ()
@@ -1125,53 +1121,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
   in
 
-  let rec idle_cb sock ~value:()=
-    Glut.timerFunc ~ms:30 ~cb:(idle_cb sock) ~value:();
-    if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
-    show_links ();
-
-    (match sock with Some sock -> handle_one sock | None -> ());
-    begin
-    try
-      let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
-      match i with
-	[] -> ()
-      | i ->
-	let cmd = input_line stdin in
-	if cmd <> "" then begin
-	  try
-	    match cmd.[0] with
-	      'r' -> to_revert := true; Glut.postRedisplay ()
-	    | 'e' -> (
-	      match Str.split (Str.regexp_string " ") cmd with
-		[_;l;c] ->
-		  goto_link (int_of_string l) (int_of_string c)
-	      | _ -> raise Exit)
-	    | _ -> raise Exit
-	  with
-	    Exit ->
-	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
-	end
-    with 
-      Unix.Unix_error(nb, _, _) as e -> 
-      Printf.fprintf stderr "Error in select: %s (%s)\n"
-	(Printexc.to_string e)
-	(Unix.error_message nb);
-      flush stderr;
-    end;
-
-  in
-
-  let display_cb sock ()=
-    draw_gl_scene ();
-    Glut.swapBuffers ();
-    idle_cb sock ();
-  in
-    
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
   in
 
-#ifdef OCAMLNET
   let make_content out id cmd fmt width height format =
     Printf.fprintf stderr "Make content\n"; flush stderr;
     if id = !page_counter then
@@ -1227,7 +1179,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let id = !page_counter in
 
     out "
-<script language=\"JavaScript\">
+<script language=\"JavaScript\">";
+    out Hammer.hammer;
+    out "
 function httpSend(theUrl) {
     var xmlHttp = null;
     xmlHttp = new XMLHttpRequest();
@@ -1250,17 +1204,18 @@ function show(event){
 	pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById(\"slide\").offsetTop;
 	pos_w  = document.getElementById(\"slide\").offsetWidth;
         httpSend(\"?show_x=\"+pos_x.toString()+\"&show_y=\"+pos_y.toString()+\"&show_w=\"+pos_w.toString());}
+
 </script>";
 
     let button s = Printf.sprintf "<div class=\"button\">%s</div>" s in
     out ("<div id=\"leftbar\">");
-    out (button (if !cur_page = 0 then "<a>PREV</a>" else
-	       Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=%s\">PREV</a>" id args));
+    out (button (if !cur_page = 0 then "<a>PREV PAGE</a>" else
+	       Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=1%s\">PREV PAGE</a>" id args));
     out ("</div>");
 
     out ("<div id=\"rightbar\">");
-    out (button (if !cur_page >= !num_pages - 1 then "<a>NEXT</a>" else
-	       Printf.sprintf "<a id=\"next\" href=\"id%d?next=%s\">NEXT</a>" id args));
+    out (button (if !cur_page >= !num_pages - 1 then "<a>NEXT PAGE</a>" else
+	       Printf.sprintf "<a id=\"next\" href=\"id%d?next=1%s\">NEXT PAGE</a>" id args));
     out (button "<a onClick=\"show_end()\">NO SHOW</a>");
 
     out ("</div>");
@@ -1278,10 +1233,82 @@ function show(event){
      out ("<div id=\"image\">");
      out (Printf.sprintf "<IMG id=\"slide\" src=\"?file=%s\" width=%d height=%d align=\"center\"onClick=\"show(event)\">" imgname w h);
      out ("</div>");
+Printf.fprintf stderr "<script language=\"JavaScript\">
+var el = document.getElementById('image');
+Hammer(el).on(\"swipeleft\", function() {
+  window.location.href = \"id%d?next=0%s\";
+  return false;
+}); 
+Hammer(el).on(\"swiperight\", function() {
+  window.location.href = \"id%d?prev=0%s\";
+  return false;
+}); 
+</script>"id args id args;
+     out (Printf.sprintf "<script language=\"JavaScript\">
+var el = document.getElementById('image');
+Hammer(el).on(\"swipeleft\", function() {
+  window.location.href = \"id%d?next=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();;
+  return false;
+}); 
+Hammer(el).on(\"swiperight\", function() {
+  window.location.href = \"id%d?prev=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();;
+  return false;
+}); 
+</script>" id args id args);
 
  in
-  GLNet.make_content := make_content;
-#endif
+
+  let handle_request = 
+    match !prefs.server_port with
+      None -> fun () -> ()
+    | Some p ->   GLNet.make_content := make_content;
+      handle_one p
+  in
+
+  let rec idle_cb sock ~value:()=
+    Glut.timerFunc ~ms:30 ~cb:(idle_cb sock) ~value:();
+    if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
+    show_links ();
+    handle_request ();
+(*    (match sock with Some sock -> handle_one_net sock | None -> ());*)
+    
+    begin
+    try
+      let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
+      match i with
+	[] -> ()
+      | i ->
+	let cmd = input_line stdin in
+	if cmd <> "" then begin
+	  try
+	    match cmd.[0] with
+	      'r' -> to_revert := true; Glut.postRedisplay ()
+	    | 'e' -> (
+	      match Str.split (Str.regexp_string " ") cmd with
+		[_;l;c] ->
+		  goto_link (int_of_string l) (int_of_string c)
+	      | _ -> raise Exit)
+	    | _ -> raise Exit
+	  with
+	    Exit ->
+	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
+	end
+    with 
+      Unix.Unix_error(nb, _, _) as e -> 
+      Printf.fprintf stderr "Error in select: %s (%s)\n"
+	(Printexc.to_string e)
+	(Unix.error_message nb);
+      flush stderr;
+    end;
+
+  in
+
+  let display_cb sock ()=
+    draw_gl_scene ();
+    Glut.swapBuffers ();
+  in
+    
+
   let mouse_cb ~button ~state ~x ~y =
     match button, state with
 
@@ -1344,7 +1371,7 @@ function show(event){
 	w
     | Some w -> w
     in
-    let socket=reconnect () in
+    let socket=(*reconnect*) () in
     match !prefs.batch_cmd with
       None ->
 	Glut.displayFunc (display_cb socket);
