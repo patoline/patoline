@@ -1109,7 +1109,7 @@ let make_sqrt env_ style box=
          drawing_break_badness=0.;
          drawing_badness=(fun _->0.);
          drawing_states=IntSet.empty;
-         drawing_contents=(fun _->p::List.map (translate (dx0+.sp-.bx0) 0.) under);
+         drawing_contents=(fun _->p::List.map (translate (dx0+.sp) 0.) under);
       }]
     ) else (
       (* Il faut rallonger *)
