@@ -1077,13 +1077,13 @@ let make_sqrt env_ style box=
         if dx0<dx1 then (dx1,dx0) else (dx0,dx1)
       in
       let ty=by0-.env.sqrt_dist*.(phi-.1.) in
-      let sp=adjust_space ~absolute:false env (2.*.env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
-        [translate 0. ty (Path (default,[out]))]
+      let path0=Array.sub out 0 !i0
+      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
+      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
+        [translate 0. ty (Path (default,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +. sp +. env.sqrt_dist*.s in
-      let path0=Array.sub out 0 !i0
-      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
         [|[|dx0;dx0+.xmax|],[|y0';y0'|];
           [|dx0+.xmax;dx0+.xmax|],[|y0';y1'|];
@@ -1109,7 +1109,7 @@ let make_sqrt env_ style box=
          drawing_break_badness=0.;
          drawing_badness=(fun _->0.);
          drawing_states=IntSet.empty;
-         drawing_contents=(fun _->p::List.map (translate (dx0+.sp) 0.) under);
+         drawing_contents=(fun _->p::List.map (translate (dx0+.sp-.bx0) 0.) under);
       }]
     ) else (
       (* Il faut rallonger *)
@@ -1120,13 +1120,13 @@ let make_sqrt env_ style box=
                       -.Fonts.glyph_y1 gl*.s/.1000.))/.vy in
       let tt'= tt+. ((dd-. (dy1-.dy0))/.(vy*.phi)) in
       let ty=by0-.env.sqrt_dist*.(phi-.1.) in
-      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.env.sqrt_dist*.s)
-        [translate 0. ty (Path (default,[out]))]
+      let path0=Array.sub out 0 !i0
+      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
+      let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
+        [translate 0. ty (Path (default,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +.sp +. env.sqrt_dist*.s in
-      let path0=Array.sub out 0 !i0
-      and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let path2=
         [|[|dx0;dx0+.tt*.vx|], [|dy0;dy0+.tt*.vy|];
           [|dx0+.tt*.vx;dx0+.tt*.vx+.xmax|],[|dy0+.tt*.vy;dy0+.tt*.vy|];
