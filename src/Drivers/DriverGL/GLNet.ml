@@ -127,12 +127,12 @@ let make_page cgi id cmd fmt width height format=
   out "<head>";
   out "<style>
     body { color: #B04040; border: 0; margin: 0; padding: 0; text-align: center; vertical-align: 	middle; }
-    .button { width: 52px; height: 52px; border: 2px solid #B0B0B0; }
+    .button { width: 60px; height: 60px; margin-top: 6px; margin-left: 8px; margin-right: 8px }
     a { color : #B04040; }
     a:visited { color : #B04040; }
     a:hover { color : #B0B0B0; }
-    div#leftbar { position: absolute; top: 0px; left: 0px; width: 76px; bottom:0px ; border-right: 4px solid #4040B0; padding-top:20px; padding-left: 10px; padding-right: 10px;background: #202040;  text-align: center; vertical-align: 	middle; }
-    div#rightbar { position: absolute; top: 0px; right: 0px; width: 76px; bottom: 0px; border-left: 4px solid #4040B0; padding-top: 20px ;padding-left: 10px; padding-right: 10px; background: #202040;  text-align: center; vertical-align: 	middle; }
+    div#leftbar { position: absolute; top: 0px; left: 0px; width: 76px; bottom:0px ; border-right: 4px solid #4040B0; padding-top:30px; background: #202040;  text-align: center; vertical-align: 	middle; }
+    div#rightbar { position: absolute; top: 0px; right: 0px; width: 76px; bottom: 0px; border-left: 4px solid #4040B0; padding-top: 30px ; background: #202040;  text-align: center; vertical-align: 	middle; }
     div#image { position: absolute; top: 0px; left:80px; right:80px; bottom:0px; overflow:auto;}
   </style>";
 (*  out "<link rel=\"stylesheet\" type=\"text/css\" href=\"/themes/alpinux/handheld.css\" media=\"screen and (max-device-width: 480px)\" />";

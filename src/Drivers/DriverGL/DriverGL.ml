@@ -733,12 +733,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | None, Some h -> int_of_float (pw /. ph *. float h), h
       | Some w, Some h -> w, h
     in
+    let save_width = !pixel_width and save_height = !pixel_height in
     pixel_width := pw /. float (samples * w);
     pixel_height := ph /. float (samples * h);
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) false in
     GlFBO.bind_fbo fbo;
     draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page state saa;
     Gl.finish ();
+    pixel_width := save_width;
+    pixel_height := save_height;
 (*
     let raw = Raw.create `ubyte ~len:(4*samples*w*samples*h) in
     GlFBO.read_fbo fbo raw;
@@ -844,28 +847,66 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
 
   let draw_show x y w () =
+    Gl.enable `lighting;
+    Gl.enable `polygon_smooth;
+    GlMisc.hint `polygon_smooth `nicest;
+    Gl.enable `light0;
     let w = float w in
     let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
+    let (xl,yl,zl,_) as posl = (!cx, !cy *. 1.9, 2.0 *. max !rx !ry, 1.0) in
+    GlLight.light ~num:0 (`position posl);
+    GlLight.light ~num:0 (`ambient(0.2,0.2,0.2,1.0));
+    GlLight.light ~num:0 (`diffuse(0.5,0.5,0.5,1.0));
+    GlLight.light ~num:0 (`specular(0.5,0.5,0.5,1.0));
     let x = float x /. w *. pw and y = ph -. float y /. w *. pw in
-    let alpha = 0.0 in
-    let (x1,y1,z1) as v1 = (x +. 2.0 *. pw, y -. 2.0 *. ph, 0.5 *. min pw ph) in
-    let (x0,y0,z0) as v2 = (x +. alpha *. 2.0 *. pw, y -. alpha *. 2.0 *. ph, alpha *. 0.5 *. min pw ph) in
-    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1;
+    let r = 0.75 in
+    let (x1,y1,z1) as v1 = (x +. (if x > pw /. 2.0 then 1.0 else -1.0) *. pw, y -. 1.0 *. ph, 0.5 *. max pw ph) in
+    let (x0,y0,z0) as v2 = (x, y, r) in
+    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f) with light in (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1 xl yl zl;
     flush stderr;
     let axe = Vec3.sub v2 v1 in
-    let (ax,ay,az) as r1 = Vec3.normalize (y0,(-.x0),0.0) in
+    let r0 = (0.0,1.0,0.0) in
+    let (ax,ay,az) as r1 = Vec3.normalize (Vec3.vecp axe r0) in
     let (bx,by,bz) as r2 = Vec3.normalize (Vec3.vecp axe r1) in
     let prec = 32 in
-    let r = 1.0 in
-    GlDraw.color (0.8, 0.3, 0.3);
+    GlLight.material ~face:`both (`specular (0.7,0.7,0.7,1.0));   
+    GlLight.material ~face:`both (`diffuse (0.5,0.5,0.7,1.0));   
+    GlLight.material ~face:`both (`ambient (0.5,0.5,0.7,1.0));   
+    GlLight.material ~face:`both (`shininess 0.5);
     GlDraw.begins `quad_strip;
     for i = 0 to prec do
       let a = float(i) *. 2.0 *. Vec3.pi /. float(prec) in
-      let c = r *. cos(a) and s = r *. sin(a) in
+      let c' = cos(a) and s' = sin(a) in
+      let c = r *. c' and s = r *. s' in 
+      GlDraw.normal3 (Vec3.add (Vec3.mul c' r1) (Vec3.mul s' r2));
       GlDraw.vertex3 (Vec3.add v1 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
       GlDraw.vertex3 (Vec3.add v2 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
     done;
-    GlDraw.ends ()
+    GlDraw.ends ();
+    Gl.disable `lighting;
+    Gl.disable `polygon_smooth;
+    Gl.disable `light0;
+    GlMat.push ();
+    let proj = GlMat.of_array
+               [| [| 1.0; 0.0; 0.0; 0.0 |];
+		  [| 0.0; 1.0; 0.0; 0.0 |];
+		  [|-. xl /. zl; -. yl /. zl; 0.0; -1.0 /. zl|];
+		  [| 0.0; 0.0; 0.0; 1.0 |] |] in
+    GlMat.load_identity ();
+    GlMat.translate3 (0.0,0.0,0.01);
+    GlMat.mult proj;
+    GlDraw.color(0.0,0.0,0.0);
+    GlDraw.begins `quad_strip;
+    for i = 0 to prec do
+      let a = float(i) *. 2.0 *. Vec3.pi /. float(prec) in
+      let c' = cos(a) and s' = sin(a) in
+      let c = r *. c' and s = r *. s' in 
+      GlDraw.vertex3 (Vec3.add v1 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
+      GlDraw.vertex3 (Vec3.add v2 (Vec3.add (Vec3.mul c r1) (Vec3.mul s r2)));
+    done;
+    GlDraw.ends ();
+    GlMat.pop ();
+
   in
   let show (cgi:Netcgi.cgi_activation) _ = 
     try
@@ -1191,32 +1232,58 @@ function httpSend(theUrl) {
 function show_end() {
     httpSend(\"?show_end=\");}
 
+function add_width(name) {
+    el = document.getElementById(name);
+    if (el) el.href = el.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();
+}
 function init() {
-    next = document.getElementById(\"next\");
-    if (next) next.href = next.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();
-    prev = document.getElementById(\"prev\");
-    if (prev) prev.href = prev.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();
+    add_width(\"next\");
+    add_width(\"next_state\");
+    add_width(\"prev\");
+    add_width(\"prev_state\");
 }
 window.onload=init;
 
 function show(event){
-	pos_x = event.offsetX?(event.offsetX):event.pageX-document.getElementById(\"slide\").offsetLeft;
-	pos_y = event.offsetY?(event.offsetY):event.pageY-document.getElementById(\"slide\").offsetTop;
-	pos_w  = document.getElementById(\"slide\").offsetWidth;
+	pos_x = event.clientX
+              -document.getElementById(\"slide\").offsetLeft
+              -document.getElementById(\"image\").offsetLeft;
+	pos_y = event.clientY
+              -document.getElementById(\"slide\").offsetTop
+              -document.getElementById(\"image\").offsetTop;
+	pos_w = document.getElementById(\"slide\").offsetWidth;
         httpSend(\"?show_x=\"+pos_x.toString()+\"&show_y=\"+pos_y.toString()+\"&show_w=\"+pos_w.toString());}
 
 </script>";
 
     let button s = Printf.sprintf "<div class=\"button\">%s</div>" s in
     out ("<div id=\"leftbar\">");
-    out (button (if !cur_page = 0 then "<a>PREV PAGE</a>" else
-	       Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=1%s\">PREV PAGE</a>" id args));
+    out (button (Printf.sprintf "<a id=\"prev_state\" href=\"id%d?prev=0%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
+<rect width='60' height='60' style='fill:red'/>
+<polygon points='50,10 50,50 10,30' style='fill:white'/>
+</svg></a>" id args));
+    out (button (Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=1%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
+<rect width='60' height='60' style='fill:red'/>
+<polygon points='50,10 50,50 20,30' style='fill:white'/>
+<polygon points='40,10 40,50 10,30' style='fill:white'/>
+</svg></a>" id args));
     out ("</div>");
 
     out ("<div id=\"rightbar\">");
-    out (button (if !cur_page >= !num_pages - 1 then "<a>NEXT PAGE</a>" else
-	       Printf.sprintf "<a id=\"next\" href=\"id%d?next=1%s\">NEXT PAGE</a>" id args));
-    out (button "<a onClick=\"show_end()\">NO SHOW</a>");
+    out (button (Printf.sprintf "<a id=\"next_state\" href=\"id%d?next=0%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
+<rect width='60' height='60' style='fill:red'/>
+<polygon points='10,10 10,50 50,30' style='fill:white'/>
+</svg></a>" id args));
+    out (button (Printf.sprintf "<a id=\"next\" href=\"id%d?next=1%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
+<rect width='60' height='60' style='fill:red'/>
+<polygon points='10,10 10,50 40,30' style='fill:white'/>
+<polygon points='20,10 20,50 50,30' style='fill:white'/>
+</svg></a>" id args));
+    out (button (Printf.sprintf "<a id=\"next\" onClick=\"show_end()\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
+<rect width='60' height='60' style='fill:red'/>
+<polygon points='5,15 15,5 55,45 45,55' style='fill:white'/>
+<polygon points='5,45 15,55 55,15 45,5' style='fill:white'/>
+</svg></a>"));
 
     out ("</div>");
 (*
@@ -1247,11 +1314,11 @@ Hammer(el).on(\"swiperight\", function() {
      out (Printf.sprintf "<script language=\"JavaScript\">
 var el = document.getElementById('image');
 Hammer(el).on(\"swipeleft\", function() {
-  window.location.href = \"id%d?next=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();;
+  window.location.href = \"id%d?next=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();;
   return false;
 }); 
 Hammer(el).on(\"swiperight\", function() {
-  window.location.href = \"id%d?prev=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 30).toString();;
+  window.location.href = \"id%d?prev=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();;
   return false;
 }); 
 </script>" id args id args);
