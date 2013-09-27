@@ -19,22 +19,16 @@
 *)
 
 #load "unix.cma"
+#directory "+findlib"
+#load "findlib.cma"
+#load "str.cma"
 
 let prefix=ref "/usr/local/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
 let grammars_dir=ref ""
 let hyphen_dir=ref ""
-let ocaml_lib_dir=ref
-  (try
-    let p = Unix.open_process_in "ocamlfind printconf destdir" in
-    let res = input_line p in
-    if Unix.close_process_in p = Unix.WEXITED(0)
-    then res
-    else failwith "ocamlfind printconf destdir failed"
-  with
-  | _ -> ""
-  )
+let ocaml_lib_dir=ref (Findlib.default_location())
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let plugins_dir=ref ""
@@ -81,50 +75,95 @@ let configure_environment=Unix.environment ()
  * Returns type is (bool * string) where the boolean indicates whether
  * ocamlfound the package, and string is its actual name (a package may have
  * different names depending on the system). *)
+
+type findlib_package =
+  {
+    pack_name : string;
+    (* Some packages may have different names, which we try to find if
+     * the first package name yields no result. *)
+    known_aliases : string list;
+    additional_check : string -> string -> bool;
+  }
+
+let package_no_check _ _ = true
+
+let package_min_version min_version package alias =
+  let installed = Findlib.package_property [] alias "version"
+  and rever = Str.regexp "\\." in
+  let min_ver_list = List.map int_of_string (Str.split rever min_version)
+  and ins_ver_list = List.map int_of_string (Str.split rever installed) in
+  if min_ver_list <= ins_ver_list then
+    true
+  else
+    (
+      Printf.printf "%s is too old: version %s requested, but %s has been found\n"
+        package min_version installed;
+      false
+    )
+
+let patoline_uses_packages =
+  let res = Hashtbl.create 10 in
+  List.iter (fun p -> Hashtbl.add res p.pack_name p)
+  [
+    {
+      pack_name = "camomile";
+      known_aliases = [];
+      additional_check = package_min_version "0.8.4"
+    };
+    {
+      pack_name = "zip";
+      known_aliases = ["camlzip"];
+      additional_check = package_no_check;
+    };
+    {
+      pack_name = "cairo";
+      known_aliases = ["ocaml-cairo"];
+      additional_check = package_no_check;
+    };
+    {
+      pack_name = "lablgl";
+      known_aliases = ["lablGL"];
+      additional_check = package_no_check;
+    };
+    {
+      pack_name = "lablgl.glut";
+      known_aliases = ["lablGL.glut"];
+      additional_check = package_no_check;
+    };
+  ];
+  res
+
 let ocamlfind_query =
-  (* Some packages may have different names, which we try to find if the first
-   * package name yields no result. *)
-  let ocamlfind_aliases =
-    [
-      ["zip"; "camlzip"];
-      ["cairo"; "ocaml-cairo"];
-      ["lablgl"; "lablGL"];
-      ["lablgl.glut"; "lablGL.glut"]
-    ]
-  and checked = Hashtbl.create 10 in
+  let checked = Hashtbl.create 10 in
   function pack ->
     try
       (* Easy case, when package has already been looked up *)
       Hashtbl.find checked pack
     with
       Not_found ->
-        let liste=
-            (
-              try List.find (fun l -> List.hd l = pack) ocamlfind_aliases
-              with Not_found -> [pack]
-            )
-        in
-        (match liste with
-            h::_->Printf.printf "Looking for package %s..." h
-          | _->());
+        Printf.printf "Looking for package %s..." pack;
+        let liste, additional_check =
+          (try
+            let p = Hashtbl.find patoline_uses_packages pack in
+            (p.pack_name :: p.known_aliases, p.additional_check) 
+            with Not_found -> [pack], package_no_check
+          ) in
         let res =
           List.fold_left
            (fun res pack_alias ->
-             let ci,ci'=Unix.pipe () in
-             let co,co'=Unix.pipe () in
-             let ce,ce'=Unix.pipe () in
-             let i=Unix.create_process "ocamlfind" [|"ocamlfind";"query";pack_alias|] ci' co ce in
-             Unix.close co;
-             Unix.close ce;
-             Unix.close ci';
-             let _,st=Unix.waitpid [] i in
-             if fst res || st <> (Unix.WEXITED 0) then (
+             if fst res then
                res
-             ) else
-               (true, pack_alias)
+             else
+               try
+                 let _ = Findlib.package_directory pack_alias in
+                 if additional_check pack pack_alias
+                 then (true, pack_alias)
+                 else res
+               with
+               _ -> res
            )
-            (false, "")
-            liste
+           (false, "")
+           liste
         in
         Hashtbl.add checked pack res;
         if (fst res) then
