@@ -233,7 +233,7 @@ INCLUDES:=
 	$(Q)$(OCAMLLEX) $<
 
 # Common rules for Patoline
-%.pdf: %.txp $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa $(SRC_DIR)/DefaultGrammar.cmx
+%.pdf: %.txp $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx $(DRIVERS_DIR)/Pdf/Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa $(SRC_DIR)/DefaultGrammar.cmx
 	$(ECHO) "[PATOLINE] $< -> $*.tml"
 	$(Q)$(PATOLINE_IN_SRC) --recompile --driver Pdf --extra-hyph-dir $(HYPHENATION_DIR) --ml --extra-fonts-dir $(FONTS_DIR) -I $(SRC_DIR) $<
 
@@ -241,7 +241,7 @@ INCLUDES:=
 	$(Q)$(PATOLINE_IN_SRC) --recompile --driver Pdf --extra-hyph-dir $(HYPHENATION_DIR) --main-ml --extra-fonts-dir $(FONTS_DIR) -I $(SRC_DIR) $<
 
 	$(ECHO) "[OPT]    $*.tml $*_.tml -> $*.tmx"
-	$(Q)$(OCAMLOPT_NOPP) $(PACK) -linkpkg -I $(SRC_DIR) -I $(RBUFFER_DIR) rbuffer.cmxa -I $(TYPOGRAPHY_DIR) Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa -I $(FORMAT_DIR) DefaultFormat.cmxa -o $*.tmx $(SRC_DIR)/DefaultGrammar.cmx -impl $*.tml -impl $*_.tml
+	$(Q)$(OCAMLOPT_NOPP) $(PACK) -linkpkg -I $(SRC_DIR) -I $(RBUFFER_DIR) rbuffer.cmxa -I $(TYPOGRAPHY_DIR) Typography.cmxa ParseMainArgs.cmx -I $(DRIVERS_DIR)/Pdf Pdf.cmxa -I $(FORMAT_DIR) DefaultFormat.cmxa -o $*.tmx $(SRC_DIR)/DefaultGrammar.cmx -impl $*.tml -impl $*_.tml
 
 	./$*.tmx --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR)
 

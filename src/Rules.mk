@@ -36,7 +36,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(DRIVERS_DIR)/Pdf/Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf rbuffer.cmxa Typography.cmxa DefaultFormat.cmxa Pdf.cmxa -linkpkg -o $@ ParseMainArgs.cmx $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf rbuffer.cmxa Typography.cmxa ParseMainArgs.cmx DefaultFormat.cmxa Pdf.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$< --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR)
