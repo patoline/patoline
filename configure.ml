@@ -108,7 +108,7 @@ let patoline_uses_packages =
     {
       pack_name = "camomile";
       known_aliases = [];
-      additional_check = package_min_version "0.8.4"
+      additional_check = package_min_version "0.8.3"
     };
     {
       pack_name = "zip";
