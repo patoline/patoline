@@ -1374,7 +1374,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 if !crosslink_opened then (
                   let rec link_contents u l=match l with
                       []->[]
-                    | (Link h)::s->(
+                    | (Link h)::s when not h.link_closed->(
                       if cont then continued_link:=Some (Link h);
                       let x0,y0,x1,y1=bounding_box u in
                       Link { h with
