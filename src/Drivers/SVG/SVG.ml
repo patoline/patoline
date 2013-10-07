@@ -25,7 +25,7 @@ open OutputPaper
 open Util
 open HtmlFonts
 open Box
-exception Bezier_degree
+exception Bezier_degree of int
 
 
 
@@ -169,7 +169,7 @@ let draw ?fontCache prefix w h contents=
                 if Array.length x=2 then Rbuffer.add_string buf "L" else
                   if Array.length x=3 then Rbuffer.add_string buf "Q" else
                     if Array.length x=4 then Rbuffer.add_string buf "C" else
-                      raise Bezier_degree;
+                      raise (Bezier_degree (Array.length x));
                 for j=1 to Array.length x-1 do
                   Rbuffer.add_string buf (Printf.sprintf "%g %g " (x.(j)) ( (h-.y.(j))));
                 done
@@ -249,7 +249,9 @@ let draw ?fontCache prefix w h contents=
       imgs:=StrMap.add i.video_file name !imgs;
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<g transform=\"translate(%g,%g) scale(%g,%g)\"><foreignObject x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" preserveAspectRatio=\"xMinYMin slice\" href=\"%s\">
+<body xmlns=\"http://www.w3.org/1999/xhtml\" style=\"margin: 0; padding: 0\">
 <video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\"></video>
+</body>
 </foreignObject></g>"
            i.video_x (h-.i.video_y-.i.video_height)
            (i.video_width/.(float_of_int i.video_pixel_width))
@@ -349,7 +351,7 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
 <svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
 (*      Rbuffer.add_string file (Printf.sprintf "<html><body>
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:zhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));*)
       let sorted_pages=OutputCommon.sort_raw page.pageContents in
       let svg,imgs0=draw ~fontCache:cache prefix w h sorted_pages in
@@ -421,11 +423,11 @@ var qi=0,qj=0;
   Rbuffer.add_string html "function slide(width,g0,g1){
     var svg=document.getElementsByTagName(\"svg\")[0];
     g0.style.MozTransform=\"translate(\"+width+\"px,0)\";
-    g0.style.webkitTransform=\"translate(\"+width+\"px,0)\";
+    g0.style.webkitTransform=\"translate(\"+width+\"px,0,0)\";
     g0.style.MozTransitionDuration=\"1s\";
     g0.style.webkitTransitionDuration=\"1s\";
     g0.style.MozTransitionProperty=\"transform\";
-    g0.style.webkitTransitionProperty=\"transform\";
+//    g0.style.webkitTransitionProperty=\"transform\";
     svg.appendChild(g0);
     if(g1){
         g1.style.MozTransitionDuration=\"1s\";
@@ -474,9 +476,10 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
   xhttp.send();
   if(xhttp.status==200 || xhttp.status==0){
     var parser=new DOMParser();
-    var newSvg=parser.parseFromString(xhttp.responseText,\"text/html\");
+    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
+
     var svg=document.getElementsByTagName(\"svg\")[0];
-    newSvg=newSvg.getElementsByTagName(\"svg\")[0];
+    newSvg=document.importNode(newSvg.rootElement,true);
 
     var cur_g=queue[qi-1];
     if(effect || !cur_g){ // si on fait un effet, ou si on c'est le premier chargement
@@ -580,15 +583,13 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:zhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
+  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                              (round (w)) (round (h)));
 
   let style=make_defs "" cache in
   let ststr=(Filename.concat prefix "style.css") in
 
-  Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"";
-  Rbuffer.add_string html ststr;
-  Rbuffer.add_string html "\"/>";
+  Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
   html,style
