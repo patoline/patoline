@@ -499,6 +499,7 @@ Wouldn't it be better to take all arrows from Asana-Math??? *)
 \Add_combining{ ⃗ }{\vec}
 \Add_combining{ ⃖ }{\cev}
 \Add_combining{ ̅ }{\oline}
+\Add_combining{˙ }{\od}
 
 \Configure_math_macro{\sqrt}{ arity = 1 name = Maths.sqrt }
 \Configure_math_macro{\cal}{ arity = 1 name = mathcal }
