@@ -62,7 +62,11 @@ let list_split_last_rev l =
 let app_default f x y default = 
   match f x y with
     | Some res -> res
-    | None -> default
+    | None -> 
+      let _ = Printf.fprintf stderr "Warning: empty intersection list, returning default anchor.\n" ; 
+	flush stderr 
+      in
+      default
 
 let max_list f z l = List.fold_left 
   (fun res x -> max res (f x))
@@ -226,7 +230,24 @@ module Curve = struct
 	beziers1
     in res
 
+  let print_point_lists points = 	
+    let _ = Printf.fprintf stderr "Points: \n"  in
+    let _ = List.iter (fun (xs,ys) ->  
+      let _ = Array.iter (fun x -> Printf.fprintf stderr "%f ; " x) xs in
+      Printf.fprintf stderr "\n" ;
+      let _ = Array.iter (fun x -> Printf.fprintf stderr "%f ; " x) ys in
+      Printf.fprintf stderr "\n")
+      points in
+    let _ = flush stderr in
+
+    ()
+
+
   let latest_intersection beziers1 beziers2 =
+    (* Printf.fprintf stderr "Yoho!\n" ;  *)
+    (* print_point_lists beziers1 ;  *)
+    (* print_point_lists beziers2 ;  *)
+    (* Printf.fprintf stderr "Tchow!\n" ; flush stderr ; *)
     let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
     let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     let inters = (intersections beziers1 beziers2) in
@@ -1921,6 +1942,13 @@ Doing a rectangle.\n" ;
 	    | [xs,ys] when Array.length xs <= 1 -> (0,0.)
 	    | curve1 ->
 	      Curve.(app_default latest_intersection curve curve1 (0,0.))
+	(* let _ = Printf.fprintf stderr "Points: \n"  in *)
+	(* let _ = List.iter (fun l ->   *)
+	(*   let _ = List.iter (fun (x,y) -> Printf.fprintf stderr "(%f,%f) ; " x y) l in *)
+	(*   Printf.fprintf stderr "\n") *)
+	(*   point_lists in *)
+	(* let _ = flush stderr in *)
+
 	      (* match Curve.latest_intersection curve curve1 with *)
 	      (* 	| None -> begin *)
 	      (* 	  (\* Printf.fprintf stderr *\) *)
