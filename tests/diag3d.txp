@@ -81,6 +81,7 @@ end
 )
 >>
 
+
 let cube projection = <<
 \diagram(
  let a = Node.(node [anchor `Base;at (project projection (0.,0.,0.))] <<a>>) 
@@ -100,22 +101,27 @@ let cube projection = <<
  let d' = Node.(node [anchor `Base;at (project projection (0.,20.,20.))] <<d'>>) 
 
 
-  let _ = edge Edge.([arrow;draw]) a b
-  let _ = edge Edge.([arrow;draw]) d c
-  let _ = edge Edge.([arrow;draw]) a d
-  let _ = edge Edge.([arrow;draw]) b c
+  let _ = edge Edge.([arrow env;draw]) a b
+  let _ = edge Edge.([arrow env;draw]) d c
+  let _ = edge Edge.([arrow env;draw]) a d
+  let _ = edge Edge.([arrow env;draw]) b c
 
-  let _ = edge Edge.([arrow;draw]) a' b'
-  let _ = edge Edge.([arrow;draw]) d' c'
-  let _ = edge Edge.([arrow;draw]) a' d'
-  let _ = edge Edge.([arrow;draw]) b' c'
+  let _ = edge Edge.([arrow env;draw]) a' b'
+  let _ = edge Edge.([arrow env;draw]) d' c'
+  let _ = edge Edge.([arrow env;draw]) a' d'
+  let _ = edge Edge.([arrow env;draw]) b' c'
 
-  let _ = edge Edge.([arrow;draw]) a' a
-  let _ = edge Edge.([arrow;draw]) b' b
-  let _ = edge Edge.([arrow;draw]) c' c
-  let _ = edge Edge.([arrow;draw]) d' d
+  let _ = edge Edge.([arrow env;draw]) a' a
+  let _ = edge Edge.([arrow env;draw]) b' b
+  let _ = edge Edge.([arrow env;draw]) c' c
+  let _ = edge Edge.([arrow env;draw]) d' d
 
 )>>)
+
+\diagram(
+  let e = Node. (node [triangle ~orientation:(-90.) env;draw] <<$T_1$>>)
+)
+
 
 \begin{center}
 \cube(cavaliere60hd)
