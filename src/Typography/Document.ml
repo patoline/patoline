@@ -624,8 +624,8 @@ let pagesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_page_before=max p
 let pagesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_page_after=max p.min_page_after x })])]
 let linesBefore x=[bB (fun _->[Parameters (fun p->{ p with min_lines_before=max p.min_lines_before x })])]
 let linesAfter x=[bB (fun _->[Parameters (fun p->{ p with min_lines_after=max p.min_lines_after x })])]
-let notFirstLine _=bB (fun _->[Parameters (fun p->{p with not_first_line=true})])
-let notLastLine _=bB (fun _->[Parameters (fun p->{p with not_last_line=true})])
+let notFirstLine _=[bB (fun _->[Parameters (fun p->{p with not_first_line=true})])]
+let notLastLine _=[bB (fun _->[Parameters (fun p->{p with not_last_line=true})])]
 
 let hspace x =[bB (fun env-> let x = x *. env.size in [glue x x x])]
 let hfill () = [bB (fun env-> let x = env.normalMeasure in [glue 0. (0.5 *. x) x])]

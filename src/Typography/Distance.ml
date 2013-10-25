@@ -1090,7 +1090,7 @@ let distance beta (dsup,dinf) profile1 profile2 =
 
 	if m <= 0.0 then 0.0 else find_distance beta m l
       with
-	Exit -> 0.0
+	Exit | Assert_failure _ -> 0.0
     end
   in
   if !debug then Printf.fprintf stderr "  ==> %f\n" r;
