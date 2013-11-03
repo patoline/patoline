@@ -88,10 +88,56 @@ type findlib_package =
 let package_no_check _ _ = true
 
 let package_min_version min_version package alias =
-  let installed = Findlib.package_property [] alias "version"
-  and rever = Str.regexp "\\." in
-  let min_ver_list = List.map int_of_string (Str.split rever min_version)
-  and ins_ver_list = List.map int_of_string (Str.split rever installed) in
+  (* parse_version splits a string representing a version number to a
+   * tuple which can be compared to other version numbers using OCaml
+   * regular < operator.
+   *
+   * For example, it maps the string "2.3.17~20131103" to the tuple:
+       ([2; 3; 17], 20131103)
+   *
+   * This function parses for the moment version numbers like:
+
+       epoch:ver.rev.level~add-patch
+
+     where each placeholder can be an integer. The only mandatory part
+     is the dot-separated list in the middle (which may have any
+     arbitrary length).
+
+     The resulting tuple would be:
+
+       (epoch, [ver; rev; level], add, patch)
+   *)
+  let parse_version v =
+    (* Get a matched group, or return a default value if the group does
+     * not exist. *)
+    let def_group def n s =
+      try Str.matched_group n s
+      with Not_found -> def
+    in
+
+    let rever = Str.regexp "^\\(\\([0-9]+\\):\\)?\\([0-9.]+\\)\\(~\\([0-9]+\\)\\)?\\(-\\([0-9]+\\)\\)?$" in
+    let _ = Str.string_match rever v 0 in
+    let epoch = def_group "0" 2 v
+    and main  = def_group ""  3 v
+    and additional = def_group "0" 5 v
+    and last = def_group "0" 7 v in
+
+    (* Actually build the version tuple *)
+    (
+      (* Epoch *)
+      int_of_string epoch,
+      (* Main part of the version number: we have a dot-separated list
+       * of integers. *)
+      List.map int_of_string (Str.split (Str.regexp "\\.") main),
+      (* Additional part after ~ *)
+      int_of_string additional,
+      (* Last part, after - *)
+      int_of_string last
+    )
+  in
+  let installed = Findlib.package_property [] alias "version" in
+  let min_ver_list = parse_version min_version
+  and ins_ver_list = parse_version installed in
   if min_ver_list <= ins_ver_list then
     true
   else
