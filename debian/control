@@ -109,19 +109,19 @@ Description: OpenGL output driver for Patoline
 
 Package: patoline-driver-svg
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libtypography-ocaml-dev
 Description: SVG output driver for Patoline
  This driver typesets a Patoline document to a SVG image, which should be
  correctly displayed by modern browsers as well as SVG viewers and editors.
 
 Package: patoline-driver-cairo
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libtypography-ocaml-dev
 Description: Cairo output driver for Patoline
 
 Package: patoline-driver-html
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libtypography-ocaml-dev
 Description: HTML output driver for Patoline
  This driver outputs HTML5 files for a document, which should be correctly
  parsed and displayed by recent browsers. No layout aspect (line breaking,
@@ -131,12 +131,12 @@ Description: HTML output driver for Patoline
 
 Package: patoline-driver-image
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libtypography-ocaml-dev
 Description: Image output driver for Patoline
 
 Package: patoline-driver-net
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libocaml-typography-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}, libtypography-ocaml-dev
 Description: Net output driver for Patoline
 
 Package: patoline-format-lm
