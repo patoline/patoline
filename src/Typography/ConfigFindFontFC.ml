@@ -10,7 +10,10 @@ let patoline_slant_to_fc = function
 open Fontconfig.Properties
 open Fontconfig.Pattern
 
-let findFont _ pat =
+let findFont fontspath pat =
+  List.iter
+  (fun p -> ignore (Fontconfig.Config.app_font_add_dir p))
+  !fontspath;
   Fontconfig.Pattern.get_string (find_font
     Fontconfig.Properties.(make
       [Family pat.FontPattern.family;
