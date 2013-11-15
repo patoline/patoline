@@ -2290,8 +2290,8 @@ Doing a rectangle.\n" ;
 	let e = coord (Curve.last curve) in 
 	raw_edge style s e curve
 
-      let path style s continues =
-	let curve = (Curve.of_point_lists continues) in
+      let path style s continues = 		
+	let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
 	path_of_curve style curve
 
 
