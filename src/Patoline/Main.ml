@@ -314,7 +314,7 @@ and make_deps pre source=
   let in_deps, do_dep =
     if !recompile || date_source > date_dep then begin
       let cmd=Printf.sprintf
-	"ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp '%s'"
+	"ocamlfind ocamldep %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .typ '%s'"
 	(let pack=String.concat "," (List.rev opts.packages) in
 	 if pack<>"" then "-package "^pack else "")
 	(String.concat " " dirs_)
@@ -378,24 +378,31 @@ and compilation_needed sources targets=
     max_sources>min_targets
   )
 
+and check_source r =
+  let source=(r^".txp") in
+  if Sys.file_exists source then
+    ".ttml",source
+  else 
+    let source=(r^".typ") in
+    if Sys.file_exists source then
+      ".cmx",source
+    else raise Not_found
+
 and patoline_rule objects (builddir:string) (hs:string list)=
   match hs with
       []->true
     | h::pretargets->
+      if not !quiet then (Printf.fprintf stdout "checking for %s\n" h);
       begin
         if Filename.check_suffix h ".ttml" || Filename.check_suffix h Parser.gram_ext then
           (
             let source=
               let r=Filename.chop_extension h in
-              let source=(r^".txp") in
-              if Sys.file_exists source then
-                source
-              else (
+              try snd (check_source r) with Not_found ->
                 if r.[String.length r-1]='_' then
-                  String.sub r 0 (String.length r-1)^".txp"
+                  snd (check_source (String.sub r 0 (String.length r-1)))
                 else
                   r
-              )
             in
             if Sys.file_exists source then (
               let in_s=open_in source in
@@ -451,7 +458,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
         else if Filename.check_suffix h ".tml" then (
           let r0=(Filename.chop_extension h) in
           let r1=String.sub r0 0 (String.length r0-1) in
-          let source=r1^".txp" in
+          let extension, source=check_source r1 in
           if Sys.file_exists source then (
             let in_s=open_in source in
             let opts=read_options_from_source_file (source::hs) in_s in
@@ -462,7 +469,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
               | _->()
             );
 
-            let modu=Printf.sprintf "%s.ttml" r1 in
+            let modu=r1^extension in
 
             List.iter (fun x->
               if x<>h then Build.build_with_rule (patoline_rule objects) (x::hs)
@@ -491,12 +498,19 @@ and patoline_rule objects (builddir:string) (hs:string list)=
         else if Filename.check_suffix h ".cmx" || Filename.check_suffix h ".cmi" then (
 
           let pref=Filename.chop_extension h in
-          let source=
-            if Filename.check_suffix h ".cmi" && Sys.file_exists (pref^".mli") then pref^".mli" else
-              if Sys.file_exists (pref^".ml") then (pref^".ml") else
-                pref^".ttml"
+          let source, prepro=
+            if Filename.check_suffix h ".cmi" && Sys.file_exists (pref^".mli") then (pref^".mli", []) else
+              if Sys.file_exists (pref^".ml") then (pref^".ml", []) else
+		if Sys.file_exists (pref^".typ") then (
+		  let source = pref^".typ" in
+		  let ch = open_in source in
+		  let opts= add_format (read_options_from_source_file hs ch) in
+		  close_in ch;
+ 		  source, ["-pp"; "pa_patoline "^opts.format^" "^opts.driver])
+		else
+                  (pref^".ttml", [])
           in
-          Build.build_with_rule (patoline_rule objects) (source::hs);
+          (if prepro = [] then ignore (Build.build_with_rule (patoline_rule objects) (source::hs)));
 
           let deps0=make_deps hs source in
 
@@ -524,7 +538,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
             in
             let args_l=List.filter (fun x->x<>"")
               ([ cmd;
-                 !ocamlopt]@
+                 !ocamlopt]@prepro@
                   (List.concat (List.map getopts !extras))@
                   comp_opts@
                   (let pack=String.concat "," (List.rev (opts.packages)) in
@@ -625,7 +639,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
         ) else if Filename.check_suffix h ".tmx" then (
           let raw_h=(Filename.chop_extension h) in
           let source=if Filename.check_suffix h ".tmx" then raw_h^"_.tml" else raw_h^".ml"in
-          let source_txp=if Filename.check_suffix h ".tmx" then raw_h^".txp" else source in
+          let source_txp=if Filename.check_suffix h ".tmx" then snd (check_source raw_h) else source in
 
           let in_s=open_in source_txp in
           let opts=add_format (read_options_from_source_file hs in_s) in
