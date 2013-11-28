@@ -1880,6 +1880,46 @@ module MathsFormat=struct
         )
       ]
 
+    let oHat a =
+      [Maths.Ordinary
+        (Maths.noad
+          (fun envs st ->
+            let env = Maths.env_style envs.mathsEnvironment st in
+            let font = Lazy.force (env.Mathematical.mathsFont) in
+            (* Find the dot glyph *)
+            let utf8_dot = { glyph_index = (Fonts.glyph_of_uchar font (UChar.chr 0x005e));
+                             glyph_utf8 = "^"} in
+            let gl_dot = Fonts.loadGlyph font utf8_dot in
+            let dot_y0 = (Fonts.glyph_y0 gl_dot) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
+            let dot_x0 = (Fonts.glyph_x0 gl_dot) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
+            let dot_x1 = (Fonts.glyph_x1 gl_dot) *. envs.size *. env.Mathematical.mathsSize /. 1000. in
+            (* Bounding box of a *)
+            let dr = draw_boxes envs (Maths.draw [envs] a) in
+            let (x0,y0,x1,y1) = OutputCommon.bounding_box_full dr in
+    
+            let drawn=(drawing ~offset:y0 dr) in
+            let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
+    
+            [Box.Drawing {
+              drawn with
+                drawing_y1=drawn.drawing_y1*.sqrt phi+.rul;
+                drawing_contents= (fun w ->
+                  OutputCommon.Glyph {
+                    OutputCommon.glyph_x = (x0 +. x1) /. 2. -. (dot_x1 +. dot_x0) /. 2.;
+                    OutputCommon.glyph_kx = 0.;
+                    OutputCommon.glyph_y = y1-.dot_y0 +. 2. *. rul;
+                    OutputCommon.glyph_ky = 0.;
+                    OutputCommon.glyph_order = 1;
+                    OutputCommon.glyph_color = envs.fontColor;
+                    OutputCommon.glyph_size = envs.size *. env.Mathematical.mathsSize;
+                    OutputCommon.glyph = gl_dot
+                  }::drawn.drawing_contents w
+                )
+            }]
+          )
+        )
+      ]
+
     let binomial a b=
       [Maths.Fraction { Maths.numerator=b; Maths.denominator=a;
                         Maths.line=(fun _ _->{OutputCommon.default with OutputCommon.fillColor=None;OutputCommon.strokingColor=None}) }]
@@ -2006,6 +2046,8 @@ module MathsFormat=struct
     let od = oDot
 
     let odd = oDoubleDot
+
+    let hat = oHat
         (*******************************************************)
 
 end
