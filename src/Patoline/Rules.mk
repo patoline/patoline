@@ -15,11 +15,11 @@ $(d)/patoline: $(d)/Util.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config.cmx \
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx
 	$(ECHO) "[OPT]    $(lastword $^) -> $@"
-	$(Q)$(OCAMLOPT) -package glr,camlp4 dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa -o $@ $^ 
+	$(Q)$(OCAMLOPT) -package glr,camlp4 dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $^ 
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $(lastword $^) -> $@"
-	$(Q)$(OCAMLOPT) -pp pa_glr -c -package glr,camlp4 -o $@ $< 
+	$(Q)$(OCAMLOPT) -pp pa_glr -c -package glr,camlp4 -I +camlp4/Camlp4Parsers -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $(lastword $^) -> $@"
