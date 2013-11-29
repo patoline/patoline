@@ -23,18 +23,18 @@ install-fonts:
 	install -p -m 644 Fonts/TexGyreCursor/texgyrecursor-bolditalic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/TexGyreCursor/texgyrecursor-bolditalic.otf
 	install -p -m 644 Fonts/TexGyreCursor/texgyrecursor-regular.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/TexGyreCursor/texgyrecursor-regular.otf
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Regular.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Regular.otf
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Italic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Italic.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-BlackItalic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-BlackItalic.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-Bold.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Bold.otf
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Bold.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Bold.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-Italic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Italic.otf
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Black.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Black.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-BoldItalic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-BoldItalic.otf
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-BoldItalic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-BoldItalic.otf
-	install -p -m 644 Fonts/Alegreya/AlegreyaSC-BlackItalic.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-BlackItalic.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-Black.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Black.otf
-	install -p -m 644 Fonts/Alegreya/Alegreya-Regular.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Regular.otf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Regular.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Regular.ttf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Italic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Italic.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-BlackItalic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-BlackItalic.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-Bold.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Bold.ttf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Bold.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Bold.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-Italic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Italic.ttf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-Black.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-Black.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-BoldItalic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-BoldItalic.ttf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-BoldItalic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-BoldItalic.ttf
+	install -p -m 644 Fonts/Alegreya/AlegreyaSC-BlackItalic.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/AlegreyaSC-BlackItalic.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-Black.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Black.ttf
+	install -p -m 644 Fonts/Alegreya/Alegreya-Regular.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Alegreya/Alegreya-Regular.ttf
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/BitstreamVeraSansMono
 	install -p -m 644 Fonts/BitstreamVeraSansMono/BitstreamVeraSansMono-Oblique.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/BitstreamVeraSansMono/BitstreamVeraSansMono-Oblique.otf
 	install -p -m 644 Fonts/BitstreamVeraSansMono/BitstreamVeraSansMono-Roman.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/BitstreamVeraSansMono/BitstreamVeraSansMono-Roman.otf
