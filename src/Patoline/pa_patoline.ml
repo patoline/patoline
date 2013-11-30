@@ -98,11 +98,43 @@ let caml_struct _loc =
   in
   black_box fn (singleton '(') false
  
-let blank1 = blank_regexp (Str.regexp "[ \t\r]*\\([\n][ \t\r]*\\)?")
-let blank2 = blank_regexp (Str.regexp "[ \n\t\r]*")
-let section = "\\(==+\\)\\|\\(--+\\)"
-let op_section = "[=-]>"
-let cl_section = "[=-]<"
+exception Unclosed_comment of int
+
+let blank multiline str pos =
+  let len = String.length str in
+  let rec fn nb lvl state pos =
+    if pos >= len then pos else (
+      match state, str.[pos] with
+      | _, '(' -> fn nb lvl `Par (pos + 1)
+      | `Par, '*' -> fn nb (lvl+1) `Start (pos + 1)
+      | `Par, _ when lvl = 0 -> pos - 1
+      | `Start, '*' -> fn nb lvl `Clos (pos + 1)
+      | `Clos, ')' -> 
+	if lvl <= 0 then raise (Unclosed_comment pos);
+	fn 0 (lvl-1) `Start (pos + 1)
+      | `String, '"' ->
+	fn nb lvl `Start (pos + 1)
+      | _, '"' when lvl > 0 ->
+	fn nb lvl `String (pos + 1)
+      | `String, '\\' ->
+	fn nb lvl `String (pos + 2)
+      | _, '\n' -> 
+	if nb > 0 && lvl = 0 && not multiline then pos
+	else fn (nb+1) lvl `Start (pos + 1)
+      | _, (' '|'\t'|'\r') -> fn nb lvl `Start (pos + 1)
+      | _, _ when lvl > 0 -> fn nb lvl `Start (pos + 1)
+      | _ -> pos)
+  in
+  let res = fn 0 0 `Start pos in
+(*  Printf.fprintf stderr "blank: %b %d %d %s\n%!" multiline pos res (String.sub str pos (res - pos));*)
+  res
+
+let blank1 = blank false
+let blank2 = blank true
+
+let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
+let op_section = "[-=]>"
+let cl_section = "[-=]<"
 let word_re = "\\([^ \t\r\n{}\\]\\|\\([\\][\\{}]\\)\\)+"
 let macro = "\\\\[^ \t\r\n({]+"
 
@@ -133,7 +165,7 @@ let _ = set_grammar paragraph_local (
 	   let _loc = Loc.merge _loc_m _loc_p in
            <:expr<$m$ @ $bl$ @ $p$>>)
     || l:{w:RE(word_re) ->
-	    if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=<";"--";"->"] then
+	    if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"] then
 	      raise Give_up;
 	    w }++
           -> <:expr@_loc_l<[tT($str:(String.concat " " l)$)]>>
@@ -158,6 +190,7 @@ let paragraph =
     end 
 
 let text = declare_grammar ()
+
 let _ = set_grammar text
   glr
     op:RE(section) title:paragraph_local cl:RE(section) txt:text ->
@@ -193,9 +226,38 @@ let _ = set_grammar text
   || (empty ()) -> (fun _ _ -> <:str_item<>>)
   end
 
+let title =
+  glr
+    RE("==========\\(=*\\)") t:paragraph_local
+    author:{RE("----------\\(-*\\)") t:paragraph_local}??
+    institute:{RE("----------\\(-*\\)") t:paragraph_local}??
+    date:{RE("----------\\(-*\\)") t:paragraph_local}??
+    RE("==========\\(=*\\)") ->
+  let extras = 
+    match date with
+      None -> <:expr@_loc_date<[]>>
+    | Some(t) -> <:expr@_loc_date<[("Date", string_of_contents $t$)]>>
+  in
+  let extras = 
+    match institute with
+      None -> <:expr@_loc_date<$extras$>>
+    | Some(t) -> <:expr@_loc_date<("Institute", string_of_contents $t$)::$extras$>>
+  in
+  let extras = 
+    match author with
+      None -> <:expr@_loc_date<$extras$>>
+    | Some(t) -> <:expr@_loc_date<("Author", string_of_contents $t$)::$extras$>>
+  in
+  <:str_item@_loc_t<
+    let _ = Patoline_Format.title D.structure ~extra_tags:$extras$ $t$>>
+end
+
 let full_text = 
   glr
-    t:text EOF -> t false 0
+    title:title?? t:text EOF -> 
+      match title with
+	None -> t false 0
+      | Some title -> <:str_item<$title$ $t true 0$>>
   end 
 
 (* #FORMAT DefaultFormat *)
