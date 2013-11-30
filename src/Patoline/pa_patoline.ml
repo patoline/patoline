@@ -6,7 +6,6 @@ open Glr
 open Charset
 open Camlp4.PreCast
 open Syntax
-open Loc
 
 module Id : Camlp4.Sig.Id =
     struct
@@ -36,29 +35,53 @@ module M1 = Camlp4OCamlParser.Make(M0)
 module M = Extension(M1)
 open M
 
-let raise = Pervasives.raise
+let fname = ref ""
 
-let caml_expr = 
+let bol = Hashtbl.create 1001
+
+let find_pos str n = 
+  let rec fn i =
+      (*      Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
+    if i < String.length str && str.[i] = '\n' then
+      try Hashtbl.find bol i, i
+      with Not_found ->
+	if i = 0 then (2,i) else
+	  let lnum, _ = fn (i-1) in
+	  let lnum = lnum + 1 in
+	  Hashtbl.add bol i lnum;
+	  lnum, i
+    else if i <= 0 then (1, i)
+    else fn (i-1)
+  in
+  let (lnum, bol) = fn n in
+  Lexing.({ pos_fname = !fname; pos_lnum = lnum; pos_bol = bol; pos_cnum = n })
+
+let locate g =
+  filter_position g (fun str pos pos' ->
+    let s = find_pos str pos in
+    let e = find_pos str pos' in
+    Loc.(merge (of_lexing_position s) (of_lexing_position e)))
+
+let _ = glr_locate locate Loc.merge
+
+let caml_expr _loc = 
   let fn str pos = 
     let last_pos = ref pos in
     let len = String.length str in
     let cs = Stream.from (fun n ->
-      (*      Printf.fprintf stderr "n: %d, pos: %d, c: %c, len %d\n%!" n pos str.[n+pos] len;*)
+(*            Printf.fprintf stderr "n: %d, pos: %d, c: %c, len %d\n%!" n pos str.[n+pos] len;*)
       last_pos := max !last_pos (n+pos);
       if n+pos >= len then None else Some str.[n+pos]
       ) 
     in
     let r =
-      try 
-	Gram.parse patoline_caml_expr ghost cs
-      with
-	Loc.Exc_located _ -> raise (Parse_error !last_pos)
+      Gram.parse patoline_caml_expr _loc cs
     in
     r, !last_pos
   in
   black_box fn (singleton '(') false
 
-let caml_struct = 
+let caml_struct _loc = 
   let fn str pos = 
     let last_pos = ref pos in
     let len = String.length str in
@@ -69,10 +92,7 @@ let caml_struct =
       ) 
     in
     let r =
-      try
-	Gram.parse patoline_caml_struct ghost cs
-      with
-	Loc.Exc_located _ -> raise (Parse_error !last_pos)
+      Gram.parse patoline_caml_struct _loc cs
     in 
     r, !last_pos
   in
@@ -86,60 +106,52 @@ let cl_section = "[=-]<"
 let word_re = "\\([^ \t\r\n{}\\]\\|\\([\\][\\{}]\\)\\)+"
 let macro = "\\\\[^ \t\r\n({]+"
 
-let paragraph_local1 = declare_grammar ()
-let paragraph_local2 = declare_grammar ()
+let paragraph_local = declare_grammar ()
 
 let argument =
   glr
-     STR("{") l:{w:RE(word_re) -> w} STR("}") -> <:expr@ghost<[tT($str:(String.concat " " [l])$)]>>
-  || STR("(") e:caml_expr -> e
+     STR("{") l:paragraph_local STR("}") -> l
+  || e:(dependant_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)) -> e
   end
 
 let macro =
   glr
      m:RE(macro) args:argument** ->
        let m = String.sub m 1 (String.length m - 1) in
-       List.fold_left (fun acc r -> <:expr@ghost<$acc$ $r$>>)  <:expr@ghost<$lid:m$>> args
+       List.fold_left (fun acc r -> <:expr@_loc_args<$acc$ $r$>>)  <:expr@_loc_m<$lid:m$>> args
  end
 
-let _ = set_grammar paragraph_local1 (
-  change_layout
-    glr
-       m:(position macro) p:(position paragraph_local1)? -> 
-          (let (_,x,m) = m in
-          match p with None -> m | Some (y,_,p) -> 
-	    let bl = if y - x >= 1 then <:expr@ghost<[tT" "]>> else <:expr@ghost<[]>> in
-            <:expr@ghost<$m$ @ $bl$ @ $p$>>)
-    ||  l:{w:RE(word_re) -> w}+ -> <:expr@ghost<[tT($str:(String.concat " " l)$)]>>
-      
-    end
-  blank1)
 
-let _ = set_grammar paragraph_local2 (
+let _ = set_grammar paragraph_local (
   change_layout
     glr
-       m:(position macro) p:(position paragraph_local2)?? -> 
-          (let (_,x,m) = m in
-           match p with None -> m | Some (y,_,p) -> 
-	     Printf.fprintf stderr "x: %d, y: %d\n%!" x y;
-	   let bl = if y - x >= 1 then <:expr@ghost<[tT" "]>> else <:expr@ghost<[]>> in
-           <:expr@ghost<$m$ @ $bl$ @ $p$>>)
-    || l:{w:RE(word_re) -> if w = "=<" or w = "-<" then raise Give_up; w}++  -> <:expr@ghost<[tT($str:(String.concat " " l)$)]>>
+       m:macro p:paragraph_local?? -> 
+           (match p with None -> m | Some (p:Ast.expr) -> 
+	     let x = Loc.stop_off _loc_m and y = Loc.start_off _loc_p in
+(*	     Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
+	   let bl = if y - x >= 1 then <:expr@_loc_m<[tT" "]>> else <:expr@_loc_m<[]>> in
+	   let _loc = Loc.merge _loc_m _loc_p in
+           <:expr<$m$ @ $bl$ @ $p$>>)
+    || l:{w:RE(word_re) ->
+	    if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=<";"--";"->"] then
+	      raise Give_up;
+	    w }++
+          -> <:expr@_loc_l<[tT($str:(String.concat " " l)$)]>>
     end
   blank1)
 
 let paragraph =
     glr
-      l:paragraph_local2 -> 
+      l:paragraph_local ->
         fun no_indent ->
 	  if no_indent then
-	    <:str_item@ghost<
+	    <:str_item@_loc_l<
               let _ =
 		newPar D.structure ~environment:(fun x -> { x with par_indent = [] }) Complete.normal 
 		  Patoline_Format.parameters $l$
                 >>
 	  else
-	    <:str_item@ghost<
+	    <:str_item@_loc_l<
               let _ =
 		newPar D.structure Complete.normal Patoline_Format.parameters $l$
 		>>
@@ -148,36 +160,37 @@ let paragraph =
 let text = declare_grammar ()
 let _ = set_grammar text
   glr
-    op:RE(section) title:paragraph_local1 cl:RE(section) txt:text ->
+    op:RE(section) title:paragraph_local cl:RE(section) txt:text ->
       (fun no_indent lvl -> 
        if String.length op <> String.length cl then raise Give_up;
        let numbered = match op.[0], cl.[0] with
-	   '=', '=' -> <:expr@ghost<newStruct>>
-         | '-', '-' -> <:expr@ghost<newStruct ~numbered:false>>
+	   '=', '=' -> <:expr@_loc_op<newStruct>>
+         | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
 	 | _ -> raise Give_up
        in
        let l = String.length op - 1 in
        if l > lvl + 1 then failwith "Illegal level skip";
-       let res = ref <:str_item@ghost<>> in
+       let res = ref <:str_item@_loc_op<>> in
        for i = 0 to lvl - l do
-	 res := <:str_item@ghost< $!res$ let _ = go_up D.structure>>
+	 res := <:str_item@_loc_op< $!res$ let _ = go_up D.structure>>
        done;
-       <:str_item@ghost< $!res$ let _ = $numbered$ D.structure $title$;; $txt true l$ >>)
+       <:str_item< $!res$ let _ = $numbered$ D.structure $title$;; $txt true l$ >>)
 
-  || op:RE(op_section) title:paragraph_local2 txt:text cl:RE(cl_section) txt2:text ->
+  || op:RE(op_section) title:paragraph_local txt:text cl:RE(cl_section) txt2:text ->
       (fun no_indent lvl -> 
        let numbered = match op.[0], cl.[0] with
-	   '=', '=' -> <:expr@ghost<newStruct>>
-         | '-', '-' -> <:expr@ghost<newStruct ~numbered:false>>
+	   '=', '=' -> <:expr@_loc_op<newStruct>>
+         | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
 	 | _ -> raise Give_up
        in
-       <:str_item@ghost< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure;; $txt2 false lvl$ >>)
+       <:str_item< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure;; $txt2 false lvl$ >>)
 
-  || STR("\\Caml") STR("(") s:caml_struct  txt:text -> (fun no_indent lvl -> <:str_item@ghost<$s$ $txt no_indent lvl$>>)
+  || STR("\\Caml") s:(dependant_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc))
+	txt:text -> (fun no_indent lvl -> <:str_item<$s$ $txt no_indent lvl$>>)
 
-  || l:paragraph txt:text  -> (fun no_indent lvl -> <:str_item@ghost<$l no_indent$ $txt false lvl$>>)
+  || l:paragraph txt:text  -> (fun no_indent lvl -> <:str_item<$l no_indent$ $txt false lvl$>>)
 
-  || (empty ()) -> (fun _ _ -> <:str_item@ghost<>>)
+  || (empty ()) -> (fun _ _ -> <:str_item<>>)
   end
 
 let full_text = 
@@ -195,10 +208,16 @@ let filename = Sys.argv.(3)
 let basename = Filename.chop_extension filename
 
 let _ =
-      try
+      try 
 	let ch = open_in filename in
-	let l = parse_channel full_text blank2 ch in
-	let all = <:str_item@ghost<
+	fname := filename;
+	let n = in_channel_length ch in
+	let str = String.create n in
+	really_input ch str 0 n;
+       try
+	let l = parse_string full_text blank2 str in
+	let _loc = Loc.(of_lexing_position (find_pos str 0)) in 
+	let all = <:str_item<
 	  open Typography
 	  open Typography.Util
 	  open Typography.Box
@@ -223,6 +242,14 @@ let _ =
 	Printers.OCaml.print_implem all
 (*	Printers.DumpOCamlAst.print_implem all*)
       with
-	Parse_error n -> Printf.fprintf stderr "Parse error after char %d\n%!" n; exit 1
-      | Ambiguity(n,p) -> Printf.fprintf stderr "Ambiguous expression from %d to %d\n%!" n p; exit 1
+	Parse_error n -> 
+	  let _loc = find_pos str n in 
+	  Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
+      | Ambiguity(n,p) -> 
+	let _loc1 = find_pos str n in 
+	let _loc2 = find_pos str p in 
+	Loc.raise Loc.(merge (of_lexing_position _loc1) (of_lexing_position _loc2)) 
+	  (Stream.Error "Ambiguous expression")
+      with
 
+      | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc; exit 1
