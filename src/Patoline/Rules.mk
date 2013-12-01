@@ -13,6 +13,8 @@ $(d)/patoline: $(d)/Util.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config.cmx \
 	$(ECHO) "[OPT]    -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(RBUFFER_DIR) -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa $^
 
+all: $(PA_PATOLINE)
+
 $(d)/pa_patoline: $(d)/pa_patoline.cmx
 	$(ECHO) "[OPT]    $(lastword $^) -> $@"
 	$(Q)$(OCAMLOPT) -package glr,camlp4 dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $^ 
@@ -66,7 +68,7 @@ DISTCLEAN += $(d)/*.depends
 # Installing
 install: install-patoline-bin install-patoline-lib
 .PHONY: install-patoline-bin install-patoline-lib
-install-patoline-bin: install-bindir $(d)/patoline 
+install-patoline-bin: install-bindir $(d)/patoline $(PA_PATOLINE) 
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 install-patoline-lib: install-typography $(d)/Build.cmi $(d)/Util.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)

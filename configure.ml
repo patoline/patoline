@@ -413,6 +413,9 @@ let _=
   (* Enable compilation of ocaml-bibi if sqlite3 is installed *)
   Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
 
+  (* Enable compilation of pa_patoline if glr is installed *)
+  Printf.fprintf make "PA_PATOLINE := %s\n" (if ocamlfind_has "glr" then "src/Patoline/pa_patoline" else "");
+
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)
   Printf.fprintf make "FINDFONT := %s\n"
