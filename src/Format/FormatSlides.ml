@@ -359,8 +359,8 @@ module Format=functor (D:Document.DocumentStructure)->(
       Default.defaultEnv with
         normalMeasure=mes;
         normalLeftMargin=(slidew-.mes)/.2.;
-        normalLead=Default.defaultEnv.size*.1.3;
-        lead=Default.defaultEnv.size*.1.3;
+        normalLead=Default.defaultEnv.normalLead*.1.2;
+        lead=Default.defaultEnv.normalLead*.1.2;
         hyphenate=(fun _->[||]);
         par_indent=[];
         new_line=(fun env node params nextNode nextParams layout height->
@@ -389,14 +389,14 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     let parameters env b c d e f g line=
       { (Default.parameters env b c d e f g line) with
-        min_lines_before=1
+        min_lines_before=1;
         (* page_height=2.*.slideh; *)
       }
 
     let make_toc title tt0=
       let t0,path=tt0 in
       let rec make_toc p t=match t with
-          Node n when p<=1 && List.mem_assoc "intoc" n.node_tags->(
+          Node n when List.mem_assoc "intoc" n.node_tags && p>=1 ->(
             let t1=ref (Node {empty with
               displayname=titleStyle title;
               node_tags=("slide","")::empty.node_tags;
@@ -405,7 +405,8 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             TableOfContents.slides center t1 (ref (t0,[])) 1;
             let nn=try fst (IntMap.min_binding n.children)-1 with Not_found->0 in
-            Node { n with children=IntMap.add nn (fst (top !t1)) n.children }
+            Node { n with children=IntMap.add nn (fst (top !t1))
+                (IntMap.map (make_toc (p+1)) n.children) }
           )
         | Node n when p=0 -> Node { n with children=IntMap.map (make_toc (p+1)) n.children }
         | _->t

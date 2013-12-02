@@ -381,7 +381,10 @@ and boxes_interval boxes=
 
 
 let rec lower_y x=match x with
-    GlyphBox y->Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000.
+    GlyphBox y->
+      (let y=Fonts.glyph_y0 y.glyph*.y.glyph_size/.1000. in
+       y
+      )
   | Glue y
   | Drawing y->y.drawing_y0
   | Kerning y->(lower_y y.kern_contents) +. y.kern_y0
@@ -389,7 +392,10 @@ let rec lower_y x=match x with
   | _->0.
 
 let rec upper_y x=match x with
-    GlyphBox y->Fonts.glyph_y1 y.glyph*.y.glyph_size/.1000.
+    GlyphBox y->(
+      let y=Fonts.glyph_y1 y.glyph*.y.glyph_size/.1000. in
+      y
+    )
   | Glue y
   | Drawing y->y.drawing_y1
   | Kerning y->(upper_y y.kern_contents) +. y.kern_y0

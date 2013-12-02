@@ -44,6 +44,21 @@ let gray=mix 0.5 white black
 let grey=mix 0.5 white black
 
 
+let hsv h s v=
+  let h'=h/.60. in
+  let c=v*.s in
+  let h'mod2=
+    h'-.(float_of_int (2*(int_of_float (h'/.2.))))
+  in
+  let x=c*.(1.-.(abs_float (h'mod2-.1.))) in
+  if h'<1. then rgb c x 0. else
+  if h'<2. then rgb x c 0. else
+  if h'<3. then rgb 0. c x else
+  if h'<4. then rgb 0. x c else
+  if h'<5. then rgb x 0. c else
+  if h'<6. then rgb c 0. x else
+    rgb 0. 0. 0.
+
 
 type metadata=
     Contributor

@@ -166,6 +166,7 @@ let these parameters str tree max_level=
                   let name=boxify_scoped env' s.displayname in
                   let w=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. num in
                   let w'=List.fold_left (fun w b->let (_,w',_)=box_interval b in w+.w') 0. name in
+                  Printf.fprintf stderr "tableofcontents.ml : %d\n" __LINE__;flush stderr;
                   let cont=
                     (if numbered then List.map (OutputCommon.translate (-.w-.spacing) 0.)
                        (draw_boxes env num) else [])@
@@ -173,6 +174,9 @@ let these parameters str tree max_level=
                       List.map (OutputCommon.translate (w'+.spacing) 0.)
                       (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
+                  Printf.fprintf stderr "tableofcontents.ml : %d\n" __LINE__;flush stderr;
+                  List.iter (OutputCommon.print_raw) cont;
+                  Printf.fprintf stderr "/tableofcontents.ml\n";flush stderr;
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
                   Marker (BeginLink (labl))::
                     Drawing {

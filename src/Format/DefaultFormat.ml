@@ -1320,7 +1320,7 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec resolve i env0=
           Printf.printf "Compilation %d\n" i; flush stdout;
           let env1,fig_params,params,new_page_list,new_line_list,compl,badness,paragraphs,paragraph_trees,figures,figure_trees=flatten env0 tree in
-          Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());
+          Printf.fprintf stderr "Début de l'optimisation : %f s\n" (Sys.time ());flush stderr;
           let (logs,opt_pages,figs',user')=TS.typeset
             ~completeLine:compl
             ~figure_parameters:fig_params
@@ -1331,7 +1331,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             ~badness:badness
             paragraphs
           in
-          Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
+          Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());flush stderr;
           let env, reboot=update_names env1 figs' user' in
           let env=reset_counters env in
           if i < !max_iterations-1 && reboot && !(env.fixable) then (
@@ -1477,7 +1477,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                             )
                             | GlyphBox a->(
                               page.pageContents<-translate x y (Glyph a):: page.pageContents;
-                              a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
+                              let w=a.glyph_size*.Fonts.glyphWidth a.glyph/.1000. in
+	                      if env.show_boxes then (
+                                let y0=lower_y box
+                                and y1=upper_y box
+                                in
+                                page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.y0) (x+.w,y+.y1)]) :: page.pageContents;
+                              );
+                              w
                             )
                             | Glue g
                             | Drawing g ->(

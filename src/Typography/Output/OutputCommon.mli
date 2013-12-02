@@ -15,7 +15,7 @@ val orange : color
 val yellow : color
 val gray : color
 val grey : color
-
+val hsv:float->float->float->color
 type path_parameters = {
   path_order : int;
   close : bool;
