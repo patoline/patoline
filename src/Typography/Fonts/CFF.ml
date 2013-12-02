@@ -797,7 +797,7 @@ let subset font info cmap gls=
   let charset=
     let buf=Rbuffer.create 5 in
     let l=Array.length gls-1 in
-    Printf.fprintf stderr "charset %d\n" l;flush stderr;
+    (* Printf.fprintf stderr "charset %d\n" l;flush stderr; *)
     if l<=0xff then (
       Rbuffer.add_char buf (char_of_int 1);
       Rbuffer.add_char buf (char_of_int 0);
@@ -857,12 +857,12 @@ let subset font info cmap gls=
       with
           Not_found->(-1,IntMap.empty)
     in
-
+    (*
     IntMap.iter (fun k a ->
       Printf.fprintf stderr "privDict key : %d\n" k;
       List.iter (fun x->print_num stderr x;Printf.fprintf stderr " ") a;Printf.fprintf stderr "\n";
     ) privDict;flush stderr;
-
+    *)
     let subrs=
       try
         match IntMap.find 19 privDict with
@@ -875,9 +875,9 @@ let subset font info cmap gls=
 
     if privDictOff<0 then (0,Rbuffer.create 0) else (
       let bu=Rbuffer.create 100 in
-      Printf.fprintf stderr "privdict\n";flush stderr;
+      (* Printf.fprintf stderr "privdict\n";flush stderr; *)
       writeDict bu privDict;
-      Printf.fprintf stderr "/privdict\n";flush stderr;
+      (* Printf.fprintf stderr "/privdict\n";flush stderr; *)
       if Array.length subrs<=0 then (Rbuffer.length bu,bu) else (
         let privDict=IntMap.add 19 [CFFInt (Rbuffer.length bu)] privDict in
         Rbuffer.clear bu;
@@ -950,7 +950,7 @@ let subset font info cmap gls=
   (* strings *)
   let strIndex=
     let arr=Array.make (StrMap.cardinal !strings) "" in
-    StrMap.iter (fun k a->Printf.fprintf stderr "%S\n" k;arr.(a)<-k) !strings;
+    (* StrMap.iter (fun k a->Printf.fprintf stderr "%S\n" k;arr.(a)<-k) !strings; *)
     let buf=Rbuffer.create 100 in
     writeIndex buf arr;
     buf
@@ -1023,17 +1023,10 @@ let subset font info cmap gls=
           IntMap.remove 18 topDict
       in
       Rbuffer.clear topDictBuf;
-      Printf.fprintf stderr "topdict\n";flush stderr;
+      (* Printf.fprintf stderr "topdict\n";flush stderr; *)
       writeDict topDictBuf topDict;
-      Printf.fprintf stderr "/topdict\n";flush stderr;
+      (* Printf.fprintf stderr "/topdict\n";flush stderr; *)
       let topDictStr=Rbuffer.contents topDictBuf in
-      let s=topDictStr in
-      for i=0 to String.length s-1 do
-        Printf.fprintf stderr "%d " (int_of_char s.[i])
-      done;
-      Printf.fprintf stderr "\n";
-
-
       Rbuffer.clear topDictBuf;
       writeIndex topDictBuf [|topDictStr|];
 
