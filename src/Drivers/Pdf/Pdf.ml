@@ -55,31 +55,38 @@ let stream buf=
   let stream buf="",buf
 #endif
 
-
-(*
-let prepare_fonts pages=
-  let fonts=ref StrMap.empty in
-  let findGl gl=
-    let fnt=Fonts.glyphFont (gl.glyph) in
-    let (fontNumber,glyphs)=
-      try
-        StrMap.find (Fonts.uniqueName fnt) !fonts
-      with
-          Not_found->0,IntMap.empty
-    in
-    let gln=try
-              IntMap.find ((Fonts.glyphNumber gl.glyph).glyph_index) glyphs
-      with
-          Not_found->0
-    in
-    gln
+(* This is a temporary fix for CFF compatibility problems. *)
+let temporary_fix pages=
+  let rec fix x acc=match x with
+      []->List.rev acc
+    | (Glyph g)::s->(
+      match Fonts.glyphFont g.glyph with
+          Fonts.CFF _
+        | Fonts.Opentype (Opentype.CFF _)->(
+          let out=Fonts.outlines g.glyph in
+          let gls=[Path ({ default with fillColor=Some g.glyph_color; strokingColor=None },
+                         List.map (fun x->
+                           Array.of_list(
+                             List.map (fun (xx,yy)->Array.map (fun u->g.glyph_x+.g.glyph_size*.u/.1000.) xx, Array.map (fun u->g.glyph_y+.g.glyph_size*.u/.1000.) yy) x
+                           )
+                         ) out)]
+          in
+          fix s (gls@acc)
+        )
+        | _->fix s (Glyph g::acc)
+    )
+    | h::s->fix s (h::acc)
   in
-  ()
-*)
+  Array.iter (fun p->
+    p.pageContents<-fix p.pageContents []
+  ) pages
+(* End of temporary fix *)
+
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
+  temporary_fix pages;
   let pages=if Array.length pages>0 then pages else
       [|{pageFormat=(0.,0.);pageContents=[]}|]
   in
@@ -772,8 +779,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                            (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
                                               (IntMap.bindings x.revFontGlyphs))))
                          in
-                         (* Printf.fprintf stderr "cardinal : %d\n" *)
-                         (*   (IntMap.cardinal x.revFontGlyphs); *)
                          let o=open_out ((CFF.fontName y).postscript_name^".cff") in
                          Rbuffer.output_buffer o sub;
                          close_out o;
