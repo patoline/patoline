@@ -37,7 +37,17 @@ type cff={
 type font =
     CFF of cff
   | TTF of ttf
-type glyph = CFFGlyph of (cff*CFF.glyph) | TTFGlyph of (ttf*glyph_id)
+
+type ttfglyph={ ttf_font:ttf;
+                ttf_glyph_id:glyph_id;
+                mutable ttf_width:float;
+                mutable ttf_x0:float;
+                mutable ttf_x1:float;
+                mutable ttf_y0:float;
+                mutable ttf_y1:float }
+
+
+type glyph = CFFGlyph of (cff*CFF.glyph) | TTFGlyph of ttfglyph
 
 let tableLookup table file off=
   seek_in file (off+4);
@@ -344,11 +354,12 @@ let read_cmap font=
 
 let glyphFont f=match f with
     CFFGlyph (x,_)->CFF x
-  | TTFGlyph (ttf,_)->TTF ttf
+  | TTFGlyph (g)->TTF g.ttf_font
 let loadGlyph f ?index:(idx=0) gl=
   match f with
       CFF (x)->CFFGlyph (x, CFF.loadGlyph x.cff_font ~index:idx gl)
-    | TTF ttf->TTFGlyph (ttf,gl)
+    | TTF ttf->TTFGlyph { ttf_font=ttf;ttf_glyph_id=gl;
+                          ttf_width=infinity;ttf_y0=infinity;ttf_y1= -.infinity;ttf_x0=infinity;ttf_x1= -.infinity }
 
 
 (* Interpréteur truetype *)
@@ -384,16 +395,16 @@ let read2dot14 file=
 
 let outlines gl=match gl with
     CFFGlyph (_,x)->CFF.outlines x
-  | TTFGlyph (ttf,gl)->(
-    let file=open_in_bin_cached ttf.ttf_file in
+  | TTFGlyph (ttfgl)->(
+    let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
     let locformat=
-      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+50);
       readInt2 file
     in
 
-    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
 
     let rec fetch_outlines glyph_index=
       if locformat=0 then seek_in file (a+glyph_index*2) else seek_in file (a+glyph_index*4);
@@ -581,124 +592,178 @@ let outlines gl=match gl with
         make_composite [] IntMap.empty IntMap.empty
       )
     in
-    let out,_,_=fetch_outlines gl.glyph_index in
+    let out,_,_=fetch_outlines ttfgl.ttf_glyph_id.glyph_index in
     out
   )
 
 
+
+let compute_bb gl=
+  List.iter (List.iter (fun (x,y)->
+    let (a,b)=Bezier.bernstein_extr x in
+    let (c,d)=Bezier.bernstein_extr y in
+    gl.ttf_x0<-min gl.ttf_x0 a;
+    gl.ttf_x1<-max gl.ttf_x1 b;
+    gl.ttf_y0<-min gl.ttf_y0 c;
+    gl.ttf_y1<-max gl.ttf_y1 d)
+  )
+    (outlines (TTFGlyph gl))
+
+
 let glyph_y0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y0 x
-  | TTFGlyph (ttf,gl)->(
-    let file=open_in_bin_cached ttf.ttf_file in
-    let off_size=
-      let (a,b)=tableLookup "head" file ttf.ttf_offset in
-      seek_in file (a+50);
-      if readInt2 file=0 then 2 else 4
-    in
+  | TTFGlyph ttfgl->
+    if ttfgl.ttf_y0 = infinity then compute_bb ttfgl;
+    ttfgl.ttf_y0
+let glyph_x0 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_x0 x
+  | TTFGlyph ttfgl->
+    if ttfgl.ttf_x0 = infinity then compute_bb ttfgl;
+    ttfgl.ttf_x0
+let glyph_y1 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_y1 x
+  | TTFGlyph ttfgl->
+    if ttfgl.ttf_y1 = infinity then compute_bb ttfgl;
+    ttfgl.ttf_y1
+let glyph_x1 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_x1 x
+  | TTFGlyph ttfgl->
+    if ttfgl.ttf_x1 = infinity then compute_bb ttfgl;
+    ttfgl.ttf_x1
 
-    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    seek_in file (a+gl.glyph_index*off_size);
-    let off=
-      let off=readInt2 file in
-      if off_size=2 then 2*off else off
-    in
-    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
-    seek_in file (c+off+4);
-    float_of_int (sreadInt2 file)
+
+(*
+let glyph_y0 gl=match gl with
+    CFFGlyph (_,x)->CFF.glyph_y0 x
+  | TTFGlyph (ttfgl)->(
+    if ttfgl.ttf_y0<infinity then ttfgl.ttf_y0 else (
+      let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
+      let off_size=
+        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        seek_in file (a+50);
+        if readInt2 file=0 then 2 else 4
+      in
+
+      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
+      let off=
+        let off=readInt2 file in
+        if off_size=2 then 2*off else off
+      in
+      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (c+off+4);
+      let y0=float_of_int (sreadInt2 file) in
+      ttfgl.ttf_y0<-y0;
+      y0
+    )
   )
 
 let glyph_y1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_y1 x
-  | TTFGlyph (ttf,gl)->(
-    let file=open_in_bin_cached ttf.ttf_file in
-    let off_size=
-      let (a,b)=tableLookup "head" file ttf.ttf_offset in
-      seek_in file (a+50);
-      if readInt2 file=0 then 2 else 4
-    in
+  | TTFGlyph (ttfgl)->(
+    if ttfgl.ttf_y1<infinity then ttfgl.ttf_y1 else (
+      (*
+      let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
+      let off_size=
+        let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
+        seek_in file (a+50);
+        if readInt2 file=0 then 2 else 4
+      in
 
-    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    seek_in file (a+gl.glyph_index*off_size);
-    let off=
-      let off=readInt2 file in
-      if off_size=2 then 2*off else off
-    in
-    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
-    seek_in file (c+off+8);
-    float_of_int (sreadInt2 file)
+      let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
+      let off=
+        let off=readInt2 file in
+        if off_size=2 then 2*off else off
+      in
+      let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
+      seek_in file (c+off+8);
+      let y1=float_of_int (sreadInt2 file) in
+      *)
+      ttfgl.ttf_y1<-y1;
+      y1
+    )
   )
 
 let glyph_x0 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x0 x
-  | TTFGlyph (ttf,gl)->(
-    let file=open_in_bin_cached ttf.ttf_file in
+  | TTFGlyph (ttfgl)->(
+    let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
     let off_size=
-      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+50);
       if readInt2 file=0 then 2 else 4
     in
 
-    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    seek_in file (a+gl.glyph_index*off_size);
+    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+    seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
     let off=
       let off=readInt2 file in
       if off_size=2 then 2*off else off
     in
-    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
     seek_in file (c+off+2);
     float_of_int (sreadInt2 file)
   )
 
 let glyph_x1 gl=match gl with
     CFFGlyph (_,x)->CFF.glyph_x1 x
-  | TTFGlyph (ttf,gl)->(
-    let file=open_in_bin_cached ttf.ttf_file in
+  | TTFGlyph (ttfgl)->(
+    let file=open_in_bin_cached ttfgl.ttf_font.ttf_file in
     let off_size=
-      let (a,b)=tableLookup "head" file ttf.ttf_offset in
+      let (a,b)=tableLookup "head" file ttfgl.ttf_font.ttf_offset in
       seek_in file (a+50);
       if readInt2 file=0 then 2 else 4
     in
 
-    let (a,b)=tableLookup "loca" file ttf.ttf_offset in
-    seek_in file (a+gl.glyph_index*off_size);
+    let (a,b)=tableLookup "loca" file ttfgl.ttf_font.ttf_offset in
+    seek_in file (a+ttfgl.ttf_glyph_id.glyph_index*off_size);
     let off=
       let off=readInt2 file in
       if off_size=2 then 2*off else off
     in
-    let (c,d)=tableLookup "glyf" file ttf.ttf_offset in
+    let (c,d)=tableLookup "glyf" file ttfgl.ttf_font.ttf_offset in
     seek_in file (c+off+6);
     float_of_int (sreadInt2 file)
   )
+*)
 
 let glyphNumber gl=match gl with
     CFFGlyph (_,x)->CFF.glyphNumber x
-  | TTFGlyph (ttf,gl)->gl
+  | TTFGlyph (ttfgl)->ttfgl.ttf_glyph_id
 
 let glyphContents gl=match gl with
     CFFGlyph (_,x)->CFF.glyphContents x
-  | TTFGlyph (ttf,gl)->gl.glyph_utf8
+  | TTFGlyph (ttfgl)->ttfgl.ttf_glyph_id.glyph_utf8
 
 let glyphName gl=
   match gl with
       CFFGlyph (_,x)-> CFF.glyphName x
-    | TTFGlyph (_,gl)->gl.glyph_utf8
+    | TTFGlyph (gl)->gl.ttf_glyph_id.glyph_utf8
 
+(*
+type ttfglyph={ ttf_font:ttf;
+                ttf_glyph_id:glyph_id;
+                mutable ttf_width:float;
+                mutable ttf_y0:float;
+                mutable ttf_y1:float }
+*)
 let glyphWidth gl=
   match gl with
       CFFGlyph (_,x)->CFF.glyphWidth x
-    | _->
-      let file,offset,x=match gl with
-          CFFGlyph (f,x)->f.cff_font.file,f.cff_offset,CFF.glyphNumber x
-        | TTFGlyph (ttf,g)->ttf.ttf_file,ttf.ttf_offset,g
-      in
-      let file=open_in_bin_cached file in
-      let num=x.glyph_index in
-      let (a,_)=tableLookup "hhea" file offset in
-      let nh=(seek_in file (a+34); readInt2 file) in
-      let (b,_)=tableLookup "hmtx" file offset in
-      seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
-      let w=float_of_int (readInt2 file) in
-      w
+    | TTFGlyph (ttfgl)->
+      if ttfgl.ttf_width<infinity then ttfgl.ttf_width else (
+        let file,offset,x=ttfgl.ttf_font.ttf_file,ttfgl.ttf_font.ttf_offset,ttfgl.ttf_glyph_id in
+        let file=open_in_bin_cached file in
+        let num=x.glyph_index in
+        let (a,_)=tableLookup "hhea" file offset in
+        let nh=(seek_in file (a+34); readInt2 file) in
+        let (b,_)=tableLookup "hmtx" file offset in
+        seek_in file (if num>=nh then (b+4*(nh-1)) else (b+4*num));
+        let w=float_of_int (readInt2 file) in
+        ttfgl.ttf_width<-w;
+        w
+      )
 
 let otype_file font=match font with
     CFF (font)->font.cff_font.file, font.cff_offset

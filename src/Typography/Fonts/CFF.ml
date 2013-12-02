@@ -559,13 +559,14 @@ let writeCFFInt buf x=
     let y=(char_of_int (x+139)) in
       Rbuffer.add_char buf y
   ) else if x>=108 && x<=1131 then (
-    let b1=(x-108) in
-    let b0=(b1/256)+247 in
+    let b1=(x-108) land 0xff in
+    let b0=(x lsr 8)+247 in
       Rbuffer.add_char buf (char_of_int (b0 land 0xff));
       Rbuffer.add_char buf (char_of_int (b1 land 0xff))
   ) else if x>=(-1131) && x<=(-108) then (
-    let b1=(-x-108) in
-    let b0=(b1/256)+251 in
+    let nx= -x in
+    let b1=(nx-108) land 0xff in
+    let b0=(nx lsr 8) +251 in
       Rbuffer.add_char buf (char_of_int (b0 land 0xff));
       Rbuffer.add_char buf (char_of_int (b1 land 0xff))
   ) else if x>=(-32768) && x<=32767 then (
@@ -642,20 +643,29 @@ let writeDict buf dict=
         Not_found->dict
   in
   IntMap.iter (fun op stack->
+    (* Printf.fprintf stderr "op=%d\n" op; *)
     if (op>=15 && op<=19) || op=0xc24 || op=0xc25 then (
       List.iter (fun x->
         Rbuffer.add_char buf (char_of_int 29);
         let y=int_of_num x in
+        (* Printf.fprintf stderr "st=%d\n" y; *)
         Rbuffer.add_char buf (char_of_int ((y lsr 24) land 0xff));
         Rbuffer.add_char buf (char_of_int ((y lsr 16) land 0xff));
         Rbuffer.add_char buf (char_of_int ((y lsr 8) land 0xff));
         Rbuffer.add_char buf (char_of_int (y land 0xff)))
         stack;
+      if op>0xff then Rbuffer.add_char buf (char_of_int (op lsr 8));
       Rbuffer.add_char buf (char_of_int (op land 0xff))
     ) else (
       List.iter (fun x->match x with
-          CFFInt y->writeCFFInt buf y
-        | CFFFloat y->writeCFFFloat buf y
+          CFFInt y->(
+            (* Printf.fprintf stderr "st=%d\n" y; *)
+            writeCFFInt buf y
+          )
+        | CFFFloat y->(
+          (* Printf.fprintf stderr "st=%g\n" y; *)
+          writeCFFFloat buf y;
+        )
       ) (List.rev stack);
       if op>0xff then Rbuffer.add_char buf (char_of_int (op lsr 8));
       Rbuffer.add_char buf (char_of_int (op land 0xff));
@@ -705,11 +715,369 @@ let copyIndex f=
           buf
     )
 
-type fontInfo={ mutable name:FTypes.name }
+type fontInfo={
+  mutable name:FTypes.name
+}
+
 let fontInfo f=
   { name=fontName f }
 
 let setName info name=info.name<-name
+
+let rec part n l=
+  if n<=0 then [],l else
+    (match l with
+        []->([],[])
+      | h::s->
+        let (a,b)=part (n-1) s in
+        (h::a,b))
+
+
+
+(* Version CID *)
+
+#define CID
+
+let subset font info cmap gls=
+  let f=open_in_bin_cached font.file in
+  let topDict=readDict f font.dictIndex.(0) font.dictIndex.(1) in
+  let strings=ref StrMap.empty in
+  let getSid s=
+    391+(
+      try StrMap.find s !strings with
+          Not_found->
+            (strings:=StrMap.add s (StrMap.cardinal !strings) !strings;
+             (StrMap.cardinal !strings-1))
+    )
+  in
+
+
+  let outBuf=Rbuffer.create 1000 in
+  let headersize=4 in
+  Rbuffer.add_char outBuf (char_of_int 1);
+  Rbuffer.add_char outBuf (char_of_int 0);
+  Rbuffer.add_char outBuf (char_of_int headersize);
+  Rbuffer.add_char outBuf (char_of_int 4);
+  let f=open_in_bin_cached font.file in
+
+  (* Ecriture du nameIndex *)
+  let name=
+    let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in
+    seek_in f (font.nameIndex.(0));
+    really_input f buf_ 0 (String.length buf_);
+    buf_
+  in
+  writeIndex outBuf [|name|];
+
+  let topDictOffset=Rbuffer.length outBuf in
+
+
+  let gsubrBuf=
+    seek_in f (font.stringIndex.(Array.length font.stringIndex-1));
+    let gsubr=copyIndex f in
+    gsubr
+  in
+
+  let charStrings=try
+    let charStrings=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 17)) in
+    let progs=Array.map (fun x->indexGet f (font.offset+charStrings) (x).glyph_index) gls in
+    let buf=Rbuffer.create 100 in
+    writeIndex buf progs;
+    buf
+    with
+        Not_found->(
+          Printf.fprintf stderr "Please report the following to patolist@lists.patoline.org: empty charstrings dict\n";
+          flush stderr;
+          Rbuffer.create 0
+        )
+  in
+
+
+
+  let charset=
+    let buf=Rbuffer.create 5 in
+    let l=Array.length gls-1 in
+    Printf.fprintf stderr "charset %d\n" l;flush stderr;
+    if l<=0xff then (
+      Rbuffer.add_char buf (char_of_int 1);
+      Rbuffer.add_char buf (char_of_int 0);
+      Rbuffer.add_char buf (char_of_int 1);
+      Rbuffer.add_char buf (char_of_int l);
+    ) else (
+      Rbuffer.add_char buf (char_of_int 2);
+      Rbuffer.add_char buf (char_of_int 0);
+      Rbuffer.add_char buf (char_of_int 1);
+      Rbuffer.add_char buf (char_of_int (l lsr 8));
+      Rbuffer.add_char buf (char_of_int (l land 0xff));
+    );
+    buf
+  in
+
+  let encoding=
+    let size=IntMap.fold (fun k a m->if a<0x100 then m+1 else m) IntMap.empty 0 in
+    let enc=String.make (size+2) (char_of_int 0) in
+    enc.[0]<-char_of_int 0;
+    enc.[1]<-char_of_int size;
+    IntMap.iter (fun k a->if a<0x100 then enc.[2+a]<-char_of_int k) cmap;
+    enc
+  in
+#ifdef CID
+  let fdselect=
+    let buf=Rbuffer.create 10 in
+    let l=Array.length gls in
+    (* format *)
+    Rbuffer.add_char buf (char_of_int 3);
+    (* nRanges *)
+    Rbuffer.add_char buf (char_of_int 0);
+    Rbuffer.add_char buf (char_of_int 1);
+    (* Range 0 *)
+    Rbuffer.add_char buf (char_of_int 0);
+    Rbuffer.add_char buf (char_of_int 0);
+    Rbuffer.add_char buf (char_of_int 0);
+    (* Sentinel *)
+    Rbuffer.add_char buf (char_of_int (l lsr 8));
+    Rbuffer.add_char buf (char_of_int (l land 0xff));
+    buf
+  in
+#else
+      let fdselect=Rbuffer.create 10 in
+#endif
+
+
+  (* Privdict est autonome avec ses offsets. Ce truc est prêt à être écrit. *)
+  let len_privDict,new_privDict=
+    let privDictOff,privDict=
+      try
+        match IntMap.find 18 topDict with
+            off::sz::_->(
+              (int_of_num off,
+               readDict f (font.offset+int_of_num off) (font.offset+int_of_num off+int_of_num sz))
+            )
+          | _->(-1,IntMap.empty)
+      with
+          Not_found->(-1,IntMap.empty)
+    in
+
+    IntMap.iter (fun k a ->
+      Printf.fprintf stderr "privDict key : %d\n" k;
+      List.iter (fun x->print_num stderr x;Printf.fprintf stderr " ") a;Printf.fprintf stderr "\n";
+    ) privDict;flush stderr;
+
+    let subrs=
+      try
+        match IntMap.find 19 privDict with
+            off::_->readIndex f (font.offset+privDictOff+int_of_num off)
+          | _->[||]
+      with
+          Not_found->[||]
+    in
+    let privDict=if Array.length subrs<=0 then IntMap.remove 19 privDict else privDict in
+
+    if privDictOff<0 then (0,Rbuffer.create 0) else (
+      let bu=Rbuffer.create 100 in
+      Printf.fprintf stderr "privdict\n";flush stderr;
+      writeDict bu privDict;
+      Printf.fprintf stderr "/privdict\n";flush stderr;
+      if Array.length subrs<=0 then (Rbuffer.length bu,bu) else (
+        let privDict=IntMap.add 19 [CFFInt (Rbuffer.length bu)] privDict in
+        Rbuffer.clear bu;
+        writeDict bu privDict;
+        let len=Rbuffer.length bu in
+        writeIndex bu subrs;
+        (len,bu)
+      )
+    )
+  in
+
+
+  (*********************)
+  (* Ecriture de tout. *)
+  (*********************)
+
+  (* Enregistrement des SID dans le strIndex *)
+  let topDict=IntMap.mapi (fun k a->
+    if (k>=0 && k<=4)
+      || k=0xc00
+      || (k>=0xc15 && k<=0xc17)
+      || k=0xc1e
+    then
+      let (u,v)=part 2 a in
+      (List.map
+         (fun h->
+           if int_of_num h<=390 then h else
+             (try
+                let s0=font.stringIndex.(int_of_num h-391) in
+                let s1=font.stringIndex.(int_of_num h-391+1) in
+                let s=String.create (s1-s0) in
+                seek_in f s0;
+                really_input f s 0 (s1-s0);
+                let sid=getSid s in
+                (CFFInt sid)
+              with
+                  _->(CFFInt 0))
+         ) u
+      )@v
+    else
+      a
+  ) topDict
+  in
+
+  let topDict=IntMap.add 16 [CFFInt 0] topDict in (* Encoding *)
+  let topDict=IntMap.add 15 [CFFInt 0] topDict in (* Charset *)
+#ifdef CID
+  let topDict= (* ROS *)
+    let registry=getSid "Adobe" in
+    let ordering=getSid "Identity" in
+    let supplement=1 in
+    IntMap.add 0xc1e [CFFInt supplement;CFFInt ordering;CFFInt registry] topDict
+  in
+  (*
+  let topDict=IntMap.add 0xc1f [CFFInt 0] topDict in (* CIDFontVersion *)
+  let topDict=IntMap.add 0xc20 [CFFInt 0] topDict in (* CIDFontRevision *)
+  *)
+  let topDict=IntMap.add 0xc21 [CFFInt 0] topDict in (* CIDFontType *)
+  let topDict=IntMap.add 0xc22 [CFFInt (Array.length gls)] topDict in (* CIDCount *)
+  (*
+  let topDict=IntMap.add 0xc23 [CFFInt 0] topDict in (* UIDBase *)
+  *)
+  let topDict=IntMap.add 0xc24 [CFFInt topDictOffset] topDict in (* FDArray *)
+  let topDict=IntMap.add 0xc25 [CFFInt 0] topDict in (* FDSelect *)
+  (*
+  let topDict=IntMap.add 0xc26 [CFFInt 0] topDict in (* FontName *)
+  *)
+#endif
+
+  (* strings *)
+  let strIndex=
+    let arr=Array.make (StrMap.cardinal !strings) "" in
+    StrMap.iter (fun k a->Printf.fprintf stderr "%S\n" k;arr.(a)<-k) !strings;
+    let buf=Rbuffer.create 100 in
+    writeIndex buf arr;
+    buf
+  in
+  (* TopDict, strings, gsubr, charset, fdselect, charstrings, Private Dicts *)
+  let topDictBuf=
+    let topDictBuf=Rbuffer.create 100 in
+
+    let rec writeTopDict len dict=
+      Rbuffer.clear topDictBuf;
+      writeDict topDictBuf topDict;
+      let topDictStr=Rbuffer.contents topDictBuf in
+      Rbuffer.clear topDictBuf;
+      writeIndex topDictBuf [|topDictStr|];
+      (* encoding *)
+      let topDict=IntMap.add 16 [CFFInt(topDictOffset+len
+                                        +Rbuffer.length strIndex
+                                        +String.length gsubrBuf)]
+        topDict
+      in
+      (* charset *)
+      let topDict=IntMap.add 15 [CFFInt(topDictOffset+len
+                                        +Rbuffer.length strIndex
+                                        +String.length gsubrBuf
+                                        +String.length encoding)]
+        topDict
+      in
+#ifdef CID
+      (* fdarray *)
+      let topDict=IntMap.add 0xc24 [CFFInt(topDictOffset(*+len
+                                           +Rbuffer.length strIndex
+                                           +String.length gsubrBuf
+                                           +Rbuffer.length charset
+                                           +Rbuffer.length fdselect
+                                           +Rbuffer.length charStrings*))]
+        topDict
+      in
+      (* fdselect *)
+      let topDict=IntMap.add 0xc25 [CFFInt(topDictOffset+len
+                                           +Rbuffer.length strIndex
+                                           +String.length gsubrBuf
+                                           +String.length encoding
+                                           +Rbuffer.length charset)]
+        topDict
+      in
+#endif
+      (* charstrings *)
+      let topDict=IntMap.add 17 [CFFInt(topDictOffset+len
+                                        +Rbuffer.length strIndex
+                                        +String.length gsubrBuf
+                                        +String.length encoding
+                                        +Rbuffer.length charset
+                                        +Rbuffer.length fdselect)]
+        topDict
+      in
+      (* private *)
+      let topDict=if len_privDict>0 then
+          IntMap.add 18 [CFFInt (len_privDict);
+                         CFFInt(topDictOffset+len
+                                +Rbuffer.length strIndex
+                                +String.length gsubrBuf
+                                +String.length encoding
+                                +Rbuffer.length charset
+                                +Rbuffer.length fdselect
+                                +Rbuffer.length charStrings
+                                (* +len *)
+                         )]
+            topDict
+        else
+          IntMap.remove 18 topDict
+      in
+      Rbuffer.clear topDictBuf;
+      Printf.fprintf stderr "topdict\n";flush stderr;
+      writeDict topDictBuf topDict;
+      Printf.fprintf stderr "/topdict\n";flush stderr;
+      let topDictStr=Rbuffer.contents topDictBuf in
+      let s=topDictStr in
+      for i=0 to String.length s-1 do
+        Printf.fprintf stderr "%d " (int_of_char s.[i])
+      done;
+      Printf.fprintf stderr "\n";
+
+
+      Rbuffer.clear topDictBuf;
+      writeIndex topDictBuf [|topDictStr|];
+
+      if Rbuffer.length topDictBuf <> len then writeTopDict (Rbuffer.length topDictBuf) topDict else
+        topDictBuf
+    in
+    writeTopDict 0 topDict;
+  in
+
+  Rbuffer.add_buffer outBuf topDictBuf;
+  Rbuffer.add_buffer outBuf strIndex;
+  Rbuffer.add_string outBuf gsubrBuf;
+  Rbuffer.add_string outBuf encoding;
+  Rbuffer.add_buffer outBuf charset;
+  Rbuffer.add_buffer outBuf fdselect;
+  Rbuffer.add_buffer outBuf charStrings;
+  (*
+  let fdarray=
+    let topDict_fd=IntMap.remove 0xc24 topDict in
+    let topDict_fd=IntMap.remove 0xc1e topDict_fd in
+    let topDict_fd=IntMap.remove 0xc25 topDict_fd in
+    let topDict_fd=IntMap.remove 15 topDict_fd in
+    let topDict_fd=IntMap.remove 16 topDict_fd in
+    let topDict_fd=IntMap.remove 17 topDict_fd in
+    let topDict_fd=IntMap.remove 18 topDict_fd in
+
+    let b=Rbuffer.create 100 in
+    writeDict b topDict_fd;
+    let s=Rbuffer.contents b in
+    Rbuffer.clear b;
+    writeIndex b [|s|];
+    let l0=Rbuffer.length b in
+    for i=l0 to Rbuffer.length topDictBuf-1 do
+      Rbuffer.add_char b 'x'
+    done;
+    b
+  in
+  Rbuffer.add_buffer outBuf fdarray;
+  *)
+  Rbuffer.add_buffer outBuf new_privDict;
+  outBuf
+
+
+(*
 
 let subset(* _encoded *) font info cmap gls=
   let buf=Rbuffer.create 256 in
@@ -723,76 +1091,60 @@ let subset(* _encoded *) font info cmap gls=
   let f=open_in_bin_cached font.file in
 
   (* Ecriture du nameIndex *)
-  (* let name= *)
-  (*   let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in *)
-  (*   seek_in f (font.nameIndex.(0)); *)
-  (*   really_input f buf_ 0 (String.length buf_); *)
-  (*   buf_ *)
-  (* in *)
-  writeIndex buf [|info.name.postscript_name|];
+  let name=
+    let buf_=String.create (font.nameIndex.(1)-font.nameIndex.(0)) in
+    seek_in f (font.nameIndex.(0));
+    really_input f buf_ 0 (String.length buf_);
+    buf_
+  in
+  writeIndex buf [|name|];
 
   let strings=ref StrMap.empty in
+  let getSid s=
+    391+(
+      try StrMap.find s !strings with
+          Not_found->
+            (strings:=StrMap.add s (StrMap.cardinal !strings) !strings;
+             (StrMap.cardinal !strings-1))
+    )
+  in
+
+
   let topDict=readDict f font.dictIndex.(0) font.dictIndex.(1) in
-  let topDict=IntMap.filter (fun k _->
-    k<32 || (k lsr 8 = 12 && k land 0xff < 30)
-  ) topDict
-  in
-  let topDict=IntMap.mapi (fun op st->
-    if (op<=4) || op=0xc00 then (
-      let idx=int_of_num (List.hd st) in
-      if idx<=390 then st else (
-        let off0=font.stringIndex.(idx-391) in
-        let off1=font.stringIndex.(idx-390) in
-        let str=String.create (off1-off0) in
-        seek_in f off0;
-        really_input f str 0 (off1-off0);
-        let num=
-          try
-            StrMap.find str !strings
-          with
-              Not_found->(
-                strings:=StrMap.add str (StrMap.cardinal !strings) !strings;
-                StrMap.cardinal !strings-1
-              )
-        in
-        [CFFInt (391+num)]
-      )
-    ) else st
-  ) topDict
-  in
-  let topDict=                          (* Ajout du familyname *)
-    IntMap.add 3
-      (let num=
-         try
-           StrMap.find info.name.family_name !strings
-         with
-             Not_found->(
-               strings:=StrMap.add info.name.family_name (StrMap.cardinal !strings) !strings;
-               StrMap.cardinal !strings-1
-             )
-       in
-       [CFFInt (391+num)]
-      ) topDict
-  in
-  let topDict=                          (* Ajout du fullname *)
-    IntMap.add 2
-      (let num=
-         try
-           StrMap.find info.name.full_name !strings
-         with
-             Not_found->(
-               strings:=StrMap.add info.name.full_name (StrMap.cardinal !strings) !strings;
-               StrMap.cardinal !strings-1
-             )
-       in
-       [CFFInt (391+num)]
-      ) topDict
-  in
   (* On commence par écrire tous les offsets pour calculer la taille finale *)
   let topDict=
     let rec make_dict i m=if i>17 then m else make_dict (i+1) (IntMap.add i [CFFInt 0] m) in
     make_dict 15 (IntMap.add 18 [CFFInt 0;CFFInt 0] topDict)
   in
+  (* Enregistrement des SID dans le strIndex *)
+  let topDict=IntMap.mapi (fun k a->
+    if (k>=0 && k<=4)
+      || k=0xc00
+      || (k>=0xc15 && k<=0xc17)
+      || k=0xc1e
+    then
+      let (u,v)=part 2 a in
+      (List.map
+         (fun h->
+           if int_of_num h<=390 then h else
+             (try
+                let s0=font.stringIndex.(int_of_num h-391) in
+                let s1=font.stringIndex.(int_of_num h-391+1) in
+                let s=String.create (s1-s0) in
+                seek_in f s0;
+                really_input f s 0 (s1-s0);
+                let sid=getSid s in
+                (CFFInt sid)
+              with
+                  _->(CFFInt 0))
+         ) u
+      )@v
+    else
+      a
+  ) topDict
+  in
+
+
   let topDictBuf_=Rbuffer.create 200 in
   writeDict topDictBuf_ topDict;     (* Premiere tentative pour connaitre la taille *)
   let topDictBuf=Rbuffer.create 200 in
@@ -801,7 +1153,11 @@ let subset(* _encoded *) font info cmap gls=
   seek_in f (font.stringIndex.(Array.length font.stringIndex-1));
   let gsubr=copyIndex f in
   let encoding=
-    let size=IntMap.fold (fun k a m->if a<0x100 then m+1 else m) IntMap.empty 0 in
+    let size=IntMap.fold (fun k a m->
+      Printf.fprintf stderr "encoding: %d %d\n" k a;flush stderr;
+      if a<0x100 then m+1 else m
+    ) cmap 0
+    in
     let enc=String.make (size+2) (char_of_int 0) in
     enc.[0]<-char_of_int 0;
     enc.[1]<-char_of_int size;
@@ -929,7 +1285,7 @@ let subset(* _encoded *) font info cmap gls=
      else priv);
 
   (* Premier top-dictionnaire, avec l'offset des charstrings *)
-  let topDict0=
+  let topDict=
     (IntMap.add 17
        [CFFInt (Rbuffer.length buf + (Rbuffer.length topDictBuf) +
                   Rbuffer.length strIndex + String.length gsubr +
@@ -937,34 +1293,34 @@ let subset(* _encoded *) font info cmap gls=
        topDict)
   in
   (* Avec l'adresse et la taille du dictionnaire privé *)
-  let topDict1=
+  let topDict=
     IntMap.add 18
       [CFFInt (Rbuffer.length privDict);
        CFFInt (Rbuffer.length buf + (Rbuffer.length topDictBuf) +
                  Rbuffer.length strIndex + String.length gsubr +
                  String.length encoding + String.length charset +
                  Rbuffer.length charStrings)]
-      topDict0
+      topDict
   in
   (* Avec l'encodage *)
-  let topDict2=
+  let topDict=
     IntMap.add 16
       [CFFInt (Rbuffer.length buf + (Rbuffer.length topDictBuf) +
                  Rbuffer.length strIndex + String.length gsubr)]
-      topDict1
+      topDict
   in
   (* Avec le charset *)
-  let topDict3=
+  let topDict=
     IntMap.add 15
       [CFFInt (Rbuffer.length buf + (Rbuffer.length topDictBuf) +
                  Rbuffer.length strIndex + String.length gsubr +
                  String.length encoding)]
-      topDict2
+      topDict
   in
 
   (* Ecriture finale dans le buffer *)
   Rbuffer.reset topDictBuf_;
-  writeDict topDictBuf_ topDict3;
+  writeDict topDictBuf_ topDict;
   writeIndex buf [|Rbuffer.contents topDictBuf_|];
 
   Rbuffer.add_buffer buf strIndex;
@@ -975,5 +1331,7 @@ let subset(* _encoded *) font info cmap gls=
   Rbuffer.add_buffer buf privDict;
   Rbuffer.add_string buf subr;
   buf
+*)
+
 
 let add_kerning _ _=()
