@@ -55,6 +55,28 @@ let stream buf=
   let stream buf="",buf
 #endif
 
+
+(*
+let prepare_fonts pages=
+  let fonts=ref StrMap.empty in
+  let findGl gl=
+    let fnt=Fonts.glyphFont (gl.glyph) in
+    let (fontNumber,glyphs)=
+      try
+        StrMap.find (Fonts.uniqueName fnt) !fonts
+      with
+          Not_found->0,IntMap.empty
+    in
+    let gln=try
+              IntMap.find ((Fonts.glyphNumber gl.glyph).glyph_index) glyphs
+      with
+          Not_found->0
+    in
+    gln
+  in
+  ()
+*)
+
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
@@ -144,7 +166,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                       fprintf outChan "/CIDToGIDMap /Identity "
                   | _->()
                 );
-                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >> ";
+                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 1 >> ";
                 fprintf outChan "/W %d 0 R " w;
                 fprintf outChan "/FontDescriptor %d 0 R >>"  descr;
                 endObject();
@@ -155,11 +177,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 fprintf outChan
                   "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
                 fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
+                (* fprintf outChan "/DescendantFonts [%d 0 R] >>" fontDict; *)
                 endObject();
 
                 let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
                              fontFile=fontFile;
                              fontToUnicode=toUnicode;
+                             (* fontToUnicode= -1; *)
                              fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
                              revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
                 fonts:=StrMap.add (Fonts.uniqueName font) result !fonts;
@@ -582,121 +606,127 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       if n.glyph_utf8="" then defaultutf8 else n.glyph_utf8
     in
     StrMap.iter (fun _ x->
-      let buf=Rbuffer.create 100000 in
-      Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
-      Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
-      Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
-      Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
-      let range=ref [] in
-      let one=ref [] in
-      let multRange=ref [] in
-      let rec make_cmap glyphs=
-        if not (IntMap.is_empty glyphs) then (
-          (* On commence par partitionner par premier octet (voir adobe technical note #5144) *)
-          let m0,g0=IntMap.min_binding glyphs in
-          let a,b=
-            let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
-            (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
-          in
-          let one_char, mult_char=IntMap.partition (fun _ gl->
-            let utf8=(glyphutf8 gl) in
-            UTF8.next utf8 0 > String.length utf8) a
-          in
-          (* recuperer les intervalles et singletons *)
-          let rec unicode_diff a0=
-            if not (IntMap.is_empty a0) then (
-              let idx0,m0=IntMap.min_binding a0 in
-              let num0=glyphutf8 m0 in
-              let u,v=IntMap.partition (fun idx x->let num=glyphutf8 x in
-                                                   idx-(UChar.uint_code (UTF8.get num 0)) =
-                  idx0-(UChar.uint_code (UTF8.get num0 0))
-              ) a0
-              in
-              let idx1,m1=IntMap.max_binding u in
-              if IntMap.cardinal u > 1 then (
-                range:=(idx0,idx1,UTF8.get num0 0)::(!range)
-              ) else (
-                one:=(idx0, num0)::(!one)
-              );
-              unicode_diff v
-            )
-          in
-          unicode_diff one_char;
-          if not (IntMap.is_empty mult_char) then (
-            let idx0,m0=IntMap.min_binding mult_char in
-            let first=ref idx0 in
-            let last=ref (idx0-1) in
-            let cur=ref [] in
-            IntMap.iter (fun idx a->
-              let num=glyphutf8 a in
-              if idx > (!last)+1 then (
-                (match !cur with
-                    _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
-                  | [h]->one:=(!first, h)::(!one)
-                  | []->());
-                cur:=[]
-              );
-              if !cur=[] then
-                first:=idx;
-              cur:=num::(!cur);
-              last:=idx
-            ) mult_char;
+      if x.fontToUnicode>=0 then (
+        let buf=Rbuffer.create 100000 in
+        Rbuffer.add_string buf "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n";
+        Rbuffer.add_string buf "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n";
+        Rbuffer.add_string buf "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n";
+        Rbuffer.add_string buf "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+        let range=ref [] in
+        let one=ref [] in
+        let multRange=ref [] in
+        let rec make_cmap glyphs=
+          if not (IntMap.is_empty glyphs) then (
+            one:=List.map (fun (a,b)->(a,glyphutf8 b)) (IntMap.bindings glyphs)
+          )
+#ifdef EFFICIENT_CMAP
+          if not (IntMap.is_empty glyphs) then (
+            (* On commence par partitionner par premier octet (voir adobe technical note #5411) *)
+            let m0,g0=IntMap.min_binding glyphs in
+            let a,b=
+              let a,gi,b=IntMap.split (m0 lor 0x00ff) glyphs in
+              (match gi with Some ggi->IntMap.add (m0 lor 0x00ff) ggi a | _->a), b
+            in
+            let one_char, mult_char=IntMap.partition (fun _ gl->
+              let utf8=(glyphutf8 gl) in
+              UTF8.next utf8 0 > String.length utf8) a
+            in
+            (* recuperer les intervalles et singletons *)
+            let rec unicode_diff a0=
+              if not (IntMap.is_empty a0) then (
+                let idx0,m0=IntMap.min_binding a0 in
+                let num0=glyphutf8 m0 in
+                let u,v=IntMap.partition (fun idx x->let num=glyphutf8 x in
+                                                     idx-(UChar.uint_code (UTF8.get num 0)) =
+                    idx0-(UChar.uint_code (UTF8.get num0 0))
+                ) a0
+                in
+                let idx1,m1=IntMap.max_binding u in
+                if IntMap.cardinal u > 1 then (
+                  range:=(idx0,idx1,UTF8.get num0 0)::(!range)
+                ) else (
+                  one:=(idx0, num0)::(!one)
+                );
+                unicode_diff v
+              )
+            in
+            unicode_diff one_char;
+            if not (IntMap.is_empty mult_char) then (
+              let idx0,m0=IntMap.min_binding mult_char in
+              let first=ref idx0 in
+              let last=ref (idx0-1) in
+              let cur=ref [] in
+              IntMap.iter (fun idx a->
+                let num=glyphutf8 a in
+                if idx > (!last)+1 then (
+                  (match !cur with
+                      _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+                    | [h]->one:=(!first, h)::(!one)
+                    | []->());
+                  cur:=[]
+                );
+                if !cur=[] then
+                  first:=idx;
+                cur:=num::(!cur);
+                last:=idx
+              ) mult_char;
 
-            match !cur with
-                _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
-              | [h]->one:=(!first, h)::(!one)
-              | []->()
+              match !cur with
+                  _::_::_->multRange:=(!first, List.rev !cur)::(!multRange)
+                | [h]->one:=(!first, h)::(!one)
+                | []->()
 
-          );
-          make_cmap b
-        )
-      in
-      make_cmap x.revFontGlyphs;
-      let rec print_utf8 utf idx=
-        try
-          Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
-          print_utf8 utf (UTF8.next utf idx)
-        with
-            _->()
-      in
-      let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
-      if one_nonempty<>[] then (
-        Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
-        List.iter (fun (a,b)->
-          Rbuffer.add_string buf (sprintf "<%04x> <" a);
-          print_utf8 b (UTF8.first b);
-          Rbuffer.add_string buf ">\n"
-        ) one_nonempty;
-        Rbuffer.add_string buf "endbfchar\n"
-      );
+            );
+            make_cmap b
+          )
+#endif
+        in
+        make_cmap x.revFontGlyphs;
+        let rec print_utf8 utf idx=
+          try
+            Rbuffer.add_string buf (sprintf "%04x" (UChar.uint_code (UTF8.look utf idx)));
+            print_utf8 utf (UTF8.next utf idx)
+          with
+              _->()
+        in
+        let one_nonempty=List.filter (fun (_,b)->b<>"") !one in
+        if one_nonempty<>[] then (
+          Rbuffer.add_string buf (sprintf "%d beginbfchar\n" (List.length !one));
+          List.iter (fun (a,b)->
+            Rbuffer.add_string buf (sprintf "<%04x> <" a);
+            print_utf8 b (UTF8.first b);
+            Rbuffer.add_string buf ">\n"
+          ) one_nonempty;
+          Rbuffer.add_string buf "endbfchar\n"
+        );
 
-      let mult_nonempty=List.filter (fun (_,b)->b<>[])
-        (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
+        let mult_nonempty=List.filter (fun (_,b)->b<>[])
+          (List.map (fun (a,b)->a, List.filter (fun c->c<>"") b) !multRange) in
 
-      if !range<>[] || mult_nonempty<>[] then (
-        Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
-        List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
-                                                          a b (UChar.uint_code c))) !range;
-        List.iter (fun (a,b)->
-          Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
-          List.iter (fun c->
-            Rbuffer.add_string buf "<";
-            print_utf8 c (UTF8.first c);
-            Rbuffer.add_string buf ">") b;
-          Rbuffer.add_string buf "]\n"
-        ) mult_nonempty;
-        Rbuffer.add_string buf "endbfrange\n"
-      );
-      Rbuffer.add_string buf "endcmap\n/CMapName currentdict /CMap defineresource pop\nend end\n";
+        if !range<>[] || mult_nonempty<>[] then (
+          Rbuffer.add_string buf (sprintf "%d beginbfrange\n" (List.length !range+List.length !multRange));
+          List.iter (fun (a,b,c)->Rbuffer.add_string buf (sprintf "<%04x> <%04x> <%04x>\n"
+                                                            a b (UChar.uint_code c))) !range;
+          List.iter (fun (a,b)->
+            Rbuffer.add_string buf (sprintf "<%04x> <%04x> [" a (a+List.length b-1));
+            List.iter (fun c->
+              Rbuffer.add_string buf "<";
+              print_utf8 c (UTF8.first c);
+              Rbuffer.add_string buf ">") b;
+            Rbuffer.add_string buf "]\n"
+          ) mult_nonempty;
+          Rbuffer.add_string buf "endbfrange\n"
+        );
+        Rbuffer.add_string buf "endcmap\nCMapName currentdict /CMap defineresource pop\nend end\n";
 
-
-      resumeObject x.fontToUnicode;
-      let filt, data=stream buf in
-      let len=Rbuffer.length data in
-      fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-      Rbuffer.output_buffer outChan data;
-      fprintf outChan "\nendstream";
-      endObject ()
+        resumeObject x.fontToUnicode;
+        let filt, data=stream buf in
+        let len=Rbuffer.length data in
+        fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+        Rbuffer.output_buffer outChan data;
+        fprintf outChan "\nendstream";
+        endObject ()
+      )
     ) !fonts;
 
 
@@ -742,11 +772,11 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                            (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
                                               (IntMap.bindings x.revFontGlyphs))))
                          in
-                         (* Printf.fprintf stderr "cardinal : %d\n" *)
-                         (*   (IntMap.cardinal x.revFontGlyphs); *)
-                         (* let o=open_out ((CFF.fontName y).postscript_name^".cff") in *)
-                         (* Rbuffer.output_buffer o sub; *)
-                         (* close_out o; *)
+                         Printf.fprintf stderr "cardinal : %d\n"
+                           (IntMap.cardinal x.revFontGlyphs);
+                         let o=open_out ((CFF.fontName y).postscript_name^".cff") in
+                         Rbuffer.output_buffer o sub;
+                         close_out o;
                          sub
                        )
                      | Fonts.CFF y->(
@@ -779,6 +809,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                        seek_in file y.CFF.offset;
                        let buf=Rbuffer.create 100000 in
                        Rbuffer.add_channel buf file y.CFF.size;
+
+
+                       let o=open_out ((CFF.fontName y).postscript_name^"_full.cff") in
+                       Rbuffer.output_buffer o buf;
+                       close_out o;
+
                        buf
                      )
                      | Fonts.Opentype (Opentype.TTF ttf)->(

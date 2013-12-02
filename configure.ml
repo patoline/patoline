@@ -19,7 +19,7 @@
 *)
 
 #load "unix.cma"
-#directory "+findlib"
+#directory "+site-lib/findlib"
 #load "findlib.cma"
 #load "str.cma"
 

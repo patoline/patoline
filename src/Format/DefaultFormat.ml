@@ -703,11 +703,12 @@ module Format=functor (D:Document.DocumentStructure)->(
           [bB (fun env->
             let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
             List.map (fun x->Drawing x) (List.map snd pages)
+            (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
           )]
         in
         match lastChild !D.structure with
             Paragraph x,y->
-              D.structure:=up(Paragraph {x with par_contents=x.par_contents@cont},y);
+              D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
           | _->(
             newPar D.structure Complete.normal parameters cont;
             (* D.structure:=lastChild !D.structure *)
