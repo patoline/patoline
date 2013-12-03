@@ -555,20 +555,22 @@ let writeIndex buf data=
   Rbuffer.add_buffer buf dat
 
 let writeCFFInt buf x=
+  (* let l0=Rbuffer.length buf in *)
   if x>=(-107) && x<107 then (
     let y=(char_of_int (x+139)) in
       Rbuffer.add_char buf y
   ) else if x>=108 && x<=1131 then (
-    let b1=(x-108) land 0xff in
-    let b0=(x lsr 8)+247 in
+    let v=x-108 in
+    let b1=v land 0xff in
+    let b0=v lsr 8 + 247 in
       Rbuffer.add_char buf (char_of_int (b0 land 0xff));
       Rbuffer.add_char buf (char_of_int (b1 land 0xff))
   ) else if x>=(-1131) && x<=(-108) then (
-    let nx= -x in
-    let b1=(nx-108) land 0xff in
+    let nx= -x - 108 in
+    let b1=nx land 0xff in
     let b0=(nx lsr 8) +251 in
-      Rbuffer.add_char buf (char_of_int (b0 land 0xff));
-      Rbuffer.add_char buf (char_of_int (b1 land 0xff))
+    Rbuffer.add_char buf (char_of_int (b0 land 0xff));
+    Rbuffer.add_char buf (char_of_int (b1 land 0xff))
   ) else if x>=(-32768) && x<=32767 then (
     Rbuffer.add_char buf (char_of_int 28);
     let y=if x>=0 then x else x+65536 in
@@ -582,6 +584,15 @@ let writeCFFInt buf x=
       Rbuffer.add_char buf (char_of_int ((y lsr 8) land 0xff));
       Rbuffer.add_char buf (char_of_int (y land 0xff))
   )
+      (*
+  let l1=Rbuffer.length buf in
+  let s=Rbuffer.contents buf in
+  Printf.fprintf stderr "writeCFFInt %d \"" x;
+  for i=l0 to l1-1 do
+    Printf.fprintf stderr "%d " (int_of_char s.[i])
+  done;
+  Printf.fprintf stderr "\"\n";flush stderr
+      *)
 
 exception Encoding_problem
 let writeCFFFloat buf x=
@@ -928,7 +939,7 @@ let subset font info cmap gls=
   let topDict= (* ROS *)
     let registry=getSid "Adobe" in
     let ordering=getSid "Identity" in
-    let supplement=1 in
+    let supplement=0 in
     IntMap.add 0xc1e [CFFInt supplement;CFFInt ordering;CFFInt registry] topDict
   in
   (*
@@ -950,7 +961,10 @@ let subset font info cmap gls=
   (* strings *)
   let strIndex=
     let arr=Array.make (StrMap.cardinal !strings) "" in
-    (* StrMap.iter (fun k a->Printf.fprintf stderr "%S\n" k;arr.(a)<-k) !strings; *)
+    StrMap.iter (fun k a->
+      (* Printf.fprintf stderr "%S\n" k; *)
+      arr.(a)<-k
+    ) !strings;
     let buf=Rbuffer.create 100 in
     writeIndex buf arr;
     buf
