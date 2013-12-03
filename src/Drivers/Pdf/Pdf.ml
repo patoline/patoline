@@ -173,7 +173,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                       fprintf outChan "/CIDToGIDMap /Identity "
                   | _->()
                 );
-                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 1 >> ";
+                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >> ";
                 fprintf outChan "/W %d 0 R " w;
                 fprintf outChan "/FontDescriptor %d 0 R >>"  descr;
                 endObject();
