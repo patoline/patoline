@@ -297,9 +297,9 @@ module ProofTree = struct
               None -> None
             | Some name ->
                 let name_box = draw_boxes env_ name in
-                let x0, y0, x1, y1 = bounding_box conclusion_box in
-                let dx = (cx0 +. cx1) /. 2. -. (x1 +. x0) /. 2. in
-                let dy = cy1 +. sb +. ln +. hsp /. 2. -. y1 /. 2. in
+                let x0, y0, x1, y1 = bounding_box name_box in
+                let dx = (nx0 +.nx1) /. 2. -. (x1 -. x0) /. 2. in
+                let dy = cy1 +. sb +. hsp /. 2. -. (y1 -. y0) /. 2. in
                 Some(List.map (translate dx dy) name_box)
           in
           
