@@ -230,7 +230,6 @@ module ProofTree = struct
           (h, left, mleft, right, mright, final)
 
       | SubProof(premices, conclusion, name) ->
-          (* FIXME Begin work in progress *)
           let premices_box = List.map 
             (fun x -> let (a,b,c,d,e,f) = fn false x in
                       (a,b,c,d,e,draw_boxes env_ f))
@@ -310,11 +309,12 @@ module ProofTree = struct
           in
           
           let contents _ = 
+            let lines = [ [|line (rcx0,cy1 +. sb) (rcx1, cy1 +. sb)|]
+                        ; [|line (rpx0,cy1 +. hsp) (rpx1, cy1 +. hsp)|]
+                        ; [|line (rpx0,cy1 +. hsp) (rcx0, cy1 +. sb)|]
+                        ; [|line (rcx1,cy1 +. sb) (rpx1, cy1 +. hsp)|] ] in
             let l = 
-              [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rcx0,cy1 +. sb) (rcx1, cy1 +. sb)|] ])] @
-                [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rpx0,cy1 +. hsp) (rpx1, cy1 +. hsp)|] ])] @
-                [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rpx0,cy1 +. hsp) (rcx0, cy1 +. sb)|] ])] @
-                [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, [ [|line (rcx1,cy1 +. sb) (rpx1, cy1 +. hsp)|] ])] @
+              [Path ({OutputCommon.default with strokingColor=Some env_.fontColor; lineWidth=ln}, lines)] @
                 (List.map (translate dx 0.0) conclusion_box) @
                 (List.map (translate 0.0 dy) premices) @
                 match name with None -> [] | Some n -> n
@@ -338,7 +338,6 @@ module ProofTree = struct
           in
 
           (h, left, mleft, right, mright, final)
-          (* FIXME End work in progress *)
 
     in
     let _, _, _, _, _, r = fn true proof in
