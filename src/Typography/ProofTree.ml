@@ -274,16 +274,16 @@ module ProofTree = struct
           let cx0 = cx0 +. dx in
           let cx1 = cx1 +. dx in
           let rcx0 = cx0 -. er in
-          let rcx1 = cx1 -. er in
+          let rcx1 = cx1 +. er in
 
           (* Space above top line of the trapesium *)
           let sa = max (param.minSpaceAboveRule -. y0min) sa in
 
           let hsp = cy1 *. param.heightSubProof in
-          let dy = cy1 +. sb +. ln +. hsp +. ln +. sa in
+          let dy = cy1 +. sb +. ln +. hsp +. sa in (* 2 x ln/2 *)
 
-          let left = (cx0, cy0) :: (rcx0, cy1) :: vtr left dy in
-          let right = (cx1, cy0) :: (rcx1, cy1) :: vtr right dy in
+          let left = (cx0, cy0) :: (rcx0, cy1) :: (rpx0, mleft) :: vtr left dy in
+          let right = (cx1, cy0) :: (rcx1, cy1) :: (rpx1, mright) :: vtr right dy in
           let mleft = min mleft (min rpx0 rcx0) in
           let mright = max mright (max rpx1 rcx1) in
           let h = h +. dy in
@@ -297,10 +297,10 @@ module ProofTree = struct
               None -> None
             | Some name ->
                 let name_box = draw_boxes env_ name in
-                let nx0, ny0, nx1, ny1 = bounding_box conclusion_box in
-                let nx = w /. 2. in (* -. (nx1 -. nx0) /. 2. in *)
-                let ny = cy1 +. sb +. ln +. hsp /. 2. -. ny1 /. 2. in
-                Some(List.map (translate nx ny) name_box)
+                let x0, y0, x1, y1 = bounding_box conclusion_box in
+                let dx = (cx0 +. cx1) /. 2. -. (x1 +. x0) /. 2. in
+                let dy = cy1 +. sb +. ln +. hsp /. 2. -. y1 /. 2. in
+                Some(List.map (translate dx dy) name_box)
           in
           
           let contents _ = 
