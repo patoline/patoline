@@ -54,6 +54,7 @@ type paramProofTree =
     spaceBetweenProof : float;
     extraRule : float;
     heightSubProof : float;
+    noPermiseTopLineIncrease : float;
   }
 
 let proofTreeDefault = 
@@ -65,7 +66,8 @@ let proofTreeDefault =
     spaceBeforeName = 0.15;
     spaceBetweenProof = 1.5;
     extraRule = 0.1;
-    heightSubProof = 4.0;   (* FIXME *)
+    heightSubProof = 4.0;
+    noPermiseTopLineIncrease = 1.6;
   }
 
 module ProofTree = struct
@@ -264,8 +266,10 @@ module ProofTree = struct
           let cx0, cy0, cx1, cy1 = bounding_box conclusion_box in
 
           (* X axis extrema for premices, and the top line of the trapesium *)
-          let nx0 = match left with [] -> cx0 | (x,_)::_ -> x in
-          let nx1 = match right with [] -> cx1 | (x,_)::_ -> x in
+          let wcx = cx1 -. cx0 in
+          let pincr = (wcx *. param.noPermiseTopLineIncrease -. wcx) /. 2. in
+          let nx0 = match left with [] -> cx0 -. pincr | (x,_)::_ -> x in
+          let nx1 = match right with [] -> cx1 +. pincr | (x,_)::_ -> x in
           let rpx0 = nx0 -. er in
           let rpx1 = nx1 +. er in
 
