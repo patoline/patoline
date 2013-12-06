@@ -135,15 +135,15 @@ let blank2 = blank true
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
-let word_re = "\\([^ \t\r\n{}\\]\\|\\([\\][\\{}]\\)\\)+"
+let word_re = "[^ \t\r\n{}\\_$]+"
 let macro = "\\\\[^ \t\r\n({]+"
 
-let paragraph_local = declare_grammar ()
+let paragraph_local, set_paragraph_local = grammar_family [ true ]
 
 let argument =
   glr
-     STR("{") l:paragraph_local STR("}") -> l
-  || e:(dependant_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)) -> e
+     STR("{") l:(paragraph_local true) STR("}") -> l
+  || e:(dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)) -> e
   end
 
 let macro =
@@ -153,24 +153,45 @@ let macro =
        List.fold_left (fun acc r -> <:expr@_loc_args<$acc$ $r$>>)  <:expr@_loc_m<$lid:m$>> args
  end
 
-
-let _ = set_grammar paragraph_local (
-  change_layout
-    glr
-       m:macro p:paragraph_local?? -> 
-           (match p with None -> m | Some (p:Ast.expr) -> 
-	     let x = Loc.stop_off _loc_m and y = Loc.start_off _loc_p in
+let word =
+  glr
+    w:RE(word_re) ->
+      if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"] then
+        raise Give_up;
+      w
+  | STR("\\") w:RE("[^ \t\r\n]") -> w  
+  end
+ 
+let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
+    let x = Loc.stop_off _loc_p1 and y = Loc.start_off _loc_p2 in
 (*	     Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
-	   let bl = if y - x >= 1 then <:expr@_loc_m<[tT" "]>> else <:expr@_loc_m<[]>> in
-	   let _loc = Loc.merge _loc_m _loc_p in
-           <:expr<$m$ @ $bl$ @ $p$>>)
-    || l:{w:RE(word_re) ->
-	    if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"] then
-	      raise Give_up;
-	    w }++
-          -> <:expr@_loc_l<[tT($str:(String.concat " " l)$)]>>
+    let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
+    let _loc = Loc.merge _loc_p1 _loc_p2 in
+    <:expr<$p1$ @ $bl p2$>>
+
+let paragraph_elt italic =
+    glr
+       m:macro -> m
+    || l:word++ -> <:expr@_loc_l<[tT($str:(String.concat " " l)$)]>>
+    || STR("_") p1:(paragraph_local false) _e:STR("_") when italic -> 
+         <:expr@_loc_p1<toggleItalic $p1$>>
     end
+
+let _ = set_paragraph_local (fun italic ->
+  change_layout (
+    glr 
+      l:{p:(paragraph_elt italic) -> (_loc, p)}++ -> (
+        match List.rev l with
+	  [] -> assert false
+	| m:: l->
+	  snd (
+            List.fold_left (fun (_loc_m, m) (_loc_p, p) -> 
+	      Loc.merge _loc_p _loc_m, concat_paragraph p _loc_p m _loc_m)
+	      m l))
+    end)
   blank1)
+
+let paragraph_local = paragraph_local true
 
 let paragraph =
     glr
@@ -218,7 +239,7 @@ let _ = set_grammar text
        in
        <:str_item< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure;; $txt2 false lvl$ >>)
 
-  || STR("\\Caml") s:(dependant_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc))
+  || STR("\\Caml") s:(dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc))
 	txt:text -> (fun no_indent lvl -> <:str_item<$s$ $txt no_indent lvl$>>)
 
   || l:paragraph txt:text  -> (fun no_indent lvl -> <:str_item<$l no_indent$ $txt false lvl$>>)
