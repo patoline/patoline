@@ -221,6 +221,7 @@ let more_than_one x=match Typography.TypoLanguage.lang with
 
 module type CitationStyle=sig
   val citation_format:int->string option array->content list
+  val compare:(int*string option array)->(int*string option array)->int
 end
 module type BiblioStyle=sig
   val biblio_format:int->string option array->Document.tree
@@ -284,13 +285,10 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 
   module TheBibliography (D : DocumentStructure) = struct
     let _ =
-      for i=1 to IntMap.cardinal !citeCounter do
-        try
-          D.structure:=up (newChildAfter !D.structure
-                             (B.biblio_format i (IntMap.find i !revbib)));
-        with
-            Not_found->(Printf.fprintf stderr "not_found : %d\n" i;flush stderr)
-      done
+      let l=List.sort (C.compare) (IntMap.bindings !revbib) in
+      List.iter (fun (i,x)->
+        D.structure:=up (newChildAfter !D.structure (B.biblio_format i x));
+      ) l
   end
 end
 
@@ -512,10 +510,32 @@ end
 
 module CitationInt=struct
   let citation_format i _=[tT (string_of_int i)]
+  let compare (a,_) (b,_)=compare a b
 end
 module CitationNames=struct
   let doublons:(string list, int IntMap.t) Hashtbl.t=Hashtbl.create 200
-
+  let compare (_,a) (_,b)=
+    match !bibfile_ with
+        None->failwith "Bibi: no bibliographic source defined"
+      | Some bf->(
+        let db=db_open bf in
+        let aut row=
+          match row.(field_num "id") with
+              None->assert false
+            | Some id_->(
+              let id=Int64.of_string id_ in
+              let aut=gets "authors" db id in
+              let auteurs=
+                (List.map (fun n->
+                  let (_,y)=make_name n in
+                  [tT y]
+                 ) aut)
+              in
+              auteurs
+            )
+        in
+        compare (aut a) (aut b)
+      )
   let citation_format i row=
     match !bibfile_ with
         None->failwith "Bibi: no bibliographic source defined"
