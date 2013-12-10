@@ -792,6 +792,7 @@ let subset font info cmap gls=
   let charStrings=try
     let charStrings=int_of_num (List.hd (findDict f font.dictIndex.(0) font.dictIndex.(1) 17)) in
     let progs=Array.map (fun x->indexGet f (font.offset+charStrings) (x).glyph_index) gls in
+    (* let progs=Array.map (Type2.unsubr font.subrIndex.(0) font.gsubrIndex) progs in *)
     let buf=Rbuffer.create 100 in
     writeIndex buf progs;
     buf
