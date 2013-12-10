@@ -55,38 +55,42 @@ let stream buf=
   let stream buf="",buf
 #endif
 
-(* This is a temporary fix for CFF compatibility problems. *)
-let temporary_fix pages=
-  let rec fix x acc=match x with
-      []->List.rev acc
-    | (Glyph g)::s->(
-      match Fonts.glyphFont g.glyph with
-          Fonts.CFF _
-        | Fonts.Opentype (Opentype.CFF _)->(
-          let out=Fonts.outlines g.glyph in
-          let gls=[Path ({ default with fillColor=Some g.glyph_color; strokingColor=None },
-                         List.map (fun x->
-                           Array.of_list(
-                             List.map (fun (xx,yy)->Array.map (fun u->g.glyph_x+.g.glyph_size*.u/.1000.) xx, Array.map (fun u->g.glyph_y+.g.glyph_size*.u/.1000.) yy) x
-                           )
-                         ) out)]
-          in
-          fix s (gls@acc)
-        )
-        | _->fix s (Glyph g::acc)
-    )
-    | h::s->fix s (h::acc)
+
+let maketype3 pages=
+  let rec register_fonts x m=match x with
+      []->m
+    | (Glyph g)::s->
+      let glFont=Fonts.glyphFont g.glyph in
+      let glNum=(Fonts.glyphNumber g.glyph).glyph_index in
+      let glUtf=(Fonts.glyphNumber g.glyph).glyph_utf8 in
+      let name=Fonts.uniqueName glFont in
+      let _,rev,f=try (StrMap.find name m) with Not_found->glFont,IntMap.empty,IntMap.empty in
+      let ch=UChar.code (UTF8.look glUtf 0) in
+      register_fonts s (
+        if IntMap.mem glNum f then
+          m
+        else
+          let fontVariant=(try 1+IntMap.find ch rev with Not_found->0) in
+          StrMap.add name (
+            glFont,
+            IntMap.add ch fontVariant rev,
+            IntMap.add glNum
+              ((Fonts.glyphNumber g.glyph).glyph_utf8,
+               fontVariant,
+               Fonts.glyphWidth g.glyph,
+               Fonts.outlines g.glyph)
+              f
+          ) m
+      )
+    | h::s->register_fonts s m
   in
-  Array.iter (fun p->
-    p.pageContents<-fix p.pageContents []
-  ) pages
-(* End of temporary fix *)
+  let fonts=Array.fold_left (fun m p->register_fonts (p.pageContents) m) StrMap.empty pages in
+  fonts
 
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
-  temporary_fix pages;
   let pages=if Array.length pages>0 then pages else
       [|{pageFormat=(0.,0.);pageContents=[]}|]
   in
@@ -129,332 +133,372 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     fill 0;
     Rbuffer.contents pdf_string_buf
   in
-  let addFont font=
-    try StrMap.find (Fonts.uniqueName font) !fonts with
-        Not_found->
-          match font with
-              Fonts.CFF _
-            | Fonts.Opentype (Opentype.CFF _)
-            | Fonts.Opentype (Opentype.TTF _)->(
-              ((* Font program *)
-                let fontFile=futureObject () in
+  let pageObjects=Array.make (Array.length pages) 0 in
+  for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
+  done;
 
-                  (* Font descriptor -- A completer*)
+  fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
 
-                let fontName="PATOLIN+"^(Fonts.fontName font).postscript_name in
-                let descr=beginObject () in
-                let (a,b,c,d)=match font with
-                    Fonts.CFF x->CFF.fontBBox x
-                  | Fonts.Opentype x->Opentype.fontBBox x
-                  (* | _->assert false *)
-                in
-                let italicAngle=match font with
-                    Fonts.CFF x->CFF.italicAngle x
-                  | Fonts.Opentype x->Opentype.italicAngle x
-                  (* | _->assert false *)
-                in
-                fprintf outChan "<< /Type /FontDescriptor /FontName /%s" fontName;
-                fprintf outChan " /Flags 4 /FontBBox [ %d %d %d %d ] /ItalicAngle %f " a b c d italicAngle;
-                fprintf outChan " /Ascent 0 /Descent 0 /CapHeight 0 /StemV 0 /FontFile%d %d 0 R >>"
-                  (match font with Fonts.Opentype (Opentype.TTF _)->2 | _->3)
-                  fontFile;
-                endObject();
 
-                (* Widths *)
-                let w=futureObject () in
-
-                (* Font dictionary *)
-                let fontDict=beginObject () in
-                fprintf outChan "<< /Type /Font /Subtype /CIDFontType%d /BaseFont /%s "
-                  (match font with Fonts.Opentype (Opentype.TTF _)->2 | _->0)
-                  fontName;
-                (match font with
-                    Fonts.Opentype (Opentype.TTF _)->
-                      fprintf outChan "/CIDToGIDMap /Identity "
-                  | _->()
-                );
-                fprintf outChan "/CIDSystemInfo << /Registry(Adobe) /Ordering(Identity) /Supplement 0 >> ";
-                fprintf outChan "/W %d 0 R " w;
-                fprintf outChan "/FontDescriptor %d 0 R >>"  descr;
-                endObject();
-
-                (* CID Font dictionary *)
-                let toUnicode=futureObject () in
-                let cidFontDict=beginObject () in
-                fprintf outChan
-                  "<< /Type /Font /Subtype /Type0 /Encoding /Identity-H /BaseFont /%s " fontName;
-                fprintf outChan "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>" fontDict toUnicode;
-                (* fprintf outChan "/DescendantFonts [%d 0 R] >>" fontDict; *)
-                endObject();
-
-                let result={ font=font; fontObject=cidFontDict; fontWidthsObj=w;
-                             fontFile=fontFile;
-                             fontToUnicode=toUnicode;
-                             (* fontToUnicode= -1; *)
-                             fontGlyphs=IntMap.singleton 0 (0,Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 });
-                             revFontGlyphs=IntMap.singleton 0 (Fonts.loadGlyph font { glyph_utf8="";glyph_index=0 }) } in
-                fonts:=StrMap.add (Fonts.uniqueName font) result !fonts;
-                result
+  let rec are_valid x i=
+    if i>=Array.length x then true else
+      if x.(i) < infinity && x.(i)> -.infinity then are_valid x (i+1) else false
+  in
+  let writePath buf pt_of_mm paths params=
+    List.iter (fun path->
+      if Array.length path > 0 then (
+        let (x0,y0)=path.(0) in
+        if are_valid x0 0 && are_valid y0 0 then (
+          Rbuffer.add_string buf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
+          Array.iter (
+            fun (x,y)->if are_valid x 0 && are_valid y 0 then (
+              if Array.length x<=2 && Array.length y<=2 then (
+                let x1=if Array.length x=2 then x.(1) else x.(0) in
+                let y1=if Array.length y=2 then y.(1) else y.(0) in
+                Rbuffer.add_string buf (sprintf "%g %g l " (pt_of_mm x1) (pt_of_mm y1));
+              ) else if Array.length x=3 && Array.length y=3 then (
+                Rbuffer.add_string buf (sprintf "%g %g %g %g %g %g c "
+                                          (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
+                                          (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
+                                          (pt_of_mm x.(2)) (pt_of_mm y.(2)));
+              ) else if Array.length x=4 && Array.length y=4 then (
+                Rbuffer.add_string buf (sprintf "%g %g %g %g %g %g c "
+                                          (pt_of_mm x.(1)) (pt_of_mm y.(1))
+                                          (pt_of_mm x.(2)) (pt_of_mm y.(2))
+                                          (pt_of_mm x.(3)) (pt_of_mm y.(3)));
               )
             )
+          ) path
+        ))
+    ) paths;
+    match params.fillColor, params.strokingColor with
+        None, None-> Rbuffer.add_string pageBuf "n "
+      | None, Some col -> (
+        if params.close then Rbuffer.add_string pageBuf "s " else
+          Rbuffer.add_string pageBuf "S "
+      )
+      | Some col, None -> (Rbuffer.add_string pageBuf "f ")
+      | Some fCol, Some sCol -> (
+        if params.close then Rbuffer.add_string pageBuf "b " else
+          Rbuffer.add_string pageBuf "B "
+      )
   in
-  let pageObjects=Array.make (Array.length pages) 0 in
-    for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
-    done;
 
-    fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
-    for page=0 to Array.length pages-1 do
-      Rbuffer.reset pageBuf;
-      let pageLinks=ref [] in
-      let pageImages=ref [] in
-      let pageFonts=ref StrMap.empty in
-      let currentFont=ref (-1) in
-      let currentSize=ref (-1.) in
-        (* Texte *)
-      let isText=ref false in
-      let openedWord=ref false in
-      let openedLine=ref false in
-      let xt=ref 0. in
-      let yt=ref 0. in
-      let xline=ref 0. in
+
+
+  (* Type 3 *)
+  let type3Fonts=maketype3 pages in
+  (* let code3 glyph= *)
+  (*   (Fonts.glyphNumber glyph).glyph_utf8 *)
+  (* in *)
+  let pdftype3=
+    StrMap.fold (fun k (font,var,glyphs) m->
+
+      let maxVar=IntMap.fold (fun _ x m->max x m) var 0 in
+      let fonts=Array.make (maxVar+1) (IntMap.empty) in
+      IntMap.iter (fun k (a,b,c,d)->
+        fonts.(b)<-IntMap.add k (a,c,d) fonts.(b)
+      ) glyphs;
+
+      let rec writeFonts i m=if i<=maxVar then (
+        let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
+        IntMap.iter (fun _ (_,_,out)->
+          List.iter (List.iter (fun (x,y)->
+            Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
+            Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
+          )) out
+        ) fonts.(i);
+        let pdffont=beginObject () in
+        fprintf outChan "<< /Type /Font /Subtype /Type3 ";
+        (* fprintf outChan "/Name %s " name; *)
+        (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
+            fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
+         else
+            fprintf outChan "/FontBBox [0 0 0 0] ");
+        fprintf outChan "/FontMatrix [0.001 0 0 0.001 0 0] ";
+        let charprocs_obj=futureObject () in
+        fprintf outChan "/CharProcs %d 0 R " charprocs_obj;
+        let enc=futureObject () in
+        fprintf outChan "/Encoding %d 0 R " enc;
+
+        let firstChar=IntMap.fold (fun _ (utf8,_,_) m->min (UChar.code (UTF8.look utf8 0)) m)
+          fonts.(i) max_int
+        in
+        let lastChar=IntMap.fold (fun _ (utf8,_,_) m->max (UChar.code (UTF8.look utf8 0)) m)
+          fonts.(i) min_int
+        in
+        fprintf outChan "/FirstChar %d " firstChar;
+        fprintf outChan "/LastChar %d " lastChar;
+        let widths=futureObject () in
+        fprintf outChan "/Widths %d 0 R " widths;
+        fprintf outChan ">>";
+        endObject();
+
+
+        let revFont=
+          IntMap.fold (fun c (utf8,w,_) m->
+            IntMap.add (UChar.code (UTF8.look utf8 0)) (c,w) m
+          ) fonts.(i) IntMap.empty
+        in
+        resumeObject widths;
+        fprintf outChan "[";
+        for i=firstChar to lastChar do
+          fprintf outChan "%g " (try let _,w=IntMap.find i revFont in w with Not_found->0.)
+        done;
+        fprintf outChan "]";
+        endObject ();
+
+
+        resumeObject charprocs_obj;
+        fprintf outChan "<< ";
+        let charprocs=IntMap.fold (fun _ (utf8,w,outlines) m->
+          let o=futureObject () in
+          fprintf outChan "/uni%04x %d 0 R " (UChar.code (UTF8.look utf8 0)) o;
+          (o,w,outlines)::m
+        ) fonts.(i) []
+        in
+        fprintf outChan ">>";
+        endObject ();
+
+        let bu=Rbuffer.create 1000 in
+        List.iter (fun (o,w,outlines)->
+          Rbuffer.clear bu;
+
+          x0:=infinity;
+          x1:=(-.infinity);
+          y0:=infinity;
+          y1:=(-.infinity);
+          List.iter (List.iter (fun (x,y)->
+            Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
+            Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
+          )) outlines;
+          Rbuffer.add_string bu (sprintf "%g %d %g %g %g %g d1 " w 0 !x0 !y0 !x1 !y1);
+          writePath bu (fun x->x)(List.map (Array.of_list) outlines) OutputCommon.default;
+          Rbuffer.add_string bu "f ";
+          let filt, data=stream bu in
+          let len=Rbuffer.length data in
+          resumeObject o;
+          fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+          Rbuffer.output_buffer outChan data;
+          fprintf outChan "\nendstream";
+          endObject ();
+        ) charprocs;
+
+        resumeObject enc;
+        fprintf outChan "<< /Type /Encoding /Differences [";
+        IntMap.iter (fun _ (utf8,_,_)->
+          fprintf outChan "%d /uni%04x "
+            (UChar.code (UTF8.look utf8 0))
+            (UChar.code (UTF8.look utf8 0))
+        ) fonts.(i);
+        fprintf outChan "]>>";
+        endObject ();
+        let formerFont=try StrMap.find k m with Not_found->IntMap.empty in
+        let variant=IntMap.fold (fun u v w->
+          IntMap.add u pdffont w
+        ) fonts.(i) formerFont
+        in
+        writeFonts (i+1) (StrMap.add k variant m)
+      ) else m
+      in
+      writeFonts 0 m
+    ) type3Fonts StrMap.empty
+  in
+  (* /Type 3 *)
+
+
+
+
+
+  for page=0 to Array.length pages-1 do
+    Rbuffer.reset pageBuf;
+    let pageLinks=ref [] in
+    let pageImages=ref [] in
+    let pageFonts=ref IntMap.empty in
+    let currentFont=ref (-1) in
+    let currentSize=ref (-1.) in
+      (* Texte *)
+    let isText=ref false in
+    let openedWord=ref false in
+    let openedLine=ref false in
+    let xt=ref 0. in
+    let yt=ref 0. in
+    let xline=ref 0. in
 
       (* Dessins *)
-      let strokingColor=ref black in
-      let nonStrokingColor=ref black in
-      let lineWidth=ref 1. in
-      let lineJoin=ref Miter_join in
-      let lineCap=ref Butt_cap in
-      let dashPattern=ref [] in
+    let strokingColor=ref black in
+    let nonStrokingColor=ref black in
+    let lineWidth=ref 1. in
+    let lineJoin=ref Miter_join in
+    let lineCap=ref Butt_cap in
+    let dashPattern=ref [] in
 
-      let close_line ()=
-        if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
-        if !openedLine then (Rbuffer.add_string pageBuf " ] TJ ";
-                             openedLine:=false; xline:=0.);
-      in
-      let close_text ()=
-        close_line ();
-        if !isText then (Rbuffer.add_string pageBuf " ET "; isText:=false);
-        xt:=0.; yt:=0.
-      in
-      let change_stroking_color col =
-        if col<> !strokingColor then (
-          close_text();
-          match col with
-              RGB color -> (
-                close_text ();
-                let r=max 0. (min 1. color.red) in
-                let g=max 0. (min 1. color.green) in
-                let b=max 0. (min 1. color.blue) in
-                  strokingColor:=col;
-                  Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
-              )
-        )
-      in
-      let change_non_stroking_color col =
-        if col<> !nonStrokingColor then (
-          close_text();
-          match col with
-              RGB color -> (
-                close_text ();
-                let r=max 0. (min 1. color.red) in
-                let g=max 0. (min 1. color.green) in
-                let b=max 0. (min 1. color.blue) in
-                  nonStrokingColor:=col;
-                  Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
-              )
-        )
-      in
-      let set_line_join j=
-        if j<> !lineJoin then (
-          close_text ();
-          lineJoin:=j;
-          Rbuffer.add_string pageBuf (
-            match j with
-                Miter_join->" 0 j "
-              | Round_join->" 1 j "
-              | Bevel_join->" 2 j "
-                  (* | _->"" *)
-          )
-        )
-      in
-      let set_line_cap c=
-        if c<> !lineCap then (
-          close_text ();
-          lineCap:=c;
-          Rbuffer.add_string pageBuf (
-            match c with
-                Butt_cap->" 0 J "
-              | Round_cap->" 1 J "
-              | Proj_square_cap->" 2 J "
-                  (* | _->"" *)
-          )
-        )
-      in
-      let set_line_width w=
-        if w <> !lineWidth then (
-          close_text ();
-          lineWidth:=w;
-          Rbuffer.add_string pageBuf (sprintf "%f w " w);
-        )
-      in
-      let set_dash_pattern l=
-        if l<> !dashPattern then (
-          close_text ();
-          dashPattern:=l;
-          match l with
-              []->(Rbuffer.add_string pageBuf "[] 0 d ")
-            | _::_->(
-                Rbuffer.add_string pageBuf " [";
-                List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " x)) l;
-                Rbuffer.add_string pageBuf (sprintf "] 0. d ");
-              )
-        )
-      in
-      let rec output_contents=function
-        | Animation(r,_,_,_) ->
-	  List.iter output_contents r
-        | Glyph gl->(
-            change_non_stroking_color gl.glyph_color;
-            if not !isText then Rbuffer.add_string pageBuf " BT ";
-            isText:=true;
-            let gx=pt_of_mm gl.glyph_x in
-            let gy=pt_of_mm gl.glyph_y in
-            let gx=match classify_float gx with FP_nan | FP_infinite->0.
-              | _->gx
-            in
-            let gy=match classify_float gy with FP_nan | FP_infinite->0.
-              | _->gy
-            in
-            let size=pt_of_mm gl.glyph_size in
-
-
-
-              let fnt=Fonts.glyphFont (gl.glyph) in
-                (* Inclusion de la police sur la page *)
-              let idx=try fst (StrMap.find (Fonts.uniqueName fnt) !pageFonts) with
-                  Not_found->(
-                    let card=StrMap.cardinal !pageFonts in
-                    let pdfFont=addFont fnt in
-                      pageFonts := StrMap.add (Fonts.uniqueName fnt) (card, pdfFont.fontObject) !pageFonts;
-                      card
-                  )
-              in
-              let pdfFont=StrMap.find (Fonts.uniqueName fnt) !fonts in
-              let num=
-#ifdef SUBSET
-            let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
-            (try
-               fst (IntMap.find num0 pdfFont.fontGlyphs)
-             with
-                 Not_found->(
-                   let num1=IntMap.cardinal pdfFont.fontGlyphs in
-                   pdfFont.fontGlyphs<-IntMap.add num0
-                     (num1,gl.glyph) pdfFont.fontGlyphs;
-                   pdfFont.revFontGlyphs<-IntMap.add num1
-                     (gl.glyph) pdfFont.revFontGlyphs;
-                   num1
-                 )
+    let close_line ()=
+      if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+      if !openedLine then (Rbuffer.add_string pageBuf " ] TJ ";
+                           openedLine:=false; xline:=0.);
+    in
+    let close_text ()=
+      close_line ();
+      if !isText then (Rbuffer.add_string pageBuf " ET "; isText:=false);
+      xt:=0.; yt:=0.
+    in
+    let change_stroking_color col =
+      if col<> !strokingColor then (
+        close_text();
+        match col with
+            RGB color -> (
+              close_text ();
+              let r=max 0. (min 1. color.red) in
+              let g=max 0. (min 1. color.green) in
+              let b=max 0. (min 1. color.blue) in
+              strokingColor:=col;
+              Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
             )
-#else
-  let num0=(Fonts.glyphNumber gl.glyph).Fonts.FTypes.glyph_index in
-  pdfFont.fontGlyphs<-IntMap.add num0
-    (num0,gl.glyph) pdfFont.fontGlyphs;
-  pdfFont.revFontGlyphs<-IntMap.add num0
-    (gl.glyph) pdfFont.revFontGlyphs;
-  num0
-#endif
-              in
-                (* Printf.fprintf stderr "%s %d -> %d\n" (Fonts.fontName fnt) num0 num; *)
-
-                if idx <> !currentFont || size <> !currentSize then (
-                  close_line ();
-                  Rbuffer.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
-                  currentFont:=idx;
-                  currentSize:=size;
-                );
-                if !yt<>gy || (not !openedLine) then (
-                  close_line ();
-                  Rbuffer.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
-                  xline:=0.;
-                  xt:=gx;yt:=gy
-                );
-
-                if not !openedLine then (Rbuffer.add_string pageBuf "["; openedLine:=true; xline:=0.);
-
-                if !xt +. !xline <> gx then (
-                  let str=sprintf "%f" (1000.*.(!xt+. !xline -. gx)/.size) in
-                  let i=ref 0 in
-                    while !i<String.length str && (str.[!i]='0' || str.[!i]='.' || str.[!i]='-') do incr i done;
-                    if !i<String.length str then (
-                      if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
-                      Rbuffer.add_string pageBuf str;
-                      xline:= !xline -. size*.(float_of_string str)/.1000.;
-                    )
-                );
-                if not !openedWord then (Rbuffer.add_string pageBuf "<"; openedWord:=true);
-                Rbuffer.add_string pageBuf (sprintf "%04x" num);
-                xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
-          )
-        | Path (params,[])->()
-        | Path (params,paths) ->(
-          close_text ();
-            set_line_join params.lineJoin;
-            set_line_cap params.lineCap;
-            set_line_width (pt_of_mm params.lineWidth);
-            set_dash_pattern params.dashPattern;
-            (match params.strokingColor with
-                 None->()
-               | Some col -> change_stroking_color col);
-            (match params.fillColor with
-                 None->()
-               | Some col -> change_non_stroking_color col);
-            let rec are_valid x i=
-              if i>=Array.length x then true else
-                if x.(i) < infinity && x.(i)> -.infinity then are_valid x (i+1) else false
-            in
-              List.iter (fun path->
-                if Array.length path > 0 then (
-                  let (x0,y0)=path.(0) in
-                  if are_valid x0 0 && are_valid y0 0 then (
-                    Rbuffer.add_string pageBuf (sprintf "%f %f m " (pt_of_mm x0.(0)) (pt_of_mm y0.(0)));
-                    Array.iter (
-                      fun (x,y)->if are_valid x 0 && are_valid y 0 then (
-                        if Array.length x<=2 && Array.length y<=2 then (
-                          let x1=if Array.length x=2 then x.(1) else x.(0) in
-                          let y1=if Array.length y=2 then y.(1) else y.(0) in
-                          Rbuffer.add_string pageBuf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
-                        ) else if Array.length x=3 && Array.length y=3 then (
-                          Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                        (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
-                                                        (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
-                                                        (pt_of_mm x.(2)) (pt_of_mm y.(2)));
-                        ) else if Array.length x=4 && Array.length y=4 then (
-                          Rbuffer.add_string pageBuf (sprintf "%f %f %f %f %f %f c "
-                                                        (pt_of_mm x.(1)) (pt_of_mm y.(1))
-                                                        (pt_of_mm x.(2)) (pt_of_mm y.(2))
-                                                        (pt_of_mm x.(3)) (pt_of_mm y.(3)));
-                        )
-                      )
-                    ) path
-                  ))
-              ) paths;
-            match params.fillColor, params.strokingColor with
-                None, None-> Rbuffer.add_string pageBuf "n "
-              | None, Some col -> (
-                  if params.close then Rbuffer.add_string pageBuf "s " else
-                    Rbuffer.add_string pageBuf "S "
-                )
-              | Some col, None -> (Rbuffer.add_string pageBuf "f ")
-              | Some fCol, Some sCol -> (
-                  if params.close then Rbuffer.add_string pageBuf "b " else
-                    Rbuffer.add_string pageBuf "B "
-                )
-          )
-        | Link l->(
-          pageLinks:= l:: !pageLinks;
-          List.iter output_contents l.link_contents
+      )
+    in
+    let change_non_stroking_color col =
+      if col<> !nonStrokingColor then (
+        close_text();
+        match col with
+            RGB color -> (
+              close_text ();
+              let r=max 0. (min 1. color.red) in
+              let g=max 0. (min 1. color.green) in
+              let b=max 0. (min 1. color.blue) in
+              nonStrokingColor:=col;
+              Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
+            )
+      )
+    in
+    let set_line_join j=
+      if j<> !lineJoin then (
+        close_text ();
+        lineJoin:=j;
+        Rbuffer.add_string pageBuf (
+          match j with
+              Miter_join->" 0 j "
+            | Round_join->" 1 j "
+            | Bevel_join->" 2 j "
+          (* | _->"" *)
         )
-        | Image i->(
+      )
+    in
+    let set_line_cap c=
+      if c<> !lineCap then (
+        close_text ();
+        lineCap:=c;
+        Rbuffer.add_string pageBuf (
+          match c with
+              Butt_cap->" 0 J "
+            | Round_cap->" 1 J "
+            | Proj_square_cap->" 2 J "
+          (* | _->"" *)
+        )
+      )
+    in
+    let set_line_width w=
+      if w <> !lineWidth then (
+        close_text ();
+        lineWidth:=w;
+        Rbuffer.add_string pageBuf (sprintf "%f w " w);
+      )
+    in
+    let set_dash_pattern l=
+      if l<> !dashPattern then (
+        close_text ();
+        dashPattern:=l;
+        match l with
+            []->(Rbuffer.add_string pageBuf "[] 0 d ")
+          | _::_->(
+            Rbuffer.add_string pageBuf " [";
+            List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " x)) l;
+            Rbuffer.add_string pageBuf (sprintf "] 0. d ");
+          )
+      )
+    in
+    let rec output_contents=function
+      | Animation(r,_,_,_) ->
+	List.iter output_contents r
+      | Glyph gl->(
+        change_non_stroking_color gl.glyph_color;
+        if not !isText then Rbuffer.add_string pageBuf " BT ";
+        isText:=true;
+        let gx=pt_of_mm gl.glyph_x in
+        let gy=pt_of_mm gl.glyph_y in
+        let gx=match classify_float gx with FP_nan | FP_infinite->0.
+          | _->gx
+        in
+        let gy=match classify_float gy with FP_nan | FP_infinite->0.
+          | _->gy
+        in
+        let size=pt_of_mm gl.glyph_size in
+
+        let fnt=Fonts.glyphFont (gl.glyph) in
+        (* Inclusion de la police sur la page *)
+        let glidx=(Fonts.glyphNumber gl.glyph).glyph_index in
+        let idx=
+          let pdfFont=StrMap.find (Fonts.uniqueName fnt) pdftype3 in
+          let pdfFont=IntMap.find glidx pdfFont in
+          try
+            IntMap.find pdfFont !pageFonts
+          with
+              Not_found->(
+                let card=IntMap.cardinal !pageFonts in
+                pageFonts := IntMap.add pdfFont card !pageFonts;
+                card
+              )
+        in
+        if idx <> !currentFont || size <> !currentSize then (
+          close_line ();
+          Rbuffer.add_string pageBuf (sprintf "/F%d %f Tf " idx size);
+          currentFont:=idx;
+          currentSize:=size;
+        );
+        if !yt<>gy || (not !openedLine) then (
+          close_line ();
+          Rbuffer.add_string pageBuf (sprintf "%f %f Td " (gx-. !xt) (gy-. !yt));
+          xline:=0.;
+          xt:=gx;yt:=gy
+        );
+
+        if not !openedLine then (Rbuffer.add_string pageBuf "["; openedLine:=true; xline:=0.);
+
+        if !xt +. !xline <> gx then (
+          let str=sprintf "%f" (1000.*.(!xt+. !xline -. gx)/.size) in
+          let i=ref 0 in
+          while !i<String.length str && (str.[!i]='0' || str.[!i]='.' || str.[!i]='-') do incr i done;
+          if !i<String.length str then (
+            if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+            Rbuffer.add_string pageBuf str;
+            xline:= !xline -. size*.(float_of_string str)/.1000.;
+          )
+        );
+        if not !openedWord then (Rbuffer.add_string pageBuf "<"; openedWord:=true);
+        let utf8=(Fonts.glyphNumber gl.glyph).glyph_utf8 in
+        Rbuffer.add_string pageBuf (sprintf "%04x" (UChar.code (UTF8.look utf8 0)));
+        xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
+      )
+      | Path (params,[])->()
+      | Path (params,paths) ->(
+        close_text ();
+        set_line_join params.lineJoin;
+        set_line_cap params.lineCap;
+        set_line_width (pt_of_mm params.lineWidth);
+        set_dash_pattern params.dashPattern;
+        (match params.strokingColor with
+            None->()
+          | Some col -> change_stroking_color col);
+        (match params.fillColor with
+            None->()
+          | Some col -> change_non_stroking_color col);
+        writePath pageBuf pt_of_mm paths params
+      )
+      | Link l->(
+        pageLinks:= l:: !pageLinks;
+        List.iter output_contents l.link_contents
+      )
+      | Image i->(
 #ifdef CAMLIMAGES
             pageImages:=i::(!pageImages);
             let num=List.length !pageImages in
@@ -465,10 +509,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                  (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
 #endif
 )
-        | States s->List.iter output_contents s.states_contents
-        | _->()
-      in
-      let sorted_pages=
+      | States s->List.iter output_contents s.states_contents
+      | _->()
+    in
+    let sorted_pages=
 
         let x=List.fold_left (fun m x->
           let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
@@ -513,9 +557,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                           (obj, !ii, i)) (List.rev !pageImages)
             in
             if !pageImages<>[] then fprintf outChan ">>";
-            if StrMap.cardinal !pageFonts >0 then (
+            if IntMap.cardinal !pageFonts >0 then (
               fprintf outChan " /Font << ";
-              StrMap.iter (fun _ (a,b)->fprintf outChan "/F%d %d 0 R " a b) !pageFonts;
+              IntMap.iter (fun a b->fprintf outChan "/F%d %d 0 R " b a) !pageFonts;
               fprintf outChan ">> "
             );
             fprintf outChan ">> /Contents %d 0 R " contentObj;
@@ -624,10 +668,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         let multRange=ref [] in
         let rec make_cmap glyphs=
           if not (IntMap.is_empty glyphs) then (
-            one:=List.map (fun (a,b)->(a,glyphutf8 b)) (IntMap.bindings glyphs)
-          )
-#ifdef EFFICIENT_CMAP
-          if not (IntMap.is_empty glyphs) then (
             (* On commence par partitionner par premier octet (voir adobe technical note #5411) *)
             let m0,g0=IntMap.min_binding glyphs in
             let a,b=
@@ -686,7 +726,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             );
             make_cmap b
           )
-#endif
         in
         make_cmap x.revFontGlyphs;
         let rec print_utf8 utf idx=
@@ -735,116 +774,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         endObject ()
       )
     ) !fonts;
-
-
-
-    (* Toutes les largeurs des polices *)
-    StrMap.iter (fun _ x->
-                   resumeObject x.fontWidthsObj;
-#ifdef SUBSET
-                   fprintf outChan "[ 0 [ ";
-                   let (m0,_)=IntMap.min_binding x.revFontGlyphs in
-                   let (m1,_)=IntMap.max_binding x.revFontGlyphs in
-                   for i=m0 to m1 do
-                     let w=try Fonts.glyphWidth (IntMap.find i x.revFontGlyphs) with Not_found->0. in
-                     (* Printf.fprintf stderr "width %d %f\n" i w; *)
-                     fprintf outChan "%d " (int_of_float w);
-                   done;
-                   (* IntMap.iter (fun i gl-> *)
-                   (*   let w=Fonts.glyphWidth gl in *)
-                   (*   fprintf outChan "%d " (round w)) x.revFontGlyphs; *)
-                   fprintf outChan "]]";
-#else
-                    let (m0,(_,gl0))=IntMap.min_binding x.fontGlyphs in
-                      fprintf outChan "[ %d [ " m0;
-                    let f=Fonts.glyphFont gl0 in
-                    for i=m0 to Fonts.cardinal f-1 do
-                      let gl=Fonts.loadGlyph f { glyph_utf8="";glyph_index=i } in
-                      let w=Fonts.glyphWidth gl in
-                      fprintf outChan "%d " (round w);
-                    done;
-                    fprintf outChan "]]";
-#endif
-                   endObject ();
-                ) !fonts;
-    (* Les programmes des polices *)
-    StrMap.iter (fun _ x->
-                   resumeObject x.fontFile;
-#ifdef SUBSET
-                   let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF y)->(
-                         let y=y.Opentype.cff_font in
-                         let sub=CFF.subset y
-                           {CFF.name=(CFF.fontName y)} IntMap.empty
-                           (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
-                                              (IntMap.bindings x.revFontGlyphs))))
-                         in
-                         let o=open_out ((CFF.fontName y).postscript_name^".cff") in
-                         Rbuffer.output_buffer o sub;
-                         close_out o;
-                         sub
-                       )
-                     | Fonts.CFF y->(
-                       let sub=CFF.subset y {CFF.name=(CFF.fontName y)} IntMap.empty
-                         (Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
-                                            (IntMap.bindings x.revFontGlyphs))))
-                       in
-                       sub
-                     )
-                     | Fonts.Opentype (Opentype.TTF ttf as f)->(
-
-                       let info=Opentype.fontInfo f in
-                       let glyphs=(Array.of_list ((List.map (fun (_,gl)->(Fonts.glyphNumber gl))
-                                                     (IntMap.bindings x.revFontGlyphs))))
-                       in
-                       let sub=Opentype.subset f info IntMap.empty glyphs in
-                       sub
-                     )
-                   in
-#else
-                   let program=match x.font with
-                       Fonts.Opentype (Opentype.CFF _)
-                     | Fonts.CFF _->(
-                       let y=match x.font with
-                           Fonts.CFF x->x
-                         | Fonts.Opentype (Opentype.CFF x)->x.Opentype.cff_font
-                         | _->assert false
-                       in
-                       let file=open_in_bin_cached y.CFF.file in
-                       seek_in file y.CFF.offset;
-                       let buf=Rbuffer.create 100000 in
-                       Rbuffer.add_channel buf file y.CFF.size;
-
-
-                       let o=open_out ((CFF.fontName y).postscript_name^"_full.cff") in
-                       Rbuffer.output_buffer o buf;
-                       close_out o;
-
-                       buf
-                     )
-                     | Fonts.Opentype (Opentype.TTF ttf)->(
-                       let file=open_in_bin_cached ttf.Opentype.ttf_file in
-                       seek_in file ttf.Opentype.ttf_offset;
-                       let buf=Rbuffer.create 100000 in
-                       Rbuffer.add_channel buf file (in_channel_length file);
-                       buf
-                     )
-                   (* | _->raise Fonts.Not_supported *)
-                   in
-#endif
-                   let filt, data=stream program in
-                   let subtype=match x.font with
-                       Fonts.Opentype(Opentype.CFF _)
-                     | Fonts.CFF _->"/Subtype /CIDFontType0C"
-                     | Fonts.Opentype(Opentype.TTF _)->""
-                   in
-                   let len=Rbuffer.length data in
-                   fprintf outChan "<< /Length %d %s %s>>\nstream\n" len subtype filt;
-                   Rbuffer.output_buffer outChan data;
-                   fprintf outChan "\nendstream";
-                   endObject();
-                ) !fonts;
-
 
 
 
