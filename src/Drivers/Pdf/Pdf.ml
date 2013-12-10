@@ -56,6 +56,11 @@ let stream buf=
 #endif
 
 
+let unicode_to_idiot glUtf=
+  let x=UChar.code (UTF8.look glUtf 0) in
+  if x>0xff then 1+(x mod 254) else x
+
+
 let maketype3 pages=
   let rec register_fonts x m=match x with
       []->m
@@ -65,7 +70,7 @@ let maketype3 pages=
       let glUtf=(Fonts.glyphNumber g.glyph).glyph_utf8 in
       let name=Fonts.uniqueName glFont in
       let _,rev,f=try (StrMap.find name m) with Not_found->glFont,IntMap.empty,IntMap.empty in
-      let ch=UChar.code (UTF8.look glUtf 0) in
+      let ch=unicode_to_idiot glUtf in
       register_fonts s (
         if IntMap.mem glNum f then
           m
@@ -221,10 +226,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         let enc=futureObject () in
         fprintf outChan "/Encoding %d 0 R " enc;
 
-        let firstChar=IntMap.fold (fun _ (utf8,_,_) m->min (UChar.code (UTF8.look utf8 0)) m)
+        let firstChar=IntMap.fold (fun _ (utf8,_,_) m->min (unicode_to_idiot utf8) m)
           fonts.(i) max_int
         in
-        let lastChar=IntMap.fold (fun _ (utf8,_,_) m->max (UChar.code (UTF8.look utf8 0)) m)
+        let lastChar=IntMap.fold (fun _ (utf8,_,_) m->max (unicode_to_idiot utf8) m)
           fonts.(i) min_int
         in
         fprintf outChan "/FirstChar %d " firstChar;
@@ -237,7 +242,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
         let revFont=
           IntMap.fold (fun c (utf8,w,_) m->
-            IntMap.add (UChar.code (UTF8.look utf8 0)) (c,w) m
+            IntMap.add (unicode_to_idiot utf8) (c,w) m
           ) fonts.(i) IntMap.empty
         in
         resumeObject widths;
@@ -253,7 +258,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         fprintf outChan "<< ";
         let charprocs=IntMap.fold (fun _ (utf8,w,outlines) m->
           let o=futureObject () in
-          fprintf outChan "/uni%04x %d 0 R " (UChar.code (UTF8.look utf8 0)) o;
+          fprintf outChan "/uni%04x %d 0 R " (unicode_to_idiot utf8) o;(* (UChar.code (UTF8.look utf8 0)) o; *)
           (o,w,outlines)::m
         ) fonts.(i) []
         in
@@ -288,8 +293,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         fprintf outChan "<< /Type /Encoding /Differences [";
         IntMap.iter (fun _ (utf8,_,_)->
           fprintf outChan "%d /uni%04x "
-            (UChar.code (UTF8.look utf8 0))
-            (UChar.code (UTF8.look utf8 0))
+            (unicode_to_idiot utf8)
+            (unicode_to_idiot utf8)
+            (* (UChar.code (UTF8.look utf8 0)) *)
+            (* (UChar.code (UTF8.look utf8 0)) *)
         ) fonts.(i);
         fprintf outChan "]>>";
         endObject ();
@@ -476,7 +483,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         );
         if not !openedWord then (Rbuffer.add_string pageBuf "<"; openedWord:=true);
         let utf8=(Fonts.glyphNumber gl.glyph).glyph_utf8 in
-        Rbuffer.add_string pageBuf (sprintf "%04x" (UChar.code (UTF8.look utf8 0)));
+        Rbuffer.add_string pageBuf (sprintf "%04x" (unicode_to_idiot utf8));
         xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
       )
       | Path (params,[])->()
