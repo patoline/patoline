@@ -197,3 +197,5 @@ val compose : ('b->'c)->('a->'b)->'a->'c
 val open_in_cached:string->in_channel
 val open_in_bin_cached:string->in_channel
 val copy_file:string->string->unit
+val btimer:float StrMap.t ref
+val timer:string->(unit->'a)->'a

@@ -294,3 +294,13 @@ let copy_file a b=
   copy ();
   close_in fa;
   close_out fb
+
+let btimer=ref StrMap.empty
+let timer name f=
+  let t0=Sys.time () in
+  let x=f () in
+  let t1=Sys.time () in
+  let t=try StrMap.find name !btimer with Not_found->0. in
+  btimer:= StrMap.add name (t+.t1-.t0) !btimer;
+  StrMap.iter (fun k a->Printf.fprintf stderr "time %S: %g\n" k a) !btimer;flush stderr;
+  x
