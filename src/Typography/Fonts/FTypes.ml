@@ -215,7 +215,6 @@ module type Font=(
     val glyph_y1:glyph->float
     val glyph_x0:glyph->float
     val glyph_x1:glyph->float
-    val fontName:?index:int->font->name
     val uniqueName:font->string
     val glyphName:glyph->string
 

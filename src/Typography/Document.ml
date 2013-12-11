@@ -1218,6 +1218,7 @@ let boxify buf nbuf env0 l=
   in
   boxify true env0 l
 
+
 (** Typesets boxes on a single line, then converts them to a list of basic
     drawing elements: [OutputCommon.raw]. *)
 let draw_boxes env l=

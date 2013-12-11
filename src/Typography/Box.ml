@@ -682,40 +682,40 @@ let compression paragraphs (parameters) (line)=comp paragraphs parameters.measur
 
 
 
-let glyphCache_=ref StrMap.empty
+module GlMap=Map.Make (struct type t=(string*int*float*color) let compare=compare end)
+let glyphCache_=ref GlMap.empty
 
-let glyphCache cur_font gl=
+let glyphCache cur_font gl fcolor fsize=
   let name=Fonts.uniqueName cur_font in
-  let font=try StrMap.find name !glyphCache_ with
-        Not_found->(let fontCache=ref IntMap.empty in
-                      glyphCache_:=StrMap.add name fontCache !glyphCache_;
-                      fontCache)
-  in
-    try IntMap.find gl.glyph_index !font with
-        Not_found->
-          (let glyph=Fonts.loadGlyph cur_font gl in
-           let loaded={ glyph=glyph;
-                        glyph_x=0.;glyph_y=0.;
-                        glyph_kx=0.;glyph_ky=0.;
-                        glyph_order=0;
-                        glyph_color=black;
-                        glyph_size=0. } in
-             font:=IntMap.add gl.glyph_index loaded !font;
-             loaded)
+  try GlMap.find (name,gl.glyph_index,fsize,fcolor) !glyphCache_ with
+      Not_found->(
+        let glyph=Fonts.loadGlyph cur_font gl in
+        let loaded={ glyph=glyph;
+                     glyph_x=0.;glyph_y=0.;
+                     glyph_kx=0.;glyph_ky=0.;
+                     glyph_order=0;
+                     glyph_color=fcolor;
+                     glyph_size=fsize } in
+        let loaded=GlyphBox loaded in
+        glyphCache_:=GlMap.add (name,gl.glyph_index,fsize,fcolor) loaded !glyphCache_;
+        loaded
+      )
+
 
 
 let glyph_of_string substitution_ positioning_ font fsize fcolor str =
   let rec make_codes idx codes=
     if idx>=String.length str then List.rev codes else (
       let c=Fonts.glyph_of_uchar font (UTF8.look str idx) in
-        make_codes (UTF8.next str idx) ({glyph_utf8=UTF8.init 1 (fun _->UTF8.look str idx); glyph_index=c}::codes)
+      make_codes (UTF8.next str idx) ({glyph_utf8=UTF8.init 1 (fun _->UTF8.look str idx); glyph_index=c}::codes)
     )
   in
-  let codes=substitution_ (make_codes (UTF8.first str) []) in
+  let codes=make_codes (UTF8.first str) [] in
+  let codes=substitution_ codes in
   let kerns=positioning_ (List.map (fun x->GlyphID x) codes) in
 
   let rec kern=function
-      GlyphID h::s ->let y=glyphCache font h in GlyphBox { y with glyph_color=fcolor; glyph_size=fsize }::kern s
+      GlyphID h::s ->glyphCache font h fcolor fsize::kern s
     | KernID h::s->
         (match h.kern_contents with
              KernID h'->kern (KernID { advance_height=h.advance_height;
@@ -723,12 +723,12 @@ let glyph_of_string substitution_ positioning_ font fsize fcolor str =
                                        kern_x0=h.kern_x0 +. h'.kern_x0;
                                        kern_y0=h.kern_y0 +. h'.kern_y0;
                                        kern_contents=h'.kern_contents }::s)
-           | GlyphID c->(let y=glyphCache font c in
+           | GlyphID c->(let y=glyphCache font c fcolor fsize in
                          Kerning { advance_height=h.advance_height*.(fsize)/.1000.;
                                    advance_width=h.advance_width*.(fsize)/.1000.;
                                    kern_x0=h.kern_x0*.(fsize)/.1000.;
                                    kern_y0=h.kern_y0*.(fsize)/.1000.;
-                                   kern_contents=GlyphBox { y with glyph_color=fcolor; glyph_size=fsize } }::(kern s))
+                                   kern_contents=y }::(kern s))
         )
     | []->[]
   in

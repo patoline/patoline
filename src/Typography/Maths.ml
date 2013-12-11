@@ -844,7 +844,7 @@ let glyphs (c:string) envs st=
         glyph_index=Fonts.glyph_of_uchar font (UTF8.look c idx) } :: make_it (UTF8.next c idx)
     )
   in
-    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_color=envs.fontColor; glyph_size=s}) (env.mathsSubst (make_it (UTF8.first c)))
+  List.map (fun gl->glyphCache font gl envs.fontColor s) (env.mathsSubst (make_it (UTF8.first c)))
 
 let multi_glyphs cs envs st =
   List.map (fun c -> c envs st) cs
@@ -866,7 +866,7 @@ let symbol ?name:(name="") font n envs st=
       []->[]
     | h::s->{ h with glyph_utf8=name^" " }::s
   in
-    List.map (fun gl->GlyphBox { (glyphCache font gl) with glyph_size=s; glyph_color=envs.fontColor}) gls
+  List.map (fun gl->glyphCache font gl envs.fontColor s) gls
 
 
 (* let gl_font env st font c= *)

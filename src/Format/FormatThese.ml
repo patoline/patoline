@@ -499,10 +499,7 @@ end
   let glyph x=
     bB (fun env->
          let code={glyph_utf8=""; glyph_index=x } in
-           [GlyphBox { (glyphCache env.font code) with
-                         OutputCommon.glyph_color=env.fontColor;
-                         OutputCommon.glyph_size=env.size
-                     }]
+           [glyphCache env.font code env.fontColor env.size]
       )
   let q _=utf8Char 8220
   let qq _=utf8Char 8221
