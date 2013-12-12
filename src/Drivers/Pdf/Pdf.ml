@@ -72,9 +72,10 @@ let maketype3 pages=
       let _,rev,f=try (StrMap.find name m) with Not_found->glFont,IntMap.empty,IntMap.empty in
       let ch=unicode_to_idiot glUtf in
       register_fonts s (
-        if IntMap.mem glNum f then
+        if IntMap.mem glNum f then (
           m
-        else
+        ) else (
+          (* Printf.fprintf stderr "adding %S %S %d\n" glUtf name glNum;flush stderr; *)
           let fontVariant=(try 1+IntMap.find ch rev with Not_found->0) in
           StrMap.add name (
             glFont,
@@ -86,7 +87,11 @@ let maketype3 pages=
                Fonts.outlines g.glyph)
               f
           ) m
-      )
+      ))
+    | Link l::s->
+      register_fonts s (register_fonts l.link_contents m)
+    | States l::s->
+      register_fonts s (register_fonts l.states_contents m)
     | h::s->register_fonts s m
   in
   let fonts=Array.fold_left (fun m p->register_fonts (p.pageContents) m) StrMap.empty pages in
@@ -104,7 +109,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let outChan=open_out_bin fileName in
   let pageBuf=Rbuffer.create 100000 in
   let xref=ref (IntMap.singleton 1 0) in (* Le pagetree est toujours l'objet 1 *)
-  let fonts=ref StrMap.empty in
+  (* let fonts=ref StrMap.empty in *)
   let resumeObject n=
     flush outChan;
     xref:=IntMap.add n (pos_out outChan) !xref;
@@ -198,13 +203,11 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   (* in *)
   let pdftype3=
     StrMap.fold (fun k (font,var,glyphs) m->
-
       let maxVar=IntMap.fold (fun _ x m->max x m) var 0 in
       let fonts=Array.make (maxVar+1) (IntMap.empty) in
       IntMap.iter (fun k (a,b,c,d)->
         fonts.(b)<-IntMap.add k (a,c,d) fonts.(b)
       ) glyphs;
-
       let rec writeFonts i m=if i<=maxVar then (
         let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
         IntMap.iter (fun _ (_,_,out)->
@@ -341,7 +344,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let dashPattern=ref [] in
 
     let close_line ()=
-      if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+      if !openedWord then (Rbuffer.add_string pageBuf ")"; openedWord:=false);
       if !openedLine then (Rbuffer.add_string pageBuf " ] TJ ";
                            openedLine:=false; xline:=0.);
     in
@@ -443,10 +446,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
         let fnt=Fonts.glyphFont (gl.glyph) in
         (* Inclusion de la police sur la page *)
-        let glidx=(Fonts.glyphNumber gl.glyph).glyph_index in
         let idx=
           let pdfFont=StrMap.find (Fonts.uniqueName fnt) pdftype3 in
-          let pdfFont=IntMap.find glidx pdfFont in
+          let glidx=(Fonts.glyphNumber gl.glyph).glyph_index in
+          let pdfFont=try IntMap.find glidx pdfFont with Not_found->0 in
           try
             IntMap.find pdfFont !pageFonts
           with
@@ -476,14 +479,20 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           let i=ref 0 in
           while !i<String.length str && (str.[!i]='0' || str.[!i]='.' || str.[!i]='-') do incr i done;
           if !i<String.length str then (
-            if !openedWord then (Rbuffer.add_string pageBuf ">"; openedWord:=false);
+            if !openedWord then (Rbuffer.add_string pageBuf ")"; openedWord:=false);
             Rbuffer.add_string pageBuf str;
             xline:= !xline -. size*.(float_of_string str)/.1000.;
           )
         );
-        if not !openedWord then (Rbuffer.add_string pageBuf "<"; openedWord:=true);
+        if not !openedWord then (Rbuffer.add_string pageBuf "("; openedWord:=true);
         let utf8=(Fonts.glyphNumber gl.glyph).glyph_utf8 in
-        Rbuffer.add_string pageBuf (sprintf "%04x" (unicode_to_idiot utf8));
+        let c=char_of_int (unicode_to_idiot utf8) in
+        if c='\\' || c='(' || c=')' then (
+          Rbuffer.add_char pageBuf '\\';
+          Rbuffer.add_char pageBuf c;
+        ) else (
+          Rbuffer.add_char pageBuf c
+        );
         xline:= !xline +. size*.Fonts.glyphWidth gl.glyph/.1000.
       )
       | Path (params,[])->()
@@ -657,6 +666,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             )
     done;
 
+  (*
     (* Tous les dictionnaires de unicode mapping *)
     let defaultutf8=String.make 1 (char_of_int 0) in
     let glyphutf8 x=
@@ -782,7 +792,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
     ) !fonts;
 
-
+  *)
 
     (* Ecriture du pageTree *)
     flush outChan;
