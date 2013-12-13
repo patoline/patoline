@@ -36,10 +36,10 @@ let pat_to_name pat =
   | "Neo Euler" -> "Euler/euler.otf"
 
   | "Alegreya" ->
-      "Alegreya/Alegreya-" ^ (alegreya_variants pat) ^ ".ttf"
+      "Alegreya/Alegreya-" ^ (alegreya_variants pat) ^ ".otf"
 
   | "Alegreya SC" ->
-      "Alegreya/AlegreyaSC-" ^ (alegreya_variants pat) ^ ".ttf"
+      "Alegreya/AlegreyaSC-" ^ (alegreya_variants pat) ^ ".otf"
 
   | "Asana Math" -> "Asana-Math/Asana-Math.otf"
 
