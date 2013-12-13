@@ -287,8 +287,8 @@ module ProofTree = struct
 
           let dy = cy1 +. sb +. ln +. hsp +. sa in (* 2 x ln/2 *)
 
-          let left = (cx0, cy0) :: (rcx0, cy1) :: (rpx0, mleft) :: vtr left dy in
-          let right = (cx1, cy0) :: (rcx1, cy1) :: (rpx1, mright) :: vtr right dy in
+          let left = (cx0, cy0) :: (rpx0, cy1) :: vtr left dy in
+          let right = (cx1, cy0) :: (rpx1, cy1) :: vtr right dy in
           let mleft = min mleft (min rpx0 rcx0) in
           let mright = max mright (max rpx1 rcx1) in
           let h = h +. dy in
