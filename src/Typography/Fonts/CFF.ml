@@ -743,7 +743,7 @@ let rec part n l=
         let (a,b)=part (n-1) s in
         (h::a,b))
 
-
+(*
 
 (* Version CID *)
 
@@ -1084,8 +1084,8 @@ let subset font info cmap gls=
   Rbuffer.add_buffer outBuf new_privDict;
   outBuf
 
+*)
 
-(*
 
 let subset(* _encoded *) font info cmap gls=
   let buf=Rbuffer.create 256 in
@@ -1339,7 +1339,7 @@ let subset(* _encoded *) font info cmap gls=
   Rbuffer.add_buffer buf privDict;
   Rbuffer.add_string buf subr;
   buf
-*)
+
 
 
 let add_kerning _ _=()
