@@ -301,6 +301,19 @@ let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
               par_states=IntSet.empty;
               par_paragraph=(-1)}, [])
 
+let stackDrawings drs=
+  let w=List.fold_left (fun m x->max m x.drawing_nominal_width) 0. drs in
+  let cont,_=List.fold_left (fun (cont,y) x->
+    (List.map (OutputCommon.translate ((w-.x.drawing_nominal_width)/.2.) (y-.x.drawing_y0)) (x.drawing_contents x.drawing_nominal_width)
+     @cont,
+     y+.min 0. (x.drawing_y1-.x.drawing_y0))
+  ) ([],0.) drs
+  in
+  Drawing (drawing cont)
+
+let stackCont drs=
+  bB (fun env->[stackDrawings (List.map (fun x->drawing (draw env x)) drs)])
+
 
 
 let defaultEnv:environment=
