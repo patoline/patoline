@@ -57,8 +57,12 @@ let stream buf=
 
 
 let unicode_to_idiot glUtf=
-  let x=UChar.code (UTF8.look glUtf 0) in
-  if x>0xff then 1+(x mod 254) else x
+  if String.length glUtf>0 then (
+    let x=UChar.code (UTF8.look glUtf 0) in
+    if x>0xff then 1+(x mod 254) else x
+  ) else (
+    20
+  )
 
 
 let maketype3 pages=
