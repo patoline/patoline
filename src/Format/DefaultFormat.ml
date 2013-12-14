@@ -306,7 +306,7 @@ let stackDrawings drs=
   let cont,_=List.fold_left (fun (cont,y) x->
     (List.map (OutputCommon.translate ((w-.x.drawing_nominal_width)/.2.) (y-.x.drawing_y0)) (x.drawing_contents x.drawing_nominal_width)
      @cont,
-     y+.min 0. (x.drawing_y1-.x.drawing_y0))
+     y+.max 0. (x.drawing_y1-.x.drawing_y0))
   ) ([],0.) drs
   in
   Drawing (drawing cont)
