@@ -298,7 +298,7 @@ let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
                 user_positions=env2.user_positions });
               par_badness=(badness);
               par_parameters=parameters; par_completeLine=Complete.normal;
-              par_states=IntSet.empty;
+              par_states=[];
               par_paragraph=(-1)}, [])
 
 let stackDrawings drs=
@@ -356,7 +356,7 @@ let defaultEnv:environment=
                             drawing_nominal_width= 4.0 *. phi;
                             drawing_contents=(fun _->[]);
                             drawing_break_badness=0.;
-                            drawing_states=IntSet.empty;
+                            drawing_states=[];
                             drawing_badness=fun _-> 0. }];
     hyphenate=hyphenate_dict "hyph-en-us.hdict";
     counters=StrMap.empty;
@@ -443,7 +443,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                            });
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
-                       par_states=IntSet.empty;
+                       par_states=[];
                        par_paragraph=(-1) }
                      in
                      has_institute:=true;
@@ -476,7 +476,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                            });
                        par_badness=(badness);
                        par_completeLine=Complete.normal;
-                       par_states=IntSet.empty;
+                       par_states=[];
                        par_paragraph=(-1) }
                      in
                      has_author:=true;
@@ -507,7 +507,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     min_height_before=0. });
               par_badness=(badness);
               par_completeLine=Complete.normal;
-              par_states=IntSet.empty;
+              par_states=[];
               par_paragraph=(-1)}
             in
             fst (up (newChildBefore (with_author,[]) par))
@@ -548,7 +548,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 not_last_line=true });
           par_badness=(badness);
           par_completeLine=Complete.normal;
-          par_states=IntSet.empty;
+          par_states=[];
           par_paragraph=(-1) }
         in
         fst (up (newChildBefore (
@@ -591,7 +591,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               node_env=(fun x->x);
               node_post_env=(fun x y->{ x with names=y.names; counters=y.counters;
                 user_positions=y.user_positions });
-              node_states=IntSet.empty
+              node_states=[]
             },path
 	in
         str:=follow (t0',[]) (List.map fst (List.rev path)); true
@@ -827,7 +827,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   drawing_y0= !min_y;
                   drawing_y1= !max_y;
                   drawing_break_badness=0.;
-                  drawing_states=IntSet.empty;
+                  drawing_states=[];
                   drawing_badness=(fun _->0.);
                   drawing_contents=(fun _-> List.map (OutputCommon.translate 0. 0.) !contents)
                 }]
@@ -1063,7 +1063,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                          drawing_max_width=tiret_w env;
                                          drawing_y0=y; drawing_y1=y;
                                          drawing_break_badness=0.;
-                                         drawing_states=IntSet.empty;
+                                         drawing_states=[];
                                          drawing_badness=(fun _->0.);
                                          drawing_contents=(fun _->
                                                              [OutputCommon.Path
@@ -1783,7 +1783,7 @@ module MathsFormat=struct
 		    drawing_width_fixed = true;
 		    drawing_adjust_before = false;
 		    drawing_contents=(fun _->[]);
-                    drawing_states=IntSet.empty;
+                    drawing_states=[];
                     drawing_break_badness=0.;
 		    drawing_badness=knuth_h_badness x }])]
 
@@ -1996,7 +1996,7 @@ module MathsFormat=struct
                     drawing_y1=y1_+.x_space1-.x_space0-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
                     drawing_break_badness=0.;
-                    drawing_states=IntSet.empty;
+                    drawing_states=[];
                     drawing_contents=
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with
@@ -2049,7 +2049,7 @@ module MathsFormat=struct
                     drawing_y1=y1_+.space-.(y0+.y1)*.size;
                     drawing_badness=(fun _->0.);
                     drawing_break_badness=0.;
-                    drawing_states=IntSet.empty;
+                    drawing_states=[];
                     drawing_contents=
                       (fun w->
                          OutputCommon.Path ({OutputCommon.default with

@@ -463,18 +463,18 @@ module Format=functor (D:Document.DocumentStructure)->(
         let rec restate st t=match t with
             Paragraph p->Paragraph { p with
               par_states=
-                if IntSet.is_empty p.par_states then st
-                else IntSet.inter p.par_states st
+                if p.par_states=[] then st
+                else List.filter (fun x->List.mem x st) p.par_states
             }
           | Node n->Node { n with
             children=IntMap.map (restate
-                                   (if IntSet.is_empty n.node_states then st
-                                    else IntSet.inter n.node_states st)
+                                   (if n.node_states=[] then st
+                                    else List.filter (fun x->List.mem x st) n.node_states)
             ) n.children
           }
           | _->t
         in
-        let states=List.fold_left (fun s x->IntSet.add x s) IntSet.empty S.arg1 in
+        let states=S.arg1 in
         let slide,path=follow (top !D.structure) (List.rev (List.hd !env_stack)) in
         D.structure:=up (restate states slide,path);
         env_stack:=List.tl !env_stack
@@ -536,10 +536,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                       | h::_->h))::(!layouts);
 
                   let rec get_max_state t=match t with
-                      Paragraph p->(try IntSet.max_elt p.par_states with Not_found -> 0)
+                      Paragraph p->(List.fold_left max 0 p.par_states)
                     | Node n->
                       IntMap.fold (fun _ a m->max m (get_max_state a)) n.children
-                        (try IntSet.max_elt n.node_states with Not_found->0)
+                        (List.fold_left max 0 n.node_states)
                     | _->0
                   in
 
@@ -550,7 +550,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     Array.fold_left (
                       Array.fold_left (fun maxst box->match box with
                           Drawing d | Glue d->
-                            let st1=try IntSet.max_elt d.drawing_states with Not_found -> maxst in
+                            let st1=List.fold_left max maxst d.drawing_states in
                             max st1 maxst
                         | _->maxst
                       )
@@ -566,8 +566,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                       let real_par=ref 0 in
                       let par_map=ref IntMap.empty in
                       let rec make_paragraphs t=match t with
-                          Paragraph p when IntSet.mem state p.par_states
-                              || IntSet.is_empty p.par_states -> (
+                          Paragraph p when List.mem state p.par_states
+                              || p.par_states=[] -> (
                           (* Celui-ci, on le garde *)
                                 let x=try fst (IntMap.max_binding !par_map) with Not_found -> (-1) in
                                 par_map:=IntMap.add (x+1) !real_par !par_map;
@@ -900,13 +900,13 @@ module Format=functor (D:Document.DocumentStructure)->(
                           a.glyph_size*.Fonts.glyphWidth a.glyph/.1000.
                         )
                         | Glue g
-                        | Drawing g when IntSet.mem st g.drawing_states || IntSet.is_empty g.drawing_states->(
+                        | Drawing g when List.mem st g.drawing_states || g.drawing_states=[]->(
                           let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
                           let cont=g.drawing_contents w in
                           let cont_states=
                             List.filter (fun x->match x with
-                                States s when not (IntSet.is_empty s.states_states) &&
-                                    not (IntSet.mem st s.states_states) -> false
+                                States s when s.states_states<>[] &&
+                                    not (List.mem st s.states_states) -> false
                               | _->true
                             ) cont
                           in

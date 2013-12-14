@@ -452,7 +452,7 @@ module MarginBiblio (C:CitationStyle)=struct
       par_parameters=params;
       par_badness=badness;
       par_completeLine=comp;
-      par_states=IntSet.empty;
+      par_states=[];
       par_paragraph=(-1) }
 
 end
@@ -503,7 +503,7 @@ module DefaultBiblio (C:CitationStyle)=struct
       par_parameters=params;
       par_badness=badness;
       par_completeLine=comp;
-      par_states=IntSet.empty;
+      par_states=[];
       par_paragraph=(-1) }
 
 end

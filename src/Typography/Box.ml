@@ -45,7 +45,7 @@ and drawingBox = { drawing_min_width:float; drawing_nominal_width:float;
 		   drawing_y0:float; drawing_y1:float;
                    drawing_badness : float -> float;
                    drawing_break_badness : float;
-                   drawing_states:IntSet.t;
+                   drawing_states:int list;
                    drawing_contents:float -> OutputCommon.raw list }
 
 
@@ -267,13 +267,13 @@ let empty_drawing_box=
       drawing_y1=0.;
       drawing_badness=(fun _->0.);
       drawing_break_badness=0.;
-      drawing_states=IntSet.empty;
+      drawing_states=[];
       drawing_contents=(fun _->[])
     }
 
-let drawing ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
+let drawing ?offset:(offset=0.) ?states:(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
-      States s->IntSet.fold IntSet.add st0 s.states_states
+      States s->st0@s.states_states
     | _->st0
   ) states cont
   in
@@ -292,9 +292,9 @@ let drawing ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
-let drawing_inline ?offset:(offset=0.) ?states:(states=IntSet.empty) cont=
+let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
-      States s->IntSet.fold IntSet.add st0 s.states_states
+      States s->unique (st0@s.states_states)
     | _->st0
   ) states cont
   in
@@ -324,7 +324,7 @@ let drawing_blit a x0 y0 b=
       drawing_y0=min a.drawing_y0 (y0+.b.drawing_y0);
       drawing_y1=max a.drawing_y1 (y0+.b.drawing_y1);
       drawing_break_badness=0.;
-      drawing_states=IntSet.fold (IntSet.add) a.drawing_states b.drawing_states;
+      drawing_states=unique (a.drawing_states@b.drawing_states);
       drawing_badness=(fun w->
                          let fact=w/.(w1-.w0) in
                            a.drawing_badness ((a.drawing_max_width-.a.drawing_min_width)*.fact)
@@ -412,7 +412,7 @@ let glue a b c=
          drawing_nominal_width= b;
          drawing_contents=(fun _->[]);
          drawing_break_badness=0.;
-         drawing_states=IntSet.empty;
+         drawing_states=[];
          drawing_badness=knuth_h_badness b }
 
 let rec resize l=function

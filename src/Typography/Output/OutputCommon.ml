@@ -106,7 +106,7 @@ type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;m
              mutable link_contents:raw list}
 and states={
   states_contents:raw list;
-  states_states:Util.IntSet.t;
+  states_states:int list;
   states_order:int
 }
 

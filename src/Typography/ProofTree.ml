@@ -222,7 +222,7 @@ module ProofTree = struct
                        drawing_y1=(* cy0 +. *) h +. dtop;
                        drawing_badness=(fun _->0.);
                        drawing_break_badness=0.;
-                       drawing_states=IntSet.empty;
+                       drawing_states=[];
                        drawing_contents = contents })]
 
           in
@@ -332,7 +332,7 @@ module ProofTree = struct
                        drawing_y1=(* cy0 +. *) h +. dtop;
                        drawing_badness=(fun _->0.);
                        drawing_break_badness=0.;
-                       drawing_states=IntSet.empty;
+                       drawing_states=[];
                        drawing_contents = contents })]
 
           in

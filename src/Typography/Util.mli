@@ -64,6 +64,8 @@ val take : int -> 'a list -> 'a list
 val drop : int -> 'a list -> 'a list
 (** the last element of a list *)
 val last : 'a list -> 'a
+(** sorts a list, then leaves exactly one copy of each element *)
+val unique : 'a list -> 'a list
 (** the list, minus its last element *)
 val init : 'a list -> 'a list
 val is_space : CamomileLibrary.UChar.t -> bool

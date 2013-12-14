@@ -98,7 +98,7 @@ let centered parameters str tree _=
                       drawing_y1=d;
                       drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
-                      drawing_states=IntSet.empty;
+                      drawing_states=[];
                       drawing_contents=(fun _->cont)
                     }::(glue 0. 0. 0.)::chi
                   )
@@ -185,7 +185,7 @@ let these parameters str tree max_level=
                       drawing_y1=d;
                       drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
-                      drawing_states=IntSet.empty;
+                      drawing_states=[];
                       drawing_contents=
                         (fun _->
                           List.map (OutputCommon.translate
@@ -279,7 +279,7 @@ let slides parameters str tree max_level=
                       drawing_y1=d;
                       drawing_break_badness=0.;
                       drawing_badness=(fun _->0.);
-                      drawing_states=IntSet.empty;
+                      drawing_states=[];
                       drawing_contents=
                         (fun _->
                            List.map (OutputCommon.translate

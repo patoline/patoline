@@ -202,7 +202,7 @@ let postprocess_tree tree=
         in
         let par=Paragraph {
           par_contents=section_name;
-          par_paragraph=(-1);par_states=IntSet.empty;
+          par_paragraph=(-1);par_states=[];
           par_env=(fun env->
                      let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
 

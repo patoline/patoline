@@ -239,7 +239,14 @@ let unspace s=
 
 let compose f g x=f (g x)
 
-
+let unique l=
+  let sl=List.sort compare l in
+  let rec uniq l acc=match l with
+      []->acc
+    | h0::h1::s when h0=h1 -> uniq (h1::s) acc
+    | h0::s->uniq s (h0::acc)
+  in
+  uniq sl []
 
 module IntMap=Map.Make (struct type t=int let compare=compare end)
 module StrMap=Map.Make (String)

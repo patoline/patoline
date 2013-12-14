@@ -151,7 +151,7 @@ type node={
   node_tags:(string*string) list;
   node_env:environment -> environment; (** Environment modification function at node beginning. *)
   node_post_env:environment -> environment -> environment;(** Environment modification when getting out of the node. *)
-  node_states:Util.IntSet.t;                              (** The page states in which the contents of this node appears. *)
+  node_states:int list;                              (** The page states in which the contents of this node appears. *)
   mutable node_paragraph:int;
 }
 
@@ -163,7 +163,7 @@ and paragraph={
   par_parameters:environment -> Box.box array array -> drawingBox array -> parameters ->  Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> line -> parameters;
   par_badness: environment -> Box.box array array -> drawingBox array->Break.figurePosition IntMap.t -> Box.line -> Box.box array -> int -> Box.parameters -> float -> Box.line -> Box.box array -> int -> Box.parameters -> float -> float;
   par_completeLine:environment -> Box.box array array -> Box.drawingBox array -> Break.figurePosition IntMap.t ->line MarkerMap.t -> line -> bool -> line list;
-  par_states:Util.IntSet.t;
+  par_states:int list;
   mutable par_paragraph:int
 }
 
@@ -344,7 +344,7 @@ let empty:node=
       counters=y.counters;
       names=names y;
       user_positions=user_positions y });
-    node_states=IntSet.empty;
+    node_states=[];
     node_paragraph=0 }
 
 type cxt=(int*tree) list
@@ -767,7 +767,7 @@ let beginFigure name=
 
 
 (** Adds a new paragraph with the given parameters, just below the current [node]. *)
-let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=IntSet.empty) complete parameters par=
+let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complete parameters par=
   match !str with
       Paragraph p,path-> 
 	(* Tom: j'ai l'impression que ce bout de code n'est jamais utilise. *)
@@ -947,7 +947,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_y0=offset;
     drawing_y1=fh+.offset;
     drawing_break_badness=0.;
-    drawing_states=IntSet.empty;
+    drawing_states=[];
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[OutputCommon.Image i])
   }
@@ -998,7 +998,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_y0=offset;
     drawing_y1=fh+.offset;
     drawing_break_badness=0.;
-    drawing_states=IntSet.empty;
+    drawing_states=[];
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[OutputCommon.Video i])
   }
@@ -1018,7 +1018,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_adjust_before = false;
     drawing_y0=0.;
     drawing_y1=0.;
-    drawing_states=IntSet.empty;
+    drawing_states=[];
     drawing_break_badness=0.;
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[])
@@ -1479,7 +1479,7 @@ let states st x=
     [Drawing
         (drawing ~offset:off
             [States { states_contents=d;
-                      states_states=List.fold_right IntSet.add st IntSet.empty;
+                      states_states=st;
                       states_order=0 }]
         )]
   )]
@@ -1754,7 +1754,7 @@ let animation names ft f0 contents =
     drawing_adjust_before = false;
     drawing_y0=y0;
     drawing_y1=y1;
-    drawing_states=IntSet.empty;
+    drawing_states=[];
     drawing_break_badness=0.;
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[r])

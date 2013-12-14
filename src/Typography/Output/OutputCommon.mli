@@ -72,7 +72,7 @@ type link = {
 
 and states={
   states_contents:raw list;
-  states_states:Util.IntSet.t;
+  states_states:int list;
   states_order:int
 }
 

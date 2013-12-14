@@ -50,7 +50,7 @@ let output paragraphs figures env (opt_pages:frame)=
     let pp=Array.of_list
       (List.fold_left (fun m x->match x with Placed_line p->p::m|_->m) [] p)
     in
-    let states=ref IntSet.empty in
+    let states=ref [] in
 
     let endlink cont=
       continued_link:=None;
@@ -186,7 +186,7 @@ let output paragraphs figures env (opt_pages:frame)=
             )
             | Glue g
             | Drawing g ->(
-              states:=IntSet.fold IntSet.add g.drawing_states !states;
+              states:=unique (g.drawing_states@ !states);
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
               page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
 	      if env.show_boxes
