@@ -597,7 +597,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     )
 
     | States (s) -> 
-      if IntSet.mem !cur_state s.states_states then
+      if List.mem !cur_state s.states_states then
 	List.iter fn s.states_contents
 	
     | Image i -> 
