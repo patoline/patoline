@@ -94,8 +94,9 @@ let draw ?fontCache prefix w h contents=
   in
   (* Une petite burocratie pour gérer les particularités d'html/svg/etc *)
   let escapes=
-    IntMap.add (int_of_char '<') "&lt;"
-      (IntMap.add (int_of_char '>') "&gt;" IntMap.empty)
+    IntMap.add (int_of_char '&') "&amp;"
+      (IntMap.add (int_of_char '<') "&lt;"
+        (IntMap.add (int_of_char '>') "&gt;" IntMap.empty))
   in
   let esc_buf=Rbuffer.create 2 in
   let html_escape x=
