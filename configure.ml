@@ -532,6 +532,27 @@ let _=
         close_out config;
         close_out config';
 
+        let _=
+          if Sys.os_type="Unix" then (
+            let i=Unix.open_process_in "uname" in
+            let uname=input_line i in
+            close_in i;
+            let o=open_out "Accessoires/Rules.mk" in
+            if uname="Darwin" then (
+              Printf.fprintf o "d := $(if $(d),$(d)/,)$(mod)\n";
+              Printf.fprintf o "all:$(d)/patomote\n";
+              Printf.fprintf o "$(d)/patomote:$(d)/patomote_macos.m\n";
+              Printf.fprintf o "\tgcc -o $@ -framework cocoa -framework iokit $<\n";
+              Printf.fprintf o "install:\n";
+              Printf.fprintf o "\tinstall -m 755 $(d)/patomote $(DESTDIR)/$(INSTALL_BIN_DIR)\n"
+            ) else (
+            );
+            close_out o;
+          ) else (
+
+          )
+        in
+
         (* Generate Rules.clean which tells GNUmakefile which files we've
          * generated, and have to be removed. *)
         let rules_clean = open_out "Rules.clean" in

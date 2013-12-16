@@ -168,7 +168,7 @@ distclean: clean
 	rm -f $(DISTCLEAN)
 
 # Visit subdirectories
-MODULES := src Hyphenation editors Fonts
+MODULES := src Hyphenation editors Fonts Accessoires
 d := 
 $(foreach mod,$(MODULES),$(eval include $$(mod)/Rules.mk))
 
