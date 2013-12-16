@@ -1162,17 +1162,21 @@ let subset(* _encoded *) font info cmap gls=
   let gsubr=copyIndex f in
   let encoding=
     let size=IntMap.fold (fun k a m->
-      Printf.fprintf stderr "encoding: %d %d\n" k a;flush stderr;
       if a<0x100 then m+1 else m
     ) cmap 0
     in
     let enc=String.make (size+2) (char_of_int 0) in
     enc.[0]<-char_of_int 0;
     enc.[1]<-char_of_int size;
-    IntMap.iter (fun k a->if a<0x100 then enc.[2+a]<-char_of_int k) cmap;
+    IntMap.iter (fun k a->
+      if a<0x100 && a>0 then enc.[1+a]<-char_of_int k
+    ) cmap;
     enc
   in
   let charset=
+    let reverseEncoding=
+      IntMap.fold (fun k a m->IntMap.add a k m) cmap IntMap.empty
+    in
     try
       (* Les glyphs sont tous renommés avec leur contenu unicode.
          Voir la page
@@ -1184,7 +1188,9 @@ let subset(* _encoded *) font info cmap gls=
       let names=Array.make (Array.length gls) "" in
       let alternates=Array.make (Array.length gls) 0 in
       for i=1 to Array.length gls-1 do
+        (*
         let b=if String.length gls.(i).glyph_utf8 > 0 then
+            (* String.sub (gls.(i).glyph_utf8) 0 (UTF8.next gls.(i).glyph_utf8 0) *)
             gls.(i).glyph_utf8
           else
             " "                         (* De toute façon, il y a les .alt%d *)
@@ -1201,6 +1207,13 @@ let subset(* _encoded *) font info cmap gls=
         in
         Buffer.clear glbuf;
         let str=make_name 0 in
+        *)
+        let str=Printf.sprintf "uni%d"
+          (try IntMap.find i reverseEncoding with
+              Not_found->(
+                int_of_char ' '
+              ))
+        in
         let alt=try StrMap.find str !altmap with _->0 in
         altmap:=StrMap.add str (alt+1) !altmap;
 

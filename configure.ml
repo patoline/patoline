@@ -36,6 +36,7 @@ let plugins_dirs=ref []
 let hyphen_dirs=ref []
 let lang=ref "FR"
 let ban_comic_sans=ref false
+let pdf_type3_only=ref false
 let int32=ref (Sys.word_size=32)
 
 let avail_lang=
@@ -313,6 +314,7 @@ let _=
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
     ("--extra-hyphen-dir", String (fun pref->hyphen_dirs:=pref:: !hyphen_dirs), "  additional directories patoline should scan for hyphenation dictionaries");
     ("--ban-comic-sans", Set ban_comic_sans, " disallows the use of a font with name '*comic*sans*'. Robust to filename changes.");
+    ("--pdf-type3-only", Set pdf_type3_only, " converts all fonts to vector graphics in PDFs. Improves compatibility, does not change the file size significatively. May worsen font rasterizing in some readers.");
     ("--lang", Set_string lang, Printf.sprintf "  language of the error messages (english by default), available : %s"
        (String.concat ", " (List.rev avail_lang)));
     ("--without", String (fun str->
@@ -357,12 +359,13 @@ let _=
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let make=open_out "src/Makefile.config" in
-  Printf.fprintf make "OCPP := 'cpp -C -ffreestanding -w %s%s%s%s%s%s'\n"
+  Printf.fprintf make "OCPP := 'cpp -C -ffreestanding -w %s%s%s%s%s%s%s'\n"
     (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
     (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
     (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
     (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
+    (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")
     (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
   (if has_dypgen then
       (Printf.fprintf make "PATOLINE := src/Patoline/patoline\n";

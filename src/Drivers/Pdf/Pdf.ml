@@ -28,14 +28,13 @@ open OutputPaper
 
 let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 
-type pdfFont= { font:Fonts.font; fontObject:int; fontWidthsObj:int; fontToUnicode:int;
-                fontFile:int;
-                mutable fontGlyphs:(int*Fonts.glyph) IntMap.t;
+type pdfFont= { font:Fonts.font;
+                mutable fontVariants:(Fonts.glyph IntMap.t) IntMap.t;
+                mutable pdfObjects:int IntMap.t;
+                mutable fontGlyphs:(int*int*Fonts.glyph) IntMap.t;
                 mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
 
-
-(* Ce flag sert essentiellement au démouchage des sous-ensembles de polices *)
-#define SUBSET
+#undef CAMLZIP
 
 #ifdef CAMLZIP
 let stream buf=
@@ -52,54 +51,8 @@ let stream buf=
     (fun buf len -> Rbuffer.add_substring out_buf buf 0 len);
   "/Filter [/FlateDecode]", out_buf
 #else
-  let stream buf="",buf
+let stream buf="",buf
 #endif
-
-
-let unicode_to_idiot glUtf=
-  if String.length glUtf>0 then (
-    let x=UChar.code (UTF8.look glUtf 0) in
-    if x>0xff then 1+(x mod 254) else x
-  ) else (
-    20
-  )
-
-
-let maketype3 pages=
-  let rec register_fonts x m=match x with
-      []->m
-    | (Glyph g)::s->
-      let glFont=Fonts.glyphFont g.glyph in
-      let glNum=(Fonts.glyphNumber g.glyph).glyph_index in
-      let glUtf=(Fonts.glyphNumber g.glyph).glyph_utf8 in
-      let name=Fonts.uniqueName glFont in
-      let _,rev,f=try (StrMap.find name m) with Not_found->glFont,IntMap.empty,IntMap.empty in
-      let ch=unicode_to_idiot glUtf in
-      register_fonts s (
-        if IntMap.mem glNum f then (
-          m
-        ) else (
-          (* Printf.fprintf stderr "adding %S %S %d\n" glUtf name glNum;flush stderr; *)
-          let fontVariant=(try 1+IntMap.find ch rev with Not_found->0) in
-          StrMap.add name (
-            glFont,
-            IntMap.add ch fontVariant rev,
-            IntMap.add glNum
-              ((Fonts.glyphNumber g.glyph).glyph_utf8,
-               fontVariant,
-               Fonts.glyphWidth g.glyph,
-               Fonts.outlines g.glyph)
-              f
-          ) m
-      ))
-    | Link l::s->
-      register_fonts s (register_fonts l.link_contents m)
-    | States l::s->
-      register_fonts s (register_fonts l.states_contents m)
-    | h::s->register_fonts s m
-  in
-  let fonts=Array.fold_left (fun m p->register_fonts (p.pageContents) m) StrMap.empty pages in
-  fonts
 
 
 let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -198,132 +151,74 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
   in
 
+  let fonts=ref StrMap.empty in
 
-
-  (* Type 3 *)
-  let type3Fonts=maketype3 pages in
-  (* let code3 glyph= *)
-  (*   (Fonts.glyphNumber glyph).glyph_utf8 *)
-  (* in *)
-  let pdftype3=
-    StrMap.fold (fun k (font,var,glyphs) m->
-      let maxVar=IntMap.fold (fun _ x m->max x m) var 0 in
-      let fonts=Array.make (maxVar+1) (IntMap.empty) in
-      IntMap.iter (fun k (a,b,c,d)->
-        fonts.(b)<-IntMap.add k (a,c,d) fonts.(b)
-      ) glyphs;
-      let rec writeFonts i m=if i<=maxVar then (
-        let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
-        IntMap.iter (fun _ (_,_,out)->
-          List.iter (List.iter (fun (x,y)->
-            Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
-            Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
-          )) out
-        ) fonts.(i);
-        let pdffont=beginObject () in
-        fprintf outChan "<< /Type /Font /Subtype /Type3 ";
-        (* fprintf outChan "/Name %s " name; *)
-        (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
-            fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
-         else
-            fprintf outChan "/FontBBox [0 0 0 0] ");
-        fprintf outChan "/FontMatrix [0.001 0 0 0.001 0 0] ";
-        let charprocs_obj=futureObject () in
-        fprintf outChan "/CharProcs %d 0 R " charprocs_obj;
-        let enc=futureObject () in
-        fprintf outChan "/Encoding %d 0 R " enc;
-
-        let firstChar=IntMap.fold (fun _ (utf8,_,_) m->min (unicode_to_idiot utf8) m)
-          fonts.(i) max_int
-        in
-        let lastChar=IntMap.fold (fun _ (utf8,_,_) m->max (unicode_to_idiot utf8) m)
-          fonts.(i) min_int
-        in
-        fprintf outChan "/FirstChar %d " firstChar;
-        fprintf outChan "/LastChar %d " lastChar;
-        let widths=futureObject () in
-        fprintf outChan "/Widths %d 0 R " widths;
-        fprintf outChan ">>";
-        endObject();
-
-
-        let revFont=
-          IntMap.fold (fun c (utf8,w,_) m->
-            IntMap.add (unicode_to_idiot utf8) (c,w) m
-          ) fonts.(i) IntMap.empty
-        in
-        resumeObject widths;
-        fprintf outChan "[";
-        for i=firstChar to lastChar do
-          fprintf outChan "%g " (try let _,w=IntMap.find i revFont in w with Not_found->0.)
-        done;
-        fprintf outChan "]";
-        endObject ();
-
-
-        resumeObject charprocs_obj;
-        fprintf outChan "<< ";
-        let charprocs=IntMap.fold (fun _ (utf8,w,outlines) m->
-          let o=futureObject () in
-          fprintf outChan "/uni%04x %d 0 R " (unicode_to_idiot utf8) o;(* (UChar.code (UTF8.look utf8 0)) o; *)
-          (o,w,outlines)::m
-        ) fonts.(i) []
-        in
-        fprintf outChan ">>";
-        endObject ();
-
-        let bu=Rbuffer.create 1000 in
-        List.iter (fun (o,w,outlines)->
-          Rbuffer.clear bu;
-
-          x0:=infinity;
-          x1:=(-.infinity);
-          y0:=infinity;
-          y1:=(-.infinity);
-          List.iter (List.iter (fun (x,y)->
-            Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
-            Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
-          )) outlines;
-          Rbuffer.add_string bu (sprintf "%g %d %g %g %g %g d1 " w 0 !x0 !y0 !x1 !y1);
-          writePath bu (fun x->x)(List.map (Array.of_list) outlines) OutputCommon.default;
-          Rbuffer.add_string bu "f ";
-          let filt, data=stream bu in
-          let len=Rbuffer.length data in
-          resumeObject o;
-          fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
-          Rbuffer.output_buffer outChan data;
-          fprintf outChan "\nendstream";
-          endObject ();
-        ) charprocs;
-
-        resumeObject enc;
-        fprintf outChan "<< /Type /Encoding /Differences [";
-        IntMap.iter (fun _ (utf8,_,_)->
-          fprintf outChan "%d /uni%04x "
-            (unicode_to_idiot utf8)
-            (unicode_to_idiot utf8)
-            (* (UChar.code (UTF8.look utf8 0)) *)
-            (* (UChar.code (UTF8.look utf8 0)) *)
-        ) fonts.(i);
-        fprintf outChan "]>>";
-        endObject ();
-        let formerFont=try StrMap.find k m with Not_found->IntMap.empty in
-        let variant=IntMap.fold (fun u v w->
-          IntMap.add u pdffont w
-        ) fonts.(i) formerFont
-        in
-        writeFonts (i+1) (StrMap.add k variant m)
-      ) else m
+  let glyphEncoding gl=
+    let f=Fonts.glyphFont gl in
+    let num=Fonts.glyphNumber gl in
+    let name=Fonts.uniqueName f in
+    let pdffont=try StrMap.find name !fonts with Not_found->(
+      let ff={ font=f;fontGlyphs=IntMap.empty;revFontGlyphs=IntMap.empty;
+               fontVariants=IntMap.empty;
+               pdfObjects=IntMap.empty
+             }
       in
-      writeFonts 0 m
-    ) type3Fonts StrMap.empty
+      fonts:=StrMap.add name ff !fonts;
+      ff
+    )
+    in
+    try
+      let (a,variant,_)=IntMap.find num.glyph_index pdffont.fontGlyphs in
+      (a,IntMap.find variant pdffont.pdfObjects)
+    with
+        Not_found->(
+          let glyphutf=(Fonts.glyphNumber gl).glyph_utf8 in
+          let glyphutf=if String.length glyphutf>0 then glyphutf else " " in
+          let enc,variant,variants=
+            let naturalEnc=
+              if UTF8.next glyphutf 0 >=String.length glyphutf then (
+                let x=UChar.code (UTF8.look glyphutf 0) in
+                x<=0xff && (
+                  try
+                    let m=IntMap.find 0 pdffont.fontVariants in
+                    let gl'=IntMap.find x m in
+                    (Fonts.glyphNumber gl').glyph_index=num.glyph_index
+                  with
+                      Not_found->true
+                )
+              ) else false
+            in
+            if naturalEnc then (
+              let x=UChar.code (UTF8.look glyphutf 0) in
+              let m=try IntMap.find 0 pdffont.fontVariants with Not_found->IntMap.empty in
+              if not (IntMap.mem 0 pdffont.pdfObjects) then (
+                let obj=futureObject () in
+                pdffont.pdfObjects<-IntMap.add 0 obj pdffont.pdfObjects;
+              );
+              x,0,IntMap.add 0 (IntMap.add x gl m) pdffont.fontVariants
+            ) else (
+              if IntMap.is_empty pdffont.fontVariants then (
+                let obj=futureObject () in
+                pdffont.pdfObjects<-IntMap.add 1 obj pdffont.pdfObjects;
+                1,1,IntMap.singleton 1 (IntMap.singleton 1 gl)
+              )  else (
+                let last,mvalue=IntMap.max_binding pdffont.fontVariants in
+                let value,_=IntMap.max_binding mvalue in
+                if value>=0xff then (
+                  let obj=futureObject () in
+                  pdffont.pdfObjects<-IntMap.add (last+1) obj pdffont.pdfObjects;
+                  1,(last+1),IntMap.add (last+1) (IntMap.singleton 1 gl) pdffont.fontVariants
+                ) else (
+                  (value+1),last,IntMap.add last (IntMap.add (value+1) gl mvalue) pdffont.fontVariants
+                )
+              )
+            )
+          in
+          pdffont.fontVariants<-variants;
+          pdffont.fontGlyphs<-IntMap.add num.glyph_index (enc,variant,gl) pdffont.fontGlyphs;
+          (enc,IntMap.find variant pdffont.pdfObjects)
+        )
   in
-  (* /Type 3 *)
-
-
-
-
-
   for page=0 to Array.length pages-1 do
     Rbuffer.reset pageBuf;
     let pageLinks=ref [] in
@@ -448,18 +343,17 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         in
         let size=pt_of_mm gl.glyph_size in
 
+
         let fnt=Fonts.glyphFont (gl.glyph) in
+        let enc,pdfObj=glyphEncoding gl.glyph in
         (* Inclusion de la police sur la page *)
         let idx=
-          let pdfFont=StrMap.find (Fonts.uniqueName fnt) pdftype3 in
-          let glidx=(Fonts.glyphNumber gl.glyph).glyph_index in
-          let pdfFont=try IntMap.find glidx pdfFont with Not_found->0 in
           try
-            IntMap.find pdfFont !pageFonts
+            IntMap.find pdfObj !pageFonts
           with
               Not_found->(
                 let card=IntMap.cardinal !pageFonts in
-                pageFonts := IntMap.add pdfFont card !pageFonts;
+                pageFonts := IntMap.add pdfObj card !pageFonts;
                 card
               )
         in
@@ -490,7 +384,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         );
         if not !openedWord then (Rbuffer.add_string pageBuf "("; openedWord:=true);
         let utf8=(Fonts.glyphNumber gl.glyph).glyph_utf8 in
-        let c=char_of_int (unicode_to_idiot utf8) in
+        let c=char_of_int enc in
         if c='\\' || c='(' || c=')' then (
           Rbuffer.add_char pageBuf '\\';
           Rbuffer.add_char pageBuf c;
@@ -520,6 +414,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
       | Image i->(
 #ifdef CAMLIMAGES
+          begin
             pageImages:=i::(!pageImages);
             let num=List.length !pageImages in
             close_text ();
@@ -527,8 +422,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
               (Printf.sprintf "q %f 0 0 %f %f %f cm /Im%d Do Q "
                  (pt_of_mm i.image_width) (pt_of_mm i.image_height)
                  (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
+          end;
 #endif
-)
+      )
       | States s->List.iter output_contents s.states_contents
       | _->()
     in
@@ -616,59 +512,257 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
             if !pageImages<>[] then (
               List.iter (fun (obj,_,i)->
-                           resumeObject obj;
+                resumeObject obj;
 #ifdef CAMLIMAGES
-                           let image=(OImages.load i.image_file []) in
-                           let w,h=Images.size image#image in
-                             (match image#image_class with
-                                  OImages.ClassRgb24->(
-                                    let src=OImages.rgb24 image in
-                                    let img_buf=Rbuffer.create (w*h*3) in
-                                      for j=0 to h-1 do
-                                        for i=0 to w-1 do
-                                          let rgb = src#get i j in
-                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.r);
-                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.g);
-                                          Rbuffer.add_char img_buf (char_of_int rgb.Images.b);
-                                        done
-                                      done;
-                                      let a,b=stream img_buf in
-                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
-                                      Rbuffer.output_buffer outChan b;
-                                      fprintf outChan "\nendstream";
-
-                                  )
-                                | OImages.ClassRgba32->(
-                                    let src=OImages.rgba32 image in
-                                    let img_buf=Rbuffer.create (w*h*3) in
-                                      for j=0 to h-1 do
-                                        for i=0 to w-1 do
-                                          let rgb = src#get i j in
-                                          let a=(float_of_int rgb.Images.alpha)/.256. in
-                                          let r=(1.-.a)*.255.
-                                            +.a*.float_of_int rgb.Images.color.Images.r in
-                                          let g=(1.-.a)*.255.
-                                            +.a*.float_of_int rgb.Images.color.Images.g in
-                                          let b=(1.-.a)*.255.
-                                            +.a*.float_of_int rgb.Images.color.Images.b in
-                                          Rbuffer.add_char img_buf (char_of_int (round r));
-                                          Rbuffer.add_char img_buf (char_of_int (round g));
-                                          Rbuffer.add_char img_buf (char_of_int (round b));
-                                        done
-                                      done;
-                                      let a,b=stream img_buf in
-                                      fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
-                                      Rbuffer.output_buffer outChan b;
-                                      fprintf outChan "\nendstream";
-                                  )
-                                | _->()
-                             );
-                             image#destroy;
+                  begin
+                    let image=(OImages.load i.image_file []) in
+                    let w,h=Images.size image#image in
+                    (match image#image_class with
+                        OImages.ClassRgb24->(
+                          let src=OImages.rgb24 image in
+                          let img_buf=Rbuffer.create (w*h*3) in
+                          for j=0 to h-1 do
+                            for i=0 to w-1 do
+                              let rgb = src#get i j in
+                              Rbuffer.add_char img_buf (char_of_int rgb.Images.r);
+                              Rbuffer.add_char img_buf (char_of_int rgb.Images.g);
+                              Rbuffer.add_char img_buf (char_of_int rgb.Images.b);
+                            done
+                          done;
+                          let a,b=stream img_buf in
+                          fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                          Rbuffer.output_buffer outChan b;
+                          fprintf outChan "\nendstream";
+                        )
+                      | OImages.ClassRgba32->(
+                        let src=OImages.rgba32 image in
+                        let img_buf=Rbuffer.create (w*h*3) in
+                        for j=0 to h-1 do
+                          for i=0 to w-1 do
+                            let rgb = src#get i j in
+                            let a=(float_of_int rgb.Images.alpha)/.256. in
+                            let r=(1.-.a)*.255.
+                              +.a*.float_of_int rgb.Images.color.Images.r in
+                            let g=(1.-.a)*.255.
+                              +.a*.float_of_int rgb.Images.color.Images.g in
+                            let b=(1.-.a)*.255.
+                              +.a*.float_of_int rgb.Images.color.Images.b in
+                            Rbuffer.add_char img_buf (char_of_int (round r));
+                            Rbuffer.add_char img_buf (char_of_int (round g));
+                            Rbuffer.add_char img_buf (char_of_int (round b));
+                          done
+                        done;
+                        let a,b=stream img_buf in
+                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                        Rbuffer.output_buffer outChan b;
+                        fprintf outChan "\nendstream";
+                      )
+                      | _->()
+                    );
+                    image#destroy;
+                  end;
 #endif
-                             endObject ()
-                        ) actual_pageImages
+                endObject ()
+              ) actual_pageImages
             )
-    done;
+  done;
+
+
+  let writeEncoding enc varGlyphs=
+    resumeObject enc;
+    fprintf outChan "<< /Type /Encoding /Differences [";
+    IntMap.iter (fun enc _->
+      fprintf outChan "%d /uni%d "
+        enc enc
+      (* (UChar.code (UTF8.look utf8 0)) *)
+      (* (UChar.code (UTF8.look utf8 0)) *)
+    ) varGlyphs;
+    fprintf outChan "]>>";
+    endObject ();
+  in
+
+  (* Type 3 *)
+  let pdftype3 font var=
+    try
+      let pdffont=IntMap.find var font.pdfObjects in
+      resumeObject pdffont;
+      fprintf outChan "<< /Type /Font /Subtype /Type3 ";
+      (* fprintf outChan "/Name %s " name; *)
+      let varGlyphs=IntMap.find var font.fontVariants in
+      let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
+      IntMap.iter (fun _ glyph->
+        List.iter (List.iter (fun (x,y)->
+          Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
+          Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
+        )) (Fonts.outlines glyph)
+      ) varGlyphs;
+      (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
+          fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
+       else
+          fprintf outChan "/FontBBox [0 0 0 0] ");
+      fprintf outChan "/FontMatrix [0.001 0 0 0.001 0 0] ";
+      let charprocs_obj=futureObject () in
+      fprintf outChan "/CharProcs %d 0 R " charprocs_obj;
+      let enc=futureObject () in
+      fprintf outChan "/Encoding %d 0 R " enc;
+
+      let firstChar,_=IntMap.min_binding varGlyphs in
+      let lastChar,_=IntMap.max_binding varGlyphs in
+      fprintf outChan "/FirstChar %d " firstChar;
+      fprintf outChan "/LastChar %d " lastChar;
+      let widths=futureObject () in
+      fprintf outChan "/Widths %d 0 R " widths;
+      fprintf outChan ">>";
+      endObject();
+
+
+      resumeObject widths;
+      fprintf outChan "[";
+      for i=firstChar to lastChar do
+        fprintf outChan "%g " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+      done;
+      fprintf outChan "]";
+      endObject ();
+
+
+      resumeObject charprocs_obj;
+      fprintf outChan "<< ";
+      let charprocs=IntMap.fold (fun enc glyph m->
+        let o=futureObject () in
+        let w=Fonts.glyphWidth glyph in
+        let outlines=Fonts.outlines glyph in
+        fprintf outChan "/uni%04x %d 0 R " enc o;(* (UChar.code (UTF8.look utf8 0)) o; *)
+        (o,w,outlines)::m
+      ) varGlyphs []
+      in
+      fprintf outChan ">>";
+      endObject ();
+
+      let bu=Rbuffer.create 1000 in
+      List.iter (fun (o,w,outlines)->
+        Rbuffer.clear bu;
+        x0:=infinity;
+        x1:=(-.infinity);
+        y0:=infinity;
+        y1:=(-.infinity);
+        List.iter (List.iter (fun (x,y)->
+          Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
+          Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
+        )) outlines;
+        Rbuffer.add_string bu (sprintf "%g %d %g %g %g %g d1 " w 0 !x0 !y0 !x1 !y1);
+        writePath bu (fun x->x)(List.map (Array.of_list) outlines) OutputCommon.default;
+        Rbuffer.add_string bu "f ";
+        let filt, data=stream bu in
+        let len=Rbuffer.length data in
+        resumeObject o;
+        fprintf outChan "<< /Length %d %s>>\nstream\n" len filt;
+        Rbuffer.output_buffer outChan data;
+        fprintf outChan "\nendstream";
+        endObject ();
+      ) charprocs;
+
+      writeEncoding enc varGlyphs;
+    with
+        Not_found->()
+  in
+  (* /Type 3 *)
+
+#if !defined(PDF_TYPE3_ONLY)
+  (* Type 1C (CFF) *)
+  let pdftype1c font var=
+    try
+      let cff=match font.font with
+          CFF y->y
+        | Opentype (Fonts.Opentype.CFF y)->y.Opentype.cff_font
+        | _->assert false
+      in
+      let pdffont=IntMap.find var font.pdfObjects in
+      resumeObject pdffont;
+      fprintf outChan "<< /Type /Font /Subtype /Type1 ";
+      let name=CFF.fontName cff in
+      fprintf outChan "/BaseFont /%s " name.postscript_name;
+      let varGlyphs=IntMap.find var font.fontVariants in
+      let firstChar,_=IntMap.min_binding varGlyphs in
+      let lastChar,_=IntMap.max_binding varGlyphs in
+      fprintf outChan "/FirstChar %d " firstChar;
+      fprintf outChan "/LastChar %d " lastChar;
+      let widths=futureObject () in
+      fprintf outChan "/Widths %d 0 R " widths;
+      let descr=futureObject () in
+      fprintf outChan "/FontDescriptor %d 0 R " descr;
+      let enc=futureObject () in
+      fprintf outChan "/Encoding %d 0 R " enc;
+      fprintf outChan ">>";
+      endObject();
+
+      writeEncoding enc varGlyphs;
+
+      resumeObject descr;
+      fprintf outChan "<< /Type /FontDescriptor ";
+      fprintf outChan "/FontName /%s " name.postscript_name;
+      fprintf outChan "/Flags 0 ";
+
+      let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
+      IntMap.iter (fun _ glyph->
+        List.iter (List.iter (fun (x,y)->
+          Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
+          Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
+        )) (Fonts.outlines glyph)
+      ) varGlyphs;
+      (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
+          fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
+       else
+          fprintf outChan "/FontBBox [0 0 0 0] ");
+      fprintf outChan "/ItalicAngle 0 /Ascent %g /Descent %g /CapHeight %g " (max 0. !y1) (min 0. !y0) (max 0. !y1);
+      let fontfile=futureObject () in
+      fprintf outChan "/StemV 10 /FontFile3 %d 0 R >>" fontfile;
+      endObject ();
+
+      resumeObject widths;
+      fprintf outChan "[";
+      for i=firstChar to lastChar do
+        fprintf outChan "%g " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+      done;
+      fprintf outChan "]";
+      endObject ();
+
+      resumeObject fontfile;
+      let fontinfo=CFF.fontInfo cff in
+      let glyphs=Array.make (1+IntMap.cardinal varGlyphs) {glyph_index=0;glyph_utf8=""} in
+      let _,enc=IntMap.fold (fun enc glyph (i,m)->
+        glyphs.(i)<-(Fonts.glyphNumber glyph);
+        (i+1,IntMap.add enc i m)
+      ) varGlyphs (1,IntMap.empty)
+      in
+      let cffdata=CFF.subset cff fontinfo enc glyphs in
+      let filt, data=stream cffdata in
+      let len=Rbuffer.length data in
+      fprintf outChan "<< /Length %d /Subtype /Type1C %s>>\nstream\n" len filt;
+      Rbuffer.output_buffer outChan data;
+      fprintf outChan "\nendstream";
+      endObject ();
+    with
+        Not_found->()
+  in
+  (* /Type 1C (CFF) *)
+
+
+
+  StrMap.iter (fun k pdffont->
+    match pdffont.font with
+        CFF _
+      | Opentype (Fonts.Opentype.CFF _)->(
+        IntMap.iter (fun k _->pdftype1c pdffont k) pdffont.pdfObjects
+      )
+      | _->IntMap.iter (fun k _->pdftype3 pdffont k) pdffont.pdfObjects
+  ) !fonts;
+
+#else
+  StrMap.iter (fun k pdffont->
+    IntMap.iter (fun k _->pdftype3 pdffont k) pdffont.pdfObjects
+  ) !fonts;
+#endif
+
 
   (*
     (* Tous les dictionnaires de unicode mapping *)
