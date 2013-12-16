@@ -34,8 +34,6 @@ type pdfFont= { font:Fonts.font;
                 mutable fontGlyphs:(int*int*Fonts.glyph) IntMap.t;
                 mutable revFontGlyphs:(Fonts.glyph) IntMap.t }
 
-#undef CAMLZIP
-
 #ifdef CAMLZIP
 let stream buf=
   let out_buf=Rbuffer.create 100000 in
@@ -342,9 +340,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           | _->gy
         in
         let size=pt_of_mm gl.glyph_size in
-
-
-        let fnt=Fonts.glyphFont (gl.glyph) in
         let enc,pdfObj=glyphEncoding gl.glyph in
         (* Inclusion de la police sur la page *)
         let idx=
@@ -383,7 +378,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           )
         );
         if not !openedWord then (Rbuffer.add_string pageBuf "("; openedWord:=true);
-        let utf8=(Fonts.glyphNumber gl.glyph).glyph_utf8 in
         let c=char_of_int enc in
         if c='\\' || c='(' || c=')' then (
           Rbuffer.add_char pageBuf '\\';
