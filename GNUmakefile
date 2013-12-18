@@ -148,9 +148,6 @@ EDITORS_DIR := editors
 .PHONY: all
 all:
 
-configure:
-	ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
-
 # Sanity tests, empty for now
 .PHONY: check
 check:
