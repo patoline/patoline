@@ -18,11 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-#load "unix.cma"
-#directory "+site-lib/findlib"
-#load "findlib.cma"
-#load "str.cma"
-
 let prefix=ref "/usr/local/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
