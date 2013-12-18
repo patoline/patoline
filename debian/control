@@ -28,10 +28,18 @@ Package: patoline-fonts
 Architecture: all
 Multi-Arch: foreign
 Section: fonts
-Depends: ${misc:Depends}, fonts-oflb-asana-math, fonts-philosopher, fonts-alegreya
+Depends: ${misc:Depends}, fonts-oflb-asana-math, fonts-philosopher, fonts-alegreya, fonts-euler
 Description: An empty package to pull standard fonts for Patoline
  The only purpose of this package is to depend on other font packages which
  provide Opentype fonts used by Patoline core document formats.
+
+Package: fonts-euler
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Section: fonts
+Description: Euler font family
+ This package provides the Opentype Euler fonts.
 
 Package: fonts-philosopher
 Architecture: all
