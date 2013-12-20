@@ -148,11 +148,11 @@ EDITORS_DIR := editors
 all: configure testconfig 
 
 configure: configure.ml
-	- rm src/Makefile.config #make sur configure is run !
+	- rm -f src/Makefile.config
 	ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
 
 testconfig:
-	if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
+	@ if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
 
 # Sanity tests, empty for now
 .PHONY: check
@@ -172,6 +172,7 @@ clean:
 
 distclean: clean
 	rm -f $(DISTCLEAN)
+	rm -f configure configure.cmi configure.cmx configure.o
 
 ifneq "$(wildcard ./configure)" "" 
 ifneq "$(wildcard src/Makefile.config)" ""
