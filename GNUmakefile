@@ -148,7 +148,7 @@ EDITORS_DIR := editors
 all: configure testconfig 
 
 configure: configure.ml
-	rm src/Makefile.config #make sur configure is run !
+	- rm src/Makefile.config #make sur configure is run !
 	ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
 
 testconfig:
