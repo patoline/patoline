@@ -121,10 +121,9 @@ ifeq "$(strip $(filter $(need_gmake),$(firstword $(sort $(MAKE_VERSION) $(need_g
 endif
 
 # Import variables computed by configure.ml
-ifeq "$(wildcard src/Makefile.config)" ""
-  $(error The file src/Makefile.config cannot be found: you must first run ./configure)
+ifneq "$(wildcard src/Makefile.config)" ""
+  include src/Makefile.config
 endif
-include src/Makefile.config
 
 # Compilers and various tools
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp $(OCPP),)
@@ -146,7 +145,14 @@ EDITORS_DIR := editors
 # Main rule prerequisites are expected to be extended by each Rules.mk
 # We just declare it here to make it the (phony) default target.
 .PHONY: all
-all:
+all: configure testconfig 
+
+configure: configure.ml
+	rm src/Makefile.config #make sur configure is run !
+	ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
+
+testconfig:
+	if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
 
 # Sanity tests, empty for now
 .PHONY: check
@@ -167,10 +173,14 @@ clean:
 distclean: clean
 	rm -f $(DISTCLEAN)
 
-# Visit subdirectories
-MODULES := src Hyphenation editors Fonts Accessoires
-d := 
-$(foreach mod,$(MODULES),$(eval include $$(mod)/Rules.mk))
+ifneq "$(wildcard ./configure)" "" 
+ifneq "$(wildcard src/Makefile.config)" ""
+# Visit subdirectories if configure is ok (otherwise ocamldep is run too soon)
+  MODULES := src Hyphenation editors Fonts Accessoires
+  d := 
+  $(foreach mod,$(MODULES),$(eval include $$(mod)/Rules.mk))
+endif
+endif
 
 # Phony targets
 .PHONY: install doc test clean distclean

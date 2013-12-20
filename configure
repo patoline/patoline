@@ -1,3 +1,0 @@
-#!/bin/bash
-
-ocaml $(ocamlfind query -i-format findlib unix str) configure.ml $@
