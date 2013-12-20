@@ -694,13 +694,13 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                   !ocamlopt]@
                     (List.concat (List.map getopts !extras))@
                     comp_opts@
-                    (let pack=String.concat "," ("dynlink"::List.rev opts.packages) in
+                    (let pack=String.concat "," ("threads,dynlink,cryptokit"::List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@
                     [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                      "-o";h]@
                     objs@
-                    ["-linkall";"-impl";source])
+                    ["-thread";"-linkall";"-impl";source])
               in
               Mutex.unlock mut;
 

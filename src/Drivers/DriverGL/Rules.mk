@@ -20,21 +20,21 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[CC]     $<"
 	$(Q)$(CC) $(FPIC_FLAGS) $(CFLAGS) -c $< -o $@
 
-$(d)/GLNet.cmx: %.cmx: %.ml
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+#$(d)/GLNet.cmx: %.cmx: %.ml
+#	$(ECHO) "[OPT]    $<"
+#	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
 
-$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/GLNet.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
+$(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] -> $@"
 	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -o $(basename $@) $^
 
-$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/GLNet.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
+$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OPT] -> $@"
-	$(Q)$(OCAMLOPT) -package lablgl,lablgl.glut,netstring,netsys,netcgi2,nethttpd,cryptokit  -shared -linkpkg -o $@ $^
+	$(Q)$(OCAMLOPT) -package lablgl,lablgl.glut -shared -linkpkg -o $@ $^
 
 DISTCLEAN += $(DEPENDS_$(d))
 

@@ -265,6 +265,7 @@ let r_patoline_drivers = ref
     { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "Patonet"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
     patoline_driver_gl;
     { name = "Net"; needs = []; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };

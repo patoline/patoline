@@ -23,8 +23,6 @@ open Fonts.FTypes
 open OutputCommon
 open OutputPaper
 open Util
-open GLNet
-open Hammer
 
 type subpixel_anti_aliasing =
   No_SAA | RGB_SAA | BGR_SAA | VRGB_SAA | VBGR_SAA
@@ -39,7 +37,7 @@ type prefs = {
   init_zoom : init_zoom;
   rotation : float option;
   batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array array) -> unit) option;
-  server_port : int option;
+  server : string option;
   second_window : bool;
 }
 
@@ -50,14 +48,18 @@ let prefs = ref {
   init_zoom = FitPage;
   rotation = None;
   batch_cmd = None;
-  server_port = None;
+  server = None;
   second_window = false;
 }
 
 
 let spec = Arg.([
-  "--second", Unit (fun () -> Printf.fprintf stderr "kiki\n"; prefs := { !prefs with second_window = true })
+  "--second", Unit (fun () -> prefs := { !prefs with second_window = true })
          , "Open a second window";
+  "--server", String (fun p -> prefs := { !prefs with server = Some p })
+         , "Give the port to control patolineGL (default no server)" ;
+  "--no-server", Int (fun p -> prefs := { !prefs with server = None })
+         , "Do not allow remote control for patolineGL";
   "--rgb", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = RGB_SAA })
          , "Set subpixel anti aliasing for RGB lcd screens (default)";
   "--bgr", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = BGR_SAA })
@@ -80,17 +82,7 @@ let spec = Arg.([
          , "Start with fitting the page in the window";
   "--rotation", Float (fun x -> prefs := { !prefs with rotation = Some x })
          , "Animate page change with a rotation of the given duration (in second)";
-  "--port-cmd", Int (fun p -> prefs := { !prefs with server_port = Some p })
-         , "Give the port to control patolineGL (default no server)" ;
-  "--no-cmd", Int (fun p -> prefs := { !prefs with server_port = None })
-         , "Do not allow remote control for patolineGL";
-  "--", Unit (fun () -> Printf.fprintf stderr "kiki\n"), ""
 ])
-
-
-
-
-
 
 let cur_page = ref 0
 
@@ -264,8 +256,6 @@ let init_win w =
     ry = 0.0;
   }
 
-let image_cache = Hashtbl.create 101 (* for http *)
-
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
@@ -276,15 +266,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let num_states = ref (Array.length !pages.(!cur_page)) in
   let links = ref [||] in
   let cur_state = ref 0 in
-
-  let tmp_image_dir = 
-    if !prefs.server_port <> None then begin
-      let dir = Filename.temp_file "patoline" "Image" in
-      Sys.remove dir;
-      Unix.mkdir dir 0o700;
-      dir
-    end else ""
-  in
 
   let read_links () = 
     links := Array.mapi
@@ -457,7 +438,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     read_links ();
     (* Not clearing the caches slows down a lot after redraw *)
     clearCache ();
-    Gc.compact ();
+(*    Gc.compact ();*)
   in
 
   let start_page_time = ref (Unix.gettimeofday ()) in
@@ -922,7 +903,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Glut.postRedisplay ()
   in
 
+  let send_changes = 
+    ref (fun () -> ()) in
+
   let redraw_all () =
+    !send_changes ();
     Array.iter (function None -> () | Some win -> redraw win) win
   in
 
@@ -988,27 +973,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlMat.pop ();
 
   in
-  let show (cgi:Netcgi.cgi_activation) _ = 
-    try
-      let _out = cgi # output # output_string in
-      let x = int_of_string ((cgi # argument "show_x") # value) in
-      let y = int_of_string ((cgi # argument "show_y") # value) in
-      let w = int_of_string ((cgi # argument "show_w") # value) in
-      Printf.fprintf stderr "show %d %d %d\n" x y w;
-      flush stderr;
-      Hashtbl.replace  other_items "show" (draw_show x y w);
-      redraw_all ()
-    with
-      Not_found | Failure _ -> 
-	Printf.fprintf stderr "Bad show request"; 
-	flush stderr
-  in
-  let show_end _ _ =
-    Hashtbl.remove  other_items "show";
-    redraw_all ();
-  in
-
-  GLNet.cbs := ("show_x", show)::("show_end", show_end)::!cbs;
 
   let dest = ref 0 in
 
@@ -1051,7 +1015,20 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       rotate_page (i,j) (i, !cur_state);
       redraw_all ())
   in
-      
+
+  let goto page state =
+    Hashtbl.clear other_items;
+    let page = max 0 (min page (!num_pages - 1)) in
+    if page <> !cur_page then (
+      start_page_time := Unix.gettimeofday ();
+      cur_page:=page;
+      num_states := Array.length !pages.(!cur_page);
+    );
+    let state = max 0 (min state !num_states) in
+    cur_state := state;
+    redraw_all ()
+  in
+
   let keyboard_cb ~key ~x ~y =
     if key >= 48 && key < 58 then
       dest := !dest * 10 + (key - 48)
@@ -1094,7 +1071,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw win
       | 104 ->
 	init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw win
-      | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr);
+      | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n%!" n (Char.escaped (Char.chr n)));
       dest := 0;
     end
   in
@@ -1109,7 +1086,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.KEY_PAGE_DOWN -> incr_page ()
     | Glut.KEY_PAGE_UP -> decr_page true
     | Glut.KEY_HOME -> init_zoom:=true; redraw win
-    | b -> Printf.fprintf stderr "Unbound special: %s\n" (Glut.string_of_special b); flush stderr;
+    | b -> Printf.fprintf stderr "Unbound special: %s\n%!" (Glut.string_of_special b);
   in
 
   let motion_ref = ref None in
@@ -1174,253 +1151,98 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   
   let goto_link l0 c0 = 
+    Printf.fprintf stderr "Searching position: line <= %d, col <= %d.\n%!" l0 c0;
     let res = 
       Array.fold_left(fun (acc, (i,j)) linkss ->
 	Array.fold_left(fun (acc, (i,j)) links ->
 	  let acc =
 	    List.fold_left (fun (bl, bc, res as acc) link ->
-	      if Str.string_match (Str.regexp "^edit:[^@]*@\\([0-9]+\\)@\\([0-9]+\\)")
-		link.uri 0 then
-		let l = int_of_string (Str.matched_group 1 link.uri) in
-		let c = int_of_string (Str.matched_group 2 link.uri) in
-		if (l0 > l or (l = l0 && c0 >= c)) && 
-		  (l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
-		  l0 - l, c0 - c, Some(link, i-1, j)
-		else
-		  acc
-	      else acc) acc links
+	      let ls = List.rev (split '@' link.uri) in
+	      match ls with
+		c::l::_ ->
+		  (try let l = int_of_string l and c = int_of_string c in
+		      if (l0 > l or (l = l0 && c0 >= c)) && 
+			(l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
+			l0 - l, c0 - c, Some(link, i-1, j)
+		      else
+			acc
+		  with Not_found -> acc)
+	      | _ -> acc) acc links
 	  in
 	  (acc, (i, j + 1))) (acc, (i+1,0)) linkss) ((max_int, 0, None), (0, 0)) !links
     in
 
     match fst res with
-      (_,_,None) -> Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n"
-	l0 c0; flush stderr
+      (_,_,None) ->
+	Printf.fprintf stderr "Edit position not found: line <= %d, col <= %d.\n%!" l0 c0
     | (_,_,Some(l,i,j)) -> 
       cur_page:= i;
       cur_state := j;
-      draw_gl_scene ();
-      overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
-      Glut.swapBuffers ()
+      Array.iter (function None -> () | Some win ->
+	Glut.setWindow win.winId;
+	draw_gl_scene ();
+	overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+	Glut.swapBuffers ()) win
   in
 
-(*
   let reconnect ()=
-    try
+    match !prefs.server with
+      None -> None
+    | Some server ->
+      try
+       Printf.fprintf stderr "coucou 1\n%!";
+       let ls = Util.split ':' server in
+       let server,port = match ls with
+	   [s] -> s, 8080
+	 | [s;p] -> s, int_of_string p
+	 | _ -> raise Exit
+       in
+       Printf.fprintf stderr "coucou 2\n%!";
        let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-       Unix.connect sock (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1",8080));
+       Printf.fprintf stderr "coucou 2.5\n%!";
+       Unix.connect sock
+	 (Unix.ADDR_INET 
+	    (Unix.inet_addr_of_string server,port));
        let fo=Unix.out_channel_of_descr sock in
-       output_string fo "GET /tire HTTP/1.1\r\n\r\n";
-       flush fo;
-       Some sock
+       let fi=Unix.in_channel_of_descr sock in
+       let last_changes = ref (-1, -1) in
+       send_changes := (fun () ->
+	 if !last_changes <> (!cur_page, !cur_state) then (
+	   last_changes := !cur_page, !cur_state;
+	   Printf.fprintf fo "GET /driverGL_%d_%d HTTP/1.1\r\n\r\n%!"
+	     !cur_page !cur_state));
+       !send_changes ();
+       Printf.fprintf stderr "Connected ?\n%!";
+       Some (sock,fo,fi)
      with _ -> None;
   in
 
   let s=String.create 1000 in
-  let handle_one_net sock=
+  let handle_request sock =
+    match sock with None -> (fun () -> ())
+    | Some (sock,fo,fi) -> fun () ->
     let i,_,_ = Unix.select [sock] [] [] 0.0 in
     match i with
 	[] -> ()
       | i -> (
-        let fi=Unix.in_channel_of_descr sock in
-        let n=input fi s 0 (String.length s) in
-        if n>0 then (
-          let len,off=
-            if int_of_char s.[0]<=125 then int_of_char s.[0],1 else
-              if int_of_char s.[0]=126 then (int_of_char s.[1] lsl 8) lor int_of_char s.[2],3 else
-                (((((int_of_char s.[1] lsl 8) lor int_of_char s.[2]) lsl 8) lor
-                     int_of_char s.[3]) lsl 8) lor int_of_char s.[4],5
-          in
-          Printf.fprintf stderr "%d %d\n" (int_of_char s.[1]) len;flush stderr;
-          Printf.fprintf stderr "%S\n" (String.sub s 0 n);flush stderr;
-          let rec inp off l=if l>0 then (
-            let n=input fi s 0 (min l (String.length s)) in
-            Printf.fprintf stderr "recv : %s\n" (String.sub s off n);flush stderr;
-            if n>0 then inp 0 (l-n)
-          )
-          in
-          inp off (len-n)
-        )
-      )
-  in
-*)
-  let page_counter = Random.self_init (); ref (Random.int 1000000000)
+	try 
+	  Printf.fprintf stderr "Handling connection\n%!";
+	  let line = input_line fi in
+	  Printf.fprintf stderr "recv: %S\n" line;
+	  let ls = Util.split ' ' line in
+	  match ls with
+	    [pg;st] ->
+	      goto (int_of_string pg) (int_of_string st)
+	  | _ -> ()
+	with _ -> ())
   in
 
-  let make_content out id cmd fmt width height format =
-    Printf.fprintf stderr "Make content\n"; flush stderr;
-    if id = !page_counter then
-      begin match cmd with
-	Next_page -> incr_page ()
-      | Prev_page -> decr_page true
-      | Next_state -> incr_state ()
-      | Prev_state -> decr_state ()
-      | Goto(page, state) -> 
-	cur_page := min (max 0 page) (!num_pages - 1);
-	num_states := Array.length !pages.(!cur_page);
-	cur_state := min (max 0 state) (!num_states - 1);
-	redraw_all ()
-      | Refresh -> ()
-      end;
-    let args =
-      (match format with None -> "" | Some n -> Printf.sprintf "&format=%s" n)
-    in
-    let page, state = !cur_page, !cur_state in
 
-    let format = match format with
-	None -> "png"
-      | Some f -> f
-    in 
- 
-    let imgname,w,h = try
-      Hashtbl.find image_cache (page,state,width,height,format)
-    with
-      Not_found ->
-	let (raw,w,h) = get_pix 1 width height No_SAA page state in
-	let image = Rgba32.create w h in 
-	for j=0 to h-1 do	  
-	  for i=0 to w-1 do
-	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
-	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
-	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
-	    let c = { Color.color = { Color.r = r; Color.g = g; Color.b = b };
-		      Color.alpha = a } in
-	(*	    Printf.printf "%d %d %d %d\n" r g b a;*)
-	    Rgba32.set image i (h-1-j) c
-	  done
-	done;
-	let fname = Filename.temp_file ~temp_dir:tmp_image_dir "page" ("."^format) in
-	
-	Printf.fprintf stderr "Wrinting %s\n" fname;
-	Images.save fname None [] (Images.Rgba32 image);
-	Hashtbl.add image_cache (page,state,width,height,format) (fname,w,h);
-	fname,w,h
-    in
-
-    incr page_counter;
-    let id = !page_counter in
-
-    out "
-<script language=\"JavaScript\">";
-    out Hammer.hammer;
-    out "
-function httpSend(theUrl) {
-    var xmlHttp = null;
-    xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( \"GET\", theUrl, false );
-    xmlHttp.send( null );}
-
-function show_end() {
-    httpSend(\"?show_end=\");}
-
-function add_width(name) {
-    el = document.getElementById(name);
-    if (el) el.href = el.href + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();
-}
-function init() {
-    add_width(\"next\");
-    add_width(\"next_state\");
-    add_width(\"prev\");
-    add_width(\"prev_state\");
-}
-window.onload=init;
-
-function show(event){
-	pos_x = event.clientX
-              -document.getElementById(\"slide\").offsetLeft
-              -document.getElementById(\"image\").offsetLeft;
-	pos_y = event.clientY
-              -document.getElementById(\"slide\").offsetTop
-              -document.getElementById(\"image\").offsetTop;
-	pos_w = document.getElementById(\"slide\").offsetWidth;
-        httpSend(\"?show_x=\"+pos_x.toString()+\"&show_y=\"+pos_y.toString()+\"&show_w=\"+pos_w.toString());}
-
-</script>";
-
-    let button s = Printf.sprintf "<div class=\"button\">%s</div>" s in
-    out ("<div id=\"leftbar\">");
-    out (button (Printf.sprintf "<a id=\"prev_state\" href=\"id%d?prev=0%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
-<rect width='60' height='60' style='fill:red'/>
-<polygon points='50,10 50,50 10,30' style='fill:white'/>
-</svg></a>" id args));
-    out (button (Printf.sprintf "<a id=\"prev\" href=\"id%d?prev=1%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
-<rect width='60' height='60' style='fill:red'/>
-<polygon points='50,10 50,50 20,30' style='fill:white'/>
-<polygon points='40,10 40,50 10,30' style='fill:white'/>
-</svg></a>" id args));
-    out ("</div>");
-
-    out ("<div id=\"rightbar\">");
-    out (button (Printf.sprintf "<a id=\"next_state\" href=\"id%d?next=0%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
-<rect width='60' height='60' style='fill:red'/>
-<polygon points='10,10 10,50 50,30' style='fill:white'/>
-</svg></a>" id args));
-    out (button (Printf.sprintf "<a id=\"next\" href=\"id%d?next=1%s\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
-<rect width='60' height='60' style='fill:red'/>
-<polygon points='10,10 10,50 40,30' style='fill:white'/>
-<polygon points='20,10 20,50 50,30' style='fill:white'/>
-</svg></a>" id args));
-    out (button (Printf.sprintf "<a id=\"next\" onClick=\"show_end()\"><svg xmlns='http://www.w3.org/2000/svg' version='1.1' width='60' height='60'>
-<rect width='60' height='60' style='fill:red'/>
-<polygon points='5,15 15,5 55,45 45,55' style='fill:white'/>
-<polygon points='5,45 15,55 55,15 45,5' style='fill:white'/>
-</svg></a>"));
-
-    out ("</div>");
-(*
-     out "<span style=\"position:fixed;top:60px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM IN</a></span>";
-
-     out "<span style=\"position:fixed;top:100px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM OUT</a></span>";
-
-     out "<span style=\"position:fixed;top:140px;left:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">ZOOM END</a></span>";
-
-     out "<span style=\"position:fixed;top:60px;right:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\"><a href=\"id%d?zoom_in\">SHOW</a></span>";
-
-     out "<span style=\"position:fixed;top:100px;right:20px;text-align:center;background-color:#FBFBFF;border:1px solid #000000;color:#666666;z-index: 1\" onClick=\"show_end()q\">SHOW END</span>";
-*)
-     out ("<div id=\"image\">");
-     out (Printf.sprintf "<IMG id=\"slide\" src=\"?file=%s\" width=%d height=%d align=\"center\"onClick=\"show(event)\">" imgname w h);
-     out ("</div>");
-Printf.fprintf stderr "<script language=\"JavaScript\">
-var el = document.getElementById('image');
-Hammer(el).on(\"swipeleft\", function() {
-  window.location.href = \"id%d?next=0%s\";
-  return false;
-}); 
-Hammer(el).on(\"swiperight\", function() {
-  window.location.href = \"id%d?prev=0%s\";
-  return false;
-}); 
-</script>"id args id args;
-     out (Printf.sprintf "<script language=\"JavaScript\">
-var el = document.getElementById('image');
-Hammer(el).on(\"swipeleft\", function() {
-  window.location.href = \"id%d?next=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();;
-  return false;
-}); 
-Hammer(el).on(\"swiperight\", function() {
-  window.location.href = \"id%d?prev=0%s\" + \"&width=\" + (document.getElementById(\"image\").offsetWidth - 40).toString();;
-  return false;
-}); 
-</script>" id args id args);
-
- in
-
-  let handle_request = 
-    match !prefs.server_port with
-      None -> fun () -> ()
-    | Some p ->   GLNet.make_content := make_content;
-      handle_one p
-  in
-
-  let rec idle_cb sock ~value:()=
-    Glut.timerFunc ~ms:30 ~cb:(idle_cb sock) ~value:();
+  let rec idle_cb handle_request ~value:()=
+    Glut.timerFunc ~ms:30 ~cb:(idle_cb handle_request) ~value:();
     if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
     show_links ();
     handle_request ();
-(*    (match sock with Some sock -> handle_one_net sock | None -> ());*)
-    
     begin
     try
       let i,_,_ = Unix.select [Unix.stdin] [] [] 0.0 in
@@ -1428,12 +1250,13 @@ Hammer(el).on(\"swiperight\", function() {
 	[] -> ()
       | i ->
 	let cmd = input_line stdin in
+	Printf.fprintf stderr "cmd recived: %S\n%!" cmd;
 	if cmd <> "" then begin
 	  try
 	    match cmd.[0] with
 	      'r' -> to_revert := true; Glut.postRedisplay ()
 	    | 'e' -> (
-	      match Str.split (Str.regexp_string " ") cmd with
+	      match split ' ' cmd with
 		[_;l;c] ->
 		  goto_link (int_of_string l) (int_of_string c)
 	      | _ -> raise Exit)
@@ -1500,21 +1323,20 @@ Hammer(el).on(\"swiperight\", function() {
 	  )
 	  (find_link win x y)
     | b, Glut.UP -> 
-      Printf.fprintf stderr "Unbound button: %s\n" (Glut.string_of_button b);
-      flush stderr
+      Printf.fprintf stderr "Unbound button: %s\n%!" (Glut.string_of_button b)
     | _ -> ()
   in
   let main () =
     if win.(0) = None then begin
       Sys.catch_break true;
-      Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
+      Printf.fprintf stderr "Start patoline GL.\n%!";
       Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
       let argv = Glut.init Sys.argv in
       let usage = Printf.sprintf "Usage : %s [options] file.bin" Sys.argv.(0) in
       let current = ref 0 in
       while !current < Array.length Sys.argv && Sys.argv.(!current) <> "--" do incr current done;
       if !prefs.batch_cmd = None then Arg.parse_argv ~current argv spec ignore usage;
-      Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
+      Printf.fprintf stderr "Glut init finished, creating window\n%!";
       let w =  Glut.createWindow "Patoline OpenGL Driver" in
       init_gl ();
       win.(0) <- Some (init_win w);
@@ -1527,7 +1349,8 @@ Hammer(el).on(\"swiperight\", function() {
 	(Glut.get Glut.WINDOW_NUM_SAMPLES);
       flush stderr;
     end;
-    let socket=(*reconnect*) () in
+
+    let socket=reconnect () in
     match !prefs.batch_cmd with
       None ->
 	Array.iter (function None -> () | Some win ->
@@ -1537,7 +1360,7 @@ Hammer(el).on(\"swiperight\", function() {
 	  Glut.specialFunc special_cb;
 	  Glut.reshapeFunc reshape_cb;
 	  Glut.mouseFunc mouse_cb;
-	  Glut.timerFunc ~ms:30 ~cb:(idle_cb socket) ~value:();
+	  Glut.timerFunc ~ms:30 ~cb:(idle_cb (handle_request socket)) ~value:();
 	  Glut.motionFunc motion_cb;
 	  Glut.passiveMotionFunc passive_motion_cb)
 	  win;

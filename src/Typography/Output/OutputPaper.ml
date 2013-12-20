@@ -38,7 +38,7 @@ end
 
 let drivers = (Hashtbl.create 37 : (string, (module Driver)) Hashtbl.t)
 
-let dependencies = ["Image",["DriverGL"]]
+let dependencies = ["Image",["DriverGL"];"Patonet",["SVG"]]
 let rec load_driver name =
   Printf.fprintf stderr "Loading driver %S.\n%!" name;
   let _ =

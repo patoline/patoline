@@ -201,3 +201,6 @@ val open_in_bin_cached:string->in_channel
 val copy_file:string->string->unit
 val btimer:float StrMap.t ref
 val timer:string->(unit->'a)->'a
+
+(* a lighter split that calling str *)
+val split : char -> string -> string list

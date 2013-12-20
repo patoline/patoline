@@ -145,7 +145,6 @@ let make_page cgi id cmd fmt width height format=
   out "</body>";
   out "</html>"
 
-
 let generate_page (cgi : cgi_activation) =
   (* Check which page is to be displayed. This is contained in the CGI
    * argument "page".
@@ -244,10 +243,14 @@ let process (cgi : cgi_activation) =
      * Note that the header is not sent immediately to the browser because
      * we have enabled HTML buffering.
      *)
+    Printf.fprintf stderr "processing request\n%!";
+
     cgi # set_header 
       ~cache:`No_cache 
       ~content_type:"text/html; charset=\"iso-8859-1\""
       ();
+
+    Printf.fprintf stderr "processing request 2\n%!";
 
     generate_page cgi;
 
@@ -318,7 +321,6 @@ let handle_one port=
   Unix.setsockopt master_sock Unix.SO_REUSEADDR true;
   Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
   Unix.listen master_sock 100;
-  Printf.fprintf stderr "Listening on port %d\n" port;
-  flush stderr;
+  Printf.fprintf stderr "Listening on port %d\n%!" port;
   (fun () -> service master_sock process)
 

@@ -28,9 +28,9 @@ DISTCLEAN += $(DEPENDS_$(d))
 install: install-patonetml
 .PHONY: install-patonetml
 install-patonetml: install-plugins
-	install -m 644 $(DRIVERS_DIR)/Net/patonet.ml $(DESTDIR)/$(INSTALL_PLUGINS_DIR)
 	install -m 644 $(DRIVERS_DIR)/Net/patonet.c $(DESTDIR)/$(INSTALL_PLUGINS_DIR)
 
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
+

@@ -1,0 +1,5 @@
+package "Patonet" (
+archive(byte)="Patonet.cma"
+archive(native)="Patonet.cmxa"
+requires="Typography"
+)

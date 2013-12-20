@@ -91,7 +91,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     ()
   in
 
-  DriverGL.prefs := { !DriverGL.prefs with DriverGL.batch_cmd = Some generate; DriverGL.server_port = None };
+  DriverGL.prefs := { !DriverGL.prefs with DriverGL.batch_cmd = Some generate; server = None };
 
   DriverGL.output ~structure pages fileName
 

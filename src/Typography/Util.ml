@@ -311,3 +311,15 @@ let timer name f=
   btimer:= StrMap.add name (t+.t1-.t0) !btimer;
   StrMap.iter (fun k a->Printf.fprintf stderr "time %S: %g\n" k a) !btimer;flush stderr;
   x
+
+(* a lighter split that calling str *)
+let split char str =
+  let len = String.length str in
+  let rec fn beg pos acc =
+    if pos >= len then List.rev (String.sub str beg (pos - beg)::acc)
+    else if str.[pos] = char then fn (pos+1) (pos+1)  (String.sub str beg (pos - beg)::acc)
+    else fn beg (pos+1) acc
+  in
+  fn 0 0 []
+
+

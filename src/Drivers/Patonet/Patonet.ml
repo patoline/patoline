@@ -18,6 +18,11 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+open Typography
+open OutputCommon
+open OutputPaper
+open Util
+
 let base64_decode s=
   let buf=Buffer.create (String.length s) in
   let value i=
@@ -98,9 +103,11 @@ let base64_encode s0=
 
 type presentation={ mutable cur_slide:int; mutable cur_state:int; mutable starttime:float;mutable touched:bool }
 let present={cur_slide=0;cur_state=0;starttime=0.;touched=false}
+
 let mut=Mutex.create ()
 
-module AddrMap=Map.Make(struct type t=Unix.sockaddr let compare=compare end)
+module AddrMap=Map.Make(struct type 
+  t=Unix.sockaddr let compare=compare end)
 let addrs:Unix.file_descr AddrMap.t ref=ref AddrMap.empty
 
 exception Send_error
@@ -160,6 +167,8 @@ let resp_slave fd data=
     )
   done
 
+let driverGL_sock = ref None
+
 let pushto a=
   try
     let time=Unix.time() in
@@ -168,6 +177,11 @@ let pushto a=
       e->(Printf.fprintf stderr "not pushed (%s)\n" (Printexc.to_string e);flush stderr)
 
 let push ()=
+  (match !driverGL_sock with 
+    None -> ()
+  | Some (sock,fo,fi) ->
+    Printf.fprintf stderr "Sending to driverGL: %d %d\n%!" present.cur_slide present.cur_state;
+    Printf.fprintf fo "%d %d\n%!" present.cur_slide present.cur_state);
   addrs:=AddrMap.fold (fun k a m->
     try
       Printf.fprintf stderr "pushing\n";flush stderr;
@@ -178,8 +192,139 @@ let push ()=
         e->(Printf.fprintf stderr "not pushed (%s)\n" (Printexc.to_string e);flush stderr;m)
   ) !addrs AddrMap.empty
 
+let master_page=ref ""
+
+let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
+let css_reg=Str.regexp "/style\\.css"
+let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
+let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
+let driverGL=Str.regexp "/driverGL_\\([0-9]*\\)_\\([0-9]*\\)"
+let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
 
+let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
+let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
+
+exception Websocket
+
+let spec=
+  [("--master",Arg.Set_string master_page,"Set the master page")]
+
+
+let websocket is_master w=
+  Printf.sprintf "var websocket;var was_error;
+function websocket_msg(evt){
+     var st=JSON.parse(evt.data);
+     if(st.slide==current_slide || !first_displayed) {
+         loadSlide(st.slide,st.state);
+     } else if(st.slide<current_slide) {
+         loadSlide(st.slide,st.state,function(a,b){slide(%g,a,b)})
+     } else {
+         loadSlide(st.slide,st.state,function(a,b){slide(%g,a,b)})
+     }
+     current_slide=st.slide;
+     current_state=st.state;
+     setTimeout(tout,to);
+};
+function websocket_err(evt){
+was_error=true;
+websocket.close();
+};
+function websocket_close(evt){if(!was_error){/*setTimeout(start_socket,1000)*/}};
+function start_socket(){
+   was_error=false;
+   if(websocket){websocket.close();delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror};
+   if(location.protocol==\"https:\")
+      websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"%s);
+   else
+      websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"%s);
+   websocket.onclose=websocket_close;
+   websocket.onmessage = websocket_msg;
+   websocket.onerror = websocket_err;
+};
+window.onbeforeunload = function() {
+    websocket.onclose = function () {}; // disable onclose handler first
+    websocket.close()
+};
+"
+    (-.w)
+    w
+    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
+    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
+
+
+let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
+    pages fileName=
+
+  Printf.fprintf stderr "coucou0\n%!";
+
+  let prefix=try Filename.chop_extension fileName with _->fileName in
+
+  let slides,cache,imgs=SVG.buffered_output' ~structure:structure pages prefix in
+  let slave,css=SVG.basic_html
+    ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
+    ~onload:"start_socket();"
+    ~keyboard:""
+    cache structure pages prefix
+  in
+
+  Printf.fprintf stderr "coucou1\n%!";
+
+  let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
+if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
+if(current_state<=0 || e.keyCode==38) {
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1),false);
+  xhttp.send();
+} else {
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state-1),false);
+  xhttp.send();
+}
+} //left
+if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
+if(current_state>=states[current_slide]-1 || e.keyCode==40) {
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+(current_slide+1)+\"_0\",false);
+  xhttp.send();
+} else {
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state+1),false);
+  xhttp.send();
+}
+} else //right
+if(e.keyCode==82){ //r
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state),false);
+  xhttp.send();
+}
+}
+function gotoSlide(n){
+  xhttp=new XMLHttpRequest();
+  xhttp.open(\"GET\",\"pousse_\"+n+\"_0\",false);
+  xhttp.send();
+  setTimeout(tout,to);
+}"
+  in
+
+
+  let master,_=SVG.basic_html
+    ~script:(websocket true (fst (pages.(0)).(0).pageFormat))
+    ~onload:"to=0;start_socket();"
+    ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
+    ~keyboard:master_keyboard
+    cache structure pages prefix
+  in
+
+  Printf.fprintf stderr "coucou2\n%!";
+
+  let slides = Array.map (Array.map Rbuffer.contents) slides in
+  let master = Rbuffer.contents master in
+  let slave = Rbuffer.contents slave in
+  let css = Rbuffer.contents css in
+
+  Printf.fprintf stderr "coucou3\n%!";
 
 let serve_svg i j ouc=
   if i<Array.length slides && j<Array.length slides.(i) then (
@@ -201,7 +346,7 @@ let serve_svg i j ouc=
     output_string ouc "\r\n";
     flush ouc
   )
-
+in
 
 let generate_error ouc=
   let data =
@@ -214,11 +359,18 @@ let generate_error ouc=
   output_string ouc data;
   Printf.fprintf ouc "\r\n";
   flush ouc
+in
+
+let fonts = StrMap.fold (fun key font acc ->
+  Printf.fprintf stderr "Font: %S\n%!" key;
+  let key = List.hd (List.rev (Util.split '/' key)) in
+  StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
+in
 
 let serve_font font ouc=
   try
-    let _,data=List.find (fun (a,_)->String.sub a (String.length a-String.length font) (String.length font)=font) fonts
-    in
+    Printf.fprintf stderr "Search Font: %S\n%!" font;
+    let data= StrMap.find font fonts in
     Printf.fprintf ouc "HTTP/1.1 200 OK\r\n";
     Printf.fprintf ouc "Content-type: font/opentype\r\n";
     Printf.fprintf ouc "Content-Length: %d\r\n" (String.length data);
@@ -228,7 +380,8 @@ let serve_font font ouc=
     flush ouc
   with
       Not_found->generate_error ouc
-;;
+in
+
 
 let serve_css ouc=
   output_string ouc "HTTP/1.1 200 OK\r\n";
@@ -238,27 +391,15 @@ let serve_css ouc=
   output_string ouc css;
   output_string ouc "\r\n";
   flush ouc
+in
 
-let master_page=ref ""
-
-let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
-let css=Str.regexp "/style\\.css"
-let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
-let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
-let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
-
-
-let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
-let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
-
-exception Websocket
 let serve addr fd=
   Unix.clear_nonblock fd;
   let inc=Unix.in_channel_of_descr fd in
   let ouc=Unix.out_channel_of_descr fd in
   let rec process_req get hdr reste=
     let x=input_line inc in
-    Printf.fprintf stderr "%S\n" x;flush stderr;
+    Printf.fprintf stderr "serve: %S %S\n" get x;flush stderr;
     if x.[0]='\r' then (
       if Str.string_match svg get 0 then (
         let i=int_of_string (Str.matched_group 1 get) in
@@ -285,9 +426,9 @@ let serve addr fd=
       ) else if get="/" then (
         output_string ouc "HTTP/1.1 200 OK\r\n";
         output_string ouc "Content-type: text/html\r\n";
-        Printf.fprintf ouc "Content-Length: %d\r\n" (String.length page);
+        Printf.fprintf ouc "Content-Length: %d\r\n" (String.length slave (* FIXME !!!*));
         output_string ouc "\r\n";
-        output_string ouc page;
+        output_string ouc slave; (* FIXME !!!*)
         output_string ouc "\r\n";
         flush ouc;
         process_req "" [] reste
@@ -318,8 +459,31 @@ let serve addr fd=
         flush ouc;
         process_req "" [] reste
 
-      ) else if get="/telecommande" then (
-
+      ) else if Str.string_match driverGL get 0 then (
+          Printf.fprintf stderr "driverGL\n";flush stderr;
+	driverGL_sock := Some(fd,ouc,inc);
+        let asked_slide=int_of_string (Str.matched_group 1 get) in
+        let slide=max 0 asked_slide in
+        let slide=min slide (Array.length slides-1) in
+        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+        let state=if asked_slide>slide then
+            (Array.length slides.(slide)-1)
+          else
+            min state (Array.length slides.(slide)-1)
+        in
+        Mutex.lock mut;
+        (try
+           if present.cur_slide<>slide || present.cur_state<>state then (
+             present.cur_slide<-slide;
+             present.cur_state<-state;
+             present.touched<-true;
+             if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
+               present.starttime<-Unix.time();
+           );
+           push ();
+         with _->());
+        Mutex.unlock mut;
+        process_req "" [] reste
       ) else if Str.string_match tire get 0 || get="/tire" then (
         try
           Printf.fprintf stderr "pushing\n";flush stderr;
@@ -370,7 +534,7 @@ let serve addr fd=
               Printf.fprintf stderr "pushing\n";flush stderr;
               pushto fd;
               addrs:=AddrMap.add addr fd !addrs;
-              Mutex.unlock mut;
+	      Mutex.unlock mut;
               raise Websocket
             )
           | Websocket->raise Websocket
@@ -407,7 +571,7 @@ let serve addr fd=
 
         process_req "" [] reste
 
-      ) else if Str.string_match css get 0 then (
+      ) else if Str.string_match css_reg get 0 then (
         serve_css ouc;
         process_req "" [] reste
 
@@ -418,7 +582,7 @@ let serve addr fd=
       ) else (
 
         try
-          let img=List.assoc (String.sub get 1 (String.length get-1)) imgs in
+          let img=StrMap.find (String.sub get 1 (String.length get-1)) imgs in
           let ext=
             if Filename.check_suffix ".png" get then "image/png" else
               if Filename.check_suffix ".jpeg" get then "image/jpeg" else
@@ -463,11 +627,8 @@ let serve addr fd=
       Websocket-> (Printf.fprintf stderr "\n";flush stderr)
     | e->(Unix.close fd;
           Printf.fprintf stderr "erreur : \"%s\"\n" (Printexc.to_string e);flush stderr)
+in
 
-let spec=
-  [("-master",Arg.Set_string master_page,"Set the master page")]
-
-let _=
   Arg.parse spec (fun x->()) "";
   if !master_page="" then (
     Random.self_init ();
@@ -482,15 +643,17 @@ let _=
       let port=8080 in
       Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
       Unix.listen master_sock 100;
-      Printf.printf "Listening on port %d -- master: \"%s\"\n" port !master_page;
+      Printf.fprintf stderr "Listening on port %d -- master: \"%s\"\n%!" port !master_page;
       flush stdout;
       let accept_connections ()=
         while true do
             (* try *)
           let conn_sock, addr = Unix.accept master_sock in
-          Unix.set_nonblock conn_sock;
-          let _=Thread.create (fun ()->serve addr conn_sock) () in
-          ()
+	  Unix.set_nonblock conn_sock;
+          let _=Thread.create (fun ()->
+	    serve addr conn_sock;
+	    Printf.fprintf stderr "Connection served\n%!";) () in
+	  ()
         (* with *)
 	(*     Unix.Unix_error(Unix.EINTR,_,_) -> () *)
         done
@@ -499,3 +662,9 @@ let _=
     with
         e->(Printf.fprintf stderr "main loop: %s\n" (Printexc.to_string e);flush stderr)
   done
+
+let output = output_from_prime output'
+
+let _ = 
+  Hashtbl.add drivers "Patonet" (module struct let output = output let output' = output' end:Driver)
+
