@@ -105,7 +105,12 @@ open DefaultFormat.MathsFormat
 let _ = Distance.read_cache \"%s\"
 module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
-module Patoline_Output=Patoline_Format.Output(%s);;
+let driver = match !Config.driver with
+  None -> %S
+| Some s -> s
+let _ = OutputPaper.load_driver driver
+module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)
+module Patoline_Output=Patoline_Format.Output(Driver);;
 let _=D.defaultEnv:=Patoline_Format.defaultEnv;;
 open %s;;
 open Patoline_Format;;\n

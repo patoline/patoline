@@ -18,6 +18,10 @@ $(d)/Net.cmxa: $(d)/Net.cmx
 	$(ECHO) "[LINK]   $<"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
 
+$(d)/Net.cmxs: $(d)/Net.cmx
+	$(ECHO) "[LINK]   $<"
+	$(Q)$(OCAMLOPT) -shared -o $@ $<
+
 DISTCLEAN += $(DEPENDS_$(d))
 
 # Installing patonet.ml as a plugin

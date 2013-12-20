@@ -30,17 +30,13 @@ $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/GLNet.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] -> $@"
-	$(Q)$(OCAMLMKLIB) -package str -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -o $(basename $@) $^
+
+$(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/GLNet.cmx $(d)/hammer.cmx $(d)/DriverGL.cmx
+	$(ECHO) "[OPT] -> $@"
+	$(Q)$(OCAMLOPT) -package lablgl,lablgl.glut,netstring,netsys,netcgi2,nethttpd,cryptokit  -shared -linkpkg -o $@ $^
 
 DISTCLEAN += $(DEPENDS_$(d))
-
-# When this file is included, this means that we can build DriverGL and
-# <src/Patoline/patolineGL>. We tell make to build and install the latter.
-#
-# These prerequisites are defined in <src/Patoline/Rules.mk>.
-
-all: $(PATOLINE_DIR)/patolineGL
-install: install-patoline-gl
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

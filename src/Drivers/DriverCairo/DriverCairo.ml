@@ -125,3 +125,6 @@ let makeImage filename cont env=
         }
   in
   drawing [Typography.OutputCommon.Image i]
+
+let _ = 
+  Hashtbl.add drivers "DriverCairo" (module struct let output = output let output' = output' end:Driver)

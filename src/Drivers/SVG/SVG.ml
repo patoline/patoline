@@ -731,3 +731,6 @@ let images ?cache ?(css="style.css") prefix env conts=
   match cache with
       Some a->images_of_boxes ~cache:a ~css:css prefix env conts_box
     | None->images_of_boxes ~css:css prefix env conts_box
+
+let _ = 
+  Hashtbl.add drivers "SVG" (module struct let output = output let output' = output' end:Driver)

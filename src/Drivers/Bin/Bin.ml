@@ -52,3 +52,5 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
 
+let _ = 
+  Hashtbl.add drivers "Bin" (module struct let output = output let output' = output' end:Driver)

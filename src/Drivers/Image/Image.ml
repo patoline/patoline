@@ -63,12 +63,18 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Unix.mkdir dirname 0o777;
 
   let generate get_pixes =
-    Printf.fprintf stderr "generate\n";flush stderr;
+    Printf.fprintf stderr "generate %d %d\n%!"
+      (match !width with None -> -1 | Some w -> w)
+      (match !height with None -> -1 | Some w -> w);
     let pages = get_pixes 1 !width !height !saa in
     Printf.printf "Images generated\n";
     Array.iteri (fun page states -> Array.iteri (
       fun state (raw,w,h) ->
-	let image = Rgba32.create w h in 
+	Printf.fprintf stderr "generated %d %d %d %d\n%!" w h (Raw.length raw) (Raw.byte_size raw);
+	let _ = Array.create (w*h*100) 0 in
+	Printf.fprintf stderr "Tbl\n%!";
+	let image = Rgba32.create w h in
+	Printf.fprintf stderr "Rgb\n%!";
 	for j=0 to h-1 do	  
           for i=0 to w-1 do
 	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
@@ -76,12 +82,12 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
 	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
 	    let c = { color = { r = r; g = g; b = b }; alpha = a } in
-(*	    Printf.printf "%d %d %d %d\n" r g b a;*)
+	    Printf.fprintf stderr "(%d,%d) %d %d %d %d\n%!" i j r g b a;
 	    Rgba32.set image i (h-1-j) c
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page state) in
-	Printf.fprintf stderr "Wrinting %s\n" fname;
+	Printf.fprintf stderr "Writing %s\n" fname;
 	Images.save fname None [] (Images.Rgba32 image)) states) pages;
     ()
   in
@@ -91,3 +97,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   DriverGL.output ~structure pages fileName
 
 let output' = output_to_prime output
+
+let _ =
+  Hashtbl.add drivers "Image" (module struct let output = output let output' = output' end:Driver)

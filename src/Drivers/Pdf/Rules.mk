@@ -18,5 +18,10 @@ $(d)/Pdf.cmxa: %.cmxa: %.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
 
+$(d)/Pdf.cmxs: %.cmxs: %.cmx
+	$(ECHO) "[OPT]    $< -> $@"
+	echo $(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -linkpkg -shared -o $@ $<
+	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES)  -linkpkg -shared -o $@ $<
+
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -16,5 +16,9 @@ $(d)/SVG.cmxa: $(SVG_DRIVER_CMX)
 	$(ECHO) "[LINK]   $<"
 	$(Q)$(OCAMLOPT) -a $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) -o $@ $^
 
+$(d)/SVG.cmxs: $(SVG_DRIVER_CMX)
+	$(ECHO) "[LINK]   $<"
+	$(Q)$(OCAMLOPT) -shared $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) -o $@ $^
+
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

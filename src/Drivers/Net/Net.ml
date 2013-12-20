@@ -217,3 +217,5 @@ function gotoSlide(n){
   Printf.fprintf o "# 1 \"patonet.c\"\n%s\n" patonet;
   close_out o;
   Printf.fprintf stdout "\nServer %s.c written. Compile with:\n\tgcc $(pkg-config --libs gnutls) -lgcrypt -o %s_server %s_server.c\n\n" prefix prefix prefix
+
+let output = output_from_prime output'

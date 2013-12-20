@@ -170,6 +170,7 @@ let add_format opts =
         ("Typography." ^ opts.format) :: opts.packages
      else opts.packages)
   in
+(* No need to compile with the driver ...
   let packages=
     (if (not (List.mem ("Typography." ^ opts.driver) opts.packages)) &&
         (try
@@ -180,6 +181,7 @@ let add_format opts =
         ("Typography." ^ opts.driver) :: packages
      else packages)
   in
+*)
   { opts with packages = packages }
 
 
@@ -692,13 +694,13 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                   !ocamlopt]@
                     (List.concat (List.map getopts !extras))@
                     comp_opts@
-                    (let pack=String.concat "," (List.rev (opts.packages)) in
+                    (let pack=String.concat "," ("dynlink"::List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@
                     [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                      "-o";h]@
                     objs@
-                    ["-impl";source])
+                    ["-linkall";"-impl";source])
               in
               Mutex.unlock mut;
 

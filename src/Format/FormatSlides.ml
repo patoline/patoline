@@ -491,12 +491,11 @@ module Format=functor (D:Document.DocumentStructure)->(
       type output={
         format:float*float;
       }
-      let max_iterations=ref 3
+      let max_iterations=ref !Config.atmost
       let outputParams=
         {
           format=slidew,slideh;
         }
-
 
       let output out_params structure defaultEnv file=
         let rec resolve i env_resolved=
@@ -980,7 +979,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               done;
               env,Array.of_list (List.rev !states)
             in
-            let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
+
             let slide_num=ref 0 in
 
 
@@ -1019,8 +1018,26 @@ module Format=functor (D:Document.DocumentStructure)->(
 		   page= -1;struct_x=0.;struct_y=0.;substructures=[||]}
                 )
 
-                  in
-            M.output' ~structure:(make_structure structure) (Array.map snd pages) file
+            in
+
+	    let pages, structure =
+	      match !Config.input_bin with
+		None ->
+		  let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
+		  let structure = make_structure structure in
+		  pages, structure
+	      | Some fileName ->
+		let ch = open_in fileName in
+		let b = input_value ch in
+		if not b then failwith "Wrong bin for this format";
+		let structure = Marshal.from_channel ch in
+		let pages = Marshal.from_channel ch in
+		close_in ch;
+		Printf.fprintf stderr "File %s read.\n" fileName;
+		pages, structure
+	    in
+
+            M.output' ~structure (Array.map snd pages) file
           )
         in
         resolve 0 defaultEnv

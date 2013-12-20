@@ -103,3 +103,8 @@ body{line-height:0;}\n" structure.name;
   done;
   Printf.fprintf stderr "File %s written.\n" fileName;
   flush stderr
+
+let output' = output_to_prime output
+
+let _ = 
+  Hashtbl.add drivers "Html" (module struct let output = output let output' = output' end:Driver)

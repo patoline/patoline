@@ -27,9 +27,9 @@ $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $(lastword $^) -> $@"
 	$(Q)$(OCAMLDEP) -pp pa_glr -package glr,camlp4 $< > $@
 
-$(d)/patolineGL: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
-	$(ECHO) "[OPT]    $(lastword $^) -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(RBUFFER_DIR) $^
+#$(d)/patolineGL: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
+#	$(ECHO) "[OPT]    $(lastword $^) -> $@"
+#	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(RBUFFER_DIR) $^
 
 PATOLINE_DIR := $(d)
 
@@ -62,7 +62,7 @@ $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(INCLUDES) -I $(PATOLINE_DIR) -I $(RBUFFER_DIR) -o $@ -c $<
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/patolineGL $(d)/patolineGL2 $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts
 DISTCLEAN += $(d)/*.depends
 
 # Installing
@@ -72,14 +72,6 @@ install-patoline-bin: install-bindir $(d)/patoline $(PA_PATOLINE)
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 install-patoline-lib: install-typography $(d)/Build.cmi $(d)/Util.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
-
-# We do not yet add this target to the global install, since patolineGL
-# can only be installed when DriverGL can be built. The file
-# <src/Drivers/DriverGL/Rules.mk> takes care of building and installing
-# patolineGL.
-.PHONY: install-patoline-gl
-install-patoline-gl: install-patoline-bin $(d)/patolineGL
-	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 .PHONY: install-pa_patoline
 install-pa_patoline: install-patoline-bin $(d)/pa_patoline

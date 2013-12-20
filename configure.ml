@@ -29,6 +29,7 @@ let grammars_dirs=ref []
 let plugins_dir=ref ""
 let plugins_dirs=ref []
 let hyphen_dirs=ref []
+let driver_dir=ref ""
 let lang=ref "FR"
 let ban_comic_sans=ref false
 let pdf_type3_only=ref false
@@ -304,6 +305,7 @@ let _=
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
     ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
     ("--plugins-dir", Set_string plugins_dir, "  directory for the plugins ($PREFIX/lib/patoline/plugins/ by default)");
+    ("--driver-dir", Set_string hyphen_dir, "  directory for the drivers ($PREFIX/lib/Typography/ by default)");
     ("--hyphen-dir", Set_string hyphen_dir, "  directory for the hyphenation dictionnaries ($PREFIX/share/patoline/hyphen/ by default)");
     ("--extra-fonts-dir", String (fun pref->fonts_dirs:=pref:: !fonts_dirs), "  additional directories patoline should scan for fonts");
     ("--extra-grammars-dir", String (fun pref->grammars_dirs:=pref:: !grammars_dirs), "  additional directories patoline should scan for grammars");
@@ -324,6 +326,7 @@ let _=
   if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
   if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "lib/patoline/plugins";
+  if !driver_dir="" then driver_dir:=Filename.concat !prefix "lib/ocaml/Typography";
 
   fonts_dirs:= !fonts_dir ::(!fonts_dirs);
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
@@ -496,7 +499,7 @@ let _=
       (* Ecriture de la configuration *)
       let conf=if Sys.os_type= "Win32" then (
         let path_var="PATOLINE_PATH" in
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=(try Filename.concat (Sys.getenv \"APPDATA\") \"patoline\" with Not_found->\"\")\n"
+        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\nlet path=try Sys.getenv %S with _->\"\"\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=[%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=(try Filename.concat (Sys.getenv \"APPDATA\") \"patoline\" with Not_found->\"\")\n"
           path_var
           !fonts_dir
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !fonts_dirs)))
@@ -505,10 +508,11 @@ let _=
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !grammars_dirs)))
           !hyphen_dir
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !hyphen_dirs)))
+	  !driver_dir
           !plugins_dir
           (String.concat ";" ("\".\""::List.map (Printf.sprintf "Filename.concat path %S") (List.rev !plugins_dirs)))
       ) else (
-        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=Filename.concat (try Sys.getenv \"XDG_DATA_HOME\" with Not_found -> Filename.concat (Sys.getenv \"HOME\") \".local/share\" ) \"patoline\"\n"
+        Printf.sprintf "(** Configuration locale (chemins de recherche des fichiers) *)\n(** Chemin des polices de caractères *)\nlet fontsdir=%S\nlet fontspath=ref [%s]\n(** Chemin de l'éxécutable Patoline *)\nlet bindir=%S\n(** Chemin des grammaires *)\nlet grammarsdir=%S\nlet grammarspath=ref [%s]\n(** Chemin des dictionnaires de césures *)\nlet hyphendir=%S\nlet hyphenpath=ref [%s]\n(** Chemin des plugins de compilation *)\nlet driverdir=ref [%S]\nlet pluginsdir=%S\nlet pluginspath=ref [%s]\nlet local_path:string list ref=ref []\nlet user_dir=Filename.concat (try Sys.getenv \"XDG_DATA_HOME\" with Not_found -> Filename.concat (Sys.getenv \"HOME\") \".local/share\" ) \"patoline\"\n"
           !fonts_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !fonts_dirs)))
           !bin_dir
@@ -516,12 +520,15 @@ let _=
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !grammars_dirs)))
           !hyphen_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !hyphen_dirs)))
+	  !driver_dir
           !plugins_dir
           (String.concat ";" (List.map (Printf.sprintf "%S") (List.rev !plugins_dirs)))
       )
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config "(** Module used to query font paths *)\nlet findFont=%s.findFont fontspath\n" (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
+	Printf.fprintf config "let atmost = ref 3\nlet input_bin = ref (None : string option) (* if Some str, the file a a .bin that should be read instead of producing the structure/pages *)\nlet driver=ref (None:string option)";
+
         Printf.fprintf config' "%s" conf;
 
         close_out config;

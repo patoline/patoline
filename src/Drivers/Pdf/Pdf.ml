@@ -1016,3 +1016,6 @@ xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n";
     flush stderr
 
 let output' = output_to_prime output
+
+let _ = 
+  Hashtbl.add drivers "Pdf" (module struct let output = output let output' = output' end:Driver)

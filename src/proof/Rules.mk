@@ -15,7 +15,7 @@ $(d)/%.depends: INCLUDES:=-I $(d) $(PROOF_INCLUDES)
 
 $(d)/proof: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
 	$(ECHO) "[LINK]   -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg $(PACK) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
+	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
 
 $(d)/proof.cmx: %.cmx: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"

@@ -31,7 +31,7 @@ static int
 generate_dh_params (void)
 {
   unsigned int bits =
-    gnutls_sec_param_to_pk_bits (GNUTLS_PK_DH, GNUTLS_SEC_PARAM_LEGACY);
+    gnutls_sec_param_to_pk_bits (GNUTLS_PK_DH, 192);
 
   /* Generate Diffie-Hellman parameters - for use with DHE
    * kx algorithms. When short bit length is used, it might
