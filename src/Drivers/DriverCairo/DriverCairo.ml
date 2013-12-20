@@ -92,7 +92,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | []->()
     in
     draw_page (drawing_sort x.pageContents);
-    Cairo_png.surface_write_to_file surface (Printf.sprintf "%s%d.png" f i);
+    let fname = Printf.sprintf "%s_%d.png" f i in
+    Printf.fprintf stderr "Writing %s\n" fname;
+    Cairo_png.surface_write_to_file surface fname;
   ) pages
 
 (* open Typography.Fonts *)

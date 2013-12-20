@@ -172,16 +172,14 @@
   "view the binary output corresponding to the current buffer"
   (interactive)
   (let ((file-name 
-	 (concat (file-name-sans-extension (buffer-file-name (current-buffer))) ".bin"))
-	(buffer-name 
 	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
-      (let ((cmd (split-string-and-unquote (format "patolineGL \"%s\"" file-name))))
+      (let ((cmd (split-string-and-unquote (format "\"%s.tmx\" --in \"%s.bin\" --driver DriverGL" file-name file-name))))
 	(save-excursion
-	  (select-patoline-view-buffer buffer-name)
+	  (select-patoline-view-buffer file-name)
 	  (cd (file-name-directory file-name))
 	  (setq patoline-view-process
 		(get-buffer-process
-		 (apply 'make-comint (concat "patoline-view-" buffer-name) (car cmd) nil (cdr cmd))))))))
+		 (apply 'make-comint (concat "patoline-view-" file-name) (car cmd) nil (cdr cmd))))))))
 
 (defun patoline-goto (file line col)
   (find-file file)

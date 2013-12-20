@@ -40,6 +40,7 @@ type prefs = {
   rotation : float option;
   batch_cmd : 'a.((int -> int option -> int option -> subpixel_anti_aliasing -> (([< `ubyte] as 'a) Raw.t * int * int) array array) -> unit) option;
   server_port : int option;
+  second_window : bool;
 }
 
 let prefs = ref {
@@ -50,7 +51,46 @@ let prefs = ref {
   rotation = None;
   batch_cmd = None;
   server_port = None;
+  second_window = false;
 }
+
+
+let spec = Arg.([
+  "--second", Unit (fun () -> Printf.fprintf stderr "kiki\n"; prefs := { !prefs with second_window = true })
+         , "Open a second window";
+  "--rgb", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = RGB_SAA })
+         , "Set subpixel anti aliasing for RGB lcd screens (default)";
+  "--bgr", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = BGR_SAA })
+         , "Set subpixel anti aliasing for BRG lcd screens";
+  "--vrgb", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = VRGB_SAA })
+         , "Set subpixel anti aliasing for VRGB lcd screens";
+  "--vbgr", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = VBGR_SAA })
+         , "Set subpixel anti aliasing for VBRG lcd screens";
+  "--no-saa", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = No_SAA })
+         , "Do not use subpixel anti aliasing";
+  "--graisse", Float (fun x -> prefs := { !prefs with graisse = x })
+         , (Printf.sprintf "Fixes the thickness of rendering (default: %.2f pixel), warning : -1 and 1 are big" !prefs.graisse);
+  "--tesselation-factor", Float (fun x -> prefs := { !prefs with tesselation_factor = x })
+         , (Printf.sprintf "Fixes the tessalation precision in pixels (default: %.2f)" !prefs.graisse);
+  "--fit-width", Unit (fun () -> prefs := { !prefs with init_zoom = FitWidth })
+         , "Start with fitting the page width in the window";
+  "--fit-height", Unit (fun () -> prefs := { !prefs with init_zoom = FitHeight })
+         , "Start with fitting the page height in the window";
+  "--fit-page", Unit (fun () -> prefs := { !prefs with init_zoom = FitHeight })
+         , "Start with fitting the page in the window";
+  "--rotation", Float (fun x -> prefs := { !prefs with rotation = Some x })
+         , "Animate page change with a rotation of the given duration (in second)";
+  "--port-cmd", Int (fun p -> prefs := { !prefs with server_port = Some p })
+         , "Give the port to control patolineGL (default no server)" ;
+  "--no-cmd", Int (fun p -> prefs := { !prefs with server_port = None })
+         , "Do not allow remote control for patolineGL";
+  "--", Unit (fun () -> Printf.fprintf stderr "kiki\n"), ""
+])
+
+
+
+
+
 
 let cur_page = ref 0
 
@@ -66,11 +106,6 @@ let init_gl () =
 
 let filename x=""
 
-
-
-let zoom = ref 1.0
-let dx = ref 0.0
-let dy = ref 0.0
 let subpixel saa =
   match saa with
     No_SAA -> None
@@ -88,25 +123,12 @@ let flou_y () =
   match !prefs.subpixel_anti_aliasing with
     VRGB_SAA | VBGR_SAA -> 1.0 /. 2.0 | _ -> 1.0 /. 2.0
 
-
-let glyphCache = Hashtbl.create 1001
-#ifdef CAMLIMAGES
-let imageCache = Hashtbl.create 1001
-#endif
-
 let rec last = function
 [] -> assert false
   | [x] -> x
   | _::l -> last l
     
 type page_mode = Single | Double
-
-let pixel_width = ref 0.0
-let pixel_height = ref 0.0
-let cx = ref 0.0
-let cy = ref 0.0
-let rx = ref 0.0
-let ry = ref 0.0
 
 (* Handle window reshape events *)
 
@@ -208,9 +230,41 @@ let add_normals closed ratio beziers =
 	List.split (ln @ [last])
     ) beziers)   
 
-let image_cache = Hashtbl.create 101
 
-let win = ref None
+type win_info = {
+  winId : int;
+  glyphCache : (Typography.Fonts.glyph * float * Gl.rgb, GlList.t) Hashtbl.t;
+  imageCache : (image,  GlTex.texture_id) Hashtbl.t;
+  mutable zoom : float;
+  mutable dx : float;
+  mutable dy : float;
+  mutable cx : float;
+  mutable cy : float;
+  mutable rx : float;
+  mutable ry : float;
+  mutable pixel_width : float;
+  mutable pixel_height : float;
+}
+
+let win = [|None; None|]
+
+let init_win w =
+  {
+    winId = w;
+    glyphCache = Hashtbl.create 1001;
+    imageCache = Hashtbl.create 101;
+    zoom = 1.0;
+    dx = 0.0;
+    dy = 0.0;
+    pixel_width = 0.0;
+    pixel_height = 0.0;
+    cx = 0.0;
+    cy = 0.0;
+    rx = 0.0;
+    ry = 0.0;
+  }
+
+let image_cache = Hashtbl.create 101 (* for http *)
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -249,7 +303,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let _ = read_links () in
 
-  let inverse_coord x y =
+  let inverse_coord win x y =
     let w = float (Glut.get Glut.WINDOW_WIDTH)
     and h = float (Glut.get Glut.WINDOW_HEIGHT) in
     let x = float x and y = h -. float y in
@@ -257,17 +311,28 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let page = !cur_page in
     let state = !cur_state in
     let pw,ph = !pages.(page).(state).pageFormat in
-    let cx = pw /. 2.0 +. !dx in
-    let cy = ph /. 2.0 +. !dy in
-    let dx = (ph *. ratio) *. !zoom in
-    let dy = ph *. !zoom in
+    let cx = pw /. 2.0 +. win.dx in
+    let cy = ph /. 2.0 +. win.dy in
+    let dx = (ph *. ratio) *. win.zoom in
+    let dy = ph *. win.zoom in
     let x = (x -. w /. 2.0) /. w *. dx +. cx in
     let y = (y -. h /. 2.0) /. h *. dy +. cy in
     (x, y)
   in
 
-  let find_link x y =
-    let x,y = inverse_coord x y in
+  let get_win () =
+    let winId = Glut.getWindow () in
+    match win.(0) with
+      None -> assert false
+    | Some w -> if w.winId = winId then w else
+	match win.(1) with
+	  None -> assert false
+	| Some w -> if w.winId = winId then w else
+	    assert false
+  in
+
+  let find_link win x y =
+    let x,y = inverse_coord win x y in
     List.filter (fun l ->
       l.link_x0 <= x && x <= l.link_x1 &&
       l.link_y0 <= y && y <= l.link_y1) !links.(!cur_page).(!cur_state)
@@ -275,15 +340,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let init_zoom = ref true in
 
-  let set_proj xb yb =
+  let set_proj win xb yb =
     let w = Glut.get Glut.WINDOW_WIDTH in
     let h = Glut.get Glut.WINDOW_HEIGHT in
     GlDraw.viewport 0 0 w h;
     GlMat.mode `projection;
     GlMat.load_identity ();
     GlMat.translate3 (xb /. float w , yb /. float h , 0.0);
-    GlMat.frustum ((!cx -. !rx)/.1000., (!cx +. !rx)/.1000.) 
-      ((!cy -. !ry)/.1000., (!cy +. !ry)/.1000.) (1., 10000.);
+    GlMat.frustum ((win.cx -. win.rx)/.1000., (win.cx +. win.rx)/.1000.) 
+      ((win.cy -. win.ry)/.1000., (win.cy +. win.ry)/.1000.) (1., 10000.);
     GlMat.translate3 (0., 0., -1000.);
     GlMat.mode `modelview;
     GlMat.load_identity ()
@@ -294,20 +359,21 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let page = !cur_page in
     let state = !cur_state in
     let pw,ph = !pages.(page).(state).pageFormat in
+    let win = get_win () in
     if !init_zoom then begin
-      init_zoom := false; dx := 0.0; dy := 0.0;
+      init_zoom := false; win.dx <- 0.0; win.dy <- 0.0;
       if (pw /. ph < ratio && !prefs.init_zoom != FitWidth) || !prefs.init_zoom = FitHeight  then
-	zoom := 1.0
+	win.zoom <- 1.0
       else
-	zoom := (pw /. ph) /. ratio
+	win.zoom <- (pw /. ph) /. ratio
     end;
 
-    cx := pw /. 2.0 +. !dx;
-    cy := ph /. 2.0 +. !dy;
-    rx := (ph *. ratio) /. 2.0 *. !zoom;
-    ry := ph /. 2.0 *. !zoom;
-    pixel_width := !rx *. 2.0 /. (float_of_int w);
-    pixel_height := !ry *. 2.0 /. (float_of_int h);
+    win.cx <- pw /. 2.0 +. win.dx;
+    win.cy <- ph /. 2.0 +. win.dy;
+    win.rx <- (ph *. ratio) /. 2.0 *. win.zoom;
+    win.ry <- ph /. 2.0 *. win.zoom;
+    win.pixel_width <- win.rx *. 2.0 /. (float_of_int w);
+    win.pixel_height <- win.ry *. 2.0 /. (float_of_int h);
   in
 
   let is_edit uri =
@@ -359,8 +425,21 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     end
   in
 
+  let clearCache () =
+    Array.iter (function None -> () | Some win ->
+      Glut.setWindow win.winId; 
+      Hashtbl.iter (fun _ l ->  GlList.delete l)	
+	win.glyphCache;
+      Hashtbl.clear win.glyphCache;
+#ifdef CAMLIMAGES
+      Hashtbl.iter (fun _ t -> GlTex.delete_texture t) win.imageCache;
+      Hashtbl.clear win.imageCache;
+#endif
+    ) win
+  in
+
   let revert () = 
-    let ch = open_in fileName in
+    let ch = open_in (fileName^".bin") in
     to_revert := false;
     let prime = input_value ch in
     structure := input_value ch;
@@ -377,12 +456,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     if !cur_state > !num_states - 1 then (cur_state := !num_states - 1);
     read_links ();
     (* Not clearing the caches slows down a lot after redraw *)
-#ifdef CAMLIMAGES
-    Hashtbl.iter (fun _ t -> GlTex.delete_texture t) imageCache;
-    Hashtbl.clear imageCache;
-#endif
-    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
-    Hashtbl.clear glyphCache;
+    clearCache ();
     Gc.compact ();
   in
 
@@ -405,7 +479,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   
   let other_items = Hashtbl.create 13 in
 
-    let draw_page page state =
+    let draw_page pixel_width page state =
+      let win = get_win () in
       let graisse =  !prefs.graisse in
       let flou_x = flou_x () and flou_y = flou_y () in
       let graisse_x' = flou_x -. graisse and graisse_y' = flou_y -. graisse in
@@ -466,6 +541,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       in
 
       let rec fn = function
+        | Video _ -> failwith "GL Driver does not support video"
 	| Animation(_,_,ft,fr) ->
 	  do_animation := true;
 	  let t = !cur_time -. !start_page_time in
@@ -477,7 +553,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         let y = g.glyph_y  in
 	let size = g.glyph_size in
 	let s = size   /. 1000. in
-	let ratio = !pixel_width /. s (* *. 10.0 *) in
+	let ratio = pixel_width /. s (* *. 10.0 *) in
 (*
 	Printf.fprintf stderr "x = %f, y = %f, s = %f, pw = %f, ph = %f, ratio = %f\n"
 	  x y s !pixel_width !pixel_height ratio ;
@@ -485,7 +561,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  
 	let draw_glyph color = 
 	  try
-	    GlList.call (Hashtbl.find glyphCache (g.glyph, ratio, color))
+	    GlList.call (Hashtbl.find win.glyphCache (g.glyph, ratio, color))
 	  with
 	    Not_found ->
 	      let beziers =  Fonts.outlines g.glyph in
@@ -493,8 +569,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      let l = GlList.create `compile_and_execute in
 	      fill_bezier color lines normals;
 	      GlList.ends ();
-
-	      Hashtbl.add glyphCache (g.glyph, ratio, color) l
+	      Hashtbl.add win.glyphCache (g.glyph, ratio, color) l
 
 	in
 (*	
@@ -519,7 +594,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     | Path(param, beziers) ->
       let beziers = List.map Array.to_list beziers in
-      let lines, normals = add_normals param.close !pixel_width beziers in
+      let lines, normals = add_normals param.close pixel_width beziers in
 
       (match param.fillColor with
 	None -> ()
@@ -531,10 +606,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	None -> ()
       | Some RGB{red = r; green=g; blue=b;} ->
 	let lw = param.lineWidth /. 2.0 in
-	let graisse_x' = lw -. (!pixel_width *. (flou_x -. graisse)) 
-	  and graisse_y' = lw -. (!pixel_width *. (flou_y -. graisse)) in
-	let graisse_x =  lw +. (!pixel_width *. (3.0 *. flou_x +. graisse))
-	  and graisse_y = lw +. (!pixel_width *. (3.0 *. flou_y +. graisse)) in
+	let graisse_x' = lw -. (pixel_width *. (flou_x -. graisse)) 
+	  and graisse_y' = lw -. (pixel_width *. (flou_y -. graisse)) in
+	let graisse_x =  lw +. (pixel_width *. (3.0 *. flou_x +. graisse))
+	  and graisse_y = lw +. (pixel_width *. (3.0 *. flou_y +. graisse)) in
 
 	let color = (r,g,b) in
 	let lines, normals = 
@@ -605,7 +680,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 #ifdef CAMLIMAGES
       begin     
 	try 	  
-	  GlTex.bind_texture `texture_2d (Hashtbl.find imageCache i)
+	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
 	with Not_found ->
 	  let image = Images.load i.image_file [] in
 	  let w,h=Images.size image in
@@ -632,7 +707,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
 	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
 	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
-	  Hashtbl.add imageCache i tid
+	  Hashtbl.add win.imageCache i tid
       end;
 #endif
       GlDraw.color (1.0,1.0,1.0);
@@ -659,17 +734,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Gl.disable `blend;
       Hashtbl.iter (fun name f ->
 	try 
-	  f () ;
+	  f win ;
 	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
 
   
     in
 
 
-    let do_draw () =
+    let do_draw pixel_width () =
       match !mode with
 	Single ->
-	  draw_page !cur_page !cur_state
+	  draw_page pixel_width !cur_page !cur_state
       | Double -> () (*
 	let page = (!cur_page / 2) * 2 in
 	let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
@@ -712,19 +787,19 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlMat.ortho (0., pw) (0., ph) (-1., 1.);
 	GlMat.mode `modelview;
       in
-      draw_saa (fun () -> draw_page page state) set_proj saa;
+      draw_saa (fun () -> draw_page (pw /. float w) page state) set_proj saa;
     in
-
-  let draw_off_screen samples page state =
+(*
+  let draw_off_screen pixel_width samples page state =
     let pw,ph = !pages.(page).(state).pageFormat in
-    let w, h = int_of_float (pw /. !pixel_width),  int_of_float (ph /. !pixel_width) in
+    let w, h = int_of_float (pw /. pixel_width),  int_of_float (ph /. pixel_width) in
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) true in
     GlFBO.bind_fbo fbo;
     draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page state No_SAA;
     GlFBO.unbind_fbo fbo;
     fbo
   in
- 
+*)
   let get_pix samples w h saa page state =
     let pw,ph = !pages.(page).(state).pageFormat in
     let w, h = match w, h with
@@ -733,15 +808,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | None, Some h -> int_of_float (pw /. ph *. float h), h
       | Some w, Some h -> w, h
     in
-    let save_width = !pixel_width and save_height = !pixel_height in
-    pixel_width := pw /. float (samples * w);
-    pixel_height := ph /. float (samples * h);
+    Gl.raise_error "start";
     let fbo = GlFBO.create_fbo_texture (samples*w) (samples*h) false in
+    Gl.raise_error "create fbo";
     GlFBO.bind_fbo fbo;
+    Gl.raise_error "bind fbo";
     draw_fbo fbo (samples*w) (samples*h) (float samples*.pw) (float samples*.ph) page state saa;
+    Gl.raise_error "draw fbo";
     Gl.finish ();
-    pixel_width := save_width;
-    pixel_height := save_height;
+    Gl.raise_error "finish fbo";
 (*
     let raw = Raw.create `ubyte ~len:(4*samples*w*samples*h) in
     GlFBO.read_fbo fbo raw;
@@ -749,7 +824,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let raw = GlPix.to_raw (GlPix.read ~x:0 ~y:0 ~width:(samples*w) ~height:(samples*h)
 	~format:`rgba ~kind:`ubyte)
     in
+    Gl.raise_error "read fbo";
     GlFBO.unbind_fbo fbo;
+    Gl.raise_error "unbind fbo";
     (raw,w,h)
   in
 
@@ -758,7 +835,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Array.mapi (fun j _ ->
 	get_pix samples w h saa i j) states) !pages
   in
-
+(*
    let draw_texture fbo page state =
      let pw,ph = !pages.(page).(state).pageFormat in
      Gl.enable `texture_2d;
@@ -776,8 +853,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
      GlDraw.ends ();
      Gl.disable `texture_2d;
    in
-  
+*)  
   let draw_gl_scene () =
+    let win = get_win () in
     let time = Sys.time () in
     cur_time := Unix.gettimeofday ();
     saved_rectangle := None;
@@ -787,7 +865,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlClear.depth 1.0;
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
-    draw_saa do_draw set_proj !prefs.subpixel_anti_aliasing;
+    draw_saa (do_draw win.pixel_width) (set_proj win) !prefs.subpixel_anti_aliasing;
 
     let delta = Sys.time () -. time in
     fps := !fps +. delta;
@@ -799,7 +877,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     )
   in
 
-  let rotate_page (i,j) (i',j') =
+  let rotate_page (i,j) (i',j') = () (*
 (*    Gc.set {(Gc.get ()) with Gc.verbose = 255 };*)
     match !prefs.rotation, i <> i' with
       (None, _) | (Some _, false) -> ()
@@ -835,25 +913,27 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       done;
       
       Printf.printf "rotation: %f fps.\n" (float !nb /. duration);
-      flush stdout
+      flush stdout*)
   in
 
-    
-
-  let redraw () =
+  let redraw win =
+    Glut.setWindow ~win:win.winId;
     reshape_cb ~w:(Glut.get Glut.WINDOW_WIDTH)  ~h:(Glut.get Glut.WINDOW_HEIGHT);
     Glut.postRedisplay ()
   in
 
+  let redraw_all () =
+    Array.iter (function None -> () | Some win -> redraw win) win
+  in
 
-  let draw_show x y w () =
+  let draw_show x y w win =
     Gl.enable `lighting;
     Gl.enable `polygon_smooth;
     GlMisc.hint `polygon_smooth `nicest;
     Gl.enable `light0;
     let w = float w in
     let pw,ph = !pages.(!cur_page).(!cur_state).pageFormat in
-    let (xl,yl,zl,_) as posl = (!cx, !cy *. 1.9, 2.0 *. max !rx !ry, 1.0) in
+    let (xl,yl,zl,_) as posl = (win.cx, win.cy *. 1.9, 2.0 *. max win.rx win.ry, 1.0) in
     GlLight.light ~num:0 (`position posl);
     GlLight.light ~num:0 (`ambient(0.2,0.2,0.2,1.0));
     GlLight.light ~num:0 (`diffuse(0.5,0.5,0.5,1.0));
@@ -910,14 +990,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   let show (cgi:Netcgi.cgi_activation) _ = 
     try
-      let out = cgi # output # output_string in
+      let _out = cgi # output # output_string in
       let x = int_of_string ((cgi # argument "show_x") # value) in
       let y = int_of_string ((cgi # argument "show_y") # value) in
       let w = int_of_string ((cgi # argument "show_w") # value) in
       Printf.fprintf stderr "show %d %d %d\n" x y w;
       flush stderr;
       Hashtbl.replace  other_items "show" (draw_show x y w);
-      redraw()
+      redraw_all ()
     with
       Not_found | Failure _ -> 
 	Printf.fprintf stderr "Bad show request"; 
@@ -925,7 +1005,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   let show_end _ _ =
     Hashtbl.remove  other_items "show";
-    redraw ();
+    redraw_all ();
   in
 
   GLNet.cbs := ("show_x", show)::("show_end", show_end)::!cbs;
@@ -941,7 +1021,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       cur_state := 0;
       num_states := Array.length !pages.(!cur_page);
       rotate_page (i,j) (!cur_page, !cur_state);
-      redraw ())
+      redraw_all ())
   in
 
   let decr_page reset_state =
@@ -953,7 +1033,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       num_states := Array.length !pages.(!cur_page);
       cur_state := if reset_state then 0 else !num_states - 1;
       rotate_page (i,j) (!cur_page, !cur_state);
-      redraw ())
+      redraw_all ())
   in
 
   let incr_state () =
@@ -961,7 +1041,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     if !cur_state + 1 >= !num_states then incr_page () else (
       incr cur_state;
       rotate_page (i,j) (i, !cur_state);
-      redraw())
+      redraw_all ())
   in
 
   let decr_state () =
@@ -969,64 +1049,66 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     if !cur_state <= 0 then decr_page false else (
       decr cur_state;
       rotate_page (i,j) (i, !cur_state);
-      redraw())
+      redraw_all ())
   in
       
   let keyboard_cb ~key ~x ~y =
     if key >= 48 && key < 58 then
       dest := !dest * 10 + (key - 48)
     else begin
+      let win = get_win () in
       (match key with
       | 27 | 120 | 113 (* ESC *) -> raise Exit
       | 110 -> incr_page ()
       | 32 -> incr_state ()
       | 112 -> decr_page true
       | 8 -> decr_state ()
-      | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw ();
+      | 103 -> cur_page := min (max 0 !dest) (!num_pages - 1); cur_state := 0; redraw win;
       | 43 -> 
 	if Glut.getModifiers () = Glut.active_shift then (
-	  Hashtbl.clear glyphCache;
+	  Hashtbl.clear win.glyphCache;
 	  prefs := { !prefs with graisse = !prefs.graisse +. 0.05 };
 	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
-	  redraw ())
+	  redraw win)
 	else if Glut.getModifiers () = Glut.active_ctrl then (
-	  Hashtbl.clear glyphCache;
+	  Hashtbl.clear win.glyphCache;
 	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor *. 2.0 };
 	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
-	  redraw ())
+	  redraw win)
 	else
-	  zoom := !zoom /. 1.1; redraw ();
+	  win.zoom <- win.zoom /. 1.1; redraw win;
       | 45 ->
 	if Glut.getModifiers () = Glut.active_shift then (
-	  Hashtbl.clear glyphCache;
+	  Hashtbl.clear win.glyphCache;
 	  prefs := { !prefs with graisse = !prefs.graisse -. 0.05 };
 	  Printf.printf "Graisse : %f\n" !prefs.graisse; flush stdout;
-	  redraw ())
+	  redraw win)
 	else if Glut.getModifiers () = Glut.active_ctrl then (
-	  Hashtbl.clear glyphCache;
+	  Hashtbl.clear win.glyphCache;
 	  prefs := { !prefs with tesselation_factor = !prefs.tesselation_factor /. 2.0 };
 	  Printf.printf "Tesselation factor : %f\n" !prefs.tesselation_factor; flush stdout;
-	  redraw ())
+	  redraw win)
 	else
-	  zoom := !zoom *. 1.1; redraw ();
+	  win.zoom <- win.zoom *. 1.1; redraw win;
       | 119 ->
-	init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw ()
+	init_zoom:=true;prefs:={ !prefs with init_zoom = FitWidth }; redraw win
       | 104 ->
-	init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw ()
+	init_zoom:=true;prefs:={ !prefs with init_zoom = FitHeight }; redraw win
       | n -> Printf.fprintf stderr "Unbound key: %d (%s)\n" n (Char.escaped (Char.chr n)); flush stderr);
       dest := 0;
     end
   in
 
   let special_cb ~key ~x ~y =
+    let win = get_win () in
     match key with
-    | Glut.KEY_DOWN -> dy := !dy -. 5.; redraw ();
-    | Glut.KEY_UP -> dy := !dy +. 5.; redraw ();
-    | Glut.KEY_LEFT -> dx := !dx -. 5.; redraw ();
-    | Glut.KEY_RIGHT -> dx := !dx +. 5.; redraw ();
+    | Glut.KEY_DOWN -> win.dy <- win.dy -. 5.; redraw win;
+    | Glut.KEY_UP -> win.dy <- win.dy +. 5.; redraw win;
+    | Glut.KEY_LEFT -> win.dx <- win.dx -. 5.; redraw win;
+    | Glut.KEY_RIGHT -> win.dx <- win.dx +. 5.; redraw win;
     | Glut.KEY_PAGE_DOWN -> incr_page ()
     | Glut.KEY_PAGE_UP -> decr_page true
-    | Glut.KEY_HOME -> init_zoom:=true; redraw ()
+    | Glut.KEY_HOME -> init_zoom:=true; redraw win
     | b -> Printf.fprintf stderr "Unbound special: %s\n" (Glut.string_of_special b); flush stderr;
   in
 
@@ -1036,11 +1118,12 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     match !motion_ref with
       None -> ()
     | Some (x', y') ->
+      let win = get_win () in
       let mx = float (x - x') and my = float (y - y') in
       motion_ref := Some (x, y);
-      dx := !dx -. mx *. !pixel_width;
-      dy := !dy +. my *. !pixel_height;
-      redraw ();
+      win.dx <- win.dx -. mx *. win.pixel_width;
+      win.dy <- win.dy +. my *. win.pixel_height;
+      redraw win;
   in
 
   let previous_links = ref [] in
@@ -1084,7 +1167,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let passive_motion_cb ~x ~y =
-    let l = find_link x y in
+    let win = get_win () in
+    let l = find_link win x y in
     flush stderr;
     next_links := l
   in
@@ -1120,9 +1204,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Glut.swapBuffers ()
   in
 
-
-
-
+(*
   let reconnect ()=
     try
        let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
@@ -1161,7 +1243,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         )
       )
   in
-
+*)
   let page_counter = Random.self_init (); ref (Random.int 1000000000)
   in
 
@@ -1177,7 +1259,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	cur_page := min (max 0 page) (!num_pages - 1);
 	num_states := Array.length !pages.(!cur_page);
 	cur_state := min (max 0 state) (!num_states - 1);
-	redraw ()
+	redraw_all ()
       | Refresh -> ()
       end;
     let args =
@@ -1377,10 +1459,11 @@ Hammer(el).on(\"swiperight\", function() {
     
 
   let mouse_cb ~button ~state ~x ~y =
+    let win = get_win () in
     match button, state with
 
-    | Glut.OTHER_BUTTON(3), Glut.UP -> zoom := !zoom /. 1.1; redraw ();
-    | Glut.OTHER_BUTTON(4), Glut.UP -> zoom := !zoom *. 1.1; redraw ();
+    | Glut.OTHER_BUTTON(3), Glut.UP -> win.zoom <- win.zoom /. 1.1; redraw win;
+    | Glut.OTHER_BUTTON(4), Glut.UP -> win.zoom <- win.zoom *. 1.1; redraw win;
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       motion_ref := Some (x, y);
@@ -1403,7 +1486,7 @@ Hammer(el).on(\"swiperight\", function() {
 	      begin
 		cur_page := l.dest_page;
 		cur_state := 0;
-		redraw ();
+		redraw win;
 	      end
 	    else
 	      begin
@@ -1415,43 +1498,57 @@ Hammer(el).on(\"swiperight\", function() {
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
 	  )
-	  (find_link x y)
+	  (find_link win x y)
     | b, Glut.UP -> 
       Printf.fprintf stderr "Unbound button: %s\n" (Glut.string_of_button b);
       flush stderr
     | _ -> ()
   in
   let main () =
-    let win0 = match !win with
-      None ->
-	Sys.catch_break true;
-	Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
-	ignore (Glut.init Sys.argv);
-	Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
-	Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
-	let w =  Glut.createWindow "Patoline OpenGL Driver" in
-	win := Some w;
-	Printf.fprintf stderr "Window created, number of samples: %d\n" 
-	  (Glut.get Glut.WINDOW_NUM_SAMPLES);
-	flush stderr;
+    if win.(0) = None then begin
+      Sys.catch_break true;
+      Printf.fprintf stderr "Start patoline GL.\n"; flush stderr;    
+      Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
+      let argv = Glut.init Sys.argv in
+      let usage = Printf.sprintf "Usage : %s [options] file.bin" Sys.argv.(0) in
+      let current = ref 0 in
+      while !current < Array.length Sys.argv && Sys.argv.(!current) <> "--" do incr current done;
+      if !prefs.batch_cmd = None then Arg.parse_argv ~current argv spec ignore usage;
+      Printf.fprintf stderr "Glut init finished, creating window\n"; flush stderr;
+      let w =  Glut.createWindow "Patoline OpenGL Driver" in
+      init_gl ();
+      win.(0) <- Some (init_win w);
+      if !prefs.second_window then (
+	let w2 = Glut.createWindow "Patoline OpenGL Driver (second window)" in
 	init_gl ();
-	w
-    | Some w -> w
-    in
+	win.(1) <- Some (init_win w2)
+      );
+      Printf.fprintf stderr "Window created, number of samples: %d\n" 
+	(Glut.get Glut.WINDOW_NUM_SAMPLES);
+      flush stderr;
+    end;
     let socket=(*reconnect*) () in
     match !prefs.batch_cmd with
       None ->
-	Glut.displayFunc (display_cb socket);
-	Glut.keyboardFunc keyboard_cb;
-	Glut.specialFunc special_cb;
-	Glut.reshapeFunc reshape_cb;
-	Glut.mouseFunc mouse_cb;
-	Glut.timerFunc ~ms:30 ~cb:(idle_cb socket) ~value:();
-	Glut.motionFunc motion_cb;
-	Glut.passiveMotionFunc passive_motion_cb;
+	Array.iter (function None -> () | Some win ->
+	  Glut.setWindow ~win:win.winId;
+	  Glut.displayFunc (display_cb socket);
+	  Glut.keyboardFunc keyboard_cb;
+	  Glut.specialFunc special_cb;
+	  Glut.reshapeFunc reshape_cb;
+	  Glut.mouseFunc mouse_cb;
+	  Glut.timerFunc ~ms:30 ~cb:(idle_cb socket) ~value:();
+	  Glut.motionFunc motion_cb;
+	  Glut.passiveMotionFunc passive_motion_cb)
+	  win;
+
 	Sys.set_signal Sys.sighup
 	  (Sys.Signal_handle
-	     (fun s ->  to_revert := true; Glut.postRedisplay ()));
+	     (fun s -> 
+	       to_revert := true;
+ 	       Array.iter (function None -> () | Some win ->
+		 Glut.setWindow ~win:win.winId;
+		 Glut.postRedisplay ()) win));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
 	while true do 
@@ -1460,9 +1557,9 @@ Hammer(el).on(\"swiperight\", function() {
 	  with 
 	  | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
 	  | e ->
-	    Hashtbl.iter (fun _ l -> GlList.delete l) glyphCache;
+            clearCache ();
 	    Gl.flush ();
-	    Glut.destroyWindow win0; if e <> Exit then raise e);
+	    Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) win; if e <> Exit then raise e);
 	done; ()
     | Some f ->
       f get_pixes
