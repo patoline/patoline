@@ -1186,24 +1186,39 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Glut.swapBuffers ()) win
   in
 
-  let reconnect ()=
+  let reconnect sock_info =
+    assert (!sock_info = None);
     match !prefs.server with
-      None -> None
+      None -> ()
     | Some server ->
       try
-       Printf.fprintf stderr "coucou 1\n%!";
        let ls = Util.split ':' server in
        let server,port = match ls with
 	   [s] -> s, 8080
 	 | [s;p] -> s, int_of_string p
 	 | _ -> raise Exit
        in
-       Printf.fprintf stderr "coucou 2\n%!";
-       let sock=Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-       Printf.fprintf stderr "coucou 2.5\n%!";
-       Unix.connect sock
-	 (Unix.ADDR_INET 
-	    (Unix.inet_addr_of_string server,port));
+       let addrs = 
+	 Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
+       in
+       let rec fn = function
+         [] -> 
+	   Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
+	   raise Exit
+	 | addr::rest -> Unix.(
+	   let str_addr = match addr.ai_addr with
+	       ADDR_UNIX s -> s
+	     | ADDR_INET(a,p) -> string_of_inet_addr a
+	   in
+	   Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
+	     str_addr port;
+	   let sock= socket addr.ai_family addr.ai_socktype 0 in
+	   try 
+	     connect sock addr.ai_addr;
+	     sock
+	   with _ -> fn rest)
+       in
+       let sock = fn addrs in
        let fo=Unix.out_channel_of_descr sock in
        let fi=Unix.in_channel_of_descr sock in
        let last_changes = ref (-1, -1) in
@@ -1213,19 +1228,19 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	   Printf.fprintf fo "GET /driverGL_%d_%d HTTP/1.1\r\n\r\n%!"
 	     !cur_page !cur_state));
        !send_changes ();
-       Printf.fprintf stderr "Connected ?\n%!";
-       Some (sock,fo,fi)
-     with _ -> None;
+       Printf.fprintf stderr "Connected\n%!";
+       sock_info := Some (sock,fo,fi)
+     with _ -> ();
   in
 
-  let handle_request sock =
-    match sock with None -> (fun () -> ())
-    | Some (sock,fo,fi) -> fun () ->
-    let i,_,_ = Unix.select [sock] [] [] 0.0 in
-    match i with
-	[] -> ()
-      | i -> (
-	try 
+  let handle_request sock_info () =
+    match !sock_info with 
+      None -> if Random.int 100 = 0 then reconnect sock_info;
+    | Some (sock,fo,fi) ->
+      try 
+	let i,_,_ = Unix.select [sock] [] [] 0.0 in
+	match i with
+	| [_] -> (
 	  Printf.fprintf stderr "Handling connection\n%!";
 	  let line = input_line fi in
 	  Printf.fprintf stderr "recv: %S\n" line;
@@ -1233,8 +1248,12 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  match ls with
 	    [pg;st] ->
 	      goto (int_of_string pg) (int_of_string st)
-	  | _ -> ()
-	with _ -> ())
+	  | _ -> ())
+	| _ -> ()
+	with _ -> 
+	  (try Unix.close sock with _ -> ());
+	  sock_info := None;
+	  reconnect sock_info
   in
 
 
@@ -1350,7 +1369,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       flush stderr;
     end;
 
-    let socket=reconnect () in
+    let socket=ref None in
+    let _ = reconnect socket in
     match !prefs.batch_cmd with
       None ->
 	Array.iter (function None -> () | Some win ->

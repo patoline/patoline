@@ -630,30 +630,56 @@ in
   if !master_page.[0]<>'/' then master_page:="/"^(!master_page);
 
   while true do
-    try
-      let master_sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-      Unix.setsockopt master_sock Unix.SO_REUSEADDR true;
-      let port=8080 in
-      Unix.bind master_sock (Unix.ADDR_INET(Unix.inet_addr_any, port));
-      Unix.listen master_sock 100;
-      Printf.fprintf stderr "Listening on port %d -- master: \"%s\"\n%!" port !master_page;
-      flush stdout;
-      let accept_connections ()=
-        while true do
-            (* try *)
-          let conn_sock, addr = Unix.accept master_sock in
-	  Unix.set_nonblock conn_sock;
-          let _=Thread.create (fun ()->
-	    serve addr conn_sock;
-	    Printf.fprintf stderr "Connection served\n%!";) () in
-	  ()
-        (* with *)
-	(*     Unix.Unix_error(Unix.EINTR,_,_) -> () *)
-        done
+    try Unix.(
+      let port = 8080 in
+      let addrs = getaddrinfo "" (string_of_int port) [AI_SOCKTYPE SOCK_STREAM; AI_PASSIVE] in
+      let rec fn acc = function
+        [] -> if acc = [] then (
+	  Printf.fprintf Pervasives.stderr
+	    "Failed to listen on any address.\n%!";
+	  exit 1)
+	  else acc
+	| addr::rest ->
+	  try
+	    let str_addr = match addr.ai_addr with
+		ADDR_UNIX s -> s
+	      | ADDR_INET(a,p) -> string_of_inet_addr a
+	    in
+(*	    Printf.fprintf Pervasives.stderr
+	      "Trying to listen from %s:%d\n%!" str_addr port;*)
+	    let master_sock= socket addr.ai_family addr.ai_socktype 0 in
+	    setsockopt master_sock SO_REUSEADDR true;
+	    bind master_sock addr.ai_addr;
+	    listen master_sock 100;
+	    Printf.fprintf Pervasives.stderr
+	      "Listening on port %s:%d\n%!" str_addr port;
+	    fn (master_sock::acc) rest
+	  with _ -> fn acc rest
       in
-      accept_connections ()
+
+      let master_sockets = fn [] addrs in
+
+      Printf.fprintf Pervasives.stderr 
+	"Listening from %d addresses -- master: \"%s\"\n%!"
+	(List.length master_sockets) !master_page;
+
+      while true do
+	let socks,_,_=Unix.select master_sockets [] [] 60. in
+	List.iter (fun master_sock ->
+	  try
+            let conn_sock, addr = Unix.accept master_sock in
+	    Unix.set_nonblock conn_sock;
+            let _=Thread.create (fun ()->
+	      serve addr conn_sock;
+	      Printf.fprintf Pervasives.stderr
+		"Connection served\n%!";) () in
+	    ()
+          with _ -> ()) socks
+      done)
+
     with
-        e->(Printf.fprintf stderr "main loop: %s\n" (Printexc.to_string e);flush stderr)
+        e-> Printf.fprintf stderr "main loop: %s\n%!"
+	  (Printexc.to_string e)
   done
 
 let output = output_from_prime output'
