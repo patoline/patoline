@@ -194,6 +194,7 @@ let push ()=
   ) !addrs AddrMap.empty
 
 let master_page=ref ""
+let port_num = ref 8080
 
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
@@ -209,8 +210,8 @@ let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 exception Websocket
 
 let spec=
-  [("--master",Arg.Set_string master_page,"Set the master page")]
-
+  [("--master",Arg.Set_string master_page,"Set the master page");
+   ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
 
 let websocket is_master w=
   Printf.sprintf "var websocket;var was_error;
@@ -631,7 +632,7 @@ in
 
   while true do
     try Unix.(
-      let port = 8080 in
+      let port = !port_num in
       let addrs = getaddrinfo "" (string_of_int port) [AI_SOCKTYPE SOCK_STREAM; AI_PASSIVE] in
       let rec fn acc = function
         [] -> if acc = [] then (
