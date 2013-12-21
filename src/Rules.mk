@@ -23,13 +23,16 @@ $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
 
 $(d)/quail.el: $(d)/DefaultGrammar.ttml ;
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
-	$(PATOLINE_IN_SRC) --main-ml --driver Pdf -o $@ $<
+	$(ECHO) "[PAT]    $< -> $@"
+	$(Q)$(PATOLINE_IN_SRC) --main-ml --driver Pdf -o $@ $<
 
 $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
-	$(PATOLINE_IN_SRC) --ml --driver Pdf -o $@ $<
+	$(ECHO) "[PAT]    $< -> $@"
+	$(Q)$(PATOLINE_IN_SRC) --ml --driver Pdf -o $@ $<
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
-	$(OCAMLOPT) $(PACK) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q)$(OCAMLOPT) $(PACK) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
@@ -39,7 +42,8 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
 	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa dynlink.cmxa Typography.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -linkall -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
-	$< --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR) --extra-driver-dir $(DRIVERS_DIR)/Pdf --driver Pdf
+	$(ECHO) "[TMX]    $< -> $@"      
+	$(Q)$< --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR) --extra-driver-dir $(DRIVERS_DIR)/Pdf --driver Pdf
 
 CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.ttml \
 	 $(d)/DefaultGrammar.pdf $(d)/DefaultGrammar.tdx  $(d)/DefaultGrammar.tmx \

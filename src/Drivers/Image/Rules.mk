@@ -16,11 +16,11 @@ $(d)/Image.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_Image) $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Image.cmxa: $(PATOLINE_DIR)/Language.cmx $(d)/Image.cmx
-	$(ECHO) "[OMKLIB] -> $@"
+	$(ECHO) "[OMKLIB] ... -> $@"
 	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_Image) -o $(basename $@) $^
 
 $(d)/Image.cmxs: $(PATOLINE_DIR)/Language.cmx $(d)/Image.cmx
-	$(ECHO) "[OPT] -> $@"
+	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 DISTCLEAN += $(DEPENDS_$(d))

@@ -588,7 +588,6 @@ if(h0!=current_slide || h1!=current_state){
                              (round (w)) (round (h)));
 
   let style=make_defs "" cache in
-  let ststr=(Filename.concat prefix "style.css") in
 
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>";
   Rbuffer.add_string html structure.name;

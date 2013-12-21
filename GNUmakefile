@@ -148,8 +148,9 @@ EDITORS_DIR := editors
 all: configure testconfig 
 
 configure: configure.ml
-	- rm -f src/Makefile.config
-	ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
+	$(ECHO) "[OPT] -> $@"
+	$(Q)- rm -f src/Makefile.config
+	$(Q)ocamlfind ocamlopt -package unix,str,findlib unix.cmxa str.cmxa findlib.cmxa configure.ml -o configure
 
 testconfig:
 	@ if [ ! -f "src/Makefile.config" ]; then echo Run './configure [options]' before make; exit 1; fi
@@ -241,7 +242,7 @@ INCLUDES:=
 
 %.ml: %.mll
 	$(ECHO) "[LEX]    $< -> $@"
-	$(Q)$(OCAMLLEX) $<
+	$(Q)$(OCAMLLEX) -q $<
 
 # Common rules for Patoline
 %.pdf: %.txp $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx $(DRIVERS_DIR)/Pdf/Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa $(SRC_DIR)/DefaultGrammar.cmx

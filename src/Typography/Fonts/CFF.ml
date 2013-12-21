@@ -1183,7 +1183,7 @@ let subset(* _encoded *) font info cmap gls=
          http://www.adobe.com/devnet/opentype/archives/glyph.html
          pour savoir comment on les nomme. *)
       let str=String.make (2*Array.length gls-1) (char_of_int 0) in
-      let glbuf=Buffer.create 64 in
+      (*let glbuf=Buffer.create 64 in*)
       let altmap=ref StrMap.empty in
       let names=Array.make (Array.length gls) "" in
       let alternates=Array.make (Array.length gls) 0 in

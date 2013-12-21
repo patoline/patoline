@@ -349,7 +349,7 @@ let get_pos_as_tuple dyp a =
       a.pos_cnum)
 
 let layout_parskip dyp a b =
-    let c,l,m = layout_info dyp a b in l > 1 (* or (l = 1 && m > 1) *)
+    let c,l,m = layout_info dyp a b in l > 1 (* || (l = 1 && m > 1) *)
 
 let layout_space dyp a b =
     let c,l,m = layout_info dyp a b in c > 0
@@ -692,8 +692,8 @@ paragraph_aux:
   | paragraph_aux<p, b> parelt<e, b'>   
     { 
       let c,l,m = layout_info dyp 1 2 in
-      if p <> [] && (l > 1 (* or (l = 1 && m > 1) *)) then raise Giveup;
-      (e@(if c > 0 then GC::p else p)), b or b' }
+      if p <> [] && (l > 1 (* || (l = 1 && m > 1) *)) then raise Giveup;
+      (e@(if c > 0 then GC::p else p)), b || b' }
 
 paragraph: 
    paragraph_aux<p, _> { List.rev p }

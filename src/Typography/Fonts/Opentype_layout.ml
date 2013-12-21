@@ -229,7 +229,7 @@ let make_kerning pairs=
     (if k2.advance_height<>0. then 8 else 0)
   ) 0 pairs
   in
-  let nformat1=
+(*  let nformat1=
     (if valueformat1 land 1=0 then 0 else 1)+
     (if valueformat1 land 2=0 then 0 else 1)+
     (if valueformat1 land 4=0 then 0 else 1)+
@@ -239,7 +239,7 @@ let make_kerning pairs=
     (if valueformat2 land 2=0 then 0 else 1)+
     (if valueformat2 land 4=0 then 0 else 1)+
     (if valueformat2 land 8=0 then 0 else 1)
-  in
+  in*)
 
   (* Maintenant on écrit la subtable *)
   let ipairs=List.fold_left (fun m k->
@@ -277,7 +277,7 @@ let make_kerning pairs=
                            +Rbuffer.length pairs_buf);
     (* p est une liste de paires commençant par le même glyph *)
     bufInt2 pairs_buf (List.length p);
-    let off0=2+(nformat1+nformat2)*2*(List.length p) in
+    (*let off0=2+(nformat1+nformat2)*2*(List.length p) in*)
     List.iter (fun (_,b,x,y)->
       bufInt2 pairs_buf b;
       make_value pairs_buf valueformat1 x;

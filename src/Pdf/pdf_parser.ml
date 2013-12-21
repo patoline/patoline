@@ -214,7 +214,7 @@ let parse file=
   let parse_page cont x0 y0=match cont with
       Indirect (i,_)->(
         let drawing_order=ref 0 in
-        let obj=
+        let _obj=
           let off=IntMap.find i xref in
           let off'=forward_find_string sf "obj" off in
           seek_in f (off'+4);
@@ -222,7 +222,6 @@ let parse file=
           pos:=lexbuf.Lexing.lex_abs_pos;
           Obj_parser.main Obj_lexer.token lexbuf
         in
-        let pos0= !pos in
         let dict=match resolve_ref i IntSet.empty with
             Dict x->x
           | _->failwith "stream dictionary not a dictionary"
@@ -236,7 +235,7 @@ let parse file=
         let str=forward_find_string sf "stream" pos0 in
         let pos_stream=skip_while is_space sf (str+7) in
 
-        let strend=forward_find_string sf "endstream" pos_stream in
+(*        let strend=forward_find_string sf "endstream" pos_stream in*)
 
         let pos_stream,stream=
           let fil=try StrMap.find "/Filter" dict with Not_found->Array[] in

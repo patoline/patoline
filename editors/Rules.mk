@@ -11,15 +11,18 @@ all: $(d)/emacs/patoline-input.el
 -include $(d)/emacs/SubstKey.ml.depends
 
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.ml
-	$(OCAMLOPT) -package str,camomile $< -linkpkg -o $@
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(OCAMLOPT) -package str,camomile $< -linkpkg -o $@
 
 # $(d)/emacs/SubSuper.el is built by src/Patoline/Rules.mk
 $(d)/emacs/SubSuper2.el: $(d)/emacs/SubSuper.el $(SRC_DIR)/quail.el $(d)/emacs/SubstKey
-	$(lastword $^) $(SRC_DIR)/quail.el $< > $@
+	$(ECHO) "[SUBST]  ... -> $@"
+	$(Q)$(lastword $^) $(SRC_DIR)/quail.el $< > $@
 
 $(d)/emacs/patoline-input.el: $(d)/emacs/patoline-input.pre $(SRC_DIR)/quail.el \
   $(d)/emacs/SubSuper2.el $(d)/emacs/patoline-input.post
-	cat $^ > $@
+	$(ECHO) "[CAT]    ... -> $@"
+	$(Q)cat $^ > $@
 
 CLEAN += $(d)/emacs/SubSuper2.el $(d)/emacs/SubstKey $(d)/emacs/patoline-input.el $(d)/emacs/*.cmo $(d)/emacs/*.cmi $(d)/emacs/*.o $(d)/emacs/*.cmx
 DISTCLEAN += $(d)/emacs/*.depends

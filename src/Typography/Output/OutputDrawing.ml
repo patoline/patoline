@@ -26,6 +26,7 @@ open Break
 open Util
 
 type page={mutable pageContents:raw list}
+
 let output paragraphs figures env (opt_pages:frame)=
 
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in

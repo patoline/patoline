@@ -911,7 +911,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Array.iter (function None -> () | Some win -> redraw win) win
   in
 
-  let draw_show x y w win =
+(* FIXME: reimplement showing on the slide ... *)
+  let _draw_show x y w win =
     Gl.enable `lighting;
     Gl.enable `polygon_smooth;
     GlMisc.hint `polygon_smooth `nicest;
@@ -1161,8 +1162,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      match ls with
 		c::l::_ ->
 		  (try let l = int_of_string l and c = int_of_string c in
-		      if (l0 > l or (l = l0 && c0 >= c)) && 
-			(l0 - l < bl or (l0 - l = bl && c0 - c < bc)) then
+		      if (l0 > l || (l = l0 && c0 >= c)) && 
+			(l0 - l < bl || (l0 - l = bl && c0 - c < bc)) then
 			l0 - l, c0 - c, Some(link, i-1, j)
 		      else
 			acc
@@ -1217,7 +1218,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
      with _ -> None;
   in
 
-  let s=String.create 1000 in
   let handle_request sock =
     match sock with None -> (fun () -> ())
     | Some (sock,fo,fi) -> fun () ->

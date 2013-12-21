@@ -25,13 +25,16 @@ PDF_PARSER_SOURCES := $(d)/pdfutil.ml $(d)/obj_lexer.ml $(d)/obj_parser.ml $(d)/
 
 $(d)/pdf_parser.a: $(d)/pdf_parser.cmxa ;
 $(d)/pdf_parser.cmxa: $(PDF_PARSER_SOURCES:.ml=.cmx) $(TYPOGRAPHY_DIR)/Typography.cmxa
-	$(OCAMLOPT) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cmxa,$^)
+	$(ECHO) "[BYT]    ... -> $@"
+	$(Q)$(OCAMLOPT) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cmxa,$^)
 
 $(d)/pdf_parser.cma: $(PDF_PARSER_SOURCES:.ml=.cmo) $(TYPOGRAPHY_DIR)/Typography.cma
-	$(OCAMLC) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cma,$^)
+	$(ECHO) "[OPT]    ... -> $@"
+	$(Q)$(OCAMLC) -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.cma,$^)
 
 $(d)/pdf_parser.p.cmxa: $(PDF_PARSER_SOURCES:.ml=.p.cmx) $(TYPOGRAPHY_DIR)/Typography.p.cmxa
-	$(OCAMLOPT) -p -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.p.cmxa,$^)
+	$(ECHO) "[OPT.p]  ... -> $@"
+	$(Q)$(OCAMLOPT) -p -a -o $@ $(filter-out $(TYPOGRAPHY_DIR)/Typography.p.cmxa,$^)
 
 # Installing
 install: install-pdf

@@ -22,6 +22,7 @@ open Typography
 open OutputCommon
 open OutputPaper
 open Util
+open HtmlFonts
 
 let base64_decode s=
   let buf=Buffer.create (String.length s) in
@@ -257,8 +258,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  Printf.fprintf stderr "coucou0\n%!";
-
   let prefix=try Filename.chop_extension fileName with _->fileName in
 
   let slides,cache,imgs=SVG.buffered_output' ~structure:structure pages prefix in
@@ -268,8 +267,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     ~keyboard:""
     cache structure pages prefix
   in
-
-  Printf.fprintf stderr "coucou1\n%!";
 
   let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
@@ -317,14 +314,10 @@ function gotoSlide(n){
     cache structure pages prefix
   in
 
-  Printf.fprintf stderr "coucou2\n%!";
-
   let slides = Array.map (Array.map Rbuffer.contents) slides in
   let master = Rbuffer.contents master in
   let slave = Rbuffer.contents slave in
   let css = Rbuffer.contents css in
-
-  Printf.fprintf stderr "coucou3\n%!";
 
 let serve_svg i j ouc=
   if i<Array.length slides && j<Array.length slides.(i) then (
@@ -362,7 +355,7 @@ let generate_error ouc=
 in
 
 let fonts = StrMap.fold (fun key font acc ->
-  Printf.fprintf stderr "Font: %S\n%!" key;
+(*  Printf.fprintf stderr "Font: %S\n%!" key;*)
   let key = List.hd (List.rev (Util.split '/' key)) in
   StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
 in

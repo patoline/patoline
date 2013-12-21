@@ -31,10 +31,10 @@ TYPOGRAPHY_CMI:=$(TYPOGRAPHY_MLI:.mli=.cmi)
 $(TYPOGRAPHY_CMX): %.cmx: %.cmo
 
 $(d)/Typography.cmo: $(TYPOGRAPHY_CMO)
-	$(ECHO) "[PACK]   -> $@"
+	$(ECHO) "[PACK]   ... -> $@"
 	$(Q)$(OCAMLC) -pack -o $@ $^
 $(d)/Typography.cmx: $(TYPOGRAPHY_CMX)
-	$(ECHO) "[PACK]   -> $@"
+	$(ECHO) "[PACK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -pack -o $@ $^
 $(d)/Typography.cma: $(d)/Typography.cmo
 	$(ECHO) "[OCAMLC] $< -> $@"
@@ -62,7 +62,8 @@ $(d)/Break.cmx: $(d)/Break.ml
 
 $(d)/Fonts/Sfnt/Unicode_ranges.ml: PACK:=-package str
 $(d)/Fonts/Sfnt/Unicode_ranges.ml: $(d)/Fonts/Sfnt/make_unicode_ranges
-	$< $(TYPOGRAPHY_DIR)/Fonts/Sfnt/unicode
+	$(ECHO) "[UNIC]   $< -> $@"
+	$(Q)$< $(TYPOGRAPHY_DIR)/Fonts/Sfnt/unicode
 $(d)/Fonts/Opentype.cmo: $(d)/Fonts/Sfnt/Unicode_ranges.cmo
 $(d)/Fonts/Opentype.cmx: $(d)/Fonts/Sfnt/Unicode_ranges.cmx
 

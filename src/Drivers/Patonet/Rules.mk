@@ -11,16 +11,16 @@ DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
 
 $(d)/Patonet.cmx: $(d)/Patonet.ml
-	$(ECHO) "[OPT]   $<"
-	$(OCAMLOPT) -thread $(OFLAGS) $(PACK),cryptokit $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(OCAMLOPT) -thread $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Patonet.cmxa: $(d)/Patonet.cmx
-	$(ECHO) "[OPT]   $<"
-	$(Q)$(OCAMLOPT) -thread $(OFLAGS) -a -o $@ $<
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(OCAMLOPT) -thread -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) $(OFLAGS) -a -o $@ $<
 
 $(d)/Patonet.cmxs: $(d)/Patonet.cmx
-	$(ECHO) "[OPT]   $<"
-	$(Q)$(OCAMLOPT) -thread $(OFLAGS) -shared -o $@ $<
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(OCAMLOPT) -thread $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $<
 
 DISTCLEAN += $(DEPENDS_$(d))
 

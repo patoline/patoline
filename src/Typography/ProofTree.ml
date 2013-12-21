@@ -268,7 +268,6 @@ module ProofTree = struct
           let hsp = heightx *. param.heightSubProof in
 
           (* X axis extrema for premices, and the top line of the trapesium *)
-          let wcx = cx1 -. cx0 in
           let pincr = hsp *. param.noPremiseTopLineIncrease in
           let nx0 = match left with [] -> cx0 -. pincr | (x,_)::_ -> x in
           let nx1 = match right with [] -> cx1 +. pincr | (x,_)::_ -> x in

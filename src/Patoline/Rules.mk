@@ -10,21 +10,21 @@ $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(D
 $(d)/patoline: $(d)/Util.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa
-	$(ECHO) "[OPT]    -> $@"
+	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(RBUFFER_DIR) -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa $^
 
 all: $(PA_PATOLINE)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx
-	$(ECHO) "[OPT]    $(lastword $^) -> $@"
+	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -package glr,camlp4 dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $^ 
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
-	$(ECHO) "[OPT]    $(lastword $^) -> $@"
+	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -pp pa_glr -c -package glr,camlp4 -I +camlp4/Camlp4Parsers -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
-	$(ECHO) "[OPT]    $(lastword $^) -> $@"
+	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLDEP) -pp pa_glr -package glr,camlp4 $< > $@
 
 #$(d)/patolineGL: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
@@ -41,17 +41,20 @@ PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
 $(EDITORS_DIR)/emacs/SubSuper.el: $(d)/SubSuper.dyp ;
 $(d)/SubSuper.dyp: $(d)/UnicodeData.txt $(PATOLINE_UNICODE_SCRIPTS)
-	$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el
+	$(ECHO) "[UNIC]   $< -> $@"
+	$(Q)$(PATOLINE_UNICODE_SCRIPTS) $< $@ $(EDITORS_DIR)/emacs/SubSuper.el
 
 $(d)/UnicodeScripts: $(d)/UnicodeScripts.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) -o $@ -package bigarray -package camomile -linkpkg $<
 
 $(d)/tmp.dyp: $(d)/Parser.dyp $(d)/SubSuper.dyp
-	cat $^ > $@
+	$(ECHO) "[CAT]    $^ -> $@"
+	$(Q)cat $^ > $@
+
 $(d)/Parser.ml: $(d)/tmp.dyp
-	$(ECHO) "[DYP]    -> $@"
-	$(Q)$(DYPGEN) --no-mli --merge-warning $<
+	$(ECHO) "[DYP]    $< -> $@"
+	$(Q)$(DYPGEN) --no-mli --merge-warning $< > /dev/null
 	$(Q)mv $(basename $<).ml $@
 
 $(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml

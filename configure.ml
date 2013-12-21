@@ -241,13 +241,10 @@ and driver =
     autometa: bool;
   }
 
-let ocamlnet_needs =
-  [Package "netstring"; Package "netsys"; Package "unix"; Package "netcgi2"; Package "nethttpd"; Package "cryptokit" ]
-
 let patoline_driver_gl =
   { name = "DriverGL";
     needs =(Package "str")::(Package "camlimages.all_formats")::
-      (Package "lablgl")::(Package "lablgl.glut")::ocamlnet_needs;
+      (Package "lablgl")::(Package "lablgl.glut")::[];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
     autometa = true;
@@ -265,7 +262,7 @@ let r_patoline_drivers = ref
     { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Patonet"; needs = []; suggests = []; internals = []; autometa = true };
+    { name = "Patonet"; needs = [Package "cryptokit"; Package "Typography.SVG"]; suggests = []; internals = []; autometa = true };
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
     patoline_driver_gl;
     { name = "Net"; needs = []; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
