@@ -25,9 +25,10 @@ exception Unclosed_comment of int
  *   - '\n' if mline is true,
  *   - everything between "(*" and "*)" (ocaml-like comments).
  * Remarks on what is allowed inside an ocaml-like comment:
- *   - nested comments are allowed,
+ *   - nested comments,
  *   - single-line string literals including those containing the substrings
- *     "(*" and or "*)".
+ *     "(*" and or "*)",
+ *   - single '"' character.
  *)
 let blank mline str pos =
   let len = String.length str in
