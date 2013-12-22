@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:        Patoline
 " Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
-" Last Change:     22/12/2013
+" Last Change:     26/04/2013
 " Version:         1.0
 " Original Author: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
 "
@@ -37,7 +37,7 @@ syn match   patoComment "\*\*(.*$" contains=patoCommentTags
 " syn match   patoComment "^.*)\*" contains=patoCommentTags
 " syn match   patoComment start="^[^^]*" end=")\*" contains=patoCommentTags
 syn keyword patoCommentTags contained TODO FIXME NOTE
-syn region string start=+"+ skip=+\\\\\|\\"+ end=+"+
+syn region string start=+"+ skip=+\\\\\|\\"+ end=+"+ oneline
 syn match   patoPreproc contained "\v#\w*\s\w*"
 hi link patoComment     Comment
 hi link patoCommentTags Todo

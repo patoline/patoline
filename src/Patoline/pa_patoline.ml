@@ -8,51 +8,66 @@ open Camlp4.PreCast
 open Syntax
 
 module Id : Camlp4.Sig.Id =
-    struct
-      let name = "pa_patoline"
-      let version = "0.1"
-    end
+  struct
+    let name = "pa_patoline"
+    let version = "0.1"
+  end
 
-module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
-	struct
-include Syntax
+(****************************************************************************
+ * Things that have to do with comments and things to be ignored            *
+ ****************************************************************************)
 
 exception Unclosed_comment of int
 
-let blank multiline str pos =
+(*
+ * Characters to be ignored are:
+ *   - ' ', '\t', '\r',
+ *   - '\n' if mline is true,
+ *   - everything between "(*" and "*)" (ocaml-like comments).
+ * Remarks on what is allowed inside an ocaml-like comment:
+ *   - nested comments are allowed,
+ *   - single-line string literals including those containing the substrings
+ *     "(*" and or "*)".
+ *)
+let blank mline str pos =
   let len = String.length str in
   let rec fn nb lvl state pos =
-    if pos >= len then pos else (
-      match state, str.[pos] with
-      | `Par, '(' when lvl > 0 -> fn nb lvl `Par (pos + 1)
-      | _, '(' -> fn nb lvl `Par (pos + 1)
-      | `Par, '*' -> fn nb (lvl+1) `Start (pos + 1)
-      | `Par, _ when lvl = 0 -> pos - 1
-      | `Start, '*' -> fn nb lvl `Clos (pos + 1)
-      | `Clos, ')' -> 
-	if lvl <= 0 then raise (Unclosed_comment pos);
-	fn 0 (lvl-1) `Start (pos + 1)
-      | `Clos, '*' -> 
-	fn nb lvl `Clos (pos + 1)
-      | `String, '"' ->
-	fn nb lvl `Start (pos + 1)
-      | _, '"' when lvl > 0 ->
-	fn nb lvl `String (pos + 1)
-      | `String, '\\' ->
-	fn nb lvl `String (pos + 2)
-      | _, '\n' -> 
-	if nb > 0 && lvl = 0 && not multiline then pos
-	else fn (nb+1) lvl `Start (pos + 1)
-      | _, (' '|'\t'|'\r') -> fn nb lvl `Start (pos + 1)
-      | _, _ when lvl > 0 -> fn nb lvl `Start (pos + 1)
-      | _ -> pos)
-  in
-  let res = fn 0 0 `Start pos in
-(*  Printf.fprintf stderr "blank: %b %d %d %s\n%!" multiline pos res (String.sub str pos (res - pos));*)
-  res
+    if pos >= len then (if lvl > 0 then raise (Unclosed_comment len) else len)
+    else match state, str.[pos] with
+      | `Ini , '('               -> fn nb lvl `Opn (pos + 1)
+      | `Opn , '*'               -> fn nb (lvl + 1) `Ini (pos + 1)
+      | `Opn , _  when lvl = 0   -> pos - 1
+      | `Opn , _                 -> fn nb lvl `Ini (pos + 1)
+      | `Ini , '*' when lvl = 0  -> pos
+      | `Ini , '*'               -> fn nb lvl `Cls (pos + 1)
+      | `Cls , '*'               -> fn nb lvl `Cls (pos + 1)
+      | `Cls , ')'               -> fn 0 (lvl - 1) `Ini (pos + 1)
+      | `Cls , _                 -> fn nb lvl `Ini (pos + 1)
+
+      | _    , '\n' when lvl > 0 -> fn nb lvl `Ini (pos + 1)
+      | _    , '\n' when mline   -> fn nb lvl `Ini (pos + 1)
+      | _    , '\n' when nb > 0  -> pos
+      | _    , '\n'              -> fn (nb + 1) lvl `Ini (pos + 1)
+
+      | `Str , '"'               -> fn nb lvl `Ini (pos + 1)
+      | _    , '"' when lvl > 0  -> (try fn nb lvl `Str (pos + 1) with
+                                      Unclosed_comment _ ->
+                                        fn nb lvl `Ini (pos + 1))
+      | `Str , '\\'              -> fn nb lvl `Esc (pos + 1)
+      | `Esc , _                 -> fn nb lvl `Str (pos + 1) 
+      | `Str , _                 -> fn nb lvl `Str (pos + 1)
+
+      | _    , (' '|'\t'|'\r')   -> fn nb lvl `Ini (pos + 1)
+      | _    , _ when lvl > 0    -> fn nb lvl `Ini (pos + 1)
+      | _    , _                 -> pos
+  in fn 0 0 `Ini pos
 
 let blank1 = blank false
 let blank2 = blank true
+
+(****************************************************************************
+ * ...                                                                      *
+ ****************************************************************************)
 
 let parser_stack = Stack.create ()
 
@@ -62,15 +77,15 @@ let bol = Hashtbl.create 1001
 
 let find_pos str n = 
   let rec fn i =
-      (*      Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
+    (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
     if i < String.length str && str.[i] = '\n' then
       try Hashtbl.find bol i, i
       with Not_found ->
-	if i = 0 then (2,i) else
-	  let lnum, _ = fn (i-1) in
-	  let lnum = lnum + 1 in
-	  Hashtbl.add bol i lnum;
-	  lnum, i
+        if i = 0 then (2,i) else
+          let lnum, _ = fn (i-1) in
+          let lnum = lnum + 1 in
+          Hashtbl.add bol i lnum;
+          lnum, i
     else if i <= 0 then (1, i)
     else fn (i-1)
   in
@@ -86,35 +101,41 @@ let locate g =
 let _ = glr_locate locate Loc.merge
 
 
+module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
+  struct
+    let paragraph_from_caml = declare_grammar ()
 
-let paragraph_from_caml = declare_grammar ()
+    let patoline_caml_expr = Gram.Entry.mk "patoline_caml_expr"
 
-let patoline_caml_expr = Gram.Entry.mk "patoline_caml_expr"
-let patoline_caml_struct = Gram.Entry.mk "patoline_caml_struct"
+    let patoline_caml_struct = Gram.Entry.mk "patoline_caml_struct"
 
-EXTEND Gram
-     patoline_caml_expr: [ [
-       e = expr LEVEL "top"; ")" -> <:expr<(fun x -> x) $e$>> (* e only does not set the position to contain the ")" *)
-     ] ];
-     patoline_caml_struct: [ [
-       e = str_items; ")" -> <:str_item<$e$ let _ = ()>>(* e only does not set the position to contain the ")" *)
-     ] ];
-     expr: LEVEL "simple" [ [
-       "<|" ->
-	  (try 
-	    let str, ptr = Stack.top parser_stack in
-	    assert (!ptr = 0);
-	    let pos = Loc.stop_off _loc + 1 in
-(*	    Printf.fprintf stderr "pos: %d char: '%c'\n%!" pos str.[pos];*)
-	    let new_pos, ast = partial_parse_string paragraph_from_caml blank2 str pos in
-	    ptr := new_pos - pos - 1;
-(*	    Printf.fprintf stderr "new_pos: %d char: '%c'\n%!" new_pos str.[new_pos];*)
-	    ast
-	  with
-	    Stack.Empty -> assert false)
-     ] ];
-END;;
-end
+    EXTEND Gram
+      patoline_caml_expr: [ [
+        e = expr LEVEL "top"; ")" -> <:expr<(fun x -> x) $e$>>
+        (* e only does not set the position to contain the ")" *)
+      ] ];
+
+      patoline_caml_struct: [ [
+        e = str_items; ")" -> <:str_item<$e$ let _ = ()>>
+        (* e only does not set the position to contain the ")" *)
+      ] ];
+
+      expr: LEVEL "simple" [ [
+        "<|" ->
+          (try 
+             let str, ptr = Stack.top parser_stack in
+             assert (!ptr = 0);
+             let pos = Loc.stop_off _loc + 1 in
+             (*Printf.fprintf stderr "pos: %d char: '%c'\n%!" pos str.[pos];*)
+             let new_pos, ast = partial_parse_string paragraph_from_caml blank2 str pos in
+             ptr := new_pos - pos - 1;
+             (*Printf.fprintf stderr "new_pos: %d char: '%c'\n%!" new_pos str.[new_pos];*)
+             ast
+           with
+             Stack.Empty -> assert false)
+      ] ];
+    END;;
+  end
 
 module M0 = Camlp4OCamlRevisedParser.Make(Syntax)
 module M1 = Camlp4OCamlParser.Make(M0)
