@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language:        Patoline
 " Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
-" Last Change:     20/07/2013
+" Last Change:     22/12/2013
 " Version:         1.0
 " Original Author: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
 "
@@ -32,13 +32,19 @@ endif
 syntax spell toplevel
 
 " Comments
-syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,patoPreproc
+syn region  patoComment start="(\*" end="\*)" contains=patoComment,patoCommentTags,patoPreproc,string
 syn match   patoComment "\*\*(.*$" contains=patoCommentTags
+" syn match   patoComment "^.*)\*" contains=patoCommentTags
+" syn match   patoComment start="^[^^]*" end=")\*" contains=patoCommentTags
 syn keyword patoCommentTags contained TODO FIXME NOTE
+syn region string start=+"+ skip=+\\\\\|\\"+ end=+"+
 syn match   patoPreproc contained "\v#\w*\s\w*"
 hi link patoComment     Comment
 hi link patoCommentTags Todo
 hi link patoPreproc     SpecialComment
+
+" Call to macros
+syn match patoEnv "\\\w*"
 
 " OCaml
 syn include @ocaml syntax/ocaml.vim
@@ -53,6 +59,8 @@ hi link camlEnv         SpecialComment
 syn match patoEnv "^\s*\\begin{\w*}\s*$"
 syn match patoEnv "^\s*\\end{\w*}\s*$"
 syn match patoEnv "\\\w*{\_[^}]*}"
+syn match patoEnv "\\\w*{\_[^}]*}{\_[^}]*}"
+syn region ocamlCode matchgroup=patoEnv start="\\\w*{\_[^}]*}(" end=")" contains=@ocaml
 
 hi link patoEnv Type
 
@@ -87,6 +95,7 @@ syn match patoTitle "^\s*=<\s*$"  contains=ocamlCode
 syn match patoTitle "^\s*\.>.*$"  contains=ocamlCode
 syn match patoTitle "^\s*\.<\s*$" contains=ocamlCode
 
+syn region patoItemize matchgroup=patoTitle start="^\s*\\begin{enumerate}\s*$" end="^\s*\\end{enumerate}\s*$" contains=ALL
 syn region patoItemize matchgroup=patoTitle start="^\s*\\begin{itemize}\s*$" end="^\s*\\end{itemize}\s*$" contains=ALL
 syn match patoTitle "^\s*\\item\s"
 
