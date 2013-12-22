@@ -106,6 +106,7 @@ type presentation={ mutable cur_slide:int; mutable cur_state:int; mutable startt
 let present={cur_slide=0;cur_state=0;starttime=0.;touched=false}
 
 let mut=Mutex.create ()
+let mut2=Mutex.create ()
 
 module AddrMap=Map.Make(struct type 
   t=Unix.sockaddr let compare=compare end)
@@ -168,39 +169,59 @@ let resp_slave fd data=
     )
   done
 
-let driverGL_sock = ref None
-
-let pushto a=
-  try
-    let time=Unix.time() in
-    resp_slave a (Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g }" present.cur_slide present.cur_state (if present.starttime=0. then 0. else (time-.present.starttime)))
-  with
-      e->(Printf.fprintf stderr "not pushed (%s)\n" (Printexc.to_string e);flush stderr)
-
-let push ()=
-  (match !driverGL_sock with 
-    None -> ()
-  | Some (sock,fo,fi) ->
-    Printf.fprintf stderr "Sending to driverGL: %d %d\n%!" present.cur_slide present.cur_state;
-    Printf.fprintf fo "%d %d\n%!" present.cur_slide present.cur_state);
-  addrs:=AddrMap.fold (fun k a m->
-    try
-      Printf.fprintf stderr "pushing\n";flush stderr;
-      pushto a;
-      Printf.fprintf stderr "pushed\n";flush stderr;
-      AddrMap.add k a m
-    with
-        e->(Printf.fprintf stderr "not pushed (%s)\n" (Printexc.to_string e);flush stderr;m)
-  ) !addrs AddrMap.empty
-
+let sock_info = ref None
+let sync_sock = ref []
 let master_page=ref ""
 let port_num = ref 8080
+let connect_to = ref ""
+
+
+
+let pushto a=
+  let time=Unix.time() in
+  resp_slave a (
+    Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g }" 
+      present.cur_slide present.cur_state 
+      (if present.starttime=0. then 0. else (time-.present.starttime)))
+
+let pushfrom from = (*avoid to send back to the expeditor*)
+  let rec fn acc = function
+  [] -> acc
+  | (sock,fo,fi as s)::rest ->
+    Printf.fprintf stderr "Sending to sync(%d): %d %d\n%!" (List.length rest) present.cur_slide present.cur_state;
+    try 
+      if sock <> from then
+	Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!" present.cur_slide present.cur_state;
+      fn (s::acc) rest
+    with e ->
+      Printf.fprintf stderr "not synced (%s)\n%!" (Printexc.to_string e);
+      (try Unix.close sock with _ -> ());
+      (match !sock_info with
+	Some(s,_,_) when s = sock -> sock_info := None;
+      | _ -> ());
+      fn acc rest
+  in
+  Mutex.lock mut2;
+  sync_sock := fn [] !sync_sock;
+  Mutex.unlock mut2;
+  addrs:=AddrMap.fold (fun k a m->
+    try
+      if a <> from then (
+	Printf.fprintf stderr "pushing\n";flush stderr;
+	pushto a;
+	Printf.fprintf stderr "pushed\n";flush stderr);
+      AddrMap.add k a m
+    with
+      e->
+	Printf.fprintf stderr "not pushed (%s)\n%!" (Printexc.to_string e);
+	m
+  ) !addrs AddrMap.empty
 
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
-let driverGL=Str.regexp "/driverGL_\\([0-9]*\\)_\\([0-9]*\\)"
+let sync=Str.regexp "/sync_\\([0-9]*\\)_\\([0-9]*\\)"
 let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
 
@@ -211,7 +232,8 @@ exception Websocket
 
 let spec=
   [("--master",Arg.Set_string master_page,"Set the master page");
-   ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
+   ("--port",Arg.Set_int port_num,"Set the port number to listen to");
+   ("--connect",Arg.Set_string connect_to,"Connect to another Patonet")]
 
 let websocket is_master w=
   Printf.sprintf "var websocket;var was_error;
@@ -453,9 +475,12 @@ let serve addr fd=
         flush ouc;
         process_req "" [] reste
 
-      ) else if Str.string_match driverGL get 0 then (
-          Printf.fprintf stderr "driverGL\n";flush stderr;
-	driverGL_sock := Some(fd,ouc,inc);
+      ) else if Str.string_match sync get 0 then (
+        Printf.fprintf stderr "sync\n";flush stderr;
+	Mutex.lock mut2;
+	if not (List.mem (fd,ouc,inc) !sync_sock) then
+	  sync_sock := (fd,ouc,inc)::!sync_sock;
+	Mutex.unlock mut2;
         let asked_slide=int_of_string (Str.matched_group 1 get) in
         let slide=max 0 asked_slide in
         let slide=min slide (Array.length slides-1) in
@@ -473,8 +498,8 @@ let serve addr fd=
              present.touched<-true;
              if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
                present.starttime<-Unix.time();
+             pushfrom fd ;
            );
-           push ();
          with _->());
         Mutex.unlock mut;
         process_req "" [] reste
@@ -555,7 +580,7 @@ let serve addr fd=
              if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
                present.starttime<-Unix.time();
            );
-           push ();
+           pushfrom fd;
          with _->());
         Mutex.unlock mut;
         let notfound="Ok" in
@@ -623,6 +648,57 @@ let serve addr fd=
           Printf.fprintf stderr "erreur : \"%s\"\n" (Printexc.to_string e);flush stderr)
 in
 
+(*connection as another patonet (at most one is enough to build
+any graph) as a follower*)
+
+let reconnect sock_info =
+  assert (!sock_info = None);
+  match !connect_to with
+    "" -> ()
+  | server ->
+    try
+      let ls = Util.split ':' server in
+      let server,port = match ls with
+	  [s] -> s, 8080
+	| [s;p] -> s, int_of_string p
+	| _ -> raise Exit
+      in
+      let addrs = 
+	Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
+      in
+      let rec fn = function
+      [] -> 
+	Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
+	raise Exit
+	| addr::rest -> Unix.(
+	  let str_addr = match addr.ai_addr with
+	      ADDR_UNIX s -> s
+	    | ADDR_INET(a,p) -> string_of_inet_addr a
+	  in
+	  Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
+	    str_addr port;
+	  let sock= socket addr.ai_family addr.ai_socktype 0 in
+	  try 
+	    connect sock addr.ai_addr;
+	    addr.ai_addr, sock
+	  with _ -> fn rest)
+      in
+      let addr, sock = fn addrs in
+      let fo=Unix.out_channel_of_descr sock in
+      let fi=Unix.in_channel_of_descr sock in
+      Printf.fprintf stderr "Connected\n%!";
+      Mutex.lock mut2;
+      sock_info := Some (sock,fo,fi);
+      sync_sock := (sock,fo,fi)::!sync_sock;
+      Mutex.unlock mut2;
+      let _=Thread.create (fun ()->
+	serve addr sock;
+	Printf.fprintf Pervasives.stderr
+	  "Reconnect served\n%!";) () in
+      ()
+    with _ -> ()
+in
+
   Arg.parse spec (fun x->()) "";
   if !master_page="" then (
     Random.self_init ();
@@ -665,6 +741,8 @@ in
 	(List.length master_sockets) !master_page;
 
       while true do
+	if !connect_to <> "" && !sock_info = None then
+	  reconnect sock_info;
 	let socks,_,_=Unix.select master_sockets [] [] 60. in
 	List.iter (fun master_sock ->
 	  try

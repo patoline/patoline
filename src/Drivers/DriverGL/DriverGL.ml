@@ -56,10 +56,8 @@ let prefs = ref {
 let spec = Arg.([
   "--second", Unit (fun () -> prefs := { !prefs with second_window = true })
          , "Open a second window";
-  "--server", String (fun p -> prefs := { !prefs with server = Some p })
-         , "Give the port to control patolineGL (default no server)" ;
-  "--no-server", Int (fun p -> prefs := { !prefs with server = None })
-         , "Do not allow remote control for patolineGL";
+  "--connect", String (fun p -> prefs := { !prefs with server = Some p })
+         , "Give the address (addr or addr:port) of a Patonet server to connect to" ;
   "--rgb", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = RGB_SAA })
          , "Set subpixel anti aliasing for RGB lcd screens (default)";
   "--bgr", Unit (fun () -> prefs := { !prefs with subpixel_anti_aliasing = BGR_SAA })
@@ -1225,7 +1223,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
        send_changes := (fun () ->
 	 if !last_changes <> (!cur_page, !cur_state) then (
 	   last_changes := !cur_page, !cur_state;
-	   Printf.fprintf fo "GET /driverGL_%d_%d HTTP/1.1\r\n\r\n%!"
+	   Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
 	     !cur_page !cur_state));
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
@@ -1244,9 +1242,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  Printf.fprintf stderr "Handling connection\n%!";
 	  let line = input_line fi in
 	  Printf.fprintf stderr "recv: %S\n" line;
-	  let ls = Util.split ' ' line in
+	  let ls = Util.split '_' line in
 	  match ls with
-	    [pg;st] ->
+	    _::pg::st::_ ->
+	      let st = List.hd (Util.split ' ' st) in
 	      goto (int_of_string pg) (int_of_string st)
 	  | _ -> ())
 	| _ -> ()
