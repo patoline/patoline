@@ -1067,8 +1067,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                                          drawing_badness=(fun _->0.);
                                          drawing_contents=(fun _->
                                                              [OutputCommon.Path
-                                                                ({OutputCommon.default with
-                                                                    OutputCommon.lineWidth=0.1},
+                                                                 ({OutputCommon.default with
+                                                                    OutputCommon.lineWidth=0.3},
                                                                  [[|[|x0;x1|],[|y;y;|]|]])
                                                              ]) }
                                    )])
