@@ -763,6 +763,8 @@ module Transfo (X : Set.OrderedType) = struct
 	       | `Vertex of int
 	       | `Apex
 	       | `Edge of int
+
+	       | `A | `B | `C | `D
 	       ]
 
   module Gentity = struct
@@ -1015,6 +1017,16 @@ module Transfo (X : Set.OrderedType) = struct
     (* 	  { info with bb = bb' })}) *)
 
 
+    let getMainAnchor info = 
+      let main = info.mainAnchor 
+      in (if main = `Main then 
+	  let _ = (Printf.fprintf stderr "Please do not choose `Main as a main anchor; 
+`Main is used when drawing edges; 
+it is `Base by default and you may change it, e.g., to `Center, using `MainAnchor `Center.\n" ; 
+		   flush stderr)
+	  in
+	  `Center
+	else main)
 
     let (rectangle : Document.environment -> Transfo.Style.t),
       shape_pet = 
@@ -1045,22 +1057,12 @@ module Transfo (X : Set.OrderedType) = struct
 	  let south = Point.middle p1 p2 in
 	  let ex = ex env in
 	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. ex +. text_depth) in
-	  let main = begin let main = info.mainAnchor 
-			   in (if main = `Main then 
-			       let _ = (Printf.fprintf stderr "Please do not choose `Main as a main anchor; 
-`Main is used when drawing edges; 
-it is `Base by default and you may change it, e.g., to `Center, using `MainAnchor `Center.\n" ; 
-					flush stderr)
-			       in
-			       `Center
-			     else main)
-	  end
-	  in
 	  (* let _ =  *)
 	  (*   if main = `Base  *)
 	  (*   then (Printf.fprintf stderr " (main anchor: `Base)\n" ; flush stderr) *)
 	  (*   else if main = `Center then (Printf.fprintf stderr " (main anchor: `Center)\n" ; flush stderr)  *)
 	  (* in *)
+	  let main = getMainAnchor info in
 	  let rec anchors = function
 	    | `Vec v -> Vector.(+) (Point.middle p1 p3) v
 	    | `Center -> info.center
@@ -1156,22 +1158,11 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	  let outer_sep = info.outerSep  in 
 	  let south = Point.middle p1 p2 in
 	  let base = Vector.(+) south (0.,inner_sep +. outer_sep +. text_depth) in
-	  let main = begin let main = info.mainAnchor 
-			   in (if main = `Main then 
-			       let _ = (Printf.fprintf stderr "Please do not choose `Main as a main anchor; 
-`Main is used when drawing edges; 
-it is `Base by default and you may change it, e.g., to `Center, using `MainAnchor `Center.\n" ; 
-					flush stderr)
-			       in
-			       `Center
-			     else main)
-	  end
-	  in
 
 	  let rec anchors = function
 	    | `Vec v -> Vector.(+) (Point.middle p1 p3) v
 	    | `Center -> Point.middle p1 p3
-	    | `Main -> anchors main
+	    | `Main -> anchors (getMainAnchor info)
 	    | `Base -> base
 	    | `BaseEast -> (fst (Point.middle p2 p3),snd base)
 	    | `BaseWest -> (fst (Point.middle p1 p4),snd base)
@@ -1326,8 +1317,8 @@ Doing a rectangle.\n" ;
 	    let (p1,p2,p3,p4) as outer_bb = BB.outer_points info' bb_boot in
 	    let (p1',p2',p3',p4') = BB.mid_points info' bb_boot in
 
-	    let (_,outer_curve) = make_triangle p3 p4 p1 p2 in
-	    let ((droit_final, gauche_final,apex_final),mid_curve) = make_triangle p3' p4' p1' p2' in
+	    let ((droit_final, gauche_final,apex_final),outer_curve) = make_triangle p3 p4 p1 p2 in
+	    let (_,mid_curve) = make_triangle p3' p4' p1' p2' in
 
 	    let inter point angle =
 	      let angle = to_rad angle in
@@ -1347,6 +1338,7 @@ Doing a rectangle.\n" ;
 	    let north = inter center 90. in 
 
 	    let rec anchors = function
+	      | `Main -> anchors (getMainAnchor info)
 	      | `BaseEast -> inter base 0.
 	      | `BaseWest -> inter base 180.
 	      | `Line -> line
@@ -1360,12 +1352,16 @@ Doing a rectangle.\n" ;
 	      | `SouthEast -> inter south 0.
 	      | `NorthEast -> inter north 0.
 	      | `NorthWest -> inter north 180.
+	      | `A -> apex_final
+	      | `B -> droit_final
+	      | `C -> gauche_final
 	      | x -> info'.anchor x
 	    in
 	    { info' with 
 	      outerCurve = outer_curve ;
 	      midCurve = mid_curve ;
-	      anchor = anchors
+	      anchor = anchors ;
+
 	    })}
 
 
@@ -2585,8 +2581,8 @@ Doing a rectangle.\n" ;
       let label_anchor a ?pos:(pos=(`Temporal 0.5 : anchor)) 
 	  ?shape:(shape=Node.rectangle env) 
 	  ?style:(style=[]) 
-	  cont = 
-	label env ~pos:pos ~style:((Node.anchor a) :: shape :: style) cont
+	  contents = 
+	label env ~pos:pos ~style:((Node.anchor a) :: shape :: style)  ([Scoped ((fun env -> { env with mathStyle = Mathematical.Script }), contents)])
 
       let labela ?pos:(pos=(`Temporal 0.5 : anchor)) ?shape:(shape=Node.rectangle env)
 	  ?style:(style=[]) cont = 

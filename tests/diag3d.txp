@@ -67,8 +67,6 @@ let cube projection = <<
 \cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.; distance_focale = 55.} )
 \end{center}
 
-Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou 
-
 
 \begin{center}
 \animation([| "time" |])(fun t -> [|t|])([|0.0|])(fun [|t|] -> 
