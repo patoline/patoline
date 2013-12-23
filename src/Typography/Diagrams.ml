@@ -410,7 +410,7 @@ module Curve = struct
       | (xs', ys') as bezier :: l' -> 
 	let length = bezier_linear_length bezier in
 	let z_restant = z -. z_yet in
-	if z_restant > length then
+	if z_restant >= length then
 	  scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
 	else time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
     in
@@ -424,7 +424,7 @@ module Curve = struct
       | (xs', ys') as bezier :: l' -> 
 	let length = bezier_linear_length bezier in
 	let z_restant = z -. z_yet in
-	if z_restant > length then
+	if z_restant >= length then
 	  backwards_scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
 	else 1. -. time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
     in
@@ -1252,14 +1252,13 @@ Doing a rectangle.\n" ;
 	      let nw = aller nouveaux_coins.(1) in
 	      let sw = aller nouveaux_coins.(2) in
 	      let se = aller nouveaux_coins.(3) in
-	      let south = Point.middle sw se in
+(*	      let south = Point.middle sw se in*)
 
 	      let _ = begin Printf.fprintf stderr "ne = %f,%f.\n" (fst ne) (snd ne) ; flush stderr end in 
 	      let _ = begin Printf.fprintf stderr "sw = %f,%f.\n" (fst sw) (snd sw) ; flush stderr end in 
 
 
-	      let (u1,u2) as u = Vector.normalise (1., tan (to_rad orient)) in
-	      let v = (-. u2,u1) in
+(*	      let (u1,u2) as u = Vector.normalise (1., tan (to_rad orient)) in*)
 
 	      let inter_droites (a,b,c) (a',b',c') = 
 		let det = a *. b' -. a' *. b in
@@ -1410,9 +1409,8 @@ Doing a rectangle.\n" ;
       Pet.register "node at ... in 3d" ~depends:[anchor_pet] (fun pet projection point3d -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
 	  (* Printf.fprintf stderr "node at\n" ; flush stderr ; *)
-	  let point = Proj3d.project projection point3d in
-	  let _,_,z = point3d in
-	  { (translate point info)
+	  let (x,y,z) = Proj3d.project projection point3d in
+	  { (translate (x,y) info)
 	    with z = z })})
 
     let make_output styles cont =
@@ -1675,11 +1673,12 @@ Doing a rectangle.\n" ;
 
       let between_centers ?projection:(projection=Proj3d.cavaliere45bg) disty distx distz _ i j k = 
 	let z = -. (float_of_int k *. distz) in
-	(Proj3d.project projection 
+	let x,y,z = Proj3d.project projection 
 	   ((float_of_int j *. distx), 
 	    -. (float_of_int i *. disty),
-	    z)),
-	z
+	    z)
+	in (x,y),z
+
 
       let default env = {
 	mainNode = Node.(default_rectangle env) ;
@@ -2118,7 +2117,7 @@ Doing a rectangle.\n" ;
 
 	(* Control points on the curve *)
 	let (xe,ye) as e = Curve.eval underlying_curve time in
-	(* let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in *)
+	(*let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in*)
 	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
 	let curve0 = edge_info'.underlying_curve in
 	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
@@ -2313,7 +2312,8 @@ Doing a rectangle.\n" ;
 	    controls,[]
 	  else
 	    let associate l = (List.map
-		     (fun ((x,y,z) as point) -> (Proj3d.project projection point,z)) l)
+		     (fun point -> 
+		       let (x,y,z) = Proj3d.project projection point in (x,y),z) l)
 	    in
 	    let split ls = List.map List.split (List.map associate ls) in
 	    (List.split (split controls3d))

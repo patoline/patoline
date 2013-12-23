@@ -173,10 +173,10 @@ let project projection (x,y,z) =
     let x = cos(projection.rot_angle) *. x +. sin(projection.rot_angle) *. z and z = -. sin(projection.rot_angle) *. x +. cos(projection.rot_angle) *. z in
     let x = cos(projection.axe_angle) *. x -. sin(projection.axe_angle) *. y and y = sin(projection.axe_angle) *. x +. cos(projection.axe_angle) *. y in
     let c = projection.distance_focale /. (projection.distance_focale -. z) in
-    let x = x *. c and y = y  *. c in
-    (x, y)
+    let x = x *. c and y = y  *. c and z = z *. c in
+    (x, y, z)
   in
-  let (x,y) = f (x,y,z) in
-  let (x0,y0) = f projection.origin_diag in
-  (x -. x0, y -. y0)
+  let (x,y,z) = f (x,y,z) in
+  let (x0,y0,z0) = f projection.origin_diag in
+  (x -. x0, y -. y0, z -. z0)
 

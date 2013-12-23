@@ -20,107 +20,39 @@
 \Caml(
 open Diagrams
 open Proj3d
-)
-
-\Caml(
-let empty : Node.Transfo.Style.t list * Typography.Document.content list = ([],[])
-
-module Env_Diagram (Arg : sig val env : environment end) = struct
-  include Env_Diagram (Arg) 
-
-  let centers ?projection:(projection=Proj3d.cavaliere45bg) z y x = 
-    Matrix3d.(placement (between_centers ~projection:projection z y x))
-
-
-let input_color=RGB{red=0.2;green=0.7;blue=0.2}
-let fork_color=RGB{red=0.7;green=0.7;blue=0.7}
-let left_fork_color=white
-let dark_blue=RGB{red=0.;green=0.;blue=0.4}
-
-let etat = Node.([circle;draw;mainAnchor `Center;anchor `Center;fill black;innerSep 0.4;outerSep 0.4],[])
-let canal = Node.([circle;draw;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
-let canal_rouge = Node.([circle;draw;color red;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
-let coordi = Node.([circle;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
-let joueur = Node.([circle;draw;mainAnchor `Center;anchor `Center;fill black;innerSep 0.6],[])
-let coup_input = 
-    Node.([draw;fill input_color;mainAnchor `Center;anchor `Center;innerSep 0.6],[])
-let coup_fork = 
-    Node.([triangle ~orientation:270. env;draw;fill fork_color;mainAnchor `Center;anchor `Center;innerSep 0.8],[])
-let coup_fork_gauche = 
-    Node.([triangle ~orientation:270. env;draw;fill left_fork_color;mainAnchor `Center;anchor `Center;innerSep 0.8],[])
-
-end
-
-  let truc projection = <<
-\diagram(
-  (* let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.orange x)) *)
-  let _ = t_margin := 0.1
-  let _ = margin := 0.3
-
-  let matrix = Matrix3d.(matrix_3d_full 
-  [centers ~projection:projection 10. 20. 10.;
-  mainNode Node.([mainAnchor `Center;anchor `Center; at(0.,0.)])] [
-  [[ empty ; canal
-    ]];[[
-  joueur ; empty ; joueur ; canal
-  ]];[[
-  empty ; canal	
-   ]]])
-
-   let m,ms = matrix_3d_project matrix 
-
-   let links0 ms y = edges_3d Edge.([draw]) [
-        ([],ms.(1).(y).(0),[],[],ms.(2).(y).(1)) ;
-        ([],ms.(1).(y).(0),[],[],ms.(0).(y).(1)) ;
-        ([],ms.(1).(y).(2),[],[],ms.(2).(y).(1)) ;
-        ([],ms.(1).(y).(2),[],[],ms.(0).(y).(1)) ;
-        ([],ms.(1).(y).(2),[],[],ms.(1).(y).(3)) ]
-
-   let _ = links0 ms 0
-
-)
->>
-
 
 let cube projection = <<
 \diagram(
- let a = Node.(node [anchor `Base;at (project projection (0.,0.,0.))] <<a>>) 
 
- let b = Node.(node [anchor `Base;at (project projection (20.,0.,0.))] <<b>>) 
+(*  let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.orange x)) 
+*)
 
- let c = Node.(node [anchor `Base;at (project projection (20.,20.,0.))] <<c>>) 
-
- let d = Node.(node [anchor `Base;at (project projection (0.,20.,0.))] <<d>>) 
-
- let a' = Node.(node [anchor `Base;at (project projection (0.,0.,20.))] <<a'>>) 
-
- let b' = Node.(node [anchor `Base;at (project projection (20.,0.,20.))] <<b'>>) 
-
- let c' = Node.(node [anchor `Base;at (project projection (20.,20.,20.))] <<c'>>) 
-
- let d' = Node.(node [anchor `Base;at (project projection (0.,20.,20.))] <<d'>>) 
+ let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
+ let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
+ let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
+ let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
+ let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
+ let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
+ let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
+ let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
 
 
-  let _ = edge Edge.([arrow env;draw]) a b
-  let _ = edge Edge.([arrow env;draw]) d c
-  let _ = edge Edge.([arrow env;draw]) a d
-  let _ = edge Edge.([arrow env;draw]) b c
+  let _ = edge_3d Edge.([arrow;draw]) a b
+  let _ = edge_3d Edge.([arrow;draw]) d c
+  let _ = edge_3d Edge.([arrow;draw]) a d
+  let _ = edge_3d Edge.([arrow;draw]) b c
 
-  let _ = edge Edge.([arrow env;draw]) a' b'
-  let _ = edge Edge.([arrow env;draw]) d' c'
-  let _ = edge Edge.([arrow env;draw]) a' d'
-  let _ = edge Edge.([arrow env;draw]) b' c'
+  let _ = edge_3d Edge.([arrow;draw]) a' b'
+  let _ = edge_3d Edge.([arrow;draw]) d' c'
+  let _ = edge_3d Edge.([arrow;draw]) a' d'
+  let _ = edge_3d Edge.([arrow;draw]) b' c'
 
-  let _ = edge Edge.([arrow env;draw]) a' a
-  let _ = edge Edge.([arrow env;draw]) b' b
-  let _ = edge Edge.([arrow env;draw]) c' c
-  let _ = edge Edge.([arrow env;draw]) d' d
+  let _ = edge_3d Edge.([arrow;draw]) a' a
+  let _ = edge_3d Edge.([arrow;draw]) b' b
+  let _ = edge_3d Edge.([arrow;draw]) c' c
+  let _ = edge_3d Edge.([arrow;draw]) d' d
 
 )>>)
-
-\diagram(
-  let e = Node. (node [triangle ~orientation:(-90.) env;draw] <<$T_1$>>)
-)
 
 
 \begin{center}
@@ -135,16 +67,50 @@ let cube projection = <<
 \cube({ rot_y30d with origin_transfo_x = 10.; origin_transfo_y = 10.; distance_focale = 55.} )
 \end{center}
 
+Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou Coucou 
+
+
 \begin{center}
 \animation([| "time" |])(fun t -> [|t|])([|0.0|])(fun [|t|] -> 
-   cube {distance_focale = 55.;
+   let proj t = {distance_focale = 55.;
    origin_transfo_x = 10.;
    origin_transfo_y = 10.;
    origin_transfo_z = 10.; (* boucle avec 10.0 *)
-   origin_diag = (0.,0.,0.);
+   origin_diag = (10.,10.,10.); (* pour que le centre du cube ne bouge pas *)
    axe_angle = 0.;
    rot_angle = t;
-   homotetie = 1.0;})
+   homotetie = 1.0;} in
+   let projection = proj t in
+<<\diagram(
+(*   let _ = cube projection*)
+ let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
+ let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
+ let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
+ let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
+ let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
+ let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
+ let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
+ let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
+
+
+  let _ = edge_3d Edge.([arrow;draw]) a b
+  let _ = edge_3d Edge.([arrow;draw]) d c
+  let _ = edge_3d Edge.([arrow;draw]) a d
+  let _ = edge_3d Edge.([arrow;draw]) b c
+
+  let _ = edge_3d Edge.([arrow;draw]) a' b'
+  let _ = edge_3d Edge.([arrow;draw]) d' c'
+  let _ = edge_3d Edge.([arrow;draw]) a' d'
+  let _ = edge_3d Edge.([arrow;draw]) b' c'
+
+  let _ = edge_3d Edge.([arrow;draw]) a' a
+  let _ = edge_3d Edge.([arrow;draw]) b' b
+  let _ = edge_3d Edge.([arrow;draw]) c' c
+  let _ = edge_3d Edge.([arrow;draw]) d' d
+
+   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] ([]))
+
+)>>)
 \end{center}
 
 
