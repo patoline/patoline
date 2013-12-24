@@ -67,6 +67,13 @@ $(d)/Fonts/Sfnt/Unicode_ranges.ml: $(d)/Fonts/Sfnt/make_unicode_ranges
 $(d)/Fonts/Opentype.cmo: $(d)/Fonts/Sfnt/Unicode_ranges.cmo
 $(d)/Fonts/Opentype.cmx: $(d)/Fonts/Sfnt/Unicode_ranges.cmx
 
+$(d)/Fonts/Isoadobe.ml: $(d)/Fonts/PSStandards $(d)/Fonts/isoadobe.source
+	$(TYPOGRAPHY_DIR)/Fonts/PSStandards $(TYPOGRAPHY_DIR)/Fonts/isoadobe.source $(TYPOGRAPHY_DIR)/Fonts/Isoadobe.ml
+
+$(d)/Fonts/PSStandards:$(d)/Fonts/PSStandards.ml
+	ocamlopt -o $(TYPOGRAPHY_DIR)/Fonts/PSStandards str.cmxa $(TYPOGRAPHY_DIR)/Fonts/PSStandards.ml
+
+
 # ocamldep cannot find dependencies on Typography
 $(d)/ParseMainArgs.cmo: $(d)/Typography.cma
 $(d)/ParseMainArgs.cmx: $(d)/Typography.cmxa
