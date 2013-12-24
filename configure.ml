@@ -173,6 +173,19 @@ let patoline_uses_packages =
       known_aliases = ["lablGL.glut"];
       additional_check = package_no_check;
     };
+    {
+      pack_name = "fontconfig";
+      known_aliases = [];
+      additional_check = fun package alias ->
+        let fontconfig_min_version = "0~20131103" in
+        if Findlib.package_property [] alias "version" = "0.1" then
+          (
+            Printf.printf "Version 0.1 of fontconfig is outdated, update fontconfig to version %s\n"
+              fontconfig_min_version;
+            false
+          )
+        else package_min_version fontconfig_min_version package alias
+    };
   ];
   res
 
