@@ -694,7 +694,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       resumeObject descr;
       fprintf outChan "<< /Type /FontDescriptor ";
       fprintf outChan "/FontName /%s " name.postscript_name;
-      fprintf outChan "/Flags 0 ";
+      fprintf outChan "/Flags 4 ";
 
       let x0=ref infinity and x1=ref (-.infinity) and y0=ref infinity and y1=ref (-.infinity) in
       IntMap.iter (fun _ glyph->
