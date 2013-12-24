@@ -226,6 +226,7 @@ let op_section = "[-=]>"
 let cl_section = "[-=]<"
 let word_re = "[^ \t\r\n{}\\_$|]+"
 let macro = "\\\\[^ \t\r\n({|$]+"
+let ident = "[_a-z][_a-zA-Z0-9']*"
 
 let paragraph_local, set_paragraph_local = grammar_family [ true ]
 
@@ -240,6 +241,8 @@ let macro_name =
     m:RE(macro) ->
        let m = String.sub m 1 (String.length m - 1) in
        if m = "Caml" then raise Give_up;
+       if m = "begin" then raise Give_up;
+       if m = "end" then raise Give_up;
        m
   end
 let macro =
@@ -305,6 +308,21 @@ let paragraph =
 		>>
     end 
 
+let environment =
+  glr
+    o2:STR("\\begin{") idb:RE(ident) c1:STR("}") ps:paragraph** o2:STR("\\end{") ide:RE(ident) c2:STR("}") ->
+      (if idb != ide then raise Give_up;
+       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r false$>>)  <:str_item<>> ps in
+       <:str_item< module $uid:"MOD1"$ =
+                   struct
+                     module $uid:"MOD2"$ = $uid:"Env_"^idb$ ;;
+                     open $uid:"MOD2"$ ;;
+                     let _ = $uid:"MOD2"$.do_begin_env () ;;
+                     $lpar$ ;;
+                     let _ = $uid:"MOD2"$.do_end_env ()
+                   end>>)
+  end
+
 let text = declare_grammar ()
 
 let text_item = 
@@ -337,9 +355,10 @@ let text_item =
   || STR("\\Caml") s:(dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc))
 	-> (fun no_indent lvl -> no_indent, lvl, <:str_item<$s$>>)
 
-  || l:paragraph -> (fun no_indent lvl -> false, lvl, <:str_item<$l no_indent$>>)
+  || e:environment -> (fun no_indent lvl -> false, lvl, e)
 
- end
+  || l:paragraph -> (fun no_indent lvl -> false, lvl, <:str_item<$l no_indent$>>)
+  end
 
 let _ = set_grammar text (
   glr
