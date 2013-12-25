@@ -24,7 +24,7 @@ open Proj3d
 open Geometry
 
 let swap (x,y) = (y,x)
-let pi = 3.14159
+let pi = 4. *. atan 1.
 let one_third = 1. /. 3.
 let half_pi = pi /. 2.
 let to_deg angle = angle *. 180. /. pi
