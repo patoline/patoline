@@ -67,6 +67,17 @@ let blank1 = blank false
 let blank2 = blank true
 
 (****************************************************************************
+ * Function for geting fresh uppercase identifiers for module names.        *
+ ****************************************************************************)
+
+let counter = ref 1
+
+let freshUid () =
+  let current = !counter in
+  incr counter;
+  "MOD" ^ (string_of_int current)
+
+(****************************************************************************
  * ...                                                                      *
  ****************************************************************************)
 
@@ -243,6 +254,7 @@ let macro_name =
        if m = "Caml" then raise Give_up;
        if m = "begin" then raise Give_up;
        if m = "end" then raise Give_up;
+       if m = "item" then raise Give_up;
        m
   end
 let macro =
@@ -291,29 +303,32 @@ let _ = set_paragraph_local (fun italic ->
 
 let paragraph_local = paragraph_local true
 
+let item =
+  glr
+    STR("\\item") ->
+      (let m1 = freshUid () in
+       let m2 = freshUid () in
+       <:str_item< module $uid:m1$ =
+                   struct
+                     module $uid:m2$ = $uid:"Item"$ ;;
+                     let _ = $uid:m2$.do_begin_env () ;;
+                     let _ = $uid:m2$.do_end_env ()
+                   end>>)
+  end
+
 let paragraph =
-    glr
-      l:paragraph_local ->
-        fun no_indent ->
-	  if no_indent then
-	    <:str_item@_loc_l<
-              let _ =
-		newPar D.structure ~environment:(fun x -> { x with par_indent = [] }) Complete.normal 
-		  Patoline_Format.parameters $l$
-                >>
-	  else
-	    <:str_item@_loc_l<
-              let _ =
-		newPar D.structure Complete.normal Patoline_Format.parameters $l$
-		>>
-    end 
-
-let counter = ref 1
-
-let freshUid () =
-  let current = !counter in
-  incr counter;
-  "MOD" ^ (string_of_int current)
+  glr
+    l:paragraph_local ->
+      (fun no_indent ->
+        if no_indent then
+          <:str_item@_loc_l<
+             let _ = newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
+                       Complete.normal Patoline_Format.parameters $l$>>
+        else
+          <:str_item@_loc_l<
+             let _ = newPar D.structure Complete.normal Patoline_Format.parameters $l$ >>)
+    || it:item -> (fun _ -> it)
+  end 
 
 let environment =
   glr
