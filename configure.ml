@@ -413,6 +413,8 @@ let _=
       (List.map (fun d -> d.name) ok_drivers)
     );
 
+  let has_patonet = List.exists (fun d -> d.name = "Patonet") ok_drivers in
+
   (* Output -package option for enabled drivers *)
   List.iter
   (fun d ->
@@ -538,9 +540,9 @@ let _=
       in
         Printf.fprintf config "%s" conf;
         Printf.fprintf config "(** Module used to query font paths *)\nlet findFont=%s.findFont fontspath\n" (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
-	Printf.fprintf config "let atmost = ref 3\nlet input_bin = ref (None : string option) (* if Some str, the file a a .bin that should be read instead of producing the structure/pages *)\nlet driver=ref (None:string option)";
+	Printf.fprintf config "let atmost = ref 3\nlet input_bin = ref (None : string option) (* if Some str, the file a a .bin that should be read instead of producing the structure/pages *)\nlet driver=ref (None:string option)\n";
 
-        Printf.fprintf config' "%s" conf;
+        Printf.fprintf config' "%slet has_patonet = %b\n" conf has_patonet;
 
         close_out config;
         close_out config';
