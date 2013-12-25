@@ -695,7 +695,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     (List.concat (List.map getopts !extras))@
                     comp_opts@
                     (let pack=String.concat "," ("threads"::"dynlink"::
-						    (if config.has_patonet then "cryptokit" else "")::
+						    (if Config.has_patonet then "cryptokit" else "")::
 						    List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@
