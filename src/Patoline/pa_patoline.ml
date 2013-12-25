@@ -308,18 +308,27 @@ let paragraph =
 		>>
     end 
 
+let counter = ref 1
+
+let freshUid () =
+  let current = !counter in
+  incr counter;
+  "MOD" ^ (string_of_int current)
+
 let environment =
   glr
     o2:STR("\\begin{") idb:RE(ident) c1:STR("}") ps:paragraph** o2:STR("\\end{") ide:RE(ident) c2:STR("}") ->
-      (if idb != ide then raise Give_up;
+      (if idb <> ide then raise Give_up;
        let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r false$>>)  <:str_item<>> ps in
-       <:str_item< module $uid:"MOD1"$ =
+       let m1 = freshUid () in
+       let m2 = freshUid () in
+       <:str_item< module $uid:m1$ =
                    struct
-                     module $uid:"MOD2"$ = $uid:"Env_"^idb$ ;;
-                     open $uid:"MOD2"$ ;;
-                     let _ = $uid:"MOD2"$.do_begin_env () ;;
+                     module $uid:m2$ = $uid:"Env_"^idb$ ;;
+                     open $uid:m2$ ;;
+                     let _ = $uid:m2$.do_begin_env () ;;
                      $lpar$ ;;
-                     let _ = $uid:"MOD2"$.do_end_env ()
+                     let _ = $uid:m2$.do_end_env ()
                    end>>)
   end
 
