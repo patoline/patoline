@@ -547,6 +547,7 @@ let _=
         close_out config;
         close_out config';
 
+        (*
         let _=
           if Sys.os_type="Unix" then (
             let i=Unix.open_process_in "uname" in
@@ -567,7 +568,7 @@ let _=
 
           )
         in
-
+        *)
         (* Generate Rules.clean which tells GNUmakefile which files we've
          * generated, and have to be removed. *)
         let rules_clean = open_out "Rules.clean" in
