@@ -71,7 +71,9 @@ let build_font_cache prefix pages=
         make_fonts i s (make_fonts (-2) l.link_contents fonts)
       | States st::s->
         make_fonts i s (make_fonts (-2) st.states_contents fonts)
-      | _::s->make_fonts i s fonts
+      | Animation a::s ->
+        make_fonts i s (Array.fold_left (fun fonts c -> make_fonts (-2) c fonts) fonts a.anim_contents)
+      | (Video _ | Image _ | Path _)::s->make_fonts i s fonts
   in
   let f=make_fonts (-1) [] StrMap.empty in
   (* Il faut fusionner les maps de tous les glyphes utilisés, pour ne

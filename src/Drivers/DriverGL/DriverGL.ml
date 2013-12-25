@@ -525,8 +525,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  do_animation := true;
 	  let t = !cur_time -. !start_page_time in
 	  let len = Array.length a.anim_contents in
-	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len else len) in
-	  let n_step = if a.anim_mirror && n_step >= len then n_step - len else n_step in
+	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len - 1 else len) in
+	  let n_step = if a.anim_mirror && n_step >= len then 2 * len - 1 - n_step else n_step in
 	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
 
 	| Glyph g ->

@@ -294,7 +294,53 @@ let draw ?fontCache prefix w h contents=
       );
       Rbuffer.add_string svg_buf "</a>";
     )
-    | Animation _ -> ()
+    | Animation a ->
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+      let prefix = "toto" in (* FIXME *)
+      Array.iteri (fun i c ->
+	Rbuffer.add_string svg_buf (
+	  Printf.sprintf "<g id=\"%s%d\" visibility=\"%s\">\n"
+	    prefix i
+	    (if i = a.anim_default then "inherit" else "hidden"));
+        opened_tspan:=false;
+        opened_text:=false;	
+	List.iter output_contents (a.anim_contents.(i));
+	if !opened_tspan then (
+          Rbuffer.add_string svg_buf "</tspan>\n";
+          opened_tspan:=false
+	);
+	if !opened_text then (
+          Rbuffer.add_string svg_buf "</text>\n";
+          opened_text:=false
+	);
+	Rbuffer.add_string svg_buf "</g>\n") a.anim_contents;
+      Rbuffer.add_string svg_buf (Printf.sprintf "<script type=\"text/javascript\">
+  function %sAnimate() {
+    var i = 0; var d = 1;
+    var cur = document.getElementById(\"%s\"+i.toString());
+    setInterval(function () {
+      i = i + d;
+      if (i >= %d) {%s}%s
+      var next = document.getElementById(\"%s\"+i.toString());
+      next.setAttribute(\"visibility\",\"inherit\");
+      cur.setAttribute(\"visibility\",\"hidden\");
+      cur = next;
+    }, %d);
+  }
+  %sAnimate(); </script>"
+			    prefix prefix (Array.length a.anim_contents) 
+			    (if a.anim_mirror then "i = i - 2; d = -1;" else "i = 0;")
+			    (if a.anim_mirror then "\nelse if (0 > i) { i = i + 2; d = 1; }" else "")
+			    prefix 
+			    (truncate (a.anim_step *. 1000.)) prefix);
+
   in
   let raws=
     let x=List.fold_left (fun m x->
