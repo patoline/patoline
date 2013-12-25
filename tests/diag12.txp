@@ -1,7 +1,4 @@
-\Caml(open Diagrams
-
-
-)
+\Caml(open Diagrams)
 
 \diagram(
   let _ = compute_intersections := (Some (fun x -> Edge.put_forth ~color:OutputCommon.blue x))

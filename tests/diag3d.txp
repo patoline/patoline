@@ -69,7 +69,7 @@ let cube projection = <<
 
 
 \begin{center}
-\animation([| "time" |])(fun t -> [|t|])([|0.0|])(fun [|t|] -> 
+\animation(180)(fun t -> let t = float t /. 90. *. 3.1415927 in
    let proj t = {distance_focale = 55.;
    origin_transfo_x = 10.;
    origin_transfo_y = 10.;
@@ -106,7 +106,7 @@ let cube projection = <<
   let _ = edge_3d Edge.([arrow;draw]) c' c
   let _ = edge_3d Edge.([arrow;draw]) d' d
 
-   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] ([]))
+   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] (<<x>>))
 
 )>>)
 \end{center}

@@ -110,6 +110,15 @@ and states={
   states_order:int
 }
 
+and animation={
+  anim_contents:raw list array;
+  anim_default:int;
+  anim_step:float; (* in seconds *)
+  anim_duration:float; (* in seconds, stop to save cpu consumption *)
+  anim_mirror:bool;
+  anim_order:int;
+}
+
 and raw=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
@@ -117,7 +126,7 @@ and raw=
   | Image of image
   | Video of video
   | States of states
-  | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
+  | Animation of animation
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }
@@ -130,7 +139,7 @@ let rec translate x y=function
   | Image i->Image { i with image_x=i.image_x+.x;image_y=i.image_y+.y }
   | Video i->Video { i with video_x=i.video_x+.x;video_y=i.video_y+.y }
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
-  | Animation (r, names, ft, fr) -> Animation(List.map (translate x y) r, names, ft, (fun a -> List.map (translate x y) (fr a)))
+  | Animation a -> Animation { a with anim_contents=Array.map (List.map (translate x y)) a.anim_contents }
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
@@ -147,7 +156,7 @@ let rec resize alpha=function
   | Video i->Video { i with video_width=i.video_width*.alpha;
                        video_height=i.video_height*.alpha }
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
-  | Animation (r, names, ft, fr) -> Animation(List.map (resize alpha) r, names, ft, (fun a -> List.map (resize alpha) (fr a)))
+  | Animation a -> Animation { a with anim_contents=Array.map (List.map (resize alpha)) a.anim_contents }
 
 
 type bounding_box_opt = {
@@ -155,7 +164,7 @@ type bounding_box_opt = {
   ignore_after_glyphWidth : bool;
   ignore_under_base_line : bool}
 
-let rec print_raw r=match r with
+let rec print_raw ch r=match r with
   Glyph g->Printf.fprintf stderr "Glyph %s (%f,%f) size %f\n" (Fonts.glyphNumber g.glyph).FTypes.glyph_utf8 g.glyph_x g.glyph_y g.glyph_size
   | Path (_,ps)->(
 
@@ -181,9 +190,11 @@ let rec print_raw r=match r with
     Printf.fprintf stderr "Video (%f,%f) (%f,%f)\n" i.video_x i.video_y (i.video_x+.i.video_width)
       (i.video_y+.i.video_height)
 
-  | States a->List.iter print_raw a.states_contents
-  | Link l->(Printf.fprintf stderr "Link [";List.iter print_raw l.link_contents;Printf.fprintf stderr "]\n")
-  | Animation(r,_,_,_)->List.iter print_raw r
+  | States a->List.iter (print_raw ch) a.states_contents
+  | Link l->Printf.fprintf ch "Link [ %a ]\n" (fun ch -> List.iter (print_raw ch)) l.link_contents
+  | Animation a->Printf.fprintf stderr "Animation [ %a ] (default=%d,mirror=%b,step=%f,duration=%f)"
+		 (fun ch -> Array.iter (Printf.fprintf ch "[%a]" (fun ch -> List.iter (print_raw ch))))
+    a.anim_contents a.anim_default a.anim_mirror a.anim_step a.anim_duration
 
 
 let bounding_box_opt opt l=
@@ -230,7 +241,7 @@ let bounding_box_opt opt l=
 
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
-    | Animation(r,_,_,_)::s -> bb x0 y0 x1 y1 (r@s)
+    | Animation a::s -> bb x0 y0 x1 y1 (List.concat (Array.to_list a.anim_contents)@s)
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
@@ -308,7 +319,7 @@ let rec in_order i x=match x with
   | Image a->Image { a with image_order=i }
   | Video a->Video { a with video_order=i }
   | States s->States { s with states_order=i }
-  | Animation(r,names,ft,fr) ->Animation(List.map (in_order i) r,names,ft,(fun a -> List.map (in_order i) (fr a))) 
+  | Animation a-> Animation { a with anim_contents = Array.map (List.map (in_order i)) a.anim_contents }
 
 let rec drawing_order x=match x with
     Glyph g->g.glyph_order
@@ -317,7 +328,7 @@ let rec drawing_order x=match x with
   | Image i->i.image_order
   | Video i->i.video_order
   | States s->s.states_order
-  | Animation(r,_,_,_) -> List.fold_left (fun acc r -> min acc (drawing_order r)) max_int r
+  | Animation a->a.anim_order
 
 let drawing_sort l=
   let rec make_list t acc=match t with

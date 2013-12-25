@@ -76,6 +76,15 @@ and states={
   states_order:int
 }
 
+and animation={
+  anim_contents:raw list array;
+  anim_default:int;
+  anim_step:float; (* in seconds *)
+  anim_duration:float; (* in seconds, stop to save cpu consumption *)
+  anim_mirror:bool;
+  anim_order:int;
+}
+
 and raw =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
@@ -83,12 +92,12 @@ and raw =
   | Image of image
   | Video of video
   | States of states
-  | Animation of raw list * string array * (float -> float array) * (float array -> raw list)
+  | Animation of animation
 
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw
 
-val print_raw:raw -> unit
+val print_raw:out_channel -> raw -> unit
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;

@@ -2116,7 +2116,7 @@ Doing a rectangle.\n" ;
 	(*let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in*)
 	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
 	let curve0 = edge_info'.underlying_curve in
-	(* let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in *)
+	(*let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in*)
 	let e0 = Curve.eval curve0 time in
 	let ee0 = Vector.of_points e e0 in
 	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in

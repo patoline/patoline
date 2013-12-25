@@ -294,7 +294,7 @@ let draw ?fontCache prefix w h contents=
       );
       Rbuffer.add_string svg_buf "</a>";
     )
-    | _->()
+    | Animation _ -> ()
   in
   let raws=
     let x=List.fold_left (fun m x->

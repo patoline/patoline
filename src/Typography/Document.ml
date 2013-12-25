@@ -1740,11 +1740,18 @@ let reset_counters env=
   { env with
     counters=StrMap.map (fun (l,_)->(l,[])) env.counters }
 
-let animation names ft f0 contents =
+let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle contents =
   [bB (fun env -> let contents a = draw env (contents a) in
-  let contents_0 = contents f0 in
-  let r = Animation(contents_0, names, ft, contents) in
-  let (x0,y0,x1,y1)=bounding_box contents_0 in
+  let tbl = Array.init cycle contents in
+  let r = Animation{
+    anim_contents = tbl;
+    anim_step = step;
+    anim_duration = duration;
+    anim_default = default;
+    anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) acc c) max_int tbl;
+    anim_mirror = mirror}
+  in
+  let (x0,y0,x1,y1)=bounding_box [r] in
   let w = x1 -. x0 in
   [Drawing {
     drawing_min_width=w;

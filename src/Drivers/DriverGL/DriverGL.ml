@@ -136,8 +136,7 @@ let overlay_rect (r,g,b) (x,y,x',y') =
 
 let normalize (a,b) = 
   let n = 1. /. sqrt(a*.a +. b*.b) in
-  let n = if classify_float n <> FP_normal then (
-      print_string "Normalizing null vector!"; print_newline (); 1.0) else n in
+  let n = if classify_float n <> FP_normal then 1.0 else n in
   a *. n, b *. n
 
 let dot_prod (a,b) (a',b') =
@@ -455,10 +454,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlDraw.vertex2 (0., ph);
     GlDraw.ends ();
   in
-  
+
   let other_items = Hashtbl.create 13 in
 
     let draw_page pixel_width page state =
+
       let win = get_win () in
       let graisse =  !prefs.graisse in
       let flou_x = flou_x () and flou_y = flou_y () in
@@ -521,11 +521,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
       let rec fn = function
         | Video _ -> failwith "GL Driver does not support video"
-	| Animation(_,_,ft,fr) ->
+	| Animation a ->
 	  do_animation := true;
 	  let t = !cur_time -. !start_page_time in
-	  let r = fr (ft t) in
-	  List.iter fn (drawing_sort r);	  
+	  let len = Array.length a.anim_contents in
+	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len else len) in
+	  let n_step = if a.anim_mirror && n_step >= len then n_step - len else n_step in
+	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
 
 	| Glyph g ->
         let x = g.glyph_x in
@@ -1393,16 +1395,18 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		 Glut.postRedisplay ()) win));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
-	while true do 
-	  (try 
-	    Glut.mainLoop ()
-	  with 
-	  | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
-	  | e ->
-            clearCache ();
-	    Gl.flush ();
-	    Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) win; if e <> Exit then raise e);
-	done; ()
+	(try 
+	  while true do 
+	    (try 
+	       Glut.mainLoop ()
+	     with 
+	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
+	     | e ->
+               clearCache ();
+	       Gl.flush ();
+	       Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) win; raise e);
+	  done; ()
+	with e -> if e <> Exit then Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e))
     | Some f ->
       f get_pixes
   in

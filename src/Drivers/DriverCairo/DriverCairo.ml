@@ -88,7 +88,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                           l))::s)
       )
       | Link l::s->draw_page (l.link_contents@s)
-      | _::s->(draw_page s)
+      | Animation a::s ->
+	draw_page (a.anim_contents.(a.anim_default) @s)
+      | (Video _|States _|Image _)::s -> draw_page s
       | []->()
     in
     draw_page (drawing_sort x.pageContents);
