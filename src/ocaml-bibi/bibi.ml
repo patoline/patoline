@@ -251,7 +251,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
             let a=match row.(field_num "id") with None->assert false | Some a->int_of_string a in
 	    citeCounter:=IntMap.add a () !citeCounter;
 	    let item =
-              bB (fun _->[Marker (BeginLink (sprintf "_bibi_%d" (num row)))])
+              bB (fun _->[Marker (BeginLink (Intern (sprintf "_bibi_%d" (num row))))])
               ::(C.citation_format (num row) row)
               @[bB (fun _->[Marker EndLink])]
 	    in

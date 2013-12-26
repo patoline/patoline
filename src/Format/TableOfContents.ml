@@ -174,7 +174,7 @@ let these parameters str tree max_level=
                       (draw_boxes env (boxify_scoped (envItalic true env') [tT (string_of_int page)]))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
-                  Marker (BeginLink (labl))::
+                  Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;
@@ -268,7 +268,7 @@ let slides parameters str tree max_level=
                       (List.map (OutputCommon.translate w0 0.) (draw_boxes env' name))
                   in
                   let (a,b,c,d)=OutputCommon.bounding_box cont in
-                  Marker (BeginLink (labl))::
+                  Marker (BeginLink (Intern labl))::
                     Drawing {
                       drawing_min_width=env.normalMeasure;
                       drawing_nominal_width=env.normalMeasure;

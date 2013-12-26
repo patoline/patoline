@@ -1126,19 +1126,25 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		   ~format:`depth_component ~kind:`float)));
 
       List.iter (fun l ->
-	let color = 
-	  if is_edit l.uri then (
-	    Glut.setCursor Glut.CURSOR_TEXT;
-	      (1.0,0.0,0.0)
-	    )
-	  else (
-	    Glut.setCursor Glut.CURSOR_INFO;
-	    if l.uri <> "" then (0.0,0.0,1.0) else (0.0,1.0,0.0)
-	  )
-	in
-	Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;
-	flush stdout;
-	overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
+	    let color = match l.link_kind with
+		Extern uri ->
+		  if is_edit uri then (
+		    Glut.setCursor Glut.CURSOR_TEXT;
+		    (1.0,0.0,0.0)
+		  )
+		  else (
+		    Glut.setCursor Glut.CURSOR_INFO;
+		    (0.0,1.0,0.0))
+	      | Intern _ ->
+		Glut.setCursor Glut.CURSOR_INFO;
+		(0.0,0.0,1.0)
+	      | _ -> 
+		Glut.setCursor Glut.CURSOR_INFO;
+		(1.0,0.0,1.0)
+	    in
+	    Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;
+	    flush stdout;
+	    overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       ) l;
       Glut.swapBuffers ();
     )
@@ -1158,16 +1164,18 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Array.fold_left(fun (acc, (i,j)) links ->
 	  let acc =
 	    List.fold_left (fun (bl, bc, res as acc) link ->
-	      let ls = List.rev (split '@' link.uri) in
-	      match ls with
-		c::l::_ ->
-		  (try let l = int_of_string l and c = int_of_string c in
+	      match link.link_kind with
+		Extern uri when is_edit uri ->
+		  let ls = List.rev (split '@' uri) in
+		  (match ls with
+		    c::l::_ ->
+		      let l = int_of_string l and c = int_of_string c in
 		      if (l0 > l || (l = l0 && c0 >= c)) && 
 			(l0 - l < bl || (l0 - l = bl && c0 - c < bc)) then
 			l0 - l, c0 - c, Some(link, i-1, j)
 		      else
 			acc
-		  with Not_found -> acc)
+		  | _ -> acc)
 	      | _ -> acc) acc links
 	  in
 	  (acc, (i, j + 1))) (acc, (i+1,0)) linkss) ((max_int, 0, None), (0, 0)) !links
@@ -1321,25 +1329,23 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       motion_ref := None;
       if clic then List.iter 
 	  (fun l ->
-	    Printf.fprintf stderr 
-	      "link cliqued: uri = %s, dest_page = %d, dest_x = %f, dest_y = %f\n"
-	      l.uri l.dest_page l.dest_x  l.dest_y;
-	    flush stderr;
-	    if l.is_internal then
-	      begin
-		cur_page := l.dest_page;
-		cur_state := 0;
-		redraw win;
-	      end
-	    else
+	    match l.link_kind with
+	      Intern(label,dest_page,dest_x,dest_y) ->
+		begin
+		  cur_page := dest_page;
+		  cur_state := 0;
+		  redraw win;
+		end
+	    | Extern(uri) ->
 	      begin
 		try
 		  let browser = Sys.getenv "BROWSER" in
-		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser l.uri));
+		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
 		with
 		  Not_found -> 
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
+	    | _ -> ()
 	  )
 	  (find_link win x y)
     | b, Glut.UP -> 

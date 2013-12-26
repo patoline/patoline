@@ -486,18 +486,20 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 let inf3=match classify_float l.link_y1 with FP_nan | FP_infinite->false
                   | _->true in
                 if inf0 && inf1 && inf2 && inf3 then
-                  if l.is_internal && l.dest_page>=0 && l.dest_page<Array.length pageObjects then
-                    fprintf outChan
-                      "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
-                      (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
-                      (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(l.dest_page)
-                      (pt_of_mm l.dest_x) (pt_of_mm l.dest_y)
-                  else
+		  match l.link_kind with
+		    Intern(label,dest_page,dest_x,dest_y) ->
+                      fprintf outChan
+			"<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+			(pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+			(pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
+			(pt_of_mm dest_x) (pt_of_mm dest_y)
+		  | Extern(uri) ->
                     fprintf outChan
                       "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
                       (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
                       (pt_of_mm l.link_x1) (pt_of_mm l.link_y1)
-                      l.uri
+                      uri
+		  | _ -> ()
               ) !pageLinks;
               fprintf outChan "]";
             );

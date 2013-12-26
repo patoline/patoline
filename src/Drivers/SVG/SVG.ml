@@ -271,15 +271,17 @@ let draw ?fontCache prefix w h contents=
         opened_text:=false
       );
 
-      if l.is_internal then (
-        Rbuffer.add_string svg_buf
-          (Printf.sprintf "<a xlink:href=\"#%d_%d\">"
-             l.dest_page 0
-          );
-      ) else (
+      (match l.link_kind with
+	Intern(label,dest_page,dest_x,dest_y) ->
+          Rbuffer.add_string svg_buf
+            (Printf.sprintf "<a xlink:href=\"#%d_%d\">"
+               dest_page 0
+            );
+      | Extern uri ->
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
-        Rbuffer.add_string svg_buf l.uri;
+        Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
+      | _ -> ()
       );
 
       List.iter output_contents (l.link_contents);

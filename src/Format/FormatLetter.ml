@@ -210,20 +210,18 @@ module Output=functor(M:Driver)->struct
                           (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
                           w
                       )
-                      | Marker (BeginURILink l)->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                      | Marker (BeginLink (Extern l))->(
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Extern(l);
                                    link_order=0;link_closed=false;
-                                   dest_page=0;dest_x=0.;dest_y=0.;is_internal=false;
                                    link_contents=[] }
                         in
                         urilinks:=Some link;
                         page.pageContents<-Link link::page.pageContents;
                         0.
                       )
-                      | Marker (BeginLink l)->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri="";
+                      | Marker (BeginLink (Intern l))->(
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern("",0,0.,0.);
                                    link_order=0;link_closed=false;
-                                   dest_page=0;dest_x=0.;dest_y=0.;is_internal=true;
                                    link_contents=[]
                                  }
                         in
@@ -322,7 +320,7 @@ module Output=functor(M:Driver)->struct
       for i=0 to Array.length pages-1 do draw_page i opt_pages.(i) done;
       List.iter (fun (p,link,dest)->try
                    let (p',x,y0,y1)=StrMap.find dest !destinations in
-                     pages.(p).pageContents<-Link { link with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi }
+                     pages.(p).pageContents<-Link { link with link_kind = Intern("",p',x,y0+.(y1-.y0)*.phi) }
                      ::pages.(p).pageContents
                  with
                      Not_found->()

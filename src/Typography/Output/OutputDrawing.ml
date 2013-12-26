@@ -197,11 +197,10 @@ let output paragraphs figures env (opt_pages:frame)=
                 page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
               w
             )
-            | Marker (BeginURILink l)->(
-              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+            | Marker (BeginLink (Extern l))->(
+              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Extern l;
                          link_order=0;
                          link_closed=false;
-                         dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                          link_contents=[] }
               in
               crosslinks:=(i, link, l) :: !crosslinks;
@@ -209,11 +208,10 @@ let output paragraphs figures env (opt_pages:frame)=
               page.pageContents<-Link link::page.pageContents;
               0.
             )
-            | Marker (BeginLink l)->(
-              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+            | Marker (BeginLink (Intern l))->(
+              let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern(l,Box.page line,0.,0.);
                          link_order=0;
                          link_closed=false;
-                         dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
                          link_contents=[]
                        }
               in

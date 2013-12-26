@@ -98,12 +98,17 @@ type glyph={ glyph_x:float; glyph_kx:float; glyph_y:float; glyph_ky:float; glyph
 type image= { image_file:string; image_x:float; image_y:float; image_order:int; image_height:float;image_width:float;image_pixel_width:int;image_pixel_height:int }
 
 type video= { video_file:string; video_x:float; video_y:float; video_order:int; video_height:float;video_width:float;video_pixel_width:int;video_pixel_height:int }
+
+type link_kind =
+  Extern of string (* uri *)
+| Intern of (string * int * float * float) (* label, page, x, y *)
+(*| Edit of string * ...*)  (* Edit are Extern link with edit:...*)
+| Button of string * string list
+
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
-             mutable link_closed:bool;
-             link_order:int;
-             uri:string;is_internal:bool;
-             dest_page:int; dest_x:float; dest_y:float;
+             mutable link_closed:bool;link_order:int; link_kind:link_kind;
              mutable link_contents:raw list}
+
 and states={
   states_contents:raw list;
   states_states:int list;

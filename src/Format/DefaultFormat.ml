@@ -1506,10 +1506,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w
                         )
-                        | Marker (BeginURILink l)->(
-                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                        | Marker (BeginLink (Extern l))->(
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Extern l;
                                      link_order=0;link_closed=false;
-                                     dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                                      link_contents=[] }
                           in
                           crosslinks:=(i, link, l) :: !crosslinks;
@@ -1517,10 +1516,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                           page.pageContents<-Link link::page.pageContents;
                           0.
                         )
-                        | Marker (BeginLink l)->(
-                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                        | Marker (BeginLink (Intern l))->(
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;
+				     link_kind=Intern(l,Box.page line,0.,0.);
                                      link_order=0;link_closed=false;
-                                     dest_page=Box.page line;dest_x=0.;dest_y=0.;is_internal=true;
                                      link_contents=[]
                                    }
                           in
@@ -1653,11 +1652,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 	  let pages=Array.map (fun p->
 	      { p with
                 pageContents=List.map (fun a->match a with
-		  Link l when l.is_internal->(
+		  Link ({ link_kind = Intern(label,dest_page,dest_x,dest_y) } as l)->(
 		    try
-                      let (p',x,y0,y1)=StrMap.find l.uri !destinations in
+                      let (p',x,y0,y1)=StrMap.find label !destinations in
                       let dx0,dy0,dx1,dy1=bounding_box l.link_contents in
-                      Link { l with dest_page=p'; dest_x=x; dest_y=y0+.(y1-.y0)*.phi;
+                      Link { l with link_kind = Intern(label,p',x,y0+.(y1-.y0)*.phi);
                         link_x0=dx0;link_x1=dx1;
                         link_y0=dy0;link_y1=dy1
 			   }

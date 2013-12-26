@@ -56,19 +56,16 @@ type metadata=
   | Title
   | Type
 
-type link = {
-  mutable link_x0 : float;
-  mutable link_y0 : float;
-  mutable link_x1 : float;
-  mutable link_y1 : float;
-  mutable link_closed : bool;
-  link_order : int;
-  uri:string;is_internal:bool;
-  dest_page : int;
-  dest_x : float;
-  dest_y : float;
-  mutable link_contents : raw list
-}
+type link_kind =
+  Extern of string (* uri *)
+| Intern of (string * int * float * float) (* page, x, y *)
+| Button of string * string list
+
+(*| Edit of string*)
+
+type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
+             mutable link_closed:bool;link_order:int; link_kind:link_kind;
+             mutable link_contents:raw list}
 
 and states={
   states_contents:raw list;

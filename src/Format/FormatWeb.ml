@@ -136,12 +136,12 @@ module Format=functor (D:Document.DocumentStructure)->(
               Rbuffer.add_string buf a;
               Rbuffer.add_string buf "\"></a>";
             )
-            | Marker (BeginURILink a)->(
+            | Marker (BeginLink (Extern a))->(
               Rbuffer.add_string buf "<a href=\"";
               Rbuffer.add_string buf a;
               Rbuffer.add_string buf "\">";
             )
-            | Marker (BeginLink a)->(
+            | Marker (BeginLink (Intern a))->(
               Rbuffer.add_string buf "<a href=\"#";
               Rbuffer.add_string buf a;
               Rbuffer.add_string buf "\">";

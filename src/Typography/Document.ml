@@ -24,7 +24,6 @@ open Fonts
 open Fonts.FTypes
 open OutputCommon
 open Box
-open Box
 open CamomileLibrary
 
 type fontAlternative = Regular | Bold | Caps | Demi
@@ -837,7 +836,7 @@ let pageref x=
     try
       env_accessed:=true;
       let (_,_,node)=StrMap.find x (names env) in
-      [bB (fun _->[Marker (BeginLink x)]);
+      [bB (fun _->[Marker (BeginLink (Intern x))]);
        tT (string_of_int (1+page node));
        bB (fun _->[Marker EndLink])]
     with Not_found -> []
@@ -894,7 +893,7 @@ let generalRef refType name=
             Not_found->[]
       in
       let sect_num=drop (List.length str_counter - max 0 lvl+1) str_counter in
-      [bB (fun _->[Marker (BeginLink name)]);
+      [bB (fun _->[Marker (BeginLink (Intern name))]);
        tT (String.concat "." (List.map (fun x->string_of_int (x+1))
                                 (List.rev (num@sect_num))));
        bB (fun _->[Marker EndLink])]
@@ -904,8 +903,8 @@ let generalRef refType name=
 
 let sectref x=generalRef "_structure" x
 
-let extLink a b=bB (fun _->[Marker (BeginURILink a)])::b@[bB (fun _->[Marker EndLink])]
-let link a b=bB (fun _->[Marker (BeginLink a)])::b@[bB (fun _->[Marker EndLink])]
+let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
+let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 
@@ -1246,17 +1245,16 @@ let draw_boxes env l=
       let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
-    | Marker (BeginURILink l)::s->(
+    | Marker (BeginLink (Extern l))::s->(
       (* Printf.fprintf stderr "****BeginURILink %S****\n" l; *)
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=OutputCommon.Extern l;
                  link_order=0;
                  link_closed=false;
-                 dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                  link_contents=[] }
       in
       draw_boxes x y (Link link::dr) s
     )
-    | Marker (BeginLink l)::s->(
+    | Marker (BeginLink (Intern l))::s->(
       (* Printf.fprintf stderr "****BeginLink %S****\n" l; *)
       let dest_page=
         try
@@ -1265,11 +1263,9 @@ let draw_boxes env l=
         with
             Not_found->(-1)
       in
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern(l,dest_page,0.,0.);
                  link_order=0;
                  link_closed=false;
-                 dest_page=dest_page;
-                 dest_x=0.;dest_y=0.;is_internal=true;
                  link_contents=[]
                }
       in

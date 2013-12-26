@@ -775,7 +775,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   let col= !toc_inactive in
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   boxify_scoped { env with fontColor=col }
-                    (bB (fun _->[Marker (BeginLink labl)])::
+                    (bB (fun _->[Marker (BeginLink (Intern labl))])::
                        displayname
                      @[bB (fun _->[Marker EndLink])])
                 )
@@ -915,10 +915,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w
                         )
-                        | Marker (BeginURILink l)->(
-                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                        | Marker (BeginLink (Extern l))->(
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Extern l;
                                      link_order=0;link_closed=false;
-                                     dest_page=(-1);dest_x=0.;dest_y=0.;is_internal=false;
                                      link_contents=[] }
                           in
                           crosslinks:=(i, link, l) :: !crosslinks;
@@ -926,7 +925,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                           crosslink_opened:=true;
                           0.
                         )
-                        | Marker (BeginLink l)->(
+                        | Marker (BeginLink (Intern l))->(
                           let dest_page=
                             try
                               let line=MarkerMap.find (Label l) env_final.user_positions in
@@ -934,10 +933,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                             with
                                 Not_found->(-1)
                           in
-                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;uri=l;
+                          let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern(l,dest_page,0.,0.);
                                      link_order=0;link_closed=false;
-                                     dest_page=dest_page;is_internal=true;
-                                     dest_x=0.;dest_y=0.;
                                      link_contents=[]
                                    }
                           in
