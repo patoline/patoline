@@ -281,7 +281,8 @@ let draw ?fontCache prefix w h contents=
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
-      | _ -> ()
+      | Button(name,ds) -> 
+        Rbuffer.add_string svg_buf "<a onclick=\"alert('click');\">";
       );
 
       List.iter output_contents (l.link_contents);
@@ -309,6 +310,14 @@ let draw ?fontCache prefix w h contents=
       opened_tspan:=false;
       opened_text:=false;	
       List.iter output_contents (d.dyn_contents Init);
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
       Rbuffer.add_string svg_buf "</g>\n";
 
     | Animation a ->
