@@ -125,8 +125,9 @@ and animation={
 }
 
 and event=
-  Init |
-  Click of string
+  Init
+| Click of string
+| Drag of string * (float * float)
 
 and dynamic={
   dyn_label:string;

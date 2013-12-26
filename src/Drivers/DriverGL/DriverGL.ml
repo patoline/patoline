@@ -272,12 +272,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       (fun i page ->
 	Array.mapi (fun j state ->
 	  let l = ref [] in
-	  List.iter
+	  let rec fn ls = List.iter
 	    (function  
             | Link(l') -> 
 	      l := l'::!l
-	    | _ -> ())
-	    (drawing_sort state.pageContents);
+	    | Dynamic d -> fn (d.dyn_contents Init)
+	    | _ -> ()) ls
+	  in
+	  fn (drawing_sort state.pageContents);
 	  !l) page)
       !pages;
   in
@@ -458,6 +460,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let other_items = Hashtbl.create 13 in
+  let update_link = ref false in
 
     let draw_page pixel_width page state =
 (*      Printf.fprintf stderr "Redraw\n";*)
@@ -542,7 +545,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		(fun d' -> if d.dyn_label = d' then (
 		  ev0 := ev; false) else true) ds
 	      in
-	      
+	      update_link := true;
 	      if !ev0 = Init then gn (e::acc) evs else events := List.rev_append acc (if ds <> [] then (ds,ev)::evs else evs)
 	  in 
 	  gn [] !events;
@@ -874,7 +877,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Printf.fprintf stderr "fps: %f\n" (float !cfps /. !fps);
       flush stderr;
       cfps := 0; fps := 0.0
-    )
+    );
+
+    if !update_link then (read_links (); update_link := false)
+
   in
 
   let rotate_page (i,j) (i',j') = () (*
@@ -1114,13 +1120,30 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let motion_cb ~x ~y =
     match !motion_ref with
       None -> ()
-    | Some (x', y') ->
-      let win = get_win () in
-      let mx = float (x - x') and my = float (y - y') in
-      motion_ref := Some (x, y);
-      win.dx <- win.dx -. mx *. win.pixel_width;
-      win.dy <- win.dy +. my *. win.pixel_height;
-      redraw win;
+    | Some (x0,y0,x', y',buttons,links) ->
+      let dx = x - x' and dy = y - y' in
+(*      Printf.fprintf stderr "Motion (%d;%d) (%d,%d) %d\n%!" x' y' x y (dx * dx + dy * dy);*)
+      if (dx * dx + dy * dy >= 4) then (
+	let win = get_win () in
+	if buttons = [] then (
+	  let mx = float (x - x') and my = float (y - y') in
+	  motion_ref := Some (x0,y0,x, y,buttons,links);
+	  win.dx <- win.dx -. mx *. win.pixel_width;
+	  win.dy <- win.dy +. my *. win.pixel_height;
+	  redraw win)
+	else (
+	  motion_ref := Some (x0,y0,x, y,buttons,links);
+	  let mx = float (x - x') and my = float (y - y') in
+	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
+
+	  List.iter (function (name,ds) ->
+	    let ox = ref x and oy = ref y in
+	    let ev = List.filter (function
+	      ds',Drag(name',(x,y)) when ds == ds' && name == name' ->
+		ox := !ox +. x; oy := !oy +. y; false
+	      | _ -> true) !events in
+	    events := ev @ [ds,Drag(name,(!ox,!oy))]) buttons;
+	  redraw_all ()));
   in
 
   let previous_links = ref [] in
@@ -1338,17 +1361,21 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.OTHER_BUTTON(4), Glut.UP -> win.zoom <- win.zoom *. 1.1; redraw win;
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
-      motion_ref := Some (x, y);
+      let links = find_link win x y in 
+      let buttons = List.filter (fun l -> match l.link_kind with Button _ -> true | _ -> false) links in
+      let buttons = List.map (function { link_kind = Button(name,ds) } -> name,ds | _ -> assert false) buttons in
+
+      motion_ref := Some (x,y,x, y,buttons,links);
 
     | Glut.LEFT_BUTTON, Glut.UP ->
-      let clic = match !motion_ref with
-	  None -> false
-	| Some(x',y') ->
+      let links = match !motion_ref with
+	  None -> []
+	| Some(x',y',_,_,buttons,links) ->
 	  let dx = x - x' and dy = y - y' in
-	  (dx * dx + dy * dy < 9)
+	  if (dx * dx + dy * dy <= 9) then links else []
       in
       motion_ref := None;
-      if clic then List.iter 
+      List.iter 
 	  (fun l ->
 	    match l.link_kind with
 	      Intern(label,dest_page,dest_x,dest_y) ->
@@ -1368,8 +1395,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      end
 	    | Button(name,ds) -> 
 	      events := !events @ [ds,Click(name)];
-	  )
-	  (find_link win x y)
+	  ) links
+	  
     | b, Glut.UP -> 
       Printf.fprintf stderr "Unbound button: %s\n%!" (Glut.string_of_button b)
     | _ -> ()

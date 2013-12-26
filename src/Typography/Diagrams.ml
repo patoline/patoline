@@ -806,7 +806,8 @@ module Transfo (X : Set.OrderedType) = struct
       center : Point.t ;
       pdfAnchor: Point.t ;
       node_contents : OutputCommon.raw list ;
-
+      
+      button : (string * string list) option;
       (* textDepth : float ; *)
       (* textHeight : float ; *)
       (* textWidth : float ; *)
@@ -816,11 +817,15 @@ module Transfo (X : Set.OrderedType) = struct
       outerCurve : Curve.t ;
       anchor : anchor -> Point.t ;
 
+      decorations : decoration list; 
       node_anchor : anchor ;
 
       at : Point.t ;
       z : float
     }
+
+    and decoration = Curve of path_parameters * Curve.t
+		       | Node of info
 
     type t = info
 
@@ -837,6 +842,8 @@ module Transfo (X : Set.OrderedType) = struct
 		    innerCurve = [] ;
 		    midCurve = [] ;
 		    outerCurve = [] ;
+		    decorations = [];
+		    button = None;
 		    bb = (0.,0.,0.,0.) ;
 		    anchor = (fun _ -> (0.,0.)) ;
 		    params = default_params ;
@@ -856,7 +863,21 @@ module Transfo (X : Set.OrderedType) = struct
 	bb = (x,y,x,y) ;
 	anchor = (fun _ -> p) }
 
-    let to_contents info = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents 
+    let rec decoration_to_contents edge_info = function
+      | Curve (params, curve) -> Curve.draw ~parameters:params curve
+      | Node node -> to_contents node
+
+    and to_contents info =
+      let c = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents in
+      let c = match info.button with
+	None -> c
+      | Some(n,d) -> 
+	let (x0,y0,x1,y1) = bounding_box c in
+	[Link { link_x0 = x0; link_y0 = y0; link_x1 = x1; link_y1 = y1;
+		link_closed = true; link_order = 0; link_kind = Button(n,d);
+		link_contents = c }]
+      in
+      c @ (List.flatten (List.map (decoration_to_contents info) info.decorations))
 
     let to_gentity info =
       { Gentity.curve = info.midCurve ;
@@ -1101,6 +1122,13 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
 	    outerCurve = outer_curve ;
 	    anchor = anchors
 	  })})
+
+    let button,button_pet = 
+      Pet.register "node draw" ~depends:[] 
+	(fun pet (name, destinations) -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  { info with button = Some(name,destinations);
+	  } ) })
 
     let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env
 
@@ -1417,6 +1445,13 @@ Doing a rectangle.\n" ;
       (* to_gentity info *)
     let make_boxified env styles cont = make_output styles (Document.draw_boxes env cont)
     let make env styles cont = make_boxified env styles (boxify_scoped env cont)
+
+    let label, label_pet = 
+      Pet.register ~depends:[draw_pet;params_pet;fill_pet] "label" 
+	(fun pet env ?pos:(pos=(`North : anchor)) ?style:(style=[rectangle env]) cont ->
+	  { pet = pet ; transfo = (fun transfos info -> 
+	    let node = make env (at (info.anchor pos) :: style) cont in
+	    {info with decorations = Node node::info.decorations }) })
 
     let inter a b=
       let curvesa=ref [] in

@@ -57,13 +57,48 @@ let caml x = x
 == Dynamisme ==
 
 \begin{slide}
-\button("test")(["cible"]){Un bouton}
+\begin{itemize}
 
+\item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(
 	let count = ref 0 in
 	function ev ->
-  	  if ev <> Init then incr count;
-	  <<Le bouton a été cliqué \caml([tT (string_of_int !count)]) fois>>)
+  	  (match ev with Click "test"-> incr count | _ -> ());
+	  <<\caml([tT (string_of_int !count)]) fois !>>)
 
+\item Et une figure dont on peut bouger les sommets :
+
+\begin{center}
+\dynamic("figure")(
+	let apos = ref (-10.0,-10.0) in
+	let bpos = ref (10.0,10.0) in
+	let cpos = ref (10.0,-10.0) in
+	function ev ->
+  	  (match ev with
+	   | Drag("a",p) -> apos := Vector.(p + !apos)
+	   | Drag("b",p) -> bpos := Vector.(p + !bpos)
+	   | Drag("c",p) -> cpos := Vector.(p + !cpos)
+	   | _ -> ());
+<< \diagram(
+ let frame = Node.(node [at (0.,0.);rectangle env;draw;innerSep 20.0] [])
+ let av = Vector.(scal_mul 2.5 (normalise (!apos - !bpos + !apos - !cpos)))
+ let bv = Vector.(scal_mul 2.5 (normalise (!bpos - !cpos + !bpos - !apos)))
+ let cv = Vector.(scal_mul 2.5 (normalise (!cpos - !apos + !cpos - !bpos)))
+ let ab = Node.(node [at Point.(middle !apos !bpos); innerSep 0.] [])
+ let bc = Node.(node [at Point.(middle !bpos !cpos); innerSep 0.] [])
+ let ca = Node.(node [at Point.(middle !cpos !apos); innerSep 0.] [])
+ let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at !apos; button ("a",["figure"])] []) 
+ let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at !bpos; button ("b",["figure"])] [])
+ let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at !cpos; button ("c",["figure"])] [])
+ let _ = edge Edge.([draw]) a b
+ let _ = edge Edge.([draw]) b c
+ let _ = edge Edge.([draw]) c a
+ let _ = edge Edge.([draw]) a bc
+ let _ = edge Edge.([draw]) b ca
+ let _ = edge Edge.([draw]) c ab)
+
+>>)
+\end{center}
+\item C'est tout pour aujourd'hui !
+\end{itemize}
 \end{slide}
-
