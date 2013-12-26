@@ -420,7 +420,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 #endif
       )
       | States s->List.iter output_contents s.states_contents
-      | _->()
+      | Dynamic d->List.iter output_contents (d.dyn_contents Init)
+      | Video _-> Printf.fprintf stderr "Video not support by Pdf driver\n%!"
     in
     let sorted_pages=
 

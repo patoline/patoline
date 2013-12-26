@@ -233,6 +233,7 @@ type win_info = {
   mutable ry : float;
   mutable pixel_width : float;
   mutable pixel_height : float;
+  mutable do_animation : bool
 }
 
 let win = [|None; None|]
@@ -251,12 +252,14 @@ let init_win w =
     cy = 0.0;
     rx = 0.0;
     ry = 0.0;
+    do_animation = false;
   }
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
+  let events = ref [] in
   let pages = ref pages in
   let structure = ref structure in
   let num_pages = ref (Array.length !pages) in
@@ -440,7 +443,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let start_page_time = ref (Unix.gettimeofday ()) in
   let cur_time = ref (Unix.gettimeofday ()) in
-  let do_animation = ref false in
 
   let mode = ref Single in
 
@@ -458,8 +460,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let other_items = Hashtbl.create 13 in
 
     let draw_page pixel_width page state =
-
+(*      Printf.fprintf stderr "Redraw\n";*)
+      
       let win = get_win () in
+      win.do_animation <- false;
       let graisse =  !prefs.graisse in
       let flou_x = flou_x () and flou_y = flou_y () in
       let graisse_x' = flou_x -. graisse and graisse_y' = flou_y -. graisse in
@@ -522,12 +526,27 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       let rec fn = function
         | Video _ -> failwith "GL Driver does not support video"
 	| Animation a ->
-	  do_animation := true;
+	  win.do_animation <- true;
 	  let t = !cur_time -. !start_page_time in
 	  let len = Array.length a.anim_contents in
 	  let n_step = truncate (t /. a.anim_step) mod (if a.anim_mirror then 2 * len - 1 else len) in
 	  let n_step = if a.anim_mirror && n_step >= len then 2 * len - 1 - n_step else n_step in
 	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
+
+	| Dynamic d ->
+	  let ev0 = ref Init in
+	  let rec gn acc = function
+	    | [] -> events := acc
+	    | ((ds:string list),ev as e)::evs ->
+	      let ds = List.filter 
+		(fun d' -> if d.dyn_label = d' then (
+		  ev0 := ev; false) else true) ds
+	      in
+	      
+	      if !ev0 = Init then gn (e::acc) evs else events := List.rev_append acc (if ds <> [] then (ds,ev)::evs else evs)
+	  in 
+	  gn [] !events;
+	  List.iter fn (d.dyn_contents !ev0)
 
 	| Glyph g ->
         let x = g.glyph_x in
@@ -908,7 +927,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let redraw_all () =
     !send_changes ();
-    Array.iter (function None -> () | Some win -> redraw win) win
+    Array.iter (function None -> () | Some win -> redraw win) win;
   in
 
 (* FIXME: reimplement showing on the slide ... *)
@@ -1268,7 +1287,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let rec idle_cb handle_request ~value:()=
     Glut.timerFunc ~ms:30 ~cb:(idle_cb handle_request) ~value:();
-    if !do_animation then (draw_gl_scene (); Glut.swapBuffers ());
+    Array.iter (function None -> () | Some win ->
+      if win.do_animation then (Glut.setWindow win.winId; draw_gl_scene (); Glut.swapBuffers ())) win;
     show_links ();
     handle_request ();
     begin
@@ -1300,6 +1320,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	(Unix.error_message nb);
       flush stderr;
     end;
+    if !events <> [] then redraw_all ();
 
   in
 
@@ -1345,7 +1366,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		  Not_found -> 
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
-	    | _ -> ()
+	    | Button(name,ds) -> 
+	      events := !events @ [ds,Click(name)];
 	  )
 	  (find_link win x y)
     | b, Glut.UP -> 

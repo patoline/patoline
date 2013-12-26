@@ -146,6 +146,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               Rbuffer.add_string buf a;
               Rbuffer.add_string buf "\">";
             )
+            | Marker (BeginLink _)->()
             | Marker EndLink->(
               Rbuffer.add_string buf "</a>";
             )

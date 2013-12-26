@@ -124,6 +124,16 @@ and animation={
   anim_order:int;
 }
 
+and event=
+  Init |
+  Click of string
+
+and dynamic={
+  dyn_label:string;
+  dyn_contents: event -> raw list;
+  dyn_order:int;
+}
+
 and raw=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
@@ -132,6 +142,7 @@ and raw=
   | Video of video
   | States of states
   | Animation of animation
+  | Dynamic of dynamic
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }
@@ -145,6 +156,7 @@ let rec translate x y=function
   | Video i->Video { i with video_x=i.video_x+.x;video_y=i.video_y+.y }
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
   | Animation a -> Animation { a with anim_contents=Array.map (List.map (translate x y)) a.anim_contents }
+  | Dynamic d -> Dynamic{ d with dyn_contents = fun e -> List.map (translate x y) (d.dyn_contents e)}
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
@@ -162,6 +174,7 @@ let rec resize alpha=function
                        video_height=i.video_height*.alpha }
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
   | Animation a -> Animation { a with anim_contents=Array.map (List.map (resize alpha)) a.anim_contents }
+  | Dynamic d -> Dynamic { d with dyn_contents = fun e -> List.map (resize alpha) (d.dyn_contents e) }
 
 
 type bounding_box_opt = {
@@ -200,7 +213,7 @@ let rec print_raw ch r=match r with
   | Animation a->Printf.fprintf stderr "Animation [ %a ] (default=%d,mirror=%b,step=%f,duration=%f)"
 		 (fun ch -> Array.iter (Printf.fprintf ch "[%a]" (fun ch -> List.iter (print_raw ch))))
     a.anim_contents a.anim_default a.anim_mirror a.anim_step a.anim_duration
-
+  | Dynamic d -> Printf.fprintf stderr "Dynamic %s [ %a ]\n" d.dyn_label (fun ch -> List.iter (print_raw ch)) (d.dyn_contents Init)
 
 let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
@@ -247,6 +260,7 @@ let bounding_box_opt opt l=
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
     | Animation a::s -> bb x0 y0 x1 y1 (List.concat (Array.to_list a.anim_contents)@s)
+    | Dynamic d::s -> bb x0 y0 x1 y1 (d.dyn_contents Init@s)
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
@@ -324,7 +338,8 @@ let rec in_order i x=match x with
   | Image a->Image { a with image_order=i }
   | Video a->Video { a with video_order=i }
   | States s->States { s with states_order=i }
-  | Animation a-> Animation { a with anim_contents = Array.map (List.map (in_order i)) a.anim_contents }
+  | Animation a-> Animation { a with anim_order = i }
+  | Dynamic d -> Dynamic {d with dyn_order=i}
 
 let rec drawing_order x=match x with
     Glyph g->g.glyph_order
@@ -334,6 +349,7 @@ let rec drawing_order x=match x with
   | Video i->i.video_order
   | States s->s.states_order
   | Animation a->a.anim_order
+  | Dynamic d->d.dyn_order
 
 let drawing_sort l=
   let rec make_list t acc=match t with

@@ -905,6 +905,7 @@ let sectref x=generalRef "_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
 let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]
+let button name destinations b=bB (fun _->[Marker (BeginLink (Button(name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 
@@ -1245,29 +1246,25 @@ let draw_boxes env l=
       let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
-    | Marker (BeginLink (Extern l))::s->(
+    | Marker (BeginLink l)::s->(
       (* Printf.fprintf stderr "****BeginURILink %S****\n" l; *)
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=OutputCommon.Extern l;
+      let k = match l with
+	  Extern l -> OutputCommon.Extern l;
+	| Intern l ->
+	  let dest_page=
+            try
+              let line=MarkerMap.find (Label l) env.user_positions in
+              page line
+            with
+              Not_found->(-1)
+	  in
+	  Intern(l,dest_page,0.,0.);
+	| Button(n,d) -> OutputCommon.Button(n,d)
+      in
+      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
                  link_closed=false;
                  link_contents=[] }
-      in
-      draw_boxes x y (Link link::dr) s
-    )
-    | Marker (BeginLink (Intern l))::s->(
-      (* Printf.fprintf stderr "****BeginLink %S****\n" l; *)
-      let dest_page=
-        try
-          let line=MarkerMap.find (Label l) env.user_positions in
-          page line
-        with
-            Not_found->(-1)
-      in
-      let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern(l,dest_page,0.,0.);
-                 link_order=0;
-                 link_closed=false;
-                 link_contents=[]
-               }
       in
       draw_boxes x y (Link link::dr) s
     )
@@ -1746,6 +1743,31 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
     anim_default = default;
     anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) acc c) max_int tbl;
     anim_mirror = mirror}
+  in
+  let (x0,y0,x1,y1)=bounding_box [r] in
+  let w = x1 -. x0 in
+  [Drawing {
+    drawing_min_width=w;
+    drawing_max_width=w;
+    drawing_nominal_width=w;
+    drawing_width_fixed = true;
+    drawing_adjust_before = false;
+    drawing_y0=y0;
+    drawing_y1=y1;
+    drawing_states=[];
+    drawing_break_badness=0.;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[r])
+  }])]
+
+let dynamic name contents =
+  [bB (fun env -> 
+    let contents a = draw env (contents a) in
+    let r = Dynamic{
+      dyn_label = name;
+      dyn_contents = contents;
+      dyn_order = List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) max_int (contents Init);
+    }
   in
   let (x0,y0,x1,y1)=bounding_box [r] in
   let w = x1 -. x0 in

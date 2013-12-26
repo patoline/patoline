@@ -1,0 +1,69 @@
+(* #FORMAT FormatSlides *)
+
+\Caml(
+open Diagrams
+open Proj3d
+
+let caml x = x
+)
+
+== Animation ==
+
+\begin{slide}
+\begin{center}
+\animation(90)(fun t -> let t = float t /. 45. *. 3.1415927 in
+   let proj t = {distance_focale = 55.;
+   origin_transfo_x = 10.;
+   origin_transfo_y = 10.;
+   origin_transfo_z = 10.; (* boucle avec 10.0 *)
+   origin_diag = (10.,10.,10.); (* pour que le centre du cube ne bouge pas *)
+   axe_angle = 0.;
+   rot_angle = t;
+   homotetie = 1.0;} in
+   let projection = proj t in
+<<\diagram(
+(*   let _ = cube projection*)
+ let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
+ let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
+ let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
+ let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
+ let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
+ let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
+ let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
+ let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
+
+
+  let _ = edge_3d Edge.([arrow;draw]) a b
+  let _ = edge_3d Edge.([arrow;draw]) d c
+  let _ = edge_3d Edge.([arrow;draw]) a d
+  let _ = edge_3d Edge.([arrow;draw]) b c
+
+  let _ = edge_3d Edge.([arrow;draw]) a' b'
+  let _ = edge_3d Edge.([arrow;draw]) d' c'
+  let _ = edge_3d Edge.([arrow;draw]) a' d'
+  let _ = edge_3d Edge.([arrow;draw]) b' c'
+
+  let _ = edge_3d Edge.([arrow;draw]) a' a
+  let _ = edge_3d Edge.([arrow;draw]) b' b
+  let _ = edge_3d Edge.([arrow;draw]) c' c
+  let _ = edge_3d Edge.([arrow;draw]) d' d
+
+   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] (<<x>>))
+
+)>>)
+\end{center}
+\end{slide}
+
+== Dynamisme ==
+
+\begin{slide}
+\button("test")(["cible"]){Un bouton}
+
+\dynamic("cible")(
+	let count = ref 0 in
+	function ev ->
+  	  if ev <> Init then incr count;
+	  <<Le bouton a été cliqué \caml([tT (string_of_int !count)]) fois>>)
+
+\end{slide}
+

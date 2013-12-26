@@ -14,6 +14,9 @@
 (* \end{center} *)
 (* \end{slide} *)
 
+\Caml(
+let caml x = x
+)
 
 == Contexte ==
 
@@ -36,5 +39,15 @@ On sait pas comment projeter.
 
 \begin{slide}
 Les systèmes de facto.
+
+\button("test")(["cible"]){Un bouton}
+
+\dynamic("cible")(
+	let count = ref 0 in
+	function ev ->
+  	  if ev <> Init then incr count;
+	  Printf.fprintf stderr "count: %d\n" !count;
+	  <<Le bouton a été cliqué \caml([tT (string_of_int !count)]) fois>>)
+
 \end{slide}
 

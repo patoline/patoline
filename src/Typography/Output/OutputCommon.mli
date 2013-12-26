@@ -82,14 +82,25 @@ and animation={
   anim_order:int;
 }
 
-and raw =
+and event=
+  Init |
+  Click of string
+
+and dynamic={
+  dyn_label:string;
+  dyn_contents: event -> raw list;
+  dyn_order:int;
+}
+
+and raw=
     Glyph of glyph
-  | Path of path_parameters * Bezier.curve array list
+  | Path of path_parameters * (Bezier.curve array list)
   | Link of link
   | Image of image
   | Video of video
   | States of states
   | Animation of animation
+  | Dynamic of dynamic
 
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw

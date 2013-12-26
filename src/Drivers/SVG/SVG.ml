@@ -296,6 +296,21 @@ let draw ?fontCache prefix w h contents=
       );
       Rbuffer.add_string svg_buf "</a>";
     )
+    | Dynamic d ->
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+      Rbuffer.add_string svg_buf (Printf.sprintf "<g id=\"dynamic_%s\">\n" d.dyn_label);
+      opened_tspan:=false;
+      opened_text:=false;	
+      List.iter output_contents (d.dyn_contents Init);
+      Rbuffer.add_string svg_buf "</g>\n";
+
     | Animation a ->
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";

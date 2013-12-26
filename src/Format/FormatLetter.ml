@@ -210,24 +210,19 @@ module Output=functor(M:Driver)->struct
                           (* page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents; *)
                           w
                       )
-                      | Marker (BeginLink (Extern l))->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Extern(l);
+                      | Marker (BeginLink l)->(
+			let k = match l with
+			    Extern l -> OutputCommon.Extern l;
+			  | Intern l -> OutputCommon.Intern(l,0,0.,0.)
+			  | Button(n,d) -> OutputCommon.Button(n,d)
+			in
+			
+                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                    link_order=0;link_closed=false;
                                    link_contents=[] }
                         in
                         urilinks:=Some link;
                         page.pageContents<-Link link::page.pageContents;
-                        0.
-                      )
-                      | Marker (BeginLink (Intern l))->(
-                        let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=Intern("",0,0.,0.);
-                                   link_order=0;link_closed=false;
-                                   link_contents=[]
-                                 }
-                        in
-                        crosslinks:=(i, link, l) :: !crosslinks;
-                        page.pageContents<-Link link::page.pageContents;
-                        crosslink_opened:=true;
                         0.
                       )
                       | Marker (Label l)->(

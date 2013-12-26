@@ -90,6 +90,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Link l::s->draw_page (l.link_contents@s)
       | Animation a::s ->
 	draw_page (a.anim_contents.(a.anim_default) @s)
+      | Dynamic d::s ->
+	draw_page (d.dyn_contents Init @s)
       | (Video _|States _|Image _)::s -> draw_page s
       | []->()
     in
