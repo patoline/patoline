@@ -255,12 +255,16 @@ let macro_name =
        if m = "begin" then raise Give_up;
        if m = "end" then raise Give_up;
        if m = "item" then raise Give_up;
+       if m = "verb" then raise Give_up;
        m
   end
 let macro =
   glr
-     m:macro_name args:argument** ->
-       List.fold_left (fun acc r -> <:expr@_loc_args<$acc$ $r$>>)  <:expr@_loc_m<$lid:m$>> args
+       m:macro_name args:argument** ->
+         List.fold_left (fun acc r -> <:expr@_loc_args<$acc$ $r$>>)  <:expr@_loc_m<$lid:m$>> args
+    || STR("\\verb") txt:RE("{.*}") ->
+        (let txt = String.sub txt 1 (String.length txt - 2) in
+        <:expr<$lid:"verb"$ [tT $str:txt$]>>)
  end
 
 let word =
@@ -318,15 +322,33 @@ let item =
 
 let paragraph =
   glr
-    l:paragraph_local ->
-      (fun no_indent ->
-        if no_indent then
-          <:str_item@_loc_l<
-             let _ = newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
-                       Complete.normal Patoline_Format.parameters $l$>>
-        else
-          <:str_item@_loc_l<
-             let _ = newPar D.structure Complete.normal Patoline_Format.parameters $l$ >>)
+    txt:RE("^###\n\\(\\(.\\|\n\\)*\\)\n###") -> (fun _ ->
+      let txt = String.sub txt 4 (String.length txt - 8) in
+      let rec lines s acc =
+        try
+          let i = String.index s '\n' in
+          let l = String.sub s 0 i in
+          lines (String.sub s (i+1) (String.length s - i - 1)) (l::acc)
+        with
+          Not_found -> s::acc
+          | Invalid_argument _ -> []
+      in
+      let ls = List.rev (lines txt []) in
+      let ls = List.map String.escaped ls in
+      let buildline l = <:str_item<let _ = newPar D.structure ~environment:verbEnv Complete.normal
+                           ragged_left (lang_default $str:l$) >>
+      in
+      let ls = List.map buildline ls in
+      List.fold_left (fun acc r -> <:str_item<$acc$ $r$>>)  <:str_item<>> ls)
+    || l:paragraph_local ->
+        (fun no_indent ->
+          if no_indent then
+            <:str_item@_loc_l<
+               let _ = newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
+                         Complete.normal Patoline_Format.parameters $l$>>
+          else
+            <:str_item@_loc_l<
+               let _ = newPar D.structure Complete.normal Patoline_Format.parameters $l$ >>)
     || it:item -> (fun _ -> it)
   end 
 
