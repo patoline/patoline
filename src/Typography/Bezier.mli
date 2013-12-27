@@ -93,3 +93,6 @@ val subdivise :
 *)
 val oriente :
   (float array*float array) list list -> ((float array*float array) list * bool) list
+
+val length : (float array*float array)-> float
+val partial_length : float -> (float array*float array)-> float

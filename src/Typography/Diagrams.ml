@@ -274,7 +274,7 @@ module Curve = struct
     let t = t *. (float_of_int (List.length beziers)) in
     let rec eval_rec beziers t = 
       match beziers with 
-	| [] -> Printf.fprintf stderr ("Warning: evaluating an empty curve. Using (0.,0.)") ; (0.,0.)
+	| [] -> Printf.fprintf stderr ("Warning: evaluating an empty curve. Using (0.,0.)\n") ; (0.,0.)
 	| bezier :: reste -> 
 	  if t <= 1. then bezier_evaluate bezier t
 	  else eval_rec reste (t -. 1.)
@@ -390,48 +390,51 @@ module Curve = struct
     linear_length beziers
 
   let curvilinear curve z =
-    (* Printf.fprintf stderr "Entering curvilinear %f.\n" z ; *)
-    let n = 1000 in
-    let time_unit = 1. /. (float_of_int n) in
-    let beziers = List.concat
-      (List.map (fun (xs, ys) -> 
-	let beziers_x = Bezier.divide xs n in
-	let beziers_y = Bezier.divide ys n in
-	List.combine beziers_x beziers_y)
-	 curve)
-    in
-    let rec scan z n_yet t_yet z_yet l = 
-      (* let _ = Printf.fprintf stderr "Scanning n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
+(*    Printf.fprintf stderr "Entering curvilinear %f.\n" z ;*)
+    let epsilon = 1e-5 in
+    let time_unit = 1. /. float (List.length curve) in
+    let curve = List.map (fun c -> c, Bezier.length c) curve in
+    let rec scan z t_yet z_yet l = 
+(*      Printf.fprintf stderr "Scanning t_yet = %f, z_yet = %f.\n" t_yet z_yet;*)
       match l with
       | [] -> let _ = 
 		Printf.fprintf stderr 
 		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
 	      in 0.
-      | (xs', ys') as bezier :: l' -> 
-	let length = bezier_linear_length bezier in
+      | ((xs', ys') as bezier, length) :: l' -> 
 	let z_restant = z -. z_yet in
-	if z_restant >= length then
-	  scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
-	else time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
+	if z_restant > length then
+	  scan z (t_yet +. time_unit) (z_yet +. length) l'
+	else 
+	  let rec fn ta tb za zb =
+(*	    Printf.fprintf stderr "Dighotomie ta = %f, za = %f, tb = %f, zb = %f\n" ta za tb zb;*)
+	    let tc = (ta *. (1. -. z_restant +. za)  +. tb *. (z_restant -. za)) /. (zb -. za) in
+	    let zc = Bezier.partial_length tc bezier in
+	    let delta = z_restant -. zc in
+	    if delta < -. epsilon then
+	      fn ta tc za zc
+	    else if delta > epsilon then
+	      fn tc tb zc zb
+	    else 
+	      let r = t_yet +. tc /. time_unit in
+(*	      Printf.fprintf stderr "Return: %f\n%!" r;*)
+	      assert (r >= 0.0 && r <= 1.0);
+	      r
+	  in
+	  fn 0. 1. 0. length 	       
     in
-    let rec backwards_scan z n_yet t_yet z_yet l = 
-      (* let _ = Printf.fprintf stderr "Scanning backwards n_yet = %d, t_yet = %f, z_yet = %f.\n" n_yet t_yet z_yet in *)
-      match l with
-      | [] -> let _ = 
-		Printf.fprintf stderr 
-		  "Couldn't find curvilinear coordinate. Returning 0.\n" 
-	      in 0.
-      | (xs', ys') as bezier :: l' -> 
-	let length = bezier_linear_length bezier in
-	let z_restant = z -. z_yet in
-	if z_restant >= length then
-	  backwards_scan z (n_yet + 1) (t_yet +. time_unit) (z_yet +. length) l'
-	else 1. -. time_unit *. ((float_of_int n_yet) +. (z_restant /. length))
-    in
-    if z < 0. then
-      backwards_scan (-. z) 0 0. 0. (List.rev beziers)
+    let total_length = List.fold_left (fun acc (_,l) -> l +. acc) 0.0 curve in
+    let z = if z < 0. then total_length +. z else z in
+    if z < 0.0 then (
+      Printf.fprintf stderr 
+	"Couldn't find curvilinear coordinate. Returning 0.\n";
+      0.0)
+    else if z > total_length then  (
+      Printf.fprintf stderr 
+	"Couldn't find curvilinear coordinate. Returning 1.\n";
+      1.0)
     else 
-      scan z 0 0. 0. beziers
+      scan z 0. 0. curve
 	
 end
 
@@ -2092,8 +2095,8 @@ Doing a rectangle.\n" ;
       let shorten, shorten_pet = Pet.register ~depends:[clip_pet] "shorten" (fun pet a b ->
 	{ pet = pet ; transfo = (fun transfos info ->
 	  let shorten (params',curve') = 
-	    let ta = Curve.curvilinear curve' a in
-	    let tb = if b = 0. then 1. else Curve.curvilinear curve' (-. b) in
+	    let ta = if a = 0.0 then 0.0 else Curve.curvilinear curve' a in
+	    let tb = if b = 0.0 then 1.0 else Curve.curvilinear curve' (-. b) in
 	    params', Curve.restrict curve' ta tb
 	  in
 	  let _, u_curve = shorten (info.params, info.underlying_curve) in

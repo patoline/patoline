@@ -45,6 +45,7 @@ let derivee a=
     done;
     b
 
+  
 let derivee_start a =
   (a.(1) -. a.(0)) *.  (float_of_int (Array.length a-1))
 
@@ -111,6 +112,32 @@ let casteljau_left f x=
 let eval f0 x=
   let f=Array.copy f0 in
     (casteljau_right f x).(0)
+
+let length' nb_div t (xa,ya) =
+  let xb = derivee xa and yb = derivee ya in
+  let s = ref 0.0 in
+  let n = t /. float nb_div in
+  let n2 = n /. 2. in
+  for i0 = 0 to nb_div do
+    let i = float i0 in
+    let t = i *. n in
+    let t' = t +.  n2 in
+    let xd1 = eval xb t in
+    let yd1 = eval yb t in
+    if i0 = nb_div then
+      s := !s +. sqrt (xd1*.xd1 +. yd1*.yd1)
+    else
+      let xd2 = eval xb t' in
+      let yd2 = eval yb t' in
+      if i0 = 0 then
+	s := !s +. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
+      else
+	s := !s +. 2. *. sqrt (xd1*.xd1 +. yd1*.yd1) +. 4. *. sqrt (xd2*.xd2 +. yd2*.yd2)
+  done;
+  !s /. 6. *. n
+    
+let length = length' 10 1.
+let partial_length = length' 10
 
 let restrict f0 a b=
   match Array.length f0 with
