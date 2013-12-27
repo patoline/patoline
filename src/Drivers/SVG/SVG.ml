@@ -121,6 +121,7 @@ let draw ?fontCache prefix w h contents=
   let opened_text=ref false in
   let opened_tspan=ref false in
   let imgs=ref StrMap.empty in
+  let animate_count = ref 0 in
   let rec output_contents cont=match cont with
       Glyph x->(
         if not !opened_text then (
@@ -329,10 +330,15 @@ let draw ?fontCache prefix w h contents=
         Rbuffer.add_string svg_buf "</text>\n";
         opened_text:=false
       );
-      let prefix = "toto" in (* FIXME *)
+      let prefix = !animate_count in
+      incr animate_count;
+      Rbuffer.add_string svg_buf (Printf.sprintf "<g class=\"animation\" nbframes=\"%d\" step=\"%d\" mirror=\"%d\" id=\"%d\">" 
+				    (Array.length a.anim_contents) (truncate (a.anim_step *. 1000.)) 
+				    (if a.anim_mirror then 1 else 0) prefix );
+
       Array.iteri (fun i c ->
 	Rbuffer.add_string svg_buf (
-	  Printf.sprintf "<g id=\"%s%d\" visibility=\"%s\">\n"
+	  Printf.sprintf "<g id=\"Animation_%d_%d\" visibility=\"%s\">\n"
 	    prefix i
 	    (if i = a.anim_default then "inherit" else "hidden"));
         opened_tspan:=false;
@@ -347,26 +353,7 @@ let draw ?fontCache prefix w h contents=
           opened_text:=false
 	);
 	Rbuffer.add_string svg_buf "</g>\n") a.anim_contents;
-      Rbuffer.add_string svg_buf (Printf.sprintf "<script type=\"text/javascript\">
-  function %sAnimate() {
-    var i = 0; var d = 1;
-    var cur = document.getElementById(\"%s\"+i.toString());
-    setInterval(function () {
-      i = i + d;
-      if (i >= %d) {%s}%s
-      var next = document.getElementById(\"%s\"+i.toString());
-      next.setAttribute(\"visibility\",\"inherit\");
-      cur.setAttribute(\"visibility\",\"hidden\");
-      cur = next;
-    }, %d);
-  }
-  %sAnimate(); </script>"
-			    prefix prefix (Array.length a.anim_contents) 
-			    (if a.anim_mirror then "i = i - 2; d = -1;" else "i = 0;")
-			    (if a.anim_mirror then "\nelse if (0 > i) { i = i + 2; d = 1; }" else "")
-			    prefix 
-			    (truncate (a.anim_step *. 1000.)) prefix);
-
+      Rbuffer.add_string svg_buf "</g>\n"
   in
   let raws=
     let x=List.fold_left (fun m x->
@@ -446,14 +433,14 @@ let basic_html ?script:(script="") ?onload:(onload="") ?onhashchange:(onhashchan
       None->Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_state<=0 || e.keyCode==38) {
-  loadSlide(current_slide-1,states[current_slide-1]-1,function(a,b){slide(%g,a,b)})
+  loadSlide(current_slide-1,states[current_slide-1]-1)
 } else {
   loadSlide(current_slide,current_state-1)
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
 if(current_state>=states[current_slide]-1 || e.keyCode==40) {
-  loadSlide(current_slide+1,0,function(a,b){slide(%g,a,b)})
+  loadSlide(current_slide+1,0)
 } else {
   loadSlide(current_slide,current_state+1)
 }
@@ -461,15 +448,13 @@ if(current_state>=states[current_slide]-1 || e.keyCode==40) {
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
 }
-setTimeout(tout,to);
 }
 function gotoSlide(n){
 if(n>current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)});
+  loadSlide(n,0);
 else if(n<current_slide)
-  loadSlide(n,0,function(a,b){slide(%g,a,b)});
-setTimeout(tout,to);
-}" (-.w) w (-.w) w
+  loadSlide(n,0);
+}"
     | Some x->x
   in
 
@@ -487,49 +472,7 @@ setTimeout(tout,to);
 var current_slide=0;
 var current_state=0;
 var first_displayed=false;
-var seq=0;
-var transQueue=new Array();
-var queue=new Array();
-var qi=0,qj=0;
 ";
-
-  Rbuffer.add_string html "function slide(width,g0,g1){
-    var svg=document.getElementsByTagName(\"svg\")[0];
-    g0.style.MozTransform=\"translate(\"+width+\"px,0)\";
-    g0.style.webkitTransform=\"translate(\"+width+\"px,0,0)\";
-    g0.style.MozTransitionDuration=\"1s\";
-    g0.style.webkitTransitionDuration=\"1s\";
-    g0.style.MozTransitionProperty=\"transform\";
-//    g0.style.webkitTransitionProperty=\"transform\";
-    svg.appendChild(g0);
-    if(g1){
-        g1.style.MozTransitionDuration=\"1s\";
-        g1.style.webkitTransitionDuration=\"1s\";
-        g1.style.MozTransitionProperty=\"transform\";
-        g1.style.webkitTransitionProperty=\"transform\";
-    }
-
-    queue[qi]=g0;
-    qi++;
-    var qqi=qi;
-    document.addEventListener(\"transitionend\", function(e){
-        if(e.target.id==queue[qqi-1].id){
-            for(var i=qj;i<qqi-1;i++){
-                svg.removeChild(queue[i]);
-            };
-            qj=qqi-1;
-        }
-    });
-    transQueue.push(function(){
-        g0.style.MozTransform=\"translate(0,0)\";
-        g0.style.webkitTransform=\"translate(0,0)\";
-        if(g1){
-           g1.style.MozTransform=\"translate(\"+(-width)+\"px,0)\";
-           g1.style.webkitTransform=\"translate(\"+(-width)+\"px,0)\";
-        }
-    });
-
-}\n";
 
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
@@ -541,88 +484,91 @@ var qi=0,qj=0;
   Rbuffer.add_string html "];";
 
   Rbuffer.add_string html (
-    Printf.sprintf "xhttp=new XMLHttpRequest();
-function loadSlide(n,state,effect){
-if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state || !first_displayed)) {
-  first_displayed=true;
-  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
-  xhttp.send();
-  if(xhttp.status==200 || xhttp.status==0){
-    var parser=new DOMParser();
-    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
+    Printf.sprintf "
+var xhttp=new XMLHttpRequest();
+var cur_child = new Array();
+var animations = new Array();
+var parser=new DOMParser();
 
-    var svg=document.getElementsByTagName(\"svg\")[0];
+function Animate(name,nbframes,mirror,step) {
+    var i = 0; var d = 1;
+    var cur = document.getElementById('Animation_'+name+'_'+i.toString());
+    animations.push(setInterval(function () {
+      i = i + d;
+      if (i >= nbframes) {
+        if (mirror) { i = i - 2; d = -1; } else { i = 0; }
+      }
+      else if (i < 0) { i = 2; d = 1; }
+    
+      var next = document.getElementById('Animation_'+name+'_'+i.toString());
+      next.setAttribute('visibility','inherit');
+      cur.setAttribute('visibility','hidden');
+      cur = next;
+    }, step));
+  }
+
+function loadSlide(n,state){
+if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state || !first_displayed)) {
+
+  document.body.style.cursor = 'wait';
+  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",true);
+
+
+  xhttp.onload =(function(e) {
+    if(xhttp.status==200 || xhttp.status==0){
+
+    var svg=document.getElementById(\"container\");
+    location.hash=n+\"_\"+state;
+
+    while (cur_child.length > 0) {
+       svg.removeChild(cur_child.shift());
+    }
+    while (animations.length > 0) {
+       clearInterval(animations.shift());
+    }
+
+    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
     newSvg=document.importNode(newSvg.rootElement,true);
 
-    var cur_g=queue[qi-1];
-    if(effect || !cur_g){ // si on fait un effet, ou si on c'est le premier chargement
-        var g=document.createElementNS(\"http://www.w3.org/2000/svg\",\"g\");
-        //suppression des artefacts de webkit
-        var rect=document.createElementNS(\"http://www.w3.org/2000/svg\",\"rect\");
-        rect.setAttribute(\"x\",\"0\");
-        rect.setAttribute(\"y\",\"0\");
-        rect.setAttribute(\"width\",\"%g\");
-        rect.setAttribute(\"height\",\"%g\");
-        rect.setAttribute(\"fill\",\"#ffffff\");
-        rect.setAttribute(\"stroke\",\"none\");
-        g.appendChild(rect);
-        seq++;
-        g.setAttribute(\"id\",\"g\"+n+\"_\"+state+\"_\"+seq);
-        while(newSvg.firstChild) {
-            if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
-                g.appendChild(newSvg.firstChild);
-            else
-                newSvg.removeChild(newSvg.firstChild);
-        }
-        if(effect) effect(g,cur_g)
-        else {
-            for(var i=qj;i<qi;i++)
-                svg.removeChild(queue[i]);
-            svg.appendChild(g);
-            queue[qi]=g;
-            qj=qi;
-            qi++;
-        }
-    } else { // pas d'effet, et un truc est déjà chargé
-        for(var i=qj;i<qi-1;i++)
-            if(queue[i] && queue[i].parentNode==svg)
-                svg.removeChild(queue[i]);
-        qj=qi-1;
-        while(cur_g.firstChild) {
-            cur_g.removeChild(cur_g.firstChild);
-        }
-        while(newSvg.firstChild) {
-            if(newSvg.firstChild.nodeType==document.ELEMENT_NODE)
-                cur_g.appendChild(newSvg.firstChild);
-            else
-                newSvg.removeChild(newSvg.firstChild);
-        }
+/* animation du slide entrant */
+    if (current_slide != n) {
+      var animT=document.getElementById(\"animation\");
+      animT.setAttribute(\"from\",\"0\");
+      animT.setAttribute(\"to\",\"1\");
+      animT.beginElement();
     }
+    while(newSvg.firstChild) {
+        if(newSvg.firstChild.nodeType==document.ELEMENT_NODE) {
+            cur_child.push(svg.appendChild(newSvg.firstChild));
+        }
+        else newSvg.removeChild(newSvg.firstChild);
+    }
+
+    var anim2=svg.getElementsByClassName('animation');
+
+    for (var a=0;a<anim2.length;a++) {
+        Animate(anim2[a].getAttribute('id'),
+                              anim2[a].getAttribute('nbframes'),
+                              anim2[a].getAttribute('mirror'),
+                              anim2[a].getAttribute('step')); }
+
     var videos=document.getElementsByTagName(\"video\");
     for(var i=0;i<videos.length;i++) videos[i].controls=true;
     current_slide=n;
     current_state=state;
-    location.hash=n+\"_\"+state;
-  }
+
+    document.body.style.cursor = 'default';
+
+    first_displayed=true;
+  }});
+  xhttp.send();
+
 }}"
       (Array.length pages)
-      w
-      h
   );
 
   Rbuffer.add_string html (
     Printf.sprintf "
-var to=25;
-var tout=function(){
-if(transQueue.length>0){
-var a=transQueue.pop();
-a();
-transQueue.shift();
-setTimeout(tout,to);
-};
-};
-%s
-
 window.onload=function(){
 var h0=0,h1=0;
 if(location.hash){
@@ -631,7 +577,6 @@ h0=location.hash?parseInt(location.hash.substring(1,i)):0;
 h1=location.hash?parseInt(location.hash.substring(i+1)):0;
 }
 %s
-tout();
 };
 
 window.onhashchange=function(){
@@ -647,7 +592,6 @@ if(h0!=current_slide || h1!=current_state){
 };
 %s
 </script>"
-      script
       (if onload="" then "loadSlide(h0,h1);" else onload)
       (if onhashchange="" then "loadSlide(h0,h1);" else onhashchange)
       keyboard
@@ -656,14 +600,21 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
+  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g id=\"container\">"
                              (round (w)) (round (h)));
 
-  let style=make_defs "" cache in
+  Rbuffer.add_string html "<animateTransform attributeName=\"transform\" attributeType=\"XML\"
+   id=\"animation\" type=\"scale\" from=\"1\" to=\"1\" dur=\"0.5s\"/>";
 
-  Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>";
+  Rbuffer.add_string html (Printf.sprintf "<rect x=\"0\" y=\"0\" width=\"%g\" height=\"%g\" fill=\"#ffffff\" stroke=\"#b0b0b0\" stroke-width=\"0.2\"></rect></g>\n" w h);
+
+  let style=make_defs "" cache in
+  Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
+
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
+
+
   html,style
 
 
