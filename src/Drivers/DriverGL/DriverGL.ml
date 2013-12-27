@@ -363,7 +363,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     String.length(uri) >= 5 && String.sub uri 0 5 = "edit:"
   in
 
-  let fps = ref 0.0 and cfps = ref 0 in
+  (* let fps = ref 0.0 and cfps = ref 0 in *)
+  let fps = 26. in
 
   let saved_rectangle = ref None in
   let to_revert = ref false in
@@ -871,6 +872,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     draw_saa (do_draw win.pixel_width) (set_proj win) !prefs.subpixel_anti_aliasing;
 
     let delta = Sys.time () -. time in
+    let frametime = 1. /. fps in
+    if delta < frametime then Thread.delay (frametime -. delta);
+    if delta >= frametime then Printf.fprintf stderr "One frame under %f fps...\n%!" fps;
+    (*
     fps := !fps +. delta;
     incr cfps;
     if !cfps = 50 then (
@@ -878,6 +883,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       flush stderr;
       cfps := 0; fps := 0.0
     );
+    *)
 
     if !update_link then (read_links (); update_link := false)
 
