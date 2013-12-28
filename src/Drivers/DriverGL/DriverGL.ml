@@ -233,7 +233,9 @@ type win_info = {
   mutable ry : float;
   mutable pixel_width : float;
   mutable pixel_height : float;
-  mutable do_animation : bool
+  mutable do_animation : bool;
+  mutable cfps : int;
+  mutable fps : float;
 }
 
 let win = [|None; None|]
@@ -253,6 +255,7 @@ let init_win w =
     rx = 0.0;
     ry = 0.0;
     do_animation = false;
+    cfps = 0; fps = 0.0;
   }
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
@@ -362,9 +365,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let is_edit uri =
     String.length(uri) >= 5 && String.sub uri 0 5 = "edit:"
   in
-
-  (* let fps = ref 0.0 and cfps = ref 0 in *)
-  let fps = 26. in
 
   let saved_rectangle = ref None in
   let to_revert = ref false in
@@ -860,8 +860,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 *)  
   let draw_gl_scene () =
     let win = get_win () in
-    let time = Sys.time () in
-    cur_time := Unix.gettimeofday ();
+    let time = Unix.gettimeofday () in
+    win.cfps <- win.cfps+1;
+    if win.cfps = 250 then (
+      let delta = time -. win.fps in
+      Printf.fprintf stderr "fps: %f\n%!" (float win.cfps /. delta);
+      win.cfps <- 0; win.fps <- time
+    );
+
+    cur_time := time;
     saved_rectangle := None;
     if !to_revert then revert ();
     GlFunc.color_mask ~red:true ~green:true ~blue:true ~alpha:true ();
@@ -870,20 +877,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     GlClear.clear [`color;`depth];
     GlMat.load_identity ();
     draw_saa (do_draw win.pixel_width) (set_proj win) !prefs.subpixel_anti_aliasing;
-
-    let delta = Sys.time () -. time in
-    let frametime = 1. /. fps in
-    if delta < frametime then Thread.delay (frametime -. delta);
-    if delta >= frametime then Printf.fprintf stderr "One frame under %f fps...\n%!" fps;
-    (*
-    fps := !fps +. delta;
-    incr cfps;
-    if !cfps = 50 then (
-      Printf.fprintf stderr "fps: %f\n" (float !cfps /. !fps);
-      flush stderr;
-      cfps := 0; fps := 0.0
-    );
-    *)
 
     if !update_link then (read_links (); update_link := false)
 
@@ -1316,8 +1309,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let rec idle_cb handle_request ~value:()=
     Glut.timerFunc ~ms:30 ~cb:(idle_cb handle_request) ~value:();
+    let to_redraw = ref false in
     Array.iter (function None -> () | Some win ->
-      if win.do_animation then (Glut.setWindow win.winId; draw_gl_scene (); Glut.swapBuffers ())) win;
+      if win.do_animation then to_redraw := true) win;
     show_links ();
     handle_request ();
     begin
@@ -1331,7 +1325,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	if cmd <> "" then begin
 	  try
 	    match cmd.[0] with
-	      'r' -> to_revert := true; Glut.postRedisplay ()
+	      'r' -> to_revert := true; to_redraw := true;
 	    | 'e' -> (
 	      match split ' ' cmd with
 		[_;l;c] ->
@@ -1343,14 +1337,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      Printf.fprintf stderr "Illegal cmd: %s\n" cmd; flush stderr
 	end
     with 
-      Unix.Unix_error(nb, _, _) as e -> 
+      Unix.Unix_error(nb, _, _) as e ->
       Printf.fprintf stderr "Error in select: %s (%s)\n"
 	(Printexc.to_string e)
 	(Unix.error_message nb);
       flush stderr;
     end;
-    if !events <> [] then redraw_all ();
-
+    if !events <> [] or !to_redraw then redraw_all ();
   in
 
   let display_cb sock ()=
@@ -1459,6 +1452,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	(try 
 	  while true do 
 	    (try 
+	       Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) win;
 	       Glut.mainLoop ()
 	     with 
 	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
