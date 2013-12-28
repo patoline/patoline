@@ -59,27 +59,29 @@ let caml x = x
 \begin{slide}
 \begin{itemize}
 
+\Caml(let count = ref 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
-\dynamic("cible")(
-	let count = ref 0 in
-	function ev ->
-  	  (match ev with Click "test"-> incr count | _ -> ());
-	  <<\caml([tT (string_of_int !count)]) fois !>>)
+\dynamic("cible")(function ev ->
+  	  (match ev with 
+	     Click "test"-> incr count; Public 
+           | _ -> Unchanged))(fun () -> <<\caml([tT (string_of_int !count)]) fois !>>)
 
 \item Et une figure dont on peut bouger les sommets :
 
 \begin{center}
+\Caml(
+let apos = ref (-10.0,-10.0)
+let bpos = ref (10.0,10.0)
+let cpos = ref (10.0,-10.0)
+)
 \dynamic("figure")(
-	let apos = ref (-10.0,-10.0) in
-	let bpos = ref (10.0,10.0) in
-	let cpos = ref (10.0,-10.0) in
 	function ev ->
   	  (match ev with
-	   | Drag("a",p) -> apos := Vector.(p + !apos)
-	   | Drag("b",p) -> bpos := Vector.(p + !bpos)
-	   | Drag("c",p) -> cpos := Vector.(p + !cpos)
-	   | _ -> ());
-<< \diagram(
+	   | Drag("a",p) -> apos := Vector.(p + !apos); Private
+	   | Drag("b",p) -> bpos := Vector.(p + !bpos); Private
+	   | Drag("c",p) -> cpos := Vector.(p + !cpos); Private
+	   | _ -> Unchanged))(fun () -> <<
+\diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw;innerSep 20.0] [])
  let av = Vector.(scal_mul 2.5 (normalise (!apos - !bpos + !apos - !cpos)))
  let bv = Vector.(scal_mul 2.5 (normalise (!bpos - !cpos + !bpos - !apos)))
@@ -95,9 +97,8 @@ let caml x = x
  let _ = edge Edge.([draw]) c a
  let _ = edge Edge.([draw]) a bc
  let _ = edge Edge.([draw]) b ca
- let _ = edge Edge.([draw]) c ab)
+ let _ = edge Edge.([draw]) c ab)>>)
 
->>)
 \end{center}
 \item C'est tout pour aujourd'hui !
 \end{itemize}

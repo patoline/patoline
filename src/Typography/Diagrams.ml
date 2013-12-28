@@ -244,10 +244,10 @@ module Curve = struct
 
 
   let latest_intersection beziers1 beziers2 =
-    (* Printf.fprintf stderr "Yoho!\n" ;  *)
-    (* print_point_lists beziers1 ;  *)
-    (* print_point_lists beziers2 ;  *)
-    (* Printf.fprintf stderr "Tchow!\n" ; flush stderr ; *)
+(*    Printf.fprintf stderr "Yoho!\n" ;  
+    print_point_lists beziers1 ;  
+    print_point_lists beziers2 ;  
+     Printf.fprintf stderr "Tchow!\n" ; flush stderr ;*)
     let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
     let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     let inters = (intersections beziers1 beziers2) in

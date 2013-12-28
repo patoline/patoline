@@ -279,7 +279,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    (function  
             | Link(l') -> 
 	      l := l'::!l
-	    | Dynamic d -> fn (d.dyn_contents Init)
+	    | Dynamic d -> fn (d.dyn_contents ())
 	    | _ -> ()) ls
 	  in
 	  fn (drawing_sort state.pageContents);
@@ -538,19 +538,21 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
 
 	| Dynamic d ->
-	  let ev0 = ref Init in
 	  let rec gn acc = function
-	    | [] -> events := acc
-	    | ((ds:string list),ev as e)::evs ->
+	    | [] -> acc
+	    | ((ds:string list),ev)::evs ->
 	      let ds = List.filter 
-		(fun d' -> if d.dyn_label = d' then (
-		  ev0 := ev; false) else true) ds
+		(fun d' -> 
+		  if d.dyn_label = d' then (
+		    let action = d.dyn_react ev in
+		    if action <> Unchanged then update_link := true;
+		    false)
+		  else true) ds
 	      in
-	      update_link := true;
-	      if !ev0 = Init then gn (e::acc) evs else events := List.rev_append acc (if ds <> [] then (ds,ev)::evs else evs)
+	      gn (if ds <> [] then (ds,ev)::acc else acc) evs
 	  in 
-	  gn [] !events;
-	  List.iter fn (d.dyn_contents !ev0)
+	  events := gn [] (List.rev !events);
+	  List.iter fn (d.dyn_contents ())
 
 	| Glyph g ->
         let x = g.glyph_x in
@@ -1124,24 +1126,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 (*      Printf.fprintf stderr "Motion (%d;%d) (%d,%d) %d\n%!" x' y' x y (dx * dx + dy * dy);*)
       if (dx * dx + dy * dy >= 4) then (
 	let win = get_win () in
+	let mx = float dx and my = float dy in
 	if buttons = [] then (
-	  let mx = float (x - x') and my = float (y - y') in
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  win.dx <- win.dx -. mx *. win.pixel_width;
 	  win.dy <- win.dy +. my *. win.pixel_height;
 	  redraw win)
 	else (
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
-	  let mx = float (x - x') and my = float (y - y') in
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
-
 	  List.iter (function (name,ds) ->
-	    let ox = ref x and oy = ref y in
-	    let ev = List.filter (function
-	      ds',Drag(name',(x,y)) when ds == ds' && name == name' ->
-		ox := !ox +. x; oy := !oy +. y; false
-	      | _ -> true) !events in
-	    events := ev @ [ds,Drag(name,(!ox,!oy))]) buttons;
+	    events := (ds,Drag(name,(x,y)))::!events) buttons;
 	  redraw_all ()));
   in
 
@@ -1154,7 +1149,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       previous_links := l;
       (match !saved_rectangle with
 	None -> ()
-      | Some (r,r') -> Printf.printf "redraw\n"; flush stdout;       GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
+      | Some (r,r') -> 
+	GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if !saved_rectangle = None then
 	 (Printf.printf "saving\n"; flush stdout;
@@ -1343,7 +1339,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	(Unix.error_message nb);
       flush stderr;
     end;
-    if !events <> [] or !to_redraw then redraw_all ();
+    if !events <> [] || !to_redraw then redraw_all ();
   in
 
   let display_cb sock ()=
@@ -1393,7 +1389,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
 	    | Button(name,ds) -> 
-	      events := !events @ [ds,Click(name)];
+	      events := (ds,Click(name))::!events;
 	  ) links
 	  
     | b, Glut.UP -> 

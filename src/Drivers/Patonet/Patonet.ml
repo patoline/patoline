@@ -248,13 +248,12 @@ function websocket_msg(evt){
      }
      current_slide=st.slide;
      current_state=st.state;
-     setTimeout(tout,to);
 };
 function websocket_err(evt){
 was_error=true;
 websocket.close();
 };
-function websocket_close(evt){if(!was_error){/*setTimeout(start_socket,1000)*/}};
+function websocket_close(evt){};
 function start_socket(){
    was_error=false;
    if(websocket){websocket.close();delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror};
@@ -293,22 +292,22 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
-if(current_state<=0 || e.keyCode==38) {
+if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1),false);
   xhttp.send();
-} else {
+} else if (current_state > 0) {
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state-1),false);
   xhttp.send();
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
-if(current_state>=states[current_slide]-1 || e.keyCode==40) {
+if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+(current_slide+1)+\"_0\",false);
   xhttp.send();
-} else {
+} else if (current_state < states.length - 1) {
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state+1),false);
   xhttp.send();
@@ -324,8 +323,7 @@ function gotoSlide(n){
   xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+n+\"_0\",false);
   xhttp.send();
-  setTimeout(tout,to);
-}"
+}" (Array.length pages - 1)
   in
 
 

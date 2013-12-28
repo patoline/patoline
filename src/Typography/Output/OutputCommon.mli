@@ -83,13 +83,18 @@ and animation={
 }
 
 and event=
-  Init
 | Click of string
 | Drag of string * (float * float)
 
+and action =
+| Unchanged
+| Private
+| Public
+
 and dynamic={
   dyn_label:string;
-  dyn_contents: event -> raw list;
+  dyn_contents: unit -> raw list;
+  dyn_react:event -> action;
   dyn_order:int;
 }
 

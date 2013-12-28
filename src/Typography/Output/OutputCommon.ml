@@ -125,13 +125,18 @@ and animation={
 }
 
 and event=
-  Init
 | Click of string
 | Drag of string * (float * float)
 
+and action =
+| Unchanged
+| Private
+| Public
+
 and dynamic={
   dyn_label:string;
-  dyn_contents: event -> raw list;
+  dyn_contents: unit -> raw list;
+  dyn_react:event -> action;
   dyn_order:int;
 }
 
@@ -214,7 +219,7 @@ let rec print_raw ch r=match r with
   | Animation a->Printf.fprintf stderr "Animation [ %a ] (default=%d,mirror=%b,step=%f,duration=%f)"
 		 (fun ch -> Array.iter (Printf.fprintf ch "[%a]" (fun ch -> List.iter (print_raw ch))))
     a.anim_contents a.anim_default a.anim_mirror a.anim_step a.anim_duration
-  | Dynamic d -> Printf.fprintf stderr "Dynamic %s [ %a ]\n" d.dyn_label (fun ch -> List.iter (print_raw ch)) (d.dyn_contents Init)
+  | Dynamic d -> Printf.fprintf stderr "Dynamic %s [ %a ]\n" d.dyn_label (fun ch -> List.iter (print_raw ch)) (d.dyn_contents ())
 
 let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
@@ -261,7 +266,7 @@ let bounding_box_opt opt l=
     | States a::s->bb x0 y0 x1 y1 (a.states_contents@s)
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
     | Animation a::s -> bb x0 y0 x1 y1 (List.concat (Array.to_list a.anim_contents)@s)
-    | Dynamic d::s -> bb x0 y0 x1 y1 (d.dyn_contents Init@s)
+    | Dynamic d::s -> bb x0 y0 x1 y1 (d.dyn_contents ()@s)
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 

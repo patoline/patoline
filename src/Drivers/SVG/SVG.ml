@@ -283,7 +283,10 @@ let draw ?fontCache prefix w h contents=
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
       | Button(name,ds) -> 
-        Rbuffer.add_string svg_buf "<a onclick=\"alert('click');\">";
+        Rbuffer.add_string svg_buf (
+	  Printf.sprintf "<a onclick=\"send_click('%s',[%s]);\">"
+	    name (String.concat "," (List.map (fun s -> "'"^s^"'") ds))
+	);
       );
 
       List.iter output_contents (l.link_contents);
@@ -310,7 +313,7 @@ let draw ?fontCache prefix w h contents=
       Rbuffer.add_string svg_buf (Printf.sprintf "<g id=\"dynamic_%s\">\n" d.dyn_label);
       opened_tspan:=false;
       opened_text:=false;	
-      List.iter output_contents (d.dyn_contents Init);
+      List.iter output_contents (d.dyn_contents ());
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
         opened_tspan:=false
@@ -432,16 +435,16 @@ let basic_html ?script:(script="") ?onload:(onload="") ?onhashchange:(onhashchan
   let keyboard=match keyboard with
       None->Printf.sprintf "window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
-if(current_state<=0 || e.keyCode==38) {
+if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
   loadSlide(current_slide-1,states[current_slide-1]-1)
-} else {
+} else if (current_state > 0) {
   loadSlide(current_slide,current_state-1)
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
-if(current_state>=states[current_slide]-1 || e.keyCode==40) {
+if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
   loadSlide(current_slide+1,0)
-} else {
+} else if (current_state < states.length - 1) {
   loadSlide(current_slide,current_state+1)
 }
 } else //right
@@ -454,7 +457,7 @@ if(n>current_slide)
   loadSlide(n,0);
 else if(n<current_slide)
   loadSlide(n,0);
-}"
+}" (Array.length pages - 1)
     | Some x->x
   in
 
@@ -468,11 +471,8 @@ else if(n<current_slide)
 <title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title>\n";
-  Rbuffer.add_string html "<script>
-var current_slide=0;
-var current_state=0;
-var first_displayed=false;
-";
+  Rbuffer.add_string html "<script>\n";
+  Rbuffer.add_string html script;
 
   let states=Rbuffer.create 10000 in
   for i=0 to Array.length pages-1 do
@@ -485,7 +485,9 @@ var first_displayed=false;
 
   Rbuffer.add_string html (
     Printf.sprintf "
-var xhttp=new XMLHttpRequest();
+var current_slide=0;
+var current_state=0;
+var first_displayed=false;
 var cur_child = new Array();
 var animations = new Array();
 var parser=new DOMParser();
@@ -511,6 +513,7 @@ function loadSlide(n,state){
 if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state || !first_displayed)) {
 
   document.body.style.cursor = 'wait';
+  var xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",n+\"_\"+state+\".svg\",true);
 
 
