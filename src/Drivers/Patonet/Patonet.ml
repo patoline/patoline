@@ -220,6 +220,7 @@ let pushfrom from = (*avoid to send back to the expeditor*)
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
+let click=Str.regexp "/click_\\([0-9]*\\)_\\([0-9]*\\)_"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
 let sync=Str.regexp "/sync_\\([0-9]*\\)_\\([0-9]*\\)"
 let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
@@ -318,6 +319,13 @@ if(e.keyCode==82){ //r
   xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state),false);
   xhttp.send();
 }
+}
+function send_click(name,dest) {
+  xhttp=new XMLHttpRequest();
+  message = name;
+  for(var i = 0;i<dest.length;i++) { message = message+\"_\"+dest[i] ; }
+  xhttp.open(\"GET\",\"click_\"+(current_slide)+\"_\"+(current_state)+\"_\"+message,false);
+  xhttp.send();
 }
 function gotoSlide(n){
   xhttp=new XMLHttpRequest();
@@ -557,6 +565,26 @@ let serve addr fd=
           | Websocket->raise Websocket
           | e->(Printf.fprintf stderr "erreur websocket \"%s\"\n"(Printexc.to_string e);
                 flush stderr)
+      ) else if Str.string_match click get 0 then (
+        let asked_slide=int_of_string (Str.matched_group 1 get) in
+        let slide=max 0 asked_slide in
+        let slide=min slide (Array.length slides-1) in
+        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+        let state=if asked_slide>slide then
+            (Array.length slides.(slide)-1)
+          else
+            min state (Array.length slides.(slide)-1)
+        in
+	let match_end = Str.match_end () in
+	let rest =String.sub get match_end (String.length get - match_end) in
+	Printf.fprintf stderr "click: %d %d %s\n%!" slide state rest;
+
+        let ok="Ok" in
+        Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
+          (String.length ok) ok;
+        flush ouc;
+
+        process_req "" [] reste
 
       ) else if Str.string_match pousse get 0 then (
 
@@ -581,9 +609,9 @@ let serve addr fd=
            pushfrom fd;
          with _->());
         Mutex.unlock mut;
-        let notfound="Ok" in
+        let ok="Ok" in
         Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
-          (String.length notfound) notfound;
+          (String.length ok) ok;
         flush ouc;
 
         process_req "" [] reste

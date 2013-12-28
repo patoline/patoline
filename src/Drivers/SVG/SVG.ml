@@ -427,7 +427,11 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   in
   svg_files,cache,!imgs
 
-let basic_html ?script:(script="") ?onload:(onload="") ?onhashchange:(onhashchange="")
+let default_script = "
+  function send_click(name,dest) {}
+"
+
+let basic_html ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
     ?keyboard
     cache structure pages prefix=
   let html=Rbuffer.create 10000 in
