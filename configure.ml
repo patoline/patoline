@@ -337,7 +337,7 @@ let _=
   if !grammars_dir="" then grammars_dir:=Filename.concat !prefix "lib/patoline/grammars";
   if !hyphen_dir="" then hyphen_dir:=Filename.concat !prefix "share/patoline/hyphen";
   if !plugins_dir="" then plugins_dir:=Filename.concat !prefix "lib/patoline/plugins";
-  if !driver_dir="" then driver_dir:=Filename.concat !prefix "lib/ocaml/Typography";
+  if !driver_dir="" then driver_dir:=Filename.concat !ocaml_lib_dir "Typography";
 
   fonts_dirs:= !fonts_dir ::(!fonts_dirs);
   grammars_dirs:= !grammars_dir ::(!grammars_dirs);
@@ -397,6 +397,7 @@ let _=
   Printf.fprintf make "INSTALL_GRAMMARS_DIR := %s\n" !grammars_dir;
   Printf.fprintf make "INSTALL_HYPHEN_DIR := %s\n" !hyphen_dir;
   Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR := %s/Typography\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_DRIVERS_DIR := %s/Typography\n" !driver_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;

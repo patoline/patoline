@@ -45,8 +45,9 @@ install: install-drivers
 # before putting drivers in it.
 install-drivers: install-typography \
   $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) $(DRIVERS_CMXA:.cmxa=.cmxs)
+	install -d -m 755 $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 	install -p -m 644 $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) \
-	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
+	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 
 # Visit subdirectories
 $(foreach mod,$(DRIVERS),$(eval -include $(d)/$$(mod)/Rules.mk))
