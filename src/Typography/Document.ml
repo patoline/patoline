@@ -1760,13 +1760,14 @@ let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle
     drawing_contents=(fun _->[r])
   }])]
 
-let dynamic name action contents =
+let dynamic name action sample contents =
   [bB (fun env -> 
     let contents () = draw env (contents ()) in
     let r = Dynamic{
       dyn_label = name;
       dyn_contents = contents;
       dyn_order = List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) max_int (contents ());
+      dyn_sample = draw env sample;
       dyn_react = action;
     }
   in

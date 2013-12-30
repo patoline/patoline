@@ -129,7 +129,7 @@ function gotoSlide(n){
   Printf.fprintf o "char* master=%S;\n" (Rbuffer.contents master);
   Printf.fprintf o "char* css=%S;\n" (Rbuffer.contents style);
 
-  let print_double_arr pref arr bin=
+  let print_double_arr pref (arr:(Rbuffer.t*Rbuffer.t) array array) bin=
     let arr_len=(Array.map (Array.length) arr) in
     Printf.fprintf o "int n_%s=%d;" pref (Array.length arr);
     Printf.fprintf o "int n_%s_[]={%s};" pref
@@ -137,18 +137,22 @@ function gotoSlide(n){
     for i=0 to Array.length arr-1 do
       Printf.fprintf o "int n_%s_%d[]={%s};\n" pref i
         (String.concat "," (List.map string_of_int
-                              (Array.to_list (Array.map Rbuffer.length arr.(i)))));
+                              (Array.to_list (Array.map (fun (x,y) -> Rbuffer.length x + Rbuffer.length y) arr.(i)))));
       Printf.fprintf o "char* %s%d[]={" pref i;
       for j=0 to Array.length arr.(i)-1 do
         if j>0 then Printf.fprintf o ",";
+	let prefix,suffix = arr.(i).(j) in
         if bin then (
           Printf.fprintf o "\"";
-          for k=0 to Rbuffer.length arr.(i).(j)-1 do
-            Printf.fprintf o "\\x%02x" (int_of_char (Rbuffer.nth arr.(i).(j) k));
+          for k=0 to Rbuffer.length prefix-1 do
+            Printf.fprintf o "\\x%02x" (int_of_char (Rbuffer.nth prefix k));
+          done;
+          for k=0 to Rbuffer.length suffix-1 do
+            Printf.fprintf o "\\x%02x" (int_of_char (Rbuffer.nth suffix k));
           done;
           Printf.fprintf o "\"";
         ) else
-          Printf.fprintf o "%S" (Rbuffer.contents arr.(i).(j));
+          Printf.fprintf o "%S%S" (Rbuffer.contents prefix) (Rbuffer.contents suffix)
       done;
       Printf.fprintf o "};\n";
     done;
@@ -172,7 +176,7 @@ function gotoSlide(n){
     (List.map (fun (a,b)->
       let buf=Rbuffer.create (String.length a) in
       Rbuffer.add_string buf a;
-      [|buf;b|]
+      [|buf,b|]
      ) (StrMap.bindings cache.fontBuffers))
     @
     (List.map (fun (a,b)->
@@ -182,11 +186,11 @@ function gotoSlide(n){
       close_in i;
       let buf'=Rbuffer.create (String.length b) in
       Rbuffer.add_string buf b;
-      [|buf';buf|]
+      [|buf',buf|]
      ) (StrMap.bindings imgs))
   in
   print_double_arr "bin"
-    (Array.of_list (List.sort (fun a b->compare a.(0) b.(0)) bin))
+    (Array.of_list (List.sort (fun a b->compare (fst a.(0)) (fst b.(0))) bin))
     true;
 
 (*

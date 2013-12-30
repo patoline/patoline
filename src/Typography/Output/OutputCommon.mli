@@ -91,9 +91,10 @@ and action =
 | Private
 | Public
 
-and dynamic={
+and 'a dynamic={
   dyn_label:string;
-  dyn_contents: unit -> raw list;
+  dyn_contents: unit -> 'a;
+  dyn_sample:'a;
   dyn_react:event -> action;
   dyn_order:int;
 }
@@ -106,7 +107,7 @@ and raw=
   | Video of video
   | States of states
   | Animation of animation
-  | Dynamic of dynamic
+  | Dynamic of raw list dynamic
 
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw

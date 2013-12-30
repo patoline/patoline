@@ -133,9 +133,10 @@ and action =
 | Private
 | Public
 
-and dynamic={
+and 'a dynamic={
   dyn_label:string;
-  dyn_contents: unit -> raw list;
+  dyn_contents: unit -> 'a;
+  dyn_sample:'a;
   dyn_react:event -> action;
   dyn_order:int;
 }
@@ -148,7 +149,7 @@ and raw=
   | Video of video
   | States of states
   | Animation of animation
-  | Dynamic of dynamic
+  | Dynamic of raw list dynamic
 
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }

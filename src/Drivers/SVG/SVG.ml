@@ -54,7 +54,6 @@ let standalone w h style title svg=
   Rbuffer.add_string svg_buf "</svg>\n";
   svg_buf
 
-
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
   if output_fonts then
@@ -85,7 +84,7 @@ let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix font
   def_buf
 
 
-let draw ?fontCache prefix w h contents=
+let draw ?fontCache ?dynCache prefix w h contents=
   let svg_buf=Rbuffer.create 256 in
 
   let fontCache=match fontCache with
@@ -115,41 +114,45 @@ let draw ?fontCache prefix w h contents=
 
   (* Écriture du contenu à proprement parler *)
 
-  let cur_x=ref 0. in
-  let cur_y=ref 0. in
-  let cur_cls=ref (-1) in
-  let opened_text=ref false in
-  let opened_tspan=ref false in
-  let imgs=ref StrMap.empty in
-  let animate_count = ref 0 in
-  let rec output_contents cont=match cont with
+
+  let rec output_contents ~svg_buf contents=
+    let imgs=ref StrMap.empty in
+    let cur_x=ref 0. in
+    let cur_y=ref 0. in
+    let cur_cls=ref (-1) in
+    let opened_text=ref false in
+    let opened_tspan=ref false in
+    let animate_count = ref 0 in
+    let rec output_contents_aux cont=match cont with
       Glyph x->(
         if not !opened_text then (
           Rbuffer.add_string svg_buf "<text>\n";
           opened_text:=true;
           opened_tspan:=false
         );
-
-        let cls=className fontCache x in
+	try
+          let cls=className fontCache x in
         (* let size=x.glyph_size in *)
-        if cls<> !cur_cls
-          || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
-          || not !opened_tspan
-        then (
-          if !opened_tspan then (
-            Rbuffer.add_string svg_buf "</tspan>";
+          if cls<> !cur_cls
+            || !cur_x<>x.glyph_x || !cur_y <>x.glyph_y
+            || not !opened_tspan
+          then (
+            if !opened_tspan then (
+              Rbuffer.add_string svg_buf "</tspan>";
+            );
+	    
+            Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" class=\"c%d\">"
+                                          (x.glyph_x) ((h-.x.glyph_y)) cls);
+            cur_x:=x.glyph_x;
+            cur_y:=x.glyph_y;
+            cur_cls:=cls;
+            opened_tspan:=true;
           );
-
-          Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" class=\"c%d\">"
-                                        (x.glyph_x) ((h-.x.glyph_y)) cls);
-          cur_x:=x.glyph_x;
-          cur_y:=x.glyph_y;
-          cur_cls:=cls;
-          opened_tspan:=true;
-        );
-        let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
-        Rbuffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
-        cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
+          let utf8=(Fonts.glyphNumber x.glyph).glyph_utf8 in
+          Rbuffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
+          cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
+	with Not_found ->
+	  Printf.fprintf stderr "Missing glych: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
       )
     | Path (args, l)->(
       if !opened_tspan then (
@@ -261,7 +264,7 @@ let draw ?fontCache prefix w h contents=
            i.video_pixel_width i.video_pixel_height name
            name)
     )
-    | States s->List.iter output_contents s.states_contents
+    | States s->List.iter output_contents_aux s.states_contents
     | Link l->(
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -289,7 +292,7 @@ let draw ?fontCache prefix w h contents=
 	);
       );
 
-      List.iter output_contents (l.link_contents);
+      List.iter output_contents_aux (l.link_contents);
 
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -302,27 +305,22 @@ let draw ?fontCache prefix w h contents=
       Rbuffer.add_string svg_buf "</a>";
     )
     | Dynamic d ->
-      if !opened_tspan then (
-        Rbuffer.add_string svg_buf "</tspan>\n";
-        opened_tspan:=false
+      (match dynCache with
+	None ->
+	  List.iter output_contents_aux (d.dyn_contents ());
+      | Some h ->
+	Rbuffer.add_string svg_buf ("<use xlink:href=\"#"^d.dyn_label^"\"/>");
+	let tmp = Rbuffer.create 256 in
+	ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
+	ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
+ 	let contents () =
+	  let buf = Rbuffer.create 256 in
+	  ignore (output_contents ~svg_buf:buf (d.dyn_contents ()));
+	  Rbuffer.contents buf
+	in
+	let d = { d with dyn_contents = contents; dyn_sample = "" } in
+	Hashtbl.add h d.dyn_label d
       );
-      if !opened_text then (
-        Rbuffer.add_string svg_buf "</text>\n";
-        opened_text:=false
-      );
-      Rbuffer.add_string svg_buf (Printf.sprintf "<g id=\"dynamic_%s\">\n" d.dyn_label);
-      opened_tspan:=false;
-      opened_text:=false;	
-      List.iter output_contents (d.dyn_contents ());
-      if !opened_tspan then (
-        Rbuffer.add_string svg_buf "</tspan>\n";
-        opened_tspan:=false
-      );
-      if !opened_text then (
-        Rbuffer.add_string svg_buf "</text>\n";
-        opened_text:=false
-      );
-      Rbuffer.add_string svg_buf "</g>\n";
 
     | Animation a ->
       if !opened_tspan then (
@@ -346,7 +344,7 @@ let draw ?fontCache prefix w h contents=
 	    (if i = a.anim_default then "inherit" else "hidden"));
         opened_tspan:=false;
         opened_text:=false;	
-	List.iter output_contents (a.anim_contents.(i));
+	List.iter output_contents_aux (a.anim_contents.(i));
 	if !opened_tspan then (
           Rbuffer.add_string svg_buf "</tspan>\n";
           opened_tspan:=false
@@ -377,19 +375,22 @@ let draw ?fontCache prefix w h contents=
     in
     IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
   in
-  List.iter output_contents raws;
+  List.iter output_contents_aux raws;
   if !opened_tspan then (
     Rbuffer.add_string svg_buf "</tspan>\n";
   );
   if !opened_text then (
     Rbuffer.add_string svg_buf "</text>\n";
   );
+  !imgs
+  in 
+  let imgs = output_contents ~svg_buf contents in
+  svg_buf,imgs
 
-  svg_buf,!imgs
 
 
 
-let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
+let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages prefix=
 
@@ -404,24 +405,28 @@ let buffered_output' ?(structure:structure={name="";displayname=[];metadata=[];t
   in
   let cache=build_font_cache prefix (Array.map (fun x->x.pageContents) all_pages) in
   let imgs=ref StrMap.empty in
-  let svg_files=Array.map (fun pi->
-    Array.map (fun page->
+  let svg_files=Array.mapi (fun slide pi->
+    Array.mapi (fun state page ->
+      let file0=Rbuffer.create 10000 in
       let file=Rbuffer.create 10000 in
         (* Printf.sprintf "%s_%d_%d.svg" chop_file i j *)
       let w,h=page.pageFormat in
-      Rbuffer.add_string file (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+      Rbuffer.add_string file0 (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><defs>"
                                  (round (w)) (round (h)));
-(*      Rbuffer.add_string file (Printf.sprintf "<html><body>
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\" viewBox=\"0 0 %d %d\">"
-                                 (round (w)) (round (h)));*)
+      
+      Rbuffer.add_string file "</defs>";
       let sorted_pages=OutputCommon.sort_raw page.pageContents in
-      let svg,imgs0=draw ~fontCache:cache prefix w h sorted_pages in
+      let dynCache = match dynCache with
+	  None -> None 
+	| Some c -> Some c.(slide).(state)
+      in
+      let svg,imgs0=draw ~fontCache:cache ?dynCache prefix w h sorted_pages in
       imgs:=StrMap.fold StrMap.add imgs0 !imgs;
       Rbuffer.add_buffer file svg;
       Rbuffer.add_string file "</svg>\n";
-      file
+      file0, file
     ) pi
   ) pages
   in
@@ -494,7 +499,6 @@ var current_state=0;
 var first_displayed=false;
 var cur_child = new Array();
 var animations = new Array();
-var parser=new DOMParser();
 
 function Animate(name,nbframes,mirror,step) {
     var i = 0; var d = 1;
@@ -513,16 +517,16 @@ function Animate(name,nbframes,mirror,step) {
     }, step));
   }
 
-function loadSlide(n,state){
-if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=current_state || !first_displayed)) {
+
+function loadSlide(n,state,force){
+if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
 
   document.body.style.cursor = 'wait';
   var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",true);
-
-
-  xhttp.onload =(function(e) {
-    if(xhttp.status==200 || xhttp.status==0){
+  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
+  xhttp.send();
+    
+  if(xhttp.status==200 || xhttp.status==0){
 
     var svg=document.getElementById(\"container\");
     location.hash=n+\"_\"+state;
@@ -534,6 +538,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
        clearInterval(animations.shift());
     }
 
+    var parser=new DOMParser();
     var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
     newSvg=document.importNode(newSvg.rootElement,true);
 
@@ -564,11 +569,11 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (n!=current_slide || state!=cu
     current_slide=n;
     current_state=state;
 
-    document.body.style.cursor = 'default';
-
     first_displayed=true;
-  }});
-  xhttp.send();
+  }
+  document.body.style.cursor = 'default';
+
+
 
 }}"
       (Array.length pages)
@@ -617,7 +622,6 @@ if(h0!=current_slide || h1!=current_state){
 
   let style=make_defs "" cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
-
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
 
@@ -659,9 +663,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   close_out o;
 
   Array.iteri (fun i->
-    Array.iteri (fun j x->
+    Array.iteri (fun j (x,y) ->
       let o=open_out (Filename.concat (Filename.basename prefix) (Printf.sprintf "%d_%d.svg" i j)) in
       Rbuffer.output_buffer o x;
+      Rbuffer.output_buffer o y;
       close_out o
     )
   ) svg_files;

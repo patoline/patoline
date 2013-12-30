@@ -63,8 +63,9 @@ let caml x = x
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with 
-	     Click "test"-> incr count; Public 
-           | _ -> Unchanged))(fun () -> <<\caml([tT (string_of_int !count)]) fois !>>)
+	     Click "test"-> incr count; Printf.fprintf stderr "incr count to: %d\n%!" !count; Public 
+           | _ -> Unchanged)){0123456789 fois}(
+	   fun () -> <<\caml(Printf.fprintf stderr "read count to: %d\n%!" !count; [tT (string_of_int !count)]) fois !>>)
 
 \item Et une figure dont on peut bouger les sommets :
 
@@ -80,7 +81,7 @@ let cpos = ref (10.0,-10.0)
 	   | Drag("a",p) -> apos := Vector.(p + !apos); Private
 	   | Drag("b",p) -> bpos := Vector.(p + !bpos); Private
 	   | Drag("c",p) -> cpos := Vector.(p + !cpos); Private
-	   | _ -> Unchanged))(fun () -> <<
+	   | _ -> Unchanged))([])(fun () -> <<
 \diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw;innerSep 20.0] [])
  let av = Vector.(scal_mul 2.5 (normalise (!apos - !bpos + !apos - !cpos)))
