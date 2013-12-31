@@ -512,7 +512,7 @@ module CitationInt=struct
   let citation_format i _=[tT (string_of_int i)]
   let compare (a,_) (b,_)=compare a b
 end
-module CitationNames=struct
+module CitationNames(M:sig val longCite:Document.content list list->Document.content list end)=struct
   let doublons:(string list, int IntMap.t) Hashtbl.t=Hashtbl.create 200
   let compare (_,a) (_,b)=
     match !bibfile_ with
@@ -585,15 +585,29 @@ module CitationNames=struct
                 with
                     Not_found->[]
               in
-              List.concat (intercalate [tT ", "] auteurs)
+              (M.longCite auteurs)
               @ (if date<>"" then [tT (" "^date)] else []) @ n
             )]
           )
       )
 end
 
+module AllNames=struct
+  let longCite auteurs=List.concat (intercalate [tT ", "] auteurs)
+end
+module EtAl=struct
+  let longCite auteurs=
+    if List.length auteurs<=2 then
+      List.concat (intercalate [tT ", "] auteurs)
+    else
+      List.concat (intercalate [tT ", "] (take 1 auteurs)) @ [tT " et al."]
+end
+
+
 module ItemInt=MarginBiblio(CitationInt)
-module ItemNames=DefaultBiblio(CitationNames)
+module ItemNames=DefaultBiblio(CitationNames(AllNames))
+module ItemEtAl=DefaultBiblio(CitationNames(EtAl))
 
 module BiblioInt=Biblio(CitationInt)(ItemInt)
-module BiblioNames=Biblio(CitationNames)(ItemNames)
+module BiblioNames=Biblio(CitationNames(AllNames))(ItemNames)
+module BiblioEtAl=Biblio(CitationNames(EtAl))(ItemEtAl)
