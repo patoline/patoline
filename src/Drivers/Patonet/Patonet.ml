@@ -476,8 +476,9 @@ let serve_css sessid ouc=
 in
 
 let make_sessid () = 
-  let str = String.create 32 in
-  for i = 0 to 21 do
+  let sessid_size = 32 in
+  let str = String.create sessid_size in
+  for i = 0 to sessid_size - 1 do
     let c = Random.int 62 in
     let d = 
       if c < 26 then Char.chr (c + Char.code 'a')
