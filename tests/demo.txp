@@ -1,10 +1,50 @@
 (* #FORMAT FormatSlides *)
+(* #PACKAGES mysql *)
 
 \Caml(
 open Diagrams
 open Proj3d
+open Mysql
 
 let caml x = x
+
+let db = connect { defaults with
+    dbhost = Some "localhost";
+    dbname = Some "patonet";
+    dbpwd = Some "patonet";
+    dbuser = Some "patonet";}
+    
+let _ =
+    let sql = "CREATE TABLE IF NOT EXISTS `demo` (
+      `key` varchar(32), `value` int);" in
+    let _r = exec db sql in
+    match errmsg db with
+    | None -> () 
+    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+
+let create_int name v =
+    let sql = Printf.sprintf "INSERT INTO `demo` (`key`, `value`) VALUES ('%s',%d);" name v in
+    let _r = exec db sql in
+    match errmsg db with
+    | None -> () 
+    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+
+let write_int name v =
+    let sql = Printf.sprintf "UPDATE `demo` SET `value`=%d WHERE `key` = '%s';" v name in
+    let _r = exec db sql in
+    match errmsg db with
+    | None -> () 
+    | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+
+let rec read_int name =
+    let sql = Printf.sprintf "SELECT `value` FROM `demo` WHERE `key` = '%s';" name in
+    let r = exec db sql in
+    try match errmsg db, fetch r with
+    | None, Some row -> (match row.(0) with None -> 0 | Some n -> int_of_string n)
+    | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; 0
+    | _ -> assert false   
+    with Mysql.Error err ->
+      Printf.eprintf "Mysql Error: %s\n%!" err; read_int name
 )
 
 == Animation ==
@@ -59,13 +99,13 @@ let caml x = x
 \begin{slide}
 \begin{itemize}
 
-\Caml(let count = ref 0)
+\Caml(let _ = create_int "count" 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with 
-	     Click "test"-> incr count; Printf.fprintf stderr "incr count to: %d\n%!" !count; Public 
+	     Click "test"-> let c = read_int "count" + 1 in write_int "count" c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(Printf.fprintf stderr "read count to: %d\n%!" !count; [tT (string_of_int !count)]) fois !>>)
+	   fun () -> <<\caml(let c = read_int "count" in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
 
 \item Et une figure dont on peut bouger les sommets :
 

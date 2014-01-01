@@ -695,7 +695,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     (List.concat (List.map getopts !extras))@
                     comp_opts@
                     (let pack=String.concat ","
-		       ("threads"::"dynlink"::
+		       ("dynlink"::
 			   (if Config.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
 			   List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
@@ -703,7 +703,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                      "-o";h]@
                     objs@
-                    ["-thread";"-linkall";"-impl";source])
+                    ["-linkall";"-impl";source])
               in
               Mutex.unlock mut;
 

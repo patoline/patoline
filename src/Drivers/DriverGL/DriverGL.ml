@@ -1231,6 +1231,22 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Glut.swapBuffers ()) win
   in
 
+  let make_sessid () = 
+    let str = String.create 32 in
+    for i = 0 to 21 do
+      let c = Random.int 62 in
+      let d = 
+	if c < 26 then Char.chr (c + Char.code 'a')
+	else if c < 52 then Char.chr (c - 26 + Char.code 'A')
+	else Char.chr (c - 52 + Char.code '0')
+      in
+      str.[i] <- d;
+    done;
+    str
+  in
+  
+  let sessid = make_sessid () in
+
   let reconnect sock_info =
     assert (!sock_info = None);
     match !prefs.server with
@@ -1271,7 +1287,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	 if !last_changes <> (!cur_page, !cur_state) then (
 	   last_changes := !cur_page, !cur_state;
 	   Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
-	     !cur_page !cur_state));
+	     !cur_page !cur_state);
+	 Printf.fprintf fo "Set-Cookie: SESSID=%s;\r\n" sessid;);
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
        sock_info := Some (sock,fo,fi)

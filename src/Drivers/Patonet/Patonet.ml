@@ -106,16 +106,8 @@ let base64_encode s0=
   str
 
 
-type presentation={ mutable cur_slide:int; mutable cur_state:int; mutable starttime:float;mutable touched:bool }
-let present={cur_slide=0;cur_state=0;starttime=0.;touched=false}
-
-let mut=Mutex.create () (* protect the websocket map *)
-let mut2=Mutex.create () (* protect the sock_info and alike pointer for connection between patonet/driverGL*)
-let mut3=Mutex.create () (*protext Str !!!*)
-
-module AddrMap=Map.Make(struct type 
-  t=string let compare=compare end)
-let addrs:Unix.file_descr AddrMap.t ref=ref AddrMap.empty
+type presentation={ mutable cur_slide:int; mutable cur_state:int; mutable starttime:float;mutable max_slide:int; }
+let present={cur_slide=0;cur_state=0;starttime=0.;max_slide=0;}
 
 exception Send_error
 (* Implémentation partielle, et sans doute naive, des websockets *)
@@ -165,9 +157,9 @@ let resp_slave fd data=
     done;
     (* Buffer.add_substring x data !pos payload_len; *)
     let s=Buffer.contents x in
-    Printf.fprintf stderr "select\n";flush stderr;
+    Printf.eprintf "select\n";flush stderr;
     let _,x,y=Unix.select [] [fd] [fd] 0. in
-    Printf.fprintf stderr "/select %d %d\n" (List.length x) (List.length y);flush stderr;
+    Printf.eprintf "/select %d %d\n" (List.length x) (List.length y);flush stderr;
     if x=[] then (Unix.close fd;raise Send_error) else (
       let cur = ref 0 and len = String.length s in
       while !cur < len do
@@ -184,50 +176,70 @@ let master_page=ref ""
 let port_num = ref 8080
 let connect_to = ref ""
 
+let close_all_other sock = ()
+(*
+  AddrMap.iter (fun _ (s,n) ->
+    if s <> sock then Unix.close s) !addrs
+*)
+
 let str_addr addr = Unix.(match addr with
     ADDR_UNIX s -> s
   | ADDR_INET(a,p) -> string_of_inet_addr a^":"^string_of_int p)
 
-let pushto ?(change=false) a=
-  let time=Unix.time() in
-  resp_slave a (
-    Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g, \"change\":%b }" 
-      present.cur_slide present.cur_state 
-      (if present.starttime=0. then 0. else (time-.present.starttime))
-      change)
+(*connection as another patonet (at most one is enough to build
+any graph) as a follower*)
 
-let pushfrom ?(change=false) ?from () = (*from avoids to send back to the expeditor*)
+let sons = ref []
+
+let kill_son sock =
+  sons:=List.filter (fun (fd,(_,pid,num,served_sock,sessid)) ->
+    if fd = sock then (
+      Printf.eprintf "kill son %d %d\n%!" num pid;
+      (try Unix.close fd with _ -> ());
+      (try Unix.close served_sock with _ -> ());
+      (try Unix.kill pid 12 with _ -> ()); 
+      false) 
+    else true
+  ) !sons
+
+let pushto ?(change=false) a fd k num =
+  let time=Unix.time() in
+  try
+    Printf.eprintf "pushing %s %d\n%!" k num;
+    resp_slave a (
+      Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g, \"change\":%b }" 
+	present.cur_slide present.cur_state 
+	(if present.starttime=0. then 0. else (time-.present.starttime))
+	change);
+    Printf.eprintf "pushed %d\n%!" num;
+  with
+    e->
+      Printf.eprintf "not pushed %d (%s)\n%!" num (Printexc.to_string e);
+      kill_son fd
+
+let push ?(change=false) ?from () = (*from avoids to send back to the expeditor*)
   let rec fn acc = function
   [] -> acc
   | (sessid,sock,fo,fi as s)::rest ->
-    Printf.fprintf stderr "Sending to sync(%d): %d %d\n%!" (List.length rest) present.cur_slide present.cur_state;
+    Printf.eprintf "Sending to sync(%d): %d %d\n%!" (List.length rest) present.cur_slide present.cur_state;
     try 
       if Some sessid <> from then
 	Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!" present.cur_slide present.cur_state;
       fn (s::acc) rest
     with e ->
-      Printf.fprintf stderr "not synced (%s)\n%!" (Printexc.to_string e);
+      Printf.eprintf "not synced (%s)\n%!" (Printexc.to_string e);
       (try Unix.close sock with _ -> ());
       (match !sock_info with
 	Some(_,s,_,_) when s = sock -> sock_info := None;
       | _ -> ());
       fn acc rest
   in
-  Mutex.lock mut2;
   sync_sock := fn [] !sync_sock;
-  Mutex.unlock mut2;
-  addrs:=AddrMap.fold (fun k a m->
-    try
-      if Some k <> from then (
-	Printf.fprintf stderr "pushing %s %s\n%!" k (match from with None -> "?" | Some s -> s); 
-	pushto ~change a;
-	Printf.fprintf stderr "pushed\n%!");
-      AddrMap.add k a m
-    with
-      e->
-	Printf.fprintf stderr "not pushed (%s)\n%!" (Printexc.to_string e);
-	m
-  ) !addrs AddrMap.empty
+  List.iter (fun (fd,(_,_,num,sock,sessid)) ->
+    match !sessid with
+      None -> ()
+    | Some k ->	pushto ~change sock fd k num
+  ) !sons
 
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
@@ -239,9 +251,7 @@ let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
-let phpsess=Str.regexp "Cookie\\(s?\\):[ \t]*PHPSESSID[ \t]*=[ \t]*\\([0-9a-zA-Z]*\\)[ \t]*;"
 
-exception Websocket
 
 let spec=
   [("--master",Arg.Set_string master_page,"Set the master page");
@@ -249,7 +259,7 @@ let spec=
    ("--connect",Arg.Set_string connect_to,"Connect to another Patonet")]
 
 let websocket is_master w=
-  Printf.sprintf "var websocket;var was_error;
+  Printf.sprintf "var websocket;
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
      loadSlide(st.slide,st.state,st.change);
@@ -257,14 +267,11 @@ function websocket_msg(evt){
      current_state=st.state;
 };
 function websocket_err(evt){
-was_error=true;
-websocket.close();
-start_socket();
 };
-function websocket_close(evt){};
+function websocket_close(evt){
+};
 function start_socket(){
-   was_error=false;
-   if(websocket){websocket.close();delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror};
+   if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
    if(location.protocol==\"https:\")
       websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"%s);
    else
@@ -292,12 +299,41 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages prefix in
 
-(*  let imgs = StrMap.add "favicon.ico" duck_ico imgs in*)
+let read_slide_state get =
+  let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
+  let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+
+  let slide=min asked_slide (Array.length slides-1) in
+  let state=if asked_slide>slide then
+      (Array.length slides.(slide)-1)
+    else
+      min state (Array.length slides.(slide)-1)
+  in
+  slide, state
+in
+
+(*
+let imgs = StrMap.add "favicon.ico" duck_ico imgs in
+*)
+
+  let slave_keyboard=Printf.sprintf "
+function send_click(name,dest) {
+  var xhttp=new XMLHttpRequest();
+  var message = name;
+  for(var i = 0;i<dest.length;i++) { message = message+\"_\"+dest[i] ; }
+  try {
+  xhttp.open(\"GET\",\"click_\"+(current_slide)+\"_\"+(current_state)+\"_\"+message,false);
+  xhttp.send(); }
+  catch(e) {
+   send_click(name,dest);
+  }
+}"
+  in
 
   let slave,css=SVG.basic_html
     ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
     ~onload:"start_socket();"
-    ~keyboard:""
+    ~keyboard:slave_keyboard
     cache structure pages prefix
   in
 
@@ -357,13 +393,14 @@ function gotoSlide(n){
   let master = Rbuffer.contents master in
   let slave = Rbuffer.contents slave in
   let css = Rbuffer.contents css in
-  Printf.fprintf stderr "%s\n" css;
+  Printf.eprintf "%s\n" css;
 
 let http_send ?(cookie=true) code ctype datas sessid ouc = 
   Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
   Printf.fprintf ouc "Content-type: %s\r\n" ctype;
   let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
   Printf.fprintf ouc "Content-Length: %d\r\n" len;
+  if cookie then Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
   if cookie then Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
   output_string ouc "\r\n";
   List.iter (output_string ouc) datas;
@@ -373,35 +410,49 @@ in
 
 let generate_error sessid ouc =
   let data =
-    "<html><head><title>Patoline</title></head><body>Patoline n'a malheureusement pas pu satisfaire votre demande</body></html>"
+    "Not found"
   in
-  Printf.fprintf stderr "sent 404\n%!";
-  http_send 404 "text/html" [data] sessid ouc;
+  Printf.eprintf "sent 404\n%!";
+  http_send 404 "text/plain" [data] sessid ouc;
+in
+
+let generate_ok sessid ouc =
+  let data =
+    "Ok"
+  in
+  Printf.eprintf "sent 200 Ok\n%!";
+  http_send 200 "text/plain" [data] sessid ouc;
 in
  
 let serve_svg i j sessid ouc =
   if i<Array.length slides && j<Array.length slides.(i) then (
-    let prefix,suffix = slides.(i).(j) in
-    let dyns = Rbuffer.create 256 in
-    Hashtbl.iter (fun k d ->
-      Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ()))) dynCache.(i).(j);
-    let dyns = Rbuffer.contents dyns in
-    Printf.fprintf stderr "sent image/svg+xml\n%!";
-    http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
+    Printf.eprintf "building slide %d_%d\n%!" i j;
+    try
+      let prefix,suffix = slides.(i).(j) in
+      let dyns = Rbuffer.create 256 in
+      Hashtbl.iter (fun k d ->
+	try Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
+	with e -> Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
+      ) dynCache.(i).(j);
+      let dyns = Rbuffer.contents dyns in
+      Printf.eprintf "start sent image/svg+xml %s\n%!" sessid;
+      http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
+      Printf.eprintf "sent image/svg+xml %s\n%!" sessid;
+    with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
   ) else (
     generate_error sessid ouc;
   )
 in
 
 let fonts = StrMap.fold (fun key font acc ->
-(*  Printf.fprintf stderr "Font: %S\n%!" key;*)
+(*  Printf.eprintf "Font: %S\n%!" key;*)
   let key = List.hd (List.rev (Util.split '/' key)) in
   StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
 in
 
 let serve_font font sessid ouc=
   try
-    Printf.fprintf stderr "Search Font: %S\n%!" font;
+    Printf.eprintf "Search Font: %S\n%!" font;
     let data= StrMap.find font fonts in
     http_send 200 "font/opentype" [data] sessid ouc;
   with
@@ -427,56 +478,44 @@ let make_sessid () =
   str
 in
 
-let serve ?sessid num fd=
+let serve ?sessid fdfather num fd =
   Unix.clear_nonblock fd;
   let inc=Unix.in_channel_of_descr fd in
   let ouc=Unix.out_channel_of_descr fd in
+  let fouc=Unix.out_channel_of_descr fdfather in
   let sessid = ref sessid in
   let rec process_req get hdr reste=
     let x=input_line inc in
-    Printf.fprintf stderr "serve %d: %S %S\n%!" num get x;
-    Mutex.lock mut3;
+    Printf.eprintf "serve %d: %S %S\n%!" num get x;
     if x.[0]='\r' then (
       let sessid = match !sessid with
 	| Some s -> 
-	  Printf.fprintf stderr "Reuse sessid: %s\n%!" s;
+	  Printf.eprintf "Reuse sessid: %s\n%!" s;
 	  s
 	| None -> 
 	  let s = make_sessid () in
-	  Printf.fprintf stderr "New sessid: %s\n%!" s;
+	  Printf.eprintf "New sessid: %s\n%!" s;
 	  s
       in
       if Str.string_match svg get 0 then (
-	Printf.fprintf stderr "serve %d: get %S\n%!" num get;
+	Printf.eprintf "serve %d: get %S\n%!" num get;
         let i=int_of_string (Str.matched_group 1 get) in
         let j=int_of_string (Str.matched_group 2 get) in
-        Mutex.unlock mut3;
-        Mutex.lock mut;
-	Printf.fprintf stderr "serve %d: get mutex lock\n%!" num;
-        let pi=present.cur_slide and pj=present.cur_state in
-        Mutex.unlock mut;
-	Printf.fprintf stderr "serve %d: get mutex unlock\n%!" num;
-        if i<pi || (i=pi && j<=pj) then
-          serve_svg i j sessid ouc
-        else
-          generate_error sessid ouc;
+        serve_svg i j sessid ouc;
         process_req "" [] reste
 
       ) else if get= !master_page then (
-        Mutex.unlock mut3;
-	Printf.fprintf stderr "serve %d: master\n%!" num;	
+	Printf.eprintf "serve %d: master\n%!" num;	
 	http_send 200 "text/html" [master] sessid ouc;
         process_req "" [] reste
 
       ) else if get="/" then (
-        Mutex.unlock mut3;
-	Printf.fprintf stderr "serve %d: slave\n%!" num;
+	Printf.eprintf "serve %d: slave\n%!" num;
 	http_send 200 "text/html" [slave] sessid ouc;
         process_req "" [] reste
 
       ) else if get="/etat" then (
-        Mutex.unlock mut3;
-	Printf.fprintf stderr "serve %d: etat\n%!" num;
+	Printf.eprintf "serve %d: etat\n%!" num;
         let data=Buffer.create 1000 in
         Buffer.add_string data "{\"slides\"=[";
         for i=0 to Array.length slides-1 do
@@ -497,46 +536,20 @@ let serve ?sessid num fd=
         process_req "" [] reste
 
       ) else if Str.string_match sync get 0 then (
-        let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-        Mutex.unlock mut3;
-	Printf.fprintf stderr "serve %d: sync\n%!" num;
-	Mutex.lock mut2;
-	Printf.fprintf stderr "serve %d: sync mutex2 lock\n%!" num;
-	if not (List.mem (sessid,fd,ouc,inc) !sync_sock) then
-	  sync_sock := (sessid,fd,ouc,inc)::!sync_sock;
-	Mutex.unlock mut2;
-	Printf.fprintf stderr "serve %d: sync mutex2 unlock\n%!" num;
-
-        let slide=min asked_slide (Array.length slides-1) in
-        let state=if asked_slide>slide then
-            (Array.length slides.(slide)-1)
-          else
-            min state (Array.length slides.(slide)-1)
-        in
-        Mutex.lock mut;
-	Printf.fprintf stderr "serve %d: sync mutex lock\n%!" num;
-        (try
-           if present.cur_slide<>slide || present.cur_state<>state then (
-             present.cur_slide<-slide;
-             present.cur_state<-state;
-             present.touched<-true;
-             if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-               present.starttime<-Unix.time();
-             pushfrom ~from:sessid ();
-           );
-         with _->());
-        Mutex.unlock mut;
-	Printf.fprintf stderr "serve %d: sync mutex unlock\n%!" num;
+	let slide, state = read_slide_state get in
+	Printf.eprintf "serve %d: sync\n%!" num;
+	
+	Printf.fprintf fouc "sync %s %d %d\n" sessid slide state;
+	flush fouc;
         process_req "" [] reste
       ) else if Str.string_match tire get 0 || get="/tire" then (
-        let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-        Mutex.unlock mut3;
+        let slide, state =if get = "/tire" then -1, -1 else
+	    read_slide_state get 
+	in
 
-	Printf.fprintf stderr "serve %d: tire\n%!" num;
+	Printf.eprintf "serve %d: tire\n%!" num;
         try
-          Printf.fprintf stderr "pushing\n";flush stderr;
+          Printf.eprintf "pushing\n";flush stderr;
           begin
             let key=
               let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
@@ -551,60 +564,24 @@ let serve ?sessid num fd=
             flush ouc;
           end;
 
-          Mutex.lock mut;
-	  Printf.fprintf stderr "serve %d: tire mutex lock\n%!" num;
-          (try
-             if get<>"/tire" && not present.touched then (
-               let slide=min asked_slide (Array.length slides-1) in
-               let state=if asked_slide>slide then
-                   (Array.length slides.(slide)-1)
-                 else
-                   min state (Array.length slides.(slide)-1)
-               in
-               if present.cur_slide<>slide || present.cur_state<>state then (
-                 present.cur_slide<-slide;
-                 present.cur_state<-state;
-                 present.touched<-true;
-                 if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-                   present.starttime<-Unix.time();
-               );
-             );
+	  Printf.eprintf "Sending to father ...\n";
+	  Printf.fprintf fouc "tire %s %d %d %d %d\n"
+	    sessid slide state num (Unix.getpid ());
+	  output_value fouc fd;
+	  flush fouc;
+	  Printf.eprintf "Sending to father done\n";
+	  process_req "" [] reste
 
-             pushto fd;
-             addrs:=AddrMap.add sessid fd !addrs;
-           with
-               _->());
-          Mutex.unlock mut;
-	  Printf.fprintf stderr "serve %d: tire mutex unlock\n%!" num;
-          raise Websocket
         with
-            Not_found->(
-              Mutex.lock mut;
-              Printf.fprintf stderr "pushing\n";flush stderr;
-              pushto fd;
-              addrs:=AddrMap.add sessid fd !addrs;
-	      Mutex.unlock mut;
-              raise Websocket
-            )
-          | Websocket->raise Websocket
-          | e->(Printf.fprintf stderr "erreur websocket \"%s\"\n"(Printexc.to_string e);
-                flush stderr)
-      ) else if Str.string_match click get 0 then (
-	Printf.fprintf stderr "serve %d: click\n%!" num;
-        let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-	let match_end = Str.match_end () in
-        Mutex.unlock mut3;
+          | e-> Printf.eprintf "erreur %d websocket \"%s\"\n%!" num (Printexc.to_string e);
 
-        let slide=min asked_slide (Array.length slides-1) in
-        let state=if asked_slide>slide then
-            (Array.length slides.(slide)-1)
-          else
-            min state (Array.length slides.(slide)-1)
-        in
+      ) else if Str.string_match click get 0 then (
+	Printf.eprintf "serve %d: click\n%!" num;
+	let match_end = Str.match_end () in
+	let slide, state = read_slide_state get in
 	let rest =String.sub get match_end (String.length get - match_end) in
 
-	Printf.fprintf stderr "click: %d %d %s\n%!" slide state rest;
+	Printf.eprintf "click: %d %d %s\n%!" slide state rest;
 
 	let name, dest = match Util.split '_' rest with
 	  name::dest -> name,dest
@@ -618,73 +595,49 @@ let serve ?sessid num fd=
 	      max res acc
 	    with
 	      Not_found -> 
-		Printf.fprintf stderr "Warning: dynamic not found: %s\n%!" ds;
+		Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
 		acc) Unchanged dest
 	in
-        let ok="Ok" in
-        Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
-          (String.length ok) ok;
-        flush ouc;
+	generate_ok sessid ouc;
 
 	(match status with
-	  Unchanged -> Printf.fprintf stderr "Unchanged\n%!"; ()
-	| Private -> Printf.fprintf stderr "Private change\n%!"; pushto ~change:true fd
-	| Public -> Printf.fprintf stderr "Public change\n%!"; pushfrom ~change:true ());
-
+	  Unchanged -> Printf.eprintf "Unchanged\n%!"; ()
+	| Private ->
+	  Printf.eprintf "Private change\n%!"; 
+	  pushto ~change:true fd fdfather sessid num;
+	| Public -> Printf.eprintf "Public change\n%!"; 
+	  Printf.fprintf fouc "click %d %d\n" slide state;
+	  flush fouc);
+	  
         process_req "" [] reste
 
       ) else if Str.string_match pousse get 0 then (
-        Printf.fprintf stderr "pousse\n";flush stderr;
-        let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-        let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-        Mutex.unlock mut3;
-
-        let slide=min asked_slide (Array.length slides-1) in
-        let state=if asked_slide>slide then
-            (Array.length slides.(slide)-1)
-          else
-            min state (Array.length slides.(slide)-1)
-        in
-        Mutex.lock mut;
-	Printf.fprintf stderr "serve %d: pousse mutex lock\n%!" num;
-        (try
-           if present.cur_slide<>slide || present.cur_state<>state then (
-             present.cur_slide<-slide;
-             present.cur_state<-state;
-             present.touched<-true;
-             if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-               present.starttime<-Unix.time();
-           );
-           pushfrom ();
-         with _->());
-        Mutex.unlock mut;
-	Printf.fprintf stderr "serve %d: pousse mutex unlock\n%!" num;
-        let ok="Ok" in
-        Printf.fprintf ouc "HTTP/1.1 200 OK\r\nContent-length: %d\r\n\r\n%s\r\n"
-          (String.length ok) ok;
-        flush ouc;
+        Printf.eprintf "pousse\n";flush stderr;
+	let slide, state = read_slide_state get in
+	
+	Printf.fprintf fouc "pousse %d %d\n" slide state;
+	flush fouc;
+	
+	generate_ok sessid ouc;
 
         process_req "" [] reste
 
       ) else if Str.string_match css_reg get 0 then (
-        Mutex.unlock mut3;
 
-	Printf.fprintf stderr "serve %d: css\n%!" num;
+	Printf.eprintf "serve %d: css\n%!" num;
         serve_css sessid ouc;
         process_req "" [] reste
 
       ) else if Str.string_match otf get 0 then (
 	let otf = Str.matched_group 1 get in
-        Mutex.unlock mut3;
 
-	Printf.fprintf stderr "serve %d: otf\n%!" num;
+	Printf.eprintf "serve %d: otf\n%!" num;
         serve_font otf sessid ouc;
         process_req "" [] reste
 
       ) else (
-        Mutex.unlock mut3;
 
-	Printf.fprintf stderr "serve %d: img\n%!" num;
+	Printf.eprintf "serve %d: img\n%!" num;
         try
           let img=StrMap.find (String.sub get 1 (String.length get-1)) imgs in
           let ext=
@@ -708,12 +661,10 @@ let serve ?sessid num fd=
 
       if hdr=[] && Str.string_match get_reg x 0 then (
 	let str = Str.matched_group 1 x in
-	Mutex.unlock mut3;
         process_req str hdr reste
       ) else if Str.string_match header x 0 then (
         let a=Str.matched_group 1 x in
         let b=Str.matched_group 2 x in
-	Mutex.unlock mut3;
 	if a = "Cookie" || a = "Cookies" then
 	  let ls = Util.split '=' b in
 	  (match ls with
@@ -723,7 +674,6 @@ let serve ?sessid num fd=
 	else
           process_req get ((a,b)::hdr) reste
       ) else (
-	Mutex.unlock mut3;
         process_req get hdr (x::reste)
       );
     )
@@ -731,13 +681,18 @@ let serve ?sessid num fd=
   try
     process_req "" [] []
   with
-      Websocket-> (Mutex.unlock mut3; Mutex.unlock mut2; Mutex.unlock mut; Printf.fprintf stderr "End process req\n";flush stderr)
-    | e->(Mutex.unlock mut3; Mutex.unlock mut2; Mutex.unlock mut; Unix.close fd;
-          Printf.fprintf stderr "erreur : \"%s\"\n" (Printexc.to_string e);flush stderr)
+    | e-> 
+      (match !sessid with
+	None ->
+	  Printf.fprintf fouc "quit ? %d\n" (Unix.getpid ());
+	  flush fouc
+      | Some sessid ->
+	Printf.fprintf fouc "quit %s %d\n" sessid (Unix.getpid ());
+	flush fouc);
+      Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
+      exit 0;
 in
 
-(*connection as another patonet (at most one is enough to build
-any graph) as a follower*)
 
 let reconnect sock_info =
   assert (!sock_info = None);
@@ -756,10 +711,10 @@ let reconnect sock_info =
       in
       let rec fn = function
       [] -> 
-	Printf.fprintf stderr "Failed to connect to Patonet server\n%!";
+	Printf.eprintf "Failed to connect to Patonet server\n%!";
 	raise Exit
 	| addr::rest -> Unix.(
-	  Printf.fprintf Pervasives.stderr "Trying connect to %s:%d\n%!"
+	  Printf.eprintf "Trying connect to %s:%d\n%!"
 	    (str_addr addr.ai_addr) port;
 	  let sock= socket addr.ai_family addr.ai_socktype 0 in
 	  try 
@@ -770,17 +725,22 @@ let reconnect sock_info =
       let addr, sock = fn addrs in
       let fo=Unix.out_channel_of_descr sock in
       let fi=Unix.in_channel_of_descr sock in
-      Printf.fprintf stderr "Connected\n%!";
-      Mutex.lock mut2;
+      Printf.eprintf "Connected\n%!";
       let sessid = make_sessid () in
       sock_info := Some (sessid,sock,fo,fi);
       sync_sock := (sessid,sock,fo,fi)::!sync_sock;
-      Mutex.unlock mut2;
-      let _=Thread.create (fun ()->
-	serve ~sessid (-1) sock;
-	Printf.fprintf Pervasives.stderr
-	  "Reconnect served\n%!";) () in
-      ()
+      let fd2,fd1 = Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
+      let pid = Unix.fork () in
+      if pid = 0 then (
+	try
+	  Unix.close fd2;
+	  close_all_other sock;
+	  Printf.eprintf "Sync started: %s\n%!" sessid;
+	  serve ~sessid fd1 (-1) sock;
+	with _ -> exit 0);
+      Unix.close fd1;
+      sons := (fd2,(Unix.in_channel_of_descr fd2, pid, -1, sock, ref None))::!sons;
+
     with _ -> ()
 in
 
@@ -794,59 +754,128 @@ in
   ignore (Sys.signal 13 (Sys.Signal_ignore));
 
   while true do
-    Printf.fprintf stderr "upper main loop\n%!";
+    Printf.eprintf "upper main loop\n%!";
     try Unix.(
       let port = !port_num in
-      let addrs = getaddrinfo "" (string_of_int port) [AI_SOCKTYPE SOCK_STREAM; AI_PASSIVE] in
+      let poss_addrs = getaddrinfo "" (string_of_int port) [AI_SOCKTYPE SOCK_STREAM; AI_PASSIVE] in
       let rec fn acc = function
         [] -> if acc = [] then (
-	  Printf.fprintf Pervasives.stderr
+	  Printf.eprintf
 	    "Failed to listen on any address.\n%!";
 	  exit 1)
 	  else acc
 	| addr::rest ->
 	  try
-(*	    Printf.fprintf Pervasives.stderr
+(*	    Printf.eprintf
 	      "Trying to listen from %s:%d\n%!" str_addr port;*)
 	    let master_sock= socket addr.ai_family addr.ai_socktype 0 in
 	    setsockopt master_sock SO_REUSEADDR true;
 	    bind master_sock addr.ai_addr;
 	    listen master_sock 100;
-	    Printf.fprintf Pervasives.stderr
+	    Printf.eprintf
 	      "Listening on port %s:%d\n%!" (str_addr addr.ai_addr) port;
 	    fn (master_sock::acc) rest
 	  with _ -> fn acc rest
       in
 
-      let master_sockets = fn [] addrs in
+      let master_sockets = fn [] poss_addrs in
 
-      Printf.fprintf Pervasives.stderr 
+      Printf.eprintf 
 	"Listening from %d addresses -- master: \"%s\"\n%!"
 	(List.length master_sockets) !master_page;
 
       let conn_num = ref 0 in
 
       while true do
-	Printf.fprintf Pervasives.stderr "in main loop\n%!";
+	Printf.eprintf "in main loop (%d addresses, %d sons)\n%!" (List.length master_sockets) (List.length !sons);
 	if !connect_to <> "" && !sock_info = None then
 	  reconnect sock_info;
-	let socks,_,_=Unix.select master_sockets [] [] 10. in
-	List.iter (fun master_sock ->
-	  try
-            let conn_sock, addr = Unix.accept master_sock in
+	(try while (fst (Unix.waitpid [WNOHANG] (-1)) <> 0) do () done with _ -> ());
+	let socks,_,errors=Unix.select (master_sockets@List.map fst !sons) [] (List.map fst !sons) 10. in
+	Printf.eprintf "select returns %d read and %d errors.\n%!" (List.length socks) (List.length errors);
+	List.iter (fun sock ->
+	  Printf.eprintf "Remove a son on error\n%!";
+	  kill_son sock) errors;
+	List.iter (fun sock -> try
+	  if not (List.mem sock errors) then (
+	  if not (List.mem sock master_sockets) then (
+	    Printf.eprintf "Serving a son\n%!";
+	    let ic, pid, num, fd, sessid_ptr = try List.assoc sock !sons with _ -> assert false in
+	    let cmd = Util.split ' ' (input_line ic) in
+	    Printf.eprintf "received from %d %d: %s\n%!" num pid (String.concat " " cmd);
+	    match cmd with
+	      ["tire";sessid;slide;state;num;pid] -> (
+		let fd0:file_descr = input_value ic in
+		assert (fd = fd0);
+		let slide = int_of_string slide and state = int_of_string state in
+		if slide >= 0 && (present.cur_slide<>slide || present.cur_state<>state) then (
+                  present.cur_slide<-slide;
+                  present.cur_state<-state;
+                  present.max_slide<-max present.max_slide slide;
+                  if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
+		    present.starttime<-Unix.time();
+		);
+		
+		(try
+		   List.iter (fun (fd,(_,pid,num,_,sessid')) ->
+		     if !sessid' = Some sessid then (
+		       Printf.eprintf "Killing old son: %d %s %d\n%!"
+			 num sessid pid;
+		       kill_son fd)) !sons
+		with
+		  Not_found -> ());
+		sessid_ptr := Some sessid;
+		pushto fd sock sessid (int_of_string num))
+	    | ["quit";sessid;pid] ->
+	      kill_son sock;
+	    | ["pousse";slide;state] -> (
+	      let slide = int_of_string slide and state = int_of_string state in
+	      if present.cur_slide<>slide || present.cur_state<>state then (
+		present.cur_slide<-slide;
+		present.cur_state<-state;
+		present.max_slide<-max present.max_slide slide;
+		if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
+		  present.starttime<-Unix.time();
+	      );
+	      push ())
+	    | ["click";slide;state] ->
+		push ~change:true ()
+	    | ["sync";sessid;slide;state] -> (
+	      let slide = int_of_string slide and state = int_of_string state in
+	      if present.cur_slide<>slide || present.cur_state<>state then (
+		present.cur_slide<-slide;
+		present.cur_state<-state;
+		present.max_slide<-max present.max_slide slide;
+		if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
+		  present.starttime<-Unix.time();
+	      );
+ 	      push ~from:sessid ())
+	    | _ ->
+	      Printf.eprintf "Bad message from son\n%!";
+	  ) else (
+	    Printf.eprintf "Accepting a connection\n";
+            let conn_sock, addr = Unix.accept sock in
 	    Unix.set_nonblock conn_sock;
 	    let num = !conn_num in
 	    incr conn_num;
-            let _=Thread.create (fun ()->
-	      Printf.fprintf Pervasives.stderr "Connection started: %d\n%!" num;
-	      serve num conn_sock;
-	      Printf.fprintf Pervasives.stderr "Connection served: %d\n%!" num;) () in
-	    ()
-          with _ -> ()) socks
+	    let fd2,fd1 =  Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
+	    let pid = Unix.fork () in
+	    if pid = 0 then (
+	      try
+		Unix.close fd2;
+		close_all_other conn_sock;
+		Printf.eprintf "Connection started: %d\n%!" num;
+		serve fd1 num conn_sock;
+	      with _ -> exit 0);
+	    Unix.close fd1;
+	    sons := (fd2,(in_channel_of_descr fd2, pid, num, conn_sock, ref None))::!sons))
+          with e -> 
+	    kill_son sock;
+	    Printf.eprintf "main loop (reading): %s\n%!"
+	    (Printexc.to_string e)) socks
       done)
 
-    with
-        e-> Printf.fprintf stderr "main loop: %s\n%!"
+    with e-> Printf.eprintf "main loop (before read): %s\n%!"
 	  (Printexc.to_string e)
   done
 
