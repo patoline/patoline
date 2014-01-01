@@ -223,8 +223,10 @@ let draw ?fontCache ?dynCache prefix w h contents=
         (String.length f_-String.length f)
       in
       let rec nonexistent i=
-        let name=Printf.sprintf "%s%d%s" f i ext in
-        if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name
+	if prefix <> "" then (
+          let name=Printf.sprintf "%s%d%s" f i ext in
+          if Sys.file_exists (Filename.concat prefix name) then nonexistent (i+1) else name )
+	else f_
       in
       let name=nonexistent 0 in
       imgs:=StrMap.add i.image_file name !imgs;
@@ -624,8 +626,6 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";
-
-
   html,style
 
 
@@ -651,9 +651,11 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
        _->());
 
   let svg_files,cache,imgs=buffered_output' ~structure:structure pages prefix in
+
   StrMap.fold (fun k a _->
     copy_file k (Filename.concat prefix a)
   ) imgs ();
+
   let html,style=basic_html cache structure pages prefix in
   let o=open_out (Filename.concat (Filename.basename prefix) "index.html") in
   Rbuffer.output_buffer o html;

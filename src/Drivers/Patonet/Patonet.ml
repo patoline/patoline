@@ -293,11 +293,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  let prefix=try Filename.chop_extension fileName with _->fileName in
-
   let dynCache = Array.map (fun t -> Array.map (fun _ -> Hashtbl.create 13) t) pages in
 
-  let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages prefix in
+  let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages "" in
+  
+  let imgs = StrMap.fold (fun k filename m ->
+    Printf.eprintf "image: %s %s\n%!" k filename;
+    let buf =
+	Printf.eprintf "encoding %s\n%!" filename;
+	let ch = open_in filename in
+	let len = in_channel_length ch in
+	let buf = String.create len in
+	really_input ch buf 0 len;
+	buf
+    in
+    StrMap.add filename buf m) imgs StrMap.empty
+  in
+
+  let imgs = StrMap.add "favicon.ico" duck_ico imgs in
 
 let read_slide_state get =
   let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
@@ -311,10 +324,6 @@ let read_slide_state get =
   in
   slide, state
 in
-
-(*
-let imgs = StrMap.add "favicon.ico" duck_ico imgs in
-*)
 
   let slave_keyboard=Printf.sprintf "
 function send_click(name,dest) {
@@ -334,7 +343,7 @@ function send_click(name,dest) {
     ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
     ~onload:"start_socket();"
     ~keyboard:slave_keyboard
-    cache structure pages prefix
+    cache structure pages ""
   in
 
   let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
@@ -386,7 +395,7 @@ function gotoSlide(n){
     ~onload:"to=0;start_socket();"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard
-    cache structure pages prefix
+    cache structure pages ""
   in
 
   let slides = Array.map (Array.map (fun (x,y) -> Rbuffer.contents x, Rbuffer.contents y)) slides in
@@ -432,7 +441,9 @@ let serve_svg i j sessid ouc =
       let dyns = Rbuffer.create 256 in
       Hashtbl.iter (fun k d ->
 	try Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
-	with e -> Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
+	with e -> 
+	  Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
+	  Printexc.print_backtrace stderr
       ) dynCache.(i).(j);
       let dyns = Rbuffer.contents dyns in
       Printf.eprintf "start sent image/svg+xml %s\n%!" sessid;
@@ -637,9 +648,10 @@ let serve ?sessid fdfather num fd =
 
       ) else (
 
-	Printf.eprintf "serve %d: img\n%!" num;
         try
-          let img=StrMap.find (String.sub get 1 (String.length get-1)) imgs in
+	  let name = String.sub get 1 (String.length get-1) in
+	  Printf.eprintf "serve %d: image: %s\n%!" num name;
+          let img=StrMap.find name imgs in
           let ext=
             if Filename.check_suffix ".png" get then "image/png" else
               if Filename.check_suffix ".jpeg" get then "image/jpeg" else
@@ -649,7 +661,7 @@ let serve ?sessid fdfather num fd =
                     "application/octet-stream"
           in
  
-	  http_send 200 ext [base64_encode img] sessid ouc;
+	  http_send 200 ext [img] sessid ouc;
           process_req "" [] []
         with
             Not_found->(
@@ -743,6 +755,9 @@ let reconnect sock_info =
 
     with _ -> ()
 in
+
+  Util.close_in_cache ();
+
 
   Arg.parse spec (fun x->()) "";
   if !master_page="" then (

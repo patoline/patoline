@@ -80,10 +80,18 @@ let loadFont ?offset:(off=0) ?size:(_=0) f=
     font
 #endif
 
-let glyph_of_uchar f c=
-  match f with
-      CFF x->CFF.glyph_of_uchar x c
-    | Opentype x->Opentype.glyph_of_uchar x c
+let glyph_of_uchar =
+  let cache = Hashtbl.create 1001 in fun f c ->
+    try Hashtbl.find cache (c,f) 
+    with Not_found ->
+      let r =
+	match f with
+	  CFF x->CFF.glyph_of_uchar x c
+	| Opentype x->Opentype.glyph_of_uchar x c
+      in
+      Hashtbl.add cache (c,f) r;
+      r
+
 let glyph_of_char f c=glyph_of_uchar f (UChar.of_char c)
 
 
@@ -169,19 +177,34 @@ let apply_features font set glyphs=match font,set with
   | Opentype x,OpentypeFeature_set y->Opentype.apply_features x y glyphs
   | _->glyphs
 
-let positioning f glyphs=
-  match f with
-      CFF x->CFF.positioning x glyphs
-    | Opentype x->Opentype.positioning x glyphs
+let positioning =
+  let cache = Hashtbl.create 101 in
+  fun f glyphs -> 
+    try Hashtbl.find cache (glyphs,f)
+    with Not_found ->
+      let r = match f with
+	  CFF x->CFF.positioning x glyphs
+	| Opentype x->Opentype.positioning x glyphs
+      in
+      Hashtbl.add cache (glyphs,f) r;
+      r
 
 type fontInfo=
     CFFInfo of CFF.fontInfo
   | OpentypeInfo of Opentype.fontInfo
 
-let fontInfo f=
-  match f with
-      CFF x->CFFInfo (CFF.fontInfo x)
-    | Opentype x->OpentypeInfo (Opentype.fontInfo x)
+let fontInfo =
+  let cache = Hashtbl.create 101 in
+  fun f -> 
+    try Hashtbl.find cache f
+    with Not_found ->
+      let r = 
+	match f with
+	  CFF x->CFFInfo (CFF.fontInfo x)
+	| Opentype x->OpentypeInfo (Opentype.fontInfo x)
+      in
+      Hashtbl.add cache f r;
+      r
 
 let setName info name=match info with
     CFFInfo f->CFF.setName f name

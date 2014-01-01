@@ -262,6 +262,12 @@ type 'a tree=
 let bin_cache:in_channel StrMap.t ref=ref StrMap.empty
 let cache:in_channel StrMap.t ref=ref StrMap.empty
 
+let close_in_cache () =
+  StrMap.iter (fun _ f -> close_in f) !cache;
+  StrMap.iter (fun _ f -> close_in f) !bin_cache;
+  cache := StrMap.empty;
+  bin_cache := StrMap.empty
+
 let open_in_bin_cached f=
   if not (StrMap.mem f !bin_cache) then (
     if StrMap.mem f !cache then (
@@ -270,8 +276,8 @@ let open_in_bin_cached f=
     );
     bin_cache:=StrMap.add f (open_in_bin f) !bin_cache
   );
-  StrMap.find f !bin_cache
-
+  let ch = StrMap.find f !bin_cache in
+  seek_in ch 0; ch
 
 let open_in_cached f=
 #ifdef WIN32
@@ -282,7 +288,8 @@ let open_in_cached f=
     );
     cache:=StrMap.add f (open_in f) !cache
   );
-  StrMap.find f !cache
+  let ch = StrMap.find f !cache in
+  seek_in ch 0; ch
 #else
   open_in_bin_cached f
 #endif
