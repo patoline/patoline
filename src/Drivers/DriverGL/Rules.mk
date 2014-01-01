@@ -30,13 +30,17 @@ $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -linkpkg -dllpath /usr/local/lib/ocaml/4.01.0/stublibs -o $(basename $@) $^
 
 $(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_DriverGL) -shared -linkpkg -o $@ $^
 
 DISTCLEAN += $(DEPENDS_$(d))
+
+install:install-dll-gl
+install-dll-gl:
+	install -m 755 src/Drivers/DriverGL/dllDriverGL.so $(INSTALL_DLLS_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

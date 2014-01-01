@@ -24,6 +24,7 @@ let fonts_dir=ref ""
 let grammars_dir=ref ""
 let hyphen_dir=ref ""
 let ocaml_lib_dir=ref (Findlib.default_location())
+let ocaml_dlls_dir=ref (Filename.concat !ocaml_lib_dir "stublibs")
 let fonts_dirs=ref []
 let grammars_dirs=ref []
 let plugins_dir=ref ""
@@ -315,6 +316,7 @@ let _=
     ("--prefix", Set_string prefix, "  prefix (/usr/local/ by default)");
     ("--bin-prefix", Set_string bin_dir, "  directory for the binaries ($PREFIX/bin/ by default)");
     ("--ocaml-libs", Set_string ocaml_lib_dir, "  directory for the caml libraries (`ocamlfind printconf destdir` by default; `ocamlc -where` is another sensible choice)");
+    ("--ocaml-dlls", Set_string ocaml_dlls_dir, "  directory for the dll.so caml file (`ocamlfind printconf destdir`/stublibs by default; the distination should be liste in ocaml's ld.conf usually in /usr/lib/ocaml/ld.conf)");
     ("--fonts-dir", Set_string fonts_dir, "  directory for the fonts ($PREFIX/share/patoline/fonts/ by default)");
     ("--grammars-dir", Set_string grammars_dir, "  directory for the grammars ($PREFIX/lib/patoline/grammars/ by default)");
     ("--plugins-dir", Set_string plugins_dir, "  directory for the plugins ($PREFIX/lib/patoline/plugins/ by default)");
@@ -400,6 +402,7 @@ let _=
   Printf.fprintf make "INSTALL_HYPHEN_DIR := %s\n" !hyphen_dir;
   Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR := %s/Typography\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_DRIVERS_DIR := %s\n" !driver_dir;
+  Printf.fprintf make "INSTALL_DLLS_DIR := %s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
