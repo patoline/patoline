@@ -105,7 +105,7 @@ open DefaultFormat.MathsFormat
 let _ = Distance.read_cache \"%s\"
 module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)
 module Patoline_Format=%s.Format(D);;
-module Driver = %s
+%s
 module Patoline_Output=Patoline_Format.Output(Driver);;
 let _=D.defaultEnv:=Patoline_Format.defaultEnv;;
 open %s;;
@@ -116,14 +116,13 @@ open Patoline_Format;;\n
     suppl
     cache_name
     format
-    (if dynlink then 
-Printf.sprintf "
+(Printf.sprintf  (if dynlink then "
 let driver = match !Config.driver with
   None -> %S
 | Some s -> s
 let _ = OutputPaper.load_driver driver
-(val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)" driver
- else driver)
+module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)"
+  else "module Driver = %s") driver)
     format;
   let buf=Buffer.create 100 in
   do_include buf main_mod;
