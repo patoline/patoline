@@ -197,7 +197,7 @@ let kill_son sock =
       Printf.eprintf "kill son %d %d\n%!" num pid;
       (try Unix.close fd with _ -> ());
       (try Unix.close served_sock with _ -> ());
-      (try Unix.kill pid 12 with _ -> ()); 
+      (try Unix.kill pid 2 with _ -> ()); 
       false) 
     else true
   ) !sons
@@ -433,9 +433,9 @@ let generate_ok sessid ouc =
   http_send 200 "text/plain" [data] sessid ouc;
 in
  
-let serve_svg i j sessid ouc =
+let serve_svg i j num sessid ouc =
   if i<Array.length slides && j<Array.length slides.(i) then (
-    Printf.eprintf "building slide %d_%d\n%!" i j;
+    Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
     try
       let prefix,suffix = slides.(i).(j) in
       let dyns = Rbuffer.create 256 in
@@ -446,9 +446,9 @@ let serve_svg i j sessid ouc =
 	  Printexc.print_backtrace stderr
       ) dynCache.(i).(j);
       let dyns = Rbuffer.contents dyns in
-      Printf.eprintf "start sent image/svg+xml %s\n%!" sessid;
+      Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
       http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
-      Printf.eprintf "sent image/svg+xml %s\n%!" sessid;
+      Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
     with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
   ) else (
     generate_error sessid ouc;
@@ -513,7 +513,7 @@ let serve ?sessid fdfather num fd =
 	Printf.eprintf "serve %d: get %S\n%!" num get;
         let i=int_of_string (Str.matched_group 1 get) in
         let j=int_of_string (Str.matched_group 2 get) in
-        serve_svg i j sessid ouc;
+        serve_svg i j num sessid ouc;
         process_req "" [] reste
 
       ) else if get= !master_page then (
@@ -746,6 +746,9 @@ let reconnect sock_info =
       let pid = Unix.fork () in
       if pid = 0 then (
 	try
+	  !Document.interaction_start_hook ();
+	  Sys.catch_break true;
+	  Util.close_in_cache ();
 	  Unix.close fd2;
 	  close_all_other sock;
 	  Printf.eprintf "Sync started: %s\n%!" sessid;
@@ -756,9 +759,6 @@ let reconnect sock_info =
 
     with _ -> ()
 in
-
-  Util.close_in_cache ();
-
 
   Arg.parse spec (fun x->()) "";
   if !master_page="" then (
@@ -878,6 +878,9 @@ in
 	    let pid = Unix.fork () in
 	    if pid = 0 then (
 	      try
+		!Document.interaction_start_hook ();
+		Sys.catch_break true;
+		Util.close_in_cache ();
 		Unix.close fd2;
 		close_all_other conn_sock;
 		Printf.eprintf "Connection started: %d\n%!" num;

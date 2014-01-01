@@ -7,43 +7,59 @@ open Proj3d
 
 let caml x = x
 
-let db = Mysql.(connect { defaults with
-    dbhost = Some "localhost";
-    dbname = Some "patonet";
-    dbpwd = Some "patonet";
-    dbuser = Some "patonet";})
+let db_info = Mysql.(
+    { defaults with
+      dbhost = Some "localhost";
+      dbname = Some "patonet";
+      dbpwd = Some "patonet";
+      dbuser = Some "patonet";})
+
+let db = ref (Mysql.connect db_info)
     
+let _ =
+    Document.interaction_start_hook := fun () ->
+      Mysql.(disconnect !db; db := connect db_info)
+
 let _ = Mysql.(
     let sql = "CREATE TABLE IF NOT EXISTS `demo` (
       `key` varchar(32), `value` int);" in
-    let _r = exec db sql in
-    match errmsg db with
+    let _r = exec !db sql in
+    match errmsg !db with
     | None -> () 
     | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
 
 let create_int name v = Mysql.(
     let sql = Printf.sprintf "INSERT INTO `demo` (`key`, `value`) VALUES ('%s',%d);" name v in
-    let _r = exec db sql in
-    match errmsg db with
+    let _r = exec !db sql in
+    match errmsg !db with
     | None -> () 
     | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
 
 let write_int name v = Mysql.(
     let sql = Printf.sprintf "UPDATE `demo` SET `value`=%d WHERE `key` = '%s';" v name in
-    let _r = exec db sql in
-    match errmsg db with
+    Printf.eprintf "sql_exec start\n%!";
+    let _r = exec !db sql in
+    (match errmsg !db with
     | None -> () 
-    | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
+    | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
+    Printf.eprintf "sql_exec end\n%!";)
+
 
 let rec read_int name = Mysql.(
     let sql = Printf.sprintf "SELECT `value` FROM `demo` WHERE `key` = '%s';" name in
-    let r = exec db sql in
-    try match errmsg db, fetch r with
-    | None, Some row -> (match row.(0) with None -> 0 | Some n -> int_of_string n)
-    | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; 0
-    | _ -> assert false   
-    with Mysql.Error err ->
-      Printf.eprintf "Mysql Error: %s\n%!" err; read_int name)
+    Printf.eprintf "sql_exec start\n%!";
+    let r = exec !db sql in
+    let r = 
+      try match errmsg !db, fetch r with
+    	| None, Some row -> (match row.(0) with None -> 0 | Some n -> int_of_string n)
+        | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; 0
+        | _ -> assert false   
+      with Mysql.Error err ->
+        Printf.eprintf "Mysql Error: %s\n%!" err; read_int name
+    in 
+    Printf.eprintf "sql_exec end\n%!";
+    r
+    )
 
 )
 
