@@ -30,6 +30,7 @@ let cmd_line_format = ref false
 let cmd_line_driver= ref false
 let format=ref "DefaultFormat"
 let driver = ref "Pdf"
+let dynlink = ref false
 let dirs = ref []
 let package_list = ref ["Typography"]
 let patoline=ref (Sys.argv.(0))
@@ -53,6 +54,7 @@ let spec =
    ("--no-grammar",Arg.Unit (fun ()->Parser.grammar:=None), message (Cli No_grammar));
    ("--format",Arg.String
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
+   ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));
    ("--driver",Arg.String
      (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
    (*
@@ -438,8 +440,8 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 	             ]
 	           @(if Filename.check_suffix h Parser.gram_ext then []
                      else
-                       ["--driver";opts.driver;
-                        "-o";h])
+                       (if !dynlink then ["--driver";opts.driver] else [])@
+                        ["-o";h])
                    @[source]
                   )
                 in
@@ -488,7 +490,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
               let o=open_out h in
               let main_mod=Filename.chop_extension (Filename.basename modu) in
               main_mod.[0]<-Char.uppercase main_mod.[0];
-              Generateur.write_main_file o opts.format opts.driver "" main_mod r1;
+              Generateur.write_main_file !dynlink o opts.format opts.driver "" main_mod r1;
               close_out o;
             );
             true
@@ -695,7 +697,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     (List.concat (List.map getopts !extras))@
                     comp_opts@
                     (let pack=String.concat ","
-		       ("dynlink"::
+		       ((if !dynlink then ["dynlink"] else ["dynlink";"Typography."^opts.driver])@
 			   (if Config.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
 			   List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
@@ -703,7 +705,8 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                      "-o";h]@
                     objs@
-                    ["-linkall";"-impl";source])
+                    (if !dynlink then ["-linkall"] else [])@
+		    ["-impl";source])
               in
               Mutex.unlock mut;
 
@@ -737,7 +740,7 @@ let process_each_file l=
 	close_in in_s;
         let main_mod=Filename.chop_extension (Filename.basename f) in
 	let o=open_out ((Filename.chop_extension f)^"_.tml") in
-        Generateur.write_main_file o opts.format opts.driver "" main_mod (Filename.chop_extension f);
+        Generateur.write_main_file !dynlink o opts.format opts.driver "" main_mod (Filename.chop_extension f);
         close_out o;
       ) else if !compile then (
         if Sys.file_exists f then (

@@ -49,6 +49,7 @@ and command_line=
   | No_grammar
   | Format
   | Driver
+  | Dynlink
   | Separately
   | Noamble
   | Package
@@ -105,6 +106,7 @@ let message=function
       | Dirs->"Rajoute le répertoire au chemin de compilation"
       | No_grammar->"Commence l'analyse syntaxique avec une grammaire vide"
       | Format->"Compile avec ce format"
+      | Dynlink->"Prepare un binaire permettant de lier dynamiquement le driver (expérimental)"
       | Driver->"Compile avec ce driver de sortie"
       | Separately->"Compile séparément"
       | Noamble->"Produit un module caml brut"
@@ -169,6 +171,7 @@ let message=function
       | No_grammar->"Parse with an initially empty grammar"
       | Format->"Compile with this format"
       | Driver->"Compile with this output driver"
+      | Dynlink -> "Prepare a binary for using dynlinked driver (experimental)"
       | Separately->"Compile separately"
       | Noamble->"Output a raw caml file"
       | Package->"Add the package to the list of ocamlfind packages"
