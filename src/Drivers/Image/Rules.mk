@@ -13,11 +13,11 @@ DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 $(d)/Image.cmx: $(PATOLINE_DIR)/Language.cmx
 $(d)/Image.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_Image) $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package lablgl $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Image.cmxa: $(PATOLINE_DIR)/Language.cmx $(d)/Image.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_Image) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) $(PACK) -package lablgl $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $(basename $@) $^
 
 $(d)/Image.cmxs: $(PATOLINE_DIR)/Language.cmx $(d)/Image.cmx
 	$(ECHO) "[OPT]    $< -> $@"

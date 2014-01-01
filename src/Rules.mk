@@ -39,7 +39,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(FORMAT_DIR)/DefaultFormat.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx 
 	$(ECHO) "[OPT]    $< -> $@"
-	$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa dynlink.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa dynlink.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"      

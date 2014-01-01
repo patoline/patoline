@@ -46,8 +46,8 @@ let spec =
     message (Cli Extra_hyph));
 
    ("-I",Arg.String (fun x->
-     Config.local_path:=x::(!Config.local_path);
-     Config.grammarspath:=x::(!Config.grammarspath);
+     Config2.local_path:=x::(!Config2.local_path);
+     Config2.grammarspath:=x::(!Config2.grammarspath);
      dirs := x :: !dirs),
     message (Cli Dirs));
    ("--recompile",Arg.Unit(fun ()->recompile:=true),message (Cli Recompile));
@@ -89,7 +89,7 @@ let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 
 (************************************************)
-open Util
+open Util2
 let dynlinked=(Mutex.create (), ref StrMap.empty)
 
 type options={
@@ -165,7 +165,7 @@ let add_format opts =
     (if opts.format <> "DefaultFormat" &&
         (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
         (try
-           let _=findPath (opts.format ^ ".ml") (".":: !Config.local_path) in
+           let _=findPath (opts.format ^ ".ml") (".":: !Config2.local_path) in
            false
          with _->true)
      then
@@ -217,14 +217,14 @@ let rec read_options_from_source_file f fread =
       in
       let name=
         try
-          let name=Util.findPath ((Filename.chop_extension n)^".ml") ("."::!Config.local_path) in
+          let name=Util2.findPath ((Filename.chop_extension n)^".ml") ("."::!Config2.local_path) in
           let objects=(Mutex.create (), ref StrMap.empty) in
           Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo")::f);
           Dynlink.adapt_filename (Filename.chop_extension name^".cmo")
         with
-            File_not_found _->Util.findPath
+            File_not_found _->Util2.findPath
               (Dynlink.adapt_filename (Filename.chop_extension n^".cmo"))
-              !Config.pluginspath
+              !Config2.pluginspath
       in
       let m,n=dynlinked in
       Mutex.lock m;
@@ -698,7 +698,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     comp_opts@
                     (let pack=String.concat ","
 		       ((if !dynlink then ["dynlink"] else ["dynlink";"Typography."^opts.driver])@
-			   (if Config.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
+			   (if Config2.has_patonet && not (Filename.check_suffix h ".cmxs") then "cryptokit" else "")::
 			   List.rev opts.packages) in
                      if pack<>"" then ["-package";pack] else [])@
                     dirs_@
@@ -832,13 +832,13 @@ let _ =
           ) else (
             match Sys.argv.(2) with
                 "fonts"->
-                  Printf.fprintf stdout "%s\n" Config.fontsdir
+                  Printf.fprintf stdout "%s\n" Config2.fontsdir
               | "plugins"->
-                Printf.fprintf stdout "%s\n" Config.pluginsdir
+                Printf.fprintf stdout "%s\n" Config2.pluginsdir
               | "grammars"->
-                Printf.fprintf stdout "%s\n" Config.grammarsdir
+                Printf.fprintf stdout "%s\n" Config2.grammarsdir
               | "hyphens"->
-                Printf.fprintf stdout "%s\n" Config.hyphendir
+                Printf.fprintf stdout "%s\n" Config2.hyphendir
               | _->(
                 Printf.fprintf stderr "%s\n" (Language.message (Unknown_command Sys.argv.(2)));
                 exit 1

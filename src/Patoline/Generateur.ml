@@ -21,7 +21,7 @@ module StrRegexp=Str
 open Lexing
 open Parser
 open Language
-open Util
+open Util2
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -117,7 +117,7 @@ open Patoline_Format;;\n
     cache_name
     format
 (Printf.sprintf  (if dynlink then ("
-let driver = match !Config.driver with
+let driver = match !Config2.driver with
   None -> %S
 | Some s -> s
 let _ = OutputPaper.load_driver driver

@@ -365,7 +365,7 @@ let _=
   let has_sqlite3=ocamlfind_has "sqlite3" in
 
   let config=open_out "src/Typography/Config.ml" in
-  let config'=open_out "src/Patoline/Config.ml" in
+  let config'=open_out "src/Patoline/Config2.ml" in
 
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
@@ -575,7 +575,7 @@ let _=
         (* Generate Rules.clean which tells GNUmakefile which files we've
          * generated, and have to be removed. *)
         let rules_clean = open_out "Rules.clean" in
-        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/Patoline/Config.ml src/Typography/META src/Makefile.config %s\n"
+        Printf.fprintf rules_clean "DISTCLEAN += Rules.clean src/Typography/Config.ml src/Patoline/Config2.ml src/Typography/META src/Makefile.config %s\n"
         (String.concat " " !driver_generated_metas);
         close_out rules_clean;
 

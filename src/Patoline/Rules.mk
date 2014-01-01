@@ -7,7 +7,7 @@ DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
 -include $(DEPENDS_$(d))
 
-$(d)/patoline: $(d)/Util.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config.cmx \
+$(d)/patoline: $(d)/Util2.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
@@ -73,7 +73,7 @@ install: install-patoline-bin install-patoline-lib
 .PHONY: install-patoline-bin install-patoline-lib
 install-patoline-bin: install-bindir $(d)/patoline $(PA_PATOLINE) 
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
-install-patoline-lib: install-typography $(d)/Build.cmi $(d)/Util.cmi
+install-patoline-lib: install-typography $(d)/Build.cmi $(d)/Util2.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
 .PHONY: install-pa_patoline
