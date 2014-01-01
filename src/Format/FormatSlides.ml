@@ -917,8 +917,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                         )
                         | Marker (BeginLink l)->(
 			  let k = match l with
-			      Extern l -> OutputCommon.Extern l;
-			    | Intern l ->
+			      Box.Extern l -> OutputCommon.Extern l;
+			    | Box.Intern l ->
 			      let dest_page=
 				try
 				  let line=MarkerMap.find (Label l) env.user_positions in
@@ -926,8 +926,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 				with
 				  Not_found->(-1)
 			      in
-			      Intern(l,dest_page,0.,0.);
-			    | Button(n,d) -> OutputCommon.Button(n,d)
+			      OutputCommon.Intern(l,dest_page,0.,0.);
+			    | Box.Button(n,d) -> OutputCommon.Button(n,d)
 			  in
 			  
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;

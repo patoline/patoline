@@ -266,6 +266,9 @@ let patoline_driver_image =
   { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
     patoline_driver_gl]; suggests = []; internals = []; autometa = true }
 
+let svg_driver =
+    { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true }
+
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
 let r_patoline_drivers = ref
@@ -274,12 +277,11 @@ let r_patoline_drivers = ref
     { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = []; autometa = false };
     { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Patonet"; needs = [Package "cryptokit"; Package "Typography.SVG"]; suggests = []; internals = []; autometa = true };
+    { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver]; autometa = true };
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
-    patoline_driver_gl;
-    { name = "Net"; needs = []; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
-    { name = "Web"; needs = []; suggests = []; internals = [Package "Typography.SVG"]; autometa = true };
+    svg_driver; patoline_driver_gl;
+    { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver]; autometa = true };
+    { name = "Web"; needs = []; suggests = []; internals = [Driver svg_driver]; autometa = true };
     patoline_driver_image;
   ]
 
@@ -305,7 +307,7 @@ let gen_pack_line ?(query=true) needs =
   | (Package p) :: needs ->
       (if query then (snd (ocamlfind_query p)) else p) :: (aux_gen needs)
   | (Driver d) :: needs ->
-      (aux_gen d.needs) @ (aux_gen d.suggests) @ (aux_gen needs)
+      ("Typography."^d.name) :: (aux_gen d.needs) @ (aux_gen d.suggests) @ (aux_gen needs)
   in (List.filter ((<>) "") (aux_gen needs))
 
 let _=
@@ -447,7 +449,7 @@ let _=
         Printf.fprintf f "package \"%s\" (\n" drv.name;
         Printf.fprintf f "archive(byte)=\"%s.cma\"\n" drv.name;
         Printf.fprintf f "archive(native)=\"%s.cmxa\"\n" drv.name;
-        let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line [Driver drv]) in
+        let alldep = (gen_pack_line ~query:false (Package "Typography" :: drv.internals)) @ (gen_pack_line drv.needs) @ (gen_pack_line drv.suggests) in
         Printf.fprintf f "requires=\"%s\"\n" (String.concat "," alldep);
         Printf.fprintf f ")\n";
         close_out f

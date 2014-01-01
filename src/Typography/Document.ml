@@ -1258,7 +1258,7 @@ let draw_boxes env l=
             with
               Not_found->(-1)
 	  in
-	  Intern(l,dest_page,0.,0.);
+	  OutputCommon.Intern(l,dest_page,0.,0.);
 	| Button(n,d) -> OutputCommon.Button(n,d)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;

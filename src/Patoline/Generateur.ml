@@ -116,13 +116,13 @@ open Patoline_Format;;\n
     suppl
     cache_name
     format
-(Printf.sprintf  (if dynlink then "
+(Printf.sprintf  (if dynlink then ("
 let driver = match !Config.driver with
   None -> %S
 | Some s -> s
 let _ = OutputPaper.load_driver driver
-module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)"
-  else "module Driver = %s") driver)
+module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)":('a,'b,'c) format)
+  else ("module Driver = %s":('a,'b,'c) format)) driver)
     format;
   let buf=Buffer.create 100 in
   do_include buf main_mod;

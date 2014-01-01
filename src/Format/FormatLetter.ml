@@ -212,9 +212,9 @@ module Output=functor(M:Driver)->struct
                       )
                       | Marker (BeginLink l)->(
 			let k = match l with
-			    Extern l -> OutputCommon.Extern l;
-			  | Intern l -> OutputCommon.Intern(l,0,0.,0.)
-			  | Button(n,d) -> OutputCommon.Button(n,d)
+			    Box.Extern l -> OutputCommon.Extern l;
+			  | Box.Intern l -> OutputCommon.Intern(l,0,0.,0.)
+			  | Box.Button(n,d) -> OutputCommon.Button(n,d)
 			in
 			
                         let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;

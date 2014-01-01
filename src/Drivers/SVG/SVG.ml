@@ -20,11 +20,11 @@
 open Typography
 open CamomileLibrary
 open Fonts.FTypes
+open Box
 open OutputCommon
 open OutputPaper
 open Util
 open HtmlFonts
-open Box
 exception Bezier_degree of int
 
 
