@@ -28,10 +28,26 @@ Package: patoline-fonts
 Architecture: all
 Multi-Arch: foreign
 Section: fonts
-Depends: ${misc:Depends}, fonts-oflb-asana-math, fonts-philosopher, fonts-alegreya, fonts-euler
+Depends: ${misc:Depends}, fonts-oflb-asana-math-full, fonts-philosopher, fonts-alegreya, fonts-euler
 Description: An empty package to pull standard fonts for Patoline
  The only purpose of this package is to depend on other font packages which
  provide Opentype fonts used by Patoline core document formats.
+
+Package: fonts-oflb-asana-math-full
+Architecture: all
+Multi-Arch: foreign
+Section: fonts
+Depends: ${misc:Depends}
+Conflicts: fonts-oflb-asana-math
+Provides: fonts-oflb-asana-math
+Replaces: fonts-oflb-asana-math
+Description:  extended smart Unicode Math font
+ Asana Math provides rich Unicode coverage of the Maths-related blocks and
+ support for the MATH Opentype table which means that it can be used to typeset
+ documents with complex mathematical requirements using tools like XeTeX.
+ .
+ Fonts contained in this package provide more symbols that the original
+ Debian package fonts-oflb-asana-math.
 
 Package: fonts-euler
 Architecture: all
