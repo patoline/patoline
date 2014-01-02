@@ -54,7 +54,7 @@ and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) arr
 and kind =
   Extern of string
 | Intern of string
-| Button of string * string list
+| Button of bool * string * string list
 
 and marker=
     Label of string
@@ -766,7 +766,7 @@ let rec print_box chan=function
 and print_link () l = match l with
     Extern s -> Printf.sprintf "Extern %S" s
   | Intern s -> Printf.sprintf "Intern %S" s
-  | Button (s,_) -> Printf.sprintf "Button %S" s
+  | Button (b,s,_) -> Printf.sprintf "Button %S" s
 
 and print_marker m=match m with
     Label l->Printf.sprintf "Label %s" l

@@ -245,6 +245,7 @@ let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "/click_\\([0-9]*\\)_\\([0-9]*\\)_"
+let drag=Str.regexp "/drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\)_"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
 let sync=Str.regexp "/sync_\\([0-9]*\\)_\\([0-9]*\\)"
 let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
@@ -258,7 +259,7 @@ let spec=
    ("--port",Arg.Set_int port_num,"Set the port number to listen to");
    ("--connect",Arg.Set_string connect_to,"Connect to another Patonet")]
 
-let websocket is_master w=
+let websocket is_master =
   Printf.sprintf "var websocket;
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
@@ -325,22 +326,51 @@ let read_slide_state get =
   slide, state
 in
 
-  let slave_keyboard=Printf.sprintf "
-function send_click(name,dest) {
+let mouse_script=
+  let w,h = pages.(0).(0).pageFormat in (* FIXME: assume same format for all pages *)
+  Printf.sprintf "
+function send_click(name,dest,ev) {
+  ev = ev || window.event;
   var xhttp=new XMLHttpRequest();
-  var message = name;
-  for(var i = 0;i<dest.length;i++) { message = message+\"_\"+dest[i] ; }
-  try {
+  var message = name+'_'+dest;
   xhttp.open(\"GET\",\"click_\"+(current_slide)+\"_\"+(current_state)+\"_\"+message,false);
-  xhttp.send(); }
-  catch(e) {
-   send_click(name,dest);
+  xhttp.send();
+}
+function start_drag(name,dest,ev) {
+  ev = ev || window.event;
+  var svg_rect = document.getElementById('svg_svg');
+  var svg_div = document.getElementById('svg_div');
+  var button =  document.getElementById('button_'+name);
+  var w = svg_rect.offsetWidth;
+  var h = svg_rect.offsetHeight;
+  var scale = Math.max(%g / w, %g / h);
+  var message = name+'_'+dest;
+  var x0 =ev.pageX;
+  var y0 =ev.pageY;
+  function do_drag(x,y) {
+    var dx = scale * (x - x0); var dy = scale * (y0 - y);
+    var d2 = dx*dx + dy*dy;
+    if (d2 >= 4) {
+      var xhttp=new XMLHttpRequest();
+      xhttp.open('GET','drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+'_'+message,false);
+      xhttp.send();
+      x0 = x; y0 = y;
+  }}
+  function stop_drag(e) {
+    svg_div.onmousemove = null;
+    svg_div.onmouseup = null;
   }
-}"
+  svg_div.onmouseup = stop_drag;
+  svg_div.onmousemove = function(e) {
+    do_drag(e.pageX,e.pageY);
+  };
+}
+" w h
   in
+  let slave_keyboard = mouse_script in
 
   let slave,css=SVG.basic_html
-    ~script:(websocket false (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket false)
     ~onload:"start_socket();"
     ~keyboard:slave_keyboard
     cache structure pages ""
@@ -375,23 +405,17 @@ if(e.keyCode==82){ //r
   xhttp.send();
 }
 }
-function send_click(name,dest) {
-  var xhttp=new XMLHttpRequest();
-  var message = name;
-  for(var i = 0;i<dest.length;i++) { message = message+\"_\"+dest[i] ; }
-  xhttp.open(\"GET\",\"click_\"+(current_slide)+\"_\"+(current_state)+\"_\"+message,false);
-  xhttp.send();
-}
 function gotoSlide(n){
   var xhttp=new XMLHttpRequest();
   xhttp.open(\"GET\",\"pousse_\"+n+\"_0\",false);
   xhttp.send();
-}" (Array.length pages - 1)
+}
+%s" (Array.length pages - 1) mouse_script
   in
 
 
   let master,_=SVG.basic_html
-    ~script:(websocket true (fst (pages.(0)).(0).pageFormat))
+    ~script:(websocket true)
     ~onload:"to=0;start_socket();"
     ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
     ~keyboard:master_keyboard
@@ -623,6 +647,48 @@ let serve ?sessid fdfather num fd =
 	  
         process_req "" [] reste
 
+      ) else if Str.string_match drag get 0 then (
+	Printf.eprintf "serve %d: drag\n%!" num;
+	let match_end = Str.match_end () in
+	let dx = float_of_string (Str.matched_group 3 get) 
+	and dy = float_of_string (Str.matched_group 4 get) in
+	let slide, state = read_slide_state get in
+	let rest =String.sub get match_end (String.length get - match_end) in
+
+	Printf.eprintf "drag: %d %d %g %g %s\n%!" slide state dx dy rest;
+
+	let name, dest = match Util.split '_' rest with
+	  name::dest -> name,dest
+	| _ -> failwith "Bad click"
+	in
+	let status =
+	  List.fold_left (fun acc ds ->
+	    try
+	      let d = Hashtbl.find dynCache.(slide).(state) ds in
+	      let res = d.dyn_react (Drag(name,(dx,dy))) in
+	      max res acc
+	    with
+	      Not_found -> 
+		Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
+		acc) Unchanged dest
+	in
+
+	generate_ok sessid ouc;
+
+	(match status with
+	  Unchanged -> Printf.eprintf "Unchanged\n%!"; ()
+	| Private ->
+	  Printf.eprintf "Private change\n%!"; 
+	  Printf.fprintf fouc "click %d %d\n" slide state;
+	  flush fouc
+(*	  pushto ~change:true fd fdfather sessid num;*)
+	| Public -> Printf.eprintf "Public change\n%!"; 
+	  Printf.fprintf fouc "click %d %d\n" slide state;
+	  flush fouc);
+
+        process_req "" [] reste
+
+
       ) else if Str.string_match pousse get 0 then (
         Printf.eprintf "pousse\n";flush stderr;
 	let slide, state = read_slide_state get in
@@ -747,7 +813,6 @@ let reconnect sock_info =
       if pid = 0 then (
 	try
 	  !Document.interaction_start_hook ();
-	  Sys.catch_break true;
 	  Util.close_in_cache ();
 	  Unix.close fd2;
 	  close_all_other sock;
@@ -879,7 +944,6 @@ in
 	    if pid = 0 then (
 	      try
 		!Document.interaction_start_hook ();
-		Sys.catch_break true;
 		Util.close_in_cache ();
 		Unix.close fd2;
 		close_all_other conn_sock;

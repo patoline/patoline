@@ -1375,7 +1375,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       let links = find_link win x y in 
       let buttons = List.filter (fun l -> match l.link_kind with Button _ -> true | _ -> false) links in
-      let buttons = List.map (function { link_kind = Button(name,ds) } -> name,ds | _ -> assert false) buttons in
+      let buttons = List.map (function { link_kind = Button(true,name,ds) } -> name,ds | _ -> assert false) buttons in
 
       motion_ref := Some (x,y,x, y,buttons,links);
 
@@ -1405,8 +1405,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		  Not_found -> 
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
-	    | Button(name,ds) -> 
+	    | Button(false,name,ds) -> 
 	      events := (ds,Click(name))::!events;
+	    | Button(true,name,ds) -> 
+	      ()
 	  ) links
 	  
     | b, Glut.UP -> 

@@ -56,6 +56,11 @@ let standalone w h style title svg=
 
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
+  Rbuffer.add_string def_buf ".button:hover{opacity: 0.75;cursor:crosshair;}
+.button{z-index:10;pointer-events:all;}
+.dragable:hover{opacity: 0.75;cursor:move;}
+.dragable{z-index:10;pointer-events:all;}
+";
   if output_fonts then
     StrMap.iter (fun full class_name->
       Rbuffer.add_string def_buf
@@ -287,10 +292,11 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
-      | Button(name,ds) -> 
+      | Button(drag,name,ds) -> 
         Rbuffer.add_string svg_buf (
-	  Printf.sprintf "<a onclick=\"send_click('%s',[%s]);\">"
-	    name (String.concat "," (List.map (fun s -> "'"^s^"'") ds))
+	  Printf.sprintf "<g class='%s' name='%s' dest='%s'>"
+	    (if drag then "dragable" else "button") name
+	    (String.concat "_" ds)
 	);
       );
 
@@ -304,7 +310,11 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "</text>\n";
         opened_text:=false
       );
-      Rbuffer.add_string svg_buf "</a>";
+      (match l.link_kind with
+      | Button(_,name,ds) -> 
+	Rbuffer.add_string svg_buf "</g>"
+      | _ ->
+	Rbuffer.add_string svg_buf "</a>")
     )
     | Dynamic d ->
       (match dynCache with
@@ -434,9 +444,7 @@ let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];met
   in
   svg_files,cache,!imgs
 
-let default_script = "
-  function send_click(name,dest) {}
-"
+let default_script = ""
 
 let basic_html ?script:(script=default_script) ?onload:(onload="") ?onhashchange:(onhashchange="")
     ?keyboard
@@ -519,9 +527,8 @@ function Animate(name,nbframes,mirror,step) {
     }, step));
   }
 
-
 function loadSlide(n,state,force){
-if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
+ if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
 
   document.body.style.cursor = 'wait';
   var xhttp=new XMLHttpRequest();
@@ -530,7 +537,7 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || 
     
   if(xhttp.status==200 || xhttp.status==0){
 
-    var svg=document.getElementById(\"container\");
+    var svg=document.getElementById(\"svg_container\");
     location.hash=n+\"_\"+state;
 
     while (cur_child.length > 0) {
@@ -562,9 +569,27 @@ if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || 
 
     for (var a=0;a<anim2.length;a++) {
         Animate(anim2[a].getAttribute('id'),
-                              anim2[a].getAttribute('nbframes'),
-                              anim2[a].getAttribute('mirror'),
-                              anim2[a].getAttribute('step')); }
+                anim2[a].getAttribute('nbframes'),
+                anim2[a].getAttribute('mirror'),
+                anim2[a].getAttribute('step')); }
+
+    var buttons=svg.getElementsByClassName('button');
+    for (var a=0;a<buttons.length;a++) {
+        function closure(name,dest) {
+          return(function (e) { send_click(name,dest,e); });
+        }
+        var elt = buttons[a];
+        elt.onclick=closure(elt.getAttribute('name'),elt.getAttribute('dest'));
+    }
+
+    var dragable=svg.getElementsByClassName('dragable');
+    for (var a=0;a<dragable.length;a++) {
+        function closure2(name,dest) {
+          return(function (e) { start_drag(name,dest,e); });
+        }
+        var elt = dragable[a];
+        elt.onmousedown=closure2(elt.getAttribute('name'),elt.getAttribute('dest'));
+    }
 
     var videos=document.getElementsByTagName(\"video\");
     for(var i=0;i<videos.length;i++) videos[i].controls=true;
@@ -613,16 +638,16 @@ if(h0!=current_slide || h1!=current_state){
 
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
-  Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g id=\"container\">"
+  Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg_div\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
+  Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g id=\"svg_container\">"
                              (round (w)) (round (h)));
 
   Rbuffer.add_string html "<animateTransform attributeName=\"transform\" attributeType=\"XML\"
    id=\"animation\" type=\"scale\" from=\"1\" to=\"1\" dur=\"0.5s\"/>";
 
-  Rbuffer.add_string html (Printf.sprintf "<rect x=\"0\" y=\"0\" width=\"%g\" height=\"%g\" fill=\"#ffffff\" stroke=\"#b0b0b0\" stroke-width=\"0.2\"></rect></g>\n" w h);
+  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g>\n" w h);
 
-  let style=make_defs "" cache in
+  let style=make_defs prefix cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</svg></div></body></html>";

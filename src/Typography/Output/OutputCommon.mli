@@ -59,7 +59,7 @@ type metadata=
 type link_kind =
   Extern of string (* uri *)
 | Intern of (string * int * float * float) (* page, x, y *)
-| Button of string * string list
+| Button of bool * string * string list
 
 (*| Edit of string*)
 

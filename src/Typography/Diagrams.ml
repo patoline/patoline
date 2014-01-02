@@ -810,7 +810,7 @@ module Transfo (X : Set.OrderedType) = struct
       pdfAnchor: Point.t ;
       node_contents : OutputCommon.raw list ;
       
-      button : (string * string list) option;
+      button : (bool * string * string list) option;
       (* textDepth : float ; *)
       (* textHeight : float ; *)
       (* textWidth : float ; *)
@@ -874,10 +874,10 @@ module Transfo (X : Set.OrderedType) = struct
       let c = (Curve.draw ~parameters:info.params info.midCurve) @ info.node_contents in
       let c = match info.button with
 	None -> c
-      | Some(n,d) -> 
+      | Some(drag,n,d) -> 
 	let (x0,y0,x1,y1) = bounding_box c in
 	[Link { link_x0 = x0; link_y0 = y0; link_x1 = x1; link_y1 = y1;
-		link_closed = true; link_order = 0; link_kind = Button(n,d);
+		link_closed = true; link_order = 0; link_kind = Button(drag,n,d);
 		link_contents = c }]
       in
       c @ (List.flatten (List.map (decoration_to_contents info) info.decorations))
@@ -1130,7 +1130,14 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       Pet.register "node draw" ~depends:[] 
 	(fun pet (name, destinations) -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
-	  { info with button = Some(name,destinations);
+	  { info with button = Some(false,name,destinations);
+	  } ) })
+
+    let drag,drag_pet = 
+      Pet.register "node draw" ~depends:[] 
+	(fun pet (name, destinations) -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  { info with button = Some(true,name,destinations);
 	  } ) })
 
     let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env

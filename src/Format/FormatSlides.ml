@@ -927,7 +927,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 				  Not_found->(-1)
 			      in
 			      OutputCommon.Intern(l,dest_page,0.,0.);
-			    | Box.Button(n,d) -> OutputCommon.Button(n,d)
+			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
 			  
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;

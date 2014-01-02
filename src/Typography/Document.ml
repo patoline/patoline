@@ -905,7 +905,7 @@ let sectref x=generalRef "_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
 let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]
-let button name destinations b=bB (fun _->[Marker (BeginLink (Button(name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
+let button name destinations b=bB (fun _->[Marker (BeginLink (Button(false,name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 
@@ -1249,8 +1249,8 @@ let draw_boxes env l=
     | Marker (BeginLink l)::s->(
       (* Printf.fprintf stderr "****BeginURILink %S****\n" l; *)
       let k = match l with
-	  Extern l -> OutputCommon.Extern l;
-	| Intern l ->
+	  Box.Extern l -> OutputCommon.Extern l;
+	| Box.Intern l ->
 	  let dest_page=
             try
               let line=MarkerMap.find (Label l) env.user_positions in
@@ -1259,7 +1259,7 @@ let draw_boxes env l=
               Not_found->(-1)
 	  in
 	  OutputCommon.Intern(l,dest_page,0.,0.);
-	| Button(n,d) -> OutputCommon.Button(n,d)
+	| Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
       in
       let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                  link_order=0;
