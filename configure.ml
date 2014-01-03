@@ -264,8 +264,12 @@ let patoline_driver_gl =
     autometa = true;
   }
 let patoline_driver_image =
-  { name = "Image"; needs = [Package "camlimages.all_formats"; Driver
-    patoline_driver_gl]; suggests = []; internals = []; autometa = true }
+  { name = "Image";
+    needs = [Package "camlimages.all_formats"; Package "camomile";
+      Package "lablgl"; Package "lablgl.glut"];
+    suggests = [];
+    internals = [Driver patoline_driver_gl];
+    autometa = true }
 
 let svg_driver =
     { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true }
