@@ -4,63 +4,20 @@
 \Caml(
 open Diagrams
 open Proj3d
+open Typography.Db
 
 let caml x = x
 
-let db_info = Mysql.(
+
+let db_info = Mysql Mysql.(
     { defaults with
       dbhost = Some "localhost";
       dbname = Some "patonet";
       dbpwd = Some "patonet";
       dbuser = Some "patonet";})
 
-let db = ref (Mysql.connect db_info)
-    
-let _ =
-    Document.interaction_start_hook := fun () ->
-      Mysql.(disconnect !db; db := connect db_info)
-
-let _ = Mysql.(
-    let sql = "CREATE TABLE IF NOT EXISTS `demo` (
-      `key` varchar(32), `value` int);" in
-    let _r = exec !db sql in
-    match errmsg !db with
-    | None -> () 
-    | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
-
-let create_int name v = Mysql.(
-    let sql = Printf.sprintf "INSERT INTO `demo` (`key`, `value`) VALUES ('%s',%d);" name v in
-    let _r = exec !db sql in
-    match errmsg !db with
-    | None -> () 
-    | Some err -> Printf.eprintf "DB Error: %s\n%!" err)
-
-let write_int name v = Mysql.(
-    let sql = Printf.sprintf "UPDATE `demo` SET `value`=%d WHERE `key` = '%s';" v name in
-    Printf.eprintf "sql_exec start\n%!";
-    let _r = exec !db sql in
-    (match errmsg !db with
-    | None -> () 
-    | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
-    Printf.eprintf "sql_exec end\n%!";)
-
-
-let rec read_int name = Mysql.(
-    let sql = Printf.sprintf "SELECT `value` FROM `demo` WHERE `key` = '%s';" name in
-    Printf.eprintf "sql_exec start\n%!";
-    let r = exec !db sql in
-    let r = 
-      try match errmsg !db, fetch r with
-    	| None, Some row -> (match row.(0) with None -> 0 | Some n -> int_of_string n)
-        | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; 0
-        | _ -> assert false   
-      with Mysql.Error err ->
-        Printf.eprintf "Mysql Error: %s\n%!" err; read_int name
-    in 
-    Printf.eprintf "sql_exec end\n%!";
-    r
-    )
-
+let db = init_db db_info
+ 
 )
 
 == Animation ==
@@ -125,46 +82,68 @@ let rec read_int name = Mysql.(
 \begin{slide}
 \begin{itemize}
 
-\Caml(let _ = create_int "count" 0)
+\Caml(let read_count, write_count = db.create_data ~global:true "count" 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with 
-	     Click "test"-> let c = read_int "count" + 1 in write_int "count" c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
+	     Click "test"-> let c = read_count () + 1 in write_count c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(let c = read_int "count" in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
+	   fun () -> <<\caml(let c = read_count () in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
+
+\Caml(let read_count2, write_count2 = db.create_data ~global:false "count" 0)
+\item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
+\dynamic("cible2")(function ev ->
+  	  (match ev with 
+	     Click "test"-> let c = read_count2 () + 1 in write_count2 c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
+           | _ -> Unchanged)){0123456789 fois}(
+	   fun () -> <<\caml(let c = read_count2 () in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
 
 \item Et une figure dont on peut bouger les sommets :
 
 \begin{center}
 \Caml(
-let apos = ref (-10.0,-10.0)
-let bpos = ref (10.0,10.0)
-let cpos = ref (10.0,-10.0)
+let readA, writeA = db.create_data ~global:false "Apos" (10.0,10.0)
+let readB, writeB = db.create_data ~global:false "Bpos" (-10.0,-10.0)
+let readC, writeC = db.create_data ~global:false "Cpos" (10.0,-10.0)
+let readA () =
+    let (x,y as c) = readA () in
+    Printf.eprintf "A = (%f, %f)\n" x y;
+    c 
+let readB () =
+    let (x,y as c) = readB () in
+    Printf.eprintf "B = (%f, %f)\n" x y;
+    c 
+let readC () =
+    let (x,y as c) = readC () in
+    Printf.eprintf "C = (%f, %f)\n" x y;
+    c 
 )
 \dynamic("figure")(
 	function ev ->
   	  (match ev with
-	   | Drag("a",p) -> apos := Vector.(p + !apos); Private
-	   | Drag("b",p) -> bpos := Vector.(p + !bpos); Private
-	   | Drag("c",p) -> cpos := Vector.(p + !cpos); Private
+	   | Drag("a",p) -> writeA Vector.(p + readA ()); Private
+	   | Drag("b",p) -> writeB Vector.(p + readB ()); Private
+	   | Drag("c",p) -> writeC Vector.(p + readC ()); Private
 	   | _ -> Unchanged))([])(fun () -> <<
 \diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw; color (mix 0.5 white blue); innerSep 20.] [])
- let av = Vector.(scal_mul 3. (normalise (!apos - !bpos + !apos - !cpos)))
- let bv = Vector.(scal_mul 3. (normalise (!bpos - !cpos + !bpos - !apos)))
- let cv = Vector.(scal_mul 3. (normalise (!cpos - !apos + !cpos - !bpos)))
- let ab = Node.(node [at Point.(middle !apos !bpos); innerSep 0.] [])
- let bc = Node.(node [at Point.(middle !bpos !cpos); innerSep 0.] [])
- let ca = Node.(node [at Point.(middle !cpos !apos); innerSep 0.] [])
- let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at !apos; drag ("a",["figure"])] []) 
- let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at !bpos; drag ("b",["figure"])] [])
- let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at !cpos; drag ("c",["figure"])] [])
+ let apos = readA () and bpos = readB () and cpos = readC ()
+ let av = Vector.(scal_mul 3. (normalise (apos - bpos + apos - cpos)))
+ let bv = Vector.(scal_mul 3. (normalise (bpos - cpos + bpos - apos)))
+ let cv = Vector.(scal_mul 3. (normalise (cpos - apos + cpos - bpos)))
+ let ab = Node.(node [at Point.(middle apos bpos); innerSep 0.] [])
+ let bc = Node.(node [at Point.(middle bpos cpos); innerSep 0.] [])
+ let ca = Node.(node [at Point.(middle cpos apos); innerSep 0.] [])
+ let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos; drag ("a",["figure"])] []) 
+ let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos; drag ("b",["figure"])] [])
+ let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at cpos; drag ("c",["figure"])] [])
  let _ = edge Edge.([draw]) a b
  let _ = edge Edge.([draw]) b c
  let _ = edge Edge.([draw]) c a
  let _ = edge Edge.([draw]) a bc
  let _ = edge Edge.([draw]) b ca
- let _ = edge Edge.([draw]) c ab)>>)
+ let _ = edge Edge.([draw]) c ab
+)>>)
 
 \end{center}
 \item C'est tout pour aujourd'hui !

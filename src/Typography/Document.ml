@@ -1787,5 +1787,3 @@ let dynamic name action sample contents =
     drawing_contents=(fun _->[r])
   }])]
 
-let interaction_start_hook = ref (fun () -> ()) (* For Patonet and GLDriver only, FIXME: may be not the best place ? *)
-

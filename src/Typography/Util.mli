@@ -205,3 +205,7 @@ val timer:string->(unit->'a)->'a
 
 (* a lighter split that calling str *)
 val split : char -> string -> string list
+
+val base64_encode : string -> string
+val base64_decode : string -> string
+

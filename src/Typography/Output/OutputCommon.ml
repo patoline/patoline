@@ -138,7 +138,7 @@ and 'a dynamic={
   dyn_label:string;
   dyn_contents: unit -> 'a;
   dyn_sample:'a;
-  dyn_react:event -> action;
+  dyn_react: event -> action;
   dyn_order:int;
 }
 

@@ -16,7 +16,7 @@ TYPOGRAPHY_MODS:= TypoLanguage FindPath $(FINDFONT) Config ConfigUtil Util Bezie
   Offset Fonts/Sfnt/Unicode_ranges Fonts/FTypes Fonts/Type2 Fonts/CFFStd Fonts/CFF \
   Fonts/Opentype_layout Fonts/Cmap Fonts/Opentype Fonts Output/OutputCommon \
   Box Badness Break Document Complete Hyphenate Maths Output/OutputPaper \
-  Output/OutputDrawing Geometry Proj3d Diagrams ProofTree
+  Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)

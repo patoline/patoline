@@ -330,3 +330,79 @@ let split char str =
   fn 0 0 []
 
 
+let base64_decode s=
+  let buf=Buffer.create (String.length s) in
+  let value i=
+    let x=s.[i] in
+    if x>='A' && x<='Z' then (int_of_char x)-(int_of_char 'A') else
+      if x>='a' && x<='z' then 26+(int_of_char x)-(int_of_char 'a') else
+        if x>='0' && x<='9' then 52+(int_of_char x)-(int_of_char '0') else
+          if x='+' then 62 else
+            if x='/' then 63 else if x='=' then 64 else (-1)
+  in
+  let ii=ref 0 in
+  let rec next ()=
+    let x=value !ii in
+    incr ii;
+    if x>=0 then x else next ()
+  in
+  let rec read_all ()=
+    if !ii<String.length s-3 then (
+      let a=next() in
+      let b=next() in
+      let c=next() in
+      let d=next() in
+      if d=64 then (
+        if c=64 then (
+          let x=(a lsl 6) lor b in
+          Buffer.add_char buf  (char_of_int ((x lsr 4) land 0xff));
+        ) else (
+          let x=(((a lsl 6) lor b) lsl 6) lor c in
+          Buffer.add_char buf (char_of_int ((x lsr 10) land 0xff));
+          Buffer.add_char buf (char_of_int ((x lsr 2) land 0xff));
+        )
+      ) else (
+        let x=(((((a lsl 6) lor b) lsl 6) lor c) lsl 6) lor d in
+        Buffer.add_char buf (char_of_int ((x lsr 16) land 0xff));
+        Buffer.add_char buf (char_of_int ((x lsr 8) land 0xff));
+        Buffer.add_char buf (char_of_int (x land 0xff));
+      );
+      read_all ()
+    )
+  in
+  read_all ();
+  Buffer.contents buf
+
+let base64_encode s0=
+  let m=String.length s0 mod 3 in
+  let s=
+    if m=1 then (s0^String.make 2 (char_of_int 0)) else
+      if m=2 then (s0^String.make 1 (char_of_int 0)) else s0
+  in
+  let buf=Buffer.create (String.length s*2) in
+  let base64 x=
+    let y=x land 0x3f in
+    if y<26 then (char_of_int (y+int_of_char 'A')) else
+      if y<52 then (char_of_int (y-26+int_of_char 'a')) else
+        if y<62 then (char_of_int (y-52+int_of_char '0')) else
+          if y=62 then '+' else '/'
+  in
+  let rec encode i=
+    if i<=String.length s-3 then (
+      let a=int_of_char s.[i]
+      and b=int_of_char s.[i+1]
+      and c=int_of_char s.[i+2]
+      in
+      let x=(((a lsl 8) lor b) lsl 8) lor c in
+      Buffer.add_char buf (base64 (x lsr 18));
+      Buffer.add_char buf (base64 (x lsr 12));
+      Buffer.add_char buf (base64 (x lsr 6));
+      Buffer.add_char buf (base64 x);
+      encode (i+3)
+    )
+  in
+  encode 0;
+  let str=Buffer.contents buf in
+  if m>=1 then str.[String.length str-1]<-'=';
+  if m=1 then str.[String.length str-2]<-'=';
+  str

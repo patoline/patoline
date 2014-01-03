@@ -364,6 +364,11 @@ let _=
     Printf.fprintf stderr "error: package camomile missing.\n";
     exit 1
   );
+
+  if not (ocamlfind_has "mysql") then (
+    Printf.fprintf stderr "error: package mysql missing.\n";
+    exit 1
+  );
   let has_sqlite3=ocamlfind_has "sqlite3" in
 
   let config=open_out "src/Typography/Config.ml" in
@@ -393,7 +398,7 @@ let _=
       Printf.fprintf make "PACKAGE_ZIP :=\n"
   );
   Printf.fprintf make "PACK := -package %s\n"
-    (String.concat "," (gen_pack_line [Package "camomile"; Package "zip";
+    (String.concat "," (gen_pack_line [Package "camomile"; Package "zip"; Package "mysql";
                                        Package "camlimages.all_formats";
                                        Package "cairo"; Package "fontconfig"]));
 
@@ -472,7 +477,7 @@ let _=
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
-      (String.concat "," (gen_pack_line [Package "str"; Package "camomile";
+      (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
                                          Package "zip";
                                          Package "camlimages.all_formats";
                                          Package "fontconfig"]));
