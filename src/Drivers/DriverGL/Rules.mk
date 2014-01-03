@@ -40,7 +40,7 @@ DISTCLEAN += $(DEPENDS_$(d))
 
 install:install-dll-gl
 install-dll-gl:
-	install -m 755 src/Drivers/DriverGL/dllDriverGL.so $(INSTALL_DLLS_DIR)
+	install -m 755 src/Drivers/DriverGL/dllDriverGL.so $(DESTDIR)/$(INSTALL_DLLS_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
