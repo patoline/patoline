@@ -38,26 +38,32 @@ let interaction_start_hook = ref ([]: (unit -> unit) list)
 
 let sessid = ref (None: string option)
 
-let init_db db_info = 
+let init_db table_name db_info = 
   match db_info with
     Sqlite filename -> 
       (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *) 
       Printf.eprintf "Sqlite support not yet implemented\n";
       exit 1
   | Mysql db_info ->
-    let db = ref (Mysql.connect db_info) in
+    let dbptr = ref None in
     
-    interaction_start_hook := (fun () ->
-      disconnect !db; db := connect db_info)::!interaction_start_hook;
+    let db () = 
+      match !dbptr with
+	None -> let db = connect db_info in Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
+      | Some db -> db
+    in
 
-    (let sql = "CREATE TABLE IF NOT EXISTS `demo` (
-      `sessid` char(33), `key` varchar(32), `value` text);" in
-     let _r = exec !db sql in
-     match errmsg !db with
+    interaction_start_hook := (fun () ->
+      match !dbptr with None -> () | Some db -> disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
+
+    (let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
+      `sessid` char(33), `key` varchar(32), `value` text);" table_name in
+     let _r = exec (db ()) sql in
+     match errmsg (db ()) with
      | None -> () 
      | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
 
-    { db = (fun () -> MysqlDb !db);
+    { db = (fun () -> MysqlDb (db ()));
       create_data = fun ?(global=false) name vinit ->
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
@@ -65,16 +71,16 @@ let init_db db_info =
 	let init () = 
 	  let sessid = sessid () in
 	  if not (Hashtbl.mem tbl sessid) then (
-            let sql = Printf.sprintf "SELECT count(*) FROM `demo` WHERE `sessid` = '%s' AND `key` = '%s';" sessid name in
-            let r = exec !db sql in
-            (match errmsg !db, fetch r with	
+            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
+            let r = exec (db ()) sql in
+            (match errmsg (db ()), fetch r with	
             | None, Some row -> 
 	      let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
 	      (match count with
 		0 -> 
-		  let sql = Printf.sprintf "INSERT INTO `demo` (`sessid`, `key`, `value`) VALUES ('%s','%s','%s');" sessid name v in		    
-		  let _r = exec !db sql in	      
-		  (match errmsg !db with
+		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `key`, `value`) VALUES ('%s','%s','%s');" table_name sessid name v in		    
+		  let _r = exec (db ()) sql in	      
+		  (match errmsg (db ()) with
 		  | None -> () 
 		  | Some err -> raise (Failure err))
               | 1 -> ()
@@ -85,9 +91,9 @@ let init_db db_info =
 	in
 	let read () =
           let sessid = init () in
-          let sql = Printf.sprintf "SELECT `value` FROM `demo` WHERE `sessid` = '%s' AND `key` = '%s';" sessid name in
-          let r = exec !db sql in
-          try match errmsg !db, fetch r with
+          let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
+          let r = exec (db ()) sql in
+          try match errmsg (db ()), fetch r with
     	  | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
           | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
           | _ -> assert false   
@@ -97,9 +103,9 @@ let init_db db_info =
 	let write v =
           let sessid = init () in
           let v = base64_encode (Marshal.to_string v []) in 
-          let sql = Printf.sprintf "UPDATE `demo` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s';" v name sessid in
-          let _r = exec !db sql in
-          match errmsg !db with
+          let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s';" table_name v name sessid in
+          let _r = exec (db ()) sql in
+          match errmsg (db ()) with
           | None -> () 
           | Some err -> Printf.eprintf "DB Error: %s\n%!" err
 	in 

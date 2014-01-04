@@ -729,6 +729,96 @@ module Format=functor (D:Document.DocumentStructure)->(
 
     end
 
+let animation ?(step=1./.24.) ?(duration=600.) ?(mirror=true) ?(default=0) cycle contents =
+  [bB (fun env -> let contents a = draw env (contents a) in
+  let tbl = Array.init cycle contents in
+  let d = default in
+  let r = OutputCommon.(Animation{
+    anim_contents = tbl;
+    anim_step = step;
+    anim_duration = duration;
+    anim_default = d;
+    anim_order = Array.fold_left (fun acc c -> List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) acc c) max_int tbl;
+    anim_mirror = mirror})
+  in
+  let (x0,y0,x1,y1)=OutputCommon.bounding_box [r] in
+  let w = x1 -. x0 in
+  OutputCommon.([Drawing {
+    drawing_min_width=w;
+    drawing_max_width=w;
+    drawing_nominal_width=w;
+    drawing_width_fixed = true;
+    drawing_adjust_before = false;
+    drawing_y0=y0;
+    drawing_y1=y1;
+    drawing_states=[];
+    drawing_break_badness=0.;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[r])
+  }]))]
+
+let dynamic name action sample contents =
+  OutputCommon.([bB (fun env -> 
+    let contents () = draw env (contents ()) in
+    let r = Dynamic{
+      dyn_label = name;
+      dyn_contents = contents;
+      dyn_order = List.fold_left (fun acc c -> min acc (OutputCommon.drawing_order c)) max_int (contents ());
+      dyn_sample = draw env sample;
+      dyn_react = action;
+    }
+  in
+  let (x0,y0,x1,y1)=bounding_box [r] in
+  let w = x1 -. x0 in
+  [Drawing {
+    drawing_min_width=w;
+    drawing_max_width=w;
+    drawing_nominal_width=w;
+    drawing_width_fixed = true;
+    drawing_adjust_before = false;
+    drawing_y0=y0;
+    drawing_y1=y1;
+    drawing_states=[];
+    drawing_break_badness=0.;
+    drawing_badness=(fun _->0.);
+    drawing_contents=(fun _->[r])
+  }])])
+
+module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> OutputCommon.action val arg3 : content list
+                       end)=struct
+  let do_begin_env ()=
+    D.structure:=newChildAfter !D.structure (Node empty);
+    env_stack:=(List.map fst (snd !D.structure)) :: !env_stack
+
+  let do_end_env ()=
+    D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
+    env_stack:=List.tl !env_stack;
+    
+    let t,num=match !D.structure with
+        t,(h,_)::_->t,h
+      | t,[]->t,0
+    in
+    (match up !D.structure with
+      Node n,x->
+        D.structure:=(Node { n with children=IntMap.remove num n.children },x);
+    | x->D.structure:=x);
+    let cont () =
+      [bB (fun env->
+        let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
+        List.map (fun x->Drawing x) (List.map snd pages)
+          (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
+      )]
+    in
+    let cont = dynamic X.arg1 X.arg2 X.arg3 cont in
+    match lastChild !D.structure with
+      Paragraph x,y->
+        D.structure:=up (Paragraph {x with par_contents=x.par_contents@cont},y);
+    | _->(
+      newPar D.structure Complete.normal parameters cont;
+          (* D.structure:=lastChild !D.structure *)
+    )
+
+end
 
     let figure ?(parameters=center) ?(name="") ?(caption=[]) ?(scale=1.) drawing=
       let drawing' env=
@@ -2080,5 +2170,8 @@ module MathsFormat=struct
 
     let hat = oHat
         (*******************************************************)
+
+
+
 
 end

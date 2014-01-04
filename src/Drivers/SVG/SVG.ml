@@ -56,10 +56,15 @@ let standalone w h style title svg=
 
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
-  Rbuffer.add_string def_buf ".button:hover{opacity: 0.75;cursor:crosshair;}
-.button{z-index:10;pointer-events:all;}
-.dragable:hover{opacity: 0.75;cursor:move;}
-.dragable{z-index:10;pointer-events:all;}
+  Rbuffer.add_string def_buf 
+"g.button:hover{opacity: 0.75;cursor:crosshair;}
+g.button:hover path{opacity: 0.75;cursor:crosshair;}
+g.button:hover text{opacity: 0.75;cursor:crosshair;}
+g.button{z-index:10;}
+g.dragable:hover{opacity: 0.75;cursor:move;}
+g.dragable:hover path{opacity: 0.75;cursor:move;}
+g.dragable:hover text{opacity: 0.75;cursor:move;}
+g.dragable{z-index:10;}
 ";
   if output_fonts then
     StrMap.iter (fun full class_name->
@@ -296,7 +301,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf (
 	  Printf.sprintf "<g class='%s' name='%s' dest='%s'>"
 	    (if drag then "dragable" else "button") name
-	    (String.concat "_" ds)
+	    (String.concat " " ds)
 	);
       );
 
@@ -317,6 +322,14 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	Rbuffer.add_string svg_buf "</a>")
     )
     | Dynamic d ->
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
       (match dynCache with
 	None ->
 	  List.iter output_contents_aux (d.dyn_contents ());
@@ -527,18 +540,8 @@ function Animate(name,nbframes,mirror,step) {
     }, step));
   }
 
-function loadSlide(n,state,force){
- if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
-
-  document.body.style.cursor = 'wait';
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
-  xhttp.send();
-    
-  if(xhttp.status==200 || xhttp.status==0){
-
+function loadSlideString(slide,state,str){
     var svg=document.getElementById(\"svg_container\");
-    location.hash=n+\"_\"+state;
 
     while (cur_child.length > 0) {
        svg.removeChild(cur_child.shift());
@@ -548,11 +551,11 @@ function loadSlide(n,state,force){
     }
 
     var parser=new DOMParser();
-    var newSvg=parser.parseFromString(xhttp.responseText,\"image/svg+xml\");
+    var newSvg=parser.parseFromString(str,\"image/svg+xml\");
     newSvg=document.importNode(newSvg.rootElement,true);
 
 /* animation du slide entrant */
-    if (current_slide != n) {
+    if (current_slide != slide) {
       var animT=document.getElementById(\"animation\");
       animT.setAttribute(\"from\",\"0\");
       animT.setAttribute(\"to\",\"1\");
@@ -564,6 +567,10 @@ function loadSlide(n,state,force){
         }
         else newSvg.removeChild(newSvg.firstChild);
     }
+    current_slide=slide;
+    current_state=state;
+    first_displayed=true;
+    location.hash=slide+\"_\"+state;
 
     var anim2=svg.getElementsByClassName('animation');
 
@@ -593,16 +600,25 @@ function loadSlide(n,state,force){
 
     var videos=document.getElementsByTagName(\"video\");
     for(var i=0;i<videos.length;i++) videos[i].controls=true;
-    current_slide=n;
-    current_state=state;
+}
 
-    first_displayed=true;
+var to_refresh = false;
+
+function loadSlide(n,state,force){
+  to_refresh=false;
+  if(n>=0 && n<%d && state>=0 && state<states[n] && (force || n!=current_slide || state!=current_state || !first_displayed)) {
+
+    document.body.style.cursor = 'wait';
+    var xhttp=new XMLHttpRequest();
+    xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
+    xhttp.send();
+    
+    if(xhttp.status==200 || xhttp.status==0){
+      loadSlideString(n,state,xhttp.responseText);
+    }
+    document.body.style.cursor = 'default';
   }
-  document.body.style.cursor = 'default';
-
-
-
-}}"
+}"
       (Array.length pages)
   );
 

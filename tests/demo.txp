@@ -16,8 +16,8 @@ let db_info = Mysql Mysql.(
       dbpwd = Some "patonet";
       dbuser = Some "patonet";})
 
-let db = init_db db_info
- 
+let db = init_db "demo" db_info
+
 )
 
 == Animation ==
@@ -98,6 +98,8 @@ let db = init_db db_info
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = read_count2 () in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
 
+\item Chercher la différence entre ces deux boutons ! indication~: ouvrez deux fois la présentation.
+
 \item Et une figure dont on peut bouger les sommets :
 
 \begin{center}
@@ -105,18 +107,6 @@ let db = init_db db_info
 let readA, writeA = db.create_data ~global:false "Apos" (10.0,10.0)
 let readB, writeB = db.create_data ~global:false "Bpos" (-10.0,-10.0)
 let readC, writeC = db.create_data ~global:false "Cpos" (10.0,-10.0)
-let readA () =
-    let (x,y as c) = readA () in
-    Printf.eprintf "A = (%f, %f)\n" x y;
-    c 
-let readB () =
-    let (x,y as c) = readB () in
-    Printf.eprintf "B = (%f, %f)\n" x y;
-    c 
-let readC () =
-    let (x,y as c) = readC () in
-    Printf.eprintf "C = (%f, %f)\n" x y;
-    c 
 )
 \dynamic("figure")(
 	function ev ->
@@ -146,6 +136,89 @@ let readC () =
 )>>)
 
 \end{center}
-\item C'est tout pour aujourd'hui !
 \end{itemize}
+\end{slide}
+
+\Caml(
+type sondage =
+  Null
+| Fun_but
+| Fun_yes
+| No_opinion
+| No_answer
+
+let readSonde, writeSonde = db.create_data ~global:false "sondage" No_answer
+
+let box name s =
+ dynamic name
+ (function ev -> Private) 
+ (<<$X$ $O$>>)
+ (fun () -> if readSonde () = s then (<<$X$>>) else (<<$O$>>))
+)
+
+\begin{slide}
+
+\begin{center}
+\size(5.0){Un petit sondage}
+\vspaceAfter(5.0)
+\end{center}
+
+\button("Null")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
+  \box("Null")(Null) Patoline c'est null, ça ne marchera jamais.}
+
+\button("Fun_but")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
+  \box("Fun_but")(Fun_but) Patoline c'est chouette, mais ça ne marchera pas.}
+
+\button("Fun_yes")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
+  \box("Fun_yes")(Fun_yes) Patoline c'est chouette, et ça va casser la baraque !}
+
+\button("No_opinion")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
+  \box("No_opinion")(No_opinion) Je ne sais pas.}
+\end{slide}
+
+\begin{slide}
+\begin{center}
+\size(5.0){Résultats du sondage}
+\end{center}
+
+\begin{dynamic}("Sondage")(
+ function
+   Click("Null") -> writeSonde Null; Public
+ | Click("Fun_but") -> writeSonde Fun_but; Public
+ | Click("Fun_yes") -> writeSonde Fun_yes; Public
+ | Click("No_opinion") -> writeSonde No_opinion; Public
+ | _ -> Unchanged)([])
+
+\Caml(
+let result = ref []
+let update () = 
+ let mysql_db = match db.db () with
+  MysqlDb db -> db | _ -> assert false in
+let sql = "SELECT `value`,COUNT(`sessid`) FROM `demo` WHERE `key` = 'sondage' GROUP BY `value`" in
+let r = Mysql.exec mysql_db sql in
+let f = function None -> "" | Some s -> s in
+result :=  
+  let l = ref [] in
+  try while true do
+    match Mysql.fetch r with 
+      None -> raise Exit
+    | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f row.(1))::!l
+  done; []
+  with Exit -> !l
+)
+
+\begin{itemize}
+\item Null~: \caml([C (fun env -> update (); let n = try List.assoc Null !result with Not_found -> "0" in [tT n])])
+
+\item Fun but~: \caml([C (fun env -> let n = try List.assoc Fun_but !result with Not_found -> "0" in [tT n])])
+
+\item Fun yes~: \caml([C (fun env -> let n = try List.assoc Fun_yes !result with Not_found -> "0" in [tT n])])
+
+\item No opinion~: \caml([C (fun env -> let n = try List.assoc No_opinion !result with Not_found -> "0" in [tT n])])
+\end{itemize}
+\end{dynamic}
+
+
+
+
 \end{slide}

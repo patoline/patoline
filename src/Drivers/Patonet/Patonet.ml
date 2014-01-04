@@ -37,69 +37,86 @@ let present={cur_slide=0;cur_state=0;starttime=0.;max_slide=0;}
 exception Send_error
 (* Implémentation partielle, et sans doute naive, des websockets *)
 let resp_slave fd data=
-  let pos=ref 0 in
-  let packet_len=256 in
-  let x=Buffer.create (packet_len+10) in
-  while !pos<String.length data do
-    Buffer.clear x;
-    let fin=if String.length data <= !pos+packet_len then 1 else 0 in
-    let rsv1=0 and rsv2=0 and rsv3=0 in
-    let opcode=if !pos=0 then 0x1 else 0x0 in
-    let c0=(fin lsl 7) lor (rsv1 lsl 6) lor (rsv2 lsl 5) lor (rsv3 lsl 4) lor opcode in
-    Buffer.add_char x (char_of_int c0);
+  let x=Buffer.create 32 in
+  let fin=1 in
+  let rsv1=0 and rsv2=0 and rsv3=0 in
+  let opcode=0x1 in
+  let c0=(fin lsl 7) lor (rsv1 lsl 6) lor (rsv2 lsl 5) lor (rsv3 lsl 4) lor opcode in
+  Buffer.add_char x (char_of_int c0);
 
-    let mask=[|0;0;0;0|] in
-    (* mask.(0)<-Random.int 0x100; *)
-    (* mask.(1)<-Random.int 0x100; *)
-    (* mask.(2)<-Random.int 0x100; *)
-    (* mask.(3)<-Random.int 0x100; *)
+  let payload_len= String.length data in
+  if payload_len<=125 then (
+    Buffer.add_char x (char_of_int (payload_len));
+  ) else if payload_len <= 0xffff then (
+    Buffer.add_char x (char_of_int 126);
+    Buffer.add_char x (char_of_int (payload_len lsr 8));
+    Buffer.add_char x (char_of_int (payload_len land 0xff))
+  ) else (
+    Buffer.add_char x (char_of_int 127);
+    Buffer.add_char x (char_of_int ((payload_len lsr 56) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 48) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 40) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 32) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 24) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 16) land 0xff));
+    Buffer.add_char x (char_of_int ((payload_len lsr 8) land 0xff));
+    Buffer.add_char x (char_of_int (payload_len land 0xff))
+  );
+  Buffer.output_buffer fd x;
+  output_string fd data;
+  flush fd
 
-    let payload_len=min (String.length data - !pos) packet_len in
-    if payload_len<=125 then (
-      Buffer.add_char x (char_of_int (payload_len));
-    ) else if payload_len <= 0xffff then (
-      Buffer.add_char x (char_of_int 126);
-      Buffer.add_char x (char_of_int (payload_len lsr 8));
-      Buffer.add_char x (char_of_int (payload_len land 0xff))
-    ) else (
-      Buffer.add_char x (char_of_int 127);
-      Buffer.add_char x (char_of_int ((payload_len lsr 56) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 48) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 40) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 32) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 24) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 16) land 0xff));
-      Buffer.add_char x (char_of_int ((payload_len lsr 8) land 0xff));
-      Buffer.add_char x (char_of_int (payload_len land 0xff))
+let decode_slave fd =
+  let res = Rbuffer.create 256 in
+  let rec fn () =
+    let c = int_of_char (input_char fd) in
+    let fin = 0x80 land c <> 0 in
+    let _rsv1 = 0x40 land c <> 0in
+    let _rsv2 = 0x20 land c <> 0 in
+    let _rsv3 = 0x10 land c <> 0 in
+    let _opcode = 0x0f land c in
+(*    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
+      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;*)
+    let c0 = int_of_char (input_char fd) in
+    let mask = c0 land 0x80 <> 0 and c0 = c0 land 0x7f in
+(*    Printf.eprintf "Second char: %x %d\n%!" c0 c0;*)
+    let length =
+      if c0 <= 125 then c0
+      else if c0 = 126 then
+	let c0 = int_of_char (input_char fd) in
+	let c1 = int_of_char (input_char fd) in
+	(c0 lsl 8) lor c1
+      else if c0 = 127 then
+	let c0 = int_of_char (input_char fd) in
+	let c1 = int_of_char (input_char fd) in
+	let c2 = int_of_char (input_char fd) in
+	let c3 = int_of_char (input_char fd) in
+	let c4 = int_of_char (input_char fd) in
+	let c5 = int_of_char (input_char fd) in
+	let c6 = int_of_char (input_char fd) in
+	let c7 = int_of_char (input_char fd) in
+	(c0 lsl 56) lor (c1 lsl 48) lor (c2 lsl 40) lor (c3 lsl 32) lor 
+	  (c4 lsl 24) lor (c5 lsl 16) lor (c6 lsl 8) lor c7
+      else 0
+    in
+    (*    Printf.eprintf "Length : %d, mask : %b\n%!" length mask;*)
+    let mask_array = [|0;0;0;0|] in
+    if mask then (
+      mask_array.(0) <- int_of_char (input_char fd);
+      mask_array.(1) <- int_of_char (input_char fd);
+      mask_array.(2) <- int_of_char (input_char fd);
+      mask_array.(3) <- int_of_char (input_char fd);
     );
-    (* Buffer.add_char x (char_of_int mask.(0)); *)
-    (* Buffer.add_char x (char_of_int mask.(1)); *)
-    (* Buffer.add_char x (char_of_int mask.(2)); *)
-    (* Buffer.add_char x (char_of_int mask.(3)); *)
-
-    for i= !pos to !pos+payload_len-1 do
-      Buffer.add_char x (char_of_int (int_of_char data.[i] lxor mask.((i- !pos) land 3)))
+    for i = 0 to length - 1 do
+      let c = input_char fd in
+      let c = char_of_int (int_of_char c lxor mask_array.(i land 0x3)) in
+      Rbuffer.add_char res c;
     done;
-    (* Buffer.add_substring x data !pos payload_len; *)
-    let s=Buffer.contents x in
-    Printf.eprintf "select\n";flush stderr;
-    let _,x,y=Unix.select [] [fd] [fd] 0. in
-    Printf.eprintf "/select %d %d\n" (List.length x) (List.length y);flush stderr;
-    if x=[] then (Unix.close fd;raise Send_error) else (
-      let cur = ref 0 and len = String.length s in
-      while !cur < len do
-	let n=Unix.write fd s !cur (len - !cur) in
-	cur := !cur + n
-      done; 
-      pos:= !pos+packet_len
-    )
-  done
+    if fin then Rbuffer.contents res else fn ()
+  in fn ()
 
-let sock_info = ref None
-let sync_sock = ref []
 let master_page=ref ""
 let port_num = ref 8080
-let connect_to = ref ""
 
 let close_all_other sock = ()
 (*
@@ -114,83 +131,67 @@ let str_addr addr = Unix.(match addr with
 (*connection as another patonet (at most one is enough to build
 any graph) as a follower*)
 
-let sons = ref []
+type son =
+  { 
+    fd: in_channel; (* connection to the son process *)
+    pid: int;
+    num: int; (*internal number, just for printing and debugging*)
+    served_sock: Unix.file_descr;
+    mutable sessid: string option;
+    mutable slide:int;
+    mutable state:int
+  }
 
+let sonsBySock = ref ([]:(Unix.file_descr * son) list)
+    
 let kill_son sock =
-  sons:=List.filter (fun (fd,(_,pid,num,served_sock,sessid)) ->
+  sonsBySock:=List.filter (fun (fd,son) ->
     if fd = sock then (
-      Printf.eprintf "kill son %d %d\n%!" num pid;
+      Printf.eprintf "kill son %d %d\n%!" son.num son.pid;
       (try Unix.close fd with _ -> ());
-      (try Unix.close served_sock with _ -> ());
-      (try Unix.kill pid 2 with _ -> ()); 
+      (try Unix.close son.served_sock with _ -> ());
+      (try Unix.kill son.pid 2 with _ -> ()); 
       false) 
     else true
-  ) !sons
-
-let pushto ?(change=false) a fd k num =
-  let time=Unix.time() in
-  try
-    Printf.eprintf "pushing %s %d\n%!" k num;
-    resp_slave a (
-      Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"time\":%g, \"change\":%b }" 
-	present.cur_slide present.cur_state 
-	(if present.starttime=0. then 0. else (time-.present.starttime))
-	change);
-    Printf.eprintf "pushed %d\n%!" num;
-  with
-    e->
-      Printf.eprintf "not pushed %d (%s)\n%!" num (Printexc.to_string e);
-      kill_son fd
-
-let push ?(change=false) ?from () = (*from avoids to send back to the expeditor*)
-  let rec fn acc = function
-  [] -> acc
-  | (sessid,sock,fo,fi as s)::rest ->
-    Printf.eprintf "Sending to sync(%d): %d %d\n%!" (List.length rest) present.cur_slide present.cur_state;
-    try 
-      if Some sessid <> from then
-	Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!" present.cur_slide present.cur_state;
-      fn (s::acc) rest
-    with e ->
-      Printf.eprintf "not synced (%s)\n%!" (Printexc.to_string e);
-      (try Unix.close sock with _ -> ());
-      (match !sock_info with
-	Some(_,s,_,_) when s = sock -> sock_info := None;
-      | _ -> ());
-      fn acc rest
-  in
-  sync_sock := fn [] !sync_sock;
-  List.iter (fun (fd,(_,_,num,sock,sessid)) ->
-    match !sessid with
-      None -> ()
-    | Some k ->	pushto ~change sock fd k num
-  ) !sons
-
-let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
-let css_reg=Str.regexp "/style\\.css"
-let pousse=Str.regexp "/pousse_\\([0-9]*\\)_\\([0-9]*\\)"
-let click=Str.regexp "/click_\\([0-9]*\\)_\\([0-9]*\\)_"
-let drag=Str.regexp "/drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\)_"
-let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
-let sync=Str.regexp "/sync_\\([0-9]*\\)_\\([0-9]*\\)"
-let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
+  ) !sonsBySock
 
 let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
+let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
+let css_reg=Str.regexp "/style\\.css"
+let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
+let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
+
+let move=Str.regexp "move_\\([0-9]*\\)_\\([0-9]*\\)"
+let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
+let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
+
 
 let spec=
   [("--master",Arg.Set_string master_page,"Set the master page");
-   ("--port",Arg.Set_int port_num,"Set the port number to listen to");
-   ("--connect",Arg.Set_string connect_to,"Connect to another Patonet")]
+   ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
 
-let websocket is_master =
+let websocket  =
   Printf.sprintf "var websocket;
+setInterval(function () {
+  if (to_refresh) loadSlide(current_slide,current_state,true);
+}, 5000);
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
-     loadSlide(st.slide,st.state,st.change);
-     current_slide=st.slide;
-     current_state=st.state;
+     var ch = st.change;
+     if (st.change == 'Slide') {
+       to_refresh = false;
+       var svg = Base64.decode(st.change_list);
+       loadSlideString(st.slide,st.state,svg);
+     } else if (st.change == 'Refresh') {
+       if (current_slide == st.slide && current_state == st.state) {
+         to_refresh = true;
+       }
+     } else if (st.change == 'Dynamics' && current_slide == st.slide && current_state == st.state) {
+     }  
 };
 function websocket_err(evt){
 };
@@ -199,9 +200,9 @@ function websocket_close(evt){
 function start_socket(){
    if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
    if(location.protocol==\"https:\")
-      websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"%s);
+      websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"+\"_\"+current_slide+\"_\"+current_state);
    else
-      websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"%s);
+      websocket=new WebSocket(\"ws://\"+location.host+\"/tire\"+\"_\"+current_slide+\"_\"+current_state);
    websocket.onclose=websocket_close;
    websocket.onmessage = websocket_msg;
    websocket.onerror = websocket_err;
@@ -210,10 +211,17 @@ window.onbeforeunload = function() {
     websocket.onclose = function () {}; // disable onclose handler first
     websocket.close()
 };
+function websocket_send(data){
+  if (!websocket) start_socket();
+  websocket.send(data);
+}
 "
-    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
-    (if is_master then "+\"_\"+current_slide+\"_\"+current_state" else "")
 
+type change =
+  Nothing
+| Slide of int * int
+| Refresh of int * int
+| Dynamics of string Typography.OutputCommon.dynamic list
 
 let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
@@ -223,6 +231,21 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let slides,cache,imgs=SVG.buffered_output' ~structure:structure ~dynCache pages "" in
   
+  let dynTable = Hashtbl.create 101 in
+
+  Array.iteri (fun slide tbl ->
+    Array.iteri (fun state h ->
+      Hashtbl.iter (fun label d ->
+	try
+	  let _, old = Hashtbl.find dynTable label in
+	  Hashtbl.replace dynTable label (d, ((slide,state)::old))
+	with
+	  Not_found ->
+	    Hashtbl.add dynTable label (d, [slide,state]))
+	h)
+      tbl)
+    dynCache;
+
   let imgs = StrMap.fold (fun k filename m ->
     Printf.eprintf "image: %s %s\n%!" k filename;
     let buf =
@@ -235,31 +258,30 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
     StrMap.add filename buf m) imgs StrMap.empty
   in
-
+  
   let imgs = StrMap.add "favicon.ico" duck_ico imgs in
 
-let read_slide_state get =
-  let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
-  let state=max 0 (int_of_string (Str.matched_group 2 get)) in
-
-  let slide=min asked_slide (Array.length slides-1) in
-  let state=if asked_slide>slide then
-      (Array.length slides.(slide)-1)
-    else
-      min state (Array.length slides.(slide)-1)
+  let read_slide_state get =
+    let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
+    let state=max 0 (int_of_string (Str.matched_group 2 get)) in
+    
+    let slide=min asked_slide (Array.length slides-1) in
+    let state=if asked_slide>slide then
+	(Array.length slides.(slide)-1)
+      else
+	min state (Array.length slides.(slide)-1)
+    in
+    slide, state
   in
-  slide, state
-in
-
-let mouse_script=
-  let w,h = pages.(0).(0).pageFormat in (* FIXME: assume same format for all pages *)
-  Printf.sprintf "
+  
+  let mouse_script=
+    let w,h = pages.(0).(0).pageFormat in (* FIXME: assume same format for all pages *)
+    Printf.sprintf 
+"
 function send_click(name,dest,ev) {
   ev = ev || window.event;
-  var xhttp=new XMLHttpRequest();
-  var message = name+'_'+dest;
-  xhttp.open(\"GET\",\"click_\"+(current_slide)+\"_\"+(current_state)+\"_\"+message,false);
-  xhttp.send();
+  var message = name+' '+dest;
+  websocket_send(\"click_\"+(current_slide)+\"_\"+(current_state)+\" \"+message);
 }
 function start_drag(name,dest,ev) {
   ev = ev || window.event;
@@ -269,362 +291,600 @@ function start_drag(name,dest,ev) {
   var w = svg_rect.offsetWidth;
   var h = svg_rect.offsetHeight;
   var scale = Math.max(%g / w, %g / h);
-  var message = name+'_'+dest;
+  var message = name+' '+dest;
   var x0 =ev.pageX;
   var y0 =ev.pageY;
-  function do_drag(x,y) {
+  var x  = x0;
+  var y  = y0;
+  function do_drag() {
     var dx = scale * (x - x0); var dy = scale * (y0 - y);
-    var d2 = dx*dx + dy*dy;
-    if (d2 >= 4) {
-      var xhttp=new XMLHttpRequest();
-      xhttp.open('GET','drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+'_'+message,false);
-      xhttp.send();
+    if (dx != 0 || dy != 0) {
+      websocket_send('drag_'+(current_slide)+'_'+(current_state)+'_'+dx+'_'+dy+' '+message);
       x0 = x; y0 = y;
   }}
+  var timer = setInterval(do_drag,200);
   function stop_drag(e) {
+    clearInterval(timer);
+    x = e.pageX; y = e.pageY;
+    do_drag();
     svg_div.onmousemove = null;
-    svg_div.onmouseup = null;
   }
   svg_div.onmouseup = stop_drag;
   svg_div.onmousemove = function(e) {
-    do_drag(e.pageX,e.pageY);
+    x = e.pageX;
+    y = e.pageY;
   };
+  return false;
 }
+/*
+Copyright (c) 2008 Fred Palmer fred.palmer_at_gmail.com
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the \"Software\"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+*/
+function StringBuffer()
+{ 
+    this.buffer = []; 
+} 
+
+StringBuffer.prototype.append = function append(string)
+{ 
+    this.buffer.push(string); 
+    return this; 
+}; 
+
+StringBuffer.prototype.toString = function toString()
+{ 
+    return this.buffer.join(\"\"); 
+}; 
+
+var Base64 =
+{
+    codex : \"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\",
+
+    encode : function (input)
+    {
+        var output = new StringBuffer();
+
+        var enumerator = new Utf8EncodeEnumerator(input);
+        while (enumerator.moveNext())
+        {
+            var chr1 = enumerator.current;
+
+            enumerator.moveNext();
+            var chr2 = enumerator.current;
+
+            enumerator.moveNext();
+            var chr3 = enumerator.current;
+
+            var enc1 = chr1 >> 2;
+            var enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+            var enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+            var enc4 = chr3 & 63;
+
+            if (isNaN(chr2))
+            {
+                enc3 = enc4 = 64;
+            }
+            else if (isNaN(chr3))
+            {
+                enc4 = 64;
+            }
+
+            output.append(this.codex.charAt(enc1) + this.codex.charAt(enc2) + this.codex.charAt(enc3) + this.codex.charAt(enc4));
+        }
+
+        return output.toString();
+    },
+
+    decode : function (input)
+    {
+        var output = new StringBuffer();
+
+        var enumerator = new Base64DecodeEnumerator(input);
+        while (enumerator.moveNext())
+        {
+            var charCode = enumerator.current;
+
+            if (charCode < 128)
+                output.append(String.fromCharCode(charCode));
+            else if ((charCode > 191) && (charCode < 224))
+            {
+                enumerator.moveNext();
+                var charCode2 = enumerator.current;
+
+                output.append(String.fromCharCode(((charCode & 31) << 6) | (charCode2 & 63)));
+            }
+            else
+            {
+                enumerator.moveNext();
+                var charCode2 = enumerator.current;
+
+                enumerator.moveNext();
+                var charCode3 = enumerator.current;
+
+                output.append(String.fromCharCode(((charCode & 15) << 12) | ((charCode2 & 63) << 6) | (charCode3 & 63)));
+            }
+        }
+
+        return output.toString();
+    }
+}
+
+
+function Utf8EncodeEnumerator(input)
+{
+    this._input = input;
+    this._index = -1;
+    this._buffer = [];
+}
+
+Utf8EncodeEnumerator.prototype =
+{
+    current: Number.NaN,
+
+    moveNext: function()
+    {
+        if (this._buffer.length > 0)
+        {
+            this.current = this._buffer.shift();
+            return true;
+        }
+        else if (this._index >= (this._input.length - 1))
+        {
+            this.current = Number.NaN;
+            return false;
+        }
+        else
+        {
+            var charCode = this._input.charCodeAt(++this._index);
+
+            // \"\\r\\n\" -> \"\\n\"
+            //
+            if ((charCode == 13) && (this._input.charCodeAt(this._index + 1) == 10))
+            {
+                charCode = 10;
+                this._index += 2;
+            }
+
+            if (charCode < 128)
+            {
+                this.current = charCode;
+            }
+            else if ((charCode > 127) && (charCode < 2048))
+            {
+                this.current = (charCode >> 6) | 192;
+                this._buffer.push((charCode & 63) | 128);
+            }
+            else
+            {
+                this.current = (charCode >> 12) | 224;
+                this._buffer.push(((charCode >> 6) & 63) | 128);
+                this._buffer.push((charCode & 63) | 128);
+            }
+
+            return true;
+        }
+    }
+}
+
+function Base64DecodeEnumerator(input)
+{
+    this._input = input;
+    this._index = -1;
+    this._buffer = [];
+}
+
+Base64DecodeEnumerator.prototype =
+{
+    current: 64,
+
+    moveNext: function()
+    {
+        if (this._buffer.length > 0)
+        {
+            this.current = this._buffer.shift();
+            return true;
+        }
+        else if (this._index >= (this._input.length - 1))
+        {
+            this.current = 64;
+            return false;
+        }
+        else
+        {
+            var enc1 = Base64.codex.indexOf(this._input.charAt(++this._index));
+            var enc2 = Base64.codex.indexOf(this._input.charAt(++this._index));
+            var enc3 = Base64.codex.indexOf(this._input.charAt(++this._index));
+            var enc4 = Base64.codex.indexOf(this._input.charAt(++this._index));
+
+            var chr1 = (enc1 << 2) | (enc2 >> 4);
+            var chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            var chr3 = ((enc3 & 3) << 6) | enc4;
+
+            this.current = chr1;
+
+            if (enc3 != 64)
+                this._buffer.push(chr2);
+
+            if (enc4 != 64)
+                this._buffer.push(chr3);
+
+            return true;
+        }
+    }
+};
 " w h
   in
-  let slave_keyboard = mouse_script in
-
-  let slave,css=SVG.basic_html
-    ~script:(websocket false)
-    ~onload:"start_socket();"
-    ~keyboard:slave_keyboard
-    cache structure pages ""
-  in
-
-  let master_keyboard=Printf.sprintf "window.onkeydown=function(e){
+  
+  let keyboard=Printf.sprintf 
+"window.onkeydown=function(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1),false);
-  xhttp.send();
+  websocket.send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
 } else if (current_state > 0) {
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state-1),false);
-  xhttp.send();
+  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
 if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+(current_slide+1)+\"_0\",false);
-  xhttp.send();
+  websocket.send(\"move_\"+(current_slide+1)+\"_0\");
 } else if (current_state < states.length - 1) {
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state+1),false);
-  xhttp.send();
+  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
 }
 } else //right
 if(e.keyCode==82){ //r
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+(current_slide)+\"_\"+(current_state),false);
-  xhttp.send();
+  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state));
 }
 }
 function gotoSlide(n){
-  var xhttp=new XMLHttpRequest();
-  xhttp.open(\"GET\",\"pousse_\"+n+\"_0\",false);
-  xhttp.send();
+  websocket.send(\"move_\"+n+\"_0\");
 }
 %s" (Array.length pages - 1) mouse_script
   in
 
-
-  let master,_=SVG.basic_html
-    ~script:(websocket true)
-    ~onload:"to=0;start_socket();"
-    ~onhashchange:"xhttp=new XMLHttpRequest();xhttp.open(\"GET\",\"pousse_\"+h0+\"_\"+h1,false);xhttp.send();"
-    ~keyboard:master_keyboard
+  let page,css=SVG.basic_html
+    ~script:websocket
+    ~onload:"start_socket();loadSlide(h0,h1);"
+    ~keyboard:keyboard
     cache structure pages ""
   in
 
   let slides = Array.map (Array.map (fun (x,y) -> Rbuffer.contents x, Rbuffer.contents y)) slides in
-  let master = Rbuffer.contents master in
-  let slave = Rbuffer.contents slave in
+  let page = Rbuffer.contents page in
   let css = Rbuffer.contents css in
-  Printf.eprintf "%s\n" css;
 
-let http_send ?(cookie=true) code ctype datas sessid ouc = 
-  Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
-  Printf.fprintf ouc "Content-type: %s\r\n" ctype;
-  let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
-  Printf.fprintf ouc "Content-Length: %d\r\n" len;
-  if cookie then Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
-  if cookie then Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
-  output_string ouc "\r\n";
-  List.iter (output_string ouc) datas;
-  output_string ouc "\r\n";
-  flush ouc
-in
-
-let generate_error sessid ouc =
-  let data =
-    "Not found"
+  let build_svg i j =
+    let prefix,suffix = slides.(i).(j) in
+    let buf = Rbuffer.create 256 in
+    Rbuffer.add_string buf prefix;
+    Hashtbl.iter (fun k d ->
+      try Rbuffer.add_string buf (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
+      with e -> 
+	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
+	Printexc.print_backtrace stderr;
+	Rbuffer.add_string buf (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (Printexc.to_string e))
+    ) dynCache.(i).(j);
+    Rbuffer.add_string buf suffix;
+    Rbuffer.contents buf
   in
-  Printf.eprintf "sent 404\n%!";
-  http_send 404 "text/plain" [data] sessid ouc;
-in
 
-let generate_ok sessid ouc =
-  let data =
-    "Ok"
-  in
-  Printf.eprintf "sent 200 Ok\n%!";
-  http_send 200 "text/plain" [data] sessid ouc;
-in
- 
-let serve_svg i j num sessid ouc =
-  if i<Array.length slides && j<Array.length slides.(i) then (
-    Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
+  let pushto ?(change=Nothing) a fd =
+    let a = Unix.out_channel_of_descr a in
     try
-      let prefix,suffix = slides.(i).(j) in
-      let dyns = Rbuffer.create 256 in
-      Hashtbl.iter (fun k d ->
-	try Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
-	with e -> 
-	  Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
-	  Printexc.print_backtrace stderr
-      ) dynCache.(i).(j);
-      let dyns = Rbuffer.contents dyns in
-      Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
-      http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
-      Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
-    with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
-  ) else (
-    generate_error sessid ouc;
-  )
-in
-
-let fonts = StrMap.fold (fun key font acc ->
-(*  Printf.eprintf "Font: %S\n%!" key;*)
-  let key = List.hd (List.rev (Util.split '/' key)) in
-  StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
-in
-
-let serve_font font sessid ouc=
-  try
-    Printf.eprintf "Search Font: %S\n%!" font;
-    let data= StrMap.find font fonts in
-    http_send 200 "font/opentype" [data] sessid ouc;
-  with
-    Not_found->generate_error sessid ouc
-in
-
-
-let serve_css sessid ouc=
-  http_send ~cookie:false 200 "text/css" [css] sessid ouc;
-in
-
-let serve ?sessid fdfather num fd =
-  Unix.clear_nonblock fd;
-  let inc=Unix.in_channel_of_descr fd in
-  let ouc=Unix.out_channel_of_descr fd in
-  let fouc=Unix.out_channel_of_descr fdfather in
-  let sessid = Db.sessid in
-  let rec process_req get hdr reste=
-    let x=input_line inc in
-    Printf.eprintf "serve %d: %S %S\n%!" num get x;
-    if x.[0]='\r' then (
-      let sessid = match !sessid with
-	| Some s -> 
-	  Printf.eprintf "Reuse sessid: %s\n%!" s;
-	  s
-	| None -> 
-	  let s = make_sessid () in
-	  Printf.eprintf "New sessid: %s\n%!" s;
-	  s
+      let slide, state, change, change_list = match change with
+          Nothing -> present.cur_slide, present.cur_state, "\"Nothing\"", "[]"
+	| Slide(i,j) -> 
+	  let svg = build_svg i j in
+	  i, j, "\"Slide\"", Printf.sprintf "\"%s\"" (base64_encode svg)
+	| Refresh(i,j) -> 
+	  i, j, "\"Refresh\"", "[]"
+	| Dynamics l ->
+	  let l = List.map (fun d -> 
+	    Printf.sprintf "{\"dyn_label:\"%s\",dyn_contents:\"%s\"}" d.dyn_label (base64_encode (d.dyn_contents ()))) l in
+	  let full = "[" ^ String.concat "," l ^"]" in 
+	  0, 0, "\"Dynamics\"", full
       in
-      if Str.string_match svg get 0 then (
-	Printf.eprintf "serve %d: get %S\n%!" num get;
-        let i=int_of_string (Str.matched_group 1 get) in
-        let j=int_of_string (Str.matched_group 2 get) in
-        serve_svg i j num sessid ouc;
-        process_req "" [] reste
+      resp_slave a (
+	Printf.sprintf "{ \"slide\":%d, \"state\":%d, \"change\":%s, \"change_list\":%s }" 
+	  slide state 
+	  change change_list
+      );
+    with
+      e->
+	kill_son fd
+  in
 
-      ) else if get= !master_page then (
-	Printf.eprintf "serve %d: master\n%!" num;	
-	http_send 200 "text/html" [master] sessid ouc;
-        process_req "" [] reste
+  let affected slide state dest =
+    List.fold_left (fun acc label ->
+      try
+	acc || List.mem (slide,state) (snd (Hashtbl.find dynTable label))
+      with Not_found -> acc) false dest
+  in
 
-      ) else if get="/" then (
-	Printf.eprintf "serve %d: slave\n%!" num;
-	http_send 200 "text/html" [slave] sessid ouc;
-        process_req "" [] reste
+  let push from dest = (*from avoids to send back to the expeditor*)
+    List.iter (fun (fd,son) ->
+      if fd <> from && affected son.slide son.state dest then
+	pushto ~change:(Refresh(son.slide,son.state)) son.served_sock fd
+    ) !sonsBySock
+  in
 
-      ) else if get="/etat" then (
-	Printf.eprintf "serve %d: etat\n%!" num;
-        let data=Buffer.create 1000 in
-        Buffer.add_string data "{\"slides\"=[";
-        for i=0 to Array.length slides-1 do
-          if i>0 then Buffer.add_char data ',';
-          Buffer.add_string data (Printf.sprintf "%d" (Array.length slides.(i)));
-        done;
-        Buffer.add_string data "],";
-        Buffer.add_string data (Printf.sprintf "\"slide\"=%d," present.cur_slide);
-        Buffer.add_string data (Printf.sprintf "\"state\"=%d," present.cur_state);
-        let t=
-          let time=Unix.time() in
-          if present.starttime=0. then 0. else (time-.present.starttime)
-        in
-        Buffer.add_string data (Printf.sprintf "\"time\"=%g" t);
-        Buffer.add_char data '}';
+  let http_send ?(cookie=true) code ctype datas sessid ouc = 
+    Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
+    Printf.fprintf ouc "Content-type: %s\r\n" ctype;
+    let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
+    Printf.fprintf ouc "Content-Length: %d\r\n" len;
+    if cookie then Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
+    if cookie then Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+    output_string ouc "\r\n";
+    List.iter (output_string ouc) datas;
+    output_string ouc "\r\n";
+    flush ouc
+  in
 
-	http_send 200 "text/plain" [Buffer.contents data] sessid ouc;
-        process_req "" [] reste
+  let generate_error sessid ouc =
+    let data =
+      "Not found"
+    in
+    Printf.eprintf "sent 404\n%!";
+    http_send 404 "text/plain" [data] sessid ouc;
+  in
+(*
+  let generate_ok sessid ouc =
+    let data =
+      "Ok"
+    in
+    Printf.eprintf "sent 200 Ok\n%!";
+    http_send 200 "text/plain" [data] sessid ouc;
+  in
+*)
+  let serve_svg i j num sessid ouc =
+    if i<Array.length slides && j<Array.length slides.(i) then (
+      Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
+      try
+	let prefix,suffix = slides.(i).(j) in
+	let dyns = Rbuffer.create 256 in
+	Hashtbl.iter (fun k d ->
+	  try Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
+	  with e -> 
+	    Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
+	    Printexc.print_backtrace stderr
+	) dynCache.(i).(j);
+	let dyns = Rbuffer.contents dyns in
+	Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
+	http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
+      Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
+      with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
+    ) else (
+      generate_error sessid ouc;
+    )
+  in
+  
+  let fonts = StrMap.fold (fun key font acc ->
+  (*  Printf.eprintf "Font: %S\n%!" key;*)
+    let key = List.hd (List.rev (Util.split '/' key)) in
+    StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
+  in
 
-      ) else if Str.string_match sync get 0 then (
-	let slide, state = read_slide_state get in
-	Printf.eprintf "serve %d: sync\n%!" num;
+  let serve_font font sessid ouc=
+    try
+      Printf.eprintf "Search Font: %S\n%!" font;
+      let data= StrMap.find font fonts in
+      http_send 200 "font/opentype" [data] sessid ouc;
+    with
+      Not_found->generate_error sessid ouc
+  in
+
+
+  let serve_css sessid ouc=
+    http_send ~cookie:false 200 "text/css" [css] sessid ouc;
+  in
+  
+  let serve ?sessid fdfather num fd =
+    Unix.clear_nonblock fd;
+    let websocket = ref false in
+    let inc=Unix.in_channel_of_descr fd in
+    let ouc=Unix.out_channel_of_descr fd in
+    let fouc=Unix.out_channel_of_descr fdfather in
+    let sessid = Db.sessid in
+    let read_sessid () = match !sessid with
+      | Some s -> 
+	Printf.eprintf "Reuse sessid: %s\n%!" s;
+	s
+      | None -> 
+	let s = make_sessid () in
+	Printf.eprintf "New sessid: %s\n%!" s;
+	s
+    in
+
+    let update slide state ev dest =
+      let priv, pub =
+	List.fold_left (fun (priv,pub as acc) ds ->
+	  try
+	    let d, _ = Hashtbl.find dynTable ds in
+	    let res = d.dyn_react ev in
+	    match res with
+	      Unchanged -> acc
+	    | Private -> (ds::priv), pub
+	    | Public ->  (ds::priv), (ds::pub)
+	  with
+	    Not_found -> 
+	      Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
+	      acc) ([], []) dest
+      in
+      Printf.eprintf "Private change\n%!"; 
+      if affected slide state priv then pushto ~change:(Slide(slide,state)) fd fdfather;
+      Printf.eprintf "Public change\n%!"; 
+      Printf.fprintf fouc "change %s\n" (String.concat " " pub);
+      flush fouc 
+    in
+
+    let rec process_req master get hdr reste=
+      
+      if !websocket then (
+	Printf.eprintf "Reading web socket message\n%!";
+	let get = decode_slave inc in
+	Printf.eprintf "Web socket message:%s\n%!" get;
 	
-	Printf.fprintf fouc "sync %s %d %d\n" sessid slide state;
-	flush fouc;
-        process_req "" [] reste
-      ) else if Str.string_match tire get 0 || get="/tire" then (
-        let slide, state =if get = "/tire" then -1, -1 else
-	    read_slide_state get 
-	in
-
-	Printf.eprintf "serve %d: tire\n%!" num;
-        try
-          Printf.eprintf "pushing\n";flush stderr;
-          begin
-            let key=
-              let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
-              let sha=Cryptokit.Hash.sha1 () in
-              sha#add_string websocket_key;
-              sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-              base64_encode (sha#result)
-            in
-            output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
-            output_string ouc key;
-            output_string ouc "\r\n\r\n";
-            flush ouc;
-          end;
-
+	if Str.string_match move get 0 then (
+          Printf.eprintf "move\n";flush stderr;
+	  let slide, state = read_slide_state get in
+	  
+          pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n";
-	  Printf.fprintf fouc "tire %s %d %d %d %d\n"
-	    sessid slide state num (Unix.getpid ());
-	  output_value fouc fd;
+	  Printf.fprintf fouc "move %s %d %d\n"
+	    (read_sessid ()) slide state;
 	  flush fouc;
 	  Printf.eprintf "Sending to father done\n";
-	  process_req "" [] reste
 
-        with
-          | e-> Printf.eprintf "erreur %d websocket \"%s\"\n%!" num (Printexc.to_string e);
-
-      ) else if Str.string_match click get 0 then (
-	Printf.eprintf "serve %d: click\n%!" num;
-	let match_end = Str.match_end () in
-	let slide, state = read_slide_state get in
-	let rest =String.sub get match_end (String.length get - match_end) in
-
-	Printf.eprintf "click: %d %d %s\n%!" slide state rest;
-
-	let name, dest = match Util.split '_' rest with
-	  name::dest -> name,dest
-	| _ -> failwith "Bad click"
-	in
-	let status =
-	  List.fold_left (fun acc ds ->
-	    try
-	      let d = Hashtbl.find dynCache.(slide).(state) ds in
-	      let res = d.dyn_react (Click(name)) in
-	      max res acc
-	    with
-	      Not_found -> 
-		Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
-		acc) Unchanged dest
-	in
-	generate_ok sessid ouc;
-
-	(match status with
-	  Unchanged -> Printf.eprintf "Unchanged\n%!"; ()
-	| Private ->
-	  Printf.eprintf "Private change\n%!"; 
-	  pushto ~change:true fd fdfather sessid num;
-	| Public -> Printf.eprintf "Public change\n%!"; 
-	  Printf.fprintf fouc "click %d %d\n" slide state;
-	  flush fouc);
+          process_req master "" [] reste)
+	else if Str.string_match click get 0 then (
+	  Printf.eprintf "serve %d: click\n%!" num;
+	  let match_end = Str.match_end () in
+	  let slide, state = read_slide_state get in
+	  let rest =String.sub get match_end (String.length get - match_end) in
 	  
-        process_req "" [] reste
+	  Printf.eprintf "click: %d %d %s\n%!" slide state rest;
+	  
+	  let name, dest = match Util.split ' ' rest with
+	      name::dest -> name,dest
+	    | _ -> failwith "Bad click"
+	  in
+	  update slide state (Click(name)) dest;
+          process_req master "" [] reste
+	    
+	) else if Str.string_match drag get 0 then (
+	  Printf.eprintf "serve %d: drag\n%!" num;
+	  let match_end = Str.match_end () in
+	  let dx = float_of_string (Str.matched_group 3 get) 
+	  and dy = float_of_string (Str.matched_group 4 get) in
+	  let slide, state = read_slide_state get in
+	  let rest =String.sub get match_end (String.length get - match_end) in
+	  
+	  Printf.eprintf "drag: %d %d %g %g %s\n%!" slide state dx dy rest;
+	  
+	  let name, dest = match Util.split ' ' rest with
+	      name::dest -> name,dest
+	    | _ -> failwith "Bad click"
+	  in
+	  update slide state (Drag(name,(dx,dy))) dest;
+          process_req master "" [] reste
+	) else	  
+	    process_req master "" [] reste
+      ) else 
+	let x=input_line inc in
+	Printf.eprintf "serve %d: %S %S\n%!" num get x;
+	if x.[0]='\r' then (
+	  if Str.string_match svg get 0 then (
+	    Printf.eprintf "serve %d: get %S\n%!" num get;
+            let i=int_of_string (Str.matched_group 1 get) in
+            let j=int_of_string (Str.matched_group 2 get) in
+            serve_svg i j num (read_sessid ()) ouc;
+            process_req master "" [] reste
 
-      ) else if Str.string_match drag get 0 then (
-	Printf.eprintf "serve %d: drag\n%!" num;
-	let match_end = Str.match_end () in
-	let dx = float_of_string (Str.matched_group 3 get) 
-	and dy = float_of_string (Str.matched_group 4 get) in
-	let slide, state = read_slide_state get in
-	let rest =String.sub get match_end (String.length get - match_end) in
+	  ) else if Str.string_match rmaster get 0 && Str.matched_group 1 get = !master_page then (
+	    Printf.eprintf "serve %d: master\n%!" num;	
+	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
+            process_req true "" [] reste
+	      
+	  ) else if Str.string_match slave get 0 then (
+	    Printf.eprintf "serve %d: slave\n%!" num;
+	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
+            process_req false "" [] reste
 
-	Printf.eprintf "drag: %d %d %g %g %s\n%!" slide state dx dy rest;
+	  ) else if get="/etat" then (
+	    Printf.eprintf "serve %d: etat\n%!" num;
+            let data=Buffer.create 1000 in
+            Buffer.add_string data "{\"slides\"=[";
+            for i=0 to Array.length slides-1 do
+              if i>0 then Buffer.add_char data ',';
+              Buffer.add_string data (Printf.sprintf "%d" (Array.length slides.(i)));
+            done;
+            Buffer.add_string data "],";
+            Buffer.add_string data (Printf.sprintf "\"slide\"=%d," present.cur_slide);
+            Buffer.add_string data (Printf.sprintf "\"state\"=%d," present.cur_state);
+            let t=
+              let time=Unix.time() in
+              if present.starttime=0. then 0. else (time-.present.starttime)
+            in
+            Buffer.add_string data (Printf.sprintf "\"time\"=%g," t);
+	    let son_descr = List.map (fun (fd,son) ->
+	      Printf.sprintf "  { \"num\" = %d, \"pid\" = %d, \"slide\" = %d, \"state\" = %d }"
+		son.num son.pid son.slide son.state) !sonsBySock in
+	    let son_descr = String.concat ",\n" son_descr in
+            Buffer.add_string data (Printf.sprintf "\"sons\"=[\n%s\n]" son_descr);
+            Buffer.add_char data '}';
+	    
+	    http_send 200 "text/plain" [Buffer.contents data] (read_sessid ()) ouc;
+            process_req master "" [] reste
+	      
+	  ) else if Str.string_match tire get 0 || get="/tire" then (
+            let slide, state =if get = "/tire" then -1, -1 else
+		read_slide_state get 
+	    in
 
-	let name, dest = match Util.split '_' rest with
-	  name::dest -> name,dest
-	| _ -> failwith "Bad click"
-	in
-	let status =
-	  List.fold_left (fun acc ds ->
-	    try
-	      let d = Hashtbl.find dynCache.(slide).(state) ds in
-	      let res = d.dyn_react (Drag(name,(dx,dy))) in
-	      max res acc
-	    with
-	      Not_found -> 
-		Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
-		acc) Unchanged dest
-	in
+	    Printf.eprintf "serve %d: tire\n%!" num;
+            try
+              Printf.eprintf "pushing\n";flush stderr;
+              begin
+		let key=
+		  let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
+		  let sha=Cryptokit.Hash.sha1 () in
+		  sha#add_string websocket_key;
+		  sha#add_string "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+		  base64_encode (sha#result)
+		in
+		output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
+		output_string ouc key;
+		output_string ouc "\r\n\r\n";
+		flush ouc;
+              end;
+	      
+	      Printf.eprintf "Sending to father ...\n";
+	      Printf.fprintf fouc "move %s %d %d\n"
+		(read_sessid ()) slide state;
+	      flush fouc;
+	      Printf.eprintf "Sending to father done\n";
+	      websocket := true;
+	      
+	      process_req master "" [] reste
+		
+            with
+            | e-> Printf.eprintf "erreur %d websocket \"%s\"\n%!" num (Printexc.to_string e);
+	      
+	  ) else if Str.string_match css_reg get 0 then (
+	    
+	    Printf.eprintf "serve %d: css\n%!" num;
+            serve_css (read_sessid ()) ouc;
+            process_req master "" [] reste
+	      
+	  ) else if Str.string_match otf get 0 then (
+	    let otf = Str.matched_group 1 get in
+	    
+	    Printf.eprintf "serve %d: otf\n%!" num;
+            serve_font otf (read_sessid ()) ouc;
+            process_req master "" [] reste
 
-	generate_ok sessid ouc;
-
-	(match status with
-	  Unchanged -> Printf.eprintf "Unchanged\n%!"; ()
-	| Private ->
-	  Printf.eprintf "Private change\n%!"; 
-	  Printf.fprintf fouc "click %d %d\n" slide state;
-	  flush fouc
-(*	  pushto ~change:true fd fdfather sessid num;*)
-	| Public -> Printf.eprintf "Public change\n%!"; 
-	  Printf.fprintf fouc "click %d %d\n" slide state;
-	  flush fouc);
-
-        process_req "" [] reste
-
-
-      ) else if Str.string_match pousse get 0 then (
-        Printf.eprintf "pousse\n";flush stderr;
-	let slide, state = read_slide_state get in
-	
-	Printf.fprintf fouc "pousse %d %d\n" slide state;
-	flush fouc;
-	
-	generate_ok sessid ouc;
-
-        process_req "" [] reste
-
-      ) else if Str.string_match css_reg get 0 then (
-
-	Printf.eprintf "serve %d: css\n%!" num;
-        serve_css sessid ouc;
-        process_req "" [] reste
-
-      ) else if Str.string_match otf get 0 then (
-	let otf = Str.matched_group 1 get in
-
-	Printf.eprintf "serve %d: otf\n%!" num;
-        serve_font otf sessid ouc;
-        process_req "" [] reste
-
-      ) else (
-
+	  ) else (
+	    
         try
 	  let name = String.sub get 1 (String.length get-1) in
 	  Printf.eprintf "serve %d: image: %s\n%!" num name;
@@ -638,19 +898,19 @@ let serve ?sessid fdfather num fd =
                     "application/octet-stream"
           in
  
-	  http_send 200 ext [img] sessid ouc;
-          process_req "" [] []
+	  http_send 200 ext [img] (read_sessid ()) ouc;
+          process_req master "" [] []
         with
             Not_found->(
-	      generate_error sessid ouc;
-              process_req "" [] reste);
+	      generate_error (read_sessid ()) ouc;
+              process_req master "" [] reste);
       )
 
     ) else (
 
       if hdr=[] && Str.string_match get_reg x 0 then (
 	let str = Str.matched_group 1 x in
-        process_req str hdr reste
+        process_req master str hdr reste
       ) else if Str.string_match header x 0 then (
         let a=Str.matched_group 1 x in
         let b=Str.matched_group 2 x in
@@ -659,16 +919,16 @@ let serve ?sessid fdfather num fd =
 	  (match ls with
 	    [_;s] -> sessid := Some s
 	  | _ -> ());
-          process_req get hdr reste
+          process_req master get hdr reste
 	else
-          process_req get ((a,b)::hdr) reste
+          process_req master get ((a,b)::hdr) reste
       ) else (
-        process_req get hdr (x::reste)
+        process_req master get hdr (x::reste)
       );
     )
   in
   try
-    process_req "" [] []
+    process_req false "" [] []
   with
     | e-> 
       (match !sessid with
@@ -682,65 +942,12 @@ let serve ?sessid fdfather num fd =
       exit 0;
 in
 
-
-let reconnect sock_info =
-  assert (!sock_info = None);
-  match !connect_to with
-    "" -> ()
-  | server ->
-    try
-      let ls = Util.split ':' server in
-      let server,port = match ls with
-	  [s] -> s, 8080
-	| [s;p] -> s, int_of_string p
-	| _ -> raise Exit
-      in
-      let addrs = 
-	Unix.(getaddrinfo server (string_of_int port) [AI_SOCKTYPE SOCK_STREAM])
-      in
-      let rec fn = function
-      [] -> 
-	Printf.eprintf "Failed to connect to Patonet server\n%!";
-	raise Exit
-	| addr::rest -> Unix.(
-	  Printf.eprintf "Trying connect to %s:%d\n%!"
-	    (str_addr addr.ai_addr) port;
-	  let sock= socket addr.ai_family addr.ai_socktype 0 in
-	  try 
-	    connect sock addr.ai_addr;
-	    addr.ai_addr, sock
-	  with _ -> fn rest)
-      in
-      let addr, sock = fn addrs in
-      let fo=Unix.out_channel_of_descr sock in
-      let fi=Unix.in_channel_of_descr sock in
-      Printf.eprintf "Connected\n%!";
-      let sessid = make_sessid () in
-      sock_info := Some (sessid,sock,fo,fi);
-      sync_sock := (sessid,sock,fo,fi)::!sync_sock;
-      let fd2,fd1 = Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
-      let pid = Unix.fork () in
-      if pid = 0 then (
-	try
-	  List.iter (fun f -> f ()) !interaction_start_hook;
-	  Util.close_in_cache ();
-	  Unix.close fd2;
-	  close_all_other sock;
-	  Printf.eprintf "Sync started: %s\n%!" sessid;
-	  serve ~sessid fd1 (-1) sock;
-	with _ -> exit 0);
-      Unix.close fd1;
-      sons := (fd2,(Unix.in_channel_of_descr fd2, pid, -1, sock, ref None))::!sons;
-
-    with _ -> ()
-in
-
   Arg.parse spec (fun x->()) "";
   if !master_page="" then (
     Random.self_init ();
     master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));
   );
-  if !master_page.[0]<>'/' then master_page:="/"^(!master_page);
+  if !master_page.[0] <> '/' then master_page := "/" ^ !master_page;
 
   ignore (Sys.signal 13 (Sys.Signal_ignore));
 
@@ -778,11 +985,9 @@ in
       let conn_num = ref 0 in
 
       while true do
-	Printf.eprintf "in main loop (%d addresses, %d sons)\n%!" (List.length master_sockets) (List.length !sons);
-	if !connect_to <> "" && !sock_info = None then
-	  reconnect sock_info;
+	Printf.eprintf "in main loop (%d addresses, %d sons)\n%!" (List.length master_sockets) (List.length !sonsBySock);
 	(try while (fst (Unix.waitpid [WNOHANG] (-1)) <> 0) do () done with _ -> ());
-	let socks,_,errors=Unix.select (master_sockets@List.map fst !sons) [] (List.map fst !sons) 10. in
+	let socks,_,errors=Unix.select (master_sockets@List.map fst !sonsBySock) [] (List.map fst !sonsBySock) 30. in
 	Printf.eprintf "select returns %d read and %d errors.\n%!" (List.length socks) (List.length errors);
 	List.iter (fun sock ->
 	  Printf.eprintf "Remove a son on error\n%!";
@@ -791,56 +996,30 @@ in
 	  if not (List.mem sock errors) then (
 	  if not (List.mem sock master_sockets) then (
 	    Printf.eprintf "Serving a son\n%!";
-	    let ic, pid, num, fd, sessid_ptr = try List.assoc sock !sons with _ -> assert false in
-	    let cmd = Util.split ' ' (input_line ic) in
-	    Printf.eprintf "received from %d %d: %s\n%!" num pid (String.concat " " cmd);
+	    let son (*ic, pid, num, fd, sessid_ptr*) = try List.assoc sock !sonsBySock with _ -> assert false in
+	    let cmd = Util.split ' ' (input_line son.fd) in
+	    Printf.eprintf "received from %d %d: %s\n%!" son.num son.pid (String.concat " " cmd);
 	    match cmd with
-	      ["tire";sessid;slide;state;num;pid] -> (
-		let fd0:file_descr = input_value ic in
-		assert (fd = fd0);
+	      ["move";sessid;slide;state] -> (
 		let slide = int_of_string slide and state = int_of_string state in
-		if slide >= 0 && (present.cur_slide<>slide || present.cur_state<>state) then (
-                  present.cur_slide<-slide;
-                  present.cur_state<-state;
-                  present.max_slide<-max present.max_slide slide;
-                  if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-		    present.starttime<-Unix.time();
-		);
-		
-		(try
-		   List.iter (fun (fd,(_,pid,num,_,sessid')) ->
-		     if !sessid' = Some sessid then (
-		       Printf.eprintf "Killing old son: %d %s %d\n%!"
-			 num sessid pid;
-		       kill_son fd)) !sons
-		with
-		  Not_found -> ());
-		sessid_ptr := Some sessid;
-		pushto fd sock sessid (int_of_string num))
+		son.sessid <- Some sessid;
+		son.slide <- slide;
+		son.state <- state;
+		if son.sessid <> None then (
+		  try
+		    List.iter (fun (fd,son') ->
+		      if son'.sessid = son.sessid && son' != son then (
+			Printf.eprintf "Killing old son: %d %d\n%!"
+			  son'.num son'.pid;
+			kill_son fd)) !sonsBySock
+		  with
+		    Not_found -> ())
+	      )
+	    | "change"::dest ->
+	      push sock dest;
+
 	    | ["quit";sessid;pid] ->
 	      kill_son sock;
-	    | ["pousse";slide;state] -> (
-	      let slide = int_of_string slide and state = int_of_string state in
-	      if present.cur_slide<>slide || present.cur_state<>state then (
-		present.cur_slide<-slide;
-		present.cur_state<-state;
-		present.max_slide<-max present.max_slide slide;
-		if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-		  present.starttime<-Unix.time();
-	      );
-	      push ())
-	    | ["click";slide;state] ->
-		push ~change:true ()
-	    | ["sync";sessid;slide;state] -> (
-	      let slide = int_of_string slide and state = int_of_string state in
-	      if present.cur_slide<>slide || present.cur_state<>state then (
-		present.cur_slide<-slide;
-		present.cur_state<-state;
-		present.max_slide<-max present.max_slide slide;
-		if present.starttime=0. && (present.cur_slide>0 || present.cur_state>0) then
-		  present.starttime<-Unix.time();
-	      );
- 	      push ~from:sessid ())
 	    | _ ->
 	      Printf.eprintf "Bad message from son\n%!";
 	  ) else (
@@ -850,10 +1029,10 @@ in
 	    let num = !conn_num in
 	    incr conn_num;
 	    let fd2,fd1 =  Unix.(socketpair PF_UNIX SOCK_STREAM 0) in
+	    List.iter (fun f -> f ()) !interaction_start_hook;
 	    let pid = Unix.fork () in
 	    if pid = 0 then (
 	      try
-		List.iter (fun f -> f ()) !interaction_start_hook;
 		Util.close_in_cache ();
 		Unix.close fd2;
 		close_all_other conn_sock;
@@ -861,7 +1040,10 @@ in
 		serve fd1 num conn_sock;
 	      with _ -> exit 0);
 	    Unix.close fd1;
-	    sons := (fd2,(in_channel_of_descr fd2, pid, num, conn_sock, ref None))::!sons))
+	    sonsBySock := (fd2,{ fd = in_channel_of_descr fd2;
+			   pid = pid; num = num;
+			   served_sock = conn_sock;
+			   sessid = None; slide = 0; state = 0})::!sonsBySock))
           with e -> 
 	    kill_son sock;
 	    Printf.eprintf "main loop (reading): %s\n%!"
