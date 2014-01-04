@@ -5,7 +5,7 @@ d := $(if $(d),$(d)/,)$(mod)
 DRIVERS_INCLUDES:=-I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR)
 
 DRIVERS_CMXA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cmxa)
-DRIVERS_A:=$(wildcard $(d)/*/lib*.a)
+LIB_DRIVERS_A:=$(wildcard $(d)/*/lib*.a)
 DRIVERS_CMX:=$(DRIVERS_CMXA:.cmxa=.cmx)
 DRIVERS_CMXS:=$(DRIVERS_CMXA:.cmxa=.cmxs)
 
@@ -47,7 +47,7 @@ install: install-drivers
 install-drivers: install-typography \
   $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) $(DRIVERS_CMXA:.cmxa=.cmxs)
 	install -d -m 755 $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
-	install -p -m 644 $(DRIVERS_CMXA) $(DRIVERS_A)  $(DRIVERS_CMXA:.cmxa=.cmi) \
+	install -p -m 644 $(DRIVERS_CMXA)  $(DRIVERS_CMXA:.cmxa=.a) $(LIB_DRIVERS_A)  $(DRIVERS_CMXA:.cmxa=.cmi) \
 	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 
 # Visit subdirectories
