@@ -699,12 +699,14 @@ function gotoSlide(n){
   in
   
   let serve ?sessid fdfather num fd =
+
     Unix.clear_nonblock fd;
     let websocket = ref false in
     let inc=Unix.in_channel_of_descr fd in
     let ouc=Unix.out_channel_of_descr fd in
     let fouc=Unix.out_channel_of_descr fdfather in
     let sessid = Db.sessid in
+    Random.self_init ();
     let read_sessid () = match !sessid with
       | Some s -> 
 	Printf.eprintf "Reuse sessid: %s\n%!" s;
@@ -943,8 +945,8 @@ function gotoSlide(n){
 in
 
   Arg.parse spec (fun x->()) "";
+
   if !master_page="" then (
-    Random.self_init ();
     master_page:=Printf.sprintf "/%d" (Random.int (1 lsl 29));
   );
   if !master_page.[0] <> '/' then master_page := "/" ^ !master_page;

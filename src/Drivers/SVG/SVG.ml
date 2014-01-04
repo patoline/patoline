@@ -57,14 +57,14 @@ let standalone w h style title svg=
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
   Rbuffer.add_string def_buf 
-"g.button:hover{opacity: 0.75;cursor:crosshair;}
-g.button:hover path{opacity: 0.75;cursor:crosshair;}
-g.button:hover text{opacity: 0.75;cursor:crosshair;}
-g.button{z-index:10;}
+"::selection{ background: rgba(0,0,0,0);}
+::-moz-selection{ background: rgba(0,0,0,0);}
+g.button:hover{opacity: 0.75;cursor:crosshair;}
+g.button{z-index:10;unselectable='on';onselectstart='return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
+  -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
 g.dragable:hover{opacity: 0.75;cursor:move;}
-g.dragable:hover path{opacity: 0.75;cursor:move;}
-g.dragable:hover text{opacity: 0.75;cursor:move;}
-g.dragable{z-index:10;}
+g.dragable{z-index:10;unselectable='on';onselectstart='return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
+  -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
 ";
   if output_fonts then
     StrMap.iter (fun full class_name->
@@ -587,6 +587,8 @@ function loadSlideString(slide,state,str){
         }
         var elt = buttons[a];
         elt.onclick=closure(elt.getAttribute('name'),elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'crosshair'; });
+        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
     }
 
     var dragable=svg.getElementsByClassName('dragable');
@@ -596,6 +598,8 @@ function loadSlideString(slide,state,str){
         }
         var elt = dragable[a];
         elt.onmousedown=closure2(elt.getAttribute('name'),elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
+        elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
     }
 
     var videos=document.getElementsByTagName(\"video\");

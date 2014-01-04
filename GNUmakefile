@@ -127,7 +127,7 @@ endif
 
 # Compilers and various tools
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp $(OCPP),)
-OCAMLOPT_NOPP := ocamlfind ocamlopt
+OCAMLOPT_NOPP := ocamlfind ocamlopt -g
 OCAMLOPT := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp $(OCPP),)
 OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp $(OCPP),)
 OCAMLMKLIB := ocamlfind ocamlmklib
