@@ -5,6 +5,7 @@
 open Diagrams
 open Proj3d
 open Typography.Db
+open DefaultFormat
 
 let caml x = x
 
@@ -18,7 +19,114 @@ let db_info = Mysql Mysql.(
 
 let db = init_db "demo" db_info
 
+let editableText ?(global=false) ?(empty_case="Type in here") ?(min_line=5)
+  ?(init_text="") ?(lang=lang_default) ?(extra=fun _ -> "") name =
+
+let name' = name^"_target" in
+let name'' = name^"_target2" in
+
+  let readT, writeT = db.create_data ~global name init_text in
+
+let ascii = 
+  let str = String.make (2*(128-32)) ' ' in
+  for i = 32 to 127 do
+    str.[2*(i-32)] <- Char.chr i
+  done;
+  [Scoped(verbEnv, [tT str] @ bold [tT str])]
+in
+
+let update () =
+  let s = readT() in
+  let s' = if s = "" then empty_case else s in
+  s, Util.split '\n' s'
+in
+
+newPar D.structure Complete.normal ragged_left 
+    (dynamic name'
+	(function Edit(n, t) when name = n -> writeT t; Private 
+                | _ -> Unchanged)
+	ascii 	  
+       (fun () ->
+          let s, lines = update () in
+	  let missing = max 0 (min_line - List.length lines) in
+	  let lines = lines @ Array.to_list (Array.make missing "") in
+          (button ~btype:(Editable s)
+              name
+	      [name';name'']
+              [bB(fun env -> List.map (fun x-> Drawing (snd x)) (IntMap.bindings (OutputDrawing.minipage (verbEnv env)
+	        (let i = ref 0 in 
+		let next () =
+		  incr i;
+ 	          let line = string_of_int !i in
+	          let miss = 3 - String.length line in
+	          [glue_space miss;tT line;glue_space 1]
+                in
+                 List.fold_left (fun acc line ->
+	           let para=Paragraph {par_contents=next () @ (lang line);
+                            par_env=(fun e -> e);
+                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
+                            par_parameters=ragged_left;
+                            par_badness=badness;
+                            par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
+                   in up (newChildAfter acc para)) (Node empty, []) lines))))]))) ;
+
+newPar D.structure Complete.normal ragged_left 
+    (dynamic name''
+	(function Edit(n, t) when name = n -> Private 
+                | _ -> Unchanged)
+	ascii 	  
+       (fun () ->
+          let lines = Util.split '\n' (extra (readT())) in
+	    [bB(fun env -> List.map (fun x-> Drawing (snd x)) (IntMap.bindings (OutputDrawing.minipage (verbEnv env)
+	        (List.fold_left (fun acc line ->
+	           let para=Paragraph {par_contents=(lang_default line) ;
+                            par_env=(fun e -> e);
+                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
+                            par_parameters=ragged_left;
+                            par_badness=badness;
+                            par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
+                   in up (newChildAfter acc para)) (Node empty, []) lines))))]))
+
+let test_ocaml ?(prefix="") ?(suffix="") prg =
+  let tmpfile = Filename.temp_file "demo" ".ml" in
+  let ch = open_out tmpfile in
+  output_string ch prefix;
+  output_string ch "# 1 \"\"\n";
+  output_string ch prg;
+  output_string ch suffix;
+  close_out ch;
+  let tmpfile2 = Filename.temp_file "demo" ".txt" in
+  let tmpfile3 = Filename.temp_file "demo" ".txt" in
+  let tmpfile4 = Filename.temp_file "demo" ".out" in
+  let _ = Sys.command (Printf.sprintf "ocamlc.opt -o %s %s 2>%s >%s" tmpfile4 tmpfile tmpfile3 tmpfile2) in
+  let err =
+    let ch = open_in tmpfile3 in
+    let len = in_channel_length ch in
+    let str = String.create len in
+    let _ = input ch str 0 len in
+    str
+  in
+  if err <> "" then err else (
+    ignore (Sys.command (Printf.sprintf "%s 2>%s >%s" tmpfile4 tmpfile3 tmpfile2));
+  let err =
+    let ch = open_in tmpfile3 in
+    let len = in_channel_length ch in
+    let str = String.create len in
+    let _ = input ch str 0 len in
+    str
+  in  
+  let out =
+    let ch = open_in tmpfile2 in
+    let len = in_channel_length ch in
+    let str = String.create len in
+    let _ = input ch str 0 len in
+    str
+  in  
+  if err <> "" then err else 
+  if out <> "" then out else "No error and no output")
+  
 )
+
 
 == Animation ==
 
@@ -86,17 +194,17 @@ let db = init_db "demo" db_info
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with 
-	     Click "test"-> let c = read_count () + 1 in write_count c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
+	     Click "test"-> let c = read_count () + 1 in write_count c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(let c = read_count () in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
+	   fun () -> <<\caml(let c = read_count () in [tT (string_of_int c)]) fois !>>)
 
 \Caml(let read_count2, write_count2 = db.create_data ~global:false "count" 0)
 \item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
 \dynamic("cible2")(function ev ->
   	  (match ev with 
-	     Click "test"-> let c = read_count2 () + 1 in write_count2 c; Printf.fprintf stderr "incr count to: %d\n%!" c; Public 
+	     Click "test"-> let c = read_count2 () + 1 in write_count2 c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(let c = read_count2 () in Printf.fprintf stderr "read count to: %d\n%!" c; [tT (string_of_int c)]) fois !>>)
+	   fun () -> <<\caml(let c = read_count2 () in [tT (string_of_int c)]) fois !>>)
 
 \item Chercher la différence entre ces deux boutons ! indication~: ouvrez deux fois la présentation.
 
@@ -193,7 +301,7 @@ let box name s =
 let result = ref []
 let update () = 
  let mysql_db = match db.db () with
-  MysqlDb db -> db | _ -> assert false in
+  MysqlDb db -> db(* | _ -> assert false*) in
 let sql = "SELECT `value`,COUNT(`sessid`) FROM `demo` WHERE `key` = 'sondage' GROUP BY `value`" in
 let r = Mysql.exec mysql_db sql in
 let f = function None -> "" | Some s -> s in
@@ -217,8 +325,15 @@ result :=
 \item No opinion~: \caml([C (fun env -> let n = try List.assoc No_opinion !result with Not_found -> "0" in [tT n])])
 \end{itemize}
 \end{dynamic}
+\end{slide}
+
+\begin{slide}
+
+Un petit programme éditable~:
 
 
-
+\Caml(
+let _ = editableText ~min_line:13 ~lang:lang_OCaml ~extra:(fun s -> test_ocaml s) "testText" 
+)
 
 \end{slide}

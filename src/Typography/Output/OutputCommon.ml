@@ -99,12 +99,13 @@ type image= { image_file:string; image_x:float; image_y:float; image_order:int; 
 
 type video= { video_file:string; video_x:float; video_y:float; video_order:int; video_height:float;video_width:float;video_pixel_width:int;video_pixel_height:int }
 
+type button_kind = Clickable | Dragable | Editable of string
+
 type link_kind =
   Extern of string (* uri *)
 | Intern of (string * int * float * float) (* label, page, x, y *)
 (*| Edit of string * ...*)  (* Edit are Extern link with edit:...*)
-| Button of bool * string * string list
-
+| Button of button_kind * string * string list
 
 type link= { mutable link_x0:float;mutable link_y0:float;mutable link_x1:float;mutable link_y1:float;
              mutable link_closed:bool;link_order:int; link_kind:link_kind;
@@ -128,6 +129,7 @@ and animation={
 and event=
 | Click of string
 | Drag of string * (float * float)
+| Edit of string * string
 
 and action =
 | Unchanged

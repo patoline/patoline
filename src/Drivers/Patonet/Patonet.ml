@@ -167,6 +167,7 @@ let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
 let move=Str.regexp "move_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
+let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
 let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
 
 
@@ -283,11 +284,67 @@ function send_click(name,dest,ev) {
   var message = name+' '+dest;
   websocket_send(\"click_\"+(current_slide)+\"_\"+(current_state)+\" \"+message);
 }
+
+
+function draggable(anchor,obj)
+{
+    anchor.onmousedown = function(e){
+      var objX0 = parseInt(obj.style.left) - e.pageX;
+      var objY0 = parseInt(obj.style.top) - e.pageY;
+
+      window.onmousemove = function(e){
+        var x = e.pageX + objX0;
+        var y = e.pageY + objY0;
+         obj.style.left=x+'px';
+         obj.style.top=y+'px';
+      };	  
+
+      window.onmouseup = function(e){
+        window.onmousemove = null;
+        window.onmouseup = null;
+      };
+    };
+}
+ 
+function start_edit(name,dest,ev) {
+  ev = ev || window.event;
+  var elt =  document.getElementById(name);
+  window.onkeydown = null;
+  elt.onclick = null;
+
+  var contents = elt.getAttribute('contents')
+  var div = document.createElement('div');
+  div.className='editor';
+  div.style.left = '50px';
+  div.style.top = '50px';
+  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
+  function restart_edit(name,dest) {
+    return(function (e) { start_edit(name,dest,e); });
+  }
+  function stop_edit(name,dest,div) {
+    return function () {
+      var message = name+' '+dest;
+      var textArea = document.getElementById('edit_'+name);
+      var elt =  document.getElementById(name);
+      elt.setAttribute('contents', textArea.value);
+      var contents = textArea.value.replace('&#13;&#10;','\\n').replace('&gt;','>').replace('&lt;','<').replace('&apos',\"'\").replace('&quot;','\"').replace('&amp;','&');
+      websocket_send('edit_'+(current_slide)+'_'+(current_state)+' '+message+' '+Base64.encode(contents.replace('&#13;&#10;','\\n')));
+      window.onkeydown = manageKey;
+      div.parentNode.removeChild(div);
+      elt.onclick = restart_edit(name,dest);
+    }
+  }
+  document.body.appendChild(div);
+  var title = document.getElementById('editorTitleBar');
+  draggable(title,div);
+  window.onkeydown = null;
+  var button = document.getElementById('edit_button_'+name);
+  button.onclick = stop_edit(name,dest,div);
+}
+
 function start_drag(name,dest,ev) {
   ev = ev || window.event;
-  var svg_rect = document.getElementById('svg_svg');
-  var svg_div = document.getElementById('svg_div');
-  var button =  document.getElementById('button_'+name);
+  var svg_rect = document.getElementById('svg_div');
   var w = svg_rect.offsetWidth;
   var h = svg_rect.offsetHeight;
   var scale = Math.max(%g / w, %g / h);
@@ -307,10 +364,11 @@ function start_drag(name,dest,ev) {
     clearInterval(timer);
     x = e.pageX; y = e.pageY;
     do_drag();
-    svg_div.onmousemove = null;
+    window.onmousemove = null;
+    window.onmouseup = null;
   }
-  svg_div.onmouseup = stop_drag;
-  svg_div.onmousemove = function(e) {
+  window.onmouseup = stop_drag;
+  window.onmousemove = function(e) {
     x = e.pageX;
     y = e.pageY;
   };
@@ -536,7 +594,7 @@ Base64DecodeEnumerator.prototype =
   in
   
   let keyboard=Printf.sprintf 
-"window.onkeydown=function(e){
+"function manageKey(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
   websocket.send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
@@ -555,6 +613,7 @@ if(e.keyCode==82){ //r
   websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state));
 }
 }
+window.onkeydown=manageKey;
 function gotoSlide(n){
   websocket.send(\"move_\"+n+\"_0\");
 }
@@ -771,6 +830,30 @@ function gotoSlide(n){
 	    | _ -> failwith "Bad click"
 	  in
 	  update slide state (Click(name)) dest;
+          process_req master "" [] reste)
+	    
+	else if Str.string_match edit get 0 then (
+	  Printf.eprintf "serve %d: edit\n%!" num;
+	  let match_end = Str.match_end () in
+	  let slide, state = read_slide_state get in
+	  let rest =String.sub get match_end (String.length get - match_end) in
+
+	  Printf.eprintf "edit: %d %d %s\n%!" slide state rest;
+
+	  let name, dest, contents = 
+	    try 
+	      match Util.split ' ' rest with
+		name::dest -> 
+		  let dest = List.rev dest in
+		  let contents = List.hd dest in
+		  let dest = List.tl dest in
+		  name,dest, base64_decode contents
+	      | _ -> raise Not_found
+	    with _ -> failwith "Bad edit" 
+	  in
+	  Printf.eprintf "edited text: %S\n%!" contents;
+
+	  update slide state (Edit(name,contents)) dest;
           process_req master "" [] reste
 	    
 	) else if Str.string_match drag get 0 then (

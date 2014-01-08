@@ -269,6 +269,19 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let num_states = ref (Array.length !pages.(!cur_page)) in
   let links = ref [||] in
   let cur_state = ref 0 in
+  let dynCache = Hashtbl.create 101 in
+
+  let dynContents d = 
+    try Hashtbl.find dynCache d.dyn_label
+    with Not_found -> 
+      let r = d.dyn_contents () in
+      Hashtbl.add dynCache d.dyn_label r;
+      r
+  in
+  
+  let dynReset d =
+    Hashtbl.remove dynCache d.dyn_label
+  in
 
   let read_links () = 
     links := Array.mapi
@@ -279,7 +292,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	    (function  
             | Link(l') -> 
 	      l := l'::!l
-	    | Dynamic d -> fn (d.dyn_contents ())
+	    | Dynamic d -> fn (dynContents d)
 	    | _ -> ()) ls
 	  in
 	  fn (drawing_sort state.pageContents);
@@ -545,14 +558,15 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		(fun d' -> 
 		  if d.dyn_label = d' then (
 		    let action = d.dyn_react ev in
-		    if action <> Unchanged then update_link := true;
+		    if action <> Unchanged then 
+		      (update_link := true; dynReset d);
 		    false)
 		  else true) ds
 	      in
 	      gn (if ds <> [] then (ds,ev)::acc else acc) evs
 	  in 
 	  events := gn [] (List.rev !events);
-	  List.iter fn (d.dyn_contents ())
+	  List.iter fn (dynContents d)
 
 	| Glyph g ->
         let x = g.glyph_x in
@@ -1145,7 +1159,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let show_links () =
     let l = !next_links in
-    if l <> !previous_links then (
+    if l != !previous_links then (
       previous_links := l;
       (match !saved_rectangle with
 	None -> ()
@@ -1153,7 +1167,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if !saved_rectangle = None then
-	 (Printf.printf "saving\n"; flush stdout;
+	 (flush stdout;
 	 saved_rectangle := 
 	   Some (GlPix.read ~x:0 ~y:0 
 		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
@@ -1179,7 +1193,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		Glut.setCursor Glut.CURSOR_INFO;
 		(1.0,0.0,1.0)
 	    in
-	    Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;
+(*	    Printf.printf "link: x0 = %f, y0 = %f, x1 = %f, y1 = %f\n" l.link_x0 l.link_y0 l.link_x1 l.link_y1;*)
 	    flush stdout;
 	    overlay_rect color (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
       ) l;
@@ -1358,8 +1372,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       let links = find_link win x y in 
-      let buttons = List.filter (fun l -> match l.link_kind with Button _ -> true | _ -> false) links in
-      let buttons = List.map (function { link_kind = Button(true,name,ds) } -> name,ds | _ -> assert false) buttons in
+      let buttons = List.filter (fun l -> match l.link_kind with Button(Clickable,_,_) -> true | _ -> false) links in
+      let buttons = List.map (function { link_kind = Button(_,name,ds) } -> name,ds | _ -> assert false) buttons in
 
       motion_ref := Some (x,y,x, y,buttons,links);
 
@@ -1389,9 +1403,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		  Not_found -> 
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
-	    | Button(false,name,ds) -> 
+	    | Button(Clickable,name,ds) -> 
 	      events := (ds,Click(name))::!events;
-	    | Button(true,name,ds) -> 
+	    | Button(_,name,ds) -> 
 	      ()
 	  ) links
 	  

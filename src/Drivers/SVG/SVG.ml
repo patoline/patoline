@@ -60,11 +60,32 @@ let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix font
 "::selection{ background: rgba(0,0,0,0);}
 ::-moz-selection{ background: rgba(0,0,0,0);}
 g.button:hover{opacity: 0.75;cursor:crosshair;}
-g.button{z-index:10;unselectable='on';onselectstart='return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
+g.button{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
 g.dragable:hover{opacity: 0.75;cursor:move;}
-g.dragable{z-index:10;unselectable='on';onselectstart='return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
+g.dragable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
+g.editable:hover{opacity: 0.75;cursor:text;}
+g.editable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
+  -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
+div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);pointer-events:none;}
+div.editor {margin:0; pointer-events:all;}
+div.editor .titleBar{padding:2px;pointer-events:all;}
+div.editor .title{padding:0px; float:left;pointer-events:all;}
+div.editor .save{padding:0px; float:right;pointer-events:all;}
+div.editor textarea{padding:2px; resize:both;}
+svg text{pointer-events:none;}
+svg path{pointer-events:none;}
+svg rect{pointer-events:none;}
+svg .button text{pointer-events:all;}
+svg .editable text{pointer-events:all;}
+svg .dragable text{pointer-events:all;}
+svg .button path{pointer-events:all;}
+svg .editable path{pointer-events:all;}
+svg .dragable path{pointer-events:all;}
+svg .button rect{pointer-events:all;}
+svg .editable rect{pointer-events:all;}
+svg .dragable rect{pointer-events:all;}
 ";
   if output_fonts then
     StrMap.iter (fun full class_name->
@@ -297,11 +318,21 @@ let draw ?fontCache ?dynCache prefix w h contents=
         Rbuffer.add_string svg_buf "<a xlink:href=\"";
         Rbuffer.add_string svg_buf uri;
         Rbuffer.add_string svg_buf "\">"
-      | Button(drag,name,ds) -> 
+      | Button(drag,name,ds) ->
+	let ty = match drag with
+	    Clickable -> "button"
+	  | Dragable -> "dragable"
+	  | Editable s -> "editable' contents='" ^
+	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;" 
+		   (global_replace (regexp_string ">") "&gt;"
+		      (global_replace (regexp_string "<") "&lt;"
+			 (global_replace (regexp_string "\'") "&apos;"
+			    (global_replace (regexp_string "\"") "&quot;"
+			       (global_replace (regexp_string "&") "&amp;" s))))))
+	in
         Rbuffer.add_string svg_buf (
-	  Printf.sprintf "<g class='%s' name='%s' dest='%s'>"
-	    (if drag then "dragable" else "button") name
-	    (String.concat " " ds)
+	  Printf.sprintf "<g class='%s' id='%s' dest='%s'>"
+	    ty name (String.concat " " ds)
 	);
       );
 
@@ -334,7 +365,6 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	None ->
 	  List.iter output_contents_aux (d.dyn_contents ());
       | Some h ->
-	Rbuffer.add_string svg_buf ("<use xlink:href=\"#"^d.dyn_label^"\"/>");
 	let tmp = Rbuffer.create 256 in
 	ignore (output_contents ~svg_buf:tmp (d.dyn_contents ()));
 	ignore (output_contents ~svg_buf:tmp (d.dyn_sample));
@@ -438,10 +468,9 @@ let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];met
       let w,h=page.pageFormat in
       Rbuffer.add_string file0 (Printf.sprintf "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <?xml-stylesheet href=\"style.css\" type=\"text/css\"?>
-<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><defs>"
+<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\">"
                                  (round (w)) (round (h)));
       
-      Rbuffer.add_string file "</defs>";
       let sorted_pages=OutputCommon.sort_raw page.pageContents in
       let dynCache = match dynCache with
 	  None -> None 
@@ -586,20 +615,36 @@ function loadSlideString(slide,state,str){
           return(function (e) { send_click(name,dest,e); });
         }
         var elt = buttons[a];
-        elt.onclick=closure(elt.getAttribute('name'),elt.getAttribute('dest'));
+        elt.style.pointerEvents = 'all';
+        elt.onclick=closure(elt.getAttribute('id'),elt.getAttribute('dest'));
         elt.onmouseover=(function () { document.body.style.cursor = 'crosshair'; });
         elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
     }
 
     var dragable=svg.getElementsByClassName('dragable');
     for (var a=0;a<dragable.length;a++) {
+        var elt = dragable[a];
+        elt.style.pointerEvents = 'all';
+        var name = elt.getAttribute('id');
         function closure2(name,dest) {
           return(function (e) { start_drag(name,dest,e); });
         }
-        var elt = dragable[a];
-        elt.onmousedown=closure2(elt.getAttribute('name'),elt.getAttribute('dest'));
+        elt.onmousedown=closure2(name,elt.getAttribute('dest'));
         elt.onmouseover=(function () { document.body.style.cursor = 'move'; });
         elt.onmouseout=(function () { document.onselectstart = null; document.body.style.cursor = 'default'; });
+    }
+
+    var editable=svg.getElementsByClassName('editable');
+    for (var a=0;a<editable.length;a++) {
+        var elt = editable[a];
+        elt.style.pointerEvents = 'all';
+        var name = elt.getAttribute('id');
+        function closure3(name,dest) {
+          return(function (e) { start_edit(name,dest,e); });
+        }
+        elt.onclick=closure3(name,elt.getAttribute('dest'));
+        elt.onmouseover=(function () { document.body.style.cursor = 'text'; });
+        elt.onmouseout=(function () { document.body.style.cursor = 'default'; });
     }
 
     var videos=document.getElementsByTagName(\"video\");

@@ -54,7 +54,7 @@ and hyphenBox= { hyphen_normal: box array; hyphenated:(box array* box array) arr
 and kind =
   Extern of string
 | Intern of string
-| Button of bool * string * string list
+| Button of button_kind * string * string list
 
 and marker=
     Label of string

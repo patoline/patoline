@@ -606,24 +606,33 @@ module Format=functor (D:Document.DocumentStructure)->(
       let do_end_env ()=()
     end
 
+    let glue_space n =
+      bB(fun env -> 
+	let font,_,_,_=selectFont env.fontFamily Regular false in
+	let x= Fonts.loadGlyph font
+	  ({empty_glyph with glyph_index=Fonts.glyph_of_char font ' '}) 
+	in
+	let w =  float n *. env.size *. Fonts.glyphWidth x /.1000. in
+	[glue w w w])
 
     let split_space is_letter is_special s =
-      let gl env =
-	let font,_,_,_=selectFont env.fontFamily Regular false in
-	glyph_of_string env.substitutions env.positioning font env.size env.fontColor " "
-      in
-      let space = bB(fun env -> gl env) in
       let len = String.length s in
       let rec fn acc w i0 i =
 	if i >= len then
-	  List.rev (tT (String.sub s i0 (len - i0))::acc)
+	  List.rev (if i <> i0 then tT (String.sub s i0 (len - i0))::acc 
+	    else acc)
 	else if s.[i] = ' ' then
+	  let j = ref (i+1) in
+	  while !j < len && s.[!j] = ' ' do
+	    incr j;
+	  done;
+	  let j = !j in
 	  let acc = if i <> i0 then
-	      space::tT (String.sub s i0 (i - i0))::acc
+	      glue_space(j-i)::tT (String.sub s i0 (i - i0))::acc
 	    else
-	      space::acc
+	      glue_space(j-i)::acc
 	  in
-	  fn acc None (i+1) (i+1)
+	  fn acc None j j
 	else if is_special s.[i] then
 	  let acc = if i <> i0 then
 	    tT(String.sub s i 1)::tT (String.sub s i0 (i - i0))::acc
@@ -631,12 +640,13 @@ module Format=functor (D:Document.DocumentStructure)->(
 	      tT(String.sub s i 1)::acc
 	  in
 	  fn acc None (i+1) (i+1)
-	else if w =None then
+	else if w = None then
 	  fn acc (Some (is_letter s.[i])) i0 (i+1)
 	else if w = Some (is_letter s.[i]) then
 	  fn acc  w i0 (i + 1)
 	else
-	  fn (tT (String.sub s i0 (i - i0))::acc) (Some (is_letter s.[i])) i (i+1)
+	  fn (if i <> i0 then tT (String.sub s i0 (i - i0))::acc 
+	    else acc) (Some (is_letter s.[i])) i (i+1)
       in fn [] None 0 0
 
     let is_letter_ml = fun c ->
@@ -658,8 +668,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       C (fun env ->
 	let line = string_of_int (get_line env) in
 	let miss = 4 - String.length line in
-	let rec fn acc n = if n = 0 then acc else fn (tT " "::acc) (n - 1) in
-	fn [tT line;tT " "] miss)::
+	[glue_space miss; tT line;tT " "])::
       Env (fun env ->
 	let line = get_line env in
 	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
@@ -805,7 +814,7 @@ module Env_dynamic(X : sig val arg1 : string val arg2 : OutputCommon.event -> Ou
     let cont () =
       [bB (fun env->
         let pages=IntMap.bindings (OutputDrawing.minipage env (t,[])) in
-        List.map (fun x->Drawing x) (List.map snd pages)
+        List.map (fun x->Drawing (snd x)) pages
           (* List.map (fun x->let c=x.drawing_contents x.drawing_nominal_width in Drawing (drawing c)) (List.map snd pages) *)
       )]
     in

@@ -905,7 +905,7 @@ let sectref x=generalRef "_structure" x
 
 let extLink a b=bB (fun _->[Marker (BeginLink (Extern a))])::b@[bB (fun _->[Marker EndLink])]
 let link a b=bB (fun _->[Marker (BeginLink (Intern a))])::b@[bB (fun _->[Marker EndLink])]
-let button name destinations b=bB (fun _->[Marker (BeginLink (Button(false,name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
+let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink (Button(btype,name,destinations)))])::b@[bB (fun _->[Marker EndLink])]
 
 (** {3 Images} *)
 

@@ -56,10 +56,12 @@ type metadata=
   | Title
   | Type
 
+type button_kind = Clickable | Dragable | Editable of string
+
 type link_kind =
   Extern of string (* uri *)
 | Intern of (string * int * float * float) (* page, x, y *)
-| Button of bool * string * string list
+| Button of button_kind * string * string list
 
 (*| Edit of string*)
 
@@ -85,6 +87,7 @@ and animation={
 and event=
 | Click of string
 | Drag of string * (float * float)
+| Edit of string * string
 
 and action =
 | Unchanged

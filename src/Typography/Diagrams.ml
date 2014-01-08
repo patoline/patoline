@@ -810,7 +810,7 @@ module Transfo (X : Set.OrderedType) = struct
       pdfAnchor: Point.t ;
       node_contents : OutputCommon.raw list ;
       
-      button : (bool * string * string list) option;
+      button : (button_kind * string * string list) option;
       (* textDepth : float ; *)
       (* textHeight : float ; *)
       (* textWidth : float ; *)
@@ -1130,14 +1130,14 @@ it is `Base by default and you may change it, e.g., to `Center, using `MainAncho
       Pet.register "node draw" ~depends:[] 
 	(fun pet (name, destinations) -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
-	  { info with button = Some(false,name,destinations);
+	  { info with button = Some(Clickable,name,destinations);
 	  } ) })
 
     let drag,drag_pet = 
       Pet.register "node draw" ~depends:[] 
 	(fun pet (name, destinations) -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
-	  { info with button = Some(true,name,destinations);
+	  { info with button = Some(Dragable,name,destinations);
 	  } ) })
 
     let (default_shape : Document.environment -> Transfo.Style.t) = fun env -> rectangle env
