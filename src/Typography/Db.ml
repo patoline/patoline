@@ -38,6 +38,8 @@ let interaction_start_hook = ref ([]: (unit -> unit) list)
 
 let sessid = ref (None: string option)
 
+let secret = ref ""
+
 let init_db table_name db_info = 
   match db_info with
     Sqlite filename -> 

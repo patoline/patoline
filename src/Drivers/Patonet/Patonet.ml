@@ -160,6 +160,7 @@ let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let logged=Str.regexp "/?[a-zA-Z0-9]+key=\\([a-z0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
@@ -894,6 +895,19 @@ function gotoSlide(n){
 	    Printf.eprintf "serve %d: slave\n%!" num;
 	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
             process_req false "" [] reste
+
+	  ) else if Str.string_match logged get 0 then (
+	    Printf.eprintf "serve %d: logged\n%!" num;
+	    let login = Str.matched_group 1 get in
+            let md5 = Str.matched_group 2 get in
+	    let md5' = Digest.string(login ^ !secret) in
+	    if md5 = md5' then (
+	      sessid := Some login;
+  	      http_send 200 "text/html" [page] (read_sessid ()) ouc;
+              process_req false "" [] reste
+            ) else (
+	      generate_error "" ouc
+            )
 
 	  ) else if get="/etat" then (
 	    Printf.eprintf "serve %d: etat\n%!" num;

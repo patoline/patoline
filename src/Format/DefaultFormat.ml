@@ -699,7 +699,11 @@ module Format=functor (D:Document.DocumentStructure)->(
 		      "else"; ] in
       lang_ML keywords specials s
 
-
+    let lang_Python s=
+      let specials = ['(' ; ')' ; ';' ; ','] in
+      let keywords = ["def";"(";")";"*";";";",";"|";"=";":";
+		      "while";"for";"if";"else";"return";"try";"except";"break"] in
+      lang_ML keywords specials s
 
     let env_stack=ref []
 
