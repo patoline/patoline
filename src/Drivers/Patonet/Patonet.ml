@@ -155,7 +155,7 @@ let kill_son sock =
     else true
   ) !sonsBySock
 
-let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
+let get_reg=Str.regexp "\\(GET\\)\\|\\(POST\\) \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
@@ -905,7 +905,7 @@ function gotoSlide(n){
             )
 
 	  ) else if Str.string_match slave get 0 then (
-	    Printf.eprintf "serve %d: slave\n%!" num;
+	    Printf.eprintf "serve %d: slave (%s)\n%!" num get;
 	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
             process_req false "" [] reste
 
@@ -1008,7 +1008,7 @@ function gotoSlide(n){
     ) else (
 
       if hdr=[] && Str.string_match get_reg x 0 then (
-	let str = Str.matched_group 1 x in
+	let str = Str.matched_group 3 x in
         process_req master str hdr reste
       ) else if Str.string_match header x 0 then (
         let a=Str.matched_group 1 x in
