@@ -891,11 +891,6 @@ function gotoSlide(n){
 	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
             process_req true "" [] reste
 	      
-	  ) else if Str.string_match slave get 0 then (
-	    Printf.eprintf "serve %d: slave\n%!" num;
-	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
-            process_req false "" [] reste
-
 	  ) else if Str.string_match logged get 0 then (
 	    Printf.eprintf "serve %d: logged\n%!" num;
 	    let login = Str.matched_group 1 get in
@@ -908,6 +903,11 @@ function gotoSlide(n){
             ) else (
 	      generate_error "" ouc
             )
+
+	  ) else if Str.string_match slave get 0 then (
+	    Printf.eprintf "serve %d: slave\n%!" num;
+	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
+            process_req false "" [] reste
 
 	  ) else if get="/etat" then (
 	    Printf.eprintf "serve %d: etat\n%!" num;
