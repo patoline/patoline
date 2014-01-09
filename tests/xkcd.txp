@@ -18,6 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 (* #FORMAT FormatArticle *)
+(* #PACKAGE netclient *)
 
 ===================================
 
@@ -44,7 +45,7 @@ let _ =
     let tmpname, tmpwrite = Filename.open_temp_file "xkcd" ".png" in
     let _ = Printf.fprintf tmpwrite "%s" gettheimage; close_out tmpwrite in
     let _ = prerr_string tmpname; prerr_newline () in
-    let drawing env=drawing (draw_boxes (boxify_scoped env (includeGraphics ~width:100. tmpname))) in
+    let drawing env=drawing (draw_boxes env (boxify_scoped env (includeGraphics ~width:100. tmpname))) in
     figure ~caption:[tT title] drawing;
     (* newPar D.structure Complete.normal parameters [T (Str.matched_group 2 decoded)] *)
   with _ ->newPar D.structure Complete.normal center <<Problème de connexion internet !>>
