@@ -155,7 +155,7 @@ let kill_son sock =
     else true
   ) !sonsBySock
 
-let get_reg=Str.regexp "\\(GET\\)\\|\\(POST\\) \\([^ ]*\\) .*"
+let get_reg=Str.regexp "GET \\([^ ]*\\) .*"
 let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
@@ -895,7 +895,7 @@ function gotoSlide(n){
 	    Printf.eprintf "serve %d: logged\n%!" num;
 	    let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
-	    let md5' = Digest.string(login ^ !secret) in
+	    let md5' = Digest.to_hex(Digest.string(login ^ !secret)) in
 	    if md5 = md5' then (
 	      sessid := Some login;
   	      http_send 200 "text/html" [page] (read_sessid ()) ouc;
