@@ -892,10 +892,10 @@ function gotoSlide(n){
             process_req true "" [] reste
 	      
 	  ) else if Str.string_match logged get 0 then (
-	    Printf.eprintf "serve %d: logged\n%!" num;
 	    let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
 	    let md5' = Digest.to_hex(Digest.string(login ^ !secret)) in
+	    Printf.eprintf "serve %d: logged %s %s %s\n%!" num login md5 md5';
 	    if md5 = md5' then (
 	      sessid := Some login;
   	      http_send 200 "text/html" [page] (read_sessid ()) ouc;
