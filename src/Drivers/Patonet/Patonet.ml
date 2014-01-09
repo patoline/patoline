@@ -160,7 +160,7 @@ let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
-let logged=Str.regexp "/?[a-zA-Z0-9]+key=\\([a-z0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let logged=Str.regexp "/?[a-zA-Z0-9]+[?]key=\\([a-z0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
