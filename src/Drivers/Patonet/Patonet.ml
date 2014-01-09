@@ -1008,7 +1008,7 @@ function gotoSlide(n){
     ) else (
 
       if hdr=[] && Str.string_match get_reg x 0 then (
-	let str = Str.matched_group 3 x in
+	let str = Str.matched_group 1 x in
         process_req master str hdr reste
       ) else if Str.string_match header x 0 then (
         let a=Str.matched_group 1 x in
