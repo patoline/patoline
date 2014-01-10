@@ -687,25 +687,28 @@ function gotoSlide(n){
     ) !sonsBySock
   in
 
-  let http_send ?(cookie=true) code ctype datas sessid ouc = 
+  let http_send ?sessid code ctype datas ouc = 
     Printf.fprintf ouc "HTTP/1.1 %d OK\r\n" code;
     Printf.fprintf ouc "Content-type: %s\r\n" ctype;
     let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
-    if cookie then Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
-    if cookie then Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+    (match sessid with
+      Some sessid -> 
+	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
+	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+    | None -> ());
     output_string ouc "\r\n";
     List.iter (output_string ouc) datas;
     output_string ouc "\r\n";
     flush ouc
   in
 
-  let generate_error sessid ouc =
+  let generate_error ouc =
     let data =
       "Not found"
     in
     Printf.eprintf "sent 404\n%!";
-    http_send 404 "text/plain" [data] sessid ouc;
+    http_send 404 "text/plain" [data] ouc;
   in
 (*
   let generate_ok sessid ouc =
@@ -730,11 +733,11 @@ function gotoSlide(n){
 	) dynCache.(i).(j);
 	let dyns = Rbuffer.contents dyns in
 	Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
-	http_send 200 "image/svg+xml" [prefix; dyns; suffix] sessid ouc;
+	http_send 200 "image/svg+xml" [prefix; dyns; suffix] ouc;
       Printf.eprintf "sent image/svg+xml %d %s\n%!" num sessid;
       with e -> Printf.eprintf "error building or sending slide\n%!"; raise e
     ) else (
-      generate_error sessid ouc;
+      generate_error ouc;
     )
   in
   
@@ -744,18 +747,18 @@ function gotoSlide(n){
     StrMap.add key (Rbuffer.contents font) acc) cache.fontBuffers StrMap.empty
   in
 
-  let serve_font font sessid ouc=
+  let serve_font font ouc=
     try
       Printf.eprintf "Search Font: %S\n%!" font;
       let data= StrMap.find font fonts in
-      http_send 200 "font/opentype" [data] sessid ouc;
+      http_send 200 "font/opentype" [data] ouc;
     with
-      Not_found->generate_error sessid ouc
+      Not_found->generate_error ouc
   in
 
 
-  let serve_css sessid ouc=
-    http_send ~cookie:false 200 "text/css" [css] sessid ouc;
+  let serve_css ouc=
+    http_send 200 "text/css" [css] ouc;
   in
   
   let serve ?sessid fdfather num fd =
@@ -888,7 +891,7 @@ function gotoSlide(n){
 
 	  ) else if Str.string_match rmaster get 0 && Str.matched_group 1 get = !master_page then (
 	    Printf.eprintf "serve %d: master\n%!" num;	
-	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
+	    http_send ~sessid:(read_sessid ()) 200 "text/html" [page] ouc;
             process_req true "" [] reste
 	      
 	  ) else if Str.string_match logged get 0 then (
@@ -898,15 +901,15 @@ function gotoSlide(n){
 	    Printf.eprintf "serve %d: logged %s %s %s\n%!" num login md5 md5';
 	    if md5 = md5' then (
 	      sessid := Some login;
-  	      http_send 200 "text/html" [page] (read_sessid ()) ouc;
+  	      http_send ~sessid:login 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
-	      generate_error "" ouc
+	      generate_error ouc
             )
 
 	  ) else if Str.string_match slave get 0 then (
 	    Printf.eprintf "serve %d: slave (%s)\n%!" num get;
-	    http_send 200 "text/html" [page] (read_sessid ()) ouc;
+	    http_send ~sessid:(read_sessid ()) 200 "text/html" [page]  ouc;
             process_req false "" [] reste
 
 	  ) else if get="/etat" then (
@@ -932,7 +935,7 @@ function gotoSlide(n){
             Buffer.add_string data (Printf.sprintf "\"sons\"=[\n%s\n]" son_descr);
             Buffer.add_char data '}';
 	    
-	    http_send 200 "text/plain" [Buffer.contents data] (read_sessid ()) ouc;
+	    http_send 200 "text/plain" [Buffer.contents data] ouc;
             process_req master "" [] reste
 	      
 	  ) else if Str.string_match tire get 0 || get="/tire" then (
@@ -972,14 +975,14 @@ function gotoSlide(n){
 	  ) else if Str.string_match css_reg get 0 then (
 	    
 	    Printf.eprintf "serve %d: css\n%!" num;
-            serve_css (read_sessid ()) ouc;
+            serve_css ouc;
             process_req master "" [] reste
 	      
 	  ) else if Str.string_match otf get 0 then (
 	    let otf = Str.matched_group 1 get in
 	    
 	    Printf.eprintf "serve %d: otf\n%!" num;
-            serve_font otf (read_sessid ()) ouc;
+            serve_font otf ouc;
             process_req master "" [] reste
 
 	  ) else (
@@ -997,11 +1000,11 @@ function gotoSlide(n){
                     "application/octet-stream"
           in
  
-	  http_send 200 ext [img] (read_sessid ()) ouc;
+	  http_send 200 ext [img] ouc;
           process_req master "" [] []
         with
             Not_found->(
-	      generate_error (read_sessid ()) ouc;
+	      generate_error ouc;
               process_req master "" [] reste);
       )
 
