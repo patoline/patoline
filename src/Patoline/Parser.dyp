@@ -678,6 +678,7 @@ parelt:
   | "\\_"  { [TC("", "_")],false }
   | "\\~"  { [TC("", "~")], false }
   | "\\ "  { [TC("", " ")], false }
+  | "\\#"  { [TC("", "#")], false }
   | "\\verb{" verb_text<t> "}"
     { [MC(`Single, "verb", [sParagraph(List.rev t)], [])], false }
   | "_" paragraph_aux<p,false> "_"

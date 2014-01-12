@@ -69,7 +69,7 @@ let init_db table_name db_info =
       create_data = fun ?(global=false) name vinit ->
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
-	let sessid () = if global then "shared_variable" else match !sessid with None -> "not ready" | Some s -> s in 
+	let sessid () = if global then "shared_variable" else match !sessid with None -> raise Exit | Some s -> s in 
 	let init () = 
 	  let sessid = sessid () in
 	  if not (Hashtbl.mem tbl sessid) then (
@@ -92,31 +92,31 @@ let init_db table_name db_info =
           sessid
 	in
 	let read () =
-          let sessid = init () in
-          let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
-          let r = exec (db ()) sql in
-          try match errmsg (db ()), fetch r with
-    	  | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
-          | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
-          | _ -> assert false   
-          with Mysql.Error err ->
-            Printf.eprintf "Mysql Error: %s\n%!" err; vinit
+	  try
+            let sessid = init () in
+            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
+            let r = exec (db ()) sql in
+            match errmsg (db ()), fetch r with
+    	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
+            | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
+            | _ -> assert false   
+            with 
+	      Mysql.Error err ->
+		Printf.eprintf "Mysql Error: %s\n%!" err; vinit
+	    | Exit -> vinit
 	in
 	let write v =
-          let sessid = init () in
-          let v = base64_encode (Marshal.to_string v []) in 
-          let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s';" table_name v name sessid in
-          let _r = exec (db ()) sql in
-          match errmsg (db ()) with
-          | None -> () 
-          | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+          try
+	    let sessid = init () in
+            let v = base64_encode (Marshal.to_string v []) in 
+            let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s';" table_name v name sessid in
+            let _r = exec (db ()) sql in
+            match errmsg (db ()) with
+            | None -> () 
+            | Some err -> Printf.eprintf "DB Error: %s\n%!" err
+	  with Exit -> ()
 	in 
-	try 
-	  ignore (init ()); (read, write)
-	with Failure err | Mysql.Error err ->
-          Printf.eprintf "Failed to create data %s, SQL error is %s\n%!" name err;
-	  let r = ref vinit in
-	  (fun () -> !r), (fun v -> r := v)}
+	read, write}
 
 
 let make_sessid () = 

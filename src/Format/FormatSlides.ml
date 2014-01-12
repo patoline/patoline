@@ -353,6 +353,13 @@ module Format=functor (D:Document.DocumentStructure)->(
         let display num= [tT ("Open problem "^num^"."); (tT " ")]
        end)
 
+    module Env_exercice=Make_theorem
+      (struct
+        let refType="exercice"
+        let counter="exercice"
+        let counterLevel=0
+        let display num= [tT ("Exercice "^num^"."); (tT " ")]
+       end)
 
     let mes=(slidew/.2.)*.phi
     let defaultEnv:environment={

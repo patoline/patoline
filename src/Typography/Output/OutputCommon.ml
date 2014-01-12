@@ -99,7 +99,8 @@ type image= { image_file:string; image_x:float; image_y:float; image_order:int; 
 
 type video= { video_file:string; video_x:float; video_y:float; video_order:int; video_height:float;video_width:float;video_pixel_width:int;video_pixel_height:int }
 
-type button_kind = Clickable | Dragable | Editable of string
+type button_kind = Clickable | Dragable | Editable of string * string
+  (* the second string is the initial value to reset the contents *)
 
 type link_kind =
   Extern of string (* uri *)

@@ -59,6 +59,7 @@ let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix font
   Rbuffer.add_string def_buf 
 "::selection{ background: rgba(0,0,0,0);}
 ::-moz-selection{ background: rgba(0,0,0,0);}
+a:hover{opacity: 0.75;cursor:crosshair;}
 g.button:hover{opacity: 0.75;cursor:crosshair;}
 g.button{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
@@ -77,12 +78,15 @@ div.editor textarea{padding:2px; resize:both;}
 svg text{pointer-events:none;}
 svg path{pointer-events:none;}
 svg rect{pointer-events:none;}
+svg a text{pointer-events:all;}
 svg .button text{pointer-events:all;}
 svg .editable text{pointer-events:all;}
 svg .dragable text{pointer-events:all;}
+svg a path{pointer-events:all;}
 svg .button path{pointer-events:all;}
 svg .editable path{pointer-events:all;}
 svg .dragable path{pointer-events:all;}
+svg a rect{pointer-events:all;}
 svg .button rect{pointer-events:all;}
 svg .editable rect{pointer-events:all;}
 svg .dragable rect{pointer-events:all;}
@@ -322,13 +326,20 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	let ty = match drag with
 	    Clickable -> "button"
 	  | Dragable -> "dragable"
-	  | Editable s -> "editable' contents='" ^
+	  | Editable (s,init) -> "editable' contents='" ^
 	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;" 
 		   (global_replace (regexp_string ">") "&gt;"
 		      (global_replace (regexp_string "<") "&lt;"
 			 (global_replace (regexp_string "\'") "&apos;"
 			    (global_replace (regexp_string "\"") "&quot;"
-			       (global_replace (regexp_string "&") "&amp;" s))))))
+			       (global_replace (regexp_string "&") "&amp;" s)))))) ^
+	    "' initial='" ^
+	    Str.(global_replace (regexp "\r?\n") "&#13;&#10;" 
+		   (global_replace (regexp_string ">") "&gt;"
+		      (global_replace (regexp_string "<") "&lt;"
+			 (global_replace (regexp_string "\'") "&apos;"
+			    (global_replace (regexp_string "\"") "&quot;"
+			       (global_replace (regexp_string "&") "&amp;" init))))))
 	in
         Rbuffer.add_string svg_buf (
 	  Printf.sprintf "<g class='%s' id='%s' dest='%s'>"

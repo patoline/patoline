@@ -318,9 +318,18 @@ function start_edit(name,dest,ev) {
   div.className='editor';
   div.style.left = '50px';
   div.style.top = '50px';
-  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
+  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
+  }
+  function reset_edit(name,dest) {
+    return function () {
+      var contents = elt.getAttribute('initial');
+      elt.setAttribute('contents', contents);
+      var textArea = document.getElementById('edit_'+name);
+      console.log(contents);
+      textArea.innerHTML = contents;
+    }
   }
   function stop_edit(name,dest,div) {
     return function () {
@@ -341,6 +350,8 @@ function start_edit(name,dest,ev) {
   window.onkeydown = null;
   var button = document.getElementById('edit_button_'+name);
   button.onclick = stop_edit(name,dest,div);
+  var button2 = document.getElementById('reset_button_'+name);
+  button2.onclick = reset_edit(name,dest);
 }
 
 function start_drag(name,dest,ev) {

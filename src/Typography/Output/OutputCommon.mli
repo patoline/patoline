@@ -56,7 +56,8 @@ type metadata=
   | Title
   | Type
 
-type button_kind = Clickable | Dragable | Editable of string
+type button_kind = Clickable | Dragable | Editable of string * string
+  (* the second string is the initial value to reset the contents *)
 
 type link_kind =
   Extern of string (* uri *)
