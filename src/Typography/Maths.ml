@@ -393,7 +393,7 @@ let rec draw draw_env env_stack mlist =
 
                 let xoff=Array.mapi (fun i l->
                   if mathsEnv.kerning then
-		    let ll = List.map (translate 0.0 yoff.(i)) l in
+		    let ll = List.map (OutputCommon.translate 0.0 yoff.(i)) l in
 		    let x0', _, x1', _ = bb.(i) in
 		    let m = max ((x0 -. x1) *. 4. /. 9.) (x0' -. x1') in
                     if i mod 2 = 0 then 
@@ -406,13 +406,13 @@ let rec draw draw_env env_stack mlist =
                 in
                 let dr=box_nucleus
                   @ (if n.superscript_right=[] then [] else
-                      List.map (translate (xoff.(0)) yoff.(0)) a)
+                      List.map (OutputCommon.translate (xoff.(0)) yoff.(0)) a)
                   @ (if n.superscript_left=[] then [] else
-		      List.map (translate (xoff.(1)) yoff.(1)) b)
+		      List.map (OutputCommon.translate (xoff.(1)) yoff.(1)) b)
                   @ (if n.subscript_right=[] then [] else
-		      List.map (translate (xoff.(2)) yoff.(2)) c)
+		      List.map (OutputCommon.translate (xoff.(2)) yoff.(2)) c)
                   @ (if n.subscript_left=[] then [] else
-		      List.map (translate (xoff.(3)) yoff.(3)) d)
+		      List.map (OutputCommon.translate (xoff.(3)) yoff.(3)) d)
                 in
                 let (a0,a1,a2,a3) = bounding_box dr in
                   [ Drawing ({ drawing_min_width=a2-.a0;
@@ -425,7 +425,7 @@ let rec draw draw_env env_stack mlist =
                                drawing_break_badness=0.;
                                drawing_states=[];
                                drawing_badness=(fun _->0.);
-                               drawing_contents=(fun _->List.map (translate (-.a0) 0.) dr) }) ]
+                               drawing_contents=(fun _->List.map (OutputCommon.translate (-.a0) 0.) dr) }) ]
               ) else
                 nucleus
         )@(draw draw_env env_stack s)
@@ -608,8 +608,8 @@ let rec draw draw_env env_stack mlist =
                                            (if ln.lineWidth = 0. then [] else
                                               [Path ({ln with lineWidth=ln.lineWidth*.mathsEnv.mathsSize*.env.size},
                                                      [ [|line (0.,hx) (w,hx)|] ]) ])@
-                                             (List.map (translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
-                                             (List.map (translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
+                                             (List.map (OutputCommon.translate dxa (hx +. -.y0a+.mathsEnv.mathsSize*.env.size*.(mathsEnv.numerator_spacing+.ln.lineWidth/.2.))) ba)@
+                                             (List.map (OutputCommon.translate dxb (hx +. -.y1b-.mathsEnv.mathsSize*.env.size*.(mathsEnv.denominator_spacing+.ln.lineWidth/.2.))) bb)
                                         ) }) :: (draw draw_env env_stack s)
         )
       | Operator op::s ->(
@@ -737,9 +737,9 @@ let rec draw draw_env env_stack mlist =
                     drawing_badness=(fun _->0.);
                     drawing_contents=
                       (fun _->
-                         List.map (translate (-.xoff) 0.) drawn_op @
-                           (List.map (translate (xsup-.xoff-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
-                           (List.map (translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
+                         List.map (OutputCommon.translate (-.xoff) 0.) drawn_op @
+                           (List.map (OutputCommon.translate (xsup-.xoff-.(x1a+.x0a)/.2.) (y1-.y0a+.mathsEnv.limit_superscript_distance*.mathsEnv.mathsSize*.env.size)) ba)@
+                           (List.map (OutputCommon.translate (xsub-.xoff-.(x1b+.x0b)/.2.) (y0-.y1b-.mathsEnv.limit_subscript_distance*.mathsEnv.mathsSize*.env.size)) bb)
                       ) }]
 
             ) else draw (dincr draw_env) env_stack [Ordinary op_noad]
@@ -917,11 +917,18 @@ let open_close left right env_ style box=
     let rec select_size = function
       | [] -> [], [], (0.0, 0.0, 0.0, 0.0)
       | (d, d', (dx0,dy0,dx1,dy1 as dd)) :: l ->
-	(* FIXME: 0.05 should be in env *)
 	let delta_up =  (dy1 -. dy0) *. env.delimiter_up_tolerance in
 	let delta_down =  (dy1 -. dy0) *. env.delimiter_down_tolerance in
-	if l = [] || (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
-	   (d,d',dd) else select_size l
+	if (y1 <=  dy1 +. delta_up && y0 >= dy0 -. delta_down) then
+	  (d,d',dd)
+	else if l = [] then
+	  let alpha = (y1' -. y0') /. (dy1 -. dy0) in
+	  let delta = y1' -. alpha *. dy1 in
+	  (List.map (fun x -> Box.translate 0. delta (Box.resize alpha x)) d, 
+	   List.map (fun x -> OutputCommon.translate 0. delta (OutputCommon.resize alpha x)) d', 
+	   (alpha *. dx0, alpha *. dy0, alpha *. dx1, alpha *. dy1))
+
+	else select_size l
     in
     select_size ll, select_size lr
   in
@@ -1080,7 +1087,7 @@ let make_sqrt env_ style box=
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
-        [translate 0. ty (Path (default,[path0]))]
+        [OutputCommon.translate 0. ty (Path (default,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +. sp +. env.sqrt_dist*.s in
@@ -1092,7 +1099,7 @@ let make_sqrt env_ style box=
       in
       let path=Array.concat [path0; path2; path1] in
       let p=
-        translate 0. ty
+        OutputCommon.translate 0. ty
           (Path ({default with strokingColor=None;fillColor=Some env_.fontColor},
                  [path]
                 ))
@@ -1109,7 +1116,7 @@ let make_sqrt env_ style box=
          drawing_break_badness=0.;
          drawing_badness=(fun _->0.);
          drawing_states=[];
-         drawing_contents=(fun _->p::List.map (translate (dx0+.sp-.bx0) 0.) under);
+         drawing_contents=(fun _->p::List.map (OutputCommon.translate (dx0+.sp-.bx0) 0.) under);
       }]
     ) else (
       (* Il faut rallonger *)
@@ -1123,7 +1130,7 @@ let make_sqrt env_ style box=
       let path0=Array.sub out 0 !i0
       and path1=Array.sub out (!i0+1) (Array.length out- !i0-1) in
       let sp=adjust_space ~absolute:false env (env.sqrt_dist*.s) (-.2.*.env.sqrt_dist*.s)
-        [translate 0. ty (Path (default,[path0]))]
+        [OutputCommon.translate 0. ty (Path (default,[path0]))]
         under
       in
       let xmax=(bx1-.bx0) +.sp +. env.sqrt_dist*.s in
@@ -1137,7 +1144,7 @@ let make_sqrt env_ style box=
       in
       let path=Array.concat [path0; path2; path1] in
       let p=
-        translate 0. ty
+        OutputCommon.translate 0. ty
           (Path ({default with strokingColor=None;fillColor=Some env_.fontColor},
                  [path]
                 ))
@@ -1154,7 +1161,7 @@ let make_sqrt env_ style box=
         drawing_break_badness=0.;
         drawing_states=[];
         drawing_badness=(fun _->0.);
-        drawing_contents=(fun _->p::(List.map (translate (dx0+.sp-.bx0) 0.) under))
+        drawing_contents=(fun _->p::(List.map (OutputCommon.translate (dx0+.sp-.bx0) 0.) under))
       }]
     )
   in

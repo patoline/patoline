@@ -117,7 +117,7 @@ open Typography.Document
 let makeImage filename cont env=
   let w=cont.drawing_nominal_width in
   let h=cont.drawing_y1-.cont.drawing_y0 in
-  output [|{pageFormat=(w,h);pageContents=List.map (translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
+  output [|{pageFormat=(w,h);pageContents=List.map (Typography.OutputCommon.translate 0. (-.cont.drawing_y0)) (cont.drawing_contents w)}|] filename;
   let f=try Filename.chop_extension filename with _->filename in
 
   let i={image_file=(Printf.sprintf "%s0.png" f);

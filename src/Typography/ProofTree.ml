@@ -1,8 +1,8 @@
 open Maths
 open Document
 open Document.Mathematical
-open OutputCommon
 open Box 
+open OutputCommon
 open Util
 open Fonts.FTypes
 

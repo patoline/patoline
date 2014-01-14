@@ -165,7 +165,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_y1=tit.drawing_y1+.margin_bottom_top;
               drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(List.map (fun a->translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
+              drawing_contents=(fun w->(List.map (fun a->OutputCommon.translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->[Drawing dr]);Env (fun _->env2)]
           with
@@ -824,7 +824,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               in
               let _=IntMap.fold (fun _ a m->
                 cont:=(List.map (fun x->in_order 1
-                  (translate m y_menu (OutputCommon.resize alpha x)))
+                  (OutputCommon.translate m y_menu (OutputCommon.resize alpha x)))
                          (draw_boxes env_final a))@(!cont);
                 let w=List.fold_left (fun w x->let _,w',_=box_interval x in w +. alpha *. w') 0. a in
                 m+.inter+.w
@@ -839,7 +839,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) (i_fin+1))] in
               let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
               let x=draw_boxes env boxes in
-              List.map (translate (slidew-.w-.2.) 2.) x
+              List.map (OutputCommon.translate (slidew-.w-.2.) 2.) x
             in
 
             (* Dessin du slide complet *)
@@ -863,7 +863,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                     | _->[]
                 in
 
-                page.pageContents<-(List.map (translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
+                page.pageContents<-(List.map (OutputCommon.translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
@@ -880,7 +880,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                                                 [rectangle (param.left_margin,y+.fig.drawing_y0)
                                                     (param.left_margin+.fig.drawing_nominal_width,
                                                      y+.fig.drawing_y1)]) :: page.pageContents;
-                    page.pageContents<- (List.map (translate param.left_margin y)
+                    page.pageContents<- (List.map (OutputCommon.translate param.left_margin y)
                                            (fig.drawing_contents fig.drawing_nominal_width))
                     @ page.pageContents;
 
@@ -917,7 +917,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                             ) cont
                           in
                           page.pageContents<-
-                            (List.map (translate x y) cont_states) @ page.pageContents;
+                            (List.map (OutputCommon.translate x y) cont_states) @ page.pageContents;
 		          if env.show_boxes then
                             page.pageContents<- Path ({OutputCommon.default with close=true;lineWidth=0.1 }, [rectangle (x,y+.g.drawing_y0) (x+.w,y+.g.drawing_y1)]) :: page.pageContents;
                           w

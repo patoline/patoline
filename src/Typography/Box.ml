@@ -446,6 +446,27 @@ let rec resize l=function
                            kern_contents=resize l x.kern_contents }
   | x->x
 
+let rec translate x y=function
+    GlyphBox b -> GlyphBox { b with glyph_x = b.glyph_x +. x; glyph_y = b.glyph_y +. y; glyph_kx=b.glyph_kx+.x; glyph_ky=b.glyph_ky+.y }
+  | Hyphen h->Hyphen { hyphen_normal=Array.map (translate x y) h.hyphen_normal;
+                       hyphenated=Array.map (fun (a,b)->Array.map (translate x y) a, Array.map (translate x y) b) h.hyphenated }
+  | Drawing d -> Drawing { d with
+                       drawing_y0=d.drawing_y0 +. y;
+                       drawing_y1=d.drawing_y1 +. y;
+                       drawing_nominal_width= d.drawing_nominal_width;
+                       drawing_contents=(fun w->List.map (OutputCommon.translate x y) (d.drawing_contents w))
+                   }
+  | Glue g -> Glue { g with
+    drawing_y0=g.drawing_y0 +. y;
+    drawing_y1=g.drawing_y1 +. y;
+    drawing_contents=(fun w->List.map (OutputCommon.translate x y) (g.drawing_contents w))
+  }
+  | Kerning k -> Kerning { k with 
+                           kern_x0 = k.kern_x0 +. x;
+                           kern_y0 = k.kern_y0 +. y;
+                           kern_contents=translate x y k.kern_contents }
+  | x->x
+
 (* vertically re_kern g with p percent under baseline,
    return the center position to reuse with other symbols *)
 let vkern_percent_under' gs p envs st =

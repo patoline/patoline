@@ -1243,7 +1243,7 @@ let draw_boxes env l=
     | Glue g::s
     | Drawing g ::s->(
       let w=g.drawing_nominal_width in
-      let box=(List.map (translate (x) (y)) (g.drawing_contents w)) in
+      let box=(List.map (OutputCommon.translate (x) (y)) (g.drawing_contents w)) in
       draw_boxes (x+.w) y (box@dr) s
     )
     | Marker (BeginLink l)::s->(
@@ -1427,7 +1427,7 @@ let adjust_width env buf nbuf =
 		(match b with
 		| Drawing x when before -> Drawing { x with 
 		  drawing_contents = 
-		      (fun w -> List.map (translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
+		      (fun w -> List.map (OutputCommon.translate (r +. x0_r' -. x0_r) 0.0) (x.drawing_contents w))
 		}
 		| Drawing x -> Drawing { x with 
 		  drawing_nominal_width = r +. x.drawing_nominal_width;
