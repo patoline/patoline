@@ -318,7 +318,7 @@ function start_edit(name,dest,ev) {
   div.className='editor';
   div.style.left = '50px';
   div.style.top = '50px';
-  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
+  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
   }
@@ -328,7 +328,8 @@ function start_edit(name,dest,ev) {
       elt.setAttribute('contents', contents);
       var textArea = document.getElementById('edit_'+name);
       console.log(contents);
-      textArea.innerHTML = contents;
+      textArea.value = contents;
+      return false;
     }
   }
   function stop_edit(name,dest,div) {
@@ -342,6 +343,19 @@ function start_edit(name,dest,ev) {
       window.onkeydown = manageKey;
       div.parentNode.removeChild(div);
       elt.onclick = restart_edit(name,dest);
+      return false;
+    }
+  }
+  function cancel_edit(name,dest,div) {
+    return function () {
+      var textArea = document.getElementById('edit_'+name);
+      var elt =  document.getElementById(name);
+      var contents = elt.getAttribute('contents');
+      if (confirm('This will discard your erdit, are you sure ?')) { 
+        div.parentNode.removeChild(div);
+        elt.onclick = restart_edit(name,dest);
+        return false;
+      }
     }
   }
   document.body.appendChild(div);
@@ -352,6 +366,8 @@ function start_edit(name,dest,ev) {
   button.onclick = stop_edit(name,dest,div);
   var button2 = document.getElementById('reset_button_'+name);
   button2.onclick = reset_edit(name,dest);
+  var button3 = document.getElementById('cancel_button_'+name);
+  button3.onclick = cancel_edit(name,dest,div);
 }
 
 function start_drag(name,dest,ev) {
@@ -1028,13 +1044,13 @@ function gotoSlide(n){
         let a=Str.matched_group 1 x in
         let b=Str.matched_group 2 x in
 	if a = "Cookie" || a = "Cookies" then (
-	     let ls = Str.split (Str.regexp ";[ \t]+") b in
-	     let ls = List.fold_left (fun acc s -> 
-	       match Util.split '=' s with
-		 [key;v] -> (key,v)::acc
-	       | _ -> acc) [] ls
-	     in
-	     sessid := Some (List.assoc "SESSID" ls);
+	  let ls = Str.split (Str.regexp ";[ \t]+") b in
+	  let ls = List.fold_left (fun acc s -> 
+	    match Util.split '=' s with
+	      [key;v] -> (key,v)::acc
+	    | _ -> acc) [] ls
+	  in
+	  (try sessid := Some (List.assoc "SESSID" ls) with Not_found -> ());
           process_req master get hdr reste)
 	else
           process_req master get ((a,b)::hdr) reste

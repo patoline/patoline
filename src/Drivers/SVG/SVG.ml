@@ -57,8 +57,7 @@ let standalone w h style title svg=
 let make_defs ?(output_fonts=true) ?(units="px") ?(class_prefix="c") prefix fontCache=
   let def_buf=Rbuffer.create 256 in
   Rbuffer.add_string def_buf 
-"::selection{ background: rgba(0,0,0,0);}
-::-moz-selection{ background: rgba(0,0,0,0);}
+"
 a:hover{opacity: 0.75;cursor:crosshair;}
 g.button:hover{opacity: 0.75;cursor:crosshair;}
 g.button{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
