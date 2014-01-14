@@ -36,7 +36,7 @@ $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.c
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
-  $(FORMAT_DIR)/DefaultFormat.cmxa \
+  $(FORMAT_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx 
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa dynlink.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
