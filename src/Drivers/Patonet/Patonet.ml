@@ -1028,15 +1028,13 @@ function gotoSlide(n){
         let a=Str.matched_group 1 x in
         let b=Str.matched_group 2 x in
 	if a = "Cookie" || a = "Cookies" then (
-	  (try 
 	     let ls = Str.split (Str.regexp ";[ \t]+") b in
-	     let ls = List.map (fun s -> 
+	     let ls = List.fold_left (fun acc s -> 
 	       match Util.split '=' s with
-		 [key;v] -> (key,v)
-	       | _ -> raise Not_found) ls
+		 [key;v] -> (key,v)::acc
+	       | _ -> acc) [] ls
 	     in
 	     sessid := Some (List.assoc "SESSID" ls);
-	   with Not_found -> ());
           process_req master get hdr reste)
 	else
           process_req master get ((a,b)::hdr) reste
