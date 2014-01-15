@@ -440,7 +440,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             let res0, path0=(follow (top !D.structure) (List.rev (List.hd !env_stack))) in
             match res0 with
                 Node node->
-                  D.structure:=follow (top (Node {node with displayname=titleStyle (bold M.arg1);name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
+                  D.structure:=follow (top (Node {node with displayname=titleStyle M.arg1;name=string_of_contents M.arg1},path0)) (List.rev (List.map fst (snd !D.structure)))
               | _->assert false
           let do_end_env ()=()
         end
@@ -853,7 +853,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let tit=
                   match tree with
                       Node n->(
-                        let minip,_=OutputDrawing.minipage' { env with size=0.1 }
+                        let minip,_=OutputDrawing.minipage' ~state:st { env with size=0.1 }
                           (paragraph n.displayname)
                         in
                         try let d=snd (IntMap.min_binding minip) in

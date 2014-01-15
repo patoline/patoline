@@ -260,7 +260,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Printf.eprintf "image: %s %s\n%!" k filename;
     let buf =
 	Printf.eprintf "encoding %s\n%!" filename;
-	let ch = open_in filename in
+	let ch = open_in k in
 	let len = in_channel_length ch in
 	let buf = String.create len in
 	really_input ch buf 0 len;

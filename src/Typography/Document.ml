@@ -243,10 +243,10 @@ and content=
   | Scoped of (environment->environment)*(content list)
 (** A scoped environment transformation, applied on a small list of contents. *)
 
-
-let bB f = B(f,ref None)
-let tT f = T(f,ref None)
 let env_accessed=ref false
+let bB f = B(f,ref None)
+let uB f = C(fun _->env_accessed:=true;[bB f])
+let tT f = T(f,ref None)
 let uT f = C(fun _->env_accessed:=true;[tT f])
 let string_of_contents l =
   let buf=Rbuffer.create 1000 in
@@ -589,7 +589,6 @@ let size fsize t=
 
 let color col t=
   [Scoped ((fun env->{env with fontColor=col}), t)]
-
 
 let bold a=alternative Bold a
 
@@ -1137,7 +1136,7 @@ let boxify buf nbuf env0 l=
             let acc= !env_accessed in
             env_accessed:=false;
             let l = b env in
-            (if keep_cache && not !env_accessed then cache := Some l else env0.fixable:=true);
+            (if keep_cache then (if not !env_accessed then cache := Some l else env0.fixable:=true));
             env_accessed:=acc || !env_accessed;
             l
           )
@@ -1466,7 +1465,7 @@ let draw env x=
   draw_boxes env' (Array.to_list (Array.sub !buf 0 !nbuf))
 
 let states st x=
-  [bB (fun env->
+  [uB (fun env->
     let d=draw env x in
     let (_,off,_,_)=bounding_box d in
     [Drawing
@@ -1476,6 +1475,25 @@ let states st x=
                       states_order=0 }]
         )]
   )]
+
+let altStates l =
+  [uB (fun env->
+    let ds = List.map (fun (st,x) -> (st, draw env x)) l in
+    (* FIXME : each state should have its own offset !!!*)
+    let off = List.fold_left (fun acc (_,d) -> 
+	let (_,off,_,_) = bounding_box d in
+	min acc off) 0.0 ds
+    in
+    [Drawing
+        (drawing ~offset:off
+            (List.map (fun (st, d) ->
+	      States { states_contents=d;
+                      states_states=st;
+                      states_order=0 }) ds
+            ))]
+  )]
+
+
 
 
 module type DocumentStructure=sig

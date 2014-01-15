@@ -27,7 +27,7 @@ open Util
 
 type page={mutable pageContents:raw list}
 
-let output paragraphs figures env (opt_pages:frame)=
+let output ?state paragraphs figures env (opt_pages:frame)=
 
   let positions=Array.make (Array.length paragraphs) (0,0.,0.) in
 
@@ -189,7 +189,13 @@ let output paragraphs figures env (opt_pages:frame)=
             | Drawing g ->(
               states:=unique (g.drawing_states@ !states);
               let w=g.drawing_min_width+.comp*.(g.drawing_max_width-.g.drawing_min_width) in
-              page.pageContents<- (List.map (translate x y) (g.drawing_contents w)) @ page.pageContents;
+	      let cont = g.drawing_contents w in
+              let cont = List.filter (fun x->match x,state with
+                  States s, Some st when s.states_states<>[] &&
+                      not (List.mem st s.states_states) -> false
+                | _->true
+              ) cont in
+              page.pageContents<- (List.map (translate x y) cont) @ page.pageContents;
 	      if env.show_boxes
                 && classify_float g.drawing_y1<>FP_infinite
                 && classify_float g.drawing_y0<>FP_infinite
@@ -302,7 +308,7 @@ let output paragraphs figures env (opt_pages:frame)=
 
 
 
-let minipage env str=
+let minipage ?state env str=
   let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
@@ -314,11 +320,11 @@ let minipage env str=
     ~badness:bads
     pars
   in
-  (output pars figures
+  (output ?state pars figures
      env'
      pages)
 
-let minipage' env str=
+let minipage' ?state env str=
   let env',fig_params,params,new_page_list,new_line_list,compl,bads,pars,par_trees,figures,figure_trees=flatten env (fst str) in
   let (_,pages,fig',user')=TS.typeset
     ~completeLine:compl
@@ -330,6 +336,6 @@ let minipage' env str=
     ~badness:bads
     pars
   in
-  (output pars figures
+  (output ?state pars figures
      env'
      pages,env')
