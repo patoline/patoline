@@ -50,4 +50,19 @@ $$({1\over1}\over{1 \over 1})
 \over
 (({1\over1}\over{1 \over 1}) \over ({1\over1}\over{1 \over 1})))
 
+[{1\over1}\over{1 \over 1}]
+
+ [[{1\over1}\over{1 \over 1}]\over [{1\over1}\over{1 \over 1}]]
+
+[[[{1\over1}\over{1 \over 1}] \over [{1\over1}\over{1 \over 1}]]
+\over
+[[{1\over1}\over{1 \over 1}] \over [{1\over1}\over{1 \over 1}]]]
+
+\{{1\over1}\over{1 \over 1}\}
+
+ \{\{{1\over1}\over{1 \over 1}\}\over \{{1\over1}\over{1 \over 1}\}\}
+
+\{\{\{{1\over1}\over{1 \over 1}\} \over \{{1\over1}\over{1 \over 1}\}\}
+\over
+\{\{{1\over1}\over{1 \over 1}\} \over \{{1\over1}\over{1 \over 1}\}\}\}
 $$

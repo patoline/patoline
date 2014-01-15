@@ -117,7 +117,7 @@ open Patoline_Format;;\n
     cache_name
     format
 (Printf.sprintf  (if dynlink then ("
-let driver = match !Config2.driver with
+let driver = match !Config.driver with
   None -> %S
 | Some s -> s
 let _ = OutputPaper.load_driver driver

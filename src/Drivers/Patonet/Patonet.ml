@@ -37,49 +37,57 @@ let present={cur_slide=0;cur_state=0;starttime=0.;max_slide=0;}
 exception Send_error
 (* Implémentation partielle, et sans doute naive, des websockets *)
 let resp_slave fd data=
-  let x=Buffer.create 32 in
-  let fin=1 in
-  let rsv1=0 and rsv2=0 and rsv3=0 in
-  let opcode=0x1 in
-  let c0=(fin lsl 7) lor (rsv1 lsl 6) lor (rsv2 lsl 5) lor (rsv3 lsl 4) lor opcode in
-  Buffer.add_char x (char_of_int c0);
+  let chunk_size = 1000000 in
+  let pos = ref 0 and len = String.length data in
+  while !pos < len do
+  let x=Buffer.create 128 in
+    let size = min (len - !pos) chunk_size in
+    let new_pos = !pos + size in
+    let fin= if new_pos = len then 1 else 0 in
+    let rsv1=0 and rsv2=0 and rsv3=0 in
+    let opcode= if !pos = 0 then 0x1 else 0x0 in
+    let c0=(fin lsl 7) lor (rsv1 lsl 6) lor (rsv2 lsl 5) lor (rsv3 lsl 4) lor opcode in
+    Buffer.add_char x (char_of_int c0);
 
-  let payload_len= String.length data in
-  if payload_len<=125 then (
-    Buffer.add_char x (char_of_int (payload_len));
-  ) else if payload_len <= 0xffff then (
-    Buffer.add_char x (char_of_int 126);
-    Buffer.add_char x (char_of_int (payload_len lsr 8));
-    Buffer.add_char x (char_of_int (payload_len land 0xff))
-  ) else (
-    Buffer.add_char x (char_of_int 127);
-    Buffer.add_char x (char_of_int ((payload_len lsr 56) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 48) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 40) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 32) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 24) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 16) land 0xff));
-    Buffer.add_char x (char_of_int ((payload_len lsr 8) land 0xff));
-    Buffer.add_char x (char_of_int (payload_len land 0xff))
-  );
-  Buffer.output_buffer fd x;
-  output_string fd data;
-  flush fd
+    let payload_len= size in
+    if payload_len<=125 then (
+      Buffer.add_char x (char_of_int (payload_len));
+    ) else if payload_len <= 0xffff then (
+      Buffer.add_char x (char_of_int 126);
+      Buffer.add_char x (char_of_int (payload_len lsr 8));
+      Buffer.add_char x (char_of_int (payload_len land 0xff))
+    ) else (
+      Buffer.add_char x (char_of_int 127);
+      Buffer.add_char x (char_of_int ((payload_len lsr 56) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 48) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 40) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 32) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 24) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 16) land 0xff));
+      Buffer.add_char x (char_of_int ((payload_len lsr 8) land 0xff));
+      Buffer.add_char x (char_of_int (payload_len land 0xff))
+    );
+    Buffer.output_buffer fd x;
+    output fd data !pos size;
+    flush fd;
+    pos := new_pos;
+  done
 
 let decode_slave fd =
   let res = Rbuffer.create 256 in
   let rec fn () =
+    Printf.eprintf "decode_slave starts\n%!";
     let c = int_of_char (input_char fd) in
     let fin = 0x80 land c <> 0 in
     let _rsv1 = 0x40 land c <> 0in
     let _rsv2 = 0x20 land c <> 0 in
     let _rsv3 = 0x10 land c <> 0 in
     let _opcode = 0x0f land c in
-(*    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
-      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;*)
+    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
+      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;
     let c0 = int_of_char (input_char fd) in
     let mask = c0 land 0x80 <> 0 and c0 = c0 land 0x7f in
-(*    Printf.eprintf "Second char: %x %d\n%!" c0 c0;*)
+    Printf.eprintf "Second char: %x %d\n%!" c0 c0;
     let length =
       if c0 <= 125 then c0
       else if c0 = 126 then
@@ -184,15 +192,15 @@ setInterval(function () {
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
      var ch = st.change;
-     if (st.change == 'Slide') {
+     if (ch == 'Slide') {
        to_refresh = false;
        var svg = Base64.decode(st.change_list);
        loadSlideString(st.slide,st.state,svg);
-     } else if (st.change == 'Refresh') {
+     } else if (ch == 'Refresh') {
        if (current_slide == st.slide && current_state == st.state) {
          to_refresh = true;
        }
-     } else if (st.change == 'Dynamics' && current_slide == st.slide && current_state == st.state) {
+     } else if (ch && current_slide == st.slide && current_state == st.state) {
      }  
 };
 function websocket_err(evt){
@@ -318,18 +326,21 @@ function start_edit(name,dest,ev) {
   div.className='editor';
   div.style.left = '50px';
   div.style.top = '50px';
-  div.innerHTML = \"<div id='editorTitleBar' class='titleBar'><div class='title'>Editor</div><div class='save'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></div></div><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea>\";
+  div.innerHTML = \"<table><tr id='editorTitleBar'><td>Editor</td><td align='right'><button type='button' id='reset_button_\"+name+\"' >Reset</button><button type='button' id='cancel_button_\"+name+\"' >Cancel</button><button type='button' id='edit_button_\"+name+\"' >Save</button></td></tr><tr><td colspan='2'><textarea cols='80'; rows='30'; id='edit_\"+name+\"'>\"+contents+\"</textarea></td></tr></table>\";
   function restart_edit(name,dest) {
     return(function (e) { start_edit(name,dest,e); });
   }
   function reset_edit(name,dest) {
     return function () {
-      var contents = elt.getAttribute('initial');
-      elt.setAttribute('contents', contents);
+      var icontents = elt.getAttribute('initial');
       var textArea = document.getElementById('edit_'+name);
-      console.log(contents);
-      textArea.value = contents;
-      return false;
+      if (icontents.replace(/\\r\\n/g,'\\n') != textArea.value.replace(/\\r\\n/g,'\\n')) {
+        if (confirm('This will discard your edit and return to the initial text, are you sure ?')) { 
+          elt.setAttribute('contents', icontents);
+          textArea.value = icontents;
+          return false;
+        }
+      }
     }
   }
   function stop_edit(name,dest,div) {
@@ -339,7 +350,7 @@ function start_edit(name,dest,ev) {
       var elt =  document.getElementById(name);
       elt.setAttribute('contents', textArea.value);
       var contents = textArea.value.replace('&#13;&#10;','\\n').replace('&gt;','>').replace('&lt;','<').replace('&apos',\"'\").replace('&quot;','\"').replace('&amp;','&');
-      websocket_send('edit_'+(current_slide)+'_'+(current_state)+' '+message+' '+Base64.encode(contents.replace('&#13;&#10;','\\n')));
+      websocket_send('edit_'+(current_slide)+'_'+(current_state)+' '+message+' '+Base64.encode(contents));
       window.onkeydown = manageKey;
       div.parentNode.removeChild(div);
       elt.onclick = restart_edit(name,dest);
@@ -351,10 +362,14 @@ function start_edit(name,dest,ev) {
       var textArea = document.getElementById('edit_'+name);
       var elt =  document.getElementById(name);
       var contents = elt.getAttribute('contents');
-      if (confirm('This will discard your erdit, are you sure ?')) { 
-        div.parentNode.removeChild(div);
-        elt.onclick = restart_edit(name,dest);
-        return false;
+
+      if (textArea.value.replace(/\\r\\n/g,'\\n') != contents.replace(/\\r\\n/g,'\\n')) {
+        if (confirm('This will discard your edit, are you sure ?')) { 
+          window.onkeydown = manageKey;
+          div.parentNode.removeChild(div);
+          elt.onclick = restart_edit(name,dest);
+          return false;
+        }
       }
     }
   }

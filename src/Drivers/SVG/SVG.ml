@@ -68,11 +68,9 @@ g.dragable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-t
 g.editable:hover{opacity: 0.75;cursor:text;}
 g.editable{z-index:10;unselectable:'on';onselectstart:'return false;'; -webkit-touch-callout: none;-webkit-user-select: none;
   -khtml-user-select: none;-moz-user-select: none;-ms-user-select: none;user-select: none;user-select: none;}
-div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);pointer-events:none;}
-div.editor {margin:0; pointer-events:all;}
-div.editor .titleBar{padding:2px;pointer-events:all;}
-div.editor .title{padding:0px; float:left;pointer-events:all;}
-div.editor .save{padding:0px; float:right;pointer-events:all;}
+div.editor{position:fixed;border:2px solid blue;background:#000080;background:rgba(0,0,255,0.5);}
+div.editor {margin:0; }
+div.editor .textArea{padding:0px;  bottom:0; }
 div.editor textarea{padding:2px; resize:both;}
 svg text{pointer-events:none;}
 svg path{pointer-events:none;}
@@ -590,8 +588,10 @@ function loadSlideString(slide,state,str){
     }
 
     var parser=new DOMParser();
-    var newSvg=parser.parseFromString(str,\"image/svg+xml\");
-    newSvg=document.importNode(newSvg.rootElement,true);
+    var newSvg=parser.parseFromString(str,\"text/xml\");
+//    var newSvg=parser.parseFromString(str,\"image/svg+xml\");
+//    newSvg=document.importNode(newSvg.rootElement,true);
+    newSvg=document.importNode(newSvg.documentElement,true);
 
 /* animation du slide entrant */
     if (current_slide != slide) {
