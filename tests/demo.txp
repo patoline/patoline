@@ -1,5 +1,6 @@
 (* #FORMAT FormatSlides *)
 (* #PACKAGES mysql *)
+(* #PACKAGES Typography.Interactive *)
 
 \Caml(
 open Diagrams
@@ -19,112 +20,14 @@ let db_info = Mysql Mysql.(
 
 let db = init_db "demo" db_info
 
-let editableText ?(global=false) ?(empty_case="Type in here") ?(min_line=5)
-  ?(init_text="") ?(lang=lang_default) ?(extra=fun _ -> "") name =
+module MyDb = struct 
+  let db = db
+  let base_dir = "/tmp"
+end
 
-let name' = name^"_target" in
-let name'' = name^"_target2" in
-
-  let readT, writeT = db.create_data ~global name init_text in
-
-let ascii = 
-  let str = String.make (2*(128-32)) ' ' in
-  for i = 32 to 127 do
-    str.[2*(i-32)] <- Char.chr i
-  done;
-  [Scoped(verbEnv, [tT str] @ bold [tT str])]
-in
-
-let update () =
-  let s = readT() in
-  let s' = if s = "" then empty_case else s in
-  s, Util.split '\n' s'
-in
-
-newPar D.structure Complete.normal ragged_left 
-    (dynamic name'
-	(function Edit(n, t) when name = n -> writeT t; Private 
-                | _ -> Unchanged)
-	ascii 	  
-       (fun () ->
-          let s, lines = update () in
-	  let missing = max 0 (min_line - List.length lines) in
-	  let lines = lines @ Array.to_list (Array.make missing "") in
-          (button ~btype:(Editable s)
-              name
-	      [name';name'']
-              [bB(fun env -> List.map (fun x-> Drawing (snd x)) (IntMap.bindings (OutputDrawing.minipage (verbEnv env)
-	        (let i = ref 0 in 
-		let next () =
-		  incr i;
- 	          let line = string_of_int !i in
-	          let miss = 3 - String.length line in
-	          [glue_space miss;tT line;glue_space 1]
-                in
-                 List.fold_left (fun acc line ->
-	           let para=Paragraph {par_contents=next () @ (lang line);
-                            par_env=(fun e -> e);
-                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-                            par_parameters=ragged_left;
-                            par_badness=badness;
-                            par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-                   in up (newChildAfter acc para)) (Node empty, []) lines))))]))) ;
-
-newPar D.structure Complete.normal ragged_left 
-    (dynamic name''
-	(function Edit(n, t) when name = n -> Private 
-                | _ -> Unchanged)
-	ascii 	  
-       (fun () ->
-          let lines = Util.split '\n' (extra (readT())) in
-	    [bB(fun env -> List.map (fun x-> Drawing (snd x)) (IntMap.bindings (OutputDrawing.minipage (verbEnv env)
-	        (List.fold_left (fun acc line ->
-	           let para=Paragraph {par_contents=(lang_default line) ;
-                            par_env=(fun e -> e);
-                            par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
-                            par_parameters=ragged_left;
-                            par_badness=badness;
-                            par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-                   in up (newChildAfter acc para)) (Node empty, []) lines))))]))
-
-let test_ocaml ?(prefix="") ?(suffix="") prg =
-  let tmpfile = Filename.temp_file "demo" ".ml" in
-  let ch = open_out tmpfile in
-  output_string ch prefix;
-  output_string ch "# 1 \"\"\n";
-  output_string ch prg;
-  output_string ch suffix;
-  close_out ch;
-  let tmpfile2 = Filename.temp_file "demo" ".txt" in
-  let tmpfile3 = Filename.temp_file "demo" ".txt" in
-  let tmpfile4 = Filename.temp_file "demo" ".out" in
-  let _ = Sys.command (Printf.sprintf "ocamlc.opt -o %s %s 2>%s >%s" tmpfile4 tmpfile tmpfile3 tmpfile2) in
-  let err =
-    let ch = open_in tmpfile3 in
-    let len = in_channel_length ch in
-    let str = String.create len in
-    let _ = input ch str 0 len in
-    str
-  in
-  if err <> "" then err else (
-    ignore (Sys.command (Printf.sprintf "%s 2>%s >%s" tmpfile4 tmpfile3 tmpfile2));
-  let err =
-    let ch = open_in tmpfile3 in
-    let len = in_channel_length ch in
-    let str = String.create len in
-    let _ = input ch str 0 len in
-    str
-  in  
-  let out =
-    let ch = open_in tmpfile2 in
-    let len = in_channel_length ch in
-    let str = String.create len in
-    let _ = input ch str 0 len in
-    str
-  in  
-  if err <> "" then err else 
-  if out <> "" then out else "No error and no output")
-  
+module Interactive =
+  Interactive.Make(D)(Patoline_Format)(MyDb)
+open Interactive  
 )
 
 
@@ -140,50 +43,6 @@ let test_ocaml ?(prefix="") ?(suffix="") prg =
 \end{slide}
 
 
-\begin{slide}
-\begin{center}
-\animation(90)(fun t -> let t = float t /. 45. *. 3.1415927 in
-   let proj t = {distance_focale = 55.;
-   origin_transfo_x = 10.;
-   origin_transfo_y = 10.;
-   origin_transfo_z = 10.; (* boucle avec 10.0 *)
-   origin_diag = (10.,10.,10.); (* pour que le centre du cube ne bouge pas *)
-   axe_angle = 0.;
-   rot_angle = t;
-   homotetie = 1.0;} in
-   let projection = proj t in
-<<\diagram(
-(*   let _ = cube projection*)
- let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
- let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
- let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
- let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
- let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
- let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
- let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
- let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
-
-
-  let _ = edge_3d Edge.([arrow;draw]) a b
-  let _ = edge_3d Edge.([arrow;draw]) d c
-  let _ = edge_3d Edge.([arrow;draw]) a d
-  let _ = edge_3d Edge.([arrow;draw]) b c
-
-  let _ = edge_3d Edge.([arrow;draw]) a' b'
-  let _ = edge_3d Edge.([arrow;draw]) d' c'
-  let _ = edge_3d Edge.([arrow;draw]) a' d'
-  let _ = edge_3d Edge.([arrow;draw]) b' c'
-
-  let _ = edge_3d Edge.([arrow;draw]) a' a
-  let _ = edge_3d Edge.([arrow;draw]) b' b
-  let _ = edge_3d Edge.([arrow;draw]) c' c
-  let _ = edge_3d Edge.([arrow;draw]) d' d
-
-   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] (<<x>>))
-
-)>>)
-\end{center}
-\end{slide}
 
 == Dynamisme ==
 
@@ -331,9 +190,60 @@ result :=
 
 Un petit programme éditable~:
 
-
-\Caml(
-let _ = editableText ~min_line:13 ~lang:lang_OCaml ~extra:(fun s -> test_ocaml s) "testText" 
+\caml(
+editableText ~min_line:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML" 
 )
 
 \end{slide}
+
+\begin{slide}
+
+
+\begin{center}
+\animation(90)(fun t -> let t = float t /. 45. *. 3.1415927 in
+   let proj t = {distance_focale = 55.;
+   origin_transfo_x = 10.;
+   origin_transfo_y = 10.;
+   origin_transfo_z = 10.; (* boucle avec 10.0 *)
+   origin_diag = (10.,10.,10.); (* pour que le centre du cube ne bouge pas *)
+   axe_angle = 0.;
+   rot_angle = t;
+   homotetie = 1.0;} in
+   let projection = proj t in
+<<\diagram(
+(*   let _ = cube projection*)
+ let a = Node.(node [anchor `Base;at3d projection (0.,0.,0.)] <<a>>) 
+ let b = Node.(node [anchor `Base;at3d projection (20.,0.,0.)] <<b>>)
+ let c = Node.(node [anchor `Base;at3d projection (20.,20.,0.)] <<c>>)
+ let d = Node.(node [anchor `Base;at3d projection (0.,20.,0.)] <<d>>)
+ let a' = Node.(node [anchor `Base;at3d projection (0.,0.,20.)] <<a'>>) 
+ let b' = Node.(node [anchor `Base;at3d projection (20.,0.,20.)] <<b'>>) 
+ let c' = Node.(node [anchor `Base;at3d projection (20.,20.,20.)] <<c'>>) 
+ let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
+
+
+  let _ = edge_3d Edge.([arrow;draw]) a b
+  let _ = edge_3d Edge.([arrow;draw]) d c
+  let _ = edge_3d Edge.([arrow;draw]) a d
+  let _ = edge_3d Edge.([arrow;draw]) b c
+
+  let _ = edge_3d Edge.([arrow;draw]) a' b'
+  let _ = edge_3d Edge.([arrow;draw]) d' c'
+  let _ = edge_3d Edge.([arrow;draw]) a' d'
+  let _ = edge_3d Edge.([arrow;draw]) b' c'
+
+  let _ = edge_3d Edge.([arrow;draw]) a' a
+  let _ = edge_3d Edge.([arrow;draw]) b' b
+  let _ = edge_3d Edge.([arrow;draw]) c' c
+  let _ = edge_3d Edge.([arrow;draw]) d' d
+
+   let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] (<<x>>))
+
+)>>)
+\end{center}
+
+\begin{center}
+\size(7.0){Thanks for you attention}
+\end{center}
+\end{slide}
+

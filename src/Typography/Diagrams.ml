@@ -121,6 +121,7 @@ module Vector = struct
   let sector v v' = 
     let x = mod_float (angle v' -. angle v) 360. in
     if x < 0.0 then x +. 360. else x (* mod_float keeps the sign of the first argument *)
+  let det (x,y) (x',y') = x *. y' -. x' *. y
 
 end
 

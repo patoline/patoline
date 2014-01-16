@@ -363,13 +363,12 @@ function start_edit(name,dest,ev) {
       var elt =  document.getElementById(name);
       var contents = elt.getAttribute('contents');
 
-      if (textArea.value.replace(/\\r\\n/g,'\\n') != contents.replace(/\\r\\n/g,'\\n')) {
-        if (confirm('This will discard your edit, are you sure ?')) { 
+      if (textArea.value.replace(/\\r\\n/g,'\\n') == contents.replace(/\\r\\n/g,'\\n') ||
+        confirm('This will discard your edit, are you sure ?')) { 
           window.onkeydown = manageKey;
           div.parentNode.removeChild(div);
           elt.onclick = restart_edit(name,dest);
           return false;
-        }
       }
     }
   }
