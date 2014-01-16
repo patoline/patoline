@@ -704,6 +704,7 @@ and output_list parser_pp from where no_indent lvl docs =
       output_list parser_pp from where !next_no_indent !lvl docs
 
 let gen_ml noamble format driver suppl filename from wherename where pdfname =
+  let ftmp=Filename.temp_file (Filename.basename filename) "" in
   try
     begin
     (* match filename with *)
@@ -712,7 +713,6 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
     (* let op=open_in h in *)
 
       (* On commence par copier le fichier avec un \n au début *)
-      let ftmp=Filename.temp_file (Filename.basename filename) "" in
       let _=
         let x=open_out_bin ftmp in
         output_char x '\n';
@@ -795,6 +795,7 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
 		    extra_tags (print_contents parser_pp source) title;
 	    end;
 	    output_list parser_pp source where true 0 docs;
+	    Sys.remove ftmp;
 	  (* close_in op; *)
             if not noamble then
               Printf.fprintf where "\nlet _ = D.structure:=follow (top !D.structure) (List.rev temp%d)\nend;;\nlet _ = %s:=[|%s|];;\nlet _ = %s:=[|%s|];;\n"
@@ -811,7 +812,8 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
     end
   with
       Parser.Syntax_Error(pos,msg) ->
-	Sys.remove wherename;
+	(try Sys.remove ftmp with _ -> ());
+	(try Sys.remove wherename with _ -> ());
 	Printf.fprintf stderr "%s\n"
 	  (Language.message (Language.Syntax_error (filename, pos, msg)));
 	exit 1
