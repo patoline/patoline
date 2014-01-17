@@ -946,7 +946,7 @@ let in_rect (x0,y0) ((x1,y1),(x2,y2),_,(x4,y4)) =
   let mu = (ux4 *. (x0 -. x1) +. uy4 *. (y0 -. y1)) /. (ux4 *. ux4 +. uy4 *. uy4) in
   mu >= 0.0 && mu <= 1.0 && lambda >= 0.0 && lambda <= 1.0
 
-let inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
+let inter_segment epsilona epsilonb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
   let vxa = xa_2 -. xa_1 and vya = ya_2 -. ya_1 in
   let vxb = xb_2 -. xb_1 and vyb = yb_2 -. yb_1 in
   let abx = xb_1 -. xa_1 and aby = yb_1 -. ya_1 in
@@ -956,17 +956,17 @@ let inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, 
          det(ab_1,v_a) = lambda det(v_a,v_b) *)
   let denom = det vxa vya vxb vyb in
 (*  Printf.eprintf "va = (%f, %f), vb = (%f, %f), ab = (%f, %f), denom = %f\n%!" vxa vya vxb vyb abx aby denom;*)
-  if abs_float denom < epsilon then raise Not_found
+  if abs_float denom < epsilona *. epsilonb then raise Not_found
   else (
     let mu = det abx aby vxb vyb /. denom in 
     let lambda = det abx aby vxa vya /. denom in
 (*    Printf.eprintf "mu = %f, lambda = %f\n%!" mu lambda;*)
-    if mu >= -. epsilon && mu <= 1.0 +. epsilon && lambda >= -. epsilon && lambda <= 1.0 +. epsilon then
+    if mu >= -. epsilona && mu <= 1.0 +. epsilona && lambda >= -. epsilonb && lambda <= 1.0 +. epsilonb then
       mu, lambda
     else
       raise Not_found)
 
-let test_inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
+let test_inter_segment epsilona epsilonb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
   let vxa = xa_2 -. xa_1 and vya = ya_2 -. ya_1 in
   let vxb = xb_2 -. xb_1 and vyb = yb_2 -. yb_1 in
   let abx = xb_1 -. xa_1 and aby = yb_1 -. ya_1 in
@@ -975,11 +975,11 @@ let test_inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (x
          det(ab_1,v_b) = mu det(v_a,v_b)
          det(ab_1,v_a) = lambda det(v_a,v_b) *)
   let denom = det vxa vya vxb vyb in
-  if abs_float denom < epsilon then false
+  if abs_float denom < epsilona *. epsilonb then false
   else 
     let mu = det abx aby vxb vyb /. denom in 
     let lambda = det abx aby vxa vya /. denom in
-    (mu >= 0.0 && mu <= 1.0 && lambda >= 0.0 && lambda <= 1.0)
+     mu >= -. epsilona && mu <= 1.0 +. epsilona && lambda >= -. epsilonb && lambda <= 1.0 +. epsilonb
 
 
 
@@ -1000,10 +1000,13 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
     let xb_1 = xb.(0) and yb_1 = yb.(0) in
     let xb_2 = xb.(db-1) and yb_2 = yb.(db-1) in
 
+    (* valeur choisie pour espérer garantir la détection des doublons ... *)
+    let ea = epsilon *. beta_a /. 3.0 in
+    let eb = epsilon *. beta_b /. 3.0 in
     if ta < thick && tb < thick then (
 (*      Printf.eprintf "not thick\n%!";*)
       try
-	let mu, lambda = inter_segment ~epsilon (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) in
+	let mu, lambda = inter_segment ea eb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) in
 	let r = (alpha_a +. mu *. beta_a, alpha_b +. lambda *. beta_b) in
 	add r acc
       with Not_found -> acc)
@@ -1017,22 +1020,22 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
 	(fst q1) (snd q1) (fst q2) (snd q2) (fst q3) (snd q3) (fst q4) (snd q4);*)
       if not (
 	  in_rect p1 rb || in_rect q1 ra ||
-	  test_inter_segment p1 p2 q1 q2 ||
-	  test_inter_segment p1 p2 q2 q3 ||
-	  test_inter_segment p1 p2 q3 q4 ||
-	  test_inter_segment p1 p2 q4 q1 ||
-	  test_inter_segment p2 p3 q1 q2 ||
-	  test_inter_segment p2 p3 q2 q3 ||
-	  test_inter_segment p2 p3 q3 q4 ||
-	  test_inter_segment p2 p3 q4 q1 ||
-	  test_inter_segment p3 p4 q1 q2 ||
-	  test_inter_segment p3 p4 q2 q3 ||
-	  test_inter_segment p3 p4 q3 q4 ||
-	  test_inter_segment p3 p4 q4 q1 ||
-	  test_inter_segment p4 p1 q1 q2 ||
-	  test_inter_segment p4 p1 q2 q3 ||
-	  test_inter_segment p4 p1 q3 q4 ||
-	  test_inter_segment p4 p1 q4 q1)
+	  test_inter_segment ea eb p1 p2 q1 q2 ||
+	  test_inter_segment ea eb p1 p2 q2 q3 ||
+	  test_inter_segment ea eb p1 p2 q3 q4 ||
+	  test_inter_segment ea eb p1 p2 q4 q1 ||
+	  test_inter_segment ea eb p2 p3 q1 q2 ||
+	  test_inter_segment ea eb p2 p3 q2 q3 ||
+	  test_inter_segment ea eb p2 p3 q3 q4 ||
+	  test_inter_segment ea eb p2 p3 q4 q1 ||
+	  test_inter_segment ea eb p3 p4 q1 q2 ||
+	  test_inter_segment ea eb p3 p4 q2 q3 ||
+	  test_inter_segment ea eb p3 p4 q3 q4 ||
+	  test_inter_segment ea eb p3 p4 q4 q1 ||
+	  test_inter_segment ea eb p4 p1 q1 q2 ||
+	  test_inter_segment ea eb p4 p1 q2 q3 ||
+	  test_inter_segment ea eb p4 p1 q3 q4 ||
+	  test_inter_segment ea eb p4 p1 q4 q1)
       then (
 (*	  Printf.eprintf "no inter\n%!";*)
 	  acc)
