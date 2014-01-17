@@ -130,7 +130,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		       par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
 		    in up (newChildAfter acc para)) acc lines)))))]))
 
-let ocaml_dir =
+let ocaml_dir () =
   let sessid = match !Db.sessid with 
     None -> "unknown"
   | Some s -> s
@@ -151,11 +151,11 @@ let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
     | Some name ->
         let prefix = Filename.chop_extension name in
 	if Filename.check_suffix name ".ml" then
-	  ocaml_dir, name,
+	  ocaml_dir (), name,
 	  prefix^".cmo",
           prefix ^ ".byte", run, false
         else
-          ocaml_dir, name,
+          ocaml_dir (), name,
 	  prefix^".cmi",
 	  "", false, false
   in
