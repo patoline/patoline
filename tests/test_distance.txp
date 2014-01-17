@@ -427,7 +427,7 @@ let testBeta beta a = [Scope(
 
 
 \Caml(
-let beta=0.3
+let beta=0.4
 )
 
 (*
@@ -485,23 +485,22 @@ $\testBeta(0.80){{β = 0.8} > {<}}$
 
 $\testBeta(0.80){{β = 0.8} < {>}}$
 
-$\testBeta(0.00){{β = 0.0} 〈t〉 (t)}$
+$\testBeta(0.00){{β = 0.0} ⟨t⟩ (t)}$
 
-$\testBeta(0.10){{β = 0.1} 〈t〉 (t)}$
+$\testBeta(0.10){{β = 0.1} ⟨t⟩ (t)}$
 
-$\testBeta(0.20){{β = 0.2} 〈t〉 (t)}$
+$\testBeta(0.20){{β = 0.2} ⟨t⟩ (t)}$
 
-$\testBeta(0.30){{β = 0.3} 〈t〉 (t)}$
+$\testBeta(0.30){{β = 0.3} ⟨t⟩ (t)}$
 
-$\testBeta(0.40){{β = 0.4} 〈t〉 (t)}$
+$\testBeta(0.40){{β = 0.4} ⟨t⟩ (t)}$
 
-$\testBeta(0.50){{β = 0.5} 〈t〉 (t)}$
+$\testBeta(0.50){{β = 0.5} ⟨t⟩ (t)}$
 
-$\testBeta(0.60){{β = 0.6} 〈t〉 (t)}$
+$\testBeta(0.60){{β = 0.6} ⟨t⟩ (t)}$
 
-$\testBeta(0.70){{β = 0.7} 〈t〉 (t)}$
+$\testBeta(0.70){{β = 0.7} ⟨t⟩ (t)}$
 
-$\testBeta(0.80){{β = 0.8} 〈t〉 (t)}$
+$\testBeta(0.80){{β = 0.8} ⟨t⟩ (t)}$
 
-$\testBeta(0.90){{β = 0.9} 〈t〉 (t)}$
-
+$\testBeta(0.90){{β = 0.9} ⟨t⟩ (t)}$
