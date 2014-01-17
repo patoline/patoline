@@ -215,7 +215,7 @@ module Curve = struct
 
   let intersections_aux bezier1 e1 beziers2 = 
     let _,inters = List.fold_left (fun (i,inters) (bezier2_i, e2i) -> 
-      let inters_i = Bezier.intersect' bezier1 e1 bezier2_i e2i in	
+      let inters_i = Bezier.intersection bezier1 bezier2_i in	
       (succ i, inters @ (List.map (fun (t1,t2) -> (t1,(i,t2,bezier2_i))) inters_i)))
       (0,[])
       beziers2
@@ -248,10 +248,11 @@ module Curve = struct
 (*    Printf.fprintf stderr "Yoho!\n" ;  
     print_point_lists beziers1 ;  
     print_point_lists beziers2 ;  
-     Printf.fprintf stderr "Tchow!\n" ; flush stderr ;*)
+    Printf.fprintf stderr "Tchow!\n" ; flush stderr ;*)
     let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
     let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
-    let inters = (intersections beziers1 beziers2) in
+    let inters = intersections beziers1 beziers2 in
+(*    Printf.printf "Length : %d\n%!" (List.length inters);*)
     let latest = List.fold_left 
       (fun yet ((i,t,_),_) -> match yet with
 	| None -> Some (i,t)
@@ -262,9 +263,15 @@ module Curve = struct
 
 
   let earliest_intersection beziers1 beziers2 =
+(*    Printf.fprintf stderr "Yoho 2!\n" ;  
+    print_point_lists beziers1 ;  
+    print_point_lists beziers2 ;  
+    Printf.fprintf stderr "Tchow 2!\n" ; flush stderr ;*)
     let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
     let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
-    match (intersections beziers1 beziers2) with
+    let inters = intersections beziers1 beziers2 in 
+(*    Printf.printf "Length : %d\n%!" (List.length inters);*)
+    match inters with
       | [] -> None
       | ((i,t,_),_) :: _ -> Some (i,t)
 
@@ -1482,7 +1489,7 @@ Doing a rectangle.\n" ;
                                              let x=Bezier.eval (fst xa) t in
                                              let y=Bezier.eval (snd xa) t in
                                              inters:=(x,y)::(!inters)
-                                          ) (Bezier.intersect xa xb)
+                                          ) (Bezier.intersection xa xb)
                              ) !curvesb
                 ) !curvesa;
       !inters

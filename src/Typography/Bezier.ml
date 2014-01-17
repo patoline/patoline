@@ -919,3 +919,157 @@ let subdivise thick b =
   else
     b::acc
   in List.rev (fn [] b)
+
+let det x y x' y' = x *. y' -. y *. x'
+
+let thickness2 (xa,ya) =
+  let l = Array.length xa - 1 in
+  let (xv, yv) = xa.(l) -. xa.(0), ya.(l) -. ya.(0) in
+  let norm = sqrt (xv *. xv +. yv *. yv) in
+  let (xn, yn) = (-. yv /. norm, xv /. norm) in
+  let n = ref 0.0 and p = ref 0.0 in 
+  for i = 1 to l - 1 do
+    let s = ((xa.(i) -. xa.(0)) *. xn +. (ya.(i) -. ya.(0)) *. yn) in
+    if s < !n then n := s;
+    if s > !p then p := s
+  done;
+  let p1 = xa.(0) +. !n *. xn, ya.(0) +. !n *. yn in
+  let p2 = xa.(l) +. !n *. xn, ya.(l) +. !n *. yn in
+  let p3 = xa.(l) +. !p *. xn, ya.(l) +. !p *. yn in
+  let p4 = xa.(0) +. !p *. xn, ya.(0) +. !p *. yn in
+  (p1,p2,p3,p4), !p -. !n
+
+let in_rect (x0,y0) ((x1,y1),(x2,y2),_,(x4,y4)) =
+  let ux2 = x2 -. x1 and uy2 = y2 -. y1 in
+  let lambda = (ux2 *. (x0 -. x1) +. uy2 *. (y0 -. y1)) /. (ux2 *. ux2 +. uy2 *. uy2) in
+  let ux4 = x4 -. x1 and uy4 = y4 -. y1 in
+  let mu = (ux4 *. (x0 -. x1) +. uy4 *. (y0 -. y1)) /. (ux4 *. ux4 +. uy4 *. uy4) in
+  mu >= 0.0 && mu <= 1.0 && lambda >= 0.0 && lambda <= 1.0
+
+let inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
+  let vxa = xa_2 -. xa_1 and vya = ya_2 -. ya_1 in
+  let vxb = xb_2 -. xb_1 and vyb = yb_2 -. yb_1 in
+  let abx = xb_1 -. xa_1 and aby = yb_1 -. ya_1 in
+  
+      (* b_1 + lambda v_b = a_1 + mu v_a
+         det(ab_1,v_b) = mu det(v_a,v_b)
+         det(ab_1,v_a) = lambda det(v_a,v_b) *)
+  let denom = det vxa vya vxb vyb in
+(*  Printf.eprintf "va = (%f, %f), vb = (%f, %f), ab = (%f, %f), denom = %f\n%!" vxa vya vxb vyb abx aby denom;*)
+  if abs_float denom < epsilon then raise Not_found
+  else (
+    let mu = det abx aby vxb vyb /. denom in 
+    let lambda = det abx aby vxa vya /. denom in
+(*    Printf.eprintf "mu = %f, lambda = %f\n%!" mu lambda;*)
+    if mu >= -. epsilon && mu <= 1.0 +. epsilon && lambda >= -. epsilon && lambda <= 1.0 +. epsilon then
+      mu, lambda
+    else
+      raise Not_found)
+
+let test_inter_segment ?(epsilon=1e-6) (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) =
+  let vxa = xa_2 -. xa_1 and vya = ya_2 -. ya_1 in
+  let vxb = xb_2 -. xb_1 and vyb = yb_2 -. yb_1 in
+  let abx = xb_1 -. xa_1 and aby = yb_1 -. ya_1 in
+  
+      (* b_1 + lambda v_b = a_1 + mu v_a
+         det(ab_1,v_b) = mu det(v_a,v_b)
+         det(ab_1,v_a) = lambda det(v_a,v_b) *)
+  let denom = det vxa vya vxb vyb in
+  if abs_float denom < epsilon then false
+  else 
+    let mu = det abx aby vxb vyb /. denom in 
+    let lambda = det abx aby vxa vya /. denom in
+    (mu >= 0.0 && mu <= 1.0 && lambda >= 0.0 && lambda <= 1.0)
+
+
+
+let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
+  let da = Array.length xa in
+  let db = Array.length xb in
+  let epsilon2 = epsilon ** 2.0 in
+  let add (x,y as p) acc = 
+      match acc with
+	(x',y')::acc' -> if  (x' -. x) ** 2.0 +. (y' -. y) ** 2.0 < epsilon2 then acc else p::acc
+      | [] -> [p]
+  in
+  let rec fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb yb rb tb = 
+(*    Printf.printf "alpha_a = %f (%f), alpha_b = %f (%f)\n%!" alpha_a beta_a alpha_b beta_b;*)
+    let xa_1 = xa.(0) and ya_1 = ya.(0) in
+    let xa_2 = xa.(da-1) and ya_2 = ya.(da-1) in
+    
+    let xb_1 = xb.(0) and yb_1 = yb.(0) in
+    let xb_2 = xb.(db-1) and yb_2 = yb.(db-1) in
+
+    if ta < thick && tb < thick then (
+(*      Printf.eprintf "not thick\n%!";*)
+      try
+	let mu, lambda = inter_segment ~epsilon (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) (xb_2, yb_2) in
+	let r = (alpha_a +. mu *. beta_a, alpha_b +. lambda *. beta_b) in
+	add r acc
+      with Not_found -> acc)
+    else (
+(*      Printf.eprintf "thick\n%!";*)
+      let p1,p2,p3,p4 = ra in
+(*      Printf.printf "Rectangle a: (%f,%f) (%f,%f) (%f,%f) (%f,%f)\n%!"
+        (fst p1) (snd p1) (fst p2) (snd p2) (fst p3) (snd p3) (fst p4) (snd p4);*)
+      let q1,q2,q3,q4 = rb in
+(*      Printf.printf "Rectangle b: (%f,%f) (%f,%f) (%f,%f) (%f,%f)\n%!"
+	(fst q1) (snd q1) (fst q2) (snd q2) (fst q3) (snd q3) (fst q4) (snd q4);*)
+      if not (
+	  in_rect p1 rb || in_rect q1 ra ||
+	  test_inter_segment p1 p2 q1 q2 ||
+	  test_inter_segment p1 p2 q2 q3 ||
+	  test_inter_segment p1 p2 q3 q4 ||
+	  test_inter_segment p1 p2 q4 q1 ||
+	  test_inter_segment p2 p3 q1 q2 ||
+	  test_inter_segment p2 p3 q2 q3 ||
+	  test_inter_segment p2 p3 q3 q4 ||
+	  test_inter_segment p2 p3 q4 q1 ||
+	  test_inter_segment p3 p4 q1 q2 ||
+	  test_inter_segment p3 p4 q2 q3 ||
+	  test_inter_segment p3 p4 q3 q4 ||
+	  test_inter_segment p3 p4 q4 q1 ||
+	  test_inter_segment p4 p1 q1 q2 ||
+	  test_inter_segment p4 p1 q2 q3 ||
+	  test_inter_segment p4 p1 q3 q4 ||
+	  test_inter_segment p4 p1 q4 q1)
+      then (
+(*	  Printf.eprintf "no inter\n%!";*)
+	  acc)
+      else
+      let la = sqrt ((xa_2 -. xa_1) ** 2. +. (ya_2 -. ya_1) ** 2.) in
+      let lb = sqrt ((xb_2 -. xb_1) ** 2. +. (yb_2 -. yb_1) ** 2.) in
+
+	if la *. ta > lb *. tb then (
+(*	  Printf.eprintf "subdivise a\n%!";*)
+	  let (xa1,ya1 as b1) = (restrict xa 0.0 0.5, restrict ya 0.0 0.5) in
+	  let (xa2,ya2 as b2) = (restrict xa 0.5 1.0, restrict ya 0.5 1.0) in
+	  let ra1, ta1 = thickness2 b1 and ra2, ta2 = thickness2 b2 in
+	  let beta_a = beta_a /. 2. in
+	  fn (fn acc alpha_a beta_a xa1 ya1 ra1 ta1 alpha_b beta_b xb yb rb tb)
+	    (alpha_a +. beta_a) beta_a xa2 ya2 ra2 ta2 alpha_b beta_b xb yb rb tb
+	) else (
+(*	  Printf.eprintf "subdivise b\n%!";*)
+	  let (xb1,yb1 as b1) = (restrict xb 0.0 0.5, restrict yb 0.0 0.5) in
+	  let (xb2,yb2 as b2) = (restrict xb 0.5 1.0, restrict yb 0.5 1.0) in
+	  let rb1, tb1 = thickness2 b1 and rb2, tb2 = thickness2 b2 in
+	  let beta_b = beta_b /. 2. in
+	  fn (fn acc alpha_a beta_a xa ya ra ta alpha_b beta_b xb1 yb1 rb1 tb1)
+	    alpha_a beta_a xa ya ra ta (alpha_b +. beta_b) beta_b xb2 yb2 rb2 tb2
+	))
+  in
+  let ra, ta = thickness2 ba and rb, tb = thickness2 bb in
+  let r = fn [] 0.0 1.0 xa ya ra ta 0.0 1.0 xb yb rb tb in
+(*  let print_maple r r' =
+    Printf.printf "[";
+    Array.iteri (fun i x -> Printf.printf "(%f,%f)" x r'.(i)) r;
+    Printf.printf "]";
+  in
+  print_maple xa ya;
+  print_newline ();
+  print_maple xb yb;
+  print_newline ();
+  print_endline "===>";
+  List.iter (fun (x,y) -> Printf.printf "(%f,%f) " x y) r;
+  print_newline ();*)
+  r

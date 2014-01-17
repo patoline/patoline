@@ -60,6 +60,9 @@ val intersect' :
 
 val intersect :
   float array * float array -> float array * float array -> (float * float) list
+val intersection : ?epsilon:float -> ?thick:float ->
+  float array * float array -> float array * float array -> (float * float) list
+
 
 val plus :
   float array -> float array -> float array
