@@ -46,45 +46,47 @@ module Make(D:DocumentStructure)
   open MyDb
 
 type result =
-| NotTried
-| DoNotCompile
-| FailTest
 | Ok
+| FailTest
+| DoNotCompile
+| NotTried
 
 let scoreBar (module EnvDiagram : Diagrams.EnvDiagram) height width data =
   let open Diagrams in 
   let open EnvDiagram in
-  let total = List.fold_left (fun acc (_,x) -> acc + x) 0 data in
-  let ok = try List.assoc Ok data with Not_found -> 0 in
-  let nocomp = try List.assoc DoNotCompile data with Not_found -> 0 in
-  let fail = try List.assoc FailTest data with Not_found -> 0 in
-  let not = try List.assoc NotTried data with Not_found -> 0 in
-  let ok_x1 = 0.0 in
-  let ok_x2 = ok_x1 +. float ok *. width /. float total in
-  let fail_x1 = ok_x2 in
-  let fail_x2 = fail_x1 +. float fail *. width /. float total in
-  let nocomp_x1 = fail_x2 in
-  let nocomp_x2 = nocomp_x1 +. float nocomp *. width /. float total in
-  let not_x1 = nocomp_x2 in
-  let not_x2 = not_x1 +. float not *. width /. float total in
+  let total = max 1 (List.fold_left (fun acc ((_: color),x) -> acc + x) 0 data) in
+  let cur_pos = ref 0.0 in
+  let data = List.map (fun (color, x) ->
+    let x1 = !cur_pos +. float x *. width /. float total in
+    let res = (color, x, !cur_pos, x1) in
+    cur_pos := x1;
+    res) data
+  in
+
   let h2 = height /. 2. in
 
-  let _ = path Edge.([draw;fill green;noStroke]) (ok_x2, 0.0)
-    [[ok_x1, 0.0] ; [ok_x1, height] ; [ok_x2, height]] in
-  let _ = if ok * 20 >= total then ignore (node Node.([at ((ok_x2 +. ok_x1) /. 2., h2)]) [tT (string_of_int ok)]) in
+  List.iter (fun ((col:color), x, x0, x1) ->
+    let _ = path Edge.([draw;fill (col:color);noStroke]) (x0, 0.0)
+      [[x1, 0.0] ; [x1, height] ; [x0, height]] in
+    let text = [tT (string_of_int x)] in
+    let text_box = Document.draw_boxes env (boxify_scoped env text) in
+    let (x0',_,x1',_) = bounding_box_full text_box in
+    if x1' -. x0' < 1.75 *. (x1 -. x0) then ignore (node Node.([at ((x0 +. x1) /. 2., h2); outerSep 0.0; innerSep 0.0]) text)
+  )
+    data
 
-  let _ = path Edge.([draw;fill yellow;noStroke]) (fail_x1, 0.0)
-    [[fail_x2, 0.0] ; [fail_x2, height] ; [fail_x1, height]] in
-  let _ = if fail * 20 >= total then ignore (node Node.([at ((fail_x2 +. fail_x1) /. 2., h2)]) [tT (string_of_int fail)]) in
-
-  let _ = path Edge.([draw;fill red;noStroke]) (nocomp_x1, 0.0)
-    [[nocomp_x2, 0.0] ; [nocomp_x2, height] ; [nocomp_x1, height]] in
-  let _ = if nocomp * 20 >= total then ignore (node Node.([at ((nocomp_x2 +. nocomp_x1) /. 2., h2)]) [tT (string_of_int nocomp)]) in
-
-  let _ = path Edge.([draw;fill grey;noStroke]) (not_x1, 0.0)
-    [[not_x2, 0.0] ; [not_x2, height] ; [not_x1, height]] in
-  let _ = if not * 20 >= total then ignore (node Node.([at ((not_x2 +. not_x1) /. 2., h2)]) [tT (string_of_int not)]) in
-  ()
+let scoreBarProg (module EnvDiagram : Diagrams.EnvDiagram) height width data =
+  let data = List.sort (fun (x,_) (x',_) -> compare x x') data in
+  let data = List.map (fun
+    (x,n) -> 
+      let color = match x with
+	  Ok -> green
+	| FailTest -> yellow
+        | DoNotCompile -> red
+	| _ -> grey
+      in (color, n)) data
+  in
+  scoreBar (module EnvDiagram : Diagrams.EnvDiagram) height width data
 
 let ascii = 
   let str = String.make (2*(128-32)) ' ' in
@@ -258,37 +260,41 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   if err <> "" then (writeR FailTest; err) else 
   (writeR Ok; if out <> "" then out else "No error and no output")
 
-let score table sample display exo =
-  let exo' = exo ^"_results" in
-  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' GROUP BY `value`" table exo' in
+let distribution table key =
+  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' GROUP BY `value`" table key in
   let sql' = Printf.sprintf "SELECT COUNT(`sessid`) FROM `%s`" table in
 
-  dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
-    let mysql_db = match db.db () with
+  let mysql_db = match db.db () with
       MysqlDb db -> db(* | _ -> assert false*) in
-    let f = function None -> "" | Some s -> s in
-    let f' = function None -> 0 | Some s -> int_of_string s in
-    let r = Mysql.exec mysql_db sql' in
-    let total =
-     match Mysql.fetch r with 
-          None -> 0
-        | Some row -> f' row.(0)
-    in
-    let r = Mysql.exec mysql_db sql in
-    let scores =
-      let l = ref [] in
-      try while true do
+  let f = function None -> "" | Some s -> s in
+  let f' = function None -> 0 | Some s -> int_of_string s in
+  let r = Mysql.exec mysql_db sql' in
+  let total =
+    match Mysql.fetch r with 
+      None -> 0
+    | Some row -> f' row.(0)
+  in
+  let r = Mysql.exec mysql_db sql in
+  let scores =
+    let l = ref [] in
+    try while true do
         match Mysql.fetch r with 
           None -> raise Exit
         | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f' row.(1))::!l
       done; []
-      with Exit -> !l
-    in 
+    with Exit -> !l
+  in 
+  total, scores
+
+let score table sample display exo =
+  let exo' = exo ^"_results" in
+
+  dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
+    let total, scores = distribution table exo' in
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
-    let good = try List.assoc Ok scores with Not_found -> 0 in
-    let compile = try List.assoc FailTest scores with Not_found -> 0 in
-    let bad = try List.assoc DoNotCompile scores with Not_found -> 0 in
+    let total' = List.fold_left (fun acc (_,n) -> acc + n) 0 scores in
+    let scores = (NotTried,total - total') :: scores in
  
-    display good compile bad total)
+    display scores)
 end
 

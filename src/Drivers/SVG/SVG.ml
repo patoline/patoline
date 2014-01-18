@@ -382,7 +382,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	  Rbuffer.contents buf
 	in
 	let d = { d with dyn_contents = contents; dyn_sample = "" } in
-	Hashtbl.add h d.dyn_label d
+	Hashtbl.add h d.dyn_label (d, ref None)
       );
 
     | Animation a ->

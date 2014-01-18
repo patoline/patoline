@@ -245,13 +245,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   Array.iteri (fun slide tbl ->
     Array.iteri (fun state h ->
-      Hashtbl.iter (fun label d ->
+      Hashtbl.iter (fun label dyn ->
 	try
-	  let _, old = Hashtbl.find dynTable label in
-	  Hashtbl.replace dynTable label (d, ((slide,state)::old))
+	  let old = Hashtbl.find dynTable label in
+	  Hashtbl.replace dynTable label (((slide,state),dyn)::old)
 	with
 	  Not_found ->
-	    Hashtbl.add dynTable label (d, [slide,state]))
+	    Hashtbl.add dynTable label [(slide,state),dyn])
 	h)
       tbl)
     dynCache;
@@ -673,17 +673,27 @@ function gotoSlide(n){
   let page = Rbuffer.contents page in
   let css = Rbuffer.contents css in
 
+  let output_cache out i j =
+    Hashtbl.iter (fun k (d, ptr) ->
+      try 
+	let c = match !ptr with
+	    Some c -> Printf.eprintf "From cache\n%!";  c 
+	  | None -> let c = d.dyn_contents () in ptr := Some c; c
+	in
+	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label c) 
+      with e -> 
+	let e = Printexc.to_string e in
+	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
+	Printexc.print_backtrace stderr;
+	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label e)
+    ) dynCache.(i).(j)
+  in
+
   let build_svg i j =
     let prefix,suffix = slides.(i).(j) in
     let buf = Rbuffer.create 256 in
     Rbuffer.add_string buf prefix;
-    Hashtbl.iter (fun k d ->
-      try Rbuffer.add_string buf (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
-      with e -> 
-	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
-	Printexc.print_backtrace stderr;
-	Rbuffer.add_string buf (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (Printexc.to_string e))
-    ) dynCache.(i).(j);
+    output_cache buf i j;
     Rbuffer.add_string buf suffix;
     Rbuffer.contents buf
   in
@@ -717,7 +727,9 @@ function gotoSlide(n){
   let affected slide state dest =
     List.fold_left (fun acc label ->
       try
-	acc || List.mem (slide,state) (snd (Hashtbl.find dynTable label))
+	let l = Hashtbl.find dynTable label in
+	List.iter (fun ((i,j),(d,ptr)) -> ptr := None) l;
+	acc || List.mem_assoc (slide,state) l
       with Not_found -> acc) false dest
   in
 
@@ -766,12 +778,7 @@ function gotoSlide(n){
       try
 	let prefix,suffix = slides.(i).(j) in
 	let dyns = Rbuffer.create 256 in
-	Hashtbl.iter (fun k d ->
-	  try Rbuffer.add_string dyns (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label (d.dyn_contents ())) 
-	  with e -> 
-	    Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" (Printexc.to_string e) d.dyn_label;
-	    Printexc.print_backtrace stderr
-	) dynCache.(i).(j);
+	output_cache dyns i j;
 	let dyns = Rbuffer.contents dyns in
 	Printf.eprintf "start sent image/svg+xml %d %s\n%!" num sessid;
 	http_send 200 "image/svg+xml" [prefix; dyns; suffix] ouc;
@@ -825,12 +832,14 @@ function gotoSlide(n){
       let priv, pub =
 	List.fold_left (fun (priv,pub as acc) ds ->
 	  try
-	    let d, _ = Hashtbl.find dynTable ds in
-	    let res = d.dyn_react ev in
-	    match res with
-	      Unchanged -> acc
-	    | Private -> (ds::priv), pub
-	    | Public ->  (ds::priv), (ds::pub)
+	    let l = Hashtbl.find dynTable ds in
+	    List.fold_left  (fun (priv,pub as acc) (_,(d,_)) ->
+	      let res = d.dyn_react ev in
+	      match res with
+		Unchanged -> acc
+	      | Private -> (ds::priv), pub
+	      | Public ->  (ds::priv), (ds::pub))
+	      acc l
 	  with
 	    Not_found -> 
 	      Printf.eprintf "Warning: dynamic not found: %s\n%!" ds;
