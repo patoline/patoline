@@ -54,10 +54,10 @@ let _= Build.macros:=
   StrMap.add "diagram" (fun x->
     "[bB (fun env -> \n" ^
       "let module Res = struct\n "^
-      "module Lib = Env_Diagram (struct let env = env end) \n open Lib \n"^
+      "module EnvDiagram = Env_Diagram (struct let env = env end) \n open EnvDiagram \n"^
       x^
       "\n end \n"^ 
-      "in [ Drawing (Res.Lib.make ()) ])]\n")
+      "in [ Drawing (Res.EnvDiagram.make ()) ])]\n")
   (StrMap.add "genumerate_item" (fun s->
     let pos = StrRegexp.search_forward (StrRegexp.regexp "&\\([1iIaA]\\)") s 0 in
     (* let c = String.make 1 s.[pos+1] in *)

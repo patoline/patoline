@@ -10,17 +10,6 @@ module type ModDb = sig
   val base_dir : string
 end
 
-module Make(D:DocumentStructure)
- (Format:module type of DefaultFormat.Format(D) 
-   (* a strange way to remove Output from the
-      signature to allow Format to change the
-      Output functor *)
-   with module Output := DefaultFormat.Format(D).Output)
- (MyDb:ModDb) = struct
-
-  open Format
-  open MyDb
-
 let strip s =
   let len = String.length s in
   let i = ref 0 in
@@ -42,13 +31,60 @@ let read_file file =
   close_in ch;
   res
 
+
+let arrow = tT ">>" :: hspace(1.0) 
+
+module Make(D:DocumentStructure)
+ (Format:module type of DefaultFormat.Format(D) 
+   (* a strange way to remove Output from the
+      signature to allow Format to change the
+      Output functor *)
+   with module Output := DefaultFormat.Format(D).Output)
+ (MyDb:ModDb) = struct
+
+  open Format
+  open MyDb
+
 type result =
 | NotTried
 | DoNotCompile
 | FailTest
 | Ok
 
-let arrow = tT ">>" :: hspace(1.0) 
+let scoreBar (module EnvDiagram : Diagrams.EnvDiagram) height width data =
+  let open Diagrams in 
+  let open EnvDiagram in
+  let total = List.fold_left (fun acc (_,x) -> acc + x) 0 data in
+  let ok = try List.assoc Ok data with Not_found -> 0 in
+  let nocomp = try List.assoc DoNotCompile data with Not_found -> 0 in
+  let fail = try List.assoc FailTest data with Not_found -> 0 in
+  let not = try List.assoc NotTried data with Not_found -> 0 in
+  let ok_x1 = 0.0 in
+  let ok_x2 = ok_x1 +. float ok *. width /. float total in
+  let fail_x1 = ok_x2 in
+  let fail_x2 = fail_x1 +. float fail *. width /. float total in
+  let nocomp_x1 = fail_x2 in
+  let nocomp_x2 = nocomp_x1 +. float nocomp *. width /. float total in
+  let not_x1 = nocomp_x2 in
+  let not_x2 = not_x1 +. float not *. width /. float total in
+  let h2 = height /. 2. in
+
+  let _ = path Edge.([draw;fill green;noStroke]) (ok_x2, 0.0)
+    [[ok_x1, 0.0] ; [ok_x1, height] ; [ok_x2, height]] in
+  let _ = if ok * 20 >= total then ignore (node Node.([at ((ok_x2 +. ok_x1) /. 2., h2)]) [tT (string_of_int ok)]) in
+
+  let _ = path Edge.([draw;fill yellow;noStroke]) (fail_x1, 0.0)
+    [[fail_x2, 0.0] ; [fail_x2, height] ; [fail_x1, height]] in
+  let _ = if fail * 20 >= total then ignore (node Node.([at ((fail_x2 +. fail_x1) /. 2., h2)]) [tT (string_of_int fail)]) in
+
+  let _ = path Edge.([draw;fill red;noStroke]) (nocomp_x1, 0.0)
+    [[nocomp_x2, 0.0] ; [nocomp_x2, height] ; [nocomp_x1, height]] in
+  let _ = if nocomp * 20 >= total then ignore (node Node.([at ((nocomp_x2 +. nocomp_x1) /. 2., h2)]) [tT (string_of_int nocomp)]) in
+
+  let _ = path Edge.([draw;fill grey;noStroke]) (not_x1, 0.0)
+    [[not_x2, 0.0] ; [not_x2, height] ; [not_x1, height]] in
+  let _ = if not * 20 >= total then ignore (node Node.([at ((not_x2 +. not_x1) /. 2., h2)]) [tT (string_of_int not)]) in
+  ()
 
 let ascii = 
   let str = String.make (2*(128-32)) ' ' in
@@ -56,7 +92,6 @@ let ascii =
     str.[2*(i-32)] <- Char.chr i
   done;
   [Scoped(verbEnv, [tT str] @ bold [tT str])]
-
 
 let editableText ?(global=false) ?(empty_case="Type in here")
       ?(min_line=5) ?(init_text="") ?(lang=lang_default)
@@ -168,7 +203,7 @@ let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
   let tmpfile2 = Filename.temp_file "demo" ".txt" in
   let tmpfile3 = Filename.temp_file "demo" ".txt" in
   let cmd = Printf.sprintf "cd %s; ocamlbuild -quiet %s >%s" dir target tmpfile3 in
-  Printf.eprintf "running: %s\n%!" cmd;
+(*  Printf.eprintf "running: %s\n%!" cmd;*)
   let _ = Sys.command cmd in
   let err = read_file tmpfile3 in
   let err = 
@@ -183,9 +218,9 @@ let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
       err, "" ) else (
     let cmd = Printf.sprintf "cd %s; ocamlbuild -quiet %s" dir exec in
     let _ = Sys.command cmd in
-    Printf.eprintf "running: %s\n%!" cmd;
+(*    Printf.eprintf "running: %s\n%!" cmd;*)
     let cmd = Printf.sprintf "cd %s; ulimit -t 5; ./%s 2>%s >%s" dir exec tmpfile3 tmpfile2 in
-    Printf.eprintf "running: %s\n%!" cmd;
+(*    Printf.eprintf "running: %s\n%!" cmd;*)
     let _ = Sys.command cmd in
     let err = read_file tmpfile3 in
     if err <> "" then writeR FailTest else writeR Ok;
@@ -223,16 +258,23 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   if err <> "" then (writeR FailTest; err) else 
   (writeR Ok; if out <> "" then out else "No error and no output")
 
-let score sample display exo =
+let score table sample display exo =
   let exo' = exo ^"_results" in
-  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `info421` WHERE `key` = '%s' GROUP BY `value`" exo' in
+  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' GROUP BY `value`" table exo' in
+  let sql' = Printf.sprintf "SELECT COUNT(`sessid`) FROM `%s`" table in
 
   dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
     let mysql_db = match db.db () with
       MysqlDb db -> db(* | _ -> assert false*) in
-    let r = Mysql.exec mysql_db sql in
     let f = function None -> "" | Some s -> s in
     let f' = function None -> 0 | Some s -> int_of_string s in
+    let r = Mysql.exec mysql_db sql' in
+    let total =
+     match Mysql.fetch r with 
+          None -> 0
+        | Some row -> f' row.(0)
+    in
+    let r = Mysql.exec mysql_db sql in
     let scores =
       let l = ref [] in
       try while true do
@@ -243,7 +285,6 @@ let score sample display exo =
       with Exit -> !l
     in 
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
-    let total = List.fold_left (fun acc (_,n) -> n + acc) 0 scores in
     let good = try List.assoc Ok scores with Not_found -> 0 in
     let compile = try List.assoc FailTest scores with Not_found -> 0 in
     let bad = try List.assoc DoNotCompile scores with Not_found -> 0 in

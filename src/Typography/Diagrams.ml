@@ -2265,13 +2265,17 @@ Doing a rectangle.\n" ;
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
 
-      let fill = 
+      let fill c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some black }})}
+	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some c }})}
 
       let color c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
+
+      let noStroke = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with strokingColor = None }})}
 
       let black = color black 
 
@@ -2863,3 +2867,6 @@ Doing a rectangle.\n" ;
     let xot = xarrow ~decoration:(fun env ms ->
       let e = Edge.(make [draw;lineWidth 0.1;arrow] ms.(0).(1) ms.(0).(0)) in
       [Edge e], default_where ms)
+
+(* not so dirty if "module type of" does not run any code *)
+module type EnvDiagram = module type of Env_Diagram (struct let env = Obj.magic 0 end)
