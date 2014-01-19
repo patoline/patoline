@@ -261,9 +261,13 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   if err <> "" then (writeR FailTest; err) else 
   (writeR Ok; if out <> "" then out else "No error and no output")
 
-let distribution table key =
-  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' GROUP BY `value`" table key in
-  let sql' = Printf.sprintf "SELECT COUNT(`sessid`) FROM `%s`" table in
+let distribution ?group table key =
+  let group = match group with
+      None -> ""
+    | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
+  in
+  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`" table key group in
+  let sql' = Printf.sprintf "SELECT COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' %s" table key group in
 
   let mysql_db = match db.db () with
       MysqlDb db -> db(* | _ -> assert false*) in
@@ -287,11 +291,11 @@ let distribution table key =
   in 
   total, scores
 
-let score table sample display exo =
+let score ?group table sample display exo =
   let exo' = exo ^"_results" in
 
   dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
-    let total, scores = distribution table exo' in
+    let total, scores = distribution ?group table exo' in
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
     let total' = List.fold_left (fun acc (_,n) -> acc + n) 0 scores in
     let scores = (NotTried,total - total') :: scores in
