@@ -50,21 +50,21 @@ open Interactive
 \begin{slide}
 \begin{itemize}
 
-\Caml(let read_count, write_count = db.create_data ~global:true "count" 0)
+\Caml(let count = db.create_data ~global:true "count" 0)
 \item \button("test")(["cible"]){Un bouton} qui a été cliqué
 \dynamic("cible")(function ev ->
   	  (match ev with 
-	     Click "test"-> let c = read_count () + 1 in write_count c; Public 
+	     Click "test"-> let c = count.read () + 1 in count.write c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(let c = read_count () in [tT (string_of_int c)]) fois !>>)
+	   fun () -> <<\caml(let c = count.read () in [tT (string_of_int c)]) fois !>>)
 
-\Caml(let read_count2, write_count2 = db.create_data ~global:false "count2" 0)
+\Caml(let count2 = db.create_data ~global:false "count2" 0)
 \item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
 \dynamic("cible2")(function ev ->
   	  (match ev with 
-	     Click "test"-> let c = read_count2 () + 1 in write_count2 c; Public 
+	     Click "test"-> let c = count2.read () + 1 in count2.write c; Public 
            | _ -> Unchanged)){0123456789 fois}(
-	   fun () -> <<\caml(let c = read_count2 () in [tT (string_of_int c)]) fois !>>)
+	   fun () -> <<\caml(let c = count2.read () in [tT (string_of_int c)]) fois !>>)
 
 \item Chercher la différence entre ces deux boutons ! indication~: ouvrez deux fois la présentation.
 
@@ -72,20 +72,20 @@ open Interactive
 
 \begin{center}
 \Caml(
-let readA, writeA = db.create_data ~global:false "Apos" (10.0,10.0)
-let readB, writeB = db.create_data ~global:false "Bpos" (-10.0,-10.0)
-let readC, writeC = db.create_data ~global:false "Cpos" (10.0,-10.0)
+let aPos = db.create_data ~global:false "Apos" (10.0,10.0)
+let bPos = db.create_data ~global:false "Bpos" (-10.0,-10.0)
+let cPos = db.create_data ~global:false "Cpos" (10.0,-10.0)
 )
 \dynamic("figure")(
 	function ev ->
   	  (match ev with
-	   | Drag("a",p) -> writeA Vector.(p + readA ()); Private
-	   | Drag("b",p) -> writeB Vector.(p + readB ()); Private
-	   | Drag("c",p) -> writeC Vector.(p + readC ()); Private
+	   | Drag("a",p) -> aPos.write Vector.(p + aPos.read ()); Private
+	   | Drag("b",p) -> bPos.write Vector.(p + bPos.read ()); Private
+	   | Drag("c",p) -> cPos.write Vector.(p + cPos.read ()); Private
 	   | _ -> Unchanged))([])(fun () -> <<
 \diagram(
  let frame = Node.(node [at (0.,0.);rectangle env;draw; color (mix 0.5 white blue); innerSep 20.] [])
- let apos = readA () and bpos = readB () and cpos = readC ()
+ let apos = aPos.read () and bpos = bPos.read () and cpos = cPos.read ()
  let av = Vector.(scal_mul 3. (normalise (apos - bpos + apos - cpos)))
  let bv = Vector.(scal_mul 3. (normalise (bpos - cpos + bpos - apos)))
  let cv = Vector.(scal_mul 3. (normalise (cpos - apos + cpos - bpos)))
@@ -115,13 +115,13 @@ type sondage =
 | No_opinion
 | No_answer
 
-let readSonde, writeSonde = db.create_data ~global:false "sondage" No_answer
+let sonde = db.create_data ~global:false "sondage" No_answer
 
 let box name s =
  dynamic name
  (function ev -> Private) 
  (<<$X$ $O$>>)
- (fun () -> if readSonde () = s then (<<$X$>>) else (<<$O$>>))
+ (fun () -> if sonde.read () = s then (<<$X$>>) else (<<$O$>>))
 )
 
 \begin{slide}
@@ -151,38 +151,25 @@ let box name s =
 
 \begin{dynamic}("Sondage")(
  function
-   Click("Null") -> writeSonde Null; Public
- | Click("Fun_but") -> writeSonde Fun_but; Public
- | Click("Fun_yes") -> writeSonde Fun_yes; Public
- | Click("No_opinion") -> writeSonde No_opinion; Public
+   Click("Null") -> sonde.write Null; Public
+ | Click("Fun_but") -> sonde.write Fun_but; Public
+ | Click("Fun_yes") -> sonde.write Fun_yes; Public
+ | Click("No_opinion") -> sonde.write No_opinion; Public
  | _ -> Unchanged)([])
 
 \Caml(
 let result = ref []
-let update () = 
- let mysql_db = match db.db () with
-  MysqlDb db -> db(* | _ -> assert false*) in
-let sql = "SELECT `value`,COUNT(`sessid`) FROM `demo` WHERE `key` = 'sondage' GROUP BY `value`" in
-let r = Mysql.exec mysql_db sql in
-let f = function None -> "" | Some s -> s in
-result :=  
-  let l = ref [] in
-  try while true do
-    match Mysql.fetch r with 
-      None -> raise Exit
-    | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f row.(1))::!l
-  done; []
-  with Exit -> !l
+let update () = result := snd (sonde.distribution ())
 )
 
 \begin{itemize}
-\item Null~: \caml([C (fun env -> update (); let n = try List.assoc Null !result with Not_found -> "0" in [tT n])])
+\item Null~: \caml([C (fun env -> update (); let n = try List.assoc Null !result with Not_found -> 0 in [tT (string_of_int n)])])
 
-\item Fun but~: \caml([C (fun env -> let n = try List.assoc Fun_but !result with Not_found -> "0" in [tT n])])
+\item Fun but~: \caml([C (fun env -> let n = try List.assoc Fun_but !result with Not_found -> 0 in [tT (string_of_int n)])])
 
-\item Fun yes~: \caml([C (fun env -> let n = try List.assoc Fun_yes !result with Not_found -> "0" in [tT n])])
+\item Fun yes~: \caml([C (fun env -> let n = try List.assoc Fun_yes !result with Not_found -> 0 in [tT (string_of_int n)])])
 
-\item No opinion~: \caml([C (fun env -> let n = try List.assoc No_opinion !result with Not_found -> "0" in [tT n])])
+\item No opinion~: \caml([C (fun env -> let n = try List.assoc No_opinion !result with Not_found -> 0 in [tT (string_of_int n)])])
 \end{itemize}
 \end{dynamic}
 \end{slide}

@@ -41,9 +41,18 @@ type database =
 (*| SqliteDb of ...*)
 #endif
 
+type 'a data = {
+  read : unit -> 'a;
+  write : 'a -> unit;
+  reset : unit -> unit;
+  distribution : ?group:string -> unit -> int * ('a * int) list;
+  (* the first int is a grand total of everybody (in the group, if given), even those having no
+     value for this specific data. total is 1 even if it should be 0 !!! *)
+}
+
 type db = {
   db : unit -> database;
-  create_data : 'a.( ?global:bool -> string -> 'a -> (unit -> 'a) * ('a -> unit));
+  create_data : 'a.( ?global:bool -> string -> 'a -> 'a data);
 }
 
 let interaction_start_hook = ref ([]: (unit -> unit) list)
@@ -55,6 +64,7 @@ let secret = ref ""
 let init_db table_name db_info = 
   match db_info with
   | Memory -> 
+    let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       create_data = fun ?(global=false) name vinit ->
 	let table = Hashtbl.create 1001 in
@@ -62,8 +72,28 @@ let init_db table_name db_info =
 	let read = fun () ->
 	  try Hashtbl.find table (sessid ()) with Exit | Not_found -> vinit in
 	let write = fun v ->
-	  try Hashtbl.add table (sessid ()) v with Exit -> () in
-	(read, write);
+	  try
+	    let s, g as sessid = sessid () in
+	    let old = try Hashtbl.find total_table g with Not_found -> [] in
+	    if not (List.mem s old) then Hashtbl.add total_table g (s::old);
+	    Hashtbl.add table sessid v
+	  with Exit -> ()
+	in
+	let reset () =  Hashtbl.remove table (sessid ()) in
+	let distribution ?group () =
+	  let total = match group with 
+	    | None ->
+	      Hashtbl.fold (fun k l acc -> acc + List.length l) total_table 0
+	    | Some g -> 
+	      try List.length (Hashtbl.find total_table g) with Not_found -> 1
+	  in
+	  let res = Hashtbl.create 101 in
+	  Hashtbl.iter (fun k v ->
+	    let old = try Hashtbl.find res v with Not_found -> 0 in
+	    Hashtbl.add res v (old + 1)) table;
+	  total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
+	in
+	{read; write; reset; distribution};
     }
 
 #ifdef MYSQL
@@ -154,8 +184,50 @@ let init_db table_name db_info =
             | None -> () 
             | Some err -> Printf.eprintf "DB Error: %s\n%!" err
 	  with Exit -> ()
-	in 
-	read, write}
+	in
+	let reset () =
+	  try
+	    let sessid, groupid = init () in
+            let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
+	      table_name name sessid groupid in
+	    let _r = exec (db ()) sql in
+	    ()
+	  with Exit -> ()
+	in
+	let distribution ?group () =
+	  try
+	    let _ = init () in
+	    let group, agroup = match group with
+		None -> "", ""
+	      | Some g -> Printf.sprintf "WHERE `groupid` = '%s' " g, Printf.sprintf "AND `groupid` = '%s' " g
+	    in
+	    let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
+	      table_name name agroup in
+	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table_name group in
+	    Printf.eprintf "total: %s\n%!" sql';
+	    
+	    let f = function None -> "" | Some s -> s in
+	    let f' = function None -> 0 | Some s -> int_of_string s in
+	    let r = Mysql.exec (db ()) sql' in
+	    let total =
+	      match Mysql.fetch r with 
+		None -> 0
+	      | Some row -> f' row.(0)
+	    in
+	    let r = Mysql.exec (db ()) sql in
+	    let scores =
+	      let l = ref [] in
+	      try while true do
+		  match Mysql.fetch r with 
+		    None -> raise Exit
+		  | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f' row.(1))::!l
+		done; []
+	      with Exit -> !l
+	    in 
+	    total, scores
+	  with Exit -> 0, []
+	in
+	{read; write; reset; distribution}}
 #endif
 
 let make_sessid () = 

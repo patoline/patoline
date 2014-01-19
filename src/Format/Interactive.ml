@@ -102,16 +102,16 @@ let editableText ?(global=false) ?(empty_case="Type in here")
     let name' = name^"_target" in
     let name'' = name^"_target2" in
 
-    let readT, writeT = db.create_data ~global name init_text in
+    let data = db.create_data ~global name init_text in
 
     let update () =
-      let s = readT() in
+      let s = data.read() in
       let s' = if s = "" then empty_case else s in
       s, Util.split '\n' s'
     in
 
     dynamic name'
-      (function Edit(n, t) when name = n -> writeT t; Private 
+      (function Edit(n, t) when name = n -> data.write t; Private 
       | _ -> Unchanged)
       ascii 	  
       (fun () ->
@@ -149,13 +149,13 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		   in		
 		  let lines = match extra with None -> []
 		  | Some f ->
-  		      let readR, writeR = db.create_data ~global (name^"_results") NotTried in
+  		      let dataR = db.create_data ~global (name^"_results") NotTried in
 		      let writeR = if s <> init_text then
-                        writeR
+                        dataR.write
                       else
-                        fun _ -> writeR NotTried
+                        fun _ -> dataR.write NotTried
                       in
-		      Util.split '\n' (f writeR (readT()))
+		      Util.split '\n' (f writeR (data.read()))
 		  in
        		  (List.fold_left (fun acc line ->
 		    let para=Paragraph
@@ -261,43 +261,9 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   if err <> "" then (writeR FailTest; err) else 
   (writeR Ok; if out <> "" then out else "No error and no output")
 
-#ifdef MYSQL
-let distribution ?group table key =
-  let group, agroup = match group with
-      None -> "", ""
-    | Some g -> Printf.sprintf "WHERE `groupid` = '%s' " g, Printf.sprintf "AND `groupid` = '%s' " g
-  in
-  let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`" table key agroup in
-  let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table group in
-  Printf.eprintf "total: %s\n%!" sql';
-
-  let mysql_db = match db.db () with
-      MysqlDb db -> db(* | _ -> assert false*) in
-  let f = function None -> "" | Some s -> s in
-  let f' = function None -> 0 | Some s -> int_of_string s in
-  let r = Mysql.exec mysql_db sql' in
-  let total =
-    match Mysql.fetch r with 
-      None -> 0
-    | Some row -> f' row.(0)
-  in
-  let r = Mysql.exec mysql_db sql in
-  let scores =
-    let l = ref [] in
-    try while true do
-        match Mysql.fetch r with 
-          None -> raise Exit
-        | Some row -> l := (Marshal.from_string (base64_decode (f row.(0))) 0, f' row.(1))::!l
-      done; []
-    with Exit -> !l
-  in 
-  total, scores
-
-let score ?group table sample display exo =
-  let exo' = exo ^"_results" in
-
+let score ?group data sample display exo =
   dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
-    let total, scores = distribution ?group:(match group with None -> None | Some g -> Some (g ())) table exo' in
+    let total, scores = data.distribution ?group:(match group with None -> None | Some g -> Some (g ())) () in
     let total = max 1 total in
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
     let total' = List.fold_left (fun acc (_,n) -> acc + n) 0 scores in
@@ -305,4 +271,4 @@ let score ?group table sample display exo =
  
     display scores)
 end
-#endif
+
