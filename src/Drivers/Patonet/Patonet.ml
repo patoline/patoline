@@ -747,10 +747,10 @@ function gotoSlide(n){
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
     (match sessid with
       Some (sessid, groupid) -> 
-	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" (base64_encode sessid);
-	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" (base64_encode sessid);
-	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" (base64_encode groupid);
-	Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" (base64_encode groupid);
+	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
+	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" groupid;
+	Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" groupid;
     | None -> ());
     output_string ouc "\r\n";
     List.iter (output_string ouc) datas;
@@ -1076,7 +1076,7 @@ function gotoSlide(n){
 	      [key;v] -> (key,v)::acc
 	    | _ -> acc) [] ls
 	  in
-	  (try sessid := Some (base64_decode (List.assoc "SESSID" ls), base64_decode (List.assoc "GROUPID" ls))
+	  (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls)
 	   with Not_found -> ());
           process_req master get hdr reste)
 	else
