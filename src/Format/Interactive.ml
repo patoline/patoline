@@ -296,6 +296,7 @@ let score ?group table sample display exo =
 
   dynamic (exo^"_target2")  (fun _ -> Public) sample (fun () ->
     let total, scores = distribution ?group:(match group with None -> None | Some g -> Some (g ())) table exo' in
+    let total = max 1 total in
     let scores = List.filter (fun (x,_) -> x <> NotTried) scores in
     let total' = List.fold_left (fun acc (_,n) -> acc + n) 0 scores in
     let scores = (NotTried,total - total') :: scores in
