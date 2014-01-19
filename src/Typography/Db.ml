@@ -24,9 +24,12 @@ open Mysql
 type dbinfo =
   Mysql of db
 | Sqlite of string
+| Memory
 
 type database =
-  MysqlDb of dbd
+| MemoryDb
+| MysqlDb of dbd
+
 (*| SqliteDb of ...*)
 
 type db = {
@@ -42,12 +45,28 @@ let secret = ref ""
 
 let init_db table_name db_info = 
   match db_info with
-    Sqlite filename -> 
+  | Memory -> 
+    let table = Hashtbl.create 1001 in
+    let created = Hashtbl.create 1001 in
+    { db = (fun () -> MemoryDb);
+      create_data = fun ?(global=false) name vinit ->
+	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+	Hashtbl.add created name ();
+	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
+	let read = fun () ->
+	  try Obj.obj (Hashtbl.find table (name, sessid ())) with Exit | Not_found -> vinit in
+	let write = fun v ->
+	  try Hashtbl.add table (name, sessid ()) (Obj.repr v) with Exit -> () in
+	(read, write);
+    }
+
+  | Sqlite filename -> 
       (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *) 
       Printf.eprintf "Sqlite support not yet implemented\n";
       exit 1
   | Mysql db_info ->
     let dbptr = ref None in
+    let created = Hashtbl.create 1001 in
     
     let db () = 
       match !dbptr with
@@ -69,6 +88,8 @@ let init_db table_name db_info =
 
     { db = (fun () -> MysqlDb (db ()));
       create_data = fun ?(global=false) name vinit ->
+	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+	Hashtbl.add created name ();
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
 	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
