@@ -9,8 +9,7 @@ open Typography.Db
 open DefaultFormat
 
 let caml x = x
-
-
+(*
 let db_info = Mysql Mysql.(
     { defaults with
       dbhost = Some "localhost";
@@ -19,6 +18,8 @@ let db_info = Mysql Mysql.(
       dbuser = Some "patonet";})
 
 let db = init_db "demo" db_info
+*)
+let db = init_db "demo" Memory
 
 module MyDb = struct 
   let db = db
@@ -57,7 +58,7 @@ open Interactive
            | _ -> Unchanged)){0123456789 fois}(
 	   fun () -> <<\caml(let c = read_count () in [tT (string_of_int c)]) fois !>>)
 
-\Caml(let read_count2, write_count2 = db.create_data ~global:false "count" 0)
+\Caml(let read_count2, write_count2 = db.create_data ~global:false "count2" 0)
 \item \button("test")(["cible2"]){Un autre bouton} qui a été cliqué
 \dynamic("cible2")(function ev ->
   	  (match ev with 

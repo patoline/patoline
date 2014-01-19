@@ -55,17 +55,14 @@ let secret = ref ""
 let init_db table_name db_info = 
   match db_info with
   | Memory -> 
-    let table = Hashtbl.create 1001 in
-    let created = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
       create_data = fun ?(global=false) name vinit ->
-	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
-	Hashtbl.add created name ();
+	let table = Hashtbl.create 1001 in
 	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
 	let read = fun () ->
-	  try Obj.obj (Hashtbl.find table (name, sessid ())) with Exit | Not_found -> vinit in
+	  try Hashtbl.find table (sessid ()) with Exit | Not_found -> vinit in
 	let write = fun v ->
-	  try Hashtbl.add table (name, sessid ()) (Obj.repr v) with Exit -> () in
+	  try Hashtbl.add table (sessid ()) v with Exit -> () in
 	(read, write);
     }
 
@@ -76,7 +73,12 @@ let init_db table_name db_info =
       exit 1
   | Mysql db_info ->
     let dbptr = ref None in
-    let created = Hashtbl.create 1001 in
+(* FIXME : how to test that data are created only once ?
+   at the moment create_data is called more that once in create_data occur under dynamic contents therefore
+   the 3 commented lines below report wrongly allready created data.
+   But not testing duplicate could lead to segfault, if type differs (due to marshalling) ...
+*)
+(*    let created = Hashtbl.create 1001 in*)
     
     let db () = 
       match !dbptr with
@@ -98,8 +100,8 @@ let init_db table_name db_info =
 
     { db = (fun () -> MysqlDb (db ()));
       create_data = fun ?(global=false) name vinit ->
-	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
-	Hashtbl.add created name ();
+(*	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+	Hashtbl.add created name ();*)
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
 	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
