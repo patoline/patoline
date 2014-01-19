@@ -519,8 +519,20 @@ if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==4
 } else //right
 if(e.keyCode==82){ //r
 loadSlide(current_slide,current_state);
+} else if(e.key==\"f\" || e.key==\"F\" || e.keyCode==70) {
+if(document.mozCancelFullScreen){
+if(document.mozFullScreenElement){
+document.mozCancelFullScreen();
+}else{
+document.getElementById(\"svg\").mozRequestFullScreen();
 }
-}
+} else if(document.webkitCancelFullScreen){
+if(document.webkitFullScreenElement){
+document.webkitCancelFullScreen();
+}else{
+document.getElementById(\"svg\").requestFullScreen();
+}}}
+
 function gotoSlide(n){
 if(n>current_slide)
   loadSlide(n,0);
