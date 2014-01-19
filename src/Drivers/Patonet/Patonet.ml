@@ -747,8 +747,10 @@ function gotoSlide(n){
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
     (match sessid with
       Some (sessid, groupid) -> 
-	Printf.eprintf "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" (base64_encode sessid) (base64_encode groupid);
-	Printf.fprintf ouc "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" (base64_encode sessid) (base64_encode groupid);
+	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" (base64_encode sessid);
+	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" (base64_encode sessid);
+	Printf.eprintf "Set-Cookie: GROUPID=%s;\r\n" (base64_encode groupid);
+	Printf.fprintf ouc "Set-Cookie: GROUPID=%s;\r\n" (base64_encode groupid);
     | None -> ());
     output_string ouc "\r\n";
     List.iter (output_string ouc) datas;
