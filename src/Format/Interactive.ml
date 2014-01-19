@@ -261,6 +261,7 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   if err <> "" then (writeR FailTest; err) else 
   (writeR Ok; if out <> "" then out else "No error and no output")
 
+#ifdef MYSQL
 let distribution ?group table key =
   let group, agroup = match group with
       None -> "", ""
@@ -268,6 +269,7 @@ let distribution ?group table key =
   in
   let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`" table key agroup in
   let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table group in
+  Printf.eprintf "total: %s\n%!" sql';
 
   let mysql_db = match db.db () with
       MysqlDb db -> db(* | _ -> assert false*) in
@@ -303,4 +305,4 @@ let score ?group table sample display exo =
  
     display scores)
 end
-
+#endif

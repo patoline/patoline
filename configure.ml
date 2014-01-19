@@ -369,11 +369,16 @@ let _=
     exit 1
   );
 
-  if not (ocamlfind_has "mysql") then (
-    Printf.fprintf stderr "error: package mysql missing.\n";
-    exit 1
+  let has_mysql = ocamlfind_has "mysql" in
+  if not has_mysql then (
+    Printf.fprintf stderr "warning: package mysql missing, Patonet will not support Mysql storage\n";
   );
+
+
   let has_sqlite3=ocamlfind_has "sqlite3" in
+  if not has_sqlite3 then (
+    Printf.fprintf stderr "warning: package sqlite3 missing, Patonet and Bibi will not support sqlite storage\n";
+  );
 
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config2.ml" in
@@ -381,10 +386,12 @@ let _=
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let make=open_out "src/Makefile.config" in
-  Printf.fprintf make "OCPP := 'cpp -C -ffreestanding -w %s%s%s%s%s%s%s'\n"
+  Printf.fprintf make "OCPP := 'cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s%s'\n"
     (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
     (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
+    (if has_mysql then "-DMYSQL " else "")
+    (if has_sqlite3 then "-DSQLITE3 " else "")
     (if ocamlfind_has "camlimages.all_formats" then "-DCAMLIMAGES " else "")
     (if !ban_comic_sans then "-DBAN_COMIC_SANS " else "")
     (if !pdf_type3_only then "-DPDF_TYPE3_ONLY " else "")

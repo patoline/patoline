@@ -19,18 +19,27 @@
 *)
 
 open Util
+#ifdef MYSQL
 open Mysql
+#endif
 
 type dbinfo =
-  Mysql of db
-| Sqlite of string
 | Memory
+#ifdef MYSQL
+| Mysql of Mysql.db
+#endif
+#ifdef SQLITE3
+| Sqlite of string
+#endif
 
 type database =
 | MemoryDb
+#ifdef MYSQL
 | MysqlDb of dbd
-
+#endif
+#ifdef SQLITE3
 (*| SqliteDb of ...*)
+#endif
 
 type db = {
   db : unit -> database;
@@ -60,6 +69,7 @@ let init_db table_name db_info =
 	(read, write);
     }
 
+#ifdef MYSQL
   | Sqlite filename -> 
       (* FIXME: implement Sqlite support, with concurrent access, must manage the Busy error *) 
       Printf.eprintf "Sqlite support not yet implemented\n";
@@ -144,7 +154,7 @@ let init_db table_name db_info =
 	  with Exit -> ()
 	in 
 	read, write}
-
+#endif
 
 let make_sessid () = 
   let size = 32 in
