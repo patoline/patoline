@@ -262,12 +262,12 @@ let test_python ?(prefix="") ?(suffix="") writeR prg =
   (writeR Ok; if out <> "" then out else "No error and no output")
 
 let distribution ?group table key =
-  let group = match group with
-      None -> ""
-    | Some g -> Printf.sprintf "AND `groupid` = '%s' " g
+  let group, agroup = match group with
+      None -> "", ""
+    | Some g -> Printf.sprintf "WHERE `groupid` = '%s' " g, Printf.sprintf "AND `groupid` = '%s' " g
   in
-  let sql = Printf.sprintf "SELECT `value`,COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`" table key group in
-  let sql' = Printf.sprintf "SELECT COUNT(`sessid`) FROM `%s` WHERE `key` = '%s' %s" table key group in
+  let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`" table key agroup in
+  let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table group in
 
   let mysql_db = match db.db () with
       MysqlDb db -> db(* | _ -> assert false*) in
