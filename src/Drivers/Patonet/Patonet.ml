@@ -689,6 +689,14 @@ function gotoSlide(n){
     ) dynCache.(i).(j)
   in
 
+  let reset_cache () =
+    Array.iter (fun tbl ->
+      Array.iter (fun tbl ->
+	Hashtbl.iter (fun k (d, ptr) -> ptr := None) tbl
+      ) tbl	
+    ) dynCache
+  in
+
   let build_svg i j =
     let prefix,suffix = slides.(i).(j) in
     let buf = Rbuffer.create 256 in
@@ -811,8 +819,8 @@ function gotoSlide(n){
     http_send 200 "text/css" [css] ouc;
   in
   
-  let serve ?sessid fdfather num fd =
-
+  let serve fdfather num fd =
+    
     Unix.clear_nonblock fd;
     let websocket = ref false in
     let inc=Unix.in_channel_of_descr fd in
@@ -820,6 +828,7 @@ function gotoSlide(n){
     let fouc=Unix.out_channel_of_descr fdfather in
     let sessid = Db.sessid in
     Random.self_init ();
+    reset_cache ();
     let read_sessid () = match !sessid with
       | Some (s,g) -> 
 	Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
