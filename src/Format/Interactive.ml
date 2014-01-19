@@ -170,8 +170,9 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 let ocaml_dir () =
   let sessid = match !Db.sessid with 
     None -> "unknown"
-  | Some s -> s
+  | Some(s,_) -> s
   in
+  (* FIXME: use a subfolder per group ? *)
   let name = Filename.concat base_dir sessid in
   if not (Sys.file_exists  name) then
     Unix.mkdir name 0o755;

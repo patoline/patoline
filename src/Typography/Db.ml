@@ -36,7 +36,7 @@ type db = {
 
 let interaction_start_hook = ref ([]: (unit -> unit) list)
 
-let sessid = ref (None: string option)
+let sessid = ref (None: (string * string) option) (* the second string is the group, "guest" is reserved for guest *)
 
 let secret = ref ""
 
@@ -59,7 +59,9 @@ let init_db table_name db_info =
       match !dbptr with None -> () | Some db -> disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
 
     (let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
-      `sessid` char(33), `key` varchar(32), `value` text);" table_name in
+      `sessid` CHAR(33), `groupid` CHAR(33), `key` VARCHAR(32), `VALUE` text,
+      `createtime` DATETIME NOT NULL,
+      `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
      let _r = exec (db ()) sql in
      match errmsg (db ()) with
      | None -> () 
@@ -69,18 +71,20 @@ let init_db table_name db_info =
       create_data = fun ?(global=false) name vinit ->
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
-	let sessid () = if global then "shared_variable" else match !sessid with None -> raise Exit | Some s -> s in 
+	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
 	let init () = 
-	  let sessid = sessid () in
+	  let sessid, groupid = sessid () in
 	  if not (Hashtbl.mem tbl sessid) then (
-            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
+            let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
+	      table_name sessid groupid name in
             let r = exec (db ()) sql in
             (match errmsg (db ()), fetch r with	
             | None, Some row -> 
 	      let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
 	      (match count with
 		0 -> 
-		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `key`, `value`) VALUES ('%s','%s','%s');" table_name sessid name v in		    
+		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
+		    table_name sessid groupid name v in		    
 		  let _r = exec (db ()) sql in	      
 		  (match errmsg (db ()) with
 		  | None -> () 
@@ -89,12 +93,13 @@ let init_db table_name db_info =
       	      | _ -> raise (Failure "SQL duplicate data in base"))
             | Some err, _ -> raise (Failure err)
             | _ -> raise (Failure "SQL unexpected problem")));
-          sessid
+          sessid, groupid
 	in
 	let read () =
 	  try
-            let sessid = init () in
-            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `key` = '%s';" table_name sessid name in
+            let sessid, groupid = init () in
+            let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
+	      table_name sessid groupid name in
             let r = exec (db ()) sql in
             match errmsg (db ()), fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
@@ -107,9 +112,10 @@ let init_db table_name db_info =
 	in
 	let write v =
           try
-	    let sessid = init () in
+	    let sessid, groupid = init () in
             let v = base64_encode (Marshal.to_string v []) in 
-            let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s';" table_name v name sessid in
+            let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
+	      table_name v name sessid groupid in
             let _r = exec (db ()) sql in
             match errmsg (db ()) with
             | None -> () 
@@ -131,5 +137,5 @@ let make_sessid () =
     in
     str.[i] <- d;
   done;
-  sessid:=Some str;
+  sessid:=Some (str, "guest");
   str

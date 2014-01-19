@@ -168,7 +168,7 @@ let header=Str.regexp "\\([^ :]*\\) *: *\\([^\r]*\\)"
 
 let rmaster=Str.regexp "\\(/[0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let slave=Str.regexp "/?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
-let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
+let logged=Str.regexp "/?\\([a-zA-Z0-9]+\\)[?]key=\\([a-z0-9]+\\)\\(&group=\\([a-zA-Z0-9_]+\\)\\)?\\(#\\([0-9]*\\)_\\([0-9]*\\)\\)?$"
 let svg=Str.regexp "/\\([0-9]*\\)_\\([0-9]*\\)\\.svg"
 let css_reg=Str.regexp "/style\\.css"
 let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
@@ -746,9 +746,9 @@ function gotoSlide(n){
     let len = List.fold_left (fun acc s -> acc + String.length s) 0 datas in
     Printf.fprintf ouc "Content-Length: %d\r\n" len;
     (match sessid with
-      Some sessid -> 
-	Printf.eprintf "Set-Cookie: SESSID=%s;\r\n" sessid;
-	Printf.fprintf ouc "Set-Cookie: SESSID=%s;\r\n" sessid;
+      Some (sessid, groupid) -> 
+	Printf.eprintf "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" sessid groupid;
+	Printf.fprintf ouc "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" sessid groupid;
     | None -> ());
     output_string ouc "\r\n";
     List.iter (output_string ouc) datas;
@@ -772,7 +772,7 @@ function gotoSlide(n){
     http_send 200 "text/plain" [data] sessid ouc;
   in
 *)
-  let serve_svg i j num sessid ouc =
+  let serve_svg i j num (sessid,groupid) ouc =
     if i<Array.length slides && j<Array.length slides.(i) then (
       Printf.eprintf "building slide %d_%d for %d\n%!" i j num;
       try
@@ -819,13 +819,13 @@ function gotoSlide(n){
     let sessid = Db.sessid in
     Random.self_init ();
     let read_sessid () = match !sessid with
-      | Some s -> 
-	Printf.eprintf "Reuse sessid: %s\n%!" s;
-	s
+      | Some (s,g) -> 
+	Printf.eprintf "Reuse sessid: %s from %s\n%!" s g;
+	s, g
       | None -> 
 	let s = make_sessid () in
-	Printf.eprintf "New sessid: %s\n%!" s;
-	s
+	Printf.eprintf "New sessid: %s as guest\n%!" s;
+	s, "guest"
     in
 
     let update slide state ev dest =
@@ -866,7 +866,7 @@ function gotoSlide(n){
           pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n";
 	  Printf.fprintf fouc "move %s %d %d\n"
-	    (read_sessid ()) slide state;
+	    (fst (read_sessid ())) slide state;
 	  flush fouc;
 	  Printf.eprintf "Sending to father done\n";
 
@@ -947,11 +947,12 @@ function gotoSlide(n){
 	  ) else if Str.string_match logged get 0 then (
 	    let login = Str.matched_group 1 get in
             let md5 = Str.matched_group 2 get in
-	    let md5' = Digest.to_hex(Digest.string(login ^ !secret)) in
-	    Printf.eprintf "serve %d: logged %s %s %s\n%!" num login md5 md5';
+	    let groupid = try Str.matched_group 4 get with Not_found -> "guest" in
+	    let md5' = Digest.to_hex(Digest.string(login ^ "+" ^ groupid ^ !secret)) in
+	    Printf.eprintf "serve %d: logged %s from %s %s %s\n%!" num login groupid md5 md5';
 	    if md5 = md5' then (
-	      sessid := Some login;
-  	      http_send ~sessid:login 200 "text/html" [page] ouc;
+	      sessid := Some (login, groupid);
+  	      http_send ~sessid:(login,groupid) 200 "text/html" [page] ouc;
               process_req false "" [] reste
             ) else (
 	      generate_error ouc
@@ -1012,7 +1013,7 @@ function gotoSlide(n){
 	      
 	      Printf.eprintf "Sending to father ...\n";
 	      Printf.fprintf fouc "move %s %d %d\n"
-		(read_sessid ()) slide state;
+		(fst (read_sessid ())) slide state;
 	      flush fouc;
 	      Printf.eprintf "Sending to father done\n";
 	      websocket := true;
@@ -1073,7 +1074,7 @@ function gotoSlide(n){
 	      [key;v] -> (key,v)::acc
 	    | _ -> acc) [] ls
 	  in
-	  (try sessid := Some (List.assoc "SESSID" ls) with Not_found -> ());
+	  (try sessid := Some (List.assoc "SESSID" ls, List.assoc "GROUPID" ls) with Not_found -> ());
           process_req master get hdr reste)
 	else
           process_req master get ((a,b)::hdr) reste
@@ -1091,7 +1092,7 @@ function gotoSlide(n){
 	  Printf.fprintf fouc "quit ? %d\n" (Unix.getpid ());
 	  flush fouc
       | Some sessid ->
-	Printf.fprintf fouc "quit %s %d\n" sessid (Unix.getpid ());
+	Printf.fprintf fouc "quit %s %d\n" (fst sessid) (Unix.getpid ());
 	flush fouc);
       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
       exit 0;

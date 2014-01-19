@@ -1286,7 +1286,9 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	   last_changes := !cur_page, !cur_state;
 	   Printf.fprintf fo "GET /sync_%d_%d HTTP/1.1\r\n\r\n%!"
 	     !cur_page !cur_state);
-	 match !Db.sessid with None -> () | Some s -> Printf.fprintf fo "Set-Cookie: SESSID=%s;\r\n" s);
+	 match !Db.sessid with
+	   None -> ()
+	 | Some (s ,g)-> Printf.fprintf fo "Set-Cookie: SESSID=%s; GROUPID=%s;\r\n" s g );
        !send_changes ();
        Printf.fprintf stderr "Connected\n%!";
        sock_info := Some (sock,fo,fi)
