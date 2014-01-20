@@ -50,6 +50,15 @@ type 'a data = {
      value for this specific data. total is 1 even if it should be 0 !!! *)
 }
 
+exception DummyData
+
+let dummyData = {
+  read = (fun _ -> raise DummyData) ;
+  write = (fun _ -> raise DummyData) ;
+  reset = (fun _ -> raise DummyData) ;
+  distribution = (fun ?group _ -> raise DummyData) ;
+}
+
 type db = {
   db : unit -> database;
   create_data : 'a.( ?global:bool -> string -> 'a -> 'a data);
