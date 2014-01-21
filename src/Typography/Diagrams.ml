@@ -1998,28 +1998,29 @@ Doing a rectangle.\n" ;
 	Pet.register "params"
 	(fun pet params ->
 	  { pet = pet ; transfo = (fun transfos edge_info ->
-	    { edge_info with params = params ;
-	    tip_info = { edge_info.tip_info with tip_line_width = params.lineWidth }})})
+	    { edge_info with params = params })})
 
       let dashed pattern =
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
 
-      let fill = 
+      let fill c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some black }})}
+	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some c }})}
 
       let color c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
 
+      let noStroke = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with strokingColor = None }})}
+
       let black = color black 
 
       let lineWidth w = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params  with lineWidth = w } ;
-	    tip_info = { edge_info.tip_info with tip_line_width = w }})}
-
+	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
 
 
       let do_clip curve node1 node2 = 
@@ -2303,33 +2304,8 @@ Doing a rectangle.\n" ;
       let bendLeft = bendOf
       let bendRight angle = bendOf (-. angle)
 
-      let paramsOf,params_pet = 
-	Pet.register ~codepends:[clip_pet] "params"
-	(fun pet params ->
-	  { pet = pet ; transfo = (fun transfos edge_info ->
-	    { edge_info with params = params })})
 
-      let dashed pattern =
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
 
-      let fill c = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some c }})}
-
-      let color c = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
-
-      let noStroke = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with strokingColor = None }})}
-
-      let black = color black 
-
-      let lineWidth w = 
-	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
 
       let foreground, foreground_pet = 
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" 
