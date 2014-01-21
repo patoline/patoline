@@ -117,7 +117,7 @@ let init_db table_name db_info =
    the 3 commented lines below report wrongly allready created data.
    But not testing duplicate could lead to segfault, if type differs (due to marshalling) ...
 *)
-(*    let created = Hashtbl.create 1001 in*)
+    let created = Hashtbl.create 1001 in
     
     let db () = 
       match !dbptr with
@@ -139,8 +139,8 @@ let init_db table_name db_info =
 
     { db = (fun () -> MysqlDb (db ()));
       create_data = fun ?(global=false) name vinit ->
-(*	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
-	Hashtbl.add created name ();*)
+	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
+	Hashtbl.add created name ();
 	let v = base64_encode (Marshal.to_string vinit []) in 
 	let tbl = Hashtbl.create 7 in
 	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
