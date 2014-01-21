@@ -2313,20 +2313,23 @@ Doing a rectangle.\n" ;
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with dashPattern = pattern }})}
 
-      let fill = 
+      let fill c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
-	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some black }})}
+	  { edge_info with params = { edge_info.params with close = true ; fillColor = Some c }})}
 
       let color c = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params with strokingColor = Some c }})}
+
+      let noStroke = 
+	{ pet = params_pet ; transfo = (fun transfos edge_info ->
+	  { edge_info with params = { edge_info.params with strokingColor = None }})}
 
       let black = color black 
 
       let lineWidth w = 
 	{ pet = params_pet ; transfo = (fun transfos edge_info ->
 	  { edge_info with params = { edge_info.params  with lineWidth = w }})}
-
 
       let foreground, foreground_pet = 
 	Pet.register ~depends:[draw_pet;shorten_pet;params_pet] "foreground" 

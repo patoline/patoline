@@ -346,7 +346,24 @@ let empty:node=
     node_states=[];
     node_paragraph=0 }
 
+(** Contexts identify a position p in a tree t, by providing 
+    a list of pairs (index, tree) such that to insert some tree
+    T in such a context [(n1,t1);...;(nN,tN)] one returns
+    
+    tN with an additional child at index nN, consisting of
+
+    t(N-1) with an additional child at index n(N-1), consisting of 
+
+    ...
+
+    t1 with an additional child at index n1, consisting of T.
+*)
 type cxt=(int*tree) list
+
+(** Our main type is actually a zipper over the document tree.
+*)
+type tree_zipper = tree * cxt
+
 let next_key t=try fst (IntMap.max_binding t)+1 with Not_found -> 0
 let prev_key t=try fst (IntMap.min_binding t)-1 with Not_found -> 0
 
@@ -355,17 +372,25 @@ let rec map_paragraphs f = function
   | Paragraph p -> Paragraph (f p)
   | x -> x
 
+(** The next function takes a tree_zipper (t,cxt) and returns the tree_zipper 
+given by the father of (t,cxt). 
+   Normally, cxt should be a non-empty list of pairs (int, Node ...).
+   If the list turns out to be empty, i.e., we are at the root, a new node is created.
+   If some pair in cxt has a leaf instead of a Node ..., the function fails.
+*)
 let up (t,cxt) = match cxt with
-    []->(t,cxt)
-  | (a,Node b)::s->(Node { b with children=IntMap.add a t b.children }, s)
-  | (a,b)::s->(Node { empty with children=IntMap.singleton a t }, s)
+    []-> (Node { empty with children=IntMap.singleton 0 t }, [])
+  (* In ancient times, there was: (t,cxt). But that looked weird. *)
+  | (a,Node b)::s -> (Node { b with children=IntMap.add a t b.children }, s)
+  | (a,b) :: s -> begin
+    Printf.fprintf stderr "%s:%d. Document contexts should probably consist only of nodes.\n"
+      __FILE__ __LINE__ ;
+    flush stderr ;
+    (Node { empty with children = 
+	IntMap.(add 0 b (singleton a t)) }, s) 
+  end
 
-let child (t,cxt) i=try
-  match t with
-      Node x->(IntMap.find i x.children, (i,t)::cxt)
-    | _->(Node empty, (i,t)::cxt)
-with
-    Not_found -> (Node empty, (i,t)::cxt)
+
 
 let lastChild (t,cxt)=try
   match t with
@@ -419,7 +444,9 @@ let is_node x=match x with
     Node _->true
   | _->false
 
-
+(* The next function takes a zipper (t,cxt) and a tree chi, and 
+   adds chi as the last child of 
+ *)
 let rec newChildAfter (t,cxt) chi=
   match t with
       Node x->(chi, (next_key x.children,t)::cxt)
@@ -457,9 +484,29 @@ let go_up str=
 
 let rec top (a,b)=if b=[] then (a,b) else top (up (a,b))
 
-let rec follow t l=match l with
-    []->t
-  | a::s->follow (child t a) s
+(* The next function takes a zipper and an integer, and returns the
+   zipper obtained by going down the ith branch from the current
+   point. *)
+let child (t,cxt) i=
+  match t with
+    Node x-> 
+      ((try IntMap.find i x.children
+	with
+	  Not_found -> Node empty), 
+       (i,t) :: cxt)
+  | _-> begin
+    Printf.fprintf stderr "%s:%d. You're asking for the child of a leaf, which is suspect. \n" 
+      __FILE__ __LINE__ ;
+    Printf.fprintf stderr "I'm creating a new node with the original leaf as 0th child, and an empty node as ith child.\n" ;
+    flush stderr ;
+    (Node empty, (i,t)::cxt)
+  end
+
+(* The next function takes a zipper and a list of indices (integers),
+   and goes down the given branches in sequence. *)
+let rec follow zipper indices = match indices with
+    []-> zipper
+  | n :: further_indices -> follow (child zipper n) further_indices
 
 let rec up_n n tr=if n<=0 then tr else up_n (n-1) (up tr)
 
