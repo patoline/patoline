@@ -678,7 +678,7 @@ function gotoSlide(n){
       try 
 	let c = match !ptr with
 	    Some c -> Printf.eprintf "From cache\n%!";  c 
-	  | None -> let c = d.dyn_contents () in ptr := Some c; c
+	  | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
 	in
 	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label c) 
       with e -> 
@@ -698,12 +698,15 @@ function gotoSlide(n){
   in
 
   let build_svg i j =
+    Printf.eprintf "build slide %d %d\n%!" i j;
     let prefix,suffix = slides.(i).(j) in
     let buf = Rbuffer.create 256 in
     Rbuffer.add_string buf prefix;
+    Printf.eprintf "build dynamic parts %d %d\n%!" i j;
     output_cache buf i j;
     Rbuffer.add_string buf suffix;
-    Rbuffer.contents buf
+    Printf.eprintf "finished build slide %d %d\n%!" i j;
+    Rbuffer.contents buf;
   in
 
   let pushto ?(change=Nothing) a fd =
@@ -871,15 +874,15 @@ function gotoSlide(n){
 	Printf.eprintf "Web socket message:%s\n%!" get;
 	
 	if Str.string_match move get 0 then (
-          Printf.eprintf "move\n";flush stderr;
+	  Printf.eprintf "serve %d: move\n%!" num;
 	  let slide, state = read_slide_state get in
-	  
+	  Printf.eprintf "Sending to client ...\n%!";
           pushto ~change:(Slide(slide,state)) fd fdfather;
-	  Printf.eprintf "Sending to father ...\n";
+	  Printf.eprintf "Sending to father ...\n%!";
 	  Printf.fprintf fouc "move %s %d %d\n"
 	    (fst (read_sessid ())) slide state;
 	  flush fouc;
-	  Printf.eprintf "Sending to father done\n";
+	  Printf.eprintf "Sending to father done\n%!";
 
           process_req master "" [] reste)
 	else if Str.string_match click get 0 then (

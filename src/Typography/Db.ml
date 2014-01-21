@@ -172,7 +172,9 @@ let init_db table_name db_info =
             let sessid, groupid = init () in
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
+	    Printf.eprintf "Sending request\n%!";
             let r = exec (db ()) sql in
+	    Printf.eprintf "Sent request\n%!";
             match errmsg (db ()), fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
