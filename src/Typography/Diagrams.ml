@@ -213,8 +213,8 @@ module Curve = struct
 	(* end ; *)
 	[[e;xl;l];[l;xr;ll]]	
 
-  let intersections_aux bezier1 e1 beziers2 = 
-    let _,inters = List.fold_left (fun (i,inters) (bezier2_i, e2i) -> 
+  let intersections_aux bezier1 beziers2 = 
+    let _,inters = List.fold_left (fun (i,inters) bezier2_i -> 
       let inters_i = Bezier.intersection bezier1 bezier2_i in	
       (succ i, inters @ (List.map (fun (t1,t2) -> (t1,(i,t2,bezier2_i))) inters_i)))
       (0,[])
@@ -224,9 +224,9 @@ module Curve = struct
   let intersections beziers1 beziers2 = 
     let _, res = 
       List.fold_left
-	(fun (i, res) (bezier1, e1) -> 
+	(fun (i, res) bezier1 -> 
 	  ((succ i),
-	   (res @ (List.map (fun (t1,gt2) -> ((i,t1,bezier1),gt2)) (intersections_aux bezier1 e1 beziers2)))))
+	   (res @ (List.map (fun (t1,gt2) -> ((i,t1,bezier1),gt2)) (intersections_aux bezier1 beziers2)))))
 	(0,[])
 	beziers1
     in res
@@ -249,31 +249,28 @@ module Curve = struct
     print_point_lists beziers1 ;  
     print_point_lists beziers2 ;  
     Printf.fprintf stderr "Tchow!\n" ; flush stderr ;*)
-    let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
-    let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     let inters = intersections beziers1 beziers2 in
 (*    Printf.printf "Length : %d\n%!" (List.length inters);*)
-    let latest = List.fold_left 
+    List.fold_left 
       (fun yet ((i,t,_),_) -> match yet with
 	| None -> Some (i,t)
-	| Some (_,_) -> Some (i,t))
+	| Some (i',t') as acc -> if i > i' || t > t' then Some (i,t) else acc)
       None
       inters
-    in latest
-
 
   let earliest_intersection beziers1 beziers2 =
 (*    Printf.fprintf stderr "Yoho 2!\n" ;  
     print_point_lists beziers1 ;  
     print_point_lists beziers2 ;  
     Printf.fprintf stderr "Tchow 2!\n" ; flush stderr ;*)
-    let beziers1 = List.map (fun b  -> b, Bezier.extremity b) beziers1 in
-    let beziers2 = List.map (fun b  -> b, Bezier.extremity b) beziers2 in
     let inters = intersections beziers1 beziers2 in 
 (*    Printf.printf "Length : %d\n%!" (List.length inters);*)
-    match inters with
-      | [] -> None
-      | ((i,t,_),_) :: _ -> Some (i,t)
+    List.fold_left 
+      (fun yet ((i,t,_),_) -> match yet with
+	| None -> Some (i,t)
+	| Some (i',t') as acc -> if i < i' || t < t' then Some (i,t) else acc)
+      None
+      inters
 
   let bezier_evaluate (xs,ys) t = 
     (Bezier.eval xs t, Bezier.eval ys t)
@@ -416,15 +413,24 @@ module Curve = struct
 	else 
 	  let rec fn ta tb za zb =
 (*	    Printf.fprintf stderr "Dighotomie ta = %f, za = %f, tb = %f, zb = %f\n" ta za tb zb;*)
-	    let tc = (ta *. (1. -. z_restant +. za)  +. tb *. (z_restant -. za)) /. (zb -. za) in
+	    let tc = (ta *. (zb -. z_restant)  +. tb *. (z_restant -. za)) /. (zb -. za) in
+	    let tc' = (za +. zb) /. 2.0 in
 	    let zc = Bezier.partial_length tc bezier in
+	    let zc' = Bezier.partial_length tc' bezier in
 	    let delta = z_restant -. zc in
+	    let delta' = z_restant -. zc' in
+	    let tc, zc, delta = 
+	      if abs_float delta < abs_float delta' then
+		tc, zc, delta 
+	      else
+		tc', zc', delta'
+	    in
 	    if delta < -. epsilon then
 	      fn ta tc za zc
 	    else if delta > epsilon then
 	      fn tc tb zc zb
 	    else 
-	      let r = t_yet +. tc /. time_unit in
+	      let r = t_yet +. tc *. time_unit in
 (*	      Printf.fprintf stderr "Return: %f\n%!" r;*)
 	      assert (r >= 0.0 && r <= 1.0);
 	      r
@@ -1987,6 +1993,7 @@ Doing a rectangle.\n" ;
       let do_clip curve node1 node2 = 
 	let start = begin
 	  match node1.curve with
+	    | []  -> (0,0.)
 	    | [xs,ys] when Array.length xs <= 1 -> (0,0.)
 	    | curve1 ->
 	      Curve.(app_default latest_intersection curve curve1 (0,0.))
@@ -2007,6 +2014,7 @@ Doing a rectangle.\n" ;
 	end in
 	let (j,t') as finish = begin 
 	  match node2.curve with
+	    | [] -> ((Curve.nb_beziers curve) - 1,1.)
 	    | [xs,ys] when Array.length xs <= 1 -> ((Curve.nb_beziers curve) - 1,1.)
 	    | curve2 ->
 	      Curve.(app_default earliest_intersection curve curve2 ((Curve.nb_beziers curve) - 1,1.))
@@ -2567,7 +2575,7 @@ Doing a rectangle.\n" ;
 	let rec fn acc = function
 	[] -> acc
 	  | Edge e::l when e.Edge.params.fillColor = None -> 
-	  let c = List.map (fun b  -> b, Bezier.extremity b) e.Edge.underlying_curve in
+	  let c = e.Edge.underlying_curve in
 	  fn ((e,c)::acc) l
 	| _::l -> fn acc l
 	in

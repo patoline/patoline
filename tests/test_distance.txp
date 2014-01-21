@@ -27,6 +27,8 @@ open Maths
 open Fonts
 open Fonts.FTypes
 open Distance
+
+let _ = Sys.catch_break true; Printexc.record_backtrace true
 )
 
 == Test du calcul du profile ==

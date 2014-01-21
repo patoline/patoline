@@ -19,6 +19,8 @@
 *)
 \Caml(open Diagrams
 
+let _ = Sys.catch_break true; Printexc.record_backtrace true
+
 let xrightarrows ?margin:(marge=2.) ?width:(width=1.) ?translation:(translation=(-. 3000.)) a =
   [Maths.Ordinary
        (Maths.noad

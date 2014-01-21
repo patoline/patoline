@@ -923,21 +923,36 @@ let subdivise thick b =
 let det x y x' y' = x *. y' -. y *. x'
 
 let thickness2 (xa,ya) =
-  let l = Array.length xa - 1 in
-  let (xv, yv) = xa.(l) -. xa.(0), ya.(l) -. ya.(0) in
-  let norm = sqrt (xv *. xv +. yv *. yv) in
-  let (xn, yn) = (-. yv /. norm, xv /. norm) in
-  let n = ref 0.0 and p = ref 0.0 in 
-  for i = 1 to l - 1 do
-    let s = ((xa.(i) -. xa.(0)) *. xn +. (ya.(i) -. ya.(0)) *. yn) in
-    if s < !n then n := s;
-    if s > !p then p := s
-  done;
-  let p1 = xa.(0) +. !n *. xn, ya.(0) +. !n *. yn in
-  let p2 = xa.(l) +. !n *. xn, ya.(l) +. !n *. yn in
-  let p3 = xa.(l) +. !p *. xn, ya.(l) +. !p *. yn in
-  let p4 = xa.(0) +. !p *. xn, ya.(0) +. !p *. yn in
-  (p1,p2,p3,p4), !p -. !n
+  let len = Array.length xa - 1 in
+  try
+    let (xv, yv) = xa.(len) -. xa.(0), ya.(len) -. ya.(0) in
+    let norm2 = xv *. xv +. yv *. yv in
+    if norm2 < 1e-12 then raise Exit;
+    let norm = sqrt norm2 in
+    let (xn, yn) = (-. yv /. norm, xv /. norm) in
+    let n = ref 0.0 and p = ref 0.0 in 
+    for i = 1 to len - 1 do
+      let xi = xa.(i) -. xa.(0) and yi = ya.(i) -. ya.(0) in
+      let s = xi *. xn +. yi *. yn in
+      if s < !n then n := s;
+      if s > !p then p := s;
+      let u = (xi *. xv +. yi *. yv) /. norm2 in
+      if u < 0.0 || u > 1.0 then raise Exit
+    done;
+    let x,y = xa.(0), ya.(0) in
+    let x',y' = xa.(len), ya.(len) in
+
+    let p1 = x +. !n *. xn, y +. !n *. yn in
+    let p2 = x' +. !n *. xn, y' +. !n *. yn in
+    let p3 = x' +. !p *. xn, y' +. !p *. yn in
+    let p4 = x +. !p *. xn, y +. !p *. yn in
+    (p1,p2,p3,p4), !p -. !n
+  with Exit ->
+    let x,x' = Array.fold_left (fun (x,x' as acc) x0 -> if x0 < x then x0, x' else if x0 > x' then x,x0 else acc)
+      (xa.(0), xa.(0)) xa in
+    let y,y' = Array.fold_left (fun (x,x' as acc) x0 -> if x0 < x then x0, x' else if x0 > x' then x,x0 else acc)
+      (ya.(0), ya.(0)) ya in
+    ((x,y), (x,y'), (x',y'), (x',y)), max_float
 
 let in_rect (x0,y0) ((x1,y1),(x2,y2),_,(x4,y4)) =
   let ux2 = x2 -. x1 and uy2 = y2 -. y1 in
@@ -981,7 +996,9 @@ let test_inter_segment epsilona epsilonb (xa_1, ya_1) (xa_2, ya_2) (xb_1, yb_1) 
     let lambda = det abx aby vxa vya /. denom in
      mu >= -. epsilona && mu <= 1.0 +. epsilona && lambda >= -. epsilonb && lambda <= 1.0 +. epsilonb
 
-
+let area2_rect ((x0,y0),(x1,y1),(x2,y2),_) =
+  ((y1 -. y0) ** 2. +. (x1 -. x0) ** 2.) +.
+  ((y1 -. y2) ** 2. +. (x1 -. x2) ** 2.)
 
 let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
   let da = Array.length xa in
@@ -1010,6 +1027,10 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
 	let r = (alpha_a +. mu *. beta_a, alpha_b +. lambda *. beta_b) in
 	add r acc
       with Not_found -> acc)
+    else 
+    let aa = area2_rect ra and ab = area2_rect rb in
+    if ea < epsilon2 && eb < epsilon2 then
+      add (xa_1, ya_1) acc
     else (
 (*      Printf.eprintf "thick\n%!";*)
       let p1,p2,p3,p4 = ra in
@@ -1040,10 +1061,8 @@ let intersection ?(epsilon=1e-6) ?(thick=1e-4) (xa, ya as ba) (xb, yb as bb) =
 (*	  Printf.eprintf "no inter\n%!";*)
 	  acc)
       else
-      let la = sqrt ((xa_2 -. xa_1) ** 2. +. (ya_2 -. ya_1) ** 2.) in
-      let lb = sqrt ((xb_2 -. xb_1) ** 2. +. (yb_2 -. yb_1) ** 2.) in
 
-	if la *. ta > lb *. tb then (
+	if aa > ab then (
 (*	  Printf.eprintf "subdivise a\n%!";*)
 	  let (xa1,ya1 as b1) = (restrict xa 0.0 0.5, restrict ya 0.0 0.5) in
 	  let (xa2,ya2 as b2) = (restrict xa 0.5 1.0, restrict ya 0.5 1.0) in

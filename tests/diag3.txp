@@ -44,10 +44,10 @@ module Env_Diagram (Arg : sig val env : environment end) = struct
       ([], b, [], d) ;
       ([], c, [], d) ]
     in
-    let _ = labela ~style:labels_style e_above above in
-    let _ = labell ~style:labels_style e_left left in
-    let _ = labelr ~style:labels_style e_right right in
-    let _ = labelb ~style:labels_style e_below below in
+    let _ = label_edgea ~style:labels_style e_above above in
+    let _ = label_edgel ~style:labels_style e_left left in
+    let _ = label_edger ~style:labels_style e_right right in
+    let _ = label_edgeb ~style:labels_style e_below below in
     m,ms,es
 
 end
