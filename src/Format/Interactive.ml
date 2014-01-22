@@ -269,7 +269,7 @@ let ocaml_dir () =
     Unix.mkdir name 0o755;
   name
 
-let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="")  writeR prg =
+let test_ocaml ?(run=true) ?filename ?(prefix="") ?(suffix="") writeR prg =
   let dir, filename, target, exec, run, delete_all =
     match filename with
       None -> 
