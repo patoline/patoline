@@ -87,6 +87,8 @@ let fname = ref ""
 
 let bol = Hashtbl.create 1001
 
+(* computes the line number (with a cache) for a given position in
+   a string *)
 let find_pos str n = 
   let rec fn i =
     (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
