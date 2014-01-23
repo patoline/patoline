@@ -80,8 +80,8 @@ module Env_theorem=Default.Make_theorem
    end)
 module Env_lemma=Default.Make_theorem
   (struct
-    let refType="lemma"
-    let counter="lemma"
+    let refType="theorem"
+    let counter="theorem"
     let counterLevel=0
     let display num=alternative Bold [tT ("Lemma "^num^"."); (tT " ")]
    end)

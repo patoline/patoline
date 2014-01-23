@@ -551,7 +551,7 @@ else if(n<current_slide)
 <meta charset=\"utf-8\">
 <title>";
   Rbuffer.add_string html structure.name;
-  Rbuffer.add_string html "</title>\n";
+  Rbuffer.add_string html "</title><script src=\"hammer.js\"></script> \n";
   Rbuffer.add_string html "<script>\n";
   Rbuffer.add_string html script;
 

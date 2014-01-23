@@ -210,20 +210,20 @@ editableText ~min_line:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = 
  let d' = Node.(node [anchor `Base;at3d projection (0.,20.,20.)] <<d'>>) 
 
 
-  let _ = edge_3d Edge.([arrow;draw]) a b
-  let _ = edge_3d Edge.([arrow;draw]) d c
-  let _ = edge_3d Edge.([arrow;draw]) a d
-  let _ = edge_3d Edge.([arrow;draw]) b c
+  let _ = edge_3d Edge.([arrow env;draw]) a b
+  let _ = edge_3d Edge.([arrow env;draw]) d c
+  let _ = edge_3d Edge.([arrow env;draw]) a d
+  let _ = edge_3d Edge.([arrow env;draw]) b c
 
-  let _ = edge_3d Edge.([arrow;draw]) a' b'
-  let _ = edge_3d Edge.([arrow;draw]) d' c'
-  let _ = edge_3d Edge.([arrow;draw]) a' d'
-  let _ = edge_3d Edge.([arrow;draw]) b' c'
+  let _ = edge_3d Edge.([arrow env;draw]) a' b'
+  let _ = edge_3d Edge.([arrow env;draw]) d' c'
+  let _ = edge_3d Edge.([arrow env;draw]) a' d'
+  let _ = edge_3d Edge.([arrow env;draw]) b' c'
 
-  let _ = edge_3d Edge.([arrow;draw]) a' a
-  let _ = edge_3d Edge.([arrow;draw]) b' b
-  let _ = edge_3d Edge.([arrow;draw]) c' c
-  let _ = edge_3d Edge.([arrow;draw]) d' d
+  let _ = edge_3d Edge.([arrow env;draw]) a' a
+  let _ = edge_3d Edge.([arrow env;draw]) b' b
+  let _ = edge_3d Edge.([arrow env;draw]) c' c
+  let _ = edge_3d Edge.([arrow env;draw]) d' d
 
    let e' = Node.(node [at3d projection (10.,10.,10.);rectangle env;draw;innerSep 20.0] (<<x>>))
 

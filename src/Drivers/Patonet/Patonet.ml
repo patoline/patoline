@@ -270,6 +270,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   
   let imgs = StrMap.add "favicon.ico" duck_ico imgs in
+  let imgs = StrMap.add "hammer.js" Hammer._Hammer_js imgs in
 
   let read_slide_state get =
     let asked_slide=max 0 (int_of_string (Str.matched_group 1 get)) in
@@ -662,9 +663,33 @@ function gotoSlide(n){
 %s" (Array.length pages - 1) mouse_script
   in
 
+  let onload = Printf.sprintf
+"start_socket();
+loadSlide(h0,h1);
+var svgDiv = document.getElementById('svg_div');
+Hammer(svgDiv, {
+  swipe_max_touches: 10,
+  swipe_velocity: 0.1
+});
+Hammer(svgDiv).on(\"swipeleft\", function(ev) {
+  if(current_slide < %d && current_state>=states[current_slide]-1) {
+    websocket.send(\"move_\"+(current_slide+1)+\"_0\");
+  } else if (current_state < states.length - 1) {
+    websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
+  }
+});
+Hammer(svgDiv).on(\"swiperight\", function(ev) {
+  if(current_slide > 0 && current_state<=0) {
+    websocket.send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
+  } else if (current_state > 0) {
+    websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
+  }
+});
+" (Array.length pages - 1)
+  in
   let page,css=SVG.basic_html
     ~script:websocket
-    ~onload:"start_socket();loadSlide(h0,h1);"
+    ~onload
     ~keyboard:keyboard
     cache structure pages ""
   in

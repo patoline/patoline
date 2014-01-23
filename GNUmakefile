@@ -126,6 +126,7 @@ ifneq "$(wildcard src/Makefile.config)" ""
 endif
 
 # Compilers and various tools
+OCAML    := ocaml
 OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp $(OCPP),)
 OCAMLOPT_NOPP := ocamlfind ocamlopt -g
 OCAMLOPT := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp $(OCPP),)
