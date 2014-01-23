@@ -9,3 +9,6 @@ articles:
 	../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts test_virgule.txp
 	../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts test_break_badness.txp
 	../src/Patoline/patoline --recompile -I ../src --extra-hyph-dir ../Hyphenation --extra-fonts-dir ../Fonts test_distance.txp
+
+clean:
+	rm -rf *_.cmi *.cmi *_.cmx *.cmx *_.dep *_.o *.o *.tdep *.tdx *.tgx *_.tml *.tmx *.ttml *.pdf *~

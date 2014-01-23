@@ -67,28 +67,29 @@ let blank1 = blank false
 let blank2 = blank true
 
 (****************************************************************************
- * Function for geting fresh uppercase identifiers for module names.        *
+ * Some state information (Driver in use, ...) + Code generation helpers    *
  ****************************************************************************)
 
-let counter = ref 1
+let patoline_format   = ref "DefaultFormat"
+let patoline_driver   = ref "Pdf"
+let patoline_packages = ref ["Typography"]
 
+(* Should contain the name of the file being parsed. *)
+let fname = ref ""
+
+(* Function for geting fresh module names (Uid) *)
+let counter = ref 1
 let freshUid () =
   let current = !counter in
   incr counter;
   "MOD" ^ (string_of_int current)
 
 (****************************************************************************
- * ...                                                                      *
+ * Functions for computing line numbers and positions.                      *
  ****************************************************************************)
 
-let parser_stack = Stack.create ()
-
-let fname = ref ""
-
+(* computes the line number (with a cache) for a given position in a string *)
 let bol = Hashtbl.create 1001
-
-(* computes the line number (with a cache) for a given position in
-   a string *)
 let find_pos str n = 
   let rec fn i =
     (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
@@ -104,7 +105,10 @@ let find_pos str n =
     else fn (i-1)
   in
   let (lnum, bol) = fn n in
-  Lexing.({ pos_fname = !fname; pos_lnum = lnum; pos_bol = bol; pos_cnum = n })
+  Lexing.({ pos_fname = !fname;
+            pos_lnum  = lnum;
+            pos_bol   = bol;
+            pos_cnum  = n })
 
 let locate g =
   filter_position g (fun str pos pos' ->
@@ -114,6 +118,11 @@ let locate g =
 
 let _ = glr_locate locate Loc.merge
 
+(****************************************************************************
+ * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
+ ****************************************************************************)
+
+let parser_stack = Stack.create ()
 
 module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
   struct
@@ -132,6 +141,19 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
       patoline_caml_struct: [ [
         e = str_items; ")" -> <:str_item<$e$ let _ = ()>>
         (* e only does not set the position to contain the ")" *)
+      ] ];
+
+      (*top_phrase: [ [*) (* FIXME *)
+      str_item: [ [
+        "#"; n = UIDENT; a = UIDENT ->
+          (match n with
+             | "FORMAT"  -> patoline_format := a
+             | "DRIVER"  -> patoline_driver := a
+             | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
+             | _ -> let err = Stream.Error "Unknown Patoline directive."
+                    in Loc.raise _loc err);
+          (*None*)
+          <:str_item<>>
       ] ];
 
       expr: LEVEL "simple" [ [
@@ -448,66 +470,171 @@ let _ = set_grammar paragraph_from_caml (
       p:paragraph_local STR("|>") -> p
    end)
 
-let full_text = 
+let full_text =
   glr
-    title:title?? t:text EOF -> 
+    title:title?? t:text EOF ->
       match title with
-	None -> t true 0
-      | Some title -> <:str_item<$title$ $t true 0$>>
-  end 
+        | None       -> t true 0
+        | Some title -> <:str_item<$title$ $t true 0$>>
+  end
 
-(* #FORMAT DefaultFormat *)
-(* #DRIVER Pdf *)
-(* #PACKAGES Typography *)
+(****************************************************************************
+ * Parsing main functions.                                                  *
+ ****************************************************************************)
 
-let format = Sys.argv.(1)
-let driver = Sys.argv.(2)
-let filename = Sys.argv.(3)
+(* Parse a string with Patoline as the entry point. *)
+let parse_patoline str =
+  try
+    parse_string full_text blank2 str
+  with
+    | Parse_error n ->
+        let _loc = find_pos str n in 
+        Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
+    | Ambiguity(n,p) -> 
+        let _loc1 = find_pos str n in 
+        let _loc2 = find_pos str p in 
+        Loc.raise Loc.(merge (of_lexing_position _loc1)
+                             (of_lexing_position _loc2)) 
+                  (Stream.Error "Ambiguous expression")
+    | exc ->
+        Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
+        exit 1
+
+(* Parse a string with OCaml Camlp4 extension as the entry point. *)
+let parse_patoline_caml str =
+  try
+    Gram.parse_string patoline_caml_struct (Loc.mk !fname) str
+  with
+    | exc ->
+        Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
+        exit 1
+
+(****************************************************************************
+ * Main program + Command-line argument parsing.                            *
+ ****************************************************************************)
+
+let spec =
+  [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
+                  "The driver against which to compile.")
+  ; ("--format",  Arg.String (fun f -> patoline_format := f),
+                  "The document format to use.")
+  ; ("--package", Arg.String (fun p -> let pkgs = p :: !patoline_packages
+                                       in patoline_packages := pkgs),
+                  "Package to link.")
+  ]
+
+let patoline_extension      = [ "txp" ; "typ" ]
+let patoline_extension_caml = [ "mlp" ; "ml" ]
+
+let get_extension fname =
+  if Filename.chop_extension fname = fname then ""
+  else let pos = ref 0 in
+       let p = ref 0 in
+       String.iter (fun c -> if c = '.' then p := !pos; incr pos) fname;
+       String.sub fname !p (String.length fname - !p)
+
+let _ = try
+  let anon_args = ref [] in
+  Arg.parse spec (fun a -> anon_args := a :: !anon_args) "Usage:";
+  if List.length !anon_args < 1
+     then Arg.usage spec "No file specified:";
+  if List.length !anon_args > 1
+     then Arg.usage spec "Too many files specified:";
+  let filename = List.hd !anon_args in
+  let basename = Filename.chop_extension filename in
+  let extension = get_extension filename in
+  fname := filename;
+
+  let ch = open_in filename in
+  let n = in_channel_length ch in
+  let str = String.create n in
+  really_input ch str 0 n;
+
+  let parse = if List.mem extension patoline_extension
+                 then parse_patoline
+                 else
+                   begin
+                     if List.mem extension patoline_extension_caml
+                        then parse_patoline_caml
+                        else
+                          begin
+                            Printf.fprintf stderr
+                              "Warning: wrong file extension...\n%!";
+                            parse_patoline
+                          end
+                   end
+  in
+
+  let ast = parse str in
+  let _loc = Loc.(of_lexing_position (find_pos str 0)) in 
+
+  let wrapped = <:str_item<
+    open Typography
+    open Typography.Util
+    open Typography.Box
+    open Typography.Config
+    open Typography.Document
+    open Typography.OutputCommon
+    open DefaultFormat.MathsFormat
+    let $lid:"cache_"^basename$  =
+      ref ([||] : (environment -> Mathematical.style -> box list) array)
+    let $lid:"mcache_"^basename$ =
+      ref ([||] : (environment -> Mathematical.style -> box list) list array)
+    module Document = functor(Patoline_Output:DefaultFormat.Output)
+      -> functor(D:DocumentStructure)->struct
+      module Patoline_Format = $uid:!patoline_format$.Format(D)
+      open $uid:!patoline_format$
+      open Patoline_Format
+      let temp1 = List.map fst (snd !D.structure);;
+      $ast$
+      let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
+    end;;
+    let _ = $lid:"cache_"^basename$ :=[||];;
+    let _ = $lid:"mcache_"^basename$ :=[||];; >> in
+  Printers.OCaml.print_implem wrapped
+  
+  with
+    | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
+             exit 1
+
+(* let format = Sys.argv.(1) *)
+(* let driver = Sys.argv.(2) *)
+(* let filename = Sys.argv.(3) *)
+  (*
 let basename = Filename.chop_extension filename
 
 let _ =
-      try 
-	let ch = open_in filename in
-	fname := filename;
-	let n = in_channel_length ch in
-	let str = String.create n in
-	really_input ch str 0 n;
-       try
-	let l = parse_string full_text blank2 str in
-	let _loc = Loc.(of_lexing_position (find_pos str 0)) in 
-	let all = <:str_item<
-	  open Typography
-	  open Typography.Util
-	  open Typography.Box
-	  open Typography.Config
-	  open Typography.Document
-	  open Typography.OutputCommon
-	  open DefaultFormat.MathsFormat
-	  let $lid:"cache_"^basename$ = ref ([||] : (environment -> Mathematical.style -> box list) array)
-	  let $lid:"mcache_"^basename$ = ref ([||] : (environment -> Mathematical.style -> box list) list array)
-	  module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct
-	    module Patoline_Format = $uid:format$.Format(D)
-	    open $uid:format$
-	    open Patoline_Format
-            let temp1 = List.map fst (snd !D.structure);;
-	    $l$
-           let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
-         end;;
-         let _ = $lid:"cache_"^basename$ :=[||];;
-         let _ = $lid:"mcache_"^basename$ :=[||];;
-        >>
-	 in
-	Printers.OCaml.print_implem all
-(*	Printers.DumpOCamlAst.print_implem all*)
-      with
-	Parse_error n -> 
-	  let _loc = find_pos str n in 
-	  Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
-      | Ambiguity(n,p) -> 
-	let _loc1 = find_pos str n in 
-	let _loc2 = find_pos str p in 
-	Loc.raise Loc.(merge (of_lexing_position _loc1) (of_lexing_position _loc2)) 
-	  (Stream.Error "Ambiguous expression")
-      with
-
-      | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc; exit 1
+  try 
+    let ch = open_in filename in
+    fname := filename;
+    let n = in_channel_length ch in
+    let str = String.create n in
+    really_input ch str 0 n;
+    let theparser = if filename = basename ^ ".mlp" || filename = basename ^ ".ml"
+                       then parse_patoline_caml else parse_patoline in
+    let l = theparser str in
+    let _loc = Loc.(of_lexing_position (find_pos str 0)) in 
+    let all = <:str_item<
+      open Typography
+      open Typography.Util
+      open Typography.Box
+      open Typography.Config
+      open Typography.Document
+      open Typography.OutputCommon
+      open DefaultFormat.MathsFormat
+      let $lid:"cache_"^basename$ = ref ([||] : (environment -> Mathematical.style -> box list) array)
+      let $lid:"mcache_"^basename$ = ref ([||] : (environment -> Mathematical.style -> box list) list array)
+      module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct
+        module Patoline_Format = $uid:!patoline_format$.Format(D)
+        open $uid:!patoline_format$
+        open Patoline_Format
+        let temp1 = List.map fst (snd !D.structure);;
+        $l$
+        let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
+      end;;
+      let _ = $lid:"cache_"^basename$ :=[||];;
+      let _ = $lid:"mcache_"^basename$ :=[||];; >> in
+    Printers.OCaml.print_implem all
+  with
+    | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc; exit 1
+    *)
