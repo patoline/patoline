@@ -2896,4 +2896,4 @@ Doing a rectangle.\n" ;
       [Edge e], default_where ms)
 
 (* not so dirty if "module type of" does not run any code *)
-module type EnvDiagram = module type of Env_Diagram (struct let env = Obj.magic 0 end)
+module type EnvDiagram = module type of Env_Diagram (struct let env = assert false end)
