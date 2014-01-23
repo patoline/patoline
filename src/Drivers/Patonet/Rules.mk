@@ -2,10 +2,9 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-NET_DRIVER_INCLUDES:= -I $(DRIVERS_DIR)/SVG -I $(d)
-COUCOU:=-I $(d)
+PATONET_DRIVER_INCLUDES:= -I $(DRIVERS_DIR)/SVG -I $(d)
 
-$(d)/%.ml.depends: INCLUDES += $(NET_DRIVER_INCLUDES) 
+$(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_INCLUDES) 
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -13,15 +12,15 @@ DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 
 $(d)/Patonet.cmx: $(d)/Patonet.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) $(COUCOU) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Patonet.cmxa: $(d)/Hammer.cmx $(d)/Patonet.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) $(OFLAGS) -a -o $@ $^
+	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) $(OFLAGS) -a -o $@ $^
 
 $(d)/Patonet.cmxs: $(d)/Hammer.cmx $(d)/Patonet.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $^
+	$(Q)$(OCAMLOPT) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $^
 
 $(d)/Hammer.ml: $(d)/Hammer.js
 	$(ECHO) "[JSTOML] $< -> $@"

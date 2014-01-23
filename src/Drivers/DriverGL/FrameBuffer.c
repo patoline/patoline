@@ -50,7 +50,7 @@ typedef struct _fbo_texture {
   int is_texture;
 } *fbo_texture;
 
-void testGL(msg) {
+void testGL(char* msg) {
   GLenum errCode;
   const GLubyte* errString;
 
