@@ -89,7 +89,7 @@ svg .editable rect{pointer-events:all;}
 svg .dragable rect{pointer-events:all;}
 ";
   if output_fonts then
-    StrMap.iter (fun full class_name->
+    StrMap.iter (fun _ (full, class_name) ->
       Rbuffer.add_string def_buf
         (Printf.sprintf "@font-face { font-family:f%d; src:url(\"" class_name);
       Rbuffer.add_string def_buf full;

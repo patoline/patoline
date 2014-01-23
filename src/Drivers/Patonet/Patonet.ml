@@ -185,7 +185,8 @@ let spec=
    ("--port",Arg.Set_int port_num,"Set the port number to listen to")]
 
 let websocket  =
-  Printf.sprintf "var websocket;
+  Printf.sprintf
+"var websocket;
 setInterval(function () {
   if (to_refresh) loadSlide(current_slide,current_state,true);
 }, 5000);
@@ -204,8 +205,12 @@ function websocket_msg(evt){
      }  
 };
 function websocket_err(evt){
+  console.log('websocket error');
+  websocket=null;
 };
 function websocket_close(evt){
+  console.log('websocket close');
+  websocket=null;
 };
 function start_socket(){
    if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
@@ -218,12 +223,33 @@ function start_socket(){
    websocket.onerror = websocket_err;
 };
 window.onbeforeunload = function() {
-    websocket.onclose = function () {}; // disable onclose handler first
-    websocket.close()
+    if (websocket) {
+      websocket.onclose = function () {}; // disable onclose handler first
+      websocket.close()
+    }
 };
 function websocket_send(data){
-  if (!websocket) start_socket();
-  websocket.send(data);
+  if (!websocket || websocket.readyState != 1) {
+    if (!websocket || websocket.readyState != 0) start_socket();
+    function do_send(interval, tries) {
+      if (tries > 0) {
+        console.log('wait' + interval);
+        var timer = setInterval(function () {
+          clearInterval(timer);
+          if (websocket && websocket.readyState == 1) {
+             console.log('sending');
+             websocket.send(data);
+          } else if (websocket && websocket.readyState == 0) {
+             console.log('waiting more');
+             do_send(interval * 2, tries - 1);
+          }
+        }, interval)
+      }
+    };
+    do_send(200,7);
+  } else {
+    websocket.send(data);
+  }
 }
 "
 
@@ -640,25 +666,25 @@ Base64DecodeEnumerator.prototype =
 "function manageKey(e){
 if(e.keyCode==37 || e.keyCode==38 || e.keyCode==33){
 if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
-  websocket.send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
+  websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
 } else if (current_state > 0) {
-  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
+  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
 }
 } //left
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
 if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
-  websocket.send(\"move_\"+(current_slide+1)+\"_0\");
+  websocket_send(\"move_\"+(current_slide+1)+\"_0\");
 } else if (current_state < states.length - 1) {
-  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
+  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
 }
 } else //right
 if(e.keyCode==82){ //r
-  websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state));
+  websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state));
 }
 }
 window.onkeydown=manageKey;
 function gotoSlide(n){
-  websocket.send(\"move_\"+n+\"_0\");
+  websocket_send(\"move_\"+n+\"_0\");
 }
 %s" (Array.length pages - 1) mouse_script
   in
@@ -673,16 +699,16 @@ Hammer(svgDiv, {
 });
 Hammer(svgDiv).on(\"swipeleft\", function(ev) {
   if(current_slide < %d && current_state>=states[current_slide]-1) {
-    websocket.send(\"move_\"+(current_slide+1)+\"_0\");
+    websocket_send(\"move_\"+(current_slide+1)+\"_0\");
   } else if (current_state < states.length - 1) {
-    websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
+    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state+1));
   }
 });
 Hammer(svgDiv).on(\"swiperight\", function(ev) {
   if(current_slide > 0 && current_state<=0) {
-    websocket.send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
+    websocket_send(\"move_\"+(current_slide-1)+\"_\"+(states[current_slide-1]-1));
   } else if (current_state > 0) {
-    websocket.send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
+    websocket_send(\"move_\"+(current_slide)+\"_\"+(current_state-1));
   }
 });
 " (Array.length pages - 1)
@@ -1079,15 +1105,16 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	    
         try
 	  let name = String.sub get 1 (String.length get-1) in
-	  Printf.eprintf "serve %d: image: %s\n%!" num name;
+	  Printf.eprintf "serve %d: image or js: %s\n%!" num name;
           let img=StrMap.find name imgs in
           let ext=
-            if Filename.check_suffix ".png" get then "image/png" else
-              if Filename.check_suffix ".jpeg" get then "image/jpeg" else
-                if Filename.check_suffix ".jpg" get then "image/jpg" else
-                  if Filename.check_suffix ".gif" get then "image/gif" else
-                    if Filename.check_suffix ".ico" get then "image/vnd.microsoft.icon" else
-                    "application/octet-stream"
+            if Filename.check_suffix name ".js" then "text/javascript" else
+            if Filename.check_suffix name ".png" then "image/png" else
+            if Filename.check_suffix name ".jpeg" then "image/jpeg" else
+            if Filename.check_suffix name ".jpg" then "image/jpg" else
+            if Filename.check_suffix name ".gif" then "image/gif" else
+            if Filename.check_suffix name ".ico" then "image/vnd.microsoft.icon" else
+              "application/octet-stream"
           in
  
 	  http_send 200 ext [img] ouc;
