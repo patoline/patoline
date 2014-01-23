@@ -510,7 +510,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 		  let ch = open_in source in
 		  let opts= add_format (read_options_from_source_file hs ch) in
 		  close_in ch;
- 		  source, ["-pp"; "pa_patoline "^opts.format^" "^opts.driver])
+ 		  source, ["-pp"; "pa_patoline --format "^opts.format^" --driver "^opts.driver])
 		else
                   (pref^".ttml", [])
           in
