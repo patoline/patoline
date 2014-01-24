@@ -179,7 +179,7 @@ let update () = result := snd (sonde.distribution ())
 Un petit programme éditable~:
 
 \caml(
-editableText ~min_line:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML" 
+editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = Printf.printf \"Hello World\\n\"" "testML" 
 )
 
 \end{slide}
