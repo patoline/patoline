@@ -591,7 +591,8 @@ let _ = try
     end;;
     let _ = $lid:"cache_"^basename$ :=[||];;
     let _ = $lid:"mcache_"^basename$ :=[||];; >> in
-  Printers.OCaml.print_implem wrapped
+  Printers.OCaml.print_implem wrapped;
+  close_in ch
 
   with
     | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
