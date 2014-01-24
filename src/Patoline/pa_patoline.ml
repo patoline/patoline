@@ -526,12 +526,20 @@ let spec =
 let patoline_extension      = [ "txp" ; "typ" ]
 let patoline_extension_caml = [ "mlp" ; "ml" ]
 
+let chop_extension_safe fname =
+  try
+    Filename.chop_extension fname
+  with
+    _ -> fname
+
 let get_extension fname =
-  if Filename.chop_extension fname = fname then ""
+  if chop_extension_safe fname = fname then ""
   else let pos = ref 0 in
        let p = ref 0 in
        String.iter (fun c -> if c = '.' then p := !pos; incr pos) fname;
-       String.sub fname !p (String.length fname - !p)
+       let start_ext = !p + 1 in
+       let len_ext = String.length fname - start_ext in
+       String.sub fname start_ext len_ext
 
 let _ = try
   let anon_args = ref [] in
@@ -541,7 +549,7 @@ let _ = try
   if List.length !anon_args > 1
      then Arg.usage spec "Too many files specified:";
   let filename = List.hd !anon_args in
-  let basename = Filename.chop_extension filename in
+  let basename = chop_extension_safe filename in
   let extension = get_extension filename in
   fname := filename;
 
@@ -550,19 +558,23 @@ let _ = try
   let str = String.create n in
   really_input ch str 0 n;
 
-  let parse = if List.mem extension patoline_extension
-                 then parse_patoline
-                 else
-                   begin
-                     if List.mem extension patoline_extension_caml
-                        then parse_patoline_caml
-                        else
-                          begin
-                            Printf.fprintf stderr
-                              "Warning: wrong file extension...\n%!";
-                            parse_patoline
-                          end
-                   end
+  let parse =
+    if List.mem extension patoline_extension
+    then parse_patoline
+    else
+      begin
+        if List.mem extension patoline_extension_caml
+        then parse_patoline_caml
+        else
+          begin
+            let msg =
+              (if extension = ""
+               then "no file extension..."
+               else ("wrong file extension \"" ^ extension ^ "\" ...")) in
+            Printf.fprintf stderr "Warning: %s\n%!" msg;
+            parse_patoline
+          end
+      end
   in
 
   let ast = parse str in
