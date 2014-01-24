@@ -205,11 +205,9 @@ function websocket_msg(evt){
      }  
 };
 function websocket_err(evt){
-  console.log('websocket error');
   websocket=null;
 };
 function websocket_close(evt){
-  console.log('websocket close');
   websocket=null;
 };
 function start_socket(){
@@ -233,14 +231,11 @@ function websocket_send(data){
     if (!websocket || websocket.readyState != 0) start_socket();
     function do_send(interval, tries) {
       if (tries > 0) {
-        console.log('wait' + interval);
         var timer = setInterval(function () {
           clearInterval(timer);
           if (websocket && websocket.readyState == 1) {
-             console.log('sending');
              websocket.send(data);
           } else if (websocket && websocket.readyState == 0) {
-             console.log('waiting more');
              do_send(interval * 2, tries - 1);
           }
         }, interval)
@@ -913,12 +908,19 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
       Printf.eprintf "Private change\n%!"; 
       if affected slide state priv then pushto ~change:(Slide(slide,state)) fd fdfather;
       Printf.eprintf "Public change\n%!"; 
-      Printf.fprintf fouc "change %s\n" (String.concat " " pub);
-      flush fouc 
+      Printf.fprintf fouc "change %s\n%!" (String.concat " " pub);
+    in
+
+    let _ = Sys.(
+      signal sigalrm (Signal_handle (fun n ->
+	Printf.fprintf fouc "quit %s %d\n%!" (fst (read_sessid ())) (Unix.getpid ());
+	exit 0)))
     in
 
     let rec process_req master get hdr reste=
       
+      ignore (Unix.alarm 300);
+	
       if !websocket then (
 	Printf.eprintf "Reading web socket message\n%!";
 	let get = decode_slave inc in
@@ -930,9 +932,8 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  Printf.eprintf "Sending to client ...\n%!";
           pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n%!";
-	  Printf.fprintf fouc "move %s %d %d\n"
+	  Printf.fprintf fouc "move %s %d %d\n%!"
 	    (fst (read_sessid ())) slide state;
-	  flush fouc;
 	  Printf.eprintf "Sending to father done\n%!";
 
           process_req master "" [] reste)
@@ -1061,7 +1062,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
 	    Printf.eprintf "serve %d: tire\n%!" num;
             try
-              Printf.eprintf "pushing\n";flush stderr;
+              Printf.eprintf "pushing\n%!";
               begin
 		let key=
 		  let websocket_key=List.assoc "Sec-WebSocket-Key" hdr in
@@ -1073,14 +1074,13 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 		output_string ouc "HTTP/1.1 101 Switching\r\nUpgrade: websocket\r\nConnection: upgrade\r\nSec-WebSocket-Accept: ";
 		output_string ouc key;
 		output_string ouc "\r\n\r\n";
-		flush ouc;
+		flush ouc
               end;
 	      
-	      Printf.eprintf "Sending to father ...\n";
-	      Printf.fprintf fouc "move %s %d %d\n"
+	      Printf.eprintf "Sending to father ...\n%!";
+	      Printf.fprintf fouc "move %s %d %d\n%!"
 		(fst (read_sessid ())) slide state;
-	      flush fouc;
-	      Printf.eprintf "Sending to father done\n";
+	      Printf.eprintf "Sending to father done\n%!";
 	      websocket := true;
 	      
 	      process_req master "" [] reste
@@ -1103,7 +1103,7 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 
 	  ) else (
 	    
-        try
+        (try
 	  let name = String.sub get 1 (String.length get-1) in
 	  Printf.eprintf "serve %d: image or js: %s\n%!" num name;
           let img=StrMap.find name imgs in
@@ -1118,11 +1118,11 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
           in
  
 	  http_send 200 ext [img] ouc;
-          process_req master "" [] []
+          fun () -> process_req master "" [] []
         with
             Not_found->(
 	      generate_error ouc;
-              process_req master "" [] reste);
+              fun () -> process_req master "" [] reste)) ()
       )
 
     ) else (
@@ -1156,11 +1156,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     | e-> 
       (match !sessid with
 	None ->
-	  Printf.fprintf fouc "quit ? %d\n" (Unix.getpid ());
-	  flush fouc
+	  Printf.fprintf fouc "quit ? %d\n%!" (Unix.getpid ());
       | Some sessid ->
-	Printf.fprintf fouc "quit %s %d\n" (fst sessid) (Unix.getpid ());
-	flush fouc);
+	Printf.fprintf fouc "quit %s %d\n%!" (fst sessid) (Unix.getpid ()));
       Printf.eprintf "erreur %d : \"%s\"\n%!" num (Printexc.to_string e);
       exit 0;
 in

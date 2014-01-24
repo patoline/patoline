@@ -802,6 +802,13 @@ module Transfo (X : Set.OrderedType) = struct
       anchor = (fun a -> x) ;
       contents = [] }
 
+  (* Casting points into gentities *)
+  let coord3d projection x = 
+    let (x,y,z) = Proj3d.project projection x in
+    { curve = Curve.of_point_lists [[(x,y)]] ;
+      anchor = (fun a -> (x,y)) ;
+      contents = [] }
+
 
     (* Translate a gentity by v *)
     let translate v node =
@@ -875,6 +882,20 @@ module Transfo (X : Set.OrderedType) = struct
     let coord ((x,y) as p : Point.t) = 
       { default with 
 	at = p ;
+	center = p ;
+	pdfAnchor = p ;
+	innerSep = 0. ;
+	innerCurve = Curve.of_point_lists [[p]] ;
+	outerCurve = Curve.of_point_lists [[p]] ;
+	bb = (x,y,x,y) ;
+	anchor = (fun _ -> p) }
+
+    let coord3d projection (p) =
+      let (x,y,z) = Proj3d.project projection p in    
+      let p = (x,y) in
+      { default with 
+	at = p ;
+	z = z;
 	center = p ;
 	pdfAnchor = p ;
 	innerSep = 0. ;
@@ -2187,8 +2208,7 @@ Doing a rectangle.\n" ;
 	  let thickness = max (0.5 *. params.lineWidth) 0.06 in
 	  let height = max (1.5 *. short) 0.22 in
 	  let width = max (0.3 *. info.tip_line_width) 0.2 in
-	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr
-	  in
+(*	  let _ = Printf.fprintf stderr "double tip_line_width=%f\n" info.tip_line_width ; flush stderr in*)
 	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
 
 	else
@@ -2201,8 +2221,7 @@ Doing a rectangle.\n" ;
 	  (* let thickness = max (0.6 *. params.lineWidth) 0.2 in *)
 	  (* let height = max (2. *. short) 0.6 in *)
 	  (* let width = max (1.3 *. params.lineWidth) 0.4 in *)
-	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr
-	  in
+(*	  let _ = Printf.fprintf stderr "tip_line_width=%f\n" params.lineWidth ; flush stderr in*)
 	  (scale *. short, scale *. thickness, scale *. height, scale *. width, scale *. 0.01)
 
       let base_arrow env ?head_or_tail:(head_or_tail=true) head_params transfos edge_info=
@@ -2369,6 +2388,13 @@ Doing a rectangle.\n" ;
 	let curve = (Curve.of_point_lists (point_lists_of_path_spec s continues)) in
 	path_of_curve style curve
 
+      let polyLine style nodes =
+	let first, continues =
+	  match nodes with
+	    [] -> raise (Invalid_argument "polyLine")
+	  | x::l -> Node.(x.center, List.map (fun n -> [n.center]) l)
+	in
+	path style first continues
 
       let of_gentities style s ?controls:(controls=[]) e = 
 	let point_lists = point_lists_of_edge_spec s controls e in
