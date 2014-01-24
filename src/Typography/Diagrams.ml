@@ -2080,7 +2080,9 @@ Doing a rectangle.\n" ;
 	      (* 	end *)
 	      (* 	| Some (j, t2) -> (j, t2) *)
 	end in
-	Curve.internal_restrict curve start finish 
+	if Curve.compare_lt start finish < 0 then
+	  Curve.internal_restrict curve start finish 
+	else Curve.restrict curve 0. 0.
 
       let clip, clip_pet = 
 	Pet.register ~depends:[params_pet] "clip" (fun pet ->
@@ -2152,7 +2154,10 @@ Doing a rectangle.\n" ;
 	  let shorten (params',curve') = 
 	    let ta = if a = 0.0 then 0.0 else Curve.curvilinear curve' a in
 	    let tb = if b = 0.0 then 1.0 else Curve.curvilinear curve' (-. b) in
+	    if ta < tb then
 	    params', Curve.restrict curve' ta tb
+	    else 
+	      params', Curve.restrict curve' 0. 0.
 	  in
 	  let _, u_curve = shorten (info.params, info.underlying_curve) in
 	  { info with underlying_curve = u_curve ; curves = List.map shorten info.curves })})
@@ -2237,37 +2242,42 @@ Doing a rectangle.\n" ;
 	let (xe,ye) as e = Curve.eval underlying_curve time in
 	(*let _ = Printf.fprintf stderr "Shortening by %f.\n" short ; flush stderr in*)
 	let edge_info' = Transfo.transform [(if head_or_tail then shortenE else shortenS) short] edge_info in
-	let curve0 = edge_info'.underlying_curve in
+	begin match edge_info'.underlying_curve with 
+	  [xs,ys] when Array.length xs = 1 -> 
+	    edge_info'
+	| _ -> 
+	  let curve0 = edge_info'.underlying_curve in
 	(*let _ = Printf.fprintf stderr "Done shortening.\n" ; flush stderr in*)
-	let e0 = Curve.eval curve0 time in
-	let ee0 = Vector.of_points e e0 in
-	let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
-	let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
+	  let e0 = Curve.eval curve0 time in
+	  let ee0 = Vector.of_points e e0 in
+	  let e1 = Vector.(+) e (Vector.normalise ~norm:thickness ee0) in
+	  let e2 = Vector.(+) e (Vector.normalise ~norm:height ee0) in
 
-	let lnormale = Vector.rotate 90. (Vector.normalise grad) in
-	let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
+	  let lnormale = Vector.rotate 90. (Vector.normalise grad) in
+	  let rnormale = Vector.rotate (-. 90.) (Vector.normalise grad) in
 
 	(* Left control points *)
-	let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
-	let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
-	let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
+	  let l = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) lnormale) in
+	  let ll = Vector.(+) e2 (Vector.normalise ~norm:(width) lnormale) in
+	  let l' = Vector.(+) l (Vector.normalise ~norm:thickness' ee0) in
 
 	(* Right control points *)
-	let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
-	let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
-	let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
+	  let r = Vector.(+) e0 (Vector.normalise ~norm:(info.tip_line_width /. 2.) rnormale) in
+	  let rr = Vector.(+) e2 (Vector.normalise ~norm:(width) rnormale) in
+	  let r' = Vector.(+) r (Vector.normalise ~norm:thickness' ee0) in
 
 	(* Put everything together *)
-	let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
-					@ (Curve.make_quadratic ll l' e1) 
-					@ (Curve.make_quadratic e1 r' rr) 
-					@ (Curve.make_quadratic rr r e)) 
-	in
-	{ edge_info' with decorations = edge_info'.decorations @
-	    [Curve ({ params with 
-		  close = true ; 
-		  fillColor = params.strokingColor ; 
-		  lineWidth = lw }, tip)]}
+	  let tip = Curve.of_point_lists ((Curve.make_quadratic e l ll) 
+					  @ (Curve.make_quadratic ll l' e1) 
+					  @ (Curve.make_quadratic e1 r' rr) 
+					  @ (Curve.make_quadratic rr r e)) 
+	  in
+	  { edge_info' with decorations = edge_info'.decorations @
+	      [Curve ({ params with 
+		close = true ; 
+		fillColor = params.strokingColor ; 
+		lineWidth = lw }, tip)]}
+	end
 
       let arrowOf, arrow_head_pet = 
         Pet.register ~depends:[double_pet;shorten_pet;params_pet] ~append:only_last "arrow head"
