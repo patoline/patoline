@@ -184,7 +184,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
           Rbuffer.add_string svg_buf (html_escape (UTF8.init 1 (fun _->UTF8.look utf8 0)));
           cur_x:= !cur_x +. (Fonts.glyphWidth x.glyph)*.x.glyph_size/.1000.;
 	with Not_found ->
-	  Printf.fprintf stderr "Missing glych: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
+	  Printf.fprintf stderr "Missing glyph: %s\n%!" (Fonts.glyphNumber x.glyph).glyph_utf8
       )
     | Path (args, l)->(
       if !opened_tspan then (
