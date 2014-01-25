@@ -61,9 +61,10 @@
 
 (defun patoline-compile-format ()
   (let
-      ((el (if patoline-compile-edit-link "--edit-link" ""))
-       (dr (if (string= patoline-compile-driver "-c") "" "--driver")))    
-    (format "patoline %s %s %s \"%%s\"" el dr patoline-compile-driver)))
+      ((el (if patoline-compile-edit-link "--edit-link " ""))
+       (dr (if (string= patoline-compile-driver "-c") "" "--driver "))
+       (dy (if (string= patoline-compile-driver "Bin") "--dynlink " "")))
+    (format "patoline %s%s%s %s \"%%s\"" el dy dr patoline-compile-driver)))
   
 (defvar patoline-compile-edit-link
   t
@@ -173,7 +174,7 @@
   (interactive)
   (let ((file-name 
 	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
-      (let ((cmd (split-string-and-unquote (format "\"%s.tmx\" --in \"%s.bin\" --driver DriverGL" file-name file-name))))
+      (let ((cmd (split-string-and-unquote (format " \"%s.tmx\" --driver DriverGL --in \"%s.bin\"" file-name file-name))))
 	(save-excursion
 	  (select-patoline-view-buffer file-name)
 	  (cd (file-name-directory file-name))
@@ -235,7 +236,7 @@
       (if patoline-view-process
 	  (process-send-string patoline-view-process (format "e %d %d\n" line col))))))
 
-(define-derived-mode patoline-mode fundamental-mode "WPDL"
+(define-derived-mode patoline-mode fundamental-mode "Patoline"
   "Major mode for editing Patoline documents."
   (interactive)
   (kill-all-local-variables)
@@ -273,6 +274,18 @@
 (require 'mmm-mode nil t)
 (require 'tuareg nil t)
 
+(define-derived-mode tuareg-patoline-mode tuareg-mode "ocaml-patoline"
+  "Major mode for editing OCaml inside patoline."
+    (define-key tuareg-patoline-mode-map "\C-c\C-c" 'patoline-compile)
+;    (define-key tuareg-patoline-mode-map "\C-c\C-e" 'patoline-make)
+    (define-key tuareg-patoline-mode-map "\C-c\C-a" 'patoline-env)
+    (define-key tuareg-patoline-mode-map "\C-c\C-v" 'patoline-glview)
+    (define-key tuareg-patoline-mode-map "\C-c\C-p" 'patoline-view)
+    (define-key tuareg-patoline-mode-map "\C-c\C-s" 'patoline-forward-search)
+    (define-key tuareg-patoline-mode-map "\C-c\C-l" 'display-program-buffer)
+
+
+  )
 
 (defvar mmm-tuareg-mode-submode-hook
   (list (lambda () (set-input-method "ucs"))
@@ -296,16 +309,17 @@
       (let ((regexp (case mode
 		      ('caml "[]})({[\"]\\|<[$<]")
 		      ('string "\\\\?\"")
-		      ('text "\\\\[Cc]aml(\\|>>")
-		      ('math "\\\\[Cc]aml(\\|\\$>"))))
-;;	(message "back: %S %S %S %S %S"  mode depth (point) subs mmm-patoline-subregions )
+		      ('text "\\\\\\(\\([Cc]aml\\)\\|\\(diagram\\)(\\)\\|>>")
+		      ('math "\\\\\\(\\([Cc]aml\\)\\|\\(diagram\\)(\\)\\|\\$>"))))
+;	(message "back: %S %S %S %S %S"  mode depth (point) subs mmm-patoline-subregions )
 	(setq ret (search-forward-regexp regexp limit))
 	(let ((m (match-string 0))
 	      (pos (cons (match-beginning 0) (match-end 0))))
-;;	  (message m)
+;	  (message m)
 	  (cond 
 	    ((equal m "\\Caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "\\caml(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
+	    ((equal m "\\diagram(") (setq depth (+ depth 1) subs (cons (cons mode pos) subs) mode 'caml))
 	    ((equal m "(") (setq depth (+ depth 1) subs (cons nil subs)))
 	    ((equal m "{") (setq depth (+ depth 1)))
 	    ((equal m "[") (setq depth (+ depth 1)))
@@ -426,14 +440,15 @@
       (mmm-add-mode-ext-class nil "\\.txp" 'patoline-quote-text-args)
       (mmm-add-classes
        '((patoline-tuareg
-	  :submode tuareg-mode
+	  :submode tuareg-patoline-mode
 	  :front "\\\\\\([Cc]aml\\|diagram\\)("
 	  :back (lambda (limit) (mmm-patoline-back limit 'caml))
 	  :creation-hook (lambda () (mmm-patoline-enable-sub-regions))
-	  :insert ((?c tuareg-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)
-		   (?d tuareg-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
+	  :insert ((?C tuareg-patoline-mode nil @ "\\Caml(\n"  @ " " _ " " @ "\n)" @)
+		   (?c tuareg-patoline-mode nil @ "\\caml(\n"  @ " " _ " " @ "\n)" @)
+		   (?d tuareg-patoline-mode nil @ "\\diagram(\n"  @ " " _ " " @ "\n)" @)))
        (patoline-verb-tuareg
-	  :submode tuareg-mode
+	  :submode tuareg-patoline-mode
 	  :front "^###[ \t]*OCaml"
 	  :back "^###")
        (patoline-verb-sml
@@ -462,7 +477,7 @@
    '("Patoline"
      ["Compile..." patoline-compile t]
      ["View Pdf..." patoline-view t]
-     ["View Bin..." patoline-glview t]
+     ["View Gl..." patoline-glview t]
      ("Driver" ["Dummy" nil t])
      ("Options" ["Dummy" nil t])))
   (easy-menu-add patoline-mode-menu)
