@@ -26,6 +26,8 @@ $(d)/Hammer.ml: $(d)/Hammer.js
 	$(ECHO) "[JSTOML] $< -> $@"
 	$(Q)$(OCAML) ./Tools/file_to_string.ml $< > $@
 
+CLEAN += $(d)/Hammer.ml
+
 DISTCLEAN += $(DEPENDS_$(d))
 
 Hammer.ml.depends: Hammer.ml

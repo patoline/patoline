@@ -65,7 +65,7 @@ $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(INCLUDES) -I $(PATOLINE_DIR) -I $(RBUFFER_DIR) -o $@ -c $<
 
-CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts
+CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
 
 # Installing

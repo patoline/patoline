@@ -36,6 +36,8 @@ $(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverG
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_DriverGL) -shared -linkpkg -o $@ $^
 
+CLEAN += $(d)/DriverGL.cma
+
 DISTCLEAN += $(DEPENDS_$(d))
 
 install:install-dll-gl
