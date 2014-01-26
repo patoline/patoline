@@ -212,6 +212,26 @@ let frame_page l=
 
 let page l=frame_page l.layout
 
+let layout_to_dot l file=
+  let o=open_out file in
+  let rec doit path lay=
+    IntMap.iter (fun k a->
+      if path==(List.map fst (snd l)) then(
+        Printf.fprintf o "n%s[color=red];\n"
+          (String.concat "_" (List.map string_of_int path))
+      );
+      Printf.fprintf o "n%s->n%s;\n"
+        (String.concat "_" (List.map string_of_int path))
+        (String.concat "_" (List.map string_of_int (k::path)));
+      doit (k::path) a;
+    ) lay.frame_children;
+  in
+  Printf.fprintf o "digraph {\n";
+  doit [] (fst (frame_top l));
+  Printf.fprintf o "}\n";
+  close_out o
+
+
 let all_contents frame=
   let rec collect f c=
     IntMap.fold (fun k a m->collect a m) (f.frame_children) (f.frame_content@c)

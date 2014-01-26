@@ -1574,7 +1574,7 @@ end
 
 (** "flattens" a document tree to an array of paragraphs, a paragraph
     being an array of boxes. *)
-let flatten env0 str=
+let flatten ?(initial_path=[]) env0 str=
   let paragraphs=ref [] in
   let trees=ref [] in
   let figures=ref IntMap.empty in
@@ -1640,7 +1640,7 @@ let flatten env0 str=
                 (noindent || List.mem_assoc "noindent" s.node_tags)
                 (Paragraph { p with par_contents=
                     (if is_first then (
-                      let name=String.concat "_" ("_"::List.map string_of_int (List.map fst path)) in
+                      let name=String.concat "_" ("_"::List.map string_of_int ((List.map fst path)@initial_path)) in
                       [Env (fun env->
                         let w=try let (_,_,w)=StrMap.find name (names env) in w with
                             Not_found -> uselessLine in
@@ -1806,4 +1806,3 @@ let update_names env figs user=
 let reset_counters env=
   { env with
     counters=StrMap.map (fun (l,_)->(l,[])) env.counters }
-

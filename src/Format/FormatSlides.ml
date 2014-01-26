@@ -508,8 +508,8 @@ module Format=functor (D:Document.DocumentStructure)->(
         }
 
       let output out_params structure defaultEnv file=
-        let rec resolve i env_resolved=
-          Printf.printf "Compilation %d\n" i; flush stdout;
+        let rec resolve comp_i env_resolved=
+          Printf.printf "Compilation %d\n" comp_i; flush stdout;
           let tree=structure in
           let slides=ref [] in
           let layouts=ref [env_resolved.new_page (empty_frame,[])] in
@@ -553,7 +553,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   in
 
                   let env1,fig_params0,params0,new_page0,new_line0,compl0,badnesses0,paragraphs0,_,
-                    figures0,figure_trees0=flatten env0 tree
+                    figures0,figure_trees0=flatten ~initial_path:path env0 tree
                   in
                   let max_state=
                     Array.fold_left (
@@ -738,9 +738,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 
           let _,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
-
-          if i < !max_iterations-1 && !reboot then (
-            resolve (i+1) (reset_counters env_final)
+          StrMap.iter (fun k (a,b,c)->
+            Printf.fprintf stderr "FormatSlides %d: position of %S (%S):\n" __LINE__ k b;
+            print_line c
+          ) (names env_final);
+          if comp_i < !max_iterations-1 && !reboot then (
+            resolve (comp_i+1) (reset_counters env_final)
           ) else (
 
 
@@ -939,19 +942,18 @@ module Format=functor (D:Document.DocumentStructure)->(
 			      OutputCommon.Intern(l,dest_page,0.,0.);
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
-			  
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
                                      link_contents=[] }
                           in
-                          crosslinks:=(i, link, l) :: !crosslinks;
+                          crosslinks:=(comp_i, link, l) :: !crosslinks;
                           page.pageContents<-Link link::page.pageContents;
                           crosslink_opened:=true;
                           0.
                         )
                         | Marker (Label l)->(
                           let y0,y1=line_height paragraphs figures line in
-                          destinations:=StrMap.add l (i,param.left_margin,y+.y0,y+.y1) !destinations;
+                          destinations:=StrMap.add l (comp_i,param.left_margin,y+.y0,y+.y1) !destinations;
                           0.
                         )
                         | Marker EndLink->(
