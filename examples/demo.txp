@@ -9,7 +9,7 @@ open Typography.Db
 open DefaultFormat
 
 let caml x = x
-(*
+
 let db_info = Mysql Mysql.(
     { defaults with
       dbhost = Some "localhost";
@@ -18,9 +18,9 @@ let db_info = Mysql Mysql.(
       dbuser = Some "patonet";})
 
 let db = init_db "demo" db_info
-*)
+(*
 let db = init_db "demo" Memory
-
+*)
 module MyDb = struct 
   let db = db
   let base_dir = "/tmp"
@@ -31,8 +31,6 @@ module Interactive =
 open Interactive  
 )
 
-
-== Animation ==
 
 \begin{slide}
 \begin{center}
@@ -89,9 +87,9 @@ let cPos = db.create_data ~global:false "Cpos" (10.0,-10.0)
  let av = Vector.(scal_mul 3. (normalise (apos - bpos + apos - cpos)))
  let bv = Vector.(scal_mul 3. (normalise (bpos - cpos + bpos - apos)))
  let cv = Vector.(scal_mul 3. (normalise (cpos - apos + cpos - bpos)))
- let ab = Node.(node [at Point.(middle apos bpos); innerSep 0.] [])
- let bc = Node.(node [at Point.(middle bpos cpos); innerSep 0.] [])
- let ca = Node.(node [at Point.(middle cpos apos); innerSep 0.] [])
+ let ab = Node.(coord Point.(middle apos bpos))
+ let bc = Node.(coord Point.(middle bpos cpos))
+ let ca = Node.(coord Point.(middle cpos apos))
  let a = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec av) env <<A>>; at apos; drag ("a",["figure"])] []) 
  let b = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec bv) env <<B>>; at bpos; drag ("b",["figure"])] [])
  let c = Node.(node [circle; fill black; innerSep 0.4; label ~pos:(`Vec cv) env <<C>>; at cpos; drag ("c",["figure"])] [])
@@ -124,6 +122,45 @@ let box name s =
  (fun () -> if sonde.read () = s then (<<$X$>>) else (<<$O$>>))
 )
 
+\Caml(
+let destinations = ["qui_res"]
+let questions = Array.init 5 (fun i -> db.create_data ("box"^string_of_int i) false)
+)
+
+\begin{slide}
+\Title{Qui êtes-vous ?}
+
+\begin{raggedLeft}
+\caml(checkBox  ~destinations questions.(0))(fun b -> << \b J'aime le nombre 42. >>)
+
+\caml(checkBox  ~destinations questions.(1))(fun b -> << \b J'ai vu presque tous les épisodes de \italic{Startrek} ou \italic{Big-Bang Theory} >>)
+
+\caml(checkBox  ~destinations questions.(2))(fun b -> << \b Je programme souvent >>)
+
+\caml(checkBox  ~destinations questions.(3))(fun b -> << \b J'ai un casse tête que je ne sais pas résoudre >>)
+
+\caml(checkBox  ~destinations questions.(4))(fun b -> << \b Mes amis me trouvent bizarre >>)
+\end{raggedLeft}
+
+\vspaceBefore(5.0)
+\begin{center}
+\dynamic("qui_res")(function _ -> Private){Vous êtes un humain bizarre geek}(fun () ->
+    let nb = Array.fold_left (fun acc b -> if b.read() then succ acc else acc) 0 questions in
+    let bizarre = questions.(4).read () in
+    if nb >= 4 then <<Vous êtes un geek>>
+    else if bizarre || nb >= 2 then <<Vous êtes un humain probablement bizarre>>
+    else <<Vous êtes un humain>>
+)
+\end{center}
+\end{slide}
+
+\Caml(
+type value = No_opinion | Not_clicked | Null | Fun_but | Fun_yes 
+let values = [|Not_clicked ; Null; Fun_but; Fun_yes; No_opinion|] 
+let data = db.create_data "Sondage" Not_clicked
+let radios = radioButtons ~destinations:["histo"] data values
+)
+
 \begin{slide}
 
 \begin{center}
@@ -131,48 +168,43 @@ let box name s =
 \vspaceAfter(5.0)
 \end{center}
 
-\button("Null")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
-  \box("Null")(Null) Patoline c'est null, ça ne marchera jamais.}
+\caml(radios.(1) (fun b -> << \b Patoline c'est null, ça ne marchera jamais. >>))
 
-\button("Fun_but")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
-  \box("Fun_but")(Fun_but) Patoline c'est chouette, mais ça ne marchera pas.}
+\caml(radios.(2) (fun b -> << \b Patoline c'est chouette, mais ça ne marchera pas. >>))
 
-\button("Fun_yes")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
-  \box("Fun_yes")(Fun_yes) Patoline c'est chouette, et ça va casser la baraque !}
+\caml(radios.(3) (fun b -> << \b Patoline c'est chouette, et ça va casser la baraque ! >>))
 
-\button("No_opinion")(["Sondage";"Null";"Fun_but";"Fun_yes";"No_opinion"]){
-  \box("No_opinion")(No_opinion) Je ne sais pas.}
+\caml(radios.(4) (fun b -> << \b Je ne sais pas. >>))
+
 \end{slide}
 
 \begin{slide}
+\Title{Résultats du sondage}
+
+
 \begin{center}
-\size(5.0){Résultats du sondage}
+\dynamic("histo")(fun _ -> Public)([])(fun () ->
+let total, results = data.distribution () in
+let color v = match v with
+  Null -> red
+| Fun_but -> yellow
+| Fun_yes -> green
+| No_opinion -> grey
+in
+let values = List.tl (Array.to_list values) in
+let res = List.map (fun value -> (color value, try List.assoc value results with Not_found -> 0)) values in
+let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
+<<\diagram(
+  let m,ms = array  [`South ; `South; `South ; `South ] (List.map (List.map mathsText) [
+    List.map (fun (color, value as c) ->  
+      <<\diagram(
+        let _ = scoreBar ~vertical:true (module EnvDiagram) (30.0 *. float value /. float m) 7.0 [c])>>) 
+      res;
+    [<<Null>>; <<Fun Mais>>; <<Fun>>; <<N.S.P.>>]
+]))>>)
 \end{center}
-
-\begin{dynamic}("Sondage")(
- function
-   Click("Null") -> sonde.write Null; Public
- | Click("Fun_but") -> sonde.write Fun_but; Public
- | Click("Fun_yes") -> sonde.write Fun_yes; Public
- | Click("No_opinion") -> sonde.write No_opinion; Public
- | _ -> Unchanged)([])
-
-\Caml(
-let result = ref []
-let update () = result := snd (sonde.distribution ())
-)
-
-\begin{itemize}
-\item Null~: \caml([C (fun env -> update (); let n = try List.assoc Null !result with Not_found -> 0 in [tT (string_of_int n)])])
-
-\item Fun but~: \caml([C (fun env -> let n = try List.assoc Fun_but !result with Not_found -> 0 in [tT (string_of_int n)])])
-
-\item Fun yes~: \caml([C (fun env -> let n = try List.assoc Fun_yes !result with Not_found -> 0 in [tT (string_of_int n)])])
-
-\item No opinion~: \caml([C (fun env -> let n = try List.assoc No_opinion !result with Not_found -> 0 in [tT (string_of_int n)])])
-\end{itemize}
-\end{dynamic}
 \end{slide}
+
 
 \begin{slide}
 
@@ -184,8 +216,9 @@ editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = 
 
 \end{slide}
 
-\begin{slide}
+== Animation ==
 
+\begin{slide}
 
 \begin{center}
 \animation(90)(fun t -> let t = float t /. 45. *. 3.1415927 in
@@ -231,7 +264,7 @@ editableText ~nb_lines:5 ~lang:lang_OCaml ~extra:test_ocaml ~init_text:"let _ = 
 \end{center}
 
 \begin{center}
-\size(7.0){Thanks for you attention}
+\size(7.0){Thanks for your attention}
 \end{center}
 \end{slide}
 

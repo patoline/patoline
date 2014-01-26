@@ -83,11 +83,11 @@ let decode_slave fd =
     let _rsv2 = 0x20 land c <> 0 in
     let _rsv3 = 0x10 land c <> 0 in
     let _opcode = 0x0f land c in
-    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
-      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;
+(*    Printf.eprintf "First char: '%s' %x %d fin:%b rsv1:%b rsv2:%b rsv3:%b opcode:%d\n%!"
+      (Char.escaped (char_of_int c)) c c fin _rsv1 _rsv2 _rsv3 _opcode;*)
     let c0 = int_of_char (input_char fd) in
     let mask = c0 land 0x80 <> 0 and c0 = c0 land 0x7f in
-    Printf.eprintf "Second char: %x %d\n%!" c0 c0;
+(*    Printf.eprintf "Second char: %x %d\n%!" c0 c0;*)
     let length =
       if c0 <= 125 then c0
       else if c0 = 126 then
@@ -175,6 +175,7 @@ let tire=Str.regexp "/tire_\\([0-9]*\\)_\\([0-9]*\\)"
 let otf=Str.regexp "/\\([^\\.]*\\.otf\\)"
 
 let move=Str.regexp "move_\\([0-9]*\\)_\\([0-9]*\\)"
+let refresh=Str.regexp "refresh_\\([0-9]*\\)_\\([0-9]*\\)"
 let click=Str.regexp "click_\\([0-9]*\\)_\\([0-9]*\\) "
 let edit=Str.regexp "edit_\\([0-9]*\\)_\\([0-9]*\\) "
 let drag=Str.regexp "drag_\\([0-9]*\\)_\\([0-9]*\\)_\\(-?[0-9.]*\\)_\\(-?[0-9.]*\\) "
@@ -188,7 +189,8 @@ let websocket  =
   Printf.sprintf
 "var websocket;
 setInterval(function () {
-  if (to_refresh) loadSlide(current_slide,current_state,true);
+  if (to_refresh)
+    websocket_send(\"refresh_\"+(current_slide)+\"_\"+(current_state));
 }, 5000);
 function websocket_msg(evt){
      var st=JSON.parse(evt.data);
@@ -686,7 +688,7 @@ function gotoSlide(n){
 
   let onload = Printf.sprintf
 "start_socket();
-loadSlide(h0,h1);
+websocket_send(\"refresh_\"+h0+\"_\"+h1);
 var svgDiv = document.getElementById('svg_div');
 Hammer(svgDiv, {
   swipe_max_touches: 10,
@@ -723,10 +725,14 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     Hashtbl.iter (fun k (d, ptr) ->
       try 
 	let c = match !ptr with
-	    Some c -> Printf.eprintf "From cache\n%!";  c 
+	    Some c -> (*Printf.eprintf "From cache\n%!";*)  c 
 	  | None -> let c = try d.dyn_contents () with _ -> "" in ptr := Some c; c
 	in
-	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\">%s</g>" d.dyn_label c) 
+	let father = match d.dyn_father with
+	    None -> ""
+	  | Some id -> Printf.sprintf " class=\"with_father\" father=\"%s\"" id
+	in
+	Rbuffer.add_string out (Printf.sprintf "<g id=\"%s\"%s>%s</g>" d.dyn_label father c) 
       with e -> 
 	let e = Printexc.to_string e in
 	Printf.eprintf "uncaught exception %s from dyn_contents %s\n%!" e d.dyn_label;
@@ -785,7 +791,9 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
     List.fold_left (fun acc label ->
       try
 	let l = Hashtbl.find dynTable label in
-	List.iter (fun ((i,j),(d,ptr)) -> ptr := None) l;
+	List.iter (fun ((i,j),(d,ptr)) -> 
+	  Printf.eprintf "affected (%d,%d) (%d,%d) %s\n%!" slide state i j d.dyn_label;
+	  ptr := None) l;
 	acc || List.mem_assoc (slide,state) l
       with Not_found -> acc) false dest
   in
@@ -930,6 +938,18 @@ Hammer(svgDiv).on(\"swiperight\", function(ev) {
 	  Printf.eprintf "serve %d: move\n%!" num;
 	  let slide, state = read_slide_state get in
 	  Printf.eprintf "Sending to client ...\n%!";
+          pushto ~change:(Slide(slide,state)) fd fdfather;
+	  Printf.eprintf "Sending to father ...\n%!";
+	  Printf.fprintf fouc "move %s %d %d\n%!"
+	    (fst (read_sessid ())) slide state;
+	  Printf.eprintf "Sending to father done\n%!";
+
+          process_req master "" [] reste)
+	else if Str.string_match refresh get 0 then (
+	  Printf.eprintf "serve %d: refresh\n%!" num;
+	  let slide, state = read_slide_state get in
+	  Printf.eprintf "Sending to client ...\n%!";
+	  Hashtbl.iter (fun label (dyn,ptr) -> ptr := None) dynCache.(slide).(state) ;
           pushto ~change:(Slide(slide,state)) fd fdfather;
 	  Printf.eprintf "Sending to father ...\n%!";
 	  Printf.fprintf fouc "move %s %d %d\n%!"

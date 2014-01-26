@@ -147,7 +147,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
   (* Écriture du contenu à proprement parler *)
 
 
-  let rec output_contents ~svg_buf contents=
+  let rec output_contents ?father ~svg_buf contents=
     let imgs=ref StrMap.empty in
     let cur_x=ref 0. in
     let cur_y=ref 0. in
@@ -309,6 +309,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
         opened_text:=false
       );
 
+      let father = ref father in
+
       (match l.link_kind with
 	Intern(label,dest_page,dest_x,dest_y) ->
           Rbuffer.add_string svg_buf
@@ -338,13 +340,15 @@ let draw ?fontCache ?dynCache prefix w h contents=
 			    (global_replace (regexp_string "\"") "&quot;"
 			       (global_replace (regexp_string "&") "&amp;" init))))))
 	in
+	father := Some name;
         Rbuffer.add_string svg_buf (
 	  Printf.sprintf "<g class='%s' id='%s' dest='%s'>"
 	    ty name (String.concat " " ds)
 	);
       );
 
-      List.iter output_contents_aux (l.link_contents);
+      let father = !father in
+      ignore (output_contents ?father ~svg_buf l.link_contents);
 
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
@@ -381,7 +385,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	  ignore (output_contents ~svg_buf:buf (d.dyn_contents ()));
 	  Rbuffer.contents buf
 	in
-	let d = { d with dyn_contents = contents; dyn_sample = "" } in
+	let d = { d with dyn_contents = contents; dyn_sample = ""; dyn_father = father } in
 	Hashtbl.add h d.dyn_label (d, ref None)
       );
 
@@ -593,7 +597,8 @@ function loadSlideString(slide,state,str){
     var svg=document.getElementById(\"svg_container\");
 
     while (cur_child.length > 0) {
-       svg.removeChild(cur_child.shift());
+       var elt = cur_child.shift();
+       elt.parentNode.removeChild(elt);
     }
     while (animations.length > 0) {
        clearInterval(animations.shift());
@@ -614,6 +619,7 @@ function loadSlideString(slide,state,str){
     }
     while(newSvg.firstChild) {
         if(newSvg.firstChild.nodeType==document.ELEMENT_NODE) {
+            console.log('coucou');
             cur_child.push(svg.appendChild(newSvg.firstChild));
         }
         else newSvg.removeChild(newSvg.firstChild);
@@ -622,6 +628,22 @@ function loadSlideString(slide,state,str){
     current_state=state;
     first_displayed=true;
     location.hash=slide+\"_\"+state;
+
+    var withFather=svg.getElementsByClassName('with_father');
+
+    for (var a=0;a<withFather.length;a++) {
+        var elt = withFather[a];
+        var fatherId = elt.getAttribute('father');
+        console.log('move0 '+fatherId+' '+elt.getAttribute('id'));
+    }
+
+    for (var a=0;a<withFather.length;a++) {
+        var elt = withFather[0];
+        var fatherId = elt.getAttribute('father');
+        console.log('move '+fatherId+' '+elt.getAttribute('id'));
+        var father = document.getElementById(fatherId);
+        father.appendChild(elt);
+    }
 
     var anim2=svg.getElementsByClassName('animation');
 

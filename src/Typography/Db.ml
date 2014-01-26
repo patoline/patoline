@@ -42,6 +42,7 @@ type database =
 #endif
 
 type 'a data = {
+  name : string;
   read : unit -> 'a;
   write : 'a -> unit;
   reset : unit -> unit;
@@ -53,6 +54,7 @@ type 'a data = {
 exception DummyData
 
 let dummyData = {
+  name = "Dummy data ! Do not use";
   read = (fun _ -> raise DummyData) ;
   write = (fun _ -> raise DummyData) ;
   reset = (fun _ -> raise DummyData) ;
@@ -102,7 +104,7 @@ let init_db table_name db_info =
 	    Hashtbl.add res v (old + 1)) table;
 	  total, Hashtbl.fold (fun v n acc -> (v,n)::acc) res [];
 	in
-	{read; write; reset; distribution};
+	{name; read; write; reset; distribution};
     }
 
 #ifdef MYSQL
@@ -172,9 +174,9 @@ let init_db table_name db_info =
             let sessid, groupid = init () in
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
-	    Printf.eprintf "Sending request\n%!";
+(*	    Printf.eprintf "Sending request\n%!";*)
             let r = exec (db ()) sql in
-	    Printf.eprintf "Sent request\n%!";
+(*	    Printf.eprintf "Sent request\n%!";*)
             match errmsg (db ()), fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
@@ -238,7 +240,7 @@ let init_db table_name db_info =
 	    total, scores
 	  with Exit -> 0, []
 	in
-	{read; write; reset; distribution}}
+	{name; read; write; reset; distribution}}
 #endif
 
 let make_sessid () = 

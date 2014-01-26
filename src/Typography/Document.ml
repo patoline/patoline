@@ -630,9 +630,18 @@ let resize_env fsize env=
       size=fsize;
       lead=env.lead*.fsize/.env.size }
 
+let scale_env alpha env=
+  { env with
+      size=env.size *. alpha;
+      lead=env.lead *. alpha }
+
 (* Changer de taille dans un scope *)
 let size fsize t=
   [Scoped (resize_env fsize, t)]
+
+(* Changer de taille dans un scope *)
+let scale alpha t=
+  [Scoped (scale_env alpha, t)]
 
 let color col t=
   [Scoped ((fun env->{env with fontColor=col}), t)]
