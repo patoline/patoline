@@ -488,12 +488,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                   | _->true in
                 if inf0 && inf1 && inf2 && inf3 then
 		  match l.link_kind with
-		    Intern(label,dest_page,dest_x,dest_y) ->
-                      fprintf outChan
-			"<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
-			(pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
-			(pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
-			(pt_of_mm dest_x) (pt_of_mm dest_y)
+		    Intern(label,dest_page,dest_x,dest_y)->
+                      if dest_page>0 && dest_page<Array.length pageObjects then (
+                        fprintf outChan
+			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+			  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
+			  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
+			  (pt_of_mm dest_x) (pt_of_mm dest_y)
+                      ) else (
+                        Printf.fprintf stderr "Please report: Pdf.ml Intern link problem %S %d/%d\n"
+                          label
+                          dest_page (Array.length pageObjects);
+                        flush stderr;
+                      )
 		  | Extern(uri) ->
                     fprintf outChan
                       "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /A <</Type /Action /S /URI /URI (%s)>> /Border [0 0 0]  >> "
