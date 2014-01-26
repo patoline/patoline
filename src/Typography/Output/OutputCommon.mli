@@ -143,6 +143,9 @@ type structure = {
   mutable struct_y : float;
   mutable substructures : structure array;
 }
+
+val empty_structure : structure
+
 val print_structure : structure -> unit
 
 val output_to_prime : 

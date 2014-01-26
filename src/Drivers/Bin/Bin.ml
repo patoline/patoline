@@ -17,40 +17,30 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography
-open CamomileLibrary
-open Fonts.FTypes
-open OutputCommon
-open OutputPaper
-open Util
+open Typography.OutputCommon
+open Typography.OutputPaper
 
-let filename file=try (Filename.chop_extension file)^".bin" with _->file^".bin"
+let bin_output structure pages filename isoutput' =
+  let base_name = try Filename.chop_extension filename with _ -> filename in
+  let outputfile = base_name ^ ".bin" in
+  let ch = open_out_bin outputfile in
 
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName=
-
-  let fileName = filename fileName in
-  let ch = open_out_bin fileName in
-  output_value ch false;
+  output_value ch isoutput';
   Marshal.to_channel ch structure [Marshal.Closures];
   Marshal.to_channel ch pages [Marshal.Closures];
+
   close_out ch;
-  Printf.fprintf stderr "File %s written.\n" fileName;
-  flush stderr
+  Printf.fprintf stderr "File %s written.\n%!" outputfile
 
-let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName=
+let output  ?(structure:structure=empty_structure) (pages : page array)
+            (filename : string) = bin_output structure pages filename false
 
-  let fileName = filename fileName in
-  let ch = open_out_bin fileName in
-  output_value ch true;
-  Marshal.to_channel ch structure [Marshal.Closures];
-  Marshal.to_channel ch pages [Marshal.Closures];
-  close_out ch;
-  Printf.fprintf stderr "File %s written.\n" fileName;
-  flush stderr
+let output' ?(structure:structure=empty_structure) (pages : page array array)
+            (filename : string) = bin_output structure pages filename true
 
-let _ = 
-  Hashtbl.add drivers "Bin" (module struct let output = output let output' = output' end:Driver)
+let _ =
+  Hashtbl.add drivers "Bin"
+    (module struct
+      let output  = output
+      let output' = output'
+    end : Driver)

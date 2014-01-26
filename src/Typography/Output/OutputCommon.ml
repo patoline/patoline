@@ -309,14 +309,21 @@ let circle r=
        [|0.;-.lambda;-.r;-.r|], [|-.r;-.r;-.lambda;0.|] |]
 
 
-type structure= { mutable name:string;
-                  mutable metadata : (metadata*string) list;
-		  mutable displayname:raw list;
-                  mutable tags:(string*string) list;
-                  mutable page:int;
-                  mutable struct_x:float;
-                  mutable struct_y:float;
-                  mutable substructures:structure array }
+type structure=
+  { mutable name          : string;
+    mutable metadata      : (metadata * string) list;
+    mutable displayname   : raw list;
+    mutable tags          : (string * string) list;
+    mutable page          : int;
+    mutable struct_x      : float;
+    mutable struct_y      : float;
+    mutable substructures : structure array
+  }
+
+let empty_structure =
+  { name = ""; displayname = []; metadata = []; tags = []; page= -1;
+    struct_x = 0.0; struct_y = 0.0; substructures= [||]
+  }
 
 let print_structure s = 
   let rec fn lvl s =
@@ -330,17 +337,13 @@ let print_structure s =
   flush stdout
 
 let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
-    ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-			   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName =
+    ?(structure:structure=empty_structure) pages fileName =
   let l = ref [] in
   Array.iter (fun ps -> Array.iter (fun p -> l:=p::!l) ps) pages;
   output ~structure (Array.of_list (List.rev !l)) fileName
 
 let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
-    ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-			   page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    pages fileName =
+    ?(structure:structure=empty_structure) pages fileName =
   output ~structure (Array.map (fun x -> [|x|]) pages) fileName
 
 let rec in_order i x=match x with

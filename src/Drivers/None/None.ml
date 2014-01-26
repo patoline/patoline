@@ -17,10 +17,16 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography.Document
+
 open Typography.OutputCommon
-let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
-				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
-    (pages:Typography.OutputPaper.page array) (fileName:string)=
-  ()
-let output' = output_to_prime output
+open Typography.OutputPaper
+
+let output  ?(structure : structure = empty_structure) _ _ = ()
+let output' ?(structure : structure = empty_structure) _ _ = ()
+
+let _ =
+  Hashtbl.add drivers "None"
+    (module struct
+       let output  = output
+       let output' = output'
+     end : Driver)

@@ -26,13 +26,15 @@ open Document
 open Util
 module Buf=UTF8.Buf
 
+type page =
+  { mutable pageFormat   : float * float;
+    mutable pageContents : raw list
+  }
 
-type page = { mutable pageFormat:float*float; mutable pageContents:raw list }
-
-let defaultPage={pageFormat=(0.,0.);pageContents=[]}
+let defaultPage = { pageFormat = (0.0, 0.0); pageContents = [] }
 
 module type Driver=sig
-  val output: ?structure:structure -> page array -> string -> unit
+  val output : ?structure:structure -> page array -> string -> unit
   val output': ?structure:structure -> page array array -> string -> unit
 end
 
