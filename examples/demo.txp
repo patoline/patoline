@@ -198,7 +198,7 @@ let m = List.fold_left (fun acc (_,n) -> max acc n) 1 res in
   let m,ms = array  [`South ; `South; `South ; `South ] (List.map (List.map mathsText) [
     List.map (fun (color, value as c) ->  
       <<\diagram(
-        let _ = scoreBar ~vertical:true (module EnvDiagram) (30.0 *. float value /. float m) 7.0 [c])>>) 
+        let _ = scoreBar ~vertical:true (module EnvDiagram : EnvDiagram) (30.0 *. float value /. float m) 7.0 [c])>>) 
       res;
     [<<Null>>; <<Fun Mais>>; <<Fun>>; <<N.S.P.>>]
 ]))>>)

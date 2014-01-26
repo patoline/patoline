@@ -19,11 +19,11 @@
 *)
 
 open Typography
+open Db
 open OutputCommon
 open OutputPaper
 open Util
 open HtmlFonts
-open Db
 
 let _ = Printexc.record_backtrace true
 
