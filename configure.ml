@@ -258,7 +258,7 @@ and driver =
 let patoline_driver_gl =
   { name = "DriverGL";
     needs =(Package "str")::(Package "camlimages.all_formats")::
-      (Package "lablgl")::(Package "lablgl.glut")::[];
+      (Package "lablgl")::(Package "lablgl.glut")::(Package "rbuffer")::[];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
     autometa = true;
@@ -282,7 +282,7 @@ let r_patoline_drivers = ref
     { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = []; autometa = false };
     { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver]; autometa = true };
+    { name = "Patonet"; needs = [Package "cryptokit"; Package "rbuffer"]; suggests = []; internals = [Driver svg_driver]; autometa = true };
     { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
     svg_driver; patoline_driver_gl;
     { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver]; autometa = true };
@@ -411,7 +411,8 @@ let _=
   Printf.fprintf make "PACK := -package %s\n"
     (String.concat "," (gen_pack_line [Package "camomile"; Package "zip"; Package "mysql";
                                        Package "camlimages.all_formats";
-                                       Package "cairo"; Package "fontconfig"]));
+                                       Package "cairo"; Package "fontconfig";
+                                       Package "rbuffer"]));
 
   Printf.fprintf make "INSTALL_FONT_DIR := %s\n" !fonts_dir;
   Printf.fprintf make "INSTALL_GRAMMARS_DIR := %s\n" !grammars_dir;
@@ -420,7 +421,6 @@ let _=
   Printf.fprintf make "INSTALL_DRIVERS_DIR := %s\n" !driver_dir;
   Printf.fprintf make "INSTALL_DLLS_DIR := %s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR := %s/patoplot\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PLUGINS_DIR := %s\n" !plugins_dir;

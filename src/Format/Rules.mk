@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-FORMAT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR) -I $(DRIVERS_DIR)/SVG
+FORMAT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/SVG
 
 # Find dependencies
 $(d)/%.depends: INCLUDES += $(FORMAT_INCLUDES)
