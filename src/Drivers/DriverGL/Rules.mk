@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-GL_DRIVER_INCLUDES:=-I $(TYPOGRAPHY_DIR) -I $(d)
+GL_DRIVER_INCLUDES:=-I $(RBUFFER_DIR) -I $(TYPOGRAPHY_DIR) -I $(d)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -30,7 +30,7 @@ $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -linkpkg -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OPT]    $< -> $@"
