@@ -19,6 +19,7 @@
 *)
 open CamomileLibrary
 open Util
+open UsualMake
 open Bezier
 
 exception Glyph_not_found of (string*string)

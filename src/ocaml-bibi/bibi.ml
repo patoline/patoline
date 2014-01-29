@@ -20,6 +20,7 @@
 open Printf
 open Sqlite3
 open CamomileLibrary
+open UsualMake
 
 let fields=[
   "id","INTEGER PRIMARY KEY AUTOINCREMENT";
@@ -280,7 +281,6 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       None->failwith "Bibi: no bibliographic source defined"
     | Some y->authorFile y x
 
-  open Util
   open Box
 
   module TheBibliography (D : DocumentStructure) = struct
@@ -392,7 +392,6 @@ let rec default_biblio_format row=
 
 module MarginBiblio (C:CitationStyle)=struct
 
-  open Util
   open Box
   let w_mar=2.
   let biblio_format i row=
@@ -459,7 +458,6 @@ end
 
 module DefaultBiblio (C:CitationStyle)=struct
 
-  open Util
   open Box
 
   let w=phi

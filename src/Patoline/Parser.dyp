@@ -21,7 +21,8 @@
 open Lexing
 open Dyp
 open Config2
-open Util2
+open UsualMake
+open FilenameExtra
 
 exception Syntax_Error of Lexing.position * Language.syntax_error
 exception Outdated

@@ -21,7 +21,7 @@ module StrRegexp=Str
 open Lexing
 open Parser
 open Language
-open Util2
+open UsualMake
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -167,8 +167,8 @@ let preambule format driver suppl filename=
 (* #DRIVER %s *)
 %s
 open Typography
-open Typography.Util
 open Typography.Box
+open Util
 open Typography.Config
 open Typography.Document
 open Typography.OutputCommon

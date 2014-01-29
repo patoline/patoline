@@ -4,6 +4,7 @@ open Db
 open OutputCommon
 open Box
 open Util
+open UsualMake
 
 module type ModDb = sig
   val db : db

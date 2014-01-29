@@ -19,7 +19,7 @@
 *)
 open Typography.OutputCommon
 open Typography.OutputPaper
-open Typography.Util
+open Util
 
 let pixels_per_mm=ref 10.
 

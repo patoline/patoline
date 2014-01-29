@@ -19,7 +19,7 @@
 *)
 open Typography.Document
 open Typography.OutputCommon
-open Typography.Util
+open Util
 open Typography.Box
 open Typography
 open DefaultFormat

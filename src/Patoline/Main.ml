@@ -89,7 +89,8 @@ let binname_of f = (Filename.chop_extension f)^".tmx"
 let execname_of f = if Filename.is_implicit f then "./"^(binname_of f) else (binname_of f)
 
 (************************************************)
-open Util2
+open UsualMake
+open FilenameExtra
 let dynlinked=(Mutex.create (), ref StrMap.empty)
 
 type options={
@@ -217,12 +218,12 @@ let rec read_options_from_source_file f fread =
       in
       let name=
         try
-          let name=Util2.findPath ((Filename.chop_extension n)^".ml") ("."::!Config2.local_path) in
+          let name=FilenameExtra.findPath ((Filename.chop_extension n)^".ml") ("."::!Config2.local_path) in
           let objects=(Mutex.create (), ref StrMap.empty) in
           Build.build_with_rule (patoline_rule objects) (Dynlink.adapt_filename (Filename.chop_extension name^".cmo")::f);
           Dynlink.adapt_filename (Filename.chop_extension name^".cmo")
         with
-            File_not_found _->Util2.findPath
+            No_matching_path _->FilenameExtra.findPath
               (Dynlink.adapt_filename (Filename.chop_extension n^".cmo"))
               !Config2.pluginspath
       in

@@ -21,7 +21,8 @@ open Typography
 open Typography.Document
 open Typography.OutputCommon
 open Typography.OutputPaper
-open Typography.Util
+open Util
+open UsualMake
 
 open Typography.Box
 open Typography.Fonts

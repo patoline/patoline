@@ -20,7 +20,7 @@
 open Typography
 open Typography.Document
 open Typography.OutputCommon
-open Typography.Util
+open UsualMake
 
 open Typography.Box
 open Typography.Fonts

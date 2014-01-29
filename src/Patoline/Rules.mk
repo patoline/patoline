@@ -2,16 +2,18 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+PATOLINE_INCLUDES := -I $(d) -I $(d)/../Util
+
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
 -include $(DEPENDS_$(d))
 
-$(d)/patoline: $(d)/Util2.cmx $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
+$(d)/patoline: $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(RBUFFER_DIR) -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa $^
+	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(RBUFFER_DIR) -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa src/Util/FilenameExtra.cmxa src/Util/UsualMake.cmxa $^
 
 all: $(PA_PATOLINE)
 
@@ -35,7 +37,7 @@ PATOLINE_DIR := $(d)
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PACK) -I $(PATOLINE_DIR) $(INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PACK) -I $(PATOLINE_DIR) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
@@ -59,11 +61,11 @@ $(d)/Parser.ml: $(d)/tmp.dyp
 
 $(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -rectypes $(OFLAGS) $(PACK) -package dyp $(INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -rectypes $(OFLAGS) $(PACK) -package dyp $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
 
 $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(INCLUDES) -I $(PATOLINE_DIR) -I $(RBUFFER_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -I $(RBUFFER_DIR) -o $@ -c $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
@@ -73,7 +75,7 @@ install: install-patoline-bin install-patoline-lib
 .PHONY: install-patoline-bin install-patoline-lib
 install-patoline-bin: install-bindir $(d)/patoline $(PA_PATOLINE) 
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
-install-patoline-lib: install-typography $(d)/Build.cmi $(d)/Util2.cmi
+install-patoline-lib: install-typography $(d)/Build.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
 .PHONY: install-pa_patoline

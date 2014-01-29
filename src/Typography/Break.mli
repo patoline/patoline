@@ -82,21 +82,21 @@ module Make :
         ?initial_line:Box.line->
         completeLine:(Box.box array array ->
                       Box.drawingBox array ->
-                      figurePosition Util.IntMap.t ->
+                      figurePosition UsualMake.IntMap.t ->
                       L.t Box.MarkerMap.t -> Box.line -> bool -> L.t list)
                      array ->
         figures:Box.drawingBox array ->
         figure_parameters:(Box.box array array ->
                            Box.drawingBox array ->
                            Box.parameters ->
-                           figurePosition Util.IntMap.t ->
+                           figurePosition UsualMake.IntMap.t ->
                            L.t Box.MarkerMap.t ->
                            LineMap.key -> Box.line -> Box.parameters)
                           array ->
         parameters:(Box.box array array ->
                     Box.drawingBox array ->
                     Box.parameters ->
-                    figurePosition Util.IntMap.t ->
+                    figurePosition UsualMake.IntMap.t ->
                     L.t Box.MarkerMap.t ->
                     LineMap.key -> L.t -> Box.parameters)
                    array ->
@@ -106,7 +106,7 @@ module Make :
                   float->float) array ->
         badness:(Box.box array array ->
                  Box.drawingBox array ->
-                 figurePosition Util.IntMap.t ->
+                 figurePosition UsualMake.IntMap.t ->
                  LineMap.key ->
                  Box.box array ->
                  int ->
@@ -118,5 +118,5 @@ module Make :
         Box.box array array ->
         TypoLanguage.message list *
           Box.frame *
-          figurePosition Util.IntMap.t * L.t Box.MarkerMap.t
+          figurePosition UsualMake.IntMap.t * L.t Box.MarkerMap.t
     end

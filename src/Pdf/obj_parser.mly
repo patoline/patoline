@@ -1,7 +1,7 @@
 /* File parser.mly */
 %{
   open Pdfutil
-  open Typography.Util
+  open UsualMake
 %}
 %token <float> NUMBER
 %token <string> NAME

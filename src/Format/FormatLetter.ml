@@ -21,7 +21,8 @@ open Typography
 open Typography.Fonts
 open Typography.Fonts.FTypes
 open Typography.Document
-open Typography.Util
+open Util
+open UsualMake
 open Typography.Box
 open CamomileLibrary
 open Printf

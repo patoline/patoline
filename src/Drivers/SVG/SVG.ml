@@ -24,6 +24,7 @@ open Box
 open OutputCommon
 open OutputPaper
 open Util
+open UsualMake
 open HtmlFonts
 exception Bezier_degree of int
 

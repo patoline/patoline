@@ -10,9 +10,9 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi
 all: $(PATOPLOT_LIBS)
 
-$(d)/%.depends: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR)
+$(d)/%.depends: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(d)/../Util
 
-PLOT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR)
+PLOT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(d)/../Util
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.

@@ -20,6 +20,7 @@
 
 open Config
 open Util
+open UsualMake
 open Fonts
 open Fonts.FTypes
 open OutputCommon
@@ -1553,7 +1554,7 @@ let altStates l =
 
 
 module type DocumentStructure=sig
-  val structure:(tree*(int*tree) list) ref
+  val structure:(tree*(IntMap.key*tree) list) ref
   val defaultEnv:environment ref
 end
 module type Format=sig

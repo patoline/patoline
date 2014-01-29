@@ -19,6 +19,7 @@
 *)
 open CamomileLibrary
 open Util
+open UsualMake
 
 let write_cmap_table cmap format lang file=
   match format with

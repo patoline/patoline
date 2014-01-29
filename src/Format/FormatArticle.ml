@@ -136,7 +136,7 @@ module Env_remark=Default.Make_theorem
       [ Env (fun env ->Document.incr_counter "equation" env) ;
         C (fun env ->
 	     let _,w = boxes_width env contents in
-	     let _,x = StrMap.find "equation" env.counters in
+	     let _,x = UsualMake.StrMap.find "equation" env.counters in
 	     let num,w' = boxes_width env
 	       (italic [tT "(";
 		        tT (string_of_int (1 + List.hd x));

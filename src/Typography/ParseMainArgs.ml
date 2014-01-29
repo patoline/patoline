@@ -1,5 +1,4 @@
 open Typography
-open Typography.Util
 open Typography.Config
 
 

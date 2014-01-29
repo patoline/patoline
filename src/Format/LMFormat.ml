@@ -21,7 +21,7 @@ open Typography
 open Typography.Document
 open Typography.Complete
 open Typography.Fonts.FTypes
-open Typography.Util
+open Util
 open Typography.ConfigUtil
 open Typography.Fonts
 open Typography.Box

@@ -366,23 +366,24 @@ let rec drawing_order x=match x with
   | Animation a->a.anim_order
   | Dynamic d->d.dyn_order
 
+open UsualMake
+
 let drawing_sort l=
   let rec make_list t acc=match t with
       []->acc
     | States h::s->
       let m=List.fold_left (fun m x->
-        let l=try Util.IntMap.find (drawing_order x) m with Not_found->[] in
-        Util.IntMap.add (drawing_order x) (x::l) m
-      ) Util.IntMap.empty h.states_contents
+        let l=try IntMap.find (drawing_order x) m with Not_found->[] in
+        IntMap.add (drawing_order x) (x::l) m
+      ) IntMap.empty h.states_contents
       in
-      make_list s (Util.IntMap.fold (fun k a l->
+      make_list s (IntMap.fold (fun k a l->
         States { h with states_order=k;states_contents=a }::l)
                      m acc)
     | h::s->make_list s (h::acc)
   in
   List.sort (fun a b->compare (drawing_order a) (drawing_order b)) (make_list l [])
 
-open Util
 let sort_raw l=
   let x=List.fold_left (fun m x->
     let m'=try IntMap.find (drawing_order x) m with Not_found->[] in

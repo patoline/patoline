@@ -9,11 +9,11 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 # Building stuff
 all: $(d)/proof
 
-PROOF_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf -I $(RBUFFER_DIR)
+PROOF_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf -I $(RBUFFER_DIR) -I $(d)/../Util
 
-$(d)/%.depends: INCLUDES:=-I $(d) $(PROOF_INCLUDES)
+$(d)/%.depends: INCLUDES:=-I $(d) $(PROOF_INCLUDES) -I $(d)/../Util
 
-$(d)/proof: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
+$(d)/proof: $(RBUFFER_DIR)/rbuffer.cmxa $(d)/../Util/UsualMake.cmxa $(d)/../Util/Util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
 

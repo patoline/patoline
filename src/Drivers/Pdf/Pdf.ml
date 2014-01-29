@@ -22,6 +22,7 @@ open Fonts
 open CamomileLibrary
 open Printf
 open Util
+open UsualMake
 open Fonts.FTypes
 open OutputCommon
 open OutputPaper

@@ -23,6 +23,7 @@ open Db
 open OutputCommon
 open OutputPaper
 open Util
+open UsualMake
 open HtmlFonts
 
 let _ = Printexc.record_backtrace true

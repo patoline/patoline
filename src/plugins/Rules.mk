@@ -9,7 +9,7 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 # Building stuff
 all: $(d)/caml.cmxs
 
-PLUGINS_INCLUDES := -I $(PATOLINE_DIR)
+PLUGINS_INCLUDES := -I $(PATOLINE_DIR) -I $(d)/../Util
 
 $(d)/%.depends: INCLUDES:=-I $(d) $(PLUGINS_INCLUDES)
 

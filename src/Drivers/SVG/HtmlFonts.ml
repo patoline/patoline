@@ -19,7 +19,7 @@
 *)
 open CamomileLibrary
 open Typography
-open Typography.Util
+open UsualMake
 open Typography.Fonts
 open Typography.Fonts.FTypes
 open Typography.OutputCommon

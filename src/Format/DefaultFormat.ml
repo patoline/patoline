@@ -21,7 +21,8 @@ open Typography
 open Typography.Document
 open Typography.Complete
 open Typography.Fonts.FTypes
-open Typography.Util
+open Util
+open UsualMake
 open Typography.ConfigUtil
 open Typography.Fonts
 open Typography.Box
@@ -289,7 +290,7 @@ let node ?(node_env=(fun env->env)) l=
     {Document.empty with
       Document.node_env=node_env;
       Document.children=List.fold_left
-        (fun m (l,_)->Util.IntMap.add (Util.IntMap.cardinal m) l m) Util.IntMap.empty l},
+        (fun m (l,_)->UsualMake.IntMap.add (UsualMake.IntMap.cardinal m) l m) UsualMake.IntMap.empty l},
   []
 let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
   (Paragraph {par_contents=cont; par_env=par_env;

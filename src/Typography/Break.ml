@@ -19,6 +19,7 @@
 *)
 open OutputCommon
 open Util
+open UsualMake
 open CamomileLibrary
 open Box
 open Fonts.FTypes

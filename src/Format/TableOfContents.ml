@@ -21,7 +21,8 @@ open Typography
 open Typography.Document
 open Typography.Fonts.FTypes
 open Typography.Box
-open Typography.Util
+open Util
+open UsualMake
 
 
 let centered parameters str tree _=

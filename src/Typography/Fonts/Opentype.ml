@@ -19,6 +19,7 @@
 *)
 open FTypes
 open Util
+open UsualMake
 open CFF
 open CamomileLibraryDefault.Camomile
 let offsetTable=12

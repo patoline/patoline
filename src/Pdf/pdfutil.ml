@@ -17,7 +17,7 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open Typography.Util
+open UsualMake
 
 type obj=
     Dict of obj StrMap.t

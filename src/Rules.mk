@@ -13,7 +13,7 @@ RBUFFER_DIR := $(d)/Rbuffer
 CESURE_DIR := $(d)/cesure
 
 # Visit subdirectories
-MODULES := Rbuffer Typography Drivers Patoline Pdf cesure Format \
+MODULES := Util Rbuffer Typography Drivers Patoline Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
@@ -32,14 +32,15 @@ $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
+	$(Q)$(OCAMLOPT) $(PACK) -I src/Util -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
   $(FORMAT_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa \
-  $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx 
+  $(d)/Util/FilenameExtra.cmxa $(d)/Util/UsualMake.cmxa $(d)/Util/Util.cmxa \
+	$(TYPOGRAPHY_DIR)/ParseMainArgs.cmx 
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa dynlink.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(RBUFFER_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) rbuffer.cmxa src/Util/UsualMake.cmxa src/Util/Util.cmxa dynlink.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"      

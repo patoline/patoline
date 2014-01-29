@@ -23,7 +23,8 @@
 open Pdfutil
 open Typography.OutputCommon
 open Typography.OutputPaper
-open Typography.Util
+open Util
+open UsualMake
 
 let buf=String.create 10000
 let buf_start=ref 1

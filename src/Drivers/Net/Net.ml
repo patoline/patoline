@@ -20,7 +20,7 @@
 
 open Typography.OutputCommon
 open Typography.OutputPaper
-open Typography.Util
+open UsualMake
 open Typography.ConfigUtil
 open HtmlFonts
 

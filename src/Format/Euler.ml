@@ -18,6 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
+open UsualMake
 
 type 'a spec=
     Alpha of 'a

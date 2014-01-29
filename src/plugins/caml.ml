@@ -1,5 +1,5 @@
 open Build
-open Util2
+open UsualMake
 
 let lines x=
   let rec lines i0 i l=
