@@ -52,7 +52,7 @@ $(UTIL_CMXA): %.cmxa: %.cmx
 all: $(UTIL_CMA) $(UTIL_CMXA)
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
 
 DISTCLEAN += $(wildcard $(d)/*.depends)
 
