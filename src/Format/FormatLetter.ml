@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
-open Typography.Fonts
-open Typography.Fonts.FTypes
+open Fonts
+open FTypes
 open Typography.Document
 open Util
 open UsualMake

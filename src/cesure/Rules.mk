@@ -6,11 +6,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/cesure
 
-CESURE_LINK := -linkpkg $(UTIL_DIR)/util.cmxa
+CESURE_LINK := -linkpkg $(UTIL_DIR)/util.cmxa -linkpkg $(LIBFONTS_DIR)/fonts.cmxa
 
-$(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(d)/cesure.ml
+$(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(d)/cesure.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
+	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) -I $(LIBFONTS_DIR) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

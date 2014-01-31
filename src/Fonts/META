@@ -1,0 +1,6 @@
+name="fonts"
+version="1.0"
+description="A font library which used to be a part of Patoline"
+requires="camomile, util"
+archive(native)="fonts.cmxa"
+archive(byte)="fonts.cma"

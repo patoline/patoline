@@ -18,7 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
-open Fonts.FTypes
+open FTypes
 open Fonts
 open Bezier
 open OutputCommon

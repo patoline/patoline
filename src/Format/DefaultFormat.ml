@@ -20,11 +20,11 @@
 open Typography
 open Typography.Document
 open Typography.Complete
-open Typography.Fonts.FTypes
+open FTypes
 open Util
 open UsualMake
 open Typography.ConfigUtil
-open Typography.Fonts
+open Fonts
 open Typography.Box
 open Typography.Break
 open CamomileLibrary
@@ -535,7 +535,7 @@ module Format=functor (D:Document.DocumentStructure)->(
           par_contents=section_name;
           par_env=(fun env->
             let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
-            { (envAlternative (Fonts.Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
+            { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures) Caps env) with
               size=(if List.length b <= 2 then sqrt phi else
                   sqrt (sqrt phi))*.env.size;
             });
@@ -1795,7 +1795,7 @@ end
     end)
 
 module MathFonts = struct
-  let asana_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+  let asana_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Asana Math"; slant = Roman; weight = Regular})))
 
   let asana name code = Maths.symbol ~name (Lazy.force asana_font) [code]
@@ -1825,7 +1825,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let euler_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+  let euler_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Neo Euler"; slant = Roman; weight = Regular})))
   let euler name code = Maths.symbol ~name (Lazy.force euler_font) [code]
 
@@ -1841,7 +1841,7 @@ module MathFonts = struct
 	(asana "[" g'))
       ls [61;3340;3341;3342])
 
-  let ams_font=Lazy.lazy_from_fun (fun ()->Typography.Fonts.loadFont
+  let ams_font=Lazy.lazy_from_fun (fun ()->Fonts.loadFont
     (findFont FontPattern.({family = "Euler"; slant = Roman; weight = Regular})))
   let ams name code = Maths.symbol ~name (Lazy.force ams_font) [code]
 end

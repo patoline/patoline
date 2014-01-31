@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer -I $(d)/Fonts -I $(d)/Fonts/Sfnt -I $(d)/Output
+TYPOGRAPHY_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer -I $(LIBFONTS_DIR) -I $(d)/Output
 
 # Compute ML files dependencies
 $(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
@@ -13,10 +13,8 @@ SRC_$(d):=$(wildcard $(d)/*.ml) \
 -include $(addsuffix .depends,$(SRC_$(d)))
 
 TYPOGRAPHY_MODS:= TypoLanguage FindPath $(FINDFONT) Config ConfigUtil Bezier Distance \
-  Offset Fonts/Sfnt/Unicode_ranges Fonts/FTypes Fonts/Type2 Fonts/CFFStd Fonts/CFF \
-  Fonts/Opentype_layout Fonts/Cmap Fonts/Opentype Fonts Output/OutputCommon \
-  Box Badness Break Document Complete Hyphenate Maths Output/OutputPaper \
-  Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
+  Offset Output/OutputCommon Box Badness Break Document Complete Hyphenate Maths \
+	Output/OutputPaper Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
 
 TYPOGRAPHY_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(TYPOGRAPHY_MODS)))
 TYPOGRAPHY_CMO:=$(TYPOGRAPHY_ML:.ml=.cmo)
@@ -60,20 +58,6 @@ $(d)/Break.cmx: $(d)/Break.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(PACK) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
-$(d)/Fonts/Sfnt/Unicode_ranges.ml: PACK:=-package str
-$(d)/Fonts/Sfnt/Unicode_ranges.ml: $(d)/Fonts/Sfnt/make_unicode_ranges
-	$(ECHO) "[UNIC]   $< -> $@"
-	$(Q)$< $(TYPOGRAPHY_DIR)/Fonts/Sfnt/unicode
-$(d)/Fonts/Opentype.cmo: $(d)/Fonts/Sfnt/Unicode_ranges.cmo
-$(d)/Fonts/Opentype.cmx: $(d)/Fonts/Sfnt/Unicode_ranges.cmx
-
-$(d)/Fonts/Isoadobe.ml: $(d)/Fonts/PSStandards $(d)/Fonts/isoadobe.source
-	$(TYPOGRAPHY_DIR)/Fonts/PSStandards $(TYPOGRAPHY_DIR)/Fonts/isoadobe.source $(TYPOGRAPHY_DIR)/Fonts/Isoadobe.ml
-
-$(d)/Fonts/PSStandards:$(d)/Fonts/PSStandards.ml
-	ocamlopt -o $(TYPOGRAPHY_DIR)/Fonts/PSStandards str.cmxa $(TYPOGRAPHY_DIR)/Fonts/PSStandards.ml
-
-
 # ocamldep cannot find dependencies on Typography
 $(d)/ParseMainArgs.cmo: $(d)/Typography.cma
 $(d)/ParseMainArgs.cmx: $(d)/Typography.cmxa
@@ -84,16 +68,11 @@ all: $(d)/Typography.cmxa $(d)/Typography.cma
 # Cleaning
 CLEAN += $(d)/Typography.cma $(d)/Typography.cmxa $(d)/Typography.a \
   $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
-  $(d)/Fonts/*.cmo $(d)/Fonts/*.cmx $(d)/Fonts/*.cmi $(d)/Fonts/*.o \
   $(d)/Output/*.cmo $(d)/Output/*.cmx $(d)/Output/*.cmi $(d)/Output/*.o \
-  $(d)/Fonts/Sfnt/make_unicode_ranges.cmo $(d)/Fonts/Sfnt/make_unicode_ranges.cmi \
-  $(d)/Fonts/Sfnt/make_unicode_ranges $(d)/Fonts/Sfnt/Unicode_ranges* \
-  $(d)/Fonts/Sfnt/unicode_ranges.ml \
   $(d)/_tags
 
 DISTCLEAN += $(wildcard $(d)/*.depends) \
 	     $(wildcard $(d)/Output/*.depends) \
-	     $(wildcard $(d)/Fonts/*.depends)
 
 # Installing
 install: install-typography

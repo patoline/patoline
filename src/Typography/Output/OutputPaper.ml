@@ -19,7 +19,7 @@
 *)
 open CamomileLibrary
 open Printf
-open Fonts.FTypes
+open FTypes
 open OutputCommon
 open Box
 open Document

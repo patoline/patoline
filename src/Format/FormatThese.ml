@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
-open Typography.Fonts
-open Typography.Fonts.FTypes
+open Fonts
+open FTypes
 open Typography.Document
 open Util
 open UsualMake
@@ -207,7 +207,7 @@ let postprocess_tree tree=
           par_env=(fun env->
                      let a,b=try StrMap.find "_structure" env.counters with Not_found -> -1,[0] in
 
-                     { (envAlternative (Fonts.Opentype.oldStyleFigures::env.fontFeatures)
+                     { (envAlternative (Opentype.oldStyleFigures::env.fontFeatures)
                           (if List.length b>=4 then Regular else Caps) env) with
                        hyphenate=(fun _->[||]);
                          size=(if List.length b=1 then sqrt phi else

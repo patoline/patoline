@@ -21,7 +21,7 @@
 open Document
 open Box
 open OutputCommon
-open Fonts.FTypes
+open FTypes
 open Break
 open Util
 open UsualMake

@@ -22,7 +22,7 @@ open Util
 open UsualMake
 open CamomileLibrary
 open Box
-open Fonts.FTypes
+open FTypes
 
 
 let is_last paragraph j=

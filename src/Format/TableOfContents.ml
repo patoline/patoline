@@ -19,7 +19,7 @@
 *)
 open Typography
 open Typography.Document
-open Typography.Fonts.FTypes
+open FTypes
 open Typography.Box
 open Util
 open UsualMake
@@ -70,7 +70,7 @@ let centered parameters str tree _=
                         (fun glyphs->
                           Fonts.apply_features
                             env.font
-                            (Fonts.select_features env.font [ Fonts.Opentype.oldStyleFigures ])
+                            (Fonts.select_features env.font [ Opentype.oldStyleFigures ])
                             (env.substitutions glyphs)
                         )}
                     in
@@ -160,7 +160,7 @@ let these parameters str tree max_level=
                              (1+page (MarkerMap.find (Label labl) (user_positions env0)))
                   with Not_found -> 0
                   in
-                  let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
+                  let env'=add_features [Opentype.oldStyleFigures] env in
                   let num=boxify_scoped { env' with fontColor=
                       if level=1 then OutputCommon.rgb 1. 0. 0. else OutputCommon.black }
                     [tT (String.concat "." (List.map (fun x->string_of_int (x+1)) count))] in
@@ -240,7 +240,7 @@ let slides parameters str tree max_level=
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
 
-                  let env'=add_features [Fonts.Opentype.oldStyleFigures] env in
+                  let env'=add_features [Opentype.oldStyleFigures] env in
 
                   let c=0.8 in
                   let env_num=if b0=[] || prefix (List.rev b) (List.rev b0) && level=1 then

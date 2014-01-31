@@ -23,7 +23,7 @@ open CamomileLibrary
 open Printf
 open Util
 open UsualMake
-open Fonts.FTypes
+open FTypes
 open OutputCommon
 open OutputPaper
 
@@ -672,13 +672,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   (* /Type 3 *)
 
-#if !defined(PDF_TYPE3_ONLY)
+#ifndef PDF_TYPE3_ONLY
   (* Type 1C (CFF) *)
   let pdftype1c font var=
     try
       let cff=match font.font with
-          CFF y->y
-        | Opentype (Fonts.Opentype.CFF y)->y.Opentype.cff_font
+        | CFF y->y
+        | Opentype (Opentype.CFF y)->y.Opentype.cff_font
         | _->assert false
       in
       let pdffont=IntMap.find var font.pdfObjects in
@@ -756,7 +756,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   StrMap.iter (fun k pdffont->
     match pdffont.font with
         CFF _
-      | Opentype (Fonts.Opentype.CFF _)->(
+      | Opentype (Opentype.CFF _)->(
         IntMap.iter (fun k _->pdftype1c pdffont k) pdffont.pdfObjects
       )
       | _->IntMap.iter (fun k _->pdftype3 pdffont k) pdffont.pdfObjects

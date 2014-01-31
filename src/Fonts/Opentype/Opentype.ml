@@ -18,10 +18,11 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open FTypes
-open Util
 open UsualMake
+open Util
 open CFF
 open CamomileLibraryDefault.Camomile
+
 let offsetTable=12
 let dirSize=16
 exception Table_not_found of string
@@ -601,8 +602,8 @@ let outlines gl=match gl with
 
 let compute_bb gl=
   List.iter (List.iter (fun (x,y)->
-    let (a,b)=Bezier.bernstein_extr x in
-    let (c,d)=Bezier.bernstein_extr y in
+    let (a,b)=FBezier.bernstein_extr x in
+    let (c,d)=FBezier.bernstein_extr y in
     gl.ttf_x0<-min gl.ttf_x0 a;
     gl.ttf_x1<-max gl.ttf_x1 b;
     gl.ttf_y0<-min gl.ttf_y0 c;
@@ -2022,7 +2023,7 @@ let make_tables font fontInfo cmap glyphs_idx=
      let u3=ref 0 in
      let u4=ref 0 in
 #endif
-     let _=IntMap.fold (fun k _ _->Unicode_ranges.unicode_range u1 u2 u3 u4 k) cmap () in
+     let _=IntMap.fold (fun k _ _->UnicodeRanges.unicode_range u1 u2 u3 u4 k) cmap () in
      strInt4 buf_os2 42 !u1;
      strInt4 buf_os2 46 !u2;
      strInt4 buf_os2 50 !u3;

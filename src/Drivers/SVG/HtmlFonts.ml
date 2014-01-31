@@ -20,8 +20,8 @@
 open CamomileLibrary
 open Typography
 open UsualMake
-open Typography.Fonts
-open Typography.Fonts.FTypes
+open Fonts
+open FTypes
 open Typography.OutputCommon
 open Typography.OutputPaper
 

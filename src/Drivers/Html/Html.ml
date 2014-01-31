@@ -19,7 +19,7 @@
 *)
 open Typography
 open CamomileLibrary
-open Fonts.FTypes
+open FTypes
 open OutputCommon
 open OutputPaper
 open Util

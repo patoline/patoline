@@ -127,12 +127,12 @@ endif
 
 # Compilers and various tools
 OCAML    := ocaml
-OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp $(OCPP),)
+OCAMLC   := ocamlfind ocamlc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLOPT_NOPP := ocamlfind ocamlopt -g
-OCAMLOPT := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp $(OCPP),)
-OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp $(OCPP),)
+OCAMLOPT := $(OCAMLOPT_NOPP) $(if $(OCPP),-pp '$(OCPP)',)
+OCAMLDEP := ocamlfind ocamldep $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLMKLIB := ocamlfind ocamlmklib
-OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp $(OCPP),)
+OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLYACC := ocamlyacc
 OCAMLLEX := ocamllex
 DYPGEN := dypgen

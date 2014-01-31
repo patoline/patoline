@@ -78,7 +78,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           draw_page s
         )
       | Glyph g::s->(
-        let out=Typography.Fonts.outlines g.glyph in
+        let out=Fonts.outlines g.glyph in
         let l=List.map (fun morceau->Array.of_list (List.map (fun (x,y)->
           (Array.map (fun xx->(xx*.g.glyph_size/.1000.+.g.glyph_x)) x,
            Array.map (fun xx->(xx*.g.glyph_size/.1000.+.g.glyph_y)) y)

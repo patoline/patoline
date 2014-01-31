@@ -22,7 +22,7 @@ open ConfigUtil
 open Util
 open OutputCommon
 open Box
-open Fonts.FTypes
+open FTypes
 open Document
 open Document.Mathematical
 

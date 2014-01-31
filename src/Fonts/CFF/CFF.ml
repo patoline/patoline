@@ -1,27 +1,8 @@
-(*
-  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
-  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
-
-  This file is part of Patoline.
-
-  Patoline is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  Patoline is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
-*)
-open Util
 open UsualMake
-open Bezier
+open Util
 open FTypes
 open CamomileLibrary
+
 let pt_of_mm x=(72.*.x)/.25.4
 let mm_of_pt x=(25.4*.x)/.72.
 
@@ -409,8 +390,8 @@ let glyphWidth glyph=
 let glyphContents gl=gl.glyphContents
 let compute_bb gl=
   List.iter (List.iter (fun (x,y)->
-                          let (a,b)=Bezier.bernstein_extr x in
-                          let (c,d)=Bezier.bernstein_extr y in
+                          let (a,b)=FBezier.bernstein_extr x in
+                          let (c,d)=FBezier.bernstein_extr y in
                             gl.glyphX0<-min gl.glyphX0 a;
                             gl.glyphX1<-max gl.glyphX1 b;
                             gl.glyphY0<-min gl.glyphY0 c;
@@ -1356,4 +1337,4 @@ let subset(* _encoded *) font info cmap gls=
 
 
 
-let add_kerning _ _=()
+let add_kerning _ _ = ()

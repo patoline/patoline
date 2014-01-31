@@ -19,7 +19,7 @@
 *)
 open Typography
 open CamomileLibrary
-open Fonts.FTypes
+open FTypes
 open OutputCommon
 open OutputPaper
 open Util
@@ -222,7 +222,7 @@ let add_normals closed ratio beziers =
 
 type win_info = {
   winId : int;
-  glyphCache : (Typography.Fonts.glyph * float * Gl.rgb, GlList.t) Hashtbl.t;
+  glyphCache : (Fonts.glyph * float * Gl.rgb, GlList.t) Hashtbl.t;
   imageCache : (image,  GlTex.texture_id) Hashtbl.t;
   mutable zoom : float;
   mutable dx : float;

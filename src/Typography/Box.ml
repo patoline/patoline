@@ -20,7 +20,7 @@
 open OutputCommon
 open Util
 open UsualMake
-open Fonts.FTypes
+open FTypes
 open Bezier
 open CamomileLibrary
 

@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open CamomileLibrary
-open Util
 open UsualMake
+open Util
 
 let write_cmap_table cmap format lang file=
   match format with

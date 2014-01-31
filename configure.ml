@@ -386,7 +386,7 @@ let _=
   let emacsdir = Filename.concat !prefix "share/emacs/site-lisp/patoline" in
 
   let make=open_out "src/Makefile.config" in
-  Printf.fprintf make "OCPP := 'cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s%s'\n"
+  Printf.fprintf make "OCPP := cpp -C -ffreestanding -w %s%s%s%s%s%s%s%s%s\n"
     (if Sys.os_type="Win32" then "-D__WINDOWS__ " else "")
     (if Sys.word_size=32 || !int32 then "-DINT32 " else "")
     (if ocamlfind_has "zip" then "-DCAMLZIP " else "")
@@ -421,6 +421,7 @@ let _=
   Printf.fprintf make "INSTALL_DLLS_DIR := %s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
   Printf.fprintf make "INSTALL_UTIL_DIR := %s/util\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_LIBFONTS_DIR := %s/fonts\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR := %s/patoplot\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PLUGINS_DIR := %s\n" !plugins_dir;
@@ -487,7 +488,7 @@ let _=
    *)
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
-      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"util,%s\"\n"
+      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"util,fonts,%s\"\n"
       (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
                                          Package "zip";
                                          Package "camlimages.all_formats";

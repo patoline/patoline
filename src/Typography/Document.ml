@@ -22,7 +22,7 @@ open Config
 open Util
 open UsualMake
 open Fonts
-open Fonts.FTypes
+open FTypes
 open OutputCommon
 open Box
 open CamomileLibrary

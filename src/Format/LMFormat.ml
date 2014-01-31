@@ -20,10 +20,10 @@
 open Typography
 open Typography.Document
 open Typography.Complete
-open Typography.Fonts.FTypes
+open FTypes
 open Util
 open Typography.ConfigUtil
-open Typography.Fonts
+open Fonts
 open Typography.Box
 open CamomileLibrary
 

@@ -25,8 +25,8 @@ open Util
 open UsualMake
 
 open Typography.Box
-open Typography.Fonts
-open Typography.Fonts.FTypes
+open Fonts
+open FTypes
 open CamomileLibrary
 open Typography.Document
 open DefaultFormat

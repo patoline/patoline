@@ -18,8 +18,8 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Util
 open UsualMake
+open Util
 
 (* Deux scripts ne peuvent pas avoir un langage en commun (ou alors il
    faut le dupliquer, sinon on ne peut pas calculer les offsets

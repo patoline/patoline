@@ -4,7 +4,7 @@ open Document.Mathematical
 open Box 
 open OutputCommon
 open Util
-open Fonts.FTypes
+open FTypes
 
 let rec spacing right left = 
   let above y l = match l with
