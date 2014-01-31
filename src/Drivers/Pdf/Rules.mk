@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PDF_DRIVER_INCLUDES:=-I $(RBUFFER_DIR) -I $(TYPOGRAPHY_DIR)
+PDF_DRIVER_INCLUDES:=-I $(UTIL_DIR) -I $(TYPOGRAPHY_DIR)
 
 -include $(d)/Pdf.ml.depends
 

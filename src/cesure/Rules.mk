@@ -6,11 +6,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/cesure
 
-CESURE_LINK := -linkpkg $(RBUFFER_DIR)/rbuffer.cmxa -linkpkg $(d)/../Util/UsualMake.cmxa -linkpkg $(d)/../Util/Util.cmxa
+CESURE_LINK := -linkpkg $(UTIL_DIR)/util.cmxa
 
 $(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(d)/cesure.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR) dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
+	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

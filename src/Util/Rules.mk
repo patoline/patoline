@@ -2,24 +2,22 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UTIL_INCLUDES := -I $(d) -I $(RBUFFER_DIR)
+UTIL_INCLUDES := -I $(d) -I $(d)/Rbuffer
 
 # Compute ML files dependencies
-$(d)/%.depends: INCLUDES:=$(UTIL_INCLUDES)
-SRC_$(d):=$(wildcard $(d)/*.ml) \
-  $(wildcard $(d)/*.mli) \
-  $(wildcard $(d)/*/*.ml) \
-  $(wildcard $(d)/*/*.mli)
+SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
+            $(wildcard $(d)/Rbuffer/*.ml) $(wildcard $(d)/Rbuffer/*.mli)
+
+$(d)/%.depends $(d)/Rbuffer/%/depends: INCLUDES:=$(UTIL_INCLUDES)
+
 -include $(addsuffix .depends,$(SRC_$(d)))
 
-UTIL_MODS:= FilenameExtra UsualMake Util
+# Building
+UTIL_MODS:= Rbuffer/rbuffer FilenameExtra UsualMake Util
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
 UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
-
-UTIL_CMA:=$(UTIL_ML:.ml=.cma)
-UTIL_CMXA:=$(UTIL_ML:.ml=.cmxa)
 
 UTIL_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.mli)
 UTIL_CMI:=$(UTIL_MLI:.mli=.cmi)
@@ -39,27 +37,29 @@ $(UTIL_CMX): %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<
 
-$(UTIL_CMA): %.cma: %.cmo
-	$(ECHO) "[LINK]   $<"
-	$(Q)$(OCAMLC) -a -o $@ $<
+$(d)/util.cma: $(UTIL_CMO)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(Q)$(OCAMLC) -a -o $@ $^
 
-$(UTIL_CMXA): %.cmxa: %.cmx
-	$(ECHO) "[LINK]   $<"
-	$(Q)$(OCAMLOPT) -a -o $@ $<
+$(d)/util.cmxa: $(UTIL_CMX)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 
 # Building everything
-all: $(UTIL_CMA) $(UTIL_CMXA)
+all: $(d)/util.cmxa $(d)/util.cma
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
+CLEAN += $(d)/Rbuffer/*.cmo $(d)/Rbuffer/*.cmx $(d)/Rbuffer/*.cmi
 
 DISTCLEAN += $(wildcard $(d)/*.depends)
+DISTCLEAN += $(wildcard $(d)/Rbuffer/*.depends)
 
 # Installing
 install: install-util
 .PHONY: install-util
-install-util: $(UTIL_CMA) $(UTIL_CMXA) $(UTIL_CMI) $(UTIL_MLI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
+install-util: $(d)/util.cma $(d)/util.cmxa $(d)/util.a $(UTIL_CMI) $(UTIL_MLI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UTIL_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UTIL_DIR)
 

@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-DRIVERS_INCLUDES:=-I $(TYPOGRAPHY_DIR) -I $(RBUFFER_DIR) -I $(d)/../Util
+DRIVERS_INCLUDES:=-I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer
 
 DRIVERS_CMXA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cmxa)
 LIB_DRIVERS_A:=$(wildcard $(d)/*/lib*.a)

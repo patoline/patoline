@@ -420,7 +420,6 @@ let _=
   Printf.fprintf make "INSTALL_DRIVERS_DIR := %s\n" !driver_dir;
   Printf.fprintf make "INSTALL_DLLS_DIR := %s\n" !ocaml_dlls_dir;
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR := %s/util\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR := %s/patoplot\n" !ocaml_lib_dir;
@@ -488,7 +487,7 @@ let _=
    *)
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
-      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"rbuffer,%s\"\n"
+      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"util,%s\"\n"
       (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
                                          Package "zip";
                                          Package "camlimages.all_formats";

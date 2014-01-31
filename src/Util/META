@@ -1,5 +1,6 @@
 name="util"
 version="1.0"
 description="A library with convenient functions to extend the standard library (part of Patoline)"
-archive(native)="Util.cmxa, FilenameExtra.cmxa UsualMake.cmxa"
-archive(byte)="Util.cma, FilenameExtra.cma UsualMake.cma"
+requires="camomile"
+archive(native)="util.cmxa"
+archive(byte)="util.cma"

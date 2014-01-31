@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOLINE_INCLUDES := -I $(d) -I $(d)/../Util
+PATOLINE_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer
 
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
@@ -11,9 +11,9 @@ $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(D
 
 $(d)/patoline: $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
-  $(RBUFFER_DIR)/rbuffer.cmxa
+  $(UTIL_DIR)/util.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(RBUFFER_DIR) -I +threads str.cmxa threads.cmxa rbuffer.cmxa dynlink.cmxa src/Util/FilenameExtra.cmxa src/Util/UsualMake.cmxa $^
+	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(UTIL_DIR) -I +threads str.cmxa threads.cmxa dynlink.cmxa $(UTIL_DIR)/util.cmxa $^
 
 all: $(PA_PATOLINE)
 
@@ -29,9 +29,9 @@ $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLDEP) -pp pa_glr -package glr,camlp4 $< > $@
 
-#$(d)/patolineGL: $(RBUFFER_DIR)/rbuffer.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
+#$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
-#	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(RBUFFER_DIR) $^
+#	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(UTIL_DIR) $^
 
 PATOLINE_DIR := $(d)
 
@@ -65,7 +65,7 @@ $(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml
 
 $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -I $(RBUFFER_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
