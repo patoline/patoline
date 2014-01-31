@@ -143,7 +143,6 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
         (* e only does not set the position to contain the ")" *)
       ] ];
 
-      (*top_phrase: [ [*) (* FIXME *)
       str_item: [ [
         "#"; n = UIDENT; a = UIDENT ->
           (match n with
@@ -152,7 +151,6 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
              | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
              | _ -> let err = Stream.Error "Unknown Patoline directive."
                     in Loc.raise _loc err);
-          (*None*)
           <:str_item<>>
       ] ];
 
@@ -259,7 +257,7 @@ let caml_struct _loc =
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
-let word_re = "[^ \t\r\n{}\\_$|]+"
+let word_re = "[^ \t\r\n{}\\_$|/*]+"
 let macro = "\\\\[^ \t\r\n({|$]+"
 let ident = "[_a-z][_a-zA-Z0-9']*"
 
@@ -307,12 +305,25 @@ let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
     let _loc = Loc.merge _loc_p1 _loc_p2 in
     <:expr<$p1$ @ $bl p2$>>
 
+let rec rem_hyphen = function
+  | []        -> []
+  | w::[]     -> w::[]
+  | w1::w2::l -> let l1 = String.length w1 in
+                 if w1.[l1 - 1] = '-'
+                 then let w = String.sub w1 0 (l1 - 1) ^ w2
+                      in w :: rem_hyphen l
+                 else w1 :: rem_hyphen (w2::l)
+
 let paragraph_elt italic =
     glr
        m:macro -> m
-    || l:word++ -> <:expr@_loc_l<[tT($str:(String.concat " " l)$)]>>
+    || l:word++ -> <:expr@_loc_l<[tT($str:(String.concat " " (rem_hyphen l))$)]>>
     || STR("_") p1:(paragraph_local false) _e:STR("_") when italic ->
          <:expr@_loc_p1<toggleItalic $p1$>>
+    || STR("//") p1:(paragraph_local false) _e:STR("//") when italic ->
+         <:expr@_loc_p1<toggleItalic $p1$>>
+    || STR("**") p1:(paragraph_local false) _e:STR("**") when italic ->
+         <:expr@_loc_p1<bold $p1$>>
     end
 
 let _ = set_paragraph_local (fun italic ->
@@ -582,7 +593,7 @@ let _ = try
 
   let wrapped = <:str_item<
     open Typography
-    open Typography.Util
+    open Util
     open Typography.Box
     open Typography.Config
     open Typography.Document
