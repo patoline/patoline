@@ -6,6 +6,7 @@ open Glr
 open Charset
 open Camlp4.PreCast
 open Syntax
+open FilenameExtra
 
 module Id : Camlp4.Sig.Id =
   struct
@@ -66,6 +67,8 @@ let blank mline str pos =
 let blank1 = blank false
 let blank2 = blank true
 
+let no_blank _ pos = pos
+
 (****************************************************************************
  * Some state information (Driver in use, ...) + Code generation helpers    *
  ****************************************************************************)
@@ -122,12 +125,12 @@ let _ = glr_locate locate Loc.merge
  * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
  ****************************************************************************)
 
+let paragraph_from_caml = declare_grammar ()
+
 let parser_stack = Stack.create ()
 
 module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
   struct
-    let paragraph_from_caml = declare_grammar ()
-
     let patoline_caml_expr = Gram.Entry.mk "patoline_caml_expr"
 
     let patoline_caml_struct = Gram.Entry.mk "patoline_caml_struct"
@@ -257,7 +260,7 @@ let caml_struct _loc =
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
-let word_re = "[^ \t\r\n{}\\_$|/*]+"
+let word_re = "[^ \t\r\n{}\\_$|/*#]+"
 let macro = "\\\\[^ \t\r\n({|$]+"
 let ident = "[_a-z][_a-zA-Z0-9']*"
 
@@ -324,6 +327,8 @@ let paragraph_elt italic =
          <:expr@_loc_p1<toggleItalic $p1$>>
     || STR("**") p1:(paragraph_local false) _e:STR("**") when italic ->
          <:expr@_loc_p1<bold $p1$>>
+    || STR("##") p1:(paragraph_local false) _e:STR("##") when italic ->
+         <:expr@_loc_p1<verb $p1$>>
     end
 
 let _ = set_paragraph_local (fun italic ->
@@ -355,26 +360,32 @@ let item =
                    end>>)
   end
 
+let verbatim_line   = "\\(^[^#\n][^\n]*\\)\\|\\(^#?#?[^#\n][^\n]*\\)"
+let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
+let uid_coloring    = "[A-Z][a-zA-Z0-9]*"
+
+let verbatim_paragraph =
+  change_layout (
+    glr
+      RE("^###")
+      lang:glr RE("[ \t]+") id:RE(uid_coloring) -> id end?
+      file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
+      RE("[ \t]*\n")
+      lines:glr l:RE(verbatim_line) RE("\n") -> l end++
+      RE("^###\n") ->
+        (* FIXME do something with "lang" and "file" *)
+        let buildline l = <:str_item<let _ = newPar D.structure ~environment:verbEnv Complete.normal
+                            ragged_left (lang_default $str:l$) >>
+        in
+        let lines = List.map (fun l -> buildline (String.escaped l)) lines in
+        assert(List.length lines <> 0);
+        List.fold_left (fun acc r -> <:str_item<$acc$ $r$>>)  <:str_item<>> lines
+    end
+  ) no_blank
+
 let paragraph =
   glr
-    txt:RE("^###\n\\(\\(.\\|\n\\)*\\)\n###") -> (fun _ ->
-      let txt = String.sub txt 4 (String.length txt - 8) in
-      let rec lines s acc =
-        try
-          let i = String.index s '\n' in
-          let l = String.sub s 0 i in
-          lines (String.sub s (i+1) (String.length s - i - 1)) (l::acc)
-        with
-          Not_found -> s::acc
-          | Invalid_argument _ -> []
-      in
-      let ls = List.rev (lines txt []) in
-      let ls = List.map String.escaped ls in
-      let buildline l = <:str_item<let _ = newPar D.structure ~environment:verbEnv Complete.normal
-                           ragged_left (lang_default $str:l$) >>
-      in
-      let ls = List.map buildline ls in
-      List.fold_left (fun acc r -> <:str_item<$acc$ $r$>>)  <:str_item<>> ls)
+    verb:verbatim_paragraph -> (fun _ -> verb)
     || l:paragraph_local ->
         (fun no_indent ->
           if no_indent then
@@ -537,21 +548,6 @@ let spec =
 let patoline_extension      = [ "txp" ; "typ" ]
 let patoline_extension_caml = [ "mlp" ; "ml" ]
 
-let chop_extension_safe fname =
-  try
-    Filename.chop_extension fname
-  with
-    _ -> fname
-
-let get_extension fname =
-  if chop_extension_safe fname = fname then ""
-  else let pos = ref 0 in
-       let p = ref 0 in
-       String.iter (fun c -> if c = '.' then p := !pos; incr pos) fname;
-       let start_ext = !p + 1 in
-       let len_ext = String.length fname - start_ext in
-       String.sub fname start_ext len_ext
-
 let _ = try
   let anon_args = ref [] in
   Arg.parse spec (fun a -> anon_args := a :: !anon_args) "Usage:";
@@ -560,8 +556,8 @@ let _ = try
   if List.length !anon_args > 1
      then Arg.usage spec "Too many files specified:";
   let filename = List.hd !anon_args in
-  let basename = chop_extension_safe filename in
-  let extension = get_extension filename in
+  let basename = chop_extension' filename in
+  let extension = get_extension' filename in
   fname := filename;
 
   let ch = open_in filename in
