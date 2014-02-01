@@ -125,7 +125,7 @@ let _ = glr_locate locate Loc.merge
  * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
  ****************************************************************************)
 
-let paragraph_from_caml = declare_grammar ()
+let patoline_paragraph = declare_grammar ()
 
 let parser_stack = Stack.create ()
 
@@ -159,17 +159,14 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
 
       expr: LEVEL "simple" [ [
         "<|" ->
-          (try
-             let str, ptr = Stack.top parser_stack in
-             assert (!ptr = 0);
-             let pos = Loc.stop_off _loc + 1 in
-             (*Printf.fprintf stderr "pos: %d char: '%c'\n%!" pos str.[pos];*)
-             let new_pos, ast = partial_parse_string paragraph_from_caml blank2 str pos in
-             ptr := new_pos - pos - 1;
-             (*Printf.fprintf stderr "new_pos: %d char: '%c'\n%!" new_pos str.[new_pos];*)
-             ast
-           with
-             Stack.Empty -> assert false)
+          let str, ptr = try Stack.top parser_stack
+                         with Stack.Empty -> assert false
+          in
+          assert (!ptr = 0);
+          let pos = Loc.stop_off _loc + 1 in
+          let parse = glr p:patoline_paragraph STR("|>") -> p end in
+          let new_pos, ast = partial_parse_string parse blank2 str pos in
+          ptr := new_pos - pos - 1; ast
       ] ];
     END;;
   end
@@ -257,6 +254,18 @@ let caml_struct _loc =
   in
   black_box fn full_charset false
 
+(* Parse a caml "expr" wrapped with parentheses *)
+let wrapped_caml_expr =
+  dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)
+
+(* Parse a caml "str_item" wrapped with parentheses *)
+let wrapped_caml_str_item =
+  dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc)
+
+(****************************************************************************
+ * Grammar rules for Patoline.                                              *
+ ****************************************************************************)
+
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
@@ -269,7 +278,7 @@ let paragraph_local, set_paragraph_local = grammar_family [ true ]
 let argument =
   glr
      STR("{") l:(paragraph_local true) STR("}") -> l
-  || e:(dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)) -> e
+  || e:wrapped_caml_expr -> e
   end
 
 let macro_name =
@@ -346,6 +355,8 @@ let _ = set_paragraph_local (fun italic ->
   blank1)
 
 let paragraph_local = paragraph_local true
+
+let _ = set_grammar patoline_paragraph paragraph_local
 
 let item =
   glr
@@ -444,8 +455,8 @@ let text_item =
        in
        false, lvl, <:str_item< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure >>)
 
-  || STR("\\Caml") s:(dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc))
-        -> (fun no_indent lvl -> no_indent, lvl, <:str_item<$s$>>)
+  || STR("\\Caml") s:wrapped_caml_str_item ->
+      (fun no_indent lvl -> no_indent, lvl, s)
 
   || e:environment -> (fun no_indent lvl -> false, lvl, e)
 
@@ -486,11 +497,6 @@ let title =
   <:str_item@_loc_t<
     let _ = Patoline_Format.title D.structure ~extra_tags:$extras$ $t$>>
  end
-
-let _ = set_grammar paragraph_from_caml (
-   glr
-      p:paragraph_local STR("|>") -> p
-   end)
 
 let full_text =
   glr
