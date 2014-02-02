@@ -137,6 +137,8 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
 
     let patoline_caml_list = Gram.Entry.mk "patoline_caml_list"
 
+    let patoline_caml_array = Gram.Entry.mk "patoline_caml_array"
+
     EXTEND Gram
       patoline_caml_expr: [ [
         e = expr LEVEL "top"; ")" -> <:expr<(fun x -> x) $e$>>
@@ -153,6 +155,14 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           List.fold_left
             (fun tl hd -> <:expr< $hd$ :: $tl$ >>) <:expr< [] >>
             (List.rev l)
+      ] ];
+
+      patoline_caml_array: [ [
+        l = LIST0 (expr LEVEL "top") SEP ";"; "|]" ->
+          let l = List.fold_left
+                    (fun tl hd -> <:expr< $hd$ :: $tl$ >>) <:expr< [] >>
+                    (List.rev l) in
+          <:expr<Array.of_list $l$>>
       ] ];
 
       str_item: [ [
@@ -275,20 +285,44 @@ let caml_list _loc =
   in
   black_box fn full_charset false
 
+let caml_array _loc =
+  let fn str pos =
+(*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
+    let cs = mk_stream str pos in
+    let r = Gram.parse patoline_caml_array _loc cs in
+    ignore (Stack.pop parser_stack);
+    let pos = Loc.stop_off (Ast.loc_of_expr r) in
+    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
+      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
+    r, pos+1
+  in
+  black_box fn full_charset false
+
+(****************************************************************************
+ * Parsing OCaml code inside patoline.                                      *
+ ****************************************************************************)
+
+(* Parse a caml "str_item" wrapped with parentheses *)
+let wrapped_caml_str_item init_str =
+  dependent_sequence (locate (glr p:STR(init_str ^ "(") end))
+    (fun (_loc,_) -> caml_struct _loc)
+
 (* Parse a caml "expr" wrapped with parentheses *)
 let wrapped_caml_expr =
   dependent_sequence (locate (glr p:STR("(") end))
     (fun (_loc,_) -> caml_expr _loc)
 
-(* Parse a caml "str_item" wrapped with parentheses *)
-let wrapped_caml_str_item =
-  dependent_sequence (locate (glr p:STR("(") end))
-    (fun (_loc,_) -> caml_struct _loc)
-
 (* Parse a list of caml "expr" *)
 let wrapped_caml_list =
   dependent_sequence (locate (glr p:STR("[") end))
     (fun (_loc,_) -> caml_list _loc)
+
+(* Parse an array of caml "expr" *)
+let wrapped_caml_array =
+  dependent_sequence (locate (glr p:STR("[|") end))
+    (fun (_loc,_) -> caml_array _loc)
+
+let patoline_ocaml = wrapped_caml_str_item "\\Caml"
 
 (****************************************************************************
  * Grammar rules for Patoline.                                              *
@@ -308,6 +342,7 @@ let argument =
   glr
      STR("{") l:(paragraph_local true) STR("}") -> l
   || e:wrapped_caml_expr -> e
+  || e:wrapped_caml_array -> e
   || e:wrapped_caml_list -> e
   end
 
@@ -485,7 +520,7 @@ let text_item =
        in
        false, lvl, <:str_item< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure >>)
 
-  || STR("\\Caml") s:wrapped_caml_str_item ->
+  || s:patoline_ocaml ->
       (fun no_indent lvl -> no_indent, lvl, s)
 
   || e:environment -> (fun no_indent lvl -> false, lvl, e)
