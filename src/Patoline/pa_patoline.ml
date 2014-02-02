@@ -135,6 +135,8 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
 
     let patoline_caml_struct = Gram.Entry.mk "patoline_caml_struct"
 
+    let patoline_caml_list = Gram.Entry.mk "patoline_caml_list"
+
     EXTEND Gram
       patoline_caml_expr: [ [
         e = expr LEVEL "top"; ")" -> <:expr<(fun x -> x) $e$>>
@@ -144,6 +146,13 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
       patoline_caml_struct: [ [
         e = str_items; ")" -> <:str_item<$e$ let _ = ()>>
         (* e only does not set the position to contain the ")" *)
+      ] ];
+
+      patoline_caml_list: [ [
+        l = LIST0 (expr LEVEL "top") SEP ";"; "]" ->
+          List.fold_left
+            (fun tl hd -> <:expr< $hd$ :: $tl$ >>) <:expr< [] >>
+            (List.rev l)
       ] ];
 
       str_item: [ [
@@ -213,7 +222,9 @@ let mk_stream str pos =
   let state = ref `Start in
   Stack.push (str, ptr) parser_stack;
   Stream.from (fun n ->
-(*    Printf.fprintf stderr "n: %d, pos: %d, c: %c, len %d, ptr: %d, state %a\n%!" n pos str.[n+pos] len !ptr print_state !state;*)
+    (*Printf.fprintf stderr
+       "n: %d, pos: %d, c: %c, len %d, ptr: %d, state %a\n%!"
+       n pos str.[n+pos] len !ptr print_state !state;*)
     if n+pos>= len then None
      else if !state = `Patoline then begin
         state := `Start; Some ' '
@@ -230,9 +241,7 @@ let caml_expr _loc =
   let fn str pos =
 (*    Printf.fprintf stderr "entering caml_expr %d\n%!" pos;*)
     let cs = mk_stream str pos in
-    let r =
-      Gram.parse patoline_caml_expr _loc cs
-    in
+    let r = Gram.parse patoline_caml_expr _loc cs in
     ignore (Stack.pop parser_stack);
     let pos = Loc.stop_off (Ast.loc_of_expr r) in
 (*    Printf.fprintf stderr "pos after caml_expr: %d\n%!" pos;*)
@@ -244,23 +253,42 @@ let caml_struct _loc =
   let fn str pos =
 (*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
     let cs = mk_stream str pos in
-    let r =
-      Gram.parse patoline_caml_struct _loc cs
-    in
+    let r = Gram.parse patoline_caml_struct _loc cs in
     ignore (Stack.pop parser_stack);
     let pos = Loc.stop_off (Ast.loc_of_str_item r) in
-(*    Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!" (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
+    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
+      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
+    r, pos+1
+  in
+  black_box fn full_charset false
+
+let caml_list _loc =
+  let fn str pos =
+(*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
+    let cs = mk_stream str pos in
+    let r = Gram.parse patoline_caml_list _loc cs in
+    ignore (Stack.pop parser_stack);
+    let pos = Loc.stop_off (Ast.loc_of_expr r) in
+    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
+      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
     r, pos+1
   in
   black_box fn full_charset false
 
 (* Parse a caml "expr" wrapped with parentheses *)
 let wrapped_caml_expr =
-  dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_expr _loc)
+  dependent_sequence (locate (glr p:STR("(") end))
+    (fun (_loc,_) -> caml_expr _loc)
 
 (* Parse a caml "str_item" wrapped with parentheses *)
 let wrapped_caml_str_item =
-  dependent_sequence (locate (glr p:STR("(") end)) (fun (_loc,_) -> caml_struct _loc)
+  dependent_sequence (locate (glr p:STR("(") end))
+    (fun (_loc,_) -> caml_struct _loc)
+
+(* Parse a list of caml "expr" *)
+let wrapped_caml_list =
+  dependent_sequence (locate (glr p:STR("[") end))
+    (fun (_loc,_) -> caml_list _loc)
 
 (****************************************************************************
  * Grammar rules for Patoline.                                              *
@@ -270,7 +298,8 @@ let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
 let word_re = "[^ \t\r\n{}\\_$|/*#]+"
-let macro = "\\\\[^ \t\r\n({|$]+"
+(* let macro = "\\\\[^ \t\r\n({|$]+" *)
+let macro = "\\\\[_a-z][_a-zA-Z0-9']*"
 let ident = "[_a-z][_a-zA-Z0-9']*"
 
 let paragraph_local, set_paragraph_local = grammar_family [ true ]
@@ -279,6 +308,7 @@ let argument =
   glr
      STR("{") l:(paragraph_local true) STR("}") -> l
   || e:wrapped_caml_expr -> e
+  || e:wrapped_caml_list -> e
   end
 
 let macro_name =
