@@ -125,7 +125,7 @@ let _ = glr_locate locate Loc.merge
  * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
  ****************************************************************************)
 
-let patoline_paragraph = declare_grammar ()
+let patoline_basic_text_paragraph = declare_grammar ()
 
 let parser_stack = Stack.create ()
 
@@ -183,7 +183,7 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           in
           assert (!ptr = 0);
           let pos = Loc.stop_off _loc + 1 in
-          let parse = glr p:patoline_paragraph STR("|>") -> p end in
+          let parse = glr p:patoline_basic_text_paragraph STR("|>") -> p end in
           let new_pos, ast = partial_parse_string parse blank2 str pos in
           ptr := new_pos - pos - 1; ast
       ] ];
@@ -302,7 +302,7 @@ let caml_array _loc =
  * Parsing OCaml code inside patoline.                                      *
  ****************************************************************************)
 
-(* Parse a caml "str_item" wrapped with parentheses *)
+(* Parse a caml "str_item" wrapped with parentheses prefixed by init_str *)
 let wrapped_caml_str_item init_str =
   dependent_sequence (locate (glr p:STR(init_str ^ "(") end))
     (fun (_loc,_) -> caml_struct _loc)
@@ -325,62 +325,21 @@ let wrapped_caml_array =
 let patoline_ocaml = wrapped_caml_str_item "\\Caml"
 
 (****************************************************************************
- * Grammar rules for Patoline.                                              *
+ * Words.                                                                   *
  ****************************************************************************)
 
-let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
-let op_section = "[-=]>"
-let cl_section = "[-=]<"
 let word_re = "[^ \t\r\n{}\\_$|/*#]+"
-(* let macro = "\\\\[^ \t\r\n({|$]+" *)
-let macro = "\\\\[_a-z][_a-zA-Z0-9']*"
-let ident = "[_a-z][_a-zA-Z0-9']*"
-
-let paragraph_local, set_paragraph_local = grammar_family [ true ]
-
-let argument =
-  glr
-     STR("{") l:(paragraph_local true) STR("}") -> l
-  || e:wrapped_caml_expr -> e
-  || e:wrapped_caml_array -> e
-  || e:wrapped_caml_list -> e
-  end
-
-let macro_name =
-  glr
-    m:RE(macro) ->
-       let m = String.sub m 1 (String.length m - 1) in
-       if m = "Caml" then raise Give_up;
-       if m = "begin" then raise Give_up;
-       if m = "end" then raise Give_up;
-       if m = "item" then raise Give_up;
-       if m = "verb" then raise Give_up;
-       m
-  end
-let macro =
-  glr
-       m:macro_name args:argument** ->
-         List.fold_left (fun acc r -> <:expr@_loc_args<$acc$ $r$>>)  <:expr@_loc_m<$lid:m$>> args
-    || STR("\\verb") txt:RE("{.*}") ->
-        (let txt = String.sub txt 1 (String.length txt - 2) in
-        <:expr<$lid:"verb"$ [tT $str:txt$]>>)
- end
 
 let word =
   glr
     w:RE(word_re) ->
-      if String.length w >= 2 && List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"] then
-        raise Give_up;
+      if String.length w >= 2 &&
+         List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
+      then raise Give_up;
       w
-  | w:RE("\\\\[\\$|({)}]") -> String.escaped (String.sub w 1 (String.length w - 1))
+  | w:RE("\\\\[\\$|({)}]") ->
+      String.escaped (String.sub w 1 (String.length w - 1))
   end
-
-let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
-    let x = Loc.stop_off _loc_p1 and y = Loc.start_off _loc_p2 in
-(*             Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
-    let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
-    let _loc = Loc.merge _loc_p1 _loc_p2 in
-    <:expr<$p1$ @ $bl p2$>>
 
 let rec rem_hyphen = function
   | []        -> []
@@ -388,40 +347,149 @@ let rec rem_hyphen = function
   | w1::w2::l -> let l1 = String.length w1 in
                  if w1.[l1 - 1] = '-'
                  then let w = String.sub w1 0 (l1 - 1) ^ w2
-                      in w :: rem_hyphen l
+                      in rem_hyphen (w :: l)
                  else w1 :: rem_hyphen (w2::l)
 
-let paragraph_elt italic =
-    glr
-       m:macro -> m
-    || l:word++ -> <:expr@_loc_l<[tT($str:(String.concat " " (rem_hyphen l))$)]>>
-    || STR("_") p1:(paragraph_local false) _e:STR("_") when italic ->
-         <:expr@_loc_p1<toggleItalic $p1$>>
-    || STR("//") p1:(paragraph_local false) _e:STR("//") when italic ->
-         <:expr@_loc_p1<toggleItalic $p1$>>
-    || STR("**") p1:(paragraph_local false) _e:STR("**") when italic ->
-         <:expr@_loc_p1<bold $p1$>>
-    || STR("##") p1:(paragraph_local false) _e:STR("##") when italic ->
-         <:expr@_loc_p1<verb $p1$>>
-    end
+let words =
+  glr
+    ws:word++ -> String.concat " " (rem_hyphen ws)
+  end
 
-let _ = set_paragraph_local (fun italic ->
+
+(****************************************************************************
+ * Verbatim environment / macro                                             *
+ ****************************************************************************)
+
+let verbatim_line   = "\\(^[^#\n][^\n]*\\)\\|\\(^#?#?[^#\n][^\n]*\\)"
+let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
+let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
+
+let verbatim_environment =
   change_layout (
     glr
-      l:{p:(paragraph_elt italic) -> (_loc, p)}++ -> (
+      RE("^###")
+      lang:glr RE("[ \t]+") id:RE(uid_coloring) -> id end?
+      file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
+      RE("[ \t]*\n")
+      lines:glr l:RE(verbatim_line) RE("\n") -> l end++
+      RE("^###\n") ->
+        (* FIXME do something with "lang" and "file" *)
+        let buildline l =
+          <:str_item<let _ = newPar D.structure ~environment:verbEnv
+                             Complete.normal ragged_left
+                             (lang_default $str:l$) >>
+        in
+        let fn = fun l -> buildline (String.escaped l) in
+        let lines = List.map fn lines in
+        assert(List.length lines <> 0);
+        let fn = fun acc r -> <:str_item<$acc$ $r$>> in
+        List.fold_left fn <:str_item<>> lines
+    end
+  ) no_blank
+
+let verb_line = "[^\n{}]+"
+
+let verbatim_macro =
+  change_layout (
+    glr
+      STR("\\verb{")
+      ls:glr l:RE(verb_line) STR("\n") -> l end**
+      l:RE(verb_line)
+      STR("}") ->
+        let lines = ls @ [l] in
+        let lines = rem_hyphen lines in
+        let txt = String.concat " " lines in
+        <:expr<$lid:"verb"$ [tT $str:txt$]>>
+    end
+  ) no_blank
+
+(****************************************************************************
+ * Text content of paragraphs and macros (mutually reccursice).             *
+ ****************************************************************************)
+
+(* boolean -> can contain special text environments //...// **...** ... *)
+let paragraph_basic_text, set_paragraph_basic_text = grammar_family [ true ]
+
+(***** Patoline macros  *****)
+let macro_argument =
+  glr
+     STR("{") l:(paragraph_basic_text true) STR("}") -> l
+  || e:wrapped_caml_expr  -> e
+  || e:wrapped_caml_array -> e
+  || e:wrapped_caml_list  -> e
+  end
+
+let lident = "[_a-z][_a-zA-Z0-9']*"
+
+let reserved_macro = [ "Caml"; "begin"; "end"; "item"; "verb" ]
+
+let macro_name =
+  change_layout (
+    glr
+      STR("\\") m:RE(lident) ->
+        if List.mem m reserved_macro then raise Give_up; m
+    end
+  ) no_blank
+
+let macro =
+  glr
+     m:macro_name args:macro_argument** ->
+       (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
+        List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
+  || m:verbatim_macro -> m
+  end
+(****************************)
+
+let text_paragraph_elt italic =
+    glr
+       m:macro -> m
+    || l:words -> <:expr@_loc_l<[tT($str:l$)]>>
+    || STR("_") p1:(paragraph_basic_text false) _e:STR("_") when italic ->
+         <:expr@_loc_p1<toggleItalic $p1$>>
+    || STR("//") p1:(paragraph_basic_text false) _e:STR("//") when italic ->
+         <:expr@_loc_p1<toggleItalic $p1$>>
+    || STR("**") p1:(paragraph_basic_text false) _e:STR("**") when italic ->
+         <:expr@_loc_p1<bold $p1$>>
+    || STR("##") p1:(paragraph_basic_text false) _e:STR("##") when italic ->
+         <:expr@_loc_p1<verb $p1$>>
+    (* || STR("$") ... STR("$") -> TODO *)
+    (* || STR("$$") ... STR("$$") -> TODO *)
+    end
+
+let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
+    let x = Loc.stop_off _loc_p1 and y = Loc.start_off _loc_p2 in
+    (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
+    let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
+    let _loc = Loc.merge _loc_p1 _loc_p2 in
+    <:expr<$p1$ @ $bl p2$>>
+
+let _ = set_paragraph_basic_text (fun spec_allowed ->
+  change_layout (
+    glr
+      l:{p:(text_paragraph_elt spec_allowed) -> (_loc, p)}++ ->
         match List.rev l with
-          [] -> assert false
-        | m:: l->
-          snd (
-            List.fold_left (fun (_loc_m, m) (_loc_p, p) ->
-              Loc.merge _loc_p _loc_m, concat_paragraph p _loc_p m _loc_m)
-              m l))
-    end)
-  blank1)
+          | []   -> assert false
+          | m::l ->
+              let fn = fun (_loc_m, m) (_loc_p, p) ->
+                         (Loc.merge _loc_p _loc_m
+                         , concat_paragraph p _loc_p m _loc_m)
+              in snd (List.fold_left fn m l)
+    end
+  ) blank1)
 
-let paragraph_local = paragraph_local true
+let paragraph_basic_text = paragraph_basic_text true
 
-let _ = set_grammar patoline_paragraph paragraph_local
+let _ = set_grammar patoline_basic_text_paragraph paragraph_basic_text
+
+(****************************************************************************
+ * Paragraphs, Environment, Text.                                           *
+ ****************************************************************************)
+
+let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
+let op_section = "[-=]>"
+let cl_section = "[-=]<"
+let ident = "[_a-z][_a-zA-Z0-9']*"
+
 
 let item =
   glr
@@ -436,33 +504,10 @@ let item =
                    end>>)
   end
 
-let verbatim_line   = "\\(^[^#\n][^\n]*\\)\\|\\(^#?#?[^#\n][^\n]*\\)"
-let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
-let uid_coloring    = "[A-Z][a-zA-Z0-9]*"
-
-let verbatim_paragraph =
-  change_layout (
-    glr
-      RE("^###")
-      lang:glr RE("[ \t]+") id:RE(uid_coloring) -> id end?
-      file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
-      RE("[ \t]*\n")
-      lines:glr l:RE(verbatim_line) RE("\n") -> l end++
-      RE("^###\n") ->
-        (* FIXME do something with "lang" and "file" *)
-        let buildline l = <:str_item<let _ = newPar D.structure ~environment:verbEnv Complete.normal
-                            ragged_left (lang_default $str:l$) >>
-        in
-        let lines = List.map (fun l -> buildline (String.escaped l)) lines in
-        assert(List.length lines <> 0);
-        List.fold_left (fun acc r -> <:str_item<$acc$ $r$>>)  <:str_item<>> lines
-    end
-  ) no_blank
-
 let paragraph =
   glr
-    verb:verbatim_paragraph -> (fun _ -> verb)
-    || l:paragraph_local ->
+    verb:verbatim_environment -> (fun _ -> verb)
+    || l:paragraph_basic_text ->
         (fun no_indent ->
           if no_indent then
             <:str_item@_loc_l<
@@ -495,7 +540,7 @@ let text = declare_grammar ()
 
 let text_item =
   glr
-    op:RE(section) title:paragraph_local cl:RE(section) ->
+    op:RE(section) title:paragraph_basic_text cl:RE(section) ->
       (fun no_indent lvl ->
        if String.length op <> String.length cl then raise Give_up;
        let numbered = match op.[0], cl.[0] with
@@ -511,7 +556,7 @@ let text_item =
        done;
        true,l,<:str_item< $!res$ let _ = $numbered$ D.structure $title$ >>)
 
-  || op:RE(op_section) title:paragraph_local txt:text cl:RE(cl_section) ->
+  || op:RE(op_section) title:paragraph_basic_text txt:text cl:RE(cl_section) ->
       (fun no_indent lvl ->
        let numbered = match op.[0], cl.[0] with
            '=', '=' -> <:expr@_loc_op<newStruct>>
@@ -537,12 +582,36 @@ let _ = set_grammar text (
       in r)
   end)
 
+(****************************************************************************
+ * Header, Title, Document body.                                            *
+ ****************************************************************************)
+
+let uident = "[A-Z][a-zA-Z0-9_']*"
+
+let patoline_config =
+  change_layout (
+    glr
+      STR("#") n:RE(uident) STR(" ") a:RE(uident) ->
+        ((match n with
+            | "FORMAT"  -> patoline_format := a
+            | "DRIVER"  -> patoline_driver := a
+            | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
+            | _         -> raise Give_up);
+        <:str_item<>>)
+    end
+  ) no_blank
+
+let header =
+  glr
+    hs:patoline_config** -> <:str_item<>>
+  end
+
 let title =
   glr
-    RE("==========\\(=*\\)") t:paragraph_local
-    author:{RE("----------\\(-*\\)") t:paragraph_local}??
-    institute:{RE("----------\\(-*\\)") t:paragraph_local}??
-    date:{RE("----------\\(-*\\)") t:paragraph_local}??
+    RE("==========\\(=*\\)") t:paragraph_basic_text
+    author:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
+    institute:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
+    date:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
     RE("==========\\(=*\\)") ->
   let extras =
     match date with
@@ -565,10 +634,12 @@ let title =
 
 let full_text =
   glr
-    title:title?? t:text EOF ->
-      match title with
-        | None       -> t true 0
-        | Some title -> <:str_item<$title$ $t true 0$>>
+    h:header t:title?? txt:text EOF ->
+      let t = match t with
+                | None   -> <:str_item<>>
+                | Some t -> t
+      in
+      <:str_item<$h$ $t$ $txt true 0$>>
   end
 
 (****************************************************************************
