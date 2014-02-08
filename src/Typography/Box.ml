@@ -204,7 +204,7 @@ let frame_page l=
   let rec last cxt=match cxt with
       [h,t]->(
         let a,_,_=IntMap.split h t.frame_children in
-        IntMap.cardinal a
+        IntMap.cardinal a-1
       )
     | _::s->last s
     | []->(-1)
