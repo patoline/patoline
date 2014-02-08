@@ -214,6 +214,10 @@ function websocket_close(evt){
   websocket=null;
 };
 function start_socket(){
+   if (typeof WebSocket === \"undefined\") {
+     alert('Your Browser does not seem to support websockets, this page will not work.');
+     return false;
+   }
    if(websocket){delete websocket.onclose;delete websocket.onmessage;delete websocket.onerror;websocket.close();};
    if(location.protocol==\"https:\")
       websocket=new WebSocket(\"wss://\"+location.host+\"/tire\"+\"_\"+current_slide+\"_\"+current_state);
@@ -693,7 +697,7 @@ websocket_send(\"refresh_\"+h0+\"_\"+h1);
 var svgDiv = document.getElementById('svg_div');
 Hammer(svgDiv, {
   swipe_max_touches: 10,
-  swipe_velocity: 0.1
+  swipe_velocity: 0.5
 });
 Hammer(svgDiv).on(\"swipeleft\", function(ev) {
   if(current_slide < %d && current_state>=states[current_slide]-1) {
