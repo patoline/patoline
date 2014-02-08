@@ -399,14 +399,15 @@ module Make (L:Line with type t=Box.line)=(
 
                     max_min_page_before:=max !max_min_page_before nextParams.min_page_before;
                     min_min_page_before:=min !min_min_page_before nextParams.min_page_before;
-                    if page nextNode>=page node+nextParams.min_page_before then (
+                    if layout_page nextNode>=layout_page node+nextParams.min_page_before then (
                       if (n_iter>= nextParams.min_lines_before &&
                             n_iter>=lastParameters.min_lines_after) ||
-                        page nextNode>page node then (
+                        layout_page nextNode>layout_page node then (
                           let comp1=comp paragraphs nextParams.measure pi i node.hyphenEnd nextNode.lineEnd nextNode.hyphenEnd in
                           let nextNode_width=nextNode.min_width +. comp1*.(nextNode.max_width-.nextNode.min_width) in
                           let height'=
-                            if frame_page nextLayout==page node && (not (node==initial_line)) then (
+                            if frame_page nextLayout==layout_page node &&
+                              (not (node==initial_line)) then (
 
                           (* Demander à toutes les lignes au-dessus de pousser nextNode le plus bas possible *)
                               let rec v_distance cur_node0 parameters comp0 min_h=

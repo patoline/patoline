@@ -207,7 +207,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
             | Marker (BeginLink l)->(
 	      let k = match l with
 		  Box.Extern l -> OutputCommon.Extern l
-		| Box.Intern l -> OutputCommon.Intern(l,Box.page line,0.,0.);
+		| Box.Intern l -> OutputCommon.Intern(l,Box.layout_page line,0.,0.);
 		| Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 	      in
               let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;

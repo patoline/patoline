@@ -236,7 +236,7 @@ let postprocess_tree tree=
                       if line.paragraph=0 then 0 else
                       if path=[] && line.lineStart<=0 then (
                         let minimal=max p.min_page_before 1 in
-                        minimal+((1+max 0 (page line)+minimal) mod 2)
+                        minimal+((1+max 0 (layout_page line)+minimal) mod 2)
                       ) else p.min_page_before
                     );
                     measure=p.measure+.w }
@@ -250,7 +250,7 @@ let postprocess_tree tree=
                   min_page_before = (
                     if path=[] && line.lineStart<=0 then (
                       let minimal=max param.min_page_before 1 in
-                      minimal+((page g+minimal) mod 2)
+                      minimal+((layout_page g+minimal) mod 2)
                     ) else param.min_page_before
                   );
                   min_lines_before=2;

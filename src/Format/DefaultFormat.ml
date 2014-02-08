@@ -245,7 +245,7 @@ let parameters env paragraphs figures last_parameters last_figures last_users (l
   let frame_measure=env.normalMeasure in
   let measure=IntMap.fold (fun i aa m->match aa with
       Break.Placed a->
-        (if page line=page a &&
+        (if layout_page line=layout_page a &&
            line.height>=
            a.height+.figures.(i).drawing_y0
          && line.height<=
@@ -1614,10 +1614,9 @@ end
                         | Marker (BeginLink l)->(
 			  let k = match l with
 			      Box.Extern l -> OutputCommon.Extern l;
-			    | Box.Intern l -> Intern(l,Box.page line,0.,0.);
+			    | Box.Intern l -> Intern(l,Box.layout_page line,0.,0.);
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
-			  
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
                                      link_order=0;link_closed=false;
                                      link_contents=[] }

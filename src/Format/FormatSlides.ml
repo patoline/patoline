@@ -936,7 +936,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 			      let dest_page=
 				try
 				  let line=MarkerMap.find (Label l) env.user_positions in
-				  Box.page line
+				  Box.layout_page line
 				with
 				  Not_found->(-1)
 			      in

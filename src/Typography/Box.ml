@@ -211,7 +211,7 @@ let frame_page l=
   in
   last (snd l)
 
-let page l=frame_page l.layout
+let layout_page l=frame_page l.layout
 
 let layout_to_dot l file=
   let o=open_out file in
@@ -249,7 +249,7 @@ let uselessLine=
 let sprint_linef l=
   Printf.sprintf "{ paragraph=%d; lineStart=%d; lineEnd=%d; hyphenStart=%d; hyphenEnd=%d; lastFigure=%d; height=%f; isFigure=%b; page=%d }"
     l.paragraph l.lineStart l.lineEnd l.hyphenStart l.hyphenEnd l.lastFigure l.height
-    l.isFigure (page l)
+    l.isFigure (frame_page l.layout)
 
 let print_linef out l=Printf.fprintf out "%s\n" (sprint_linef l)
 let print_line l=print_linef stderr l

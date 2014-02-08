@@ -62,7 +62,7 @@ let centered parameters str tree _=
                   if in_toc && count<>[] then (
                     let labl=String.concat "_" ("_"::List.map string_of_int path) in
                     let page=try
-                               (1+page (MarkerMap.find (Label labl) (user_positions env0)))
+                               (1+layout_page (MarkerMap.find (Label labl) (user_positions env0)))
                     with Not_found -> 0
                     in
                     let fenv env={ env with
@@ -157,7 +157,7 @@ let these parameters str tree max_level=
                 if in_toc && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   let page=try
-                             (1+page (MarkerMap.find (Label labl) (user_positions env0)))
+                             (1+layout_page (MarkerMap.find (Label labl) (user_positions env0)))
                   with Not_found -> 0
                   in
                   let env'=add_features [Opentype.oldStyleFigures] env in

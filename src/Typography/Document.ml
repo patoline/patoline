@@ -721,7 +721,7 @@ let badness
 
   if node_j.paragraph>=Array.length paragraphs then 0. else (
     let v_bad=
-      if page node_i=page node_j then (
+      if layout_page node_i=layout_page node_j then (
         Badness.v_badness
           (node_j.height-.node_i.height)
           line_i max_i params_i comp_i
@@ -733,7 +733,7 @@ let badness
     (Badness.h_badness paragraphs params_j.measure node_j comp_j)
     +. v_bad
     (* Page pas assez remplie *)
-    +. (if page node_i<>page node_j &&
+    +. (if layout_page node_i<>layout_page node_j &&
         node_i.height>=(fst node_i.layout).frame_y0+.env.lead then 10000. else 0.)
       (* Cesures *)
     +. (if node_j.hyphenEnd >=0 then
@@ -893,7 +893,7 @@ let pageref x=
       env_accessed:=true;
       let (_,_,node)=StrMap.find x (names env) in
       [bB (fun _->[Marker (BeginLink (Intern x))]);
-       tT (string_of_int (1+page node));
+       tT (string_of_int (1+layout_page node));
        bB (fun _->[Marker EndLink])]
     with Not_found -> []
   )]
@@ -1310,7 +1310,7 @@ let draw_boxes env l=
 	  let dest_page=
             try
               let line=MarkerMap.find (Label l) env.user_positions in
-              page line
+              layout_page line
             with
               Not_found->(-1)
 	  in
