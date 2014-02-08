@@ -1,6 +1,6 @@
 name="util"
 version="1.0"
 description="A library with convenient functions to extend the standard library (part of Patoline)"
-requires="camomile"
+requires="camomile,rbuffer"
 archive(native)="util.cmxa"
 archive(byte)="util.cma"

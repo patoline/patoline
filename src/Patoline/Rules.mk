@@ -2,14 +2,14 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOLINE_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer
+PATOLINE_INCLUDES := -I $(d) -I $(RBUFFER_DIR) -I $(UTIL_DIR)
 
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
 -include $(DEPENDS_$(d))
 
-$(d)/patoline: $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
+$(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
   $(UTIL_DIR)/util.cmxa
 	$(ECHO) "[OPT]    ... -> $@"

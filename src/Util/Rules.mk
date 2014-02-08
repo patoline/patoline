@@ -2,18 +2,17 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UTIL_INCLUDES := -I $(d) -I $(d)/Rbuffer
+UTIL_INCLUDES := -I $(d) -I $(d)/../Rbuffer
 
 # Compute ML files dependencies
-SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
-            $(wildcard $(d)/Rbuffer/*.ml) $(wildcard $(d)/Rbuffer/*.mli)
+SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
-$(d)/%.depends $(d)/Rbuffer/%/depends: INCLUDES:=$(UTIL_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(UTIL_INCLUDES)
 
 -include $(addsuffix .depends,$(SRC_$(d)))
 
 # Building
-UTIL_MODS:= Rbuffer/rbuffer FilenameExtra UsualMake Util
+UTIL_MODS:= FilenameExtra UsualMake Util
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
 UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
@@ -51,10 +50,8 @@ all: $(d)/util.cmxa $(d)/util.cma
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
-CLEAN += $(d)/Rbuffer/*.cmo $(d)/Rbuffer/*.cmx $(d)/Rbuffer/*.cmi
 
 DISTCLEAN += $(wildcard $(d)/*.depends)
-DISTCLEAN += $(wildcard $(d)/Rbuffer/*.depends)
 
 # Installing
 install: install-util

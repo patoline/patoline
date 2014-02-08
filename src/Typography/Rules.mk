@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer -I $(LIBFONTS_DIR) -I $(d)/Output
+TYPOGRAPHY_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(RBUFFER_DIR) -I $(LIBFONTS_DIR) -I $(d)/Output
 
 # Compute ML files dependencies
 $(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_INCLUDES)

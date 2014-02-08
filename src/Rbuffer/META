@@ -1,0 +1,5 @@
+name="rbuffer"
+version="1.0"
+description="Buffers in ropes, an efficient data structure for strings"
+archive(native)="rbuffer.cmxa"
+archive(byte)="rbuffer.cma"

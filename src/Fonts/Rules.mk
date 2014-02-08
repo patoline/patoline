@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-LIBFONTS_INCLUDES := -I $(d) -I $(d)/CFF -I $(d)/Opentype -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer
+LIBFONTS_INCLUDES := -I $(d) -I $(d)/CFF -I $(d)/Opentype -I $(UTIL_DIR) -I $(RBUFFER_DIR)
 
 # Compute ML files dependencies
 $(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends: INCLUDES:=$(LIBFONTS_INCLUDES)
@@ -13,9 +13,9 @@ SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
 
 LIBFONTS_MODS:= UnicodeRanges IsoAdobe \
                 FBezier FTypes CFF/CFFStd CFF/Type2 CFF/CFF \
-								Opentype/Subst Opentype/Cmap Opentype/Opentype_layout \
+		Opentype/Subst Opentype/Cmap Opentype/Opentype_layout \
                 Opentype/Opentype Fonts
- 
+
 LIBFONTS_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(LIBFONTS_MODS)))
 LIBFONTS_CMO:=$(LIBFONTS_ML:.ml=.cmo)
 LIBFONTS_CMX:=$(LIBFONTS_ML:.ml=.cmx)

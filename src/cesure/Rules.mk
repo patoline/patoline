@@ -6,7 +6,7 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/cesure
 
-CESURE_LINK := -linkpkg $(UTIL_DIR)/util.cmxa -linkpkg $(LIBFONTS_DIR)/fonts.cmxa
+CESURE_LINK :=  $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa $(LIBFONTS_DIR)/fonts.cmxa -linkpkg
 
 $(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(d)/cesure.ml
 	$(ECHO) "[OPT]    $< -> $@"
