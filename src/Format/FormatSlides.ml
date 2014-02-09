@@ -739,10 +739,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 
           let _,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
-          StrMap.iter (fun k (a,b,c)->
-            Printf.fprintf stderr "FormatSlides %d: position of %S (%S):\n" __LINE__ k b;
-            print_line c
-          ) (names env_final);
           if comp_i < !max_iterations-1 && !reboot then (
             resolve (comp_i+1) (reset_counters env_final)
           ) else (
