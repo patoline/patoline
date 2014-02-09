@@ -932,15 +932,19 @@ module Format=functor (D:Document.DocumentStructure)->(
                         | Marker (BeginLink l)->(
 			  let k = match l with
 			      Box.Extern l -> OutputCommon.Extern l;
-			    | Box.Intern l ->
-			      let dest_page=
-				try
-				  let line=MarkerMap.find (Label l) env.user_positions in
-				  Box.layout_page line
-				with
-				  Not_found->(-1)
-			      in
-			      OutputCommon.Intern(l,dest_page,0.,0.);
+			    | Box.Intern l ->(
+			      try
+				let line=MarkerMap.find (Label l) env.user_positions in
+                                let y1=match classify_float line.line_y1 with
+                                    FP_infinite | FP_nan->
+                                      0.
+                                  | _->line.line_y1
+                                in
+				OutputCommon.Intern(l,Box.layout_page line,0.,y1)
+			      with
+				  Not_found->
+				    OutputCommon.Intern(l,-1,0.,0.)
+                            )
 			    | Box.Button(drag,n,d) -> OutputCommon.Button(drag,n,d)
 			  in
                           let link={ link_x0=x;link_y0=y;link_x1=x;link_y1=y;link_kind=k;
