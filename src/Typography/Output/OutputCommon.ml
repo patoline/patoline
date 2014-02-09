@@ -165,6 +165,9 @@ type page =
 let defaultPage = { pageFormat = (0.0, 0.0); pageContents = [] }
 
 
+let states l x=
+  States { states_contents=x; states_states=l; states_order=0 }
+
 let rec translate x y=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x+.x; glyph_y=g.glyph_y+.y; glyph_kx=g.glyph_kx+.x; glyph_ky=g.glyph_ky+.y  }
   | Path (a,b)->Path (a, List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0+.x) u, Array.map (fun y0->y0+.y) v))) b)

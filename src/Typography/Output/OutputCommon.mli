@@ -127,6 +127,8 @@ type page = {
   mutable pageFormat : float * float;
   mutable pageContents : raw list;
 }
+
+val states : int list -> raw list -> raw
 val defaultPage : page
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw
