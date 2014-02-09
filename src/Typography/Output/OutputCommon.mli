@@ -113,7 +113,11 @@ and raw=
   | States of states
   | Animation of animation
   | Dynamic of raw list dynamic
-
+type page = {
+  mutable pageFormat : float * float;
+  mutable pageContents : raw list;
+}
+val defaultPage : page
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw
 

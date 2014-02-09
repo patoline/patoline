@@ -463,7 +463,7 @@ let buffered_output' ?dynCache ?(structure:structure={name="";displayname=[];met
     pages prefix=
 
   let total=Array.fold_left (fun m x->m+Array.length x) 0 pages in
-  let all_pages=Array.make total OutputPaper.defaultPage in
+  let all_pages=Array.make total OutputCommon.defaultPage in
   let _=Array.fold_left (fun m0 x->
     Array.fold_left (fun m x->
       all_pages.(m)<-x;

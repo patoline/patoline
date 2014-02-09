@@ -494,7 +494,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 		    Intern(label,dest_page,dest_x,dest_y)->
                       if dest_page>=0 && dest_page<Array.length pageObjects then (
                         fprintf outChan
-			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /F 4 /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
+			  "<< /Type /Annot /Subtype /Link /Rect [%f %f %f %f] /Dest [ %d 0 R /XYZ %f %f null] /Border [0 0 0]  >> "
 			  (pt_of_mm l.link_x0) (pt_of_mm l.link_y0)
 			  (pt_of_mm l.link_x1) (pt_of_mm l.link_y1) pageObjects.(dest_page)
 			  (pt_of_mm dest_x) (pt_of_mm dest_y)

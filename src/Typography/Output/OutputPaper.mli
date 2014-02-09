@@ -1,8 +1,4 @@
-type page = {
-  mutable pageFormat : float * float;
-  mutable pageContents : OutputCommon.raw list;
-}
-val defaultPage:page
+open OutputCommon
 
 module type Driver =
   sig
