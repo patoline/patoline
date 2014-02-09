@@ -424,27 +424,29 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Dynamic d->List.iter output_contents (d.dyn_contents ())
       | Video _-> Printf.fprintf stderr "Video not support by Pdf driver\n%!"
     in
-    let sorted_pages=
-
-        let x=List.fold_left (fun m x->
-          let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
-          IntMap.add (drawing_order x) (x::m') m
-        ) IntMap.empty pages.(page).pageContents
-        in
-        let comp a b=match a,b with
-            Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
-              else compare gb.glyph_y ga.glyph_y
-          | Glyph ga,_-> -1
-          | _,Glyph gb->1
-          | _->0
-        in
-        let subsort a=match a with
-            Link l->Link { l with link_contents=List.sort comp l.link_contents }
-          | b->b
-        in
-        IntMap.fold (fun _ a x->x@a) (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+    let rec sort_contents c=
+      let x=List.fold_left (fun m x->
+        let m'=try IntMap.find (drawing_order x) m with Not_found->[] in
+        IntMap.add (drawing_order x) (x::m') m
+      ) IntMap.empty c
       in
-        List.iter output_contents sorted_pages;
+      let comp a b=match a,b with
+          Glyph ga,Glyph gb->if ga.glyph_y=gb.glyph_y then compare ga.glyph_x gb.glyph_x
+            else compare gb.glyph_y ga.glyph_y
+        | Glyph ga,_-> -1
+        | _,Glyph gb->1
+        | _->0
+      in
+      let subsort a=match a with
+          Link l->Link { l with link_contents=sort_contents l.link_contents }
+        | States l->States { l with states_contents=sort_contents l.states_contents }
+        | Dynamic l->Dynamic { l with dyn_contents=(fun ()->sort_contents (l.dyn_contents ())) }
+        | b->b
+      in
+      IntMap.fold (fun _ a x->x@a)
+        (IntMap.map (fun l->(List.sort comp (List.map subsort l))) x) []
+    in
+    List.iter output_contents (sort_contents pages.(page).pageContents);
         close_text ();
         (* Objets de la page *)
         let contentObj=beginObject () in
