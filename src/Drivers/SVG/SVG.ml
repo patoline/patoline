@@ -536,7 +536,7 @@ if(document.webkitFullScreenElement){
 document.webkitCancelFullScreen();
 }else{
 document.getElementById(\"svg\").requestFullScreen();
-}}}
+}}}};
 
 function gotoSlide(n){
 if(n>current_slide)
