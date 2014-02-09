@@ -347,48 +347,50 @@ let print_structure s =
 
 let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     ?(structure:structure=empty_structure) pages fileName =
-  let pages'=
-    if Array.length pages <= 0 then [||] else (
-      let n=Array.fold_left (fun n x->n+Array.length x) 0 pages in
-      let pa=Array.make n pages.(0).(0) in
-      let corr=Array.init (Array.length pages)
-        (fun i->Array.make (Array.length pages.(i)) 0)
-      in
-      let rec translate_page_numbers i j k=
-        if i<Array.length pages then (
-          if j<Array.length pages.(i) then (
-            corr.(i).(j)<-k;
-            translate_page_numbers i (j+1) (k+1)
-          ) else translate_page_numbers (i+1) 0 k
-        )
-      in
-      translate_page_numbers 0 0 0;
-      let rec translate_pages i j k=
-        if i<Array.length pages then (
-          if j>=Array.length pages.(i) then
-            translate_pages (i+1) 0 k
-          else (
-            pa.(k)<-
-              { pages.(i).(j) with
-                pageContents=
-                  List.map (fun x->match x with
-                      Link l->(
-                        match l.link_kind with
-                            Intern (a,b,c,d)->Link { l with link_kind=Intern (a,corr.(b).(0),c,d) }
-                          | _->x
-                      )
-                    | y->y
-                  ) (pages.(i).(j).pageContents)
-              };
-            translate_pages i (j+1) (k+1)
-          )
-        )
-      in
-      translate_pages 0 0 0;
-      pa
+  let n=Array.fold_left (fun n x->n+Array.length x) 0 pages in
+  let pages'=Array.make n defaultPage in
+  let corr=Array.init (Array.length pages)
+    (fun i->Array.make (Array.length pages.(i)) 0)
+  in
+  let rec translate_page_numbers i j k=
+    if i<Array.length pages then (
+      if j<Array.length pages.(i) then (
+        corr.(i).(j)<-k;
+        translate_page_numbers i (j+1) (k+1)
+      ) else translate_page_numbers (i+1) 0 k
     )
   in
+  translate_page_numbers 0 0 0;
+  let rec translate_pages i j k=
+    if i<Array.length pages then (
+      if j>=Array.length pages.(i) then
+        translate_pages (i+1) 0 k
+      else (
+        pages'.(k)<-
+          { pages.(i).(j) with
+            pageContents=
+              List.map (fun x->match x with
+                  Link l->(
+                    match l.link_kind with
+                        Intern (a,b,c,d)->Link { l with link_kind=Intern (a,corr.(b).(0),c,d) }
+                      | _->x
+                  )
+                | y->y
+              ) (pages.(i).(j).pageContents)
+          };
+        translate_pages i (j+1) (k+1)
+      )
+    )
+  in
+  translate_pages 0 0 0;
+  let rec translate_struct str=
+    if str.page>=0 && str.page<Array.length corr then
+      str.page<-corr.(str.page).(0);
+    Array.iter translate_struct str.substructures
+  in
+  translate_struct structure;
   output ~structure pages' fileName
+
 
 let output_from_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
     ?(structure:structure=empty_structure) pages fileName =

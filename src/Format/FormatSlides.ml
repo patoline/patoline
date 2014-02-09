@@ -211,7 +211,7 @@ module Format=functor (D:Document.DocumentStructure)->(
       module Block=Env_block(struct let arg1=blocktitle end)
 
       let reference name=generalRef Th.refType name
- 
+
       let do_begin_env ()=
         Env_center.do_begin_env ();
         D.structure:=newChildAfter !D.structure (Node empty);
@@ -988,51 +988,41 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
 
             let slide_num=ref 0 in
-
-
-            let rec make_structure t=
+            (* Position dans le dernier slide de structure vu dans le parcours *)
+            let structPosition=ref (0.,0.) in
+            let rec make_structure pages t=
               match t with
-                  Node n when List.mem_assoc "slide" n.node_tags ->(
-                    let n_name = n.name in
-                    let sl=
-                      let open Typography.OutputCommon in
-                          {name=n_name;
-                           displayname=[];metadata=[];tags=n.node_tags;
-		           page= !slide_num;struct_x=0.;struct_y=0.;
-                           substructures=[||]
-                          }
-                    in
-                    incr slide_num;
-                    sl
-                  )
-                | Node n when List.mem_assoc "intoc" n.node_tags->
-                  let sub=IntMap.fold (fun _ a m->
-                    match a with
-                        Node _ when List.mem_assoc "intoc" n.node_tags->(make_structure a)::m
-                      | _->m
-                  ) n.children []
-                  in
+                | Node n when List.mem_assoc "intoc" n.node_tags->(
+                  let num= !slide_num in
+                  let sub=IntMap.fold (fun _ a m->(make_structure pages a)@m) n.children [] in
                   let n_name = n.name in
                   let open Typography.OutputCommon in
-                  {name=n_name;
-                   displayname=[];metadata=[];tags=n.node_tags;
-		   page= !slide_num;struct_x=0.;struct_y=0.;
-                   substructures=Array.of_list (List.rev sub)
-                  }
-                | _->(
-                  let open Typography.OutputCommon in
-                  {name="";displayname=[];metadata=[];tags=[];
-		   page= -1;struct_x=0.;struct_y=0.;substructures=[||]}
+                      [{name=n_name;
+                        displayname=[];metadata=[];tags=n.node_tags;
+		        page=num;struct_x=fst !structPosition;struct_y=snd !structPosition;
+                        substructures=Array.of_list (List.rev sub)
+                       }]
                 )
-
+                | Node n when List.mem_assoc "slide" n.node_tags ->
+                  ((*Position: tout en haut du slide *)
+                    structPosition:=(snd pages.(!slide_num)).(0).pageFormat;
+                    incr slide_num;
+                    [])
+                | Node n->
+                  let _=IntMap.fold (fun _ a _->ignore (make_structure pages a)) n.children () in
+                  []
+                | _->[]
             in
 
 	    let pages, structure =
 	      match !Config.input_bin with
 		None ->
 		  let pages=Array.mapi draw_slide (Array.of_list (List.rev !slides)) in
-		  let structure = make_structure structure in
-		  pages, structure
+		  let str=match make_structure pages structure with
+                      h::_->h
+                    | []->empty_structure
+                  in
+		  pages, str
 	      | Some fileName ->
 		let ch = open_in fileName in
 		let b = input_value ch in
