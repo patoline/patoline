@@ -337,7 +337,7 @@ let word =
          List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
       then raise Give_up;
       w
-  | w:RE("\\\\[\\$|({)}]") ->
+  | w:RE("\\\\[\\$|({)}/*#]") ->
       String.escaped (String.sub w 1 (String.length w - 1))
   end
 
@@ -360,7 +360,7 @@ let words =
  * Verbatim environment / macro                                             *
  ****************************************************************************)
 
-let verbatim_line   = "\\(^[^#\n][^\n]*\\)\\|\\(^#?#?[^#\n][^\n]*\\)"
+let verbatim_line   = "\\(^[^#\t\n][^\t\n]*\\)\\|\\(^#?#?[^#\t\n][^\t\n]*\\)"
 let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
 let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
 
@@ -372,8 +372,30 @@ let verbatim_environment =
       file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
       RE("[ \t]*\n")
       lines:glr l:RE(verbatim_line) RE("\n") -> l end++
-      RE("^###\n") ->
+      RE("^###\n") -> (
         (* FIXME do something with "lang" and "file" *)
+        assert(List.length lines <> 0); (* Forbid empty verbatim env *)
+
+        (* Remove the maximum of head spaces uniformly *)
+        let rec count_head_spaces s acc =
+          if s.[acc] = ' '
+          then count_head_spaces s (acc+1)
+          else acc
+        in
+        let count_head_spaces s =
+          if String.length s = 0
+          then max_int
+          else count_head_spaces s 0
+        in
+        let fn = fun acc s -> min acc (count_head_spaces s) in
+        let sps = List.fold_left fn max_int lines in
+        let sps = if sps = max_int then 0 else sps in
+        Printf.fprintf stderr "#### Spaces : %d\n%!" sps;
+        let fn = fun s -> try String.sub s sps (String.length s - sps)
+                          with Invalid_argument _ -> ""
+        in
+        let lines = List.map fn lines in
+
         let buildline l =
           <:str_item<let _ = newPar D.structure ~environment:verbEnv
                              Complete.normal ragged_left
@@ -381,27 +403,29 @@ let verbatim_environment =
         in
         let fn = fun l -> buildline (String.escaped l) in
         let lines = List.map fn lines in
-        assert(List.length lines <> 0);
+
         let fn = fun acc r -> <:str_item<$acc$ $r$>> in
-        List.fold_left fn <:str_item<>> lines
+        List.fold_left fn <:str_item<>> lines )
     end
   ) no_blank
 
-let verb_line = "[^\n{}]+"
-
-let verbatim_macro =
+let verbatim_generic st forbid nd =
+  let line_re = "[^\n" ^ forbid ^ "]+" in
   change_layout (
     glr
-      STR("\\verb{")
-      ls:glr l:RE(verb_line) STR("\n") -> l end**
-      l:RE(verb_line)
-      STR("}") ->
+      STR(st)
+      ls:glr l:RE(line_re) STR("\n") -> l end**
+      l:RE(line_re)
+      STR(nd) ->
         let lines = ls @ [l] in
         let lines = rem_hyphen lines in
         let txt = String.concat " " lines in
         <:expr<$lid:"verb"$ [tT $str:txt$]>>
     end
   ) no_blank
+
+let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
+let verbatim_sharp = verbatim_generic "##" "#" "##"
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually reccursice).             *
@@ -450,8 +474,7 @@ let text_paragraph_elt italic =
          <:expr@_loc_p1<toggleItalic $p1$>>
     || STR("**") p1:(paragraph_basic_text false) _e:STR("**") when italic ->
          <:expr@_loc_p1<bold $p1$>>
-    || STR("##") p1:(paragraph_basic_text false) _e:STR("##") when italic ->
-         <:expr@_loc_p1<verb $p1$>>
+    || v:verbatim_sharp -> <:expr@_loc_p1<$v$>>
     (* || STR("$") ... STR("$") -> TODO *)
     (* || STR("$$") ... STR("$$") -> TODO *)
     end
@@ -506,24 +529,29 @@ let item =
 
 let paragraph =
   glr
-    verb:verbatim_environment -> (fun _ -> verb)
+       verb:verbatim_environment -> (fun _ -> verb)
     || l:paragraph_basic_text ->
         (fun no_indent ->
           if no_indent then
             <:str_item@_loc_l<
-               let _ = newPar D.structure ~environment:(fun x -> { x with par_indent = [] })
+               let _ = newPar D.structure
+                         ~environment:(fun x -> { x with par_indent = [] })
                          Complete.normal Patoline_Format.parameters $l$>>
           else
             <:str_item@_loc_l<
-               let _ = newPar D.structure Complete.normal Patoline_Format.parameters $l$ >>)
+               let _ = newPar D.structure
+                         Complete.normal Patoline_Format.parameters $l$ >>)
     || it:item -> (fun _ -> it)
   end
 
 let environment =
   glr
-    o2:STR("\\begin{") idb:RE(ident) c1:STR("}") ps:paragraph** o2:STR("\\end{") ide:RE(ident) c2:STR("}") ->
+    STR("\\begin{") idb:RE(ident) STR("}")
+    ps:paragraph**
+    STR("\\end{") ide:RE(ident) STR("}") ->
       (if idb <> ide then raise Give_up;
-       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r false$>>)  <:str_item<>> ps in
+       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r false$>>)
+                    <:str_item<>> ps in
        let m1 = freshUid () in
        let m2 = freshUid () in
        <:str_item< module $uid:m1$ =
@@ -540,7 +568,9 @@ let text = declare_grammar ()
 
 let text_item =
   glr
-    op:RE(section) title:paragraph_basic_text cl:RE(section) ->
+    op:RE(section)
+    title:paragraph_basic_text
+    cl:RE(section) ->
       (fun no_indent lvl ->
        if String.length op <> String.length cl then raise Give_up;
        let numbered = match op.[0], cl.[0] with
@@ -556,29 +586,38 @@ let text_item =
        done;
        true,l,<:str_item< $!res$ let _ = $numbered$ D.structure $title$ >>)
 
-  || op:RE(op_section) title:paragraph_basic_text txt:text cl:RE(cl_section) ->
+  || op:RE(op_section)
+     title:paragraph_basic_text
+     txt:text
+     cl:RE(cl_section) ->
       (fun no_indent lvl ->
        let numbered = match op.[0], cl.[0] with
            '=', '=' -> <:expr@_loc_op<newStruct>>
          | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
          | _ -> raise Give_up
        in
-       false, lvl, <:str_item< let _ = $numbered$ D.structure $title$;; $txt true (lvl+1)$;; let _ = go_up D.structure >>)
+       false, lvl, <:str_item< let _ = $numbered$ D.structure $title$;;
+                               $txt true (lvl+1)$;;
+                               let _ = go_up D.structure >>)
 
   || s:patoline_ocaml ->
       (fun no_indent lvl -> no_indent, lvl, s)
 
-  || e:environment -> (fun no_indent lvl -> false, lvl, e)
+  || e:environment ->
+      (fun no_indent lvl -> false, lvl, e)
 
-  || l:paragraph -> (fun no_indent lvl -> false, lvl, <:str_item<$l no_indent$>>)
+  || l:paragraph -> 
+      (fun no_indent lvl -> false, lvl, <:str_item<$l no_indent$>>)
   end
 
 let _ = set_grammar text (
   glr
     l:text_item** -> (fun no_indent lvl ->
-      let _,_,r = List.fold_left (fun (no_indent, lvl, ast) txt ->
-        let no_indent, lvl, ast' = txt no_indent lvl in
-        no_indent, lvl, <:str_item<$ast$;; $ast'$>>) (no_indent, lvl, <:str_item<>>) l
+      let _,_,r = List.fold_left
+        (fun (no_indent, lvl, ast) txt ->
+         let no_indent, lvl, ast' = txt no_indent lvl in
+         no_indent, lvl, <:str_item<$ast$;; $ast'$>>)
+        (no_indent, lvl, <:str_item<>>) l
       in r)
   end)
 
