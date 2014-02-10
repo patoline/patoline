@@ -328,18 +328,27 @@ let patoline_ocaml = wrapped_caml_str_item "\\Caml"
  * Words.                                                                   *
  ****************************************************************************)
 
-let word_re = "[^ \t\r\n{}\\_$|/*#]+"
+let char_re    = "[^ \t\r\n{}\\_$|/*#\"]"
+let escaped_re = "\\\\[\\$|({)}/*#\"]"
+
+let character =
+  glr
+    c:RE(char_re) -> c
+  | s:RE(escaped_re) ->
+     String.escaped (String.sub s 1 (String.length s - 1))
+  end
 
 let word =
-  glr
-    w:RE(word_re) ->
-      if String.length w >= 2 &&
-         List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
-      then raise Give_up;
-      w
-  | w:RE("\\\\[\\$|({)}/*#]") ->
-      String.escaped (String.sub w 1 (String.length w - 1))
-  end
+  change_layout (
+    glr
+      cs:character++ ->
+        let w = String.concat "" cs in
+        if String.length w >= 2 &&
+           List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
+        then raise Give_up;
+        w
+    end
+  ) no_blank
 
 let rec rem_hyphen = function
   | []        -> []
@@ -355,12 +364,13 @@ let words =
     ws:word++ -> String.concat " " (rem_hyphen ws)
   end
 
-
 (****************************************************************************
  * Verbatim environment / macro                                             *
  ****************************************************************************)
 
-let verbatim_line   = "\\(^[^#\t\n][^\t\n]*\\)\\|\\(^#?#?[^#\t\n][^\t\n]*\\)"
+let verbatim_line   =
+  "\\(^[^#\t\n][^\t\n]*\\)\\|\\(^#?#?[^#\t\n][^\t\n]*\\)\\|\\(^[ \t]*\\)"
+
 let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
 let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
 
@@ -390,7 +400,6 @@ let verbatim_environment =
         let fn = fun acc s -> min acc (count_head_spaces s) in
         let sps = List.fold_left fn max_int lines in
         let sps = if sps = max_int then 0 else sps in
-        Printf.fprintf stderr "#### Spaces : %d\n%!" sps;
         let fn = fun s -> try String.sub s sps (String.length s - sps)
                           with Invalid_argument _ -> ""
         in
@@ -428,7 +437,7 @@ let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
 let verbatim_sharp = verbatim_generic "##" "#" "##"
 
 (****************************************************************************
- * Text content of paragraphs and macros (mutually reccursice).             *
+ * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
 
 (* boolean -> can contain special text environments //...// **...** ... *)
@@ -464,17 +473,21 @@ let macro =
   end
 (****************************)
 
-let text_paragraph_elt italic =
+let text_paragraph_elt allowed =
     glr
        m:macro -> m
     || l:words -> <:expr@_loc_l<[tT($str:l$)]>>
-    || STR("_") p1:(paragraph_basic_text false) _e:STR("_") when italic ->
-         <:expr@_loc_p1<toggleItalic $p1$>>
-    || STR("//") p1:(paragraph_basic_text false) _e:STR("//") when italic ->
-         <:expr@_loc_p1<toggleItalic $p1$>>
-    || STR("**") p1:(paragraph_basic_text false) _e:STR("**") when italic ->
-         <:expr@_loc_p1<bold $p1$>>
-    || v:verbatim_sharp -> <:expr@_loc_p1<$v$>>
+    || STR("_") p:(paragraph_basic_text false) _e:STR("_") when allowed ->
+         <:expr@_loc_p<toggleItalic $p$>>
+    || STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
+         <:expr@_loc_p<toggleItalic $p$>>
+    || STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
+         <:expr@_loc_p<bold $p$>>
+    || STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
+        (let opening = "``" in (* TODO addapt with the current language*)
+         let closing = "''" in (* TODO addapt with the current language*)
+         <:expr@_loc_p<tT($str:opening$) :: $p$ @ [tT($str:closing$)]>>)
+    || v:verbatim_sharp -> <:expr@_loc_v<$v$>>
     (* || STR("$") ... STR("$") -> TODO *)
     (* || STR("$$") ... STR("$$") -> TODO *)
     end
