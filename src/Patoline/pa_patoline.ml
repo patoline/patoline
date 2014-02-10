@@ -513,9 +513,24 @@ let _ = set_paragraph_basic_text (fun spec_allowed ->
     end
   ) blank1)
 
-let paragraph_basic_text = paragraph_basic_text true
+let text_only = paragraph_basic_text true
 
-let _ = set_grammar patoline_basic_text_paragraph paragraph_basic_text
+let paragraph_basic_text =
+  glr
+    p:text_only ->
+      (fun indented ->
+        if indented then
+            <:str_item@_loc_p<
+               let _ = newPar D.structure
+                         Complete.normal Patoline_Format.parameters $p$ >>
+        else
+              <:str_item@_loc_p<
+               let _ = newPar D.structure
+                         ~environment:(fun x -> { x with par_indent = [] })
+                         Complete.normal Patoline_Format.parameters $p$>>)
+  end
+
+let _ = set_grammar patoline_basic_text_paragraph text_only
 
 (****************************************************************************
  * Paragraphs, Environment, Text.                                           *
@@ -524,8 +539,6 @@ let _ = set_grammar patoline_basic_text_paragraph paragraph_basic_text
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"
 let cl_section = "[-=]<"
-let ident = "[_a-z][_a-zA-Z0-9']*"
-
 
 let item =
   glr
@@ -543,27 +556,18 @@ let item =
 let paragraph =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
-    || l:paragraph_basic_text ->
-        (fun no_indent ->
-          if no_indent then
-            <:str_item@_loc_l<
-               let _ = newPar D.structure
-                         ~environment:(fun x -> { x with par_indent = [] })
-                         Complete.normal Patoline_Format.parameters $l$>>
-          else
-            <:str_item@_loc_l<
-               let _ = newPar D.structure
-                         Complete.normal Patoline_Format.parameters $l$ >>)
+    || l:paragraph_basic_text -> l
     || it:item -> (fun _ -> it)
+    || s:patoline_ocaml -> (fun _ -> s)
   end
 
 let environment =
   glr
-    STR("\\begin{") idb:RE(ident) STR("}")
+    STR("\\begin{") idb:RE(lident) STR("}")
     ps:paragraph**
-    STR("\\end{") ide:RE(ident) STR("}") ->
+    STR("\\end{") ide:RE(lident) STR("}") ->
       (if idb <> ide then raise Give_up;
-       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r false$>>)
+       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r true$>>)
                     <:str_item<>> ps in
        let m1 = freshUid () in
        let m2 = freshUid () in
@@ -582,8 +586,9 @@ let text = declare_grammar ()
 let text_item =
   glr
     op:RE(section)
-    title:paragraph_basic_text
-    cl:RE(section) ->
+    title:text_only
+    cl:RE(section)
+    txt:text ->
       (fun no_indent lvl ->
        if String.length op <> String.length cl then raise Give_up;
        let numbered = match op.[0], cl.[0] with
@@ -597,10 +602,11 @@ let text_item =
        for i = 0 to lvl - l do
          res := <:str_item@_loc_op< $!res$ let _ = go_up D.structure>>
        done;
-       true,l,<:str_item< $!res$ let _ = $numbered$ D.structure $title$ >>)
+       true,l,<:str_item< $!res$ let _ = $numbered$ D.structure $title$;;
+                          $txt true (lvl+1)$>>)
 
   || op:RE(op_section)
-     title:paragraph_basic_text
+     title:text_only
      txt:text
      cl:RE(cl_section) ->
       (fun no_indent lvl ->
@@ -613,14 +619,11 @@ let text_item =
                                $txt true (lvl+1)$;;
                                let _ = go_up D.structure >>)
 
-  || s:patoline_ocaml ->
-      (fun no_indent lvl -> no_indent, lvl, s)
-
   || e:environment ->
       (fun no_indent lvl -> false, lvl, e)
 
   || l:paragraph -> 
-      (fun no_indent lvl -> false, lvl, <:str_item<$l no_indent$>>)
+      (fun no_indent lvl -> false, lvl, <:str_item<$l (not no_indent)$>>)
   end
 
 let _ = set_grammar text (
@@ -660,10 +663,10 @@ let header =
 
 let title =
   glr
-    RE("==========\\(=*\\)") t:paragraph_basic_text
-    author:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
-    institute:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
-    date:{RE("----------\\(-*\\)") t:paragraph_basic_text}??
+    RE("==========\\(=*\\)") t:text_only
+    author:{RE("----------\\(-*\\)") t:text_only}??
+    institute:{RE("----------\\(-*\\)") t:text_only}??
+    date:{RE("----------\\(-*\\)") t:text_only}??
     RE("==========\\(=*\\)") ->
   let extras =
     match date with
