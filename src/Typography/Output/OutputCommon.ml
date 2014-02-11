@@ -375,7 +375,14 @@ let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
               List.map (fun x->match x with
                   Link l->(
                     match l.link_kind with
-                        Intern (a,b,c,d)->Link { l with link_kind=Intern (a,corr.(b).(0),c,d) }
+                        Intern (a,b,c,d)->
+                          if b>=0 && b<Array.length corr then
+                            if Array.length corr.(b)>0 then
+                              Link { l with link_kind=Intern (a,corr.(b).(0),c,d) }
+                            else
+                              x
+                          else
+                            x
                       | _->x
                   )
                 | y->y
@@ -388,7 +395,8 @@ let output_to_prime (output:(?structure:structure -> 'a array -> 'b -> 'c))
   translate_pages 0 0 0;
   let rec translate_struct str=
     if str.page>=0 && str.page<Array.length corr then
-      str.page<-corr.(str.page).(0);
+      if Array.length corr.(str.page)>0 then
+        str.page<-corr.(str.page).(0);
     Array.iter translate_struct str.substructures
   in
   translate_struct structure;
