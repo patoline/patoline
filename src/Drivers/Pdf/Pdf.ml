@@ -102,7 +102,6 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let pageObjects=Array.make (Array.length pages) 0 in
   for i=0 to Array.length pageObjects-1 do pageObjects.(i)<-futureObject ()
   done;
-
   fprintf outChan "%%PDF-1.7\n%%ãõẽũ\n";
 
 

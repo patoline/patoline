@@ -628,23 +628,25 @@ module Format=functor (D:Document.DocumentStructure)->(
                         paragraphs
                       in
                       opts.(state)<-
-                        List.map (function Placed_line l->
-                          (try
-                             { l with
-                               line={ l.line with
-                                 paragraph=IntMap.find l.line.paragraph !par_map;
-                               };
-                             }
-                           with
-                               Not_found->l)
-                          | _->assert false
+                        List.fold_left (fun cont l->
+                          match l with
+                              Placed_line l'->
+                                (try
+                                   { l' with
+                                     line={ l'.line with
+                                       paragraph=IntMap.find l'.line.paragraph !par_map;
+                                     }
+                                   }::cont
+                                 with
+                                     Not_found->cont)
+                            | _->cont
                         )
-                        (List.filter (function Placed_line l->true | _->false)
-                           (try
-                              all_contents (snd (IntMap.max_binding opt_pages.frame_children))
-                            with
-                                Not_found->[]));
-
+                        []
+                        (try
+                           all_contents
+                             (snd (IntMap.max_binding (opt_pages.frame_children)))
+                         with
+                             Not_found->[]);
                       let next_layout=opt_pages,[] in
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
@@ -719,7 +721,12 @@ module Format=functor (D:Document.DocumentStructure)->(
 
                   (* Fin du placement vertical *)
 
-                  slides:=(path,tree,paragraphs0,figures0,figure_trees0,env',opts)::(!slides);
+                  slides:=(path,tree,paragraphs0,figures0,figure_trees0,env',opts,
+                           try
+                             fst (IntMap.max_binding (fst (frame_top layout')).frame_children)
+                           with
+                               Not_found->(-1)
+                  )::(!slides);
                   layout',n.node_post_env env0 env'
                 )
               | Node n->
@@ -737,13 +744,11 @@ module Format=functor (D:Document.DocumentStructure)->(
             | _->env_resolved
           in
 
-          let _,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
+          let layout_final,env_final=typeset_structure [] tree (empty_frame,[]) env0 in
           Printf.fprintf stderr "Fin de l'optimisation : %f s\n" (Sys.time ());
           if comp_i < !max_iterations-1 && !reboot then (
             resolve (comp_i+1) (reset_counters env_final)
           ) else (
-
-
             (* Dessin du menu en haut de l'écran *)
 
             let toc=List.fold_left (fun m (n,dis,path,env)->
@@ -847,8 +852,9 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             (* Dessin du slide complet *)
 
-            let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts)=
+            let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
               let states=ref [] in
+
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
                 page.pageContents<-if IntMap.cardinal toc>0 then draw_toc env else [];
@@ -871,9 +877,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
                 let destinations=ref StrMap.empty in
-                for j=0 to Array.length pp-1 do
-                  let param=pp.(j).line_params
-                  and line=pp.(j).line in
+
+                let draw_line line=
+                  let param=line.line_params
+                  and line=line.line in
                   let y=line.height in
 
                   if line.isFigure then (
@@ -980,7 +987,22 @@ module Format=functor (D:Document.DocumentStructure)->(
                     let _=fold_left_line paragraphs (fun x b->x+.draw_box x y b) param.left_margin line in
                     ()
                   )
+                in
+                for j=0 to Array.length pp-1 do
+                  draw_line pp.(j)
                 done;
+                let rec more_contents f=
+                  List.iter (fun x->match x with
+                      Placed_line l->()
+                    | Raw r->
+                      page.pageContents<-r@page.pageContents
+                  ) f.frame_content;
+                  IntMap.iter (fun k a->more_contents a) f.frame_children;
+                in
+                (try
+                   more_contents (IntMap.find slide_num (fst layout_final).frame_children)
+                 with
+                     Not_found->());
                 page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
                 states:=page:: !states
               done;
@@ -1033,7 +1055,6 @@ module Format=functor (D:Document.DocumentStructure)->(
 		Printf.fprintf stderr "File %s read.\n" fileName;
 		pages, structure
 	    in
-
             M.output' ~structure (Array.map snd pages) file
           )
         in
