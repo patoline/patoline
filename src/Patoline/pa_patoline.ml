@@ -536,10 +536,6 @@ let _ = set_grammar patoline_basic_text_paragraph text_only
  * Paragraphs, Environment, Text.                                           *
  ****************************************************************************)
 
-let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
-let op_section = "[-=]>"
-let cl_section = "[-=]<"
-
 let item =
   glr
     STR("\\item") ->
@@ -582,6 +578,10 @@ let environment =
   end
 
 let text = declare_grammar ()
+
+let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
+let op_section = "[-=]>"
+let cl_section = "[-=]<"
 
 let text_item =
   glr
@@ -636,6 +636,11 @@ let _ = set_grammar text (
         (no_indent, lvl, <:str_item<>>) l
       in r)
   end)
+
+let text =
+  glr
+    txt:text -> <:str_item<$txt true 0$>>
+  end
 
 (****************************************************************************
  * Header, Title, Document body.                                            *
@@ -694,7 +699,7 @@ let full_text =
                 | None   -> <:str_item<>>
                 | Some t -> t
       in
-      <:str_item<$h$ $t$ $txt true 0$>>
+      <:str_item<$h$ $t$ $txt$>>
   end
 
 (****************************************************************************
