@@ -28,6 +28,9 @@ TYPOGRAPHY_CMI:=$(TYPOGRAPHY_MLI:.mli=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(TYPOGRAPHY_CMX): %.cmx: %.cmo
 
+$(TYPOGRAPHY_CMI:.cmi=.cmo): %.cmo: %.cmi
+$(TYPOGRAPHY_CMI:.cmi=.cmx): %.cmx: %.cmi
+
 $(d)/Typography.cmo: $(TYPOGRAPHY_CMO)
 	$(ECHO) "[PACK]   ... -> $@"
 	$(Q)$(OCAMLC) -pack -o $@ $^
