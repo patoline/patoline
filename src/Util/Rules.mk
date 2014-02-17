@@ -19,7 +19,7 @@ UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
 
 UTIL_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.mli)
-UTIL_CMI:=$(UTIL_MLI:.mli=.cmi)
+UTIL_CMO:=$(UTIL_MLI:.mli=.cmi) $(UTIL_ML:.ml=.cmi)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
