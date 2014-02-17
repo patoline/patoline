@@ -383,7 +383,7 @@ let verbatim_environment =
       RE("[ \t]*\n")
       lines:glr l:RE(verbatim_line) RE("\n") -> l end++
       RE("^###\n") -> (
-        (* FIXME do something with "lang" and "file" *)
+        (* TODO do something with "lang" and "file" *)
         assert(List.length lines <> 0); (* Forbid empty verbatim env *)
 
         (* Remove the maximum of head spaces uniformly *)
@@ -440,8 +440,8 @@ let verbatim_sharp = verbatim_generic "##" "#" "##"
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
 
-(* boolean -> can contain special text environments //...// **...** ... *)
-let paragraph_basic_text, set_paragraph_basic_text = grammar_family [ true ]
+(* bool param -> can contain special text environments //...// **...** ... *)
+let paragraph_basic_text, set_paragraph_basic_text = grammar_family ()
 
 (***** Patoline macros  *****)
 let macro_argument =
@@ -477,12 +477,14 @@ let text_paragraph_elt allowed =
     glr
        m:macro -> m
     || l:words -> <:expr@_loc_l<[tT($str:l$)]>>
-    || STR("_") p:(paragraph_basic_text false) _e:STR("_") when allowed ->
-         <:expr@_loc_p<toggleItalic $p$>>
     || STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
          <:expr@_loc_p<toggleItalic $p$>>
     || STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
          <:expr@_loc_p<bold $p$>>
+    (*
+    || STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
+         <:expr@_loc_p<underline $p$>>
+    *)
     || STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
@@ -499,8 +501,8 @@ let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
     let _loc = Loc.merge _loc_p1 _loc_p2 in
     <:expr<$p1$ @ $bl p2$>>
 
-let _ = set_paragraph_basic_text (fun spec_allowed ->
-  change_layout (
+let _ = set_paragraph_basic_text
+  (fun spec_allowed ->
     glr
       l:{p:(text_paragraph_elt spec_allowed) -> (_loc, p)}++ ->
         match List.rev l with
@@ -511,13 +513,13 @@ let _ = set_paragraph_basic_text (fun spec_allowed ->
                          , concat_paragraph p _loc_p m _loc_m)
               in snd (List.fold_left fn m l)
     end
-  ) blank1)
+  ) [ true ]
 
-let text_only = paragraph_basic_text true
+let text_only = change_layout (paragraph_basic_text true) blank1
 
 let paragraph_basic_text =
   glr
-    p:text_only ->
+    p:(paragraph_basic_text true) ->
       (fun indented ->
         if indented then
             <:str_item@_loc_p<
@@ -533,49 +535,70 @@ let paragraph_basic_text =
 let _ = set_grammar patoline_basic_text_paragraph text_only
 
 (****************************************************************************
- * Paragraphs, Environment, Text.                                           *
+ * Paragraphs                                                               *
  ****************************************************************************)
 
-let item =
-  glr
-    STR("\\item") ->
-      (let m1 = freshUid () in
-       let m2 = freshUid () in
-       <:str_item< module $uid:m1$ =
-                   struct
-                     module $uid:m2$ = $uid:"Item"$ ;;
-                     let _ = $uid:m2$.do_begin_env () ;;
-                     let _ = $uid:m2$.do_end_env ()
-                   end>>)
-  end
+let paragraph = declare_grammar ()
 
-let paragraph =
+let paragraph_elt =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
-    || l:paragraph_basic_text -> l
-    || it:item -> (fun _ -> it)
     || s:patoline_ocaml -> (fun _ -> s)
+    || l:paragraph_basic_text -> l
+    (*
+    || STR("\\item") -> (fun _ ->
+        (let m1 = freshUid () in
+         let m2 = freshUid () in
+         <:str_item< module $uid:m1$ =
+                     struct
+                       module $uid:m2$ = $uid:"Item"$ ;;
+                       let _ = $uid:m2$.do_begin_env () ;;
+                       let _ = $uid:m2$.do_end_env ()
+                     end>>))
+    || STR("\\begin{") idb:RE(lident) STR("}")
+       p:paragraph
+       STR("\\end{") ide:RE(lident) STR("}") ->
+         (fun _ ->
+           if idb <> ide then raise Give_up;
+           (*let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r true$>>)
+                        <:str_item<>> ps in *)
+           let m1 = freshUid () in
+           let m2 = freshUid () in
+           <:str_item< module $uid:m1$ =
+                       struct
+                         module $uid:m2$ = $uid:"Env_"^idb$ ;;
+                         open $uid:m2$ ;;
+                         let _ = $uid:m2$.do_begin_env () ;;
+                         (* $lpar$ ;; *)
+                         $p false$ ;;
+                         let _ = $uid:m2$.do_end_env ()
+                        end>>)
+    *)
   end
 
-let environment =
+let _ = set_grammar paragraph (
+  change_layout (
+    glr
+      e:paragraph_elt es:paragraph_elt** ->
+        (let fn = fun acc r -> <:str_item<$acc$ $r false$>> in
+         let es = List.fold_left fn <:str_item<>> es in
+         fun indent -> <:str_item<$e indent$;; $es$>>
+        )
+    end
+  ) blank1)
+
+let paragraphs =
   glr
-    STR("\\begin{") idb:RE(lident) STR("}")
-    ps:paragraph**
-    STR("\\end{") ide:RE(lident) STR("}") ->
-      (if idb <> ide then raise Give_up;
-       let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r true$>>)
-                    <:str_item<>> ps in
-       let m1 = freshUid () in
-       let m2 = freshUid () in
-       <:str_item< module $uid:m1$ =
-                   struct
-                     module $uid:m2$ = $uid:"Env_"^idb$ ;;
-                     open $uid:m2$ ;;
-                     let _ = $uid:m2$.do_begin_env () ;;
-                     $lpar$ ;;
-                     let _ = $uid:m2$.do_end_env ()
-                   end>>)
+    p:paragraph ps:paragraph** ->
+      (fun indent_first ->
+        let p  = p indent_first in
+        let fn = fun acc r -> <:str_item<$acc$ $r true$>> in
+        List.fold_left fn p ps)
   end
+
+(****************************************************************************
+ * Sections, layout of the document.                                        *
+ ****************************************************************************)
 
 let text = declare_grammar ()
 
@@ -585,56 +608,48 @@ let cl_section = "[-=]<"
 
 let text_item =
   glr
-    op:RE(section)
-    title:text_only
-    cl:RE(section)
-    txt:text ->
-      (fun no_indent lvl ->
-       if String.length op <> String.length cl then raise Give_up;
-       let numbered = match op.[0], cl.[0] with
-           '=', '=' -> <:expr@_loc_op<newStruct>>
-         | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-         | _ -> raise Give_up
-       in
-       let l = String.length op - 1 in
-       if l > lvl + 1 then failwith "Illegal level skip";
-       let res = ref <:str_item@_loc_op<>> in
-       for i = 0 to lvl - l do
-         res := <:str_item@_loc_op< $!res$ let _ = go_up D.structure>>
-       done;
-       true,l,<:str_item< $!res$ let _ = $numbered$ D.structure $title$;;
-                          $txt true (lvl+1)$>>)
-
-  || op:RE(op_section)
-     title:text_only
-     txt:text
-     cl:RE(cl_section) ->
-      (fun no_indent lvl ->
-       let numbered = match op.[0], cl.[0] with
-           '=', '=' -> <:expr@_loc_op<newStruct>>
-         | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
-         | _ -> raise Give_up
-       in
-       false, lvl, <:str_item< let _ = $numbered$ D.structure $title$;;
-                               $txt true (lvl+1)$;;
+     op:RE(op_section) title:text_only txt:text cl:RE(cl_section) ->
+       (fun _ lvl ->
+        let numbered = match op.[0], cl.[0] with
+            '=', '=' -> <:expr@_loc_op<newStruct>>
+          | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
+          | _ -> raise Give_up
+        in
+        true, lvl, <:str_item< let _ = $numbered$ D.structure $title$;;
+                               $txt false (lvl+1)$;;
                                let _ = go_up D.structure >>)
 
-  || e:environment ->
-      (fun no_indent lvl -> false, lvl, e)
+  || op:RE(section) title:text_only cl:RE(section) txt:text ->
+       (fun _ lvl ->
+        if String.length op <> String.length cl then raise Give_up;
+        let numbered = match op.[0], cl.[0] with
+            '=', '=' -> <:expr@_loc_op<newStruct>>
+          | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
+          | _ -> raise Give_up
+        in
+        let l = String.length op - 1 in
+        if l > lvl + 1 then failwith "Illegal level skip";
+        let res = ref <:str_item@_loc_op<>> in
+        for i = 0 to lvl - l do
+          res := <:str_item@_loc_op< $!res$ let _ = go_up D.structure>>
+        done;
+        true, lvl, <:str_item< $!res$ let _ = $numbered$ D.structure $title$;;
+                               $txt false l$>>)
 
-  || l:paragraph -> 
-      (fun no_indent lvl -> false, lvl, <:str_item<$l (not no_indent)$>>)
+  || ps:paragraphs -> 
+      (fun indent lvl -> indent, lvl, ps indent)
   end
 
 let _ = set_grammar text (
   glr
-    l:text_item** -> (fun no_indent lvl ->
-      let _,_,r = List.fold_left
-        (fun (no_indent, lvl, ast) txt ->
-         let no_indent, lvl, ast' = txt no_indent lvl in
-         no_indent, lvl, <:str_item<$ast$;; $ast'$>>)
-        (no_indent, lvl, <:str_item<>>) l
-      in r)
+    l:text_item** ->
+      (fun indent lvl ->
+        let fn = fun (indent, lvl, ast) txt ->
+                   let indent, lvl, ast' = txt indent lvl in
+                   indent, lvl, <:str_item<$ast$;; $ast'$>>
+        in
+        let _,_,r = List.fold_left fn (indent, lvl, <:str_item<>>) l in
+        r)
   end)
 
 let text =
