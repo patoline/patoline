@@ -539,13 +539,13 @@ let _ = set_grammar patoline_basic_text_paragraph text_only
  ****************************************************************************)
 
 let paragraph = declare_grammar ()
+let paragraphs = declare_grammar ()
 
 let paragraph_elt =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
     || s:patoline_ocaml -> (fun _ -> s)
     || l:paragraph_basic_text -> l
-    (*
     || STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
@@ -556,12 +556,10 @@ let paragraph_elt =
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
     || STR("\\begin{") idb:RE(lident) STR("}")
-       p:paragraph
+       ps:(change_layout paragraphs blank2)
        STR("\\end{") ide:RE(lident) STR("}") ->
-         (fun _ ->
+         (fun indent_first ->
            if idb <> ide then raise Give_up;
-           (*let lpar = List.fold_left (fun acc r -> <:str_item<$acc$ $r true$>>)
-                        <:str_item<>> ps in *)
            let m1 = freshUid () in
            let m2 = freshUid () in
            <:str_item< module $uid:m1$ =
@@ -569,11 +567,9 @@ let paragraph_elt =
                          module $uid:m2$ = $uid:"Env_"^idb$ ;;
                          open $uid:m2$ ;;
                          let _ = $uid:m2$.do_begin_env () ;;
-                         (* $lpar$ ;; *)
-                         $p false$ ;;
+                         $ps indent_first$ ;;
                          let _ = $uid:m2$.do_end_env ()
                         end>>)
-    *)
   end
 
 let _ = set_grammar paragraph (
@@ -587,14 +583,14 @@ let _ = set_grammar paragraph (
     end
   ) blank1)
 
-let paragraphs =
+let _ = set_grammar paragraphs (
   glr
     p:paragraph ps:paragraph** ->
       (fun indent_first ->
         let p  = p indent_first in
         let fn = fun acc r -> <:str_item<$acc$ $r true$>> in
         List.fold_left fn p ps)
-  end
+  end)
 
 (****************************************************************************
  * Sections, layout of the document.                                        *
