@@ -10,7 +10,7 @@ CESURE_LINK :=  $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa $(LIBFONTS_DIR
 
 $(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(d)/cesure.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) -I $(LIBFONTS_DIR) -I $(UTIL_DIR) -I $(UTIL_DIR)/Rbuffer dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
+	$(Q)$(OCAMLOPT) $(PACK) -I $(TYPOGRAPHY_DIR) dynlink.cmxa -o $@ -package str $(CESURE_LINK) $^
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

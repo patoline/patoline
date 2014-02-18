@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-UTIL_INCLUDES := -I $(d) -I $(d)/../Rbuffer
+UTIL_INCLUDES := -I $(d) -I $(RBUFFER_DIR)
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
@@ -17,9 +17,7 @@ UTIL_MODS:= FilenameExtra UsualMake Util
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
 UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
-
-UTIL_MLI:=$(wildcard $(d)/*.mli) $(wildcard $(d)/*/*.mli)
-UTIL_CMO:=$(UTIL_MLI:.mli=.cmi) $(UTIL_ML:.ml=.cmi)
+UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
