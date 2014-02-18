@@ -421,6 +421,20 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       )
       | States s->List.iter output_contents s.states_contents
       | Dynamic d->List.iter output_contents (d.dyn_contents ())
+      | Affine aff->(
+        close_text ();
+        Rbuffer.add_string pageBuf
+          (Printf.sprintf "q %g %g %g %g %g %g cm "
+             aff.affine_matrix.(0).(0)
+             aff.affine_matrix.(1).(0)
+             aff.affine_matrix.(0).(1)
+             aff.affine_matrix.(1).(1)
+             (pt_of_mm aff.affine_matrix.(0).(2))
+             (pt_of_mm aff.affine_matrix.(1).(2)));
+        List.iter output_contents aff.affine_contents;
+        close_text ();
+        Rbuffer.add_string pageBuf "Q "
+      )
       | Video _-> Printf.fprintf stderr "Video not support by Pdf driver\n%!"
     in
     let rec sort_contents c=
@@ -440,6 +454,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           Link l->Link { l with link_contents=sort_contents l.link_contents }
         | States l->States { l with states_contents=sort_contents l.states_contents }
         | Dynamic l->Dynamic { l with dyn_contents=(fun ()->sort_contents (l.dyn_contents ())) }
+        | Affine l->Affine { l with affine_contents=sort_contents l.affine_contents }
         | b->b
       in
       IntMap.fold (fun _ a x->x@a)

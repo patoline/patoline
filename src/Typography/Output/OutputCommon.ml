@@ -149,6 +149,7 @@ and 'a dynamic={
 and raw=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
+  | Affine of affine
   | Link of link
   | Image of image
   | Video of video
@@ -163,6 +164,13 @@ type page =
   }
 
 let defaultPage = { pageFormat = (0.0, 0.0); pageContents = [] }
+
+(* Transform a path *)
+let rec affine m x=
+  List.map (Array.map (fun (u,v)->
+    Array.mapi (fun i x->m.(0).(0)*.x +. m.(0).(1)*.v.(i) +. m.(0).(2)) u,
+    Array.mapi (fun i x->m.(1).(0)*.x +. m.(1).(1)*.v.(i) +. m.(1).(2)) u
+  )) x
 
 
 let states l x=
@@ -181,6 +189,12 @@ let rec translate x y=function
   | States s->States { s with states_contents=List.map (translate x y) s.states_contents }
   | Animation a -> Animation { a with anim_contents=Array.map (List.map (translate x y)) a.anim_contents }
   | Dynamic d -> Dynamic{ d with dyn_contents = fun e -> List.map (translate x y) (d.dyn_contents e)}
+  | Affine a ->(
+    let m=Array.map (Array.copy) a.affine_matrix in
+    m.(0).(2)<-m.(0).(2)+.x;
+    m.(1).(2)<-m.(1).(2)+.y;
+    Affine { a with affine_matrix=m }
+  )
 
 let rec resize alpha=function
     Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
@@ -199,7 +213,11 @@ let rec resize alpha=function
   | States s->States { s with states_contents=List.map (resize alpha) s.states_contents }
   | Animation a -> Animation { a with anim_contents=Array.map (List.map (resize alpha)) a.anim_contents }
   | Dynamic d -> Dynamic { d with dyn_contents = fun e -> List.map (resize alpha) (d.dyn_contents e) }
-
+  | Affine a->(
+    let m=Array.map (Array.copy) a.affine_matrix in
+    for i=0 to 1 do for j=0 to 1 do m.(i).(j)<-m.(i).(j)*.alpha done done;
+    Affine { a with affine_matrix=m }
+  )
 
 type bounding_box_opt = {
   ignore_negative_abcisse : bool;
@@ -238,6 +256,57 @@ let rec print_raw ch r=match r with
 		 (fun ch -> Array.iter (Printf.fprintf ch "[%a]" (fun ch -> List.iter (print_raw ch))))
     a.anim_contents a.anim_default a.anim_mirror a.anim_step a.anim_duration
   | Dynamic d -> Printf.fprintf stderr "Dynamic %s [ %a ]\n" d.dyn_label (fun ch -> List.iter (print_raw ch)) (d.dyn_contents ())
+  | Affine a -> Printf.fprintf stderr "Affine [ %g %g %g %g %g %g ] [%a]\n"
+    a.affine_matrix.(0).(0)
+    a.affine_matrix.(0).(1)
+    a.affine_matrix.(0).(2)
+    a.affine_matrix.(1).(0)
+    a.affine_matrix.(1).(1)
+    a.affine_matrix.(1).(2)
+    (fun ch -> List.iter (print_raw ch)) (a.affine_contents)
+
+
+let rec toPaths x=match x with
+    Path (_,ps)->ps
+  | Glyph g->(
+    List.map (fun l->
+      Array.of_list
+        (List.map (fun (u,v)->(Array.map (fun x0->x0*.g.glyph_size/.1000.) u,
+                               Array.map (fun y0->y0*.g.glyph_size/.1000.) v)) l
+        )
+    ) (Fonts.outlines g.glyph)
+  )
+  | Video i->
+    [rectangle (i.video_x,i.video_y)
+        ((i.video_x+.i.video_width),(i.video_y+.i.video_height))
+    ]
+  | Image i->
+    [rectangle (i.image_x,i.image_y)
+        (i.image_x+.i.image_width,i.image_y+.i.image_height)
+    ]
+  | States a->List.concat (List.map toPaths a.states_contents)
+  | Link l->List.concat (List.map toPaths l.link_contents)
+  | Animation a -> List.concat (List.map toPaths
+                                  (List.concat (Array.to_list a.anim_contents)))
+  | Dynamic d ->List.concat (List.map toPaths (d.dyn_contents ()))
+  | Affine a ->
+    affine a.affine_matrix
+      (List.concat (List.map toPaths a.affine_contents))
+
+let paths_bounding_box x0 y0 x1 y1 ps=
+  let x0'=ref x0 in
+  let y0'=ref y0 in
+  let x1'=ref x1 in
+  let y1'=ref y1 in
+  List.iter (fun p->
+    for i=0 to Array.length p-1 do
+      let (xa,ya),(xb,yb)=Bezier.bounding_box p.(i) in
+      x0' := min !x0' xa;
+      y0' := min !y0' ya;
+      x1' := max !x1' xb;
+      y1' := max !y1' yb;
+    done) ps;
+  (!x0',!y0',!x1',!y1')
 
 let bounding_box_opt opt l=
   let rec bb x0 y0 x1 y1=function
@@ -258,19 +327,8 @@ let bounding_box_opt opt l=
       bb (min x0 x0') (min y0 y0') (max x1 x1') (max y1 y1') s
       )
     | Path (_,ps)::s->(
-        let x0'=ref x0 in
-        let y0'=ref y0 in
-        let x1'=ref x1 in
-        let y1'=ref y1 in
-          List.iter (fun p->
-                       for i=0 to Array.length p-1 do
-                         let (xa,ya),(xb,yb)=Bezier.bounding_box p.(i) in
-                           x0' := min !x0' xa;
-                           y0' := min !y0' ya;
-                           x1' := max !x1' xb;
-                           y1' := max !y1' yb;
-                       done) ps;
-          bb !x0' !y0' !x1' !y1' s
+      let (x0',y0',x1',y1')=paths_bounding_box x0 y0 x1 y1 ps in
+      bb x0' y0' x1' y1' s
       )
     | Image i::s->
         bb (min x0 i.image_x) (min y0 i.image_y)
@@ -285,6 +343,11 @@ let bounding_box_opt opt l=
     | Link l::s->bb x0 y0 x1 y1 (l.link_contents@s)
     | Animation a::s -> bb x0 y0 x1 y1 (List.concat (Array.to_list a.anim_contents)@s)
     | Dynamic d::s -> bb x0 y0 x1 y1 (d.dyn_contents ()@s)
+    | Affine a::s ->
+      let paths=List.concat (List.map toPaths a.affine_contents) in
+      let paths=affine a.affine_matrix paths in
+      let (x0',y0',x1',y1')=paths_bounding_box x0 y0 x1 y1 paths in
+      bb x0' y0' x1' y1' s
   in
     bb infinity infinity (-.infinity) (-.infinity) l
 
@@ -416,6 +479,7 @@ let rec in_order i x=match x with
   | States s->States { s with states_order=i }
   | Animation a-> Animation { a with anim_order = i }
   | Dynamic d -> Dynamic {d with dyn_order=i}
+  | Affine aff->Affine { aff with affine_order=i }
 
 let rec drawing_order x=match x with
     Glyph g->g.glyph_order
@@ -426,6 +490,7 @@ let rec drawing_order x=match x with
   | States s->s.states_order
   | Animation a->a.anim_order
   | Dynamic d->d.dyn_order
+  | Affine aff->aff.affine_order
 
 open UsualMake
 

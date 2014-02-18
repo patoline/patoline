@@ -114,9 +114,15 @@ and 'a dynamic = {
   dyn_order : int;
   dyn_father : string option;
 }
+and affine = {
+  affine_matrix : float array array;
+  affine_contents : raw list;
+  affine_order : int
+}
 and raw =
     Glyph of glyph
   | Path of path_parameters * Bezier.curve array list
+  | Affine of affine
   | Link of link
   | Image of image
   | Video of video
