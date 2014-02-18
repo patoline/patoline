@@ -2187,7 +2187,7 @@ Doing a rectangle.\n" ;
 	  let white_paths = List.map (fun (params, curve) -> 
 	    { params with 
 	      (* path_order = (-1) ; *)
-	      strokingColor = Some (RGB { red=1.;green=1.;blue=1. }); 
+	      strokingColor = Some (rgb 1. 1. 1.); 
 	      lineWidth = margin },
 	    curve)
 	    info.curves

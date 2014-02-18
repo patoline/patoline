@@ -74,7 +74,7 @@ let _=
                           pageContents=p}] else (
             if line<max_line (* y -. (y1-.y0)*.size/.1000. >= bot *) then (
               let finaly= y -. y1*.size/.1000. in
-                make_pages (i0+10) (line+1) (finaly +. y0*.size/.1000.-.lead ) ((Path ({OutputCommon.default with lineWidth=0.01; strokingColor=Some (RGB { red=0.8;green=0.8;blue=0.8 })},
+                make_pages (i0+10) (line+1) (finaly +. y0*.size/.1000.-.lead ) ((Path ({OutputCommon.default with lineWidth=0.01; strokingColor=Some (rgb 0.8 0.8 0.8)},
                                                                                        [ [|[|0.;210.|],[|finaly;finaly|]|] ]))::
                                                                                   (* (Path ({Drivers.default with lineWidth=0.1}, [|[|0.;210.|],[|y;y|]|])):: *)
                                                                                   (List.map (translate left_margin (finaly)) l) @ p)

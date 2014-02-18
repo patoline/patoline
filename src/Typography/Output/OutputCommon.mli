@@ -1,8 +1,10 @@
 type lineCap = Butt_cap | Round_cap | Proj_square_cap
 type lineJoin = Miter_join | Round_join | Bevel_join
-type rgb = { red : float; green : float; blue : float; }
+type rgb = { red : float; green : float; blue : float; alpha : float }
 type color = RGB of rgb
 val rgb : float -> float -> float -> color
+val with_alpha : float -> color -> color
+val alpha : color -> float
 val mix : float -> color -> color -> color
 val black : color
 val white : color

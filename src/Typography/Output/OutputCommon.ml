@@ -20,28 +20,45 @@
 type lineCap=Butt_cap | Round_cap | Proj_square_cap
 type lineJoin=Miter_join | Round_join | Bevel_join
 
-type rgb={ red:float; green:float; blue:float }
+type rgb={ red:float; green:float; blue:float; alpha:float }
 type color=
     RGB of rgb
-let rgb a b c=RGB { red=a;green=b;blue=c }
+let rgb a b c=RGB { red=a;green=b;blue=c;alpha=1. }
+
+let with_alpha alpha col=match col with
+    RGB r->RGB { r with alpha=alpha }
+
+let alpha col=match col with
+    RGB r->r.alpha
 
 let mix x a b=match a,b with
     RGB ra, RGB rb->RGB { red=(x*.ra.red+.(1.-.x)*.rb.red);
                           green=(x*.ra.green+.(1.-.x)*.rb.green);
-                          blue=(x*.ra.blue+.(1.-.x)*.rb.blue)
+                          blue=(x*.ra.blue+.(1.-.x)*.rb.blue);
+                          alpha=(x*.ra.alpha+.(1.-.x)*.rb.alpha);
                         }
 
-let black=RGB { red=0.;green=0.;blue=0. }
-let white=RGB{red=1.;green=1.;blue=1.}
-let blue=RGB{red=0.;green=0.;blue=1.}
-let green=RGB{red=0.;green=1.;blue=0.}
-let red=RGB{red=1.;green=0.;blue=0.}
-let orange=RGB{red=1.;green=0.5;blue=0.}
-let purple=RGB{red=0.5;green=0.;blue=1.}
-let pink=RGB{red=1.;green=0.;blue=0.5}
-let yellow=RGB{red=1.;green=1.;blue=0.}
+let black=RGB { red=0.;green=0.;blue=0.;alpha=1. }
+let white=RGB{red=1.;green=1.;blue=1.;alpha=1.}
+let blue=RGB{red=0.;green=0.;blue=1.;alpha=1.}
+let green=RGB{red=0.;green=1.;blue=0.;alpha=1.}
+let red=RGB{red=1.;green=0.;blue=0.;alpha=1.}
+let orange=RGB{red=1.;green=0.5;blue=0.;alpha=1.}
+let purple=RGB{red=0.5;green=0.;blue=1.;alpha=1.}
+let pink=RGB{red=1.;green=0.;blue=0.5;alpha=1.}
+let yellow=RGB{red=1.;green=1.;blue=0.;alpha=1.}
 let gray=mix 0.5 white black
 let grey=mix 0.5 white black
+
+let rectangle (xa,ya) (xb,yb)=
+  [|[|xa;xa|],[|ya;yb|];
+    [|xa;xb|],[|yb;yb|];
+    [|xb;xb|],[|yb;ya|];
+    [|xb;xa|],[|ya;ya|];
+  |]
+
+let line (xa,ya) (xb,yb)=
+  [|xa;xb|],[|ya;yb|]
 
 
 let hsv h s v=
@@ -146,6 +163,11 @@ and 'a dynamic={
   dyn_father:string option;
 }
 
+and affine={
+  affine_matrix:float array array;
+  affine_contents:raw list;
+  affine_order:int
+}
 and raw=
     Glyph of glyph
   | Path of path_parameters * (Bezier.curve array list)
@@ -365,16 +387,6 @@ let bounding_box_full =  bounding_box_opt {
   ignore_negative_abcisse = false;
   ignore_after_glyphWidth = false;
   ignore_under_base_line = false}
-
-let rectangle (xa,ya) (xb,yb)=
-  [|[|xa;xa|],[|ya;yb|];
-    [|xa;xb|],[|yb;yb|];
-    [|xb;xb|],[|yb;ya|];
-    [|xb;xa|],[|ya;ya|];
-  |]
-
-let line (xa,ya) (xb,yb)=
-  [|xa;xb|],[|ya;yb|]
 
 let circle r=
   let lambda=r*.4.*.(sqrt 2.-.1.)/.3. in

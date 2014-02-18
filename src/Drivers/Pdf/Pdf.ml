@@ -27,6 +27,8 @@ open FTypes
 open OutputCommon
 open OutputPaper
 
+module FloatMap=Map.Make(struct type t=float let compare=compare end)
+
 let filename file=try (Filename.chop_extension file)^".pdf" with _->file^".pdf"
 
 type pdfFont= { font:Fonts.font;
@@ -224,7 +226,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let pageFonts=ref IntMap.empty in
     let currentFont=ref (-1) in
     let currentSize=ref (-1.) in
-      (* Texte *)
+    (* Texte *)
     let isText=ref false in
     let openedWord=ref false in
     let openedLine=ref false in
@@ -232,9 +234,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let yt=ref 0. in
     let xline=ref 0. in
 
-      (* Dessins *)
+    (* Dessins *)
     let strokingColor=ref black in
     let nonStrokingColor=ref black in
+    let opacitiesCounter=ref 0 in
+    let sopacities=ref (FloatMap.singleton 1. 0) in
+    let nsopacities=ref (FloatMap.singleton 1. 0) in
+    let strokingOpacity=ref 0 in
+    let nonstrokingOpacity=ref 0 in
     let lineWidth=ref 1. in
     let lineJoin=ref Miter_join in
     let lineCap=ref Butt_cap in
@@ -259,8 +266,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
               let r=max 0. (min 1. color.red) in
               let g=max 0. (min 1. color.green) in
               let b=max 0. (min 1. color.blue) in
+              let alpha=try FloatMap.find color.alpha !sopacities with
+                  Not_found->(
+                    incr opacitiesCounter;
+                    sopacities:=FloatMap.add color.alpha !opacitiesCounter !sopacities;
+                    !opacitiesCounter
+                  )
+              in
+              if alpha <> !strokingOpacity then (
+                strokingOpacity:=alpha;
+                Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+              );
               strokingColor:=col;
-              Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
+              Rbuffer.add_string pageBuf (sprintf "%g %g %g RG " r g b);
             )
       )
     in
@@ -273,8 +291,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
               let r=max 0. (min 1. color.red) in
               let g=max 0. (min 1. color.green) in
               let b=max 0. (min 1. color.blue) in
+              let alpha=try FloatMap.find color.alpha !nsopacities with
+                  Not_found->(
+                    incr opacitiesCounter;
+                    nsopacities:=FloatMap.add color.alpha !opacitiesCounter !nsopacities;
+                    !opacitiesCounter
+                  )
+              in
+              if alpha <> !nonstrokingOpacity then (
+                nonstrokingOpacity:=alpha;
+                Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
+              );
               nonStrokingColor:=col;
-              Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
+              Rbuffer.add_string pageBuf (sprintf "%g %g %g rg " r g b);
             )
       )
     in
@@ -319,7 +348,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             []->(Rbuffer.add_string pageBuf "[] 0 d ")
           | _::_->(
             Rbuffer.add_string pageBuf " [";
-            List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " x)) l;
+            List.iter (fun x->Rbuffer.add_string pageBuf (sprintf "%f " (pt_of_mm x))) l;
             Rbuffer.add_string pageBuf (sprintf "] 0. d ");
           )
       )
@@ -475,6 +504,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
             fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
               (if !pageImages=[] then "" else " /ImageB");
+            if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
+              fprintf outChan "/ExtGState << ";
+              fprintf outChan "/GS%d <</Type /ExtGState /ca %g /CA %g>> " 0 1. 1.;
+              FloatMap.iter (fun k a->
+                if a>0 then
+                  fprintf outChan "/GS%d <</Type /ExtGState /CA %g>> " a k
+              ) !sopacities;
+              FloatMap.iter (fun k a->
+                if a>0 then
+                  fprintf outChan "/GS%d <</Type /ExtGState /ca %g>> " a k
+              ) !nsopacities;
+              fprintf outChan ">> "
+            );
             if !pageImages<>[] then fprintf outChan " /XObject << ";
             let ii=ref 1 in
             let actual_pageImages=
