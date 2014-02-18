@@ -12,7 +12,7 @@ SRC_$(d):=$(wildcard $(d)/*.ml) \
   $(wildcard $(d)/*/*.mli)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
-TYPOGRAPHY_MODS:= TypoLanguage FindPath $(FINDFONT) Config ConfigUtil Bezier Distance \
+TYPOGRAPHY_MODS:= TypoLanguage FindPath FontPattern $(FINDFONT) Config ConfigUtil Bezier Distance \
   Offset Output/OutputCommon Box Badness Break Document Complete Hyphenate Maths \
 	Output/OutputPaper Output/OutputDrawing Geometry Proj3d Diagrams ProofTree Db
 

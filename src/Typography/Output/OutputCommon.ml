@@ -197,9 +197,9 @@ let rec translate x y=function
   )
 
 let rec resize alpha=function
-    Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;  
+    Glyph g->Glyph { g with glyph_x=g.glyph_x*.alpha; glyph_y=g.glyph_y*.alpha; glyph_kx=g.glyph_kx*.alpha; glyph_ky=g.glyph_ky*.alpha;
       glyph_size=g.glyph_size*.alpha }
-  | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha },
+  | Path (a,b)->Path ( { a with lineWidth=a.lineWidth*.alpha;dashPattern=List.map (fun x->x*.alpha) a.dashPattern },
                        List.map (Array.map (fun (u,v)->(Array.map (fun x0->x0*.alpha) u, Array.map (fun y0->y0*.alpha) v))) b)
   | Link l -> Link { l with
     link_x0=l.link_x0*.alpha; link_y0=l.link_y0*.alpha;

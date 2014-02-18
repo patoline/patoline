@@ -330,7 +330,6 @@ and make_deps pre source=
     end else 
       open_in dep_filename, false
   in
-
   let buf=Buffer.create 1000 in
   let s=String.create 1000 in
   let rec read_all ()=
@@ -348,8 +347,7 @@ and make_deps pre source=
     output_string ch cont;
     close_out ch
   end;
-
-  let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(\\(.*\\\n\\)*\\)$") in
+  let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(.*\\)") in
   (try
      let _=Str.search_forward str cont 0 in
      ldeps:=(Str.split (Str.regexp "[\n\t\r\\ ]+") (Str.matched_group 1 cont))@(!ldeps);
@@ -387,7 +385,7 @@ and check_source r =
   let source=(r^".txp") in
   if Sys.file_exists source then
     ".ttml",source
-  else 
+  else
     let source=(r^".typ") in
     if Sys.file_exists source then
       ".cmx",source
@@ -550,7 +548,8 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                    if pack<>"" then ["-package";pack] else [])@
                   dirs_@
                   ["-c";"-o";h;
-                   "-impl";source ])
+                   if Filename.check_suffix h ".cmi" then "-intf" else "-impl";
+                   source ])
             in
             let args=Array.of_list (args_l) in
 
@@ -626,7 +625,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                   dirs_@
                   [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                    "-o";h]@["ParseMainArgs.cmx"]@
-                  objs@
+                  (List.filter (fun f->Filename.check_suffix f ".cmx") objs)@
                   ["-impl";source])
             in
             Mutex.unlock mut;
@@ -705,7 +704,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                     dirs_@
                     [(if Filename.check_suffix h ".cmxs" then "-shared" else "-linkpkg");
                      "-o";h]@
-                    objs@
+                    (List.filter (fun f->Filename.check_suffix f ".cmx") objs)@
                     (if !dynlink then ["-linkall"] else [])@
 		    ["-impl";source])
               in

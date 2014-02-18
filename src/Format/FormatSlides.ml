@@ -513,7 +513,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           Printf.printf "Compilation %d\n" comp_i; flush stdout;
           let tree=structure in
           let slides=ref [] in
-          let layouts=ref [env_resolved.new_page (empty_frame,[])] in
           let reboot=ref false in
           let toc=ref [] in
           let rec typeset_structure path tree layout env0=
@@ -521,11 +520,13 @@ module Format=functor (D:Document.DocumentStructure)->(
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
+(*
                 user_positions=MarkerMap.add (Label labl)
                   (match !layouts with
                       []->uselessLine
                     | h::_->{ uselessLine with layout=h })
                   env0.user_positions
+*)
               }
             in
             if List.length path=1 then (
@@ -540,10 +541,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                   (*let out=open_out (Printf.sprintf "slide%d" (List.length !slides)) in
                   doc_graph out tree;
                   close_out out;*)
-                  layouts:=
-                    (env0.new_page (match !layouts with
-                        []->(empty_frame,[])
-                      | h::_->h))::(!layouts);
 
                   let rec get_max_state t=match t with
                       Paragraph p->(List.fold_left max 0 p.par_states)
@@ -730,7 +727,9 @@ module Format=functor (D:Document.DocumentStructure)->(
                   layout',n.node_post_env env0 env'
                 )
               | Node n->
-                let l,e=IntMap.fold (fun k a (l,e)->typeset_structure (k::path) a l e) n.children
+                let l,e=IntMap.fold (fun k a (l,e)->
+                  typeset_structure (k::path) a l e
+                ) n.children
                   (layout,n.node_env env0)
                 in
                 l,n.node_post_env env0 e
@@ -871,7 +870,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                     | _->[]
                 in
-
                 page.pageContents<-(List.map (OutputCommon.translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
@@ -994,13 +992,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let rec more_contents f=
                   List.iter (fun x->match x with
                       Placed_line l->()
-                    | Raw r->
+                    | Raw r->(
                       page.pageContents<-r@page.pageContents
+                    )
                   ) f.frame_content;
                   IntMap.iter (fun k a->more_contents a) f.frame_children;
                 in
                 (try
-                   more_contents (IntMap.find slide_num (fst layout_final).frame_children)
+                   more_contents (IntMap.find slide_num (fst (frame_top layout_final)).frame_children)
                  with
                      Not_found->());
                 page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
