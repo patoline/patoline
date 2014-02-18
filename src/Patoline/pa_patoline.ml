@@ -328,8 +328,8 @@ let patoline_ocaml = wrapped_caml_str_item "\\Caml"
  * Words.                                                                   *
  ****************************************************************************)
 
-let char_re    = "[^ \t\r\n{}\\_$|/*#\"]"
-let escaped_re = "\\\\[\\$|({)}/*#\"]"
+let char_re    = "[^ `\t\r\n{}()\\_$|/*#\"]"
+let escaped_re = "\\\\[\\$|({)}/*#\"`]"
 
 let character =
   glr
@@ -382,7 +382,7 @@ let verbatim_environment =
       file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
       RE("[ \t]*\n")
       lines:glr l:RE(verbatim_line) RE("\n") -> l end++
-      RE("^###\n") -> (
+      RE("^###") -> (
         (* TODO do something with "lang" and "file" *)
         assert(List.length lines <> 0); (* Forbid empty verbatim env *)
 
@@ -435,6 +435,7 @@ let verbatim_generic st forbid nd =
 
 let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
 let verbatim_sharp = verbatim_generic "##" "#" "##"
+let verbatim_bquote = verbatim_generic "``" "`" "``"
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
@@ -477,19 +478,30 @@ let text_paragraph_elt allowed =
     glr
        m:macro -> m
     || l:words -> <:expr@_loc_l<[tT($str:l$)]>>
+
     || STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
          <:expr@_loc_p<toggleItalic $p$>>
     || STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
          <:expr@_loc_p<bold $p$>>
+    || v:verbatim_bquote -> <:expr@_loc_v<$v$>>
     (*
     || STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
          <:expr@_loc_p<underline $p$>>
+    || STR("--") p:(paragraph_basic_text false) _e:STR("--") when allowed ->
+         <:expr@_loc_p<strike $p$>>
     *)
+
+    || v:verbatim_sharp -> <:expr@_loc_v<$v$>>
+    || STR("||") p:(paragraph_basic_text false) _e:STR("||") when allowed ->
+         <:expr@_loc_p<sc $p$>>
+
+    || STR("(") p:(paragraph_basic_text allowed) STR(")") ->
+         <:expr@_loc_p<tT($str:"("$) :: $p$ @ [tT($str:")"$)]>>
     || STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($str:opening$) :: $p$ @ [tT($str:closing$)]>>)
-    || v:verbatim_sharp -> <:expr@_loc_v<$v$>>
+
     (* || STR("$") ... STR("$") -> TODO *)
     (* || STR("$$") ... STR("$$") -> TODO *)
     end
@@ -738,7 +750,7 @@ let parse_patoline str =
 (* Parse a string with OCaml Camlp4 extension as the entry point. *)
 let parse_patoline_caml str =
   try
-    Gram.parse_string patoline_caml_struct (Loc.mk !fname) str
+    Gram.parse_string str_item (Loc.mk !fname) str
   with
     | exc ->
         Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
