@@ -757,6 +757,34 @@ let parse_patoline_caml str =
         exit 1
 
 (****************************************************************************
+ * Helper function for top level ast.                                       *
+ ****************************************************************************)
+
+let wrap basename _loc ast = <:str_item<
+  open Typography
+  open Util
+  open Typography.Box
+  open Typography.Config
+  open Typography.Document
+  open Typography.OutputCommon
+  open DefaultFormat.MathsFormat
+  let $lid:"cache_"^basename$  =
+    ref ([||] : (environment -> Mathematical.style -> box list) array)
+  let $lid:"mcache_"^basename$ =
+    ref ([||] : (environment -> Mathematical.style -> box list) list array)
+  module Document = functor(Patoline_Output:DefaultFormat.Output)
+    -> functor(D:DocumentStructure)->struct
+    module Patoline_Format = $uid:!patoline_format$.Format(D)
+    open $uid:!patoline_format$
+    open Patoline_Format
+    let temp1 = List.map fst (snd !D.structure);;
+    $ast$
+    let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
+  end;;
+  let _ = $lid:"cache_"^basename$ :=[||];;
+  let _ = $lid:"mcache_"^basename$ :=[||];; >>
+
+(****************************************************************************
  * Main program + Command-line argument parsing.                            *
  ****************************************************************************)
 
@@ -812,30 +840,7 @@ let _ = try
   let ast = parse str in
   let _loc = Loc.(of_lexing_position (find_pos str 0)) in
 
-  let wrapped = <:str_item<
-    open Typography
-    open Util
-    open Typography.Box
-    open Typography.Config
-    open Typography.Document
-    open Typography.OutputCommon
-    open DefaultFormat.MathsFormat
-    let $lid:"cache_"^basename$  =
-      ref ([||] : (environment -> Mathematical.style -> box list) array)
-    let $lid:"mcache_"^basename$ =
-      ref ([||] : (environment -> Mathematical.style -> box list) list array)
-    module Document = functor(Patoline_Output:DefaultFormat.Output)
-      -> functor(D:DocumentStructure)->struct
-      module Patoline_Format = $uid:!patoline_format$.Format(D)
-      open $uid:!patoline_format$
-      open Patoline_Format
-      let temp1 = List.map fst (snd !D.structure);;
-      $ast$
-      let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
-    end;;
-    let _ = $lid:"cache_"^basename$ :=[||];;
-    let _ = $lid:"mcache_"^basename$ :=[||];; >> in
-  Printers.OCaml.print_implem wrapped;
+  Printers.OCaml.print_implem (wrap basename _loc ast);
   close_in ch
 
   with
