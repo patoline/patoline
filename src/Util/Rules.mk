@@ -15,6 +15,7 @@ $(d)/%.depends: INCLUDES:=$(UTIL_INCLUDES)
 UTIL_MODS:= FilenameExtra UsualMake Util
 
 UTIL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UTIL_MODS)))
+
 UTIL_CMO:=$(UTIL_ML:.ml=.cmo)
 UTIL_CMX:=$(UTIL_ML:.ml=.cmx)
 UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
@@ -24,7 +25,7 @@ UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UTIL_CMX): %.cmx: %.cmo
 
-$(UTIL_CMI): %.cmi: %.mli
+$(d)/Util.cmi: $(d)/Util.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<
 $(UTIL_CMO): %.cmo: %.ml
