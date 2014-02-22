@@ -25,9 +25,6 @@ UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UTIL_CMX): %.cmx: %.cmo
 
-$(d)/Util.cmi: $(d)/Util.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<
 $(UTIL_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<
@@ -55,7 +52,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-util
 .PHONY: install-util
-install-util: $(d)/util.cma $(d)/util.cmxa $(d)/util.a $(UTIL_CMI) $(UTIL_MLI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
+install-util: $(d)/util.cma $(d)/util.cmxa $(d)/util.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UTIL_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UTIL_DIR)
 
