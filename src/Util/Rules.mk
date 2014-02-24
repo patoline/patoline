@@ -25,6 +25,12 @@ UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UTIL_CMX): %.cmx: %.cmo
 
+$(UTIL_CMI:.cmi=.cmo): %.cmo: %.cmi
+$(UTIL_CMI:.cmi=.cmx): %.cmx: %.cmi
+
+$(UTIL_CMI): %.cmi: %.mli
+	$(ECHO) "[OCAMLC] $< -> $@"
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<
 $(UTIL_CMO): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(UTIL_INCLUDES) -o $@ -c $<

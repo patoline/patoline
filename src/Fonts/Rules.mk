@@ -28,6 +28,9 @@ LIBFONTS_CMI:=$(LIBFONTS_MLI:.mli=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(LIBFONTS_CMX): %.cmx: %.cmo
 
+$(LIBFONTS_CMI:.cmi=.cmo): %.cmo: %.cmi
+$(LIBFONTS_CMI:.cmi=.cmx): %.cmx: %.cmi
+
 $(LIBFONTS_CMI): %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(LIBFONTS_INCLUDES) -o $@ -c $<
