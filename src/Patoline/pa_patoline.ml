@@ -302,9 +302,9 @@ let caml_array _loc =
  * Parsing OCaml code inside patoline.                                      *
  ****************************************************************************)
 
-(* Parse a caml "str_item" wrapped with parentheses prefixed by init_str *)
-let wrapped_caml_str_item init_str =
-  dependent_sequence (locate (glr p:STR(init_str ^ "(") end))
+(* Parse a caml "str_item" wrapped with parentheses *)
+let wrapped_caml_str_item =
+  dependent_sequence (locate (glr p:STR("(") end))
     (fun (_loc,_) -> caml_struct _loc)
 
 (* Parse a caml "expr" wrapped with parentheses *)
@@ -322,8 +322,6 @@ let wrapped_caml_array =
   dependent_sequence (locate (glr p:STR("[|") end))
     (fun (_loc,_) -> caml_array _loc)
 
-let patoline_ocaml = wrapped_caml_str_item "\\Caml"
-
 (****************************************************************************
  * Words.                                                                   *
  ****************************************************************************)
@@ -333,7 +331,7 @@ let escaped_re = "\\\\[\\$|({)}/*#\"`]"
 
 let character =
   glr
-    c:RE(char_re) -> c
+    c:RE(char_re) -> String.escaped c
   | s:RE(escaped_re) ->
      String.escaped (String.sub s 1 (String.length s - 1))
   end
@@ -556,7 +554,7 @@ let paragraphs = declare_grammar ()
 let paragraph_elt =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
-    || s:patoline_ocaml -> (fun _ -> s)
+    || STR("\\Caml") s:wrapped_caml_str_item -> (fun _ -> s)
     || l:paragraph_basic_text -> l
     || STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
