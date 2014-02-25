@@ -326,8 +326,8 @@ let wrapped_caml_array =
  * Words.                                                                   *
  ****************************************************************************)
 
-let char_re    = "[^ `\t\r\n{}()\\_$|/*#\"]"
-let escaped_re = "\\\\[\\$|({)}/*#\"`]"
+let char_re    = "[^][ `\t\r\n{}()\\_$|/*#\"]"
+let escaped_re = "\\\\[][\\$|({)}/*#\"`]"
 
 let character =
   glr
@@ -435,6 +435,17 @@ let verbatim_macro = verbatim_generic "\\verb{" "{}" "}"
 let verbatim_sharp = verbatim_generic "##" "#" "##"
 let verbatim_bquote = verbatim_generic "``" "`" "``"
 
+
+(****************************************************************************
+ * Maths.                                                                   *
+ ****************************************************************************)
+
+let math_toplevel =
+  glr
+    STR("x") -> <:expr<Maths.noad (Maths.glyphs "x")>>
+    (* TODO *)
+  end
+
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
@@ -500,8 +511,14 @@ let text_paragraph_elt allowed =
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($str:opening$) :: $p$ @ [tT($str:closing$)]>>)
 
-    (* || STR("$") ... STR("$") -> TODO *)
-    (* || STR("$$") ... STR("$$") -> TODO *)
+    || STR("$") m:math_toplevel STR("$") ->
+        <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
+                        [ { env0 with mathStyle = env0.mathStyle } ]
+                        [Maths.Ordinary $m$])]>>
+    || STR("[$") m:math_toplevel STR("$]") ->
+        <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
+                        [ { env0 with mathStyle = env0.mathStyle } ]
+                        (displayStyle [Maths.Ordinary $m$]))]>>
     end
 
 let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -580,6 +597,14 @@ let paragraph_elt =
                          $ps indent_first$ ;;
                          let _ = $uid:m2$.do_end_env ()
                         end>>)
+    || STR("$$") m:math_toplevel STR("$$") ->
+         (fun _ ->
+           <:str_item<let _ = newPar D.structure
+                        ~environment:(fun x -> {x with par_indent = []})
+                        Complete.normal displayedFormula
+                        [bB (fun env0 -> Maths.kdraw
+                          [ { env0 with mathStyle = Mathematical.Display } ]
+                          [Maths.Ordinary $m$])];;>>)
   end
 
 let _ = set_grammar paragraph (
