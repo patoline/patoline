@@ -127,6 +127,8 @@ let _ = glr_locate locate Loc.merge
 
 let patoline_basic_text_paragraph = declare_grammar ()
 
+let patoline_math_toplevel = declare_grammar ()
+
 let parser_stack = Stack.create ()
 
 module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
@@ -187,6 +189,19 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           let new_pos, ast = partial_parse_string parse blank2 str pos in
           ptr := new_pos - pos - 1; ast
       ] ];
+
+      expr: LEVEL "simple" [ [
+        "<$" ->
+          let str, ptr = try Stack.top parser_stack
+                         with Stack.Empty -> assert false
+          in
+          assert (!ptr = 0);
+          let pos = Loc.stop_off _loc + 1 in
+          let parse = glr p:patoline_math_toplevel STR("$>") -> p end in
+          let new_pos, ast = partial_parse_string parse blank2 str pos in
+          ptr := new_pos - pos - 1; ast
+      ] ];
+
     END;;
   end
 
@@ -445,6 +460,8 @@ let math_toplevel =
     STR("x") -> <:expr<Maths.noad (Maths.glyphs "x")>>
     (* TODO *)
   end
+
+let _ = set_grammar patoline_math_toplevel math_toplevel
 
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
