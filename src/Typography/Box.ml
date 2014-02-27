@@ -321,6 +321,27 @@ let drawing ?offset:(offset=0.) ?states:(states=[]) cont=
       drawing_contents=(fun _->List.map (translate (-.a) (offset-.b)) cont)
     }
 
+let drawing' ?offset:(offset=0.) ?states:(states=[]) cont=
+  let states=List.fold_left (fun st0 x->match x with
+      States s->st0@s.states_states
+    | _->st0
+  ) states cont
+  in
+  let (a,b,c,d)=OutputCommon.bounding_box_full cont in
+    {
+      drawing_min_width=c;
+      drawing_nominal_width=c;
+      drawing_max_width=c;
+      drawing_width_fixed = true;
+      drawing_adjust_before = false;
+      drawing_y0=b+.offset;
+      drawing_y1=d+.offset;
+      drawing_badness=(fun _->0.);
+      drawing_break_badness=0.;
+      drawing_states=states;
+      drawing_contents=(fun _->List.map (translate 0. offset) cont)
+    }
+
 let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
   let states=List.fold_left (fun st0 x->match x with
       States s->unique (st0@s.states_states)
@@ -340,6 +361,27 @@ let drawing_inline ?offset:(offset=0.) ?states:(states=[]) cont=
       drawing_break_badness=0.;
       drawing_states=states;
       drawing_contents=(fun _->List.map (translate (-.a) offset) cont)
+    }
+
+let drawing_inline' ?offset:(offset=0.) ?states:(states=[]) cont=
+  let states=List.fold_left (fun st0 x->match x with
+      States s->unique (st0@s.states_states)
+    | _->st0
+  ) states cont
+  in
+  let (a,b,c,d)=OutputCommon.bounding_box cont in
+    {
+      drawing_min_width=c;
+      drawing_nominal_width=c;
+      drawing_max_width=c;
+      drawing_width_fixed = true;
+      drawing_adjust_before = false;
+      drawing_y0=offset+.b;
+      drawing_y1=offset+.d;
+      drawing_badness=(fun _->0.);
+      drawing_break_badness=0.;
+      drawing_states=states;
+      drawing_contents=(fun _->List.map (translate 0. offset) cont)
     }
 
 let drawing_blit a x0 y0 b=

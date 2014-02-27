@@ -2681,13 +2681,13 @@ Doing a rectangle.\n" ;
 
       let include_diagram x = let _ = stack := x @ !stack in ()
 
-      let make () =
+      let make ?center:(center=true) ()=
 	let _ = match !compute_intersections with
 	  | None -> ()
 	  | Some f -> add_intersections f
 	in
 	let ordered_contents = to_contents !stack in
-	let fig = Box.drawing_inline ordered_contents
+	let fig = (if center then Box.drawing_inline else Box.drawing_inline') ordered_contents
 	in
 	stack := [] ; fig
 
