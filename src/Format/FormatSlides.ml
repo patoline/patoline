@@ -140,7 +140,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let frame=
               if M.arg1=[] then [
-                Path ({default with close=true},
+                Path ({default with close=true;fillColor=Some (!block_foreground)},
                       [rounded_corners ~r
                           (0.,minip0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
@@ -148,12 +148,12 @@ module Format=functor (D:Document.DocumentStructure)->(
               ]
               else
                 [
-                Path ({default with close=true},
+                Path ({default with close=true;fillColor=Some (!block_foreground)},
                       [rounded_corners ~r
                           (0.,minip0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
                            tx+.minip_title0.drawing_y1+.margin)]);
-                Path ({default with fillColor=Some !block_background;strokingColor=None },
+                Path ({default with path_order=1;fillColor=Some !block_background;strokingColor=None },
                       [rounded_corners ~ne:r ~nw:r
                           (0.,tx+.minip_title0.drawing_y0-.margin)
                           (max mes minip0.drawing_nominal_width+.margin,
@@ -166,7 +166,7 @@ module Format=functor (D:Document.DocumentStructure)->(
               drawing_y1=tit.drawing_y1+.margin_bottom_top;
               drawing_y0=tit.drawing_y0-.margin_bottom_top;
               drawing_min_width=w;drawing_nominal_width=w;drawing_max_width=w;
-              drawing_contents=(fun w->(List.map (fun a->OutputCommon.translate margin 0. (in_order 1 a)) (tit.drawing_contents w))@frame)
+              drawing_contents=(fun w->(List.map (fun a->OutputCommon.translate margin 0. (in_order 2 a)) (tit.drawing_contents w))@frame)
             } in
             [bB (fun _->[Drawing dr]);Env (fun _->env2)]
           with
@@ -518,16 +518,10 @@ module Format=functor (D:Document.DocumentStructure)->(
           let rec typeset_structure path tree layout env0=
             let env0=
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
+              let li={uselessLine with layout=layout} in
               { env0 with
-                names=StrMap.add labl (env0.counters,"_structure",uselessLine) env0.names;
-(*
-                user_positions=MarkerMap.add (Label labl)
-                  (match !layouts with
-                      []->uselessLine
-                    | h::_->{ uselessLine with layout=h })
-                  env0.user_positions
-*)
-              }
+                names=StrMap.add labl (env0.counters,"_structure",li) env0.names;
+                user_positions=MarkerMap.add (Label labl) li env0.user_positions }
             in
             if List.length path=1 then (
               match tree with
@@ -844,9 +838,10 @@ module Format=functor (D:Document.DocumentStructure)->(
               let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
               let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
               let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) (i_fin+1))] in
+              let boxes=boxify_scoped env [tT (Printf.sprintf "%d" (i+1))] in
               let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
               let x=draw_boxes env boxes in
-              List.map (OutputCommon.translate (slidew-.w-.2.) 2.) x
+              List.map (fun y->OutputCommon.translate (slidew-.w-.2.) 2. (in_order max_int y)) x
             in
 
             (* Dessin du slide complet *)
@@ -870,7 +865,8 @@ module Format=functor (D:Document.DocumentStructure)->(
                       )
                     | _->[]
                 in
-                page.pageContents<-(List.map (OutputCommon.translate (slidew/.8.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
+                let (x0,_,x1,_)=bounding_box tit in
+                page.pageContents<-(List.map (OutputCommon.translate (slidew/.2.-.(x0+.x1)/.2.) (slideh-.hoffset*.1.1)) tit)@page.pageContents;
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in

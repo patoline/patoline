@@ -130,6 +130,10 @@ let frame_up (t,cxt)=
       []->(t,cxt)
     | (i,t')::s->({t' with frame_children=IntMap.add i t t'.frame_children},s)
 
+let frame_down i (t,cxt)=
+  (IntMap.find i t.frame_children, ((i,t)::cxt))
+
+
 let rec frame_top (t,cxt)=
   match cxt with
       []->(t,cxt)
