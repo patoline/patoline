@@ -31,7 +31,6 @@ typedef struct cookie_struct
   IOHIDElementCookie gButtonCookie_SystemMenuDown;
 } *cookie_struct_t;
 
-NSString* nightly=@"org.mozilla.nightly";
 
 
 inline          void print_errmsg_if_io_err(int expr, char *msg);
@@ -52,7 +51,9 @@ OSStatus
 KeynoteChangeSlide(bool pressedDown,int keycode)
 {
   NSArray* apps=
-    [NSRunningApplication runningApplicationsWithBundleIdentifier: nightly];
+    [NSRunningApplication runningApplicationsWithBundleIdentifier: @"com.apple.Preview"];
+  if([apps count]==0)
+    apps=[NSRunningApplication runningApplicationsWithBundleIdentifier: @"org.mozilla.nightly"];
   if([apps count]==0)
     apps=[NSRunningApplication runningApplicationsWithBundleIdentifier: @"org.mozilla.firefox"];
   if([apps count]==0)
@@ -352,7 +353,12 @@ setupAndRun(void)
 
 int main (int argc, char **argv)
 {
-  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-  setupAndRun();
-  return 0;
+  if(!fork()){
+    if(!fork()){
+      NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+      setupAndRun();
+      return 0;
+    }
+  } else
+    return 0;
 }
