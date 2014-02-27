@@ -122,14 +122,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
               if Array.length x<=2 && Array.length y<=2 then (
                 let x1=if Array.length x=2 then x.(1) else x.(0) in
                 let y1=if Array.length y=2 then y.(1) else y.(0) in
-                Rbuffer.add_string buf (sprintf "%g %g l " (pt_of_mm x1) (pt_of_mm y1));
+                Rbuffer.add_string buf (sprintf "%f %f l " (pt_of_mm x1) (pt_of_mm y1));
               ) else if Array.length x=3 && Array.length y=3 then (
-                Rbuffer.add_string buf (sprintf "%g %g %g %g %g %g c "
+                Rbuffer.add_string buf (sprintf "%f %f %f %f %f %f c "
                                           (pt_of_mm ((x.(0)+.2.*.x.(1))/.3.)) (pt_of_mm ((y.(0)+.2.*.y.(1))/.3.))
                                           (pt_of_mm ((2.*.x.(1)+.x.(2))/.3.)) (pt_of_mm ((2.*.y.(1)+.y.(2))/.3.))
                                           (pt_of_mm x.(2)) (pt_of_mm y.(2)));
               ) else if Array.length x=4 && Array.length y=4 then (
-                Rbuffer.add_string buf (sprintf "%g %g %g %g %g %g c "
+                Rbuffer.add_string buf (sprintf "%f %f %f %f %f %f c "
                                           (pt_of_mm x.(1)) (pt_of_mm y.(1))
                                           (pt_of_mm x.(2)) (pt_of_mm y.(2))
                                           (pt_of_mm x.(3)) (pt_of_mm y.(3)));
@@ -235,8 +235,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let xline=ref 0. in
 
     (* Dessins *)
-    let strokingColor=ref black in
-    let nonStrokingColor=ref black in
+    let strokingColor=ref None in
+    let nonStrokingColor=ref None in
     let opacitiesCounter=ref 0 in
     let sopacities=ref (FloatMap.singleton 1. 0) in
     let nsopacities=ref (FloatMap.singleton 1. 0) in
@@ -254,11 +254,17 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     in
     let close_text ()=
       close_line ();
-      if !isText then (Rbuffer.add_string pageBuf " ET "; isText:=false);
+      if !isText then (
+        currentFont:=(-1);
+        currentSize:=(-.infinity);
+        nonStrokingColor:=None;
+        strokingColor:=None;
+        Rbuffer.add_string pageBuf " ET "; isText:=false
+      );
       xt:=0.; yt:=0.
     in
     let change_stroking_color col =
-      if col<> !strokingColor then (
+      if (Some col)<> !strokingColor then (
         close_text();
         match col with
             RGB color -> (
@@ -277,13 +283,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 strokingOpacity:=alpha;
                 Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
               );
-              strokingColor:=col;
-              Rbuffer.add_string pageBuf (sprintf "%g %g %g RG " r g b);
+              strokingColor:=Some col;
+              Rbuffer.add_string pageBuf (sprintf "%f %f %f RG " r g b);
             )
       )
     in
     let change_non_stroking_color col =
-      if col<> !nonStrokingColor then (
+      if Some col<> !nonStrokingColor then (
         close_text();
         match col with
             RGB color -> (
@@ -302,8 +308,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 nonstrokingOpacity:=alpha;
                 Rbuffer.add_string pageBuf (sprintf "/GS%d gs " alpha);
               );
-              nonStrokingColor:=col;
-              Rbuffer.add_string pageBuf (sprintf "%g %g %g rg " r g b);
+              nonStrokingColor:=Some col;
+              Rbuffer.add_string pageBuf (sprintf "%f %f %f rg " r g b);
             )
       )
     in
@@ -453,7 +459,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Affine aff->(
         close_text ();
         Rbuffer.add_string pageBuf
-          (Printf.sprintf "q %g %g %g %g %g %g cm "
+          (Printf.sprintf "q %f %f %f %f %f %f cm "
              aff.affine_matrix.(0).(0)
              aff.affine_matrix.(1).(0)
              aff.affine_matrix.(0).(1)
@@ -506,14 +512,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
               (if !pageImages=[] then "" else " /ImageB");
             if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
               fprintf outChan "/ExtGState << ";
-              fprintf outChan "/GS%d <</Type /ExtGState /ca %g /CA %g>> " 0 1. 1.;
+              fprintf outChan "/GS%d <</Type /ExtGState /ca %f /CA %f>> " 0 1. 1.;
               FloatMap.iter (fun k a->
                 if a>0 then
-                  fprintf outChan "/GS%d <</Type /ExtGState /CA %g>> " a k
+                  fprintf outChan "/GS%d <</Type /ExtGState /CA %f>> " a k
               ) !sopacities;
               FloatMap.iter (fun k a->
                 if a>0 then
-                  fprintf outChan "/GS%d <</Type /ExtGState /ca %g>> " a k
+                  fprintf outChan "/GS%d <</Type /ExtGState /ca %f>> " a k
               ) !nsopacities;
               fprintf outChan ">> "
             );
@@ -660,7 +666,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         )) (Fonts.outlines glyph)
       ) varGlyphs;
       (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
-          fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
+          fprintf outChan "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
        else
           fprintf outChan "/FontBBox [0 0 0 0] ");
       fprintf outChan "/FontMatrix [0.001 0 0 0.001 0 0] ";
@@ -682,7 +688,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       resumeObject widths;
       fprintf outChan "[";
       for i=firstChar to lastChar do
-        fprintf outChan "%g " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+        fprintf outChan "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
       done;
       fprintf outChan "]";
       endObject ();
@@ -712,7 +718,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           Array.iter (fun u->x0:=min u !x0;x1:=max u !x1) x;
           Array.iter (fun u->y0:=min u !y0;y1:=max u !y1) y
         )) outlines;
-        Rbuffer.add_string bu (sprintf "%g %d %g %g %g %g d1 " w 0 !x0 !y0 !x1 !y1);
+        Rbuffer.add_string bu (sprintf "%f %d %f %f %f %f d1 " w 0 !x0 !y0 !x1 !y1);
         writePath bu (fun x->x)(List.map (Array.of_list) outlines) OutputCommon.default;
         Rbuffer.add_string bu "f ";
         let filt, data=stream bu in
@@ -773,10 +779,10 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         )) (Fonts.outlines glyph)
       ) varGlyphs;
       (if !x0<infinity && !x1>(-.infinity) && !y0<infinity && !y1>(-.infinity) then
-          fprintf outChan "/FontBBox [%g %g %g %g] " !x0 !y0 !x1 !y1
+          fprintf outChan "/FontBBox [%f %f %f %f] " !x0 !y0 !x1 !y1
        else
           fprintf outChan "/FontBBox [0 0 0 0] ");
-      fprintf outChan "/ItalicAngle 0 /Ascent %g /Descent %g /CapHeight %g " (max 0. !y1) (min 0. !y0) (max 0. !y1);
+      fprintf outChan "/ItalicAngle 0 /Ascent %f /Descent %f /CapHeight %f " (max 0. !y1) (min 0. !y0) (max 0. !y1);
       let fontfile=futureObject () in
       fprintf outChan "/StemV 10 /FontFile3 %d 0 R >>" fontfile;
       endObject ();
@@ -784,7 +790,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       resumeObject widths;
       fprintf outChan "[";
       for i=firstChar to lastChar do
-        fprintf outChan "%g " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
+        fprintf outChan "%f " (try Fonts.glyphWidth (IntMap.find i varGlyphs) with Not_found->0.)
       done;
       fprintf outChan "]";
       endObject ();
