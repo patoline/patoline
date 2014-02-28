@@ -73,6 +73,8 @@ let build_font_cache prefix pages=
       | (Video _ | Image _ | Path _)::s->make_fonts i s fonts
       | Dynamic d::s ->
 	make_fonts i s (make_fonts (-2) (d.dyn_contents ()) (make_fonts (-2) d.dyn_sample fonts));
+      | Affine a::s ->
+	make_fonts i s (make_fonts (-2) a.affine_contents fonts)
   in
   let f=make_fonts (-1) [] StrMap.empty in
   (* Il faut fusionner les maps de tous les glyphes utilisés, pour ne

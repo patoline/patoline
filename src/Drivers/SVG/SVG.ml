@@ -147,7 +147,6 @@ let draw ?fontCache ?dynCache prefix w h contents=
 
   (* Écriture du contenu à proprement parler *)
 
-
   let rec output_contents ?father ~svg_buf contents=
     let imgs=ref StrMap.empty in
     let cur_x=ref 0. in
@@ -156,7 +155,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
     let opened_text=ref false in
     let opened_tspan=ref false in
     let animate_count = ref 0 in
-    let rec output_contents_aux cont=match cont with
+    let rec output_contents_aux ?offset:(offset=h) cont=match cont with
       Glyph x->(
         if not !opened_text then (
           Rbuffer.add_string svg_buf "<text>\n";
@@ -173,9 +172,8 @@ let draw ?fontCache ?dynCache prefix w h contents=
             if !opened_tspan then (
               Rbuffer.add_string svg_buf "</tspan>";
             );
-	    
             Rbuffer.add_string svg_buf (Printf.sprintf "<tspan x=\"%g\" y=\"%g\" class=\"c%d\">"
-                                          (x.glyph_x) ((h-.x.glyph_y)) cls);
+                                          (x.glyph_x) ((offset-.x.glyph_y)) cls);
             cur_x:=x.glyph_x;
             cur_y:=x.glyph_y;
             cur_cls:=cls;
@@ -201,7 +199,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
         (fun a->
           if Array.length a>0 then (
             let x0,y0=a.(0) in
-            Rbuffer.add_string buf (Printf.sprintf "M%g %g" (x0.(0)) ( (h-.y0.(0))));
+            Rbuffer.add_string buf (Printf.sprintf "M%g %g" (x0.(0)) ( (offset-.y0.(0))));
             Array.iter
               (fun (x,y)->
                 if Array.length x=2 then Rbuffer.add_string buf "L" else
@@ -209,7 +207,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
                     if Array.length x=4 then Rbuffer.add_string buf "C" else
                       raise (Bezier_degree (Array.length x));
                 for j=1 to Array.length x-1 do
-                  Rbuffer.add_string buf (Printf.sprintf "%g %g " (x.(j)) ( (h-.y.(j))));
+                  Rbuffer.add_string buf (Printf.sprintf "%g %g " (x.(j)) ( (offset-.y.(j))));
                 done
               ) a;
             if args.close then Rbuffer.add_string buf "Z"
@@ -219,20 +217,22 @@ let draw ?fontCache ?dynCache prefix w h contents=
       (match args.fillColor with
           Some (RGB fc) ->
             Rbuffer.add_string svg_buf (
-              Printf.sprintf "fill=\"#%02X%02X%02X\" "
+              Printf.sprintf "fill=\"#%02X%02X%02X\" fill-opacity=\"%f\" "
                 (round (255.*.fc.red))
                 (round (255.*.fc.green))
                 (round (255.*.fc.blue))
+                fc.alpha
             );
         | None->Rbuffer.add_string svg_buf "fill=\"none\" ");
       (match args.strokingColor with
           Some (RGB fc) ->
             Rbuffer.add_string svg_buf (
-              Printf.sprintf "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" "
+              Printf.sprintf "stroke=\"#%02X%02X%02X\" stroke-width=\"%f\" stroke-opacity=\"%f\" "
                 (round (255.*.fc.red))
                 (round (255.*.fc.green))
                 (round (255.*.fc.blue))
                 (args.lineWidth)
+                fc.alpha
             );
         | None->
           Rbuffer.add_string svg_buf "stroke=\"none\" "
@@ -265,7 +265,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
       imgs:=StrMap.add i.image_file name !imgs;
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<image x=\"%g\" y=\"%g\" width=\"%gpx\" height=\"%gpx\" xlink:href=\"%s\"/>\n"
-           i.image_x (h-.i.image_y-.i.image_height) i.image_width i.image_height name)
+           i.image_x (offset-.i.image_y-.i.image_height) i.image_width i.image_height name)
     )
     | Video i->(
       if !opened_tspan then (
@@ -293,7 +293,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
 <video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\"></video>
 </body>
 </foreignObject></g>"
-           i.video_x (h-.i.video_y-.i.video_height)
+           i.video_x (offset-.i.video_y-.i.video_height)
            (i.video_width/.(float_of_int i.video_pixel_width))
            (i.video_height/.(float_of_int i.video_pixel_height))
            i.video_pixel_width i.video_pixel_height name
@@ -389,7 +389,38 @@ let draw ?fontCache ?dynCache prefix w h contents=
 	let d = { d with dyn_contents = contents; dyn_sample = ""; dyn_father = father } in
 	Hashtbl.add h d.dyn_label (d, ref None)
       );
+    | Affine a->(
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
 
+      Rbuffer.add_string svg_buf (
+        Printf.sprintf "<g transform=\"matrix(%f,%f,%f,%f,%f,%f)\">"
+          a.affine_matrix.(0).(0)
+          (-.a.affine_matrix.(1).(0))
+          (-.a.affine_matrix.(0).(1))
+          (a.affine_matrix.(1).(1))
+          (a.affine_matrix.(0).(2))
+          (offset-.a.affine_matrix.(1).(2))
+        ;
+      );
+      List.iter (output_contents_aux ~offset:0.) a.affine_contents;
+
+      if !opened_tspan then (
+        Rbuffer.add_string svg_buf "</tspan>\n";
+        opened_tspan:=false
+      );
+      if !opened_text then (
+        Rbuffer.add_string svg_buf "</text>\n";
+        opened_text:=false
+      );
+      Rbuffer.add_string svg_buf "</g>";
+    )
     | Animation a ->
       if !opened_tspan then (
         Rbuffer.add_string svg_buf "</tspan>\n";
