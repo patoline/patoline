@@ -607,6 +607,7 @@ var current_state=0;
 var first_displayed=false;
 var cur_child = new Array();
 var animations = new Array();
+var cur_anim=0;
 
 function Animate(name,nbframes,mirror,step) {
     var i = 0; var d = 1;
@@ -617,7 +618,6 @@ function Animate(name,nbframes,mirror,step) {
         if (mirror) { i = i - 2; d = -1; } else { i = 0; }
       }
       else if (i < 0) { i = 2; d = 1; }
-    
       var next = document.getElementById('Animation_'+name+'_'+i.toString());
       next.setAttribute('visibility','inherit');
       cur.setAttribute('visibility','hidden');
@@ -626,35 +626,44 @@ function Animate(name,nbframes,mirror,step) {
   }
 
 function loadSlideString(slide,state,str){
-    var svg=document.getElementById(\"svg_container\");
-
-    while (cur_child.length > 0) {
-       var elt = cur_child.shift();
-       elt.parentNode.removeChild(elt);
-    }
+    var old_anim=cur_anim;
+    if(slide!=current_slide)
+       cur_anim=(cur_anim+1)%%2;
+    var svg=document.getElementById(\"svg_container\"+cur_anim);
     while (animations.length > 0) {
        clearInterval(animations.shift());
     }
 
     var parser=new DOMParser();
     var newSvg=parser.parseFromString(str,\"text/xml\");
-//    var newSvg=parser.parseFromString(str,\"image/svg+xml\");
-//    newSvg=document.importNode(newSvg.rootElement,true);
     newSvg=document.importNode(newSvg.documentElement,true);
-
-/* animation du slide entrant */
-    if (current_slide != slide) {
-      var animT=document.getElementById(\"animation\");
-      animT.setAttribute(\"from\",\"0\");
-      animT.setAttribute(\"to\",\"1\");
-      animT.beginElement();
-    }
+    svg=document.getElementById(\"svg_container\"+cur_anim);
+    cur_child=document.getElementById(\"svg_container\"+cur_anim).childNodes;
+    while (cur_child.length > 0) {
+       var elt = cur_child[0];
+       elt.parentNode.removeChild(elt);
+    };
     while(newSvg.firstChild) {
         if(newSvg.firstChild.nodeType==document.ELEMENT_NODE) {
-            console.log('coucou');
-            cur_child.push(svg.appendChild(newSvg.firstChild));
+           svg.appendChild(newSvg.firstChild);
         }
         else newSvg.removeChild(newSvg.firstChild);
+    }
+    if (current_slide < slide) {
+      var animO=document.getElementById(\"animation\"+old_anim);
+      animO.setAttribute(\"values\",\"0;%d\");
+      animO.beginElement();
+      var animT=document.getElementById(\"animation\"+cur_anim);
+      animT.setAttribute(\"values\",\"%d;0\");
+      animT.beginElement();
+    }
+    else if (current_slide > slide) {
+      var animO=document.getElementById(\"animation\"+old_anim);
+      animO.setAttribute(\"values\",\"0;%d\");
+      animO.beginElement();
+      var animT=document.getElementById(\"animation\"+cur_anim);
+      animT.setAttribute(\"values\",\"%d;0\");
+      animT.beginElement();
     }
     current_slide=slide;
     current_state=state;
@@ -737,13 +746,16 @@ function loadSlide(n,state,force){
     var xhttp=new XMLHttpRequest();
     xhttp.open(\"GET\",n+\"_\"+state+\".svg\",false);
     xhttp.send();
-    
     if(xhttp.status==200 || xhttp.status==0){
       loadSlideString(n,state,xhttp.responseText);
     }
     document.body.style.cursor = 'default';
   }
 }"
+      (-round w)
+      (round w)
+      (round w)
+      (-round w)
       (Array.length pages)
   );
 
@@ -780,13 +792,14 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html "<title>";
   Rbuffer.add_string html structure.name;
   Rbuffer.add_string html "</title></head><body style=\"margin:0;padding:0;\"><div id=\"svg_div\" style=\"margin-top:auto;margin-bottom:auto;margin-left:auto;margin-right:auto;\">";
-  Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g id=\"svg_container\">"
+  Rbuffer.add_string html (Printf.sprintf "<svg id='svg_svg' xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 %d %d\"><g>"
                              (round (w)) (round (h)));
+  Rbuffer.add_string html
+    (Printf.sprintf "<animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation0\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container0\">"
+    );
+  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g></g><g transform=\"translate(%d,0)\"><animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation1\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container1\">\n" w h (round w));
 
-  Rbuffer.add_string html "<animateTransform attributeName=\"transform\" attributeType=\"XML\"
-   id=\"animation\" type=\"scale\" from=\"1\" to=\"1\" dur=\"0.5s\"/>";
-
-  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g>\n" w h);
+  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g></g>\n" w h);
 
   let style=make_defs prefix cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
