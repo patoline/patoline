@@ -290,7 +290,7 @@ let node ?(node_env=(fun env->env)) l=
     {Document.empty with
       Document.node_env=node_env;
       Document.children=List.fold_left
-        (fun m (l,_)->UsualMake.IntMap.add (UsualMake.IntMap.cardinal m) l m) UsualMake.IntMap.empty l},
+        (fun m (l,_)->IntMap.add (IntMap.cardinal m) l m) IntMap.empty l},
   []
 let paragraph ?(parameters=parameters) ?(par_env=(fun x->x)) cont=
   (Paragraph {par_contents=cont; par_env=par_env;

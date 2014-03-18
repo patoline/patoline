@@ -133,6 +133,11 @@ let frame_up (t,cxt)=
 let frame_down i (t,cxt)=
   (IntMap.find i t.frame_children, ((i,t)::cxt))
 
+let frame_down_last (t,ctxt as f) =
+  try
+    let (i,_) = IntMap.max_binding t.frame_children in
+    frame_down i f
+  with Not_found -> f
 
 let rec frame_top (t,cxt)=
   match cxt with
@@ -150,6 +155,20 @@ let empty_frame={
   frame_content=[]
 }
 
+let print_frame_struct (f,s as p) =
+  let path = List.map fst s in
+  let f = frame_top p in
+  Printf.fprintf stderr "path: ";
+  List.iter (fun i -> Printf.fprintf stderr "%d " i) path;
+  Printf.fprintf stderr "\n";
+  let rec fn ch f = 
+    Printf.fprintf ch "#%d [\n" (List.length f.frame_content);
+    IntMap.iter (fun i f ->
+      Printf.fprintf ch "%d:%a " i fn f) f.frame_children;
+    Printf.fprintf ch "]\n"
+  in
+  fn stderr (fst f)
+  
 let make_page (w,h) t=
   let page={empty_frame with
     frame_x0=0.;frame_y0=0.;frame_x1=w;frame_y1=h;
@@ -208,7 +227,8 @@ let frame_page l=
   let rec last cxt=match cxt with
       [h,t]->(
         let a,_,_=IntMap.split h t.frame_children in
-        IntMap.cardinal a
+	IntMap.fold (fun _ f n ->
+	  if List.mem "not_first_state" f.frame_tags then n else n + 1) a 0
       )
     | _::s->last s
     | []->(-1)

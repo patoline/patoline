@@ -518,7 +518,8 @@ module Format=functor (D:Document.DocumentStructure)->(
           let rec typeset_structure path tree layout env0=
             let env0=
               let labl=String.concat "_" ("_"::List.map string_of_int path) in
-              let li={uselessLine with layout=layout} in
+              let li={uselessLine with layout=env0.new_page layout} in
+(*	      Printf.fprintf stderr "Adding pos %s\n" labl;*)
               { env0 with
                 names=StrMap.add labl (env0.counters,"_structure",li) env0.names;
                 user_positions=MarkerMap.add (Label labl) li env0.user_positions }
@@ -638,7 +639,10 @@ module Format=functor (D:Document.DocumentStructure)->(
                              (snd (IntMap.max_binding (opt_pages.frame_children)))
                          with
                              Not_found->[]);
-                      let next_layout=opt_pages,[] in
+                      let next_layout=if state = 0 then opt_pages,[] else
+			  let f,l = frame_down_last (opt_pages, []) in
+			  frame_top ({f with frame_tags = "not_first_state"::f.frame_tags}, l)
+		      in
                       let env2,reboot'=update_names env1 figs' user' in
                       let labl_exists=
                         let labl=String.concat "_" ("_"::List.map string_of_int path) in
@@ -836,8 +840,8 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let draw_slide_number env i=
               let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
-              let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
-              let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) (i_fin+1))] in
+              (*let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
+              let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) (i_fin+1))] in*)
               let boxes=boxify_scoped env [tT (Printf.sprintf "%d" (i+1))] in
               let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
               let x=draw_boxes env boxes in
@@ -848,6 +852,7 @@ module Format=functor (D:Document.DocumentStructure)->(
 
             let draw_slide slide_number (path,tree,paragraphs,figures,figure_trees,env,opts,slide_num)=
               let states=ref [] in
+              let destinations=ref StrMap.empty in
 
               for st=0 to Array.length opts-1 do
                 let page={ pageFormat=slidew,slideh; pageContents=[] } in
@@ -870,7 +875,6 @@ module Format=functor (D:Document.DocumentStructure)->(
                 let pp=Array.of_list opts.(st) in
                 let crosslinks=ref [] in (* (page, link, destination) *)
                 let crosslink_opened=ref false in
-                let destinations=ref StrMap.empty in
 
                 let draw_line line=
                   let param=line.line_params
@@ -955,7 +959,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                         )
                         | Marker (Label l)->(
                           let y0,y1=line_height paragraphs figures line in
-                          destinations:=StrMap.add l (comp_i,param.left_margin,y+.y0,y+.y1) !destinations;
+                          destinations:=StrMap.add l (comp_i,param.left_margin,y+.y0,y+.y1,line) !destinations;
                           0.
                         )
                         | Marker EndLink->(
@@ -1001,6 +1005,14 @@ module Format=functor (D:Document.DocumentStructure)->(
                 page.pageContents<-(draw_slide_number env slide_number)@page.pageContents;
                 states:=page:: !states
               done;
+              let env=
+		StrMap.fold (fun labl dest env ->
+		  let comp_i,lm,y0,y1,line = dest in
+(*		  Printf.fprintf stderr "Adding pos %s\n" labl;*)
+		  { env0 with
+                    user_positions=MarkerMap.add (Label labl) line env0.user_positions })
+		  !destinations env
+              in
               env,Array.of_list (List.rev !states)
             in
 

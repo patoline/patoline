@@ -107,7 +107,7 @@ module Make (L:Line with type t=Box.line)=(
       close_out f
 
     let typeset ?(initial_line=uselessLine) ~completeLine ~figures ~figure_parameters ~parameters ~new_page ~new_line ~badness paragraphs=
-      if Array.length paragraphs=0 then ([],empty_frame,IntMap.empty,MarkerMap.empty) else begin
+      if Array.length paragraphs=0 then ([],fst (frame_top initial_line.layout),IntMap.empty,MarkerMap.empty) else begin
       let collide line_haut params_i comp_i line_bas params_j comp_j=
 
         max_haut:=
