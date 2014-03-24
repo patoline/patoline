@@ -43,7 +43,6 @@ type state={
   transitions:(string StrMap.t)
 }
 
-
 let rounded_corners ?r ?(ne=0.) ?(nw=0.) ?(se=0.) ?(sw=0.) (x0,y0) (x1,y1)=
   let ne,nw,se,sw=match r with
       Some r->r,r,r,r
@@ -67,6 +66,10 @@ let toc_active = ref white
 let toc_inactive = ref gray
 let block_background = ref black
 let block_foreground = ref white
+
+type numbering_kind = SimpleNumbering | RelativeNumbering
+
+let slide_numbering = ref (Some SimpleNumbering)
 
 
 module Format=functor (D:Document.DocumentStructure)->(
@@ -838,14 +841,24 @@ module Format=functor (D:Document.DocumentStructure)->(
               !cont
             in
 
+            (*
+type numbering_kind = SimpleNumbering | RelativeNumbering
+          *)
+
             let draw_slide_number env i=
-              let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
-              (*let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
-              let boxes=boxify_scoped env [tT (Printf.sprintf "%d/%d" (i+1) (i_fin+1))] in*)
-              let boxes=boxify_scoped env [tT (Printf.sprintf "%d" (i+1))] in
-              let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
-              let x=draw_boxes env boxes in
-              List.map (fun y->OutputCommon.translate (slidew-.w-.2.) 2. (in_order max_int y)) x
+              match !slide_numbering with
+               | None    -> []
+               | Some sn -> (
+                 let i=try List.hd (snd (StrMap.find "slide" env.counters)) with _->0 in
+                 let i_fin=try List.hd (snd (StrMap.find "slide" env_final.counters)) with _->0 in
+                 let num= match sn with
+                           | SimpleNumbering   -> Printf.sprintf "%d" (i+1)
+                           | RelativeNumbering -> Printf.sprintf "%d/%d" (i+1) (i_fin+1)
+                 in
+                 let boxes=boxify_scoped env [tT num] in
+                let w=List.fold_left (fun w x->let _,w',_=box_interval x in w+.w') 0. boxes in
+                let x=draw_boxes env boxes in
+                List.map (fun y->OutputCommon.translate (slidew-.w-.2.) 2. (in_order max_int y)) x)
             in
 
             (* Dessin du slide complet *)
