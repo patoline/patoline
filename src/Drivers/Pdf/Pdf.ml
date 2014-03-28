@@ -700,7 +700,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         let o=futureObject () in
         let w=Fonts.glyphWidth glyph in
         let outlines=Fonts.outlines glyph in
-        fprintf outChan "/uni%04x %d 0 R " enc o;(* (UChar.code (UTF8.look utf8 0)) o; *)
+        fprintf outChan "/uni%d %d 0 R " enc o;(* (UChar.code (UTF8.look utf8 0)) o; *)
         (o,w,outlines)::m
       ) varGlyphs []
       in
