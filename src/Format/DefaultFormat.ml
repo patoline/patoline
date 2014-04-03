@@ -1173,7 +1173,7 @@ end
                                          drawing_contents=(fun _->
                                                              [OutputCommon.Path
                                                                  ({OutputCommon.default with
-                                                                    OutputCommon.lineWidth=0.3},
+                                                                    OutputCommon.lineWidth=0.3;fillColor=Some env.fontColor; strokingColor=Some env.fontColor},
                                                                  [[|[|x0;x1|],[|y;y;|]|]])
                                                              ]) }
                                    )])
