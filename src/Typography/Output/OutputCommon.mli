@@ -3,6 +3,7 @@ type lineJoin = Miter_join | Round_join | Bevel_join
 type rgb = { red : float; green : float; blue : float; alpha : float }
 type color = RGB of rgb
 val rgb : float -> float -> float -> color
+val colorHex : string -> color
 val with_alpha : float -> color -> color
 val alpha : color -> float
 val mix : float -> color -> color -> color

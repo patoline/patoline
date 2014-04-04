@@ -25,6 +25,14 @@ type color=
     RGB of rgb
 let rgb a b c=RGB { red=a;green=b;blue=c;alpha=1. }
 
+(* Read a color from a string with the format #XXXXXX *)
+let colorHex s =
+  let (rx,gx,bx) = Scanf.sscanf s "#%2X%2X%2X" (fun r g b -> (r,g,b)) in
+  let r = float_of_int rx /. 256. in
+  let g = float_of_int gx /. 256. in
+  let b = float_of_int bx /. 256. in
+  rgb r g b
+
 let with_alpha alpha col=match col with
     RGB r->RGB { r with alpha=alpha }
 
