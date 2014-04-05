@@ -327,7 +327,16 @@ let rec draw draw_env env_stack mlist =
 		in
 
 
-                let sub_env=drop (List.length env_stack-1) env_stack in
+                let sub_env = env_stack in
+                (*let sub_env=drop (List.length env_stack-1) env_stack in*)
+                (* Note to Christophe and PE from Rodolphe: I am not sure what
+                 * this line was meant to do, it made no sense to me. Why
+                 * would we only keep the last environment of the stack in the
+                 * subscripts / superscripts?
+                 * This means that the color of the font, for instance, is
+                 * dropped. My "fix" solves the problem, and it doesn't break
+                 * anything for me.
+                 *)
                 let a=draw_boxes env (draw (dincr draw_env) (if n.super_right_same_script then sub_env else superStyle style sub_env) n.superscript_right) in
                 let b=draw_boxes env (draw (dincr draw_env) (if n.super_left_same_script then sub_env else superStyle style sub_env) n.superscript_left) in
                 let c=draw_boxes env (draw (dincr draw_env) (subStyle style sub_env) n.subscript_right) in
