@@ -2514,12 +2514,14 @@ Doing a rectangle.\n" ;
 	| Gentity g -> g.Gentity.anchor a
         | Raw x->x.raw_anchor
 
+      let rec order i res = function [] -> res 
+	| raw :: contents -> 
+	  order
+	    (succ i)
+	    ((OutputCommon.in_order i raw) :: res) contents
+
       let to_contents stack = 
 	let contents = List.flatten (List.rev_map to_raw_list stack) in
-	let rec order i res = function [] -> res 
-	  | raw :: contents -> 
-	    order (succ i) ((OutputCommon.in_order i raw) :: res) contents
-	in
 	List.rev (order 0 [] contents)
 
     end
@@ -2909,8 +2911,7 @@ Doing a rectangle.\n" ;
 		in
 		let drawn = 
 		  drawing
-		    (List.flatten (List.map Entity.to_raw_list
-		       (Node l :: Matrix matrix :: e)))
+		       Entity.(to_contents (Node l :: Matrix matrix :: e))
 		in 
 		let width = drawn.drawing_min_width in
 		let drawn = { drawn with
