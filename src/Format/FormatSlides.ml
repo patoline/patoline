@@ -66,6 +66,7 @@ let toc_active = ref white
 let toc_inactive = ref gray
 let block_background = ref black
 let block_foreground = ref white
+let block_title_foreground = ref white
 
 type numbering_kind = SimpleNumbering | RelativeNumbering
 
@@ -112,7 +113,7 @@ module Format=functor (D:Document.DocumentStructure)->(
             in
             let minip,env1=OutputDrawing.minipage' env0 (map_params stru,[]) in
             let stru_title,_=paragraph M.arg1 in
-            let minip_title,env2=OutputDrawing.minipage' {env1 with fontColor=(!block_foreground)} (stru_title,[]) in
+            let minip_title,env2=OutputDrawing.minipage' {env1 with fontColor=(!block_title_foreground)} (stru_title,[]) in
             let minip_title0=try snd (IntMap.min_binding minip_title) with Not_found->empty_drawing_box
             in
             let minip_title0=
