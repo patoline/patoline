@@ -292,9 +292,9 @@ let output ?state paragraphs figures env (opt_pages:frame)=
 
     if !top_y=(-.infinity) then top_y:=0.;
 
-    { drawing_min_width= !x1-. !x0;
-      drawing_nominal_width= !x1-. !x0;
-      drawing_max_width= !x1-. !x0;
+    { drawing_min_width= !x1;
+      drawing_nominal_width= !x1;
+      drawing_max_width= !x1;
       drawing_width_fixed = true;
       drawing_adjust_before = false;
       drawing_y0= !y0 -. !top_y;
@@ -302,7 +302,7 @@ let output ?state paragraphs figures env (opt_pages:frame)=
       drawing_badness=(fun _->0.);
       drawing_states= !states;
       drawing_break_badness=0.;
-      drawing_contents=(fun _-> List.map (translate (-. !x0) (-. !top_y)) page.pageContents) }
+      drawing_contents=(fun _-> List.map (translate 0. (-. !top_y)) page.pageContents) }
   in
   IntMap.mapi (fun i a->draw_page i (all_contents a)) opt_pages.frame_children
 
