@@ -560,13 +560,13 @@ if(document.mozCancelFullScreen){
 if(document.mozFullScreenElement){
 document.mozCancelFullScreen();
 }else{
-document.getElementById(\"svg\").mozRequestFullScreen();
+document.getElementById(\"svg_svg\").mozRequestFullScreen();
 }
 } else if(document.webkitCancelFullScreen){
 if(document.webkitFullScreenElement){
 document.webkitCancelFullScreen();
 }else{
-document.getElementById(\"svg\").requestFullScreen();
+document.getElementById(\"svg_svg\").requestFullScreen();
 }}}};
 
 function gotoSlide(n){
@@ -643,6 +643,16 @@ function loadSlideString(slide,state,str){
        var elt = cur_child[0];
        elt.parentNode.removeChild(elt);
     };
+
+var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute(\"fill\",\"white\");
+        rect.setAttribute(\"stroke\",\"white\");
+        rect.setAttribute(\"x\", \"0\");
+        rect.setAttribute(\"y\", \"0\");
+        rect.setAttribute(\"width\", \"%g\");
+        rect.setAttribute(\"height\", \"%g\");
+        svg.appendChild(rect);
+
     while(newSvg.firstChild) {
         if(newSvg.firstChild.nodeType==document.ELEMENT_NODE) {
            svg.appendChild(newSvg.firstChild);
@@ -752,6 +762,7 @@ function loadSlide(n,state,force){
     document.body.style.cursor = 'default';
   }
 }"
+w h
       (-round w)
       (round w)
       (round w)
@@ -797,9 +808,9 @@ if(h0!=current_slide || h1!=current_state){
   Rbuffer.add_string html
     (Printf.sprintf "<animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation0\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container0\">"
     );
-  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g></g><g transform=\"translate(%d,0)\"><animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation1\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container1\">\n" w h (round w));
+  Rbuffer.add_string html (Printf.sprintf "</g></g><g transform=\"translate(%d,0)\"><animateTransform attributeName=\"transform\" attributeType=\"XML\" id=\"animation1\" type=\"translate\" calcMode=\"spline\" fill=\"freeze\" keySplines=\"0.2 0 0.1 1\" values=\"0\" dur=\"0.7s\"/><g id=\"svg_container1\">\n" (round w));
 
-  Rbuffer.add_string html (Printf.sprintf "<rect z-index='-1' id='svg_rect' x='0' y='0' width='%g' height='%g' fill='#ffffff' stroke='#b0b0b0' stroke-width='0.2'></rect></g></g>\n" w h);
+  Rbuffer.add_string html (Printf.sprintf "</g></g>\n");
 
   let style=make_defs prefix cache in
   Rbuffer.add_string html "<defs><style type=\"text/css\" src=\"style.css\"/></defs>\n";
