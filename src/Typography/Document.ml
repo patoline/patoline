@@ -836,6 +836,9 @@ let newPar str ?(environment=(fun x->x)) ?(badness=badness) ?(states=[]) complet
         in
           str:=up (newChildAfter !str para)
 
+let doc_tags n=match n with
+    Node n->n.node_tags
+  | _->[]
 
 (** Adds a new node, just below the last one. *)
 let newStruct str ?(in_toc=true) ?label ?(numbered=true) displayname =

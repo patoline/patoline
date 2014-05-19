@@ -1078,8 +1078,11 @@ end
 
       module Item=struct
         let do_begin_env ()=
-          D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack));
-          D.structure:=newChildAfter (follow (top !D.structure) (List.rev (List.hd !env_stack)))
+          (* D.structure:=follow (top !D.structure) (List.rev (List.hd !env_stack)); *)
+          while List.mem_assoc "item" (doc_tags (fst !D.structure)) do
+            go_up D.structure
+          done;
+          D.structure:=newChildAfter !D.structure
             (Node { empty with
               node_tags=("item","")::("structural","")::empty.node_tags;
               node_env=(incr_counter "enumerate")
