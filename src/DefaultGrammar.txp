@@ -163,7 +163,7 @@
 \Add_product_like{\ast ∗}{∗}
 \Add_product_like{\seq}{;}
 \Add_product_like{\para}{|}
-\Add_product_like{\star ⋆}(MathFonts.asana "⋆" 912)
+\Add_product_like{\star ★ ⋆}(MathFonts.asana "⋆" 912)
 
 
 =<
