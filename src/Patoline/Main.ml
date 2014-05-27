@@ -347,7 +347,7 @@ and make_deps pre source=
     output_string ch cont;
     close_out ch
   end;
-  let str=Str.regexp ("^"^(Filename.chop_extension source)^".cmx[ \t]*:[ \t]*\\(.*\\)") in
+  let str=Str.regexp ("^"^(Filename.chop_extension source)^"[.]cmx[ \t]*:[ \t]*\\(\\(.\\|[\n]\\)*\\)") in
   (try
      let _=Str.search_forward str cont 0 in
      ldeps:=(Str.split (Str.regexp "[\n\t\r\\ ]+") (Str.matched_group 1 cont))@(!ldeps);
