@@ -38,6 +38,8 @@ $(d)/bibi.p.cmx: %.p.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(BIBI_INCLUDES) $(PACK) $(BIBI_PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 $(d)/bibi.cmi: $(d)/bibi.cmo ;
+$(d)/bibi.p.cmi: $(d)/bibi.cmi
+	cp $< $@
 
 # Installing
 install: install-bibi
