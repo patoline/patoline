@@ -34,6 +34,8 @@ $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
+	# make without make clean fails without that ?????? Strange ???? An OCaml version specific bug
+	$(Q)if [ -f $(SRC_DIR)/DefaultGrammar.cmi ]; then rm $(SRC_DIR)/DefaultGrammar.cmi; fi
 	$(Q)$(OCAMLOPT) $(PACK) -I $(UTIL_DIR) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
