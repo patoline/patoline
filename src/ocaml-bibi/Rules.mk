@@ -2,7 +2,7 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-BIBI_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(d)/../Util
+BIBI_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(UTIL_DIR)
 BIBI_PACK := -package camomile,sqlite3
 
 # Finding dependencies
