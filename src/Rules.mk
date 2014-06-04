@@ -42,7 +42,7 @@ $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(FORMAT_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -I $(<D) -I $(UTIL_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa dynlink.cmxa $(LIBFONTS_DIR)/fonts.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT_NOINTF) $(PACK) -I $(<D) -I $(UTIL_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa dynlink.cmxa $(LIBFONTS_DIR)/fonts.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"
