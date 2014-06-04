@@ -17,7 +17,7 @@ $(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(d)/Language.cmx $(d)/Build.cmx $(d)
 
 all: $(PA_PATOLINE)
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/util.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -I $(UTIL_DIR) -package glr,camlp4 $(UTIL_DIR)/util.cmxa dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $^ 
 
