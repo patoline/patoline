@@ -444,7 +444,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       pages := input_value ch
     else 
       pages := Array.map (fun x -> [|x|]) (input_value ch);
-    Printf.printf "Structure:\n";
     create_menu !structure;
     close_in ch;
     num_pages := Array.length !pages;

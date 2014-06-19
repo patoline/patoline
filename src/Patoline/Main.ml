@@ -751,14 +751,26 @@ let process_each_file l=
             extras_top:=List.rev !extras_top;
             Printf.fprintf stdout "%s %s\n" cmd (String.concat " " !extras_top);flush stdout;
             let pid=Unix.create_process
-              (Filename.concat (Sys.getcwd ()) cmd)
+              (if Filename.is_relative cmd then (Filename.concat (Sys.getcwd ()) cmd) else cmd)
               (Array.of_list (List.filter (fun x->x<>"") (cmd:: !extras_top)))
               Unix.stdin
               Unix.stdout
               Unix.stderr
             in
-            let _=Unix.waitpid [] pid in
-            ()
+	    let transmitted = [ Sys.sighup; Sys.sigterm ] in
+	    Printf.printf "set signal\n%!";
+	    let saved = List.map (fun n -> Sys.signal n (Sys.Signal_handle (fun n ->
+	      Printf.printf "received %d\n%!" n; Unix.kill pid n))) transmitted in
+	    let rec fn () = 
+	      try 
+		Unix.waitpid [] pid;
+		List.iter2 (fun n s -> Sys.set_signal n s) transmitted saved
+	      with
+		Unix.Unix_error(Unix.EINTR,"waitpid",_) -> fn ()
+	      | e ->
+		List.iter2 (fun n s -> Sys.set_signal n s) transmitted saved;
+		raise e
+	    in Unix.handle_unix_error fn ()
           )
         ) else (
           Printf.fprintf stderr "%s\n" (Language.message (Inexistent_file f));

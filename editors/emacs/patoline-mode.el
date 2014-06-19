@@ -63,11 +63,15 @@
   (let
       ((el (if patoline-compile-edit-link "--edit-link " ""))
        (dr (if (string= patoline-compile-driver "-c") "" "--driver "))
-       (dy (if (string= patoline-compile-driver "Bin") "--dynlink " "")))
+       (dy (if (and (string= patoline-compile-driver "Bin") patoline-compile-dynlink) "--dynlink " "")))
     (format "patoline %s%s%s %s \"%%s\"" el dy dr patoline-compile-driver)))
   
 (defvar patoline-compile-edit-link
   t
+  "If t patoline should produce link for edition")
+
+(defvar patoline-compile-dynlink
+  nil
   "If t patoline should produce link for edition")
 
 (defvar patoline-compile-driver
@@ -79,7 +83,8 @@
   "List of patoline supported drivers")
 
 (defvar patoline-options-list
-  '(("Edtion link" . 'patoline-compile-edit-link))
+  '(("Edtion link" . 'patoline-compile-edit-link)
+    ("Dynamik linking" . 'patoline-compile-dynlink))
   "List of supported toggle options")
 
 (defun patoline-set-driver (driver)
@@ -174,7 +179,11 @@
   (interactive)
   (let ((file-name 
 	 (file-name-sans-extension (buffer-file-name (current-buffer)))))
-      (let ((cmd (split-string-and-unquote (format " \"%s.tmx\" --driver DriverGL --in \"%s.bin\"" file-name file-name))))
+      (let ((cmd 
+	      (if patoline-compile-dynlink
+		  (split-string-and-unquote (format "\"%s.tmx\" --driver DriverGL --in \"%s.bin\"" file-name file-name))
+		(split-string-and-unquote (format "patoline --driver DriverGL \"%s.bin\"" file-name)))
+		))
 	(save-excursion
 	  (select-patoline-view-buffer file-name)
 	  (cd (file-name-directory file-name))
