@@ -23,7 +23,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/util.cmxa
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) -I $(UTIL_DIR) -pp pa_glr -c -package glr,camlp4 -I +camlp4/Camlp4Parsers -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -I $(UTIL_DIR) -pp pa_glr -c -package glr,camlp4 -I +camlp4/Camlp4Parsers -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
@@ -37,7 +37,7 @@ PATOLINE_DIR := $(d)
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PACK) -I $(PATOLINE_DIR) $(PATOLINE_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -thread -rectypes -I +threads $(OFLAGS) $(PACK) -I $(PATOLINE_DIR) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
@@ -61,11 +61,11 @@ $(d)/Parser.ml: $(d)/tmp.dyp
 
 $(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -rectypes $(OFLAGS) $(PACK) -package dyp $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -rectypes $(OFLAGS) $(PACK) -package dyp $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
 
 $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
