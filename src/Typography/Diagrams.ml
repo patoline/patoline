@@ -957,7 +957,13 @@ module Transfo (X : Set.OrderedType) = struct
       Pet.register "node draw" (fun pet -> 
 	{ pet = pet ; transfo = (fun transfos info -> 
 	  { info with params = { info.params with
-	    strokingColor = Some black } } ) })
+	    strokingColor = Some OutputCommon.black } } ) })
+
+    let drawColor,draw_pet = 
+      Pet.register "node draw" (fun pet color -> 
+	{ pet = pet ; transfo = (fun transfos info -> 
+	  { info with params = { info.params with
+	    strokingColor = Some color } } ) })
 
     let fill,fill_pet = 
       Pet.register "node fill" (fun pet color -> 

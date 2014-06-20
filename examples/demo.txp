@@ -17,10 +17,9 @@ let db_info = Mysql Mysql.(
       dbpwd = Some "patonet";
       dbuser = Some "patonet";})
 
-let db = init_db "demo" db_info
-(*
+(* let db = init_db "demo" db_info *)
+
 let db = init_db "demo" Memory
-*)
 module MyDb = struct 
   let db = db
   let base_dir = "/tmp"
