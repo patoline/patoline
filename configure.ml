@@ -422,6 +422,7 @@ let _=
   Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
   Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_UTIL_DIR := %s/util\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_IMGLIB_DIR := %s/imglib\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_LIBFONTS_DIR := %s/fonts\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
   Printf.fprintf make "INSTALL_PATOPLOT_DIR := %s/patoplot\n" !ocaml_lib_dir;

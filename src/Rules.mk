@@ -10,6 +10,7 @@ TYPOGRAPHY_DIR := $(d)/Typography
 DRIVERS_DIR := $(d)/Drivers
 FORMAT_DIR := $(d)/Format
 UTIL_DIR := $(d)/Util
+IMAGELIB_DIR := $(d)/imagelib
 RBUFFER_DIR := $(d)/Rbuffer
 LIBFONTS_DIR := $(d)/Fonts
 CESURE_DIR := $(d)/cesure
