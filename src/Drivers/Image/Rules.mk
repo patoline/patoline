@@ -10,13 +10,17 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
 
+# cmi race condition
+$(d)/Image.cmx: %.cmx: %.cmo
+
+
 $(d)/Image.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_Image) $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_Image) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Image.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Image) $(INCLUDES) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Image) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Image.cma: $(PATOLINE_DIR)/Language.cmo $(d)/Image.cmo
 	$(ECHO) "[MKLIB] ... -> $@"

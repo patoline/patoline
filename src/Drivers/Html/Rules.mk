@@ -7,13 +7,16 @@ HTML_DRIVER_INCLUDES:=-I $(DRIVERS_DIR)/SVG
 $(d)/Html.ml.depends: INCLUDES += $(HTML_DRIVER_INCLUDES)
 -include $(d)/Html.ml.depends
 
+# cmi race condition
+$(d)/Html.cmx: %.cmx: %.cmo
+
 $(d)/Html.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(HTML_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(HTML_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Html.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(HTML_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(HTML_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Html.cma: %.cma: %.cmo $(DRIVERS_DIR)/SVG/HtmlFonts.cmo
 	$(ECHO) "[MKLIB]    $<"

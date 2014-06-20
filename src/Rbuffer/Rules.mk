@@ -23,7 +23,8 @@ RBUFFER_CMI:=$(RBUFFER_MLI:.mli=.cmi)
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
 # That's why we arbitrarily force the following dependency.
-$(RBUFFER_CMX): %.cmx: %.cmo
+#inutile Rbuffer à un .mli
+#$(RBUFFER_CMX): %.cmx: %.cmo
 
 $(RBUFFER_CMI): %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"

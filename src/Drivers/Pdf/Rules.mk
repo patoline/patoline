@@ -6,13 +6,16 @@ PDF_DRIVER_INCLUDES:=-I $(UTIL_DIR) -I $(TYPOGRAPHY_DIR)
 
 -include $(d)/Pdf.ml.depends
 
+# cmi race condition
+$(d)/Pdf.cmx: %.cmx: %.cmo
+
 $(d)/Pdf.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
+	$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cma: %.cma: %.cmo
 	$(ECHO) "[MKLIB]    $< -> $@"

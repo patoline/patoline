@@ -18,6 +18,9 @@ all: $(DRIVERS_CMA) $(DRIVERS_CMXA) $(DRIVERS_CMXS)
 DRIVERS_WITH_RULES_MK := $(foreach drv,$(patsubst %/Rules.mk,%,$(wildcard $(d)/*/Rules.mk)),$(drv)/$(notdir $(drv)).cmxa)
 DRIVERS_WITHOUT_RULES_MK := $(filter-out $(DRIVERS_WITH_RULES_MK),$(DRIVERS_CMXA))
 
+# for cmi race condition
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.cmo
+
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC]    $< -> $@"
 	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) -o $@ -c $<

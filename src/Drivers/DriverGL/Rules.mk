@@ -16,6 +16,9 @@ ifeq ($(UNAME), Darwin)
 FPIC_FLAGS=-I$(shell ocamlc -where) -fPIC # -framework GLUT -framework OpenGL
 endif
 
+# cmi race condition
+$(d)/DriverGL.cmx: %.cmx: %.cmo
+
 $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[CC]     $<"
 	$(Q)$(CC) $(FPIC_FLAGS) $(CFLAGS) -c $< -o $@
@@ -26,11 +29,11 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 
 $(d)/DriverGL.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
 	$(ECHO) "[MKLIB] ... -> $@"

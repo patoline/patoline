@@ -9,14 +9,17 @@ $(d)/%.ml.depends: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
+# cmi race condition
+$(d)/Patonet.cmx: %.cmx: %.cmo
+$(d)/Hammer.cmx: %.cmx: %.cmo
 
-$(d)/Patonet.cmo: $(d)/Patonet.ml
+$(d)/Patonet.cmo: %.cmo: %.ml
 	$(ECHO) "[OCAMLC]    $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
 
-$(d)/Patonet.cmx: $(d)/Patonet.ml
+$(d)/Patonet.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Patonet.cma: $(d)/Hammer.cmo $(d)/Patonet.cmo
 	$(ECHO) "[MKLIB]    $< -> $@"
