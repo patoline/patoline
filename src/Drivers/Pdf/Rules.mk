@@ -14,12 +14,16 @@ $(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
+$(d)/Pdf.cma: %.cma: %.cmo
+	$(ECHO) "[MKLIB]    $< -> $@"
+	$(Q)$(OCAMLC) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
+
 $(d)/Pdf.cmxa: %.cmxa: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OMKLIB]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
 
 $(d)/Pdf.cmxs: %.cmxs: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[SHARE]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES)  -linkpkg -shared -o $@ $<
 
 # Rolling back changes made at the top

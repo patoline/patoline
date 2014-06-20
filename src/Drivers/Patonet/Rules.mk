@@ -10,16 +10,24 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
 
+$(d)/Patonet.cmo: $(d)/Patonet.ml
+	$(ECHO) "[OCAMLC]    $< -> $@"
+	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
+
 $(d)/Patonet.cmx: $(d)/Patonet.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) -o $@ -c $<
 
+$(d)/Patonet.cma: $(d)/Hammer.cmo $(d)/Patonet.cmo
+	$(ECHO) "[MKLIB]    $< -> $@"
+	$(Q)$(OCAMLC) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) $(OFLAGS) -a -o $@ $^
+
 $(d)/Patonet.cmxa: $(d)/Hammer.cmx $(d)/Patonet.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OMKLIB]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_Patonet) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) $(OFLAGS) -a -o $@ $^
 
 $(d)/Patonet.cmxs: $(d)/Hammer.cmx $(d)/Patonet.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[SHARE]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(INCLUDES) $(DRIVERS_INCLUDES) $(PATONET_DRIVER_INCLUDES) $(OFLAGS) -linkpkg -shared -o $@ $^
 
 $(d)/Hammer.ml: $(d)/Hammer.js

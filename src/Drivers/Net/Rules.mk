@@ -10,16 +10,24 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
 
+$(d)/Net.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
+	$(ECHO) "[OCAMLC]    $<"
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
+
 $(d)/Net.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
 
+$(d)/Net.cma: $(d)/Net.cmo
+	$(ECHO) "[MKLIB]   $<"
+	$(Q)$(OCAMLC) -a -o $@ $<
+
 $(d)/Net.cmxa: $(d)/Net.cmx
-	$(ECHO) "[LINK]   $<"
+	$(ECHO) "[OMKLIB]   $<"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
 
 $(d)/Net.cmxs: $(d)/Net.cmx
-	$(ECHO) "[LINK]   $<"
+	$(ECHO) "[SHARE]   $<"
 	$(Q)$(OCAMLOPT) -shared -o $@ $<
 
 DISTCLEAN += $(DEPENDS_$(d))

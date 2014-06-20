@@ -24,16 +24,24 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 #	$(ECHO) "[OPT]    $<"
 #	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
 
+$(d)/DriverGL.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
+	$(ECHO) "[OCAMLC]    $<"
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+
 $(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -thread -package $(PACK_DRIVER_DriverGL) $(INCLUDES) $(DRIVERS_INCLUDES) $(GL_DRIVER_INCLUDES) -o $@ -c $<
+
+$(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
+	$(ECHO) "[MKLIB] ... -> $@"
+	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -linkpkg -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"
 	$(Q)$(OCAMLMKLIB) -package $(PACK_DRIVER_DriverGL) -linkpkg -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxs: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[SHARE]    $< -> $@"
 	$(Q)$(OCAMLOPT) -package $(PACK_DRIVER_DriverGL) -shared -linkpkg -o $@ $^
 
 CLEAN += $(d)/DriverGL.cma

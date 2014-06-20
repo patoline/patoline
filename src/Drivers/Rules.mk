@@ -5,28 +5,37 @@ d := $(if $(d),$(d)/,)$(mod)
 DRIVERS_INCLUDES:=-I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR) -I $(RBUFFER_DIR) -I $(LIBFONTS_DIR) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype
 
 DRIVERS_CMXA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cmxa)
+DRIVERS_CMA:=$(foreach drv,$(DRIVERS),src/Drivers/$(drv)/$(drv).cma)
 LIB_DRIVERS_A:=$(wildcard $(d)/*/lib*.a)
 DRIVERS_CMX:=$(DRIVERS_CMXA:.cmxa=.cmx)
 DRIVERS_CMXS:=$(DRIVERS_CMXA:.cmxa=.cmxs)
 
 # Building stuff
-all: $(DRIVERS_CMXA) $(DRIVERS_CMXS)
+all: $(DRIVERS_CMA) $(DRIVERS_CMXA) $(DRIVERS_CMXS)
 
 # Find who has a Rules.mk, in which case we won't apply the generic
 # %.cmxa: %.cmx rule from this file.
 DRIVERS_WITH_RULES_MK := $(foreach drv,$(patsubst %/Rules.mk,%,$(wildcard $(d)/*/Rules.mk)),$(drv)/$(notdir $(drv)).cmxa)
 DRIVERS_WITHOUT_RULES_MK := $(filter-out $(DRIVERS_WITH_RULES_MK),$(DRIVERS_CMXA))
 
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
+	$(ECHO) "[OCAMLC]    $< -> $@"
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) -o $@ -c $<
+
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) -o $@ -c $<
 
+$(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cma): %.cma: %.cmo
+	$(ECHO) "[MKLIB]    $< -> $@"
+	$(Q)$(OCAMLC) $(DRIVERS_INCLUDES) -a -o $@ $<
+
 $(DRIVERS_WITHOUT_RULES_MK): %.cmxa: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[OMKLIB]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(DRIVERS_INCLUDES) -a -o $@ $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmxs): %.cmxs: %.cmx
-	$(ECHO) "[OPT]    $< -> $@"
+	$(ECHO) "[SHARE]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(DRIVERS_INCLUDES) $(PACK) $(INCLUDES) -linkpkg -shared -o $@ $<
 
 # Find dependencies
