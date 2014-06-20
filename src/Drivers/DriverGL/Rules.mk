@@ -8,6 +8,12 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 -include $(DEPENDS_$(d))
 
+DRIVERGL_MODS:= GlFBO Vec3 DriverGL
+
+DRIVERGL_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(DRIVERGL_MODS)))
+DRIVERGL_CMO:=$(DRIVERGL_ML:.ml=.cmo)
+DRIVERGL_CMX:=$(DRIVERGL_ML:.ml=.cmx)
+
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
 FPIC_FLAGS=-fPIC
@@ -16,8 +22,10 @@ ifeq ($(UNAME), Darwin)
 FPIC_FLAGS=-I$(shell ocamlc -where) -fPIC # -framework GLUT -framework OpenGL
 endif
 
-# cmi race condition
-$(d)/DriverGL.cmx: %.cmx: %.cmo
+# We cannot run ocamlc and ocamlopt simultaneously on the same input,
+# since they both overwrite the .cmi file, which can get corrupted.
+# That's why we arbitrarily force the following dependency.
+$(DRIVERGL_CMX): %.cmx: %.cmo
 
 $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[CC]     $<"
