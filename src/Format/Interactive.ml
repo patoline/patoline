@@ -125,7 +125,8 @@ let checkBox ?(global=false) ?(scale=0.75) ?(destinations=[]) data contents =
   let name = data.Db.name in
   let name' = name^"_dest" in
   button ~btype:Clickable name (name'::destinations) (contents (fun () -> (dynamic name' 
-    (function Click(name0) when name0 = name -> data.write (not (data.read ())); (if global then Public else Private)
+    (function Click(name0) when name0 = name -> 
+      data.write (not (data.read ())); (if global then Public else Private)
     | _ -> Unchanged)
     []
     (fun () -> [bB (fun env -> drawCheckBox ~scale env (data.read ()))]))))
@@ -154,7 +155,9 @@ let radioButtons ?(global=false) ?(scale=0.5) ?(destinations=[]) data values =
   Array.mapi (fun i value contents ->
     button ~btype:Clickable buttons.(i) (Array.to_list dests@destinations) (contents (fun () -> 
       (dynamic dests.(i) 
-	 (function Click(name') -> if name' = buttons.(i) then data.write value; if global then Public else Private
+	 (function Click(name') -> 
+	   if name' = buttons.(i) then
+	     data.write value; if global then Public else Private
 	 | _ -> Unchanged)
 	 []
 	 (fun () -> 

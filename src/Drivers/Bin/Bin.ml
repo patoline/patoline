@@ -21,10 +21,11 @@ open Typography.OutputCommon
 open Typography.OutputPaper
 
 let bin_output structure pages filename isoutput' =
+  (* For marshalling, do database retain pointer that can not be marshalled *)
+  Typography.Db.do_interaction_start_hook ();
   let base_name = try Filename.chop_extension filename with _ -> filename in
   let outputfile = base_name ^ ".bin" in
   let ch = open_out_bin outputfile in
-
   output_value ch isoutput';
   Marshal.to_channel ch structure [Marshal.Closures];
   Marshal.to_channel ch pages [Marshal.Closures];

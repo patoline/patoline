@@ -19,9 +19,6 @@
 *)
 
 open Util
-#ifdef MYSQL
-open Mysql
-#endif
 
 type dbinfo =
 | Memory
@@ -35,7 +32,7 @@ type dbinfo =
 type database =
 | MemoryDb
 #ifdef MYSQL
-| MysqlDb of dbd
+| MysqlDb of Mysql.dbd
 #endif
 #ifdef SQLITE3
 (*| SqliteDb of ...*)
@@ -64,9 +61,13 @@ let dummyData = {
 type db = {
   db : unit -> database;
   create_data : 'a.( ?global:bool -> string -> 'a -> 'a data);
+  disconnect : unit -> unit;
 }
 
 let interaction_start_hook = ref ([]: (unit -> unit) list)
+
+let do_interaction_start_hook () = 
+  List.iter (fun f -> f ()) (!interaction_start_hook)
 
 let sessid = ref (None: (string * string) option) (* the second string is the group, "guest" is reserved for guest *)
 
@@ -77,9 +78,10 @@ let init_db table_name db_info =
   | Memory -> 
     let total_table = Hashtbl.create 1001 in
     { db = (fun () -> MemoryDb);
+      disconnect = (fun () -> ());
       create_data = fun ?(global=false) name vinit ->
 	let table = Hashtbl.create 1001 in
-	let sessid () = match !sessid with None -> raise Exit | Some (s,g) -> if global then "shared_variable", g else s, g in 
+	let sessid () = match !sessid with None -> ("", "") | Some (s,g) -> if global then "shared_variable", g else s, g in 
 	let read = fun () ->
 	  try Hashtbl.find table (sessid ()) with Exit | Not_found -> vinit in
 	let write = fun v ->
@@ -123,23 +125,26 @@ let init_db table_name db_info =
     
     let db () = 
       match !dbptr with
-	None -> let db = connect db_info in Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
+	None -> let db = Mysql.connect db_info in Printf.eprintf "Reconnected to db\n%!"; dbptr := Some db; db
       | Some db -> db
     in
 
     interaction_start_hook := (fun () ->
-      match !dbptr with None -> () | Some db -> disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
+      match !dbptr with None -> () | Some db -> Mysql.disconnect db; dbptr := None; Printf.eprintf "Disconnected from db\n%!")::!interaction_start_hook;
 
     (let sql = Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s` (
       `sessid` CHAR(33), `groupid` CHAR(33), `key` VARCHAR(32), `VALUE` text,
       `createtime` DATETIME NOT NULL,
       `modiftime` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);" table_name in
-     let _r = exec (db ()) sql in
-     match errmsg (db ()) with
+     let _r = Mysql.exec (db ()) sql in
+     match Mysql.errmsg (db ()) with
      | None -> () 
      | Some err -> Printf.eprintf "DB Error: %s\n%!" err);
 
     { db = (fun () -> MysqlDb (db ()));
+      disconnect = (fun () -> 
+	match !dbptr with None -> ()
+	| Some db -> Mysql.disconnect db);
       create_data = fun ?(global=false) name vinit ->
 	if Hashtbl.mem created name then (Printf.eprintf "Data with name '%s' allready created\n%!" name; exit 1);
 	Hashtbl.add created name ();
@@ -151,16 +156,16 @@ let init_db table_name db_info =
 	  if not (Hashtbl.mem tbl sessid) then (
             let sql = Printf.sprintf "SELECT count(*) FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
-            let r = exec (db ()) sql in
-            (match errmsg (db ()), fetch r with	
+            let r = Mysql.exec (db ()) sql in
+            (match Mysql.errmsg (db ()), Mysql.fetch r with	
             | None, Some row -> 
 	      let count = match row.(0) with None -> 0 | Some n -> int_of_string n in
 	      (match count with
 		0 -> 
 		  let sql = Printf.sprintf "INSERT INTO `%s` (`sessid`, `groupid`, `key`, `value`, `createtime`) VALUES ('%s','%s','%s','%s', NOW());"
 		    table_name sessid groupid name v in		    
-		  let _r = exec (db ()) sql in	      
-		  (match errmsg (db ()) with
+		  let _r = Mysql.exec (db ()) sql in	      
+		  (match Mysql.errmsg (db ()) with
 		  | None -> () 
 		  | Some err -> raise (Failure err))
               | 1 -> ()
@@ -175,9 +180,9 @@ let init_db table_name db_info =
             let sql = Printf.sprintf "SELECT `value` FROM `%s` WHERE `sessid` = '%s' AND `groupid` = '%s' AND `key` = '%s';"
 	      table_name sessid groupid name in
 (*	    Printf.eprintf "Sending request\n%!";*)
-            let r = exec (db ()) sql in
+            let r = Mysql.exec (db ()) sql in
 (*	    Printf.eprintf "Sent request\n%!";*)
-            match errmsg (db ()), fetch r with
+            match Mysql.errmsg (db ()), Mysql.fetch r with
     	    | None, Some row -> (match row.(0) with None -> vinit | Some n -> Marshal.from_string (base64_decode n) 0)
             | Some err, _ -> Printf.eprintf "DB Error: %s\n%!" err; vinit
             | _ -> assert false   
@@ -192,8 +197,8 @@ let init_db table_name db_info =
             let v = base64_encode (Marshal.to_string v []) in 
             let sql = Printf.sprintf "UPDATE `%s` SET `value`='%s' WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 	      table_name v name sessid groupid in
-            let _r = exec (db ()) sql in
-            match errmsg (db ()) with
+            let _r = Mysql.exec (db ()) sql in
+            match Mysql.errmsg (db ()) with
             | None -> () 
             | Some err -> Printf.eprintf "DB Error: %s\n%!" err
 	  with Exit -> ()
@@ -203,7 +208,7 @@ let init_db table_name db_info =
 	    let sessid, groupid = init () in
             let sql = Printf.sprintf "DELETE FROM `%s` WHERE `key` = '%s' AND `sessid` = '%s' AND `groupid` = '%s';"
 	      table_name name sessid groupid in
-	    let _r = exec (db ()) sql in
+	    let _r = Mysql.exec (db ()) sql in
 	    ()
 	  with Exit -> ()
 	in
@@ -217,7 +222,7 @@ let init_db table_name db_info =
 	    let sql = Printf.sprintf "SELECT `value`,COUNT(DISTINCT `sessid`) FROM `%s` WHERE `key` = '%s' %s GROUP BY `value`"
 	      table_name name agroup in
 	    let sql' = Printf.sprintf "SELECT COUNT(DISTINCT `sessid`) FROM `%s` %s" table_name group in
-	    Printf.eprintf "total: %s\n%!" sql';
+	    (*Printf.eprintf "total: %s\n%!" sql';*)
 	    
 	    let f = function None -> "" | Some s -> s in
 	    let f' = function None -> 0 | Some s -> int_of_string s in

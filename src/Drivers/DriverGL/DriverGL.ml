@@ -238,7 +238,14 @@ type win_info = {
   mutable fps : float;
 }
 
-let win = [|None; None|]
+let all_win = [|None; None|]
+
+let get_wins () = 
+  let res = ref [] in
+  Array.iter (fun w -> match w with
+    None -> ()
+  | Some w -> res := w::!res) all_win;
+  !res
 
 let init_win w =
   {
@@ -262,7 +269,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 				  page= -1;struct_x=0.;struct_y=0.;substructures=[||]})
     pages fileName=
 
-  let events = ref [] in
   let pages = ref pages in
   let structure = ref structure in
   let num_pages = ref (Array.length !pages) in
@@ -280,10 +286,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   
   let dynReset d =
-    Hashtbl.remove dynCache d.dyn_label
+    Hashtbl.remove dynCache d
   in
 
+  let dynReaction = Hashtbl.create 101 in
+
   let read_links () = 
+    Hashtbl.clear dynReaction;
     links := Array.mapi
       (fun i page ->
 	Array.mapi (fun j state ->
@@ -291,16 +300,26 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  let rec fn ls = List.iter
 	    (function  
             | Link(l') -> 
+	      fn l'.link_contents;
 	      l := l'::!l
-	    | Dynamic d -> fn (dynContents d)
-	    | _ -> ()) ls
+	    | Dynamic d ->
+	      let old = 
+		try Hashtbl.find dynReaction d.dyn_label
+		with Not_found -> []
+	      in
+	      Hashtbl.replace dynReaction d.dyn_label (d.dyn_react::old);
+	      fn (dynContents d)
+	    | Affine a -> fn a.affine_contents
+	    | States s -> fn s.states_contents
+	    | Animation _ -> ()
+	    | Glyph _ | Image _ | Path _ | Video _ -> ()) ls
 	  in
 	  fn (drawing_sort state.pageContents);
 	  !l) page)
       !pages;
   in
 
-  let _ = read_links () in
+  let update_link = ref false in
 
   let inverse_coord win x y =
     let w = float (Glut.get Glut.WINDOW_WIDTH)
@@ -321,10 +340,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let get_win () =
     let winId = Glut.getWindow () in
-    match win.(0) with
+    match all_win.(0) with
       None -> assert false
     | Some w -> if w.winId = winId then w else
-	match win.(1) with
+	match all_win.(1) with
 	  None -> assert false
 	| Some w -> if w.winId = winId then w else
 	    assert false
@@ -388,7 +407,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let menu_cb ~value:i =
     try
       let (a,i) = Hashtbl.find menu_item i in
-      Printf.printf "menu: %d of %d\n" i (Array.length a);
       flush stdout;
       let s = a.(i) in
       cur_page:= s.page;
@@ -405,7 +423,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Glut.setMenu menu;
       let rec fn menu a i s = 
 	Glut.addMenuEntry s.name !c;
-	Hashtbl.add menu_item !c (a, i);
+	Hashtbl.replace menu_item !c (a, i);
 	incr c;
 	if s.substructures <> [||] then
 	  begin
@@ -425,14 +443,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   let clearCache () =
     Array.iter (function None -> () | Some win ->
       Glut.setWindow win.winId; 
-      Hashtbl.iter (fun _ l ->  GlList.delete l)	
-	win.glyphCache;
+      Hashtbl.iter (fun _ l ->  GlList.delete l) win.glyphCache;
       Hashtbl.clear win.glyphCache;
 #ifdef CAMLIMAGES
       Hashtbl.iter (fun _ t -> GlTex.delete_texture t) win.imageCache;
       Hashtbl.clear win.imageCache;
 #endif
-    ) win
+    ) all_win
   in
 
   let revert () = 
@@ -473,11 +490,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
 
   let other_items = Hashtbl.create 13 in
-  let update_link = ref false in
 
     let draw_page pixel_width page state =
-(*      Printf.fprintf stderr "Redraw\n";*)
-      
       let win = get_win () in
       win.do_animation <- false;
       let graisse =  !prefs.graisse in
@@ -539,6 +553,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	
       in
 
+      
+
       let rec fn = function
         | Video _ -> failwith "GL Driver does not support video"
 	| Animation a ->
@@ -550,21 +566,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  List.iter fn (drawing_sort a.anim_contents.(n_step));	  
 
 	| Dynamic d ->
-	  let rec gn acc = function
-	    | [] -> acc
-	    | ((ds:string list),ev)::evs ->
-	      let ds = List.filter 
-		(fun d' -> 
-		  if d.dyn_label = d' then (
-		    let action = d.dyn_react ev in
-		    if action <> Unchanged then 
-		      (update_link := true; dynReset d);
-		    false)
-		  else true) ds
-	      in
-	      gn (if ds <> [] then (ds,ev)::acc else acc) evs
-	  in 
-	  events := gn [] (List.rev !events);
 	  List.iter fn (dynContents d)
 
 	| Glyph g ->
@@ -611,6 +612,33 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	draw_glyph (r,g,b);
 	GlMat.pop ();
 
+    | Affine a ->
+      let mat = GlMat.of_array [|
+	[|
+	  a.affine_matrix.(0).(0);
+	  a.affine_matrix.(1).(0);
+	  0.0;
+	  a.affine_matrix.(2).(0);
+	|];
+	[|
+	  a.affine_matrix.(0).(1);
+	  a.affine_matrix.(1).(1);
+	  0.0;
+	  a.affine_matrix.(2).(1);
+	|];
+	[| 0.0; 0.0; 1.0; 0.0 |];
+	[|
+	  a.affine_matrix.(0).(2);
+	  a.affine_matrix.(1).(2);
+	  0.0;
+	  a.affine_matrix.(2).(2);
+	|]|];
+      in
+      GlMat.push ();
+      GlMat.mult mat;
+      List.iter fn a.affine_contents;
+      GlMat.pop ();
+	
     | Path(param, beziers) ->
       let beziers = List.map Array.to_list beziers in
       let lines, normals = add_normals param.close pixel_width beziers in
@@ -726,7 +754,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlTex.env (`color (1.0, 1.0, 1.0, 1.0));
 	  GlTex.parameter ~target:`texture_2d (`min_filter `nearest);
 	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
-	  Hashtbl.add win.imageCache i tid
+	  Hashtbl.replace win.imageCache i tid
       end;
 #endif
       GlDraw.color (1.0,1.0,1.0);
@@ -754,8 +782,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       Hashtbl.iter (fun name f ->
 	try 
 	  f win ;
-	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;
-
+	with e -> Printf.fprintf stderr "other: exception %s\n" name; flush stderr; ) other_items;	  
   
     in
 
@@ -947,8 +974,40 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
   let redraw_all () =
     !send_changes ();
-    Array.iter (function None -> () | Some win -> redraw win) win;
+    Array.iter (function None -> () | Some win -> redraw win) all_win;
   in
+
+  let events = ref [] in
+
+  let send_events ds ev =
+    let rec fn acc evs = match ev, evs with 
+      | _, [] -> (ds, ev)::(List.rev acc)
+      | Drag(n1,(x1,y1)), ((ds',Drag(n2,(x2,y2)))::evs) when n1 == n2 && ds == ds' ->
+	List.rev_append acc ((ds, Drag(n1,(x1+.x2,y1+.y2)))::evs)
+      | Click(n1), ((ds', Click(n2))::evs) when n1 == n2 && ds == ds' ->
+	List.rev_append acc ((ds, Click(n1))::evs)
+      | _, ev::evs ->
+	fn (ev::acc) evs
+    in
+    events := fn [] !events
+  in
+
+  let treat_events () =
+    let l = !events in
+    events := [];
+    List.iter (function (ds, ev) ->
+      List.iter (fun d ->
+	try
+	  let rs = Hashtbl.find dynReaction d in
+	  List.iter (fun r ->
+	    let action = r ev in
+	    if action <> Unchanged then 
+	      (update_link := true; dynReset d; redraw_all ())) rs;
+	with
+	  Not_found -> ())
+	ds) l
+  in
+
 
 (* FIXME: reimplement showing on the slide ... *)
   let _draw_show x y w win =
@@ -967,8 +1026,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let r = 0.75 in
     let (x1,y1,z1) as v1 = (x +. (if x > pw /. 2.0 then 1.0 else -1.0) *. pw, y -. 1.0 *. ph, 0.5 *. max pw ph) in
     let (x0,y0,z0) as v2 = (x, y, r) in
-    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f) with light in (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1 xl yl zl;
-    flush stderr;
+(*    Printf.fprintf stderr "Drawing: (%f,%f,%f) (%f,%f,%f) with light in (%f,%f,%f)\n" x0 y0 z0 x1 y1 z1 xl yl zl;
+    flush stderr;*)
     let axe = Vec3.sub v2 v1 in
     let r0 = (0.0,1.0,0.0) in
     let (ax,ay,az) as r1 = Vec3.normalize (Vec3.vecp axe r0) in
@@ -1149,8 +1208,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  motion_ref := Some (x0,y0,x, y,buttons,links);
 	  let (x,y) = (mx *. win.pixel_width, -. my *. win.pixel_height) in
 	  List.iter (function (name,ds) ->
-	    events := (ds,Drag(name,(x,y)))::!events) buttons;
-	  redraw_all ()));
+	    send_events ds (Drag(name,(x,y)))) buttons;
+	));
   in
 
   let previous_links = ref [] in
@@ -1166,8 +1225,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	GlClear.clear [`color;`depth]; GlPix.draw r; GlPix.draw r');
       (if l = [] then Glut.setCursor Glut.CURSOR_INHERIT
        else if !saved_rectangle = None then
-	 (flush stdout;
-	 saved_rectangle := 
+	 (saved_rectangle := 
 	   Some (GlPix.read ~x:0 ~y:0 
 		   ~width:(Glut.get Glut.WINDOW_WIDTH)  ~height:(Glut.get Glut.WINDOW_HEIGHT) 
 		   ~format:`rgba ~kind:`ubyte
@@ -1208,7 +1266,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
   in
   
   let goto_link l0 c0 = 
-    Printf.fprintf stderr "Searching position: line <= %d, col <= %d.\n%!" l0 c0;
+(*    Printf.printf "Searching position: line <= %d, col <= %d.\n%!" l0 c0;*)
     let res = 
       Array.fold_left(fun (acc, (i,j)) linkss ->
 	Array.fold_left(fun (acc, (i,j)) links ->
@@ -1241,7 +1299,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	Glut.setWindow win.winId;
 	draw_gl_scene ();
 	overlay_rect (1.0,0.0,0.0) (l.link_x0,l.link_y0,l.link_x1,l.link_y1);
-	Glut.swapBuffers ()) win
+	Glut.swapBuffers ()) all_win
   in
   
   let reconnect sock_info =
@@ -1323,7 +1381,8 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     Glut.timerFunc ~ms:30 ~cb:(idle_cb handle_request) ~value:();
     let to_redraw = ref false in
     Array.iter (function None -> () | Some win ->
-      if win.do_animation then to_redraw := true) win;
+      if win.do_animation then to_redraw := true) all_win;
+    treat_events ();
     show_links ();
     handle_request ();
     begin
@@ -1355,7 +1414,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	(Unix.error_message nb);
       flush stderr;
     end;
-    if !events <> [] || !to_redraw then redraw_all ();
+    if !to_redraw then redraw_all ();
   in
 
   let display_cb sock ()=
@@ -1373,7 +1432,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 
     | Glut.LEFT_BUTTON, Glut.DOWN ->
       let links = find_link win x y in 
-      let buttons = List.filter (fun l -> match l.link_kind with Button(Clickable,_,_) -> true | _ -> false) links in
+      let buttons = List.filter (fun l -> match l.link_kind with Button(_,_,_) -> true | _ -> false) links in
       let buttons = List.map (function { link_kind = Button(_,name,ds) } -> name,ds | _ -> assert false) buttons in
 
       motion_ref := Some (x,y,x, y,buttons,links);
@@ -1399,13 +1458,14 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      begin
 		try
 		  let browser = Sys.getenv "BROWSER" in
+(*		  Printf.printf "%s \"%s\"\n%!" browser uri;*)
 		  ignore (Sys.command (Printf.sprintf "%s \"%s\"" browser uri));
 		with
 		  Not_found -> 
 		    Printf.fprintf stderr "%s: BROWSER environment variable undefined" Sys.argv.(0)
 	      end
 	    | Button(Clickable,name,ds) -> 
-	      events := (ds,Click(name))::!events;
+	      send_events ds (Click(name))
 	    | Button(_,name,ds) -> 
 	      ()
 	  ) links
@@ -1415,7 +1475,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     | _ -> ()
   in
   let main () =
-    if win.(0) = None then begin
+    if all_win.(0) = None then begin
       Sys.catch_break true;
       Printf.fprintf stderr "Start patoline GL.\n%!";
       Glut.initDisplayString "rgba>=8 alpha>=16 depth>=16 double";
@@ -1424,14 +1484,17 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       let current = ref 0 in
       while !current < Array.length Sys.argv && Sys.argv.(!current) <> "--" do incr current done;
       if !prefs.batch_cmd = None then Arg.parse_argv ~current argv spec ignore usage;
+      let _ = Db.make_sessid () in
+      let _ = read_links () in
+
       Printf.fprintf stderr "Glut init finished, creating window\n%!";
       let w =  Glut.createWindow "Patoline OpenGL Driver" in
       init_gl ();
-      win.(0) <- Some (init_win w);
+      all_win.(0) <- Some (init_win w);
       if !prefs.second_window then (
 	let w2 = Glut.createWindow "Patoline OpenGL Driver (second window)" in
 	init_gl ();
-	win.(1) <- Some (init_win w2)
+	all_win.(1) <- Some (init_win w2)
       );
       Printf.fprintf stderr "Window created, number of samples: %d\n" 
 	(Glut.get Glut.WINDOW_NUM_SAMPLES);
@@ -1452,7 +1515,7 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  Glut.timerFunc ~ms:30 ~cb:(idle_cb (handle_request socket)) ~value:();
 	  Glut.motionFunc motion_cb;
 	  Glut.passiveMotionFunc passive_motion_cb)
-	  win;
+	  all_win;
 
 	Sys.set_signal Sys.sighup
 	  (Sys.Signal_handle
@@ -1460,20 +1523,20 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	       to_revert := true;
  	       Array.iter (function None -> () | Some win ->
 		 Glut.setWindow ~win:win.winId;
-		 Glut.postRedisplay ()) win));
+		 Glut.postRedisplay ()) all_win));
 	Printf.fprintf stderr "GL setup finished, starting loop\n";
 	flush stderr;
 	(try 
 	  while true do 
 	    (try 
-	       Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) win;
+	       Array.iter (function None -> () | Some win -> win.fps <- Unix.gettimeofday ()) all_win;
 	       Glut.mainLoop ()
 	     with 
 	     | Glut.BadEnum _ -> () (* because lablGL does no handle GLUT_SPECIAL_CTRL_L and alike *)
 	     | e ->
                clearCache ();
 	       Gl.flush ();
-	       Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) win; raise e);
+	       Array.iter (function None -> () | Some win -> Glut.destroyWindow ~win:win.winId) all_win; raise e);
 	  done; ()
 	with e -> if e <> Exit then Printf.fprintf stderr "Uncaucht exception: %S.\n%!" (Printexc.to_string e))
     | Some f ->

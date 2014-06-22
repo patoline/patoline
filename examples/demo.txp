@@ -188,7 +188,7 @@ let color v = match v with
   Null -> red
 | Fun_but -> yellow
 | Fun_yes -> green
-| No_opinion -> grey
+| No_opinion | Not_clicked -> grey
 in
 let values = List.tl (Array.to_list values) in
 let res = List.map (fun value -> (color value, try List.assoc value results with Not_found -> 0)) values in
