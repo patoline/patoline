@@ -462,9 +462,9 @@ and print_macro parser_pp ch op mtype name args opts = begin
   output_string ch (Buffer.contents buf) 
 end
 
-and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) = 
+and print_caml_buf parser_pp ld gr op buf s e txps (file,line,bol) = 
   (* Printf.fprintf stderr "Entering print_caml_buf.\n" ; flush stderr ; *)
-  if !line_directive then Printf.bprintf buf "\n# %d \"%s\"\n%s" line file (String.make col ' ');
+  if !line_directive then Printf.bprintf buf "\n# %d \"%s\"\n%s" line file (String.make (max 0 (s - bol)) ' ');
   match txps with
   | [] -> 
     let size = e - s in
@@ -472,7 +472,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
     let buf'=String.make size (char_of_int 0) in
     let _= op s buf' 0 size in
     Printf.bprintf buf "%s" buf'
-  | (style, s',e',line,col) :: txps' -> begin
+  | (style, s',e',line,bol) :: txps' -> begin
     (* On imprime du caml avant le premier "<<" *)
     let offset = match style with
       | TxpMath -> 2
@@ -505,6 +505,9 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
 	end
     in
     let lexbuf_txp = Dyp.from_function (parser_pp) input in
+    Dyp.set_fname lexbuf_txp file;
+    let stdlexbuf = Dyp.std_lexbuf lexbuf_txp in
+    stdlexbuf.lex_curr_p <- { (stdlexbuf.lex_curr_p) with pos_lnum = line; pos_bol = bol - s' };
     (* let buf'=String.create size_txp in *)
     (* let _ = op s' buf' 0 size_txp in *)
     (* let lexbuf_txp = Dyp.from_string (parser_pp) buf' in *)
@@ -537,7 +540,7 @@ and print_caml_buf parser_pp ld gr op buf s e txps (file,line,col) =
 	  | _ -> assert false
       end
     end ;
-    print_caml_buf parser_pp ld gr op buf (e' + offset) e txps' (file,line,col)
+    print_caml_buf parser_pp ld gr op buf (e' + offset) e txps' (file,line,bol)
   end
 
 and print_caml parser_pp ld gr op (ch : out_channel) s e txps pos = begin

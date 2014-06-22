@@ -543,14 +543,14 @@ and caml txps= parse
 	      let start = l.lex_start_p.pos_cnum + 2 in 
 	      texprime_math lexbuf; 
 	      (* FIXME : why +2 below ? *)
-	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
-	      caml ((TxpMath, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
+	      let bol = l.lex_start_p.pos_bol in
+	      caml ((TxpMath, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, bol) :: txps) lexbuf } 
   | '<' '<' { let l = Dyp.std_lexbuf lexbuf in 
 	      let start = l.lex_start_p.pos_cnum + 2 in 
 	      texprime_text lexbuf; 
 	      (* FIXME : why +2 below ? *)
-	      let col = l.lex_start_p.pos_cnum - l.lex_start_p.pos_bol + 2 in
-	      caml ((TxpText, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, col) :: txps) lexbuf } 
+	      let bol = l.lex_start_p.pos_bol in
+	      caml ((TxpText, start, l.lex_start_p.pos_cnum, l.lex_start_p.pos_lnum, bol) :: txps) lexbuf } 
   | eof { [] }
   | newline { set_newline 1 (std_lexbuf lexbuf); caml txps lexbuf }
   | _ { caml txps lexbuf }
@@ -593,10 +593,10 @@ main lexer =
       let l = Dyp.std_lexbuf lexbuf in
       let start = l.lex_start_p.pos_cnum + String.length lex in 
       let lstart = l.lex_start_p.pos_lnum in 
-      let cstart = start - l.lex_start_p.pos_bol in 
+      let bol = l.lex_start_p.pos_bol in 
       let name_end=preproc 0 lexbuf in
       let name_end=String.sub name_end 5 (String.length name_end-6) in
-      (name,name_end,start, (l.lex_start_p.pos_fname, lstart, cstart),
+      (name,name_end,start, (l.lex_start_p.pos_fname, lstart, bol),
        l.lex_start_p.pos_cnum)
     ) else (
       (name,"",-1,("",-1,-1),-1)
@@ -611,10 +611,10 @@ main lexer =
   '*' '*' '(' -> { sll_comment lexbuf }
   '(' -> CAML { let l = Dyp.std_lexbuf lexbuf in
 		    let start = l.lex_start_p.pos_cnum + 1 in 
+		    let bol = l.lex_start_p.pos_bol in
 		    let lstart = l.lex_start_p.pos_lnum in 
-		    let cstart = start - l.lex_start_p.pos_bol in 
 		    let txps= caml [] lexbuf in
-		    start, (l.lex_start_p.pos_fname, lstart, cstart),
+		    start, (l.lex_start_p.pos_fname, lstart, bol),
 		     l.lex_start_p.pos_cnum, List.rev txps
 		  }
   newline -> NEWLINE { set_newline 1 (std_lexbuf lexbuf) }
