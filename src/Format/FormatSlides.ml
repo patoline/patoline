@@ -1007,7 +1007,8 @@ type numbering_kind = SimpleNumbering | RelativeNumbering
                   List.iter (fun x->match x with
                       Placed_line l->()
                     | Raw r->(
-                      page.pageContents<-r@page.pageContents
+                      page.pageContents<-
+                        (in_state st r)@page.pageContents
                     )
                   ) f.frame_content;
                   IntMap.iter (fun k a->more_contents a) f.frame_children;

@@ -138,6 +138,7 @@ type page = {
 }
 
 val states : int list -> raw list -> raw
+val in_state : int -> raw list -> raw list
 val defaultPage : page
 val translate : float -> float -> raw -> raw
 val resize : float -> raw -> raw
