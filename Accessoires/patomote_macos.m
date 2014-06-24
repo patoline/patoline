@@ -33,8 +33,8 @@ typedef struct cookie_struct
 
 
 
-inline          void print_errmsg_if_io_err(int expr, char *msg);
-inline          void print_errmsg_if_err(int expr, char *msg);
+//inline          void print_errmsg_if_io_err(int expr, char *msg);
+//inline          void print_errmsg_if_err(int expr, char *msg);
 void            QueueCallbackFunction(void *target, IOReturn result,
                                       void *refcon, void *sender);
 bool            addQueueCallbacks(IOHIDQueueInterface **hqi);
@@ -51,9 +51,9 @@ OSStatus
 KeynoteChangeSlide(bool pressedDown,int keycode)
 {
   NSArray* apps=
-    [NSRunningApplication runningApplicationsWithBundleIdentifier: @"com.apple.Preview"];
+    [NSRunningApplication runningApplicationsWithBundleIdentifier: @"org.mozilla.nightly"];
   if([apps count]==0)
-    apps=[NSRunningApplication runningApplicationsWithBundleIdentifier: @"org.mozilla.nightly"];
+    apps=[NSRunningApplication runningApplicationsWithBundleIdentifier: @"com.apple.Preview"];
   if([apps count]==0)
     apps=[NSRunningApplication runningApplicationsWithBundleIdentifier: @"org.mozilla.firefox"];
   if([apps count]==0)
@@ -78,7 +78,7 @@ KeynoteChangeSlide(bool pressedDown,int keycode)
   }
   [apps release];
 }
-
+/*
 inline void
 print_errmsg_if_io_err(int expr, char *msg)
 {
@@ -101,7 +101,7 @@ print_errmsg_if_err(int expr, char *msg)
     exit(EX_OSERR);
   }
 }
-
+*/
 void
 QueueCallbackFunction(void *target, IOReturn result, void *refcon, void *sender)
 {
@@ -289,7 +289,7 @@ createHIDDeviceInterface(io_object_t hidDevice, IOHIDDeviceInterface ***hdi)
 
   ioReturnValue = IOObjectGetClass(hidDevice, className);
 
-  print_errmsg_if_io_err(ioReturnValue, "Failed to get class name.");
+  //print_errmsg_if_io_err(ioReturnValue, "Failed to get class name.");
 
   ioReturnValue = IOCreatePlugInInterfaceForService(
                                                     hidDevice,
@@ -305,8 +305,7 @@ createHIDDeviceInterface(io_object_t hidDevice, IOHIDDeviceInterface ***hdi)
                                                     plugInInterface,
                                                     CFUUIDGetUUIDBytes(kIOHIDDeviceInterfaceID),
                                                     (LPVOID)hdi);
-  print_errmsg_if_err(plugInResult != S_OK,
-                      "Failed to create device interface.\n");
+  //print_errmsg_if_err(plugInResult != S_OK,"Failed to create device interface.\n");
 
   (*plugInInterface)->Release(plugInInterface);
 }
@@ -334,7 +333,7 @@ setupAndRun(void)
   createHIDDeviceInterface(hidDevice, &hidDeviceInterface);
   cookies = getHIDCookies((IOHIDDeviceInterface122 **)hidDeviceInterface);
   ioReturnValue = IOObjectRelease(hidDevice);
-  print_errmsg_if_io_err(ioReturnValue, "Failed to release HID.");
+  //print_errmsg_if_io_err(ioReturnValue, "Failed to release HID.");
 
   if (hidDeviceInterface == NULL) {
     fprintf(stderr, "No HID.\n");
