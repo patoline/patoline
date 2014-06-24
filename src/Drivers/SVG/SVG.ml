@@ -290,7 +290,7 @@ let draw ?fontCache ?dynCache prefix w h contents=
       Rbuffer.add_string svg_buf
         (Printf.sprintf "<g transform=\"translate(%g,%g) scale(%g,%g)\"><foreignObject x=\"0\" y=\"0\" width=\"%d\" height=\"%d\" preserveAspectRatio=\"xMinYMin slice\" href=\"%s\">
 <body xmlns=\"http://www.w3.org/1999/xhtml\" style=\"margin: 0; padding: 0\">
-<video id=\"sampleMovie\" style=\"display: block; margin: auto;\" src=\"%s\"></video>
+<video id=\"sampleMovie\" autoplay=\"true\" style=\"display: block; margin: auto;\" src=\"%s\"></video>
 </body>
 </foreignObject></g>"
            i.video_x (offset-.i.video_y-.i.video_height)
@@ -549,7 +549,7 @@ if(current_slide > 0 && (current_state<=0 || e.keyCode==38)) {
 if(e.keyCode==39 || e.keyCode==40 || e.keyCode==34){
 if(current_slide < %d && (current_state>=states[current_slide]-1 || e.keyCode==40)) {
   loadSlide(current_slide+1,0)
-} else if (current_state < states.length - 1) {
+} else if (current_state < states[current_slide] - 1) {
   loadSlide(current_slide,current_state+1)
 }
 } else //right

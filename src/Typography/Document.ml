@@ -1016,7 +1016,8 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
-  if (Unix.stat (tmp^"-1.png")).Unix.st_mtime
+  if not (Sys.file_exists (tmp^"-1.png")) ||
+    (Unix.stat (tmp^"-1.png")).Unix.st_mtime
     < (Unix.stat imageFile).Unix.st_mtime then (
       let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
       ()
