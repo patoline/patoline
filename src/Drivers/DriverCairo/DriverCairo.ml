@@ -33,7 +33,9 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let width,height=x.pageFormat in
     let widthf= (width*. !pixels_per_mm) and heightf= (height*. !pixels_per_mm) in
     let width=int_of_float widthf and height=int_of_float heightf in
-    let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width ~height in
+    let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width:(width*3)
+      ~height:(height*3)
+    in
     let ctx = Cairo.create surface in
 
     let rec draw_page x=match x with
@@ -93,6 +95,23 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
       | Dynamic d::s ->
 	draw_page (d.dyn_contents ()@s)
       | (Video _|States _|Image _)::s -> draw_page s
+      | Affine a::s->(
+        let x0=0.
+        and y0= -.heightf in
+        let x1=a.affine_matrix.(0).(0)*.x0 +. a.affine_matrix.(0).(1)*.y0
+        and y1=a.affine_matrix.(1).(0)*.x0 +. a.affine_matrix.(1).(1)*.y0 in
+        let open Cairo in
+        Cairo.transform ctx
+          {xx=a.affine_matrix.(0).(0);
+           yx= -.a.affine_matrix.(1).(0);
+           xy= -.a.affine_matrix.(0).(1);
+           yy=a.affine_matrix.(1).(1);
+           x0=a.affine_matrix.(0).(2)*. !pixels_per_mm -.x1;
+           y0= heightf -. a.affine_matrix.(1).(2)*. !pixels_per_mm +.y1;
+          };
+	draw_page a.affine_contents;
+        Cairo.identity_matrix ctx;
+        draw_page s)
       | []->()
     in
     draw_page (drawing_sort x.pageContents);
