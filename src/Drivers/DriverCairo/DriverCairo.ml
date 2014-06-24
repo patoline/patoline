@@ -33,8 +33,8 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let width,height=x.pageFormat in
     let widthf= (width*. !pixels_per_mm) and heightf= (height*. !pixels_per_mm) in
     let width=int_of_float widthf and height=int_of_float heightf in
-    let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width:(width*3)
-      ~height:(height*3)
+    let surface = Cairo.image_surface_create Cairo.FORMAT_ARGB32 ~width:(width)
+      ~height:(height)
     in
     let ctx = Cairo.create surface in
 
