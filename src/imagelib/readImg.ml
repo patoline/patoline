@@ -1,7 +1,7 @@
 open Filename
 open Image
-open Png
-open Ppm
+open ImagePNG
+open ImagePPM
 open FilenameExtra
 
 let size fn =
