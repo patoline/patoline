@@ -677,14 +677,22 @@ module Format=functor (D:Document.DocumentStructure)->(
 	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
 	[]
 
-    let lang_ML keywords specials s =
-      let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
-      List.rev (List.fold_left (fun a x ->
-	match x with
-            T (s,_) as x when List.mem s keywords -> bold [x]@a
-	| x -> x::a) [] l)
+    let lang_ML (keywords: string list) (specials: char list) (lines: string list) : content list =
+      let do_one s =
+        let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
+        List.rev (List.fold_left (fun a x ->
+	  match x with
+          | T (s,_) as x when List.mem s keywords -> bold [x]@a
+	  | x -> x::a) [] l)
+      in
+        List.flatten (List.map (fun s -> do_one s @ break ()) lines)
 
-    let lang_default str = split_space (fun _ -> true) (fun _ -> false) str
+    let lang_default (lines: string list) : content list =
+      List.flatten (
+        List.map (fun str ->
+          split_space (fun _ -> true) (fun _ -> false) str
+          @ break ())
+        lines)
 
     let lang_SML s=
       let specials = ['(' ; ')' ; ';' ; ','] in

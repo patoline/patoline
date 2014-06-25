@@ -234,7 +234,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		      let lines = mk_length lines nb_lines in
 		      let acc = List.fold_left (fun acc line ->
 			let para=Paragraph 
-			  {par_contents=next () @ (lang line);
+			  {par_contents=next () @ (lang [line]);
 			   par_env=(fun e -> e);
 			   par_post_env=(fun env1 env2 -> 
 			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
@@ -254,7 +254,7 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		  in
        		  (List.fold_left (fun acc line ->
 		    let para=Paragraph
-		      {par_contents= arrow @ (lang_default line) ;
+		      {par_contents= arrow @ (lang_default [line]) ;
 		       par_env=(fun env -> {env with size = env.size *. 0.8});
 		       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
 		       par_parameters=ragged_left;
