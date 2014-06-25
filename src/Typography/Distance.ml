@@ -1141,7 +1141,7 @@ let read_cache filename =
     distance_cache.profile_cache <- cache.profile_cache;
     distance_cache.distance_cache <- cache.distance_cache;
   with
-    Sys_error _ ->
+    Sys_error _ | End_of_file ->
       distance_cache.generation <- 0;
       distance_cache.profile_cache <- Profile_cache.empty;
       distance_cache.distance_cache <-Distance_cache.empty
