@@ -16,7 +16,7 @@ LIBFONTS_DIR := $(d)/Fonts
 CESURE_DIR := $(d)/cesure
 
 # Visit subdirectories
-MODULES := Rbuffer Util Fonts Typography Drivers Patoline Pdf cesure Format \
+MODULES := Rbuffer Util imagelib Fonts Typography Drivers Patoline Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

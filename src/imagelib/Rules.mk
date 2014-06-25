@@ -53,7 +53,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-imglib
 .PHONY: install-imglib
-install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.a $(IMGLIB_CMI) $(IMBLIB_CMX) $(IMGLIB_CMO)
+install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.a $(d)/META $(IMGLIB_CMI) $(IMBLIB_CMX) $(IMGLIB_CMO)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 
