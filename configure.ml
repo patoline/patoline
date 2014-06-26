@@ -265,8 +265,7 @@ let patoline_driver_gl =
   }
 let patoline_driver_image =
   { name = "Image";
-    needs = [Package "camlimages.all_formats"; Package "camomile";
-      Package "lablgl"; Package "lablgl.glut"];
+    needs = [Package "camlimages.all_formats"; Package "lablgl"; Package "lablgl.glut"];
     suggests = [];
     internals = [Driver patoline_driver_gl];
     autometa = true }

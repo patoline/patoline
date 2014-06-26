@@ -17,15 +17,12 @@
   You should have received a copy of the GNU General Public License
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
-open CamomileLibrary
 open Printf
 open FTypes
 open OutputCommon
 open Box
 open Document
 open Util
-module Buf=UTF8.Buf
-
 
 module type Driver=sig
   val output : ?structure:structure -> page array -> string -> unit

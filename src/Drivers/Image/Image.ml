@@ -18,7 +18,6 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open Typography
-open CamomileLibrary
 open FTypes
 open OutputCommon
 open OutputPaper
