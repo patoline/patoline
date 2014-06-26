@@ -699,7 +699,9 @@ and output_list parser_pp from where no_indent lvl docs =
 	      Printf.sprintf "verb_counter \"verb_file_%s\" @" f
 	  in
             Printf.fprintf where
-	      "let _ = newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s %s [\"%s\"]);;\n"
+	      "let _ = List.iter (fun line ->
+                 newPar D.structure ~environment:verbEnv Complete.normal ragged_left (%s line))
+                 (%s [\"%s\"]);;\n"
 	      linenum lang
               (String.concat "\";\""
                  (List.map String.escaped lines))

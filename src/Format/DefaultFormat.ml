@@ -671,13 +671,13 @@ module Format=functor (D:Document.DocumentStructure)->(
       C (fun env ->
 	let line = string_of_int (get_line env) in
 	let miss = 4 - String.length line in
-	[glue_space miss; tT line;tT " "])::
+	glue_space miss ::  color OutputCommon.(mix 0.5 white black) [tT line] @ [tT " "])::
       Env (fun env ->
 	let line = get_line env in
 	{env with counters = StrMap.add filename (-1,[line+1]) env.counters})::
 	[]
 
-    let lang_ML (keywords: string list) (specials: char list) (lines: string list) : content list =
+    let lang_ML (keywords: string list) (specials: char list) (lines: string list) : content list list =
       let do_one s =
         let l = split_space is_letter_ml (fun c -> List.mem c specials) s in
         List.rev (List.fold_left (fun a x ->
@@ -685,14 +685,12 @@ module Format=functor (D:Document.DocumentStructure)->(
           | T (s,_) as x when List.mem s keywords -> bold [x]@a
 	  | x -> x::a) [] l)
       in
-        List.flatten (List.map (fun s -> do_one s @ break ()) lines)
+        List.map do_one lines
 
-    let lang_default (lines: string list) : content list =
-      List.flatten (
-        List.map (fun str ->
-          split_space (fun _ -> true) (fun _ -> false) str
-          @ break ())
-        lines)
+    let lang_default (lines: string list) : content list list =
+      List.map (fun str ->
+        split_space (fun _ -> true) (fun _ -> false) str
+        ) lines
 
     let lang_SML s=
       let specials = ['(' ; ')' ; ';' ; ','] in

@@ -234,14 +234,14 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		      let lines = mk_length lines nb_lines in
 		      let acc = List.fold_left (fun acc line ->
 			let para=Paragraph 
-			  {par_contents=next () @ (lang [line]);
+			  {par_contents=next () @ line;
 			   par_env=(fun e -> e);
 			   par_post_env=(fun env1 env2 -> 
 			     { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
 			   par_parameters=ragged_left;
 			   par_badness=badness;
 			   par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-			in up (newChildAfter acc para)) (Node empty, []) lines
+			in up (newChildAfter acc para)) (Node empty, []) (lang lines)
 		   in		
 		  let lines = match extra with None -> []
 		  | Some f ->
@@ -254,13 +254,13 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 		  in
        		  (List.fold_left (fun acc line ->
 		    let para=Paragraph
-		      {par_contents= arrow @ (lang_default [line]) ;
+		      {par_contents= arrow @ line ;
 		       par_env=(fun env -> {env with size = env.size *. 0.8});
 		       par_post_env=(fun env1 env2 -> { env1 with names=names env2; counters=env2.counters; user_positions=user_positions env2 });
 		       par_parameters=ragged_left;
 		       par_badness=badness;
 		       par_completeLine=Complete.normal; par_states=[]; par_paragraph=(-1) }
-		    in up (newChildAfter acc para)) acc lines)))))]))
+		    in up (newChildAfter acc para)) acc (lang_default lines))))))]))
 
 let ocaml_dir () =
   let sessid = match !Db.sessid with 
