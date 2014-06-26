@@ -758,9 +758,8 @@ let process_each_file l=
               Unix.stderr
             in
 	    let transmitted = [ Sys.sighup; Sys.sigterm ] in
-	    Printf.printf "set signal\n%!";
 	    let saved = List.map (fun n -> Sys.signal n (Sys.Signal_handle (fun n ->
-	      Printf.printf "received %d\n%!" n; Unix.kill pid n))) transmitted in
+	      Unix.kill pid n))) transmitted in
 	    let rec fn () = 
 	      try 
 		Unix.waitpid [] pid;
