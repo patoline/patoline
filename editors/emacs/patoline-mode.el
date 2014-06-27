@@ -213,8 +213,8 @@
 
 (add-hook 'patoline-mode-hook (lambda () (progn
                                            (flyspell-mode t)
-                                           (setq comment-start "(*")
-                                           (setq comment-end "*)"))))
+                                           (set (make-local-variable 'comment-start) "(*")
+                                           (set (make-local-variable 'comment-end) "*)"))))
 
 
 (defvar patoline-mode-syntax-table
