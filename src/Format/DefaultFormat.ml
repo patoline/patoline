@@ -160,86 +160,38 @@ let alegreya=
     );
   ]
 
-let philosopher=[
+let simpleFont name = [
   Regular,
   (
     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-          FontPattern.({family="Philosopher"; slant=Roman; weight=Regular})
+          FontPattern.({family=name; slant=Roman; weight=Regular})
     )),
     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-          FontPattern.({family="Philosopher"; slant=Italic; weight=Regular})
+          FontPattern.({family=name; slant=Italic; weight=Regular})
     ))
   );
 
   Bold,
   (
     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-          FontPattern.({family="Philosopher"; slant=Roman; weight=Bold})
+          FontPattern.({family=name; slant=Roman; weight=Bold})
     )),
     simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-          FontPattern.({family="Philosopher"; slant=Italic; weight=Bold})
+          FontPattern.({family=name; slant=Italic; weight=Bold})
     ))
   );
 ]
 
-let texgyrecursor=
-  [
-    Regular,
-    (
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="TeX Gyre Cursor"; slant=Roman; weight=Regular})
-      )),
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="TeX Gyre Cursor"; slant=Italic; weight=Regular})
-      ))
-    );
-
-    Bold,
-    (
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="TeX Gyre Cursor"; slant=Roman; weight=Bold})
-      )),
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="TeX Gyre Cursor"; slant=Italic; weight=Bold})
-      ))
-    );
-
-  ]
-
-let bitstreamverasansmono=
-  [
-    Regular,
-    (
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Roman; weight=Regular})
-      )),
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Italic; weight=Regular})
-      ))
-    );
-
-    Bold,
-    (
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Roman; weight=Bold})
-      )),
-      simpleFamilyMember (fun ()->Fonts.loadFont (findFont
-            FontPattern.({family="Bitstream Vera Sans Mono"; slant=Italic; weight=Bold})
-      ))
-    );
-
-  ]
+let philosopher=simpleFont "Philosopher"
+let dejaVuSerif=simpleFont "DejaVu Serif"
+let dejaVuSans=simpleFont "DejaVu Sans"
+let dejaVuSansMono=simpleFont "DejaVu Sans Mono"
+let dejaVuSerif=simpleFont "DejaVu Serif Condensed"
+let dejaVuSans=simpleFont "DejaVu Sans Condensed"
+let texgyrecursor=simpleFont "TeX Gyre Cursor"
+let bitstreamverasansmono=simpleFont "Bitstream Vera Sans Mono"
 
 let all_fonts = [alegreya; texgyrecursor] (* trick to force same type *)
-
-let font_size_ratio font1 font2 =
-  let x_h f =
-    let f,_,_,_ = Lazy.force (fst (List.assoc Regular f)) in
-    let x=Fonts.loadGlyph f
-      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'x'}) in
-    Fonts.glyph_y1 x -.  Fonts.glyph_y0 x
-  in
-  x_h font1 /. x_h font2
 
 let parameters env paragraphs figures last_parameters last_figures last_users (last_line:line) (line:line)=
   let frame_measure=env.normalMeasure in

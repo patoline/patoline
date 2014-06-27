@@ -7,8 +7,8 @@ install: install-fonts
 
 install-fonts:
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/
-	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/DejaVuSans
-	install -p -m 644 Fonts/DejaVuSans/DejaVuSansMono.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/DejaVuSans/DejaVuSansMono.otf
+	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/DejaVu-2.34
+	install -p -m 644 Fonts/DejaVu-2.34/*.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/DejaVu-2.34
 	install -p -m 755 -d $(DESTDIR)/$(INSTALL_FONT_DIR)/Asana-Math
 	install -p -m 644 Fonts/Asana-Math/Asana-Math.ttf $(DESTDIR)/$(INSTALL_FONT_DIR)/Asana-Math/Asana-Math.ttf
 	install -p -m 644 Fonts/Asana-Math/Asana-Math.otf $(DESTDIR)/$(INSTALL_FONT_DIR)/Asana-Math/Asana-Math.otf
