@@ -107,7 +107,7 @@ let show_string_hex s =
     let v = int_of_char s.[i] in
     Printf.fprintf stderr "%s%x" (if v < 16 then "0" else "") v;
     incr count;
-    Printf.fprintf stderr
+    Printf.fprintf stderr "%s"
       (if !count mod 16 = 0 then "\n" else " ")
   done;
   if !count mod 16 <> 0 then Printf.fprintf stderr "\n";
