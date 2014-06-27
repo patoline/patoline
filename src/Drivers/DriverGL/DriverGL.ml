@@ -113,7 +113,7 @@ let flou_y () =
     VRGB_SAA | VBGR_SAA -> 1.0 /. 2.0 | _ -> 1.0 /. 2.0
 
 let rec last = function
-[] -> assert false
+  | [] -> assert false
   | [x] -> x
   | _::l -> last l
     
@@ -171,6 +171,7 @@ let add_normals closed ratio beziers =
     let tesselation_factor = !prefs.tesselation_factor  in
   
     if closed then
+      let beziers = List.filter (fun bs -> bs <> []) beziers in
       let beziers = Bezier.oriente beziers in
       List.split (List.map (fun (bs, orientation) -> 
 	let bs = List.flatten (List.map (Bezier.subdivise (tesselation_factor *. ratio)) bs) in

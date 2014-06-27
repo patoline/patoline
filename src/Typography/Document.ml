@@ -618,22 +618,22 @@ let alternative ?features alt t =
     in
     envAlternative features alt env), t)]
 
-let envFamily fam env =
-  let font,str,subs,pos = selectFont fam env.fontAlternative env.fontItalic in
-  let env = { env with fontFamily = fam } in
-  updateFont env font str subs pos
-
-let family fam t =
-  [Scoped ((fun env -> envFamily fam env), t)]
-
 let font_size_ratio font1 font2 =
   let x_h f =
     let f,_,_,_ = Lazy.force (fst (List.assoc Regular f)) in
     let x=Fonts.loadGlyph f
-      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'x'}) in
+      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'X'}) in
     Fonts.glyph_y1 x -.  Fonts.glyph_y0 x
   in
   x_h font1 /. x_h font2
+
+let envFamily fam env =
+  let font,str,subs,pos = selectFont fam env.fontAlternative env.fontItalic in
+  let env = { env with fontFamily = fam; size = font_size_ratio env.fontFamily fam *. env.size } in
+  updateFont env font str subs pos
+
+let family fam t =
+  [Scoped ((fun env -> envFamily fam env), t)]
 
 let envMonoFamily fam env =
   { env with 

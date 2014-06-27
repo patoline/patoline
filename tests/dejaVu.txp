@@ -1,7 +1,8 @@
 
 \Caml(
 let _=D.defaultEnv := 
-    let env = !D.defaultEnv in 
+    let env = !D.defaultEnv in
+    let env = envFamily dejaVuSerif env in
     let env = envMonoFamily dejaVuSansMono env in
     (* le fontMonoRatio calculé est un peu gros, on corrige : *)
     { env with fontMonoRatio = env.fontMonoRatio *. 0.95 }
