@@ -305,18 +305,21 @@ let rec can_build_driver d =
     | Driver d' -> can_build_driver d'
   in List.iter (fun a -> ignore (check_need a)) d.suggests;
   let found, missing = List.partition check_need d.needs in
-  if List.exists (fun x->x.name==d.name) !r_patoline_drivers
-    && missing = [] then
-    true
+  if List.exists (fun x->x.name==d.name) !r_patoline_drivers && missing = []
+  then true
   else (
     Printf.eprintf "Warning: driver %s not build because %s are missing\n"
       d.name
-      (String.concat ", " (List.map (function
+      (String.concat ", " (List.filter (fun s -> String.length s > 0) (List.map (function
       | Package pack  -> 
-	let n = Hashtbl.find patoline_uses_packages pack in
-	n.pack_name ^ " " ^ n.additional_check_string
-      | Driver d -> d.name ^ " driver") missing));
-    false)
+        (try
+           let n = Hashtbl.find patoline_uses_packages pack in
+           n.pack_name ^ " " ^ n.additional_check_string
+         with
+           _ -> "nothing?")
+      | Driver d -> d.name ^ " driver") missing)));
+    false
+  )
 
 (* Generates contents for a -package option for ocamlfind, using the argument
  * needs.
