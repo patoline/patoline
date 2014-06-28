@@ -184,12 +184,13 @@ module ReadPNG : ReadImage = struct
    * Returns chunck data.
    *)
   let read_chunck ich =
-    let length = int_of_str4 (get_bytes ich 4) in
-    if length > 2147483647 then
+    let length = int32_of_str4 (get_bytes ich 4) in
+    if length > 2147483647l then
       raise (Corrupted_Image "Size of chunck greater that 2^31 - 1...");
+    let length = Int32.to_int length in (* FIXME unsafe for large chunks *)
     let data = get_bytes ich (length + 4) in
     let str_crc = get_bytes ich 4 in
-    let expected_crc = Int32.of_int (int_of_str4 str_crc) in
+    let expected_crc = int32_of_str4 str_crc in
     let crc = png_crc data (length + 4) in
     if expected_crc <> crc then
       raise (Corrupted_Image "CRC error...");
@@ -202,6 +203,7 @@ module ReadPNG : ReadImage = struct
    * Returns IHDR data.
    *)
   let data_from_ihdr s =
+    (* FIXME problem with very wide images (more that 2^30 - 1 pixels) *)
     let image_width        = int_of_str4(String.sub s 0 4) in
     let image_height       = int_of_str4(String.sub s 4 4) in
     let bit_depth          = int_of_char s.[8] in
