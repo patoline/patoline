@@ -309,7 +309,7 @@ let rec can_build_driver d =
     && missing = [] then
     true
   else (
-    Printf.printf "Warning: driver %s not build because %s are missing\n"
+    Printf.eprintf "Warning: driver %s not build because %s are missing\n"
       d.name
       (String.concat ", " (List.map (function
       | Package pack  -> 
@@ -399,11 +399,11 @@ let _=
 
   let has_glr = ocamlfind_has "glr" in
   if not has_glr then 
-    Printf.printf "warning: glr is missing: the new EXPERIMENTAL parser of patoline will not be installed\n";
+    Printf.eprintf "Warning: glr is missing: the new EXPERIMENTAL parser of patoline will not be installed\n";
 
   let has_fontconfig = ocamlfind_has "fontconfig" in
   if not has_fontconfig then 
-    Printf.printf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
+    Printf.eprintf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
 
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config2.ml" in
