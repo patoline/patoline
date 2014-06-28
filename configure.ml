@@ -81,6 +81,7 @@ type findlib_package =
      * the first package name yields no result. *)
     known_aliases : string list;
     additional_check : string -> string -> bool;
+    additional_check_string : string (* a message to report additional check failure *)
   }
 
 let package_no_check _ _ = true
@@ -152,32 +153,37 @@ let patoline_uses_packages =
     {
       pack_name = "camomile";
       known_aliases = [];
-      additional_check = package_min_version "0.8.3"
+      additional_check = package_min_version "0.8.3";
+      additional_check_string = "version >= 0.8.3";
     };
     {
       pack_name = "zip";
       known_aliases = ["camlzip"];
       additional_check = package_no_check;
+      additional_check_string = "";
     };
     {
       pack_name = "cairo";
       known_aliases = ["ocaml-cairo"];
       additional_check = package_no_check;
+      additional_check_string = "";
     };
     {
       pack_name = "lablgl";
       known_aliases = ["lablGL"];
       additional_check = package_no_check;
+      additional_check_string = "";
     };
     {
       pack_name = "lablgl.glut";
       known_aliases = ["lablGL.glut"];
       additional_check = package_no_check;
+      additional_check_string = "";
     };
     {
       pack_name = "fontconfig";
       known_aliases = [];
-      additional_check = fun package alias ->
+      additional_check = (fun package alias ->
         let fontconfig_min_version = "0~20131103" in
         if Findlib.package_property [] alias "version" = "0.1" then
           (
@@ -185,7 +191,8 @@ let patoline_uses_packages =
               fontconfig_min_version;
             false
           )
-        else package_min_version fontconfig_min_version package alias
+        else package_min_version fontconfig_min_version package alias);
+      additional_check_string = "version >= 0~20131103";
     };
   ];
   res
@@ -297,8 +304,19 @@ let rec can_build_driver d =
     | Package p -> ocamlfind_has p
     | Driver d' -> can_build_driver d'
   in List.iter (fun a -> ignore (check_need a)) d.suggests;
-  List.exists (fun x->x.name==d.name) !r_patoline_drivers
-    && List.for_all check_need d.needs
+  let found, missing = List.partition check_need d.needs in
+  if List.exists (fun x->x.name==d.name) !r_patoline_drivers
+    && missing = [] then
+    true
+  else (
+    Printf.printf "Warning: driver %s not build because %s are missing\n"
+      d.name
+      (String.concat ", " (List.map (function
+      | Package pack  -> 
+	let n = Hashtbl.find patoline_uses_packages pack in
+	n.pack_name ^ " " ^ n.additional_check_string
+      | Driver d -> d.name ^ " driver") missing));
+    false)
 
 (* Generates contents for a -package option for ocamlfind, using the argument
  * needs.
@@ -364,20 +382,28 @@ let _=
   in
 
   if not (ocamlfind_has "camomile") then (
-    Printf.fprintf stderr "error: package camomile missing.\n";
+    Printf.eprintf "Error: package camomile missing.\n";
     exit 1
   );
 
   let has_mysql = ocamlfind_has "mysql" in
   if not has_mysql then (
-    Printf.fprintf stderr "warning: package mysql missing, Patonet will not support Mysql storage\n";
+    Printf.eprintf "Warning: package mysql missing, Patonet will not support Mysql storage\n";
   );
 
 
   let has_sqlite3=ocamlfind_has "sqlite3" in
   if not has_sqlite3 then (
-    Printf.fprintf stderr "warning: package sqlite3 missing, Patonet and Bibi will not support sqlite storage\n";
+    Printf.eprintf "Warning: package sqlite3 missing, Patonet and Bibi will not support sqlite storage\n";
   );
+
+  let has_glr = ocamlfind_has "glr" in
+  if not has_glr then 
+    Printf.printf "warning: glr is missing: the new EXPERIMENTAL parser of patoline will not be installed\n";
+
+  let has_fontconfig = ocamlfind_has "fontconfig" in
+  if not has_fontconfig then 
+    Printf.printf "Warning: fontconfig is missing, patoline will not use it to search for fonts\n";
 
   let config=open_out "src/Typography/Config.ml" in
   let config'=open_out "src/Patoline/Config2.ml" in
@@ -452,12 +478,11 @@ let _=
   Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
 
   (* Enable compilation of pa_patoline if glr is installed *)
-  Printf.fprintf make "PA_PATOLINE := %s\n" (if ocamlfind_has "glr" then "src/Patoline/pa_patoline" else "");
+  Printf.fprintf make "PA_PATOLINE := %s\n" (if has_glr then "src/Patoline/pa_patoline" else "");
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)
-  Printf.fprintf make "FINDFONT := %s\n"
-    (if ocamlfind_has "fontconfig" then "ConfigFindFontFC" else "ConfigFindFontLeg");
+  Printf.fprintf make "FINDFONT := %s\n" (if has_fontconfig then "ConfigFindFontFC" else "ConfigFindFontLeg");
   close_out make;
 
   (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
