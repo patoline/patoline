@@ -101,7 +101,7 @@ module PNG_Zlib = struct
     (* let fcheck = flg mod 32 in (* useless *)*)
     let fdict = (flg mod 64) lsr 5 in
     (* let flevel = flg lsr 6 in (* useless, only an indication *)*)
-    let adler32sum = Int32.of_int (int_of_str4 checksum) in
+    let adler32sum = int32_of_str4 checksum in
   
     (* Checks *)
     if (cmf * 256 + flg) mod 31 <> 0

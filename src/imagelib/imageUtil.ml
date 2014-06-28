@@ -150,6 +150,20 @@ let int_of_str4 s =
 ;;
 
 (*
+ * Converts a string of size 4 into an Int32.
+ * Arguments:
+ *   - s : the string (should have size 4 at least).
+ * Returns an Int32.
+ *)
+let int32_of_str4 s =
+  let (<<) = Int32.shift_left in
+  let (++) = Int32.add in
+  ((Int32.of_int (int_of_char s.[0])) << 24) ++
+  ((Int32.of_int (int_of_char s.[1])) << 16) ++
+  ((Int32.of_int (int_of_char s.[2])) << 8) ++
+  (Int32.of_int (int_of_char s.[3]))
+
+(*
  * Converts an integer into a string of length 4.
  * Arguments:
  *   - i : the integer
