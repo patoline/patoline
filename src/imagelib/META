@@ -1,6 +1,6 @@
 name="imagelib"
 version="1.0"
 description="A pure OCaml library for reading / writing images"
-requires="util"
+requires="camlzip,util"
 archive(native)="imagelib.cmxa"
 archive(byte)="imagelib.cma"

@@ -16,7 +16,7 @@ IMGLIB_MODS:= imageUtil image imagePPM imagePNG
 
 IMGLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(IMGLIB_MODS)))
 
-IMBLIB_CMO:=$(IMGLIB_ML:.ml=.cmo)
+IMGLIB_CMO:=$(IMGLIB_ML:.ml=.cmo)
 IMGLIB_CMX:=$(IMGLIB_ML:.ml=.cmx)
 IMGLIB_CMI:=$(IMGLIB_ML:.ml=.cmi)
 
@@ -53,7 +53,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-imglib
 .PHONY: install-imglib
-install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.a $(d)/META $(IMGLIB_CMI) $(IMBLIB_CMX) $(IMGLIB_CMO)
+install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.a $(d)/META $(IMGLIB_CMI) $(IMGLIB_CMX) $(IMGLIB_CMO)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 
