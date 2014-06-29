@@ -244,6 +244,8 @@ and content=
   | Scoped of (environment->environment)*(content list)
 (** A scoped environment transformation, applied on a small list of contents. *)
 
+  | N of tree
+
 let env_accessed=ref false
 let bB f = B(f,ref None)
 let uB f = C(fun _->env_accessed:=true;[bB f])
@@ -1292,6 +1294,10 @@ let boxify buf nbuf env0 l=
         let _=boxify keep_cache env' p in
         boxify keep_cache env s
       )
+    | N _ :: s->(
+      failwith "boxify: wrong argument (N)";
+      (*boxify keep_cache env s*)
+    )
   in
   boxify true env0 l
 
@@ -1632,7 +1638,35 @@ let flatten ?(initial_path=[]) env0 str=
     match tree with
         Paragraph p -> (
           p.par_paragraph <- List.length !paragraphs;
-          add_paragraph env_ tree path p
+          if List.exists (function N _->true | _->false) p.par_contents then
+            begin
+              let rec collect_nodes l cur nodes=
+                match l with
+                    []->List.rev (if cur<>[] then
+                        (Paragraph { p with par_contents=List.rev cur })::nodes
+                      else nodes)
+                  | N n::s->collect_nodes s []
+                    (n::
+                       if cur<>[] then
+                         (Paragraph { p with par_contents=List.rev cur })::nodes
+                       else nodes
+                    )
+                  | h::s->collect_nodes s (h::cur) nodes
+              in
+              match collect_nodes p.par_contents [] [] with
+                  [Paragraph _]->add_paragraph env_ tree path p
+                | [Node n]->flatten flushes env_ path noindent (Node n)
+                | l->(
+                  let rec make_node i m l=match l with
+                      []->m
+                    | h::s->make_node (i+1) (IntMap.add i h m) s
+                  in
+                  flatten flushes env_ path noindent
+                    (Node { empty with children=make_node 0 IntMap.empty [] })
+                )
+            end
+          else
+            add_paragraph env_ tree path p
         )
       | FigureDef f -> (
         let env1=f.fig_env env_ in
