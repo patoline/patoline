@@ -316,7 +316,7 @@ let rec can_build_driver d =
            let n = Hashtbl.find patoline_uses_packages pack in
            n.pack_name ^ " " ^ n.additional_check_string
          with
-           _ -> "nothing?")
+           _ -> pack)
       | Driver d -> d.name ^ " driver") missing)));
     false
   )
