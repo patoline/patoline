@@ -1180,7 +1180,9 @@ let write_png fn img =
   let data = zlib_inflate_string data in
 
   let datalen = String.length data in
-  let max_idat_len = 2147483647 - 4 in (* 2^31 - 1 - 4 *)
+  let max_idat_len = 1048576 in (* 2^20 sould be enough *)
+  (* FIXME constant too big for 32 bit architectures...*)
+  (*let max_idat_len = 2147483647 - 4 in (* 2^31 - 1 - 4 *)*)
   let rec output_idat_from pos =
     if datalen - pos < max_idat_len
     then begin
