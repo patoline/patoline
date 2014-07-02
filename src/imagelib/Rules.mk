@@ -12,7 +12,7 @@ $(d)/%.depends: INCLUDES:=$(IMGLIB_INCLUDES)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
 # Building
-IMGLIB_MODS:= imageUtil image imagePPM imagePNG
+IMGLIB_MODS:= imageUtil image imagePPM imagePNG readImg
 
 IMGLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(IMGLIB_MODS)))
 
@@ -33,17 +33,21 @@ $(d)/readImg.cmx: $(d)/readImg.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(IMGLIB_INCLUDES) -o $@ -c $<
 
-$(d)/imagelib.cma: $(IMGLIB_CMO) $(d)/readImg.cmo
+$(d)/imagelib.cma: $(IMGLIB_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
 
-$(d)/imagelib.cmxa: $(IMGLIB_CMX) $(d)/readImg.cmx
+$(d)/imagelib.cmxa: $(IMGLIB_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) -a -o $@ $^
+	$(OCAMLOPT) -a -o $@ $^
+
+$(d)/imagelib.cmxs: $(IMGLIB_CMX)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(OCAMLOPT) -shared -o $@ $^
 
 
 # Building everything
-all: $(d)/imagelib.cmxa $(d)/imagelib.cma
+all: $(d)/imagelib.cmxa $(d)/imagelib.cma $(d)/imagelib.cmxs
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a

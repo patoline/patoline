@@ -724,26 +724,25 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	
     | Image i -> 
       Gl.enable `texture_2d;
-#ifdef CAMLIMAGES
       begin     
 	try 	  
 	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
 	with Not_found ->
-	  let image = Images.load i.image_file [] in
-	  let w,h=Images.size image in
-	  let image32 = match image with
-	      Images.Rgba32 i -> i
-	    | Images.Rgb24 i -> Rgb24.to_rgba32 i
-	    | _ -> failwith "Unsupported"
-	  in 
+	  let image = ReadImg.openfile i.image_file in
+	  let w,h=Image.(image.size) in
 	  let raw = Raw.create `ubyte ~len:(4*w*h) in
 	  for j=0 to h-1 do
             for i=0 to w-1 do
-	      let rgba = Rgba32.get image32 i j in
-	      Raw.set raw ((j * w + i) * 4 + 0) rgba.Color.color.Color.r;
-	      Raw.set raw ((j * w + i) * 4 + 1) rgba.Color.color.Color.g;
-	      Raw.set raw ((j * w + i) * 4 + 2) rgba.Color.color.Color.b;
-	      Raw.set raw ((j * w + i) * 4 + 3) rgba.Color.alpha;
+	      let r,g,b = Image.(
+		match image.pixels with 
+		  RGB t -> let c = t.(i).(j) in c.r, c.g, c.b
+		| GreyL t -> let g = t.(i).(j) in g,g,g)
+	      in
+	      let a = match Image.(image.alpha) with None -> 255 | Some t -> t.(i).(j) in 
+	      Raw.set raw ((j * w + i) * 4 + 0) r;
+	      Raw.set raw ((j * w + i) * 4 + 1) g;
+	      Raw.set raw ((j * w + i) * 4 + 2) b;
+	      Raw.set raw ((j * w + i) * 4 + 3) a;
 	    done
 	  done;
 	  let texture = GlPix.of_raw raw `rgba w h in  
@@ -756,7 +755,6 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlTex.parameter ~target:`texture_2d (`mag_filter `nearest);    
 	  Hashtbl.replace win.imageCache i tid
       end;
-#endif
       GlDraw.color (1.0,1.0,1.0);
       GlDraw.begins `quads;
       GlTex.coord2 (0., 1.);

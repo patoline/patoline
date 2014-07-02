@@ -18,7 +18,18 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 (* #FORMAT FormatArticle *)
-(* #PACKAGE netclient *)
+
+(* 
+  This example demonstrate the creation of a document that depends upon the 
+  web.
+
+  It requires ocamlnet
+
+  compile with 
+
+    patoline -package netclient xkcd.txp
+*)
+
 
 ===================================
 

@@ -86,6 +86,8 @@ type findlib_package =
 
 let package_no_check _ _ = true
 
+let local_packages = ["imagelib"]
+
 let package_min_version min_version package alias =
   (* parse_version splits a string representing a version number to a
    * tuple which can be compared to other version numbers using OCaml
@@ -264,14 +266,14 @@ and driver =
 
 let patoline_driver_gl =
   { name = "DriverGL";
-    needs =(Package "str")::(Package "camlimages.all_formats")::
+    needs =(Package "str")::(Package "zip")::(Package "imagelib")::
       (Package "lablgl")::(Package "lablgl.glut")::[];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
     autometa = true;
   }
 let patoline_driver_image =
-  { name = "Image";
+  { name = "DriverImage";
     needs = [Package "camlimages.all_formats"; Package "lablgl"; Package "lablgl.glut"];
     suggests = [];
     internals = [Driver patoline_driver_gl];
@@ -473,7 +475,7 @@ let _=
   (fun d ->
     Printf.fprintf make "PACK_DRIVER_%s := %s\n"
       d.name
-      (String.concat "," (gen_pack_line (d.needs @ d.suggests)))
+      (String.concat "," (gen_pack_line (List.filter (function Package p -> not (List.mem p local_packages) | _ -> true) (d.needs @ d.suggests))))
   )
   ok_drivers;
 
@@ -504,6 +506,18 @@ let _=
         close_out f
     end
   in
+  let gen_imagelib_driver () =
+    let meta_name = "src/imagelib/META" in
+    let f = open_out meta_name in
+    Printf.fprintf f "name=\"imagelib\"\n\nversion=\"1.0\"\ndescription=\"A pure OCaml library for reading / writing images\"\n";
+    let zip = if ocamlfind_has "zip" then snd (ocamlfind_query "zip") ^ "," else "" in
+    Printf.fprintf f "requires=\"%sutil\"\n" zip; 
+    Printf.fprintf f "archive(byte)=\"imagelib.cma\"\n";
+    Printf.fprintf f "archive(native)=\"imagelib.cmxa\"\n";
+    close_out f
+  in
+
+  gen_imagelib_driver ();
   List.iter gen_meta_driver !r_patoline_drivers;
 
   (* Generate the META file for Typography, which details package information
