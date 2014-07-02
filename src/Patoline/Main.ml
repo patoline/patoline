@@ -38,6 +38,7 @@ let ocamlopt=ref "ocamlopt"
 let recompile=ref false
 let quiet=ref false
 let main_ml=ref false
+let aliasDriver= [("Image", "DriverImage") ; ("GL", "DriverGL") ; ("Cairo", "DriverCairo")]
 open Language
 let spec =
   [("--extra-fonts-dir",Arg.String (fun x->extras_top:=x::"--extra-fonts-dir"::(!extras_top)),
@@ -291,7 +292,7 @@ let rec read_options_from_source_file f fread =
     deps= !deps;
     grammar= !grammar;
     format= !format;
-    driver= !driver;
+    driver= (try List.assoc !driver aliasDriver with Not_found -> !driver);
     comp_opts= !comp_opts;
     packages= !packages ;
     directories = !directories;
