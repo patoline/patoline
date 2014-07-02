@@ -52,7 +52,7 @@ $(filter-out $(d)/Break.cmo,$(TYPOGRAPHY_CMO)): %.cmo: %.ml
 	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(filter-out $(d)/Break.cmx,$(TYPOGRAPHY_CMX)): %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 $(d)/Break.cmo: $(d)/Break.ml
 	$(ECHO) "[OCAMLC] $< -> $@"

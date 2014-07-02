@@ -39,11 +39,11 @@ $(d)/imagelib.cma: $(IMGLIB_CMO)
 
 $(d)/imagelib.cmxa: $(IMGLIB_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(OCAMLOPT) -a -o $@ $^
+	$(Q)$(OCAMLOPT) -a -o $@ $^
 
 $(d)/imagelib.cmxs: $(IMGLIB_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
-	$(OCAMLOPT) -shared -o $@ $^
+	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 
 # Building everything

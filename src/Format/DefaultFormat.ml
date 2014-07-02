@@ -1897,7 +1897,6 @@ module MathsFormat=struct
                let (x0,y0,x1,y1)=OutputCommon.bounding_box_full dr in
                let drawn=(drawing ~offset:y0 dr) in
                let rul=(env.Mathematical.default_rule_thickness)*.env.Mathematical.mathsSize*.envs.size in
-               let w=(x1-.x0) in
                let xm=(x1+.x0)/.2. in
                let y=(y1-.y0)*.phi/.4. in
                  [Box.Drawing {

@@ -15,7 +15,7 @@ $(d)/Pdf.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 
 $(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cma: %.cma: %.cmo
 	$(ECHO) "[MKLIB]    $< -> $@"
