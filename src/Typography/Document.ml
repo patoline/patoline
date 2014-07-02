@@ -987,10 +987,8 @@ let button ?(btype=Clickable) name destinations b=bB (fun _->[Marker (BeginLink 
 
 (** {3 Images} *)
 
-#ifdef CAMLIMAGES
 let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
-  let image=(OImages.load imageFile []) in
-  let w,h=Images.size image#image in
+  let w,h = ReadImg.size imageFile in
   let fw,fh=
     if width=0. then
       if height=0. then
@@ -1016,7 +1014,7 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
          image_order=0
         }
   in
-  let img={
+  {
     drawing_min_width=fw;
     drawing_max_width=fw;
     drawing_nominal_width=fw;
@@ -1029,9 +1027,6 @@ let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[OutputCommon.Image i])
   }
-  in
-  image#destroy;
-  img
 
 let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile env=
   let tmp=(try Filename.chop_extension imageFile with _->imageFile) in
@@ -1041,8 +1036,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
       let _=Sys.command (Printf.sprintf "ffmpeg -i %s -t 1 -r 1 %s-%%d.png" imageFile tmp) in
       ()
     );
-  let image=(OImages.load (tmp^"-1.png") []) in
-  let w,h=Images.size image#image in
+  let w,h = ReadImg.size (tmp^"-1.png") in
   let fw,fh=
     if width=0. then
       if height=0. then
@@ -1068,7 +1062,7 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
          video_order=0
         }
   in
-  let img={
+  {
     drawing_min_width=fw;
     drawing_max_width=fw;
     drawing_nominal_width=fw;
@@ -1081,31 +1075,6 @@ let video ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offse
     drawing_badness=(fun _->0.);
     drawing_contents=(fun _->[OutputCommon.Video i])
   }
-  in
-  image#destroy;
-  img
-
-
-
-#else
-let image ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) (_:string) (_:environment)=
-  {
-    drawing_min_width=0.;
-    drawing_max_width=0.;
-    drawing_nominal_width=0.;
-    drawing_width_fixed = true;
-    drawing_adjust_before = false;
-    drawing_y0=0.;
-    drawing_y1=0.;
-    drawing_states=[];
-    drawing_break_badness=0.;
-    drawing_badness=(fun _->0.);
-    drawing_contents=(fun _->[])
-  }
-
-let video=image
-#endif
-
 
 let includeGraphics ?scale:(scale=0.) ?width:(width=0.) ?height:(height=0.) ?offset:(offset=0.) imageFile=
   [bB (fun env->[Drawing (image ~scale ~width ~height ~offset imageFile env)])]
