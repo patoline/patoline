@@ -704,7 +704,7 @@ module ReadPNG : ReadImage = struct
                if !debug then begin
                  Printf.fprintf stderr "gAMA chunck ignored\n%!"
                end
-           | "iCPP" ->
+           | "iCCP" ->
                only_once curr_ctype;
                is_not_first_chunck curr_ctype;
                only_before curr_ctype "PLTE";
