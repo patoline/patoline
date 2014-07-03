@@ -56,3 +56,18 @@ let openfile fn =
     then assert false
     else ReadPNG.openfile fn'
   end
+
+let writefile fn i =
+  let ext = String.lowercase (get_extension' fn) in
+  if List.mem ext ReadPNG.extensions
+  then write_png fn i else
+  if List.mem ext ReadPPM.extensions
+  then write_ppm fn i Binary else
+  begin
+    let fn' = temp_file "image" ".png" in
+    write_png fn' i;
+    let cmd = Printf.sprintf "convert %s %s" fn' fn in
+    let ret = Sys.command cmd in
+    if ret <> 0
+    then assert false;
+  end

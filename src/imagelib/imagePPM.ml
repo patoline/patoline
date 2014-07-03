@@ -188,7 +188,7 @@ type ppm_mode = Binary | ASCII
  * Warning: the alpha channel is ignored since it is not supported by the PPM
  * image format.
  *)
-let ppm_write fn img mode =
+let write_ppm fn img mode =
   let och = open_out_bin fn in
   let w, h = img.size in
 
