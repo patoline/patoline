@@ -261,7 +261,6 @@ and driver =
     internals: driver_needs list;
     (* Says whether configure.ml should generate the driver's META file from
      * this record, or rely on a preexisting META in the source tree. *)
-    autometa: bool;
   }
 
 let patoline_driver_gl =
@@ -270,31 +269,30 @@ let patoline_driver_gl =
       (Package "lablgl")::(Package "lablgl.glut")::[];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
-    autometa = true;
   }
 let patoline_driver_image =
   { name = "DriverImage";
     needs = [Package "camlimages.all_formats"; Package "lablgl"; Package "lablgl.glut"];
     suggests = [];
     internals = [Driver patoline_driver_gl];
-    autometa = true }
+  }
 
 let svg_driver =
-    { name = "SVG"; needs = []; suggests = []; internals = []; autometa = true }
+    { name = "SVG"; needs = []; suggests = []; internals = [] }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
 let r_patoline_drivers = ref
   [
-    { name = "None"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Pdf"; needs = [Package "camlimages.all_formats"]; suggests = [Package "zip"]; internals = []; autometa = false };
-    { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver]; autometa = true };
-    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = [] ; autometa = true };
+    { name = "None"; needs = []; suggests = []; internals = [] };
+    { name = "Pdf"; needs = []; suggests = [Package "zip"; Package "camlimages.all_formats"]; internals = [] };
+    { name = "Bin"; needs = []; suggests = []; internals = [] };
+    { name = "Html"; needs = []; suggests = []; internals = [] };
+    { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
+    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = []  };
     svg_driver; patoline_driver_gl;
-    { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver]; autometa = true };
-    { name = "Web"; needs = []; suggests = []; internals = [Driver svg_driver]; autometa = true };
+    { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver] };
+    { name = "Web"; needs = []; suggests = []; internals = [Driver svg_driver] };
     patoline_driver_image;
   ]
 
@@ -492,7 +490,7 @@ let _=
   (* Generate a .META file for the driver n with internal / external dependency intd / extd *)
   let driver_generated_metas = ref [] in
   let gen_meta_driver drv =
-    if can_build_driver drv && drv.autometa then begin
+    if can_build_driver drv then begin
       let meta_name = "src/Drivers/" ^ drv.name ^ "/" ^ drv.name ^ ".META" in
       driver_generated_metas := meta_name :: !driver_generated_metas;
       let f = open_out meta_name in
