@@ -11,23 +11,23 @@ $(d)/Pdf.cmx: %.cmx: %.cmo
 
 $(d)/Pdf.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_Pdf) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -package $(PACK_DRIVER_Pdf) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Pdf.cma: %.cma: %.cmo
 	$(ECHO) "[MKLIB]    $< -> $@"
-	$(Q)$(OCAMLC) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
+	$(Q)$(OCAMLC) $(PACK) -package $(PACK_DRIVER_Pdf) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
 
 $(d)/Pdf.cmxa: %.cmxa: %.cmx
 	$(ECHO) "[OMKLIB]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
+	$(Q)$(OCAMLOPT) $(PACK) -package $(PACK_DRIVER_Pdf) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES) -a -o $@ $<
 
 $(d)/Pdf.cmxs: %.cmxs: %.cmx
 	$(ECHO) "[SHARE]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES)  -linkpkg -shared -o $@ $<
+	$(Q)$(OCAMLOPT) $(PACK) -package $(PACK_DRIVER_Pdf) $(DRIVERS_INCLUDES) $(PDF_DRIVER_INCLUDES)  -linkpkg -shared -o $@ $<
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

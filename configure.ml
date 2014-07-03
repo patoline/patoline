@@ -287,7 +287,7 @@ let svg_driver =
 let r_patoline_drivers = ref
   [
     { name = "None"; needs = []; suggests = []; internals = []; autometa = true };
-    { name = "Pdf"; needs = []; suggests = [Package "zip"]; internals = []; autometa = false };
+    { name = "Pdf"; needs = [Package "camlimages.all_formats"]; suggests = [Package "zip"]; internals = []; autometa = false };
     { name = "Bin"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Html"; needs = []; suggests = []; internals = []; autometa = true };
     { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver]; autometa = true };
@@ -440,7 +440,6 @@ let _=
   );
   Printf.fprintf make "PACK := -package %s\n"
     (String.concat "," (gen_pack_line [Package "camomile"; Package "zip"; Package "mysql";
-                                       Package "camlimages.all_formats";
                                        Package "cairo"; Package "fontconfig"]));
 
   Printf.fprintf make "INSTALL_FONT_DIR := %s\n" !fonts_dir;
@@ -534,7 +533,7 @@ let _=
       "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"util,fonts,%s\"\n"
       (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
                                          Package "zip";
-                                         Package "camlimages.all_formats";
+                                         Package "imagelib";
                                          Package "fontconfig"]));
     Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
     Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
