@@ -38,7 +38,13 @@ let ocamlopt=ref "ocamlopt"
 let recompile=ref false
 let quiet=ref false
 let main_ml=ref false
-let aliasDriver= [("Image", "DriverImage") ; ("GL", "DriverGL") ; ("Cairo", "DriverCairo")]
+let shortDrivers = List.map (fun name ->
+  let len = String.length name in
+  if len > 6 && String.sub name 0 6 = "Driver" then String.sub name 6 (len - 6) else name) Config2.drivers
+let aliasDriver= 
+  List.filter (fun (c, c') -> c <> c')
+  (List.combine shortDrivers Config2.drivers)
+
 open Language
 let spec =
   [("--extra-fonts-dir",Arg.String (fun x->extras_top:=x::"--extra-fonts-dir"::(!extras_top)),
@@ -57,7 +63,7 @@ let spec =
      (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
    ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));
    ("--driver",Arg.String
-     (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver));
+     (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver) ^ (String.concat ", " shortDrivers));
    (*
    ("-c",Arg.Unit (fun ()->
      compile:=false;run:= false;
@@ -763,7 +769,7 @@ let process_each_file l=
 	      Unix.kill pid n))) transmitted in
 	    let rec fn () = 
 	      try 
-		Unix.waitpid [] pid;
+		let _ = Unix.waitpid [] pid in
 		List.iter2 (fun n s -> Sys.set_signal n s) transmitted saved
 	      with
 		Unix.Unix_error(Unix.EINTR,"waitpid",_) -> fn ()
