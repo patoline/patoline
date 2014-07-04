@@ -233,13 +233,14 @@ let ocamlfind_query =
         in
         Hashtbl.add checked pack res;
         if (fst res) then
-          Printf.printf " found (%s)\n" (snd res)
+          Printf.printf " found (%s%s)\n" (snd res) (if List.mem pack local_packages then " local" else "")
         else
           Printf.printf " not found\n";
         res
 
 (* Is a package ocamlfindable? *)
-let ocamlfind_has pack = fst (ocamlfind_query pack)
+let ocamlfind_has pack = 
+  List.mem pack local_packages || fst (ocamlfind_query pack)
 
 (* Listing Patoline drivers with their corresponding dependancies.
  * A driver may depend on some package found using ocamlfind, or on some other
