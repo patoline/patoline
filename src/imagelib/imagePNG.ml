@@ -484,7 +484,7 @@ module ReadPNG : ReadImage = struct
           let slunfilt = unfilter !ft bpp sl !prevsl in
           prevsl := Some slunfilt;
   
-          col := 0;
+          col := starting_col.(pass);
           slpos := 0;
           while !col < w do
             let pix = read_pix slunfilt !slpos in
