@@ -16,11 +16,11 @@ $(d)/DriverImage.cmx: %.cmx: %.cmo
 
 $(d)/DriverImage.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
 	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_DriverImage) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -package $(PACK_DRIVER_DriverImage) $(INCLUDES) -I $(IMAGELIB_DIR) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/DriverImage.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_DriverImage) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -package $(PACK_DRIVER_DriverImage) $(INCLUDES) -I $(IMAGELIB_DIR) -I $(<D) $(DRIVERS_INCLUDES) $(IMAGE_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/DriverImage.cma: $(PATOLINE_DIR)/Language.cmo $(d)/DriverImage.cmo
 	$(ECHO) "[MKLIB] ... -> $@"

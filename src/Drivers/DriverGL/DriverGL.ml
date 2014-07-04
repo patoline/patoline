@@ -733,12 +733,13 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  let raw = Raw.create `ubyte ~len:(4*w*h) in
 	  for j=0 to h-1 do
             for i=0 to w-1 do
-	      let r,g,b = Image.(
-		match image.pixels with 
-		  RGB t -> let c = t.(i).(j) in c.r, c.g, c.b
-		| GreyL t -> let g = t.(i).(j) in g,g,g)
-	      in
-	      let a = match Image.(image.alpha) with None -> 255 | Some t -> t.(i).(j) in 
+	      let p = Image.(read_pixel image i j) in
+	      let (>>) = Int32.shift_right in
+	      let (&&) = Int32.logand in
+	      let a  = Int32.to_int ((p >> 24) && 255l) in
+	      let b  = Int32.to_int ((p >> 16) && 255l) in
+              let g  = Int32.to_int ((p >> 8) && 255l) in
+              let r  = Int32.to_int (p && 255l) in
 	      Raw.set raw ((j * w + i) * 4 + 0) r;
 	      Raw.set raw ((j * w + i) * 4 + 1) g;
 	      Raw.set raw ((j * w + i) * 4 + 2) b;

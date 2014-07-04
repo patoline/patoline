@@ -22,8 +22,6 @@ open FTypes
 open OutputCommon
 open OutputPaper
 open Util
-open Rgba32
-open Color
 open Language
 
 let format = ref "png"
@@ -65,28 +63,22 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let pages = get_pixes 1 !width !height !saa in
     Array.iteri (fun page states -> Array.iteri (
       fun state (raw,w,h) ->
-	let _ = Array.create (w*h*100) 0 in
-	let image = Rgba32.create w h in
-	for j=0 to h-1 do	  
-          for i=0 to w-1 do
-	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
-	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
-	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
-	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
-	    let c = { color = { r = r; g = g; b = b }; alpha = a } in
-(*	    Printf.fprintf stderr "(%d,%d) %d %d %d %d\n%!" i j r g b a;*)
-	    Rgba32.set image i (h-1-j) c
+	let image = Image.create_rgb ~alpha:(Some 256) w h in
+        for i=0 to w-1 do
+	  for j=0 to h-1 do	  
+	    let r = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 0)) in
+	    let g = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 1)) in
+	    let b = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 2)) in
+	    let a = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 3)) in
+	    let (<<)  = Int32.shift_left in
+	    let (|||) = Int32.logor in
+	    let p = (((((a << 8) ||| b) << 8) ||| g) << 8) ||| r in
+	    Image.write_pixel image i (h - j - 1) p
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page state) in
 	Printf.fprintf stderr "Writing %s\n" fname;
-	let image = 
-	  if !format = "png" then
-	    Images.Rgba32 image
-	  else 
-	    Images.Rgb24 (Rgb24.of_rgba32 image)
-	in
-	Images.save fname None [] image) states) pages;
+	ReadImg.writefile fname image) states) pages;
     ()
   in
 
