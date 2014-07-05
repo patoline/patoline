@@ -2,7 +2,7 @@ open Pervasives
 open ImageUtil
 open Image
 
-let debug = ref true
+let debug = ref false
 
 let png_signature = "\137PNG\013\010\026\010"
 
@@ -464,11 +464,11 @@ module ReadPNG : ReadImage = struct
           col := !col + col_increment.(pass)
         done;
         flush_end_of_byte ();
-        Printf.fprintf stderr "scanline : ";
+(*        Printf.fprintf stderr "scanline : ";
         for blibli = 0 to (!slpos - 1) / 8 do
           print_byte (int_of_char sl.[blibli]);
         done;
-        Printf.fprintf stderr "\n%!";
+        Printf.fprintf stderr "\n%!";*)
   
         if !ft >= 0 then begin
           let bitlen = !slpos * pl_bit in
@@ -498,12 +498,13 @@ module ReadPNG : ReadImage = struct
         row := !row + row_increment.(pass)
       done
     done;
+(*
     for y = 0 to Array.length output - 1 do
       for x = 0 to String.length output.(y) - 1 do
         print_byte (int_of_char output.(y).[x])
       done;
       Printf.fprintf stderr "\n%!";
-    done;
+    done;*)
     output
 
   let openfile fn =
