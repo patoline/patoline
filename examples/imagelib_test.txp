@@ -1,0 +1,38 @@
+(*
+  Copyright Florian Hatat, Tom Hirschowitz, Pierre Hyvernat,
+  Pierre-Etienne Meunier, Christophe Raffalli, Guillaume Theyssier 2012.
+
+  This file is part of Patoline.
+
+  Patoline is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Patoline is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
+*)
+
+
+===================================
+ImageLib Test
+===================================
+
+
+\Caml(
+let files = Sys.readdir "test_images"
+let _ = Array.iter (fun fn ->
+  try 
+    if Str.(search_forward (regexp_string ".") fn 0 >= 2) then
+      let drawing env=drawing (draw_boxes env (boxify_scoped env (
+	Printf.printf "%s\n%!" fn;
+	includeGraphics ~height:40. ("test_images/" ^ fn)))) in
+      figure_here ~caption:[tT fn] drawing;
+  with Not_found -> ()) files
+)
+

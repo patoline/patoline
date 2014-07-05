@@ -63,17 +63,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
     let pages = get_pixes 1 !width !height !saa in
     Array.iteri (fun page states -> Array.iteri (
       fun state (raw,w,h) ->
-	let image = Image.create_rgb ~alpha:(Some 256) w h in
+	let image = Image.create_rgb ~alpha:true w h in
         for i=0 to w-1 do
-	  for j=0 to h-1 do	  
-	    let r = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 0)) in
-	    let g = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 1)) in
-	    let b = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 2)) in
-	    let a = Int32.of_int (Raw.get raw ((j * w + i) * 4 + 3)) in
-	    let (<<)  = Int32.shift_left in
-	    let (|||) = Int32.logor in
-	    let p = (((((a << 8) ||| b) << 8) ||| g) << 8) ||| r in
-	    Image.write_pixel image i (h - j - 1) p
+	  for j=0 to h-1 do
+	    let r = Raw.get raw ((j * w + i) * 4 + 0) in
+	    let g = Raw.get raw ((j * w + i) * 4 + 1) in
+	    let b = Raw.get raw ((j * w + i) * 4 + 2) in
+	    let a = Raw.get raw ((j * w + i) * 4 + 3) in
+	    Image.write_rgba_pixel image i (h - j - 1) r g b a
 	  done
 	done;
 	let fname = Filename.concat dirname (filename' fileName page state) in

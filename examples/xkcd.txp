@@ -19,23 +19,20 @@
 *)
 (* #FORMAT FormatArticle *)
 
-(* 
-  This example demonstrate the creation of a document that depends upon the 
-  web.
-
-  It requires ocamlnet
-
-  compile with 
-
-    patoline -package netclient xkcd.txp
-*)
-
 
 ===================================
 
 XKCD
 
 ===================================
+
+  This example demonstrate the creation of a document that depends upon the 
+  web.
+  It requires ocamlnet and can be compiled with 
+###
+    patoline -package netclient xkcd.txp
+###
+
 
 \Caml(
 open Http_client.Convenience

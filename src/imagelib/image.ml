@@ -38,7 +38,7 @@ let create_rgb
     ?(max_val=255)
     width
     height =
-  assert (max_val < 65535);
+  assert (max_val <= 65535);
   let create = if max_val <= 255 then create_pixmap8 
     else create_pixmap16
   in
@@ -59,7 +59,7 @@ let create_grey
     ?(max_val=255)
     width
     height =
-  assert (max_val < 65535);
+  assert (max_val <= 65535);
   let create = if max_val <= 255 then create_pixmap8 
     else create_pixmap16
   in

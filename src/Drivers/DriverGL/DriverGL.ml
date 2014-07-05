@@ -729,21 +729,24 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	  GlTex.bind_texture `texture_2d (Hashtbl.find win.imageCache i)
 	with Not_found ->
 	  let image = ReadImg.openfile i.image_file in
-	  let w,h=Image.(image.size) in
+	  let w =Image.(image.width) in
+	  let h =Image.(image.height) in
 	  let raw = Raw.create `ubyte ~len:(4*w*h) in
 	  for j=0 to h-1 do
             for i=0 to w-1 do
-	      let p = Image.(read_pixel image i j) in
-	      let (>>) = Int32.shift_right in
-	      let (&&) = Int32.logand in
-	      let a  = Int32.to_int ((p >> 24) && 255l) in
-	      let b  = Int32.to_int ((p >> 16) && 255l) in
-              let g  = Int32.to_int ((p >> 8) && 255l) in
-              let r  = Int32.to_int (p && 255l) in
-	      Raw.set raw ((j * w + i) * 4 + 0) r;
-	      Raw.set raw ((j * w + i) * 4 + 1) g;
-	      Raw.set raw ((j * w + i) * 4 + 2) b;
-	      Raw.set raw ((j * w + i) * 4 + 3) a;
+	      Image.(read_rgba_pixel image i j (fun ~r ~g ~b ~a ->
+		let r,g,b,a = 
+		  if image.max_val <> 255 then
+		    (r * 256) / image.max_val,
+		    (g * 256) / image.max_val,
+		    (b * 256) / image.max_val,
+		    (a * 256) / image.max_val
+		  else r,g,b,a
+		in
+		Raw.set raw ((j * w + i) * 4 + 0) r;
+		Raw.set raw ((j * w + i) * 4 + 1) g;
+		Raw.set raw ((j * w + i) * 4 + 2) b;
+		Raw.set raw ((j * w + i) * 4 + 3) a));
 	    done
 	  done;
 	  let texture = GlPix.of_raw raw `rgba w h in  
