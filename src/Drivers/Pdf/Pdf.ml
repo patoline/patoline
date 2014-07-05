@@ -442,17 +442,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
         List.iter output_contents l.link_contents
       )
       | Image i->(
-#ifdef CAMLIMAGES
-          begin
-            pageImages:=i::(!pageImages);
-            let num=List.length !pageImages in
-            close_text ();
-            Rbuffer.add_string pageBuf
-              (Printf.sprintf "q %f 0 0 %f %f %f cm /Im%d Do Q "
-                 (pt_of_mm i.image_width) (pt_of_mm i.image_height)
-                 (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
-          end;
-#endif
+        pageImages:=i::(!pageImages);
+        let num=List.length !pageImages in
+        close_text ();
+        Rbuffer.add_string pageBuf
+          (Printf.sprintf "q %f 0 0 %f %f %f cm /Im%d Do Q "
+             (pt_of_mm i.image_width) (pt_of_mm i.image_height)
+             (pt_of_mm i.image_x) (pt_of_mm i.image_y) num);
       )
       | States s->List.iter output_contents s.states_contents
       | Dynamic d->List.iter output_contents (d.dyn_contents ())
@@ -582,55 +578,28 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             if !pageImages<>[] then (
               List.iter (fun (obj,_,i)->
                 resumeObject obj;
-#ifdef CAMLIMAGES
-                  begin
-                    let image=(OImages.load i.image_file []) in
-                    let w,h=Images.size image#image in
-                    (match image#image_class with
-                        OImages.ClassRgb24->(
-                          let src=OImages.rgb24 image in
-                          let img_buf=Rbuffer.create (w*h*3) in
-                          for j=0 to h-1 do
-                            for i=0 to w-1 do
-                              let rgb = src#get i j in
-                              Rbuffer.add_char img_buf (char_of_int rgb.Images.r);
-                              Rbuffer.add_char img_buf (char_of_int rgb.Images.g);
-                              Rbuffer.add_char img_buf (char_of_int rgb.Images.b);
-                            done
-                          done;
-                          let a,b=stream img_buf in
-                          fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
-                          Rbuffer.output_buffer outChan b;
-                          fprintf outChan "\nendstream";
-                        )
-                      | OImages.ClassRgba32->(
-                        let src=OImages.rgba32 image in
-                        let img_buf=Rbuffer.create (w*h*3) in
-                        for j=0 to h-1 do
-                          for i=0 to w-1 do
-                            let rgb = src#get i j in
-                            let a=(float_of_int rgb.Images.alpha)/.256. in
-                            let r=(1.-.a)*.255.
-                              +.a*.float_of_int rgb.Images.color.Images.r in
-                            let g=(1.-.a)*.255.
-                              +.a*.float_of_int rgb.Images.color.Images.g in
-                            let b=(1.-.a)*.255.
-                              +.a*.float_of_int rgb.Images.color.Images.b in
-                            Rbuffer.add_char img_buf (char_of_int (round r));
-                            Rbuffer.add_char img_buf (char_of_int (round g));
-                            Rbuffer.add_char img_buf (char_of_int (round b));
-                          done
-                        done;
-                        let a,b=stream img_buf in
-                        fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
-                        Rbuffer.output_buffer outChan b;
-                        fprintf outChan "\nendstream";
-                      )
-                      | _->()
+                let open ImagePNG in
+                let image=ReadPNG.openfile i.image_file in
+                let w=image.width and h=image.height in
+                let img_buf=Rbuffer.create (w*h*3) in
+
+                for j=0 to h-1 do
+                  for i=0 to w-1 do
+                    Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
+                      let a=(float_of_int a)/.256. in
+                      let r=(1.-.a)*.255.+.a*.float_of_int r in
+                      let g=(1.-.a)*.255.+.a*.float_of_int g in
+                      let b=(1.-.a)*.255.+.a*.float_of_int b in
+                      Rbuffer.add_char img_buf (char_of_int (round r));
+                      Rbuffer.add_char img_buf (char_of_int (round g));
+                      Rbuffer.add_char img_buf (char_of_int (round b))
                     );
-                    image#destroy;
-                  end;
-#endif
+                  done
+                done;
+                let a,b=stream img_buf in
+                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                Rbuffer.output_buffer outChan b;
+                fprintf outChan "\nendstream";
                 endObject ()
               ) actual_pageImages
             )
