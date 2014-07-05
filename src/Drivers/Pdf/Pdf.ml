@@ -583,13 +583,14 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                 let w=image.width and h=image.height in
                 let img_buf=Rbuffer.create (w*h*3) in
 
+                let v=float_of_int image.max_val in
                 for j=0 to h-1 do
                   for i=0 to w-1 do
                     Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
-                      let a=(float_of_int a)/.256. in
-                      let r=(1.-.a)*.255.+.a*.float_of_int r in
-                      let g=(1.-.a)*.255.+.a*.float_of_int g in
-                      let b=(1.-.a)*.255.+.a*.float_of_int b in
+                      let a=(float_of_int a)/.v in
+                      let r=(1.-.a)*.v+.a*.float_of_int r in
+                      let g=(1.-.a)*.v+.a*.float_of_int g in
+                      let b=(1.-.a)*.v+.a*.float_of_int b in
                       Rbuffer.add_char img_buf (char_of_int (round r));
                       Rbuffer.add_char img_buf (char_of_int (round g));
                       Rbuffer.add_char img_buf (char_of_int (round b))
