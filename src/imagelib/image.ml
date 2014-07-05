@@ -4,6 +4,7 @@
 
 open Bigarray
 
+exception Not_yet_implemented of string
 exception Wrong_image_type
 
 type component = int
