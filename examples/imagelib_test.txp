@@ -26,6 +26,8 @@ ImageLib Test
 
 \Caml(
 let files = Sys.readdir "test_images"
+let _ = Array.sort compare files
+
 let _ = Array.iter (fun fn ->
   try 
     if Str.(search_forward (regexp_string ".") fn 0 >= 2) then
