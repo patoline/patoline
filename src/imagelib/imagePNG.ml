@@ -901,52 +901,67 @@ module ReadPNG : ReadImage = struct
     (* Output *)
     if !debug then Printf.fprintf stderr "Building image structure...\n%!";
     match ct with
-     | 0 -> { size = w, h ;
-              max_val = ones bd ;
-              pixels = GreyL (init_matrix (w, h) (fun (x, y) ->
-                  unfiltered_int.(y).(x)
-                )) ;
-              alpha = None }
-     | 2 -> { size = w, h ;
-              max_val = ones bd ;
-              pixels = RGB (init_matrix (w, h) (fun (x, y) ->
-                  let r = unfiltered_int.(y).(3 * x) in
-                  let g = unfiltered_int.(y).(3 * x + 1) in
-                  let b = unfiltered_int.(y).(3 * x + 2) in
-                  { r = r ; g = g ; b = b }
-                )) ;
-              alpha = None }
-     | 3 -> { size = w, h ;
-              max_val = 255 ; (* ones bd ; *)
-              pixels = RGB (init_matrix (w, h) (fun (x, y) ->
-                  let index = unfiltered_int.(y).(x) in
-                  let index = (* FIXME *)
-                    if index >= Array.length !palette
-                    then (Printf.fprintf stderr "Palette index too big...\n%!"; 0)
-                    else index 
-                  in
-                  !palette.(index)
-                ));
-              alpha = None }
-     | 4 -> { size = w, h ;
-              max_val = ones bd ;
-              pixels = GreyL (init_matrix (w, h) (fun (x, y) ->
-                  unfiltered_int.(y).(2 * x)
-                )) ;
-              alpha = Some (init_matrix (w, h) (fun (x, y) ->
-                  unfiltered_int.(y).(2 * x + 1)
-                ))}
-     | 6 -> { size = w, h ;
-              max_val = ones bd ;
-              pixels = RGB (init_matrix (w, h) (fun (x, y) ->
-                  let r = unfiltered_int.(y).(4 * x) in
-                  let g = unfiltered_int.(y).(4 * x + 1) in
-                  let b = unfiltered_int.(y).(4 * x + 2) in
-                  { r = r ; g = g ; b = b }
-                )) ;
-              alpha = Some (init_matrix (w, h) (fun (x, y) ->
-                  unfiltered_int.(y).(4 * x + 3)
-                ))}
+    | 0 -> 
+      let image = create_grey ~max_val:(ones bd) w h in
+      for y = 0 to h - 1 do
+	for x = 0 to w - 1 do
+	  write_grey_pixel image x y unfiltered_int.(y).(x)
+	done
+      done;
+      image
+
+     | 2 ->
+       let image = create_rgb ~max_val:(ones bd) w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+           let r = unfiltered_int.(y).(3 * x) in
+           let g = unfiltered_int.(y).(3 * x + 1) in
+           let b = unfiltered_int.(y).(3 * x + 2) in
+	   write_rgb_pixel image x y r g b
+	 done
+       done;
+       image
+
+     | 3 ->
+       let image = create_rgb ~max_val:255 w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+           let index = unfiltered_int.(y).(x) in
+           let index = (* FIXME *)
+             if index >= Array.length !palette
+             then (Printf.fprintf stderr "Palette index too big...\n%!"; 0)
+             else index 
+           in
+	   let p = !palette.(index) in
+           write_rgb_pixel image x y p.r p.g p.b
+	 done
+       done;
+       image
+
+     | 4 ->
+       let image = create_grey ~alpha:true ~max_val:(ones bd) w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+	   write_greya_pixel image x y 
+	     unfiltered_int.(y).(2 * x)
+	     unfiltered_int.(y).(2 * x + 1);
+	 done
+       done;
+       image
+
+     | 6 ->
+       let image = create_rgb ~alpha:true ~max_val:(ones bd) w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+           let r = unfiltered_int.(y).(4 * x) in
+           let g = unfiltered_int.(y).(4 * x + 1) in
+           let b = unfiltered_int.(y).(4 * x + 2) in
+           let a = unfiltered_int.(y).(4 * x + 3) in
+	   write_rgba_pixel image x y r g b a
+	 done
+       done;
+       image
+
      | _ -> assert false
 end
 
@@ -1002,7 +1017,9 @@ let write_png fn img =
             | RGB _,   Some _ -> 6
   in
 
-  let ihdr = { image_size         = img.size;
+  let w = img.width and h = img.height in
+
+  let ihdr = { image_size         = (w, h);
                bit_depth          = bd;
                colour_type        = ct;
                compression_method = 0;
@@ -1013,12 +1030,11 @@ let write_png fn img =
   let ihdr = { chunck_type = "IHDR" ; chunck_data = ihdr_to_string ihdr } in
   write_chunk och ihdr;
 
-  let w, h = img.size in
   let buf = Buffer.create 4096 in
   let byte0 () = Buffer.add_char buf (char_of_int 0) in
   let add_byte i = Buffer.add_char buf (char_of_int i) in
   (match img.pixels, img.alpha, bd with
-    | GreyL pxs, None     , 1  ->
+    | GreyL _, None     , 1  ->
       let byte = ref 0 in
       let numb = ref 0 in
       let add_bit i =
@@ -1042,11 +1058,11 @@ let write_png fn img =
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_bit pxs.(x).(y);
+          read_grey_pixel img x y (fun ~g -> add_bit g);
         done
       done;
       if !numb <> 0 then add_byte !byte
-    | GreyL pxs, None     , 2  ->
+    | GreyL _, None     , 2  ->
       let byte = ref 0 in
       let numb = ref 0 in
       let add_quarter_byte i =
@@ -1066,11 +1082,11 @@ let write_png fn img =
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_quarter_byte pxs.(x).(y);
+          read_grey_pixel img x y (fun ~g -> add_quarter_byte g)
         done
       done;
       if !numb <> 0 then add_byte !byte
-    | GreyL pxs, None     , 4  ->
+    | GreyL _, None     , 4  ->
       let byte = ref 0 in
       let numb = ref 0 in
       let add_half_byte i =
@@ -1088,90 +1104,97 @@ let write_png fn img =
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_half_byte pxs.(x).(y);
+          read_grey_pixel img x y (fun ~g -> add_half_byte g)
         done
       done;
       if !numb <> 0 then add_byte !byte
-    | GreyL pxs, None     , 8  ->
+    | GreyL _, None     , 8  ->
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte pxs.(x).(y);
+          read_grey_pixel img x y (fun ~g -> add_byte g)
         done
       done
-    | GreyL pxs, None     , 16 ->
+    | GreyL _, None     , 16 ->
       let mask = ones 8 in
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte (pxs.(x).(y) lsr 8);
-          add_byte (pxs.(x).(y) land mask);
+	  read_grey_pixel img x y (fun ~g -> 
+            add_byte (g lsr 8);
+            add_byte (g land mask));
         done
       done
-    | GreyL pxs, Some als , 8  ->
+    | GreyL _, Some als , 8  ->
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte pxs.(x).(y);
-          add_byte als.(x).(y);
+ 	  read_greya_pixel img x y (fun ~g ~a -> 
+            add_byte g;
+            add_byte a);
         done
       done
-    | GreyL pxs, Some als , 16 ->
+    | GreyL _, Some als , 16 ->
       let mask = ones 8 in
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte (pxs.(x).(y) lsr 8);
-          add_byte (pxs.(x).(y) land mask);
-          add_byte (als.(x).(y) lsr 8);
-          add_byte (als.(x).(y) land mask);
+	  read_greya_pixel img x y (fun ~g ~a -> 
+            add_byte (g lsr 8);
+            add_byte (g land mask);
+            add_byte (a lsr 8);
+            add_byte (a land mask));
         done
       done
-    | RGB pxs,   None     , 8  ->
+    | RGB _,   None     , 8  ->
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte pxs.(x).(y).r;
-          add_byte pxs.(x).(y).g;
-          add_byte pxs.(x).(y).b;
+	  read_rgb_pixel img x y (fun ~r ~g ~b -> 
+            add_byte r;
+            add_byte g;
+            add_byte b);
         done
       done
-    | RGB pxs,   None     , 16 ->
+    | RGB _,   None     , 16 ->
       let mask = ones 8 in
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte (pxs.(x).(y).r lsr 8);
-          add_byte (pxs.(x).(y).r land mask);
-          add_byte (pxs.(x).(y).g lsr 8);
-          add_byte (pxs.(x).(y).g land mask);
-          add_byte (pxs.(x).(y).b lsr 8);
-          add_byte (pxs.(x).(y).b land mask);
+          read_rgb_pixel img x y (fun ~r ~g ~b -> 
+	    add_byte (r lsr 8);
+            add_byte (r land mask);
+            add_byte (g lsr 8);
+            add_byte (g land mask);
+            add_byte (b lsr 8);
+            add_byte (b land mask));
         done
       done
-    | RGB pxs,   Some als , 8  ->
+    | RGB _,   Some als , 8  ->
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte pxs.(x).(y).r;
-          add_byte pxs.(x).(y).g;
-          add_byte pxs.(x).(y).b;
-          add_byte als.(x).(y);
+          read_rgba_pixel img x y (fun ~r ~g ~b ~a ->
+	    add_byte r;
+            add_byte g;
+            add_byte b;
+            add_byte a);
         done
       done
-    | RGB pxs,   Some als , 16 ->
+    | RGB _,   Some als , 16 ->
       let mask = ones 8 in
       for y = 0 to h - 1 do
         byte0 (); (* Scanline with no filter *)
         for x = 0 to w - 1 do
-          add_byte (pxs.(x).(y).r lsr 8);
-          add_byte (pxs.(x).(y).r land mask);
-          add_byte (pxs.(x).(y).g lsr 8);
-          add_byte (pxs.(x).(y).g land mask);
-          add_byte (pxs.(x).(y).b lsr 8);
-          add_byte (pxs.(x).(y).b land mask);
-          add_byte (als.(x).(y) lsr 8);
-          add_byte (als.(x).(y) land mask);
+          read_rgba_pixel img x y (fun ~r ~g ~b ~a ->
+	    add_byte (r lsr 8);
+            add_byte (r land mask);
+            add_byte (g lsr 8);
+            add_byte (g land mask);
+            add_byte (b lsr 8);
+            add_byte (b land mask);
+            add_byte (a lsr 8);
+            add_byte (a land mask));
         done
       done
     | _ -> Printf.fprintf stderr "%i\n%!" bd; assert false

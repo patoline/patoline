@@ -1,6 +1,7 @@
 open Pervasives
 open ImageUtil
 open Image
+open Bigarray
 
 module ReadPPM : ReadImage = struct
   exception Corrupted_Image of string
@@ -28,18 +29,23 @@ module ReadPPM : ReadImage = struct
     let lines = List.filter (fun s -> s.[0] <> '#') lines in
     let content = String.concat " " lines in
   
-    let size = ref (-1, -1) in
+    let width = ref (-1) and height = ref (-1) in
   
     Scanf.sscanf content
       "%s%[\t\n ]%u%[\t\n ]%u"
       (fun magic _ w _ h ->
         if not (List.mem magic ["P1"; "P2"; "P3"; "P4"; "P5"; "P6"]) then
           raise (Corrupted_Image "Invalid magic number...");
-        size := (w, h)
+        width := w; height := h
       );
   
-    !size
+    !width, !height
   
+  let pass_comments content =
+    Scanf.fscanf content "%[#]" (fun s ->
+      if s = "" then () else
+	ignore (input_line content))
+
   (*
    * Read a PPM format image file.
    * Arguments:
@@ -47,131 +53,112 @@ module ReadPPM : ReadImage = struct
    * Raise the exception Corrupted_Image if the file is not valid.
    *)
   let openfile fn =
-    let lines = lines_from_file fn in
-  
-    if List.mem "" lines then
-      raise (Corrupted_Image "Empty line in the file...");
-  
-    let lines = List.filter (fun s -> s.[0] <> '#') lines in
-    let content = String.concat " " lines in
-    let c_len = String.length content in
-  
+    let content = open_in_bin fn in
     let magic = ref "" in
-    let size = ref (-1, -1) in
+    let width = ref (-1) and height = ref (-1) in
     let max_val = ref 1 in
-    let data = ref "" in
-  
-    Scanf.sscanf content "%s%[\t\n ]" (fun mn _ -> magic := mn);
+
+    Scanf.fscanf content "%s%[\t\n ]" (fun mn _ -> magic := mn);
+    pass_comments content;
+    
     if not (List.mem !magic ["P1"; "P2"; "P3"; "P4"; "P5"; "P6"]) then
       raise (Corrupted_Image "Invalid magic number...");
   
-    if List.mem !magic ["P1"; "P4"]
-    then begin
-      Scanf.sscanf content
-        "%s%[\t\n ]%u%[\t\n ]%u%[\t\n ]%n"
-        (fun _ _ w _ h _ n ->
-          size := (w, h);
-          data := String.sub content n (c_len - n)
-        )
-    end else begin
-      Scanf.sscanf content
-        "%s%[\t\n ]%u%[\t\n ]%u%[\t\n ]%u%[\t\n ]%n"
-        (fun _ _ w _ h _ mv _ n ->
-          size := (w, h);
-          max_val := mv;
-          data := String.sub content n (c_len - n)
-        )
-    end;
-  
-    let w, h = !size in
+    Scanf.fscanf content "%s%[\t\n ]" (fun _ _ -> ());
+    pass_comments content;
+    Scanf.fscanf content "%u%[\t\n ]" (fun w _ -> width := w);
+    pass_comments content;
+    Scanf.fscanf content "%u%[\t\n ]" (fun h _ -> height := h);
+    pass_comments content;
+
+    if not (List.mem !magic ["P1"; "P4"])
+    then (
+      Scanf.fscanf content "%u%[\t\n ]" (fun mv _ -> max_val := mv);
+      pass_comments content);
+
+    let w = !width and h = !height in
   
     match !magic with
      | "P1" | "P2" ->
-       let values = int_array_from_string !data in
-       let pixels = init_matrix !size (fun (x, y) -> values.(y * w + x)) in
-       { size = !size ;
-         max_val = !max_val ;
-         pixels = GreyL pixels ;
-         alpha = None }
+       let image = create_grey ~max_val:!max_val w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+	   Scanf.fscanf content "%d%[\t\n ]" (fun v _ ->
+	     write_grey_pixel image x y v)
+	 done
+       done;
+       image
+
      | "P3" ->
-       let values = int_array_from_string !data in
-       let pixels = init_matrix !size
-         (fun (x,y) ->
-           let indr = y * w * 3 + x * 3 in
-           let r = values.(indr) in
-           let g = values.(indr + 1) in
-           let b = values.(indr + 2) in
-           { r = r ; g = g ; b = b }
-         )
-       in
-       { size = !size ;
-         max_val = !max_val ;
-         pixels = RGB pixels ;
-         alpha = None }
+       let image = create_rgb ~max_val:!max_val w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+	   Scanf.fscanf content "%d%[\t\n ]%d%[\t\n ]%d%[\t\n ]"
+	     (fun r _ g _ b _ ->
+	       write_rgb_pixel image x y r g b)
+	 done
+       done;
+       image
+
      | "P4" ->
-       let row_byte_size = if w mod 8 = 0 then w else w + 1 in
-       let pixels = init_matrix !size
-         (fun (x,y) ->
-           let byte_num = y * row_byte_size + x / 8 in
-           let byte_pos = x mod 8 in
-           let byte = int_of_char !data.[byte_num] in
-           (byte lsr (7 - byte_pos)) land 1
-         )
-       in
-       { size = !size ;
-         max_val = 1 ;
-         pixels = GreyL pixels ;
-         alpha = None }
+       let image = create_grey ~max_val:1 w h in
+       for y = 0 to h - 1 do
+	 let x = ref 0 in
+	 let byte = ref 0 in
+	 while !x < w do
+	   if !x mod 8 = 0 then
+	     byte := int_of_char (input_char content);
+	   let byte_pos = !x mod 8 in
+	   let v = (!byte lsr (7 - byte_pos)) land 1 in
+	   write_grey_pixel image !x y v;
+	   incr x
+	 done
+       done;
+       image  
+
      | "P5" ->
-       let values = byte_array_from_string !data in
-       let pixels = init_matrix !size
-         (fun (x,y) ->
-           if !max_val <= 255
-           then values.(y * w + x)
-           else begin
-             let indb1 = y * 2 * w + 2 * x in
-             let b1 = values.(indb1) in
-             let b0 = values.(indb1 + 1) in
-             (b1 lsl 8) + b0
-           end
-         )
-       in
-       { size = !size ;
-         max_val = !max_val ;
-         pixels = GreyL pixels ;
-         alpha = None }
+       let image = create_grey ~max_val:!max_val w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+	   if !max_val <= 255 then
+	     let b0 = int_of_char (input_char content) in
+	     write_grey_pixel image x y b0
+	   else
+	     let b0 = int_of_char (input_char content) in
+	     let b1 = int_of_char (input_char content) in
+	     write_grey_pixel image x y ((b0 lsl 8) + b1)
+	 done
+       done;
+       image
+
      | "P6" ->
-       let values = byte_array_from_string !data in
-       let pixels = init_matrix !size
-         (fun (x,y) ->
-           if !max_val <= 255
-           then begin
-             let indr = y * w * 3 + x * 3 in
-             let r = values.(indr) in
-             let g = values.(indr + 1) in
-             let b = values.(indr + 2) in
-             { r = r ; g = g ; b = b }
-           end else begin
-             let indr1 = y * w * 3 * 2 + x * 3 * 2 in
-             let r1 = values.(indr1) in
-             let r0 = values.(indr1 + 1) in
-             let g1 = values.(indr1 + 2) in
-             let g0 = values.(indr1 + 3) in
-             let b1 = values.(indr1 + 4) in
-             let b0 = values.(indr1 + 5) in
+       let image = create_rgb ~max_val:!max_val w h in
+       for y = 0 to h - 1 do
+	 for x = 0 to w - 1 do
+	   if !max_val <= 255 then
+	     let r = int_of_char (input_char content) in
+	     let g = int_of_char (input_char content) in
+	     let b = int_of_char (input_char content) in
+	     write_rgb_pixel image x y r g b
+	   else
+	     let r1 = int_of_char (input_char content) in
+	     let r0 = int_of_char (input_char content) in
+	     let g1 = int_of_char (input_char content) in
+	     let g0 = int_of_char (input_char content) in
+	     let b1 = int_of_char (input_char content) in
+	     let b0 = int_of_char (input_char content) in
              let r = (r1 lsl 8) + r0 in
              let g = (g1 lsl 8) + g0 in
              let b = (b1 lsl 8) + b0 in
-             { r = r ; g = g ; b = b }
-           end
-         )
-       in
-       { size = !size ;
-         max_val = !max_val ;
-         pixels = RGB pixels ;
-         alpha = None }
+	     write_rgb_pixel image x y r g b
+	 done
+       done;
+       image
+
      | _ ->
        raise (Corrupted_Image "Invalid magic number...");
+
+
 end
 
 (*
@@ -190,47 +177,39 @@ type ppm_mode = Binary | ASCII
  *)
 let write_ppm fn img mode =
   let och = open_out_bin fn in
-  let w, h = img.size in
+  let w = img.width and h = img.height in
 
   (match img.pixels, mode, img.max_val with
-   | RGB pixmap,    Binary, mv ->
-     let header = Printf.sprintf "P6\n%i %i %i\n" w h mv in
-     output_string och header;
+   | RGB _,    Binary, mv ->
+     Printf.fprintf och "P6\n%i %i %i\n" w h mv;
      for y = 0 to h - 1 do
        for x = 0 to w - 1 do
-         let rgb = pixmap.(x).(y) in
-         let pixel =
+	 read_rgb_pixel img x y (fun ~r ~g ~b ->
            if mv < 256
            then begin
-             let r = char_of_int rgb.r in
-             let g = char_of_int rgb.g in
-             let b = char_of_int rgb.b in
-             Printf.sprintf "%c%c%c" r g b
+             Printf.fprintf och "%c%c%c"
+	       (char_of_int r) (char_of_int g) (char_of_int b)
            end else begin
-             let r0 = char_of_int (rgb.r mod 256) in
-             let r1 = char_of_int (rgb.r lsr 8) in
-             let g0 = char_of_int (rgb.g mod 256) in
-             let g1 = char_of_int (rgb.g lsr 8) in
-             let b0 = char_of_int (rgb.b mod 256) in
-             let b1 = char_of_int (rgb.b lsr 8) in
-             Printf.sprintf "%c%c%c%c%c%c" r1 r0 g1 g0 b1 b0
-           end
-         in output_string och pixel
+             let r0 = char_of_int (r mod 256) in
+             let r1 = char_of_int (r lsr 8) in
+             let g0 = char_of_int (g mod 256) in
+             let g1 = char_of_int (g lsr 8) in
+             let b0 = char_of_int (b mod 256) in
+             let b1 = char_of_int (b lsr 8) in
+             Printf.fprintf och "%c%c%c%c%c%c" r1 r0 g1 g0 b1 b0
+           end)
        done
      done
-   | RGB pixmap,    ASCII,  mv ->
-     let header = Printf.sprintf "P3\n%i %i %i\n" w h mv in
-     output_string och header;
+   | RGB _,    ASCII,  mv ->
+     Printf.fprintf och "P3\n%i %i %i\n" w h mv;
      for y = 0 to h - 1 do
        for x = 0 to w - 1 do
-         let rgb = pixmap.(x).(y) in
-         let pixel = Printf.sprintf "%i %i %i\n" rgb.r rgb.g rgb.b in
-         output_string och pixel
+ 	 read_rgb_pixel img x y (fun ~r ~g ~b ->
+         Printf.fprintf och "%i %i %i\n" r g b)
        done;
      done
-   | GreyL greymap, Binary, 1  ->
-     let header = Printf.sprintf "P4\n%i %i\n" w h in
-     output_string och header;
+   | GreyL _, Binary, 1  ->
+     Printf.fprintf och "P4\n%i %i\n" w h;
      for y = 0 to h - 1 do
        let byte = ref 0 in
        let pos = ref 0 in
@@ -251,46 +230,46 @@ let write_ppm fn img mode =
        in
 
        for x = 0 to w - 1 do
-         output_bit greymap.(x).(y)
+	 read_grey_pixel img x y (fun ~g ->
+         output_bit g)
        done;
 
        flush_byte ()
      done
+
    | GreyL greymap, ASCII,  1  ->
      let header = Printf.sprintf "P1\n%i %i\n" w h in
      output_string och header;
      for y = 0 to h - 1 do
        for x = 0 to w - 1 do
-         let gl = greymap.(x).(y) in
-         let pixel = Printf.sprintf "%i\n" gl in
-         output_string och pixel
+         read_grey_pixel img x y (fun ~g ->
+         Printf.fprintf och "%i\n" g)
        done;
      done
+
    | GreyL greymap, Binary, mv ->
      let header = Printf.sprintf "P5\n%i %i %i\n" w h mv in
      output_string och header;
      for y = 0 to h - 1 do
        for x = 0 to w - 1 do
-         let gl = greymap.(x).(y) in
-         let pixel =
-           if mv < 256
-           then Printf.sprintf "%c" (char_of_int gl)
-           else begin
-             let gl0 = char_of_int (gl mod 256) in
-             let gl1 = char_of_int (gl lsr 8) in
-             Printf.sprintf "%c%c" gl1 gl0
-           end
-         in output_string och pixel
+        read_grey_pixel img x y (fun ~g ->
+          if mv < 256
+          then Printf.fprintf och "%c" (char_of_int g)
+          else begin
+            let gl0 = char_of_int (g mod 256) in
+            let gl1 = char_of_int (g lsr 8) in
+            Printf.fprintf och "%c%c" gl1 gl0
+          end)
        done;
      done
+
    | GreyL greymap, ASCII,  mv ->
      let header = Printf.sprintf "P2\n%i %i %i\n" w h mv in
      output_string och header;
      for y = 0 to h - 1 do
        for x = 0 to w - 1 do
-         let gl = greymap.(x).(y) in
-         let pixel = Printf.sprintf "%i\n" gl in
-         output_string och pixel
+         read_grey_pixel img x y (fun ~g ->
+         Printf.fprintf och "%i\n" g)
        done;
      done
   );

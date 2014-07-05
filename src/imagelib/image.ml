@@ -2,58 +2,77 @@
  * Data types used by the image input / output fonctions                    *
  ****************************************************************************)
 
+open Bigarray
+
 exception Wrong_image_type
 
 type component = int
 
-type rgb = {
-  r : component;
-  g : component;
-  b : component;
-}
+type pixmap = 
+(* 8 bits per componants *)
+| Bits8 of (int, int8_unsigned_elt, c_layout) Array2.t
+(* 16 bits per componants *)
+| Bits16 of (int, int16_unsigned_elt, c_layout) Array2.t
 
-type pixmap = RGB of rgb array array
-            | GreyL of component array array
+type cpixmap = RGB of pixmap * pixmap * pixmap (*r, g, b*) 
+            | GreyL of pixmap
 
 type image = {
-  size    : int * int ;
+  width   : int;
+  height  : int;
   max_val : component;
-  pixels  : pixmap ;
-  alpha   : component array array option ;
+  pixels  : cpixmap ;
+  alpha   : pixmap option ;
 }
 
+type pixel = { r : int; g : int; b : int }
+
+let create_pixmap8 width height =
+  Bits8(Array2.create int8_unsigned c_layout width height)
+
+let create_pixmap16 width height =
+  Bits16(Array2.create int16_unsigned c_layout width height)
+
 let create_rgb 
-    ?(background={ r = 0; g = 0; b = 0 })
-    ?(alpha=None)
+    ?(alpha=false)
     ?(max_val=255)
     width
     height =
+  assert (max_val < 65535);
+  let create = if max_val <= 255 then create_pixmap8 
+    else create_pixmap16
+  in
 {
-  size = (width, height);
+  width;
+  height;
   max_val;
-  pixels = RGB(Array.create_matrix width height background);
+  pixels = RGB(create width height,
+	       create width height,
+	       create width height);
   alpha = match alpha with
-    None -> None
-  | Some default -> Some(Array.create_matrix width height default)
+    false -> None
+  | true -> Some(create width height)
 }
 
 let create_grey 
-    ?(background=0)
-    ?(alpha=None)
+    ?(alpha=false)
     ?(max_val=255)
     width
     height =
+  assert (max_val < 65535);
+  let create = if max_val <= 255 then create_pixmap8 
+    else create_pixmap16
+  in
 {
-  size = (width, height);
+  width;
+  height;
   max_val;
-  pixels = GreyL(Array.create_matrix width height background);
+  pixels = GreyL(create width height);
   alpha = match alpha with
-    None -> None
-  | Some default -> Some(Array.create_matrix width height default)
+    false -> None
+  | true -> Some(create width height)
 }
 
-
-    
 module type ReadImage =
   sig
     exception Corrupted_Image of string
@@ -62,71 +81,115 @@ module type ReadImage =
     val openfile : string -> image
   end
 
-let read_pixel i x y =
-  let (<<)  = Int32.shift_left in
-  let (|||) = Int32.logor in
-  match i.pixels with
-  | RGB ps   -> let {r;g;b} = ps.(x).(y) in
-                let al = (match i.alpha with
-                          | None     -> i.max_val
-                          | Some als -> als.(x).(y))
-                in
-		let r,g,b,al =
-		  if i.max_val <> 255 then
-		    (r * 256) / i.max_val,
-		    (g * 256) / i.max_val,
-		    (b * 256) / i.max_val,
-		    (al * 256) / i.max_val
-		  else r,g,b,al
-		in		  
-                let r = Int32.of_int r in
-                let g = Int32.of_int g in
-                let b = Int32.of_int b in
-                let al = Int32.of_int al in
-                (((((al << 8) ||| b) << 8) ||| g) << 8) ||| r
-  | GreyL ps -> let g = ps.(x).(y) in
-                let al = (match i.alpha with
-                          | None     -> i.max_val
-                          | Some als -> als.(x).(y))
-                in
- 		let g,al =
-		  if i.max_val <> 255 then
-		    (g * 256) / i.max_val,
-		    (al * 256) / i.max_val
-		  else g,al
-		in		  
-                let g = Int32.of_int g in
-                let al = Int32.of_int al in
-                (((((al << 8) ||| g) << 8) ||| g) << 8) ||| g
+let read_pixmap p i j = match p with
+| Bits8 p -> Array2.get p i j 
+| Bits16 p -> Array2.get p i j 
 
-let write_pixel i x y p =
-  let (>>) = Int32.shift_right in
-  let (&&) = Int32.logand in
+let write_pixmap p i j v = match p with
+| Bits8 p -> Array2.set p i j v
+| Bits16 p -> Array2.set p i j v
+
+let read_rgba_pixel i x y fn =
+  let r,g, b = match i.pixels with
+      RGB(r,g,b) ->
+	let r = read_pixmap r x y in
+	let g = read_pixmap g x y in
+	let b = read_pixmap b x y in
+	r,g,b
+    | GreyL(g) ->
+      	let g = read_pixmap g x y in
+	g,g,g
+  in
+  let a = match i.alpha with
+    | None -> i.max_val
+    | Some p -> read_pixmap p x y
+  in
+  fn  ~r ~g ~b ~a
+
+let read_rgb_pixel i x y fn =
+  let r,g, b = match i.pixels with
+      RGB(r,g,b) ->
+	let r = read_pixmap r x y in
+	let g = read_pixmap g x y in
+	let b = read_pixmap b x y in
+	r,g,b
+    | GreyL(g) ->
+      	let g = read_pixmap g x y in
+	g,g,g
+  in
+  fn ~r ~g ~b
+
+let read_greya_pixel i x y fn =
+  let g = match i.pixels with
+      RGB(r,g,b) ->
+	let r = read_pixmap r x y in
+	let g = read_pixmap g x y in
+	let b = read_pixmap b x y in
+	(r+g+b) / 3
+    | GreyL(g) ->
+      	let g = read_pixmap g x y in
+	g
+  in
+  let a = match i.alpha with
+    | None -> i.max_val
+    | Some p -> read_pixmap p x y
+  in
+  fn ~g ~a
+
+let read_grey_pixel i x y fn =
+  let g = match i.pixels with
+      RGB(r,g,b) ->
+	let r = read_pixmap r x y in
+	let g = read_pixmap g x y in
+	let b = read_pixmap b x y in
+	(r+g+b) / 3
+    | GreyL(g) ->
+      	let g = read_pixmap g x y in
+	g
+  in
+  fn ~g
+
+let write_rgba_pixel i x y r g b a =
   (match i.pixels with
-   | RGB ps   -> let b  = Int32.to_int ((p >> 16) && 255l) in
-                 let g  = Int32.to_int ((p >> 8) && 255l) in
-                 let r  = Int32.to_int (p && 255l) in
-		 let r,g,b =
-		   if i.max_val <> 255 then
-		     (r * i.max_val) / 256,
-		     (g * i.max_val) / 256,
-		     (b * i.max_val) / 256
-		   else r,g,b
-		 in		  
-                 ps.(x).(y) <- {r;g;b}
-   | GreyL ps -> let g = Int32.to_int (p && 255l) in
-		 let g =
-		   if i.max_val <> 255 then
-		     (g * i.max_val) / 256
-		   else g
-		 in		  
-                 ps.(x).(y) <- g);
-  let al = Int32.to_int ((p >> 24) && 255l) in
-  let al =
-    if i.max_val <> 255 then
-      (al * i.max_val) / 256
-    else al
-  in		  
+      RGB(pr,pg,pb) ->
+	write_pixmap pr x y r;
+	write_pixmap pg x y g;
+	write_pixmap pb x y b;
+    | GreyL(pg) ->
+      let g = (r + g + b) / 3 in
+      write_pixmap pg x y g);
   match i.alpha with
-  | None     -> () (* NOTE create a table if value of al is not 0? *)
-  | Some als -> als.(x).(y) <- al
+  | None -> ()
+  | Some p -> write_pixmap p x y a
+
+let write_rgb_pixel i x y r g b =
+  match i.pixels with
+      RGB(pr,pg,pb) ->
+	write_pixmap pr x y r;
+	write_pixmap pg x y g;
+	write_pixmap pb x y b;
+    | GreyL(pg) ->
+      let g = (r + g + b) / 3 in
+      write_pixmap pg x y g
+
+let write_greya_pixel i x y g a =
+  (match i.pixels with
+  | RGB(pr,pg,pb) ->
+    write_pixmap pr x y g;
+    write_pixmap pg x y g;
+    write_pixmap pb x y g;
+  | GreyL(pg) ->
+    write_pixmap pg x y g);
+  match i.alpha with
+  | None -> ()
+  | Some p -> write_pixmap p x y a
+    
+let write_grey_pixel i x y g =
+  match i.pixels with
+  | RGB(pr,pg,pb) ->
+    write_pixmap pr x y g;
+    write_pixmap pg x y g;
+    write_pixmap pb x y g;
+  | GreyL(pg) ->
+    write_pixmap pg x y g
+
