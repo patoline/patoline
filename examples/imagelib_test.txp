@@ -18,6 +18,27 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+\Caml(
+let my_new_page pageFormat t=
+  let background=
+    List.map (fun x-> in_order (-1) x)
+    (draw !D.defaultEnv (includeGraphics ~scale:(1.0) "labyrinthe_background.png"))
+  in  
+  
+  let a,b=Box.make_page pageFormat (frame_top t) in
+  let zip={ a with frame_tags=["page"];
+   frame_content=[Box.Raw background] },b in
+  let w=(fst zip).frame_x1-.(fst zip).frame_x0
+  and h=(fst zip).frame_y1-.(fst zip).frame_y0 in
+  let x0=((fst zip).frame_x0+.1.*.w/.6.) in
+  let y0=((fst zip).frame_y0+.1.*.h/.6.) in
+  let x1=((fst zip).frame_x1-.1.*.w/.6.) in
+  let y1=((fst zip).frame_y1-.1.*.h/.6.) in
+  frame x0 y0 x1 y1 zip
+
+let _ = D.defaultEnv:={ !D.defaultEnv with 
+  new_page=my_new_page a4}
+)
 
 ===================================
 ImageLib Test
