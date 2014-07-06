@@ -592,16 +592,16 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
                     for i=0 to w-1 do
                       Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
 			if image.max_val <= 255 then (
-			  let r = (r * 255) / image.max_val in
-			  let g = (g * 255) / image.max_val in
-			  let b = (b * 255) / image.max_val in
+			  let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
+			  let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
+			  let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
 			  Rbuffer.add_char img_buf (char_of_int r);
 			  Rbuffer.add_char img_buf (char_of_int g);
 			  Rbuffer.add_char img_buf (char_of_int b))
 			else (
-			  let r = (r * 65535) / image.max_val in
-			  let g = (g * 65535) / image.max_val in
-			  let b = (b * 65535) / image.max_val in
+			  let r = (r * 65535 * 2 + 1) / (2 * image.max_val) in
+			  let g = (g * 65535 * 2 + 1) / (2 * image.max_val) in
+			  let b = (b * 65535 * 2 + 1) / (2 * image.max_val) in
 			  let r0 = char_of_int (r land 255) in
 			  let r1 = char_of_int (r lsr 8) in
 			  let g0 = char_of_int (g land 255) in

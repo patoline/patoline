@@ -737,10 +737,10 @@ let output' ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 	      Image.(read_rgba_pixel image i j (fun ~r ~g ~b ~a ->
 		let r,g,b,a = 
 		  if image.max_val <> 255 then
-		    (r * 255) / image.max_val,
-		    (g * 255) / image.max_val,
-		    (b * 255) / image.max_val,
-		    (a * 255) / image.max_val
+		    (r * 255 * 2 + 1) / (2 * image.max_val),
+		    (g * 255 * 2 + 1) / (2 * image.max_val),
+		    (b * 255 * 2 + 1) / (2 * image.max_val),
+		    (a * 255 * 2 + 1) / (2 * image.max_val)
 		  else r,g,b,a
 		in
 		Raw.set raw ((j * w + i) * 4 + 0) r;
