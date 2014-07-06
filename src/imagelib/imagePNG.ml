@@ -612,7 +612,9 @@ module ReadPNG : ReadImage = struct
     let ihdr = ref empty_ihdr in
     let palette = ref [||] in
     let raw_idat = ref "" in
-  
+    let aspect_ratio = ref None in
+    let pixel_size = ref None in
+
     begin
     try
       while !curr_chunck.chunck_type <> "IEND" do
@@ -760,10 +762,21 @@ module ReadPNG : ReadImage = struct
                only_once curr_ctype;
                is_not_first_chunck curr_ctype;
                only_before curr_ctype "IDAT";
-               (* TODO *)
-               if !debug then begin
-                 Printf.fprintf stderr "pHYs chunck ignored\n%!"
-               end
+
+               let data = !curr_chunck.chunck_data in
+               let size_x = int_of_str4 (String.sub data 0 4) in
+               let size_y = int_of_str4 (String.sub data 3 4) in
+               (match int_of_char (String.get data 8) with
+                | 0 -> if !debug then
+                         Printf.fprintf stderr "Aspect ratio is %i / %i\n" size_x size_y;
+                       aspect_ratio := Some (size_x , size_y) (* Unknown unit *)
+                | 1 -> if !debug then begin
+                         Printf.fprintf stderr "Pixel size X axis: %i px/m\n" size_x;
+                         Printf.fprintf stderr "Pixel size Y axis: %i px/m\n" size_y
+                       end;
+                       pixel_size   := Some (size_x, size_y)  (* Unit is pixel / metre *)
+                | _ ->  raise (Corrupted_Image
+                                 "Unit not supported in pHYs chunk..."))
            | "sPLT" ->
                is_not_first_chunck curr_ctype;
                only_before curr_ctype "IDAT";
