@@ -4,6 +4,7 @@ open ImageUtil
 open ImagePNG
 open ImagePPM
 open ImageXCF
+open ImageJPG
 
 let size fn =
   let ext = String.lowercase (get_extension' fn) in
@@ -13,6 +14,8 @@ let size fn =
   then ReadPPM.size fn else
   if List.mem ext ReadXCF.extensions
   then ReadXCF.size fn else
+  if List.mem ext ReadJPG.extensions
+  then ReadJPG.size fn else
   begin
     let fn' = temp_file "image" ".png" in
     let cmd = Printf.sprintf "convert %s %s" fn fn' in
