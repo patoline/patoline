@@ -578,27 +578,62 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             if !pageImages<>[] then (
               List.iter (fun (obj,_,i)->
                 resumeObject obj;
-                let open ImagePNG in
-                let image=ReadPNG.openfile i.image_file in
+                let image=ReadImg.openfile i.image_file in
                 let w=image.width and h=image.height in
-                let img_buf=Rbuffer.create (w*h*3) in
-
-                let v=float_of_int image.max_val in
-                for j=0 to h-1 do
-                  for i=0 to w-1 do
-                    Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
-                      let a=(float_of_int a)/.v in
-                      let r=(1.-.a)*.v+.a*.float_of_int r in
-                      let g=(1.-.a)*.v+.a*.float_of_int g in
-                      let b=(1.-.a)*.v+.a*.float_of_int b in
-                      Rbuffer.add_char img_buf (char_of_int (round r));
-                      Rbuffer.add_char img_buf (char_of_int (round g));
-                      Rbuffer.add_char img_buf (char_of_int (round b))
-                    );
+		let bits_per_component =
+		  if image.max_val <= 255 then 8 else 16 in
+		let device = match image.pixels with
+		    RGB _ -> "RGB"
+                  | GreyL _ -> "Gray"
+		in
+                let img_buf=Rbuffer.create (w*h*3*(bits_per_component/8)) in		
+		if device = "RGB" then
+                  for j=0 to h-1 do
+                    for i=0 to w-1 do
+                      Image.read_rgba_pixel image i j (fun ~r ~g ~b ~a->
+			if image.max_val <= 255 then (
+			  let r = (r * 255) / image.max_val in
+			  let g = (g * 255) / image.max_val in
+			  let b = (b * 255) / image.max_val in
+			  Rbuffer.add_char img_buf (char_of_int r);
+			  Rbuffer.add_char img_buf (char_of_int g);
+			  Rbuffer.add_char img_buf (char_of_int b))
+			else (
+			  let r = (r * 65535) / image.max_val in
+			  let g = (g * 65535) / image.max_val in
+			  let b = (b * 65535) / image.max_val in
+			  let r0 = char_of_int (r land 255) in
+			  let r1 = char_of_int (r lsr 8) in
+			  let g0 = char_of_int (g land 255) in
+			  let g1 = char_of_int (g lsr 8) in
+			  let b0 = char_of_int (b land 255) in
+			  let b1 = char_of_int (b lsr 8) in
+			  Rbuffer.add_char img_buf r1;
+			  Rbuffer.add_char img_buf r0;
+			  Rbuffer.add_char img_buf g1;
+			  Rbuffer.add_char img_buf g0;
+			  Rbuffer.add_char img_buf b1;
+			  Rbuffer.add_char img_buf b0))
+		    done
                   done
-                done;
+		else
+                  for j=0 to h-1 do
+                    for i=0 to w-1 do
+                      Image.read_greya_pixel image i j (fun ~g ~a->
+			if image.max_val <= 255 then (
+			  let g = (g * 255) / image.max_val in
+			  Rbuffer.add_char img_buf (char_of_int g))
+			else (
+			  let g = (g * 65535) / image.max_val in
+			  let g0 = char_of_int (g land 255) in
+			  let g1 = char_of_int (g lsr 8) in
+			  Rbuffer.add_char img_buf g1;
+			  Rbuffer.add_char img_buf g0))
+                    done
+                  done;
+
                 let a,b=stream img_buf in
-                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length %d %s>>\nstream\n" w h (Rbuffer.length b) a;
+                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) a;
                 Rbuffer.output_buffer outChan b;
                 fprintf outChan "\nendstream";
                 endObject ()
