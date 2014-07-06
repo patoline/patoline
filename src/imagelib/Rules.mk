@@ -12,7 +12,7 @@ $(d)/%.depends: INCLUDES:=$(IMGLIB_INCLUDES)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
 # Building
-IMGLIB_MODS:= imageUtil image imagePPM imagePNG imageXCF imageJPG readImg
+IMGLIB_MODS:= imageUtil image imagePPM imagePNG imageXCF imageJPG imageGIF readImg
 
 IMGLIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(IMGLIB_MODS)))
 
