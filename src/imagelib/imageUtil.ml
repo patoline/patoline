@@ -150,6 +150,14 @@ let get_bytes ich n =
   really_input ich str 0 n; str
 ;;
 
+let print_byte v =
+  for i = 7 downto 0 do
+    let b = (v lsr i) land 1 in
+    Printf.fprintf stderr "%i" b
+  done;
+  Printf.fprintf stderr "%!"
+;;
+
 (*
  * Builds an integer which byte reprentation contains a given number of ones
  * starting form the right.

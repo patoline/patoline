@@ -401,13 +401,6 @@ module ReadPNG : ReadImage = struct
       end
     in
   
-    let print_byte v =
-      for i = 7 downto 0 do
-        let b = (v lsr i) land 1 in
-        Printf.fprintf stderr "%i" b
-      done
-    in
-  
     (* Writes the pixel pix at pixel position pos in the string str. *)
     let output_pixel pix pos str =
       if pl_bit mod 8 = 0
