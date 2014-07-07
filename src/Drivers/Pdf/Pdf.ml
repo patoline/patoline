@@ -503,12 +503,13 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
           endObject ();
           resumeObject pageObjects.(page);
           let w,h=pages.(page).pageFormat in
-            fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
-            fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
-              (if !pageImages=[] then "" else " /ImageB");
-            if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
-              fprintf outChan "/ExtGState << ";
-              fprintf outChan "/GS%d <</Type /ExtGState /ca %f /CA %f>> " 0 1. 1.;
+          fprintf outChan "<< /Type /Page /Parent 1 0 R /MediaBox [ 0 0 %f %f ] " (pt_of_mm w) (pt_of_mm h);
+	  fprintf outChan "/Group << /Type /Group /S /Transparency /I false /K true /CS /DeviceRGB >>";
+          fprintf outChan "/Resources << /ProcSet [/PDF /Text%s] "
+            (if !pageImages=[] then "" else " /ImageB");
+          if FloatMap.cardinal !sopacities > 1 || FloatMap.cardinal !nsopacities>1 then (
+            fprintf outChan "/ExtGState << ";
+            fprintf outChan "/GS%d <</Type /ExtGState /ca %f /CA %f>> " 0 1. 1.;
               FloatMap.iter (fun k a->
                 if a>0 then
                   fprintf outChan "/GS%d <</Type /ExtGState /CA %f>> " a k
@@ -576,17 +577,21 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
             endObject ();
 
             if !pageImages<>[] then (
-              List.iter (fun (obj,_,i)->
-                resumeObject obj;
+              List.iter Image.(fun (obj,_,i)->
                 let image=ReadImg.openfile i.image_file in
                 let w=image.width and h=image.height in
 		let bits_per_component =
 		  if image.max_val <= 255 then 8 else 16 in
-		let device = match image.pixels with
-		    RGB _ -> "RGB"
-                  | GreyL _ -> "Gray"
+		let device, nbc = match image.pixels with
+		    RGB _ -> "RGB", 3
+                  | GreyL _ -> "Gray", 1
 		in
-                let img_buf=Rbuffer.create (w*h*3*(bits_per_component/8)) in		
+                let img_buf=Rbuffer.create (w*h*nbc*(bits_per_component/8)) in		
+		let alpha_buf = 
+		  if image.alpha <> None then
+		    Some (Rbuffer.create (w*h*(bits_per_component/8)))
+		  else None
+		in 
 		if device = "RGB" then
                   for j=0 to h-1 do
                     for i=0 to w-1 do
@@ -595,6 +600,7 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 			  let r = (r * 255 * 2 + 1) / (2 * image.max_val) in
 			  let g = (g * 255 * 2 + 1) / (2 * image.max_val) in
 			  let b = (b * 255 * 2 + 1) / (2 * image.max_val) in
+
 			  Rbuffer.add_char img_buf (char_of_int r);
 			  Rbuffer.add_char img_buf (char_of_int g);
 			  Rbuffer.add_char img_buf (char_of_int b))
@@ -613,7 +619,19 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 			  Rbuffer.add_char img_buf g1;
 			  Rbuffer.add_char img_buf g0;
 			  Rbuffer.add_char img_buf b1;
-			  Rbuffer.add_char img_buf b0))
+			  Rbuffer.add_char img_buf b0);
+			match alpha_buf with
+			| None -> ()
+			| Some buf ->
+			  if image.max_val <= 255 then (
+			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+			    Rbuffer.add_char buf (char_of_int a))
+			  else (
+			    let a = (a * 65535) / image.max_val in
+			    let a0 = char_of_int (a land 255) in
+			    let a1 = char_of_int (a lsr 8) in
+			    Rbuffer.add_char buf a1;
+			    Rbuffer.add_char buf a0))
 		    done
                   done
 		else
@@ -628,12 +646,36 @@ let output ?(structure:structure={name="";displayname=[];metadata=[];tags=[];
 			  let g0 = char_of_int (g land 255) in
 			  let g1 = char_of_int (g lsr 8) in
 			  Rbuffer.add_char img_buf g1;
-			  Rbuffer.add_char img_buf g0))
+			  Rbuffer.add_char img_buf g0);
+			match alpha_buf with
+			| None -> ()
+			| Some buf ->
+			  if image.max_val <= 255 then (
+			    let a = (a * 255 * 2 + 1) / (2 * image.max_val) in
+			    Rbuffer.add_char buf (char_of_int a))
+			  else (
+			    let a = (a * 65535) / image.max_val in
+			    let a0 = char_of_int (a land 255) in
+			    let a1 = char_of_int (a lsr 8) in
+			    Rbuffer.add_char buf a1;
+			    Rbuffer.add_char buf a0))
                     done
                   done;
-
+		let mask = match alpha_buf with
+		| None -> ""
+		| Some buf ->
+                  let a,b=stream buf in
+		  let m = beginObject () in
+                  fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray /BitsPerComponent %d /Length %d %s>>\nstream\n" w h bits_per_component (Rbuffer.length b) a;
+		  Rbuffer.output_buffer outChan b;
+		  let res = sprintf "/SMask %d 0 R" m in
+                  fprintf outChan "\nendstream";
+                  endObject ();
+		  res
+		in
+                resumeObject obj;
                 let a,b=stream img_buf in
-                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) a;
+                fprintf outChan "<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /Device%s /BitsPerComponent %d /Length %d %s %s>>\nstream\n" w h device bits_per_component (Rbuffer.length b) mask a;
                 Rbuffer.output_buffer outChan b;
                 fprintf outChan "\nendstream";
                 endObject ()
