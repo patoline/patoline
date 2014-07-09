@@ -508,8 +508,6 @@ module Format=functor (D:Document.DocumentStructure)->(
           Node { n with children=IntMap.mapi (fun k a->sectionize (k::path) a)
               n.children }, []) par
         ))
-        | Node n ->
-          Node { n with children=IntMap.mapi (fun k a->sectionize path a) n.children }
         | a->a
       in
       let with_chapters=match with_title with
