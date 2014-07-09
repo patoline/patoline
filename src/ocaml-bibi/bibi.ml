@@ -262,7 +262,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       let l = bibitem bibfile x in
       tT"["::fn l
     with
-        No_bib s->(Printf.fprintf stderr "%s\n" s;exit 1)
+        No_bib s->(Printf.eprintf "%s\n%!" s; [tT "[???]"])
       | _->[]
 
   let authorCite x y=
@@ -270,7 +270,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
       (if y="" then "" else sprintf "(%s) AND" y) x
 
   let authorFile bibfile x=match author_ bibfile (sprintf "name LIKE '%%%s%%'" x) with
-      []->Printf.fprintf stderr "Unknown author %S\n" x;flush stderr;raise Not_found
+      []->Printf.eprintf "Unknown author %S\n%!" x;[tT "[???]"]
     | h::_->[tT (snd (make_name h))]
 
   let cite x=match !bibfile_ with
