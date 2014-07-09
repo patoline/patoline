@@ -128,7 +128,7 @@ let these parameters str tree max_level=
   let params a b c d e f g line=
       parameters a b c d e f g line
   in
-  newPar str ~environment:(fun x->{x with par_indent=[];lead=1.5*.x.lead}) Complete.normal params [
+  newPar str ~environment:(fun x->{x with par_indent=[]}) Complete.normal params [
     bB (
       fun env->
         let margin=env.size*.phi in
@@ -154,7 +154,7 @@ let these parameters str tree max_level=
                 let spacing=env.size/.phi in
                 let in_toc=List.mem_assoc "intoc" s.node_tags in
                 let numbered=List.mem_assoc "numbered" s.node_tags in
-                if in_toc && count<>[] then (
+                if in_toc && numbered && count<>[] then (
                   let labl=String.concat "_" ("_"::List.map string_of_int path) in
                   let page=try
                              (1+layout_page (MarkerMap.find (Label labl) (user_positions env0)))
