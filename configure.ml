@@ -31,7 +31,7 @@ let plugins_dir=ref ""
 let plugins_dirs=ref []
 let hyphen_dirs=ref []
 let driver_dir=ref ""
-let lang=ref "FR"
+let lang=ref "EN"
 let ban_comic_sans=ref false
 let pdf_type3_only=ref false
 let int32=ref (Sys.word_size=32)
