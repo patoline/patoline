@@ -1,0 +1,32 @@
+# Maintainer: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
+pkgname=patoline
+pkgver=0
+pkgrel=1
+epoch=1405260321
+pkgdesc="Modern typesetting system written in OCaml, alternative to TeX/LaTex"
+arch=('any')
+url="http://www.patoline.org"
+license=('GPL3')
+depends=('ocaml' 'ocaml-findlib' 'dypgen' 'ocaml-camomile' 'ocaml-zip')
+optdepends=('ocaml-cairo-git: cairo driver'
+            'ocaml-lablgl: openGL driver'
+            'ocamlnet: presentation control unsing websockets'
+            'ocaml-sqlite3: bibliography support using bibi')
+makedepends=('wget')
+options=(!strip staticlibs)
+source=(http://patoline.org/darcs/patoline/archlinux/fetch-current.sh)
+md5sums=('52a3971c2547820c55d601018deaa9c7')
+
+build() {
+  cd "$srcdir"
+  ./fetch-current.sh
+	cd "$pkgname-current"
+  make configure
+  ./configure --prefix /usr
+  make
+}
+
+package() {
+	cd "$srcdir/$pkgname-current"
+	make install
+}
