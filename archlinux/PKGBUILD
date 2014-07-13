@@ -14,14 +14,13 @@ optdepends=('ocaml-cairo-git: cairo driver'
 makedepends=('wget')
 replaces=('patoline')
 options=(!strip staticlibs)
-source=(http://patoline.org/darcs/patoline/archlinux/fetch-current.sh)
-md5sums=('52a3971c2547820c55d601018deaa9c7')
+source=()
+md5sums=()
 
 build() {
   cd "$srcdir"
-  chmod +x fetch-current.sh
-  ./fetch-current.sh
-  tar -xvf "$(pkgname).tar.gz"
+  wget http://patoline.org/patoline-current.tar.gz
+  tar -xvf patoline-current.tar.gz
 	cd "$pkgname"
   make configure
   ./configure --prefix /usr
