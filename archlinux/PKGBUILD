@@ -21,6 +21,7 @@ build() {
   cd "$srcdir"
   chmod +x fetch-current.sh
   ./fetch-current.sh
+  tar -xvf patoline-current.tar.gz
 	cd "$pkgname-current"
   make configure
   ./configure --prefix /usr
