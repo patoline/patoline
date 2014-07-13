@@ -52,7 +52,7 @@ all: $(d)/imagelib.cmxa $(d)/imagelib.cma $(d)/imagelib.cmxs
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmxs $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
 
-DISTCLEAN += $(wildcard $(d)/*.depends)
+DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/META
 
 # Installing
 install: install-imglib

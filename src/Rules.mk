@@ -53,7 +53,7 @@ CLEAN += $(d)/DefaultGrammar.tgx $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.tt
 	 $(d)/DefaultGrammar.pdf $(d)/DefaultGrammar.tdx  $(d)/DefaultGrammar.tmx \
 	 $(d)/DefaultGrammar.cmi $(d)/DefaultGrammar.cmx $(d)/DefaultGrammar.o \
 	 $(d)/DefaultGrammar_.cmi $(d)/DefaultGrammar_.cmx $(d)/DefaultGrammar_.o \
-	 $(d)/quail.el
+	 $(d)/DefaultGrammar_.dep $(d)/DefaultGrammar.tdep $(d)/quail.el
 
 # Installing
 install: install-grammars

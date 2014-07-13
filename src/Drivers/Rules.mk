@@ -47,8 +47,8 @@ $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmxs): %.cmxs: %.cmx
 CLEAN+=$(DRIVERS_CMXA) $(DRIVERS_CMX) \
        $(d)/*.cmo $(d)/*.cmi $(d)/*.o $(d)/*.cmx $(d)/*.a $(d)/*.so $(d)/*.cmxa \
        $(d)/*/*.cmo $(d)/*/*.cmi $(d)/*/*.o $(d)/*/*.cmx $(d)/*/*.a $(d)/*/*.so \
-			 $(d)/*/*.cmxs
-DISTCLEAN+=$(d)/*/*.depends
+			 $(d)/*/*.cmxs $(d)/*/*.cma $(d)/*/*.cmxa
+DISTCLEAN+=$(d)/*/*.depends $(d)/*/*.META
 
 # Installing drivers
 install: install-drivers
