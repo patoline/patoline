@@ -194,6 +194,20 @@ let add_format opts =
 *)
   { opts with packages = packages }
 
+let rec breadth_first m h l=match h with
+    []->l
+  | _::_->
+    let rec make_next h0 l0 h=match h with
+        []->h0,l0
+      | a::b->
+        let next=try StrMap.find a !m with Not_found->[] in
+        let h1=List.fold_left (fun h2 x->x::h2) h0 next in
+        let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
+        make_next h1 l1 b
+    in
+    let h1,l1=make_next [] l h in
+    let h2=List.filter (fun x->not (List.mem x h) && not (List.mem x l)) h1 in
+    breadth_first m h2 l1
 
 let rec read_options_from_source_file f fread =
   let deps=ref [] in
@@ -600,22 +614,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 
           let mut,m=objects in
           Mutex.lock mut;
-
-          let rec breadth_first h l=match h with
-              []->l
-            | _::_->
-              let rec make_next h0 l0 h=match h with
-                  []->h0,l0
-                | a::b->
-                  let next=try StrMap.find a !m with Not_found->[] in
-                  let h1=List.fold_left (fun h2 x->x::h2) h0 next in
-                  let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
-                  make_next h1 l1 b
-              in
-              let h1,l1=make_next [] l h in
-              breadth_first h1 l1
-          in
-          let objs=breadth_first [h] [] in
+          let objs=breadth_first m [h] [] in
           if compilation_needed (source::objs) [h] then (
             let dirs_=str_dirs (!dirs@opts.directories) in
             let cmd="ocamlfind" in
@@ -676,22 +675,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 
             let mut,m=objects in
             Mutex.lock mut;
-            let rec breadth_first h l=match h with
-                []->l
-              | _::_->
-                let rec make_next h0 l0 h=match h with
-                    []->h0,l0
-                  | a::b->
-                    let next=try StrMap.find a !m with Not_found->[] in
-                    let h1=List.fold_left (fun h2 x->x::h2) h0 next in
-                    let l1=List.fold_left (fun l2 x->x::(List.filter (fun y->y<>x) l2)) l0 next in
-                    make_next h1 l1 b
-                in
-                let h1,l1=make_next [] l h in
-                let h2=List.filter (fun x->not (List.mem x h) && not (List.mem x l)) h1 in
-                breadth_first h2 l1
-            in
-            let objs=breadth_first [h] [] in
+            let objs=breadth_first m [h] [] in
             if compilation_needed (source::objs) [h] then (
               let dirs_=str_dirs (!dirs@opts.directories) in
               let cmd="ocamlfind" in
