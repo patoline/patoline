@@ -19,6 +19,7 @@ md5sums=('52a3971c2547820c55d601018deaa9c7')
 
 build() {
   cd "$srcdir"
+  chmod +x fetch-current.sh
   ./fetch-current.sh
 	cd "$pkgname-current"
   make configure
