@@ -27,14 +27,6 @@ IMGLIB_CMI:=$(IMGLIB_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(IMGLIB_CMX): %.cmx: %.cmo
 
-$(d)/readImg.cmo: $(d)/readImg.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(IMGLIB_INCLUDES) -o $@ -c $<
-
-$(d)/readImg.cmx: $(d)/readImg.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(IMGLIB_INCLUDES) -o $@ -c $<
-
 $(d)/imagelib.cma: $(IMGLIB_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
@@ -47,7 +39,6 @@ $(d)/imagelib.cmxs: $(IMGLIB_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
-
 # Building everything
 all: $(d)/imagelib.cmxa $(d)/imagelib.cma $(d)/imagelib.cmxs
 
@@ -59,7 +50,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends) $(d)/META
 # Installing
 install: install-imglib
 .PHONY: install-imglib
-install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.a $(d)/META $(IMGLIB_CMI) $(IMGLIB_CMX) $(IMGLIB_CMO)
+install-imglib: $(d)/imagelib.cma $(d)/imagelib.cmxa $(d)/imagelib.cmxs $(d)/imagelib.a $(d)/META $(IMGLIB_CMI) $(IMGLIB_CMX) $(IMGLIB_CMO)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_IMGLIB_DIR)
 

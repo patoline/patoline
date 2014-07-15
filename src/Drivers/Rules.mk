@@ -2,7 +2,6 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-#fonts package has subdir than ocamlfind does not like
 DRIVERS_INCLUDES:=-I $(d) $(PACK_DRIVERS)
 DRIVERS_DEPS_INCLUDES:=-I $(d) $(DEPS_PACK_DRIVERS)
 $(d)/%.depends $(d)/%/%.depends: INCLUDES += $(DRIVERS_DEPS_INCLUDES)
@@ -15,7 +14,7 @@ DRIVERS_CMX:=$(DRIVERS_CMXA:.cmxa=.cmx)
 DRIVERS_CMXS:=$(DRIVERS_CMXA:.cmxa=.cmxs)
 
 # Building stuff
-all: $(DRIVERS_CMA) $(DRIVERS_CMXA) # $(DRIVERS_CMXS)
+all: $(DRIVERS_CMA) $(DRIVERS_CMXA) $(DRIVERS_CMXS)
 
 # Find who has a Rules.mk, in which case we won't apply the generic
 # %.cmxa: %.cmx rule from this file.
@@ -27,27 +26,27 @@ $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.cmo
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmo): %.cmo: %.ml $(TYPOGRAPHY_DIR)/ParseMainArgs.cmo
 	$(ECHO) "[OCAMLC]    $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(DRIVERS_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmx): %.cmx: %.ml $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(DRIVERS_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) -o $@ -c $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.ml.depends): %.ml.depends: %.ml
 	$(ECHO) "[OCAMLC]    $< -> $@"
-	$(Q)$(OCAMLDEP) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(DRIVERS_INCLUDES) $< > $@
+	$(Q)$(OCAMLDEP) $(PACK_DRIVER_$(patsubst %.ml,%,$(notdir $(<)))) -I $(dir $(<)) $(INCLUDES) $< > $@
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cma): %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma $(FORMAT_DIR)/DefaultFormat.cma
 	$(ECHO) "[MKLIB]    $< -> $@"
-	$(Q)$(OCAMLC) $(PACK_DRIVER_$(patsubst %.cmo,%,$(notdir $(<)))) $(DRIVERS_INCLUDES) -I $(dir $(<)) -a -o $@ $<
+	$(Q)$(OCAMLC) $(PACK_DRIVER_$(patsubst %.cmo,%,$(notdir $(<)))) $(INCLUDES) -I $(dir $(<)) -a -o $@ $<
 
 $(DRIVERS_WITHOUT_RULES_MK): %.cmxa: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OMKLIB]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(DRIVERS_INCLUDES) -I $(dir $(<)) -a -o $@ $<
+	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(INCLUDES) -I $(dir $(<)) -a -o $@ $<
 
 $(DRIVERS_WITHOUT_RULES_MK:.cmxa=.cmxs): %.cmxs: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[SHARE]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(DRIVERS_INCLUDES) -linkpkg -shared -o $@ $<
+	$(Q)$(OCAMLOPT) $(PACK_DRIVER_$(patsubst %.cmx,%,$(notdir $(<)))) $(INCLUDES) -shared -o $@ $<
 
 # Find dependencies
 -include $(DRIVERS_CMXA:.cmxa=.ml.depends)
@@ -66,10 +65,10 @@ install: install-drivers
 # for $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR) directory to be created
 # before putting drivers in it.
 install-drivers: install-typography \
-  $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) # $(DRIVERS_CMXA:.cmxa=.cmxs)
+  $(DRIVERS_CMXA) $(DRIVERS_CMXA:.cmxa=.a) $(DRIVERS_CMXA:.cmxa=.cmi) $(DRIVERS_CMXA:.cmxa=.cmxs)
 	install -d -m 755 $(DESTDIR)/$(INSTALL_DRIVERS_DIR)
 	install -p -m 644 $(DRIVERS_CMXA)  $(DRIVERS_CMXA:.cmxa=.a) $(LIB_DRIVERS_A)  $(DRIVERS_CMXA:.cmxa=.cmi) \
-	  $(DESTDIR)/$(INSTALL_DRIVERS_DIR) # $(DRIVERS_CMXA:.cmxa=.cmxs) 
+	  $(DRIVERS_CMXA:.cmxa=.cmxs) $(DESTDIR)/$(INSTALL_DRIVERS_DIR) 
 
 # Visit subdirectories
 $(foreach mod,$(DRIVERS),$(eval -include $(d)/$$(mod)/Rules.mk))

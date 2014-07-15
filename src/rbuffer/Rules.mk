@@ -29,16 +29,6 @@ RBUFFER_CMI:=$(RBUFFER_MLI:.mli=.cmi)
 #inutile Rbuffer à un .mli
 #$(RBUFFER_CMX): %.cmx: %.cmo
 
-$(RBUFFER_CMI): %.cmi: %.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
-$(RBUFFER_CMO): %.cmo: %.ml $(RBUFFER_CMI)
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
-$(RBUFFER_CMX): %.cmx: %.ml $(RBUFFER_CMI)
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
-
 $(d)/rbuffer.cma: $(RBUFFER_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
@@ -47,9 +37,13 @@ $(d)/rbuffer.cmxa: $(RBUFFER_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
+$(d)/rbuffer.cmxs: $(RBUFFER_CMX)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(Q)$(OCAMLOPT) -shared -o $@ $^
+
 
 # Building everything
-all: $(d)/rbuffer.cmxa $(d)/rbuffer.cma
+all: $(d)/rbuffer.cmxa $(d)/rbuffer.cma $(d)/rbuffer.cmxs
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
@@ -59,7 +53,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-rbuffer
 .PHONY: install-rbuffer
-install-rbuffer: $(d)/rbuffer.cma $(d)/rbuffer.cmxa $(d)/rbuffer.a $(RBUFFER_CMI) $(RBUFFER_MLI) $(RBUFFER_CMX) $(RBUFFER_CMO) $(d)/META
+install-rbuffer: $(d)/rbuffer.cma $(d)/rbuffer.cmxa $(d)/rbuffer.cmxs $(d)/rbuffer.a $(RBUFFER_CMI) $(RBUFFER_MLI) $(RBUFFER_CMX) $(RBUFFER_CMO) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_RBUFFER_DIR)
 

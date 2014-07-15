@@ -27,14 +27,6 @@ UTIL_CMI:=$(UTIL_ML:.ml=.cmi)
 # That's why we arbitrarily force the following dependency.
 $(UTIL_CMX): %.cmx: %.cmo
 
-$(UTIL_CMO): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(UTIL_INCLUDES) -o $@ -c $<
-
-$(UTIL_CMX): %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(UTIL_INCLUDES) -o $@ -c $<
-
 $(d)/patutil.cma: $(UTIL_CMO)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLC) -a -o $@ $^
@@ -43,9 +35,12 @@ $(d)/patutil.cmxa: $(UTIL_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
+$(d)/patutil.cmxs: $(UTIL_CMX)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(Q)$(OCAMLOPT) -shared -o $@ $^
 
 # Building everything
-all: $(d)/patutil.cmxa $(d)/patutil.cma
+all: $(d)/patutil.cmxa $(d)/patutil.cma $(d)/patutil.cmxs
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
@@ -55,7 +50,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends)
 # Installing
 install: install-util
 .PHONY: install-util
-install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
+install-util: $(d)/patutil.cma $(d)/patutil.cmxa $(d)/patutil.cmxs $(d)/patutil.a $(UTIL_CMI) $(UTIL_CMX) $(UTIL_CMO) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_UTIL_DIR)
 	install -m 644 -p $^ $(DESTDIR)/$(INSTALL_UTIL_DIR)
 

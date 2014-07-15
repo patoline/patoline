@@ -6,8 +6,9 @@ TYPOGRAPHY_INCLUDES := -I $(d) -I $(d)/Output $(PACK_TYPOGRAPHY)
 TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/Output $(DEPS_PACK_TYPOGRAPHY)
 
 # Compute ML files dependencies
-$(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
+$(d)/%.depends $(d)/Output/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
+$(d)/Output/%.cmx $(d)/Output/%.cmo $(d)/Output/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml) \
   $(wildcard $(d)/*.mli) \
@@ -46,6 +47,9 @@ $(d)/Typography.cma: $(d)/Typography.cmo
 $(d)/Typography.cmxa: $(d)/Typography.cmx
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
+$(d)/Typography.cmxs: $(d)/Typography.cmx
+	$(ECHO) "[OPT]    $< -> $@"
+	$(Q)$(OCAMLOPT) -shared -o $@ $<
 
 $(TYPOGRAPHY_CMI): %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
@@ -104,7 +108,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends) \
 install: install-typography
 .PHONY: install-typography
 
-install-typography: $(d)/Typography.cmxa $(d)/Typography.a \
+install-typography: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs $(d)/Typography.a \
   $(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi
 	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)

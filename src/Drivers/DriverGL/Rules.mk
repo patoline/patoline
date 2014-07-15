@@ -2,7 +2,10 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-GL_DRIVER_INCLUDES:= -I $(d) $(PACK_DRIVER_DriverGL)
+GL_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_DriverGL)
+$(d)/%.depends : INCLUDES += $(GL_DRIVER_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(GL_DRIVER_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: OFLAGS += -thread
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -33,21 +36,9 @@ $(d)/FrameBuffer.o: $(d)/FrameBuffer.c
 	$(ECHO) "[CC]     $<"
 	$(Q)$(CC) $(FPIC_FLAGS) $(CFLAGS) -c $< -o $@
 
-#$(d)/GLNet.cmx: %.cmx: %.ml
-#	$(ECHO) "[OPT]    $<"
-#	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(GL_DRIVER_INCLUDES) -o $@ -c $<
-
-$(d)/DriverGL.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
-	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) -thread $(INCLUDES) -o $@ -c $<
-
-$(d)/DriverGL.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) -thread $(INCLUDES) -o $@ -c $<
-
 $(d)/DriverGL.cma: $(d)/FrameBuffer.o $(d)/GlFBO.cmo $(d)/Vec3.cmo $(d)/DriverGL.cmo
 	$(ECHO) "[MKLIB] ... -> $@"
-	$(Q)$(OCAMLMKLIB) $(GL_DRIVER_INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
+	$(Q)$(OCAMLMKLIB) $(INCLUDES) -dllpath $(INSTALL_DLLS_DIR) -o $(basename $@) $^
 
 $(d)/DriverGL.cmxa: $(d)/FrameBuffer.o $(d)/GlFBO.cmx $(d)/Vec3.cmx $(d)/DriverGL.cmx
 	$(ECHO) "[OMKLIB] ... -> $@"

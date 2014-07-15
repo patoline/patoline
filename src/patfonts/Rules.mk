@@ -6,10 +6,11 @@ LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS)
 LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS)
 
 # Compute ML files dependencies
-$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends: INCLUDES:=$(LIBFONTS_DEPS_INCLUDES)
+$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends $(d)/unicodeRanges/%.depends: INCLUDES:=$(LIBFONTS_DEPS_INCLUDES)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 $(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 $(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+$(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo $(d)/unicodeRanges/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
@@ -47,6 +48,10 @@ $(d)/fonts.cmxa: $(LIBFONTS_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) -a -o $@ $^
 
+$(d)/fonts.cmxs: $(LIBFONTS_CMX)
+	$(ECHO) "[LINK]   ... -> $@"
+	$(Q)$(OCAMLOPT) -shared -o $@ $^
+
 $(d)/unicodeRanges/unicode_ranges_cpp.ml: $(d)/unicodeRanges/unicode_ranges.ml
 	$(ECHO) "[CPP]    $< -> $@"
 	$(Q)$(OCPP) $< $@
@@ -77,7 +82,7 @@ DISTCLEAN += $(wildcard $(d)/*.depends) \
 install: install-libfonts
 .PHONY: install-libfonts
 
-install-libfonts: $(d)/fonts.cmxa $(d)/fonts.cma $(d)/fonts.a $(LIBFONTS_CMI) $(LIBFONTS_CMO) $(LIBFONTS_CMX) $(d)/META
+install-libfonts: $(d)/fonts.cmxa $(d)/fonts.cmxs $(d)/fonts.cma $(d)/fonts.a $(LIBFONTS_CMI) $(LIBFONTS_CMO) $(LIBFONTS_CMX) $(d)/META
 	install -m 755 -d $(DESTDIR)/$(INSTALL_LIBFONTS_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_LIBFONTS_DIR)
 
