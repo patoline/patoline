@@ -142,7 +142,7 @@ let local_packages = [
     macro_suffix = "TYPOGRAPHY";
     local_deps = ["patutil";"patfonts";"imagelib"];
     extern_deps = ["camomile";"zip";"mysql";"dynlink"];
-    subdirs = ["Output"];
+    subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
   };
   (* FAKE: no META yet *)

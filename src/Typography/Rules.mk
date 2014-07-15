@@ -68,32 +68,34 @@ $(d)/Break.cmx: $(d)/Break.ml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
+# Build DefaultFormat
+DEFAULT_FORMAT_ML := $(d)/DefaultFormat/Euler.ml $(d)/DefaultFormat/Numerals.ml \
+  $(d)/DefaultFormat/TableOfContents.ml $(d)/DefaultFormat/DefaultFormat.ml
+DEFAULTFORMAT_ML:=$(wildcard $(d)/DefaultFormat/*.ml) 
+DEFAULTFORMAT_CMI:= $(DEFAULTFORMAT_ML:.ml=.cmi)
+
+$(d)/DefaultFormat.cmxa: $(DEFAULT_FORMAT_ML:.ml=.cmx)
+	$(ECHO) "[OPT]    $<"
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
+
+$(d)/DefaultFormat.cmxs: $(DEFAULT_FORMAT_ML:.ml=.cmx)
+	$(ECHO) "[OPT]    $<"
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -shared $^
+
+$(d)/DefaultFormat.cma: $(DEFAULT_FORMAT_ML:.ml=.cmo)
+	$(ECHO) "[OCAMLC] $<"
+	$(Q)$(OCAMLC) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -a $^
+
+$(d)/DefaultFormat.p.cma: $(DEFAULT_FORMAT_ML:.ml=.p.cmo)
+	$(ECHO) "[OPT -p] $<"
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(TYPOGRAPHY_INCLUDES) -o $@ -p -a $^
+
 # ocamldep cannot find dependencies on Typography
 $(d)/ParseMainArgs.cmo: $(d)/Typography.cma
 $(d)/ParseMainArgs.cmx: $(d)/Typography.cmxa
 
-$(d)/DefaultFormat.cmi: $(FORMAT_DIR)/DefaultFormat.cmo
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) cp $(FORMAT_DIR)/DefaultFormat.cmi $@
-$(d)/DefaultFormat.cmo: $(FORMAT_DIR)/DefaultFormat.cmo $(d)/DefaultFormat.cmi
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) 	cp $< $@
-$(d)/DefaultFormat.cmx: $(FORMAT_DIR)/DefaultFormat.cmx $(d)/DefaultFormat.cmi
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) 	cp $< $@
-$(d)/DefaultFormat.cmxa: $(FORMAT_DIR)/DefaultFormat.cmxa
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) 	cp $< $@
-$(d)/DefaultFormat.cma: $(FORMAT_DIR)/DefaultFormat.cma
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) 	cp $< $@
-$(d)/DefaultFormat.a: $(FORMAT_DIR)/DefaultFormat.cmxa
-	$(ECHO) "[COPY]    $< -> $@"
-	$(Q) 	cp $(FORMAT_DIR)/DefaultFormat.a $@
-
-
 # Building everything
-all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cmi $(d)/DefaultFormat.cmo $(d)/DefaultFormat.cmx $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.a
+all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs
 
 # Cleaning
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs \
@@ -109,7 +111,8 @@ install: install-typography
 .PHONY: install-typography
 
 install-typography: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/Typography.cmxs $(d)/Typography.a \
-  $(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi
+  $(d)/Typography.cmi $(d)/ParseMainArgs.cmx $(d)/ParseMainArgs.o $(d)/ParseMainArgs.cmi \
+  $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.cmxs $(d)/DefaultFormat.a $(DEFAULTFORMAT_CMI)
 	install -m 755 -d $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $^ $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 	install -p -m 644 $(TYPOGRAPHY_DIR)/META $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)

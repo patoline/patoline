@@ -2,8 +2,8 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-FORMAT_INCLUDES := -I $(d) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype -I $(DRIVERS_DIR)/SVG $(PACK_FORMAT)
-FORMAT_DEPS_INCLUDES := -I $(d) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_FORMAT)
+FORMAT_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_FORMAT)
+FORMAT_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_FORMAT)
 
 # Find dependencies
 $(d)/%.depends: INCLUDES += $(FORMAT_DEPS_INCLUDES)
@@ -19,22 +19,6 @@ PCMX_$(d) := $(SRC_$(d):.ml=.p.cmx)
 $(CMO_$(d)): $(TYPOGRAPHY_DIR)/Typography.cma
 $(CMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa
 $(PCMX_$(d)): $(TYPOGRAPHY_DIR)/Typography.cmxa
-
-# Build DefaultFormat
-DEFAULT_FORMAT_ML := $(d)/Euler.ml $(d)/Numerals.ml $(d)/TableOfContents.ml \
-  $(d)/DefaultFormat.ml
-
-$(d)/DefaultFormat.cmxa: $(DEFAULT_FORMAT_ML:.ml=.cmx)
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
-
-$(d)/DefaultFormat.cma: $(DEFAULT_FORMAT_ML:.ml=.cmo)
-	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
-
-$(d)/DefaultFormat.p.cma: $(DEFAULT_FORMAT_ML:.ml=.p.cmo)
-	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -p -a $^
 
 # Other formats
 OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
@@ -66,14 +50,14 @@ $(PCMX_$(d)): %.p.cmx: %.ml
 	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 # Tell make that we want to build all formats
-all: $(d)/DefaultFormat.cmxa $(OTHER_FORMATS:.ml=.cmxa)
+all: $(OTHER_FORMATS:.ml=.cmxa) $(OTHER_FORMATS:.ml=.cma)
 
 # Cleaning
 CLEAN += $(d)/*.cmi $(d)/*.cmo $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.o $(d)/*.cmx
 DISTCLEAN += $(d)/*.depends
 
 # Installing
-ALL_FORMATS_CMXA := $(d)/DefaultFormat.cmxa $(OTHER_FORMATS:.ml=.cmxa)
+ALL_FORMATS_CMXA := $(OTHER_FORMATS:.ml=.cmxa)
 
 install: install-format
 .PHONY: install-format

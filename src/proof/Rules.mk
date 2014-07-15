@@ -13,7 +13,7 @@ PROOF_INCLUDES := -I $(d) -package Typography,patutil,rbuffer,imagelib,patfonts 
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
-$(d)/proof: $(d)/proof.cmx $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.a $(DRIVERS_DIR)/Pdf/Pdf.cmx 
+$(d)/proof: $(d)/proof.cmx $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx 
 	$(ECHO) "[LINK]   ... -> $@"
 	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) $(PACK_DRIVER_Pdf) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmx $<
 

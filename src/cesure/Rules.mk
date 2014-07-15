@@ -4,12 +4,12 @@ d := $(if $(d),$(d)/,)$(mod)
 
 -include $(d)/cesure.ml.depends
 
-CESURE_INCLUDES := -I $(d) -package str,imagelib,patutil,Typography
+CESURE_INCLUDES := -I $(d) -package str,imagelib,patutil,Typography -I $(TYPOGRAPHY_DIR)/DefaultFormat
 all: $(d)/cesure
 
-$(d)/cesure: $(d)/cesure.ml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.a $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa
+$(d)/cesure: $(d)/cesure.ml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) $(CESURE_INCLUDES) -o $@ -linkpkg $<
+	$(Q)$(OCAMLOPT) $(CESURE_INCLUDES) -linkpkg -o $@ $<
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

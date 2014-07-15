@@ -10,9 +10,10 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi
 all: $(PATOPLOT_LIBS)
 
-$(d)/%.depends: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(UTIL_DIR) -I $(RBUFFER_DIR)
+$(d)/%.depends: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(TYPOGRAPHY_DIR)/DefaultFormat -I $(UTIL_DIR) -I $(RBUFFER_DIR)
 
-PLOT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(FORMAT_DIR) -I $(UTIL_DIR) -I $(RBUFFER_DIR)
+PLOT_INCLUDES := -package Typography,patutil,rbuffer -I $(TYPOGRAPHY_DIR)/DefaultFormat
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLOT_INCLUDES)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
 # since they both overwrite the .cmi file, which can get corrupted.
@@ -37,15 +38,15 @@ $(d)/plot.p.cmxa: %.p.cmxa: %.p.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
 
 $(d)/plot.cmo: %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PLOT_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 $(d)/plot.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PLOT_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 $(d)/plot.p.cmx: %.p.cmx: %.ml
 	$(ECHO) "[OPT -p] $< -> $@"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(PLOT_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 # Installing
 install: install-plot
