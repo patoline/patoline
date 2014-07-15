@@ -145,7 +145,7 @@ let local_packages = [
     subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
   };
-  { name = "plot";
+  { package_name = "plot";
     macro_suffix = "PLOT";
     local_deps = ["Typography"];
     extern_deps = [];
@@ -174,21 +174,21 @@ let local_packages = [
     subdirs = [];
     has_meta = false;
   };
-  { name = "cesure";
+  { package_name = "cesure";
     macro_suffix = "CESURE";
     local_deps = ["Typography"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
   };
-  { name = "proof";
+  { package_name = "proof";
     macro_suffix = "PROOF";
     local_deps = ["Typography";"imagelib"]; (* Pdf Driver no yet managed, added by hand *)
     extern_deps = [];
     subdirs = [];
     has_meta = false;
   };
-  { name = "plugins";
+  { package_name = "plugins";
     macro_suffix = "PLUGINS";
     local_deps = ["Patoline";"Format"];
     extern_deps = ["unix"];
@@ -212,7 +212,7 @@ let packages_local names =
   let rec fn acc name =
     let p = find_local name in
     let acc =
-      if p.has_meta then add p.name acc else
+      if p.has_meta then add p.package_name acc else
 	List.fold_left fn (List.fold_left (fun acc n -> add n acc) acc p.extern_deps)
 	  p.local_deps
     in
