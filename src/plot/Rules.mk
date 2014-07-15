@@ -10,9 +10,9 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi
 all: $(PATOPLOT_LIBS)
 
-$(d)/%.depends: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(TYPOGRAPHY_DIR)/DefaultFormat -I $(UTIL_DIR) -I $(RBUFFER_DIR)
-
-PLOT_INCLUDES := -package Typography,patutil,rbuffer -I $(TYPOGRAPHY_DIR)/DefaultFormat
+PLOT_INCLUDES := -I $(d) $(PACK_PLOT)
+PLOT_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLOT)
+$(d)/%.depends: INCLUDES+=$(PLOT_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLOT_INCLUDES)
 
 # We cannot run ocamlc and ocamlopt simultaneously on the same input,
@@ -20,10 +20,9 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLOT_INCLUDES)
 # That's why we arbitrarily force the following dependencies.
 $(d)/plot.cmx: $(d)/plot.cmo
 $(d)/plot.p.cmx: $(d)/plot.cmo
-
 $(d)/plot.cmi: $(d)/plot.cmo ;
-
 $(d)/plot.a: $(d)/plot.cmxa ;
+
 $(d)/plot.cmxa: %.cmxa: %.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[LINK]   $<"
 	$(Q)$(OCAMLOPT) -a -o $@ $<
@@ -35,18 +34,6 @@ $(d)/plot.cma: %.cma: %.cmo $(TYPOGRAPHY_DIR)/Typography.cma
 $(d)/plot.p.cmxa: %.p.cmxa: %.p.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa
 	$(ECHO) "[LINK]   $<"
 	$(Q)$(OCAMLOPT) -a -p -o $@ $<
-
-$(d)/plot.cmo: %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
-
-$(d)/plot.cmx: %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
-
-$(d)/plot.p.cmx: %.p.cmx: %.ml
-	$(ECHO) "[OPT -p] $< -> $@"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -I $(<D) -o $@ -c $<
 
 # Installing
 install: install-plot

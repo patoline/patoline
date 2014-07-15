@@ -6,20 +6,19 @@ d := $(if $(d),$(d)/,)$(mod)
 SRC_$(d):=$(wildcard $(d)/*.ml)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
+PLUGINS_INCLUDES := -I $(d) $(PACK_PLUGINS)
+PLUGINS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLUGINS)
+$(d)/%.depends: INCLUDES+=$(PLUGINS_DEPS_INCLUDES)
+$(d)/%.cmxa $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLUGINS_INCLUDES)
+
 # Building stuff
 all: $(d)/caml.cmxs
 
-PLUGINS_INCLUDES := -I $(PATOLINE_DIR) -I $(UTIL_DIR)
-
-$(d)/%.depends: INCLUDES:=-I $(d) $(PLUGINS_INCLUDES)
-
-$(d)/caml.cmx: %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -c $(PLUGINS_INCLUDES) -o $@ unix.cmxa $<
+$(d)/plugins.cmx: $(d)/plugins.cmo
 
 $(d)/caml.cmxs: %.cmxs: %.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PLUGINS_INCLUDES) -shared -o $@ unix.cmxa -linkpkg $<
+	$(Q)$(OCAMLOPT) $(INCLUDES) -shared -o $@ -linkpkg $<
 
 # Installing
 install: install-plugins

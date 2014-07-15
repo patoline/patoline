@@ -145,6 +145,13 @@ let local_packages = [
     subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
   };
+  { name = "plot";
+    macro_suffix = "PLOT";
+    local_deps = ["Typography"];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = true;
+  };
   (* FAKE: no META yet *)
   { package_name = "Format"; 
     macro_suffix = "FORMAT";
@@ -162,8 +169,29 @@ let local_packages = [
   };
   { package_name = "Drivers";
     macro_suffix = "DRIVERS";
-    local_deps = ["Typography"; "Format"];
+    local_deps = ["Typography"];
     extern_deps = [];
+    subdirs = [];
+    has_meta = false;
+  };
+  { name = "cesure";
+    macro_suffix = "CESURE";
+    local_deps = ["Typography"];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = false;
+  };
+  { name = "proof";
+    macro_suffix = "PROOF";
+    local_deps = ["Typography";"imagelib"]; (* Pdf Driver no yet managed, added by hand *)
+    extern_deps = [];
+    subdirs = [];
+    has_meta = false;
+  };
+  { name = "plugins";
+    macro_suffix = "PLUGINS";
+    local_deps = ["Patoline";"Format"];
+    extern_deps = ["unix"];
     subdirs = [];
     has_meta = false;
   };
@@ -175,7 +203,23 @@ let find_local name =
   [] -> raise Not_found
     | p::l -> if p.package_name = name then p else fn l
   in
-  fn local_packages
+  try fn local_packages with Not_found -> assert false
+
+let packages_local names =
+  let add d acc = 
+    if List.mem d acc then acc else d::acc
+  in
+  let rec fn acc name =
+    let p = find_local name in
+    let acc =
+      if p.has_meta then add p.name acc else
+	List.fold_left fn (List.fold_left (fun acc n -> add n acc) acc p.extern_deps)
+	  p.local_deps
+    in
+    acc
+  in
+  let l = List.fold_left fn [] names in
+  l
 
 let includes_local ?(subdir_only=true) name =
   let add d acc = 
@@ -184,7 +228,7 @@ let includes_local ?(subdir_only=true) name =
   let rec fn acc name =
     let p = find_local name in
     let acc =
-      if subdir_only then acc else
+      if subdir_only && p.has_meta then acc else
 	add ("-I "^(Filename.concat "src" p.package_name)) acc
     in
     let acc = List.fold_left (fun acc s ->
@@ -550,7 +594,7 @@ let _=
     let h x = if x = "" then "" else "-package " ^ x in
     Printf.fprintf make "PACK_%s := %s %s\n"
       macro (h
-      (String.concat "," (gen_pack_line (f (List.filter (fun name -> (find_local name).has_meta) local)@f extern))))
+      (String.concat "," (gen_pack_line (f (packages_local local) @ f extern))))
       (includes_local name);
     Printf.fprintf make "DEPS_PACK_%s := %s %s\n"
       macro (includes_local ~subdir_only:false name) (h

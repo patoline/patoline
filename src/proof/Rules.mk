@@ -6,20 +6,19 @@ d := $(if $(d),$(d)/,)$(mod)
 SRC_$(d):=$(wildcard $(d)/*.ml)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
+PROOF_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(PACK_PROOF)
+PROOF_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(DEPS_PACK_PROOF)
+$(d)/%.depends: INCLUDES+=$(PROOF_DEPS_INCLUDES)
+$(d)/proof $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PROOF_INCLUDES)
+
 # Building stuff
 all: $(d)/proof
-
-PROOF_INCLUDES := -I $(d) -package Typography,patutil,rbuffer,imagelib,patfonts  -I $(DRIVERS_DIR)/Pdf
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
 $(d)/proof: $(d)/proof.cmx $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx 
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) $(PACK_DRIVER_Pdf) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmx $<
-
-$(d)/proof.cmx: %.cmx: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PROOF_INCLUDES) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK_DRIVER_Pdf) $(INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmx $<
 
 # Installing
 install: install-proof
