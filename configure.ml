@@ -527,15 +527,15 @@ let _=
     (if String.uppercase !lang <> "EN" then ("-DLANG_"^String.uppercase !lang) else "");
   (if has_dypgen then
       (Printf.fprintf make "PATOLINE := src/Patoline/patoline\n";
-      Printf.fprintf make "PACKAGE_DYP := -package dyp\n")
+      Printf.fprintf make "DYPGEN := dyp\n")
    else
       (Printf.fprintf make "PATOLINE :=\n";
-      Printf.fprintf make "PACKAGE_DYP :=\n")
+      Printf.fprintf make "DYPGEN :=\n")
   );
   (if ocamlfind_has "zip" then
-      Printf.fprintf make "PACKAGE_ZIP := -package %s\n" (snd (ocamlfind_query "zip"))
+      Printf.fprintf make "CAMLZIP := %s\n" (snd (ocamlfind_query "zip"))
    else
-      Printf.fprintf make "PACKAGE_ZIP :=\n"
+      Printf.fprintf make "CAMLZIP :=\n"
   );
 
   List.iter (function { name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
