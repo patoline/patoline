@@ -43,7 +43,7 @@ $(d)/patutil.cmxs: $(UTIL_CMX)
 all: $(d)/patutil.cmxa $(d)/patutil.cma $(d)/patutil.cmxs
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
 
 DISTCLEAN += $(wildcard $(d)/*.depends)
 

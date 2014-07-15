@@ -46,7 +46,7 @@ $(d)/rbuffer.cmxs: $(RBUFFER_CMX)
 all: $(d)/rbuffer.cmxa $(d)/rbuffer.cma $(d)/rbuffer.cmxs
 
 # Cleaning
-CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o $(d)/*.a $(d)/*.cmxs
 
 DISTCLEAN += $(wildcard $(d)/*.depends)
 

@@ -68,7 +68,7 @@ $(d)/IsoAdobe.ml: $(d)/isoAdobe/ps_standards.ml $(d)/isoAdobe/isoadobe.source
 all: $(d)/fonts.cmxa $(d)/fonts.cma
 
 # Cleaning
-CLEAN += $(d)/fonts.cma $(d)/fonts.cmxa $(d)/fonts.a \
+CLEAN += $(d)/fonts.cma $(d)/fonts.cmxa $(d)/fonts.a $(d)/fonts.cmxs \
   $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
   $(d)/CFF/*.cmo $(d)/CFF/*.cmx $(d)/CFF/*.cmi \
 	$(d)/Opentype/*.cmo $(d)/Opentype/*.cmx $(d)/Opentype/*.cmi
