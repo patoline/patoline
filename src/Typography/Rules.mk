@@ -101,10 +101,12 @@ all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cma $(d)/Defaul
 CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a $(d)/*.cmxs \
   $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
   $(d)/Output/*.cmo $(d)/Output/*.cmx $(d)/Output/*.cmi $(d)/Output/*.o \
+  $(d)/DefaultFormat/*.cmo $(d)/DefaultFormat/*.cmx $(d)/DefaultFormat/*.cmi $(d)/DefaultFormat/*.o \
   $(d)/_tags
 
 DISTCLEAN += $(wildcard $(d)/*.depends) \
 	     $(wildcard $(d)/Output/*.depends) \
+	     $(wildcard $(d)/DefaultFormat/*.depends) \
 
 # Installing
 install: install-typography
