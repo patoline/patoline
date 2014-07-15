@@ -23,4 +23,4 @@ let spec = [
  "Driver specific arguments")
 ]
 
-let _= try Arg.parse spec ignore "Usage :" with Exit -> ();;
+let parse () = try Arg.parse spec ignore "Usage :" with Exit -> ();;

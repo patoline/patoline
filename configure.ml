@@ -18,6 +18,7 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
+let _ = Findlib.init ~env_ocamlpath:"src"
 let prefix=ref "/usr/local/"
 let bin_dir=ref ""
 let fonts_dir=ref ""
@@ -86,7 +87,106 @@ type findlib_package =
 
 let package_no_check _ _ = true
 
-let local_packages = ["imagelib"]
+type local_packages = {
+  name : string;
+  macro_suffix : string;
+  local_deps : string list;
+  extern_deps : string list;
+  subdirs : string list;
+  has_meta : bool;
+}
+let local_packages = [
+  { name = "patutil";
+    macro_suffix = "UTIL";
+    local_deps = ["rbuffer"];
+    extern_deps = ["camomile"];
+    subdirs = [];
+    has_meta = true;
+  };
+  { name = "imagelib";
+    macro_suffix = "IMAGELIB";
+    local_deps = ["patutil"];
+    extern_deps = ["zip"];
+    subdirs = [];
+    has_meta = true;
+  };
+  { name = "rbuffer";
+    macro_suffix = "RBUFFER";
+    local_deps = [];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = true;
+  };
+  { name = "patfonts";
+    macro_suffix = "FONTS";
+    local_deps = ["patutil"];
+    extern_deps = ["camomile"];
+    subdirs = ["CFF";"Opentype";"unicodeRanges"];
+    has_meta = true;
+  };
+  { name = "bibi";
+    macro_suffix = "BIBI";
+    local_deps = ["Typography";"patutil"];
+    extern_deps = ["camomile";"sqlite3"];
+    subdirs = [];
+    has_meta = true;
+  };
+  { name = "Typography";
+    macro_suffix = "TYPOGRAPHY";
+    local_deps = ["patutil";"patfonts";"imagelib"];
+    extern_deps = ["camomile";"zip";"mysql";"dynlink"];
+    subdirs = ["Output"];
+    has_meta = true;
+  };
+  (* FAKE: no META yet *)
+  { name = "Format"; 
+    macro_suffix = "FORMAT";
+    local_deps = ["Typography"];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = false;
+  };
+  { name = "Patoline";
+    macro_suffix = "PATOLINE";
+    local_deps = ["Typography"];
+    extern_deps = ["dyp"];
+    subdirs = [];
+    has_meta = false;
+  };
+  { name = "Drivers";
+    macro_suffix = "DRIVERS";
+    local_deps = ["Typography"; "Format"];
+    extern_deps = [];
+    subdirs = [];
+    has_meta = false;
+  };
+]
+
+let is_local name = List.exists (fun p -> name = p.name) local_packages
+let find_local name = 
+  let rec fn = function
+  [] -> raise Not_found
+    | p::l -> if p.name = name then p else fn l
+  in
+  fn local_packages
+
+let includes_local ?(subdir_only=true) name =
+  let add d acc = 
+    if List.mem d acc then acc else d::acc
+  in
+  let rec fn acc name =
+    let p = find_local name in
+    let acc =
+      if subdir_only then acc else
+	add ("-I "^(Filename.concat "src" p.name)) acc
+    in
+    let acc = List.fold_left (fun acc s ->
+      add ("-I "^(Filename.concat "src" (Filename.concat p.name s))) acc)
+      acc p.subdirs
+    in
+     List.fold_left fn acc p.local_deps
+  in
+  String.concat " " (fn [] name)
 
 let package_min_version min_version package alias =
   (* parse_version splits a string representing a version number to a
@@ -202,6 +302,7 @@ let patoline_uses_packages =
 let ocamlfind_query =
   let checked = Hashtbl.create 10 in
   function pack ->
+    if is_local pack then (true, pack) else
     try
       (* Easy case, when package has already been looked up *)
       Hashtbl.find checked pack
@@ -233,14 +334,13 @@ let ocamlfind_query =
         in
         Hashtbl.add checked pack res;
         if (fst res) then
-          Printf.printf " found (%s%s)\n" (snd res) (if List.mem pack local_packages then " local" else "")
+          Printf.printf " found (%s)\n" (snd res)
         else
           Printf.printf " not found\n";
         res
 
 (* Is a package ocamlfindable? *)
-let ocamlfind_has pack = 
-  List.mem pack local_packages || fst (ocamlfind_query pack)
+let ocamlfind_has pack = is_local pack || fst (ocamlfind_query pack)
 
 (* Listing Patoline drivers with their corresponding dependancies.
  * A driver may depend on some package found using ocamlfind, or on some other
@@ -266,20 +366,20 @@ and driver =
 
 let patoline_driver_gl =
   { name = "DriverGL";
-    needs =(Package "str")::(Package "zip")::(Package "imagelib")::
+    needs =(Package "Typography")::(Package "str")::(Package "zip")::(Package "imagelib")::
       (Package "lablgl")::(Package "lablgl.glut")::[];
     suggests = [];
     internals = []; (* [Package "Typography.GL"] *)
   }
 let patoline_driver_image =
   { name = "DriverImage";
-    needs = [Package "imagelib"; Package "lablgl"; Package "lablgl.glut"];
+    needs = [Package "Typography"; Package "imagelib"; Package "lablgl"; Package "lablgl.glut"];
     suggests = [];
     internals = [Driver patoline_driver_gl];
   }
 
 let svg_driver =
-    { name = "SVG"; needs = []; suggests = []; internals = [] }
+    { name = "SVG"; needs = [Package "Typography"]; suggests = []; internals = [] }
 
 (* List of all Patoline drivers.
  * Add yours to this list in order to build it. *)
@@ -288,9 +388,9 @@ let r_patoline_drivers = ref
     { name = "None"; needs = []; suggests = []; internals = [] };
     { name = "Pdf"; needs = []; suggests = [Package "zip"; Package "camlimages.all_formats"]; internals = [] };
     { name = "Bin"; needs = []; suggests = []; internals = [] };
-    { name = "Html"; needs = []; suggests = []; internals = [] };
-    { name = "Patonet"; needs = [Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
-    { name = "DriverCairo"; needs = [Package "cairo"]; suggests = []; internals = []  };
+    { name = "Html"; needs = [ Package "camomile"]; suggests = []; internals = [] };
+    { name = "Patonet"; needs = [ Package "cryptokit"]; suggests = []; internals = [Driver svg_driver] };
+    { name = "DriverCairo"; needs = [ Package "cairo"]; suggests = []; internals = []  };
     svg_driver; patoline_driver_gl;
     { name = "Net"; needs = []; suggests = []; internals = [Driver svg_driver] };
     { name = "Web"; needs = []; suggests = []; internals = [Driver svg_driver] };
@@ -437,27 +537,37 @@ let _=
    else
       Printf.fprintf make "PACKAGE_ZIP :=\n"
   );
-  Printf.fprintf make "PACK := -package %s\n"
-    (String.concat "," (gen_pack_line [Package "camomile"; Package "zip"; Package "mysql";
-                                       Package "cairo"; Package "fontconfig"]));
 
-  Printf.fprintf make "INSTALL_FONT_DIR := %s\n" !fonts_dir;
-  Printf.fprintf make "INSTALL_GRAMMARS_DIR := %s\n" !grammars_dir;
-  Printf.fprintf make "INSTALL_HYPHEN_DIR := %s\n" !hyphen_dir;
-  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR := %s/Typography\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_DRIVERS_DIR := %s\n" !driver_dir;
-  Printf.fprintf make "INSTALL_DLLS_DIR := %s\n" !ocaml_dlls_dir;
-  Printf.fprintf make "INSTALL_EMACS_DIR := %s\n" emacsdir;
-  Printf.fprintf make "INSTALL_RBUFFER_DIR := %s/rbuffer\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_UTIL_DIR := %s/util\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_IMGLIB_DIR := %s/imagelib\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_LIBFONTS_DIR := %s/fonts\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_BIBI_DIR := %s/bibi\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PATOPLOT_DIR := %s/patoplot\n" !ocaml_lib_dir;
-  Printf.fprintf make "INSTALL_PLUGINS_DIR := %s\n" !plugins_dir;
+  List.iter (function { name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
+    let f = List.map (fun x->Package x) in
+    let h x = if x = "" then "" else "-package " ^ x in
+    Printf.fprintf make "PACK_%s := %s %s\n"
+      macro (h
+      (String.concat "," (gen_pack_line (f (List.filter (fun name -> (find_local name).has_meta) local)@f extern))))
+      (includes_local name);
+    Printf.fprintf make "DEPS_PACK_%s := %s %s\n"
+      macro (includes_local ~subdir_only:false name) (h
+      (String.concat "," (gen_pack_line (f extern)))))
+    local_packages;
 
-  Printf.fprintf make "INSTALL_BIN_DIR := %s\n" !bin_dir;
+  Printf.fprintf make "INSTALL_FONT_DIR :=%s\n" !fonts_dir;
+  Printf.fprintf make "INSTALL_GRAMMARS_DIR :=%s\n" !grammars_dir;
+  Printf.fprintf make "INSTALL_HYPHEN_DIR :=%s\n" !hyphen_dir;
+  Printf.fprintf make "INSTALL_TYPOGRAPHY_DIR :=%s/Typography\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_DRIVERS_DIR :=%s\n" !driver_dir;
+  Printf.fprintf make "INSTALL_DLLS_DIR :=%s\n" !ocaml_dlls_dir;
+  Printf.fprintf make "INSTALL_EMACS_DIR :=%s\n" emacsdir;
+  Printf.fprintf make "INSTALL_RBUFFER_DIR :=%s/rbuffer\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_UTIL_DIR :=%s/patutil\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_IMGLIB_DIR :=%s/imagelib\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_LIBFONTS_DIR :=%s/patfonts\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_BIBI_DIR :=%s/bibi\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_PATOPLOT_DIR :=%s/patoplot\n" !ocaml_lib_dir;
+  Printf.fprintf make "INSTALL_PLUGINS_DIR :=%s\n" !plugins_dir;
 
+  Printf.fprintf make "INSTALL_BIN_DIR :=%s\n" !bin_dir;
+
+  Printf.fprintf make "PREFIX :=%s\n" !prefix;
 
   (* Write out the list of enabled drivers *)
   let ok_drivers = List.filter can_build_driver patoline_drivers in
@@ -471,9 +581,9 @@ let _=
   (* Output -package option for enabled drivers *)
   List.iter
   (fun d ->
-    Printf.fprintf make "PACK_DRIVER_%s := %s\n"
-      d.name
-      (String.concat "," (gen_pack_line (List.filter (function Package p -> not (List.mem p local_packages) | _ -> true) (d.needs @ d.suggests))))
+    let pack = String.concat "," (gen_pack_line (d.needs @ d.suggests)) in
+    if pack <> "" then
+    Printf.fprintf make "PACK_DRIVER_%s := -package %s\n" d.name pack
   )
   ok_drivers;
 
@@ -504,18 +614,18 @@ let _=
         close_out f
     end
   in
-  let gen_imagelib_driver () =
+  let gen_imagelib () =
     let meta_name = "src/imagelib/META" in
     let f = open_out meta_name in
     Printf.fprintf f "name=\"imagelib\"\n\nversion=\"1.0\"\ndescription=\"A pure OCaml library for reading / writing images\"\n";
     let zip = if ocamlfind_has "zip" then snd (ocamlfind_query "zip") ^ "," else "" in
-    Printf.fprintf f "requires=\"%sutil\"\n" zip; 
+    Printf.fprintf f "requires=\"%spatutil\"\n" zip; 
     Printf.fprintf f "archive(byte)=\"imagelib.cma\"\n";
     Printf.fprintf f "archive(native)=\"imagelib.cmxa\"\n";
     close_out f
   in
 
-  gen_imagelib_driver ();
+  gen_imagelib ();
   List.iter gen_meta_driver !r_patoline_drivers;
 
   (* Generate the META file for Typography, which details package information
@@ -524,18 +634,16 @@ let _=
    * file, which is included as is. Otherwise, a generic entry is generated for
    * the format.
    *
-   * DefaultFormat.ml is excluded, since it is already embedded inside
-   * Typography.
    *)
   let meta=open_out "src/Typography/META" in
     Printf.fprintf meta
-      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"util,fonts,%s\"\n"
+      "name=\"Typography\"\nversion=\"0.1\"\ndescription=\"Typography library\"\nrequires=\"patutil,patfonts,%s\"\n"
       (String.concat "," (gen_pack_line [Package "str"; Package "camomile"; Package "mysql";
                                          Package "zip";
-                                         Package "imagelib";
+                                         Package "imagelib";Package "dynlink";
                                          Package "fontconfig"]));
     Printf.fprintf meta "archive(native)=\"Typography.cmxa, DefaultFormat.cmxa, ParseMainArgs.cmx\"\n";
-    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cma, ParseMainArgs.cmo\"\n";
+    Printf.fprintf meta "archive(byte)=\"Typography.cma, DefaultFormat.cmx, ParseMainArgs.cmo\"\n";
 
   let check_name file=
     let valid=ref (String.length file>0) in
@@ -566,7 +674,7 @@ let _=
   in
   Array.iter
     (fun file ->
-      if (is_substring "Format" file || file = "Interactive.ml") && file <> "DefaultFormat.ml"
+      if (is_substring "Format" file || file = "Interactive.ml") (*&& file <> "DefaultFormat.ml"*)
       then make_meta_part "src/Format" file) (Sys.readdir "src/Format");
   List.iter (fun drv ->
     make_meta_part (Filename.concat "src/Drivers" drv.name) (drv.name ^ ".ml")

@@ -144,6 +144,13 @@ FORMAT_DIR := Format
 HYPHENATION_DIR := Hyphenation
 EDITORS_DIR := editors
 
+# Environment variable for ocamlfind to search for local package
+# and ignore duplicate definition due to previous installation
+OCAMLPATH = $(SRC_DIR)
+OCAMLFIND_IGNORE_DUPS_IN=$(PREFIX)/lib/ocaml
+export OCAMLPATH 
+export OCAMLFIND_IGNORE_DUPS_IN
+
 # Main rule prerequisites are expected to be extended by each Rules.mk
 # We just declare it here to make it the (phony) default target.
 .PHONY: all
@@ -212,19 +219,19 @@ INCLUDES:=
 	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
 %.mli.depends: %.mli
 	$(ECHO) "[DEPS]   $< -> $@"
-	$(Q)$(OCAMLDEP) $(INCLUDES) -I $(<D) $< > $@
+	$(Q)$(OCAMLDEP) $(INCLUDES) $< > $@
 %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.p.cmx: %.ml
 	$(ECHO) "[OPT -p] $< -> $@"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(INCLUDES) -o $@ -c $<
 %.cmo: %.mlpack
 	$(ECHO) "[PACK]   $< -> $@"
 	$(Q)$(OCAMLC) -pack -o $@ $(addprefix $(dir $<),$(addsuffix .cmo,$(shell cat $<)))
@@ -233,10 +240,10 @@ INCLUDES:=
 	$(Q)$(OCAMLOPT) -pack -o $@ $(addprefix $(dir $<),$(addsuffix .cmx,$(shell cat $<)))
 %: %.cmo
 	$(ECHO) "[LINK]   $< -> $@"
-	$(Q)$(OCAMLC) $(PACK) -linkpkg $(INCLUDES) -I $(<D) -o $@ $<
+	$(Q)$(OCAMLC) -linkpkg $(INCLUDES) -o $@ $<
 %: %.cmx
 	$(ECHO) "[LINK X] $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) -linkpkg $(INCLUDES) -I $(<D) -o $@ $<
+	$(Q)$(OCAMLOPT) -linkpkg $(INCLUDES) -o $@ $<
 
 %.ml: %.mly
 	$(ECHO) "[YACC]   $< -> $@"
@@ -255,7 +262,7 @@ INCLUDES:=
 	$(Q)$(PATOLINE_IN_SRC) --recompile --driver Pdf --extra-hyph-dir $(HYPHENATION_DIR) --main-ml --extra-fonts-dir $(FONTS_DIR) -I $(SRC_DIR) $<
 
 	$(ECHO) "[OPT]    $*.tml $*_.tml -> $*.tmx"
-	$(Q)$(OCAMLOPT_NOPP) $(PACK) -linkpkg -I $(SRC_DIR) -I $(RBUFFER_DIR) rbuffer.cmxa -I $(TYPOGRAPHY_DIR) Typography.cmxa ParseMainArgs.cmx -I $(DRIVERS_DIR)/Pdf Pdf.cmxa -I $(FORMAT_DIR) DefaultFormat.cmxa -o $*.tmx $(SRC_DIR)/DefaultGrammar.cmx -impl $*.tml -impl $*_.tml
+	$(Q)$(OCAMLOPT_NOPP) -linkpkg -I $(SRC_DIR) -I $(RBUFFER_DIR) rbuffer.cmxa -I $(TYPOGRAPHY_DIR) Typography.cmxa ParseMainArgs.cmx -I $(DRIVERS_DIR)/Pdf Pdf.cmxa -I $(FORMAT_DIR) DefaultFormat.cmxa -o $*.tmx $(SRC_DIR)/DefaultGrammar.cmx -impl $*.tml -impl $*_.tml
 
 	./$*.tmx --extra-fonts-dir $(FONTS_DIR) --extra-hyph-dir $(HYPHENATION_DIR)
 

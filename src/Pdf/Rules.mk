@@ -14,7 +14,7 @@ $(d)/obj_parser.mli: $(d)/obj_parser.ml ;
 
 # Building stuff
 all: $(d)/pdf_parser.cmxa $(d)/pdf_parser.a $(d)/pdf_parser.cmi
-$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR)
+$(d)/%.depends $(d)/%.cmx $(d)/%.cmo: INCLUDES:=-I $(d) -package zip,Typography
 
 $(d)/pdf_parser.cmi: $(d)/pdf_parser.cmx ;
 

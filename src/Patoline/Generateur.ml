@@ -173,6 +173,7 @@ open Typography.Config
 open Typography.Document
 open Typography.OutputCommon
 open DefaultFormat.MathsFormat
+let _ = ParseMainArgs.parse ()
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
 module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct

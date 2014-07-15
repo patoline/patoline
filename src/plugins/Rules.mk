@@ -15,7 +15,7 @@ $(d)/%.depends: INCLUDES:=-I $(d) $(PLUGINS_INCLUDES)
 
 $(d)/caml.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) -c $(PLUGINS_INCLUDES) -o $@ unix.cmxa $<
+	$(Q)$(OCAMLOPT_NOINTF) -c $(PLUGINS_INCLUDES) -o $@ unix.cmxa $<
 
 $(d)/caml.cmxs: %.cmxs: %.cmx
 	$(ECHO) "[OPT]    $< -> $@"

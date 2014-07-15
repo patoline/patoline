@@ -51,7 +51,8 @@ let spec =
     message (Cli Extra_fonts));
    ("--extra-hyph-dir",Arg.String (fun x->extras_top:=x::"--extra-hyph-dir"::(!extras_top)),
     message (Cli Extra_hyph));
-
+   ("--main-ml",Arg.Unit (fun () -> main_ml:=true), message (Cli MainMl));
+   ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
    ("-I",Arg.String (fun x->
      Config2.local_path:=x::(!Config2.local_path);
      Config2.grammarspath:=x::(!Config2.grammarspath);
@@ -74,8 +75,6 @@ let spec =
    *)
    ("-package",Arg.String (fun s-> package_list:= s::(!package_list)),
     message (Cli Package));
-   ("--ml",Arg.Unit (fun () -> compile:=false; run:= false), message (Cli Ml));
-   ("--main-ml",Arg.Unit (fun () -> main_ml:=true), message (Cli MainMl));
    ("-o",Arg.Set_string output, message (Cli Output));
    ("--bin",Arg.Unit (fun () -> compile:=true; run:= false), message (Cli Bin));
    ("--edit-link", Arg.Unit (fun () -> Generateur.edit_link:=true), message (Cli Edit_link));

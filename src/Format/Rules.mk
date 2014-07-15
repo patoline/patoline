@@ -2,10 +2,13 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-FORMAT_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(UTIL_DIR) -I $(DRIVERS_DIR)/SVG -I $(RBUFFER_DIR) -I $(LIBFONTS_DIR) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype
+FORMAT_INCLUDES := -I $(d) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype -I $(DRIVERS_DIR)/SVG $(PACK_FORMAT)
+FORMAT_DEPS_INCLUDES := -I $(d) -I $(LIBFONTS_DIR)/CFF -I $(LIBFONTS_DIR)/Opentype -I $(DRIVERS_DIR)/SVG $(DEPS_PACK_FORMAT)
 
 # Find dependencies
-$(d)/%.depends: INCLUDES += $(FORMAT_INCLUDES)
+$(d)/%.depends: INCLUDES += $(FORMAT_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(FORMAT_INCLUDES)
+
 SRC_$(d) := $(wildcard $(d)/*.ml)
 CMO_$(d) := $(SRC_$(d):.ml=.cmo)
 CMX_$(d) := $(SRC_$(d):.ml=.cmx)
@@ -23,15 +26,15 @@ DEFAULT_FORMAT_ML := $(d)/Euler.ml $(d)/Numerals.ml $(d)/TableOfContents.ml \
 
 $(d)/DefaultFormat.cmxa: $(DEFAULT_FORMAT_ML:.ml=.cmx)
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
 
 $(d)/DefaultFormat.cma: $(DEFAULT_FORMAT_ML:.ml=.cmo)
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
 
 $(d)/DefaultFormat.p.cma: $(DEFAULT_FORMAT_ML:.ml=.p.cmo)
 	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -p -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -p -a $^
 
 # Other formats
 OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
@@ -39,28 +42,28 @@ OTHER_FORMATS := $(d)/FormatArticle.ml $(d)/FormatLivre.ml $(d)/FormatThese.ml \
 
 $(OTHER_FORMATS:.ml=.cmxa): %.cmxa: %.cmx
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
 
 $(OTHER_FORMATS:.ml=.cma): %.cma: %.cmo
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -a $^
+	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -a $^
 
 $(OTHER_FORMATS:.ml=.p.cmxa): %.p.cmxa: %.p.cmx
 	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -p -a $^
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -p -a $^
 
 # Common ML rules with proper includes
 $(CMO_$(d)): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 $(CMX_$(d)): %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 $(PCMX_$(d)): %.p.cmx: %.ml
 	$(ECHO) "[OPT -p] $<"
-	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(FORMAT_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -p $(OFLAGS) $(FORMAT_INCLUDES) -o $@ -c $<
 
 # Tell make that we want to build all formats
 all: $(d)/DefaultFormat.cmxa $(OTHER_FORMATS:.ml=.cmxa)

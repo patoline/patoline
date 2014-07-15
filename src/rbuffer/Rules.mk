@@ -5,8 +5,11 @@ d := $(if $(d),$(d)/,)$(mod)
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
-RBUFFER_INCLUDES := -I $(d)
-$(d)/%.depends: INCLUDES:=$(RBUFFER_INCLUDES)
+RBUFFER_INCLUDES := -I $(d) $(PACK_RBUFFER)
+RBUFFER_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_RBUFFER)
+
+$(d)/%.depends: INCLUDES:=$(RBUFFER_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(RBUFFER_INCLUDES)
 
 -include $(addsuffix .depends,$(SRC_$(d)))
 
@@ -28,13 +31,13 @@ RBUFFER_CMI:=$(RBUFFER_MLI:.mli=.cmi)
 
 $(RBUFFER_CMI): %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(RBUFFER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
 $(RBUFFER_CMO): %.cmo: %.ml $(RBUFFER_CMI)
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(RBUFFER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
 $(RBUFFER_CMX): %.cmx: %.ml $(RBUFFER_CMI)
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(RBUFFER_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(RBUFFER_INCLUDES) -o $@ -c $<
 
 $(d)/rbuffer.cma: $(RBUFFER_CMO)
 	$(ECHO) "[LINK]   ... -> $@"

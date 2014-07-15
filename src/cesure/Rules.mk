@@ -4,14 +4,12 @@ d := $(if $(d),$(d)/,)$(mod)
 
 -include $(d)/cesure.ml.depends
 
-CESURE_INCLUDES := -I $(TYPOGRAPHY_DIR) -I $(d)
+CESURE_INCLUDES := -I $(d) -package str,imagelib,patutil,Typography
 all: $(d)/cesure
 
-CESURE_LINK :=  $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa $(LIBFONTS_DIR)/fonts.cmxa -linkpkg
-
-$(d)/cesure: $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(UTIL_DIR)/util.cmxa $(d)/cesure.ml 
+$(d)/cesure: $(d)/cesure.ml $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(PACK) $(CESURE_INCLUDES) dynlink.cmxa -o $@ -package str -I $(IMAGELIB_DIR) -I $(UTIL_DIR) util.cmxa imagelib.cmxa $(CESURE_LINK) $^
+	$(Q)$(OCAMLOPT) $(PACK) $(CESURE_INCLUDES) -o $@ -linkpkg $<
 
 CLEAN += $(d)/cesure $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/cesure.ml.depends

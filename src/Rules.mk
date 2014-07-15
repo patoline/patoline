@@ -9,15 +9,16 @@ PATOLINE_DIR := $(d)/Patoline
 TYPOGRAPHY_DIR := $(d)/Typography
 DRIVERS_DIR := $(d)/Drivers
 FORMAT_DIR := $(d)/Format
-UTIL_DIR := $(d)/Util
+UTIL_DIR := $(d)/patutil
 IMAGELIB_DIR := $(d)/imagelib
-RBUFFER_DIR := $(d)/Rbuffer
-LIBFONTS_DIR := $(d)/Fonts
+RBUFFER_DIR := $(d)/rbuffer
+LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
 
 # Visit subdirectories
-MODULES := Rbuffer Util imagelib Fonts Typography Drivers Patoline Pdf cesure Format \
-  $(OCAML_BIBI) plot proof plugins
+MODULES := rbuffer patutil imagelib patfonts Typography Drivers Patoline \
+  Pdf cesure Format $(OCAML_BIBI) plot proof plugins
+
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 
 # Building Patoline's grammar
@@ -35,15 +36,15 @@ $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) $(PACK) -I $(UTIL_DIR) -I $(FORMAT_DIR) -I $(TYPOGRAPHY_DIR) Typography.cmxa -c -o $@ -impl $<
+	$(Q)$(OCAMLOPT_NOINTF) $(PACK_FORMAT) -c -o $@ -impl $<
 
 $(d)/DefaultGrammar.tmx: $(d)/DefaultGrammar_.tml $(d)/DefaultGrammar.cmx \
   $(RBUFFER_DIR)/rbuffer.cmxa \
-  $(UTIL_DIR)/util.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
+  $(UTIL_DIR)/patutil.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa \
   $(FORMAT_DIR)/DefaultFormat.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmxa \
   $(TYPOGRAPHY_DIR)/ParseMainArgs.cmx
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) $(PACK) -package $(PACK_DRIVER_Pdf) -I $(<D) -I $(UTIL_DIR) -I $(IMAGELIB_DIR) -I $(FORMAT_DIR) -I $(DRIVERS_DIR) -I $(TYPOGRAPHY_DIR) $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa imagelib.cmxa dynlink.cmxa $(LIBFONTS_DIR)/fonts.cmxa Typography.cmxa -I $(DRIVERS_DIR)/Pdf Pdf.cmxa ParseMainArgs.cmx DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
+	$(Q)$(OCAMLOPT_NOINTF) $(PACK_FORMAT) $(PACK_DRIVER_Pdf) -I $(<D) -I $(DRIVERS_DIR)/Pdf Pdf.cmxa $(FORMAT_DIR)/DefaultFormat.cmxa -linkpkg -o $@ $(@:.tmx=.cmx) -impl $<
 
 $(d)/DefaultGrammar.pdf: $(d)/DefaultGrammar.tmx $(PATOLINE_IN_SRC) $(HYPHENATION_DIR)/hyph-en-us.hdict
 	$(ECHO) "[TMX]    $< -> $@"

@@ -2,12 +2,14 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-IMGLIB_INCLUDES := -I $(d)
+IMGLIB_INCLUDES := -I $(d) $(PACK_IMAGELIB)
+IMGLIB_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_IMAGELIB)
 
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
-$(d)/%.depends: INCLUDES:=$(IMGLIB_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(IMGLIB_DEPS_INCLUDES)
+$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(IMGLIB_INCLUDES)
 
 -include $(addsuffix .depends,$(SRC_$(d)))
 
@@ -27,11 +29,11 @@ $(IMGLIB_CMX): %.cmx: %.cmo
 
 $(d)/readImg.cmo: $(d)/readImg.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(IMGLIB_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) $(IMGLIB_INCLUDES) -o $@ -c $<
 
 $(d)/readImg.cmx: $(d)/readImg.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(IMGLIB_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) $(IMGLIB_INCLUDES) -o $@ -c $<
 
 $(d)/imagelib.cma: $(IMGLIB_CMO)
 	$(ECHO) "[LINK]   ... -> $@"

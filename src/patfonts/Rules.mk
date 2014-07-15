@@ -2,14 +2,22 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-LIBFONTS_INCLUDES := -I $(d) -I $(d)/CFF -I $(d)/Opentype -I $(UTIL_DIR) -I $(RBUFFER_DIR)
+LIBFONTS_INCLUDES := -I $(d) $(PACK_FONTS)
+LIBFONTS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_FONTS)
 
 # Compute ML files dependencies
-$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends: INCLUDES:=$(LIBFONTS_INCLUDES)
+$(d)/%.depends $(d)/CFF/%.depends $(d)/Opentype/%.depends: INCLUDES:=$(LIBFONTS_DEPS_INCLUDES)
+$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+$(d)/CFF/%.cmx $(d)/CFF/%.cmo $(d)/CFF/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+$(d)/Opentype/%.cmx $(d)/Opentype/%.cmo $(d)/Opentype/%.cmi: INCLUDES:=$(LIBFONTS_INCLUDES)
+
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
           $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)
 -include $(addsuffix .depends,$(SRC_$(d)))
+
+LINKS:=$(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
+       $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)
 
 LIBFONTS_MODS:= UnicodeRanges IsoAdobe \
                 FBezier FTypes CFF/CFFStd CFF/Type2 CFF/CFF \
@@ -30,16 +38,6 @@ $(LIBFONTS_CMX): %.cmx: %.cmo
 
 $(LIBFONTS_CMI:.cmi=.cmo): %.cmo: %.cmi
 $(LIBFONTS_CMI:.cmi=.cmx): %.cmx: %.cmi
-
-$(LIBFONTS_CMI): %.cmi: %.mli
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(LIBFONTS_INCLUDES) -o $@ -c $<
-$(LIBFONTS_CMO): %.cmo: %.ml
-	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(LIBFONTS_INCLUDES) -o $@ -c $<
-$(LIBFONTS_CMX): %.cmx: %.ml
-	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(LIBFONTS_INCLUDES) -o $@ -c $<
 
 $(d)/fonts.cma: $(LIBFONTS_CMO)
 	$(ECHO) "[LINK]   ... -> $@"

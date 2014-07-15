@@ -2,42 +2,46 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-PATOLINE_INCLUDES := -I $(d) -I $(RBUFFER_DIR) -I $(UTIL_DIR)
+PATOLINE_INCLUDES := -I $(d) $(PACK_PATOLINE)
+PATOLINE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOLINE)
+$(d)/%.depends: INCLUDES += $(PATOLINE_DEPS_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
+
+PAT_CMX := $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
+  $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
 
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
 -include $(DEPENDS_$(d))
 
-$(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
-  $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx \
-  $(UTIL_DIR)/util.cmxa
+$(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) $(PACKAGE_DYP) -I $(UTIL_DIR) -I +threads str.cmxa threads.cmxa dynlink.cmxa $(UTIL_DIR)/util.cmxa $^
+	$(Q)$(OCAMLOPT) -o $@ -linkpkg $(PATOLINE_INCLUDES),threads -thread $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/util.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -I $(UTIL_DIR) -package glr,camlp4 $(UTIL_DIR)/util.cmxa dynlink.cmxa camlp4lib.cmxa str.cmxa glr.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $^ 
+	$(Q)$(OCAMLOPT) -linkpkg -package camlp4,patutil,imagelib,dynlink,glr str.cmxa glr.cmxa camlp4lib.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -I $(UTIL_DIR) -pp pa_glr -c -package glr,camlp4 -I +camlp4/Camlp4Parsers -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -pp pa_glr -c -package camlp4,patutil,glr -I +camlp4/Camlp4Parsers -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -I $(UTIL_DIR) -pp pa_glr -package glr,camlp4 $< > $@
+	$(Q)$(OCAMLDEP) -pp pa_glr -package glr,camlp4,patutil $< > $@
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
-#	$(Q)$(OCAMLOPT) -linkpkg -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(UTIL_DIR) $^
+#	$(Q)$(OCAMLOPT) -o $@ $(PACK) -package $(PACK_DRIVER_DriverGL) -I $(DRIVERS_DIR)/DriverGL -I $(DRIVERS_DIR) -I $(UTIL_DIR) $^
 
 PATOLINE_DIR := $(d)
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -thread -rectypes -I +threads $(OFLAGS) $(PACK) -I $(PATOLINE_DIR) $(PATOLINE_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
@@ -61,11 +65,15 @@ $(d)/Parser.ml: $(d)/tmp.dyp
 
 $(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -rectypes $(OFLAGS) $(PACK) -package dyp $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -rectypes $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+
+$(d)/Build.cmo: %.cmo: %.ml
+	$(ECHO) "[OPT]    $<"
+	$(Q)$(OCAMLC) -thread $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 $(d)/Build.cmx: %.cmx: %.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -thread $(OFLAGS) $(PACK) $(PATOLINE_INCLUDES) -I $(PATOLINE_DIR) -o $@ -c $<
+	$(Q)$(OCAMLOPT_NOINTF) -thread $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends

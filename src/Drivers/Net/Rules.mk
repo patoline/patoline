@@ -2,9 +2,10 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-NET_DRIVER_INCLUDES:=-I $(DRIVERS_DIR)/SVG -I $(TYPOGRAPHY_DIR)
+NET_DRIVER_INCLUDES:=-I $(d) $(PACK_DRIVER_Net) -I $(DRIVERS_DIR)/SVG
 
 $(d)/%.ml.depends: INCLUDES += $(NET_DRIVER_INCLUDES)
+$(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(NET_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
@@ -12,14 +13,6 @@ DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
 
 # cmi race condition
 $(d)/Net.cmx: %.cmx: %.cmo
-
-$(d)/Net.cmo: %.cmo: %.ml $(TYPOGRAPHY_DIR)/Typography.cma
-	$(ECHO) "[OCAMLC]    $<"
-	$(Q)$(OCAMLC) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
-
-$(d)/Net.cmx: %.cmx: %.ml $(TYPOGRAPHY_DIR)/Typography.cmxa
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT) $(OFLAGS) $(PACK) $(INCLUDES) -I $(<D) $(DRIVERS_INCLUDES) $(NET_DRIVER_INCLUDES) -o $@ -c $<
 
 $(d)/Net.cma: $(d)/Net.cmo
 	$(ECHO) "[MKLIB]   $<"

@@ -9,13 +9,13 @@ SRC_$(d):=$(wildcard $(d)/*.ml)
 # Building stuff
 all: $(d)/proof
 
-PROOF_INCLUDES := -I $(d) -I $(TYPOGRAPHY_DIR) -I $(DRIVERS_DIR)/Pdf -I $(UTIL_DIR) -I $(IMAGELIB_DIR) -I $(RBUFFER_DIR) -I $(LIBFONTS_DIR)
+PROOF_INCLUDES := -I $(d) -package Typography,patutil,rbuffer,imagelib,patfonts  -I $(DRIVERS_DIR)/Pdf
 
 $(d)/%.depends: INCLUDES:=$(PROOF_INCLUDES)
 
-$(d)/proof: $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/util.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx $(d)/proof.cmx
+$(d)/proof: $(d)/proof.cmx $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/Pdf/Pdf.cmx 
 	$(ECHO) "[LINK]   ... -> $@"
-	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) -package $(PACK_DRIVER_Pdf) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $^
+	$(Q)$(OCAMLOPT) dynlink.cmxa -linkpkg $(PACK) $(PACK_DRIVER_Pdf) $(PROOF_INCLUDES) $(INCLUDES) -o $@ $(DRIVERS_DIR)/Pdf/Pdf.cmx $<
 
 $(d)/proof.cmx: %.cmx: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"

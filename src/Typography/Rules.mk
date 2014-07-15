@@ -2,10 +2,13 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
-TYPOGRAPHY_INCLUDES := -I $(d) -I $(UTIL_DIR) -I $(RBUFFER_DIR) -I $(IMAGELIB_DIR) -I $(LIBFONTS_DIR) -I $(d)/Output
+TYPOGRAPHY_INCLUDES := -I $(d) -I $(d)/Output $(PACK_TYPOGRAPHY)
+TYPOGRAPHY_DEPS_INCLUDES := -I $(d) -I $(d)/Output $(DEPS_PACK_TYPOGRAPHY)
 
 # Compute ML files dependencies
-$(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
+$(d)/%.depends: INCLUDES:=$(TYPOGRAPHY_DEPS_INCLUDES)
+$(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(TYPOGRAPHY_INCLUDES)
+
 SRC_$(d):=$(wildcard $(d)/*.ml) \
   $(wildcard $(d)/*.mli) \
   $(wildcard $(d)/*/*.ml) \
@@ -46,27 +49,47 @@ $(d)/Typography.cmxa: $(d)/Typography.cmx
 
 $(TYPOGRAPHY_CMI): %.cmi: %.mli
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(filter-out $(d)/Break.cmo,$(TYPOGRAPHY_CMO)): %.cmo: %.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(filter-out $(d)/Break.cmx,$(TYPOGRAPHY_CMX)): %.cmx: %.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(PACK) $(INCLUDES) -I $(<D) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 $(d)/Break.cmo: $(d)/Break.ml
 	$(ECHO) "[OCAMLC] $< -> $@"
-	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography -rectypes $(PACK) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLC) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 $(d)/Break.cmx: $(d)/Break.ml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(PACK) $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) $(OFLAGS) -for-pack Typography -rectypes $(TYPOGRAPHY_INCLUDES) -o $@ -c $<
 
 # ocamldep cannot find dependencies on Typography
 $(d)/ParseMainArgs.cmo: $(d)/Typography.cma
 $(d)/ParseMainArgs.cmx: $(d)/Typography.cmxa
 
+$(d)/DefaultFormat.cmi: $(FORMAT_DIR)/DefaultFormat.cmo
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) cp $(FORMAT_DIR)/DefaultFormat.cmi $@
+$(d)/DefaultFormat.cmo: $(FORMAT_DIR)/DefaultFormat.cmo $(d)/DefaultFormat.cmi
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) 	cp $< $@
+$(d)/DefaultFormat.cmx: $(FORMAT_DIR)/DefaultFormat.cmx $(d)/DefaultFormat.cmi
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) 	cp $< $@
+$(d)/DefaultFormat.cmxa: $(FORMAT_DIR)/DefaultFormat.cmxa
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) 	cp $< $@
+$(d)/DefaultFormat.cma: $(FORMAT_DIR)/DefaultFormat.cma
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) 	cp $< $@
+$(d)/DefaultFormat.a: $(FORMAT_DIR)/DefaultFormat.cmxa
+	$(ECHO) "[COPY]    $< -> $@"
+	$(Q) 	cp $(FORMAT_DIR)/DefaultFormat.a $@
+
+
 # Building everything
-all: $(d)/Typography.cmxa $(d)/Typography.cma
+all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cmi $(d)/DefaultFormat.cmo $(d)/DefaultFormat.cmx $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.a
 
 # Cleaning
 CLEAN += $(d)/Typography.cma $(d)/Typography.cmxa $(d)/Typography.a \
