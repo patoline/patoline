@@ -131,7 +131,14 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
-  { name = "Typography";
+  { package_name = "glr";
+    macro_suffix = "GLR";
+    local_deps = [];
+    extern_deps = ["camlp4"];
+    subdirs = [];
+    has_meta = true;
+  };
+  { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
     local_deps = ["patutil";"patfonts";"imagelib"];
     extern_deps = ["camomile";"zip";"mysql";"dynlink"];
