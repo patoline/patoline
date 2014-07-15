@@ -137,6 +137,7 @@ OCAMLDOC := ocamlfind ocamldoc $(if $(OCPP),-pp '$(OCPP)',)
 OCAMLYACC := ocamlyacc
 OCAMLLEX := ocamllex
 DYPGEN := dypgen
+PA_GLR := src/glr/pa_glr
 
 # Useful directories, to be referenced from other Rules.ml
 FONTS_DIR := Fonts
@@ -154,7 +155,10 @@ export OCAMLFIND_IGNORE_DUPS_IN
 # Main rule prerequisites are expected to be extended by each Rules.mk
 # We just declare it here to make it the (phony) default target.
 .PHONY: all
-all: configure testconfig 
+all: $(PA_GLR) configure testconfig
+
+$(PA_GLR):
+	cd src/glr; make
 
 configure: configure.ml
 	$(ECHO) "[OPT] -> $@"
@@ -178,6 +182,7 @@ DISTCLEAN :=
 
 -include Rules.clean
 clean:
+	cd src/glr; make clean
 	rm -f $(CLEAN)
 
 distclean: clean
@@ -196,9 +201,12 @@ endif
 # Phony targets
 .PHONY: install doc test clean distclean
 
-install: install-bindir
+install: install-bindir install-glr
 install-bindir:
 	install -m 755 -d $(DESTDIR)/$(INSTALL_BIN_DIR)
+
+install-glr:
+	cd src/glr; make install
 
 # Prevent make from removing intermediate build targets
 .SECONDARY:	$(CLEAN) $(DISTCLEAN)

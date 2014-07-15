@@ -131,6 +131,13 @@ let local_packages = [
     subdirs = [];
     has_meta = true;
   };
+  { name = "glr";
+    macro_suffix = "GLR";
+    local_deps = [];
+    extern_deps = ["camlp4"];
+    subdirs = [];
+    has_meta = true;
+  };
   { name = "Typography";
     macro_suffix = "TYPOGRAPHY";
     local_deps = ["patutil";"patfonts";"imagelib"];
@@ -501,8 +508,8 @@ let _=
     Printf.eprintf "Warning: package sqlite3 missing, Patonet and Bibi will not support sqlite storage\n";
   );
 
-  let has_glr = ocamlfind_has "glr" in
-  if not has_glr then 
+  let has_camlp4 = ocamlfind_has "camlp4" in
+  if not has_camlp4 then 
     Printf.eprintf "Warning: glr is missing: the new EXPERIMENTAL parser of patoline will not be installed\n";
 
   let has_fontconfig = ocamlfind_has "fontconfig" in
@@ -591,7 +598,7 @@ let _=
   Printf.fprintf make "OCAML_BIBI := %s\n" (if has_sqlite3 then "ocaml-bibi" else "");
 
   (* Enable compilation of pa_patoline if glr is installed *)
-  Printf.fprintf make "PA_PATOLINE := %s\n" (if has_glr then "src/Patoline/pa_patoline" else "");
+  Printf.fprintf make "PA_PATOLINE := %s\n" (if has_camlp4 then "src/Patoline/pa_patoline" else "");
 
   (* Tell make which ConfigFindFont (fontconfig or not) should be linked while
    * building Typograhy.cmxa. *)
