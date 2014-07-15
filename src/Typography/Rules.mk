@@ -96,7 +96,7 @@ $(d)/DefaultFormat.a: $(FORMAT_DIR)/DefaultFormat.cmxa
 all: $(d)/Typography.cmxa $(d)/Typography.cma $(d)/DefaultFormat.cmi $(d)/DefaultFormat.cmo $(d)/DefaultFormat.cmx $(d)/DefaultFormat.cma $(d)/DefaultFormat.cmxa $(d)/DefaultFormat.a
 
 # Cleaning
-CLEAN += $(d)/Typography.cma $(d)/Typography.cmxa $(d)/Typography.a \
+CLEAN += $(d)/*.cma $(d)/*.cmxa $(d)/*.a \
   $(d)/*.cmo $(d)/*.cmx $(d)/*.cmi $(d)/*.o \
   $(d)/Output/*.cmo $(d)/Output/*.cmx $(d)/Output/*.cmi $(d)/Output/*.o \
   $(d)/_tags
