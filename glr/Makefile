@@ -133,6 +133,7 @@ uninstall:
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa pa_glr 
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
+	- cd html; rm -f *
 
 doc: glr.mli
 	ocamldoc -d html -html glr.mli
