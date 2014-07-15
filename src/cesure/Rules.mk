@@ -7,7 +7,7 @@ d := $(if $(d),$(d)/,)$(mod)
 CESURE_INCLUDES := -I $(d) -package str,imagelib,patutil,Typography
 all: $(d)/cesure
 
-$(d)/cesure: $(d)/cesure.ml $(TYPOGRAPHY_DIR)/Typography.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa
+$(d)/cesure: $(d)/cesure.ml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.a $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT) $(PACK) $(CESURE_INCLUDES) -o $@ -linkpkg $<
 
