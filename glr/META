@@ -1,0 +1,6 @@
+package "glr" (
+requires="unix, str, bigarray"
+version="0.1"
+archive(native)="glr.cmxa"
+archive(byte)="glr.cma"
+)
