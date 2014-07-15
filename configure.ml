@@ -88,7 +88,7 @@ type findlib_package =
 let package_no_check _ _ = true
 
 type local_packages = {
-  name : string;
+  package_name : string;
   macro_suffix : string;
   local_deps : string list;
   extern_deps : string list;
@@ -96,45 +96,38 @@ type local_packages = {
   has_meta : bool;
 }
 let local_packages = [
-  { name = "patutil";
+  { package_name = "patutil";
     macro_suffix = "UTIL";
     local_deps = ["rbuffer"];
     extern_deps = ["camomile"];
     subdirs = [];
     has_meta = true;
   };
-  { name = "imagelib";
+  { package_name = "imagelib";
     macro_suffix = "IMAGELIB";
     local_deps = ["patutil"];
     extern_deps = ["zip"];
     subdirs = [];
     has_meta = true;
   };
-  { name = "rbuffer";
+  { package_name = "rbuffer";
     macro_suffix = "RBUFFER";
     local_deps = [];
     extern_deps = [];
     subdirs = [];
     has_meta = true;
   };
-  { name = "patfonts";
+  { package_name = "patfonts";
     macro_suffix = "FONTS";
     local_deps = ["patutil"];
     extern_deps = ["camomile"];
     subdirs = ["CFF";"Opentype";"unicodeRanges"];
     has_meta = true;
   };
-  { name = "bibi";
+  { package_name = "bibi";
     macro_suffix = "BIBI";
     local_deps = ["Typography";"patutil"];
     extern_deps = ["camomile";"sqlite3"];
-    subdirs = [];
-    has_meta = true;
-  };
-  { name = "glr";
-    macro_suffix = "GLR";
-    local_deps = [];
-    extern_deps = ["camlp4"];
     subdirs = [];
     has_meta = true;
   };
@@ -146,21 +139,21 @@ let local_packages = [
     has_meta = true;
   };
   (* FAKE: no META yet *)
-  { name = "Format"; 
+  { package_name = "Format"; 
     macro_suffix = "FORMAT";
     local_deps = ["Typography"];
     extern_deps = [];
     subdirs = [];
     has_meta = false;
   };
-  { name = "Patoline";
+  { package_name = "Patoline";
     macro_suffix = "PATOLINE";
     local_deps = ["Typography"];
     extern_deps = ["dyp"];
     subdirs = [];
     has_meta = false;
   };
-  { name = "Drivers";
+  { package_name = "Drivers";
     macro_suffix = "DRIVERS";
     local_deps = ["Typography"; "Format"];
     extern_deps = [];
@@ -169,11 +162,11 @@ let local_packages = [
   };
 ]
 
-let is_local name = List.exists (fun p -> name = p.name) local_packages
+let is_local name = List.exists (fun p -> name = p.package_name) local_packages
 let find_local name = 
   let rec fn = function
   [] -> raise Not_found
-    | p::l -> if p.name = name then p else fn l
+    | p::l -> if p.package_name = name then p else fn l
   in
   fn local_packages
 
@@ -185,10 +178,10 @@ let includes_local ?(subdir_only=true) name =
     let p = find_local name in
     let acc =
       if subdir_only then acc else
-	add ("-I "^(Filename.concat "src" p.name)) acc
+	add ("-I "^(Filename.concat "src" p.package_name)) acc
     in
     let acc = List.fold_left (fun acc s ->
-      add ("-I "^(Filename.concat "src" (Filename.concat p.name s))) acc)
+      add ("-I "^(Filename.concat "src" (Filename.concat p.package_name s))) acc)
       acc p.subdirs
     in
      List.fold_left fn acc p.local_deps
@@ -545,7 +538,7 @@ let _=
       Printf.fprintf make "CAMLZIP :=\n"
   );
 
-  List.iter (function { name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
+  List.iter (function { package_name = name; macro_suffix = macro; local_deps = local; extern_deps = extern } ->
     let f = List.map (fun x->Package x) in
     let h x = if x = "" then "" else "-package " ^ x in
     Printf.fprintf make "PACK_%s := %s %s\n"
