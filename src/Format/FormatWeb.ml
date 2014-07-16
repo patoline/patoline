@@ -51,13 +51,7 @@ module Format=functor (D:Document.DocumentStructure)->(
                   module TableOfContents:=Default.TableOfContents))
 
 
-
-    module type Driver=sig
-      val output':unit
-    end
-
-
-    module Output(M:Driver)=struct
+    module Output(M:OutputPaper.Driver)=struct
 
       type output=unit
       let outputParams=()
@@ -94,23 +88,24 @@ module Format=functor (D:Document.DocumentStructure)->(
         in
         let cache=build_font_cache prefix typeset_pars in
         (*
-        let rec fold_struct t=match t with
-            Node n->
-              List.concat (List.rev (IntMap.fold (fun k a x->fold_struct a::x) n.children []))
+          let rec fold_struct t=match t with
+          Node n->
+          List.concat (List.rev (IntMap.fold (fun k a x->fold_struct a::x) n.children []))
           | Paragraph p->
-            List.map (fun c->match c with
-                T (t,_)->Printf.sprintf "<span class=\"\">%s</span>" t
-              | _->""
-            ) p.par_contents
+          List.map (fun c->match c with
+          T (t,_)->Printf.sprintf "<span class=\"\">%s</span>" t
+          | _->""
+          ) p.par_contents
           | _->[]
-        in
+          in
         *)
         let classname=ref (-1) in
         let span_open=ref false in
         let style_buffer=Rbuffer.create 1000 in
         let pages=Array.map (fun page->
           let buf=Rbuffer.create 1000 in
-          let rec output_contents b=match b with
+          let rec output_contents b=
+            match b with
               GlyphBox g->(
                 let cl=className cache g in
                 if !classname<>cl || not !span_open then (
@@ -122,14 +117,23 @@ module Format=functor (D:Document.DocumentStructure)->(
                   Rbuffer.add_string buf (Printf.sprintf "<span class=\"f%d\">" cl);
                   span_open:=true;
                 );
-                Rbuffer.add_string buf ((Fonts.glyphNumber g.glyph).glyph_utf8);
+                (* Display only first glyph, HtmlFonts does the rest (for ligatures). *)
+                let utf=(Fonts.glyphNumber g.glyph).glyph_utf8 in
+                Rbuffer.add_substring buf utf 0 (UTF8.next utf 0);
+                if UTF8.next utf 0<String.length utf then (
+                  Rbuffer.add_string buf "<span class=\"i\">"; (* invisible *)
+                  Rbuffer.add_substring buf utf (UTF8.next utf 0) (String.length utf-UTF8.next utf 0);
+                  Rbuffer.add_string buf "</span>";
+                )
+
               )
             | Kerning x->output_contents x.kern_contents
             | Hyphen x->Array.iter output_contents x.hyphen_normal
             | Glue g->Rbuffer.add_string buf " "
             | Drawing d->(
               let i=SVG.images_of_boxes ~cache:cache ~css:"" prefix env [|[b]|] in
-              Rbuffer.add_string buf i.(0)
+              if Array.length i>0 then
+                Rbuffer.add_string buf i.(0)
             )
             | Marker (Label a)->(
               Rbuffer.add_string buf "<a name=\"";
@@ -174,19 +178,19 @@ module Format=functor (D:Document.DocumentStructure)->(
         Rbuffer.output_buffer st (SVG.make_defs prefix cache);
         Rbuffer.output_buffer st (SVG.make_defs ~output_fonts:true ~units:"mm" ~class_prefix:"f"
                                     prefix cache);
+        output_string st ".i { font-size:0; }\n";
         close_out st;
 
         output_fonts cache;
 
         for i=0 to Array.length pages-1 do
           let out_file=open_out (Filename.concat prefix (Printf.sprintf "%d.html" i)) in
-          Printf.fprintf out_file "<html><body>";
+          Printf.fprintf out_file "<html><meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/><body>";
           Printf.fprintf out_file "<link rel=\"stylesheet\" href=\"style.css\">";
           Rbuffer.output_buffer out_file pages.(i);
           Printf.fprintf out_file "</body></html>";
           close_out out_file
-        done;
-        M.output'
+        done
 
     end
   end)
