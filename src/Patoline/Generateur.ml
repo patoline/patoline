@@ -90,7 +90,8 @@ let do_include buf name=
     "module TEMP%d=%s.Document(Patoline_Output)(D);;\nopen TEMP%d;;\n" !moduleCounter name !moduleCounter
 
 
-let write_main_file dynlink where format driver suppl main_mod outfile=
+let write_main_file dynlink where formats driver suppl main_mod outfile=
+  let formats=match formats with []->["DefaultFormat"] | _->formats in
   let cache_name = outfile ^ ".tdx" in
   Printf.fprintf where
     "(* #FORMAT %s *)
@@ -103,33 +104,40 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 
 let _ = Distance.read_cache \"%s\"
-module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)
-module Patoline_Format=%s.Format(D);;
-%s
-module Patoline_Output=Patoline_Format.Output(Driver);;
-let _=D.defaultEnv:=Patoline_Format.defaultEnv;;
-open %s;;
-open Patoline_Format;;\n
-"
-    format
+module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)\n"
+    (List.hd formats)
     driver
     suppl
-    cache_name
-    format
-(Printf.sprintf  (if dynlink then ("
-let driver = match !Config.driver with
+    cache_name;
+
+  let i=ref 0 in
+  List.iter (fun x->
+    Printf.fprintf where "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i;
+    incr i
+  ) formats;
+  Printf.fprintf where "module Patoline_Format=Patoline_Format%d\n" (!i-1);
+
+  if dynlink then
+    Printf.fprintf where "let driver = match !Config.driver with
   None -> %S
 | Some s -> s
 let _ = OutputPaper.load_driver driver
-module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)":('a,'b,'c) format)
-  else ("module Driver = %s":('a,'b,'c) format)) driver)
-    format;
+module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver);;\n"
+      driver
+  else
+    Printf.fprintf where "module Driver = %s;;\n" driver;
+
+  Printf.fprintf where "module Patoline_Output=Patoline_Format%d.Output(Driver);;
+let _=D.defaultEnv:=Patoline_Format%d.defaultEnv;;\n" (!i-1) (!i-1);
+
   let buf=Buffer.create 100 in
   do_include buf main_mod;
   Buffer.output_buffer where buf;
   Printf.fprintf where
     "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) !D.defaultEnv %S\n" outfile;
   Printf.fprintf where "let _ = Distance.write_cache \"%s\"\n" cache_name
+
+
 
 (* FIXME: dirty use of global bariables, should pass it through all function *)
 let cache = ref ""
@@ -159,11 +167,13 @@ let ident_of_filename =
   in
   Filename.chop_extension filename
 
-let preambule format driver suppl filename=
+let preambule formats driver suppl filename=
+  let formats=match formats with []->["DefaultFormat"] | _->formats in
   cache := "cache_" ^ (ident_of_filename filename);
   cache_buf := Buffer.create 80;
-  Printf.sprintf
-    "(* #FORMAT %s *)
+  let buf=Buffer.create 1000 in
+  Buffer.add_string buf (Printf.sprintf
+     "(* #FORMAT %s *)
 (* #DRIVER %s *)
 %s
 open Typography
@@ -176,17 +186,20 @@ open DefaultFormat.MathsFormat
 let _ = ParseMainArgs.parse ()
 let %s = ref ([||] : (environment -> Mathematical.style -> box list) array)
 let m%s = ref ([||]  : (environment -> Mathematical.style -> box list) list array)
-module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct
-module Patoline_Format=%s.Format(D);;
-open %s;;
-open Patoline_Format;;\n"
-    format
-    driver
-    suppl
-    !cache
-    !cache
-    format
-    format
+module Document=functor(Patoline_Output:DefaultFormat.Output) -> functor(D:DocumentStructure)->struct\n"
+     (List.hd formats)
+     driver
+     suppl
+     !cache
+     !cache);
+
+  let i=ref 0 in
+  List.iter (fun x->
+    Buffer.add_string buf (Printf.sprintf "module Patoline_Format%d=%s.Format(D);;\nopen Patoline_Format%d;;\n" !i x !i);
+    incr i
+  ) formats;
+  Buffer.add_string buf (Printf.sprintf "module Patoline_Format=Patoline_Format%d\n" (!i-1));
+  Buffer.contents buf
 
 
 let hash_sym = Hashtbl.create 1001
@@ -637,7 +650,7 @@ and output_list parser_pp from where no_indent lvl docs =
               (* if options.center_paragraph then  *)
 	      (*   "(Typography.Document.do_center Patoline_Format.parameters)" *)
 	      (* else *)
-	    "Patoline_Format.parameters"
+	    "Patoline_Format0.parameters"
 	  in
 	  Printf.fprintf where "let _ = newPar D.structure %s Complete.normal %s %a;;\n"
 	    env param (print_contents parser_pp from) p
@@ -709,7 +722,7 @@ and output_list parser_pp from where no_indent lvl docs =
       );
       output_list parser_pp from where !next_no_indent !lvl docs
 
-let gen_ml noamble format driver suppl filename from wherename where pdfname =
+let gen_ml noamble formats driver suppl filename from wherename where pdfname =
   let ftmp=Filename.temp_file (Filename.basename filename) "" in
   try
     begin
@@ -773,7 +786,7 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
 	  | ((caml_header, pre, docs), _) :: _  ->
 	    begin
               if not noamble then (
-                Printf.fprintf where "%s" (preambule format driver suppl filename);
+                Printf.fprintf where "%s" (preambule formats driver suppl filename);
                 Printf.fprintf where "\nlet temp%d = List.map fst (snd !D.structure);;\n" tmp_pos;
               );
               match pre with
@@ -797,7 +810,7 @@ let gen_ml noamble format driver suppl filename from wherename where pdfname =
 		  (match caml_header with
                       None->()
                     | Some a->output_list parser_pp source where true 0 [a]);
-		  Printf.fprintf where "let _ = Patoline_Format.title D.structure %s (%a);;\n\n"
+		  Printf.fprintf where "let _ = Patoline_Format0.title D.structure %s (%a);;\n\n"
 		    extra_tags (print_contents parser_pp source) title;
 	    end;
 	    output_list parser_pp source where true 0 docs;

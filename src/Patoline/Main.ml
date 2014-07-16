@@ -28,7 +28,7 @@ let extras = ref []
 let extras_top = ref []
 let cmd_line_format = ref false
 let cmd_line_driver= ref false
-let format=ref "DefaultFormat"
+let formats=ref []
 let driver = ref "Pdf"
 let dynlink = ref false
 let dirs = ref []
@@ -61,7 +61,7 @@ let spec =
    ("--recompile",Arg.Unit(fun ()->recompile:=true),message (Cli Recompile));
    ("--no-grammar",Arg.Unit (fun ()->Parser.grammar:=None), message (Cli No_grammar));
    ("--format",Arg.String
-     (fun f ->format := Filename.basename f; cmd_line_format := true), message (Cli Format));
+     (fun f ->formats := Filename.basename f:: !formats), message (Cli Format));
    ("--dynlink",Arg.Unit(fun () -> dynlink:=true),message (Cli Dynlink));
    ("--driver",Arg.String
      (fun f ->driver := f; cmd_line_driver := true), message (Cli Driver) ^ (String.concat ", " shortDrivers));
@@ -101,7 +101,7 @@ let dynlinked=(Mutex.create (), ref StrMap.empty)
 
 type options={
   deps:string list;
-  format:string;
+  formats:string list;
   grammar:string option;
   driver:string;
   comp_opts:string list;
@@ -143,19 +143,19 @@ let compact l =
 
 let last_options_used file=
   let fread=open_in file in
-  let _format=ref "" in
+  let _formats=ref "" in
   let _driver=ref "" in
   let set_format = Str.regexp "^[ \t]*(\\*[ \t]*#FORMAT[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let set_driver = Str.regexp "^[ \t]*(\\*[ \t]*#DRIVER[ \t]+\\([^ \t]+\\)[ \t]*\\*)[ \t\r]*$" in
   let rec pump () =
     let s = input_line fread in
     if Str.string_match set_format s 0 then (
-      _format:=Str.matched_group 1 s;
+      _formats:=Str.matched_group 1 s;
       if String.length !_driver=0 then pump ()
     )
     else if Str.string_match set_driver s 0 then (
       _driver:=Str.matched_group 1 s;
-      if String.length !_format=0 then pump ()
+      if String.length !_formats=0 then pump ()
     )
     else pump ()
   in
@@ -163,21 +163,24 @@ let last_options_used file=
      pump ()
    with End_of_file -> ());
   close_in fread;
-  !_format, !_driver
+  !_formats, !_driver
 
 
 
 let add_format opts =
   let packages=
-    (if opts.format <> "DefaultFormat" &&
-        (not (List.mem ("Typography." ^ opts.format) opts.packages)) &&
+    List.fold_left (fun pac format->
+      if not (List.mem ("Typography." ^ format) opts.packages) &&
+        format<>"DefaultFormat" &&
         (try
-           let _=findPath (opts.format ^ ".ml") (".":: !Config2.local_path) in
+           let _=findPath (format ^ ".ml") (".":: !Config2.local_path) in
            false
          with _->true)
-     then
-        ("Typography." ^ opts.format) :: opts.packages
-     else opts.packages)
+      then
+        ("Typography."^format)::pac
+      else
+        pac
+    ) opts.packages opts.formats
   in
 (* No need to compile with the driver ...
   let packages=
@@ -210,7 +213,7 @@ let rec breadth_first m h l=match h with
 
 let rec read_options_from_source_file f fread =
   let deps=ref [] in
-  let format=ref !format in
+  let formats=ref !formats in
   let grammar=ref (Some "DefaultGrammar") in
   let driver=ref !driver in
   let noamble=ref false in
@@ -271,7 +274,7 @@ let rec read_options_from_source_file f fread =
       pump ()
     )
     else if Str.string_match set_format s 0 then (
-      if not !cmd_line_format then format := Str.matched_group 1 s;
+      formats := Str.matched_group 1 s:: !formats;
       pump ()
     )
     else if Str.string_match set_driver s 0 then (
@@ -310,7 +313,7 @@ let rec read_options_from_source_file f fread =
   {
     deps= !deps;
     grammar= !grammar;
-    format= !format;
+    formats= !formats;
     driver= (try List.assoc !driver aliasDriver with Not_found -> !driver);
     comp_opts= !comp_opts;
     packages= !packages ;
@@ -450,13 +453,15 @@ and patoline_rule objects (builddir:string) (hs:string list)=
                 let cmd= !patoline in
                 let args_l=List.filter (fun x->x<>"")
                   (cmd::
-                     dirs_@
-                     [(if opts.format<>"DefaultFormat" then "--format" else "");
-                      (if opts.format<>"DefaultFormat" then opts.format else "");
-                      "--ml";
+                     dirs_
+                   @ List.concat (
+                     List.map (fun f->
+                       ["--format";f]
+                     ) opts.formats
+                   )
+                   @ ["--ml";
                       (if opts.grammar=None then "--no-grammar" else "");
-	              (if !Generateur.edit_link then "--edit-link" else "")
-	             ]
+	              (if !Generateur.edit_link then "--edit-link" else "")]
 	           @(if Filename.check_suffix h Parser.gram_ext then []
                      else
                        (if !dynlink then ["--driver";opts.driver] else [])@
@@ -502,14 +507,14 @@ and patoline_rule objects (builddir:string) (hs:string list)=
               (not (Sys.file_exists h)) ||
                 (
                   let last_format,last_driver=last_options_used h in
-                  (last_format<> !format || last_driver<> !driver)
+                  (last_format<> "" || last_driver<> !driver)
                 )
             in
             if options_have_changed || compilation_needed [source] [h] then (
               let o=open_out h in
               let main_mod=Filename.chop_extension (Filename.basename modu) in
               main_mod.[0]<-Char.uppercase main_mod.[0];
-              Generateur.write_main_file !dynlink o opts.format opts.driver "" main_mod r1;
+              Generateur.write_main_file !dynlink o opts.formats opts.driver "" main_mod r1;
               close_out o;
             );
             true
@@ -529,7 +534,7 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 		  let ch = open_in source in
 		  let opts= add_format (read_options_from_source_file hs ch) in
 		  close_in ch;
- 		  source, ["-pp"; "pa_patoline --format "^opts.format^" --driver "^opts.driver])
+ 		  source, ["-pp"; "pa_patoline --format "^(List.hd opts.formats)^" --driver "^opts.driver])
 		else
                   (pref^".ttml", [])
           in
@@ -550,7 +555,10 @@ and patoline_rule objects (builddir:string) (hs:string list)=
           let cmis=List.map (fun x->Filename.chop_extension x^".cmi") deps0 in
           if compilation_needed (source::cmis) [pref^".cmx";pref^".cmi"] then (
             let i=open_in source in
-            let opts= add_format (read_options_from_source_file hs i) in
+            let opts=
+              let opts0=(read_options_from_source_file hs i) in
+              add_format (if opts0.formats=[] then { opts0 with formats=["DefaultFormat"] } else opts0)
+            in
             let dirs_=str_dirs (!dirs@opts.directories) in
             close_in i;
 
@@ -730,7 +738,7 @@ let process_each_file l=
 	close_in in_s;
         let main_mod=Filename.chop_extension (Filename.basename f) in
 	let o=open_out ((Filename.chop_extension f)^"_.tml") in
-        Generateur.write_main_file !dynlink o opts.format opts.driver "" main_mod (Filename.chop_extension f);
+        Generateur.write_main_file !dynlink o opts.formats opts.driver "" main_mod (Filename.chop_extension f);
         close_out o;
       ) else if !compile then (
         if Sys.file_exists f then (
@@ -773,7 +781,7 @@ let process_each_file l=
           Parser.out_grammar_name:=Filename.chop_extension f;
           Parser.out_quail_name:=(Filename.dirname name_ml) ^ "/quail.el";
           if Filename.check_suffix f "txt" then (
-            SimpleGenerateur.gen_ml !format SimpleGenerateur.Main f fread name_ml where_ml (Filename.chop_extension f)
+            SimpleGenerateur.gen_ml (List.hd !formats) SimpleGenerateur.Main f fread name_ml where_ml (Filename.chop_extension f)
           ) else (
 
             let opts=read_options_from_source_file [f] fread in
@@ -801,7 +809,7 @@ let process_each_file l=
 		    Printf.sprintf "\n(* #NOAMBLE *)"
 	         else "")
             in
-            Generateur.gen_ml opts.noamble opts.format opts.driver suppl f fread (mlname_of f) where_ml
+            Generateur.gen_ml opts.noamble opts.formats opts.driver suppl f fread (mlname_of f) where_ml
               (Filename.chop_extension f)
           );
           close_out where_ml;
