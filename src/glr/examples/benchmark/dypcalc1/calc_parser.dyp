@@ -1,0 +1,47 @@
+%start main
+%relation pi<pw<pt<pp
+%layout [' ' '\t' '\n']
+
+%parser
+
+main: expr eof { $1 }
+
+/*
+expr:
+  | (['0'-'9']+(['.']['0'-'9']+)?(['e''E']['-']?['0'-'9']+)?)      { float_of_string $1 } pi
+  | "(" expr ")"             { $2 }      pi
+  | "-" expr(<pp)            { -.$2 }     pp
+  | expr(<=pp) "+" expr(<pp) { $1 +. $3 } pp
+  | expr(<=pp) "-" expr(<pp) { $1 -. $3 } pp
+  | expr(<=pt) "*" expr(<pt) { $1 *. $3 } pt
+  | expr(<=pt) "/" expr(<pt) { $1 /. $3 } pt
+  | expr(<pw) "**" expr(<=pw) { $1 ** $3 } pw
+*/
+
+expr_atom:
+  | (['0'-'9']+(['.']['0'-'9']+)?(['e''E']['-']?['0'-'9']+)?)      { float_of_string $1 } 
+  | "(" expr ")"             { $2 }      
+
+expr_pow:
+  | expr_atom expr_pow_aux { $2 $1 }
+
+expr_pow_aux:
+  | { fun x -> x } 
+  | expr_pow_aux "**" expr_pow { fun x -> $1 x ** $3 }
+
+expr_prod:
+  | expr_pow expr_prod_aux { $2 $1 } 
+
+expr_prod_aux:
+  | { fun x -> x } 
+  | expr_prod_aux ("*"|"/") expr_pow { fun x -> if $2 = "*" then $1 x *. $3 else $1 x /. $3}
+
+expr:
+  | expr_prod expr_aux { $2 $1 } 
+  | "-" expr_prod expr_aux           { $3 (-.$2) }
+
+expr_aux:
+  | { fun x -> x } 
+  | expr_aux ("+"|"-") expr_prod { fun x -> if $2 = "+" then $1 x +. $3 else $1 x -. $3}
+
+
