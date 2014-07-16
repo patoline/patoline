@@ -49,7 +49,7 @@ $(d)/pa_glr: $(d)/pa_glr.cmx
         Camlp4Printers/Camlp4AutoPrinter.cmx                   \
         Camlp4Bin.cmx -o $@
 
-CLEAN += $(d)/pa_glr $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.cmxa
+CLEAN += $(d)/pa_glr $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.cma $(d)/*.cmxa
 DISTCLEAN += $(wildcard $(d)/*.depends)
 
 $(d)/glr.a: $(d)/glr.cmxa;
