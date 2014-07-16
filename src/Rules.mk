@@ -14,10 +14,13 @@ IMAGELIB_DIR := $(d)/imagelib
 RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
+GLR_DIR := $(d)/glr
+PA_GLR := $(GLR_DIR)/pa_glr
 
 # Visit subdirectories
-MODULES := rbuffer patutil imagelib patfonts Typography Drivers Patoline \
-  Pdf cesure Format $(OCAML_BIBI) plot proof plugins
+MODULES := rbuffer patutil imagelib patfonts glr \
+  Typography Drivers Patoline Pdf cesure Format \
+  $(OCAML_BIBI) plot proof plugins
 
 $(foreach mod,$(MODULES),$(eval include $(d)/$$(mod)/Rules.mk))
 

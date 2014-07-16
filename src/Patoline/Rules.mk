@@ -21,9 +21,9 @@ $(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_D
 
 all: $(PA_PATOLINE)
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(GLR_DIR)/glr.cmxa
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -package camlp4,patutil,imagelib,dynlink,glr str.cmxa glr.cmxa camlp4lib.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $<
+	$(Q)$(OCAMLOPT) -linkpkg -package camlp4,patutil,imagelib,dynlink,glr camlp4lib.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $<
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_GLR)
 	$(ECHO) "[OPT]    $< -> $@"
