@@ -1717,9 +1717,6 @@ let total_checksum a b c=
 
 #endif
 
-
-
-
 let write_cff fontInfo=
 
   let buf=Rbuffer.create 256 in
@@ -2009,6 +2006,7 @@ let make_tables font fontInfo cmap glyphs_idx=
   (* os/2 *)
   (try
      let buf_os2=StrMap.find "OS/2" fontInfo_tables in
+     let buf_os2=if String.length buf_os2 < 96 then String.create 96 else buf_os2 in
      strInt2 buf_os2 0 3;               (* version *)
 
      strInt2 buf_os2 2 ((round (!xAvgCharWidth/.float_of_int (Array.length glyphs))));
