@@ -18,10 +18,13 @@
   along with Patoline.  If not, see <http://www.gnu.org/licenses/>.
 *)
 open UsualMake
-
+open BuildDir
 
 
 let mpids=Mutex.create ()
+let mstdout=Mutex.create ()
+let mstderr=Mutex.create ()
+
 let pids=ref IntSet.empty
 let stop_all ()=
   Mutex.lock mpids;
@@ -97,25 +100,23 @@ let sem_set mut y=
 let sem=sem_create 1
 
 
-let command ?builddir:(builddir=".") cmd args=
+let command cmd args=
   sem_down sem;
-  Mutex.lock mpids;
   let a_in,a_out=Unix.pipe () in
   let b_in,b_out=Unix.pipe () in
   let c_in,c_out=Unix.pipe () in
   let pid=Unix.fork () in
   if pid=0 then (
-      Unix.chdir builddir;
       Unix.dup2 Unix.stdin a_in;
       Unix.dup2 Unix.stdout b_out;
       Unix.dup2 Unix.stderr c_out;
       Unix.execvp cmd args;
   ) else (
-
     Unix.close a_in;
     Unix.close a_out;
     Unix.close b_out;
     Unix.close c_out;
+    Mutex.lock mpids;
     pids:=IntSet.add pid !pids;
     Mutex.unlock mpids;
 
@@ -125,7 +126,7 @@ let command ?builddir:(builddir=".") cmd args=
     let str=String.create 1000 in
     let rec read_all chans=
       if chans<>[] then (
-        let a,b,c=Unix.select chans [] chans (-.1.) in
+        let a,b,c=Thread.select chans [] chans (-.1.) in
         match a,c with
             ha::_ , _->(
               let x=Unix.read ha str 0 (String.length str) in
@@ -190,3 +191,4 @@ let rec build_with_rule ?builddir:(builddir=".") r hs=
            with
                e->(Mutex.unlock m;raise e));
         )
+

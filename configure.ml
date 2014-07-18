@@ -162,7 +162,7 @@ let local_packages = [
   };
   { package_name = "Patoline";
     macro_suffix = "PATOLINE";
-    local_deps = ["Typography"];
+    local_deps = ["Typography";"plugins"];
     extern_deps = ["dyp"];
     subdirs = [];
     has_meta = false;
@@ -190,7 +190,7 @@ let local_packages = [
   };
   { package_name = "plugins";
     macro_suffix = "PLUGINS";
-    local_deps = ["Patoline";"Format"];
+    local_deps = ["Format"];
     extern_deps = ["unix"];
     subdirs = [];
     has_meta = false;

@@ -45,6 +45,8 @@ and syntax_error=
 and command_line=
     Extra_fonts
   | Extra_hyph
+  | Build_dir
+  | No_build_dir
   | Dirs
   | No_grammar
   | Format
@@ -103,6 +105,8 @@ let message=function
     match cli with
         Extra_fonts->"Rajoute le répertoire au chemin de recherche des polices"
       | Extra_hyph->"Rajoute le répertoire au chemin de recherche des dictionnaires de césures"
+      | Build_dir->"Fixe le répertoire des fichiers intermédiaires"
+      | No_build_dir ->"N'utilise pas de répertoire des fichiers intermédiaires"
       | Dirs->"Rajoute le répertoire au chemin de compilation"
       | No_grammar->"Commence l'analyse syntaxique avec une grammaire vide"
       | Format->"Compile avec ce format"
@@ -112,14 +116,14 @@ let message=function
       | Noamble->"Produit un module caml brut"
       | Package->"Rajoute le paquets dans la liste des paquets pour ocamlfind"
       | Ml->"Ne produire que le source caml (.ttml)"
-      | MainMl->"Ne produire que le source principale caml (_.tml)"
+      | MainMl->"Ne produire que le source principale caml (._tml)"
       | Output->"Écrire la sortie dans ce fichier"
       | Bin->"Produire le source caml et le compiler, mais pas l'éxécuter"
       | Edit_link->"Générer des liens URI de la forme \"edit:filename@line\""
       | Patoline->"Nom de l'exécutable patoline à utiliser pour les sous-documents"
       | Ocamlopt->"Nom de l'exécutable ocamlopt à utiliser pour la compilation"
       | Parallel->"Nombre maximal de processus (pour la compilation parallèle)"
-      | Quiet->"Ne pas afficher les commandes de compilation"
+      | Quiet->"Niveau d'affichade des commandes de compilation [0:rien, 1:court (defaut), 2:complet]"
       | Remaining->"Passer les arguments suivants au compilateur caml"
       | CCOpts->"Passer la chaine au compilateur caml"
       | TopOpts->"Passer la chaine à l'exécutable généré par Patoline"
@@ -167,6 +171,8 @@ let message=function
     match cli with
         Extra_fonts->"Add directory to the font search path"
       | Extra_hyph->"Add directory to the hyphenation dictionary search path"
+      | Build_dir->"Fixes the directory for auxilliary files"
+      | No_build_dir->"Use no directory for auxilliary files"
       | Dirs->"Add directory to the list of include directories"
       | No_grammar->"Parse with an initially empty grammar"
       | Format->"Compile with this format"
@@ -176,14 +182,14 @@ let message=function
       | Noamble->"Output a raw caml file"
       | Package->"Add the package to the list of ocamlfind packages"
       | Ml->"Only output caml file (.ttml)"
-      | MainMl->"Only output caml main file (_.tml)"
+      | MainMl->"Only output caml main file (._tml)"
       | Output->"Output to this file"
       | Bin->"Output and compile caml file, but do not execute it"
       | Edit_link->"Generate URI links of the form \"edit:filename@line\""
       | Patoline->"Name of the patoline executable to use for sub-documents"
       | Ocamlopt->"Name of the ocamlopt executable to use when compiling"
       | Parallel->"Maximal number of processes (for parallel build)"
-      | Quiet->"Do not output the compilation commands"
+      | Quiet->"Level of verbosity [0:nothing, 1:short (default), 2:full]"
       | Remaining->"Forward the remaining arguments to the caml compiler"
       | CCOpts->"Forward the string to the ocaml compiler"
       | TopOpts->"Forward the string to the generated executable"

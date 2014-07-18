@@ -6,8 +6,8 @@ d := $(if $(d),$(d)/,)$(mod)
 SRC_$(d):=$(wildcard $(d)/*.ml)
 -include $(addsuffix .depends,$(SRC_$(d)))
 
-PLUGINS_INCLUDES := -I $(d) $(PACK_PLUGINS)
-PLUGINS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLUGINS)
+PLUGINS_INCLUDES := -I $(d) $(PACK_PLUGINS) -I $(PATOLINE_DIR)
+PLUGINS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLUGINS) -I $(PATOLINE_DIR)
 $(d)/%.depends: INCLUDES+=$(PLUGINS_DEPS_INCLUDES)
 $(d)/%.cmxa $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLUGINS_INCLUDES)
 

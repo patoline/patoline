@@ -22,6 +22,8 @@ open Lexing
 open Parser
 open Language
 open UsualMake
+open BuildDir
+
 (* let fugue=ref true *)
 (* let spec = [("--extra-fonts-dir",Arg.String (fun x->fontsdir:=x::(!fontsdir)), "Adds directories to the font search path"); *)
 (*             ("-c",Arg.Unit (fun ()->fugue:=false), "compile separately"); *)
@@ -80,7 +82,6 @@ let _= Build.macros:=
   !Build.macros)
 
 
-let hashed="(Sys.executable_name^\".aux\")"
 let env_stack=ref []
 
 let do_include buf name=
@@ -92,7 +93,7 @@ let do_include buf name=
 
 let write_main_file dynlink where formats driver suppl main_mod outfile=
   let formats=match formats with []->["DefaultFormat"] | _->formats in
-  let cache_name = outfile ^ ".tdx" in
+  let cache_name = chg_ext outfile ".tdx" in
   Printf.fprintf where
     "(* #FORMAT %s *)
 (* #DRIVER %s *)

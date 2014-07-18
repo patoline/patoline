@@ -31,11 +31,11 @@ $(d)/DefaultGrammar.tgx: $(d)/DefaultGrammar.pdf
 $(d)/quail.el: $(d)/DefaultGrammar.ttml ;
 $(d)/DefaultGrammar_.tml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
-	$(Q)$(PATOLINE_IN_SRC) --main-ml --driver Pdf -o $@ $<
+	$(Q)$(PATOLINE_IN_SRC) --no-build-dir --main-ml --driver Pdf -o $@ $<
 
 $(d)/DefaultGrammar.ttml: $(d)/DefaultGrammar.txp $(PATOLINE_IN_SRC)
 	$(ECHO) "[PAT]    $< -> $@"
-	$(Q)$(PATOLINE_IN_SRC) --ml --driver Pdf -o $@ $<
+	$(Q)$(PATOLINE_IN_SRC) --no-build-dir --ml --driver Pdf -o $@ $<
 
 $(d)/DefaultGrammar.cmx: $(d)/DefaultGrammar.ttml $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa
 	$(ECHO) "[OPT]    ... -> $@"

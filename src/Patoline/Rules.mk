@@ -7,8 +7,10 @@ PATOLINE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PATOLINE)
 $(d)/%.depends: INCLUDES += $(PATOLINE_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
 
-PAT_CMX := $(d)/Language.cmx $(d)/Build.cmx $(d)/Config2.cmx \
+PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
+
+$(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
 
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
@@ -41,7 +43,7 @@ PATOLINE_DIR := $(d)
 
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 
@@ -63,17 +65,10 @@ $(d)/Parser.ml: $(d)/tmp.dyp
 	$(Q)$(DYPGEN) --no-mli --merge-warning $< > /dev/null
 	$(Q)mv $(basename $<).ml $@
 
-$(d)/Parser.cmx $(d)/Generateur.cmx: %.cmx: %.ml
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -rectypes $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+$(d)/Parser.cmx $(d)/Generateur.cmx: OFLAGS += -rectypes
+$(d)/Parser.cmo $(d)/Generateur.cmo: OFLAGS += -rectypes
 
-$(d)/Build.cmo: %.cmo: %.ml
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLC) -thread $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
-
-$(d)/Build.cmx: %.cmx: %.ml
-	$(ECHO) "[OPT]    $<"
-	$(Q)$(OCAMLOPT_NOINTF) -thread $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+$(d)/Build.cmo $(d)/Build.cmx: OFLAGS += -thread
 
 CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline $(d)/tmp.dyp $(EDITORS_DIR)/emacs/SubSuper.el $(d)/UnicodeScripts $(d)/pa_patoline
 DISTCLEAN += $(d)/*.depends
