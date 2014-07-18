@@ -10,7 +10,8 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATOLINE_INCLUDES)
 PAT_CMX := $(d)/Language.cmx $(d)/BuildDir.cmx $(d)/Build.cmx $(d)/Config2.cmx \
   $(d)/Parser.cmx $(d)/Generateur.cmx $(d)/SimpleGenerateur.cmx $(d)/Main.cmx
 
-$(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
+# $(PAT_CMX): OCAMLOPT := $(OCAMLOPT_NOINTF)
+$(PAT_CMX): %.cmx: %.cmo
 
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
@@ -44,6 +45,10 @@ PATOLINE_DIR := $(d)
 $(d)/Main.cmx: $(d)/Main.ml
 	$(ECHO) "[OPT]    $<"
 	$(Q)$(OCAMLOPT) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
+
+$(d)/Main.cmo: $(d)/Main.ml
+	$(ECHO) "[OPT]    $<"
+	$(Q)$(OCAMLC) -thread -rectypes -I +threads $(OFLAGS) $(PATOLINE_INCLUDES) -o $@ -c $<
 
 PATOLINE_UNICODE_SCRIPTS := $(d)/UnicodeScripts
 

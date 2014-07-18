@@ -14,7 +14,7 @@ $(d)/%.cmxa $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PLUGINS_INCLUDES)
 # Building stuff
 all: $(d)/caml.cmxs
 
-$(d)/plugins.cmx: $(d)/plugins.cmo
+$(d)/caml.cmx: $(d)/caml.cmo
 
 $(d)/caml.cmxs: %.cmxs: %.cmx
 	$(ECHO) "[OPT]    $< -> $@"
