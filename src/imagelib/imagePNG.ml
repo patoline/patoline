@@ -25,21 +25,8 @@ type ihdr_data = {
  ****************************************************************************)
 module PNG_Zlib = struct
   exception PNG_Zlib_error of string
-  
-  let adler32 s =
-    let len = String.length s in
-    let s1 = ref 1 in
-    let s2 = ref 0 in
-    for n = 0 to len - 1 do
-      let b = int_of_char s.[n] in
-      s1 := (!s1 + b) mod 65521;
-      s2 := (!s2 + !s1) mod 65521;
-    done;
-    let s1 = Int32.of_int !s1 in
-    let s2 = Int32.of_int !s2 in
-    Int32.add s1 (Int32.mul s2 65536l)
-  
-  let zlib_deflate_string inputstr =
+ 
+  let uncompress_string inputstr =
     let len = String.length inputstr in
     let inputpos = ref 0 in
     let output = ref [] in
@@ -58,12 +45,12 @@ module PNG_Zlib = struct
       output := str :: !output;
     in
   
-    (try Zlib.uncompress ~header:false refill flush with
+    (try Zlib.uncompress refill flush with
       _ -> raise (PNG_Zlib_error "Zlib.uncompress failed..."));
   
     String.concat "" (List.rev !output)
   
-  let zlib_inflate_string inputstr =
+  let compress_string inputstr =
     let len = String.length inputstr in
     let inputpos = ref 0 in
     let output = ref [] in
@@ -86,45 +73,6 @@ module PNG_Zlib = struct
       _ -> raise (PNG_Zlib_error "Zlib.compress failed..."));
   
     String.concat "" (List.rev !output)
-  
-  let uncompress_string s =
-    (* Spliting the string *)
-    let len = String.length s in
-    let cmf = int_of_char (String.get s 0) in
-    let flg = int_of_char (String.get s 1) in
-    let data = String.sub s 2 (len - 4 - 2) in
-    let checksum = String.sub s (len - 4) 4 in
-  
-    (* Data extraction *)
-    let cm = cmf mod 16 in
-    let cinfo = cmf lsr 4 in
-    (* let fcheck = flg mod 32 in (* useless *)*)
-    let fdict = (flg mod 64) lsr 5 in
-    (* let flevel = flg lsr 6 in (* useless, only an indication *)*)
-    let adler32sum = int32_of_str4 checksum in
-  
-    (* Checks *)
-    if (cmf * 256 + flg) mod 31 <> 0
-    then raise (PNG_Zlib_error "ZLIB header checksum error...");
-    if cm <> 8
-    then raise (PNG_Zlib_error "Only ZLIB compression method 8 is standard...");
-    if fdict <> 0
-    then raise (PNG_Zlib_error "No preset dictionary should be specified...");
-    if cinfo < 0 || cinfo > 7
-    then raise (PNG_Zlib_error "CINFO should be between 0 and 7...");
-    if len > 16384 && cinfo <> 7
-    then raise (PNG_Zlib_error "CINFO < 7 and data length > 16384...");
-    if len <= 16384 && pow_of_2 (8 + cinfo) < len
-    then raise (PNG_Zlib_error "Invalid CINFO value...");
-  
-    (* Computation *)
-    (* let window_size = pow_of_2 (8 + cinfo) in (* useless for deflate *)*)
-    let output = zlib_deflate_string data in
-  
-    if adler32sum <> adler32 output
-    then raise (PNG_Zlib_error "Uncompressed data checksum error...");
-  
-    output
 end
 
 open PNG_Zlib
@@ -1207,7 +1155,7 @@ let write_png fn img =
     | _ -> Printf.fprintf stderr "%i\n%!" bd; assert false
   );
   let data = Buffer.contents buf in
-  let data = zlib_inflate_string data in
+  let data = compress_string data in
 
   let datalen = String.length data in
   let max_idat_len = 1048576 in (* 2^20 sould be enough *)
