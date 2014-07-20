@@ -9,6 +9,8 @@ CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE)
 $(d)/%.depends: INCLUDES+=$(CESURE_DEPS_INCLUDES)
 $(d)/cesure $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(CESURE_INCLUDES)
 
+$(d)/cesure.cmx: $(d)/cesure.cmo
+
 all: $(d)/cesure
 
 $(d)/cesure: $(d)/cesure.cmx $(TYPOGRAPHY_DIR)/Typography.cmxa $(TYPOGRAPHY_DIR)/DefaultFormat.cmxa $(LIBFONTS_DIR)/fonts.cmxa $(UTIL_DIR)/patutil.cmxa

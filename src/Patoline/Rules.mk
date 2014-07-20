@@ -18,7 +18,7 @@ DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
 -include $(DEPENDS_$(d))
 
-$(d)/patoline: $(RBUFFER_DIR)/rbuffer.cmxa $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PAT_CMX)
+$(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -o $@ -linkpkg $(PATOLINE_INCLUDES),threads -thread $(PAT_CMX)
 

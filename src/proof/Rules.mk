@@ -11,6 +11,8 @@ PROOF_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(DEPS_PACK_PROOF)
 $(d)/%.depends: INCLUDES+=$(PROOF_DEPS_INCLUDES)
 $(d)/proof $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PROOF_INCLUDES)
 
+$(d)/proof.cmx: $(d)/proof.cmo
+
 # Building stuff
 all: $(d)/proof
 
