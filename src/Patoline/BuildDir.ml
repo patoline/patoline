@@ -52,7 +52,10 @@ let make_temp f =
       if not (Sys.file_exists d') then Unix.mkdir d' 0o700;
       concat d' n
 
-let temp_extension = [ ".tml" ; ".ttml" ; ".cmo" ; ".cmi"; ".cmx" ; ".tdx" ; ".tmx" ; ".dep" ; ".tdep" ; ".o" ; "_.cmx" ; "_.tml" ; "_.tdep" ]
+let temp_extension = [
+  ".tml" ; ".ttml" ; ".cmo" ; ".cmi"; ".cmx" ; ".tdx" ; ".tmx" ;
+  ".dep" ; ".tdep" ; ".o" ; "_.cmx" ; "_.tml" ; "_.tdep"; ".tgx"
+]
 
 let chop_extension ?(compile=false) f =
   assert (f <> "");
@@ -87,12 +90,13 @@ let str_dirs optsdirs =
   let rec make_dirs l res=match l with
       []->List.rev res
     | h::s-> 
-      let res = 
-	if Sys.is_directory (Filename.concat h !build_dir) then
-	  (Filename.concat h !build_dir) ::"-I"::res
-	else
-	  res
-      in
-      make_dirs s (h::"-I"::res)
+       let dir = Filename.concat h !build_dir in 
+       let res = 
+	 if Sys.file_exists dir && Sys.is_directory dir then
+	   dir ::"-I"::res
+	 else
+	   res
+       in
+       make_dirs s (h::"-I"::res)
   in
   make_dirs optsdirs []
