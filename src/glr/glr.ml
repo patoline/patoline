@@ -83,18 +83,21 @@ let set_grammar p1 p2 =
 let grammar_family ?param_to_string () =
   let tbl = Hashtbl.create 101 in
   let in_build = ref true in 
-  (fun param ->
-    try Hashtbl.find tbl param with Not_found ->
-      let message = match param_to_string with
-	  None -> "Too late to introduce a new grammar in a family"
-	| Some f -> Printf.sprintf "Too late to introduce %a in a family" f param
-      in
-      if not !in_build then failwith message;
-      let g = declare_grammar () in
-      Hashtbl.add tbl param g;
-      g),
-  (fun fn seeds ->
-    List.iter (fun k -> ignore (fn k)) seeds;
+  let gn = 
+    fun param ->
+    try Hashtbl.find tbl param
+    with Not_found ->
+	 let message = match param_to_string with
+	     None -> "Too late to introduce a new grammar in a family"
+	   | Some f -> Printf.sprintf "Too late to introduce %a in a family" f param
+	 in
+	 if not !in_build then failwith message;
+	 let g = declare_grammar () in
+	 Hashtbl.add tbl param g;
+	 g
+  in
+  gn, (fun fn seeds ->
+    List.iter (fun k -> ignore (fn k); ignore (gn k)) seeds;
     Hashtbl.iter (fun key g -> set_grammar g (fn key)) tbl;
     in_build := false)
 
