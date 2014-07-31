@@ -167,6 +167,9 @@ val position : 'a grammar -> (int * int * 'a) grammar
     the position of the parsed tree in str. *)
 val filter_position : 'a grammar -> (string -> int -> int -> 'b) -> ('b * 'a) grammar
 
+(** [apply_position gr f]: similar to the previous one, but applying the position *)
+val apply_position :  'a grammar -> (string -> int -> int -> 'a -> 'b) -> 'b grammar
+
 (** [declare_grammar ()] return a new grammar, that can be used to define other grammar, but that
     can not be used yet *)
 val declare_grammar : unit -> 'a grammar

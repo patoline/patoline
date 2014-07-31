@@ -137,7 +137,20 @@ let filter_position : 'a grammar -> (string -> int -> int -> 'b) -> ('b * 'a) gr
 	  let r = l.parse blank str pos next (fun x -> x) in
 	  IntMap.mapi (fun pos' x -> g (filter str pos0 pos', x)) r
     }
-      
+
+let apply_position : 'a grammar -> (string -> int -> int -> 'a -> 'b) -> 'b grammar
+  = fun l filter -> 
+    { ready = l.ready;
+      firsts = l.firsts;
+      mk_firsts = (fun () -> set_charset l l.mk_firsts);
+      empty = l.empty;
+      parse =
+	fun blank str pos next g ->
+	  let pos0 = blank str pos in
+	  let r = l.parse blank str pos next (fun x -> x) in
+	  IntMap.mapi (fun pos' x -> g (filter str pos0 pos' x)) r
+    }
+
 let eof : 'a -> 'a grammar
   = fun a ->
     let set = singleton '\255' in
