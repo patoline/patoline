@@ -18,9 +18,14 @@ GLR_CMI:=$(GLR_ML:.ml=.cmi)
 # and the .ml.depends are all done first
 $(d)/glr.cmi: $(d)/charset.cmi
 
-$(d)/glr.cmo: $(d)/umap.cmi $(d)/charset.cmi
+$(d)/umap.cmo: $(d)/umap.cmi
+$(d)/umap.cmx: $(d)/umap.cmi
+$(d)/charset.cmo: $(d)/charset.cmi
+$(d)/charset.cmx: $(d)/charset.cmi
 
-$(d)/glr.cmx: $(d)/umap.cmx $(d)/umap.cmi $(d)/charset.cmx $(d)/charset.cmi
+$(d)/glr.cmo: $(d)/glr.cmi $(d)/umap.cmi $(d)/charset.cmi
+
+$(d)/glr.cmx: $(d)/glr.cmi $(d)/umap.cmx $(d)/umap.cmi $(d)/charset.cmx $(d)/charset.cmi
 
 $(d)/glr.cmxa: $(GLR_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
