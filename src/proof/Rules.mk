@@ -29,7 +29,7 @@ install-proof: install-bindir $(d)/proof
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Cleaning
-CLEAN += $(d)/*.cmx $(d)/proof $(d)/*.cmi
+CLEAN += $(d)/*.cmx $(d)/proof $(d)/*.cmi $(d)/*.cmo
 DISTCLEAN += $(d)/*.depends
 
 # Rolling back changes made at the top
