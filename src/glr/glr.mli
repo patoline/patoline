@@ -167,8 +167,6 @@ val position : 'a grammar -> (int * int * 'a) grammar
     the position of the parsed tree in str. *)
 val filter_position : 'a grammar -> (string -> int -> int -> 'b) -> ('b * 'a) grammar
 
-(** [apply_position gr f]: similar to the previous one, but applying the position *)
-val apply_position :  'a grammar -> (string -> int -> int -> 'a -> 'b) -> 'b grammar
 
 (** [declare_grammar ()] return a new grammar, that can be used to define other grammar, but that
     can not be used yet *)
@@ -213,7 +211,6 @@ val grammar_family :  ?param_to_string:(unit -> 'a -> string) -> unit -> ('a -> 
   enough.
 *)
 
-
 (** Camlp4 syntax extension, use with [ -pp pa_glr v ] option *)
 
 (** [glr parser end] returns a ['a grammar].
@@ -255,6 +252,5 @@ val grammar_family :  ?param_to_string:(unit -> 'a -> string) -> unit -> ('a -> 
 *)
 
 (** for debugging (mainly) *)
-val is_empty : 'a grammar -> bool
-val is_ready : 'a grammar -> bool
-val get_firsts : 'a grammar -> charset
+val accept_empty : 'a grammar -> bool
+val firsts : 'a grammar -> charset
