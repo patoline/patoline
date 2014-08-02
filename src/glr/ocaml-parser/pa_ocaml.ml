@@ -121,16 +121,24 @@ let _ = glr_locate locate merge
  ****************************************************************************)
 
 (* Identifiers *)
-let ident_re  = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
-let cident_re = "\\b[A-Z][a-zA-Z0-9_']*\\b"
-let lident_re = "\\b[a-z_][a-zA-Z0-9_']*\\b"
+let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
+let cident_re = "[A-Z][a-zA-Z0-9_']*\\b"
+let ident_re = "[A-Za-z_][a-zA-Z0-9_']*\\b"
 
-let reserved = ["in"; "if"; "then"; "else"; "let"; "begin"; "end"; "and"; "rec"; "match"; "with"; "try"; "fun"; "function"; "lsl";
-	        "lsr";"asr";"mod";"land";"lor";"lxor";"or";"true";"false"]
-let kreserved = [ "->"; ":" ]
-let lident = glr id:RE(lident_re) -> if List.mem id reserved then raise Give_up; id end
-let cident = glr id:RE(cident_re) -> id end
-let ident = glr id:RE(ident_re) -> if List.mem id reserved then raise Give_up; id end
+let reserved_ident =
+  [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
+  ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
+  ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
+  ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
+  ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
+  ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
+  ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
+  ; "while" ; "with" ]
+
+let reserved_kwd = [ "->"; ":" ; "|" ]
+
+let is_reserved_id w =
+  List.mem w reserved_ident
 
 let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
 let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
@@ -160,6 +168,9 @@ let expression_lvl_to_string () = function
   | Dot -> "Dot"
   | Prefix -> "Prefix"
   | Atom -> "Atom"
+
+let let_prio lvl = if !extension then lvl else Let
+let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
 
 let ident =
   glr
@@ -462,6 +473,7 @@ let classtype_path =
  ****************************************************************************)
 
 let typeexpr = declare_grammar ()
+let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
   glr
@@ -531,21 +543,21 @@ let _ = set_grammar typeexpr (
       assert false (* TODO *)
   | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
       assert false (* TODO *)
-  | te:typeexpr STR("->") te':typeexpr ->
-      assert false (* TODO *)
-  | te:typeexpr tes:{STR("*") te:typeexpr -> te}+ ->
+(*  | te:typeexpr STR("->") te':typeexpr ->
+      assert false (* TODO *)*)
+(*  | te:typeexpr tes:{STR("*") te:typeexpr -> te}+ ->
       { ptyp_desc = Ptyp_tuple (te::tes)
-      ; ptyp_loc = _loc_te }
+      ; ptyp_loc = _loc_te }*)
   | tc:typeconstr ->
       { ptyp_desc = Ptyp_constr ({ txt = tc; loc = _loc_tc }, [])
       ; ptyp_loc = _loc_tc }
-  | te:typeexpr tc:typeconstr ->
-      assert false (* TODO *)
+(*  | te:typeexpr tc:typeconstr ->
+      assert false (* TODO *)*)
   | p:STR("(") te:typeexpr
     tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
       assert false (* TODO *)
-  | te:typeexpr RE("\\bas\\b") STR("`") id:ident ->
-      assert false (* TODO *)
+(*  | te:typeexpr RE("\\bas\\b") STR("`") id:ident ->
+      assert false (* TODO *)*)
   | pvt:polymorphic_variant_type ->
       assert false (* TODO *)
   | s:STR("<") STR("..")? STR(">") ->
@@ -555,8 +567,8 @@ let _ = set_grammar typeexpr (
       assert false (* TODO *)
   | s:STR("#") cp:class_path ->
       assert false (* TODO *)
-  | te:typeexpr STR("#") cp:class_path ->
-      assert false (* TODO *)
+(*  | te:typeexpr STR("#") cp:class_path ->
+      assert false (* TODO *)*)
   | p:STR("(") te:typeexpr
     tes:{STR(",") te:typeexpr -> te}*
     STR(")") STR("#") cp:class_path ->
@@ -579,28 +591,31 @@ let constant =
   end
 
 let pattern = declare_grammar ()
+let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 
 let _ = set_grammar pattern (
   glr
-    vn:value_name ->
-      { ppat_desc = if vn = "_" then Ppat_any
-                    else  Ppat_var { txt = vn; loc = _loc_vn }
+    STR("_") ->
+      { ppat_desc = Ppat_any
+      ; ppat_loc = _loc }
+  | vn:value_name ->
+      { ppat_desc = Ppat_var { txt = vn; loc = _loc_vn }
       ; ppat_loc = _loc_vn }
   | c:constant ->
       { ppat_desc = Ppat_constant c
       ; ppat_loc = _loc_c }
-  | p:pattern RE("\\bas\\b") vn:value_name ->
+(*  | p:pattern RE("\\bas\\b") vn:value_name ->
       { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
-      ; ppat_loc = _loc_p }
+      ; ppat_loc = _loc_p }*)
   | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
       (match te with
        | None    -> { ppat_desc = p.ppat_desc
                     ; ppat_loc = _loc_par }
        | Some ty -> { ppat_desc = Ppat_constraint(p, ty)
                     ; ppat_loc = _loc_par })
-  | p:pattern STR("|") p':pattern ->
+(*  | p:pattern STR("|") p':pattern ->
       { ppat_desc = Ppat_or(p, p')
-      ; ppat_loc = _loc_p }
+      ; ppat_loc = _loc_p }*)
   | c:constr p:pattern? ->
       { ppat_desc = Ppat_construct({ txt = c; loc = _loc_c }, p, false)
       ; ppat_loc = _loc_c }
@@ -617,9 +632,9 @@ let _ = set_grammar pattern (
   | s:STR("#") t:typeconstr ->
       { ppat_desc = Ppat_type { txt = t; loc = _loc_t }
       ; ppat_loc = _loc_s }
-  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
+(*  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
       { ppat_desc = Ppat_tuple(p::ps)
-      ; ppat_loc = _loc_p }
+      ; ppat_loc = _loc_p }*)
   | STR("{") f:field STR("=") p:pattern
     fps:{STR(";") f:field STR("=") p:pattern -> (f, p)}*
     STR(";")? STR("}") ->
@@ -628,8 +643,8 @@ let _ = set_grammar pattern (
       assert false (* TODO *)
   | STR("[") STR("]") ->
       assert false (* TODO *)
-  | p:pattern STR("::") p':pattern ->
-      assert false (* TODO *)
+(*  | p:pattern STR("::") p':pattern ->
+      assert false (* TODO *)*)
   | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
       { ppat_desc = Ppat_array (p::ps)
       ; ppat_loc = _loc_s }
@@ -641,45 +656,6 @@ let _ = set_grammar pattern (
   | RE("\\bbegin\\b") STR("\\bend\\b") ->
       assert false (* TODO *)
   end)
-
-
-
-
-
-
-
-
-
-let kreserved = [ "->"; ":" ]
-
-let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
-let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
-
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
-
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
-
-let expression_lvl_to_string () = function
-    Top -> "Top"
-  | Let -> "Let"
-  | Seq -> "Seq"
-  | If -> "If" 
-  | Aff -> "Aff"
-  | Tupl -> "Tuple"
-  | Disj -> "Disj"
-  | Conj -> "Conj"
-  | Eq -> "Eq"
-  | Append -> "Append"
-  | Cons -> "Cons"
-  | Sum -> "Sum"
-  | Prod -> "Prod"
-  | Pow -> "Pow"
-  | Opp -> "Opp"
-  | App -> "App"
-  | Dash -> "Dash"
-  | Dot -> "Dot"
-  | Prefix -> "Prefix"
-  | Atom -> "Atom"
 
 let next_exp = function
     Top -> Let
@@ -730,14 +706,7 @@ let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
 
 let (expression, set_expression) = grammar_family ~param_to_string:expression_lvl_to_string ()
-let pattern = declare_grammar ()
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
-let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
-let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
-
-let typexp = declare_grammar ()
-
-let typexp_desc = fail () 
 
 let module_path = declare_grammar ()
 
@@ -755,63 +724,45 @@ let _ = set_grammar module_path (
 
 let constructor =
   glr
-    m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | RE"\\bfalse\\b" -> "false" | RE"\\btrue\\b" -> "true" } ->
+    m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | RE"false\\b" -> "false" | RE"true\\b" -> "true" } ->
       match m with None -> Longident.Lident id
 		 | Some m -> Longident.Ldot(m, id)
   end 
 
-let _ = set_grammar typexp (
-  glr 
-    t:typexp_desc -> loc_typ _loc t
-  end)
-
-let pattern_desc =
-  glr
-    id:lowercase_ident -> if id = "_" then Ppat_any else Ppat_var { txt = id; loc = _loc_id }
-  | c:constant -> Ppat_constant c
-  | STR("(") STR(")") -> Ppat_tuple([])
-  end
-
-let _ = set_grammar pattern (
-  glr
-    pat:pattern_desc -> loc_pat _loc pat
-  end)
-
 let argument =
   glr
-    STR("~") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
-  | STR("?") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
-  | STR("~") id:lident STR(":") e:(expression (next_exp App)) -> (id, e)
-  | STR("?") id:lident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+    STR("~") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (id, e)
+  | STR("?") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+  | STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
+  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
+  | e:(expression (next_exp App)) -> ("", e)
   end
 
 let parameter =
   glr
     pat:pattern -> ("", None, pat)
-  | STR("~") id:lident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("~") STR("(") id:lident t:{ STR":" t:typexp }? STR")" -> (
+  | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typeexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
       | None -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       (id, None, pat))
-  | STR("~") id:lident STR":" pat:pattern -> (id, None, pat)
-  | STR("?") id:lident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("?") id:lident STR":" pat:pattern -> (("?"^id), None, pat)
-  | STR("?") STR"(" id:lident t:{ STR":" t:typexp -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
+  | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typeexpr -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typexp -> t }? e:{ STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typeexpr -> t }? e:{ STR"=" e:(expression Top) -> e}? STR")" -> (
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lident STR":" pat:pattern -> (("?"^id), None, pat)
-  | STR("?") id:lident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("?") id:lowercase_ident STR":" pat:pattern -> (("?"^id), None, pat)
+  | STR("?") id:lowercase_ident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   end
 
 let right_member =
@@ -823,7 +774,7 @@ let right_member =
 
 let value_binding =
   glr
-    pat:pattern e:right_member l:{RE("\\band\\b") pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
+    pat:pattern e:right_member l:{RE("and\\b") pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
   end
 
 let match_cases lvl =
@@ -836,8 +787,8 @@ let match_cases lvl =
 let type_constraint =
   glr
     (empty ()) -> (None, None)
-  | STR(":") t:typexp t':{STR(":>") t':typexp}? -> (Some t, t')
-  | STR(":>") t':typexp -> (None, Some t')
+  | STR(":") t:typeexpr t':{STR(":>") t':typeexpr}? -> (Some t, t')
+  | STR(":>") t':typeexpr -> (None, Some t')
   end
 
 (*
@@ -851,21 +802,22 @@ let expression_desc lvl =
   glr
     id:lowercase_ident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
   | c:constant -> (Atom, Pexp_constant c)
-  | RE("\\blet\\b") r:RE("\\brec\\b")? l:value_binding RE("\\bin\\b") e:(expression (let_prio lvl)) when (lvl < App)
+  | RE("let\\b") r:RE("rec\\b")? l:value_binding RE("in\\b") e:(expression (let_prio lvl)) when (lvl < App)
     -> (Let, Pexp_let ((if r = None then Nonrecursive else Recursive), l, e))
-  | RE("\\bfunction\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_function("", None, l))
-  | RE("\\bfun\\b") l:{lbl:parameter}* STR"->" e:(expression (let_prio lvl)) when (lvl < App) -> 
+  | RE("function\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_function("", None, l))
+  | RE("fun\\b") l:{lbl:parameter}* STR"->" e:(expression (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e).pexp_desc)
-  | RE("\\bmatch\\b") e:(expression Top) RE("\\bwith\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_match(e, l))
-  | RE("\\btry\\b") e:(expression Top) RE("\\bwith\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_try(e, l))
-  | RE("\\bif\\b") c:(expression Top) RE("\\bthen\\b") e:(expression If) e':{RE("\\belse\\b") e:(expression If)}? when (lvl <= If) ->
+  | RE("match\\b") e:(expression Top) RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_match(e, l))
+  | RE("try\\b") e:(expression Top) RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_try(e, l))
+  | RE("if\\b") c:(expression Top) RE("then\\b") e:(expression If) e':{RE("else\\b") e:(expression If)}? when (lvl <= If) ->
      (If, Pexp_ifthenelse(c,e,e'))
   | STR("(") e:(expression Top) t:type_constraint STR(")") -> (Atom, match t with (None, None) -> e.pexp_desc 
                                                                                 | _ ->Pexp_constraint(e, fst t, snd t))
   | STR("(") STR(")") -> (Atom, Pexp_tuple([]))
-  | RE("\\bbegin\\b") e:(expression Top) RE("\\bend\\b") -> (Atom, e.pexp_desc)
+  | RE("begin\\b") e:(expression Top) RE("end\\b") -> (Atom, e.pexp_desc)
     (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
-  | c:constructor e:{e:(expression App)}? -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
+  | c:constructor e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
+  | STR("`") l:RE(ident_re) e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_variant(l,e)) 
   end
 
 let apply_lbl _loc (lbl, e) =
@@ -874,6 +826,11 @@ let apply_lbl _loc (lbl, e) =
     | Some e -> e
   in (lbl, e)
 
+let rec mk_seq _loc = function
+    [] -> assert false
+  | [e] -> e
+  | x::l -> loc_expr _loc (Pexp_sequence(x,mk_seq _loc l))
+
 let expression_suit_aux lvl' lvl f =
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
@@ -881,8 +838,8 @@ let expression_suit_aux lvl' lvl f =
   | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, loc_expr _loc (Pexp_tuple(f::l)))
   | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ when (lvl' > Seq && lvl <= Seq) -> 
-      (Seq, List.fold_left (fun acc f -> loc_expr _loc (Pexp_sequence(acc,f))) f l)
-  | a:(dependent_sequence (glr k:RE(infix_re) -> (if List.mem k kreserved then raise Give_up; _loc_k, k) end)
+      (Seq, mk_seq _loc (f::l))
+  | a:(dependent_sequence (glr k:RE(infix_re) -> (if List.mem k reserved_kwd then raise Give_up; _loc_k, k) end)
 		       (fun (_loc_k, k) ->
 			let p = infix_prio k in
 			let a = assoc p in
@@ -909,7 +866,7 @@ let _ = set_expression (fun lvl ->
 
 let structure_item_desc =
   glr
-    RE("\\b\\(let\\)\\|\\(val\\)\\b") r:RE("\\brec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+    RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   end
 
 let structure_item =
