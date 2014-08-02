@@ -1,11 +1,69 @@
 (*
- * Encode a character into a UTF8 string.
+ * Type of a UTF8 character.
+ *)
+type uchar = int
+
+(*
+ * Synonym of int for an index in a string.
+ *)
+type index = int
+
+exception Out_of_bound
+
+(*
+ * Converts a char into a UTF8 character.
+ *)
+let of_char : char -> uchar = Char.code
+
+(*
+ * Converts a UTF8 character into a char.
+ * Raise Out_of_bound in cas the UTF8 character is not representable as a
+ * char.
+ *)
+let to_char : uchar -> char = fun c ->
+  if c < 0 || c > 0xFF then
+    raise Out_of_bound
+  else
+    Char.chr c
+
+(*
+ * Converts an int into a UTF8 character.
+ * Raise Out_of_bound if the character number is invalid.
+ *)
+let of_int : int -> uchar = fun i ->
+  if i < 0 || i > 0x10FFFF then
+    raise Out_of_bound
+  else i
+
+(*
+ * Converts a UTF8 character into an int.
+ * Raise Out_of_bound if the UTF8 character is invalid.
+ *)
+let to_int : uchar -> int = fun c ->
+  if c < 0 || c > 0x10FFFF then
+    raise Out_of_bound
+  else c
+
+(*
+ * Returns the code of a UTF8 character.
+ * Raise Out_of_bound if the UTF8 character is invalid.
+ *)
+let code : uchar -> int = to_int
+
+(*
+ * Returns the UTF8 character corresponding to a code.
+ * Raise Out_of_bound if the code is invalid.
+ *)
+let chr : int -> uchar = of_int
+
+(*
+ * Encode a UTF8 character into a UTF8 string.
  * Argument:
- *   i : character number.
+ *   i : the UTF8 character.
  * Returns a string of size between 1 and 4.
  * Raise invalid_arg if i is not in the U+0000..U+10FFFF range.
  *)
-let encode i =
+let encode : uchar -> string = fun i ->
   if i < 0 then
     raise (invalid_arg "UF8.encode")
   else if i <= 0x7F then
@@ -43,7 +101,7 @@ let encode i =
  * No checks are run on the hypothetical second, third and fourth byte (i.e.
  * length of s is not checked, and shape 0x10xxxxxx of byte is not checked).
  *)
-let decode s i =
+let decode : string -> index -> (uchar * int) = fun s i ->
   let cc = Char.code s.[i] in
   if cc lsr 7 = 0 then
     (cc, 1)
@@ -68,21 +126,13 @@ let decode s i =
     raise (invalid_arg "UTF8.decode")
 
 (*
-let test_encode_decode () =
-  for i = 0x0000 to 0x010FFFF do
-    if fst (decode (encode i) 0) <> i then
-      Printf.fprintf stderr "Mismatch for i = %i\n%!" i
-  done
-*)
-
-(*
  * Check a string for correct UTF8 encoding.
  * Argument:
  *   s : the string.
  * Returns true in case of success, and false in case of error.
  * All exceptions are captured.
  *)
-let validate s =
+let validate : string -> bool = fun s ->
   let len = String.length s in
   let rec valid i =
     if i = len then
@@ -101,7 +151,7 @@ let validate s =
  *   s : the string (that is supposed to be valid).
  * Returns an int.
  *)
-let length s =
+let length : string -> int = fun s ->
   let slen = String.length s in
   let rec len count pos =
     if pos >= slen then
@@ -111,8 +161,6 @@ let length s =
       len (count + 1) (pos + sz)
   in len 0 0
 
-exception Out_of_bound
-
 (*
  * Compute the index of the n-th UTF8 character if it exists.
  * Arguments:
@@ -121,7 +169,7 @@ exception Out_of_bound
  * Returns the index.
  * Raise Out_of_bound in case the string is not long enough.
  *)
-let nth_index s n =
+let nth_index : string -> int -> index = fun s n ->
   let len = String.length s in
   let rec nth_ind count pos =
     if pos >= len then
@@ -141,7 +189,7 @@ let nth_index s n =
  * Returns the character.
  * Raise Out_of_bound in case the string is not long enough.
  *)
-let nth s n =
+let nth : string -> int -> (uchar * int) = fun s n ->
   let pos = nth_index s n in
   decode s pos
 
@@ -154,7 +202,7 @@ let nth s n =
  * The behaviour is not specified if i is not a valid index in s, or if s is
  * not a valid UTF8 string.
  *)
-let next s i =
+let next : string -> index -> index = fun s i ->
   let (_, sz) = decode s i in
   i + sz
 
@@ -167,7 +215,7 @@ let next s i =
  * The behaviour is not specified if i is not a valid index in s, or if s is
  * not a valid UTF8 string.
  *)
-let prev s i =
+let prev : string -> index -> index = fun s i ->
   let ps = List.filter (fun i -> i >= 0) [i-1; i-2; i-3; i-4] in
   let rec try_until_found l =
     match l with
@@ -187,7 +235,7 @@ let prev s i =
  * Returns the index of the first UTF8 character in s.
  * Raise invalid_arg if the string s is empty.
  *)
-let first s =
+let first : string -> index = fun s ->
   if s = "" then
     raise (invalid_arg "UTF8.first")
   else 0
@@ -199,10 +247,9 @@ let first s =
  * Returns the index of the last UTF8 character in s.
  * Raise invalid_arg if the string s is empty.
  *)
-let last s =
+let last : string -> index = fun s ->
   let len = String.length s in
   if len = 0 then
     raise (invalid_arg "UTF8.first")
   else
     prev s len
-

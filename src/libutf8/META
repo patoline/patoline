@@ -1,0 +1,6 @@
+name="libutf8"
+version="1.0"
+description="A minimal UTF8 library (part of Patoline)"
+requires=""
+archive(native)="libutf8.cmxa"
+archive(byte)="libutf8.cma"
