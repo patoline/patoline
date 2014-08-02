@@ -595,12 +595,12 @@ let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 
 let _ = set_grammar pattern (
   glr
-    STR("_") ->
-      { ppat_desc = Ppat_any
-      ; ppat_loc = _loc }
-  | vn:value_name ->
+    vn:value_name ->
       { ppat_desc = Ppat_var { txt = vn; loc = _loc_vn }
       ; ppat_loc = _loc_vn }
+  | STR("_") ->
+      { ppat_desc = Ppat_any
+      ; ppat_loc = _loc }
   | c:constant ->
       { ppat_desc = Ppat_constant c
       ; ppat_loc = _loc_c }
@@ -797,6 +797,18 @@ let expression_list =
   | (empty ()) -> []
   end
 
+let record_item = 
+  glr
+    f:field STR("=") e:(expression (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
+  | f:lowercase_ident -> (let id = { txt = Longident.Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
+  end
+
+let record_list =
+  glr
+    it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
+  | (empty ()) -> []
+  end
+
 let expression_desc lvl =
   glr
     id:lowercase_ident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
@@ -822,7 +834,8 @@ let expression_desc lvl =
      (Atom, (List.fold_right (fun x acc ->
        loc_expr _loc (Pexp_construct({ txt = Longident.Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
 		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))).pexp_desc)
-     
+  | STR("{") e:{e:(expression Top) RE("with\\b")}? l:record_list STR("}") ->
+     (Atom, Pexp_record(l,e))
   end
 
 let apply_lbl _loc (lbl, e) =

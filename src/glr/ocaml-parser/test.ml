@@ -64,3 +64,8 @@ let f20 = [ ], [ 1 ], [ 1; 2; 3; 4], [ 1; 2; 3; 4; ]
 
 let f21 = [| |], [| 1 |], [| 1; 2; 3; 4|], [| 1; 2; 3; 4; |]
 
+let f22 = { contents = 1 }
+
+let f23 = { f22 with contents = 2 ; }
+
+let f24 = let contents = 3 in { contents }
