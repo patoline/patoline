@@ -354,7 +354,7 @@ let character =
 let word =
   change_layout (
     glr
-      cs:character++ ->
+      cs:character+ ->
         let w = String.concat "" cs in
         if String.length w >= 2 &&
            List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
@@ -374,7 +374,7 @@ let rec rem_hyphen = function
 
 let words =
   glr
-    ws:word++ -> String.concat " " (rem_hyphen ws)
+    ws:word+ -> String.concat " " (rem_hyphen ws)
   end
 
 (****************************************************************************
@@ -394,7 +394,7 @@ let verbatim_environment =
       lang:glr RE("[ \t]+") id:RE(uid_coloring) -> id end?
       file:glr RE("[ \t]+") fn:RE(string_filename) -> fn end?
       RE("[ \t]*\n")
-      lines:glr l:RE(verbatim_line) RE("\n") -> l end++
+      lines:glr l:RE(verbatim_line) RE("\n") -> l end+
       RE("^###") -> (
         (* TODO do something with "lang" and "file" *)
         assert(List.length lines <> 0); (* Forbid empty verbatim env *)
@@ -436,7 +436,7 @@ let verbatim_generic st forbid nd =
   change_layout (
     glr
       STR(st)
-      ls:glr l:RE(line_re) STR("\n") -> l end**
+      ls:glr l:RE(line_re) STR("\n") -> l end*
       l:RE(line_re)
       STR(nd) ->
         let lines = ls @ [l] in
@@ -474,9 +474,9 @@ let paragraph_basic_text, set_paragraph_basic_text = grammar_family ()
 let macro_argument =
   glr
      STR("{") l:(paragraph_basic_text true) STR("}") -> l
-  || e:wrapped_caml_expr  -> e
-  || e:wrapped_caml_array -> e
-  || e:wrapped_caml_list  -> e
+  | e:wrapped_caml_expr  -> e
+  | e:wrapped_caml_array -> e
+  | e:wrapped_caml_list  -> e
   end
 
 let lident = "[_a-z][_a-zA-Z0-9']*"
@@ -493,46 +493,46 @@ let macro_name =
 
 let macro =
   glr
-     m:macro_name args:macro_argument** ->
+     m:macro_name args:macro_argument* ->
        (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
         List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
-  || m:verbatim_macro -> m
+  | m:verbatim_macro -> m
   end
 (****************************)
 
 let text_paragraph_elt allowed =
     glr
        m:macro -> m
-    || l:words -> <:expr@_loc_l<[tT($str:l$)]>>
+    | l:words -> <:expr@_loc_l<[tT($str:l$)]>>
 
-    || STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
+    | STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
          <:expr@_loc_p<toggleItalic $p$>>
-    || STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
+    | STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
          <:expr@_loc_p<bold $p$>>
-    || v:verbatim_bquote -> <:expr@_loc_v<$v$>>
+    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
     (*
-    || STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
+    | STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
          <:expr@_loc_p<underline $p$>>
-    || STR("--") p:(paragraph_basic_text false) _e:STR("--") when allowed ->
+    | STR("--") p:(paragraph_basic_text false) _e:STR("--") when allowed ->
          <:expr@_loc_p<strike $p$>>
     *)
 
-    || v:verbatim_sharp -> <:expr@_loc_v<$v$>>
-    || STR("||") p:(paragraph_basic_text false) _e:STR("||") when allowed ->
+    | v:verbatim_sharp -> <:expr@_loc_v<$v$>>
+    | STR("||") p:(paragraph_basic_text false) _e:STR("||") when allowed ->
          <:expr@_loc_p<sc $p$>>
 
-    || STR("(") p:(paragraph_basic_text allowed) STR(")") ->
+    | STR("(") p:(paragraph_basic_text allowed) STR(")") ->
          <:expr@_loc_p<tT($str:"("$) :: $p$ @ [tT($str:")"$)]>>
-    || STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
+    | STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($str:opening$) :: $p$ @ [tT($str:closing$)]>>)
 
-    || STR("$") m:math_toplevel STR("$") ->
+    | STR("$") m:math_toplevel STR("$") ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         [Maths.Ordinary $m$])]>>
-    || STR("[$") m:math_toplevel STR("$]") ->
+    | STR("[$") m:math_toplevel STR("$]") ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle [Maths.Ordinary $m$]))]>>
@@ -548,7 +548,7 @@ let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
 let _ = set_paragraph_basic_text
   (fun spec_allowed ->
     glr
-      l:{p:(text_paragraph_elt spec_allowed) -> (_loc, p)}++ ->
+      l:{p:(text_paragraph_elt spec_allowed) -> (_loc, p)}+ ->
         match List.rev l with
           | []   -> assert false
           | m::l ->
@@ -588,9 +588,9 @@ let paragraphs = declare_grammar ()
 let paragraph_elt =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
-    || STR("\\Caml") s:wrapped_caml_str_item -> (fun _ -> s)
-    || l:paragraph_basic_text -> l
-    || STR("\\item") -> (fun _ ->
+    | STR("\\Caml") s:wrapped_caml_str_item -> (fun _ -> s)
+    | l:paragraph_basic_text -> l
+    | STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
          <:str_item< module $uid:m1$ =
@@ -599,7 +599,7 @@ let paragraph_elt =
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
-    || STR("\\begin{") idb:RE(lident) STR("}")
+    | STR("\\begin{") idb:RE(lident) STR("}")
        ps:(change_layout paragraphs blank2)
        STR("\\end{") ide:RE(lident) STR("}") ->
          (fun indent_first ->
@@ -614,7 +614,7 @@ let paragraph_elt =
                          $ps indent_first$ ;;
                          let _ = $uid:m2$.do_end_env ()
                         end>>)
-    || STR("$$") m:math_toplevel STR("$$") ->
+    | STR("$$") m:math_toplevel STR("$$") ->
          (fun _ ->
            <:str_item<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
@@ -627,7 +627,7 @@ let paragraph_elt =
 let _ = set_grammar paragraph (
   change_layout (
     glr
-      e:paragraph_elt es:paragraph_elt** ->
+      e:paragraph_elt es:paragraph_elt* ->
         (let fn = fun acc r -> <:str_item<$acc$ $r false$>> in
          let es = List.fold_left fn <:str_item<>> es in
          fun indent -> <:str_item<$e indent$;; $es$>>
@@ -637,7 +637,7 @@ let _ = set_grammar paragraph (
 
 let _ = set_grammar paragraphs (
   glr
-    p:paragraph ps:paragraph** ->
+    p:paragraph ps:paragraph* ->
       (fun indent_first ->
         let p  = p indent_first in
         let fn = fun acc r -> <:str_item<$acc$ $r true$>> in
@@ -667,7 +667,7 @@ let text_item =
                                $txt false (lvl+1)$;;
                                let _ = go_up D.structure >>)
 
-  || op:RE(section) title:text_only cl:RE(section) txt:text ->
+  | op:RE(section) title:text_only cl:RE(section) txt:text ->
        (fun _ lvl ->
         if String.length op <> String.length cl then raise Give_up;
         let numbered = match op.[0], cl.[0] with
@@ -684,13 +684,13 @@ let text_item =
         true, lvl, <:str_item< $!res$ let _ = $numbered$ D.structure $title$;;
                                $txt false l$>>)
 
-  || ps:paragraphs -> 
+  | ps:paragraphs -> 
       (fun indent lvl -> indent, lvl, ps indent)
   end
 
 let _ = set_grammar text (
   glr
-    l:text_item** ->
+    l:text_item* ->
       (fun indent lvl ->
         let fn = fun (indent, lvl, ast) txt ->
                    let indent, lvl, ast' = txt indent lvl in
@@ -726,15 +726,15 @@ let patoline_config =
 
 let header =
   glr
-    hs:patoline_config** -> <:str_item<>>
+    hs:patoline_config* -> <:str_item<>>
   end
 
 let title =
   glr
     RE("==========\\(=*\\)") t:text_only
-    author:{RE("----------\\(-*\\)") t:text_only}??
-    institute:{RE("----------\\(-*\\)") t:text_only}??
-    date:{RE("----------\\(-*\\)") t:text_only}??
+    author:{RE("----------\\(-*\\)") t:text_only}?
+    institute:{RE("----------\\(-*\\)") t:text_only}?
+    date:{RE("----------\\(-*\\)") t:text_only}?
     RE("==========\\(=*\\)") ->
   let extras =
     match date with
@@ -757,7 +757,7 @@ let title =
 
 let full_text =
   glr
-    h:header t:title?? txt:text EOF ->
+    h:header t:title? txt:text EOF ->
       let t = match t with
                 | None   -> <:str_item<>>
                 | Some t -> t

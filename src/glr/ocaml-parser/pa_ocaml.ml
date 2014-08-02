@@ -4,6 +4,32 @@ open Asttypes
 open Parsetree
 open Longident
 
+let file = ref None
+let ascii = ref false
+type entry = FromExt | Impl | Intf
+let entry = ref FromExt
+let extension = ref false
+  (* if true, 
+     if a then let ... or [ fun ... ] are rejected because [ let x = 3 in x ; x] is nasty *)
+  (* val is accepted in structure *)
+  
+let spec = [
+  "--ascii", Arg.Set ascii , "output ascii ast instead of serialized ast" ;
+  "--impl", Arg.Unit (fun () -> entry := Impl), "treat file as an implementation" ;
+  "--intf", Arg.Unit (fun () -> entry := Intf), "treat file as an interface" ;
+  "--ext", Arg.Set extension, "enable glr extensions/restrictions of ocaml's grammar" ;
+]
+
+let anon_fun s = file := Some s
+
+let _ = Arg.parse spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
+
+let entry =
+  match !entry, !file with
+    FromExt, Some s -> if Filename.check_suffix s ".mli" then Intf else Impl
+  | FromExt, None -> Intf
+  | i, _ -> i
+
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
@@ -99,18 +125,41 @@ let ident_re  = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
 let cident_re = "\\b[A-Z][a-zA-Z0-9_']*\\b"
 let lident_re = "\\b[a-z_][a-zA-Z0-9_']*\\b"
 
-let reserved_ident =
-  [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
-  ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
-  ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
-  ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
-  ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
-  ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
-  ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
-  ; "while" ; "with" ]
+let reserved = ["in"; "if"; "then"; "else"; "let"; "begin"; "end"; "and"; "rec"; "match"; "with"; "try"; "fun"; "function"; "lsl";
+	        "lsr";"asr";"mod";"land";"lor";"lxor";"or";"true";"false"]
+let kreserved = [ "->"; ":" ]
+let lident = glr id:RE(lident_re) -> if List.mem id reserved then raise Give_up; id end
+let cident = glr id:RE(cident_re) -> id end
+let ident = glr id:RE(ident_re) -> if List.mem id reserved then raise Give_up; id end
 
-let is_reserved_id w =
-  List.mem w reserved_ident
+let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
+let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
+
+type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+
+let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
+
+let expression_lvl_to_string () = function
+    Top -> "Top"
+  | Let -> "Let"
+  | Seq -> "Seq"
+  | If -> "If" 
+  | Aff -> "Aff"
+  | Tupl -> "Tuple"
+  | Disj -> "Disj"
+  | Conj -> "Conj"
+  | Eq -> "Eq"
+  | Append -> "Append"
+  | Cons -> "Cons"
+  | Sum -> "Sum"
+  | Prod -> "Prod"
+  | Pow -> "Pow"
+  | Opp -> "Opp"
+  | App -> "App"
+  | Dash -> "Dash"
+  | Dot -> "Dot"
+  | Prefix -> "Prefix"
+  | Atom -> "Atom"
 
 let ident =
   glr
@@ -153,31 +202,28 @@ let integer_literal =
   | i:RE(int_bin_re ^ "\\b") -> int_of_string i
   end
 
-let remove_last s =
-  String.sub s 0 (String.length s - 1)
-
 let int32_lit =
   glr
-    i:RE(int_dec_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "l\\b") -> Int32.of_string (remove_last i)
+    i:RE("\\(" ^ int_dec_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
+  | i:RE("\\(" ^ int_hex_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
+  | i:RE("\\(" ^ int_oct_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
+  | i:RE("\\(" ^ int_bin_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
   end
 
 let int64_lit =
   glr
-    i:RE(int_dec_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "L\\b") -> Int64.of_string (remove_last i)
+    i:RE("\\(" ^ int_dec_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
+  | i:RE("\\(" ^ int_hex_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
+  | i:RE("\\(" ^ int_oct_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
+  | i:RE("\\(" ^ int_bin_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
   end
 
 let nat_int_lit =
   glr
-    i:RE(int_dec_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+    i:RE("\\(" ^ int_dec_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
+  | i:RE("\\(" ^ int_hex_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
+  | i:RE("\\(" ^ int_oct_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
+  | i:RE("\\(" ^ int_bin_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
   end
 
 (* Floating-point literals *)
@@ -198,7 +244,7 @@ let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
 
 let one_char =
   glr
-     c:RE(char_regular) -> c.[0]
+    c:RE(char_regular) -> c.[0]
   | c:RE(char_escaped) -> (match c.[1] with
                             | 'n' -> '\n'
                             | 't' -> '\t'
@@ -723,6 +769,7 @@ let pattern_desc =
   glr
     id:lowercase_ident -> if id = "_" then Ppat_any else Ppat_var { txt = id; loc = _loc_id }
   | c:constant -> Ppat_constant c
+  | STR("(") STR(")") -> Ppat_tuple([])
   end
 
 let _ = set_grammar pattern (
@@ -732,28 +779,27 @@ let _ = set_grammar pattern (
 
 let argument =
   glr
-    STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
-  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
-  | STR("~") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (id, e)
-  | STR("?") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
-  | e:(expression (next_exp App)) -> ("", e)
+    STR("~") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
+  | STR("?") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
+  | STR("~") id:lident STR(":") e:(expression (next_exp App)) -> (id, e)
+  | STR("?") id:lident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
   end
 
 let parameter =
   glr
     pat:pattern -> ("", None, pat)
-  | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexp }? STR")" -> (
+  | STR("~") id:lident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("~") STR("(") id:lident t:{ STR":" t:typexp }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
       | None -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       (id, None, pat))
-  | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
-  | STR("?") id:lowercase_ident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("?") id:lowercase_ident STR":" pat:pattern -> (("?"^id), None, pat)
-  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexp -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("~") id:lident STR":" pat:pattern -> (id, None, pat)
+  | STR("?") id:lident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("?") id:lident STR":" pat:pattern -> (("?"^id), None, pat)
+  | STR("?") STR"(" id:lident t:{ STR":" t:typexp -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
 	| None -> pat
@@ -764,6 +810,8 @@ let parameter =
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
+  | STR("?") id:lident STR":" pat:pattern -> (("?"^id), None, pat)
+  | STR("?") id:lident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   end
 
 let right_member =
@@ -778,30 +826,46 @@ let value_binding =
     pat:pattern e:right_member l:{RE("\\band\\b") pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
   end
 
-let match_cases =
+let match_cases lvl =
   glr
-     l:{STR"|"? pat:pattern STR"->" e:(expression Let) 
-         l:{STR"|" pat:pattern STR"->" e:(expression Let) -> (pat,e)}* 
+     l:{STR"|"? pat:pattern STR"->" e:(expression lvl) 
+         l:{STR"|" pat:pattern STR"->" e:(expression lvl) -> (pat,e)}*
          -> ((pat,e)::l)}?[[]] -> l
   end
+
+let type_constraint =
+  glr
+    (empty ()) -> (None, None)
+  | STR(":") t:typexp t':{STR(":>") t':typexp}? -> (Some t, t')
+  | STR(":>") t':typexp -> (None, Some t')
+  end
+
+(*
+let expression_list =
+  glr
+    e:(expression If) 
+ *)
+
 
 let expression_desc lvl =
   glr
     id:lowercase_ident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
   | c:constant -> (Atom, Pexp_constant c)
-  | RE("\\blet\\b") r:RE("\\brec\\b")? l:value_binding RE("\\bin\\b") e:(expression Let) when (lvl <= Let)
+  | RE("\\blet\\b") r:RE("\\brec\\b")? l:value_binding RE("\\bin\\b") e:(expression (let_prio lvl)) when (lvl < App)
     -> (Let, Pexp_let ((if r = None then Nonrecursive else Recursive), l, e))
-  | RE("\\bfunction\\b") l:match_cases when (lvl <= Let) -> (Let, Pexp_function("", None, l))
-  | RE("\\bfun\\b") l:{lbl:parameter}* STR"->" e:(expression Let) -> 
+  | RE("\\bfunction\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_function("", None, l))
+  | RE("\\bfun\\b") l:{lbl:parameter}* STR"->" e:(expression (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e).pexp_desc)
-  | RE("\\bmatch\\b") e:(expression Top) RE("\\bwith\\b") l:match_cases when (lvl <= Let) -> (Let, Pexp_match(e, l))
-  | RE("\\btry\\b") e:(expression Top) RE("\\bwith\\b") l:match_cases when (lvl <= Let) -> (Let, Pexp_try(e, l))
+  | RE("\\bmatch\\b") e:(expression Top) RE("\\bwith\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_match(e, l))
+  | RE("\\btry\\b") e:(expression Top) RE("\\bwith\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_try(e, l))
   | RE("\\bif\\b") c:(expression Top) RE("\\bthen\\b") e:(expression If) e':{RE("\\belse\\b") e:(expression If)}? when (lvl <= If) ->
      (If, Pexp_ifthenelse(c,e,e'))
-  | STR("(") e:(expression Top) STR(")") -> (Atom, e.pexp_desc)
+  | STR("(") e:(expression Top) t:type_constraint STR(")") -> (Atom, match t with (None, None) -> e.pexp_desc 
+                                                                                | _ ->Pexp_constraint(e, fst t, snd t))
+  | STR("(") STR(")") -> (Atom, Pexp_tuple([]))
   | RE("\\bbegin\\b") e:(expression Top) RE("\\bend\\b") -> (Atom, e.pexp_desc)
     (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
-  | c:constructor e:{e:(expression App)}? -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false))
+  | c:constructor e:{e:(expression App)}? -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
   end
 
 let apply_lbl _loc (lbl, e) =
@@ -816,14 +880,22 @@ let expression_suit_aux lvl' lvl f =
       (App, loc_expr _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, loc_expr _loc (Pexp_tuple(f::l)))
+  | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ when (lvl' > Seq && lvl <= Seq) -> 
+      (Seq, List.fold_left (fun acc f -> loc_expr _loc (Pexp_sequence(acc,f))) f l)
   | a:(dependent_sequence (glr k:RE(infix_re) -> (if List.mem k kreserved then raise Give_up; _loc_k, k) end)
 		       (fun (_loc_k, k) ->
 			let p = infix_prio k in
 			let a = assoc p in
 			if lvl > p || lvl' < p || (a <> Left && lvl' = p) then raise Give_up;
 			let p' = if a = Right then p else next_exp p in
-			apply (fun e -> p, Pexp_apply(loc_expr _loc_k (Pexp_ident { txt = Longident.Lident k; loc = _loc_k }),
-                                                   [("", f) ; ("", e)])) (expression p')))
+			let res e =
+			  if k = "::" then
+			    Pexp_construct({ txt = Longident.Lident "::"; loc = _loc_k}, Some (loc_expr _loc_k (Pexp_tuple [f;e])), false)
+			  else 
+			    Pexp_apply(loc_expr _loc_k (Pexp_ident { txt = Longident.Lident k; loc = _loc_k }),
+                                       [("", f) ; ("", e)])
+			in
+			apply (fun e -> p, res e) (expression p')))
        -> (fst a, loc_expr _loc (snd a))
   end
 
@@ -837,7 +909,7 @@ let _ = set_expression (fun lvl ->
 
 let structure_item_desc =
   glr
-    RE("\\blet\\b") r:RE("\\brec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+    RE("\\b\\(let\\)\\|\\(val\\)\\b") r:RE("\\brec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   end
 
 let structure_item =
@@ -862,26 +934,6 @@ let signature =
     l : signature_item* EOF -> l
   end
 
-let file = ref None
-let ascii = ref false
-type entry = FromExt | Impl | Intf
-let entry = ref FromExt
-
-let spec = [
-  "--ascii", Arg.Set ascii , "output ascii ast instead of serialized ast" ;
-  "--impl", Arg.Unit (fun () -> entry := Impl), "treat file as an implementation" ;
-  "--intf", Arg.Unit (fun () -> entry := Intf), "treat file as an interface" ;
-]
-
-let anon_fun s = file := Some s
-
-let _ = Arg.parse spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
-
-let entry =
-  match !entry, !file with
-    FromExt, Some s -> if Filename.check_suffix s ".mli" then Intf else Impl
-  | FromExt, None -> Intf
-  | i, _ -> i
 
 let ast =
   (* read the whole file with a buffer ...

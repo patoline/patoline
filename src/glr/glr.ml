@@ -432,7 +432,7 @@ let change_layout : 'a grammar -> blank -> 'a grammar
     }
 
 
-let option : 'a -> 'a grammar -> 'a grammar
+let option' : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
     { firsts = Lazy.from_fun (fun () -> firsts l);
       accept_empty = Lazy.from_val true;
@@ -482,11 +482,11 @@ END;
 	      IntMap.map g acc
     }
 
-let list_option : 'a -> 'a list grammar -> 'a list grammar =
+let list_option' : 'a -> 'a list grammar -> 'a list grammar =
   (fun a l ->
     merge_option List.append [a] l)
 
-let option' : 'a -> 'a grammar -> 'a grammar
+let option : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
     { firsts = Lazy.from_fun (fun () -> firsts l);
       accept_empty = Lazy.from_val true;
@@ -508,10 +508,10 @@ END;
 	      if test blank next str pos then single pos (g a) else raise exc
     }
 
-let list_option' : 'a -> 'a list grammar -> 'a list grammar =
+let list_option : 'a -> 'a list grammar -> 'a list grammar =
   (fun a l -> option' [a] l)
 
-let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
+let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     { firsts = Lazy.from_fun (fun () -> firsts f1);
       accept_empty = Lazy.from_val true;
@@ -581,11 +581,11 @@ END;
 	  IntMap.map g res
     }
 
-let list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+let list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
   = fun a f1 ->
     merge_fixpoint List.append [a] (apply (fun f l -> flat_map f l) f1)
 
-let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
+let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     { firsts = Lazy.from_fun (fun () -> firsts f1);
       accept_empty = Lazy.from_val true;
@@ -615,11 +615,11 @@ END;
 	  fn IntMap.empty (single pos a)
     }
 
-let list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+let list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
   = fun a f1 ->
     fixpoint' [a] (apply (fun f l -> flat_map f l) f1)
 
-let alternatives : 'a grammar list -> 'a grammar 
+let alternatives' : 'a grammar list -> 'a grammar 
   = fun ls ->
   let flag = ref false in
   { firsts = mk_firsts (fun () -> List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
@@ -675,11 +675,11 @@ END;
 	  fn IntMap.empty pos ls
     }
 
-let list_alternatives : 'a list grammar list -> 'a list grammar 
+let list_alternatives' : 'a list grammar list -> 'a list grammar 
   = fun ls ->
     merge_alternatives List.append ls
 
-let alternatives' : 'a grammar list -> 'a grammar 
+let alternatives : 'a grammar list -> 'a grammar 
   = fun ls ->
   let flag = ref false in
   { firsts = mk_firsts (fun () -> List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
@@ -704,7 +704,7 @@ END;
 	  fn pos ls
     }
 
-let list_alternatives' = alternatives'
+let list_alternatives = alternatives'
 
 let list_merge : ('a -> 'a -> 'a) -> 'a list grammar -> 'a grammar
   = fun f l ->

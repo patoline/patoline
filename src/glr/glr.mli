@@ -101,52 +101,52 @@ val list_sequence : 'a list grammar -> 'b list grammar -> ('a -> 'b -> 'c) -> 'c
 (** [dependent_list_sequence g1 f2] is similar to dependent_merge_sequence, but using lists to store all results *)
 val dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b list grammar
 
-(** [option a p]: parses input with [p] or return [a] consuming no input (both are done) *)
-val option : 'a -> 'a grammar -> 'a grammar
+(** [option' a p]: parses input with [p] or return [a] consuming no input (both are done) *)
+val option' : 'a -> 'a grammar -> 'a grammar
 
 (** like the previous function, but use the first argument to merge ambiguity *)
 val merge_option : ('a -> 'a -> 'a) -> 'a -> 'a grammar -> 'a grammar
 
-(** [list_option a grammar :=  merge_option List.append [a] l]*)
+(** [list_option' a grammar :=  merge_option List.append [a] l]*)
+val list_option' : 'a -> 'a list grammar -> 'a list grammar
+
+(** [option a p]: parses input with [p], if and only if it fails return [a] consuming no input *)
+val option : 'a -> 'a grammar -> 'a grammar
+
+(** [list_option a grammar :=  option [a] l]*)
 val list_option : 'a -> 'a list grammar -> 'a list grammar
 
-(** [option' a p]: parses input with [p], if it fails return [a] consuming no input *)
-val option' : 'a -> 'a grammar -> 'a grammar
-
-(** [list_option' a grammar :=  option' [a] l]*)
-val list_option : 'a -> 'a list grammar -> 'a list grammar
-
-(** [fixpoint a p]: parses input with p repeatedly. If parsing returns [f1 ... fn], it returns
+(** [fixpoint' a p]: parses input with p repeatedly. If parsing returns [f1 ... fn], it returns
     [fn (... (f1 a))]. All possibility are done, meaning that partial parsing of the fixpoint
     are considered. *)
-val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
+val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 
 (** like the previous function, but use the first argument to merge ambiguity *)
 val merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
 
-(** [list_fixpoint a grammar := merge_fixpoint List.append [a] (apply (fun f l -> flat_map f l) grammar)]*)
-val list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
-
-(** [fixpoint' a p] : similar to the previous function, but only consider the maximum parsing *)
-val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
-
-(** [list_fixpoint a grammar :=  fixpoint' [a] (apply (fun f l -> flat_map f l) grammar)] *)
+(** [list_fixpoint' a grammar := merge_fixpoint List.append [a] (apply (fun f l -> flat_map f l) grammar)]*)
 val list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
 
-(** [alternatives [p1;...;pn]] : parses as all [pi], and keep all success *)
-val alternatives : 'a grammar list -> 'a grammar 
+(** [fixpoint a p] : similar to the previous function, but only consider the maximum parsing *)
+val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
+
+(** [list_fixpoint a grammar :=  fixpoint [a] (apply (fun f l -> flat_map f l) grammar)] *)
+val list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+
+(** [alternatives' [p1;...;pn]] : parses as all [pi], and keep all success *)
+val alternatives' : 'a grammar list -> 'a grammar 
 
 (** like the previous function, but use the first argument to merge ambiguity *)
 val merge_alternatives : ('a -> 'a -> 'a) -> 'a grammar list -> 'a grammar 
 
-(** [list_alternatives grammars := merge_alternatives List.append grammars] *)
-val list_alternatives : 'a list grammar list -> 'a list grammar 
-
-(** [alternatives' [p1;...;pn]] : parses as all [pi], and keep only the first success *)
-val alternatives' : 'a grammar list -> 'a grammar 
-
-(** list_alternatives' := alternatives'*)
+(** [list_alternatives' grammars := merge_alternatives List.append grammars] *)
 val list_alternatives' : 'a list grammar list -> 'a list grammar 
+
+(** [alternatives [p1;...;pn]] : parses as all [pi], and keep only the first success *)
+val alternatives : 'a grammar list -> 'a grammar 
+
+(** list_alternatives := alternatives*)
+val list_alternatives : 'a list grammar list -> 'a list grammar 
 
 (** [apply f grammar]: apply [f] to the value returned by the given grammar *)
 val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
