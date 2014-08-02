@@ -203,15 +203,38 @@ let strip_underscores s =
   String.sub s' 0 !p
 
 let int_lit =
-  let str_to_int str =
-    let str' = String.lowercase (strip_underscores str) in
-    Scanf.sscanf str' "%i" (fun i -> i)
-  in
   glr
-    i:RE(int_dec_re) -> str_to_int i
-  | i:RE(int_hex_re) -> str_to_int i
-  | i:RE(int_oct_re) -> str_to_int i
-  | i:RE(int_bin_re) -> str_to_int i
+    i:RE(int_dec_re ^ "\\b") -> int_of_string i
+  | i:RE(int_hex_re ^ "\\b") -> int_of_string i
+  | i:RE(int_oct_re ^ "\\b") -> int_of_string i
+  | i:RE(int_bin_re ^ "\\b") -> int_of_string i
+  end
+
+let remove_last s =
+  String.sub s 0 (String.length s - 1)
+
+let int32_lit =
+  glr
+    i:RE(int_dec_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  end
+
+let int64_lit =
+  glr
+    i:RE(int_dec_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  end
+
+let nat_int_lit =
+  glr
+    i:RE(int_dec_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
   end
 
 (* Floating-point literals *)
@@ -281,6 +304,9 @@ let constant =
   | c:char_lit -> Const_char c
   | s:string_lit -> Const_string s
   | f:float_lit -> Const_float f
+  | i:int32_lit -> Const_int32 i
+  | i:int64_lit -> Const_int64 i
+  | i:nat_int_lit -> Const_nativeint i
   end
 
 let (expression, set_expression) = grammar_family ~param_to_string:expression_lvl_to_string ()
@@ -331,12 +357,13 @@ let _ = set_grammar pattern (
     pat:pattern_desc -> loc_pat _loc pat
   end)
 
-let label_argument =
+let argument =
   glr
     STR("~") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
   | STR("?") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
   | STR("~") id:lident STR(":") e:(expression (next_exp App)) -> (id, e)
   | STR("?") id:lident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+  | e:(expression (next_exp App)) -> ("", e)
   end
 
 let parameter =
@@ -412,9 +439,9 @@ let apply_lbl _loc (lbl, e) =
 
 let expression_suit_aux lvl' lvl f =
   glr
-    l:{lbl:label_argument | e:(expression (next_exp App)) -> ("", e)}+ when (lvl' > App && lvl <= App) -> 
+    l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
       (App, loc_expr _loc (Pexp_apply(f,l)))
-  | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= App) -> 
+  | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, loc_expr _loc (Pexp_tuple(f::l)))
   | a:(dependent_sequence (glr k:RE(infix_re) -> (if List.mem k kreserved then raise Give_up; _loc_k, k) end)
 		       (fun (_loc_k, k) ->

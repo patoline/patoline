@@ -39,3 +39,7 @@ let _ = f9 ~a:2 ~b:3 ~c:4 5
 let _ = f9 ~a:2 ~b:3 ~d:4 5
 
 let f10 x = None, Some x
+
+let f11 x = (x, x, x)
+
+let f12 = (100_000, 100_000l, 100_000L, 100_000n)
