@@ -126,6 +126,19 @@ let decode : string -> index -> (uchar * int) = fun s i ->
     raise (invalid_arg "UTF8.decode")
 
 (*
+ * Decode a UTF8 character at a given position in a string.
+ * Arguments:
+ *   s : the string,
+ *   i : index where to look.
+ * Returns the character decoded.
+ * Raise invalid_arg if s.[i] is not a valid first byte for a UTF8 character.
+ * No checks are run on the hypothetical second, third and fourth byte (i.e.
+ * length of s is not checked, and shape 0x10xxxxxx of byte is not checked).
+ *)
+let look : string -> index -> uchar = fun s i ->
+  fst (decode s i)
+
+(*
  * Check a string for correct UTF8 encoding.
  * Argument:
  *   s : the string.
@@ -253,3 +266,37 @@ let last : string -> index = fun s ->
     raise (invalid_arg "UTF8.first")
   else
     prev s len
+
+(*
+ * Check whether an index is out of the range of a string or not.
+ * Arguments:
+ *   s : the string,
+ *   i : the index.
+ * Returns true if the index is out of range, false otherwise.
+ *)
+let out_of_range : string -> index -> bool = fun s i ->
+  i < 0 || i >= String.length s
+
+(*
+ * Buffer for UTF8 strings.
+ *)
+module Buf = 
+  struct
+    include Buffer
+    type buf = string
+
+    let add_char buf u =
+      let s = encode u in
+      for i = 0 to String.length s - 1 do
+        Buffer.add_char buf s.[i]
+      done
+
+    let init len f =
+      let buf = Buffer.create len in
+      for c = 0 to len - 1 do
+        add_char buf (f c)
+      done;
+      Buffer.contents buf
+  end
+
+
