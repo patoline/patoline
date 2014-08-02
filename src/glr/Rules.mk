@@ -54,7 +54,17 @@ $(d)/pa_glr: $(d)/pa_glr.cmx
         Camlp4Printers/Camlp4AutoPrinter.cmx                   \
         Camlp4Bin.cmx -o $@
 
-CLEAN += $(d)/pa_glr $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.cma $(d)/*.cmxa
+PA_GLR = $(GLR_DIR)/pa_glr
+
+$(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.ml $(PA_GLR)
+	$(ECHO) "[LINK] $< -> $@"
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I +compiler-libs -package glr -o $@ str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $<
+
+all: $(d)/pa_glr $(d)/ocaml-parser/pa_ocaml
+
+CLEAN += $(d)/pa_glr $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.cma $(d)/*.cmxa $(d)/*.a
+CLEAN += $(d)/ocaml-parser/pa_ocaml $(d)/ocaml-parser/*.cmx $(d)/ocaml-parser/*.o $(d)/ocaml-parser/*.cmi $(d)/ocaml-parser/*.cmo $(d)/ocaml-parser/*.cma $(d)/ocaml-parser/*.cmxa $(d)/ocaml-parser/*.a
+
 DISTCLEAN += $(wildcard $(d)/*.depends)
 
 $(d)/glr.a: $(d)/glr.cmxa;
