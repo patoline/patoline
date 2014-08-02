@@ -2,6 +2,7 @@ open Glr
 open Charset
 open Asttypes
 open Parsetree
+open Longident
 
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
@@ -89,23 +90,522 @@ let merge l1 l2 =
 
 let _ = glr_locate locate merge
 
-
-
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
  ****************************************************************************)
 
 (* Identifiers *)
-let lident_re = "\\b\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
+let ident_re  = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
 let cident_re = "\\b[A-Z][a-zA-Z0-9_']*\\b"
-let ident_re = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
+let lident_re = "\\b[a-z_][a-zA-Z0-9_']*\\b"
 
-let reserved = ["in"; "if"; "then"; "else"; "let"; "begin"; "end"; "and"; "rec"; "match"; "with"; "try"; "fun"; "function"; "lsl";
-	        "lsr";"asr";"mod";"land";"lor";"lxor";"or";"true";"false"]
+let reserved_ident =
+  [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
+  ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
+  ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
+  ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
+  ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
+  ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
+  ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
+  ; "while" ; "with" ]
+
+let is_reserved_id w =
+  List.mem w reserved_ident
+
+let ident =
+  glr
+    id:RE(ident_re) -> if is_reserved_id id then raise Give_up; id
+  end
+
+let capitalized_ident =
+  glr
+    id:RE(cident_re) -> id
+  end
+
+let lowercase_ident =
+  glr
+    id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
+  end
+
+(* Integer literals *)
+let int_dec_re = "[-]?[0-9][0-9_]*"
+let int_hex_re = "[-]?[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
+let int_oct_re = "[-]?[0][oO][0-7][0-7_]*"
+let int_bin_re = "[-]?[0][bB][01][01_]*"
+
+let strip_underscores s =
+  let len = String.length s in
+  let s' = String.create len in
+  let p = ref 0 in
+  for i = 0 to len - 1 do
+    if s.[i] <> '_' then begin
+      s'.[!p] <- s.[i];
+      incr p
+    end
+  done;
+  String.sub s' 0 !p
+
+let int_lit =
+  let str_to_int str =
+    let str' = String.lowercase (strip_underscores str) in
+    Scanf.sscanf str' "%i" (fun i -> i)
+  in
+  glr
+    i:RE(int_dec_re ^ "\\b") -> int_of_string i
+  | i:RE(int_hex_re ^ "\\b") -> int_of_string i
+  | i:RE(int_oct_re ^ "\\b") -> int_of_string i
+  | i:RE(int_bin_re ^ "\\b") -> int_of_string i
+  end
+
+let remove_last s =
+  String.sub s 0 (String.length s - 1)
+
+let int32_lit =
+  glr
+    i:RE(int_dec_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "l\\b") -> Int32.of_string (remove_last i)
+  end
+
+let int64_lit =
+  glr
+    i:RE(int_dec_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "L\\b") -> Int64.of_string (remove_last i)
+  end
+
+let nat_int_lit =
+  glr
+    i:RE(int_dec_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_hex_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_oct_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  | i:RE(int_bin_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
+  end
+
+(* Floating-point literals *)
+let float_lit_dec    = "[-]?[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
+let float_lit_no_dec = "[-]?[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
+
+let float_literal =
+  glr
+    f:RE(float_lit_dec)   -> f
+  | f:RE(float_lit_no_dec) -> f
+  end
+
+(* Character literals *)
+let char_regular = "[ !#-&(-Z^-~]\\|\\[\\|\\]"
+let char_escaped = "[\\\\][\\\\\\\"\\\'ntbrs ]"
+let char_dec     = "[\\\\][0-9][0-9][0-9]"
+let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
+
+let one_char =
+  glr
+     c:RE(char_regular) -> c.[0]
+  | c:RE(char_escaped) -> (match c.[1] with
+                            | 'n' -> '\n'
+                            | 't' -> '\t'
+                            | 'b' -> '\b'
+                            | 'r' -> '\r'
+                            | 's' -> ' '
+                            | c   -> c)
+  | c:RE(char_dec)     -> (let str = String.sub c 1 3 in
+                            let i = Scanf.sscanf str "%i" (fun i -> i) in
+                            if i > 255 then assert false; (* TODO error message *)
+                            char_of_int i)
+  | c:RE(char_hex)     -> (let str = String.sub c 2 2 in
+                            let str' = String.concat "" ["0x"; str] in
+                            let i = Scanf.sscanf str' "%i" (fun i -> i) in
+                            char_of_int i)
+  end
+
+let char_literal =
+  change_layout (
+    glr STR("\'") c:one_char STR("\'") -> c end
+  ) no_blank
+
+(* String literals *)
+let interspace = "[\\][\n][ \t]*"
+
+let string_literal =
+  let char_list_to_string lc =
+    let len = List.length lc in
+    let str = String.create len in
+    for i = 0 to len - 1 do
+      str.[i] <- List.nth lc i
+    done;
+    str
+  in
+  change_layout (
+    glr
+      STR("\"") lc:one_char*
+        lcs:(glr RE(interspace) lc:one_char** -> lc end)*
+        STR("\"") -> char_list_to_string (List.flatten (lc::lcs))
+    end
+  ) no_blank
+
+(* Naming labels *)
+let label_name = lowercase_ident
+
+let label =
+  glr
+    STR("~") l:label_name -> l
+  end
+
+let optlabel =
+  glr
+    STR("?") l:label_name -> l
+  end
+
+(* Prefix and infix symbols *)
+let reserved_symbols =
+  [ "!=" ; "#" ; "&" ; "&&" ; "'" ; "(" ; ")" ; "*" ; "+" ; "," ; "-" ; "-."
+  ; "->" ; "." ; ".." ; ":" ; "::" ; ":=" ; ":>" ; ";" ; ";;" ; "<" ; "<-"
+  ; "=" ; ">" ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`"
+  ; "{" ; "{<" ; "|" ; "|]" ; "||" ; "}" ; "~" ]
+
+let is_reserved_symb s =
+  List.mem s reserved_symbols
+
+let infix_symb_re  = "[=<>@^|&+-*/$%][!$%&*+-./:<=>?@^|~]*"
+let prefix_symb_re = "\\([!][!$%&*+-./:<=>?@^|~]*\\)\\|\\([~?][!$%&*+-./:<=>?@^|~]+\\)"
+
+let infix_symbol =
+  glr
+    sym:RE(infix_symb_re) -> if is_reserved_symb sym then raise Give_up; sym
+  end
+
+let prefix_symbol =
+  glr
+    sym:RE(prefix_symb_re) -> if is_reserved_symb sym then raise Give_up; sym
+  end
+
+(* Line number directives *)
+(*
+let linenum_directive =
+  glr
+    STR("#") n:RE("[0-9]+") s:string_literal ->
+      let n = Scanf.sscanf n "%i" (fun i -> i) in
+      assert false (* TODO *)
+  end
+*)
+
+(****************************************************************************
+ * Names                                                                    *
+ ****************************************************************************)
+(* Naming objects *)
+let infix_op =
+  glr
+    sym:infix_symbol -> sym
+  | sym:STR("!=")    -> "!="
+  | sym:STR(":=")    -> ":="
+  | sym:STR("mod")   -> "mod"
+  | sym:STR("land")  -> "land"
+  | sym:STR("lor")   -> "lor"
+  | sym:STR("lxor")  -> "lxor"
+  | sym:STR("lsl")   -> "lsl"
+  | sym:STR("lsr")   -> "lsr"
+  | sym:STR("asr")   -> "asr"
+  end
+
+let operator_name =
+  glr
+    op:prefix_symbol -> op
+  | op:infix_op      -> op
+  end
+
+let value_name =
+  glr
+    id:lowercase_ident -> id
+  | STR("(") op:operator_name STR(")") -> op
+  end
+
+let constr_name     = capitalized_ident  
+let tag_name        = capitalized_ident  
+let typeconstr_name = lowercase_ident  
+let field_name      = lowercase_ident  
+let module_name     = capitalized_ident  
+let modtype_name    = ident  
+let class_name      = lowercase_ident  
+let inst_var_name   = lowercase_ident  
+let method_name     = lowercase_ident
+
+(* Refering to named objects *)
+let module_path =
+  glr
+    mn:module_name mns:{STR(".") m:module_name -> m}* ->
+      List.fold_left (fun acc m -> Ldot(acc, m)) (Lident mn) mns
+  end
+ 
+let extended_module_path = declare_grammar ()
+
+let extended_module_name =
+  glr
+    mn:module_name
+    emps:{STR("(") emp:extended_module_path STR(")") -> emp}* ->
+      List.fold_left (fun acc m -> Lapply(acc, m)) (Lident mn) emps
+  end
+
+let _ = set_grammar extended_module_path (
+  glr
+    emn:extended_module_name emns:{STR(".") emn:extended_module_name -> emn}* ->
+      let rec ldot_cons emn emn' =
+        match emn' with
+        | Lident mn       -> Ldot(emn, mn)
+        | Ldot(mp, mn)    -> Ldot(ldot_cons emn mp, mn)
+        | Lapply(mp, mp') -> Lapply(ldot_cons emn mp, mp')
+      in
+      List.fold_left (fun acc m -> ldot_cons acc m) emn emns
+  end)
+
+let value_path =
+  glr
+    mp:{m:module_path STR(".") -> m}? vn:value_name ->
+      match mp with
+      | None   -> Lident vn
+      | Some p -> Ldot(p, vn)
+  end
+
+let constr =
+  glr
+    mp:{m:module_path STR(".") -> m}? cn:constr_name ->
+      match mp with
+      | None   -> Lident cn
+      | Some p -> Ldot(p, cn)
+  end
+
+let typeconstr =
+  glr
+    mp:{m:module_path STR(".") -> m}? tcn:typeconstr_name ->
+      match mp with
+      | None   -> Lident tcn
+      | Some p -> Ldot(p, tcn)
+  end
+
+let field =
+  glr
+    mp:{m:module_path STR(".") -> m}? fn:field_name ->
+      match mp with
+      | None   -> Lident fn
+      | Some p -> Ldot(p, fn)
+  end
+
+let class_path =
+  glr
+    mp:{m:module_path STR(".") -> m}? cn:class_name ->
+      match mp with
+      | None   -> Lident cn
+      | Some p -> Ldot(p, cn)
+  end
+
+let modtype_path =
+  glr
+    mp:(glr m:extended_module_path STR(".") -> m end)? mtn:modtype_name ->
+      match mp with
+      | None   -> Lident mtn
+      | Some p -> Ldot(p, mtn)
+  end
+
+let classtype_path =
+  glr
+    mp:(glr m:extended_module_path STR(".") -> m end)? cn:class_name ->
+      match mp with
+      | None   -> Lident cn
+      | Some p -> Ldot(p, cn)
+  end
+
+(****************************************************************************
+ * Type expressions                                                         *
+ ****************************************************************************)
+
+let typeexpr = declare_grammar ()
+
+let poly_typexpr =
+  glr
+    te:typeexpr ->
+      () (* TODO *) 
+  | ids:{STR("'") id:ident -> id}+ STR(".") te:typeexpr ->
+      () (* TODO *)
+  end
+   
+let method_type =
+  glr
+    mn:method_name STR(":") pte:poly_typexpr ->
+      () (* TODO *)
+  end
+
+let tag_spec =
+  glr
+    s:STR("`") tn:tag_name te:{RE("\\bof\\b") te:typeexpr -> te}? ->
+      () (* TODO *)
+  | te:typeexpr ->
+      () (* TODO *)
+  end
+
+let tag_spec_first =
+  glr
+    tn:tag_name te:{RE("\\bof\\b") te:typeexpr -> te} ->
+      () (* TODO *)
+  | te:typeexpr? STR("|") ts:tag_spec ->
+      () (* TODO *)
+  end
+
+let tag_spec_full =
+  glr
+    s:STR("`") tn:tag_name
+    tes:{RE("\\bof\\b") STR("&")? te:typeexpr tes:{STR("&") te:typeexpr -> te}* -> (te::tes)}? ->
+      () (* TODO *)
+  | te:typeexpr ->
+      () (* TODO *)
+  end
+
+let polymorphic_variant_type =
+  glr
+    s:STR("[") tsf:tag_spec_first tss:{STR("|")
+    ts:tag_spec -> ts}* STR("]") ->
+      () (* TODO *) 
+  | s:STR("[>") ts:tag_spec?
+    tss:{STR("|") ts:tag_spec}* STR("]") ->
+      () (* TODO *) 
+  | s:STR("[<") STR("|")? tfs:tag_spec_full
+    tsfs:{STR("|") tsf:tag_spec_full -> tsf}
+    tns:{STR(">") tns:{STR("`") tns:tag_name -> tns}+}? STR("]") ->
+      () (* TODO *)  
+  end
+
+let _ = set_grammar typeexpr (
+  glr
+    q:STR("`") id:ident ->
+      { ptyp_desc = Ptyp_var id
+      ; ptyp_loc = _loc_q }
+  | u:STR("_") ->
+      { ptyp_desc = Ptyp_any
+      ; ptyp_loc = _loc_u }
+  | p:STR("(") te:typeexpr STR(")") ->
+      { ptyp_desc = te.ptyp_desc
+      ; ptyp_loc = _loc_p }
+  | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
+      assert false (* TODO *)
+  | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
+      assert false (* TODO *)
+  | te:typeexpr STR("->") te':typeexpr ->
+      assert false (* TODO *)
+  | te:typeexpr tes:{STR("*") te:typeexpr -> te}+ ->
+      { ptyp_desc = Ptyp_tuple (te::tes)
+      ; ptyp_loc = _loc_te }
+  | tc:typeconstr ->
+      { ptyp_desc = Ptyp_constr ({ txt = tc; loc = _loc_tc }, [])
+      ; ptyp_loc = _loc_tc }
+  | te:typeexpr tc:typeconstr ->
+      assert false (* TODO *)
+  | p:STR("(") te:typeexpr
+    tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
+      assert false (* TODO *)
+  | te:typeexpr RE("\\bas\\b") STR("`") id:ident ->
+      assert false (* TODO *)
+  | pvt:polymorphic_variant_type ->
+      assert false (* TODO *)
+  | s:STR("<") STR("..")? STR(">") ->
+      assert false (* TODO *)
+  | s:STR("<") mt:method_type
+    mst:{STR(";") mt:method_type -> mt} {x:STR(";") STR("..")?}? ->
+      assert false (* TODO *)
+  | s:STR("#") cp:class_path ->
+      assert false (* TODO *)
+  | te:typeexpr STR("#") cp:class_path ->
+      assert false (* TODO *)
+  | p:STR("(") te:typeexpr
+    tes:{STR(",") te:typeexpr -> te}*
+    STR(")") STR("#") cp:class_path ->
+      assert false (* TODO *)
+  end)
+
+(****************************************************************************
+ * Constants and Patterns                                                   *
+ ****************************************************************************)
+
+let constant =
+  glr
+    i:int_lit -> Const_int i
+  | c:char_lit -> Const_char c
+  | s:string_lit -> Const_string s
+  | f:float_lit -> Const_float f
+  end
+
+let pattern = declare_grammar ()
+
+let _ = set_grammar pattern (
+  glr
+    vn:value_name ->
+      { ppat_desc = if vn = "_" then Ppat_any
+                    else  Ppat_var { txt = vn; loc = _loc_vn }
+      ; ppat_loc = _loc_vn }
+  | c:constant ->
+      { ppat_desc = Ppat_constant c
+      ; ppat_loc = _loc_c }
+  | p:pattern RE("\\bas\\b") vn:value_name ->
+      { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
+      ; ppat_loc = _loc_p }
+  | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
+      (match te with
+       | None    -> { ppat_desc = p.ppat_desc
+                    ; ppat_loc = _loc_par }
+       | Some ty -> { ppat_desc = Ppat_constraint(p, ty)
+                    ; ppat_loc = _loc_par })
+  | p:pattern STR("|") p':pattern ->
+      { ppat_desc = Ppat_or(p, p')
+      ; ppat_loc = _loc_p }
+  | c:constr p:pattern? ->
+      { ppat_desc = Ppat_construct({ txt = c; loc = _loc_c }, p, false)
+      ; ppat_loc = _loc_c }
+  | c:RE("\\bfalse\\b") ->
+      { ppat_desc = Ppat_construct( { txt = Lident "false"
+                                    ; loc = _loc_c }, None, false)
+      ; ppat_loc = _loc_c }
+  | c:RE("\\btrue\\b")  -> 
+      { ppat_desc = Ppat_construct( { txt = Lident "true"
+                                    ; loc = _loc_c }, None, false)
+      ; ppat_loc = _loc_c }
+  | STR("`") c:tag_name p:pattern? ->
+      assert false (* TODO *)
+  | s:STR("#") t:typeconstr ->
+      { ppat_desc = Ppat_type { txt = t; loc = _loc_t }
+      ; ppat_loc = _loc_s }
+  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
+      { ppat_desc = Ppat_tuple(p::ps)
+      ; ppat_loc = _loc_p }
+  | STR("{") f:field STR("=") p:pattern
+    fps:{STR(";") f:field STR("=") p:pattern -> (f, p)}*
+    STR(";")? STR("}") ->
+      assert false (* TODO *)
+  | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
+      assert false (* TODO *)
+  | STR("[") STR("]") ->
+      assert false (* TODO *)
+  | p:pattern STR("::") p':pattern ->
+      assert false (* TODO *)
+  | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
+      { ppat_desc = Ppat_array (p::ps)
+      ; ppat_loc = _loc_s }
+  | s:STR("[|") STR("|]") ->
+      { ppat_desc = Ppat_array []
+      ; ppat_loc = _loc_s }
+  | STR("(") STR(")") ->
+      assert false (* TODO *)
+  | RE("\\bbegin\\b") STR("\\bend\\b") ->
+      assert false (* TODO *)
+  end)
+
+
+
+
+
+
+
+
+
 let kreserved = [ "->"; ":" ]
-let lident = glr id:RE(lident_re) -> if List.mem id reserved then raise Give_up; id end
-let cident = glr id:RE(cident_re) -> id end
-let ident = glr id:RE(ident_re) -> if List.mem id reserved then raise Give_up; id end
 
 let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
 let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
@@ -184,131 +684,6 @@ let infix_prio s =
 let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
 
-(* Integer literals *)
-let int_dec_re = "[-]?[0-9][0-9_]*"
-let int_hex_re = "[-]?[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
-let int_oct_re = "[-]?[0][oO][0-7][0-7_]*"
-let int_bin_re = "[-]?[0][bB][01][01_]*"
-
-let strip_underscores s =
-  let len = String.length s in
-  let s' = String.create len in
-  let p = ref 0 in
-  for i = 0 to len - 1 do
-    if s.[i] <> '_' then begin
-      s'.[!p] <- s.[i];
-      incr p
-    end
-  done;
-  String.sub s' 0 !p
-
-let int_lit =
-  glr
-    i:RE(int_dec_re ^ "\\b") -> int_of_string i
-  | i:RE(int_hex_re ^ "\\b") -> int_of_string i
-  | i:RE(int_oct_re ^ "\\b") -> int_of_string i
-  | i:RE(int_bin_re ^ "\\b") -> int_of_string i
-  end
-
-let remove_last s =
-  String.sub s 0 (String.length s - 1)
-
-let int32_lit =
-  glr
-    i:RE(int_dec_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "l\\b") -> Int32.of_string (remove_last i)
-  end
-
-let int64_lit =
-  glr
-    i:RE(int_dec_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "L\\b") -> Int64.of_string (remove_last i)
-  end
-
-let nat_int_lit =
-  glr
-    i:RE(int_dec_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_hex_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_oct_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  | i:RE(int_bin_re ^ "n\\b") -> Nativeint.of_string (remove_last i)
-  end
-
-(* Floating-point literals *)
-let float_lit_dec    = "[-]?[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
-let float_lit_no_dec = "[-]?[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
-
-let float_lit =
-  glr
-    f:RE(float_lit_dec)   -> f
-  | f:RE(float_lit_no_dec) -> f
-  end
-
-(* Character literals *)
-let char_regular = "[ !#-&(-Z^-~]\\|\\[\\|\\]"
-let char_escaped = "[\\\\][\\\\\\\"\\\'ntbrs ]"
-let char_dec     = "[\\\\][0-9][0-9][0-9]"
-let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
-
-let one_char =
-  glr
-     c:RE(char_regular) -> c.[0]
-  | c:RE(char_escaped) -> (match c.[1] with
-                            | 'n' -> '\n'
-                            | 't' -> '\t'
-                            | 'b' -> '\b'
-                            | 'r' -> '\r'
-                            | 's' -> ' '
-                            | c   -> c)
-  | c:RE(char_dec)     -> (let str = String.sub c 1 3 in
-                            let i = Scanf.sscanf str "%i" (fun i -> i) in
-                            if i > 255 then assert false; (* TODO error message *)
-                            char_of_int i)
-  | c:RE(char_hex)     -> (let str = String.sub c 2 2 in
-                            let str' = String.concat "" ["0x"; str] in
-                            let i = Scanf.sscanf str' "%i" (fun i -> i) in
-                            char_of_int i)
-  end
-
-let char_lit =
-  change_layout (
-    glr STR("\'") c:one_char STR("\'") -> c end
-  ) no_blank
-
-(* String literals *)
-let interspace = "[\\][\n][ \t]*"
-
-let string_lit =
-  let char_list_to_string lc =
-    let len = List.length lc in
-    let str = String.create len in
-    for i = 0 to len - 1 do
-      str.[i] <- List.nth lc i
-    done;
-    str
-  in
-  change_layout (
-    glr
-      STR("\"") lc:one_char*
-        lcs:(glr RE(interspace) lc:one_char** -> lc end)*
-        STR("\"") -> char_list_to_string (List.flatten (lc::lcs))
-    end
-  ) no_blank
-
-let constant =
-  glr
-    i:int_lit -> Const_int i
-  | c:char_lit -> Const_char c
-  | s:string_lit -> Const_string s
-  | f:float_lit -> Const_float f
-  | i:int32_lit -> Const_int32 i
-  | i:int64_lit -> Const_int64 i
-  | i:nat_int_lit -> Const_nativeint i
-  end
-
 let (expression, set_expression) = grammar_family ~param_to_string:expression_lvl_to_string ()
 let pattern = declare_grammar ()
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
@@ -335,7 +710,7 @@ let _ = set_grammar module_path (
 
 let constructor =
   glr
-    m:{ m:module_path STR"." }? id:{id:cident -> id | RE"\\bfalse\\b" -> "false" | RE"\\btrue\\b" -> "true" } ->
+    m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | RE"\\bfalse\\b" -> "false" | RE"\\btrue\\b" -> "true" } ->
       match m with None -> Longident.Lident id
 		 | Some m -> Longident.Ldot(m, id)
   end 
@@ -347,8 +722,7 @@ let _ = set_grammar typexp (
 
 let pattern_desc =
   glr
-    id:lident -> Ppat_var { txt = id; loc = _loc_id }
-  | STR("_")  -> Ppat_any			  
+    id:lowercase_ident -> if id = "_" then Ppat_any else Ppat_var { txt = id; loc = _loc_id }
   | c:constant -> Ppat_constant c
   end
 
@@ -363,30 +737,29 @@ let argument =
   | STR("?") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
   | STR("~") id:lident STR(":") e:(expression (next_exp App)) -> (id, e)
   | STR("?") id:lident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
-  | e:(expression (next_exp App)) -> ("", e)
   end
 
 let parameter =
   glr
     pat:pattern -> ("", None, pat)
-  | STR("~") id:lident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("~") STR("(") id:lident t:{ STR":" t:typexp }? STR")" -> (
+  | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexp }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
       | None -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       (id, None, pat))
-  | STR("~") id:lident STR":" pat:pattern -> (id, None, pat)
-  | STR("?") id:lident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("?") id:lident STR":" pat:pattern -> (("?"^id), None, pat)
-  | STR("?") STR"(" id:lident t:{ STR":" t:typexp -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
+  | STR("?") id:lowercase_ident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | STR("?") id:lowercase_ident STR":" pat:pattern -> (("?"^id), None, pat)
+  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexp -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lident STR":" STR"(" pat:pattern t:{ STR":" t:typexp -> t }? e:{ STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typexp -> t }? e:{ STR"=" e:(expression Top) -> e}? STR")" -> (
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
@@ -414,7 +787,7 @@ let match_cases =
 
 let expression_desc lvl =
   glr
-    id:lident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
+    id:lowercase_ident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
   | c:constant -> (Atom, Pexp_constant c)
   | RE("\\blet\\b") r:RE("\\brec\\b")? l:value_binding RE("\\bin\\b") e:(expression Let) when (lvl <= Let)
     -> (Let, Pexp_let ((if r = None then Nonrecursive else Recursive), l, e))
@@ -428,7 +801,7 @@ let expression_desc lvl =
   | STR("(") e:(expression Top) STR(")") -> (Atom, e.pexp_desc)
   | RE("\\bbegin\\b") e:(expression Top) RE("\\bend\\b") -> (Atom, e.pexp_desc)
     (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
-  | c:constructor e:{e:(expression App)}? -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
+  | c:constructor e:{e:(expression App)}? -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false))
   end
 
 let apply_lbl _loc (lbl, e) =
