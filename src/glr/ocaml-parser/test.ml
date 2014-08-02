@@ -59,3 +59,8 @@ let f17 = 2 * let x = 3 in x + 2
 let f18 x y z = x ; y ; z
 
 let f19 x f z = if x >= z then let y = x + z in f z ; f x
+
+let f20 = [ ], [ 1 ], [ 1; 2; 3; 4], [ 1; 2; 3; 4; ]
+
+let f21 = [| |], [| 1 |], [| 1; 2; 3; 4|], [| 1; 2; 3; 4; |]
+

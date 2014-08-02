@@ -786,17 +786,16 @@ let match_cases lvl =
 
 let type_constraint =
   glr
-    (empty ()) -> (None, None)
-  | STR(":") t:typeexpr t':{STR(":>") t':typeexpr}? -> (Some t, t')
+    STR(":") t:typeexpr t':{STR(":>") t':typeexpr}? -> (Some t, t')
   | STR(":>") t':typeexpr -> (None, Some t')
+  | (empty ()) -> (None, None)
   end
 
-(*
 let expression_list =
   glr
-    e:(expression If) 
- *)
-
+    e:(expression (next_exp Seq)) l:{ STR(";") e:(expression (next_exp Seq)) }* STR(";")? -> (e::l)
+  | (empty ()) -> []
+  end
 
 let expression_desc lvl =
   glr
@@ -818,6 +817,12 @@ let expression_desc lvl =
     (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
   | c:constructor e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
   | STR("`") l:RE(ident_re) e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_variant(l,e)) 
+  | STR("[|") l:expression_list STR("|]") -> (Atom, Pexp_array l)
+  | STR("[") l:expression_list STR("]") ->
+     (Atom, (List.fold_right (fun x acc ->
+       loc_expr _loc (Pexp_construct({ txt = Longident.Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
+		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))).pexp_desc)
+     
   end
 
 let apply_lbl _loc (lbl, e) =
