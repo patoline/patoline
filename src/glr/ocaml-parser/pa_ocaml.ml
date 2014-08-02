@@ -145,11 +145,7 @@ let strip_underscores s =
   done;
   String.sub s' 0 !p
 
-let int_lit =
-  let str_to_int str =
-    let str' = String.lowercase (strip_underscores str) in
-    Scanf.sscanf str' "%i" (fun i -> i)
-  in
+let integer_literal =
   glr
     i:RE(int_dec_re ^ "\\b") -> int_of_string i
   | i:RE(int_hex_re ^ "\\b") -> int_of_string i
@@ -527,10 +523,13 @@ let _ = set_grammar typeexpr (
 
 let constant =
   glr
-    i:int_lit -> Const_int i
-  | c:char_lit -> Const_char c
-  | s:string_lit -> Const_string s
-  | f:float_lit -> Const_float f
+    i:integer_literal       -> Const_int i
+  | f:float_literal         -> Const_float f
+  | c:char_literal          -> Const_char c
+  | s:string_literal        -> Const_string s
+  | i:int32_lit -> Const_int32 i
+  | i:int64_lit -> Const_int64 i
+  | i:nat_int_lit -> Const_nativeint i
   end
 
 let pattern = declare_grammar ()
@@ -733,10 +732,11 @@ let _ = set_grammar pattern (
 
 let argument =
   glr
-    STR("~") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
-  | STR("?") id:lident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
-  | STR("~") id:lident STR(":") e:(expression (next_exp App)) -> (id, e)
-  | STR("?") id:lident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+    STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
+  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
+  | STR("~") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (id, e)
+  | STR("?") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+  | e:(expression (next_exp App)) -> ("", e)
   end
 
 let parameter =

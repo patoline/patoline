@@ -33,7 +33,9 @@ let rec fact n = if n <= 0 then 1 else n * fact (n - 1)
 let rec f8 a b = if a = 0 then 1 else f8 (a - 1) b + g8 a b
   and g8 a b = if b = 0 then 1 else g8 a (b - 1) + f8 a b
 
+(*
 let f9 ~a ~b:b' ?c:(c'=0) ?(d=0) x = a + b' + c' + d + x
+*)
 
 let _ = f9 ~a:2 ~b:3 ~c:4 5
 let _ = f9 ~a:2 ~b:3 ~d:4 5
