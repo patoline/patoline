@@ -94,3 +94,11 @@ let _ = f32.{0} <- 1.0 ; f32.{1} <- 2.
 
 let f33 = Bigarray.Array2.create Bigarray.float32 Bigarray.c_layout 2 2
 let _ = f33.{0,0} <- 1.0 ; f33.{0,1} <- 2.0
+
+let f34 x = -x, -. (float_of_int x), -x + - x * -x - - x - x  
+
+let f35 y = !y
+
+let f36 n = let n = ref n and r = ref 1 in while !n > 1 do !r := !r * !n; decr !n done; !r
+
+let f37 n = let r = ref 1 in for i = 2 to n do !r := !r * n; done; !r

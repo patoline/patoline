@@ -296,7 +296,7 @@ let is_reserved_symb s =
   List.mem s reserved_symbols
 
 let infix_symb_re  = "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*"
-let prefix_symb_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
+let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
 
 let infix_symbol =
   glr
@@ -1021,6 +1021,20 @@ let expression_desc lvl =
 		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))).pexp_desc)
   | STR("{") e:{e:(expression Top) RE("with\\b")}? l:record_list STR("}") ->
      (Atom, Pexp_record(l,e))
+  | e:(dependent_sequence (locate prefix_symbol) (
+			    fun (_loc_p, p) ->
+			    let lvl' = prefix_prio p in
+			    let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
+			    if lvl > lvl' then raise Give_up;
+			    glr e:(expression lvl') ->
+				  (lvl', Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e])) end)) -> e
+  | RE("while\\b")  e:(expression Top) RE("do\\b") e':(expression Top) RE("done\\b") ->
+      (Atom, Pexp_while(e, e'))
+  | RE("for\\b") id:lowercase_ident STR("=")  
+      e:(expression Top) d:RE("\\(down\\)?to\\b") e':(expression Top) RE("do\\b") e'':(expression Top) RE("done\\b") ->
+        (let dir = if d = "to" then Upto else Downto in
+         (Atom, Pexp_for({ txt = id ; loc = _loc_id}, e, e', dir, e'')))
+
   end
 
 let apply_lbl _loc (lbl, e) =
@@ -1040,8 +1054,9 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
-  | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ when (lvl' > Seq && lvl <= Seq) -> 
+  | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ STR(";")? when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
+  | STR(";") when (lvl' > Seq && lvl <= Seq) -> (Seq, fun f -> f) 
   | STR(".") STR("(") f:(expression Top) STR(")") STR("<-") e:(expression (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
   | STR(".") STR("(") f:(expression Top) STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
