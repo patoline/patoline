@@ -486,31 +486,29 @@ let polymorphic_variant_type =
 let _ = set_grammar typeexpr (
   glr
     q:STR("`") id:ident ->
-      { ptyp_desc = Ptyp_var id
-      ; ptyp_loc = _loc_q }
+      loc_typ _loc_q (Ptyp_var id)
   | u:STR("_") ->
-      { ptyp_desc = Ptyp_any
-      ; ptyp_loc = _loc_u }
+      loc_typ _loc_u Ptyp_any
   | p:STR("(") te:typeexpr STR(")") ->
-      { ptyp_desc = te.ptyp_desc
-      ; ptyp_loc = _loc_p }
+      loc_typ _loc_p te.ptyp_desc
   | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
-      assert false (* TODO *)
+      let opt = { txt = Lident "option"; loc = _loc_te } in
+      let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
+      loc_typ _loc_ln (Ptyp_arrow (ln, teopt, te'))
   | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
-      assert false (* TODO *)
+      loc_typ _loc_ln (Ptyp_arrow (ln, te, te'))
 (*  | te:typeexpr STR("->") te':typeexpr ->
       assert false (* TODO *)*)
 (*  | te:typeexpr tes:{STR("*") te:typeexpr -> te}+ ->
-      { ptyp_desc = Ptyp_tuple (te::tes)
-      ; ptyp_loc = _loc_te }*)
+      loc_typ _loc_te (Ptyp_tuple (te::tes)) *)
   | tc:typeconstr ->
-      { ptyp_desc = Ptyp_constr ({ txt = tc; loc = _loc_tc }, [])
-      ; ptyp_loc = _loc_tc }
+      loc_typ _loc_tc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
 (*  | te:typeexpr tc:typeconstr ->
       assert false (* TODO *)*)
   | p:STR("(") te:typeexpr
     tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
-      assert false (* TODO *)
+      let constr = { txt = tc ; loc = _loc_tc } in
+      loc_typ _loc_p (Ptyp_constr (constr, te::tes))
 (*  | te:typeexpr RE("\\bas\\b") STR("`") id:ident ->
       assert false (* TODO *)*)
   | pvt:polymorphic_variant_type ->
