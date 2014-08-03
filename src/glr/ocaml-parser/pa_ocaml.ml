@@ -160,38 +160,6 @@ let reserved_ident =
 let is_reserved_id w =
   List.mem w reserved_ident
 
-let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
-let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
-
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
-
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
-
-let expression_lvl_to_string () = function
-    Top -> "Top"
-  | Let -> "Let"
-  | Seq -> "Seq"
-  | If -> "If" 
-  | Aff -> "Aff"
-  | Tupl -> "Tuple"
-  | Disj -> "Disj"
-  | Conj -> "Conj"
-  | Eq -> "Eq"
-  | Append -> "Append"
-  | Cons -> "Cons"
-  | Sum -> "Sum"
-  | Prod -> "Prod"
-  | Pow -> "Pow"
-  | Opp -> "Opp"
-  | App -> "App"
-  | Dash -> "Dash"
-  | Dot -> "Dot"
-  | Prefix -> "Prefix"
-  | Atom -> "Atom"
-
-let let_prio lvl = if !extension then lvl else Let
-let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
-
 let ident =
   glr
     id:RE(ident_re) -> if is_reserved_id id then raise Give_up; id
@@ -657,16 +625,15 @@ let _ = set_grammar pattern (
       loc_pat _loc_s (Ppat_array (p::ps))
   | s:STR("[|") STR("|]") ->
       loc_pat _loc_s (Ppat_array []) (* FIXME not sure if this should be a constructor instead *)
-  | STR("(") STR(")") ->
-      assert false (* TODO *)
-  | RE("\\bbegin\\b") STR("\\bend\\b") ->
-      assert false (* TODO *)
+  | s:STR("(") STR(")") ->
+      let unt = { txt = Lident "()"; loc = _loc_s } in
+      loc_pat _loc_s (Ppat_construct (unt, None, false))
+  | s:RE("begin\\b") STR("end\\b") ->
+      let unt = { txt = Lident "()"; loc = _loc_s } in
+      loc_pat _loc_s (Ppat_construct (unt, None, false))
   end)
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
-
-let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
-let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
 
 type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
