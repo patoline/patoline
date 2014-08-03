@@ -546,6 +546,105 @@ let _ = set_grammar typeexpr (
   end)
 
 (****************************************************************************
+ * Type and exception definitions                                           *
+ ****************************************************************************)
+
+(* Type definition *)
+type variance = Covariant | Contravariant
+
+let type_param =
+  glr
+    STR("+") STR("`") id:ident -> ({ txt = id; loc = _loc_id }, Covariant)
+  | STR("-") STR("`") id:ident -> ({ txt = id; loc = _loc_id }, Contravariant)
+  end
+
+let type_params =
+  glr
+    tp:type_param -> [tp]
+  | STR("(") tp:type_param
+    tps:{STR(",") tp:type_param -> tp}* STR(")") -> (tp::tps)
+  end
+
+let type_equation =
+  glr
+    STR("=") te:typeexpr -> te
+  end
+
+let type_constraint =
+  glr
+    RE("\\bconstraint\\b") STR("`") id:ident STR("=") te:typeexpr ->
+      ({ txt = id; loc = _loc_id }, te)
+  end
+
+let constr_decl =
+  let constr_name =
+    glr
+      cn:constr_name    -> cn
+    | STR("(") STR(")") -> "()"
+    end
+  in
+  glr
+    cn:constr_name tes:{RE("\\bof\\b") te:typeexpr
+    tes:{STR("*") te:typeexpr -> te}* -> (te::tes)}? ->
+      ({ txt = cn; loc = _loc_cn }, tes)
+  end
+
+let field_decl =
+  let mutable_flag =
+    glr
+      m:RE("\\bmutable\\b")? -> (match m with
+                                 | None -> false
+                                 | _    -> true)
+    end
+  in
+  glr
+    m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
+      ({ txt = fn; loc = _loc_fn }, m, pte)
+  end
+
+type repr = ReprSum  of (string loc * core_type list option) list
+          | ReprProd of (string loc * bool * unit) list (* TODO change unit to return type of poly_typexpr *)
+
+let type_representation =
+  glr
+    STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* -> ReprSum (cd::cds)
+  | STR("{") fd:field_decl fds:{STR(";") fd:field_decl -> fd}*
+    STR(";")? STR("}") -> ReprProd (fd::fds)
+  end
+
+let type_information =
+  glr
+    te:type_equation? tr:{STR("=") tr:type_representation -> tr}?
+    tcs:type_constraint* -> (te, tr, tcs)
+  end
+
+let typedef =
+  glr
+    tps:type_params? tcn:typeconstr_name ti:type_information ->
+      (tps, { txt = tcn; loc = _loc_tcn }, ti)
+  end
+
+let type_definition =
+  glr
+    RE("\\btype\\b") td:typedef tds:{RE("\\band\\b") td:typedef -> td}* ->
+      (td::tds)
+  end
+
+(* Exception definition *)
+type expn = NewExpn of core_type list option
+          | SynExpn of Longident.t loc
+
+let exception_definition =
+  glr
+    RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
+      ({ txt = cn; loc = _loc_cn }, SynExpn { txt = c; loc = _loc_c })
+  | RE("\\bexception\\b") cn:constr_name
+    typ:{RE("\\bof\\b") te:typeexpr
+    tes:{STR("*") te:typeexpr -> te}* -> (te::tes) }? ->
+      ({ txt = cn; loc = _loc_cn }, NewExpn typ)
+  end
+
+(****************************************************************************
  * Constants and Patterns                                                   *
  ****************************************************************************)
 
@@ -632,6 +731,10 @@ let _ = set_grammar pattern (
       let unt = { txt = Lident "()"; loc = _loc_s } in
       loc_pat _loc_s (Ppat_construct (unt, None, false))
   end)
+
+(****************************************************************************
+ * Expressions                                                              *
+ ****************************************************************************)
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
 
