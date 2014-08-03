@@ -4,6 +4,26 @@ open Asttypes
 open Parsetree
 open Longident
 
+let memoize1 f = 
+  let h = Hashtbl.create 1001 in
+  (fun x ->
+     try Hashtbl.find h x with 
+       Not_found ->
+       let res = f x in
+       Hashtbl.add h x res;
+       res)
+
+let memoize2 f = 
+  let h = Hashtbl.create 1001 in
+  (fun x y ->
+     try Hashtbl.find h (x, y) with 
+       Not_found ->
+       let res = f x y in
+       Hashtbl.add h (x, y) res;
+       res)
+
+
+let fast = ref false
 let file = ref None
 let ascii = ref false
 type entry = FromExt | Impl | Intf
@@ -12,12 +32,13 @@ let extension = ref false
   (* if true, 
      if a then let ... or [ fun ... ] are rejected because [ let x = 3 in x ; x] is nasty *)
   (* val is accepted in structure *)
-  
+
 let spec = [
   "--ascii", Arg.Set ascii , "output ascii ast instead of serialized ast" ;
   "--impl", Arg.Unit (fun () -> entry := Impl), "treat file as an implementation" ;
   "--intf", Arg.Unit (fun () -> entry := Intf), "treat file as an interface" ;
   "--ext", Arg.Set extension, "enable glr extensions/restrictions of ocaml's grammar" ;
+  "--unsafe", Arg.Set fast, "use unsafe function for arrays" ;
 ]
 
 let anon_fun s = file := Some s
@@ -138,6 +159,38 @@ let reserved_ident =
 
 let is_reserved_id w =
   List.mem w reserved_ident
+
+let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
+let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
+
+type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+
+let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
+
+let expression_lvl_to_string () = function
+    Top -> "Top"
+  | Let -> "Let"
+  | Seq -> "Seq"
+  | If -> "If" 
+  | Aff -> "Aff"
+  | Tupl -> "Tuple"
+  | Disj -> "Disj"
+  | Conj -> "Conj"
+  | Eq -> "Eq"
+  | Append -> "Append"
+  | Cons -> "Cons"
+  | Sum -> "Sum"
+  | Prod -> "Prod"
+  | Pow -> "Pow"
+  | Opp -> "Opp"
+  | App -> "App"
+  | Dash -> "Dash"
+  | Dot -> "Dot"
+  | Prefix -> "Prefix"
+  | Atom -> "Atom"
+
+let let_prio lvl = if !extension then lvl else Let
+let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
 
 let ident =
   glr
@@ -268,16 +321,14 @@ let optlabel =
 
 (* Prefix and infix symbols *)
 let reserved_symbols =
-  [ "!=" ; "#" ; "&" ; "&&" ; "'" ; "(" ; ")" ; "*" ; "+" ; "," ; "-" ; "-."
-  ; "->" ; "." ; ".." ; ":" ; "::" ; ":=" ; ":>" ; ";" ; ";;" ; "<" ; "<-"
-  ; "=" ; ">" ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`"
-  ; "{" ; "{<" ; "|" ; "|]" ; "||" ; "}" ; "~" ]
+  [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
+  ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`" ; "{" ; "{<" ; "|" ; "|]" ; "}" ; "~" ]
 
 let is_reserved_symb s =
   List.mem s reserved_symbols
 
-let infix_symb_re  = "[=<>@^|&+-*/$%][!$%&*+-./:<=>?@^|~]*"
-let prefix_symb_re = "\\([!][!$%&*+-./:<=>?@^|~]*\\)\\|\\([~?][!$%&*+-./:<=>?@^|~]+\\)"
+let infix_symb_re  = "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*"
+let prefix_symb_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
 
 let infix_symbol =
   glr
@@ -306,8 +357,6 @@ let linenum_directive =
 let infix_op =
   glr
     sym:infix_symbol -> sym
-  | sym:STR("!=")    -> "!="
-  | sym:STR(":=")    -> ":="
   | sym:STR("mod")   -> "mod"
   | sym:STR("land")  -> "land"
   | sym:STR("lor")   -> "lor"
@@ -446,7 +495,7 @@ let method_type =
 
 let tag_spec =
   glr
-    s:STR("`") tn:tag_name te:{RE("\\bof\\b") te:typeexpr -> te}? ->
+    s:STR("`") tn:tag_name te:{RE("of\\b") te:typeexpr -> te}? ->
       () (* TODO *)
   | te:typeexpr ->
       () (* TODO *)
@@ -454,7 +503,7 @@ let tag_spec =
 
 let tag_spec_first =
   glr
-    tn:tag_name te:{RE("\\bof\\b") te:typeexpr -> te} ->
+    tn:tag_name te:{RE("of\\b") te:typeexpr -> te} ->
       () (* TODO *)
   | te:typeexpr? STR("|") ts:tag_spec ->
       () (* TODO *)
@@ -463,7 +512,7 @@ let tag_spec_first =
 let tag_spec_full =
   glr
     s:STR("`") tn:tag_name
-    tes:{RE("\\bof\\b") STR("&")? te:typeexpr tes:{STR("&") te:typeexpr -> te}* -> (te::tes)}? ->
+    tes:{RE("of\\b") STR("&")? te:typeexpr tes:{STR("&") te:typeexpr -> te}* -> (te::tes)}? ->
       () (* TODO *)
   | te:typeexpr ->
       () (* TODO *)
@@ -509,7 +558,7 @@ let _ = set_grammar typeexpr (
     tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
       let constr = { txt = tc ; loc = _loc_tc } in
       loc_typ _loc_p (Ptyp_constr (constr, te::tes))
-(*  | te:typeexpr RE("\\bas\\b") STR("`") id:ident ->
+(*  | te:typeexpr RE("as\\b") STR("`") id:ident ->
       assert false (* TODO *)*)
   | pvt:polymorphic_variant_type ->
       assert false (* TODO *)
@@ -534,13 +583,13 @@ let _ = set_grammar typeexpr (
 
 let constant =
   glr
-    i:integer_literal       -> Const_int i
-  | f:float_literal         -> Const_float f
+    f:float_literal         -> Const_float f
   | c:char_literal          -> Const_char c
   | s:string_literal        -> Const_string s
   | i:int32_lit -> Const_int32 i
   | i:int64_lit -> Const_int64 i
   | i:nat_int_lit -> Const_nativeint i
+  | i:integer_literal -> Const_int i
   end
 
 let pattern = declare_grammar ()
@@ -554,7 +603,7 @@ let _ = set_grammar pattern (
       loc_pat _loc Ppat_any
   | c:constant ->
       loc_pat _loc_c (Ppat_constant c)
-(*  | p:pattern RE("\\bas\\b") vn:value_name ->
+(*  | p:pattern RE("as\\b") vn:value_name ->
       { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
       ; ppat_loc = _loc_p }*)
   | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
@@ -568,10 +617,10 @@ let _ = set_grammar pattern (
       ; ppat_loc = _loc_p }*)
   | c:constr p:pattern? ->
       loc_pat _loc_c (Ppat_construct({ txt = c; loc = _loc_c }, p, false))
-  | c:RE("\\bfalse\\b") ->
+  | c:RE("false\\b") ->
       let fls = { txt = Lident "false"; loc = _loc_c } in
       loc_pat _loc_c (Ppat_construct (fls, None, false))
-  | c:RE("\\btrue\\b")  -> 
+  | c:RE("true\\b")  -> 
       let tru = { txt = Lident "true"; loc = _loc_c } in
       loc_pat _loc_c (Ppat_construct (tru, None, false))
   | s:STR("`") c:tag_name p:pattern? ->
@@ -608,12 +657,10 @@ let _ = set_grammar pattern (
       loc_pat _loc_s (Ppat_array (p::ps))
   | s:STR("[|") STR("|]") ->
       loc_pat _loc_s (Ppat_array []) (* FIXME not sure if this should be a constructor instead *)
-  | s:STR("(") STR(")") ->
-      let unt = { txt = Lident "()"; loc = _loc_s } in
-      loc_pat _loc_s (Ppat_construct (unt, None, false))
-  | s:RE("\\bbegin\\b") STR("\\bend\\b") ->
-      let unt = { txt = Lident "()"; loc = _loc_s } in
-      loc_pat _loc_s (Ppat_construct (unt, None, false))
+  | STR("(") STR(")") ->
+      assert false (* TODO *)
+  | RE("\\bbegin\\b") STR("\\bend\\b") ->
+      assert false (* TODO *)
   end)
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
@@ -698,8 +745,50 @@ let infix_prio s =
 let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
 
-let (expression, set_expression) = grammar_family ~param_to_string:expression_lvl_to_string ()
+let (expression, set_expression) = grammar_family ()
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
+
+let array_function loc str name =
+  loc_expr loc (Pexp_ident ({ txt = Longident.Ldot(Longident.Lident str, (if !fast then "unsafe_" ^ name else name)); loc  }))
+
+let bigarray_function loc str name =
+  loc_expr loc (Pexp_ident ({ txt = Longident.Ldot(Longident.Ldot(Longident.Lident "Bigarray", str),
+						   (if !fast then "unsafe_" ^ name else name)); loc  }))
+let untuplify = function
+    { pexp_desc = Pexp_tuple explist; pexp_loc = _ } -> explist
+  | exp -> [exp]
+
+let bigarray_get loc arr arg =
+  let get = if !fast then "unsafe_get" else "get" in
+  match untuplify arg with
+    [c1] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array1" get,
+                       ["", arr; "", c1]))
+  | [c1;c2] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array2" get,
+                       ["", arr; "", c1; "", c2]))
+  | [c1;c2;c3] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array3" get,
+                       ["", arr; "", c1; "", c2; "", c3]))
+  | coords ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Genarray" "get",
+                       ["", arr; "", loc_expr loc (Pexp_array coords)]))
+
+let bigarray_set loc arr arg newval =
+  let set = if !fast then "unsafe_set" else "set" in
+  match untuplify arg with
+    [c1] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array1" set,
+                       ["", arr; "", c1; "", newval]))
+  | [c1;c2] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array2" set,
+                       ["", arr; "", c1; "", c2; "", newval]))
+  | [c1;c2;c3] ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Array3" set,
+                       ["", arr; "", c1; "", c2; "", c3; "", newval]))
+  | coords ->
+      loc_expr loc (Pexp_apply(bigarray_function loc "Genarray" "set",
+                       ["", arr; "", loc_expr loc (Pexp_array coords); "", newval]))
 
 let module_path = declare_grammar ()
 
@@ -770,12 +859,12 @@ let value_binding =
     pat:pattern e:right_member l:{RE("and\\b") pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
   end
 
-let match_cases lvl =
+let match_cases = memoize1 (fun lvl ->
   glr
      l:{STR"|"? pat:pattern STR"->" e:(expression lvl) 
          l:{STR"|" pat:pattern STR"->" e:(expression lvl) -> (pat,e)}*
          -> ((pat,e)::l)}?[[]] -> l
-  end
+			    end)
 
 let type_constraint =
   glr
@@ -804,7 +893,7 @@ let record_list =
 
 let expression_desc lvl =
   glr
-    id:lowercase_ident -> (Atom, Pexp_ident { txt = Longident.Lident id; loc = _loc_id })
+    id:value_path -> (Atom, Pexp_ident { txt = id; loc = _loc_id })
   | c:constant -> (Atom, Pexp_constant c)
   | RE("let\\b") r:RE("rec\\b")? l:value_binding RE("in\\b") e:(expression (let_prio lvl)) when (lvl < App)
     -> (Let, Pexp_let ((if r = None then Nonrecursive else Recursive), l, e))
@@ -842,42 +931,71 @@ let rec mk_seq _loc = function
   | [e] -> e
   | x::l -> loc_expr _loc (Pexp_sequence(x,mk_seq _loc l))
 
-let expression_suit_aux lvl' lvl f =
+let expression_suit_aux = memoize2 (fun lvl' lvl ->
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
-      (App, loc_expr _loc (Pexp_apply(f,l)))
+      (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
-      (Tupl, loc_expr _loc (Pexp_tuple(f::l)))
+      (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
   | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ when (lvl' > Seq && lvl <= Seq) -> 
-      (Seq, mk_seq _loc (f::l))
-  | a:(dependent_sequence (glr k:RE(infix_re) -> (if List.mem k reserved_kwd then raise Give_up; _loc_k, k) end)
+      (Seq, fun f -> mk_seq _loc (f::l))
+  | STR(".") STR("(") f:(expression Top) STR(")") STR("<-") e:(expression (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
+      (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
+  | STR(".") STR("(") f:(expression Top) STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
+      (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "get",[("",e');("",f)])))
+  | STR(".") STR("[") f:(expression Top) STR("]") STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+      (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "set",[("",e');("",f);("",e)]))) 
+  | STR(".") STR("[") f:(expression Top) STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
+      (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "get",[("",e');("",f)])))
+  | STR(".") STR("{") f:(expression Top) STR("}") STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+      (Aff, fun e' -> bigarray_set _loc e' f e)
+  | STR(".") STR("{") f:(expression Top) STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
+      (Dot, fun e' -> bigarray_get _loc e' f)
+  | STR(".") f:field STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+      (Aff, fun e' ->
+	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
+  | STR(".") f:field when (lvl' >= Dot && lvl <= Dot) -> 
+      (Dot, fun e' ->
+	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f)))
+  | a:(dependent_sequence (glr k:infix_op -> (_loc_k, k) end)
 		       (fun (_loc_k, k) ->
 			let p = infix_prio k in
 			let a = assoc p in
 			if lvl > p || lvl' < p || (a <> Left && lvl' = p) then raise Give_up;
 			let p' = if a = Right then p else next_exp p in
-			let res e =
+			let res e f =
 			  if k = "::" then
 			    Pexp_construct({ txt = Longident.Lident "::"; loc = _loc_k}, Some (loc_expr _loc_k (Pexp_tuple [f;e])), false)
 			  else 
 			    Pexp_apply(loc_expr _loc_k (Pexp_ident { txt = Longident.Lident k; loc = _loc_k }),
                                        [("", f) ; ("", e)])
 			in
-			apply (fun e -> p, res e) (expression p')))
-       -> (fst a, loc_expr _loc (snd a))
-  end
+			apply (fun e -> p, fun f -> res e f) (expression p')))
+       -> (let p, f = a in p, fun e -> loc_expr _loc (f e))
+  end)
 
-let rec expression_suit lvl' lvl f =
-  option f (
-   dependent_sequence (expression_suit_aux lvl' lvl f) (fun (lvl', e) -> expression_suit lvl' lvl e))
+let expression_suit =
+  let f expression_suit =
+    memoize2
+      (fun lvl' lvl ->
+       option (lvl', fun f -> f) (
+		dependent_sequence (expression_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) (expression_suit lvl'' lvl))))
+  in
+  let rec res x y = f res x y in
+  res
 
 let _ = set_expression (fun lvl ->
-    dependent_sequence (locate (expression_desc lvl)) (fun (_loc, (lvl', e)) -> expression_suit lvl' lvl (loc_expr _loc e)))
-  expression_lvls 
+    dependent_sequence (locate (expression_desc lvl)) (fun (_loc, (lvl', e)) -> apply (fun (_, f) -> f (loc_expr _loc e)) (expression_suit lvl' lvl))) expression_lvls
+
+let override_flag =
+  glr
+    o:STR("!")? -> (if o <> None then Override else Fresh)
+  end
 
 let structure_item_desc =
   glr
-    RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+    RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
+  | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   end
 
 let structure_item =

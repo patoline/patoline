@@ -1,4 +1,7 @@
+open List
+
 let xy = 3
+let x = 10.0
 let f x = x
 let g x y z = if x then y else z
 
@@ -62,10 +65,31 @@ let f19 x f z = if x >= z then let y = x + z in f z ; f x
 
 let f20 = [ ], [ 1 ], [ 1; 2; 3; 4], [ 1; 2; 3; 4; ]
 
-let f21 = [| |], [| 1 |], [| 1; 2; 3; 4|], [| 1; 2; 3; 4; |]
+let f21 = let vide = [| |] in [| 1 |], [| 1; 2; 3; 4|], [| 1; 2; 3; 4; |]
 
 let f22 = { contents = 1 }
 
 let f23 = { f22 with contents = 2 ; }
 
 let f24 = let contents = 3 in { contents }
+
+let f25 = "toto"
+
+let f26 = let s = f25 in s.[0] <- 'x' ; s.[1]
+
+let f27 = [|1;2|]
+
+let f28 = f27.(0) <- f27.(1) + 1
+
+let f29 = [|[|1;2|];[|1;2|]|]
+
+let f30 = f29.(0).(0) <- f29.(1).(1) + 1
+
+let f31 = String.blit
+
+let f32 = Bigarray.Array1.create Bigarray.float32 Bigarray.c_layout 2
+let _ = f32.{0} <- 1.0 ; f32.{1} <- 2.
+
+let f33 = Bigarray.Array2.create Bigarray.float32 Bigarray.c_layout 2 2
+let _ = f33.{0,0} <- 1.0 ; f33.{0,1} <- 2.0
+

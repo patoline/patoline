@@ -56,7 +56,7 @@ $(d)/pa_glr: $(d)/pa_glr.cmx
 
 PA_GLR = $(GLR_DIR)/pa_glr
 
-$(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.ml $(PA_GLR)
+$(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.ml $(d)/glr.cmxa $(PA_GLR)
 	$(ECHO) "[LINK] $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I +compiler-libs -package glr -o $@ str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $<
 
