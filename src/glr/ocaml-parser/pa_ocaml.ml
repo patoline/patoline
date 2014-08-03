@@ -450,9 +450,9 @@ let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 let poly_typexpr =
   glr
     te:typeexpr ->
-      () (* TODO *) 
+      loc_typ _loc_te te.ptyp_desc
   | ids:{STR("'") id:ident -> id}+ STR(".") te:typeexpr ->
-      () (* TODO *)
+      assert false (* TODO *)
   end
    
 let method_type =
@@ -554,8 +554,14 @@ type variance = Covariant | Contravariant
 
 let type_param =
   glr
-    STR("+") STR("`") id:ident -> ({ txt = id; loc = _loc_id }, Covariant)
-  | STR("-") STR("`") id:ident -> ({ txt = id; loc = _loc_id }, Contravariant)
+    var:RE("[+-]")? STR("`") id:ident ->
+      let variance =
+        match var with
+        | None     -> (false, false)
+        | Some "+" -> (true , false)
+        | Some "-" -> (false, true)
+        | _        -> assert false
+      in (Some { txt = id; loc = _loc_id }, variance) (* FIXME None in which case? *)
   end
 
 let type_params =
@@ -572,8 +578,8 @@ let type_equation =
 
 let type_constraint =
   glr
-    RE("\\bconstraint\\b") STR("`") id:ident STR("=") te:typeexpr ->
-      ({ txt = id; loc = _loc_id }, te)
+    s:RE("\\bconstraint\\b") STR("`") id:ident STR("=") te:typeexpr ->
+      (loc_typ _loc_id (Ptyp_var id), te, _loc_s)
   end
 
 let constr_decl =
@@ -586,42 +592,69 @@ let constr_decl =
   glr
     cn:constr_name tes:{RE("\\bof\\b") te:typeexpr
     tes:{STR("*") te:typeexpr -> te}* -> (te::tes)}? ->
-      ({ txt = cn; loc = _loc_cn }, tes)
+      let c = { txt = cn; loc = _loc_cn } in
+      let tel = match tes with
+                | None   -> []
+                | Some l -> l
+      in
+      (c, tel, None, _loc_cn) (* TODO GADT Stuff *)
   end
 
 let field_decl =
   let mutable_flag =
     glr
       m:RE("\\bmutable\\b")? -> (match m with
-                                 | None -> false
-                                 | _    -> true)
+                                 | None -> Immutable
+                                 | _    -> Mutable)
     end
   in
   glr
     m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
-      ({ txt = fn; loc = _loc_fn }, m, pte)
+      ({ txt = fn; loc = _loc_fn }, m, pte, _loc_m)
   end
-
-type repr = ReprSum  of (string loc * core_type list option) list
-          | ReprProd of (string loc * bool * unit) list (* TODO change unit to return type of poly_typexpr *)
 
 let type_representation =
   glr
-    STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* -> ReprSum (cd::cds)
-  | STR("{") fd:field_decl fds:{STR(";") fd:field_decl -> fd}*
-    STR(";")? STR("}") -> ReprProd (fd::fds)
+    STR("|")? cd:constr_decl
+    cds:{STR("|") cd:constr_decl -> cd}* ->
+      Ptype_variant (cd::cds)
+  | STR("{") fd:field_decl
+    fds:{STR(";") fd:field_decl -> fd}*
+    STR(";")? STR("}") ->
+      Ptype_record (fd::fds)
   end
 
 let type_information =
   glr
-    te:type_equation? tr:{STR("=") tr:type_representation -> tr}?
-    tcs:type_constraint* -> (te, tr, tcs)
+    te:type_equation?
+    tr:{STR("=") tr:type_representation -> tr}?
+    cstrs:type_constraint* ->
+      let tkind =
+        match tr with
+        | None    -> Ptype_abstract
+        | Some tr -> tr
+      in
+      (te, tkind, cstrs)
   end
 
-let typedef =
+let typedef : (string loc * type_declaration) Glr.grammar =
   glr
     tps:type_params? tcn:typeconstr_name ti:type_information ->
-      (tps, { txt = tcn; loc = _loc_tcn }, ti)
+      let (te, tkind, cstrs) = ti in
+      let tps = match tps with
+                | None   -> []
+                | Some l -> l
+      in
+      let tdec =
+        { ptype_params   = List.map fst tps
+        ; ptype_cstrs    = cstrs
+        ; ptype_kind     = tkind
+        ; ptype_private  = Public (* FIXME ?? *)
+        ; ptype_manifest = te
+        ; ptype_variance = List.map snd tps
+        ; ptype_loc      = _loc_tps
+        }
+      in ({ txt = tcn; loc = _loc_tcn }, tdec) (*  tps, ti) *)
   end
 
 let type_definition =
@@ -1066,6 +1099,7 @@ let structure_item_desc =
   glr
     RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+  | td:type_definition -> Pstr_type td
   end
 
 let structure_item =
