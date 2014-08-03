@@ -589,18 +589,21 @@ let _ = set_grammar pattern (
       assert false (* TODO *)
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
       assert false (* TODO *)
-  | STR("[") STR("]") ->
-      assert false (* TODO *)
+  | s:STR("[") STR("]") ->
+      let nil = { txt = Lident "[]"; loc = _loc_s } in
+      loc_pat _loc_s (Ppat_construct (nil, None, false))
 (*  | p:pattern STR("::") p':pattern ->
       assert false (* TODO *)*)
   | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
       loc_pat _loc_s (Ppat_array (p::ps))
   | s:STR("[|") STR("|]") ->
       loc_pat _loc_s (Ppat_array []) (* FIXME not sure if this should be a constructor instead *)
-  | STR("(") STR(")") ->
-      assert false (* TODO *)
-  | RE("\\bbegin\\b") STR("\\bend\\b") ->
-      assert false (* TODO *)
+  | s:STR("(") STR(")") ->
+      let unt = { txt = Lident "()"; loc = _loc_s } in
+      loc_pat _loc_s (Ppat_construct (unt, None, false))
+  | s:RE("\\bbegin\\b") STR("\\bend\\b") ->
+      let unt = { txt = Lident "()"; loc = _loc_s } in
+      loc_pat _loc_s (Ppat_construct (unt, None, false))
   end)
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
