@@ -143,9 +143,9 @@ let _ = glr_locate locate merge
 
 (* Identifiers *)
 (* NOTE "_" is not a valid identifier, we handle it separately *)
-let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
-let cident_re = "[A-Z][a-zA-Z0-9_']*\\b"
-let ident_re = "[A-Za-z][a-zA-Z0-9_']*\\b"
+let lident_re = "\\b\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
+let cident_re = "\\b[A-Z][a-zA-Z0-9_']*\\b"
+let ident_re = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
 
 let reserved_ident =
   [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"

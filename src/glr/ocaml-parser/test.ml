@@ -57,10 +57,12 @@ let f15 x y = x::y
 
 let f16 x = if x > 2 then let y = x + 3 in x + y else x - 1
 
+(* Ne parse qu'avec l'option --ext *)
 let f17 = 2 * let x = 3 in x + 2
 
 let f18 x y z = x ; y ; z
 
+(* Ne parse qu'avec l'option --ext *)
 let f19 x f z = if x >= z then let y = x + z in f z ; f x
 
 let f20 = [ ], [ 1 ], [ 1; 2; 3; 4], [ 1; 2; 3; 4; ]
@@ -92,4 +94,3 @@ let _ = f32.{0} <- 1.0 ; f32.{1} <- 2.
 
 let f33 = Bigarray.Array2.create Bigarray.float32 Bigarray.c_layout 2 2
 let _ = f33.{0,0} <- 1.0 ; f33.{0,1} <- 2.0
-
