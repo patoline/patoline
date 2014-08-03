@@ -576,17 +576,22 @@ let _ = set_grammar pattern (
   | c:RE("\\btrue\\b")  -> 
       let tru = { txt = Lident "true"; loc = _loc_c } in
       loc_pat _loc_c (Ppat_construct (tru, None, false))
-  | STR("`") c:tag_name p:pattern? ->
-      assert false (* TODO *)
+  | s:STR("`") c:tag_name p:pattern? ->
+      loc_pat _loc_s (Ppat_variant (c, p))
   | s:STR("#") t:typeconstr ->
       loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t })
 (*  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
       { ppat_desc = Ppat_tuple(p::ps)
       ; ppat_loc = _loc_p }*)
-  | STR("{") f:field STR("=") p:pattern
-    fps:{STR(";") f:field STR("=") p:pattern -> (f, p)}*
-    STR(";")? STR("}") ->
-      assert false (* TODO *)
+  | s:STR("{") f:field STR("=") p:pattern
+    fps:{STR(";") f:field STR("=") p:pattern -> ({ txt = f; loc = _loc_f }, p)}*
+    clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
+      let all = ({ txt = f; loc = _loc_f },p)::fps in
+      let cl = match clsd with
+               | None   -> Closed
+               | Some _ -> Open
+      in
+      loc_pat _loc_s (Ppat_record (all, cl))
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
       assert false (* TODO *)
   | s:STR("[") STR("]") ->
