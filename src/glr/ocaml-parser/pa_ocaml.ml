@@ -121,9 +121,10 @@ let _ = glr_locate locate merge
  ****************************************************************************)
 
 (* Identifiers *)
+(* NOTE "_" is not a valid identifier, we handle it separately *)
 let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
 let cident_re = "[A-Z][a-zA-Z0-9_']*\\b"
-let ident_re = "[A-Za-z_][a-zA-Z0-9_']*\\b"
+let ident_re = "[A-Za-z][a-zA-Z0-9_']*\\b"
 
 let reserved_ident =
   [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
@@ -135,42 +136,8 @@ let reserved_ident =
   ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
   ; "while" ; "with" ]
 
-let reserved_kwd = [ "->"; ":" ; "|" ]
-
 let is_reserved_id w =
   List.mem w reserved_ident
-
-let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
-let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
-
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
-
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
-
-let expression_lvl_to_string () = function
-    Top -> "Top"
-  | Let -> "Let"
-  | Seq -> "Seq"
-  | If -> "If" 
-  | Aff -> "Aff"
-  | Tupl -> "Tuple"
-  | Disj -> "Disj"
-  | Conj -> "Conj"
-  | Eq -> "Eq"
-  | Append -> "Append"
-  | Cons -> "Cons"
-  | Sum -> "Sum"
-  | Prod -> "Prod"
-  | Pow -> "Pow"
-  | Opp -> "Opp"
-  | App -> "App"
-  | Dash -> "Dash"
-  | Dot -> "Dot"
-  | Prefix -> "Prefix"
-  | Atom -> "Atom"
-
-let let_prio lvl = if !extension then lvl else Let
-let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
 
 let ident =
   glr
@@ -192,18 +159,6 @@ let int_dec_re = "[-]?[0-9][0-9_]*"
 let int_hex_re = "[-]?[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
 let int_oct_re = "[-]?[0][oO][0-7][0-7_]*"
 let int_bin_re = "[-]?[0][bB][01][01_]*"
-
-let strip_underscores s =
-  let len = String.length s in
-  let s' = String.create len in
-  let p = ref 0 in
-  for i = 0 to len - 1 do
-    if s.[i] <> '_' then begin
-      s'.[!p] <- s.[i];
-      incr p
-    end
-  done;
-  String.sub s' 0 !p
 
 let integer_literal =
   glr
@@ -596,42 +551,35 @@ let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 let _ = set_grammar pattern (
   glr
     vn:value_name ->
-      { ppat_desc = Ppat_var { txt = vn; loc = _loc_vn }
-      ; ppat_loc = _loc_vn }
+      loc_pat _loc_vn (Ppat_var { txt = vn; loc = _loc_vn })
   | STR("_") ->
-      { ppat_desc = Ppat_any
-      ; ppat_loc = _loc }
+      loc_pat _loc Ppat_any
   | c:constant ->
-      { ppat_desc = Ppat_constant c
-      ; ppat_loc = _loc_c }
+      loc_pat _loc_c (Ppat_constant c)
 (*  | p:pattern RE("\\bas\\b") vn:value_name ->
       { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
       ; ppat_loc = _loc_p }*)
   | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
-      (match te with
-       | None    -> { ppat_desc = p.ppat_desc
-                    ; ppat_loc = _loc_par }
-       | Some ty -> { ppat_desc = Ppat_constraint(p, ty)
-                    ; ppat_loc = _loc_par })
+      let pat =
+        match te with
+        | None    -> p.ppat_desc
+        | Some ty -> Ppat_constraint(p, ty)
+      in loc_pat _loc_par pat
 (*  | p:pattern STR("|") p':pattern ->
       { ppat_desc = Ppat_or(p, p')
       ; ppat_loc = _loc_p }*)
   | c:constr p:pattern? ->
-      { ppat_desc = Ppat_construct({ txt = c; loc = _loc_c }, p, false)
-      ; ppat_loc = _loc_c }
+      loc_pat _loc_c (Ppat_construct({ txt = c; loc = _loc_c }, p, false))
   | c:RE("\\bfalse\\b") ->
-      { ppat_desc = Ppat_construct( { txt = Lident "false"
-                                    ; loc = _loc_c }, None, false)
-      ; ppat_loc = _loc_c }
+      let fls = { txt = Lident "false"; loc = _loc_c } in
+      loc_pat _loc_c (Ppat_construct (fls, None, false))
   | c:RE("\\btrue\\b")  -> 
-      { ppat_desc = Ppat_construct( { txt = Lident "true"
-                                    ; loc = _loc_c }, None, false)
-      ; ppat_loc = _loc_c }
+      let tru = { txt = Lident "true"; loc = _loc_c } in
+      loc_pat _loc_c (Ppat_construct (tru, None, false))
   | STR("`") c:tag_name p:pattern? ->
       assert false (* TODO *)
   | s:STR("#") t:typeconstr ->
-      { ppat_desc = Ppat_type { txt = t; loc = _loc_t }
-      ; ppat_loc = _loc_s }
+      loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t })
 (*  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
       { ppat_desc = Ppat_tuple(p::ps)
       ; ppat_loc = _loc_p }*)
@@ -646,16 +594,48 @@ let _ = set_grammar pattern (
 (*  | p:pattern STR("::") p':pattern ->
       assert false (* TODO *)*)
   | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
-      { ppat_desc = Ppat_array (p::ps)
-      ; ppat_loc = _loc_s }
+      loc_pat _loc_s (Ppat_array (p::ps))
   | s:STR("[|") STR("|]") ->
-      { ppat_desc = Ppat_array []
-      ; ppat_loc = _loc_s }
+      loc_pat _loc_s (Ppat_array []) (* FIXME not sure if this should be a constructor instead *)
   | STR("(") STR(")") ->
       assert false (* TODO *)
   | RE("\\bbegin\\b") STR("\\bend\\b") ->
       assert false (* TODO *)
   end)
+
+let reserved_kwd = [ "->"; ":" ; "|" ]
+
+let infix_re = "\\([=<>@|&+*/$%:^-][!$%&*+./:<=>?@|~^-]*\\)\\|\\(lsl\\)\\|\\(lsr\\)\\|\\(asr\\)\\|\\(mod\\)\\|\\(land\\)\\|\\(lor\\)\\|\\(lxor\\)\\|\\(or\\)"
+let prefix_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
+
+type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+
+let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
+
+let expression_lvl_to_string () = function
+    Top -> "Top"
+  | Let -> "Let"
+  | Seq -> "Seq"
+  | If -> "If" 
+  | Aff -> "Aff"
+  | Tupl -> "Tuple"
+  | Disj -> "Disj"
+  | Conj -> "Conj"
+  | Eq -> "Eq"
+  | Append -> "Append"
+  | Cons -> "Cons"
+  | Sum -> "Sum"
+  | Prod -> "Prod"
+  | Pow -> "Pow"
+  | Opp -> "Opp"
+  | App -> "App"
+  | Dash -> "Dash"
+  | Dot -> "Dot"
+  | Prefix -> "Prefix"
+  | Atom -> "Atom"
+
+let let_prio lvl = if !extension then lvl else Let
+let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
 
 let next_exp = function
     Top -> Let
