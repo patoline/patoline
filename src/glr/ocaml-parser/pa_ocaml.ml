@@ -444,9 +444,9 @@ let classtype_path =
  * Type expressions                                                         *
  ****************************************************************************)
 
-type type_prio = TopType | As | Arr | Prod | Dash | App | AtomType
+type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
 
-let type_prios = [TopType; As; Arr; Prod; Dash; App; AtomType]
+let type_prios = [TopType; As; Arr; Prod; Dash; AppType; AtomType]
 
 let typeexpr = declare_grammar ()
 let typeexpr_lvl, set_typeexpr_lvl = grammar_family ()
@@ -505,53 +505,6 @@ let polymorphic_variant_type : core_type grammar =
       assert false (* TODO *)  
   end
 
-(*
-let _ = set_grammar typeexpr (
-  glr
-    q:STR("`") id:ident ->
-      loc_typ _loc_q (Ptyp_var id)
-  | u:STR("_") ->
-      loc_typ _loc_u Ptyp_any
-  | p:STR("(") te:typeexpr STR(")") ->
-      loc_typ _loc_p te.ptyp_desc
-  | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
-      let opt = { txt = Lident "option"; loc = _loc_te } in
-      let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
-      loc_typ _loc_ln (Ptyp_arrow (ln, teopt, te'))
-  | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
-      loc_typ _loc_ln (Ptyp_arrow (ln, te, te'))
-(*  | te:typeexpr STR("->") te':typeexpr ->
-      assert false (* TODO *)*)
-(*  | te:typeexpr tes:{STR("*") te:typeexpr -> te}+ ->
-      loc_typ _loc_te (Ptyp_tuple (te::tes)) *)
-  | tc:typeconstr ->
-      loc_typ _loc_tc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
-(*  | te:typeexpr tc:typeconstr ->
-      assert false (* TODO *)*)
-  | p:STR("(") te:typeexpr
-    tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
-      let constr = { txt = tc ; loc = _loc_tc } in
-      loc_typ _loc_p (Ptyp_constr (constr, te::tes))
-(*  | te:typeexpr RE("as\\b") STR("`") id:ident ->
-      assert false (* TODO *)*)
-  | pvt:polymorphic_variant_type ->
-      assert false (* TODO *)
-  | s:STR("<") STR("..")? STR(">") ->
-      assert false (* TODO *)
-  | s:STR("<") mt:method_type
-    mst:{STR(";") mt:method_type -> mt} {x:STR(";") STR("..")?}? ->
-      assert false (* TODO *)
-  | s:STR("#") cp:class_path ->
-      assert false (* TODO *)
-(*  | te:typeexpr STR("#") cp:class_path ->
-      assert false (* TODO *)*)
-  | p:STR("(") te:typeexpr
-    tes:{STR(",") te:typeexpr -> te}*
-    STR(")") STR("#") cp:class_path ->
-      assert false (* TODO *)
-  end)
-*)
-
 let typeexpr_base : core_type grammar =
   glr
   | q:STR("`") id:ident ->
@@ -591,8 +544,8 @@ let next_type_prio = function
   | As -> Arr
   | Arr -> Prod
   | Prod -> Dash
-  | Dash -> App
-  | App -> AtomType
+  | Dash -> AppType
+  | AppType -> AtomType
   | AtomType -> AtomType
 
 let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
@@ -601,8 +554,8 @@ let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> cor
       (Arr, fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("_", te, te')))
   | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod)) -> te}+  when lvl' > Prod && lvl <= Prod->
       (Prod, fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
-  | tc:typeconstr when lvl' >= App && lvl <= App ->
-      (App, fun te -> loc_typ te.ptyp_loc
+  | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
+      (AppType, fun te -> loc_typ te.ptyp_loc
         (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | RE("as\\b") STR("`") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> loc_typ te.ptyp_loc (Ptyp_alias (te, id)))
@@ -854,31 +807,9 @@ let _ = set_grammar pattern (
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
 
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Coerce | Dash | Dot | Prefix | Atom
 
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
-
-let expression_lvl_to_string () = function
-    Top -> "Top"
-  | Let -> "Let"
-  | Seq -> "Seq"
-  | If -> "If" 
-  | Aff -> "Aff"
-  | Tupl -> "Tuple"
-  | Disj -> "Disj"
-  | Conj -> "Conj"
-  | Eq -> "Eq"
-  | Append -> "Append"
-  | Cons -> "Cons"
-  | Sum -> "Sum"
-  | Prod -> "Prod"
-  | Pow -> "Pow"
-  | Opp -> "Opp"
-  | App -> "App"
-  | Dash -> "Dash"
-  | Dot -> "Dot"
-  | Prefix -> "Prefix"
-  | Atom -> "Atom"
+let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Coerce; Dash; Dot; Prefix; Atom]
 
 let let_prio lvl = if !extension then lvl else Let
 let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
@@ -899,7 +830,8 @@ let next_exp = function
   | Prod -> Pow
   | Pow -> Opp
   | Opp -> App
-  | App -> Dash
+  | App -> Coerce
+  | Coerce -> Dash
   | Dash -> Dot
   | Dot -> Prefix
   | Prefix -> Atom
