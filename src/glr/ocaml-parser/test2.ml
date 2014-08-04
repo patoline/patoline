@@ -12,3 +12,5 @@ type `a tree = Empty
 type inttree = int tree
 
 type coord = { x : int ; y : int ; z : int }
+
+type (`a, `b) pierce = ((`a -> `b) -> `a) -> `a

@@ -507,35 +507,33 @@ let polymorphic_variant_type : core_type grammar =
 
 let typeexpr_base : core_type grammar =
   glr
-  | q:STR("`") id:ident ->
-      loc_typ _loc_q (Ptyp_var id)
-  | u:STR("_") ->
-      loc_typ _loc_u Ptyp_any
-  | p:STR("(") te:typeexpr STR(")") ->
-      loc_typ _loc_p te.ptyp_desc
+  | STR("`") id:ident ->
+      loc_typ _loc (Ptyp_var id)
+  | STR("_") ->
+      loc_typ _loc Ptyp_any
+  | STR("(") te:typeexpr STR(")") ->
+      loc_typ _loc te.ptyp_desc
   | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
       let opt = { txt = Lident "option"; loc = _loc_te } in
       let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
-      loc_typ _loc_ln (Ptyp_arrow (ln, teopt, te'))
+      loc_typ _loc (Ptyp_arrow (ln, teopt, te'))
   | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
-      loc_typ _loc_ln (Ptyp_arrow (ln, te, te'))
+      loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
-      loc_typ _loc_tc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
-  | p:STR("(") te:typeexpr
-    tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
+      loc_typ _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
+  | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")") tc:typeconstr ->
       let constr = { txt = tc ; loc = _loc_tc } in
-      loc_typ _loc_p (Ptyp_constr (constr, te::tes))
+      loc_typ _loc (Ptyp_constr (constr, te::tes))
   | pvt:polymorphic_variant_type -> pvt
-  | s:STR("<") STR("..")? STR(">") ->
+  | STR("<") STR("..")? STR(">") ->
       assert false (* TODO *)
-  | s:STR("<") mt:method_type
-    mst:{STR(";") mt:method_type -> mt} {x:STR(";") STR("..")?}? ->
+  | STR("<") mt:method_type mts:{STR(";") mt:method_type -> mt}*
+    {_sc:STR(";") STR("..")?}? ->
       assert false (* TODO *)
-  | s:STR("#") cp:class_path ->
+  | STR("#") cp:class_path ->
       assert false (* TODO *)
-  | p:STR("(") te:typeexpr
-    tes:{STR(",") te:typeexpr -> te}*
-    STR(")") STR("#") cp:class_path ->
+  | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")")
+    STR("#") cp:class_path ->
       assert false (* TODO *)
   end
 
@@ -551,7 +549,7 @@ let next_type_prio = function
 let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   glr
   | STR("->") te':(typeexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
-      (Arr, fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("_", te, te')))
+      (Arr, fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("", te, te')))
   | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod)) -> te}+  when lvl' > Prod && lvl <= Prod->
       (Prod, fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
