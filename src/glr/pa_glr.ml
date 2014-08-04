@@ -155,7 +155,7 @@ EXTEND Gram
 	    None ->
 	      <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<if $c$ then [$x$::$y$] else $y$>>
+	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	None, <:expr<Glr.alternatives $l$ >>
   ] ];
@@ -171,7 +171,7 @@ EXTEND Gram
 	    None ->
 	      <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<if $c$ then [$x$::$y$] else $y$>>
+	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	None, <:expr<Glr.list_alternatives $l$ >>
   ] ];
@@ -191,7 +191,7 @@ EXTEND Gram
 	    None ->
 	      <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<if $c$ then [$x$::$y$] else $y$>>
+	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	<:expr<Glr.alternatives' $l$ >>
   ] ];
@@ -211,7 +211,7 @@ EXTEND Gram
 	    None ->
 	      <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<if $c$ then [$x$::$y$] else $y$>>
+	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	<:expr<Glr.list_alternatives' $l$ >>
   ] ];
