@@ -133,6 +133,7 @@ EXTEND Gram
   | "glr"; "*"; p = glr_list_rules; "end" -> p 
   ] ];
 
+
   glr_option: [ [
     -> `Once
   | "*"; e =  glr_opt_expr -> `Fixpoint e
@@ -144,7 +145,7 @@ EXTEND Gram
   ] ];
 
   glr_rules_aux: [ [
-    l = LIST1 glr_rule SEP "|" ->
+    OPT "|" ; l = LIST1 glr_rule SEP "|" ->
       match l with
 	[] -> assert false
       | [e] -> e
@@ -160,7 +161,7 @@ EXTEND Gram
   ] ];
 
   glr_list_rules_aux: [ [
-    l = LIST1 glr_list_rule SEP "|" ->
+    OPT "|" ; l = LIST1 glr_list_rule SEP "|" ->
       match l with
 	[] -> assert false
       | [e] -> e
@@ -176,7 +177,7 @@ EXTEND Gram
   ] ];
 
   glr_rules: [ [
-    l = LIST1 glr_rules_aux SEP "||" ->
+    l = LIST1 glr_rules_aux SEP "else" ->
       match l with
 	[] -> assert false
       | [cond,e] -> (
@@ -196,7 +197,7 @@ EXTEND Gram
   ] ];
 
   glr_list_rules: [ [
-    l = LIST1 glr_list_rules_aux SEP "||" ->
+    l = LIST1 glr_list_rules_aux SEP "else" ->
       match l with
 	[] -> assert false
       | [cond,e] ->  (
@@ -216,12 +217,12 @@ EXTEND Gram
   ] ];
   
   glr_action: [ [
-    "->"; action = expr LEVEL "apply" -> Some action
+    "->"; action = expr -> Some action
   | -> None
   ] ];
 
   glr_cond: [ [
-    "when"; c = expr LEVEL "apply" -> Some c
+    "when"; c = expr -> Some c
   | -> None
   ] ];
 

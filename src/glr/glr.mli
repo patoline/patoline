@@ -220,8 +220,8 @@ val grammar_family :  ?param_to_string:(unit -> 'a -> string) -> unit -> ('a -> 
 
 {ul
 {- a parser is a sequence of rule like:
-  [rule11 | rule12 | ... || rule21 | rule22 ...]
-  simple bar correspond tu [alternatives] while double bar corresponds to [alternatives']. The above
+  [rule11 | rule12 | ... else rule21 | rule22 ...]
+  simple bar correspond tu [alternatives] while [else] corresponds to [alternatives']. The above
   is therefore a syntax for
   [alternatives' [alternatives [rule11 ; rule12 ; ...]; alternatives [rule21 ; rule22 ; ...]; ...]]}
 {- a [rule] is [lid_1:atom_1 ... lid_n:atom_n -> action] and corresponds to a parsing sequence. The action

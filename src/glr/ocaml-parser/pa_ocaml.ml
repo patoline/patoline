@@ -162,7 +162,7 @@ let is_reserved_id w =
 
 let ident =
   glr
-    id:RE(ident_re) -> if is_reserved_id id then raise Give_up; id
+    id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
   end
 
 let capitalized_ident =
@@ -444,7 +444,12 @@ let classtype_path =
  * Type expressions                                                         *
  ****************************************************************************)
 
+type type_prio = TopType | As | Arr | Prod | Dash | App | AtomType
+
+let type_prios = [TopType; As; Arr; Prod; Dash; App; AtomType]
+
 let typeexpr = declare_grammar ()
+let typeexpr_lvl, set_typeexpr_lvl = grammar_family ()
 let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
@@ -547,9 +552,9 @@ let _ = set_grammar typeexpr (
   end)
 *)
 
-let typexpr_base : core_type grammar =
+let typeexpr_base : core_type grammar =
   glr
-    q:STR("`") id:ident ->
+  | q:STR("`") id:ident ->
       loc_typ _loc_q (Ptyp_var id)
   | u:STR("_") ->
       loc_typ _loc_u Ptyp_any
@@ -581,22 +586,47 @@ let typexpr_base : core_type grammar =
       assert false (* TODO *)
   end
 
-let typexpr_aux : (core_type -> core_type) grammar =
-  glr
-    STR("->") te':typeexpr ->
-      (fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("_", te, te')))
-  | tes:{STR("*") te:typeexpr -> te}+ ->
-      (fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
-  | tc:typeconstr ->
-      (fun te -> loc_typ te.ptyp_loc
-        (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
-  | RE("as\\b") STR("`") id:ident ->
-      (fun te -> loc_typ te.ptyp_loc (Ptyp_alias (te, id)))
-  | STR("#") cp:class_path ->
-      (fun te -> loc_typ te.ptyp_loc (assert false (* TODO *)))
-  end
+let next_type_prio = function
+  | TopType -> As
+  | As -> Arr
+  | Arr -> Prod
+  | Prod -> Dash
+  | Dash -> App
+  | App -> AtomType
+  | AtomType -> AtomType
 
-let _ = set_grammar typeexpr typexpr_base (* TODO *)
+let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
+  glr
+  | STR("->") te':(typeexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
+      (Arr, fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("_", te, te')))
+  | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod)) -> te}+  when lvl' > Prod && lvl <= Prod->
+      (Prod, fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
+  | tc:typeconstr when lvl' >= App && lvl <= App ->
+      (App, fun te -> loc_typ te.ptyp_loc
+        (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
+  | RE("as\\b") STR("`") id:ident when lvl' >= As && lvl <= As ->
+      (As, fun te -> loc_typ te.ptyp_loc (Ptyp_alias (te, id)))
+  | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
+      (Dash, fun te -> loc_typ te.ptyp_loc (assert false (* TODO *)))
+  end)
+
+let typeexpr_suit =
+  let f type_suit =
+    memoize2
+      (fun lvl' lvl ->
+       option (lvl', fun f -> f) (
+		dependent_sequence (typeexpr_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) 
+										      (type_suit lvl'' lvl))))
+  in
+  let rec res x y = f res x y in
+  res
+
+let _ = set_typeexpr_lvl (fun lvl ->
+  glr
+    t:typeexpr_base ft:(typeexpr_suit AtomType lvl) -> snd ft t
+  end) type_prios 	      
+
+let _ = set_grammar typeexpr (typeexpr_lvl TopType)
 
 (****************************************************************************
  * Type and exception definitions                                           *
@@ -612,7 +642,7 @@ let type_param =
         match var with
         | None     -> (false, false)
         | Some "+" -> (true , false)
-        | Some "-" -> (false, true)
+        | Some "-" -> false, true
         | _        -> assert false
       in (Some { txt = id; loc = _loc_id }, variance) (* FIXME None in which case? *)
   end
@@ -621,7 +651,7 @@ let type_params =
   glr
     tp:type_param -> [tp]
   | STR("(") tp:type_param
-    tps:{STR(",") tp:type_param -> tp}* STR(")") -> (tp::tps)
+    tps:{STR(",") tp:type_param -> tp}* STR(")") -> tp::tps
   end
 
 let type_equation =
@@ -632,7 +662,7 @@ let type_equation =
 let type_constraint =
   glr
     s:RE("\\bconstraint\\b") STR("`") id:ident STR("=") te:typeexpr ->
-      (loc_typ _loc_id (Ptyp_var id), te, _loc_s)
+      loc_typ _loc_id (Ptyp_var id), te, _loc_s
   end
 
 let constr_decl =
@@ -644,7 +674,7 @@ let constr_decl =
   in
   glr
     cn:constr_name tes:{RE("\\bof\\b") te:typeexpr
-    tes:{STR("*") te:typeexpr -> te}* -> (te::tes)}? ->
+    tes:{STR("*") te:typeexpr -> te}* -> te::tes}? ->
       let c = { txt = cn; loc = _loc_cn } in
       let tel = match tes with
                 | None   -> []
@@ -663,7 +693,7 @@ let field_decl =
   in
   glr
     m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
-      ({ txt = fn; loc = _loc_fn }, m, pte, _loc_m)
+      { txt = fn; loc = _loc_fn }, m, pte, _loc_m
   end
 
 let type_representation =
@@ -723,11 +753,11 @@ type expn = NewExpn of core_type list option
 let exception_definition =
   glr
     RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
-      ({ txt = cn; loc = _loc_cn }, SynExpn { txt = c; loc = _loc_c })
-  | RE("\\bexception\\b") cn:constr_name
+      { txt = cn; loc = _loc_cn }, SynExpn { txt = c; loc = _loc_c }
+ else RE("\\bexception\\b") cn:constr_name
     typ:{RE("\\bof\\b") te:typeexpr
     tes:{STR("*") te:typeexpr -> te}* -> (te::tes) }? ->
-      ({ txt = cn; loc = _loc_cn }, NewExpn typ)
+      { txt = cn; loc = _loc_cn }, NewExpn typ
   end
 
 (****************************************************************************
@@ -1165,7 +1195,7 @@ let override_flag =
 
 let structure_item_desc =
   glr
-    RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
+  | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | td:type_definition -> Pstr_type td
   end
