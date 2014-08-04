@@ -984,11 +984,10 @@ let match_cases = memoize1 (fun lvl ->
          -> ((pat,e)::l)}?[[]] -> l
 			    end)
 
-let type_constraint =
+let type_coercion =
   glr
     STR(":") t:typeexpr t':{STR(":>") t':typeexpr}? -> (Some t, t')
   | STR(":>") t':typeexpr -> (None, Some t')
-  | (empty ()) -> (None, None)
   end
 
 let expression_list =
@@ -1022,8 +1021,7 @@ let expression_desc lvl =
   | RE("try\\b") e:(expression Top) RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_try(e, l))
   | RE("if\\b") c:(expression Top) RE("then\\b") e:(expression If) e':{RE("else\\b") e:(expression If)}? when (lvl <= If) ->
      (If, Pexp_ifthenelse(c,e,e'))
-  | STR("(") e:(expression Top) t:type_constraint STR(")") -> (Atom, match t with (None, None) -> e.pexp_desc 
-                                                                                | _ ->Pexp_constraint(e, fst t, snd t))
+  | STR("(") e:(expression Top) STR(")") -> (Atom, e.pexp_desc)
   | STR("(") STR(")") -> (Atom, Pexp_tuple([]))
   | RE("begin\\b") e:(expression Top) RE("end\\b") -> (Atom, e.pexp_desc)
     (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
@@ -1090,6 +1088,8 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   | STR(".") f:field when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' ->
 	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f)))
+  | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
+      (Coerce, fun e' -> loc_expr _loc (Pexp_constraint(e', fst t, snd t)))
   | a:(dependent_sequence (glr k:infix_op -> (_loc_k, k) end)
 		       (fun (_loc_k, k) ->
 			let p = infix_prio k in

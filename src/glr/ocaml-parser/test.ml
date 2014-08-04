@@ -106,8 +106,10 @@ let f37 n = let r = ref 1 in for i = 2 to n do !r := !r * n; done; !r
 type t1 = A | B
 
 let f38 x = match x with A -> B | B -> A
-let f38b x = match x with 
+let f38b x = match x:t1 with 
   | A -> B
   | B -> A
 
 let f39 = function A -> B | B -> A
+
+let f40 g x y = x:int + (g y:int):int
