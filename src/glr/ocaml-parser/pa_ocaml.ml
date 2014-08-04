@@ -486,20 +486,21 @@ let tag_spec_full =
       () (* TODO *)
   end
 
-let polymorphic_variant_type =
+let polymorphic_variant_type : core_type grammar =
   glr
     s:STR("[") tsf:tag_spec_first tss:{STR("|")
     ts:tag_spec -> ts}* STR("]") ->
-      () (* TODO *) 
+      assert false (* TODO *) 
   | s:STR("[>") ts:tag_spec?
     tss:{STR("|") ts:tag_spec}* STR("]") ->
-      () (* TODO *) 
+      assert false (* TODO *) 
   | s:STR("[<") STR("|")? tfs:tag_spec_full
     tsfs:{STR("|") tsf:tag_spec_full -> tsf}
     tns:{STR(">") tns:{STR("`") tns:tag_name -> tns}+}? STR("]") ->
-      () (* TODO *)  
+      assert false (* TODO *)  
   end
 
+(*
 let _ = set_grammar typeexpr (
   glr
     q:STR("`") id:ident ->
@@ -544,6 +545,58 @@ let _ = set_grammar typeexpr (
     STR(")") STR("#") cp:class_path ->
       assert false (* TODO *)
   end)
+*)
+
+let typexpr_base : core_type grammar =
+  glr
+    q:STR("`") id:ident ->
+      loc_typ _loc_q (Ptyp_var id)
+  | u:STR("_") ->
+      loc_typ _loc_u Ptyp_any
+  | p:STR("(") te:typeexpr STR(")") ->
+      loc_typ _loc_p te.ptyp_desc
+  | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
+      let opt = { txt = Lident "option"; loc = _loc_te } in
+      let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
+      loc_typ _loc_ln (Ptyp_arrow (ln, teopt, te'))
+  | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
+      loc_typ _loc_ln (Ptyp_arrow (ln, te, te'))
+  | tc:typeconstr ->
+      loc_typ _loc_tc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
+  | p:STR("(") te:typeexpr
+    tes:{STR(",") te:typeexpr -> te}* STR(")") tc:typeconstr ->
+      let constr = { txt = tc ; loc = _loc_tc } in
+      loc_typ _loc_p (Ptyp_constr (constr, te::tes))
+  | pvt:polymorphic_variant_type -> pvt
+  | s:STR("<") STR("..")? STR(">") ->
+      assert false (* TODO *)
+  | s:STR("<") mt:method_type
+    mst:{STR(";") mt:method_type -> mt} {x:STR(";") STR("..")?}? ->
+      assert false (* TODO *)
+  | s:STR("#") cp:class_path ->
+      assert false (* TODO *)
+  | p:STR("(") te:typeexpr
+    tes:{STR(",") te:typeexpr -> te}*
+    STR(")") STR("#") cp:class_path ->
+      assert false (* TODO *)
+  end
+
+let typexpr_aux : (core_type -> core_type) grammar =
+  glr
+    STR("->") te':typeexpr ->
+      (fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("_", te, te')))
+  | tes:{STR("*") te:typeexpr -> te}+ ->
+      (fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
+  | tc:typeconstr ->
+      (fun te -> loc_typ te.ptyp_loc
+        (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
+  | RE("as\\b") STR("`") id:ident ->
+      (fun te -> loc_typ te.ptyp_loc (Ptyp_alias (te, id)))
+  | STR("#") cp:class_path ->
+      (fun te -> loc_typ te.ptyp_loc (assert false (* TODO *)))
+  end
+
+let _ = set_grammar typeexpr typexpr_base (* TODO *)
 
 (****************************************************************************
  * Type and exception definitions                                           *
