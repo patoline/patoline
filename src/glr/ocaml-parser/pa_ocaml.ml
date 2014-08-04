@@ -454,21 +454,20 @@ let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
   glr
-    te:typeexpr ->
-      loc_typ _loc_te te.ptyp_desc
-  | ids:{STR("'") id:ident -> id}+ STR(".") te:typeexpr ->
+  | te:typeexpr -> te
+  | ids:{STR("'") id:ident}+ STR(".") te:typeexpr ->
       assert false (* TODO *)
   end
    
 let method_type =
   glr
-    mn:method_name STR(":") pte:poly_typexpr ->
+  | mn:method_name STR(":") pte:poly_typexpr ->
       () (* TODO *)
   end
 
 let tag_spec =
   glr
-    s:STR("`") tn:tag_name te:{RE("of\\b") te:typeexpr -> te}? ->
+  | STR("`") tn:tag_name te:{RE("of\\b") te:typeexpr}? ->
       () (* TODO *)
   | te:typeexpr ->
       () (* TODO *)
@@ -476,7 +475,7 @@ let tag_spec =
 
 let tag_spec_first =
   glr
-    tn:tag_name te:{RE("of\\b") te:typeexpr -> te} ->
+  | tn:tag_name te:{RE("of\\b") te:typeexpr} ->
       () (* TODO *)
   | te:typeexpr? STR("|") ts:tag_spec ->
       () (* TODO *)
@@ -484,8 +483,8 @@ let tag_spec_first =
 
 let tag_spec_full =
   glr
-    s:STR("`") tn:tag_name
-    tes:{RE("of\\b") STR("&")? te:typeexpr tes:{STR("&") te:typeexpr -> te}* -> (te::tes)}? ->
+  | STR("`") tn:tag_name tes:{RE("of\\b") STR("&")? te:typeexpr
+    tes:{STR("&") te:typeexpr}* -> (te::tes)}? ->
       () (* TODO *)
   | te:typeexpr ->
       () (* TODO *)
@@ -493,15 +492,14 @@ let tag_spec_full =
 
 let polymorphic_variant_type : core_type grammar =
   glr
-    s:STR("[") tsf:tag_spec_first tss:{STR("|")
+  | STR("[") tsf:tag_spec_first tss:{STR("|")
     ts:tag_spec -> ts}* STR("]") ->
       assert false (* TODO *) 
-  | s:STR("[>") ts:tag_spec?
+  | STR("[>") ts:tag_spec?
     tss:{STR("|") ts:tag_spec}* STR("]") ->
       assert false (* TODO *) 
-  | s:STR("[<") STR("|")? tfs:tag_spec_full
-    tsfs:{STR("|") tsf:tag_spec_full -> tsf}
-    tns:{STR(">") tns:{STR("`") tns:tag_name -> tns}+}? STR("]") ->
+  | STR("[<") STR("|")? tfs:tag_spec_full tsfs:{STR("|") tsf:tag_spec_full}
+    tns:{STR(">") tns:{STR("`") tns:tag_name}+}? STR("]") ->
       assert false (* TODO *)  
   end
 
@@ -549,33 +547,32 @@ let next_type_prio = function
 let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   glr
   | STR("->") te':(typeexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
-      (Arr, fun te -> loc_typ te.ptyp_loc (Ptyp_arrow ("", te, te')))
-  | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod)) -> te}+  when lvl' > Prod && lvl <= Prod->
-      (Prod, fun te -> loc_typ te.ptyp_loc (Ptyp_tuple (te::tes)))
+      (Arr, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_arrow ("", te, te')))
+  | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod))}+  when lvl' > Prod && lvl <= Prod->
+      (Prod, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
-      (AppType, fun te -> loc_typ te.ptyp_loc
+      (AppType, fun te -> loc_typ (merge te.ptyp_loc _loc)
         (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | RE("as\\b") STR("`") id:ident when lvl' >= As && lvl <= As ->
-      (As, fun te -> loc_typ te.ptyp_loc (Ptyp_alias (te, id)))
+      (As, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_alias (te, id)))
   | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
-      (Dash, fun te -> loc_typ te.ptyp_loc (assert false (* TODO *)))
+      (Dash, fun te -> loc_typ (merge te.ptyp_loc _loc) (assert false (* TODO *)))
   end)
 
 let typeexpr_suit =
   let f type_suit =
-    memoize2
-      (fun lvl' lvl ->
-       option (lvl', fun f -> f) (
-		dependent_sequence (typeexpr_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) 
-										      (type_suit lvl'' lvl))))
+    memoize2 (fun lvl' lvl -> option (lvl', fun f -> f) (
+      dependent_sequence (typeexpr_suit_aux lvl' lvl)
+        (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) (type_suit lvl'' lvl))
+    ))
   in
   let rec res x y = f res x y in
   res
 
 let _ = set_typeexpr_lvl (fun lvl ->
   glr
-    t:typeexpr_base ft:(typeexpr_suit AtomType lvl) -> snd ft t
-  end) type_prios 	      
+  | t:typeexpr_base ft:(typeexpr_suit AtomType lvl) -> snd ft t
+  end) type_prios
 
 let _ = set_grammar typeexpr (typeexpr_lvl TopType)
 
