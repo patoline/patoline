@@ -27,7 +27,6 @@ open Typography.ConfigUtil
 open CamomileLibrary
 open Typography.Box
 open Printf
-module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
 
 let id x=x
 let emph x=toggleItalic x

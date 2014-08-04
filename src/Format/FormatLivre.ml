@@ -26,8 +26,6 @@ open Util
 open Box
 (* open Binary *)
 open CamomileLibrary
-module CM = CamomileLibraryDefault.Camomile.CaseMap.Make(CamomileLibrary.UTF8)
-
 
 let boxes_width env contents = 
   let boxes = boxify_scoped env contents in
