@@ -357,11 +357,13 @@ let inst_var_name   = lowercase_ident
 let method_name     = lowercase_ident
 
 (* Refering to named objects *)
+(*
 let module_path =
   glr
-  | mn:module_name mns:{STR(".") m:module_name}* ->
+  | mn:module_name mns:{STR(".") m:module_name}** ->
       List.fold_left (fun acc m -> Ldot(acc, m)) (Lident mn) mns
   end
+*)
  
 let extended_module_path = declare_grammar ()
 
@@ -373,7 +375,7 @@ let extended_module_name =
 
 let _ = set_grammar extended_module_path (
   glr
-  | emn:extended_module_name emns:{STR(".") emn:extended_module_name}* ->
+  | emn:extended_module_name emns:{STR(".") emn:extended_module_name}** ->
       let rec ldot_cons emn emn' =
         match emn' with
         | Lident mn       -> Ldot(emn, mn)
@@ -382,6 +384,8 @@ let _ = set_grammar extended_module_path (
       in
       List.fold_left (fun acc m -> ldot_cons acc m) emn emns
   end)
+
+let module_path = extended_module_path
 
 let value_path =
   glr
@@ -733,8 +737,9 @@ type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
 let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; ConstrPat
                     ; LazyPat ; RangePat ; AtomPat ]
 
-let pattern = declare_grammar ()
 let pattern_lvl, set_pattern_lvl = grammar_family ()
+let pattern = pattern_lvl TopPat
+
 let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 
 let pattern_base = memoize1 (fun lvl ->
@@ -846,8 +851,6 @@ let _ = set_pattern_lvl (fun lvl ->
   | t:(pattern_base lvl) ft:(pattern_suit AtomPat lvl) -> (snd ft) (snd t)
   end) pattern_prios
 
-let _ = set_grammar pattern (pattern_lvl TopPat)
-
 (****************************************************************************
  * Expressions                                                              *
  ****************************************************************************)
@@ -955,20 +958,6 @@ let bigarray_set loc arr arg newval =
   | coords ->
       loc_expr loc (Pexp_apply(bigarray_function loc "Genarray" "set",
                        ["", arr; "", loc_expr loc (Pexp_array coords); "", newval]))
-
-let module_path = declare_grammar ()
-
-let module_path_aux =
-  glr
-    id:ident l:{ STR"(" m:module_path STR")" }* ->
-      List.fold_left (fun acc m -> Longident.Lapply(acc, m)) (Longident.Lident id) l
-  end
-
-let _ = set_grammar module_path (
-  glr
-    m:module_path_aux l:{ STR(".") m:ident }* ->
-     List.fold_left (fun acc m -> Longident.Ldot(acc, m)) m l
-  end)
 
 let constructor =
   glr

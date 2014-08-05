@@ -1,9 +1,7 @@
 exception Invalid_arg of string * string
 exception Invalid_arg2 = Incalid_arg
 
-(* FIXME
-exception Piouf = Module . PioufPiouf
-*)
+exception Piouf = Module(PioufPiouf.Ploup(Plap))(Bricabrac).Paf
 
 type abstract
 
