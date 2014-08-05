@@ -824,8 +824,8 @@ let pattern_suit =
     memoize2
       (fun lvl' lvl ->
          glr
-         | t1 as (p1,f1):(pattern_suit_aux lvl' lvl) ->> t2 as (p2,f2):(pat_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
-         | (empty ()) -> (lvl', fun f -> f) 
+         | (p1,f1):(pattern_suit_aux lvl' lvl) ->> (p2,f2):(pat_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | EMPTY -> (lvl', fun f -> f) 
          end)
   in
   let rec res x y = f res x y in
