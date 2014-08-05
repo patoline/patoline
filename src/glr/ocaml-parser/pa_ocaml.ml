@@ -564,8 +564,8 @@ let typeexpr_suit =
     memoize2
       (fun lvl' lvl ->
          glr
-         | t1 as (p1,f1):(typeexpr_suit_aux lvl' lvl) ->> t2 as (p2,f2):(type_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
-         | (empty ()) -> (lvl', fun f -> f) 
+         | (p1,f1):(typeexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | EMPTY -> (lvl', fun f -> f) 
          end)
   in
   let rec res x y = f res x y in
@@ -990,7 +990,7 @@ let type_coercion =
 let expression_list =
   glr
     e:(expression (next_exp Seq)) l:{ STR(";") e:(expression (next_exp Seq)) }* STR(";")? -> (e::l)
-  | (empty ()) -> []
+  | EMPTY -> []
   end
 
 let record_item = 
@@ -1002,7 +1002,7 @@ let record_item =
 let record_list =
   glr
     it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
-  | (empty ()) -> []
+  | EMPTY -> []
   end
 
 let expression_desc = memoize1 (fun lvl ->
@@ -1098,15 +1098,15 @@ let expression_suit =
     memoize2
       (fun lvl' lvl ->
          glr
-         | t1 as p1,f1:(expression_suit_aux lvl' lvl) ->> t2 as p2,f2:(expression_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
-         | (empty ()) -> (lvl', fun f -> f) end)
+         | (p1,f1):(expression_suit_aux lvl' lvl) ->> (p2,f2):(expression_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | EMPTY -> (lvl', fun f -> f) end)
   in
   let rec res x y = f res x y in
   res
 
 let _ = set_expression (fun lvl ->
     glr
-      e as (lvl',e'):(expression_desc lvl) ->> f:(expression_suit lvl' lvl) -> snd f (loc_expr (merge _loc_e _loc) e')
+      (lvl',e' as e):(expression_desc lvl) ->> f:(expression_suit lvl' lvl) -> snd f (loc_expr (merge _loc_e _loc) e')
     end) expression_lvls
 
 let override_flag =

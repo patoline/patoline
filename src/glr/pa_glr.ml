@@ -319,7 +319,10 @@ EXTEND Gram
   ] ];
 
   glr_ident: [ [
-    id = LIDENT ; "as" ; p = patt ; ":" -> id, Some p
+    "(" ; p = patt ; ")" ; ":" -> 
+	       (match p with <:patt< ($p$ as $lid:id$)>> -> id, Some p
+                          | <:patt< ($lid:id$)>> -> id, None
+			  | _ -> "_", Some p)
   | id = LIDENT; ":" -> id, None
   | -> "_", None
   ] ];
@@ -330,6 +333,12 @@ EXTEND Gram
   | "EOF"; opt = glr_opt_expr ->
       let e = match opt with None -> <:expr<()>> | Some e -> e in
       <:expr<Glr.eof $e$>>
+
+  | "EMPTY" ->
+      <:expr<Glr.empty ()>>
+
+  | "FAIL" ->
+      <:expr<Glr.fail ()>>
 
   | "STR"; str = expr LEVEL "simple"; opt = glr_opt_expr ->
       let e = match opt with None -> <:expr<()>> | Some e -> e in
