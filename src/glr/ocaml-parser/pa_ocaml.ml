@@ -563,9 +563,10 @@ let typeexpr_suit =
   let f type_suit =
     memoize2
       (fun lvl' lvl ->
-       option (lvl', fun f -> f) (
-		dependent_sequence (typeexpr_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) 
-										      (type_suit lvl'' lvl))))
+         glr
+         | t1 as (p1,f1):(typeexpr_suit_aux lvl' lvl) ->> t2 as (p2,f2):(type_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | (empty ()) -> (lvl', fun f -> f) 
+         end)
   in
   let rec res x y = f res x y in
   res
