@@ -113,3 +113,7 @@ let f38b x = match x:t1 with
 let f39 = function A -> B | B -> A
 
 let f40 g x y = x:int + (g y:int):int
+
+let f41 = "toto", "ta
+  ta", "ti\
+        ti"

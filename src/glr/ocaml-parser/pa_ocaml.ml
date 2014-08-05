@@ -224,14 +224,16 @@ let float_literal =
   end
 
 (* Character literals *)
-let char_regular = "[ !#-&(-Z^-~]\\|\\[\\|\\]"
+let char_regular = "[^\\']"
+let string_regular = "[^\\\"]"
 let char_escaped = "[\\\\][\\\\\\\"\\\'ntbrs ]"
 let char_dec     = "[\\\\][0-9][0-9][0-9]"
 let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
 
-let one_char =
+let one_char is_char =
   glr
-    c:RE(char_regular) -> c.[0]
+    c:RE(char_regular) when is_char -> c.[0]
+  | c:RE(string_regular) when not is_char -> c.[0]
   | c:RE(char_escaped) -> (match c.[1] with
                             | 'n' -> '\n'
                             | 't' -> '\t'
@@ -251,7 +253,7 @@ let one_char =
 
 let char_literal =
   change_layout (
-    glr STR("\'") c:one_char STR("\'") -> c end
+    glr STR("\'") c:(one_char true) STR("\'") -> c end
   ) no_blank
 
 (* String literals *)
@@ -268,8 +270,8 @@ let string_literal =
   in
   change_layout (
     glr
-      STR("\"") lc:one_char*
-        lcs:(glr RE(interspace) lc:one_char** -> lc end)*
+      STR("\"") lc:(one_char false)*
+        lcs:(glr RE(interspace) lc:(one_char false)* -> lc end)*
         STR("\"") -> char_list_to_string (List.flatten (lc::lcs))
     end
   ) no_blank
