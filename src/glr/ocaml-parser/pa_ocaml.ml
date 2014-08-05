@@ -461,51 +461,68 @@ let poly_typexpr =
   glr
   | te:typeexpr -> te
   | ids:{STR("'") id:ident}+ STR(".") te:typeexpr ->
-      assert false (* TODO *)
+      loc_typ _loc (Ptyp_poly (ids, te))
   end
    
+let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
 let method_type =
   glr
   | mn:method_name STR(":") pte:poly_typexpr ->
-      () (* TODO *)
+      pfield_loc _loc (Pfield (mn, pte))
   end
 
 let tag_spec =
   glr
   | STR("`") tn:tag_name te:{RE("of\\b") te:typeexpr}? ->
-      () (* TODO *)
+      let t = match te with
+              | None   -> []
+              | Some l -> [l]
+      in
+      Rtag (tn, false, t)
   | te:typeexpr ->
-      () (* TODO *)
+      Rinherit te
   end
 
 let tag_spec_first =
   glr
-  | tn:tag_name te:{RE("of\\b") te:typeexpr} ->
-      () (* TODO *)
+  | tn:tag_name te:{RE("of\\b") te:typeexpr}? ->
+      let t = match te with
+              | None   -> []
+              | Some l -> [l]
+      in
+      [Rtag (tn, false, t)]
   | te:typeexpr? STR("|") ts:tag_spec ->
-      () (* TODO *)
+      match te with
+      | None    -> [ts]
+      | Some te -> [Rinherit te; ts]
   end
 
 let tag_spec_full =
   glr
   | STR("`") tn:tag_name tes:{RE("of\\b") STR("&")? te:typeexpr
     tes:{STR("&") te:typeexpr}* -> (te::tes)}? ->
-      () (* TODO *)
+      let tes = match tes with
+                | None   -> []
+                | Some l -> l
+      in
+      Rtag (tn, false, tes)
   | te:typeexpr ->
-      () (* TODO *)
+      Rinherit te
   end
 
 let polymorphic_variant_type : core_type grammar =
   glr
-  | STR("[") tsf:tag_spec_first tss:{STR("|")
-    ts:tag_spec -> ts}* STR("]") ->
-      assert false (* TODO *) 
-  | STR("[>") ts:tag_spec?
-    tss:{STR("|") ts:tag_spec}* STR("]") ->
-      assert false (* TODO *) 
-  | STR("[<") STR("|")? tfs:tag_spec_full tsfs:{STR("|") tsf:tag_spec_full}
+  | STR("[") tsf:tag_spec_first tss:{STR("|") ts:tag_spec}* STR("]") ->
+      loc_typ _loc (Ptyp_variant (tsf @ tss, true, None))
+  | STR("[>") ts:tag_spec? tss:{STR("|") ts:tag_spec}* STR("]") ->
+      let tss = match ts with
+                | None    -> tss
+                | Some ts -> ts :: tss
+      in
+      loc_typ _loc (Ptyp_variant (tss, false, None))
+  | STR("[<") STR("|")? tfs:tag_spec_full tfss:{STR("|") tsf:tag_spec_full}*
     tns:{STR(">") tns:{STR("`") tns:tag_name}+}? STR("]") ->
-      assert false (* TODO *)  
+      loc_typ _loc (Ptyp_variant (tfs :: tfss, true, tns))
   end
 
 let typeexpr_base : core_type grammar =
@@ -528,11 +545,13 @@ let typeexpr_base : core_type grammar =
       let constr = { txt = tc ; loc = _loc_tc } in
       loc_typ _loc (Ptyp_constr (constr, te::tes))
   | pvt:polymorphic_variant_type -> pvt
-  | STR("<") STR("..")? STR(">") ->
-      assert false (* TODO *)
-  | STR("<") mt:method_type mts:{STR(";") mt:method_type -> mt}*
-    {_sc:STR(";") STR("..")?}? ->
-      assert false (* TODO *)
+  | STR("<") rv:STR("..")? STR(">") ->
+      let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
+      loc_typ _loc (Ptyp_object ml)
+  | STR("<") mt:method_type mts:{STR(";") mt:method_type}*
+    rv:{STR(";") rv:STR("..")?}? ->
+      let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
+      loc_typ _loc (Ptyp_object (mt :: mts @ ml))
   | STR("#") cp:class_path ->
       assert false (* TODO *)
   | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")")
