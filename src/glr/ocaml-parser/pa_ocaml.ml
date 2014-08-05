@@ -803,20 +803,22 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   glr
   | RE("as\\b") vn:value_name when lvl' > AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
-        { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
-        ; ppat_loc = merge p.ppat_loc _loc })
+        let loc = merge p.ppat_loc _loc in
+        loc_pat loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
   | STR("|") p':pattern when lvl' > AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
-        { ppat_desc = Ppat_or(p, p')
-        ; ppat_loc = merge p.ppat_loc _loc })
+        let loc = merge p.ppat_loc _loc in
+        loc_pat loc (Ppat_or(p, p')))
   | ps:{STR(",") p:pattern -> p}+ when lvl' > TupPat && lvl <= TupPat ->
       (TupPat, fun p ->
-        { ppat_desc = Ppat_tuple(p::ps)
-        ; ppat_loc = merge p.ppat_loc _loc })
-  | STR("::") p':pattern when lvl' > ConsPat && lvl <= ConsPat ->
+        let loc = merge p.ppat_loc _loc in
+        loc_pat loc (Ppat_tuple(p::ps)))
+  | c:STR("::") p':pattern when lvl' > ConsPat && lvl <= ConsPat ->
       (ConsPat, fun p ->
-        { ppat_desc = assert false (* TODO *)
-        ; ppat_loc = merge p.ppat_loc _loc })
+        let loc = merge p.ppat_loc _loc in
+        let cons = { txt = Lident "::"; loc = _loc_c } in
+        let args = loc_pat _loc (Ppat_tuple [p; p']) in
+        loc_pat loc (Ppat_construct(cons, Some args, false)))
   end)
 
 let pattern_suit =
