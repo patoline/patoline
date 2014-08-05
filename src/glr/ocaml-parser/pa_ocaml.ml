@@ -448,8 +448,8 @@ type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
 
 let type_prios = [TopType; As; Arr; Prod; Dash; AppType; AtomType]
 
-let typeexpr = declare_grammar ()
 let typeexpr_lvl, set_typeexpr_lvl = grammar_family ()
+let typeexpr = typeexpr_lvl TopType
 let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
@@ -575,8 +575,6 @@ let _ = set_typeexpr_lvl (fun lvl ->
   glr
   | t:typeexpr_base ft:(typeexpr_suit AtomType lvl) -> snd ft t
   end) type_prios
-
-let _ = set_grammar typeexpr (typeexpr_lvl TopType)
 
 (****************************************************************************
  * Type and exception definitions                                           *
@@ -902,7 +900,8 @@ let infix_prio s =
 let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
 
-let (expression, set_expression) = grammar_family ()
+let (expression_lvl, set_expression_lvl) = grammar_family ()
+let expression= expression_lvl Top
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 
 let array_function loc str name =
@@ -970,11 +969,11 @@ let constructor =
 
 let argument =
   glr
-    STR("~") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (id, e)
-  | STR("?") id:lowercase_ident STR(":") e:(expression (next_exp App)) -> (("?"^id), e)
+    STR("~") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
+  | STR("?") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (("?"^id), e)
   | STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
   | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
-  | e:(expression (next_exp App)) -> ("", e)
+  | e:(expression_lvl (next_exp App)) -> ("", e)
   end
 
 let parameter =
@@ -989,13 +988,13 @@ let parameter =
       (id, None, pat))
   | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
   | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typeexpr -> t }? e:{STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typeexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typeexpr -> t }? e:{ STR"=" e:(expression Top) -> e}? STR")" -> (
+  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typeexpr -> t }? e:{ STR"=" e:expression -> e}? STR")" -> (
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
@@ -1006,7 +1005,7 @@ let parameter =
 
 let right_member =
   glr
-    l:{lb:parameter}* STR("=") e:(expression Top) -> 
+    l:{lb:parameter}* STR("=") e:expression -> 
       List.fold_right (fun (lbl,opt,pat) e ->
 		       loc_expr _loc (Pexp_function (lbl, opt, [pat, e]))) l e
   end
@@ -1018,8 +1017,8 @@ let value_binding =
 
 let match_cases = memoize1 (fun lvl ->
   glr
-     l:{STR"|"? pat:pattern STR"->" e:(expression lvl) 
-         l:{STR"|" pat:pattern STR"->" e:(expression lvl) -> (pat,e)}*
+     l:{STR"|"? pat:pattern STR"->" e:(expression_lvl lvl) 
+         l:{STR"|" pat:pattern STR"->" e:(expression_lvl lvl) -> (pat,e)}*
          -> ((pat,e)::l)}?[[]] -> l
   end)
 
@@ -1031,13 +1030,13 @@ let type_coercion =
 
 let expression_list =
   glr
-    e:(expression (next_exp Seq)) l:{ STR(";") e:(expression (next_exp Seq)) }* STR(";")? -> (e::l)
+    e:(expression_lvl (next_exp Seq)) l:{ STR(";") e:(expression_lvl (next_exp Seq)) }* STR(";")? -> (e::l)
   | EMPTY -> []
   end
 
 let record_item = 
   glr
-    f:field STR("=") e:(expression (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
+    f:field STR("=") e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
   | f:lowercase_ident -> (let id = { txt = Longident.Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
   end
 
@@ -1047,41 +1046,65 @@ let record_list =
   | EMPTY -> []
   end
 
-let expression_desc = memoize1 (fun lvl ->
+(****************************************************************************
+ * classes and objects                                                      *
+ ****************************************************************************)
+
+let obj_item = 
+  glr 
+    v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
+  end
+
+let class_field =
+  fail () (* TODO *)
+
+let class_body =
   glr
-    id:value_path -> (Atom, Pexp_ident { txt = id; loc = _loc_id })
-  | c:constant -> (Atom, Pexp_constant c)
-  | RE("let\\b") r:RE("rec\\b")? l:value_binding RE("in\\b") e:(expression (let_prio lvl)) when (lvl < App)
-    -> (Let, Pexp_let ((if r = None then Nonrecursive else Recursive), l, e))
-  | RE("function\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_function("", None, l))
-  | RE("fun\\b") l:{lbl:parameter}* STR"->" e:(expression (let_prio lvl)) when (lvl < App) -> 
-     (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e).pexp_desc)
-  | RE("match\\b") e:(expression Top) RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_match(e, l))
-  | RE("try\\b") e:(expression Top) RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, Pexp_try(e, l))
-  | RE("if\\b") c:(expression Top) RE("then\\b") e:(expression If) e':{RE("else\\b") e:(expression If)}? when (lvl <= If) ->
-     (If, Pexp_ifthenelse(c,e,e'))
-  | STR("(") e:(expression Top) STR(")") -> (Atom, e.pexp_desc)
-  | STR("(") STR(")") -> (Atom, Pexp_tuple([]))
-  | RE("begin\\b") e:(expression Top) RE("end\\b") -> (Atom, e.pexp_desc)
-    (* FIXME: à quoi sert ce booleen, il esr toujours faux dans le parser d'OCaml *)
-  | c:constructor e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_construct({ txt = c; loc = _loc_c},e,false)) 
-  | STR("`") l:RE(ident_re) e:{e:(expression App)}? when (lvl <= App) -> (App, Pexp_variant(l,e)) 
-  | STR("[|") l:expression_list STR("|]") -> (Atom, Pexp_array l)
+    p:pattern? f:class_field* -> 
+      let p = match p with None -> loc_pat _loc_p Ppat_any | Some p -> p in
+      { pcstr_pat = p; pcstr_fields = f }
+  end
+
+let expression_base = memoize1 (fun lvl ->
+  glr
+    id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
+  | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
+  | RE("let\\b") r:RE("rec\\b")? l:value_binding RE("in\\b") e:(expression_lvl (let_prio lvl)) when (lvl < App)
+    -> (Let, loc_expr _loc (Pexp_let ((if r = None then Nonrecursive else Recursive), l, e)))
+  | RE("function\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
+  | RE("fun\\b") l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
+     (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
+  | RE("match\\b") e:expression RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
+  | RE("try\\b") e:expression RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
+  | RE("if\\b") c:expression RE("then\\b") e:(expression_lvl If) e':{RE("else\\b") e:(expression_lvl If)}? when (lvl <= If) ->
+     (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
+  | STR("(") e:expression STR(")") -> (Atom, e)
+  | STR("(") STR(")") -> (Atom, loc_expr _loc (Pexp_tuple([])))
+  | RE("begin\\b") e:expression RE("end\\b") -> (Atom, e)
+  | RE("begin\\b") RE("end\\b") -> (Atom, loc_expr _loc (Pexp_tuple([])))
+  | c:constructor e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},e,false)))
+  | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
+  | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
      (Atom, (List.fold_right (fun x acc ->
        loc_expr _loc (Pexp_construct({ txt = Longident.Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
-		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))).pexp_desc)
-  | STR("{") e:{e:(expression Top) RE("with\\b")}? l:record_list STR("}") ->
-     (Atom, Pexp_record(l,e))
-  | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression lvl') when lvl <= lvl' -> 
+		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))))
+  | STR("{") e:{e:expression RE("with\\b")}? l:record_list STR("}") ->
+     (Atom, loc_expr _loc (Pexp_record(l,e)))
+  | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
-     (lvl', Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e]))
-  | RE("while\\b")  e:(expression Top) RE("do\\b") e':(expression Top) RE("done\\b") ->
-      (Atom, Pexp_while(e, e'))
+     (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e])))
+  | RE("while\\b")  e:expression RE("do\\b") e':expression RE("done\\b") ->
+      (Atom, loc_expr _loc (Pexp_while(e, e')))
   | RE("for\\b") id:lowercase_ident STR("=")  
-      e:(expression Top) d:RE("\\(down\\)?to\\b") e':(expression Top) RE("do\\b") e'':(expression Top) RE("done\\b") ->
+      e:expression d:RE("\\(down\\)?to\\b") e':expression RE("do\\b") e'':expression RE("done\\b") ->
         (let dir = if d = "to" then Upto else Downto in
-         (Atom, Pexp_for({ txt = id ; loc = _loc_id}, e, e', dir, e'')))
+         (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', dir, e''))))
+  | RE("new\\b") p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
+  | RE("object\\b") o:class_body RE("end\\b") -> (Atom, loc_expr _loc (Pexp_object o))
+  | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) -> (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
+  | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l } STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
+  | STR("{<") STR(">}") -> (Atom, loc_expr _loc (Pexp_override []))
   end)
 
 let apply_lbl _loc (lbl, e) =
@@ -1099,33 +1122,35 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
       (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
-  | l:{STR(",") e:(expression (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
+  | l:{STR(",") e:(expression_lvl (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
-  | l:{STR(";") e:(expression (next_exp Seq)) -> e}+ STR(";")? when (lvl' > Seq && lvl <= Seq) -> 
+  | l:{STR(";") e:(expression_lvl (next_exp Seq)) -> e}+ STR(";")? when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
   | STR(";") when (lvl' > Seq && lvl <= Seq) -> (Seq, fun f -> f) 
-  | STR(".") STR("(") f:(expression Top) STR(")") STR("<-") e:(expression (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
+  | STR(".") STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
-  | STR(".") STR("(") f:(expression Top) STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
+  | STR(".") STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "get",[("",e');("",f)])))
-  | STR(".") STR("[") f:(expression Top) STR("]") STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  | STR(".") STR("[") f:expression STR("]") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "set",[("",e');("",f);("",e)]))) 
-  | STR(".") STR("[") f:(expression Top) STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
+  | STR(".") STR("[") f:expression STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "get",[("",e');("",f)])))
-  | STR(".") STR("{") f:(expression Top) STR("}") STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  | STR(".") STR("{") f:expression STR("}") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' -> bigarray_set _loc e' f e)
-  | STR(".") STR("{") f:(expression Top) STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
+  | STR(".") STR("{") f:expression STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> bigarray_get _loc e' f)
-  | STR(".") f:field STR("<-") e:(expression (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  | STR(".") f:field STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' ->
 	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
   | STR(".") f:field when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' ->
 	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f)))
+  | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
+      (Dash, fun e' -> loc_expr _loc (Pexp_send(e',f)))
   | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
       (Coerce, fun e' -> loc_expr _loc (Pexp_constraint(e', fst t, snd t)))
   | op:infix_op ->> let p = infix_prio op in let a = assoc p in 
-                    e:(expression (if a = Right then p else next_exp p))
+                    e:(expression_lvl (if a = Right then p else next_exp p))
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
       (p, fun e' -> loc_expr (merge _loc_e _loc) (
 	if op = "::" then
@@ -1146,9 +1171,9 @@ let expression_suit =
   let rec res x y = f res x y in
   res
 
-let _ = set_expression (fun lvl ->
+let _ = set_expression_lvl (fun lvl ->
     glr
-      (lvl',e' as e):(expression_desc lvl) ->> f:(expression_suit lvl' lvl) -> snd f (loc_expr (merge _loc_e _loc) e')
+      (lvl',e as e0):(expression_base lvl) ->> (_,f):(expression_suit lvl' lvl) -> loc_expr (merge _loc_e0 _loc) (f e).pexp_desc
     end) expression_lvls
 
 let override_flag =
@@ -1156,7 +1181,7 @@ let override_flag =
     o:STR("!")? -> (if o <> None then Override else Fresh)
   end
 
-let structure_item_desc =
+let structure_item_base =
   glr
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
@@ -1165,7 +1190,7 @@ let structure_item_desc =
 
 let structure_item =
   glr
-    s:structure_item_desc -> { pstr_desc = s; pstr_loc = _loc; }
+    s:structure_item_base -> { pstr_desc = s; pstr_loc = _loc; }
   end
 
 let structure =
@@ -1173,11 +1198,11 @@ let structure =
     l : structure_item* EOF -> l
   end
 
-let signature_item_desc = fail () (* not yet written *)
+let signature_item_base = fail () (* not yet written *)
 
 let signature_item =
   glr
-    s:signature_item_desc -> { psig_desc = s; psig_loc = _loc; }
+    s:signature_item_base -> { psig_desc = s; psig_loc = _loc; }
   end
 
 let signature =

@@ -59,13 +59,16 @@ IFDEF DEBUG THEN
 ENDIF;
   r
 
+let not_ready _ = failwith "not_ready"
+
 let declare_grammar () = {
-  firsts = Lazy.from_fun (fun () -> failwith "not_ready");
-  accept_empty = Lazy.from_fun (fun () -> failwith "not_ready");
-  parse = (fun _ -> failwith "not_ready");
+  firsts = Lazy.from_fun not_ready;
+  accept_empty = Lazy.from_fun not_ready;
+  parse = not_ready;
 }
 
 let set_grammar p1 p2 =
+  if p1.parse != not_ready then failwith "this grammar can not be set";
   p1.firsts <- p2.firsts;
   p1.accept_empty <- p2.accept_empty;
   p1.parse <- p2.parse
