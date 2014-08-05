@@ -772,12 +772,11 @@ let pattern_base = memoize1 (fun lvl ->
       in
       (AtomPat, loc_pat _loc_s (Ppat_record (all, cl)))
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
-      (* FIXME don't know how to handle loc in this case since it is syntactic sugar (isn't it?) *)
-      let nil = { txt = Lident "[]"; loc = _loc_p } in
+      let nil = { txt = Lident "[]"; loc = _loc } in
       let cons x xs =
-        let c = { txt = Lident "::"; loc = x.ppat_loc } in
-        let cons = Ppat_construct (c, Some (loc_pat x.ppat_loc (Ppat_tuple [x;xs])), false) in
-        loc_pat x.ppat_loc cons
+        let c = { txt = Lident "::"; loc = _loc } in
+        let cons = Ppat_construct (c, Some (loc_pat _loc (Ppat_tuple [x;xs])), false) in
+        loc_pat _loc cons
       in
       (AtomPat, List.fold_right cons (p::ps) (loc_pat _loc_p (Ppat_construct (nil, None, false))))
   | s:STR("[") STR("]") ->
