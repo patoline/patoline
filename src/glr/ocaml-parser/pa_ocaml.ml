@@ -577,7 +577,7 @@ let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> cor
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
       (AppType, fun te -> loc_typ (merge te.ptyp_loc _loc)
         (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
-  | RE("as\\b") STR("`") id:ident when lvl' >= As && lvl <= As ->
+  | RE("as\\b") STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_alias (te, id)))
   | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
       (Dash, fun te -> loc_typ (merge te.ptyp_loc _loc) (assert false (* TODO *)))
@@ -609,7 +609,7 @@ type variance = Covariant | Contravariant
 
 let type_param =
   glr
-    var:RE("[+-]")? STR("`") id:ident ->
+    var:RE("[+-]")? STR("'") id:ident ->
       let variance =
         match var with
         | None     -> (false, false)
@@ -633,7 +633,7 @@ let type_equation =
 
 let type_constraint =
   glr
-    s:RE("\\bconstraint\\b") STR("`") id:ident STR("=") te:typeexpr ->
+    s:RE("\\bconstraint\\b") STR("'") id:ident STR("=") te:typeexpr ->
       loc_typ _loc_id (Ptyp_var id), te, _loc_s
   end
 
