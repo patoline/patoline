@@ -561,10 +561,11 @@ let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> cor
 
 let typeexpr_suit =
   let f type_suit =
-    memoize2 (fun lvl' lvl -> option (lvl', fun f -> f) (
-      dependent_sequence (typeexpr_suit_aux lvl' lvl)
-        (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) (type_suit lvl'' lvl))
-    ))
+    memoize2
+      (fun lvl' lvl ->
+       option (lvl', fun f -> f) (
+		dependent_sequence (typeexpr_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) 
+										      (type_suit lvl'' lvl))))
   in
   let rec res x y = f res x y in
   res
@@ -977,7 +978,7 @@ let match_cases = memoize1 (fun lvl ->
      l:{STR"|"? pat:pattern STR"->" e:(expression lvl) 
          l:{STR"|" pat:pattern STR"->" e:(expression lvl) -> (pat,e)}*
          -> ((pat,e)::l)}?[[]] -> l
-			    end)
+  end)
 
 let type_coercion =
   glr
@@ -1003,7 +1004,7 @@ let record_list =
   | (empty ()) -> []
   end
 
-let expression_desc lvl =
+let expression_desc = memoize1 (fun lvl ->
   glr
     id:value_path -> (Atom, Pexp_ident { txt = id; loc = _loc_id })
   | c:constant -> (Atom, Pexp_constant c)
@@ -1029,21 +1030,16 @@ let expression_desc lvl =
 		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))).pexp_desc)
   | STR("{") e:{e:(expression Top) RE("with\\b")}? l:record_list STR("}") ->
      (Atom, Pexp_record(l,e))
-  | e:(dependent_sequence (locate prefix_symbol) (
-			    fun (_loc_p, p) ->
-			    let lvl' = prefix_prio p in
-			    let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
-			    if lvl > lvl' then raise Give_up;
-			    glr e:(expression lvl') ->
-				  (lvl', Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e])) end)) -> e
+  | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression lvl') when lvl <= lvl' -> 
+     let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
+     (lvl', Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e]))
   | RE("while\\b")  e:(expression Top) RE("do\\b") e':(expression Top) RE("done\\b") ->
       (Atom, Pexp_while(e, e'))
   | RE("for\\b") id:lowercase_ident STR("=")  
       e:(expression Top) d:RE("\\(down\\)?to\\b") e':(expression Top) RE("do\\b") e'':(expression Top) RE("done\\b") ->
         (let dir = if d = "to" then Upto else Downto in
          (Atom, Pexp_for({ txt = id ; loc = _loc_id}, e, e', dir, e'')))
-
-  end
+  end)
 
 let apply_lbl _loc (lbl, e) =
   let e = match e with
@@ -1085,35 +1081,32 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
 	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f)))
   | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
       (Coerce, fun e' -> loc_expr _loc (Pexp_constraint(e', fst t, snd t)))
-  | a:(dependent_sequence (glr k:infix_op -> (_loc_k, k) end)
-		       (fun (_loc_k, k) ->
-			let p = infix_prio k in
-			let a = assoc p in
-			if lvl > p || lvl' < p || (a <> Left && lvl' = p) then raise Give_up;
-			let p' = if a = Right then p else next_exp p in
-			let res e f =
-			  if k = "::" then
-			    Pexp_construct({ txt = Longident.Lident "::"; loc = _loc_k}, Some (loc_expr _loc_k (Pexp_tuple [f;e])), false)
-			  else 
-			    Pexp_apply(loc_expr _loc_k (Pexp_ident { txt = Longident.Lident k; loc = _loc_k }),
-                                       [("", f) ; ("", e)])
-			in
-			apply (fun e -> p, fun f -> res e f) (expression p')))
-       -> (let p, f = a in p, fun e -> loc_expr _loc (f e))
+  | op:infix_op ->> let p = infix_prio op in let a = assoc p in 
+                    e:(expression (if a = Right then p else next_exp p))
+                      when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
+      (p, fun e' -> loc_expr (merge _loc_e _loc) (
+	if op = "::" then
+	  Pexp_construct({ txt = Longident.Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
+	else 
+	  Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Longident.Lident op; loc = _loc_op }),
+                     [("", e') ; ("", e)])))
   end)
 
 let expression_suit =
   let f expression_suit =
     memoize2
       (fun lvl' lvl ->
-       option (lvl', fun f -> f) (
-		dependent_sequence (expression_suit_aux lvl' lvl) (fun (lvl'', f1) -> apply (fun (p,f2) -> (p, fun f -> f2 (f1 f))) (expression_suit lvl'' lvl))))
+         glr
+         | t1 as p1,f1:(expression_suit_aux lvl' lvl) ->> t2 as p2,f2:(expression_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | (empty ()) -> (lvl', fun f -> f) end)
   in
   let rec res x y = f res x y in
   res
 
 let _ = set_expression (fun lvl ->
-    dependent_sequence (locate (expression_desc lvl)) (fun (_loc, (lvl', e)) -> apply (fun (_, f) -> f (loc_expr _loc e)) (expression_suit lvl' lvl))) expression_lvls
+    glr
+      e as (lvl',e'):(expression_desc lvl) ->> f:(expression_suit lvl' lvl) -> snd f (loc_expr (merge _loc_e _loc) e')
+    end) expression_lvls
 
 let override_flag =
   glr

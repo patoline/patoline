@@ -327,19 +327,19 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
       parse =
 	fun blank str pos next g ->
 IFDEF DEBUG THEN
-	  Printf.fprintf stderr "%d: Dependant Sequence\n%!" pos
+	  Printf.fprintf stderr "%d: Dependent Sequence\n%!" pos
 END;
 	  let la = l1.parse blank str pos None (fun x -> x) in
 	  let best = ref pos in
 	  let res = IntMap.fold (fun pos' a acc ->
 	    if pos' > !best then best := pos';
 IFDEF DEBUG THEN
-	    Printf.fprintf stderr "%d,%d,%d: Dependant Sequence step 2\n%!" pos pos' !best
+	    Printf.fprintf stderr "%d,%d,%d: Dependent Sequence step 2\n%!" pos pos' !best
 END;
 	    try
 	      let res = merge_map1 pos acc ((f2 a).parse blank str pos' next g) in
 IFDEF DEBUG THEN
-	      Printf.fprintf stderr "%d,%d: Dependant Sequence step 2 OK\n%!" pos pos'
+	      Printf.fprintf stderr "%d,%d: Dependent Sequence step 2 OK\n%!" pos pos'
 END;
 	      res
 	    with Give_up -> acc | Parse_error pos' ->
@@ -348,6 +348,9 @@ END;
 	  ) la IntMap.empty in
 	  if res = IntMap.empty then raise (Parse_error !best) else res
     }
+
+let iter : 'a grammar grammar -> 'a grammar 
+  = fun g -> dependent_sequence g (fun x -> x)
 
 let dependent_merge_sequence : ('b -> 'b -> 'b) -> 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun merge l1 f2 ->
@@ -360,19 +363,19 @@ let dependent_merge_sequence : ('b -> 'b -> 'b) -> 'a grammar -> ('a -> 'b gramm
       parse =
 	fun blank str pos next g ->
 IFDEF DEBUG THEN
-	  Printf.fprintf stderr "%d: Dependant Sequence\n%!" pos
+	  Printf.fprintf stderr "%d: Dependent Sequence\n%!" pos
 END;
 	  let la = l1.parse blank str pos None (fun x -> x) in
 	  let best = ref pos in
 	  let res = IntMap.fold (fun pos' a acc ->
 	    if pos' > !best then best := pos';
 IFDEF DEBUG THEN
-	    Printf.fprintf stderr "%d,%d,%d: Dependant Sequence step 2\n%!" pos pos' !best
+	    Printf.fprintf stderr "%d,%d,%d: Dependent Sequence step 2\n%!" pos pos' !best
 END;
 	    try
 	      let res = merge_map2 merge acc ((f2 a).parse blank str pos' next (fun x -> x)) in
 IFDEF DEBUG THEN
-	      Printf.fprintf stderr "%d,%d: Dependant Sequence step 2 OK\n%!" pos pos'
+	      Printf.fprintf stderr "%d,%d: Dependent Sequence step 2 OK\n%!" pos pos'
 END;
 	      res
 	    with Give_up -> acc | Parse_error pos' ->
@@ -381,6 +384,9 @@ END;
 	  ) la IntMap.empty in
 	  if res = IntMap.empty then raise (Parse_error !best) else IntMap.map g res
     }
+
+let iter_merge : ('a -> 'a -> 'a) -> 'a grammar grammar -> 'a grammar 
+  = fun f g -> dependent_merge_sequence f g (fun x -> x)
 
 let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b list grammar
   = fun l1 f2 ->
@@ -393,19 +399,19 @@ let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b l
       parse =
 	fun blank str pos next g ->
 IFDEF DEBUG THEN
-	  Printf.fprintf stderr "%d: Dependant list Sequence\n%!" pos
+	  Printf.fprintf stderr "%d: Dependent list Sequence\n%!" pos
 END;
 	  let la = l1.parse blank str pos None (fun x -> x) in
 	  let best = ref pos in
 	  let res = IntMap.fold (fun pos' a acc -> List.fold_left (fun acc a ->
 	    if pos' > !best then best := pos';
 IFDEF DEBUG THEN
-	    Printf.fprintf stderr "%d,%d,%d: Dependant list Sequence step 2\n%!" pos pos' !best
+	    Printf.fprintf stderr "%d,%d,%d: Dependent list Sequence step 2\n%!" pos pos' !best
 END;
 	    try
 	      let res = merge_map2 List.append acc ((f2 a).parse blank str pos' next (fun x -> x)) in
 IFDEF DEBUG THEN
-	      Printf.fprintf stderr "%d,%d: Dependant list Sequence step 2 OK\n%!" pos pos'
+	      Printf.fprintf stderr "%d,%d: Dependent list Sequence step 2 OK\n%!" pos pos'
 END;
 	      res
 	    with Give_up -> acc | Parse_error pos' ->
@@ -414,6 +420,9 @@ END;
 	  ) acc a) la IntMap.empty in
 	  if res = IntMap.empty then raise (Parse_error !best) else IntMap.map g res
     }
+
+let iter_list : 'a list grammar list grammar -> 'a list grammar 
+  = fun l1 -> dependent_list_sequence l1 (fun x -> x)
 
 (*
 let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b list grammar =

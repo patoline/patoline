@@ -6,10 +6,16 @@ module Id : Camlp4.Sig.Id =
       let version = "0.1"
     end
 
+type ('a,'b) action =
+  | Default 
+  | Normal of 'a
+  | DepSeq of 'b
+
 module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
 	struct
 include Syntax
 
+let glr_let = Gram.Entry.mk "glr_let"
 let glr_rule = Gram.Entry.mk "glr_rule"
 let glr_rules = Gram.Entry.mk "glr_rules"
 let glr_rules_aux = Gram.Entry.mk "glr_rules"
@@ -29,23 +35,28 @@ let glr_list_left_member = Gram.Entry.mk "glr_list_left_member"
 
 let do_locate = ref None
 
+let mkpatt _loc (id, (p:Ast.patt option)) = match p, !do_locate with 
+    None, _ -> <:patt<$lid:id$>>
+  | Some p, None -> <:patt< ($p$ as $lid:id$) >>
+  | Some p, Some _ -> <:patt< ((_, $p$) as $lid:id$) >>
+				  
 let rec apply _loc ids e =
   let e = match !do_locate with
       None -> e
     | Some(_,merge) ->
       match ids with
       | [] -> e
-      | [id] -> <:expr<let $lid:"_loc"$ = $lid:"_loc_"^id$ in $e$>>
-      | first::ids ->
-	let last = List.hd (List.rev ids) in
+      | [id,_] -> <:expr<let $lid:"_loc"$ = $lid:"_loc_"^id$ in $e$>>
+      | (first,_)::ids ->
+	let (last,_) = List.hd (List.rev ids) in
 	<:expr<let $lid:"_loc"$ = $merge$ $lid:"_loc_"^first$ $lid:"_loc_"^last$ in $e$>>
   in
   List.fold_left (fun e id -> 
     match !do_locate with
       None ->
-	<:expr<fun $lid:id$ -> $e$>>
+	<:expr<fun $mkpatt _loc id$ -> $e$>>
     | Some(_) ->  
-      <:expr<fun $lid:id$ -> let $lid:"_loc_"^id$ = fst $lid:id$ in let $lid:id$ = snd $lid:id$ in $e$>>
+      <:expr<fun $mkpatt _loc id$ -> let $lid:"_loc_"^fst id$ = fst $lid:fst id$ in let $lid:fst id$ = snd $lid:fst id$ in $e$>>
   ) e (List.rev ids)
 
 let filter _loc r =
@@ -121,6 +132,16 @@ let apply_list_option _loc opt e =
       <:expr<Glr.list_sequence $e$ (Glr.list_fixpoint' [] (Glr.apply (fun x l -> List.map (fun x -> [x :: l]) x) $e$)) (fun e l -> [e::List.rev l])>>
    | Some d ->
       <:expr<Glr.list_dependent_sequence $e$ (fun x -> Glr.list_fixpoint' (x $d$) $e$)>>))
+	 
+let default_action _loc l =
+  let l = List.filter (function (("_",_),_,_) -> false | _ -> true) l in
+  let rec fn =
+    function
+      [] -> failwith "No default action can be found"
+    | [(id,_),_,_] -> <:expr<$lid:id$>>
+    | ((id,_),_,_)::l -> <:expr<$lid:id$, $fn l$ >>
+  in fn l
+
 
 EXTEND Gram
   expr: LEVEL "simple" [ [
@@ -150,14 +171,14 @@ EXTEND Gram
 	[] -> assert false
       | [e] -> e
       | l -> 
-	let l = List.fold_right (fun (cond,x) y -> 
+	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
 	    None ->
-	      <:expr<[$x$::$y$]>>
+	      def <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
+	      def <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
-	None, <:expr<Glr.alternatives $l$ >>
+	(fun x -> x), None, <:expr<Glr.alternatives $l$ >>
   ] ];
 
   glr_list_rules_aux: [ [
@@ -166,32 +187,32 @@ EXTEND Gram
 	[] -> assert false
       | [e] -> e
       | l -> 
-	let l = List.fold_right (fun (cond,x) y -> 
+	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
 	    None ->
-	      <:expr<[$x$::$y$]>>
+	      def <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
+	      def <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
-	None, <:expr<Glr.list_alternatives $l$ >>
+	(fun x -> x), None, <:expr<Glr.list_alternatives $l$ >>
   ] ];
 
   glr_rules: [ [
     l = LIST1 glr_rules_aux SEP "else" ->
       match l with
 	[] -> assert false
-      | [cond,e] -> (
+      | [def, cond,e] -> (
 	match cond with
-	  None -> e
+	  None -> def e
         | Some c -> 
-	      <:expr<if $c$ then $e$ else Glr.fail>>)
+	      def <:expr<if $c$ then $e$ else Glr.fail>>)
       | l -> 
-	let l = List.fold_right (fun (cond,x) y -> 
+	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
 	    None ->
-	      <:expr<[$x$::$y$]>>
+	      def <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
+	      def <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	<:expr<Glr.alternatives' $l$ >>
   ] ];
@@ -200,25 +221,26 @@ EXTEND Gram
     l = LIST1 glr_list_rules_aux SEP "else" ->
       match l with
 	[] -> assert false
-      | [cond,e] ->  (
+      | [def,cond,e] ->  (
 	match cond with
-	  None -> e
+	  None -> def e
         | Some c -> 
-	  <:expr<if $c$ then $e$ else Glr.fail>>)
+	  def <:expr<if $c$ then $e$ else Glr.fail>>)
       | l -> 
-	let l = List.fold_right (fun (cond,x) y -> 
+	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
 	    None ->
-	      <:expr<[$x$::$y$]>>
+	      def <:expr<[$x$::$y$]>>
           | Some c -> 
-	      <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
+	      def <:expr<let y = $y$ in if $c$ then [$x$::y] else y>>
 	) l <:expr<[]>> in
 	<:expr<Glr.list_alternatives' $l$ >>
   ] ];
   
   glr_action: [ [
-    "->"; action = expr -> Some action
-  | -> None
+    "->"; action = expr -> Normal action
+  | "->>"; (def, cond, r) = glr_rule -> DepSeq (def, cond, r)
+  | -> Default
   ] ];
 
   glr_cond: [ [
@@ -226,21 +248,21 @@ EXTEND Gram
   | -> None
   ] ];
 
+  glr_let: [ [
+    "let"; r = opt_rec; bi = binding; "in"; l = glr_let -> fun x -> <:expr< let $rec:r$ $bi$ in $l x$ >>
+  | -> fun x -> x
+  ] ];
 
   glr_rule: [ [
-    l = glr_left_member; condition = glr_cond; action = glr_action ->
-    let action = match action with
-	Some a -> a
-      | None ->
-	let rec fn = function
-        [] -> failwith "No default action can be found"
-	  | ("_",_,_)::ls -> fn ls
-	  | (id,_,_)::_ -> <:expr<$lid:id$>>
-	in fn l
-    in	
+    def = glr_let ; l = glr_left_member; condition = glr_cond; action = glr_action ->
+    let iter, action = match action with
+	Normal a -> false, a
+      | Default -> false, default_action _loc l
+      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail ()>>
+    in
     let rec fn ids l = match l with
       [] -> assert false
-    | [(id:string),e,opt] ->
+    | [id,e,opt] ->
       let e = apply_option _loc opt e in
       <:expr<Glr.apply $apply _loc (id::ids) action$ $e$>>
     | [ (id,e,opt); (id',e',opt') ] ->
@@ -251,23 +273,21 @@ EXTEND Gram
       let e = apply_option _loc opt e in      
       <:expr<Glr.sequence $fn (id::ids) ls$ $e$ (fun x -> x)>>
     in
-    condition, fn [] (List.rev l)
+    let res = fn [] (List.rev l) in
+    let res = if iter then <:expr<iter $res$>> else res in
+    def, condition, res
   ] ];
 
   glr_list_rule: [ [
-    l = glr_list_left_member; condition = glr_cond; action = glr_action ->
-    let action = match action with
-	Some a -> a
-      | None ->
-	let rec fn = function
-        [] -> failwith "No default action can be found"
-	  | ("_",_,_)::ls -> fn ls
-	  | (id,_,_)::_ -> <:expr<$lid:id$>>
-	in fn l
+    def = glr_let ; l = glr_list_left_member; condition = glr_cond; action = glr_action ->
+    let iter, action = match action with
+	Normal a -> false, a
+      | Default -> false, default_action _loc l
+      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail ()>>
     in	
     let rec fn ids l = match l with
       [] -> assert false
-    | [(id:string),e,opt] ->
+    | [id,e,opt] ->
       let e = apply_list_option _loc opt e in
       <:expr<Glr.apply $apply _loc (id::ids) action$ $e$>>
     | [ (id,e,opt); (id',e',opt') ] ->
@@ -278,7 +298,9 @@ EXTEND Gram
       let e = apply_list_option _loc opt e in      
       <:expr<Glr.list_sequence $fn (id::ids) ls$ $e$ (fun x -> x)>>
     in
-    condition, fn [] (List.rev l)
+    let res = fn [] (List.rev l) in
+    let res = if iter then <:expr<iter_list $res$>> else res in
+    def, condition, res
   ] ];
 
   glr_left_member: [ [
@@ -297,8 +319,9 @@ EXTEND Gram
   ] ];
 
   glr_ident: [ [
-    id = LIDENT; ":" -> id
-  | -> "_"
+    id = LIDENT ; "as" ; p = patt ; ":" -> id, Some p
+  | id = LIDENT; ":" -> id, None
+  | -> "_", None
   ] ];
 
   glr_sequence: [ [

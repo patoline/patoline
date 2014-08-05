@@ -37,7 +37,7 @@ $(d)/glr.cma: $(GLR_CMO)
 
 $(d)/pa_glr.cmx: $(d)/pa_glr.ml $(d)/glr.cmx 
 	$(ECHO) "[OPT] $< -> $@"
-	$(Q)$(OCAMLOPT) $(PA_GLR_INCLUDES) -c $<
+	$(Q)$(OCAMLOPT_NOINTF) $(PA_GLR_INCLUDES) -c $<
 
 $(d)/pa_glr: $(d)/pa_glr.cmx
 	$(ECHO) "[LINK] ... -> $@"

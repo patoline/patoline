@@ -91,8 +91,14 @@ val sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd)
     with [p2 x] and returns its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 
+val iter : 'a grammar grammar -> 'a grammar 
+  (* = fun g -> dependent_sequence g (fun x -> x) *)
+
 (** like the previous function, but use the first argument to merge ambiguity *)
 val dependent_merge_sequence : ('b -> 'b -> 'b) -> 'a grammar -> ('a -> 'b grammar) -> 'b grammar
+
+val iter_merge : ('a -> 'a -> 'a) -> 'a grammar grammar -> 'a grammar 
+  (* = fun f g -> dependent_merge_sequence f g (fun x -> x) *)
 
 (** [list_sequence g1 g2 action :=
    merge_sequence List.append g1 g2 (fun al bl -> flat_map (fun a -> List.map (fun b -> action a b) bl) al)] *)
@@ -100,6 +106,9 @@ val list_sequence : 'a list grammar -> 'b list grammar -> ('a -> 'b -> 'c) -> 'c
 
 (** [dependent_list_sequence g1 f2] is similar to dependent_merge_sequence, but using lists to store all results *)
 val dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b list grammar
+
+val iter_list : 'a list grammar list grammar -> 'a list grammar 
+  (* = fun l1 -> dependent_list_sequence l1 (fun x -> x) *)
 
 (** [option' a p]: parses input with [p] or return [a] consuming no input (both are done) *)
 val option' : 'a -> 'a grammar -> 'a grammar
