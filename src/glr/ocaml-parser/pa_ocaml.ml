@@ -693,6 +693,26 @@ let typedef : (string loc * type_declaration) Glr.grammar =
       in ({ txt = tcn; loc = _loc_tcn }, tdec)
   end
 
+let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
+  glr
+    tps:type_params? tcn:typeconstr ti:type_information ->
+      let (te, tkind, cstrs) = ti in
+      let tps = match tps with
+                | None   -> []
+                | Some l -> l
+      in
+      let tdec =
+        { ptype_params   = List.map fst tps
+        ; ptype_cstrs    = cstrs
+        ; ptype_kind     = tkind
+        ; ptype_private  = Public (* FIXME ?? *)
+        ; ptype_manifest = te
+        ; ptype_variance = List.map snd tps
+        ; ptype_loc      = _loc_tps
+        }
+      in ({ txt = tcn; loc = _loc_tcn }, tdec)
+  end
+
 let type_definition =
   glr
     RE("\\btype\\b") td:typedef tds:{RE("\\band\\b") td:typedef -> td}* ->
@@ -1186,48 +1206,100 @@ let override_flag =
  * Module expressions (module implementations)                              *
  ****************************************************************************)
 let module_expr = declare_grammar ()
+let module_type = declare_grammar ()
+let module_item = declare_grammar ()
+let signature_item = declare_grammar ()
 let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
+let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
 
-let _ = set_grammar module_expr (
+let module_expr_base = 
   glr
   | mp:module_path ->
       let mid = { txt = mp; loc = _loc } in
       mexpr_loc _loc (Pmod_ident mid)
-  (*| RE("struct\\b") ms:module_items* RE("end\\b") -> (* TODO *)*)
-  (*| RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
-    STR("->") me:module_expr -> (* TODO *)*)
-  (*| me:module_expr STR("(") me':module_expr STR(")") -> (* TODO *)*) 
-  (*| STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
+  | RE("struct\\b") ms:module_item* RE("end\\b") -> 
+     mexpr_loc _loc (Pmod_structure(ms))
+  | RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
+     STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor({ txt = mn; loc = _loc_mn}, mt, me))
+  | STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
       (match mt with
-       | None    -> mexpr_loc _loc me.pmod_desc
-       | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))*) (* TODO uncomment when module_type is implemented *)
+       | None    -> me
+       | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))
+  end
+
+let _ = set_grammar module_expr (
+  glr
+    m:module_expr_base l:{STR("(") m:module_expr STR(")") -> (_loc, m)}* ->
+      List.fold_left (fun acc (_loc_n, n) -> mexpr_loc (merge _loc_m _loc_n) (Pmod_apply(acc, m))) m l
   end)
 
-let structure_item_base =
+let module_type_base = 
+  glr
+  | mp:modtype_path ->
+      let mid = { txt = mp; loc = _loc } in
+      mtyp_loc _loc (Pmty_ident mid)
+  | RE("sig\\b") ms:signature_item* RE("end\\b") -> 
+     mtyp_loc _loc (Pmty_signature(ms))
+  | RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
+     STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor({ txt = mn; loc = _loc_mn}, mt, me))
+  | STR("(") mt:module_type STR(")") -> mt
+  end
+
+let mod_constraint = 
+  glr
+  | RE("type\\b") tdef:typedef_in_constraint ->
+     fst tdef, Pwith_type(snd tdef)
+  | RE("module\\b") m1:module_path STR("=") m2:extended_module_path ->
+     ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
+(* TODO: Pwith_typesubst and Pwithmodsubst are missing *)
+  end							 
+
+let _ = set_grammar module_type (
+  glr
+    m:module_type_base l:{ RE("with\\b") m:mod_constraint l:{RE("AND\\b") m:mod_constraint*} -> m::l } ? ->
+      (match l with
+         None -> m
+       | Some l -> mtyp_loc _loc (Pmty_with(m, l)))
+  end)
+      
+let module_item_base =
   glr
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE("include\\b") me:module_expr -> Pstr_include me
+  | RE("module\\b") mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+       STR"=" me:module_expr ->
+     let me = List.fold_left (fun acc (mn,mt) ->
+				  mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
+     Pstr_module({ txt = mn ; loc = _loc_mn }, me)
+  | RE("module_type\\b") mn:modtype_name STR"=" mt:module_type ->
+     Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt)
+
+
   end
 
-let structure_item =
+let _ = set_grammar module_item (
   glr
-    s:structure_item_base -> { pstr_desc = s; pstr_loc = _loc; }
-  end
+    s:module_item_base -> { pstr_desc = s; pstr_loc = _loc; }
+  end)
 
 let structure =
   glr
-    l : structure_item* EOF -> l
+    l : module_item* EOF -> l
   end
 
-let signature_item_base = fail () (* not yet written *)
+let signature_item_base =
+ glr
+   RE("val\\b") n:value_name STR(":") ty:typeexpr ->
+     Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = []; pval_loc = _loc})
+ end
 
-let signature_item =
+let _ = set_grammar signature_item (
   glr
     s:signature_item_base -> { psig_desc = s; psig_loc = _loc; }
-  end
+  end)
 
 let signature =
   glr

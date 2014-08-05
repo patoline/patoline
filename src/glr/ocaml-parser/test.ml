@@ -117,3 +117,12 @@ let f40 g x y = x:int + (g y:int):int
 let f41 = "toto", "ta
   ta", "ti\
         ti"
+
+module M1 = struct
+  type t = int
+  let compare = (-)
+end
+
+module M2 = Set.Make (M1)
+module M2 = Map.Make (M1)
+
