@@ -527,7 +527,7 @@ let polymorphic_variant_type : core_type grammar =
 
 let typeexpr_base : core_type grammar =
   glr
-  | STR("`") id:ident ->
+  | STR("'") id:ident ->
       loc_typ _loc (Ptyp_var id)
   | STR("_") ->
       loc_typ _loc Ptyp_any
@@ -1284,6 +1284,10 @@ let _ = set_grammar module_type (
 let module_item_base =
   glr
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+  | RE("external\\b") n:value_name STR":" ty:typeexpr STR"=" ls:string_literal* ->
+      let l = List.length ls in
+      if l < 1 || l > 3 then raise Give_up;
+      Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )

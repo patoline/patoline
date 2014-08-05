@@ -126,3 +126,4 @@ end
 module M2 = Set.Make (M1)
 module M2 = Map.Make (M1)
 
+external idt : 'a -> 'a = "%idt"
