@@ -714,6 +714,7 @@ let exception_definition =
  * Constants and Patterns                                                   *
  ****************************************************************************)
 
+(* Constants *)
 let constant =
   glr
     f:float_literal         -> Const_float f
@@ -725,44 +726,44 @@ let constant =
   | i:integer_literal -> Const_int i
   end
 
+(* Patterns *)
+type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
+                  | LazyPat | RangePat | AtomPat
+
+let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; ConstrPat
+                    ; LazyPat ; RangePat ; AtomPat ]
+
 let pattern = declare_grammar ()
+let pattern_lvl, set_pattern_lvl = grammar_family ()
 let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 
-let _ = set_grammar pattern (
+let pattern_base = memoize1 (fun lvl ->
   glr
-    vn:value_name ->
-      loc_pat _loc_vn (Ppat_var { txt = vn; loc = _loc_vn })
+  | vn:value_name ->
+      (AtomPat, loc_pat _loc_vn (Ppat_var { txt = vn; loc = _loc_vn }))
   | STR("_") ->
-      loc_pat _loc Ppat_any
+      (AtomPat, loc_pat _loc Ppat_any)
   | c:constant ->
-      loc_pat _loc_c (Ppat_constant c)
-(*  | p:pattern RE("as\\b") vn:value_name ->
-      { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
-      ; ppat_loc = _loc_p }*)
+      (AtomPat, loc_pat _loc_c (Ppat_constant c))
   | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
       let pat =
         match te with
         | None    -> p.ppat_desc
         | Some ty -> Ppat_constraint(p, ty)
-      in loc_pat _loc_par pat
-(*  | p:pattern STR("|") p':pattern ->
-      { ppat_desc = Ppat_or(p, p')
-      ; ppat_loc = _loc_p }*)
-  | c:constr p:pattern? ->
-      loc_pat _loc_c (Ppat_construct({ txt = c; loc = _loc_c }, p, false))
+      in (AtomPat, loc_pat _loc_par pat)
+  | c:constr p:pattern? when lvl <= ConstrPat ->
+      let ast = Ppat_construct({ txt = c; loc = _loc_c }, p, false) in
+      (ConstrPat, loc_pat _loc_c ast)
   | c:RE("false\\b") ->
       let fls = { txt = Lident "false"; loc = _loc_c } in
-      loc_pat _loc_c (Ppat_construct (fls, None, false))
+      (AtomPat, loc_pat _loc_c (Ppat_construct (fls, None, false)))
   | c:RE("true\\b")  -> 
       let tru = { txt = Lident "true"; loc = _loc_c } in
-      loc_pat _loc_c (Ppat_construct (tru, None, false))
-  | s:STR("`") c:tag_name p:pattern? ->
-      loc_pat _loc_s (Ppat_variant (c, p))
+      (AtomPat, loc_pat _loc_c (Ppat_construct (tru, None, false)))
+  | s:STR("`") c:tag_name p:pattern? when lvl <= ConstrPat ->
+      (ConstrPat, loc_pat _loc_s (Ppat_variant (c, p)))
   | s:STR("#") t:typeconstr ->
-      loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t })
-(*  | p:pattern ps:{STR(",") p:pattern -> p}+ ->
-      { ppat_desc = Ppat_tuple(p::ps)
-      ; ppat_loc = _loc_p }*)
+      (AtomPat, loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t }))
   | s:STR("{") f:field STR("=") p:pattern
     fps:{STR(";") f:field STR("=") p:pattern -> ({ txt = f; loc = _loc_f }, p)}*
     clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
@@ -771,7 +772,7 @@ let _ = set_grammar pattern (
                | None   -> Closed
                | Some _ -> Open
       in
-      loc_pat _loc_s (Ppat_record (all, cl))
+      (AtomPat, loc_pat _loc_s (Ppat_record (all, cl)))
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
       (* FIXME don't know how to handle loc in this case since it is syntactic sugar (isn't it?) *)
       let nil = { txt = Lident "[]"; loc = _loc_p } in
@@ -780,23 +781,62 @@ let _ = set_grammar pattern (
         let cons = Ppat_construct (c, Some (loc_pat x.ppat_loc (Ppat_tuple [x;xs])), false) in
         loc_pat x.ppat_loc cons
       in
-      List.fold_right cons (p::ps) (loc_pat _loc_p (Ppat_construct (nil, None, false)))
+      (AtomPat, List.fold_right cons (p::ps) (loc_pat _loc_p (Ppat_construct (nil, None, false))))
   | s:STR("[") STR("]") ->
       let nil = { txt = Lident "[]"; loc = _loc_s } in
-      loc_pat _loc_s (Ppat_construct (nil, None, false))
-(*  | p:pattern STR("::") p':pattern ->
-      assert false (* TODO *)*)
+      (AtomPat, loc_pat _loc_s (Ppat_construct (nil, None, false)))
   | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
-      loc_pat _loc_s (Ppat_array (p::ps))
+      (AtomPat, loc_pat _loc_s (Ppat_array (p::ps)))
   | s:STR("[|") STR("|]") ->
-      loc_pat _loc_s (Ppat_array []) (* FIXME not sure if this should be a constructor instead *)
+      (AtomPat, loc_pat _loc_s (Ppat_array [])) (* FIXME not sure if this should be a constructor instead *)
   | s:STR("(") STR(")") ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
-      loc_pat _loc_s (Ppat_construct (unt, None, false))
+      (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
   | s:RE("begin\\b") STR("end\\b") ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
-      loc_pat _loc_s (Ppat_construct (unt, None, false))
+      (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
+  | c1:char_literal STR("..") c2:char_literal ->
+      assert false (* TODO *)
   end)
+
+let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
+  glr
+  | RE("as\\b") vn:value_name when lvl' > AsPat && lvl <= AsPat ->
+      (AsPat, fun p ->
+        { ppat_desc = Ppat_alias (p, { txt = vn; loc= _loc_vn })
+        ; ppat_loc = merge p.ppat_loc _loc })
+  | STR("|") p':pattern when lvl' > AltPat && lvl <= AltPat ->
+      (AltPat, fun p ->
+        { ppat_desc = Ppat_or(p, p')
+        ; ppat_loc = merge p.ppat_loc _loc })
+  | ps:{STR(",") p:pattern -> p}+ when lvl' > TupPat && lvl <= TupPat ->
+      (TupPat, fun p ->
+        { ppat_desc = Ppat_tuple(p::ps)
+        ; ppat_loc = merge p.ppat_loc _loc })
+  | STR("::") p':pattern when lvl' > ConsPat && lvl <= ConsPat ->
+      (ConsPat, fun p ->
+        { ppat_desc = assert false (* TODO *)
+        ; ppat_loc = merge p.ppat_loc _loc })
+  end)
+
+let pattern_suit =
+  let f pat_suit =
+    memoize2
+      (fun lvl' lvl ->
+         glr
+         | t1 as (p1,f1):(pattern_suit_aux lvl' lvl) ->> t2 as (p2,f2):(pat_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | (empty ()) -> (lvl', fun f -> f) 
+         end)
+  in
+  let rec res x y = f res x y in
+  res
+
+let _ = set_pattern_lvl (fun lvl ->
+  glr
+  | t:(pattern_base lvl) ft:(pattern_suit AtomPat lvl) -> (snd ft) (snd t)
+  end) pattern_prios
+
+let _ = set_grammar pattern (pattern_lvl TopPat)
 
 (****************************************************************************
  * Expressions                                                              *

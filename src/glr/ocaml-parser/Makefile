@@ -2,11 +2,11 @@
 
 all: pa_ocaml
 
-pa_ocaml.cmo: pa_ocaml.ml
-	ocamlfind ocamlc -I +compiler-libs -package glr -pp pa_glr -c pa_ocaml.ml
+pa_ocaml.cmo: pa_ocaml.ml ../pa_glr
+	ocamlfind ocamlc -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
 
-pa_ocaml.cmx: pa_ocaml.ml
-	ocamlfind ocamlopt -I +compiler-libs -package glr -pp pa_glr -c pa_ocaml.ml
+pa_ocaml.cmx: pa_ocaml.ml ../pa_glr
+	ocamlfind ocamlopt -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
 
 pa_ocaml.cma: pa_ocaml.cmo
 	ocamlfind ocamlc -I +compiler-libs -package glr,camlp4 -a -o pa_ocaml.cma pa_ocaml.cmo
