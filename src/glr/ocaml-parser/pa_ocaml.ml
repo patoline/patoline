@@ -358,36 +358,30 @@ let class_name      = lowercase_ident
 let inst_var_name   = lowercase_ident  
 let method_name     = lowercase_ident
 
-(* Refering to named objects *)
-(*
-let module_path =
-  glr
-  | mn:module_name mns:{STR(".") m:module_name}** ->
-      List.fold_left (fun acc m -> Ldot(acc, m)) (Lident mn) mns
-  end
-*)
- 
-let extended_module_path = declare_grammar ()
+let module_path_gen, set_module_path_gen  = grammar_family ()
+let module_path_suit, set_module_path_suit  = grammar_family ()
 
-let extended_module_name =
+let module_path_suit_aux = memoize1 (fun allow_app ->
   glr
-  | mn:module_name emps:{STR("(") emp:extended_module_path STR(")")}* ->
-      List.fold_left (fun acc m -> Lapply(acc, m)) (Lident mn) emps
-  end
-
-let _ = set_grammar extended_module_path (
-  glr
-  | emn:extended_module_name emns:{STR(".") emn:extended_module_name}** ->
-      let rec ldot_cons emn emn' =
-        match emn' with
-        | Lident mn       -> Ldot(emn, mn)
-        | Ldot(mp, mn)    -> Ldot(ldot_cons emn mp, mn)
-        | Lapply(mp, mp') -> Lapply(ldot_cons emn mp, mp')
-      in
-      List.fold_left (fun acc m -> ldot_cons acc m) emn emns
+    STR("(") m':(module_path_gen true) STR(")") when allow_app ->
+      (fun a -> Lapply(a, m'))
+  | STR(".") m:module_name ->
+      (fun acc -> Ldot(acc, m))
   end)
 
-let module_path = extended_module_path
+let _ = set_module_path_suit (fun allow_app ->
+    glr
+      f:(module_path_suit_aux allow_app) g:(module_path_suit allow_app) -> (fun acc -> g (f acc))
+    else EMPTY -> (fun acc -> acc)
+    end) [true; false]
+
+let _ = set_module_path_gen (fun allow_app ->
+  glr
+  | m:module_name s:(module_path_suit allow_app) -> s (Lident m)
+  end) [true; false]
+
+let module_path = module_path_gen false
+let extended_module_path = module_path_gen true
 
 let value_path =
   glr
@@ -407,7 +401,7 @@ let constr =
 
 let typeconstr =
   glr
-  | mp:{m:module_path STR(".")}? tcn:typeconstr_name ->
+  | mp:{m:extended_module_path STR(".")}? tcn:typeconstr_name ->
       (match mp with
        | None   -> Lident tcn
        | Some p -> Ldot(p, tcn))
@@ -738,13 +732,8 @@ let type_definition =
       (td::tds)
   end
 
-(* Exception definition *)
-let exception_definition =
+let exception_declaration =
   glr
-  | RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
-      let name = { txt = cn; loc = _loc_cn } in
-      let ex = { txt = c; loc = _loc_c } in
-      Pstr_exn_rebind (name, ex)
   | RE("\\bexception\\b") cn:constr_name typ:{RE("\\bof\\b") te:typeexpr
     tes:{STR("*") te:typeexpr -> te}* -> (te::tes) }? ->
       let name = { txt = cn; loc = _loc_cn } in
@@ -752,6 +741,17 @@ let exception_definition =
                | None   -> []
                | Some l -> l
       in
+      (name, ed)
+  end
+
+(* Exception definition *)
+let exception_definition =
+  glr
+  | RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
+      let name = { txt = cn; loc = _loc_cn } in
+      let ex = { txt = c; loc = _loc_c } in
+      Pstr_exn_rebind (name, ex)
+  | (name,ed):exception_declaration ->
       Pstr_exception (name, ed)
   end
 
@@ -959,10 +959,10 @@ let expression= expression_lvl Top
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 
 let array_function loc str name =
-  loc_expr loc (Pexp_ident ({ txt = Longident.Ldot(Longident.Lident str, (if !fast then "unsafe_" ^ name else name)); loc  }))
+  loc_expr loc (Pexp_ident ({ txt = Ldot(Lident str, (if !fast then "unsafe_" ^ name else name)); loc  }))
 
 let bigarray_function loc str name =
-  loc_expr loc (Pexp_ident ({ txt = Longident.Ldot(Longident.Ldot(Longident.Lident "Bigarray", str),
+  loc_expr loc (Pexp_ident ({ txt = Ldot(Ldot(Lident "Bigarray", str),
 						   (if !fast then "unsafe_" ^ name else name)); loc  }))
 let untuplify = function
     { pexp_desc = Pexp_tuple explist; pexp_loc = _ } -> explist
@@ -1003,16 +1003,16 @@ let bigarray_set loc arr arg newval =
 let constructor =
   glr
     m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | RE"false\\b" -> "false" | RE"true\\b" -> "true" } ->
-      match m with None -> Longident.Lident id
-		 | Some m -> Longident.Ldot(m, id)
+      match m with None -> Lident id
+		 | Some m -> Ldot(m, id)
   end 
 
 let argument =
   glr
     STR("~") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
   | STR("?") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (("?"^id), e)
-  | STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident id; loc = _loc }))
-  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Longident.Lident ("?"^id); loc = _loc }))
+  | STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
+  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Lident ("?"^id); loc = _loc }))
   | e:(expression_lvl (next_exp App)) -> ("", e)
   end
 
@@ -1077,7 +1077,7 @@ let expression_list =
 let record_item = 
   glr
     f:field STR("=") e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
-  | f:lowercase_ident -> (let id = { txt = Longident.Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
+  | f:lowercase_ident -> (let id = { txt = Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
   end
 
 let record_list =
@@ -1127,13 +1127,13 @@ let expression_base = memoize1 (fun lvl ->
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
      (Atom, (List.fold_right (fun x acc ->
-       loc_expr _loc (Pexp_construct({ txt = Longident.Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
-		    l (loc_expr _loc (Pexp_construct({ txt = Longident.Lident "[]"; loc = _loc}, None, false)))))
+       loc_expr _loc (Pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
+		    l (loc_expr _loc (Pexp_construct({ txt = Lident "[]"; loc = _loc}, None, false)))))
   | STR("{") e:{e:expression RE("with\\b")}? l:record_list STR("}") ->
      (Atom, loc_expr _loc (Pexp_record(l,e)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
-     (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Longident.Lident p; loc = _loc_p}), ["", e])))
+     (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Lident p; loc = _loc_p}), ["", e])))
   | RE("while\\b")  e:expression RE("do\\b") e':expression RE("done\\b") ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
   | RE("for\\b") id:lowercase_ident STR("=")  
@@ -1149,7 +1149,7 @@ let expression_base = memoize1 (fun lvl ->
 
 let apply_lbl _loc (lbl, e) =
   let e = match e with
-      None -> loc_expr _loc (Pexp_ident { txt = Longident.Lident lbl; loc = _loc })
+      None -> loc_expr _loc (Pexp_ident { txt = Lident lbl; loc = _loc })
     | Some e -> e
   in (lbl, e)
 
@@ -1194,9 +1194,9 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
       (p, fun e' -> loc_expr (merge _loc_e _loc) (
 	if op = "::" then
-	  Pexp_construct({ txt = Longident.Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
+	  Pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
 	else 
-	  Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Longident.Lident op; loc = _loc_op }),
+	  Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Lident op; loc = _loc_op }),
                      [("", e') ; ("", e)])))
   end)
 
@@ -1249,7 +1249,7 @@ let module_expr_base =
 let _ = set_grammar module_expr (
   glr
     m:module_expr_base l:{STR("(") m:module_expr STR(")") -> (_loc, m)}* ->
-      List.fold_left (fun acc (_loc_n, n) -> mexpr_loc (merge _loc_m _loc_n) (Pmod_apply(acc, m))) m l
+      List.fold_left (fun acc (_loc_n, n) -> mexpr_loc (merge _loc_m _loc_n) (Pmod_apply(acc, n))) m l
   end)
 
 let module_type_base = 
@@ -1290,15 +1290,16 @@ let module_item_base =
       Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
-  | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
-  | RE("include\\b") me:module_expr -> Pstr_include me
   | RE("module\\b") mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
-       STR"=" me:module_expr ->
+       mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
+     let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
      let me = List.fold_left (fun acc (mn,mt) ->
 				  mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
      Pstr_module({ txt = mn ; loc = _loc_mn }, me)
-  | RE("module_type\\b") mn:modtype_name STR"=" mt:module_type ->
+  | RE("module\\b") RE("type\\b") mn:modtype_name STR"=" mt:module_type ->
      Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt)
+  | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
+  | RE("include\\b") me:module_expr -> Pstr_include me
 
 
   end
@@ -1315,8 +1316,26 @@ let structure =
 
 let signature_item_base =
  glr
-   RE("val\\b") n:value_name STR(":") ty:typeexpr ->
+  | RE("val\\b") n:value_name STR(":") ty:typeexpr ->
      Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = []; pval_loc = _loc})
+  | RE("external\\b") n:value_name STR":" ty:typeexpr STR"=" ls:string_literal* ->
+      let l = List.length ls in
+      if l < 1 || l > 3 then raise Give_up;
+      Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
+  | td:type_definition -> Psig_type td
+  | (name,ed):exception_declaration -> Psig_exception (name, ed)
+  | RE("module\\b") mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+       STR":" me:module_type ->
+     let me = List.fold_left (fun acc (mn,mt) ->
+				  mtyp_loc _loc (Pmty_functor(mn, mt, acc))) me (List.rev l) in
+     Psig_module({ txt = mn ; loc = _loc_mn }, me)
+  | RE("module\\b") RE("type\\b") mn:modtype_name mt:{ STR"=" mt:module_type }? ->
+     let mt = match mt with None -> Pmodtype_abstract | Some mt -> Pmodtype_manifest mt in
+     Psig_modtype({ txt = mn ; loc = _loc_mn }, mt)
+  | RE("open\\b") o:override_flag m:module_path -> Psig_open(o, { txt = m; loc = _loc_m} )
+  | RE("include\\b") me:module_type -> Psig_include me
+
+
  end
 
 let _ = set_grammar signature_item (

@@ -99,9 +99,9 @@ let f34 x = -x, -. (float_of_int x), -x + - x * -x - - x - x
 
 let f35 y = !y
 
-let f36 n = let n = ref n and r = ref 1 in while !n > 1 do !r := !r * !n; decr !n done; !r
+let f36 n = let n = ref n and r = ref 1 in while !n > 1 do r := !r * !n; decr n done; !r
 
-let f37 n = let r = ref 1 in for i = 2 to n do !r := !r * n; done; !r
+let f37 n = let r = ref 1 in for i = 2 to n do r := !r * n; done; !r
 
 type t1 = A | B
 
@@ -123,7 +123,31 @@ module M1 = struct
   let compare = (-)
 end
 
+
 module M2 = Set.Make (M1)
-module M2 = Map.Make (M1)
+module M3 = Map.Make (M1)
 
 external idt : 'a -> 'a = "%idt"
+
+module type MT1 = 
+  sig
+    val f : int -> int
+    external idt : 'a -> 'a = "%idt"
+    type t 
+    type u = A | B
+    module type A = sig val g : float -> float end
+    module M : A
+    module F (A:A) : A
+  end
+
+module M4 : MT1 =
+  struct
+    let f x = x + 1
+    external idt : 'a -> 'a = "%idt"
+    type t = int
+    type u = A | B
+    module type A = sig val g : float -> float end
+    module M = struct let g x = x +. 1. end
+    module F (A:A) = struct open A let g x = g (g x) end
+  end 
+
