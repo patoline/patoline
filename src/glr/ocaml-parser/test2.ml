@@ -1,7 +1,8 @@
 exception Invalid_arg of string * string
-exception Invalid_arg2 = Incalid_arg
+exception Invalid_arg2 = Invalid_arg
 
-exception Piouf = PioufPiouf.Ploup.Coucou
+exception Piouf = Pervasives.Exit
+exception Piaf = Not_found
 
 type abstract
 
