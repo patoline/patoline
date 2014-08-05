@@ -1,3 +1,10 @@
+exception Invalid_arg of string * string
+exception Invalid_arg2 = Incalid_arg
+
+(* FIXME
+exception Piouf = Module . PioufPiouf
+*)
+
 type abstract
 
 type bool_ = True

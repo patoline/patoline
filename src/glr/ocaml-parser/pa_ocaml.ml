@@ -359,7 +359,7 @@ let method_name     = lowercase_ident
 (* Refering to named objects *)
 let module_path =
   glr
-    mn:module_name mns:{STR(".") m:module_name -> m}* ->
+  | mn:module_name mns:{STR(".") m:module_name}* ->
       List.fold_left (fun acc m -> Ldot(acc, m)) (Lident mn) mns
   end
  
@@ -367,14 +367,13 @@ let extended_module_path = declare_grammar ()
 
 let extended_module_name =
   glr
-    mn:module_name
-    emps:{STR("(") emp:extended_module_path STR(")") -> emp}* ->
+  | mn:module_name emps:{STR("(") emp:extended_module_path STR(")")}* ->
       List.fold_left (fun acc m -> Lapply(acc, m)) (Lident mn) emps
   end
 
 let _ = set_grammar extended_module_path (
   glr
-    emn:extended_module_name emns:{STR(".") emn:extended_module_name -> emn}* ->
+  | emn:extended_module_name emns:{STR(".") emn:extended_module_name}* ->
       let rec ldot_cons emn emn' =
         match emn' with
         | Lident mn       -> Ldot(emn, mn)
@@ -386,58 +385,58 @@ let _ = set_grammar extended_module_path (
 
 let value_path =
   glr
-    mp:{m:module_path STR(".") -> m}? vn:value_name ->
-      match mp with
-      | None   -> Lident vn
-      | Some p -> Ldot(p, vn)
+  | mp:{m:module_path STR(".")}? vn:value_name ->
+      (match mp with
+       | None   -> Lident vn
+       | Some p -> Ldot(p, vn))
   end
 
 let constr =
   glr
-    mp:{m:module_path STR(".") -> m}? cn:constr_name ->
-      match mp with
-      | None   -> Lident cn
-      | Some p -> Ldot(p, cn)
+  | mp:{m:module_path STR(".")}? cn:constr_name ->
+      (match mp with
+       | None   -> Lident cn
+       | Some p -> Ldot(p, cn))
   end
 
 let typeconstr =
   glr
-    mp:{m:module_path STR(".") -> m}? tcn:typeconstr_name ->
-      match mp with
-      | None   -> Lident tcn
-      | Some p -> Ldot(p, tcn)
+  | mp:{m:module_path STR(".")}? tcn:typeconstr_name ->
+      (match mp with
+       | None   -> Lident tcn
+       | Some p -> Ldot(p, tcn))
   end
 
 let field =
   glr
-    mp:{m:module_path STR(".") -> m}? fn:field_name ->
-      match mp with
-      | None   -> Lident fn
-      | Some p -> Ldot(p, fn)
+  | mp:{m:module_path STR(".")}? fn:field_name ->
+      (match mp with
+       | None   -> Lident fn
+       | Some p -> Ldot(p, fn))
   end
 
 let class_path =
   glr
-    mp:{m:module_path STR(".") -> m}? cn:class_name ->
-      match mp with
-      | None   -> Lident cn
-      | Some p -> Ldot(p, cn)
+  | mp:{m:module_path STR(".")}? cn:class_name ->
+      (match mp with
+       | None   -> Lident cn
+       | Some p -> Ldot(p, cn))
   end
 
 let modtype_path =
   glr
-    mp:(glr m:extended_module_path STR(".") -> m end)? mtn:modtype_name ->
-      match mp with
-      | None   -> Lident mtn
-      | Some p -> Ldot(p, mtn)
+  | mp:{m:extended_module_path STR(".")}? mtn:modtype_name ->
+      (match mp with
+       | None   -> Lident mtn
+       | Some p -> Ldot(p, mtn))
   end
 
 let classtype_path =
   glr
-    mp:(glr m:extended_module_path STR(".") -> m end)? cn:class_name ->
-      match mp with
-      | None   -> Lident cn
-      | Some p -> Ldot(p, cn)
+  | mp:{m:extended_module_path STR(".")}? cn:class_name ->
+      (match mp with
+       | None   -> Lident cn
+       | Some p -> Ldot(p, cn))
   end
 
 (****************************************************************************
@@ -1192,12 +1191,34 @@ let override_flag =
     o:STR("!")? -> (if o <> None then Override else Fresh)
   end
 
+(****************************************************************************
+ * Module expressions (module implementations)                              *
+ ****************************************************************************)
+let module_expr = declare_grammar ()
+let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
+
+let _ = set_grammar module_expr (
+  glr
+  | mp:module_path ->
+      let mid = { txt = mp; loc = _loc } in
+      mexpr_loc _loc (Pmod_ident mid)
+  (*| RE("struct\\b") ms:module_items* RE("end\\b") -> (* TODO *)*)
+  (*| RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
+    STR("->") me:module_expr -> (* TODO *)*)
+  (*| me:module_expr STR("(") me':module_expr STR(")") -> (* TODO *)*) 
+  (*| STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
+      (match mt with
+       | None    -> mexpr_loc _loc me.pmod_desc
+       | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))*) (* TODO uncomment when module_type is implemented *)
+  end)
+
 let structure_item_base =
   glr
-  | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
+  | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
+  | RE("include\\b") me:module_expr -> Pstr_include me
   end
 
 let structure_item =
