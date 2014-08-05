@@ -794,7 +794,16 @@ let pattern_base = memoize1 (fun lvl ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
       (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
   | c1:char_literal STR("..") c2:char_literal ->
-      assert false (* TODO *)
+      let ic1, ic2 = Char.code c1, Char.code c2 in
+      if ic1 > ic2 then assert false; (* FIXME error message invalid range *)
+      let const i = Ppat_constant (Const_char (Char.chr i)) in
+      let rec range a b =
+        if a > b then assert false
+        else if a = b then [a]
+        else a :: range (a+1) b
+      in
+      let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
+      (RangePat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
