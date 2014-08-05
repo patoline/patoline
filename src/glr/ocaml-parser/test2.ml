@@ -25,5 +25,7 @@ type ('a, 'b) mod_pon = ('a -> 'b) -> 'a -> 'b
 
 type +'a blop = Blop of 'a
 
+type (-'a,+'b) blip = Blip of 'a -> 'b
+
 type dummy = { mutable c : int; d : string -> bool }
 
