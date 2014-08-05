@@ -685,7 +685,7 @@ let typedef : (string loc * type_declaration) Glr.grammar =
         ; ptype_variance = List.map snd tps
         ; ptype_loc      = _loc_tps
         }
-      in ({ txt = tcn; loc = _loc_tcn }, tdec) (*  tps, ti) *)
+      in ({ txt = tcn; loc = _loc_tcn }, tdec)
   end
 
 let type_definition =
@@ -695,17 +695,20 @@ let type_definition =
   end
 
 (* Exception definition *)
-type expn = NewExpn of core_type list option
-          | SynExpn of Longident.t loc
-
 let exception_definition =
   glr
-    RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
-      { txt = cn; loc = _loc_cn }, SynExpn { txt = c; loc = _loc_c }
- else RE("\\bexception\\b") cn:constr_name
-    typ:{RE("\\bof\\b") te:typeexpr
+  | RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
+      let name = { txt = cn; loc = _loc_cn } in
+      let ex = { txt = c; loc = _loc_c } in
+      Pstr_exn_rebind (name, ex)
+  | RE("\\bexception\\b") cn:constr_name typ:{RE("\\bof\\b") te:typeexpr
     tes:{STR("*") te:typeexpr -> te}* -> (te::tes) }? ->
-      { txt = cn; loc = _loc_cn }, NewExpn typ
+      let name = { txt = cn; loc = _loc_cn } in
+      let ed = match typ with
+               | None   -> []
+               | Some l -> l
+      in
+      Pstr_exception (name, ed)
   end
 
 (****************************************************************************
@@ -1194,6 +1197,7 @@ let structure_item_base =
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | td:type_definition -> Pstr_type td
+  | ex:exception_definition -> ex
   end
 
 let structure_item =
