@@ -1391,42 +1391,42 @@ let expression_base = memoize1 (fun lvl ->
   glr
     id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
-  | RE("let\\b") r:rec_flag l:value_binding RE("in\\b") e:(expression_lvl (let_prio lvl)) when (lvl < App)
+  | let_kw r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
     -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
-  | RE("function\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
-  | RE("fun\\b") l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
+  | function_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
+  | fun_kw l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
-  | RE("match\\b") e:expression RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
-  | RE("try\\b") e:expression RE("with\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
-  | RE("if\\b") c:expression RE("then\\b") e:(expression_lvl If) e':{RE("else\\b") e:(expression_lvl If)}? when (lvl <= If) ->
+  | match_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
+  | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
+  | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl <= If) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
   | STR("(") e:expression STR(")") -> (Atom, e)
   | STR("(") STR(")") -> (Atom, loc_expr _loc (Pexp_tuple([])))
-  | RE("begin\\b") e:expression RE("end\\b") -> (Atom, e)
-  | RE("begin\\b") RE("end\\b") -> (Atom, loc_expr _loc (Pexp_tuple([])))
+  | begin_kw e:expression end_kw -> (Atom, e)
+  | begin_kw end_kw -> (Atom, loc_expr _loc (Pexp_tuple([])))
   | c:constructor e:(expression_lvl App) when (lvl <= App) -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},Some e,false)))
   | c:constructor -> (Atom, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},None,false)))
-  | RE("assert\\b") RE("false\\b")  when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assertfalse))		       
-  | RE("assert\\b") e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assert(e)))		       
-  | RE("lazy\\b") e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))		       
+  | assert_kw false_kw when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assertfalse))		       
+  | assert_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assert(e)))		       
+  | lazy_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))		       
   | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
      (Atom, (List.fold_right (fun x acc ->
        loc_expr _loc (Pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
 		    l (loc_expr _loc (Pexp_construct({ txt = Lident "[]"; loc = _loc}, None, false)))))
-  | STR("{") e:{e:expression RE("with\\b")}? l:record_list STR("}") ->
+  | STR("{") e:{e:expression with_kw}? l:record_list STR("}") ->
      (Atom, loc_expr _loc (Pexp_record(l,e)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
      (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Lident p; loc = _loc_p}), ["", e])))
-  | RE("while\\b")  e:expression RE("do\\b") e':expression RE("done\\b") ->
+  | while_kw e:expression do_kw e':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
-  | RE("for\\b") id:lowercase_ident STR("=") e:expression d:downto_flag
-    e':expression RE("do\\b") e'':expression RE("done\\b") ->
+  | for_kw id:lowercase_ident STR("=") e:expression d:downto_flag
+    e':expression do_kw e'':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', d, e'')))
-  | RE("new\\b") p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
-  | RE("object\\b") o:class_body RE("end\\b") -> (Atom, loc_expr _loc (Pexp_object o))
+  | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
+  | object_kw o:class_body end_kw -> (Atom, loc_expr _loc (Pexp_object o))
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) -> (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
   | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l } STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
   | STR("{<") STR(">}") -> (Atom, loc_expr _loc (Pexp_override []))
