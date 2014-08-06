@@ -1588,8 +1588,7 @@ let _ = set_grammar module_type (
       
 let module_item_base =
   glr
-  | STR(";;") -> Pstr_eval(loc_expr _loc (Pexp_tuple([])))
-  | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+  | RE(let_re) r:rec_flag l:value_binding -> Pstr_value (r, l)
   | RE("external\\b") n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
