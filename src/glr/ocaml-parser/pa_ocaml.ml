@@ -789,7 +789,7 @@ let _ = set_grammar class_body_type (
   | RE("object\\b") te:{STR("(") te:typeexpr STR(")")}?
     cfs:class_field_spec* STR("end\\b") ->
       let self = match te with
-                 | None   -> assert false (* FIXME do not know hot to refer to self type *)
+                 | None   -> loc_typ _loc Ptyp_any
                  | Some t -> t
       in
       let sign =
