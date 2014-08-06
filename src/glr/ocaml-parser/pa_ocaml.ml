@@ -445,14 +445,14 @@ let next_type_prio = function
   | AppType -> AtomType
   | AtomType -> AtomType
 
-let typeexpr_lvl, set_typeexpr_lvl = grammar_family ()
-let typeexpr = typeexpr_lvl TopType
+let typexpr_lvl, set_typexpr_lvl = grammar_family ()
+let typexpr = typexpr_lvl TopType
 let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
   glr
-  | te:typeexpr -> te
-  | ids:{STR("'") id:ident}+ STR(".") te:typeexpr ->
+  | te:typexpr -> te
+  | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
       loc_typ _loc (Ptyp_poly (ids, te))
   end
    
@@ -465,25 +465,25 @@ let method_type =
 
 let tag_spec =
   glr
-  | STR("`") tn:tag_name te:{RE("of\\b") te:typeexpr}? ->
+  | STR("`") tn:tag_name te:{RE("of\\b") te:typexpr}? ->
       let t = match te with
               | None   -> []
               | Some l -> [l]
       in
       Rtag (tn, false, t)
-  | te:typeexpr ->
+  | te:typexpr ->
       Rinherit te
   end
 
 let tag_spec_first =
   glr
-  | tn:tag_name te:{RE("of\\b") te:typeexpr}? ->
+  | tn:tag_name te:{RE("of\\b") te:typexpr}? ->
       let t = match te with
               | None   -> []
               | Some l -> [l]
       in
       [Rtag (tn, false, t)]
-  | te:typeexpr? STR("|") ts:tag_spec ->
+  | te:typexpr? STR("|") ts:tag_spec ->
       match te with
       | None    -> [ts]
       | Some te -> [Rinherit te; ts]
@@ -491,14 +491,14 @@ let tag_spec_first =
 
 let tag_spec_full =
   glr
-  | STR("`") tn:tag_name tes:{RE("of\\b") STR("&")? te:typeexpr
-    tes:{STR("&") te:typeexpr}* -> (te::tes)}? ->
+  | STR("`") tn:tag_name tes:{RE("of\\b") STR("&")? te:typexpr
+    tes:{STR("&") te:typexpr}* -> (te::tes)}? ->
       let tes = match tes with
                 | None   -> []
                 | Some l -> l
       in
       Rtag (tn, false, tes)
-  | te:typeexpr ->
+  | te:typexpr ->
       Rinherit te
   end
 
@@ -517,21 +517,21 @@ let polymorphic_variant_type : core_type grammar =
       loc_typ _loc (Ptyp_variant (tfs :: tfss, true, tns))
   end
 
-let typeexpr_base : core_type grammar =
+let typexpr_base : core_type grammar =
   glr
   | STR("'") id:ident ->
       loc_typ _loc (Ptyp_var id)
   | STR("_") ->
       loc_typ _loc Ptyp_any
-  | STR("(") te:typeexpr STR(")") ->
+  | STR("(") te:typexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
-  | STR("?") ln:label_name STR(":") te:(typeexpr_lvl (next_type_prio Arr)) STR("->") te':typeexpr ->
+  | STR("?") ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow ("?"^ln, te, te'))
-  | STR("~") ln:label_name STR(":") te:(typeexpr_lvl (next_type_prio Arr)) STR("->") te':typeexpr ->
+  | STR("~") ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
       loc_typ _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
-  | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")") tc:typeconstr ->
+  | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")") tc:typeconstr ->
       let constr = { txt = tc ; loc = _loc_tc } in
       loc_typ _loc (Ptyp_constr (constr, te::tes))
   | pvt:polymorphic_variant_type -> pvt
@@ -545,17 +545,17 @@ let typeexpr_base : core_type grammar =
   | STR("#") cp:class_path ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, [], []))
-  | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")")
+  | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")")
     STR("#") cp:class_path ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, []))
   end
 
-let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
+let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   glr
-  | STR("->") te':(typeexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
+  | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
       (Arr, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_arrow ("", te, te')))
-  | tes:{STR("*") te:(typeexpr_lvl (next_type_prio Prod))}+  when lvl' > Prod && lvl <= Prod->
+  | tes:{STR("*") te:(typexpr_lvl (next_type_prio Prod))}+  when lvl' > Prod && lvl <= Prod->
       (Prod, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
       (AppType, fun te -> loc_typ (merge te.ptyp_loc _loc)
@@ -570,21 +570,21 @@ let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> cor
       in (Dash, tex)
   end)
 
-let typeexpr_suit =
+let typexpr_suit =
   let f type_suit =
     memoize2
       (fun lvl' lvl ->
          glr
-         | (p1,f1):(typeexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | (p1,f1):(typexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
          | EMPTY -> (lvl', fun f -> f) 
          end)
   in
   let rec res x y = f res x y in
   res
 
-let _ = set_typeexpr_lvl (fun lvl ->
+let _ = set_typexpr_lvl (fun lvl ->
   glr
-  | t:typeexpr_base ft:(typeexpr_suit AtomType lvl) -> snd ft t
+  | t:typexpr_base ft:(typexpr_suit AtomType lvl) -> snd ft t
   end) type_prios
 
 (****************************************************************************
@@ -615,12 +615,12 @@ let type_params =
 
 let type_equation =
   glr
-    STR("=") te:typeexpr -> te
+    STR("=") te:typexpr -> te
   end
 
 let type_constraint =
   glr
-    s:RE("\\bconstraint\\b") STR("'") id:ident STR("=") te:typeexpr ->
+    s:RE("\\bconstraint\\b") STR("'") id:ident STR("=") te:typexpr ->
       loc_typ _loc_id (Ptyp_var id), te, _loc_s
   end
 
@@ -632,8 +632,8 @@ let constr_decl =
     end
   in
   glr
-    cn:constr_name tes:{RE("\\bof\\b") te:typeexpr
-    tes:{STR("*") te:typeexpr -> te}* -> te::tes}? ->
+    cn:constr_name tes:{RE("\\bof\\b") te:typexpr
+    tes:{STR("*") te:typexpr -> te}* -> te::tes}? ->
       let c = { txt = cn; loc = _loc_cn } in
       let tel = match tes with
                 | None   -> []
@@ -727,8 +727,8 @@ let type_definition =
 
 let exception_declaration =
   glr
-  | RE("\\bexception\\b") cn:constr_name typ:{RE("\\bof\\b") te:typeexpr
-    tes:{STR("*") te:typeexpr -> te}* -> (te::tes) }? ->
+  | RE("\\bexception\\b") cn:constr_name typ:{RE("\\bof\\b") te:typexpr
+    tes:{STR("*") te:typexpr -> te}* -> (te::tes) }? ->
       let name = { txt = cn; loc = _loc_cn } in
       let ed = match typ with
                | None   -> []
@@ -763,12 +763,12 @@ let _ = set_grammar class_field_spec (
   | RE("inherit\\b") cbt:class_body_type ->
       pctf_loc _loc (Pctf_inher cbt)
   | RE("val\\b") m:RE("mutable\\b")? v:RE("virtual\\b")? ivn:inst_var_name
-    STR(":") te:typeexpr ->
+    STR(":") te:typexpr ->
       let mut = if m = None then Immutable else Mutable in
       let vir = if v = None then Concrete else Virtual in
       pctf_loc _loc (Pctf_val (ivn, mut, vir, te))
   | RE("val\\b") RE("virtual\\b") RE("mutable\\b")  ivn:inst_var_name
-    STR(":") te:typeexpr ->
+    STR(":") te:typexpr ->
       pctf_loc _loc (Pctf_val (ivn, Mutable, Virtual, te))
   | RE("method\\b") p:RE("private\\b")? v:RE("virtual\\b")? mn:method_name
     STR(":") te:poly_typexpr ->
@@ -780,13 +780,13 @@ let _ = set_grammar class_field_spec (
   | RE("method\\b") RE("virtual\\b") RE("private\\b") mn:method_name
     STR(":") te:poly_typexpr ->
       pctf_loc _loc (Pctf_virt (mn, Private, te))
-  | RE("constraint\\b") te:typeexpr STR("=") te':typeexpr ->
+  | RE("constraint\\b") te:typexpr STR("=") te':typexpr ->
       pctf_loc _loc (Pctf_cstr (te, te'))
   end)
 
 let _ = set_grammar class_body_type (
   glr
-  | RE("object\\b") te:{STR("(") te:typeexpr STR(")")}?
+  | RE("object\\b") te:{STR("(") te:typexpr STR(")")}?
     cfs:class_field_spec* STR("end\\b") ->
       let self = match te with
                  | None   -> loc_typ _loc Ptyp_any
@@ -798,7 +798,7 @@ let _ = set_grammar class_body_type (
         ; pcsig_loc = _loc }
       in
       pcty_loc _loc (Pcty_signature sign)
-  | tes:{STR("[") te:typeexpr tes:{STR(",") te:typeexpr}*
+  | tes:{STR("[") te:typexpr tes:{STR(",") te:typexpr}*
     STR("]") -> (te::tes)}? ctp:classtype_path ->
       let ctp = { txt = ctp; loc = _loc_ctp } in
       let tes = match tes with
@@ -815,7 +815,7 @@ let class_type =
     end
   in
   glr
-  | tes:{l:olabel? te:typeexpr -> (l, te)}* cbt:class_body_type ->
+  | tes:{l:olabel? te:typexpr -> (l, te)}* cbt:class_body_type ->
       let app acc (lab, te) =
         match lab with
         | None            -> pcty_loc _loc (Pcty_fun ("", te, acc))
@@ -911,7 +911,7 @@ let pattern_base = memoize1 (fun lvl ->
       (RangePat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   | c:constant ->
       (AtomPat, loc_pat _loc_c (Ppat_constant c))
-  | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
+  | par:STR("(") p:pattern te:{STR(":") t:typexpr -> t}? STR(")") ->
       let pat =
         match te with
         | None    -> p.ppat_desc
@@ -1064,6 +1064,7 @@ let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
 
 let (expression_lvl, set_expression_lvl) = grammar_family ()
+let expr = expression_lvl Top
 let expression= expression_lvl Top
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 
@@ -1128,7 +1129,7 @@ let argument =
 let parameter =
   glr
     pat:pattern -> ("", None, pat)
-  | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typeexpr }? STR")" -> (
+  | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
       | None -> pat
@@ -1137,13 +1138,13 @@ let parameter =
       (id, None, pat))
   | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
   | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
-  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typeexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
+  | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typeexpr -> t }? e:{ STR"=" e:expression -> e}? STR")" -> (
+  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typexpr -> t }? e:{ STR"=" e:expression -> e}? STR")" -> (
       let pat = match t with
 	| None -> pat
 	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
@@ -1177,8 +1178,8 @@ let match_cases = memoize1 (fun lvl ->
 
 let type_coercion =
   glr
-    STR(":") t:typeexpr t':{STR(":>") t':typeexpr}? -> (Some t, t')
-  | STR(":>") t':typeexpr -> (None, Some t')
+    STR(":") t:typexpr t':{STR(":>") t':typexpr}? -> (Some t, t')
+  | STR(":>") t':typexpr -> (None, Some t')
   end
 
 let expression_list =
@@ -1208,8 +1209,62 @@ let obj_item =
     v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
   end
 
+let class_expr = declare_grammar ()
+
+let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc }
+
+(* FIXME override *)
 let class_field =
-  fail () (* TODO *)
+  glr
+  | RE("inherit\\b") ce:class_expr id:{RE("as\\b") id:lowercase_ident}? ->
+      loc_pcf _loc (Pcf_inher (Fresh, ce, id))
+  | RE("val\\b") m:RE("mutable\\b")? ivn:inst_var_name te:typexpr? STR("=")
+    e:expr ->
+      let ivn = { txt = ivn; loc = _loc_ivn } in
+      let mut = if m = None then Immutable else Mutable in
+      let te = { pexp_desc = Pexp_constraint (e, te, None)
+               ; pexp_loc  = _loc_te }
+      in
+      loc_pcf _loc (Pcf_val (ivn, mut, Fresh, te))
+  | RE("val\\b") m:RE("mutable\\b")? RE("virtual\\b") ivn:inst_var_name
+    STR(":") te:typexpr ->
+      let mut = if m = None then Immutable else Mutable in
+      let ivn = { txt = ivn; loc = _loc_ivn } in
+      loc_pcf _loc (Pcf_valvirt (ivn, mut, te))
+  | RE("val\\b") m:RE("virtual\\b") RE("mutable\\b") ivn:inst_var_name
+    STR(":") te:typexpr ->
+      let ivn = { txt = ivn; loc = _loc_ivn } in
+      loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
+  | RE("method\\b") p:RE("private\\b")? mn:method_name ps:parameter*
+    te:{STR(":") te:typexpr}? STR("=") e:expr ->
+      let pri = if p = None then Public else Private in
+      let mn = { txt = mn; loc = _loc_mn } in
+      let te = { pexp_desc = Pexp_constraint (e, te, None) (* FIXME ps ? *)
+               ; pexp_loc  = _loc_te }
+      in
+      loc_pcf _loc (Pcf_meth (mn, pri, Fresh, te))
+  | RE("method\\b") p:RE("private\\b")? mn:method_name STR(":")
+    pte:poly_typexpr STR("=") e:expr ->
+      let mn = { txt = mn ; loc = _loc_mn } in
+      let pri = if p = None then Public else Private in
+      let et = { pexp_desc = Pexp_constraint (e, Some pte, None)
+               ; pexp_loc  = _loc_pte }
+      in
+      loc_pcf _loc (Pcf_meth (mn, pri, Fresh, et))
+  | RE("method\\b") p:RE("private\\b")? RE("virtual\\b")
+    mn:method_name STR(":") pte:poly_typexpr ->
+      let mn = { txt = mn ; loc = _loc_mn } in
+      let pri = if p = None then Public else Private in
+      loc_pcf _loc (Pcf_virt (mn, pri, pte))
+  | RE("method\\b") RE("virtual\\b") RE("private\\b") mn:method_name
+    STR(":") pte:poly_typexpr ->
+      let mn = { txt = mn ; loc = _loc_mn } in
+      loc_pcf _loc (Pcf_virt (mn, Private, pte))
+  | RE("constraint\\b") te:typexpr STR("=") te':typexpr ->
+      loc_pcf _loc (Pcf_constr (te, te'))
+  | RE("initializer\\b") e:expr ->
+      loc_pcf _loc (Pcf_init e)
+  end
 
 let class_body =
   glr
@@ -1408,7 +1463,7 @@ let module_item_base =
   glr
   | STR(";;") -> Pstr_eval(loc_expr _loc (Pexp_tuple([])))
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
-  | RE("external\\b") n:value_name STR":" ty:typeexpr STR"=" ls:string_literal* ->
+  | RE("external\\b") n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
       Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
@@ -1439,9 +1494,9 @@ let structure =
 
 let signature_item_base =
  glr
-  | RE("val\\b") n:value_name STR(":") ty:typeexpr ->
+  | RE("val\\b") n:value_name STR(":") ty:typexpr ->
      Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = []; pval_loc = _loc})
-  | RE("external\\b") n:value_name STR":" ty:typeexpr STR"=" ls:string_literal* ->
+  | RE("external\\b") n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
       Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
