@@ -15,13 +15,13 @@ let f1 = function
     1 -> 0
   | 2 -> 1
   | x -> x
- 
+
 let f2 x = match x with
 | 1 -> 0
 | 2 -> 1
 | x -> x
 
-let f3 x = match x with
+(*let f3 x = match x with*)
 
 let f4 g x = try g x with _ -> f1 x
 
@@ -101,18 +101,18 @@ let f35 y = !y
 
 let f36 n = let n = ref n and r = ref 1 in while !n > 1 do r := !r * !n; decr n done; !r
 
-let f37 n = let r = ref 1 in for i = 2 to n do r := !r * n; done; !r
+let f37 n = let r = ref 1 in for i = 2 to n do r := !r * n done; !r
 
 type t1 = A | B
 
 let f38 x = match x with A -> B | B -> A
-let f38b x = match x:t1 with 
+let f38b x = match (x:t1) with 
   | A -> B
   | B -> A
 
 let f39 = function A -> B | B -> A
 
-let f40 g x y = x:int + (g y:int):int
+let f40 g x y = (x:int) + ((g (y:int)):int)
 
 let f41 = "toto", "ta
   ta", "ti\
@@ -182,7 +182,7 @@ type ('a, 'b) mod_pon = ('a -> 'b) -> 'a -> 'b
 
 type +'a blop = Blop of 'a
 
-type (-'a,+'b) blip = Blip of 'a -> 'b
+type (-'a, +'b) blip = Blip of ('a -> 'b)
 
 type dummy = { mutable c : int; d : string -> bool }
 

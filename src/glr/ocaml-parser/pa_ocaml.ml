@@ -101,9 +101,6 @@ let no_blank _ pos = pos
  * Functions for computing line numbers and positions.                      *
  ****************************************************************************)
 
-(* Should contain the name of the file being parsed. *)
-let fname = ref ""
-
 (* computes the line number (with a cache) for a given position in a string *)
 let bol = Hashtbl.create 1001
 let find_pos str n =
@@ -121,7 +118,7 @@ let find_pos str n =
     else fn (i-1)
   in
   let (lnum, bol) = fn n in
-  Lexing.({ pos_fname = !fname;
+  Lexing.({ pos_fname = (match !file with None -> "stdin" | Some s -> s);
             pos_lnum  = lnum;
             pos_bol   = bol;
             pos_cnum  = n })
@@ -330,6 +327,7 @@ let infix_op =
   | sym:STR("mod")   -> "mod"
   | sym:STR("land")  -> "land"
   | sym:STR("lor")   -> "lor"
+  | sym:STR("or")    -> "or"
   | sym:STR("lxor")  -> "lxor"
   | sym:STR("lsl")   -> "lsl"
   | sym:STR("lsr")   -> "lsr"
@@ -875,6 +873,17 @@ let pattern_base = memoize1 (fun lvl ->
       (AtomPat, loc_pat _loc_vn (Ppat_var { txt = vn; loc = _loc_vn }))
   | STR("_") ->
       (AtomPat, loc_pat _loc Ppat_any)
+  | c1:char_literal STR("..") c2:char_literal ->
+      let ic1, ic2 = Char.code c1, Char.code c2 in
+      if ic1 > ic2 then assert false; (* FIXME error message invalid range *)
+      let const i = Ppat_constant (Const_char (Char.chr i)) in
+      let rec range a b =
+        if a > b then assert false
+        else if a = b then [a]
+        else a :: range (a+1) b
+      in
+      let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
+      (RangePat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   | c:constant ->
       (AtomPat, loc_pat _loc_c (Ppat_constant c))
   | par:STR("(") p:pattern te:{STR(":") t:typeexpr -> t}? STR(")") ->
@@ -926,17 +935,6 @@ let pattern_base = memoize1 (fun lvl ->
   | s:RE("begin\\b") STR("end\\b") ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
       (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
-  | c1:char_literal STR("..") c2:char_literal ->
-      let ic1, ic2 = Char.code c1, Char.code c2 in
-      if ic1 > ic2 then assert false; (* FIXME error message invalid range *)
-      let const i = Ppat_constant (Const_char (Char.chr i)) in
-      let rec range a b =
-        if a > b then assert false
-        else if a = b then [a]
-        else a :: range (a+1) b
-      in
-      let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
-      (RangePat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
@@ -1024,7 +1022,7 @@ let assoc = function
 let infix_prio s =
   let s1 = if String.length s > 1 then s.[1] else ' ' in
   match s.[0], s1 with
-  | _ when List.mem s ["lsl"; "lsr"; "ast"] -> Pow
+  | _ when List.mem s ["lsl"; "lsr"; "asr"] -> Pow
   | _ when List.mem s ["mod"; "land"; "lor"; "lxor"] -> Prod
   | _ when List.mem s ["&"; "&&"] -> Conj
   | _ when List.mem s ["or"; "||"] -> Disj
@@ -1143,9 +1141,13 @@ let value_binding =
 
 let match_cases = memoize1 (fun lvl ->
   glr
-     l:{STR"|"? pat:pattern STR"->" e:(expression_lvl lvl) 
-         l:{STR"|" pat:pattern STR"->" e:(expression_lvl lvl) -> (pat,e)}*
-         -> ((pat,e)::l)}?[[]] -> l
+     l:{STR"|"? pat:pattern w:{ RE("when\\b") e:expression }? STR"->" e:(expression_lvl lvl) 
+         l:{STR"|" pat:pattern  w:{ RE("when\\b") e:expression }? STR"->" e:(expression_lvl lvl) -> 
+           let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
+           (pat,e)}*
+         -> 
+	 let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
+	 ((pat,e)::l)}?[[]] -> l
   end)
 
 let type_coercion =
@@ -1272,7 +1274,10 @@ let expression_base = memoize1 (fun lvl ->
   | STR("(") STR(")") -> (Atom, loc_expr _loc (Pexp_tuple([])))
   | RE("begin\\b") e:expression RE("end\\b") -> (Atom, e)
   | RE("begin\\b") RE("end\\b") -> (Atom, loc_expr _loc (Pexp_tuple([])))
-  | c:constructor e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},e,false)))
+  | c:constructor e:(expression_lvl App) when (lvl <= App) -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},Some e,false)))
+  | c:constructor -> (Atom, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},None,false)))
+  | RE("assert\\b") RE("false\\b")  when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assertfalse))		       
+  | RE("assert\\b") e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assert(e)))		       
   | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
@@ -1312,11 +1317,10 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
       (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
-  | l:{STR(",") e:(expression_lvl (next_exp Tupl)) -> e}+ when (lvl' > Tupl && lvl <= Tupl) -> 
+  | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
-  | l:{STR(";") e:(expression_lvl (next_exp Seq)) -> e}+ STR(";")? when (lvl' > Seq && lvl <= Seq) -> 
+  | l:{STR(";") e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
-  | STR(";") when (lvl' > Seq && lvl <= Seq) -> (Seq, fun f -> f) 
   | STR(".") STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
   | STR(".") STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
@@ -1425,7 +1429,7 @@ let mod_constraint =
 
 let _ = set_grammar module_type (
   glr
-    m:module_type_base l:{ RE("with\\b") m:mod_constraint l:{RE("AND\\b") m:mod_constraint*} -> m::l } ? ->
+    m:module_type_base l:{ RE("with\\b") m:mod_constraint l:{RE("and\\b") m:mod_constraint}* -> m::l } ? ->
       (match l with
          None -> m
        | Some l -> mtyp_loc _loc (Pmty_with(m, l)))
@@ -1433,6 +1437,7 @@ let _ = set_grammar module_type (
       
 let module_item_base =
   glr
+  | STR(";;") -> Pstr_eval(loc_expr _loc (Pexp_tuple([])))
   | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | RE("external\\b") n:value_name STR":" ty:typeexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
@@ -1515,10 +1520,17 @@ let ast =
   with
     End_of_file ->
   let s = Buffer.contents b in
-  if entry = Impl then 
-    `Struct (parse_string structure blank s)
-  else
-    `Sig (parse_string signature blank s)
+  try
+    if entry = Impl then 
+      `Struct (parse_string structure blank s)
+    else
+      `Sig (parse_string signature blank s)
+  with
+    Parse_error n ->
+    let pos = find_pos s n in
+    Lexing.(Printf.eprintf "File %S, line %d, characters %d:\n\
+		    Error: Syntax error" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol));
+    exit 1
 
 let _ = 
   if !ascii then
