@@ -1194,9 +1194,10 @@ let bigarray_set loc arr arg newval =
 
 let constructor =
   glr
-    m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | RE"false\\b" -> "false" | RE"true\\b" -> "true" } ->
-      match m with None -> Lident id
-		 | Some m -> Ldot(m, id)
+  | m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | false_kw -> "false" | true_kw -> "true" } ->
+      match m with
+      | None   -> Lident id
+		  | Some m -> Ldot(m, id)
   end 
 
 let argument =
@@ -1244,13 +1245,13 @@ let right_member =
 
 let value_binding =
   glr
-    pat:pattern e:right_member l:{RE("and\\b") pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
+    pat:pattern e:right_member l:{and_kw pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
   end
 
 let match_cases = memoize1 (fun lvl ->
   glr
-     l:{STR"|"? pat:pattern w:{ RE("when\\b") e:expression }? STR"->" e:(expression_lvl lvl) 
-         l:{STR"|" pat:pattern  w:{ RE("when\\b") e:expression }? STR"->" e:(expression_lvl lvl) -> 
+     l:{STR"|"? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
+         l:{STR"|" pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> 
            let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
            (pat,e)}*
          -> 
@@ -1311,15 +1312,15 @@ let class_expr_base =
       loc_pcl _loc ce.pcl_desc
   | STR("(") ce:class_expr STR(":") ct:class_type STR(")") ->
       loc_pcl _loc (Pcl_constraint (ce, ct))
-  | RE("fun\\b") ps:parameter+ STR("->") ce:class_expr ->
+  | fun_kw ps:parameter+ STR("->") ce:class_expr ->
       let f (l, eo, pat) acc =
         loc_pcl _loc (Pcl_fun (l, eo, pat, acc))
       in
       List.fold_right f ps ce
-  | RE("let\\b") r:rec_flag lb:let_binding
-    lbs:{RE("and\\b") lb:let_binding}* RE("in\\b") ce:class_expr ->
+  | let_kw r:rec_flag lb:let_binding
+    lbs:{and_kw lb:let_binding}* in_kw ce:class_expr ->
       loc_pcl _loc (Pcl_let (r, lb :: lbs, ce))
-  | RE("object\\b") cb:class_body RE("end\\b") ->
+  | object_kw cb:class_body end_kw ->
       loc_pcl _loc (Pcl_structure cb)
   end
 
@@ -1335,53 +1336,47 @@ let _ = set_grammar class_expr (
 let class_field =
   let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc } in
   glr
-  | RE("inherit\\b") ce:class_expr id:{RE("as\\b") id:lowercase_ident}? ->
+  | inherit_kw ce:class_expr id:{as_kw id:lowercase_ident}? ->
       loc_pcf _loc (Pcf_inher (Fresh, ce, id))
-  | RE("val\\b") m:RE("mutable\\b")? ivn:inst_var_name te:typexpr? STR("=")
+  | val_kw m:mutable_flag ivn:inst_var_name te:typexpr? STR("=")
     e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
-      let mut = if m = None then Immutable else Mutable in
       let te = { pexp_desc = Pexp_constraint (e, te, None)
                ; pexp_loc  = _loc_te }
       in
-      loc_pcf _loc (Pcf_val (ivn, mut, Fresh, te))
-  | RE("val\\b") m:RE("mutable\\b")? RE("virtual\\b") ivn:inst_var_name
+      loc_pcf _loc (Pcf_val (ivn, m, Fresh, te))
+  | val_kw m:mutable_flag virtual_kw ivn:inst_var_name
     STR(":") te:typexpr ->
-      let mut = if m = None then Immutable else Mutable in
       let ivn = { txt = ivn; loc = _loc_ivn } in
-      loc_pcf _loc (Pcf_valvirt (ivn, mut, te))
-  | RE("val\\b") m:RE("virtual\\b") RE("mutable\\b") ivn:inst_var_name
-    STR(":") te:typexpr ->
+      loc_pcf _loc (Pcf_valvirt (ivn, m, te))
+  | val_kw virtual_kw mutable_kw ivn:inst_var_name STR(":") te:typexpr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
-  | RE("method\\b") p:RE("private\\b")? mn:method_name ps:parameter*
-    te:{STR(":") te:typexpr}? STR("=") e:expr ->
-      let pri = if p = None then Public else Private in
+  | method_kw p:private_flag mn:method_name ps:parameter* te:{STR(":")
+    te:typexpr}? STR("=") e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
       let te = { pexp_desc = Pexp_constraint (e, te, None) (* FIXME ps ? *)
                ; pexp_loc  = _loc_te }
       in
-      loc_pcf _loc (Pcf_meth (mn, pri, Fresh, te))
-  | RE("method\\b") p:RE("private\\b")? mn:method_name STR(":")
+      loc_pcf _loc (Pcf_meth (mn, p, Fresh, te))
+  | method_kw p:private_flag mn:method_name STR(":")
     pte:poly_typexpr STR("=") e:expr ->
       let mn = { txt = mn ; loc = _loc_mn } in
-      let pri = if p = None then Public else Private in
       let et = { pexp_desc = Pexp_constraint (e, Some pte, None)
                ; pexp_loc  = _loc_pte }
       in
-      loc_pcf _loc (Pcf_meth (mn, pri, Fresh, et))
-  | RE("method\\b") p:RE("private\\b")? RE("virtual\\b")
-    mn:method_name STR(":") pte:poly_typexpr ->
+      loc_pcf _loc (Pcf_meth (mn, p, Fresh, et))
+  | method_kw p:private_flag virtual_kw mn:method_name STR(":")
+    pte:poly_typexpr ->
       let mn = { txt = mn ; loc = _loc_mn } in
-      let pri = if p = None then Public else Private in
-      loc_pcf _loc (Pcf_virt (mn, pri, pte))
-  | RE("method\\b") RE("virtual\\b") RE("private\\b") mn:method_name
+      loc_pcf _loc (Pcf_virt (mn, p, pte))
+  | method_kw virtual_kw private_kw mn:method_name
     STR(":") pte:poly_typexpr ->
       let mn = { txt = mn ; loc = _loc_mn } in
       loc_pcf _loc (Pcf_virt (mn, Private, pte))
-  | RE("constraint\\b") te:typexpr STR("=") te':typexpr ->
+  | constraint_kw te:typexpr STR("=") te':typexpr ->
       loc_pcf _loc (Pcf_constr (te, te'))
-  | RE("initializer\\b") e:expr ->
+  | initializer_kw e:expr ->
       loc_pcf _loc (Pcf_init e)
   end
 
@@ -1533,10 +1528,10 @@ let module_expr_base =
   | mp:module_path ->
       let mid = { txt = mp; loc = _loc } in
       mexpr_loc _loc (Pmod_ident mid)
-  | RE("struct\\b") ms:module_item* RE("end\\b") -> 
-     mexpr_loc _loc (Pmod_structure(ms))
-  | RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
-     STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor({ txt = mn; loc = _loc_mn}, mt, me))
+  | struct_kw ms:module_item* end_kw -> 
+      mexpr_loc _loc (Pmod_structure(ms))
+  | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
+    STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor({ txt = mn; loc = _loc_mn}, mt, me))
   | STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
       (match mt with
        | None    -> me
@@ -1554,25 +1549,25 @@ let module_type_base =
   | mp:modtype_path ->
       let mid = { txt = mp; loc = _loc } in
       mtyp_loc _loc (Pmty_ident mid)
-  | RE("sig\\b") ms:signature_item* RE("end\\b") -> 
+  | sig_kw ms:signature_item* end_kw -> 
      mtyp_loc _loc (Pmty_signature(ms))
-  | RE("functor\\b") STR("(") mn:module_name STR(":") mt:module_type STR(")")
+  | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
      STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor({ txt = mn; loc = _loc_mn}, mt, me))
   | STR("(") mt:module_type STR(")") -> mt
   end
 
 let mod_constraint = 
   glr
-  | RE("type\\b") tdef:typedef_in_constraint ->
+  | type_kw tdef:typedef_in_constraint ->
      fst tdef, Pwith_type(snd tdef)
-  | RE("module\\b") m1:module_path STR("=") m2:extended_module_path ->
+  | module_kw m1:module_path STR("=") m2:extended_module_path ->
      ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
 (* TODO: Pwith_typesubst and Pwithmodsubst are missing *)
   end							 
 
 let _ = set_grammar module_type (
   glr
-    m:module_type_base l:{ RE("with\\b") m:mod_constraint l:{RE("and\\b") m:mod_constraint}* -> m::l } ? ->
+    m:module_type_base l:{with_kw m:mod_constraint l:{and_kw m:mod_constraint}* -> m::l } ? ->
       (match l with
          None -> m
        | Some l -> mtyp_loc _loc (Pmty_with(m, l)))
