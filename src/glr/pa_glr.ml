@@ -135,13 +135,14 @@ let apply_list_option _loc opt e =
 	 
 let default_action _loc l =
   let l = List.filter (function (("_",_),_,_) -> false | _ -> true) l in
-  let rec fn =
-    function
-      [] -> failwith "No default action can be found"
-    | [(id,_),_,_] -> <:expr<$lid:id$>>
-    | ((id,_),_,_)::l -> <:expr<$lid:id$, $fn l$ >>
-  in fn l
-
+  let l = List.map (fun ((id,_),_,_) -> <:expr<$lid:id$>>) l in
+  let rec fn = function
+    | [] -> <:expr< () >>
+    | [x] -> x
+    | x::l ->
+       Ast.ExTup(_loc, List.fold_left (fun acc x -> Ast.ExCom(_loc,acc,x)) x l)
+  in 
+  fn l
 
 EXTEND Gram
   expr: LEVEL "simple" [ [

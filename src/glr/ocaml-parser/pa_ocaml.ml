@@ -1097,6 +1097,69 @@ let record_list =
  * classes and objects                                                      *
  ****************************************************************************)
 
+let class_body_type = declare_grammar ()
+
+let virt_mut = 
+  glr
+  | v:{v:RE("virtual\\b")}? m:{m:RE("mutable\\b")}? -> (if v <> None then Virtual else Concrete), (if m <> None then Mutable else Immutable)
+  | RE("mutable\\b?") RE("virtual\\b") -> Virtual, Mutable
+  end
+
+let virt_priv = 
+  glr
+  | v:{v:RE("virtual\\b")}? p:{p:RE("private\\b")}? -> (if v <> None then Virtual else Concrete), (if p <> None then Private else Public)
+  | RE("private\\b?") RE("virtual\\b") -> Virtual, Private
+  end
+
+let loc_cfs loc f = { pctf_desc = f; pctf_loc = loc }
+
+let class_field_spec =
+  glr
+  | RE("inherit\\b") b:class_body_type -> loc_cfs _loc (Pctf_inher b)
+  | RE("val\\b") (v,m):virt_mut n:inst_var_name STR(":") ty:typeexpr -> loc_cfs _loc (Pctf_val(n, m, v, ty))
+  | RE("method\\b") (v,p):virt_priv n:inst_var_name STR(":") ty:typeexpr ->loc_cfs _loc (
+      if v = Virtual then Pctf_virt(n,p,ty)
+      else Pctf_meth(n,p,ty))
+  | RE("constraint\\b") t1:typeexpr STR("=") t2:typeexpr ->loc_cfs _loc (Pctf_cstr(t1,t2))
+  end
+
+let loc_cty loc f = { pcty_desc = f; pcty_loc = loc }
+
+let _ = set_grammar class_body_type (
+  glr
+    RE("object\\b") ty:{ STR("(") t:typeexpr STR(")") }? l:{ f:class_field_spec}* RE("end\\b") ->
+      loc_cty _loc (Pcty_signature { pcsig_self = (match ty with None -> loc_typ _loc_ty (Ptyp_any) | Some ty ->  ty);
+				     pcsig_fields = l;
+				     pcsig_loc = _loc })
+  | l:{ STR("[") t1:typeexpr l:{ STR(",") t2:typeexpr }* STR("]") -> t1::l }?[[]] p:classtype_path ->
+      loc_cty _loc (Pcty_constr ({ txt = p; loc = _loc_p}, l))
+  end)
+
+let class_type =
+  glr
+    tys:{ lbl:{q:STR("?")? l:label_name STR(":") -> (if q <> None then "?"^l else l) }?[""]
+      ty:typeexpr STR("->") }* cb:class_body_type ->
+	List.fold_left (fun acc (lbl, ty) -> loc_cty _loc (Pcty_fun(lbl,ty,acc))) cb (List.rev tys)
+  end
+
+let type_parameters =
+  glr
+    i1:type_param l:{ STR(",") i2:type_param }* -> i1::l
+  end
+
+let class_type_def =
+  glr
+    v:RE("virtual")? p:{ STR("[") p:type_parameters }?[[]] n:class_name STR("=") e:class_body_type ->
+        let params, variance = List.split p in
+	let params = List.map (function None -> assert false (* TODO ? *) | Some x -> x) params in
+        {pci_virt = if v <> None then Virtual else Concrete;
+	 pci_params = params, _loc_p;
+         pci_name = { txt = n; loc = _loc_n }; 
+	 pci_expr = e;
+	 pci_variance = variance;
+         pci_loc = _loc }
+  end
+
 let obj_item = 
   glr 
     v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
@@ -1111,6 +1174,7 @@ let class_body =
       let p = match p with None -> loc_pat _loc_p Ppat_any | Some p -> p in
       { pcstr_pat = p; pcstr_fields = f }
   end
+
 
 let expression_base = memoize1 (fun lvl ->
   glr
@@ -1307,8 +1371,7 @@ let module_item_base =
      Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt)
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE("include\\b") me:module_expr -> Pstr_include me
-
-
+  | RE("class\\b") RE("type\\b") c1:class_type_def l:{ RE("and\\b") c2:class_type_def }* -> Pstr_class_type(c1::l)
   end
 
 let _ = set_grammar module_item (
@@ -1341,7 +1404,7 @@ let signature_item_base =
      Psig_modtype({ txt = mn ; loc = _loc_mn }, mt)
   | RE("open\\b") o:override_flag m:module_path -> Psig_open(o, { txt = m; loc = _loc_m} )
   | RE("include\\b") me:module_type -> Psig_include me
-
+  | RE("class\\b") RE("type\\b") c1:class_type_def l:{ RE("and\\b") c2:class_type_def }* -> Psig_class_type(c1::l)
 
  end
 

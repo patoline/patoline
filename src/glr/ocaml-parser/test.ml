@@ -118,6 +118,8 @@ let f41 = "toto", "ta
   ta", "ti\
         ti"
 
+class type int_cl = object val x : int method get : int end
+
 module M1 = struct
   type t = int
   let compare = (-)
@@ -138,6 +140,7 @@ module type MT1 =
     module type A = sig val g : float -> float end
     module M : A
     module F (A:A) : A
+    class type int = object val x : int method get : int end
   end
 
 module M4 : MT1 =
@@ -149,35 +152,6 @@ module M4 : MT1 =
     module type A = sig val g : float -> float end
     module M = struct let g x = x +. 1. end
     module F (A:A) = struct open A let g x = g (g x) end
+    class type int = object val x : int method get : int end
   end 
 
-exception Invalid_arg of string * string
-exception Invalid_arg2 = Invalid_arg
-
-exception Exit = Pervasives.Exit
-exception NF = Not_found
-
-type abstract
-
-type bool_ = True
-           | False
-
-type 'a list_ = Nil
-              | Cons of 'a * 'a list_
-
-type 'a tree = Empty
-             | Node of 'a * 'a tree * 'a tree
-
-type inttree = int tree
-
-type coord = { x : int ; y : int ; z : int }
-
-type ('a, 'b) pierce = (('a -> 'b) -> 'a) -> 'a
-
-type ('a, 'b) mod_pon = ('a -> 'b) -> 'a -> 'b
-
-type +'a blop = Blop of 'a
-
-type (-'a,+'b) blip = Blip of 'a -> 'b
-
-type dummy = { mutable c : int; d : string -> bool }
