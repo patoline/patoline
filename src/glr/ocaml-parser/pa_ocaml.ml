@@ -441,6 +441,7 @@ let classtype_path =
 
 (****************************************************************************
  * Type expressions                                                         *
+ * FIXME we never use the constructor Ptyp_package, what is it used for?    *
  ****************************************************************************)
 
 type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
@@ -547,10 +548,12 @@ let typeexpr_base : core_type grammar =
       let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
   | STR("#") cp:class_path ->
-      assert false (* TODO *)
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_typ _loc (Ptyp_class (cp, [], []))
   | STR("(") te:typeexpr tes:{STR(",") te:typeexpr}* STR(")")
     STR("#") cp:class_path ->
-      assert false (* TODO *)
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_typ _loc (Ptyp_class (cp, te::tes, []))
   end
 
 let next_type_prio = function
@@ -574,7 +577,11 @@ let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> cor
   | RE("as\\b") STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_alias (te, id)))
   | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
-      (Dash, fun te -> loc_typ (merge te.ptyp_loc _loc) (assert false (* TODO *)))
+      let cp = { txt = cp; loc = _loc_cp } in
+      let tex = fun te ->
+        let loc = merge te.ptyp_loc _loc in
+        loc_typ loc (Ptyp_class (cp, [te], [])) (* FIXME what is the last list for?! *)
+      in (Dash, tex)
   end)
 
 let typeexpr_suit =
