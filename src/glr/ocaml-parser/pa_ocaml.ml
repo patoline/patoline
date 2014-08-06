@@ -1598,6 +1598,7 @@ let module_item_base =
   | RE("open\\b") o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | RE("include\\b") me:module_expr -> Pstr_include me
   | ctd:classtype_definition -> Pstr_class_type ctd
+  | e:expression -> Pstr_eval e
   end
 
 let _ = set_grammar module_item (
