@@ -547,7 +547,7 @@ let method_type =
 
 let tag_spec =
   glr
-  | STR("`") tn:tag_name te:{RE("of\\b") te:typexpr}? ->
+  | STR("`") tn:tag_name te:{of_kw te:typexpr}? ->
       let t = match te with
               | None   -> []
               | Some l -> [l]
@@ -559,7 +559,7 @@ let tag_spec =
 
 let tag_spec_first =
   glr
-  | tn:tag_name te:{RE("of\\b") te:typexpr}? ->
+  | tn:tag_name te:{of_kw te:typexpr}? ->
       let t = match te with
               | None   -> []
               | Some l -> [l]
@@ -573,7 +573,7 @@ let tag_spec_first =
 
 let tag_spec_full =
   glr
-  | STR("`") tn:tag_name tes:{RE("of\\b") STR("&")? te:typexpr
+  | STR("`") tn:tag_name tes:{of_kw STR("&")? te:typexpr
     tes:{STR("&") te:typexpr}* -> (te::tes)}? ->
       let tes = match tes with
                 | None   -> []
@@ -642,7 +642,7 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
       (AppType, fun te -> loc_typ (merge te.ptyp_loc _loc)
         (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
-  | RE("as\\b") STR("'") id:ident when lvl' >= As && lvl <= As ->
+  | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_alias (te, id)))
   | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
       let cp = { txt = cp; loc = _loc_cp } in
@@ -702,8 +702,8 @@ let type_equation =
 
 let type_constraint =
   glr
-    s:RE("\\bconstraint\\b") STR("'") id:ident STR("=") te:typexpr ->
-      loc_typ _loc_id (Ptyp_var id), te, _loc_s
+  | constraint_kw STR("'") id:ident STR("=") te:typexpr ->
+      loc_typ _loc_id (Ptyp_var id), te, _loc
   end
 
 let constr_decl =
@@ -714,7 +714,7 @@ let constr_decl =
     end
   in
   glr
-    cn:constr_name tes:{RE("\\bof\\b") te:typexpr
+    cn:constr_name tes:{of_kw te:typexpr
     tes:{STR("*") te:typexpr -> te}* -> te::tes}? ->
       let c = { txt = cn; loc = _loc_cn } in
       let tel = match tes with
@@ -725,13 +725,6 @@ let constr_decl =
   end
 
 let field_decl =
-  let mutable_flag =
-    glr
-      m:RE("\\bmutable\\b")? -> (match m with
-                                 | None -> Immutable
-                                 | _    -> Mutable)
-    end
-  in
   glr
     m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
       { txt = fn; loc = _loc_fn }, m, pte, _loc_m
@@ -803,13 +796,13 @@ let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
 
 let type_definition =
   glr
-    RE("\\btype\\b") td:typedef tds:{RE("\\band\\b") td:typedef -> td}* ->
+  | type_kw td:typedef tds:{and_kw td:typedef -> td}* ->
       (td::tds)
   end
 
 let exception_declaration =
   glr
-  | RE("\\bexception\\b") cn:constr_name typ:{RE("\\bof\\b") te:typexpr
+  | exception_kw cn:constr_name typ:{of_kw te:typexpr
     tes:{STR("*") te:typexpr -> te}* -> (te::tes) }? ->
       let name = { txt = cn; loc = _loc_cn } in
       let ed = match typ with
@@ -822,7 +815,7 @@ let exception_declaration =
 (* Exception definition *)
 let exception_definition =
   glr
-  | RE("\\bexception\\b") cn:constr_name STR("=") c:constr ->
+  | bexception_kw cn:constr_name STR("=") c:constr ->
       let name = { txt = cn; loc = _loc_cn } in
       let ex = { txt = c; loc = _loc_c } in
       Pstr_exn_rebind (name, ex)
@@ -854,23 +847,23 @@ let virt_priv =
 
 let _ = set_grammar class_field_spec (
   glr
-  | RE("inherit\\b") cbt:class_body_type ->
+  | inherit_kw cbt:class_body_type ->
       pctf_loc _loc (Pctf_inher cbt)
-  | RE("val\\b") (vir,mut):virt_mut ivn:inst_var_name STR(":") te:typexpr ->
+  | val_kw (vir,mut):virt_mut ivn:inst_var_name STR(":") te:typexpr ->
       pctf_loc _loc (Pctf_val (ivn, mut, vir, te))
-  | RE("method\\b") (v,pri):virt_priv mn:method_name STR(":") te:poly_typexpr ->
+  | method_kw (v,pri):virt_priv mn:method_name STR(":") te:poly_typexpr ->
       if v = Concrete then
         pctf_loc _loc (Pctf_meth (mn, pri, te))
       else
         pctf_loc _loc (Pctf_virt (mn, pri, te))
-  | RE("constraint\\b") te:typexpr STR("=") te':typexpr ->
+  | constraint_kw te:typexpr STR("=") te':typexpr ->
       pctf_loc _loc (Pctf_cstr (te, te'))
   end)
 
 let _ = set_grammar class_body_type (
   glr
-  | RE("object\\b") te:{STR("(") te:typexpr STR(")")}?
-    cfs:class_field_spec* RE("end\\b") ->
+  | object_kw te:{STR("(") te:typexpr STR(")")}? cfs:class_field_spec*
+    end_kw ->
       let self = match te with
                  | None   -> loc_typ _loc Ptyp_any
                  | Some t -> t
@@ -910,8 +903,6 @@ let type_parameters =
     i1:type_param l:{ STR(",") i2:type_param }* -> i1::l
   end
 
-(* TODO *)
-
 (* Class type definition *)
 let classtype_def =
   glr
@@ -931,8 +922,8 @@ let classtype_def =
 
 let classtype_definition =
   glr
-  | RE("class\\b") RE("type\\b") cd:classtype_def
-    cds:{RE("and\\b") cd:classtype_def}* -> (cd::cds)
+  | class_kw type_kw cd:classtype_def cds:{and_kw cd:classtype_def}* ->
+      (cd::cds)
   end
 
 
@@ -942,12 +933,12 @@ let classtype_definition =
 (* Constants *)
 let constant =
   glr
-    f:float_literal         -> Const_float f
-  | c:char_literal          -> Const_char c
-  | s:string_literal        -> Const_string s
-  | i:int32_lit -> Const_int32 i
-  | i:int64_lit -> Const_int64 i
-  | i:nat_int_lit -> Const_nativeint i
+    f:float_literal   -> Const_float f
+  | c:char_literal    -> Const_char c
+  | s:string_literal  -> Const_string s
+  | i:int32_lit       -> Const_int32 i
+  | i:int64_lit       -> Const_int64 i
+  | i:nat_int_lit     -> Const_nativeint i
   | i:integer_literal -> Const_int i
   end
 
@@ -993,7 +984,7 @@ let pattern_base = memoize1 (fun lvl ->
   | c:constant ->
       (AtomPat, loc_pat _loc_c (Ppat_constant c))
   | STR("(") p:pattern STR(")") -> (AtomPat, p)
-  | RE("lazy\\b") p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
+  | lazy_kw p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
       let ast = Ppat_lazy(p) in
       (ConstrPat, loc_pat _loc ast)
   | c:constr p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
@@ -1002,12 +993,12 @@ let pattern_base = memoize1 (fun lvl ->
   | c:constr ->
       let ast = Ppat_construct({ txt = c; loc = _loc_c }, None, false) in
       (AtomPat, loc_pat _loc ast)
-  | c:RE("false\\b") ->
-      let fls = { txt = Lident "false"; loc = _loc_c } in
-      (AtomPat, loc_pat _loc_c (Ppat_construct (fls, None, false)))
-  | c:RE("true\\b")  -> 
-      let tru = { txt = Lident "true"; loc = _loc_c } in
-      (AtomPat, loc_pat _loc_c (Ppat_construct (tru, None, false)))
+  | false_kw ->
+      let fls = { txt = Lident "false"; loc = _loc } in
+      (AtomPat, loc_pat _loc (Ppat_construct (fls, None, false)))
+  | true_kw  -> 
+      let tru = { txt = Lident "true"; loc = _loc } in
+      (AtomPat, loc_pat _loc (Ppat_construct (tru, None, false)))
   | s:STR("`") c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
       (ConstrPat, loc_pat _loc_s (Ppat_variant (c, Some p)))
   | s:STR("`") c:tag_name ->
@@ -1041,14 +1032,14 @@ let pattern_base = memoize1 (fun lvl ->
   | s:STR("(") STR(")") ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
       (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
-  | s:RE("begin\\b") STR("end\\b") ->
-      let unt = { txt = Lident "()"; loc = _loc_s } in
-      (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
+  | begin_kw end_kw ->
+      let unt = { txt = Lident "()"; loc = _loc } in
+      (AtomPat, loc_pat _loc (Ppat_construct (unt, None, false)))
   end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
   glr
-  | RE("as\\b") vn:value_name when lvl' > AsPat && lvl <= AsPat ->
+  | as_kw vn:value_name when lvl' > AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
         let loc = merge p.ppat_loc _loc in
         loc_pat loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
