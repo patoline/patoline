@@ -763,9 +763,88 @@ let exception_definition =
   end
 
 (****************************************************************************
+ * Classes                                                                  *
+ ****************************************************************************)
+(* Class types *)
+let class_field_spec = declare_grammar ()
+let class_body_type = declare_grammar ()
+
+let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc }
+let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc }
+
+let _ = set_grammar class_field_spec (
+  glr
+  | RE("inherit\\b") cbt:class_body_type ->
+      pctf_loc _loc (Pctf_inher cbt)
+  | RE("val\\b") m:RE("mutable\\b")? v:RE("virtual\\b")? ivn:inst_var_name
+    STR(":") te:typeexpr ->
+      let mut = if m = None then Immutable else Mutable in
+      let vir = if v = None then Concrete else Virtual in
+      pctf_loc _loc (Pctf_val (ivn, mut, vir, te))
+  | RE("val\\b") RE("virtual\\b") RE("mutable\\b")  ivn:inst_var_name
+    STR(":") te:typeexpr ->
+      pctf_loc _loc (Pctf_val (ivn, Mutable, Virtual, te))
+  | RE("method\\b") p:RE("private\\b")? v:RE("virtual\\b")? mn:method_name
+    STR(":") te:poly_typexpr ->
+      let pri = if p = None then Public else Private in
+      if v = None then
+        pctf_loc _loc (Pctf_meth (mn, pri, te))
+      else
+        pctf_loc _loc (Pctf_virt (mn, pri, te))
+  | RE("method\\b") RE("virtual\\b") RE("private\\b") mn:method_name
+    STR(":") te:poly_typexpr ->
+      pctf_loc _loc (Pctf_virt (mn, Private, te))
+  | RE("constraint\\b") te:typeexpr STR("=") te':typeexpr ->
+      pctf_loc _loc (Pctf_cstr (te, te'))
+  end)
+
+let _ = set_grammar class_body_type (
+  glr
+  | RE("object\\b") te:{STR("(") te:typeexpr STR(")")}?
+    cfs:class_field_spec* STR("end\\b") ->
+      let self = match te with
+                 | None   -> assert false (* FIXME do not know hot to refer to self type *)
+                 | Some t -> t
+      in
+      let sign =
+        { pcsig_self = self
+        ; pcsig_fields = cfs
+        ; pcsig_loc = _loc }
+      in
+      pcty_loc _loc (Pcty_signature sign)
+  | tes:{STR("[") te:typeexpr tes:{STR(",") te:typeexpr}*
+    STR("]") -> (te::tes)}? ctp:classtype_path ->
+      let ctp = { txt = ctp; loc = _loc_ctp } in
+      let tes = match tes with
+                | None   -> []
+                | Some l -> l
+      in
+      pcty_loc _loc (Pcty_constr (ctp, tes))
+  end)
+
+let class_type =
+  let olabel =
+    glr
+    | o:STR("?")? ln:label_name STR(":") -> (o <> None, ln)
+    end
+  in
+  glr
+  | tes:{l:olabel? te:typeexpr -> (l, te)}* cbt:class_body_type ->
+      let app acc (lab, te) =
+        match lab with
+        | None            -> pcty_loc _loc (Pcty_fun ("", te, acc))
+        | Some (false, l) -> pcty_loc _loc (Pcty_fun (l, te, acc))
+        | Some (true, l)  ->
+            let opt = { txt = Lident "option"; loc = _loc } in
+            let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
+            pcty_loc _loc (Pcty_fun (l, teopt, acc))
+      in
+      List.fold_left app cbt tes
+  end
+
+(****************************************************************************
  * Constants and Patterns                                                   *
  ****************************************************************************)
-
 (* Constants *)
 let constant =
   glr
