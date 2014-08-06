@@ -842,14 +842,14 @@ let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc }
 
 let virt_mut = 
   glr
-  | v:{v:RE("virtual\\b")}? m:{m:RE("mutable\\b")}? -> (if v <> None then Virtual else Concrete), (if m <> None then Mutable else Immutable)
-  | RE("mutable\\b?") RE("virtual\\b") -> Virtual, Mutable
+  | v:virtual_flag m:mutable_flag -> (v, m)
+  | mutable_kw virtual_kw -> (Virtual, Mutable)
   end
 
 let virt_priv = 
   glr
-  | v:{v:RE("virtual\\b")}? p:{p:RE("private\\b")}? -> (if v <> None then Virtual else Concrete), (if p <> None then Private else Public)
-  | RE("private\\b?") RE("virtual\\b") -> Virtual, Private
+  | v:virtual_flag p:private_flag -> (v, p)
+  | private_kw virtual_kw -> (Virtual, Private)
   end
 
 let _ = set_grammar class_field_spec (
@@ -915,13 +915,13 @@ let type_parameters =
 (* Class type definition *)
 let classtype_def =
   glr
-  | v:RE("virtual\\b")? tp:{STR("[") tp:type_parameters STR("]")}?[[]] cn:class_name
+  | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]] cn:class_name
     STR("=") cbt:class_body_type ->
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
       in
-      { pci_virt = if v <> None then Virtual else Concrete
+      { pci_virt = v
       ; pci_params = params, _loc_tp
       ; pci_name = { txt = cn; loc = _loc_cn }
       ; pci_expr = cbt
@@ -1324,10 +1324,9 @@ let class_expr_base =
         loc_pcl _loc (Pcl_fun (l, eo, pat, acc))
       in
       List.fold_right f ps ce
-  | RE("let\\b") r:RE("rec\\b")? lb:let_binding
+  | RE("let\\b") r:rec_flag lb:let_binding
     lbs:{RE("and\\b") lb:let_binding}* RE("in\\b") ce:class_expr ->
-      let recf = if r = None then Nonrecursive else Recursive in
-      loc_pcl _loc (Pcl_let (recf, lb :: lbs, ce))
+      loc_pcl _loc (Pcl_let (r, lb :: lbs, ce))
   | RE("object\\b") cb:class_body RE("end\\b") ->
       loc_pcl _loc (Pcl_structure cb)
   end
@@ -1405,8 +1404,8 @@ let expression_base = memoize1 (fun lvl ->
   glr
     id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
-  | RE("let\\b") r:RE("rec\\b")? l:value_binding RE("in\\b") e:(expression_lvl (let_prio lvl)) when (lvl < App)
-    -> (Let, loc_expr _loc (Pexp_let ((if r = None then Nonrecursive else Recursive), l, e)))
+  | RE("let\\b") r:rec_flag l:value_binding RE("in\\b") e:(expression_lvl (let_prio lvl)) when (lvl < App)
+    -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
   | RE("function\\b") l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
   | RE("fun\\b") l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
@@ -1436,10 +1435,9 @@ let expression_base = memoize1 (fun lvl ->
      (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Lident p; loc = _loc_p}), ["", e])))
   | RE("while\\b")  e:expression RE("do\\b") e':expression RE("done\\b") ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
-  | RE("for\\b") id:lowercase_ident STR("=")  
-      e:expression d:RE("\\(down\\)?to\\b") e':expression RE("do\\b") e'':expression RE("done\\b") ->
-        (let dir = if d = "to" then Upto else Downto in
-         (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', dir, e''))))
+  | RE("for\\b") id:lowercase_ident STR("=") e:expression d:downto_flag
+    e':expression RE("do\\b") e'':expression RE("done\\b") ->
+      (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', d, e'')))
   | RE("new\\b") p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
   | RE("object\\b") o:class_body RE("end\\b") -> (Atom, loc_expr _loc (Pexp_object o))
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) -> (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
@@ -1591,7 +1589,7 @@ let _ = set_grammar module_type (
 let module_item_base =
   glr
   | STR(";;") -> Pstr_eval(loc_expr _loc (Pexp_tuple([])))
-  | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
+  | RE(let_re) r:rec_flag l:value_binding -> Pstr_value (r, l)
   | RE("external\\b") n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
