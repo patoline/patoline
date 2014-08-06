@@ -186,3 +186,6 @@ type (-'a, +'b) blip = Blip of ('a -> 'b)
 
 type dummy = { mutable c : int; d : string -> bool }
 
+let f42 = lazy (2 + 2)
+
+let f43:int = match f42 with lazy n -> n

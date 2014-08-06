@@ -952,11 +952,21 @@ let constant =
   end
 
 (* Patterns *)
-type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
-                  | LazyPat | RangePat | AtomPat
+type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
+                  | AtomPat
 
-let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; ConstrPat
-                    ; LazyPat ; RangePat ; AtomPat ]
+let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; CoercePat ; ConstrPat
+                    ; AtomPat ]
+
+let next_pat_prio = function
+    TopPat -> AsPat
+  | AsPat -> AltPat
+  | AltPat -> TupPat
+  | TupPat -> ConsPat
+  | ConsPat -> CoercePat
+  | CoercePat -> ConstrPat
+  | ConstrPat -> AtomPat
+  | AtomPat -> AtomPat
 
 let pattern_lvl, set_pattern_lvl = grammar_family ()
 let pattern = pattern_lvl TopPat
@@ -979,26 +989,29 @@ let pattern_base = memoize1 (fun lvl ->
         else a :: range (a+1) b
       in
       let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
-      (RangePat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
+      (AtomPat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   | c:constant ->
       (AtomPat, loc_pat _loc_c (Ppat_constant c))
-  | par:STR("(") p:pattern te:{STR(":") t:typexpr -> t}? STR(")") ->
-      let pat =
-        match te with
-        | None    -> p.ppat_desc
-        | Some ty -> Ppat_constraint(p, ty)
-      in (AtomPat, loc_pat _loc_par pat)
-  | c:constr p:pattern? when lvl <= ConstrPat ->
-      let ast = Ppat_construct({ txt = c; loc = _loc_c }, p, false) in
-      (ConstrPat, loc_pat _loc_c ast)
+  | STR("(") p:pattern STR(")") -> (AtomPat, p)
+  | RE("lazy\\b") p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
+      let ast = Ppat_lazy(p) in
+      (ConstrPat, loc_pat _loc ast)
+  | c:constr p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
+      let ast = Ppat_construct({ txt = c; loc = _loc_c }, Some p, false) in
+      (ConstrPat, loc_pat _loc ast)
+  | c:constr ->
+      let ast = Ppat_construct({ txt = c; loc = _loc_c }, None, false) in
+      (AtomPat, loc_pat _loc ast)
   | c:RE("false\\b") ->
       let fls = { txt = Lident "false"; loc = _loc_c } in
       (AtomPat, loc_pat _loc_c (Ppat_construct (fls, None, false)))
   | c:RE("true\\b")  -> 
       let tru = { txt = Lident "true"; loc = _loc_c } in
       (AtomPat, loc_pat _loc_c (Ppat_construct (tru, None, false)))
-  | s:STR("`") c:tag_name p:pattern? when lvl <= ConstrPat ->
-      (ConstrPat, loc_pat _loc_s (Ppat_variant (c, p)))
+  | s:STR("`") c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
+      (ConstrPat, loc_pat _loc_s (Ppat_variant (c, Some p)))
+  | s:STR("`") c:tag_name ->
+      (AtomPat, loc_pat _loc_s (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
       (AtomPat, loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t }))
   | s:STR("{") f:field STR("=") p:pattern
@@ -1053,6 +1066,12 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
         let cons = { txt = Lident "::"; loc = _loc_c } in
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
         loc_pat loc (Ppat_construct(cons, Some args, false)))
+  | te:STR(":") ty:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
+      (CoercePat, fun p -> 
+        let loc = merge p.ppat_loc _loc in
+	let pat = Ppat_constraint(p, ty)
+	in loc_pat loc pat)
+
   end)
 
 let pattern_suit =
@@ -1069,7 +1088,7 @@ let pattern_suit =
 
 let _ = set_pattern_lvl (fun lvl ->
   glr
-  | t:(pattern_base lvl) ft:(pattern_suit AtomPat lvl) -> (snd ft) (snd t)
+  | (lvl',t):(pattern_base lvl) ->> ft:(pattern_suit lvl' lvl) -> snd ft t
   end) pattern_prios
 
 (****************************************************************************
@@ -1403,6 +1422,7 @@ let expression_base = memoize1 (fun lvl ->
   | c:constructor -> (Atom, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},None,false)))
   | RE("assert\\b") RE("false\\b")  when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assertfalse))		       
   | RE("assert\\b") e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assert(e)))		       
+  | RE("lazy\\b") e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))		       
   | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
