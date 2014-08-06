@@ -758,28 +758,29 @@ let class_body_type = declare_grammar ()
 let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc }
 let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc }
 
+let virt_mut = 
+  glr
+  | v:{v:RE("virtual\\b")}? m:{m:RE("mutable\\b")}? -> (if v <> None then Virtual else Concrete), (if m <> None then Mutable else Immutable)
+  | RE("mutable\\b?") RE("virtual\\b") -> Virtual, Mutable
+  end
+
+let virt_priv = 
+  glr
+  | v:{v:RE("virtual\\b")}? p:{p:RE("private\\b")}? -> (if v <> None then Virtual else Concrete), (if p <> None then Private else Public)
+  | RE("private\\b?") RE("virtual\\b") -> Virtual, Private
+  end
+
 let _ = set_grammar class_field_spec (
   glr
   | RE("inherit\\b") cbt:class_body_type ->
       pctf_loc _loc (Pctf_inher cbt)
-  | RE("val\\b") m:RE("mutable\\b")? v:RE("virtual\\b")? ivn:inst_var_name
-    STR(":") te:typexpr ->
-      let mut = if m = None then Immutable else Mutable in
-      let vir = if v = None then Concrete else Virtual in
+  | RE("val\\b") (vir,mut):virt_mut ivn:inst_var_name STR(":") te:typexpr ->
       pctf_loc _loc (Pctf_val (ivn, mut, vir, te))
-  | RE("val\\b") RE("virtual\\b") RE("mutable\\b")  ivn:inst_var_name
-    STR(":") te:typexpr ->
-      pctf_loc _loc (Pctf_val (ivn, Mutable, Virtual, te))
-  | RE("method\\b") p:RE("private\\b")? v:RE("virtual\\b")? mn:method_name
-    STR(":") te:poly_typexpr ->
-      let pri = if p = None then Public else Private in
-      if v = None then
+  | RE("method\\b") (v,pri):virt_priv mn:method_name STR(":") te:poly_typexpr ->
+      if v = Concrete then
         pctf_loc _loc (Pctf_meth (mn, pri, te))
       else
         pctf_loc _loc (Pctf_virt (mn, pri, te))
-  | RE("method\\b") RE("virtual\\b") RE("private\\b") mn:method_name
-    STR(":") te:poly_typexpr ->
-      pctf_loc _loc (Pctf_virt (mn, Private, te))
   | RE("constraint\\b") te:typexpr STR("=") te':typexpr ->
       pctf_loc _loc (Pctf_cstr (te, te'))
   end)
@@ -787,7 +788,7 @@ let _ = set_grammar class_field_spec (
 let _ = set_grammar class_body_type (
   glr
   | RE("object\\b") te:{STR("(") te:typexpr STR(")")}?
-    cfs:class_field_spec* STR("end\\b") ->
+    cfs:class_field_spec* RE("end\\b") ->
       let self = match te with
                  | None   -> loc_typ _loc Ptyp_any
                  | Some t -> t
@@ -799,12 +800,8 @@ let _ = set_grammar class_body_type (
       in
       pcty_loc _loc (Pcty_signature sign)
   | tes:{STR("[") te:typexpr tes:{STR(",") te:typexpr}*
-    STR("]") -> (te::tes)}? ctp:classtype_path ->
+    STR("]") -> (te::tes)}?[[]] ctp:classtype_path ->
       let ctp = { txt = ctp; loc = _loc_ctp } in
-      let tes = match tes with
-                | None   -> []
-                | Some l -> l
-      in
       pcty_loc _loc (Pcty_constr (ctp, tes))
   end)
 
@@ -820,12 +817,9 @@ let class_type =
         match lab with
         | None            -> pcty_loc _loc (Pcty_fun ("", te, acc))
         | Some (false, l) -> pcty_loc _loc (Pcty_fun (l, te, acc))
-        | Some (true, l)  ->
-            let opt = { txt = Lident "option"; loc = _loc } in
-            let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
-            pcty_loc _loc (Pcty_fun (l, teopt, acc))
+        | Some (true, l)  -> pcty_loc _loc (Pcty_fun ("?"^l, te, acc))
       in
-      List.fold_left app cbt tes
+      List.fold_left app cbt (List.rev tes)
   end
 
 (* Class definition *)
@@ -839,12 +833,8 @@ let type_parameters =
 (* Class type definition *)
 let classtype_def =
   glr
-  | v:RE("virtual")? tp:{STR("[") tp:type_parameters STR("]")}? cn:class_name
+  | v:RE("virtual\\b")? tp:{STR("[") tp:type_parameters STR("]")}?[[]] cn:class_name
     STR("=") cbt:class_body_type ->
-      let tp = match tp with
-               | None   -> []
-               | Some l -> l
-      in
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
@@ -859,10 +849,9 @@ let classtype_def =
 
 let classtype_definition =
   glr
-  | RE("class\bb") RE("type\\b") cd:classtype_def
+  | RE("class\\b") RE("type\\b") cd:classtype_def
     cds:{RE("and\\b") cd:classtype_def}* -> (cd::cds)
   end
-
 
 
 (****************************************************************************
@@ -1382,7 +1371,7 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
-  | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e) 
+  | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
   | STR(".") STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
   | STR(".") STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 

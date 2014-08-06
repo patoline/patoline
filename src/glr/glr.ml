@@ -150,6 +150,15 @@ let empty : 'a -> 'a grammar = fun a ->
     parse = fun blank str pos next g -> 
 	    single pos (g a) }
 
+let debug : string -> 'a -> 'a grammar = fun msg a ->
+  { firsts = Lazy.from_val empty_charset;
+    accept_empty = Lazy.from_val true;
+    parse = fun blank str pos next g ->
+            let pos' = blank str pos in 
+	    let current = String.sub str pos' (min (String.length str - pos') 10) in
+	    Printf.eprintf "%s(%d %d): %S\n" msg pos pos' current;
+	    single pos (g a) }
+
 let fail : unit -> 'a grammar = fun () ->
   { firsts = Lazy.from_val empty_charset;
     accept_empty =  Lazy.from_val false;
@@ -160,9 +169,10 @@ let  black_box : (string -> int -> 'a * int) -> charset -> bool -> 'a grammar =
   (fun fn set empty ->
    { firsts = Lazy.from_val set;
      accept_empty = Lazy.from_val empty;
-     parse = fun blank str pos next g -> 
-	     let a, pos = fn str pos in
-	     single pos (g a) })
+     parse = fun blank str pos next g ->
+	     let pos' = blank str pos in 
+	     let a, pos' = fn str pos' in
+	     single pos' (g a) })
 
 let string : string -> 'a -> 'a grammar 
   = fun s a -> 

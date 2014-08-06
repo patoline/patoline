@@ -46,6 +46,9 @@ val eof : 'a -> 'a grammar
 (** [empty x]: parses no characters (always succeed) and return [x]*)
 val empty : 'a -> 'a grammar
 
+(** identical to empty but print the string on stderr for debugging *)
+val debug : string -> 'a -> 'a grammar
+
 (** [fail ()]: always fails *)
 val fail : unit -> 'a grammar
 
