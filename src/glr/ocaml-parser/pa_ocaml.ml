@@ -1209,13 +1209,15 @@ let obj_item =
     v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
   end
 
-let class_expr = declare_grammar ()
 let class_body = declare_grammar ()
 
 let let_binding = declare_grammar ()
 
+(* Class expression *)
+let class_expr = declare_grammar ()
+let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
+
 let class_expr_base =
-  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc } in
   glr
   | cp:class_path -> 
       let cp = { txt = cp; loc = _loc_cp } in
@@ -1239,6 +1241,14 @@ let class_expr_base =
   | RE("object\\b") cb:class_body RE("end\\b") ->
       loc_pcl _loc (Pcl_structure cb)
   end
+
+let _ = set_grammar class_expr (
+  glr
+  | ce:class_expr_base args:{arg:argument+}? ->
+      (match args with
+       | None   -> ce
+       | Some l -> loc_pcl _loc (Pcl_apply (ce, l)))
+  end)
 
 (* FIXME override *)
 let class_field =
