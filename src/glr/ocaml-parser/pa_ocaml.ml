@@ -1141,13 +1141,13 @@ let parameter =
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
-	| None -> pat
-	| Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
+                | None -> pat
+                | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{ STR":" t:typexpr -> t }? e:{ STR"=" e:expression -> e}? STR")" -> (
+  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{STR("=") e:expression}? STR")" -> (
       let pat = match t with
-	| None -> pat
-	| Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
+                | None -> pat
+                | Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
   | STR("?") id:lowercase_ident STR":" pat:pattern -> (("?"^id), None, pat)
   | STR("?") id:lowercase_ident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
@@ -1210,11 +1210,39 @@ let obj_item =
   end
 
 let class_expr = declare_grammar ()
+let class_body = declare_grammar ()
 
-let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc }
+let let_binding = declare_grammar ()
+
+let class_expr_base =
+  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc } in
+  glr
+  | cp:class_path -> 
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_pcl _loc (Pcl_constr (cp, []))
+  | STR("[") te:typexpr tes:{STR(",") te:typexpr}* cp:class_path ->
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_pcl _loc (Pcl_constr (cp, te :: tes))
+  | STR("(") ce:class_expr STR(")") ->
+      loc_pcl _loc ce.pcl_desc
+  | STR("(") ce:class_expr STR(":") ct:class_type STR(")") ->
+      loc_pcl _loc (Pcl_constraint (ce, ct))
+  | RE("fun\\b") ps:parameter+ STR("->") ce:class_expr ->
+      let f (l, eo, pat) acc =
+        loc_pcl _loc (Pcl_fun (l, eo, pat, acc))
+      in
+      List.fold_right f ps ce
+  | RE("let\\b") r:RE("rec\\b")? lb:let_binding
+    lbs:{RE("and\\b") lb:let_binding}* RE("in\\b") ce:class_expr ->
+      let recf = if r = None then Nonrecursive else Recursive in
+      loc_pcl _loc (Pcl_let (recf, lb :: lbs, ce))
+  | RE("object\\b") cb:class_body RE("end\\b") ->
+      loc_pcl _loc (Pcl_structure cb)
+  end
 
 (* FIXME override *)
 let class_field =
+  let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc } in
   glr
   | RE("inherit\\b") ce:class_expr id:{RE("as\\b") id:lowercase_ident}? ->
       loc_pcf _loc (Pcf_inher (Fresh, ce, id))
