@@ -508,6 +508,7 @@ let match_kw = key_word "match"
 let struct_kw = key_word "struct"
 let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
+let lazy_kw = key_word "lazy"
 
 (****************************************************************************
  * Type expressions                                                         *
@@ -815,7 +816,7 @@ let exception_declaration =
 (* Exception definition *)
 let exception_definition =
   glr
-  | bexception_kw cn:constr_name STR("=") c:constr ->
+  | exception_kw cn:constr_name STR("=") c:constr ->
       let name = { txt = cn; loc = _loc_cn } in
       let ex = { txt = c; loc = _loc_c } in
       Pstr_exn_rebind (name, ex)
