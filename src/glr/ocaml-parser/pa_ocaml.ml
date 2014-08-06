@@ -609,7 +609,7 @@ let typexpr_base : core_type grammar =
       loc_typ _loc te.ptyp_desc
   | STR("?") ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow ("?"^ln, te, te'))
-  | STR("~") ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
+  | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
       loc_typ _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
@@ -1589,7 +1589,7 @@ let _ = set_grammar module_type (
 let module_item_base =
   glr
   | STR(";;") -> Pstr_eval(loc_expr _loc (Pexp_tuple([])))
-  | RE(let_re) r:rec_flag l:value_binding -> Pstr_value (r, l)
+  | RE(let_re) r:RE("rec\\b")? l:value_binding -> Pstr_value ((if r = None then Nonrecursive else Recursive), l)
   | RE("external\\b") n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
@@ -1611,7 +1611,7 @@ let module_item_base =
 
 let _ = set_grammar module_item (
   glr
-    s:module_item_base -> { pstr_desc = s; pstr_loc = _loc; }
+    s:module_item_base STR(";;")? -> { pstr_desc = s; pstr_loc = _loc; }
   end)
 
 let structure =
@@ -1645,7 +1645,7 @@ let signature_item_base =
 
 let _ = set_grammar signature_item (
   glr
-    s:signature_item_base -> { psig_desc = s; psig_loc = _loc; }
+    s:signature_item_base STR(";;")? -> { psig_desc = s; psig_loc = _loc; }
   end)
 
 let signature =
@@ -1680,7 +1680,7 @@ let ast =
     Parse_error n ->
     let pos = find_pos s n in
     Lexing.(Printf.eprintf "File %S, line %d, characters %d:\n\
-		    Error: Syntax error" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol));
+		    Error: Syntax error\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol));
     exit 1
 
 let _ = 
