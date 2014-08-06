@@ -276,16 +276,6 @@ let string_literal =
 (* Naming labels *)
 let label_name = lowercase_ident
 
-let label =
-  glr
-    STR("~") l:label_name -> l
-  end
-
-let optlabel =
-  glr
-    STR("?") l:label_name -> l
-  end
-
 (* Prefix and infix symbols *)
 let reserved_symbols =
   [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
@@ -446,6 +436,15 @@ type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
 
 let type_prios = [TopType; As; Arr; Prod; Dash; AppType; AtomType]
 
+let next_type_prio = function
+  | TopType -> As
+  | As -> Arr
+  | Arr -> Prod
+  | Prod -> Dash
+  | Dash -> AppType
+  | AppType -> AtomType
+  | AtomType -> AtomType
+
 let typeexpr_lvl, set_typeexpr_lvl = grammar_family ()
 let typeexpr = typeexpr_lvl TopType
 let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
@@ -526,11 +525,9 @@ let typeexpr_base : core_type grammar =
       loc_typ _loc Ptyp_any
   | STR("(") te:typeexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
-  | ln:optlabel te:typeexpr STR("->") te':typeexpr ->
-      let opt = { txt = Lident "option"; loc = _loc_te } in
-      let teopt = loc_typ te.ptyp_loc (Ptyp_constr (opt, [te])) in
-      loc_typ _loc (Ptyp_arrow (ln, teopt, te'))
-  | ln:label STR(":") te:typeexpr STR("->") te':typeexpr ->
+  | STR("?") ln:label_name STR(":") te:(typeexpr_lvl (next_type_prio Arr)) STR("->") te':typeexpr ->
+      loc_typ _loc (Ptyp_arrow ("?"^ln, te, te'))
+  | STR("~") ln:label_name STR(":") te:(typeexpr_lvl (next_type_prio Arr)) STR("->") te':typeexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
       loc_typ _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
@@ -553,15 +550,6 @@ let typeexpr_base : core_type grammar =
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, []))
   end
-
-let next_type_prio = function
-  | TopType -> As
-  | As -> Arr
-  | Arr -> Prod
-  | Prod -> Dash
-  | Dash -> AppType
-  | AppType -> AtomType
-  | AtomType -> AtomType
 
 let typeexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   glr
@@ -1313,14 +1301,22 @@ let rec mk_seq _loc = function
   | [e] -> e
   | x::l -> loc_expr _loc (Pexp_sequence(x,mk_seq _loc l))
 
+let semi_col = black_box 
+  (fun str pos ->
+   let len = String.length str in
+   if len > pos && str.[pos] = ';' && (len = pos + 1 || str.[pos+1] <> ';') then ((), pos+1)
+   else raise Give_up)
+  (Charset.singleton ';') false
+
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
       (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
-  | l:{STR(";") e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
+  | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
+  | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e) 
   | STR(".") STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
   | STR(".") STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
