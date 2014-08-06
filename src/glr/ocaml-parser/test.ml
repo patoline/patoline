@@ -151,3 +151,33 @@ module M4 : MT1 =
     module F (A:A) = struct open A let g x = g (g x) end
   end 
 
+exception Invalid_arg of string * string
+exception Invalid_arg2 = Invalid_arg
+
+exception Exit = Pervasives.Exit
+exception NF = Not_found
+
+type abstract
+
+type bool_ = True
+           | False
+
+type 'a list_ = Nil
+              | Cons of 'a * 'a list_
+
+type 'a tree = Empty
+             | Node of 'a * 'a tree * 'a tree
+
+type inttree = int tree
+
+type coord = { x : int ; y : int ; z : int }
+
+type ('a, 'b) pierce = (('a -> 'b) -> 'a) -> 'a
+
+type ('a, 'b) mod_pon = ('a -> 'b) -> 'a -> 'b
+
+type +'a blop = Blop of 'a
+
+type (-'a,+'b) blip = Blip of 'a -> 'b
+
+type dummy = { mutable c : int; d : string -> bool }
