@@ -428,6 +428,88 @@ let classtype_path =
   end
 
 (****************************************************************************
+ * Several shortcuts for flags and keywords                                 *
+ ****************************************************************************)
+let key_word s = glr RE(s ^ "\\b") -> () end
+
+let mutable_kw = key_word "mutable"
+let mutable_flag =
+  glr
+  | mutable_kw -> Mutable
+  | EMPTY      -> Immutable
+  end
+
+let private_kw = key_word "private"
+let private_flag =
+  glr
+  | private_kw -> Private
+  | EMPTY      -> Public
+  end
+
+let virtual_kw = key_word "virtual"
+let virtual_flag =
+  glr
+  | virtual_kw -> Virtual
+  | EMPTY      -> Concrete
+  end
+
+let rec_kw = key_word "rec"
+let rec_flag =
+  glr
+  | rec_kw -> Recursive
+  | EMPTY  -> Nonrecursive
+  end
+
+let to_kw = key_word "to"
+let downto_kw = key_word "downto"
+let downto_flag =
+  glr
+  | to_kw     -> Upto
+  | downto_kw -> Downto
+  end
+
+let method_kw = key_word "method"
+let object_kw = key_word "object"
+let class_kw = key_word "class"
+let inherit_kw = key_word "inherit"
+let as_kw = key_word "as"
+let of_kw = key_word "of"
+let module_kw = key_word "module"
+let open_kw = key_word "open"
+let include_kw = key_word "include"
+let type_kw = key_word "type"
+let val_kw = key_word "val"
+let external_kw = key_word "external"
+let constraint_kw = key_word "constraint"
+let begin_kw = key_word "begin"
+let end_kw = key_word "end"
+let and_kw = key_word "and"
+let true_kw = key_word "true"
+let false_kw = key_word "false"
+let exception_kw = key_word "exception"
+let when_kw = key_word "when"
+let fun_kw = key_word "fun"
+let function_kw = key_word "function"
+let let_kw = key_word "let"
+let in_kw = key_word "in"
+let initializer_kw = key_word "initializer"
+let with_kw = key_word "with"
+let while_kw = key_word "while"
+let for_kw = key_word "for"
+let do_kw = key_word "do"
+let done_kw = key_word "done"
+let new_kw = key_word "new"
+let assert_kw = key_word "assert"
+let if_kw = key_word "if"
+let then_kw = key_word "then"
+let else_kw = key_word "else"
+let try_kw = key_word "try"
+let match_kw = key_word "match"
+let struct_kw = key_word "struct"
+let functor_kw = key_word "functor"
+let sig_kw = key_word "sig"
+
+(****************************************************************************
  * Type expressions                                                         *
  * FIXME we never use the constructor Ptyp_package, what is it used for?    *
  ****************************************************************************)
@@ -1605,4 +1687,3 @@ let _ =
       end;
       close_out stdout
     end
-
