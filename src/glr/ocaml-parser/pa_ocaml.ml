@@ -908,10 +908,31 @@ let class_type =
       List.fold_left app cbt (List.rev tes)
   end
 
-(* Class definition *)
 let type_parameters =
   glr
     i1:type_param l:{ STR(",") i2:type_param }* -> i1::l
+  end
+
+(* Class specification *)
+let class_spec =
+  glr
+  | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]]
+    cn:class_name STR(":") ct:class_type ->
+      let params, variance = List.split tp in
+      let params = List.map (function None   -> { txt = ""; loc = _loc}
+                                    | Some x -> x) params
+      in
+      { pci_virt = v
+      ; pci_params = params, _loc_tp
+      ; pci_name = { txt = cn; loc = _loc_cn }
+      ; pci_expr = ct
+      ; pci_variance = variance
+      ; pci_loc = _loc }
+  end
+
+let class_specification =
+  glr
+  | class_kw cs:class_spec css:{and_kw cd:class_spec}* -> (cs::css)
   end
 
 (* Class type definition *)
@@ -1640,6 +1661,7 @@ let signature_item_base =
   | open_kw o:override_flag m:module_path -> Psig_open(o, { txt = m; loc = _loc_m} )
   | include_kw me:module_type -> Psig_include me
   | ctd:classtype_definition -> Psig_class_type ctd
+  | cs:class_specification -> Psig_class cs
 
  end
 
