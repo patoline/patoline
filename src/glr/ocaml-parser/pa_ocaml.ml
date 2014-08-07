@@ -893,7 +893,7 @@ let class_type =
 
 let type_parameters =
   glr
-    i1:type_param l:{ STR(",") i2:type_param }* -> i1::l
+  | i1:type_param l:{ STR(",") i2:type_param }* -> i1::l
   end
 
 (* Class specification *)
@@ -1043,7 +1043,7 @@ let pattern_base = memoize1 (fun lvl ->
   | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
       (AtomPat, loc_pat _loc_s (Ppat_array (p::ps)))
   | s:STR("[|") STR("|]") ->
-      (AtomPat, loc_pat _loc_s (Ppat_array [])) (* FIXME not sure if this should be a constructor instead *)
+      (AtomPat, loc_pat _loc_s (Ppat_array []))
   | s:STR("(") STR(")") ->
       let unt = { txt = Lident "()"; loc = _loc_s } in
       (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
@@ -1177,7 +1177,7 @@ let untuplify = function
 let bigarray_get loc arr arg =
   let get = if !fast then "unsafe_get" else "get" in
   match untuplify arg with
-    [c1] ->
+  | [c1] ->
       loc_expr loc (Pexp_apply(bigarray_function loc "Array1" get,
                        ["", arr; "", c1]))
   | [c1;c2] ->
@@ -1193,7 +1193,7 @@ let bigarray_get loc arr arg =
 let bigarray_set loc arr arg newval =
   let set = if !fast then "unsafe_set" else "set" in
   match untuplify arg with
-    [c1] ->
+  | [c1] ->
       loc_expr loc (Pexp_apply(bigarray_function loc "Array1" set,
                        ["", arr; "", c1; "", newval]))
   | [c1;c2] ->
@@ -1226,7 +1226,7 @@ let argument =
 
 let parameter =
   glr
-    pat:pattern -> ("", None, pat)
+  | pat:pattern -> ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
@@ -1253,48 +1253,47 @@ let parameter =
 
 let right_member =
   glr
-    l:{lb:parameter}* STR("=") e:expression -> 
+  | l:{lb:parameter}* STR("=") e:expression -> 
       List.fold_right (fun (lbl,opt,pat) e ->
 		       loc_expr _loc (Pexp_function (lbl, opt, [pat, e]))) l e
   end
 
 let value_binding =
   glr
-    pat:pattern e:right_member l:{and_kw pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
+  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
   end
 
 let match_cases = memoize1 (fun lvl ->
   glr
-     l:{STR"|"? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
-         l:{STR"|" pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> 
-           let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
-           (pat,e)}*
-         -> 
-	 let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
-	 ((pat,e)::l)}?[[]] -> l
+  | l:{STR"|"? pat:pattern w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) 
+      l:{STR"|" pat:pattern  w:{when_kw e:expression }? STR"->" e:(expression_lvl lvl) -> 
+         let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
+           (pat,e)}* -> 
+             let e = match w with None -> e | Some e' -> loc_expr _loc (Pexp_when(e',e)) in
+               ((pat,e)::l)}?[[]] -> l
   end)
 
 let type_coercion =
   glr
-    STR(":") t:typexpr t':{STR(":>") t':typexpr}? -> (Some t, t')
+  | STR(":") t:typexpr t':{STR(":>") t':typexpr}? -> (Some t, t')
   | STR(":>") t':typexpr -> (None, Some t')
   end
 
 let expression_list =
   glr
-    e:(expression_lvl (next_exp Seq)) l:{ STR(";") e:(expression_lvl (next_exp Seq)) }* STR(";")? -> (e::l)
+  | e:(expression_lvl (next_exp Seq)) l:{ STR(";") e:(expression_lvl (next_exp Seq)) }* STR(";")? -> (e::l)
   | EMPTY -> []
   end
 
 let record_item = 
   glr
-    f:field STR("=") e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
+  | f:field STR("=") e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
   | f:lowercase_ident -> (let id = { txt = Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
   end
 
 let record_list =
   glr
-    it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
+  | it:record_item l:{ STR(";") it:record_item }* STR(";")? -> (it::l)
   | EMPTY -> []
   end
 
@@ -1304,7 +1303,7 @@ let record_list =
 
 let obj_item = 
   glr 
-    v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
+  | v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
   end
 
 let class_body = declare_grammar ()
@@ -1397,7 +1396,7 @@ let class_field =
 
 let class_body =
   glr
-    p:pattern? f:class_field* -> 
+  | p:pattern? f:class_field* -> 
       let p = match p with None -> loc_pat _loc_p Ppat_any | Some p -> p in
       { pcstr_pat = p; pcstr_fields = f }
   end
