@@ -526,6 +526,16 @@ let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
 let lazy_kw = key_word "lazy"
 
+let opt_variance =
+  glr
+  | v:RE("[+-]")? ->
+      (match v with
+       | None     -> (false, false)
+       | Some "+" -> (true , false)
+       | Some "-" -> false, true
+       | _        -> assert false)
+  end
+
 (****************************************************************************
  * Type expressions                                                         *
  * FIXME we never use the constructor Ptyp_package, what is it used for?    *
@@ -691,18 +701,12 @@ let _ = set_typexpr_lvl (fun lvl ->
  ****************************************************************************)
 
 (* Type definition *)
-type variance = Covariant | Contravariant
-
 let type_param =
   glr
-    var:RE("[+-]")? STR("'") id:ident ->
-      let variance =
-        match var with
-        | None     -> (false, false)
-        | Some "+" -> (true , false)
-        | Some "-" -> false, true
-        | _        -> assert false
-      in (Some { txt = id; loc = _loc_id }, variance) (* FIXME None in which case? *)
+  | var:opt_variance STR("'") id:ident ->
+      (Some { txt = id; loc = _loc }, var)
+  | var:opt_variance STR("_") ->
+      (Some { txt = "_"; loc = _loc }, var)
   end
 
 let type_params =
