@@ -711,14 +711,14 @@ let type_param =
 
 let type_params =
   glr
-    tp:type_param -> [tp]
-  | STR("(") tp:type_param
-    tps:{STR(",") tp:type_param -> tp}* STR(")") -> tp::tps
+  | tp:type_param -> [tp]
+  | STR("(") tp:type_param tps:{STR(",") tp:type_param -> tp}* STR(")") ->
+      tp::tps
   end
 
 let type_equation =
   glr
-    STR("=") te:typexpr -> te
+  | STR("=") te:typexpr -> te
   end
 
 let type_constraint =
@@ -730,42 +730,35 @@ let type_constraint =
 let constr_decl =
   let constr_name =
     glr
-      cn:constr_name    -> cn
+    | cn:constr_name    -> cn
     | STR("(") STR(")") -> "()"
     end
   in
   glr
-    cn:constr_name tes:{of_kw te:typexpr
-    tes:{STR("*") te:typexpr -> te}* -> te::tes}? ->
-      let c = { txt = cn; loc = _loc_cn } in
-      let tel = match tes with
-                | None   -> []
-                | Some l -> l
-      in
-      (c, tel, None, _loc_cn) (* TODO GADT Stuff *)
+    | cn:constr_name tes:{of_kw te:typexpr
+      tes:{STR("*") te:typexpr -> te}* -> te::tes}?[[]] ->
+        let c = { txt = cn; loc = _loc_cn } in
+        (c, tes, None, _loc_cn) (* TODO GADT Stuff *)
   end
 
 let field_decl =
   glr
-    m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
+  | m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
       { txt = fn; loc = _loc_fn }, m, pte, _loc_m
   end
 
 let type_representation =
   glr
-    STR("|")? cd:constr_decl
-    cds:{STR("|") cd:constr_decl -> cd}* ->
+  | STR("|")? cd:constr_decl cds:{STR("|") cd:constr_decl -> cd}* ->
       Ptype_variant (cd::cds)
-  | STR("{") fd:field_decl
-    fds:{STR(";") fd:field_decl -> fd}*
-    STR(";")? STR("}") ->
+  | STR("{") fd:field_decl fds:{STR(";") fd:field_decl -> fd}* STR(";")?
+    STR("}") ->
       Ptype_record (fd::fds)
   end
 
 let type_information =
   glr
-    te:type_equation?
-    tr:{STR("=") tr:type_representation -> tr}?
+  | te:type_equation? tr:{STR("=") tr:type_representation -> tr}?
     cstrs:type_constraint* ->
       let tkind =
         match tr with
@@ -777,12 +770,8 @@ let type_information =
 
 let typedef : (string loc * type_declaration) Glr.grammar =
   glr
-    tps:type_params? tcn:typeconstr_name ti:type_information ->
+  | tps:type_params?[[]] tcn:typeconstr_name ti:type_information ->
       let (te, tkind, cstrs) = ti in
-      let tps = match tps with
-                | None   -> []
-                | Some l -> l
-      in
       let tdec =
         { ptype_params   = List.map fst tps
         ; ptype_cstrs    = cstrs
@@ -797,12 +786,8 @@ let typedef : (string loc * type_declaration) Glr.grammar =
 
 let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
   glr
-    tps:type_params? tcn:typeconstr ti:type_information ->
+  | tps:type_params?[[]] tcn:typeconstr ti:type_information ->
       let (te, tkind, cstrs) = ti in
-      let tps = match tps with
-                | None   -> []
-                | Some l -> l
-      in
       let tdec =
         { ptype_params   = List.map fst tps
         ; ptype_cstrs    = cstrs
@@ -817,20 +802,14 @@ let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
 
 let type_definition =
   glr
-  | type_kw td:typedef tds:{and_kw td:typedef -> td}* ->
-      (td::tds)
+  | type_kw td:typedef tds:{and_kw td:typedef -> td}* -> (td::tds)
   end
 
 let exception_declaration =
   glr
   | exception_kw cn:constr_name typ:{of_kw te:typexpr
-    tes:{STR("*") te:typexpr -> te}* -> (te::tes) }? ->
-      let name = { txt = cn; loc = _loc_cn } in
-      let ed = match typ with
-               | None   -> []
-               | Some l -> l
-      in
-      (name, ed)
+    tes:{STR("*") te:typexpr -> te}* -> (te::tes) }?[[]] ->
+      ({ txt = cn; loc = _loc_cn }, typ)
   end
 
 (* Exception definition *)
