@@ -1419,6 +1419,31 @@ let class_body =
       { pcstr_pat = p; pcstr_fields = f }
   end
 
+(* Class definition *)
+(* FIXME do not know what to do with ps *)
+let class_binding =
+  glr
+  | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]]
+    cn:class_name ps:parameter* ct:{STR(":") ct:class_type} STR("=")
+    ce:class_expr ->
+      let params, variance = List.split tp in
+      let params = List.map (function None   -> { txt = ""; loc = _loc}
+                                    | Some x -> x) params
+      in
+      { pci_virt = v
+      ; pci_params = params, _loc_tp
+      ; pci_name = { txt = cn; loc = _loc_cn }
+      ; pci_expr = ce
+      ; pci_variance = variance
+      ; pci_loc = _loc }
+  end
+
+let class_definition =
+  glr
+  | class_kw cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
+  end
+
+(* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   glr
     id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
@@ -1625,6 +1650,7 @@ let module_item_base =
   | open_kw o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | include_kw me:module_expr -> Pstr_include me
   | ctd:classtype_definition -> Pstr_class_type ctd
+  | cds:class_definition -> Pstr_class cds
   | e:expression -> Pstr_eval e
   end
 
