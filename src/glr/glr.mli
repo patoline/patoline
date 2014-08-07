@@ -8,9 +8,9 @@ open Charset
   A possibility of providing your own merge function is planed *)
 exception Ambiguity of int * int
 
-(** [Parse_error pos], give the last point succesfully reached by the parser in 
-  the input *)
-exception Parse_error of int
+(** [Parse_error (pos, str)], give the last point succesfully reached by the parser in 
+  the input and what was expected to continue*)
+exception Parse_error of int * string list
 
 (** You may raise this exception to reject a parsing rule from the action code *)
 exception Give_up
@@ -49,15 +49,16 @@ val empty : 'a -> 'a grammar
 (** identical to empty but print the string on stderr for debugging *)
 val debug : string -> 'a -> 'a grammar
 
-(** [fail ()]: always fails *)
-val fail : unit -> 'a grammar
+(** [fail msg]: always fails and add msg to Parse_error *)
+val fail : string -> 'a grammar
 
-(** [black_box fn cs accept_empty]: parses with the function [fn str pos], that shoud start
+(** [black_box fn cs accept_empty msg]: parses with the function [fn str pos], that shoud start
     parsing [str] at the position [pos] and return the position of the first unread char.
     [cs] is the set of characters accepted as first char by your parser (or a supperset of).
     [accept_empty] shoud be false if your parser does not accept the empty string.
+    If [fn] raises [Give_up], [msg] is added to Parse_error.
 *) 
-val  black_box : (string -> int -> 'a * int) -> charset -> bool -> 'a grammar
+val  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a grammar
 
 (** [list_eof x := eof [x]] *)
 val list_eof : 'a -> 'a list grammar
@@ -72,8 +73,9 @@ val list_string : string -> 'a -> 'a list grammar
 val list_regexp : string -> ((int -> string) -> 'a) -> 'a list grammar
 
 (** [regexp re g]: parses a given regexp, and returns [g groupe] where [groupe n] gives the
-   n-th matching group as in the [Str] module *)
-val regexp : string -> ((int -> string) -> 'a) -> 'a grammar
+   n-th matching group as in the [Str] module. The optional argument is a name for
+   the regexp, used in error messages *)
+val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 
 (** [sequence p1 p2 action]: parses with [p1] which returns [x], then parses with [p2] the rest of
     the input which return [y] and returns [action x y] *)

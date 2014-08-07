@@ -112,6 +112,7 @@ let find_pos str n =
         if i = 0 then (2,i) else
           let lnum, _ = fn (i-1) in
           let lnum = lnum + 1 in
+	  let i = if i + 1 < String.length str && str.[i+1] = '\r' then i + 1 else i in
           Hashtbl.add bol i lnum;
           lnum, i
     else if i <= 0 then (1, i)
@@ -137,6 +138,11 @@ let _ = glr_locate locate merge
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
  ****************************************************************************)
+let par_re s = "\\(" ^ s ^ "\\)"
+let union_re l = 
+  let l = List.map (fun s -> par_re s ) l in
+  String.concat "\\|" l
+
 
 (* Identifiers *)
 (* NOTE "_" is not a valid identifier, we handle it separately *)
@@ -177,47 +183,40 @@ let int_dec_re = "[-]?[0-9][0-9_]*"
 let int_hex_re = "[-]?[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
 let int_oct_re = "[-]?[0][oO][0-7][0-7_]*"
 let int_bin_re = "[-]?[0][bB][01][01_]*"
+let int_gen_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
+let int_re = int_gen_re
+let int32_re = par_re int_re ^ "l" ^ "\\b"
+let int64_re = par_re int_re ^ "L" ^ "\\b"
+let natint_re = par_re int_re ^ "n" ^ "\\b"
 
 let integer_literal =
   glr
-    i:RE(int_dec_re ^ "\\b") -> int_of_string i
-  | i:RE(int_hex_re ^ "\\b") -> int_of_string i
-  | i:RE(int_oct_re ^ "\\b") -> int_of_string i
-  | i:RE(int_bin_re ^ "\\b") -> int_of_string i
+    i:RE(int_re) -> int_of_string i
   end
 
 let int32_lit =
   glr
-    i:RE("\\(" ^ int_dec_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
-  | i:RE("\\(" ^ int_hex_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
-  | i:RE("\\(" ^ int_oct_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
-  | i:RE("\\(" ^ int_bin_re ^ "\\)l\\b")[groupe 1] -> Int32.of_string i
+    i:RE(int32_re)[groupe 1] -> Printf.printf "coucou %S %s\n" int32_re i; Int32.of_string i
   end
 
 let int64_lit =
   glr
-    i:RE("\\(" ^ int_dec_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
-  | i:RE("\\(" ^ int_hex_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
-  | i:RE("\\(" ^ int_oct_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
-  | i:RE("\\(" ^ int_bin_re ^ "\\)L\\b")[groupe 1] -> Int64.of_string i
+    i:RE(int64_re)[groupe 1] -> Int64.of_string i
   end
 
 let nat_int_lit =
   glr
-    i:RE("\\(" ^ int_dec_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
-  | i:RE("\\(" ^ int_hex_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
-  | i:RE("\\(" ^ int_oct_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
-  | i:RE("\\(" ^ int_bin_re ^ "\\)n\\b")[groupe 1] -> Nativeint.of_string i
+    i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
   end
 
 (* Floating-point literals *)
 let float_lit_dec    = "[-]?[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
 let float_lit_no_dec = "[-]?[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
+let float_re = union_re [float_lit_dec; float_lit_no_dec]
 
 let float_literal =
   glr
-    f:RE(float_lit_dec)   -> f
-  | f:RE(float_lit_no_dec) -> f
+    f:RE(float_re)   -> f
   end
 
 (* Character literals *)
@@ -300,7 +299,16 @@ let reserved_symbols =
 let is_reserved_symb s =
   List.mem s reserved_symbols
 
-let infix_symb_re  = "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*"
+let infix_symb_re  = union_re [
+ "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*";
+ "mod";
+ "land";
+ "lor";
+ "or";
+ "lxor";
+ "lsl";
+ "lsr";
+ "asr"] ^ "\\b"
 let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
 
 let infix_symbol =
@@ -330,14 +338,6 @@ let linenum_directive =
 let infix_op =
   glr
     sym:infix_symbol -> sym
-  | sym:STR("mod")   -> "mod"
-  | sym:STR("land")  -> "land"
-  | sym:STR("lor")   -> "lor"
-  | sym:STR("or")    -> "or"
-  | sym:STR("lxor")  -> "lxor"
-  | sym:STR("lsl")   -> "lsl"
-  | sym:STR("lsr")   -> "lsr"
-  | sym:STR("asr")   -> "asr"
   end
 
 let operator_name =
@@ -446,7 +446,7 @@ let classtype_path =
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *
  ****************************************************************************)
-let key_word s = glr RE(s ^ "\\b") -> () end
+let key_word s = regexp (s ^ "\\b") ~name:s (fun fn -> fn 0)
 
 let mutable_kw = key_word "mutable"
 let mutable_flag =
@@ -1211,7 +1211,7 @@ let constructor =
   | m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | false_kw -> "false" | true_kw -> "true" } ->
       match m with
       | None   -> Lident id
-		  | Some m -> Ldot(m, id)
+      | Some m -> Ldot(m, id)
   end 
 
 let argument =
@@ -1439,14 +1439,11 @@ let expression_base = memoize1 (fun lvl ->
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
   | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl <= If) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
-  | STR("(") e:expression STR(")") -> (Atom, e)
-  | STR("(") STR(")") -> (Atom, loc_expr _loc (Pexp_tuple([])))
-  | begin_kw e:expression end_kw -> (Atom, e)
-  | begin_kw end_kw -> (Atom, loc_expr _loc (Pexp_tuple([])))
-  | c:constructor e:(expression_lvl App) when (lvl <= App) -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},Some e,false)))
-  | c:constructor -> (Atom, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},None,false)))
-  | assert_kw false_kw when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assertfalse))		       
-  | assert_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_assert(e)))		       
+  | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> e | None -> loc_expr _loc (Pexp_tuple([])))
+  | begin_kw e:expression? end_kw -> (Atom, match e with Some e -> e | None -> loc_expr _loc (Pexp_tuple([])))
+  | c:constructor e:{ e:(expression_lvl App) when lvl <= App }? -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},e,false)))
+  | assert_kw e:{ false_kw -> Pexp_assertfalse | e:(expression_lvl App) -> Pexp_assert(e)} when (lvl <= App) 
+      -> (App,  loc_expr _loc e)		       
   | lazy_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))		       
   | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
@@ -1467,8 +1464,7 @@ let expression_base = memoize1 (fun lvl ->
   | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
   | object_kw o:class_body end_kw -> (Atom, loc_expr _loc (Pexp_object o))
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) -> (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
-  | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l } STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
-  | STR("{<") STR(">}") -> (Atom, loc_expr _loc (Pexp_override []))
+  | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l }?[[]] STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
   end)
 
 let apply_lbl _loc (lbl, e) =
@@ -1487,7 +1483,7 @@ let semi_col = black_box
    let len = String.length str in
    if len > pos && str.[pos] = ';' && (len = pos + 1 || str.[pos+1] <> ';') then ((), pos+1)
    else raise Give_up)
-  (Charset.singleton ';') false
+  (Charset.singleton ';') false (";")
 
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   glr
@@ -1498,24 +1494,24 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq _loc (f::l))
   | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
-  | STR(".") STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
+  | STR(".") r:{ STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
-  | STR(".") STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
+  |            STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "get",[("",e');("",f)])))
-  | STR(".") STR("[") f:expression STR("]") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  |            STR("[") f:expression STR("]") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "set",[("",e');("",f);("",e)]))) 
-  | STR(".") STR("[") f:expression STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
+  |            STR("[") f:expression STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "get",[("",e');("",f)])))
-  | STR(".") STR("{") f:expression STR("}") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  |            STR("{") f:expression STR("}") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' -> bigarray_set _loc e' f e)
-  | STR(".") STR("{") f:expression STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
+  |            STR("{") f:expression STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' -> bigarray_get _loc e' f)
-  | STR(".") f:field STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
+  |            f:field STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' ->
 	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
-  | STR(".") f:field when (lvl' >= Dot && lvl <= Dot) -> 
+  |            f:field when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' ->
-	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f)))
+	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
   | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
       (Dash, fun e' -> loc_expr _loc (Pexp_send(e',f)))
   | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
@@ -1707,10 +1703,11 @@ let ast =
     else
       `Sig (parse_string signature blank s)
   with
-    Parse_error n ->
+    Parse_error (n,l) ->
     let pos = find_pos s n in
+    let msgs = String.concat " | " l in
     Lexing.(Printf.eprintf "File %S, line %d, characters %d:\n\
-		    Error: Syntax error\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol));
+		    Error: Syntax error, %s expected\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msgs);
     exit 1
 
 let _ = 

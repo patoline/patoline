@@ -206,7 +206,7 @@ EXTEND Gram
 	match cond with
 	  None -> def e
         | Some c -> 
-	      def <:expr<if $c$ then $e$ else Glr.fail>>)
+	      def <:expr<if $c$ then $e$ else Glr.fail "">>)
       | l -> 
 	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
@@ -226,7 +226,7 @@ EXTEND Gram
 	match cond with
 	  None -> def e
         | Some c -> 
-	  def <:expr<if $c$ then $e$ else Glr.fail>>)
+	  def <:expr<if $c$ then $e$ else Glr.fail "">>)
       | l -> 
 	let l = List.fold_right (fun (def,cond,x) y -> 
 	  match cond with
@@ -259,7 +259,7 @@ EXTEND Gram
     let iter, action = match action with
 	Normal a -> false, a
       | Default -> false, default_action _loc l
-      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail ()>>
+      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail "">>
     in
     let rec fn ids l = match l with
       [] -> assert false
@@ -284,7 +284,7 @@ EXTEND Gram
     let iter, action = match action with
 	Normal a -> false, a
       | Default -> false, default_action _loc l
-      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail ()>>
+      | DepSeq(def, cond, a) -> true, match cond with None -> def a | Some cond -> def <:expr< if $cond$ then $a$ else fail "">>
     in	
     let rec fn ids l = match l with
       [] -> assert false
@@ -338,8 +338,8 @@ EXTEND Gram
   | "EMPTY" ->
       <:expr<Glr.empty ()>>
 
-  | "FAIL" ->
-      <:expr<Glr.fail ()>>
+  | "FAIL"; str = expr LEVEL "simple" ->
+      <:expr<Glr.fail str>>
 
   | "DEBUG"; str = expr LEVEL "simple" -> 
       <:expr< Glr.debug $str$ () >>
@@ -350,7 +350,14 @@ EXTEND Gram
 
   | "RE"; str = expr LEVEL "simple"; opt = glr_opt_expr ->
       let e = match opt with None -> <:expr<groupe 0>> | Some e -> <:expr<$e$>> in
-      <:expr<Glr.regexp $str$ (fun groupe -> $e$)>>
+      (match str with
+	<:expr< $lid:id$>> ->
+	let id = 
+	  let l = String.length id in
+	  if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
+	in 
+	<:expr<Glr.regexp $str$ ~name:$str:id$ (fun groupe -> $e$)>>
+      | _ -> <:expr<Glr.regexp $str$ (fun groupe -> $e$)>>)
 
   | e = expr LEVEL "simple" -> e
 

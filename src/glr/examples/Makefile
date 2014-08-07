@@ -11,13 +11,13 @@ ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)
 endif
 
-all: gcalc gcalc_strict gcalc_simple gtext gtext_opt gtest_merge gtest_list
+all: calc
 
 calc: calc.cmx ../glr.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@
 
 calc.cmx: calc.ml ../glr.cmxa ../pa_glr
-	$(CAMLOPT) -pp ../pa_glr -c $<
+	$(CAMLOPT) -I .. -pp ../pa_glr -c $<
 
 calc_simple: gcalc_simple.cmx ../glr.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa ../glr.cmxa $< -o $@

@@ -49,7 +49,7 @@ let _ =
 	let x = parse_channel arith blank stdin in
 	Printf.printf "=> %f\n" x
       with
-	Parse_error n -> Printf.fprintf stderr "Parse error after char %d\n%!" n
+	Parse_error (n,l) -> Printf.fprintf stderr "Parse error after char %d\n%!" n
       | Ambiguity(n,p) -> Printf.fprintf stderr "Ambiguous expression from %d to %d\n%!" n p
   else
     try
@@ -59,7 +59,7 @@ let _ =
 	  let x = parse_string arith blank (input_line stdin) in
 	  Printf.printf "=> %f\n%!" x
 	with
-	  Parse_error n -> Printf.fprintf stderr "Parse error after char %d\n%!" n
+	  Parse_error(n,l) -> Printf.fprintf stderr "Parse error after char %d\n%!" n
 	| Ambiguity(n,p) -> Printf.fprintf stderr "Ambiguous expression from %d to %d\n%!" n p
       done
   with End_of_file -> ()
