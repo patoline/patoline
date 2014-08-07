@@ -276,6 +276,22 @@ let string_literal =
 (* Naming labels *)
 let label_name = lowercase_ident
 
+let label =
+  glr
+  | STR("~") ln:label_name -> ln
+  end
+
+let opt_label =
+  glr
+  | STR("?") ln:label_name -> ("?" ^ ln)
+  end
+
+let maybe_opt_label =
+  glr
+  | o:STR("?")? ln:label_name ->
+      if o = None then ln else ("?" ^ ln)
+  end
+
 (* Prefix and infix symbols *)
 let reserved_symbols =
   [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
@@ -608,8 +624,8 @@ let typexpr_base : core_type grammar =
       loc_typ _loc Ptyp_any
   | STR("(") te:typexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
-  | STR("?") ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
-      loc_typ _loc (Ptyp_arrow ("?"^ln, te, te'))
+  | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
+      loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
@@ -882,18 +898,12 @@ let _ = set_grammar class_body_type (
   end)
 
 let class_type =
-  let olabel =
-    glr
-    | o:STR("?")? ln:label_name STR(":") -> (o <> None, ln)
-    end
-  in
   glr
-  | tes:{l:olabel? te:typexpr -> (l, te)}* cbt:class_body_type ->
+  | tes:{l:maybe_opt_label? STR(":") te:typexpr -> (l, te)}* cbt:class_body_type ->
       let app acc (lab, te) =
         match lab with
-        | None            -> pcty_loc _loc (Pcty_fun ("", te, acc))
-        | Some (false, l) -> pcty_loc _loc (Pcty_fun (l, te, acc))
-        | Some (true, l)  -> pcty_loc _loc (Pcty_fun ("?"^l, te, acc))
+        | None   -> pcty_loc _loc (Pcty_fun ("", te, acc))
+        | Some l -> pcty_loc _loc (Pcty_fun (l, te, acc))
       in
       List.fold_left app cbt (List.rev tes)
   end
@@ -1202,10 +1212,11 @@ let constructor =
 
 let argument =
   glr
-    STR("~") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
-  | STR("?") id:lowercase_ident STR(":") e:(expression_lvl (next_exp App)) -> (("?"^id), e)
-  | STR("~") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
-  | STR("?") id:lowercase_ident -> (id, loc_expr _loc (Pexp_ident { txt = Lident ("?"^id); loc = _loc }))
+  | id:label STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
+  | id:opt_label STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
+  | id:label -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
+  | id:opt_label -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
+    (* NOTE the "id" in the first position of the couple was not prefixed with a "?". I guess this was a bug. *)
   | e:(expression_lvl (next_exp App)) -> ("", e)
   end
 
@@ -1219,21 +1230,21 @@ let parameter =
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       (id, None, pat))
-  | STR("~") id:lowercase_ident STR":" pat:pattern -> (id, None, pat)
-  | STR("~") id:lowercase_ident -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | id:label STR":" pat:pattern -> (id, None, pat)
+  | id:label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{STR("=") e:expression}? STR")" -> (
+  | id:opt_label STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{STR("=") e:expression}? STR")" -> (
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
-      in (("?"^id), e, pat))
-  | STR("?") id:lowercase_ident STR":" pat:pattern -> (("?"^id), None, pat)
-  | STR("?") id:lowercase_ident -> (("?"^id), None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+      in (id, e, pat))
+  | id:opt_label STR":" pat:pattern -> (id, None, pat)
+  | id:opt_label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   end
 
 let right_member =
