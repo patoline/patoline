@@ -1355,7 +1355,7 @@ let class_field =
   | val_kw m:mutable_flag ivn:inst_var_name te:typexpr? STR("=")
     e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
-      let te = { pexp_desc = Pexp_constraint (e, te, None)
+      let te = { pexp_desc = Pexp_poly (e, te)
                ; pexp_loc  = _loc_te }
       in
       loc_pcf _loc (Pcf_val (ivn, m, Fresh, te))
@@ -1369,14 +1369,14 @@ let class_field =
   | method_kw p:private_flag mn:method_name ps:parameter* te:{STR(":")
     te:typexpr}? STR("=") e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
-      let te = { pexp_desc = Pexp_constraint (e, te, None) (* FIXME ps ? *)
+      let te = { pexp_desc = Pexp_poly (e, te) (* FIXME ps ? *)
                ; pexp_loc  = _loc_te }
       in
       loc_pcf _loc (Pcf_meth (mn, p, Fresh, te))
   | method_kw p:private_flag mn:method_name STR(":")
     pte:poly_typexpr STR("=") e:expr ->
       let mn = { txt = mn ; loc = _loc_mn } in
-      let et = { pexp_desc = Pexp_constraint (e, Some pte, None)
+      let et = { pexp_desc = Pexp_poly (e, Some pte)
                ; pexp_loc  = _loc_pte }
       in
       loc_pcf _loc (Pcf_meth (mn, p, Fresh, et))
