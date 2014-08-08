@@ -189,3 +189,12 @@ type dummy = { mutable c : int; d : string -> bool }
 let f42 = lazy (2 + 2)
 
 let f43:int = match f42 with lazy n -> n
+
+let f44 =
+  let module M1 = struct
+    type t = int
+    let compare = (-)
+  end in
+  let module M2 = Set.Make (M1) in
+  let module M3 = Map.Make (M1) in
+  assert (Obj.repr M2.mem <> Obj.repr M3.mem)

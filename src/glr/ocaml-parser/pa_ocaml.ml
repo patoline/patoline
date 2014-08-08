@@ -196,7 +196,7 @@ let integer_literal =
 
 let int32_lit =
   glr
-    i:RE(int32_re)[groupe 1] -> Printf.printf "coucou %S %s\n" int32_re i; Int32.of_string i
+    i:RE(int32_re)[groupe 1] -> Int32.of_string i
   end
 
 let int64_lit =
@@ -1429,6 +1429,11 @@ let class_definition =
   | cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
   end
 
+let module_expr = declare_grammar ()
+let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
+let module_type = declare_grammar ()
+let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
+
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   glr
@@ -1436,8 +1441,15 @@ let expression_base = memoize1 (fun lvl ->
       (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
   | id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
-  | let_kw r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
-    -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
+  | let_kw r:{r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
+                  -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
+             | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+		 mt:{STR":" mt:module_type }? STR"=" me:module_expr in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
+               let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
+               let me = List.fold_left (fun acc (mn,mt) ->
+		 mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
+               (Let, loc_expr _loc (Pexp_letmodule({ txt = mn ; loc = _loc_mn }, me, e)))
+	     } -> r
   | function_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
   | fun_kw l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
@@ -1556,12 +1568,8 @@ let override_flag =
 (****************************************************************************
  * Module expressions (module implementations)                              *
  ****************************************************************************)
-let module_expr = declare_grammar ()
-let module_type = declare_grammar ()
 let module_item = declare_grammar ()
 let signature_item = declare_grammar ()
-let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
-let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
 
 let module_expr_base = 
   glr
