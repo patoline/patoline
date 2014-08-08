@@ -12,6 +12,13 @@ let stack init = object
     | []       -> None
     | hd :: tl -> s <- tl; Some hd
 
-  method push hd hd' = 
-    s <- hd :: hd' :: s
+  method push hd = 
+    s <- hd :: s
 end
+
+let s = stack [3; 2; 1]
+
+let _ = s#push 42
+let fortytwo = s#pop
+
+if fortytwo <> Some 42 then assert false
