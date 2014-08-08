@@ -1230,14 +1230,14 @@ let parameter =
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
-      | None -> pat
+      | None   -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       (id, None, pat))
   | id:label STR":" pat:pattern -> (id, None, pat)
   | id:label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
-      let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
+      let pat = loc_pat _loc_id (Ppat_var { txt = "?"^id; loc = _loc_id }) in
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
@@ -1372,7 +1372,12 @@ let class_field =
   | method_kw p:private_flag mn:method_name ps:parameter* te:{STR(":")
     te:typexpr}? STR("=") e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
-      let te = { pexp_desc = Pexp_poly (e, te) (* FIXME ps ? *)
+      let f (_,_,pat) acc =
+        { pexp_desc = Pexp_function("", None, [(pat, acc)])
+        ; pexp_loc  = _loc_ps }
+      in
+      let e : expression = List.fold_right f ps e in
+      let te = { pexp_desc = Pexp_poly (e, te)
                ; pexp_loc  = _loc_te }
       in
       loc_pcf _loc (Pcf_meth (mn, p, Fresh, te))

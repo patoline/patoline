@@ -1,20 +1,17 @@
-class counter =
-object
+class counter = object
   val mutable n = 0
   method incr = n <- n+1
   method get = n
 end
 
-(*
 let stack init = object
   val mutable s = init
 
   method pop =
     match s with
-    | [] -> None
+    | []       -> None
     | hd :: tl -> s <- tl; Some hd
 
-  method push hd = 
-    s <- hd :: s
+  method push hd hd' = 
+    s <- hd :: hd' :: s
 end
-*)
