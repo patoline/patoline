@@ -272,7 +272,7 @@ let caml_expr _loc =
 (*    Printf.fprintf stderr "pos after caml_expr: %d\n%!" pos;*)
     r, pos+1
   in
-  black_box fn full_charset false
+  black_box fn full_charset false "caml_expr"
 
 let caml_struct _loc =
   let fn str pos =
@@ -285,7 +285,7 @@ let caml_struct _loc =
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
     r, pos+1
   in
-  black_box fn full_charset false
+  black_box fn full_charset false "caml_struct"
 
 let caml_list _loc =
   let fn str pos =
@@ -298,7 +298,7 @@ let caml_list _loc =
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
     r, pos+1
   in
-  black_box fn full_charset false
+  black_box fn full_charset false "caml_list"
 
 let caml_array _loc =
   let fn str pos =
@@ -311,7 +311,7 @@ let caml_array _loc =
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
     r, pos+1
   in
-  black_box fn full_charset false
+  black_box fn full_charset false "caml_array"
 
 (****************************************************************************
  * Parsing OCaml code inside patoline.                                      *
@@ -774,7 +774,7 @@ let parse_patoline str =
   try
     parse_string full_text blank2 str
   with
-    | Parse_error n ->
+    | Parse_error (n, _) ->
         let _loc = find_pos str n in
         Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
     | Ambiguity(n,p) ->
