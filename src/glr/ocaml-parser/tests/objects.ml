@@ -22,3 +22,19 @@ let _ = s#push 42
 let fortytwo = s#pop
 
 if fortytwo <> Some 42 then assert false
+
+type shape = < area : float >
+
+type square = < area : float; width : float >
+
+let square w = object
+  method area  = w * w
+  method width = w
+end
+
+type circle = < area : float; radius : float >
+
+let circle r = object
+  method area   = 3.14 *. r ** 2.0
+  method radius = r
+end

@@ -648,7 +648,7 @@ let typexpr_base : core_type grammar =
       let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object ml)
   | STR("<") mt:method_type mts:{STR(";") mt:method_type}*
-    rv:{STR(";") rv:STR("..")?}? ->
+    rv:{STR(";") rv:STR("..")?}? STR(">") ->
       let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
   | STR("#") cp:class_path ->
