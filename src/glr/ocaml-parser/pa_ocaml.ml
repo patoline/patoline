@@ -915,7 +915,7 @@ let class_spec =
 
 let class_specification =
   glr
-  | class_kw cs:class_spec css:{and_kw cd:class_spec}* -> (cs::css)
+  | cs:class_spec css:{and_kw cd:class_spec}* -> (cs::css)
   end
 
 (* Class type definition *)
@@ -937,7 +937,7 @@ let classtype_def =
 
 let classtype_definition =
   glr
-  | class_kw type_kw cd:classtype_def cds:{and_kw cd:classtype_def}* ->
+  | type_kw cd:classtype_def cds:{and_kw cd:classtype_def}* ->
       (cd::cds)
   end
 
@@ -1422,7 +1422,7 @@ let class_binding =
 
 let class_definition =
   glr
-  | class_kw cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
+  | cb:class_binding cbs:{and_kw cb:class_binding}* -> (cb::cbs)
   end
 
 (* Expressions *)
@@ -1617,18 +1617,18 @@ let module_item_base =
       Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
-  | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
        mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
      let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
      let me = List.fold_left (fun acc (mn,mt) ->
 				  mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
      Pstr_module({ txt = mn ; loc = _loc_mn }, me)
-  | module_kw type_kw mn:modtype_name STR"=" mt:module_type ->
-     Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt)
+  |             type_kw mn:modtype_name STR"=" mt:module_type ->
+     Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt) } -> r
   | open_kw o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | include_kw me:module_expr -> Pstr_include me
-  | ctd:classtype_definition -> Pstr_class_type ctd
-  | cds:class_definition -> Pstr_class cds
+  | class_kw r:{ ctd:classtype_definition -> Pstr_class_type ctd
+               | cds:class_definition -> Pstr_class cds } -> r
   | e:expression -> Pstr_eval e
   end
 
@@ -1652,20 +1652,20 @@ let signature_item_base =
       Psig_value({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
   | td:type_definition -> Psig_type td
   | (name,ed):exception_declaration -> Psig_exception (name, ed)
-  | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
-       STR":" me:module_type ->
+  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+				    STR":" me:module_type ->
      let me = List.fold_left (fun acc (mn,mt) ->
 				  mtyp_loc _loc (Pmty_functor(mn, mt, acc))) me (List.rev l) in
      Psig_module({ txt = mn ; loc = _loc_mn }, me)
-  | module_kw type_kw mn:modtype_name mt:{ STR"=" mt:module_type }? ->
+  |           type_kw mn:modtype_name mt:{ STR"=" mt:module_type }? ->
      let mt = match mt with
               | None    -> Pmodtype_abstract
               | Some mt -> Pmodtype_manifest mt
-     in Psig_modtype({ txt = mn ; loc = _loc_mn }, mt)
+     in Psig_modtype({ txt = mn ; loc = _loc_mn }, mt) } -> r
   | open_kw o:override_flag m:module_path -> Psig_open(o, { txt = m; loc = _loc_m} )
   | include_kw me:module_type -> Psig_include me
-  | ctd:classtype_definition -> Psig_class_type ctd
-  | cs:class_specification -> Psig_class cs
+  | class_kw r:{ ctd:classtype_definition -> Psig_class_type ctd
+               | cs:class_specification -> Psig_class cs } -> r
 
  end
 

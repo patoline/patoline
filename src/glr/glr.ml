@@ -1,6 +1,8 @@
 open Str
 open Charset
 
+(*DEFINE DEBUG*)
+
 exception Ambiguity of int * int
 exception Parse_error of int * string list
 exception Give_up
@@ -48,6 +50,7 @@ let next_key =
 
 type 'a grammar = {
   mutable firsts : charset Lazy.t;
+  mutable firsts_sym : string list Lazy.t;
   mutable accept_empty : bool Lazy.t;
   mutable parse : 'b. blank -> string -> int -> charset option -> key -> ('a -> 'b) -> 'b IntMap.t ;
 }
@@ -63,18 +66,27 @@ IFDEF DEBUG THEN
   Printf.eprintf "parse_error (%d, %s)\n%!" pos msg; 
 ENDIF;
   raise Give_up
+
+let parse_errors key msg pos =
+  let (pos', msgs) = try Hashtbl.find max_hash key with Not_found -> (-1, []) in
+  begin
+    if pos = pos' then Hashtbl.replace max_hash key (pos, msg @ msgs) 
+    else if pos > pos' then Hashtbl.replace max_hash key (pos, msg)
+  end;
+IFDEF DEBUG THEN
+  Printf.eprintf "parse_error (%d, %s)\n%!" pos msg; 
+ENDIF;
+  raise Give_up
   
 let accept_empty g = Lazy.force g.accept_empty
 let firsts g = Lazy.force g.firsts
+let firsts_sym g = Lazy.force g.firsts_sym
 
-(*DEFINE DEBUG*)
-
-let test blank s str p =
+let test s str p =
   let r = 
     match s with
       None -> true
     | Some s -> 
-      let p = blank str p in 
       if p >= String.length str then get s '\255' else get s str.[p]
   in
 IFDEF DEBUG THEN
@@ -86,6 +98,7 @@ let not_ready _ = failwith "not_ready"
 
 let declare_grammar () = {
   firsts = Lazy.from_fun not_ready;
+  firsts_sym = Lazy.from_fun not_ready;
   accept_empty = Lazy.from_fun not_ready;
   parse = not_ready;
 }
@@ -93,6 +106,7 @@ let declare_grammar () = {
 let set_grammar p1 p2 =
   if p1.parse != not_ready then failwith "this grammar can not be set";
   p1.firsts <- p2.firsts;
+  p1.firsts_sym <- p2.firsts_sym;
   p1.accept_empty <- p2.accept_empty;
   p1.parse <- p2.parse
 
@@ -119,6 +133,7 @@ let grammar_family ?param_to_string () =
 let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
   = fun f l -> 
     { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = lazy (accept_empty l);
       parse =
 	fun blank str pos next key g ->
@@ -131,37 +146,37 @@ let list_apply : ('a -> 'b) -> 'a list grammar -> 'b list grammar
 let position : 'a grammar -> (int * int * 'a) grammar
   = fun l -> 
     { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = lazy (accept_empty l);
       parse =
 	fun blank str pos next key g ->
-	  let pos0 = blank str pos in
 	  let r = l.parse blank str pos next key (fun x -> x) in
-	  IntMap.mapi (fun pos' x -> g (pos0, pos', x)) r
+	  IntMap.mapi (fun pos' x -> g (pos, pos', x)) r
     }
 
 let filter_position : 'a grammar -> (string -> int -> int -> 'b) -> ('b * 'a) grammar
   = fun l filter -> 
     { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = lazy (accept_empty l);
       parse =
 	fun blank str pos next key g ->
-	  let pos0 = blank str pos in
 	  let r = l.parse blank str pos next key (fun x -> x) in
-	  IntMap.mapi (fun pos' x -> g (filter str pos0 pos', x)) r
+	  IntMap.mapi (fun pos' x -> g (filter str pos pos', x)) r
     }
 
 let eof : 'a -> 'a grammar
   = fun a ->
     let set = singleton '\255' in
     { firsts = Lazy.from_val set;
+      firsts_sym = Lazy.from_val ["EOF"];
       accept_empty = Lazy.from_val false;
       parse =
 	fun blank str pos next key g ->
 IFDEF DEBUG THEN
 	  Printf.eprintf "%d: Eof\n%!" pos
 ENDIF;
-	  let pos' = blank str pos in
-	  if pos' >= String.length str then single pos' (g a) else parse_error key "EOF" pos'
+	  if pos >= String.length str then single pos (g a) else parse_error key "EOF" pos
     }
 
 let list_eof : 'a -> 'a list grammar = 
@@ -169,21 +184,23 @@ let list_eof : 'a -> 'a list grammar =
 
 let empty : 'a -> 'a grammar = fun a ->
   { firsts = Lazy.from_val empty_charset;
+    firsts_sym = Lazy.from_val [];
     accept_empty = Lazy.from_val true;
     parse = fun blank str pos next key g -> 
 	    single pos (g a) }
 
 let debug : string -> 'a -> 'a grammar = fun msg a ->
   { firsts = Lazy.from_val empty_charset;
+    firsts_sym = Lazy.from_val [];
     accept_empty = Lazy.from_val true;
     parse = fun blank str pos next key g ->
-            let pos' = blank str pos in 
-	    let current = String.sub str pos' (min (String.length str - pos') 10) in
-	    Printf.eprintf "%s(%d %d): %S\n" msg pos pos' current;
+	    let current = String.sub str pos (min (String.length str - pos) 10) in
+	    Printf.eprintf "%s(%d): %S\n" msg pos current;
 	    single pos (g a) }
 
 let fail : string -> 'a grammar = fun msg ->
   { firsts = Lazy.from_val empty_charset;
+    firsts_sym = Lazy.from_val [];
     accept_empty =  Lazy.from_val false;
     parse = fun blank str pos next key g -> 
 	     parse_error key msg pos }
@@ -191,10 +208,11 @@ let fail : string -> 'a grammar = fun msg ->
 let  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a grammar =
   (fun fn set empty msg ->
    { firsts = Lazy.from_val set;
+    firsts_sym = Lazy.from_val [msg];
      accept_empty = Lazy.from_val empty;
      parse = fun blank str pos next key g ->
-	     let pos' = blank str pos in 
-	     let a, pos' = try fn str pos' with Give_up -> parse_error key msg pos' in
+	     let a, pos' = try fn str pos with Give_up -> parse_error key msg pos in
+	     let pos' = blank str pos' in 
 	     single pos' (g a) })
 
 let string : string -> 'a -> 'a grammar 
@@ -202,18 +220,19 @@ let string : string -> 'a -> 'a grammar
     if String.length s = 0 then failwith "string: illegal empty string";
     let set = singleton s.[0] in
     { firsts = Lazy.from_val set;
+      firsts_sym = Lazy.from_val [s];
       accept_empty = Lazy.from_val false;
       parse =
 	fun blank str pos next key g ->
-	  let pos' = blank str pos in
 IFDEF DEBUG THEN	 
-	  Printf.eprintf "%d,%d: String(%s) %s\n%!" pos pos' (String.escaped s) (if pos' < String.length str then Char.escaped str.[pos'] else "EOF")
+	  Printf.eprintf "%d: String(%s) %s\n%!" pos (String.escaped s) (if pos < String.length str then Char.escaped str.[pos] else "EOF")
 END;
 	  let len = String.length s in
-	  if String.length str >= pos' + len && String.sub str pos' len = s then
-	    single (pos'+len) (g a)
+	  if String.length str >= pos + len && String.sub str pos len = s then
+	    let pos' = blank str (pos+len) in
+	    single pos' (g a)
 	  else
-	    parse_error key s pos'
+	    parse_error key s pos
     }
 
 let list_string : string -> 'a -> 'a list grammar
@@ -231,17 +250,18 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
     done;
     if not !found then failwith "regexp: illegal empty regexp";
     { firsts = Lazy.from_val set;
+      firsts_sym = Lazy.from_val [name];
       accept_empty = Lazy.from_val (Str.string_match r "" 0);
       parse = 
 	fun blank str pos next key g ->
-	  let pos' = blank str pos in
 IFDEF DEBUG THEN
-	  Printf.eprintf "%d,%d: Regexp(%s) %s\n%!" pos pos' name
-	  (if pos' < String.length str then Char.escaped str.[pos'] else "EOF")
+	  Printf.eprintf "%d: Regexp(%s) %s\n%!" pos name
+	  (if pos < String.length str then Char.escaped str.[pos] else "EOF")
 END;
-	  if string_match r str pos' then
+	  if string_match r str pos then
 	    let f n = matched_group n str in
 	    let pos' = match_end () in
+	    let pos' = blank str pos' in
 	    let res = single pos' (g (a f)) in
 IFDEF DEBUG THEN
 	    Printf.eprintf "%d: Regexp OK\n%!" pos'
@@ -249,9 +269,9 @@ END;
 	    res
 	  else (
 IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Regexp Failed\n%!" pos'
+	    Printf.eprintf "%d: Regexp Failed\n%!" pos
 END;
-	    parse_error key name pos')
+	    parse_error key name pos)
     }
 
 
@@ -272,6 +292,12 @@ let union_firsts l1 l2 =
   else
     (firsts l1)
 
+let union_firsts_sym l1 l2 =
+  if accept_empty l1 then 
+    firsts_sym l1 @ firsts_sym l2
+  else
+    firsts_sym l1
+
 let union'' l s =
   match s with None -> None | Some s -> Some (union s (firsts l))
 
@@ -283,6 +309,7 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
   = fun l1 l2 f ->
   let flag = ref false in
     { firsts = lazy (union_firsts l1 l2);
+      firsts_sym = lazy (union_firsts_sym l1 l2);
       accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
       parse =
 	fun blank str pos next key g ->
@@ -309,6 +336,7 @@ let merge_sequence : ('c -> 'c -> 'c) -> 'a grammar -> 'b grammar -> ('a -> 'b -
   = fun merge l1 l2 f ->
   let flag = ref false in
     { firsts = lazy (union_firsts l1 l2);
+      firsts_sym = lazy (union_firsts_sym l1 l2);
       accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
       parse =
 	fun blank str pos next key g ->
@@ -348,6 +376,7 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
   = fun l1 f2 ->
   let flag = ref false in
     { firsts = lazy (firsts l1);
+      firsts_sym = lazy (firsts_sym l1);
       accept_empty = mk_empty flag (fun () -> 
         let res = accept_empty l1 in 
 	if res then failwith "initial rule must not parse empty sequence in dependent sequence";
@@ -380,6 +409,7 @@ let dependent_merge_sequence : ('b -> 'b -> 'b) -> 'a grammar -> ('a -> 'b gramm
   = fun merge l1 f2 ->
   let flag = ref false in
     { firsts = lazy (firsts l1);
+      firsts_sym = lazy (firsts_sym l1);
       accept_empty = mk_empty flag (fun () -> 
         let res = accept_empty l1 in 
 	if res then failwith "initial rule must not parse empty sequence in dependent sequence";
@@ -412,6 +442,7 @@ let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b l
   = fun l1 f2 ->
   let flag = ref false in
     { firsts = lazy (firsts l1);
+      firsts_sym = lazy (firsts_sym l1);
       accept_empty = mk_empty flag (fun () -> 
         let res = accept_empty l1 in 
 	if res then failwith "initial rule must not parse empty sequence in dependent sequence";
@@ -449,21 +480,26 @@ let change_layout : 'a grammar -> blank -> 'a grammar
   = fun l1 blank1 ->
     (* if not l1.ready then failwith "change_layout: illegal recursion"; *)
     { firsts = lazy (firsts l1);
+      firsts_sym = lazy (firsts_sym l1);
       accept_empty = Lazy.from_fun (fun () -> accept_empty l1);
       parse =
 	fun blank str pos next key g  ->
-	  let pos = blank str pos in
-	  l1.parse blank1 str pos None key g
+	  IntMap.fold (fun pos' a acc ->
+		       let pos' = blank str pos' in
+		       IntMap.add pos' a acc) 
+		      (l1.parse blank1 str pos None key g)
+		      IntMap.empty
     }
 
 
 let option' : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
     { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
-	  let acc = if test blank next str pos then single pos (g a) else IntMap.empty in
+	  let acc = if test next str pos then single pos (g a) else IntMap.empty in
 	  try
 IFDEF DEBUG THEN
 	    Printf.eprintf "%d %a: Option\n%!" pos print_charset next
@@ -482,10 +518,11 @@ END;
 let merge_option : ('a -> 'a -> 'a) -> 'a -> 'a grammar -> 'a grammar
   = fun merge a l ->
     { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
-	  let acc = if test blank next str pos then single pos a else IntMap.empty in
+	  let acc = if test next str pos then single pos a else IntMap.empty in
 	  try
 IFDEF DEBUG THEN
 	    Printf.eprintf "%d %a: Option\n%!" pos print_charset next
@@ -507,7 +544,8 @@ let list_option' : 'a -> 'a list grammar -> 'a list grammar =
 
 let option : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
-    { firsts = Lazy.from_fun (fun () -> firsts l);
+    { firsts = lazy (firsts l);
+      firsts_sym = lazy (firsts_sym l);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
@@ -522,7 +560,7 @@ END;
 	    res
 	  with
 	    Give_up ->
-	      if test blank next str pos then single pos (g a) else raise Give_up;
+	      if test next str pos then single pos (g a) else raise Give_up;
     }
 
 let list_option : 'a -> 'a list grammar -> 'a list grammar =
@@ -531,6 +569,7 @@ let list_option : 'a -> 'a list grammar -> 'a list grammar =
 let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     { firsts = lazy (firsts f1);
+      firsts_sym = lazy (firsts_sym f1);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
@@ -540,7 +579,7 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 IFDEF DEBUG THEN
 	      Printf.eprintf "%d %a: Fixpoint\n%!" pos' print_charset next
 END;
-	      let acc = if test blank next str pos' then merge_map1 pos (single pos' (g a)) acc else acc in
+	      let acc = if test next str pos' then merge_map1 pos (single pos' (g a)) acc else acc in
 	      (try
 		 let r = f1.parse blank str pos' next' key (fun f -> f a) in
 		 let r = IntMap.fold (fun pos a acc ->
@@ -560,6 +599,7 @@ END;
 let merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun merge a f1 ->
     { firsts = lazy (firsts f1);
+      firsts_sym = lazy (firsts_sym f1);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
@@ -569,7 +609,7 @@ let merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
 IFDEF DEBUG THEN
 	      Printf.eprintf "%d %a: Merge Fixpoint\n%!" pos' print_charset next
 END;
-	      let acc = if test blank next str pos' then merge_map2 merge (single pos' a) acc else acc in
+	      let acc = if test next str pos' then merge_map2 merge (single pos' a) acc else acc in
 	      (try
 		 let r = f1.parse blank str pos' next' key (fun f -> f a) in
 		 let r = IntMap.fold (fun pos a acc ->
@@ -593,7 +633,8 @@ let list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
 
 let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
-    { firsts = Lazy.from_fun (fun () -> firsts f1);
+    { firsts = lazy (firsts f1);
+      firsts_sym = lazy (firsts_sym f1);
       accept_empty = Lazy.from_val true;
       parse =
 	fun blank str pos next key g ->
@@ -613,7 +654,7 @@ END;
 		 fun () -> fn acc r
 	       with 
 		 Give_up ->
-		 if test blank next str pos' then (fun () -> single pos' (g a)) else raise Give_up) ()) la acc
+		 if test next str pos' then (fun () -> single pos' (g a)) else raise Give_up) ()) la acc
 	  in
 	  fn IntMap.empty (single pos a)
     }
@@ -626,14 +667,23 @@ let alternatives' : 'a grammar list -> 'a grammar
   = fun ls ->
   let flag = ref false in
   { firsts = lazy (List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
+    firsts_sym = lazy (List.fold_left (fun s p -> s @ (firsts_sym p)) [] ls);
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
 IFDEF DEBUG THEN
 	  Printf.eprintf "%d: Alternatives'\n%!" pos
 END;
+	  let ls, rej = List.partition (fun g ->
+				(accept_empty g) || 
+				  let c = if pos >= String.length str then '\255' else str.[pos] in
+				  Charset.get (firsts g) c) ls in
 	  let rec fn acc = function
-	    | [] -> if acc = IntMap.empty then raise Give_up else acc
+	    | [] ->
+	       if acc = IntMap.empty then
+		 let msgs = flat_map firsts_sym rej in
+		 parse_errors key msgs pos
+	       else acc
 	    | l::ls ->
 IFDEF DEBUG THEN
 	      Printf.eprintf "%d: Alternatives' step2 (remain %d)\n%!" pos (List.length ls);
@@ -653,14 +703,23 @@ let merge_alternatives : ('a -> 'a -> 'a) -> 'a grammar list -> 'a grammar
   = fun merge ls ->
   let flag = ref false in
   { firsts = lazy (List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
+    firsts_sym = lazy (List.fold_left (fun s p -> s @ (firsts_sym p)) [] ls);
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
 IFDEF DEBUG THEN
 	  Printf.eprintf "%d: Merge Alternatives\n%!" pos
 END;
+	  let ls, rej = List.partition (fun g ->
+				(accept_empty g) || 
+				  let c = if pos >= String.length str then '\255' else str.[pos] in
+				  Charset.get (firsts g) c) ls in
 	  let rec fn acc = function
-	    | [] -> if acc = IntMap.empty then raise Give_up else IntMap.map g acc
+	    | [] -> 
+	       if acc = IntMap.empty then
+		 let msgs = flat_map firsts_sym rej in
+		 parse_errors key msgs pos
+	       else IntMap.map g acc
 	    | l::ls ->
 IFDEF DEBUG THEN
 	      Printf.eprintf "%d: Merge Alternatives step2 (remain %d)\n%!" pos (List.length ls);
@@ -683,14 +742,21 @@ let alternatives : 'a grammar list -> 'a grammar
   = fun ls ->
   let flag = ref false in
   { firsts = lazy (List.fold_left (fun s p -> union s (firsts p)) empty_charset ls);
+    firsts_sym = lazy (List.fold_left (fun s p -> s @ (firsts_sym p)) [] ls);
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
 IFDEF DEBUG THEN
           Printf.eprintf "%d: Alternatives\n%!" pos;
 END;
+	  let ls, rej = List.partition (fun g ->
+				(accept_empty g) || 
+				  let c = if pos >= String.length str then '\255' else str.[pos] in
+				  Charset.get (firsts g) c) ls in
 	  let rec fn = function
-	    | [] -> raise Give_up
+	    | [] ->
+	       let msgs = flat_map firsts_sym rej in
+	       parse_errors key msgs pos
 	    | l::ls ->
 IFDEF DEBUG THEN
 	  Printf.eprintf "%d: Alternatives step2 (remain %d)\n%!" pos (List.length ls);
@@ -721,7 +787,8 @@ let remove_duplicate l =
 
 let parse_string grammar blank str = 
   let key = next_key () in
-  let la = try grammar.parse blank str 0 None key (fun x -> x) 
+  let la = try 	  let pos = blank str 0 in
+		  grammar.parse blank str pos None key (fun x -> x) 
 	   with Give_up -> 
 		let pos, msgs = Hashtbl.find max_hash key in
 		raise (Parse_error (pos, remove_duplicate msgs))
@@ -734,7 +801,8 @@ let parse_string grammar blank str =
 
 let partial_parse_string grammar blank str pos = 
   let key = next_key () in
-  let la = try grammar.parse blank str pos None key (fun x -> x)
+  let la = try 	  let pos = blank str pos in
+		  grammar.parse blank str pos None key (fun x -> x)
  	   with Give_up -> 
 		let pos, msgs = Hashtbl.find max_hash key in
 		raise (Parse_error (pos, remove_duplicate msgs))
