@@ -1394,23 +1394,27 @@ let class_field =
       loc_pcf _loc (Pcf_init e)
   end
 
-let class_body =
+let _ = set_grammar class_body (
   glr
   | p:pattern? f:class_field* -> 
       let p = match p with None -> loc_pat _loc_p Ppat_any | Some p -> p in
       { pcstr_pat = p; pcstr_fields = f }
-  end
+  end)
 
 (* Class definition *)
 (* FIXME do not know what to do with ps *)
 let class_binding =
   glr
   | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]]
-    cn:class_name ps:parameter* ct:{STR(":") ct:class_type} STR("=")
+    cn:class_name ps:parameter* ct:{STR(":") ct:class_type}? STR("=")
     ce:class_expr ->
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
+      in
+      let ce = match ct with
+	  None -> ce
+	| Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
       in
       { pci_virt = v
       ; pci_params = params, _loc_tp
@@ -1428,7 +1432,9 @@ let class_definition =
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   glr
-    id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
+  | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) when lvl <= Aff->
+      (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
+  | id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
   | let_kw r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
     -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
@@ -1463,7 +1469,6 @@ let expression_base = memoize1 (fun lvl ->
       (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', d, e'')))
   | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
   | object_kw o:class_body end_kw -> (Atom, loc_expr _loc (Pexp_object o))
-  | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) -> (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
   | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l }?[[]] STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
   end)
 
