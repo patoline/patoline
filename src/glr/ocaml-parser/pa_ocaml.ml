@@ -1355,10 +1355,13 @@ let class_field =
   | val_kw m:mutable_flag ivn:inst_var_name te:typexpr? STR("=")
     e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
-      let te = { pexp_desc = Pexp_poly (e, te)
-               ; pexp_loc  = _loc_te }
+      let ex =
+        match te with
+        | None   -> e
+        | Some t -> { pexp_desc = Pexp_poly (e, Some t)
+                    ; pexp_loc  = _loc_te }
       in
-      loc_pcf _loc (Pcf_val (ivn, m, Fresh, te))
+      loc_pcf _loc (Pcf_val (ivn, m, Fresh, ex))
   | val_kw m:mutable_flag virtual_kw ivn:inst_var_name
     STR(":") te:typexpr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in

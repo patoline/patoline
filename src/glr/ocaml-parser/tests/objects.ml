@@ -5,6 +5,7 @@ object
   method get = n
 end
 
+(*
 let stack init = object
   val mutable s = init
 
@@ -16,3 +17,4 @@ let stack init = object
   method push hd = 
     s <- hd :: s
 end
+*)
