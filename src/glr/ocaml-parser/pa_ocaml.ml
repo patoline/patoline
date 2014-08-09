@@ -112,7 +112,7 @@ let find_pos str n =
         if i = 0 then (2,i) else
           let lnum, _ = fn (i-1) in
           let lnum = lnum + 1 in
-	  let i = if i + 1 < String.length str && str.[i+1] = '\r' then i + 1 else i in
+          let i = if i + 1 < String.length str && str.[i+1] = '\r' then i + 1 else i in
           Hashtbl.add bol i lnum;
           lnum, i
     else if i <= 0 then (1, i)
@@ -1078,8 +1078,8 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   | te:STR(":") ty:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
       (CoercePat, fun p -> 
         let loc = merge p.ppat_loc _loc in
-	let pat = Ppat_constraint(p, ty)
-	in loc_pat loc pat)
+        let pat = Ppat_constraint(p, ty)
+        in loc_pat loc pat)
 
   end)
 
@@ -1168,14 +1168,18 @@ let expression= expression_lvl Top
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 
 let array_function loc str name =
-  loc_expr loc (Pexp_ident ({ txt = Ldot(Lident str, (if !fast then "unsafe_" ^ name else name)); loc  }))
+  let name = if !fast then "unsafe_" ^ name else name in
+  loc_expr loc (Pexp_ident { txt = Ldot(Lident str, name); loc = loc })
 
 let bigarray_function loc str name =
-  loc_expr loc (Pexp_ident ({ txt = Ldot(Ldot(Lident "Bigarray", str),
-						   (if !fast then "unsafe_" ^ name else name)); loc  }))
-let untuplify = function
-    { pexp_desc = Pexp_tuple explist; pexp_loc = _ } -> explist
-  | exp -> [exp]
+  let name = if !fast then "unsafe_" ^ name else name in
+  let lid = Ldot(Ldot(Lident "Bigarray", str), name) in
+  loc_expr loc (Pexp_ident { txt = lid; loc = loc })
+
+let untuplify exp =
+  match exp.pexp_desc with
+  | Pexp_tuple es -> es
+  | _             -> [exp]
 
 let bigarray_get loc arr arg =
   let get = if !fast then "unsafe_get" else "get" in
@@ -1257,13 +1261,15 @@ let parameter =
 let right_member =
   glr
   | l:{lb:parameter}* STR("=") e:expression -> 
-      List.fold_right (fun (lbl,opt,pat) e ->
-		       loc_expr _loc (Pexp_function (lbl, opt, [pat, e]))) l e
+      let f (lbl,opt,pat) acc =
+        loc_expr _loc (Pexp_function (lbl, opt, [pat, acc]))
+      in
+      List.fold_right f l e
   end
 
 let value_binding =
   glr
-  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member -> (pat, e)}* -> ((pat, e)::l)
+  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member}* -> ((pat, e)::l)
   end
 
 let match_cases = memoize1 (fun lvl ->
@@ -1424,8 +1430,8 @@ let class_binding =
                                     | Some x -> x) params
       in
       let ce = match ct with
-	  None -> ce
-	| Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
+               | None    -> ce
+               | Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
       in
       { pci_virt = v
       ; pci_params = params, _loc_tp
@@ -1455,12 +1461,12 @@ let expression_base = memoize1 (fun lvl ->
   | let_kw r:{r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
                   -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
              | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
-		 mt:{STR":" mt:module_type }? STR"=" me:module_expr in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
+                 mt:{STR":" mt:module_type }? STR"=" me:module_expr in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
                let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
                let me = List.fold_left (fun acc (mn,mt) ->
-		 mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
+                 mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
                (Let, loc_expr _loc (Pexp_letmodule({ txt = mn ; loc = _loc_mn }, me, e)))
-	     } -> r
+             } -> r
   | function_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
   | fun_kw l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
      (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
@@ -1472,14 +1478,14 @@ let expression_base = memoize1 (fun lvl ->
   | begin_kw e:expression? end_kw -> (Atom, match e with Some e -> e | None -> loc_expr _loc (Pexp_tuple([])))
   | c:constructor e:{ e:(expression_lvl App) when lvl <= App }? -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},e,false)))
   | assert_kw e:{ false_kw -> Pexp_assertfalse | e:(expression_lvl App) -> Pexp_assert(e)} when (lvl <= App) 
-      -> (App,  loc_expr _loc e)		       
-  | lazy_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))		       
+      -> (App,  loc_expr _loc e)
+  | lazy_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))
   | STR("`") l:RE(ident_re) e:{e:(expression_lvl App)}? when (lvl <= App) -> (App, loc_expr _loc (Pexp_variant(l,e)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array l))
   | STR("[") l:expression_list STR("]") ->
      (Atom, (List.fold_right (fun x acc ->
        loc_expr _loc (Pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
-		    l (loc_expr _loc (Pexp_construct({ txt = Lident "[]"; loc = _loc}, None, false)))))
+                    l (loc_expr _loc (Pexp_construct({ txt = Lident "[]"; loc = _loc}, None, false)))))
   | STR("{") e:{e:expression with_kw}? l:record_list STR("}") ->
      (Atom, loc_expr _loc (Pexp_record(l,e)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
@@ -1536,10 +1542,10 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (Dot, fun e' -> bigarray_get _loc e' f)
   |            f:field STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' ->
-	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
+              let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
   |            f:field when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' ->
-	    let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
+              let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
   | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
       (Dash, fun e' -> loc_expr _loc (Pexp_send(e',f)))
   | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
@@ -1548,10 +1554,10 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
                     e:(expression_lvl (if a = Right then p else next_exp p))
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
       (p, fun e' -> loc_expr (merge _loc_e _loc) (
-	if op = "::" then
-	  Pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
-	else 
-	  Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Lident op; loc = _loc_op }),
+          if op = "::" then
+            Pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
+          else 
+            Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Lident op; loc = _loc_op }),
                      [("", e') ; ("", e)])))
   end)
 
@@ -1622,7 +1628,7 @@ let mod_constraint =
   | module_kw m1:module_path STR("=") m2:extended_module_path ->
      ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
 (* TODO: Pwith_typesubst and Pwithmodsubst are missing *)
-  end							 
+  end
 
 let _ = set_grammar module_type (
   glr
@@ -1645,7 +1651,7 @@ let module_item_base =
        mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
      let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
      let me = List.fold_left (fun acc (mn,mt) ->
-				  mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
+       mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
      Pstr_module({ txt = mn ; loc = _loc_mn }, me)
   |             type_kw mn:modtype_name STR"=" mt:module_type ->
      Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt) } -> r
@@ -1677,9 +1683,9 @@ let signature_item_base =
   | td:type_definition -> Psig_type td
   | (name,ed):exception_declaration -> Psig_exception (name, ed)
   | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
-				    STR":" me:module_type ->
+                                    STR":" me:module_type ->
      let me = List.fold_left (fun acc (mn,mt) ->
-				  mtyp_loc _loc (Pmty_functor(mn, mt, acc))) me (List.rev l) in
+                                  mtyp_loc _loc (Pmty_functor(mn, mt, acc))) me (List.rev l) in
      Psig_module({ txt = mn ; loc = _loc_mn }, me)
   |           type_kw mn:modtype_name mt:{ STR"=" mt:module_type }? ->
      let mt = match mt with
@@ -1731,28 +1737,27 @@ let ast =
     let pos = find_pos s n in
     let msgs = String.concat " | " l in
     Lexing.(Printf.eprintf "File %S, line %d, characters %d:\n\
-		    Error: Syntax error, %s expected\n" pos.pos_fname pos.pos_lnum (pos.pos_cnum - pos.pos_bol) msgs);
+                            Error: Syntax error, %s expected\n"
+                            pos.pos_fname pos.pos_lnum
+                            (pos.pos_cnum - pos.pos_bol) msgs);
     exit 1
 
 let _ = 
-  if !ascii then
+  if !ascii then begin
     begin
-      begin
-	match ast with 
-	| `Struct ast -> Pprintast.structure Format.std_formatter ast;
-	| `Sig ast -> Pprintast.signature Format.std_formatter ast;
-      end;
-      Format.print_newline ()
-    end
-  else
+      match ast with 
+      | `Struct ast -> Pprintast.structure Format.std_formatter ast;
+      | `Sig ast -> Pprintast.signature Format.std_formatter ast;
+    end;
+    Format.print_newline ()
+  end else begin
+    let magic = Config.ast_impl_magic_number in
+    output_string stdout magic;
+    output_value stdout (match !file with None -> "" | Some name -> name);
     begin
-      let magic = Config.ast_impl_magic_number in
-      output_string stdout magic;
-      output_value stdout (match !file with None -> "" | Some name -> name);
-      begin
-	match ast with 
-	| `Struct ast -> output_value stdout ast
-	| `Sig ast -> output_value stdout ast
-      end;
-      close_out stdout
-    end
+      match ast with 
+      | `Struct ast -> output_value stdout ast
+      | `Sig ast -> output_value stdout ast
+    end;
+    close_out stdout
+  end
