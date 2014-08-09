@@ -217,7 +217,8 @@ let  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a 
 
 let string : string -> 'a -> 'a grammar 
   = fun s a -> 
-    if String.length s = 0 then failwith "string: illegal empty string";
+   let len_s = String.length s in
+    if len_s = 0 then failwith "string: illegal empty string";
     let set = singleton s.[0] in
     { firsts = Lazy.from_val set;
       firsts_sym = Lazy.from_val [s];
@@ -227,12 +228,13 @@ let string : string -> 'a -> 'a grammar
 IFDEF DEBUG THEN	 
 	  Printf.eprintf "%d: String(%s) %s\n%!" pos (String.escaped s) (if pos < String.length str then Char.escaped str.[pos] else "EOF")
 END;
-	  let len = String.length s in
-	  if String.length str >= pos + len && String.sub str pos len = s then
-	    let pos' = blank str (pos+len) in
-	    single pos' (g a)
-	  else
-	    parse_error key s pos
+          let len = String.length str in
+	  if len < pos + len_s then raise Give_up;
+	  for i = 0 to len_s - 1 do
+	    if str.[pos + i] <> s.[i] then parse_error key s pos
+	  done;
+	  let pos' = blank str (pos + len_s) in
+	  single pos' (g a)
     }
 
 let list_string : string -> 'a -> 'a list grammar

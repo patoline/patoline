@@ -198,3 +198,11 @@ let f44 =
   let module M2 = Set.Make (M1) in
   let module M3 = Map.Make (M1) in
   assert (Obj.repr M2.mem <> Obj.repr M3.mem)
+
+let remove_duplicates comparison_fun string_list =
+  let module StringSet =
+    Set.Make(struct type t = string
+                    let compare = comparison_fun end) in
+  StringSet.elements
+    (List.fold_right StringSet.add string_list StringSet.empty)
+

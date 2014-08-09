@@ -146,9 +146,9 @@ let union_re l =
 
 (* Identifiers *)
 (* NOTE "_" is not a valid identifier, we handle it separately *)
-let lident_re = "\\b\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
-let cident_re = "\\b[A-Z][a-zA-Z0-9_']*\\b"
-let ident_re = "\\b[A-Za-z_][a-zA-Z0-9_']*\\b"
+let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)\\b"
+let cident_re = "[A-Z][a-zA-Z0-9_']*\\b"
+let ident_re = "[A-Za-z_][a-zA-Z0-9_']*\\b"
 
 let reserved_ident =
   [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
@@ -185,10 +185,9 @@ let int_oct_re = "[-]?[0][oO][0-7][0-7_]*"
 let int_bin_re = "[-]?[0][bB][01][01_]*"
 let int_gen_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
 let int_re = int_gen_re
-let int32_re = par_re int_re ^ "l" ^ "\\b"
-let int64_re = par_re int_re ^ "L" ^ "\\b"
-let natint_re = par_re int_re ^ "n" ^ "\\b"
-
+let int32_re = par_re int_re ^ "l"
+let int64_re = par_re int_re ^ "L"
+let natint_re = par_re int_re ^ "n"
 let integer_literal =
   glr
     i:RE(int_re) -> int_of_string i
@@ -304,14 +303,14 @@ let is_reserved_symb s =
 
 let infix_symb_re  = union_re [
  "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*";
- "mod";
- "land";
- "lor";
- "or";
- "lxor";
- "lsl";
- "lsr";
- "asr"] ^ "\\b"
+ "mod" ^ "\\b";
+ "land" ^ "\\b";
+ "lor" ^ "\\b";
+ "or" ^ "\\b";
+ "lxor" ^ "\\b";
+ "lsl" ^ "\\b";
+ "lsr" ^ "\\b";
+ "asr" ^ "\\b"]
 let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
 
 let infix_symbol =
@@ -449,7 +448,24 @@ let classtype_path =
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *
  ****************************************************************************)
-let key_word s = regexp (s ^ "\\b") ~name:s (fun fn -> fn 0)
+let key_word s = 
+   let len_s = String.length s in
+   assert(len_s > 0);
+   black_box 
+     (fun str pos ->
+      let len = String.length str in
+      if len < pos + len_s then raise Give_up;
+      let i = ref 0 in
+      for i = 0 to len_s - 1 do
+	if str.[pos + i] <> s.[i] then raise Give_up
+      done;
+      let pos = pos + len_s in
+      if pos < len then
+	match str.[pos] with
+	  'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
+	  | _ -> (), pos
+      else (), pos)
+     (Charset.singleton s.[0]) false s
 
 let mutable_kw = key_word "mutable"
 let mutable_flag =
