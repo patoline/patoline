@@ -226,6 +226,8 @@ let char_escaped = "[\\\\][\\\\\\\"\\\'ntbrs ]"
 let char_dec     = "[\\\\][0-9][0-9][0-9]"
 let char_hex     = "[\\\\][x][0-9a-fA-F][0-9a-fA-F]"
 
+exception Illegal_escape of string
+
 let one_char is_char =
   glr
     c:RE(char_regular) when is_char -> c.[0]
@@ -238,13 +240,14 @@ let one_char is_char =
                             | 's' -> ' '
                             | c   -> c)
   | c:RE(char_dec)     -> (let str = String.sub c 1 3 in
-                            let i = Scanf.sscanf str "%i" (fun i -> i) in
-                            if i > 255 then assert false; (* TODO error message *)
-                            char_of_int i)
+                           let i = Scanf.sscanf str "%i" (fun i -> i) in
+                           if i > 255 then
+                             raise (Illegal_escape str)
+                           else char_of_int i)
   | c:RE(char_hex)     -> (let str = String.sub c 2 2 in
-                            let str' = String.concat "" ["0x"; str] in
-                            let i = Scanf.sscanf str' "%i" (fun i -> i) in
-                            char_of_int i)
+                           let str' = String.concat "" ["0x"; str] in
+                           let i = Scanf.sscanf str' "%i" (fun i -> i) in
+                           char_of_int i)
   end
 
 let char_literal =

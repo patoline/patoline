@@ -21,7 +21,7 @@ let s = stack [3; 2; 1]
 let _ = s#push 42
 let fortytwo = s#pop
 
-if fortytwo <> Some 42 then assert false
+let _ = if fortytwo <> Some 42 then assert false
 
 type shape = < area : float >
 
