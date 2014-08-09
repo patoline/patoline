@@ -455,7 +455,6 @@ let key_word s =
      (fun str pos ->
       let len = String.length str in
       if len < pos + len_s then raise Give_up;
-      let i = ref 0 in
       for i = 0 to len_s - 1 do
 	if str.[pos + i] <> s.[i] then raise Give_up
       done;
