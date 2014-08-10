@@ -679,21 +679,20 @@ let typexpr_base : core_type grammar =
   end
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
+  let ln f _loc e = loc_typ (merge f.ptyp_loc _loc) e in
   glr
   | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
-      (Arr, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_arrow ("", te, te')))
+      (Arr, fun te -> ln te _loc (Ptyp_arrow ("", te, te')))
   | tes:{STR("*") te:(typexpr_lvl (next_type_prio Prod))}+  when lvl' > Prod && lvl <= Prod->
-      (Prod, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_tuple (te::tes)))
+      (Prod, fun te -> ln te _loc (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
-      (AppType, fun te -> loc_typ (merge te.ptyp_loc _loc)
-        (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
+      (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
-      (As, fun te -> loc_typ (merge te.ptyp_loc _loc) (Ptyp_alias (te, id)))
+      (As, fun te -> ln te _loc (Ptyp_alias (te, id)))
   | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
       let cp = { txt = cp; loc = _loc_cp } in
       let tex = fun te ->
-        let loc = merge te.ptyp_loc _loc in
-        loc_typ loc (Ptyp_class (cp, [te], [])) (* FIXME what is the last list for?! *)
+        ln te _loc (Ptyp_class (cp, [te], [])) (* FIXME what is the last list for?! *)
       in (Dash, tex)
   end)
 
@@ -1071,30 +1070,25 @@ let pattern_base = memoize1 (fun lvl ->
   end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
+  let ln f _loc e = loc_pat (merge f.ppat_loc _loc) e in
   glr
   | as_kw vn:value_name when lvl' > AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
-        let loc = merge p.ppat_loc _loc in
-        loc_pat loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
+        ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
   | STR("|") p':pattern when lvl' > AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
-        let loc = merge p.ppat_loc _loc in
-        loc_pat loc (Ppat_or(p, p')))
+        ln p _loc (Ppat_or(p, p')))
   | ps:{STR(",") p:pattern -> p}+ when lvl' > TupPat && lvl <= TupPat ->
       (TupPat, fun p ->
-        let loc = merge p.ppat_loc _loc in
-        loc_pat loc (Ppat_tuple(p::ps)))
+        ln p _loc (Ppat_tuple(p::ps)))
   | c:STR("::") p':pattern when lvl' > ConsPat && lvl <= ConsPat ->
       (ConsPat, fun p ->
-        let loc = merge p.ppat_loc _loc in
         let cons = { txt = Lident "::"; loc = _loc_c } in
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
-        loc_pat loc (Ppat_construct(cons, Some args, false)))
+        ln p _loc (Ppat_construct(cons, Some args, false)))
   | te:STR(":") ty:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
       (CoercePat, fun p -> 
-        let loc = merge p.ppat_loc _loc in
-        let pat = Ppat_constraint(p, ty)
-        in loc_pat loc pat)
+        ln p _loc (Ppat_constraint(p, ty)))
 
   end)
 
@@ -1522,10 +1516,12 @@ let apply_lbl _loc (lbl, e) =
     | Some e -> e
   in (lbl, e)
 
-let rec mk_seq _loc = function
+let rec mk_seq = function
     [] -> assert false
   | [e] -> e
-  | x::l -> loc_expr _loc (Pexp_sequence(x,mk_seq _loc l))
+  | x::l -> 
+     let res = mk_seq l in
+     loc_expr (merge x.pexp_loc res.pexp_loc) (Pexp_sequence(x,mk_seq l))
 
 let semi_col = black_box 
   (fun str pos ->
@@ -1535,22 +1531,23 @@ let semi_col = black_box
   (Charset.singleton ';') false (";")
 
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
+  let ln f _loc e = loc_expr (merge f.pexp_loc _loc) e in
   glr
     l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
-      (App, fun f -> loc_expr _loc (Pexp_apply(f,l)))
+      (App, fun f -> ln f _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
-      (Tupl, fun f -> loc_expr _loc (Pexp_tuple(f::l)))
+      (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
-      (Seq, fun f -> mk_seq _loc (f::l))
+      (Seq, fun f -> mk_seq (f::l))
   | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
   | STR(".") r:{ STR("(") f:expression STR(")") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' > Aff && lvl <= Aff) -> 
-      (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
+      (Aff, fun e' -> ln e' _loc (Pexp_apply(array_function _loc "Array" "set",[("",e');("",f);("",e)]))) 
   |            STR("(") f:expression STR(")") when (lvl' >= Dot && lvl <= Dot) -> 
-      (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "Array" "get",[("",e');("",f)])))
+      (Dot, fun e' -> ln e' _loc (Pexp_apply(array_function _loc "Array" "get",[("",e');("",f)])))
   |            STR("[") f:expression STR("]") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
-      (Aff, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "set",[("",e');("",f);("",e)]))) 
+      (Aff, fun e' -> ln e' _loc (Pexp_apply(array_function _loc "String" "set",[("",e');("",f);("",e)]))) 
   |            STR("[") f:expression STR("]")  when (lvl' >= Dot && lvl <= Dot) -> 
-      (Dot, fun e' -> loc_expr _loc (Pexp_apply(array_function _loc "String" "get",[("",e');("",f)])))
+      (Dot, fun e' -> ln e' _loc (Pexp_apply(array_function _loc "String" "get",[("",e');("",f)])))
   |            STR("{") f:expression STR("}") STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' -> bigarray_set _loc e' f e)
   |            STR("{") f:expression STR("}") when (lvl' >= Dot && lvl <= Dot) -> 
@@ -1562,13 +1559,13 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (Dot, fun e' ->
               let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
   | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
-      (Dash, fun e' -> loc_expr _loc (Pexp_send(e',f)))
+      (Dash, fun e' -> ln e' _loc (Pexp_send(e',f)))
   | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
-      (Coerce, fun e' -> loc_expr _loc (Pexp_constraint(e', fst t, snd t)))
+      (Coerce, fun e' -> ln e' _loc (Pexp_constraint(e', fst t, snd t)))
   | op:infix_op ->> let p = infix_prio op in let a = assoc p in 
                     e:(expression_lvl (if a = Right then p else next_exp p))
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
-      (p, fun e' -> loc_expr (merge _loc_e _loc) (
+      (p, fun e' -> ln e' _loc_e (
           if op = "::" then
             Pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
           else 
@@ -1581,7 +1578,8 @@ let expression_suit =
     memoize2
       (fun lvl' lvl ->
          glr
-         | (p1,f1):(expression_suit_aux lvl' lvl) ->> (p2,f2):(expression_suit p1 lvl) -> p2, fun f -> f2 (f1 f)
+         | (p1,f1):(expression_suit_aux lvl' lvl) ->> (p2,f2):(expression_suit p1 lvl)
+	       -> p2, fun f -> f2 (f1 f)
          | EMPTY -> (lvl', fun f -> f) end)
   in
   let rec res x y = f res x y in
@@ -1589,7 +1587,7 @@ let expression_suit =
 
 let _ = set_expression_lvl (fun lvl ->
     glr
-      (lvl',e as e0):(expression_base lvl) ->> (_,f):(expression_suit lvl' lvl) -> loc_expr (merge _loc_e0 _loc) (f e).pexp_desc
+      (lvl',e):(expression_base lvl) ->> (_, f):(expression_suit lvl' lvl) -> f e
     end) expression_lvls
 
 let override_flag =
