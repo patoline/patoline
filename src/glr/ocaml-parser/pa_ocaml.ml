@@ -1467,6 +1467,13 @@ let expression_base = memoize1 (fun lvl ->
       (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
   | id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
+  | let_kw open_kw mp:module_path in_kw
+    e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
+      let mp = { txt = mp; loc = _loc_mp } in
+      (Let, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE on the git repository, the override flag arguments seems to have disapeared *)
+  | mp:module_path STR(".") STR("(") e:(expression_lvl Atom) STR(")") ->
+      let mp = { txt = mp; loc = _loc_mp } in
+      (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE idem (override flag) *)
   | let_kw r:{r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
                   -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
              | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
