@@ -1648,6 +1648,7 @@ let module_type_base =
   | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
      STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor({ txt = mn; loc = _loc_mn}, mt, me))
   | STR("(") mt:module_type STR(")") -> mt
+  | module_kw type_kw of_kw me:module_expr -> mtyp_loc _loc (Pmty_typeof me)
   end
 
 let mod_constraint = 
