@@ -221,3 +221,14 @@ module rec A : sig
                end
 and ASet : Set.S with type elt = A.t
          = Set.Make(A)
+
+module M : sig
+             type t = private A | B of int
+             val a : t
+             val b : int -> t
+           end
+         = struct
+             type t = A | B of int
+             let a = A
+             let b n = assert (n > 0); B n
+           end
