@@ -1382,7 +1382,6 @@ let _ = set_grammar class_expr (
        | Some l -> loc_pcl _loc (Pcl_apply (ce, l)))
   end)
 
-(* FIXME override *)
 let class_field =
   let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc } in
   glr
@@ -1658,10 +1657,22 @@ let module_type_base =
 let mod_constraint = 
   glr
   | type_kw tdef:typedef_in_constraint ->
-     fst tdef, Pwith_type(snd tdef)
+     (fst tdef, Pwith_type(snd tdef))
   | module_kw m1:module_path STR("=") m2:extended_module_path ->
      ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
-(* TODO: Pwith_typesubst and Pwithmodsubst are missing *)
+  | type_kw tps:type_params?[[]] tcn:typeconstr_name STR(":=") te:typexpr ->
+      let td = { ptype_params = List.map fst tps
+               ; ptype_cstrs = []
+               ; ptype_kind = Ptype_abstract
+               ; ptype_private = Public
+               ; ptype_manifest = Some te
+               ; ptype_variance = List.map snd tps
+               ; ptype_loc = _loc
+               }
+      in
+      ({ txt = Lident tcn; loc = _loc_tcn }, Pwith_typesubst td)
+  | module_kw mn:module_name STR(":=") emp:extended_module_path ->
+     ({ txt = Lident mn; loc = _loc_mn }, Pwith_modsubst { txt = emp; loc = _loc_emp })
   end
 
 let _ = set_grammar module_type (
