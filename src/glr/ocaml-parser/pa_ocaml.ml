@@ -775,25 +775,25 @@ let type_representation =
 
 let type_information =
   glr
-  | te:type_equation? tr:{STR("=") tr:type_representation -> tr}?
+  | te:type_equation? ptr:{STR("=") pri:private_flag tr:type_representation}?
     cstrs:type_constraint* ->
-      let tkind =
-        match tr with
-        | None    -> Ptype_abstract
-        | Some tr -> tr
+      let pri, tkind =
+        match ptr with
+        | None   -> (Public, Ptype_abstract)
+        | Some c -> c
       in
-      (te, tkind, cstrs)
+      (pri, te, tkind, cstrs)
   end
 
 let typedef : (string loc * type_declaration) Glr.grammar =
   glr
   | tps:type_params?[[]] tcn:typeconstr_name ti:type_information ->
-      let (te, tkind, cstrs) = ti in
+      let (pri, te, tkind, cstrs) = ti in
       let tdec =
         { ptype_params   = List.map fst tps
         ; ptype_cstrs    = cstrs
         ; ptype_kind     = tkind
-        ; ptype_private  = Public (* FIXME ?? *)
+        ; ptype_private  = pri
         ; ptype_manifest = te
         ; ptype_variance = List.map snd tps
         ; ptype_loc      = _loc_tps
@@ -804,12 +804,12 @@ let typedef : (string loc * type_declaration) Glr.grammar =
 let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
   glr
   | tps:type_params?[[]] tcn:typeconstr ti:type_information ->
-      let (te, tkind, cstrs) = ti in
+      let (pri, te, tkind, cstrs) = ti in
       let tdec =
         { ptype_params   = List.map fst tps
         ; ptype_cstrs    = cstrs
         ; ptype_kind     = tkind
-        ; ptype_private  = Public (* FIXME ?? *)
+        ; ptype_private  = pri
         ; ptype_manifest = te
         ; ptype_variance = List.map snd tps
         ; ptype_loc      = _loc_tps
