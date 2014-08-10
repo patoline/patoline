@@ -1037,10 +1037,19 @@ let pattern_base = memoize1 (fun lvl ->
       (AtomPat, loc_pat _loc_s (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
       (AtomPat, loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t }))
-  | s:STR("{") f:field STR("=") p:pattern
-    fps:{STR(";") f:field STR("=") p:pattern -> ({ txt = f; loc = _loc_f }, p)}*
+  | s:STR("{") f:field p:{STR("=") p:pattern}? fps:{STR(";") f:field
+    p:{STR("=") p:pattern}? -> ({ txt = f; loc = _loc_f }, p)}*
     clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
       let all = ({ txt = f; loc = _loc_f },p)::fps in
+      let f (lab, pat) =
+        match pat with
+        | Some p -> (lab, p)
+        | None   -> let slab = match lab.txt with
+                               | Lident s -> { txt = s; loc = lab.loc }
+                               | _        -> assert false (* FIXME *)
+                    in (lab, loc_pat lab.loc (Ppat_var slab))
+      in
+      let all = List.map f all in
       let cl = match clsd with
                | None   -> Closed
                | Some _ -> Open
