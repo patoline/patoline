@@ -554,6 +554,11 @@ let opt_variance =
        | _        -> assert false)
   end
 
+let override_flag =
+  glr
+    o:STR("!")? -> (if o <> None then Override else Fresh)
+  end
+
 (****************************************************************************
  * Type expressions                                                         *
  * FIXME we never use the constructor Ptyp_package, what is it used for?    *
@@ -1381,10 +1386,10 @@ let _ = set_grammar class_expr (
 let class_field =
   let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc } in
   glr
-  | inherit_kw ce:class_expr id:{as_kw id:lowercase_ident}? ->
-      loc_pcf _loc (Pcf_inher (Fresh, ce, id))
-  | val_kw m:mutable_flag ivn:inst_var_name te:typexpr? STR("=")
-    e:expr ->
+  | inherit_kw o:override_flag ce:class_expr id:{as_kw id:lowercase_ident}? ->
+      loc_pcf _loc (Pcf_inher (o, ce, id))
+  | val_kw o:override_flag m:mutable_flag ivn:inst_var_name te:typexpr?
+    STR("=") e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       let ex =
         match te with
@@ -1392,7 +1397,7 @@ let class_field =
         | Some t -> { pexp_desc = Pexp_poly (e, Some t)
                     ; pexp_loc  = _loc_te }
       in
-      loc_pcf _loc (Pcf_val (ivn, m, Fresh, ex))
+      loc_pcf _loc (Pcf_val (ivn, m, o, ex))
   | val_kw m:mutable_flag virtual_kw ivn:inst_var_name
     STR(":") te:typexpr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
@@ -1400,8 +1405,8 @@ let class_field =
   | val_kw virtual_kw mutable_kw ivn:inst_var_name STR(":") te:typexpr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
-  | method_kw p:private_flag mn:method_name ps:parameter* te:{STR(":")
-    te:typexpr}? STR("=") e:expr ->
+  | method_kw o:override_flag p:private_flag mn:method_name ps:parameter*
+    te:{STR(":") te:typexpr}? STR("=") e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
       let f (_,_,pat) acc =
         { pexp_desc = Pexp_function("", None, [(pat, acc)])
@@ -1411,14 +1416,14 @@ let class_field =
       let te = { pexp_desc = Pexp_poly (e, te)
                ; pexp_loc  = _loc_te }
       in
-      loc_pcf _loc (Pcf_meth (mn, p, Fresh, te))
-  | method_kw p:private_flag mn:method_name STR(":")
+      loc_pcf _loc (Pcf_meth (mn, p, o, te))
+  | method_kw o:override_flag p:private_flag mn:method_name STR(":")
     pte:poly_typexpr STR("=") e:expr ->
       let mn = { txt = mn ; loc = _loc_mn } in
       let et = { pexp_desc = Pexp_poly (e, Some pte)
                ; pexp_loc  = _loc_pte }
       in
-      loc_pcf _loc (Pcf_meth (mn, p, Fresh, et))
+      loc_pcf _loc (Pcf_meth (mn, p, o, et))
   | method_kw p:private_flag virtual_kw mn:method_name STR(":")
     pte:poly_typexpr ->
       let mn = { txt = mn ; loc = _loc_mn } in
@@ -1609,11 +1614,6 @@ let _ = set_expression_lvl (fun lvl ->
     glr
       (lvl',e):(expression_base lvl) ->> (_, f):(expression_suit lvl' lvl) -> f e
     end) expression_lvls
-
-let override_flag =
-  glr
-    o:STR("!")? -> (if o <> None then Override else Fresh)
-  end
 
 (****************************************************************************
  * Module expressions (module implementations)                              *
