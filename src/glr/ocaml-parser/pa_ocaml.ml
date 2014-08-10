@@ -1666,6 +1666,11 @@ let module_item_base =
      let me = List.fold_left (fun acc (mn,mt) ->
        mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
      Pstr_module({ txt = mn ; loc = _loc_mn }, me)
+  | module_kw rec_kw mn:module_name STR(":") mt:module_type STR("=")
+    me:module_expr ms:{and_kw mn:module_name STR(":") mt:module_type STR("=")
+    me:module_expr -> ({ txt = mn; loc = _loc_mn}, mt, me)}* ->
+      let m = ({ txt = mn; loc = _loc_mn }, mt, me) in
+      Pstr_recmodule (m::ms)
   |             type_kw mn:modtype_name STR"=" mt:module_type ->
      Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt) } -> r
   | open_kw o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
@@ -1700,6 +1705,11 @@ let signature_item_base =
      let me = List.fold_left (fun acc (mn,mt) ->
                                   mtyp_loc _loc (Pmty_functor(mn, mt, acc))) me (List.rev l) in
      Psig_module({ txt = mn ; loc = _loc_mn }, me)
+  | module_kw rec_kw mn:module_name STR(":") mt:module_type
+    ms:{and_kw mn:module_name STR(":") mt:module_type -> ({ txt = mn;
+    loc = _loc_mn}, mt)}* ->
+      let m = ({ txt = mn; loc = _loc_mn }, mt) in
+      Psig_recmodule (m::ms)
   |           type_kw mn:modtype_name mt:{ STR"=" mt:module_type }? ->
      let mt = match mt with
               | None    -> Pmodtype_abstract
