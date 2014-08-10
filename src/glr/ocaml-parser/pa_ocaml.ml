@@ -561,7 +561,6 @@ let override_flag =
 
 (****************************************************************************
  * Type expressions                                                         *
- * FIXME we never use the constructor Ptyp_package, what is it used for?    *
  ****************************************************************************)
 
 type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
@@ -649,12 +648,29 @@ let polymorphic_variant_type : core_type grammar =
       loc_typ _loc (Ptyp_variant (tfs :: tfss, true, tns))
   end
 
+let package_constraint =
+  glr
+  | type_kw tc:typeconstr STR("=") te:typexpr ->
+      let tc = { txt = tc; loc = _loc_tc } in
+      (tc, te)
+  end
+
+let package_type =
+  glr
+  | mtp:modtype_path cs:{with_kw pc:package_constraint
+    pcs:{and_kw pc:package_constraint}* -> (pc::pcs)}?[[]] ->
+      let mtp = { txt = mtp; loc = _loc_mtp } in
+      Ptyp_package (mtp, cs)
+  end
+
 let typexpr_base : core_type grammar =
   glr
   | STR("'") id:ident ->
       loc_typ _loc (Ptyp_var id)
   | STR("_") ->
       loc_typ _loc Ptyp_any
+  | STR("(") module_kw pt:package_type STR(")") ->
+      loc_typ _loc pt
   | STR("(") te:typexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
   | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
@@ -1085,6 +1101,14 @@ let pattern_base = memoize1 (fun lvl ->
   | begin_kw end_kw ->
       let unt = { txt = Lident "()"; loc = _loc } in
       (AtomPat, loc_pat _loc (Ppat_construct (unt, None, false)))
+  | STR("(") module_kw mn:module_name pt:{STR(":") pt:package_type}? STR(")") ->
+      let unpack = Ppat_unpack { txt = mn; loc = _loc_mn } in
+      let pat = match pt with
+                | None    -> unpack
+                | Some pt -> let pt = loc_typ _loc_pt pt in
+                             Ppat_constraint (loc_pat _loc_mn unpack, pt)
+      in
+      (AtomPat, loc_pat _loc pat)
   end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
@@ -1532,6 +1556,14 @@ let expression_base = memoize1 (fun lvl ->
   | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
   | object_kw o:class_body end_kw -> (Atom, loc_expr _loc (Pexp_object o))
   | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l }?[[]] STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
+  | STR("(") module_kw me:module_expr pt:{STR(":") pt:package_type}? STR(")") ->
+      let desc = match pt with
+                 | None    -> Pexp_pack me
+                 | Some pt -> let me = loc_expr _loc_me (Pexp_pack me) in
+                              let pt = loc_typ _loc_pt pt in
+                              Pexp_constraint (me, Some pt, None)
+      in
+      (Atom, loc_expr _loc desc)
   end)
 
 let apply_lbl _loc (lbl, e) =
@@ -1633,6 +1665,13 @@ let module_expr_base =
       (match mt with
        | None    -> me
        | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))
+  | STR("(") val_kw e:expr pt:{STR(":") pt:package_type}? STR(")") ->
+      let e = match pt with
+              | None    -> e
+              | Some pt -> let pt = loc_typ _loc_pt pt in
+                           loc_expr _loc (Pexp_constraint (e, Some pt, None))
+      in
+      mexpr_loc _loc (Pmod_unpack e)
   end
 
 let _ = set_grammar module_expr (
