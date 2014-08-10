@@ -755,7 +755,11 @@ let constr_decl =
     | cn:constr_name tes:{of_kw te:typexpr
       tes:{STR("*") te:typexpr -> te}* -> te::tes}?[[]] ->
         let c = { txt = cn; loc = _loc_cn } in
-        (c, tes, None, _loc_cn) (* TODO GADT Stuff *)
+        (c, tes, None, _loc_cn)
+    | cn:constr_name STR(":") ats:{te:typexpr tes:{STR("*") te:typexpr}*
+      STR("->") -> (te::tes)}?[[]] te:typexpr ->
+        let c = { txt = cn; loc = _loc_cn } in
+        (c, ats, Some te, _loc_cn)
   end
 
 let field_decl =
