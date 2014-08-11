@@ -355,7 +355,9 @@ let value_name =
   end
 
 let constr_name     = capitalized_ident  
-let tag_name        = capitalized_ident  
+let tag_name        = 
+  glr STR("`") c:ident -> c end
+
 let typeconstr_name = lowercase_ident  
 let field_name      = lowercase_ident  
 let module_name     = capitalized_ident  
@@ -596,7 +598,7 @@ let method_type =
 
 let tag_spec =
   glr
-  | STR("`") tn:tag_name te:{of_kw te:typexpr}? ->
+  | tn:tag_name te:{of_kw te:typexpr}? ->
       let t = match te with
               | None   -> []
               | Some l -> [l]
@@ -622,7 +624,7 @@ let tag_spec_first =
 
 let tag_spec_full =
   glr
-  | STR("`") tn:tag_name tes:{of_kw STR("&")? te:typexpr
+  | tn:tag_name tes:{of_kw STR("&")? te:typexpr
     tes:{STR("&") te:typexpr}* -> (te::tes)}? ->
       let tes = match tes with
                 | None   -> []
@@ -644,7 +646,7 @@ let polymorphic_variant_type : core_type grammar =
       in
       loc_typ _loc (Ptyp_variant (tss, false, None))
   | STR("[<") STR("|")? tfs:tag_spec_full tfss:{STR("|") tsf:tag_spec_full}*
-    tns:{STR(">") tns:{STR("`") tns:tag_name}+}? STR("]") ->
+    tns:{STR(">") tns:tag_name+}? STR("]") ->
       loc_typ _loc (Ptyp_variant (tfs :: tfss, true, tns))
   end
 
@@ -662,6 +664,12 @@ let package_type =
       let mtp = { txt = mtp; loc = _loc_mtp } in
       Ptyp_package (mtp, cs)
   end
+
+let opt_present =
+  glr
+  | STR("[>") l:tag_name+ STR("]") -> l
+  | EMPTY -> []
+end
 
 let typexpr_base : core_type grammar =
   glr
@@ -690,13 +698,13 @@ let typexpr_base : core_type grammar =
     rv:{STR(";") rv:STR("..")?}? STR(">") ->
       let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
-  | STR("#") cp:class_path ->
+  | STR("#") cp:class_path o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
-      loc_typ _loc (Ptyp_class (cp, [], []))
+      loc_typ _loc (Ptyp_class (cp, [], o))
   | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")")
-    STR("#") cp:class_path ->
+    STR("#") cp:class_path  o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
-      loc_typ _loc (Ptyp_class (cp, te::tes, []))
+      loc_typ _loc (Ptyp_class (cp, te::tes, o))
   end
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
@@ -710,10 +718,10 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
       (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> ln te _loc (Ptyp_alias (te, id)))
-  | STR("#") cp:class_path when lvl' >= Dash && lvl <= Dash ->
+  | STR("#") cp:class_path o:opt_present when lvl' >= Dash && lvl <= Dash ->
       let cp = { txt = cp; loc = _loc_cp } in
       let tex = fun te ->
-        ln te _loc (Ptyp_class (cp, [te], [])) (* FIXME what is the last list for?! *)
+        ln te _loc (Ptyp_class (cp, [te], o))
       in (Dash, tex)
   end)
 
@@ -1056,10 +1064,10 @@ let pattern_base = memoize1 (fun lvl ->
   | true_kw  -> 
       let tru = { txt = Lident "true"; loc = _loc } in
       (AtomPat, loc_pat _loc (Ppat_construct (tru, None, false)))
-  | s:STR("`") c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
-      (ConstrPat, loc_pat _loc_s (Ppat_variant (c, Some p)))
-  | s:STR("`") c:tag_name ->
-      (AtomPat, loc_pat _loc_s (Ppat_variant (c, None)))
+  | c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
+      (ConstrPat, loc_pat _loc_c (Ppat_variant (c, Some p)))
+  | c:tag_name ->
+      (AtomPat, loc_pat _loc_c (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
       (AtomPat, loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t }))
   | s:STR("{") f:field p:{STR("=") p:pattern}? fps:{STR(";") f:field
@@ -1117,13 +1125,13 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   | as_kw vn:value_name when lvl' > AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
         ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
-  | STR("|") p':pattern when lvl' > AltPat && lvl <= AltPat ->
+  | STR("|") p':(pattern_lvl AltPat) when lvl' > AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
         ln p _loc (Ppat_or(p, p')))
-  | ps:{STR(",") p:pattern -> p}+ when lvl' > TupPat && lvl <= TupPat ->
+  | ps:{STR(",") p:(pattern_lvl (next_pat_prio TupPat)) -> p}+ when lvl' > TupPat && lvl <= TupPat ->
       (TupPat, fun p ->
         ln p _loc (Ppat_tuple(p::ps)))
-  | c:STR("::") p':pattern when lvl' > ConsPat && lvl <= ConsPat ->
+  | c:STR("::") p':(pattern_lvl ConsPat) when lvl' > ConsPat && lvl <= ConsPat ->
       (ConsPat, fun p ->
         let cons = { txt = Lident "::"; loc = _loc_c } in
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
@@ -1621,7 +1629,7 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   | op:infix_op ->> let p = infix_prio op in let a = assoc p in 
                     e:(expression_lvl (if a = Right then p else next_exp p))
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
-      (p, fun e' -> ln e' _loc_e (
+      (p, fun e' -> ln e' e.pexp_loc (
           if op = "::" then
             Pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (loc_expr _loc_op (Pexp_tuple [e';e])), false)
           else 
