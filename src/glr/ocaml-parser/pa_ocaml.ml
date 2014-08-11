@@ -106,16 +106,15 @@ let bol = Hashtbl.create 1001
 let find_pos str n =
   let rec fn i =
     (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
-    if i < String.length str && str.[i] = '\n' then
+    if i = 0 || (i <= String.length str && (str.[i-1] = '\n' || str.[i-1] = '\r')) then
       try Hashtbl.find bol i, i
       with Not_found ->
-        if i = 0 then (2,i) else
+        if i = 0 then (2,i)
+	else
           let lnum, _ = fn (i-1) in
           let lnum = lnum + 1 in
-          let i = if i + 1 < String.length str && str.[i+1] = '\r' then i + 1 else i in
           Hashtbl.add bol i lnum;
           lnum, i
-    else if i <= 0 then (1, i)
     else fn (i-1)
   in
   let (lnum, bol) = fn n in
@@ -1551,7 +1550,7 @@ let expression_base = memoize1 (fun lvl ->
      (Atom, (List.fold_right (fun x acc ->
        loc_expr _loc (Pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])), false)))
                     l (loc_expr _loc (Pexp_construct({ txt = Lident "[]"; loc = _loc}, None, false)))))
-  | STR("{") e:{e:expression with_kw}? l:record_list STR("}") ->
+  | STR("{") e:{e:(expression_lvl (next_exp Seq)) with_kw}? l:record_list STR("}") ->
      (Atom, loc_expr _loc (Pexp_record(l,e)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
