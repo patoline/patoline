@@ -6,12 +6,12 @@ MODULES = blank memoize atoms pa_ocaml
 MODULES_ML = $(addsuffix .ml, $(MODULES))
 MODULES_CMX = $(addsuffix .cmx, $(MODULES))
 
-all: pa_ocaml
+all: .depend pa_ocaml
 
-depend: $(MODULES_ML)
+.depend: $(MODULES_ML)
 	$(OCAMLDEP) $(PP) $(MODULES_ML) > .depend
 
-include .depend
+-include .depend
 
 %.cmx: %.ml
 	$(OCAMLOPT) $(PP) -c $<
@@ -23,4 +23,4 @@ clean:
 	rm -rf *.cmi *.cmo *.cma *.o *.a *.cmx pa_ocaml
 
 distclean: clean
-	echo "" > .depend
+	rm -rf .depend
