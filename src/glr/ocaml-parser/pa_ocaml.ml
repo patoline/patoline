@@ -1032,7 +1032,7 @@ let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
 let pattern_base = memoize1 (fun lvl ->
   glr
   | vn:value_name ->
-      (AtomPat, loc_pat _loc_vn (Ppat_var { txt = vn; loc = _loc_vn }))
+      (AtomPat, loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }))
   | STR("_") ->
       (AtomPat, loc_pat _loc Ppat_any)
   | c1:char_literal STR("..") c2:char_literal ->
@@ -1047,7 +1047,7 @@ let pattern_base = memoize1 (fun lvl ->
       let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
       (AtomPat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
   | c:constant ->
-      (AtomPat, loc_pat _loc_c (Ppat_constant c))
+      (AtomPat, loc_pat _loc (Ppat_constant c))
   | STR("(") p:pattern STR(")") -> (AtomPat, p)
   | lazy_kw p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
       let ast = Ppat_lazy(p) in
@@ -1065,11 +1065,11 @@ let pattern_base = memoize1 (fun lvl ->
       let tru = { txt = Lident "true"; loc = _loc } in
       (AtomPat, loc_pat _loc (Ppat_construct (tru, None, false)))
   | c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
-      (ConstrPat, loc_pat _loc_c (Ppat_variant (c, Some p)))
+      (ConstrPat, loc_pat _loc (Ppat_variant (c, Some p)))
   | c:tag_name ->
-      (AtomPat, loc_pat _loc_c (Ppat_variant (c, None)))
+      (AtomPat, loc_pat _loc (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
-      (AtomPat, loc_pat _loc_s (Ppat_type { txt = t; loc = _loc_t }))
+      (AtomPat, loc_pat _loc (Ppat_type { txt = t; loc = _loc_t }))
   | s:STR("{") f:field p:{STR("=") p:pattern}? fps:{STR(";") f:field
     p:{STR("=") p:pattern}? -> ({ txt = f; loc = _loc_f }, p)}*
     clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
@@ -1087,7 +1087,7 @@ let pattern_base = memoize1 (fun lvl ->
                | None   -> Closed
                | Some _ -> Open
       in
-      (AtomPat, loc_pat _loc_s (Ppat_record (all, cl)))
+      (AtomPat, loc_pat _loc (Ppat_record (all, cl)))
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
       let nil = { txt = Lident "[]"; loc = _loc } in
       let cons x xs =
@@ -1095,17 +1095,17 @@ let pattern_base = memoize1 (fun lvl ->
         let cons = Ppat_construct (c, Some (loc_pat _loc (Ppat_tuple [x;xs])), false) in
         loc_pat _loc cons
       in
-      (AtomPat, List.fold_right cons (p::ps) (loc_pat _loc_p (Ppat_construct (nil, None, false))))
-  | s:STR("[") STR("]") ->
-      let nil = { txt = Lident "[]"; loc = _loc_s } in
-      (AtomPat, loc_pat _loc_s (Ppat_construct (nil, None, false)))
-  | s:STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
-      (AtomPat, loc_pat _loc_s (Ppat_array (p::ps)))
-  | s:STR("[|") STR("|]") ->
-      (AtomPat, loc_pat _loc_s (Ppat_array []))
-  | s:STR("(") STR(")") ->
-      let unt = { txt = Lident "()"; loc = _loc_s } in
-      (AtomPat, loc_pat _loc_s (Ppat_construct (unt, None, false)))
+      (AtomPat, List.fold_right cons (p::ps) (loc_pat _loc (Ppat_construct (nil, None, false))))
+  | STR("[") STR("]") ->
+      let nil = { txt = Lident "[]"; loc = _loc } in
+      (AtomPat, loc_pat _loc (Ppat_construct (nil, None, false)))
+  | STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
+      (AtomPat, loc_pat _loc (Ppat_array (p::ps)))
+  | STR("[|") STR("|]") ->
+      (AtomPat, loc_pat _loc (Ppat_array []))
+  | STR("(") STR(")") ->
+      let unt = { txt = Lident "()"; loc = _loc } in
+      (AtomPat, loc_pat _loc (Ppat_construct (unt, None, false)))
   | begin_kw end_kw ->
       let unt = { txt = Lident "()"; loc = _loc } in
       (AtomPat, loc_pat _loc (Ppat_construct (unt, None, false)))
