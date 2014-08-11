@@ -273,3 +273,10 @@ type t = [ `A of int | `B of bool ]
 type u = private [< t > `A ]
 type v = private [> t ]
 
+let f : 'a.('a -> 'a) = fun x -> x
+
+type 'a t2 = Leaf of 'a | Node of ('a * 'a) t2
+let rec depth : 'a. 'a t2 -> 'b = function
+    Leaf _ -> 1
+  | Node x -> 1 + depth x
+

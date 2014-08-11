@@ -583,9 +583,9 @@ let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
   glr
-  | te:typexpr -> loc_typ _loc (Ptyp_poly([], te))
   | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
       loc_typ _loc (Ptyp_poly (ids, te))
+  | te:typexpr -> loc_typ _loc (Ptyp_poly([], te))
   end
    
 let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
@@ -1130,10 +1130,13 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
         let cons = { txt = Lident "::"; loc = _loc_c } in
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
         ln p _loc (Ppat_construct(cons, Some args, false)))
+  (* next is just for polymorphic type annotation in let ? *)
+  | te:STR(":") ids:{STR("'") id:ident}+ STR(".") te:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
+      (CoercePat, fun p -> 
+        ln p _loc (Ppat_constraint(p, loc_typ _loc (Ptyp_poly (ids, te)))))
   | te:STR(":") ty:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
       (CoercePat, fun p -> 
         ln p _loc (Ppat_constraint(p, ty)))
-
   end)
 
 let pattern_suit =
