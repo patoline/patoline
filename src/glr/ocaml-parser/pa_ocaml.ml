@@ -583,7 +583,7 @@ let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
   glr
-  | te:typexpr -> te
+  | te:typexpr -> loc_typ _loc (Ptyp_poly([], te))
   | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
       loc_typ _loc (Ptyp_poly (ids, te))
   end
@@ -695,7 +695,7 @@ let typexpr_base : core_type grammar =
       loc_typ _loc (Ptyp_object ml)
   | STR("<") mt:method_type mts:{STR(";") mt:method_type}*
     rv:{STR(";") rv:STR("..")?}? STR(">") ->
-      let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
+      let ml = if rv = None || rv = Some None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
   | STR("#") cp:class_path o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
@@ -763,7 +763,7 @@ let type_params =
 
 let type_equation =
   glr
-  | STR("=") te:typexpr -> te
+  | STR("=") p:private_flag te:typexpr -> p,te
   end
 
 let type_constraint =
@@ -817,10 +817,17 @@ let type_information =
       (pri, te, tkind, cstrs)
   end
 
-let typedef : (string loc * type_declaration) Glr.grammar =
+let typedef_gen : ' a Glr.grammar -> ('a loc * type_declaration) Glr.grammar = (fun constr ->
   glr
-  | tps:type_params?[[]] tcn:typeconstr_name ti:type_information ->
+  | tps:type_params?[[]] tcn:constr ti:type_information ->
       let (pri, te, tkind, cstrs) = ti in
+      let pri, te = match te with
+	  None -> pri, None
+	| Some(Private, te) -> 
+	   if pri = Private then raise Give_up; (* ty = private ty' = private A | B is not legal *) 
+	   Private, Some te
+	| Some(_, te) -> pri, Some te
+      in
       let tdec =
         { ptype_params   = List.map fst tps
         ; ptype_cstrs    = cstrs
@@ -831,23 +838,11 @@ let typedef : (string loc * type_declaration) Glr.grammar =
         ; ptype_loc      = _loc_tps
         }
       in ({ txt = tcn; loc = _loc_tcn }, tdec)
-  end
+end)
 
-let typedef_in_constraint : (Longident.t loc * type_declaration) Glr.grammar =
-  glr
-  | tps:type_params?[[]] tcn:typeconstr ti:type_information ->
-      let (pri, te, tkind, cstrs) = ti in
-      let tdec =
-        { ptype_params   = List.map fst tps
-        ; ptype_cstrs    = cstrs
-        ; ptype_kind     = tkind
-        ; ptype_private  = pri
-        ; ptype_manifest = te
-        ; ptype_variance = List.map snd tps
-        ; ptype_loc      = _loc_tps
-        }
-      in ({ txt = tcn; loc = _loc_tcn }, tdec)
-  end
+let typedef = typedef_gen typeconstr_name
+let typedef_in_constraint = typedef_gen typeconstr
+
 
 let type_definition =
   glr
@@ -1164,9 +1159,9 @@ let _ = set_pattern_lvl (fun lvl ->
 
 let reserved_kwd = [ "->"; ":" ; "|" ]
 
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Coerce | Dash | Dot | Prefix | Atom
+type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Coerce; Dash; Dot; Prefix; Atom]
+let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
 
 let let_prio lvl = if !extension then lvl else Let
 let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
@@ -1187,8 +1182,7 @@ let next_exp = function
   | Prod -> Pow
   | Pow -> Opp
   | Opp -> App
-  | App -> Coerce
-  | Coerce -> Dash
+  | App -> Dash
   | Dash -> Dot
   | Dot -> Prefix
   | Prefix -> Atom
@@ -1302,11 +1296,11 @@ let parameter =
   | id:label STR":" pat:pattern -> (id, None, pat)
   | id:label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
-      let pat = loc_pat _loc_id (Ppat_var { txt = "?"^id; loc = _loc_id }) in
+      let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
-      in (("?"^id), e, pat))
+      in ("?"^id), e, pat)
   | id:opt_label STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{STR("=") e:expression}? STR")" -> (
       let pat = match t with
                 | None -> pat
@@ -1519,7 +1513,7 @@ let expression_base = memoize1 (fun lvl ->
     e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
       let mp = { txt = mp; loc = _loc_mp } in
       (Let, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE on the git repository, the override flag arguments seems to have disapeared *)
-  | mp:module_path STR(".") STR("(") e:(expression_lvl Atom) STR(")") ->
+  | mp:module_path STR(".") STR("(") e:expression STR(")") ->
       let mp = { txt = mp; loc = _loc_mp } in
       (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE idem (override flag) *)
   | let_kw r:{r:rec_flag l:value_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
@@ -1600,6 +1594,8 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (App, fun f -> ln f _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
+  | t:type_coercion when (lvl' > Seq && lvl <= Seq) ->
+      (Seq, fun e' -> ln e' _loc (Pexp_constraint(e', fst t, snd t)))
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq (f::l))
   | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
@@ -1623,8 +1619,6 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
               let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
   | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
       (Dash, fun e' -> ln e' _loc (Pexp_send(e',f)))
-  | t:type_coercion when (lvl' >= Coerce && lvl <= Coerce) ->
-      (Coerce, fun e' -> ln e' _loc (Pexp_constraint(e', fst t, snd t)))
   | op:infix_op ->> let p = infix_prio op in let a = assoc p in 
                     e:(expression_lvl (if a = Right then p else next_exp p))
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->

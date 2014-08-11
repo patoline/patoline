@@ -207,28 +207,69 @@ let remove_duplicates comparison_fun string_list =
     (List.fold_right StringSet.add string_list StringSet.empty)
 
 module rec A : sig
-                 type t = Leaf of string | Node of ASet.t
-                 val compare: t -> t -> int
+		 type t = Leaf of string | Node of ASet.t
+		 val compare: t -> t -> int
                end
-             = struct
-                 type t = Leaf of string | Node of ASet.t
-                 let compare t1 t2 =
-                   match (t1, t2) with
-                   | (Leaf s1, Leaf s2) -> Pervasives.compare s1 s2
-                   | (Leaf _, Node _) -> 1
-                   | (Node _, Leaf _) -> -1
-                   | (Node n1, Node n2) -> ASet.compare n1 n2
-               end
-and ASet : Set.S with type elt = A.t
-         = Set.Make(A)
+  =
+  struct
+    type t = Leaf of string | Node of ASet.t
+    let compare t1 t2 =
+      match (t1, t2) with
+      | (Leaf s1, Leaf s2) -> Pervasives.compare s1 s2
+      | (Leaf _, Node _) -> 1
+      | (Node _, Leaf _) -> -1
+      | (Node n1, Node n2) -> ASet.compare n1 n2
+  end
+   and ASet : Set.S with type elt = A.t
+				    = Set.Make(A)
 
 module M : sig
-             type t = private A | B of int
-             val a : t
-             val b : int -> t
-           end
-         = struct
-             type t = A | B of int
-             let a = A
-             let b n = assert (n > 0); B n
-           end
+  type t = private A | B of int
+  val a : t
+  val b : int -> t
+end
+  = struct
+  type t = A | B of int
+  let a = A
+  let b n = assert (n > 0); B n
+end
+
+module N : sig
+  type t = private int
+  val of_int: int -> t
+  val to_int: t -> int
+end
+  = struct
+  type t = int
+  let of_int n = assert (n >= 0); n
+  let to_int n = n
+end
+
+let _ = N.((of_int 3 :> int) = 2)
+
+module MN = struct
+  type t = M.t = private A | B of int
+end
+
+
+module M5 : sig type c = private < x : int; .. > val o : c end =
+  struct
+    class c = object method x = 3 method y = 2 end
+    let o = new c
+  end
+
+module F(X : sig type c = private < x : int; .. > end) =
+  struct
+    let get_x (o : X.c) = o#x
+  end
+module G(X : sig type c = private < x : int; y : int; .. > end) =
+  struct
+    include F(X)
+    let get_y (o : X.c) = o#y
+  end
+
+
+type t = [ `A of int | `B of bool ]
+type u = private [< t > `A ]
+type v = private [> t ]
+
