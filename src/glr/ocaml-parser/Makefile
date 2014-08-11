@@ -2,17 +2,20 @@
 
 all: pa_ocaml
 
-pa_ocaml.cmo: pa_ocaml.ml ../pa_glr
-	ocamlfind ocamlc -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
+blank.cmx: blank.ml
+	ocamlfind ocamlopt -c blank.ml
 
-pa_ocaml.cmx: pa_ocaml.ml ../pa_glr
+memoize.cmx: memoize.ml
+	ocamlfind ocamlopt -c memoize.ml
+
+atoms.cmx: atoms.ml blank.cmx memoize.cmx
+	ocamlfind ocamlopt -I +compiler-libs -package glr -pp ../pa_glr -c atoms.ml
+
+pa_ocaml.cmx: pa_ocaml.ml ../pa_glr blank.cmx atoms.cmx memoize.cmx
 	ocamlfind ocamlopt -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
 
-pa_ocaml.cma: pa_ocaml.cmo
-	ocamlfind ocamlc -I +compiler-libs -package glr,camlp4 -a -o pa_ocaml.cma pa_ocaml.cmo
-
-pa_ocaml: pa_ocaml.cmx
-	ocamlfind ocamlopt -I +compiler-libs -package glr -o $@ str.cmxa glr.cmxa ocamlcommon.cmxa $<
+pa_ocaml: pa_ocaml.cmx blank.cmx atoms.cmx
+	ocamlfind ocamlopt -I +compiler-libs -package glr -o $@ str.cmxa glr.cmxa ocamlcommon.cmxa blank.cmx memoize.cmx atoms.cmx pa_ocaml.cmx
 
 clean:
 	rm -rf *.cmi *.cmo *.cma *.o *.a *.cmx
