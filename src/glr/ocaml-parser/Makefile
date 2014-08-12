@@ -1,26 +1,18 @@
-OCAMLOPT = ocamlfind ocamlopt -I +compiler-libs -package glr
-OCAMLDEP = ocamlfind ocamldep -I +compiler-libs -package glr
-PP = -pp ../pa_glr
+# Author: Rodolphe Lepigre <rodolphe.lepigre@univ-savoie.fr>
 
-MODULES = blank memoize atoms pa_ocaml
-MODULES_ML = $(addsuffix .ml, $(MODULES))
-MODULES_CMX = $(addsuffix .cmx, $(MODULES))
+all: pa_ocaml
 
-all: .depend pa_ocaml
+pa_ocaml.cmo: pa_ocaml.ml ../pa_glr
+	ocamlfind ocamlc -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
 
-.depend: $(MODULES_ML)
-	$(OCAMLDEP) $(PP) $(MODULES_ML) > .depend
+pa_ocaml.cmx: pa_ocaml.ml ../pa_glr
+	ocamlfind ocamlopt -I +compiler-libs -package glr -pp ../pa_glr -c pa_ocaml.ml
 
--include .depend
+pa_ocaml.cma: pa_ocaml.cmo
+	ocamlfind ocamlc -I +compiler-libs -package glr,camlp4 -a -o pa_ocaml.cma pa_ocaml.cmo
 
-%.cmx: %.ml
-	$(OCAMLOPT) $(PP) -c $<
-
-pa_ocaml: $(MODULES_CMX)
-	$(OCAMLOPT) -o $@ str.cmxa glr.cmxa ocamlcommon.cmxa $(MODULES_CMX)
+pa_ocaml: pa_ocaml.cmx
+	ocamlfind ocamlopt -I +compiler-libs -package glr -o $@ str.cmxa glr.cmxa ocamlcommon.cmxa $<
 
 clean:
-	rm -rf *.cmi *.cmo *.cma *.o *.a *.cmx pa_ocaml
-
-distclean: clean
-	rm -rf .depend
+	rm -rf *.cmi *.cmo *.cma *.o *.a *.cmx
