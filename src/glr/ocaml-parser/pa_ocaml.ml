@@ -780,14 +780,19 @@ let constr_decl =
     end
   in
   glr
-    | cn:constr_name tes:{of_kw te:typexpr
-      tes:{STR("*") te:typexpr -> te}* -> te::tes}?[[]] ->
-        let c = { txt = cn; loc = _loc_cn } in
-        (c, tes, None, _loc_cn)
-    | cn:constr_name STR(":") ats:{te:typexpr tes:{STR("*") te:typexpr}*
-      STR("->") -> (te::tes)}?[[]] te:typexpr ->
-        let c = { txt = cn; loc = _loc_cn } in
-        (c, ats, Some te, _loc_cn)
+  | cn:constr_name te:{of_kw te:typexpr}? ->
+     let tes =
+       match te with
+       | None   -> []
+       | Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
+       | Some t -> [t]
+     in
+     let c = { txt = cn; loc = _loc_cn } in
+     (c, tes, None, _loc_cn)
+  | cn:constr_name STR(":") ats:{te:typexpr tes:{STR("*") te:typexpr}*
+    STR("->") -> (te::tes)}?[[]] te:typexpr ->
+      let c = { txt = cn; loc = _loc_cn } in
+      (c, ats, Some te, _loc_cn)
   end
 
 let field_decl =
@@ -851,9 +856,18 @@ let type_definition =
 
 let exception_declaration =
   glr
+  | exception_kw cn:constr_name te:{of_kw te:typexpr}? ->
+      let tes =
+        match te with
+        | None   -> []
+        | Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
+        | Some t -> [t]
+      in ({ txt = cn; loc = _loc_cn }, tes)
+  (*
   | exception_kw cn:constr_name typ:{of_kw te:typexpr
     tes:{STR("*") te:typexpr -> te}* -> (te::tes) }?[[]] ->
       ({ txt = cn; loc = _loc_cn }, typ)
+  *)
   end
 
 (* Exception definition *)
@@ -1533,8 +1547,12 @@ let expression_base = memoize1 (fun lvl ->
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
   | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl <= If) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
-  | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> e | None -> loc_expr _loc (Pexp_tuple([])))
-  | begin_kw e:expression? end_kw -> (Atom, match e with Some e -> e | None -> loc_expr _loc (Pexp_tuple([])))
+  | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> e | None ->
+      let cunit = { txt = Lident "()"; loc = _loc } in
+      loc_expr _loc (Pexp_construct(cunit, None, false)))
+  | begin_kw e:expression? end_kw -> (Atom, match e with Some e -> e | None ->
+      let cunit = { txt = Lident "()"; loc = _loc } in
+      loc_expr _loc (Pexp_construct(cunit, None, false)))
   | c:constructor e:{ e:(expression_lvl App) when lvl <= App }? -> (App, loc_expr _loc (Pexp_construct({ txt = c; loc = _loc_c},e,false)))
   | assert_kw e:{ false_kw -> Pexp_assertfalse | e:(expression_lvl App) -> Pexp_assert(e)} when (lvl <= App) 
       -> (App,  loc_expr _loc e)
@@ -1726,7 +1744,10 @@ let _ = set_grammar module_type (
       
 let module_item_base =
   glr
-  | RE(let_re) r:rec_flag l:value_binding -> Pstr_value (r, l)
+  | RE(let_re) r:rec_flag l:value_binding ->
+      (match l with
+       | [({ppat_desc = Ppat_any; ppat_loc = _}, e)] -> Pstr_eval e
+       | _                                           -> Pstr_value (r, l))
   | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
