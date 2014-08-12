@@ -250,7 +250,7 @@ let one_char is_char =
 
 let char_literal =
   change_layout (
-    glr STR("\'") c:(one_char true) STR("\'") -> c end
+    glr CHR('\'') c:(one_char true) CHR('\'') -> c end
   ) no_blank
 
 (* String literals *)
@@ -267,9 +267,9 @@ let string_literal =
   in
   change_layout (
     glr
-      STR("\"") lc:(one_char false)*
+      CHR('"') lc:(one_char false)*
         lcs:(glr RE(interspace) lc:(one_char false)* -> lc end)*
-        STR("\"") -> char_list_to_string (List.flatten (lc::lcs))
+        CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
     end
   ) no_blank
 
@@ -1812,7 +1812,11 @@ let ast =
   let b = Buffer.create 0x10000 in
   let ch = match !file with
       None -> stdin
-    | Some name -> open_in name
+    | Some name -> 
+(*       let buffer = Input.buffer_from_file name in
+       List.iter (fun line ->
+		  Printf.eprintf "%s\n" line.Input.contents) buffer;*)
+       open_in name
   in
   try
     while true do
