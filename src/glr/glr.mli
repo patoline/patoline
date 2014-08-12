@@ -63,6 +63,9 @@ val  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a 
 (** [list_eof x := eof [x]] *)
 val list_eof : 'a -> 'a list grammar
 
+(** [char str x]: parses a given char and returns [x] *)
+val char : char -> 'a -> 'a grammar
+
 (** [string str x]: parses a given string and returns [x] *)
 val string : string -> 'a -> 'a grammar
 

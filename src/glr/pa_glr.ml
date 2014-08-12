@@ -344,6 +344,10 @@ EXTEND Gram
   | "DEBUG"; str = expr LEVEL "simple" -> 
       <:expr< Glr.debug $str$ () >>
 
+  | "CHR"; str = expr LEVEL "simple"; opt = glr_opt_expr ->
+      let e = match opt with None -> <:expr<()>> | Some e -> e in
+      <:expr< Glr.char $str$  $e$>>
+
   | "STR"; str = expr LEVEL "simple"; opt = glr_opt_expr ->
       let e = match opt with None -> <:expr<()>> | Some e -> e in
       <:expr< Glr.string $str$  $e$>>

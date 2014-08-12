@@ -109,7 +109,7 @@ let find_pos str n =
     if i = 0 || (i <= String.length str && (str.[i-1] = '\n' || str.[i-1] = '\r')) then
       try Hashtbl.find bol i, i
       with Not_found ->
-        if i = 0 then (2,i)
+        if i = 0 then (1,i)
 	else
           let lnum, _ = fn (i-1) in
           let lnum = lnum + 1 in
@@ -651,7 +651,7 @@ let polymorphic_variant_type : core_type grammar =
 
 let package_constraint =
   glr
-  | type_kw tc:typeconstr STR("=") te:typexpr ->
+  | type_kw tc:typeconstr CHR('=') te:typexpr ->
       let tc = { txt = tc; loc = _loc_tc } in
       (tc, te)
   end
@@ -763,12 +763,12 @@ let type_params =
 
 let type_equation =
   glr
-  | STR("=") p:private_flag te:typexpr -> p,te
+  | CHR('=') p:private_flag te:typexpr -> p,te
   end
 
 let type_constraint =
   glr
-  | constraint_kw STR("'") id:ident STR("=") te:typexpr ->
+  | constraint_kw STR("'") id:ident CHR('=') te:typexpr ->
       loc_typ _loc_id (Ptyp_var id), te, _loc
   end
 
@@ -807,7 +807,7 @@ let type_representation =
 
 let type_information =
   glr
-  | te:type_equation? ptr:{STR("=") pri:private_flag tr:type_representation}?
+  | te:type_equation? ptr:{CHR('=') pri:private_flag tr:type_representation}?
     cstrs:type_constraint* ->
       let pri, tkind =
         match ptr with
@@ -859,7 +859,7 @@ let exception_declaration =
 (* Exception definition *)
 let exception_definition =
   glr
-  | exception_kw cn:constr_name STR("=") c:constr ->
+  | exception_kw cn:constr_name CHR('=') c:constr ->
       let name = { txt = cn; loc = _loc_cn } in
       let ex = { txt = c; loc = _loc_c } in
       Pstr_exn_rebind (name, ex)
@@ -900,7 +900,7 @@ let _ = set_grammar class_field_spec (
         pctf_loc _loc (Pctf_meth (mn, pri, te))
       else
         pctf_loc _loc (Pctf_virt (mn, pri, te))
-  | constraint_kw te:typexpr STR("=") te':typexpr ->
+  | constraint_kw te:typexpr CHR('=') te':typexpr ->
       pctf_loc _loc (Pctf_cstr (te, te'))
   end)
 
@@ -966,7 +966,7 @@ let class_specification =
 let classtype_def =
   glr
   | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]] cn:class_name
-    STR("=") cbt:class_body_type ->
+    CHR('=') cbt:class_body_type ->
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
@@ -1064,8 +1064,8 @@ let pattern_base = memoize1 (fun lvl ->
       (AtomPat, loc_pat _loc (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
       (AtomPat, loc_pat _loc (Ppat_type { txt = t; loc = _loc_t }))
-  | s:STR("{") f:field p:{STR("=") p:pattern}? fps:{STR(";") f:field
-    p:{STR("=") p:pattern}? -> ({ txt = f; loc = _loc_f }, p)}*
+  | s:STR("{") f:field p:{CHR('=') p:pattern}? fps:{STR(";") f:field
+    p:{CHR('=') p:pattern}? -> ({ txt = f; loc = _loc_f }, p)}*
     clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
       let all = ({ txt = f; loc = _loc_f },p)::fps in
       let f (lab, pat) =
@@ -1159,8 +1159,6 @@ let _ = set_pattern_lvl (fun lvl ->
 (****************************************************************************
  * Expressions                                                              *
  ****************************************************************************)
-
-let reserved_kwd = [ "->"; ":" ; "|" ]
 
 type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
@@ -1304,7 +1302,7 @@ let parameter =
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
       in ("?"^id), e, pat)
-  | id:opt_label STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{STR("=") e:expression}? STR")" -> (
+  | id:opt_label STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{CHR('=') e:expression}? STR")" -> (
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
@@ -1315,7 +1313,7 @@ let parameter =
 
 let right_member =
   glr
-  | l:{lb:parameter}* STR("=") e:expression -> 
+  | l:{lb:parameter}* CHR('=') e:expression -> 
       let f (lbl,opt,pat) acc =
         loc_expr _loc (Pexp_function (lbl, opt, [pat, acc]))
       in
@@ -1351,7 +1349,7 @@ let expression_list =
 
 let record_item = 
   glr
-  | f:field STR("=") e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
+  | f:field CHR('=') e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
   | f:lowercase_ident -> (let id = { txt = Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
   end
 
@@ -1367,7 +1365,7 @@ let record_list =
 
 let obj_item = 
   glr 
-  | v:inst_var_name STR("=") e:expression -> { txt = v ; loc = _loc_v }, e 
+  | v:inst_var_name CHR('=') e:expression -> { txt = v ; loc = _loc_v }, e 
   end
 
 let class_body = declare_grammar ()
@@ -1416,7 +1414,7 @@ let class_field =
   | inherit_kw o:override_flag ce:class_expr id:{as_kw id:lowercase_ident}? ->
       loc_pcf _loc (Pcf_inher (o, ce, id))
   | val_kw o:override_flag m:mutable_flag ivn:inst_var_name te:typexpr?
-    STR("=") e:expr ->
+    CHR('=') e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       let ex =
         match te with
@@ -1433,7 +1431,7 @@ let class_field =
       let ivn = { txt = ivn; loc = _loc_ivn } in
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
   | method_kw o:override_flag p:private_flag mn:method_name ps:parameter*
-    te:{STR(":") te:typexpr}? STR("=") e:expr ->
+    te:{STR(":") te:typexpr}? CHR('=') e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
       let f (_,_,pat) acc =
         { pexp_desc = Pexp_function("", None, [(pat, acc)])
@@ -1445,7 +1443,7 @@ let class_field =
       in
       loc_pcf _loc (Pcf_meth (mn, p, o, te))
   | method_kw o:override_flag p:private_flag mn:method_name STR(":")
-    pte:poly_typexpr STR("=") e:expr ->
+    pte:poly_typexpr CHR('=') e:expr ->
       let mn = { txt = mn ; loc = _loc_mn } in
       let et = { pexp_desc = Pexp_poly (e, Some pte)
                ; pexp_loc  = _loc_pte }
@@ -1459,7 +1457,7 @@ let class_field =
     STR(":") pte:poly_typexpr ->
       let mn = { txt = mn ; loc = _loc_mn } in
       loc_pcf _loc (Pcf_virt (mn, Private, pte))
-  | constraint_kw te:typexpr STR("=") te':typexpr ->
+  | constraint_kw te:typexpr CHR('=') te':typexpr ->
       loc_pcf _loc (Pcf_constr (te, te'))
   | initializer_kw e:expr ->
       loc_pcf _loc (Pcf_init e)
@@ -1477,7 +1475,7 @@ let _ = set_grammar class_body (
 let class_binding =
   glr
   | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]]
-    cn:class_name ps:parameter* ct:{STR(":") ct:class_type}? STR("=")
+    cn:class_name ps:parameter* ct:{STR(":") ct:class_type}? CHR('=')
     ce:class_expr ->
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
@@ -1554,7 +1552,7 @@ let expression_base = memoize1 (fun lvl ->
      (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Lident p; loc = _loc_p}), ["", e])))
   | while_kw e:expression do_kw e':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
-  | for_kw id:lowercase_ident STR("=") e:expression d:downto_flag
+  | for_kw id:lowercase_ident CHR('=') e:expression d:downto_flag
     e':expression do_kw e'':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', d, e'')))
   | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
@@ -1701,7 +1699,7 @@ let mod_constraint =
   glr
   | type_kw tdef:typedef_in_constraint ->
      (fst tdef, Pwith_type(snd tdef))
-  | module_kw m1:module_path STR("=") m2:extended_module_path ->
+  | module_kw m1:module_path CHR('=') m2:extended_module_path ->
      ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
   | type_kw tps:type_params?[[]] tcn:typeconstr_name STR(":=") te:typexpr ->
       let td = { ptype_params = List.map fst tps
@@ -1735,18 +1733,18 @@ let module_item_base =
       Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
   | td:type_definition -> Pstr_type td
   | ex:exception_definition -> ex
-  | module_kw rec_kw mn:module_name STR(":") mt:module_type STR("=")
-    me:module_expr ms:{and_kw mn:module_name STR(":") mt:module_type STR("=")
+  | module_kw r:{rec_kw mn:module_name STR(":") mt:module_type CHR('=')
+    me:module_expr ms:{and_kw mn:module_name STR(":") mt:module_type CHR('=')
     me:module_expr -> ({ txt = mn; loc = _loc_mn}, mt, me)}* ->
       let m = ({ txt = mn; loc = _loc_mn }, mt, me) in
       Pstr_recmodule (m::ms)
-  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
+  |            mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
        mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
      let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
      let me = List.fold_left (fun acc (mn,mt) ->
        mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
      Pstr_module({ txt = mn ; loc = _loc_mn }, me)
-  | type_kw mn:modtype_name STR"=" mt:module_type ->
+  |            type_kw mn:modtype_name STR"=" mt:module_type ->
       Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt) } -> r
   | open_kw o:override_flag m:module_path -> Pstr_open(o, { txt = m; loc = _loc_m} )
   | include_kw me:module_expr -> Pstr_include me

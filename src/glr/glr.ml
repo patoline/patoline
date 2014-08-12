@@ -213,6 +213,26 @@ let  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a 
 	     let pos'' = blank str pos' in 
 	     single pos'' (g pos pos' a) })
 
+let char : char -> 'a -> 'a grammar 
+  = fun s a -> 
+    let set = singleton s in
+    let s' = String.make 1 s in
+    { firsts = Lazy.from_val set;
+      firsts_sym = Lazy.from_val [s'];
+      accept_empty = Lazy.from_val false;
+      parse =
+	fun blank str pos next key g ->
+IFDEF DEBUG THEN	 
+	  Printf.eprintf "%d: String(%s) %s\n%!" pos (String.escaped s) (if pos < String.length str then Char.escaped str.[pos] else "EOF")
+END;
+          let len = String.length str in
+	  if len <= pos then raise Give_up;
+	  if str.[pos] <> s then parse_error key s' pos;
+	  let pos' = pos + 1 in
+	  let pos'' = blank str pos' in
+	  single pos'' (g pos pos' a)
+    }
+
 let string : string -> 'a -> 'a grammar 
   = fun s a -> 
    let len_s = String.length s in
