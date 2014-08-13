@@ -624,11 +624,7 @@ let tag_spec_first =
 let tag_spec_full =
   glr
   | tn:tag_name tes:{of_kw STR("&")? te:typexpr
-    tes:{STR("&") te:typexpr}* -> (te::tes)}? ->
-      let tes = match tes with
-                | None   -> []
-                | Some l -> l
-      in
+    tes:{STR("&") te:typexpr}* -> (te::tes)}?[[]] ->
       Rtag (tn, false, tes)
   | te:typexpr ->
       Rinherit te

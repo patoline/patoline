@@ -17,12 +17,19 @@ files="$local/test.ml $local/objects.ml $local/variants.ml \
 #echo $files
 
 for f in $files; do
+  echo "File: $f"
   /usr/bin/time --format="%C: %e" ./pa_ocaml $f > /dev/null
   /usr/bin/time --format="%C: %e" camlp4o.opt $f > /dev/null
-#  ocamlc.opt -c -o /tmp/foo.cmo -pp ./pa_ocaml $f
-#  ocamlc.opt -c -o /tmp/bar.cmo -pp camlp4o.opt $f
+
+  ocamlc.opt -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> /tmp/foo.tree
+  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
+#  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
-#  echo
+
+  cat /tmp/foo.tree | sed -e 's/(.*\.ml\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/foo.tree2
+  cat /tmp/bar.tree | sed -e 's/(.*\.ml\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/bar.tree2
+  diff /tmp/foo.tree2 /tmp/bar.tree2
+  echo
 done
 
 echo "test of the extensions to the syntax"
