@@ -1105,7 +1105,7 @@ let pattern_base = memoize1 (fun lvl ->
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e = loc_pat (merge f.ppat_loc _loc) e in
   glr
-  | as_kw vn:value_name when lvl' > AsPat && lvl <= AsPat ->
+  | as_kw vn:value_name when lvl' >= AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
         ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
   | STR("|") p':(pattern_lvl AltPat) when lvl' > AltPat && lvl <= AltPat ->
@@ -1589,8 +1589,6 @@ let semi_col = black_box
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   let ln f _loc e = loc_expr (merge f.pexp_loc _loc) e in
   glr
-    l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
-      (App, fun f -> ln f _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
   | t:type_coercion when (lvl' > Coerce && lvl <= Coerce) ->
@@ -1627,6 +1625,8 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
           else 
             Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Lident op; loc = _loc_op }),
                      [("", e') ; ("", e)])))
+  | l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
+      (App, fun f -> ln f _loc (Pexp_apply(f,l)))
   end)
 
 let expression_suit =
