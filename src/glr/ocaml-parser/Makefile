@@ -12,7 +12,7 @@ pa_ocaml.cma: pa_ocaml.cmo
 	ocamlfind ocamlc -I +compiler-libs -package glr,camlp4 -a -o pa_ocaml.cma pa_ocaml.cmo
 
 pa_ocaml: pa_ocaml.cmx
-	ocamlfind ocamlopt -I +compiler-libs -package glr -o $@ str.cmxa glr.cmxa ocamlcommon.cmxa $<
+	ocamlfind ocamlopt -I +compiler-libs -package glr -o $@ unix.cmxa str.cmxa glr.cmxa ocamlcommon.cmxa $<
 
 clean:
 	rm -rf *.cmi *.cmo *.cma *.o *.a *.cmx
