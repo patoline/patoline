@@ -16,7 +16,7 @@ GLR_CMI:=$(GLR_ML:.ml=.cmi)
 
 # manual deps because pa_patoline.ml.depends needs pa_glr
 # and the .ml.depends are all done first
-$(d)/glr.cmi: $(d)/charset.cmi
+$(d)/glr.cmi: $(d)/charset.cmi $(d)/input.cmi
 
 $(d)/umap.cmo: $(d)/umap.cmi
 $(d)/umap.cmx: $(d)/umap.cmi
