@@ -9,7 +9,7 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(GLR_INCLUDES)
 $(d)/pa_glr.cmo $(d)/pa_glr.cmi $(d)/pa_glr.cmx : INCLUDES:=$(GLR_INCLUDES)
 
 GLR_ML:=$(d)/charset.ml $(d)/umap.ml $(d)/input.ml $(d)/glr.ml
-GLR_MLI:=$(d)/charset.mli $(d)/umap.mli $(d)/glr.mli
+GLR_MLI:=$(GLR_ML:.ml=.mli)
 GLR_CMO:=$(GLR_ML:.ml=.cmo)
 GLR_CMX:=$(GLR_ML:.ml=.cmx)
 GLR_CMI:=$(GLR_ML:.ml=.cmi)
