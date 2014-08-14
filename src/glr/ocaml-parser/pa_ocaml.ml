@@ -1149,9 +1149,9 @@ let _ = set_pattern_lvl (fun lvl ->
  * Expressions                                                              *
  ****************************************************************************)
 
-type expression_lvl = Top | Let | Seq | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
-let expression_lvls = [ Top; Let; Seq; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
+let expression_lvls = [ Top; Let; Seq; Coerce; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
 
 let let_prio lvl = if !extension then lvl else Let
 let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
@@ -1159,7 +1159,8 @@ let let_re = if !extension then "\\(let\\)\\|\\(val\\)\\b" else "let\\b"
 let next_exp = function
     Top -> Let
   | Let -> Seq
-  | Seq -> If
+  | Seq -> Coerce
+  | Coerce -> If
   | If -> Aff
   | Aff -> Tupl
   | Tupl -> Disj
@@ -1572,7 +1573,7 @@ let rec mk_seq = function
   | [e] -> e
   | x::l -> 
      let res = mk_seq l in
-     loc_expr (merge x.pexp_loc res.pexp_loc) (Pexp_sequence(x,mk_seq l))
+     loc_expr (merge x.pexp_loc res.pexp_loc) (Pexp_sequence(x,res))
 
 let semi_col = black_box 
   (fun str pos ->
@@ -1592,7 +1593,7 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (App, fun f -> ln f _loc (Pexp_apply(f,l)))
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
-  | t:type_coercion when (lvl' > Seq && lvl <= Seq) ->
+  | t:type_coercion when (lvl' > Coerce && lvl <= Coerce) ->
       (Seq, fun e' -> ln e' _loc (Pexp_constraint(e', fst t, snd t)))
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq (f::l))
