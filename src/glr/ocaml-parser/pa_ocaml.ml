@@ -1,3 +1,4 @@
+open Input
 open Glr
 open Charset
 open Asttypes
@@ -55,7 +56,7 @@ let entry =
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
 
-exception Unclosed_comment of int
+exception Unclosed_comment of int * int
 
 (*
  * Characters to be ignored are:
@@ -68,65 +69,41 @@ exception Unclosed_comment of int
  *   - single '"' character.
  *)
 let blank str pos =
-  let len = String.length str in
-  let rec fn lvl state pos =
-    if pos >= len then (if lvl > 0 then raise (Unclosed_comment len) else len)
-    else match state, str.[pos] with
-      | `Ini , '('                  -> fn lvl `Opn (pos + 1)
-      | `Opn , '*'                  -> fn (lvl + 1) `Ini (pos + 1)
-      | `Opn , _   when lvl = 0     -> pos - 1
-      | `Opn , _                    -> fn lvl `Ini (pos + 1)
-      | `Ini , '*' when lvl = 0     -> pos
-      | `Ini , '*'                  -> fn lvl `Cls (pos + 1)
-      | `Cls , '*'                  -> fn lvl `Cls (pos + 1)
-      | `Cls , ')'                  -> fn (lvl - 1) `Ini (pos + 1)
-      | `Cls , _                    -> fn lvl `Ini (pos + 1)
+  let rec fn lvl state prev (str, pos as cur) =
+    if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
+    else 
+      let c,str',pos' = read str pos in 
+      let next =str', pos' in
+      match state, c with
+      | `Ini , '('                  -> fn lvl `Opn cur next
+      | `Opn , '*'                  -> fn (lvl + 1) `Ini cur next
+      | `Opn , _   when lvl = 0     -> prev
+      | `Opn , _                    -> fn lvl `Ini cur next
+      | `Ini , '*' when lvl = 0     -> cur
+      | `Ini , '*'                  -> fn lvl `Cls cur next
+      | `Cls , '*'                  -> fn lvl `Cls cur next
+      | `Cls , ')'                  -> fn (lvl - 1) `Ini cur next
+      | `Cls , _                    -> fn lvl `Ini cur next
 
-      | `Str , '"'                  -> fn lvl `Ini (pos + 1)
-      | _    , '"' when lvl > 0     -> (try fn lvl `Str (pos + 1) with
+      | `Str , '"'                  -> fn lvl `Ini cur next
+      | _    , '"' when lvl > 0     -> (try fn lvl `Str cur next with
                                          Unclosed_comment _ ->
-                                           fn lvl `Ini (pos + 1))
-      | `Str , '\\'                 -> fn lvl `Esc (pos + 1)
-      | `Esc , _                    -> fn lvl `Str (pos + 1)
-      | `Str , _                    -> fn lvl `Str (pos + 1)
+                                           fn lvl `Ini cur next)
+      | `Str , '\\'                 -> fn lvl `Esc cur next
+      | `Esc , _                    -> fn lvl `Str cur next
+      | `Str , _                    -> fn lvl `Str cur next
 
-      | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini (pos + 1)
-      | _    , _ when lvl > 0       -> fn lvl `Ini (pos + 1)
-      | _    , _                    -> pos
-  in fn 0 `Ini pos
+      | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini cur next
+      | _    , _ when lvl > 0       -> fn lvl `Ini cur next
+      | _    , _                    -> cur
+  in fn 0 `Ini (str, pos) (str, pos)
 
-let no_blank _ pos = pos
-
-(****************************************************************************
- * Functions for computing line numbers and positions.                      *
- ****************************************************************************)
-
-(* computes the line number (with a cache) for a given position in a string *)
-let bol = Hashtbl.create 1001
-let find_pos str n =
-  let rec fn i =
-    (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
-    if i = 0 || (i <= String.length str && (str.[i-1] = '\n' || str.[i-1] = '\r')) then
-      try Hashtbl.find bol i, i
-      with Not_found ->
-        if i = 0 then (1,i)
-	else
-          let lnum, _ = fn (i-1) in
-          let lnum = lnum + 1 in
-          Hashtbl.add bol i lnum;
-          lnum, i
-    else fn (i-1)
-  in
-  let (lnum, bol) = fn n in
-  Lexing.({ pos_fname = (match !file with None -> "stdin" | Some s -> s);
-            pos_lnum  = lnum;
-            pos_bol   = bol;
-            pos_cnum  = n })
+let no_blank str pos = str, pos
 
 let locate g =
-  filter_position g (fun str pos pos' ->
-    let s = find_pos str pos in
-    let e = find_pos str pos' in
+  filter_position g Lexing.(fun fname l pos l' pos' ->
+    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
+    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = pos'; pos_bol = 0 } in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
 let merge l1 l2 =
@@ -229,6 +206,7 @@ exception Illegal_escape of string
 let one_char is_char =
   glr
     c:RE(char_regular) when is_char -> c.[0]
+  | c:CHR('\n') -> '\n' 
   | c:RE(string_regular) when not is_char -> c.[0]
   | c:RE(char_escaped) -> (match c.[1] with
                             | 'n' -> '\n'
@@ -254,7 +232,7 @@ let char_literal =
   ) no_blank
 
 (* String literals *)
-let interspace = "[\\][\n][ \t]*"
+let interspace = "[ \t]*"
 
 let string_literal =
   let char_list_to_string lc =
@@ -268,7 +246,7 @@ let string_literal =
   change_layout (
     glr
       CHR('"') lc:(one_char false)*
-        lcs:(glr RE(interspace) lc:(one_char false)* -> lc end)*
+        lcs:(glr CHR('\\') CHR('\n') RE(interspace) lc:(one_char false)* -> lc end)*
         CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
     end
   ) no_blank
@@ -454,17 +432,18 @@ let key_word s =
    assert(len_s > 0);
    black_box 
      (fun str pos ->
-      let len = String.length str in
-      if len < pos + len_s then raise Give_up;
+      let str' = ref str in
+      let pos' = ref pos in
       for i = 0 to len_s - 1 do
-	if str.[pos + i] <> s.[i] then raise Give_up
+	let c, _str', _pos' = read !str' !pos' in
+	if c <> s.[i] then raise Give_up;
+	str' := _str'; pos' := _pos'
       done;
-      let pos = pos + len_s in
-      if pos < len then
-	match str.[pos] with
-	  'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
-	  | _ -> (), pos
-      else (), pos)
+      let str' = !str' and pos' = !pos' in 
+      let c,_,_ = read str' pos' in
+      match c with
+	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
+	| _ -> (), str', pos')
      (Charset.singleton s.[0]) false s
 
 let mutable_kw = key_word "mutable"
@@ -1597,9 +1576,13 @@ let rec mk_seq = function
 
 let semi_col = black_box 
   (fun str pos ->
-   let len = String.length str in
-   if len > pos && str.[pos] = ';' && (len = pos + 1 || str.[pos+1] <> ';') then ((), pos+1)
-   else raise Give_up)
+   let c,str',pos' = read str pos in
+   if c = ';' then
+     let c',_,_ = read str' pos' in
+     if c' = ';' then raise Give_up
+     else (), str', pos'
+   else
+     raise Give_up)
   (Charset.singleton ';') false (";")
 
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
@@ -1826,37 +1809,25 @@ let signature =
 let ast =
   (* read the whole file with a buffer ...
      to be able to read stdin *)
-  let b = Buffer.create 0x10000 in
-  let ch = match !file with
-      None -> stdin
+  let name, ch = match !file with
+      None -> "stdin", stdin
     | Some name -> 
 (*       let buffer = Input.buffer_from_file name in
        List.iter (fun line ->
 		  Printf.eprintf "%s\n" line.Input.contents) buffer;*)
-       open_in name
+       name, open_in name
   in
   try
-    while true do
-      let l = input_line ch in
-      Buffer.add_string b l; Buffer.add_char b '\n'
-    done;
-    assert false
-  with
-    End_of_file ->
-  let s = Buffer.contents b in
-  try
     if entry = Impl then 
-      `Struct (parse_string structure blank s)
+      `Struct (parse_channel structure blank name ch)
     else
-      `Sig (parse_string signature blank s)
+      `Sig (parse_channel signature blank name ch)
   with
-    Parse_error (n,l) ->
-    let pos = find_pos s n in
-    let msgs = String.concat " | " l in
-    Lexing.(Printf.eprintf "File %S, line %d, characters %d:\n\
-                            Error: Syntax error, %s expected\n"
-                            pos.pos_fname pos.pos_lnum
-                            (pos.pos_cnum - pos.pos_bol) msgs);
+    Parse_error (fname,l,n,msgs) ->
+    let msgs = String.concat " | " msgs in
+    Printf.eprintf "File %S, line %d, characters %d:\n\
+                    Error: Syntax error, %s expected\n"
+                   fname l n msgs;
     exit 1
 
 let _ = 
@@ -1868,7 +1839,10 @@ let _ =
     end;
     Format.print_newline ()
   end else begin
-    let magic = Config.ast_impl_magic_number in
+    let magic = match ast with 
+      | `Struct _ -> Config.ast_impl_magic_number
+      | `Sig _ -> Config.ast_intf_magic_number
+    in
     output_string stdout magic;
     output_value stdout (match !file with None -> "" | Some name -> name);
     begin

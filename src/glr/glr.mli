@@ -1,4 +1,5 @@
 open Charset
+open Input 
 
 (** Glr: a module defining parser combinator similar to GLR grammar
     @author Christophe Raffalli *)
@@ -6,11 +7,11 @@ open Charset
 (** For the moment, ambiguous grammar are supported, but ambiguous exception
   raise the exception [Ambiuity(pos_start, pos_end)].
   A possibility of providing your own merge function is planed *)
-exception Ambiguity of int * int
+exception Ambiguity of string * int * int * string * int * int
 
 (** [Parse_error (pos, str)], give the last point succesfully reached by the parser in 
   the input and what was expected to continue*)
-exception Parse_error of int * string list
+exception Parse_error of string * int * int * string list
 
 (** You may raise this exception to reject a parsing rule from the action code *)
 exception Give_up
@@ -18,7 +19,7 @@ exception Give_up
 (** Type of a function parsing "blank" (i.e. characters to be ignored, like spaces or comments).
   [f str pos = pos'] means that all characteres from [pos] (included) to [pos'] (excluded) must
   be ignored *)
-type blank = string -> int -> int
+type blank = buffer -> int -> buffer * int
 
 (** [blank_regexp re]: produces a blank function from a regexp *)
 val blank_regexp : Str.regexp -> blank
@@ -26,14 +27,15 @@ val blank_regexp : Str.regexp -> blank
 (** type of a grammar returning value of type ['a] *)
 type ('a) grammar
 
-(** [parse_string parser blank str]: parses the string [str] with the given grammar and blank function. *)
-val parse_string : 'a grammar -> blank -> string -> 'a
+(** [parse_string parser blank name str]: parses the string [str] with the given grammar and blank function.
+    a "name" is provided for error messages only *)
+val parse_string : 'a grammar -> blank -> string -> string -> 'a
 
-val partial_parse_string : 'a grammar -> blank -> string -> int -> int * 'a
+val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> int * 'a
 
-(** [parse_string parser blank in_channel]: load the content of the channel in a string
+(** [parse_fine parser blank name in_channel]: load the content of the channel in a string
      and parses it. Because it is loaded in memory, it works only for real file, not stream *)
-val parse_channel : 'a grammar -> blank -> in_channel -> 'a
+val parse_channel : 'a grammar -> blank -> string -> in_channel -> 'a
 
 (** [change_layout parser blank]: change the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not
@@ -58,7 +60,7 @@ val fail : string -> 'a grammar
     [accept_empty] shoud be false if your parser does not accept the empty string.
     If [fn] raises [Give_up], [msg] is added to Parse_error.
 *) 
-val  black_box : (string -> int -> 'a * int) -> charset -> bool -> string -> 'a grammar
+val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar
 
 (** [list_eof x := eof [x]] *)
 val list_eof : 'a -> 'a list grammar
@@ -175,14 +177,14 @@ val list_apply : ('a -> 'b) -> 'a list grammar -> 'b list grammar
 val list_merge : ('a -> 'a -> 'a) -> 'a list grammar -> 'a grammar
 
 (** [position], tranform a given grammar to add the position of the parsed text *)
-val position : 'a grammar -> (int * int * 'a) grammar
+val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 
 (** [filter_position gr f]: return the same grammar with in the semantics 
     the information about the position with the type the users want.
-    this position information is build by calling [f str begin_pos end_pos]
+    this position information is build by calling [f str begin_line begin_col end_line end_col]
     where str is the full string being parsed and begin_pos, end_pos are
     the position of the parsed tree in str. *)
-val filter_position : 'a grammar -> (string -> int -> int -> 'b) -> ('b * 'a) grammar
+val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
 
 
 (** [declare_grammar ()] return a new grammar, that can be used to define other grammar, but that

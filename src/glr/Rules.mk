@@ -8,7 +8,7 @@ $(d)/pa_glr.ml.depends: INCLUDES:=$(PA_GLR_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(GLR_INCLUDES)
 $(d)/pa_glr.cmo $(d)/pa_glr.cmi $(d)/pa_glr.cmx : INCLUDES:=$(GLR_INCLUDES)
 
-GLR_ML:=$(d)/charset.ml $(d)/umap.ml $(d)/glr.ml
+GLR_ML:=$(d)/charset.ml $(d)/umap.ml $(d)/input.ml $(d)/glr.ml
 GLR_MLI:=$(d)/charset.mli $(d)/umap.mli $(d)/glr.mli
 GLR_CMO:=$(GLR_ML:.ml=.cmo)
 GLR_CMX:=$(GLR_ML:.ml=.cmx)
@@ -22,10 +22,12 @@ $(d)/umap.cmo: $(d)/umap.cmi
 $(d)/umap.cmx: $(d)/umap.cmi
 $(d)/charset.cmo: $(d)/charset.cmi
 $(d)/charset.cmx: $(d)/charset.cmi
+$(d)/input.cmo: $(d)/input.cmi
+$(d)/input.cmx: $(d)/input.cmi
 
-$(d)/glr.cmo: $(d)/glr.cmi $(d)/umap.cmi $(d)/charset.cmi
+$(d)/glr.cmo: $(d)/glr.cmi $(d)/input.cmi $(d)/umap.cmi $(d)/charset.cmi
 
-$(d)/glr.cmx: $(d)/glr.cmi $(d)/umap.cmx $(d)/umap.cmi $(d)/charset.cmx $(d)/charset.cmi
+$(d)/glr.cmx: $(d)/glr.cmi $(d)/input.cmx $(d)/umap.cmx $(d)/charset.cmx
 
 $(d)/glr.cmxa: $(GLR_CMX)
 	$(ECHO) "[LINK]   ... -> $@"
@@ -58,7 +60,7 @@ PA_GLR = $(GLR_DIR)/pa_glr
 
 $(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.ml $(d)/glr.cmxa $(PA_GLR)
 	$(ECHO) "[LINK] $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I +compiler-libs -package glr -o $@ str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $<
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I +compiler-libs -package unix,glr -o $@ unix.cmxa str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $<
 
 all: $(d)/pa_glr $(d)/ocaml-parser/pa_ocaml
 

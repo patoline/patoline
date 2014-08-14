@@ -2,6 +2,7 @@
 
 ocaml=`ocamlc -where`
 local=./tests
+diff=./tests
 
 files="$local/test.ml $local/objects.ml $local/variants.ml \
        $ocaml/pervasives.ml $ocaml/pervasives.mli $ocaml/list.ml $ocaml/list.mli \
@@ -26,9 +27,10 @@ for f in $files; do
 #  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
 
-  cat /tmp/foo.tree | sed -e 's/(.*\.ml\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/foo.tree2
-  cat /tmp/bar.tree | sed -e 's/(.*\.ml\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/bar.tree2
-  diff /tmp/foo.tree2 /tmp/bar.tree2
+  cat /tmp/foo.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/foo.tree2
+  cat /tmp/bar.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/bar.tree2
+  diff /tmp/foo.tree2 /tmp/bar.tree2 > $diff/$(basename $f).diff
+  echo diff size: $(wc $diff/$(basename $f).diff)
   echo
 done
 
