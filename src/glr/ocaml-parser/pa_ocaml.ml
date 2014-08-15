@@ -111,6 +111,399 @@ let merge l1 l2 =
 
 let _ = glr_locate locate merge
 
+(* declare expression soon for antiquotation *)
+type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+let (expression_lvl, set_expression_lvl) = grammar_family ()
+let expr = expression_lvl Top
+let expression= expr
+let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
+let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
+let module_item = declare_grammar ()
+let signature_item = declare_grammar ()
+type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
+let typexpr_lvl, set_typexpr_lvl = grammar_family ()
+let typexpr = typexpr_lvl TopType
+type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
+                  | AtomPat
+let pattern_lvl, set_pattern_lvl = grammar_family ()
+let pattern = pattern_lvl TopPat
+
+(****************************************************************************
+ * Quotation and anti-quotation code                                        *
+ ****************************************************************************)
+
+type quote_env1 = {
+  mutable expression_stack : Parsetree.expression list;
+  mutable pattern_stack : Parsetree.expression list;
+  mutable type_stack : Parsetree.expression list;
+  mutable str_item_stack : Parsetree.expression list;
+  mutable sig_item_stack : Parsetree.expression list;
+  mutable string_stack : Parsetree.expression list;
+  mutable int_stack : Parsetree.expression list;
+  mutable int32_stack : Parsetree.expression list;
+  mutable int64_stack : Parsetree.expression list;
+  mutable natint_stack : Parsetree.expression list;
+  mutable float_stack : Parsetree.expression list;
+  mutable char_stack : Parsetree.expression list;
+  mutable bool_stack : Parsetree.expression list;
+}
+type quote_env2 = {
+  mutable expression_stack : Parsetree.expression list;
+  mutable pattern_stack : Parsetree.pattern list;
+  mutable type_stack : Parsetree.core_type list;
+  mutable str_item_stack : Parsetree.structure_item_desc list;
+  mutable sig_item_stack : Parsetree.signature_item_desc list;
+  mutable string_stack : string list;
+  mutable int_stack : int list;
+  mutable int32_stack : int32 list;
+  mutable int64_stack : int64 list;
+  mutable natint_stack : nativeint list;
+  mutable float_stack : float list;
+  mutable char_stack : char list;
+  mutable bool_stack : bool list;
+}
+type quote_env =
+    First of quote_env1 | Second of quote_env2
+
+let quote_stack : quote_env Stack.t =
+  Stack.create ()
+
+
+let empty_quote_env1 () = First {
+  expression_stack = [];
+  pattern_stack  = [];
+  type_stack =  [];
+  str_item_stack =  [];
+  sig_item_stack =  [];
+  string_stack = [];
+  int_stack = [];
+  int32_stack = [];
+  int64_stack = [];
+  natint_stack = [];
+  float_stack = [];
+  char_stack = [];
+  bool_stack = [];
+}
+
+let empty_quote_env2 () = Second {
+  expression_stack = [];
+  pattern_stack  = [];
+  type_stack =  [];
+  str_item_stack =  [];
+  sig_item_stack =  [];
+  string_stack = [];
+  int_stack = [];
+  int32_stack = [];
+  int64_stack = [];
+  natint_stack = [];
+  float_stack = [];
+  char_stack = [];
+  bool_stack = [];
+}
+
+let push_pop_expression e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.expression_stack <- e::env.expression_stack; e
+    | Second env ->
+       match env.expression_stack with
+	 e::l -> env.expression_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_expression e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.expression_stack <- e::env.expression_stack
+
+let push_pop_type e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.type_stack <- e::env.type_stack; { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; }
+    | Second env ->
+       match env.type_stack with
+	 e::l -> env.type_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_type e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.type_stack <- e::env.type_stack
+
+let push_pop_pattern e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.pattern_stack <- e::env.pattern_stack; { ppat_desc = Ppat_any; ppat_loc = e.pexp_loc; }
+    | Second env ->
+       match env.pattern_stack with
+	 e::l -> env.pattern_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_pattern e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.pattern_stack <- e::env.pattern_stack
+
+let push_pop_str_item e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.str_item_stack <- e::env.str_item_stack; Pstr_eval e; 
+    | Second env ->
+       match env.str_item_stack with
+	 e::l -> env.str_item_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_str_item e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.str_item_stack <- e::env.str_item_stack
+
+let push_pop_sig_item e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.sig_item_stack <- e::env.sig_item_stack;
+	let _loc = e.pexp_loc in 
+	Psig_value({ txt = ""; loc = _loc }, { pval_type = { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; };
+							     pval_prim = []; pval_loc = _loc})
+    | Second env ->
+       match env.sig_item_stack with
+	 e::l -> env.sig_item_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_sig_item e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.sig_item_stack <- e::env.sig_item_stack
+
+let push_pop_string e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.string_stack <- e::env.string_stack; ""
+    | Second env ->
+       match env.string_stack with
+	 e::l -> env.string_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_string e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.string_stack <- e::env.string_stack
+
+let push_pop_int e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.int_stack <- e::env.int_stack; 0
+    | Second env ->
+       match env.int_stack with
+	 e::l -> env.int_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_int e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.int_stack <- e::env.int_stack
+
+let push_pop_int32 e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.int32_stack <- e::env.int32_stack; 0l
+    | Second env ->
+       match env.int32_stack with
+	 e::l -> env.int32_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_int32 e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.int32_stack <- e::env.int32_stack
+
+let push_pop_int64 e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.int64_stack <- e::env.int64_stack; 0L
+    | Second env ->
+       match env.int64_stack with
+	 e::l -> env.int64_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_int64 e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.int64_stack <- e::env.int64_stack
+
+let push_pop_natint e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.natint_stack <- e::env.natint_stack; 0n
+    | Second env ->
+       match env.natint_stack with
+	 e::l -> env.natint_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_natint e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.natint_stack <- e::env.natint_stack
+
+let push_pop_float e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.float_stack <- e::env.float_stack; 0.0
+    | Second env ->
+       match env.float_stack with
+	 e::l -> env.float_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_float e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.float_stack <- e::env.float_stack
+
+let push_pop_char e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.char_stack <- e::env.char_stack; ' '
+    | Second env ->
+       match env.char_stack with
+	 e::l -> env.char_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_char e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.char_stack <- e::env.char_stack
+
+let push_pop_bool e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.bool_stack <- e::env.bool_stack; false
+    | Second env ->
+       match env.bool_stack with
+	 e::l -> env.bool_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_bool e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.bool_stack <- e::env.bool_stack
+
+let quote_expression _loc e name =
+  Stack.push (empty_quote_env1 ()) quote_stack ;
+  let _ = match name with
+    | "expression" -> ignore (parse_string expression blank "quote..." e)
+    | "type"  -> ignore (parse_string typexpr blank "quote..." e)
+    | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
+    | "str_item"  -> ignore (parse_string module_item blank "quote..." e)
+    | "sig_item"  -> ignore (parse_string signature_item blank "quote..." e)
+    | _ -> assert false
+    in
+  let env = match Stack.pop quote_stack with
+      First e -> e | Second _ -> assert false
+  in
+  let push_expr =
+    loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","push"); loc = _loc }),
+		   ["", loc_expr _loc (Pexp_apply(
+							      (loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","empty_quote_env2"); loc = _loc })), 
+							      ["", loc_expr _loc (Pexp_construct({ txt = Lident "()"; loc = _loc }, None, false))]));
+		   
+		    "", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))
+  in
+  let fill push_expr name l = 
+    let p = 
+      List.fold_left
+	(fun acc e ->
+	 let push_e =
+	   loc_expr _loc (Pexp_apply(
+			      loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml",name); loc = _loc }),
+			      ["", e]))
+	 in
+	 match acc with
+	   None -> Some push_e
+	 | Some acc -> 
+	    Some (loc_expr _loc (Pexp_sequence(acc, push_e))))
+	None l
+    in
+    match p with
+      None -> push_expr
+    | Some e -> loc_expr _loc (Pexp_sequence(push_expr, e))
+  in
+  let push_expr = fill push_expr "push_expression" env.expression_stack in
+  let push_expr = fill push_expr "push_pattern" env.pattern_stack in
+  let push_expr = fill push_expr "push_type" env.type_stack in
+  let push_expr = fill push_expr "push_str_item" env.str_item_stack in
+  let push_expr = fill push_expr "push_sig_item" env.sig_item_stack in
+  let push_expr = fill push_expr "push_string" env.string_stack in
+  let push_expr = fill push_expr "push_int" env.int_stack in
+  let push_expr = fill push_expr "push_int32" env.int32_stack in
+  let push_expr = fill push_expr "push_int64" env.int64_stack in
+  let push_expr = fill push_expr "push_natint" env.natint_stack in
+  let push_expr = fill push_expr "push_float" env.float_stack in
+  let push_expr = fill push_expr "push_char" env.char_stack in
+  let push_expr = fill push_expr "push_bool" env.bool_stack in
+  let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident{ txt = Lident "ignore"; loc = _loc }),
+				       ["",loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","pop"); loc = _loc }),
+		   ["", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))]))
+  in
+  let parse_expr = 
+    loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_"^name^"_2"); loc = _loc }),
+		       ["", loc_expr _loc (Pexp_constant( Const_string e ))]))
+  in
+  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc }),  parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
+
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
  ****************************************************************************)
@@ -142,17 +535,120 @@ let is_reserved_id w =
 let ident =
   glr
     id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
+  | CHR('$') STR("ident") CHR(':') e:expression CHR('$') -> push_pop_string e
   end
 
 let capitalized_ident =
   glr
     id:RE(cident_re) -> id
+  | CHR('$') STR("uid") CHR(':') e:expression CHR('$') -> push_pop_string e
   end
 
 let lowercase_ident =
   glr
     id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
+  | CHR('$') STR("lid") CHR(':') e:expression CHR('$') -> push_pop_string e
   end
+
+(****************************************************************************
+ * Several shortcuts for flags and keywords                                 *
+ ****************************************************************************)
+let key_word s = 
+   let len_s = String.length s in
+   assert(len_s > 0);
+   black_box 
+     (fun str pos ->
+      let str' = ref str in
+      let pos' = ref pos in
+      for i = 0 to len_s - 1 do
+	let c, _str', _pos' = read !str' !pos' in
+	if c <> s.[i] then raise Give_up;
+	str' := _str'; pos' := _pos'
+      done;
+      let str' = !str' and pos' = !pos' in 
+      let c,_,_ = read str' pos' in
+      match c with
+	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
+	| _ -> (), str', pos')
+     (Charset.singleton s.[0]) false s
+
+let mutable_kw = key_word "mutable"
+let mutable_flag =
+  glr
+  | mutable_kw -> Mutable
+  | EMPTY      -> Immutable
+  end
+
+let private_kw = key_word "private"
+let private_flag =
+  glr
+  | private_kw -> Private
+  | EMPTY      -> Public
+  end
+
+let virtual_kw = key_word "virtual"
+let virtual_flag =
+  glr
+  | virtual_kw -> Virtual
+  | EMPTY      -> Concrete
+  end
+
+let rec_kw = key_word "rec"
+let rec_flag =
+  glr
+  | rec_kw -> Recursive
+  | EMPTY  -> Nonrecursive
+  end
+
+let to_kw = key_word "to"
+let downto_kw = key_word "downto"
+let downto_flag =
+  glr
+  | to_kw     -> Upto
+  | downto_kw -> Downto
+  end
+
+let method_kw = key_word "method"
+let object_kw = key_word "object"
+let class_kw = key_word "class"
+let inherit_kw = key_word "inherit"
+let as_kw = key_word "as"
+let of_kw = key_word "of"
+let module_kw = key_word "module"
+let open_kw = key_word "open"
+let include_kw = key_word "include"
+let type_kw = key_word "type"
+let val_kw = key_word "val"
+let external_kw = key_word "external"
+let constraint_kw = key_word "constraint"
+let begin_kw = key_word "begin"
+let end_kw = key_word "end"
+let and_kw = key_word "and"
+let true_kw = key_word "true"
+let false_kw = key_word "false"
+let exception_kw = key_word "exception"
+let when_kw = key_word "when"
+let fun_kw = key_word "fun"
+let function_kw = key_word "function"
+let let_kw = key_word "let"
+let in_kw = key_word "in"
+let initializer_kw = key_word "initializer"
+let with_kw = key_word "with"
+let while_kw = key_word "while"
+let for_kw = key_word "for"
+let do_kw = key_word "do"
+let done_kw = key_word "done"
+let new_kw = key_word "new"
+let assert_kw = key_word "assert"
+let if_kw = key_word "if"
+let then_kw = key_word "then"
+let else_kw = key_word "else"
+let try_kw = key_word "try"
+let match_kw = key_word "match"
+let struct_kw = key_word "struct"
+let functor_kw = key_word "functor"
+let sig_kw = key_word "sig"
+let lazy_kw = key_word "lazy"
 
 (* Integer literals *)
 let int_dec_re = "[-]?[0-9][0-9_]*"
@@ -167,21 +663,32 @@ let natint_re = par_re int_re ^ "n"
 let integer_literal =
   glr
     i:RE(int_re) -> int_of_string i
+  | CHR('$') STR("int") CHR(':') e:expression CHR('$') -> push_pop_int e
   end
 
 let int32_lit =
   glr
     i:RE(int32_re)[groupe 1] -> Int32.of_string i
+  | CHR('$') STR("int32") CHR(':') e:expression CHR('$') -> push_pop_int32 e
   end
 
 let int64_lit =
   glr
     i:RE(int64_re)[groupe 1] -> Int64.of_string i
+  | CHR('$') STR("int64") CHR(':') e:expression CHR('$') -> push_pop_int64 e
   end
 
 let nat_int_lit =
   glr
     i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
+  | CHR('$') STR("natint") CHR(':') e:expression CHR('$') -> push_pop_natint e
+  end
+
+let bool_lit =
+  glr
+    false_kw -> "false"
+  | true_kw -> "true"
+  | CHR('$') STR("bool") CHR(':') e:expression CHR('$') -> if push_pop_bool e then "true" else "false"
   end
 
 (* Floating-point literals *)
@@ -192,7 +699,7 @@ let float_re = union_re [float_lit_dec; float_lit_no_dec]
 let float_literal =
   glr
     f:RE(float_re)   -> f
-  end
+  | CHR('$') STR("float") CHR(':') e:expression CHR('$') -> string_of_float (push_pop_float e)  end
 
 (* Character literals *)
 let char_regular = "[^\\']"
@@ -227,9 +734,12 @@ let one_char is_char =
   end
 
 let char_literal =
-  change_layout (
-    glr CHR('\'') c:(one_char true) CHR('\'') -> c end
-  ) no_blank
+  glr
+    r:(change_layout (
+      glr CHR('\'') c:(one_char true) CHR('\'') -> c end
+    ) no_blank) -> r
+  | CHR('$') STR("char") CHR(':') e:expression CHR('$') -> push_pop_char e  
+  end
 
 (* String literals *)
 let interspace = "[ \t]*"
@@ -243,13 +753,15 @@ let string_literal =
     done;
     str
   in
-  change_layout (
+  glr 
+    r:(change_layout (
     glr
       CHR('"') lc:(one_char false)*
         lcs:(glr CHR('\\') CHR('\n') RE(interspace) lc:(one_char false)* -> lc end)*
         CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
-    end
-  ) no_blank
+    end) no_blank) -> r
+  | CHR('$') STR("string") CHR(':') e:expression CHR('$') -> push_pop_string e
+  end
 
 (* Naming labels *)
 let label_name = lowercase_ident
@@ -424,106 +936,6 @@ let classtype_path =
        | Some p -> Ldot(p, cn))
   end
 
-(****************************************************************************
- * Several shortcuts for flags and keywords                                 *
- ****************************************************************************)
-let key_word s = 
-   let len_s = String.length s in
-   assert(len_s > 0);
-   black_box 
-     (fun str pos ->
-      let str' = ref str in
-      let pos' = ref pos in
-      for i = 0 to len_s - 1 do
-	let c, _str', _pos' = read !str' !pos' in
-	if c <> s.[i] then raise Give_up;
-	str' := _str'; pos' := _pos'
-      done;
-      let str' = !str' and pos' = !pos' in 
-      let c,_,_ = read str' pos' in
-      match c with
-	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
-	| _ -> (), str', pos')
-     (Charset.singleton s.[0]) false s
-
-let mutable_kw = key_word "mutable"
-let mutable_flag =
-  glr
-  | mutable_kw -> Mutable
-  | EMPTY      -> Immutable
-  end
-
-let private_kw = key_word "private"
-let private_flag =
-  glr
-  | private_kw -> Private
-  | EMPTY      -> Public
-  end
-
-let virtual_kw = key_word "virtual"
-let virtual_flag =
-  glr
-  | virtual_kw -> Virtual
-  | EMPTY      -> Concrete
-  end
-
-let rec_kw = key_word "rec"
-let rec_flag =
-  glr
-  | rec_kw -> Recursive
-  | EMPTY  -> Nonrecursive
-  end
-
-let to_kw = key_word "to"
-let downto_kw = key_word "downto"
-let downto_flag =
-  glr
-  | to_kw     -> Upto
-  | downto_kw -> Downto
-  end
-
-let method_kw = key_word "method"
-let object_kw = key_word "object"
-let class_kw = key_word "class"
-let inherit_kw = key_word "inherit"
-let as_kw = key_word "as"
-let of_kw = key_word "of"
-let module_kw = key_word "module"
-let open_kw = key_word "open"
-let include_kw = key_word "include"
-let type_kw = key_word "type"
-let val_kw = key_word "val"
-let external_kw = key_word "external"
-let constraint_kw = key_word "constraint"
-let begin_kw = key_word "begin"
-let end_kw = key_word "end"
-let and_kw = key_word "and"
-let true_kw = key_word "true"
-let false_kw = key_word "false"
-let exception_kw = key_word "exception"
-let when_kw = key_word "when"
-let fun_kw = key_word "fun"
-let function_kw = key_word "function"
-let let_kw = key_word "let"
-let in_kw = key_word "in"
-let initializer_kw = key_word "initializer"
-let with_kw = key_word "with"
-let while_kw = key_word "while"
-let for_kw = key_word "for"
-let do_kw = key_word "do"
-let done_kw = key_word "done"
-let new_kw = key_word "new"
-let assert_kw = key_word "assert"
-let if_kw = key_word "if"
-let then_kw = key_word "then"
-let else_kw = key_word "else"
-let try_kw = key_word "try"
-let match_kw = key_word "match"
-let struct_kw = key_word "struct"
-let functor_kw = key_word "functor"
-let sig_kw = key_word "sig"
-let lazy_kw = key_word "lazy"
-
 let opt_variance =
   glr
   | v:RE("[+-]")? ->
@@ -539,212 +951,6 @@ let override_flag =
     o:STR("!")? -> (if o <> None then Override else Fresh)
   end
 
-(* declare expression soon for antiquotation *)
-type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
-let (expression_lvl, set_expression_lvl) = grammar_family ()
-let expr = expression_lvl Top
-let expression= expr
-let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
-let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
-let module_item = declare_grammar ()
-let signature_item = declare_grammar ()
-type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
-let typexpr_lvl, set_typexpr_lvl = grammar_family ()
-let typexpr = typexpr_lvl TopType
-type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
-                  | AtomPat
-let pattern_lvl, set_pattern_lvl = grammar_family ()
-let pattern = pattern_lvl TopPat
-
-(****************************************************************************
- * Quotation and anti-quotation code                                        *
- ****************************************************************************)
-
-type quote_env1 = {
-  mutable expression_stack : Parsetree.expression list;
-  mutable pattern_stack : Parsetree.expression list;
-  mutable type_stack : Parsetree.expression list;
-  mutable str_item_stack : Parsetree.expression list;
-  mutable sig_item_stack : Parsetree.expression list;
-}
-type quote_env2 = {
-  mutable expression_stack : Parsetree.expression list;
-  mutable pattern_stack : Parsetree.pattern list;
-  mutable type_stack : Parsetree.core_type list;
-  mutable str_item_stack : Parsetree.structure_item_desc list;
-  mutable sig_item_stack : Parsetree.signature_item_desc list;
-}
-type quote_env =
-    First of quote_env1 | Second of quote_env2
-
-let quote_stack : quote_env Stack.t =
-  Stack.create ()
-
-
-let empty_quote_env1 () = First {
-  expression_stack = [];
-  pattern_stack  = [];
-  type_stack =  [];
-  str_item_stack =  [];
-  sig_item_stack =  [];
-}
-
-let empty_quote_env2 () = Second {
-  expression_stack = [];
-  pattern_stack  = [];
-  type_stack =  [];
-  str_item_stack =  [];
-  sig_item_stack =  [];
-}
-
-let push_pop_expression e =
-  try
-    match Stack.top quote_stack with
-    | First env ->
-	env.expression_stack <- e::env.expression_stack; e
-    | Second env ->
-       match env.expression_stack with
-	 e::l -> env.expression_stack <- l; e
-       | _ -> assert false
-  with
-    Stack.Empty -> raise Give_up
-
-let push_expression e =
-    match Stack.top quote_stack with
-    | First env -> assert false
-    | Second env ->
-	env.expression_stack <- e::env.expression_stack
-
-let push_pop_type e =
-  try
-    match Stack.top quote_stack with
-    | First env ->
-	env.type_stack <- e::env.type_stack; { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; }
-    | Second env ->
-       match env.type_stack with
-	 e::l -> env.type_stack <- l; e
-       | _ -> assert false
-  with
-    Stack.Empty -> raise Give_up
-
-let push_type e =
-    match Stack.top quote_stack with
-    | First env -> assert false
-    | Second env ->
-	env.type_stack <- e::env.type_stack
-
-let push_pop_pattern e =
-  try
-    match Stack.top quote_stack with
-    | First env ->
-	env.pattern_stack <- e::env.pattern_stack; { ppat_desc = Ppat_any; ppat_loc = e.pexp_loc; }
-    | Second env ->
-       match env.pattern_stack with
-	 e::l -> env.pattern_stack <- l; e
-       | _ -> assert false
-  with
-    Stack.Empty -> raise Give_up
-
-let push_pattern e =
-    match Stack.top quote_stack with
-    | First env -> assert false
-    | Second env ->
-	env.pattern_stack <- e::env.pattern_stack
-
-let push_pop_str_item e =
-  try
-    match Stack.top quote_stack with
-    | First env ->
-	env.str_item_stack <- e::env.str_item_stack; Pstr_eval e; 
-    | Second env ->
-       match env.str_item_stack with
-	 e::l -> env.str_item_stack <- l; e
-       | _ -> assert false
-  with
-    Stack.Empty -> raise Give_up
-
-let push_str_item e =
-    match Stack.top quote_stack with
-    | First env -> assert false
-    | Second env ->
-	env.str_item_stack <- e::env.str_item_stack
-
-let push_pop_sig_item e =
-  try
-    match Stack.top quote_stack with
-    | First env ->
-	env.sig_item_stack <- e::env.sig_item_stack;
-	let _loc = e.pexp_loc in 
-	Psig_value({ txt = ""; loc = _loc }, { pval_type = { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; };
-							     pval_prim = []; pval_loc = _loc})
-    | Second env ->
-       match env.sig_item_stack with
-	 e::l -> env.sig_item_stack <- l; e
-       | _ -> assert false
-  with
-    Stack.Empty -> raise Give_up
-
-let push_sig_item e =
-    match Stack.top quote_stack with
-    | First env -> assert false
-    | Second env ->
-	env.sig_item_stack <- e::env.sig_item_stack
-
-let quote_expression _loc e name =
-  Stack.push (empty_quote_env1 ()) quote_stack ;
-  let _ = match name with
-    | "expression" -> ignore (parse_string expression blank "quote..." e)
-    | "type"  -> ignore (parse_string typexpr blank "quote..." e)
-    | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
-    | "str_item"  -> ignore (parse_string module_item blank "quote..." e)
-    | "sig_item"  -> ignore (parse_string signature_item blank "quote..." e)
-    | _ -> assert false
-    in
-  let env = match Stack.pop quote_stack with
-      First e -> e | Second _ -> assert false
-  in
-  let push_expr =
-    loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","push"); loc = _loc }),
-		   ["", loc_expr _loc (Pexp_apply(
-							      (loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","empty_quote_env2"); loc = _loc })), 
-							      ["", loc_expr _loc (Pexp_construct({ txt = Lident "()"; loc = _loc }, None, false))]));
-		   
-		    "", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))
-  in
-  let fill push_expr name l = 
-    let p = 
-      List.fold_left
-	(fun acc e ->
-	 let push_e =
-	   loc_expr _loc (Pexp_apply(
-			      loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml",name); loc = _loc }),
-			      ["", e]))
-	 in
-	 match acc with
-	   None -> Some push_e
-	 | Some acc -> 
-	    Some (loc_expr _loc (Pexp_sequence(acc, push_e))))
-	None l
-    in
-    match p with
-      None -> push_expr
-    | Some e -> loc_expr _loc (Pexp_sequence(push_expr, e))
-  in
-  let push_expr = fill push_expr "push_expression" env.expression_stack in
-  let push_expr = fill push_expr "push_pattern" env.pattern_stack in
-  let push_expr = fill push_expr "push_type" env.type_stack in
-  let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident{ txt = Lident "ignore"; loc = _loc }),
-				       ["",loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","pop"); loc = _loc }),
-		   ["", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))]))
-  in
-  let parse_expr = 
-    loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_"^name^"_2"); loc = _loc }),
-		       ["", loc_expr _loc (Pexp_constant( Const_string e ))]))
-  in
-  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc }),  parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
 
 (****************************************************************************
  * Type expressions                                                         *
@@ -882,7 +1088,7 @@ let typexpr_base : core_type grammar =
     STR("#") cp:class_path  o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
-  | CHR('$') e:expression CHR('$') -> push_pop_type e
+  | CHR('$') e:(expression_lvl If) CHR('$') -> push_pop_type e
   end
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
@@ -1238,12 +1444,9 @@ let pattern_base = memoize1 (fun lvl ->
   | c:constr ->
       let ast = Ppat_construct({ txt = c; loc = _loc_c }, None, false) in
       (AtomPat, loc_pat _loc ast)
-  | false_kw ->
-      let fls = { txt = Lident "false"; loc = _loc } in
+  | b:bool_lit ->
+      let fls = { txt = Lident b; loc = _loc } in
       (AtomPat, loc_pat _loc (Ppat_construct (fls, None, false)))
-  | true_kw  -> 
-      let tru = { txt = Lident "true"; loc = _loc } in
-      (AtomPat, loc_pat _loc (Ppat_construct (tru, None, false)))
   | c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
       (ConstrPat, loc_pat _loc (Ppat_variant (c, Some p)))
   | c:tag_name ->
@@ -1449,7 +1652,7 @@ let bigarray_set loc arr arg newval =
 
 let constructor =
   glr
-  | m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | false_kw -> "false" | true_kw -> "true" } ->
+  | m:{ m:module_path STR"." }? id:{id:capitalized_ident -> id | b:bool_lit -> b } ->
       match m with
       | None   -> Lident id
       | Some m -> Ldot(m, id)
