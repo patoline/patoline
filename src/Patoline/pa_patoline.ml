@@ -2,6 +2,7 @@
     ocamlfind ocamlopt -pp ./pato -package Typography,Typography.Pdf -linkpkg  -impl toto.txt
 *)
 
+open Input
 open Glr
 open Charset
 open Camlp4.PreCast
@@ -18,7 +19,7 @@ module Id : Camlp4.Sig.Id =
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
 
-exception Unclosed_comment of int
+exception Unclosed_comment of int * int
 
 (*
  * Characters to be ignored are:
@@ -32,42 +33,44 @@ exception Unclosed_comment of int
  *   - single '"' character.
  *)
 let blank mline str pos =
-  let len = String.length str in
-  let rec fn nb lvl state pos =
-    if pos >= len then (if lvl > 0 then raise (Unclosed_comment len) else len)
-    else match state, str.[pos] with
-      | `Ini , '('               -> fn nb lvl `Opn (pos + 1)
-      | `Opn , '*'               -> fn nb (lvl + 1) `Ini (pos + 1)
-      | `Opn , _  when lvl = 0   -> pos - 1
-      | `Opn , _                 -> fn nb lvl `Ini (pos + 1)
-      | `Ini , '*' when lvl = 0  -> pos
-      | `Ini , '*'               -> fn nb lvl `Cls (pos + 1)
-      | `Cls , '*'               -> fn nb lvl `Cls (pos + 1)
-      | `Cls , ')'               -> fn 0 (lvl - 1) `Ini (pos + 1)
-      | `Cls , _                 -> fn nb lvl `Ini (pos + 1)
+  let rec fn nb lvl state prev (str, pos as cur) =
+    if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
+    else
+      let c,str',pos' = read str pos in 
+      let next =str', pos' in
+      match state, c with
+      | `Ini , '('               -> fn nb lvl `Opn cur next
+      | `Opn , '*'               -> fn nb (lvl + 1) `Ini cur next
+      | `Opn , _  when lvl = 0   -> prev
+      | `Opn , _                 -> fn nb lvl `Ini cur next
+      | `Ini , '*' when lvl = 0  -> cur
+      | `Ini , '*'               -> fn nb lvl `Cls cur next
+      | `Cls , '*'               -> fn nb lvl `Cls cur next
+      | `Cls , ')'               -> fn 0 (lvl - 1) `Ini cur next
+      | `Cls , _                 -> fn nb lvl `Ini cur next
 
-      | _    , '\n' when lvl > 0 -> fn nb lvl `Ini (pos + 1)
-      | _    , '\n' when mline   -> fn nb lvl `Ini (pos + 1)
-      | _    , '\n' when nb > 0  -> pos
-      | _    , '\n'              -> fn (nb + 1) lvl `Ini (pos + 1)
+      | _    , '\n' when lvl > 0 -> fn nb lvl `Ini cur next
+      | _    , '\n' when mline   -> fn nb lvl `Ini cur next
+      | _    , '\n' when nb > 0  -> cur
+      | _    , '\n'              -> fn (nb + 1) lvl `Ini cur next
 
-      | `Str , '"'               -> fn nb lvl `Ini (pos + 1)
-      | _    , '"' when lvl > 0  -> (try fn nb lvl `Str (pos + 1) with
+      | `Str , '"'               -> fn nb lvl `Ini cur next
+      | _    , '"' when lvl > 0  -> (try fn nb lvl `Str cur next with
                                       Unclosed_comment _ ->
-                                        fn nb lvl `Ini (pos + 1))
-      | `Str , '\\'              -> fn nb lvl `Esc (pos + 1)
-      | `Esc , _                 -> fn nb lvl `Str (pos + 1)
-      | `Str , _                 -> fn nb lvl `Str (pos + 1)
+                                        fn nb lvl `Ini cur next)
+      | `Str , '\\'              -> fn nb lvl `Esc cur next
+      | `Esc , _                 -> fn nb lvl `Str cur next
+      | `Str , _                 -> fn nb lvl `Str cur next
 
-      | _    , (' '|'\t'|'\r')   -> fn nb lvl `Ini (pos + 1)
-      | _    , _ when lvl > 0    -> fn nb lvl `Ini (pos + 1)
-      | _    , _                 -> pos
-  in fn 0 0 `Ini pos
+      | _    , (' '|'\t'|'\r')   -> fn nb lvl `Ini cur next
+      | _    , _ when lvl > 0    -> fn nb lvl `Ini cur next
+      | _    , _                 -> cur
+  in fn 0 0 `Ini (str, pos) (str, pos)
 
 let blank1 = blank false
 let blank2 = blank true
 
-let no_blank _ pos = pos
+let no_blank str pos = str, pos
 
 (****************************************************************************
  * Some state information (Driver in use, ...) + Code generation helpers    *
@@ -87,36 +90,10 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-(****************************************************************************
- * Functions for computing line numbers and positions.                      *
- ****************************************************************************)
-
-(* computes the line number (with a cache) for a given position in a string *)
-let bol = Hashtbl.create 1001
-let find_pos str n =
-  let rec fn i =
-    (*Printf.fprintf stderr "str: %s, i: %d\n%!" str i;*)
-    if i < String.length str && str.[i] = '\n' then
-      try Hashtbl.find bol i, i
-      with Not_found ->
-        if i = 0 then (2,i) else
-          let lnum, _ = fn (i-1) in
-          let lnum = lnum + 1 in
-          Hashtbl.add bol i lnum;
-          lnum, i
-    else if i <= 0 then (1, i)
-    else fn (i-1)
-  in
-  let (lnum, bol) = fn n in
-  Lexing.({ pos_fname = !fname;
-            pos_lnum  = lnum;
-            pos_bol   = bol;
-            pos_cnum  = n })
-
 let locate g =
-  filter_position g (fun str pos pos' ->
-    let s = find_pos str pos in
-    let e = find_pos str pos' in
+  filter_position g Lexing.(fun fname l pos l' pos' ->
+    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
+    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = pos'; pos_bol = 0 } in
     Loc.(merge (of_lexing_position s) (of_lexing_position e)))
 
 let _ = glr_locate locate Loc.merge
@@ -186,7 +163,7 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           assert (!ptr = 0);
           let pos = Loc.stop_off _loc + 1 in
           let parse = glr p:patoline_basic_text_paragraph STR("|>") -> p end in
-          let new_pos, ast = partial_parse_string parse blank2 str pos in
+          let new_pos, ast = partial_parse_string parse blank2 "" str pos in
           ptr := new_pos - pos - 1; ast
       ] ];
 
@@ -198,7 +175,7 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           assert (!ptr = 0);
           let pos = Loc.stop_off _loc + 1 in
           let parse = glr p:patoline_math_toplevel STR("$>") -> p end in
-          let new_pos, ast = partial_parse_string parse blank2 str pos in
+          let new_pos, ast = partial_parse_string parse blank2 "" str pos in
           ptr := new_pos - pos - 1; ast
       ] ];
 
@@ -242,7 +219,8 @@ let next_state state char = match state, char with
   | st, _ -> st
 
 let mk_stream str pos =
-  let len = String.length str in
+  failwith "pa_patoline currently not wroking (waiting for pa_ocaml)"
+(*
   let ptr = ref 0 in
   let state = ref `Start in
   Stack.push (str, ptr) parser_stack;
@@ -250,17 +228,18 @@ let mk_stream str pos =
     (*Printf.fprintf stderr
        "n: %d, pos: %d, c: %c, len %d, ptr: %d, state %a\n%!"
        n pos str.[n+pos] len !ptr print_state !state;*)
-    if n+pos>= len then None
+    let c,_,_ = read str pos in
+    if c = '\255' then None
      else if !state = `Patoline then begin
         state := `Start; Some ' '
       end else if !ptr > 0 then begin
         decr ptr; Some ' '
       end else begin
-        let char = str.[n+pos] in
-        state := next_state !state char;
-        Some char
+        state := next_state !state c;
+        Some c
       end;
       )
+ *)
 
 let caml_expr _loc =
   let fn str pos =
@@ -270,7 +249,7 @@ let caml_expr _loc =
     ignore (Stack.pop parser_stack);
     let pos = Loc.stop_off (Ast.loc_of_expr r) in
 (*    Printf.fprintf stderr "pos after caml_expr: %d\n%!" pos;*)
-    r, pos+1
+    r, str, pos+1
   in
   black_box fn full_charset false "caml_expr"
 
@@ -283,7 +262,7 @@ let caml_struct _loc =
     let pos = Loc.stop_off (Ast.loc_of_str_item r) in
     (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, pos+1
+    r, str, pos+1
   in
   black_box fn full_charset false "caml_struct"
 
@@ -296,7 +275,7 @@ let caml_list _loc =
     let pos = Loc.stop_off (Ast.loc_of_expr r) in
     (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, pos+1
+    r, str, pos+1
   in
   black_box fn full_charset false "caml_list"
 
@@ -309,7 +288,7 @@ let caml_array _loc =
     let pos = Loc.stop_off (Ast.loc_of_expr r) in
     (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
       (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, pos+1
+    r, str, pos+1
   in
   black_box fn full_charset false "caml_array"
 
@@ -772,17 +751,14 @@ let full_text =
 (* Parse a string with Patoline as the entry point. *)
 let parse_patoline str =
   try
-    parse_string full_text blank2 str
+    parse_string full_text blank2 "" str
   with
-    | Parse_error (n, _) ->
-        let _loc = find_pos str n in
+(*    | Parse_error (fname,l,n,msgs) ->
         Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
-    | Ambiguity(n,p) ->
-        let _loc1 = find_pos str n in
-        let _loc2 = find_pos str p in
+    | Ambiguity(fname1,l1,n,fname2,l2,p) ->
         Loc.raise Loc.(merge (of_lexing_position _loc1)
                              (of_lexing_position _loc2))
-                  (Stream.Error "Ambiguous expression")
+                  (Stream.Error "Ambiguous expression")*)
     | exc ->
         Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
         exit 1
@@ -878,9 +854,9 @@ let _ = try
   in
 
   let ast = parse str in
-  let _loc = Loc.(of_lexing_position (find_pos str 0)) in
+(*  let _loc = Loc.(of_lexing_position (find_pos str 0)) in*)
 
-  Printers.OCaml.print_implem (wrap basename _loc ast);
+  Printers.OCaml.print_implem ast; (*(wrap basename _loc ast);*)
   close_in ch
 
   with
