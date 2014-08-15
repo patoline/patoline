@@ -166,6 +166,7 @@ let buffer_from_file name =
 let get_string_line (str, p) =
   let len = String.length str in
   let start = !p in
+  if start >= len then raise End_of_file;
   while (!p < len && str.[!p] <> '\n' && str.[!p] <> '\r') do
     incr p
   done;

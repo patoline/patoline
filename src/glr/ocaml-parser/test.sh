@@ -35,4 +35,5 @@ for f in $files; do
 done
 
 echo "test of the extensions to the syntax"
-/usr/bin/time --format="%C: %e" ./pa_ocaml $local/test_ext.ml > /dev/null
+/usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_ext.ml
+/usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_quotation.ml

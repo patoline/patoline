@@ -539,20 +539,167 @@ let override_flag =
     o:STR("!")? -> (if o <> None then Override else Fresh)
   end
 
+(* declare expression soon for antiquotation *)
+type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
+let (expression_lvl, set_expression_lvl) = grammar_family ()
+let expr = expression_lvl Top
+let expression= expr
+let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
+let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
+
+(****************************************************************************
+ * Quotation and anti-quotation code                                        *
+ ****************************************************************************)
+
+type quote_env1 = {
+  mutable expression_stack : Parsetree.expression list;
+  mutable pattern_stack : Parsetree.expression list;
+  mutable type_stack : Parsetree.expression list;
+}
+type quote_env2 = {
+  mutable expression_stack : Parsetree.expression list;
+  mutable pattern_stack : Parsetree.pattern list;
+  mutable type_stack : Parsetree.core_type list;
+}
+type quote_env =
+    First of quote_env1 | Second of quote_env2
+
+let quote_stack : quote_env Stack.t =
+  Stack.create ()
+
+
+let empty_quote_env1 () = First {
+  expression_stack = [];
+  pattern_stack  = [];
+  type_stack =  [];
+}
+
+let empty_quote_env2 () = Second {
+  expression_stack = [];
+  pattern_stack  = [];
+  type_stack =  [];
+}
+
+let push_pop_expression e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.expression_stack <- e::env.expression_stack; e
+    | Second env ->
+       match env.expression_stack with
+	 e::l -> env.expression_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_expression e =
+    match Stack.top quote_stack with
+    | Second env -> assert false
+    | First env ->
+	env.expression_stack <- e::env.expression_stack
+
+let push_pop_type e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.type_stack <- e::env.type_stack; { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; }
+    | Second env ->
+       match env.type_stack with
+	 e::l -> env.type_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_type e =
+    match Stack.top quote_stack with
+    | Second env -> assert false
+    | First env ->
+	env.type_stack <- e::env.type_stack
+
+let push_pop_pattern e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.pattern_stack <- e::env.pattern_stack; { ppat_desc = Ppat_any; ppat_loc = e.pexp_loc; }
+    | Second env ->
+       match env.pattern_stack with
+	 e::l -> env.pattern_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_pattern e =
+    match Stack.top quote_stack with
+    | Second env -> assert false
+    | First env ->
+	env.pattern_stack <- e::env.pattern_stack
+
+let quote_expression_2 e =
+  parse_string expression blank "quote..." e
+
+let quote_expression _loc e =
+  Stack.push (empty_quote_env1 ()) quote_stack ;
+  let _ = parse_string expression blank "quote..." e; in
+  let env = match Stack.pop quote_stack with
+      First e -> e | Second _ -> assert false
+  in
+  let push_expr =
+    loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","push"); loc = _loc }),
+		   ["", loc_expr _loc (Pexp_apply(
+							      (loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","empty_quote_env2"); loc = _loc })), 
+							      ["", loc_expr _loc (Pexp_construct({ txt = Lident "()"; loc = _loc }, None, false))]));
+		   
+		    "", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))
+  in
+  let fill push_expr name l = 
+    let p = 
+      List.fold_left
+	(fun acc e ->
+	 let push_e =
+	   loc_expr _loc (Pexp_apply(
+			      loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml",name); loc = _loc }),
+			      ["", e]))
+	 in
+	 match acc with
+	   None -> Some push_e
+	 | Some acc -> 
+	    Some (loc_expr _loc (Pexp_sequence(acc, push_e))))
+	None l
+    in
+    match p with
+      None -> push_expr
+    | Some e -> loc_expr _loc (Pexp_sequence(push_expr, e))
+  in
+  let push_expr = fill push_expr "push_expression" env.expression_stack in
+  let push_expr = fill push_expr "push_pattern" env.pattern_stack in
+  let push_expr = fill push_expr "push_type" env.type_stack in
+  let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident{ txt = Lident "ignore"; loc = _loc }),
+				       ["",loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","pop"); loc = _loc }),
+		   ["", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_stack"); loc = _loc })]))]))
+  in
+  let parse_expr = 
+    loc_expr _loc (Pexp_apply(
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_expression_2"); loc = _loc }),
+		       ["", loc_expr _loc (Pexp_constant( Const_string e ))]))
+  in
+  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc }),  parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
+
 (****************************************************************************
  * Type expressions                                                         *
  ****************************************************************************)
 
-type type_prio = TopType | As | Arr | Prod | Dash | AppType | AtomType
+type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
 
-let type_prios = [TopType; As; Arr; Prod; Dash; AppType; AtomType]
+let type_prios = [TopType; As; Arr; Prod; DashType; AppType; AtomType]
 
 let next_type_prio = function
   | TopType -> As
   | As -> Arr
   | Arr -> Prod
-  | Prod -> Dash
-  | Dash -> AppType
+  | Prod -> DashType
+  | DashType -> AppType
   | AppType -> AtomType
   | AtomType -> AtomType
 
@@ -679,6 +826,7 @@ let typexpr_base : core_type grammar =
     STR("#") cp:class_path  o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
+  | CHR('$') e:expression CHR('$') -> push_pop_type e
   end
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
@@ -692,11 +840,11 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
       (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> ln te _loc (Ptyp_alias (te, id)))
-  | STR("#") cp:class_path o:opt_present when lvl' >= Dash && lvl <= Dash ->
+  | STR("#") cp:class_path o:opt_present when lvl' >= DashType && lvl <= DashType ->
       let cp = { txt = cp; loc = _loc_cp } in
       let tex = fun te ->
         ln te _loc (Ptyp_class (cp, [te], o))
-      in (Dash, tex)
+      in (DashType, tex)
   end)
 
 let typexpr_suit =
@@ -1010,8 +1158,6 @@ let next_pat_prio = function
 let pattern_lvl, set_pattern_lvl = grammar_family ()
 let pattern = pattern_lvl TopPat
 
-let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
-
 let pattern_base = memoize1 (fun lvl ->
   glr
   | vn:value_name ->
@@ -1100,7 +1246,8 @@ let pattern_base = memoize1 (fun lvl ->
                              Ppat_constraint (loc_pat _loc_mn unpack, pt)
       in
       (AtomPat, loc_pat _loc pat)
-  end)
+  | CHR('$') e:expression CHR('$') -> (AtomPat, push_pop_pattern e)
+ end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e = loc_pat (merge f.ppat_loc _loc) e in
@@ -1148,8 +1295,6 @@ let _ = set_pattern_lvl (fun lvl ->
 (****************************************************************************
  * Expressions                                                              *
  ****************************************************************************)
-
-type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
 
 let expression_lvls = [ Top; Let; Seq; Coerce; If; Aff; Tupl; Disj; Conj; Eq; Append; Cons; Sum; Prod; Pow; Opp; App; Dash; Dot; Prefix; Atom]
 
@@ -1204,11 +1349,6 @@ let infix_prio s =
 
 let prefix_prio s =
   if s = "-" || s = "-." then Opp else Prefix
-
-let (expression_lvl, set_expression_lvl) = grammar_family ()
-let expr = expression_lvl Top
-let expression= expression_lvl Top
-let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 
 let array_function loc str name =
   let name = if !fast then "unsafe_" ^ name else name in
@@ -1493,6 +1633,7 @@ let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
 let module_type = declare_grammar ()
 let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
 
+
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   glr
@@ -1560,6 +1701,8 @@ let expression_base = memoize1 (fun lvl ->
                               Pexp_constraint (me, Some pt, None)
       in
       (Atom, loc_expr _loc desc)
+  | CHR('<') STR("expr") CHR(':') s:string_literal CHR('>') -> (Atom, quote_expression _loc_s s)
+  | CHR('$') e:expression CHR('$') -> (Atom, push_pop_expression e)
   end)
 
 let apply_lbl _loc (lbl, e) =
