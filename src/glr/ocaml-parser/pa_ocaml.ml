@@ -1165,19 +1165,17 @@ let constr_decl =
     end
   in
   glr
-  | cn:constr_name te:{of_kw te:typexpr}? ->
-     let tes =
-       match te with
-       | None   -> []
-       | Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
-       | Some t -> [t]
-     in
-     let c = { txt = cn; loc = _loc_cn } in
-     (c, tes, None, _loc_cn)
-  | cn:constr_name STR(":") ats:{te:typexpr tes:{STR("*") te:typexpr}*
-    STR("->") -> (te::tes)}?[[]] te:typexpr ->
-      let c = { txt = cn; loc = _loc_cn } in
-      (c, ats, Some te, _loc_cn)
+  | cn:constr_name (tes,te):{ te:{of_kw te:typexpr}? ->
+			      let tes =
+				match te with
+				| None   -> []
+				| Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
+				| Some t -> [t]
+			      in (tes, None)
+			    | CHR(':') ats:{te:typexpr tes:{CHR('*') te:typexpr}*
+							     STR("->") -> (te::tes)}?[[]] te:typexpr -> ats, Some te}
+	    -> let c = { txt = cn; loc = _loc_cn } in
+	       (c, tes, te, _loc_cn)
   end
 
 let field_decl =
