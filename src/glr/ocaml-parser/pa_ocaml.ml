@@ -546,6 +546,15 @@ let expr = expression_lvl Top
 let expression= expr
 let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
 let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
+let module_item = declare_grammar ()
+let signature_item = declare_grammar ()
+type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
+let typexpr_lvl, set_typexpr_lvl = grammar_family ()
+let typexpr = typexpr_lvl TopType
+type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
+                  | AtomPat
+let pattern_lvl, set_pattern_lvl = grammar_family ()
+let pattern = pattern_lvl TopPat
 
 (****************************************************************************
  * Quotation and anti-quotation code                                        *
@@ -555,11 +564,15 @@ type quote_env1 = {
   mutable expression_stack : Parsetree.expression list;
   mutable pattern_stack : Parsetree.expression list;
   mutable type_stack : Parsetree.expression list;
+  mutable str_item_stack : Parsetree.expression list;
+  mutable sig_item_stack : Parsetree.expression list;
 }
 type quote_env2 = {
   mutable expression_stack : Parsetree.expression list;
   mutable pattern_stack : Parsetree.pattern list;
   mutable type_stack : Parsetree.core_type list;
+  mutable str_item_stack : Parsetree.structure_item_desc list;
+  mutable sig_item_stack : Parsetree.signature_item_desc list;
 }
 type quote_env =
     First of quote_env1 | Second of quote_env2
@@ -572,12 +585,16 @@ let empty_quote_env1 () = First {
   expression_stack = [];
   pattern_stack  = [];
   type_stack =  [];
+  str_item_stack =  [];
+  sig_item_stack =  [];
 }
 
 let empty_quote_env2 () = Second {
   expression_stack = [];
   pattern_stack  = [];
   type_stack =  [];
+  str_item_stack =  [];
+  sig_item_stack =  [];
 }
 
 let push_pop_expression e =
@@ -594,8 +611,8 @@ let push_pop_expression e =
 
 let push_expression e =
     match Stack.top quote_stack with
-    | Second env -> assert false
-    | First env ->
+    | First env -> assert false
+    | Second env ->
 	env.expression_stack <- e::env.expression_stack
 
 let push_pop_type e =
@@ -612,8 +629,8 @@ let push_pop_type e =
 
 let push_type e =
     match Stack.top quote_stack with
-    | Second env -> assert false
-    | First env ->
+    | First env -> assert false
+    | Second env ->
 	env.type_stack <- e::env.type_stack
 
 let push_pop_pattern e =
@@ -630,16 +647,59 @@ let push_pop_pattern e =
 
 let push_pattern e =
     match Stack.top quote_stack with
-    | Second env -> assert false
-    | First env ->
+    | First env -> assert false
+    | Second env ->
 	env.pattern_stack <- e::env.pattern_stack
 
-let quote_expression_2 e =
-  parse_string expression blank "quote..." e
+let push_pop_str_item e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.str_item_stack <- e::env.str_item_stack; Pstr_eval e; 
+    | Second env ->
+       match env.str_item_stack with
+	 e::l -> env.str_item_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
 
-let quote_expression _loc e =
+let push_str_item e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.str_item_stack <- e::env.str_item_stack
+
+let push_pop_sig_item e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.sig_item_stack <- e::env.sig_item_stack;
+	let _loc = e.pexp_loc in 
+	Psig_value({ txt = ""; loc = _loc }, { pval_type = { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; };
+							     pval_prim = []; pval_loc = _loc})
+    | Second env ->
+       match env.sig_item_stack with
+	 e::l -> env.sig_item_stack <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_sig_item e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.sig_item_stack <- e::env.sig_item_stack
+
+let quote_expression _loc e name =
   Stack.push (empty_quote_env1 ()) quote_stack ;
-  let _ = parse_string expression blank "quote..." e; in
+  let _ = match name with
+    | "expression" -> ignore (parse_string expression blank "quote..." e)
+    | "type"  -> ignore (parse_string typexpr blank "quote..." e)
+    | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
+    | "str_item"  -> ignore (parse_string module_item blank "quote..." e)
+    | "sig_item"  -> ignore (parse_string signature_item blank "quote..." e)
+    | _ -> assert false
+    in
   let env = match Stack.pop quote_stack with
       First e -> e | Second _ -> assert false
   in
@@ -681,7 +741,7 @@ let quote_expression _loc e =
   in
   let parse_expr = 
     loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_expression_2"); loc = _loc }),
+		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml","quote_"^name^"_2"); loc = _loc }),
 		       ["", loc_expr _loc (Pexp_constant( Const_string e ))]))
   in
   loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc }),  parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
@@ -689,8 +749,6 @@ let quote_expression _loc e =
 (****************************************************************************
  * Type expressions                                                         *
  ****************************************************************************)
-
-type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
 
 let type_prios = [TopType; As; Arr; Prod; DashType; AppType; AtomType]
 
@@ -703,8 +761,6 @@ let next_type_prio = function
   | AppType -> AtomType
   | AtomType -> AtomType
 
-let typexpr_lvl, set_typexpr_lvl = grammar_family ()
-let typexpr = typexpr_lvl TopType
 let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
 
 let poly_typexpr =
@@ -1139,8 +1195,6 @@ let constant =
   end
 
 (* Patterns *)
-type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
-                  | AtomPat
 
 let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; CoercePat ; ConstrPat
                     ; AtomPat ]
@@ -1154,9 +1208,6 @@ let next_pat_prio = function
   | CoercePat -> ConstrPat
   | ConstrPat -> AtomPat
   | AtomPat -> AtomPat
-
-let pattern_lvl, set_pattern_lvl = grammar_family ()
-let pattern = pattern_lvl TopPat
 
 let pattern_base = memoize1 (fun lvl ->
   glr
@@ -1701,7 +1752,9 @@ let expression_base = memoize1 (fun lvl ->
                               Pexp_constraint (me, Some pt, None)
       in
       (Atom, loc_expr _loc desc)
-  | CHR('<') STR("expr") CHR(':') s:string_literal CHR('>') -> (Atom, quote_expression _loc_s s)
+  | CHR('<') name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
+                  | STR("str_item") -> "str_item" | STR("sig_item") -> "sig_item" } 
+       CHR(':') s:string_literal CHR('>') -> (Atom, quote_expression _loc_s s name)
   | CHR('$') e:expression CHR('$') -> (Atom, push_pop_expression e)
   end)
 
@@ -1792,8 +1845,6 @@ let _ = set_expression_lvl (fun lvl ->
 (****************************************************************************
  * Module expressions (module implementations)                              *
  ****************************************************************************)
-let module_item = declare_grammar ()
-let signature_item = declare_grammar ()
 
 let module_expr_base = 
   glr
@@ -1894,6 +1945,7 @@ let module_item_base =
   | include_kw me:module_expr -> Pstr_include me
   | class_kw r:{ ctd:classtype_definition -> Pstr_class_type ctd
                | cds:class_definition -> Pstr_class cds } -> r
+  | CHR('$') e:expression CHR('$') -> push_pop_str_item e
   | e:expression -> Pstr_eval e
   end
 
@@ -1936,6 +1988,7 @@ let signature_item_base =
   | include_kw me:module_type -> Psig_include me
   | class_kw r:{ ctd:classtype_definition -> Psig_class_type ctd
                | cs:class_specification -> Psig_class cs } -> r
+  | CHR('$') e:expression CHR('$') -> push_pop_sig_item e
 
  end
 
@@ -1996,3 +2049,19 @@ let _ =
     end;
     close_out stdout
   end
+
+let quote_expression_2 e =
+  parse_string expression blank "quote..." e
+
+let quote_type_2 e =
+  parse_string typexpr blank "quote..." e
+
+let quote_pattern_2 e =
+  parse_string pattern blank "quote..." e
+
+let quote_str_item_2 e =
+  parse_string module_item blank "quote..." e
+
+let quote_sig_item_2 e =
+  parse_string signature_item blank "quote..." e
+
