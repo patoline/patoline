@@ -990,7 +990,7 @@ let tag_spec =
               | None   -> []
               | Some l -> [l]
       in
-      Rtag (tn, false, t)
+      Rtag (tn, true, t)
   | te:typexpr ->
       Rinherit te
   end
@@ -1002,7 +1002,7 @@ let tag_spec_first =
               | None   -> []
               | Some l -> [l]
       in
-      [Rtag (tn, false, t)]
+      [Rtag (tn, true, t)]
   | te:typexpr? STR("|") ts:tag_spec ->
       match te with
       | None    -> [ts]
