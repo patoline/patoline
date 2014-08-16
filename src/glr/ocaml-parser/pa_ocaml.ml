@@ -1435,13 +1435,13 @@ let pattern_base = memoize1 (fun lvl ->
       let ic1, ic2 = Char.code c1, Char.code c2 in
       if ic1 > ic2 then assert false; (* FIXME error message invalid range *)
       let const i = Ppat_constant (Const_char (Char.chr i)) in
-      let rec range a b =
+      let rec range acc a b =
         if a > b then assert false
-        else if a = b then [a]
-        else a :: range (a+1) b
+        else if a = b then a::acc
+        else range (a::acc) (a+1) b
       in
-      let opts = List.map (fun i -> loc_pat _loc (const i)) (range ic1 ic2) in
-      (AtomPat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(acc, o))) (List.hd opts) (List.tl opts))
+      let opts = List.map (fun i -> loc_pat _loc (const i)) (range [] ic1 ic2) in
+      (AtomPat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(o, acc))) (List.hd opts) (List.tl opts))
   | c:constant ->
       (AtomPat, loc_pat _loc (Ppat_constant c))
   | STR("(") p:pattern STR(")") -> (AtomPat, p)
@@ -1519,7 +1519,7 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   | as_kw vn:value_name when lvl' >= AsPat && lvl <= AsPat ->
       (AsPat, fun p ->
         ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
-  | STR("|") p':(pattern_lvl AltPat) when lvl' > AltPat && lvl <= AltPat ->
+  | STR("|") p':(pattern_lvl (next_pat_prio AltPat)) when lvl' >= AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
         ln p _loc (Ppat_or(p, p')))
   | ps:{STR(",") p:(pattern_lvl (next_pat_prio TupPat)) -> p}+ when lvl' > TupPat && lvl <= TupPat ->

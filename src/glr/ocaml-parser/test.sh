@@ -27,9 +27,9 @@ for f in $files; do
 #  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
 
-  cat /tmp/foo.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/foo.tree2
-  cat /tmp/bar.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > /tmp/bar.tree2
-  diff /tmp/foo.tree2 /tmp/bar.tree2 > $diff/$(basename $f).diff
+  cat /tmp/foo.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > $diff/$(basename $f).pa_ocaml
+  cat /tmp/bar.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\[.*\])\( ghost\)\?//' > $diff/$(basename $f).ocamlc
+  diff $diff/$(basename $f).pa_ocaml  $diff/$(basename $f).ocamlc > $diff/$(basename $f).diff
   echo diff size: $(wc $diff/$(basename $f).diff)
   echo
 done
