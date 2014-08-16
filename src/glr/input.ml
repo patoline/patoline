@@ -1,8 +1,8 @@
 
 type buffer = { fname : string; lnum : int; length : int; contents : string; mutable next : buffer }
 
-let rec empty_buffer () = 
-  let rec res = { fname = ""; lnum = max_int; length = 0; contents = ""; next = res } in
+let rec empty_buffer fname lnum = 
+  let rec res = { fname; lnum; length = 0; contents = ""; next = res } in
   res
 
 let is_empty b = b == b.next
@@ -22,12 +22,12 @@ let rec read b i =
  
 let push b fname lnum contents =
   let length = String.length contents in
-  let res = { fname; lnum; length; contents; next = empty_buffer () } in
+  let res = { fname; lnum; length; contents; next = empty_buffer fname (lnum+1) } in
   b.next <- res;
   res
 
 let line_num_directive =
-  Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]\\)[\"]\\)?[ \t]*"
+  Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]*\\)[\"]\\)?[ \t]*$"
 
 let define_directive =
   Str.regexp "[ \t]*if[ \t]*def[ \t]*\\([^ \t]\\)[ \t]*\\([\"]\\([^\"]\\)[\"]\\)[ \t]*"
@@ -145,7 +145,7 @@ let buffer_from_fun name get_line data =
 	End_of_file -> fun () -> `End_of_file
     end ()
   in
-  let start = empty_buffer () in
+  let start = empty_buffer name 0 in
   let status = fn name true 0 start in
   match status with
   | `Else ->

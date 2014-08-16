@@ -439,9 +439,14 @@ let push_bool e =
 	env.bool_stack <- e::env.bool_stack
 
 let quote_expression _loc e name =
+  let cols =
+    let n = Location.(Lexing.(_loc.loc_start.pos_cnum)) in
+    String.make (n+1) ' '
+  in
+  let e = Location.(Lexing.(Printf.sprintf "#%d %S\n%s" (_loc.loc_start.pos_lnum - 1) _loc.loc_start.pos_fname)) cols ^ e in  
   Stack.push (empty_quote_env1 ()) quote_stack ;
   let _ = match name with
-    | "expression" -> ignore (parse_string expression blank "quote..." e)
+    | "expression" -> ignore (parse_string (glr e:expression EOF end) blank "quote..." e)
     | "type"  -> ignore (parse_string typexpr blank "quote..." e)
     | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
     | "str_item"  -> ignore (parse_string module_item blank "quote..." e)
