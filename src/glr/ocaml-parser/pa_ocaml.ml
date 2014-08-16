@@ -1440,6 +1440,16 @@ let constant =
   | i:integer_literal -> Const_int i
   end
 
+(* we do like parser.mly from ocaml: neg_constant for pattern only *)
+let neg_constant =
+  glr
+    {CHR('-') | STR("-.")} f:float_literal -> Const_float ("-"^f)
+  | CHR('-') i:int32_lit       -> Const_int32 (Int32.neg i)
+  | CHR('-') i:int64_lit       -> Const_int64 (Int64.neg i)
+  | CHR('-') i:nat_int_lit     -> Const_nativeint (Nativeint.neg i)
+  | CHR('-') i:integer_literal -> Const_int (-i)
+  end
+
 (* Patterns *)
 
 let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; CoercePat ; ConstrPat
@@ -1472,7 +1482,7 @@ let pattern_base = memoize1 (fun lvl ->
       in
       let opts = List.map (fun i -> loc_pat _loc (const i)) (range [] ic1 ic2) in
       (AtomPat, List.fold_left (fun acc o -> loc_pat _loc (Ppat_or(o, acc))) (List.hd opts) (List.tl opts))
-  | c:constant ->
+  | c:{c:constant | c:neg_constant} ->
       (AtomPat, loc_pat _loc (Ppat_constant c))
   | STR("(") p:pattern STR(")") -> (AtomPat, p)
   | lazy_kw p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
