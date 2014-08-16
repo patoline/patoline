@@ -660,14 +660,14 @@ let int_dec_re = "[0-9][0-9_]*"
 let int_hex_re = "[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
 let int_oct_re = "[0][oO][0-7][0-7_]*"
 let int_bin_re = "[0][bB][01][01_]*"
-let int_gen_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
-let int_re = int_gen_re
+let int_pos_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
+let int_re = "[-]?"^ int_pos_re
 let int32_re = par_re int_re ^ "l"
 let int64_re = par_re int_re ^ "L"
 let natint_re = par_re int_re ^ "n"
 let integer_literal =
   glr
-    i:RE(int_re) -> int_of_string i
+    i:RE(int_pos_re) -> int_of_string i
   | CHR('$') STR("int") CHR(':') e:expression CHR('$') -> push_pop_int e
   end
 

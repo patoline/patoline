@@ -4,7 +4,7 @@ ocaml=`ocamlc -where`
 local=./tests
 diff=./tests
 
-files="$local/test.ml $local/objects.ml $local/variants.ml \
+files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
        $ocaml/pervasives.ml $ocaml/pervasives.mli $ocaml/list.ml $ocaml/list.mli \
        $ocaml/set.ml $ocaml/set.mli $ocaml/map.ml $ocaml/map.mli $local/bigarray.ml $ocaml/bigarray.mli \
        $ocaml/string.ml $ocaml/string.mli $ocaml/array.ml $ocaml/array.mli $ocaml/char.ml $ocaml/char.mli \
