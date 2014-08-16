@@ -993,24 +993,24 @@ let method_type =
 
 let tag_spec =
   glr
-  | tn:tag_name te:{of_kw te:typexpr}? ->
-      let t = match te with
-              | None   -> []
-              | Some l -> [l]
+  | tn:tag_name te:{of_kw amp:CHR('&')? te:typexpr}? ->
+      let amp,t = match te with
+              | None   -> true, []
+              | Some (amp,l) -> amp<>None, [l]
       in
-      Rtag (tn, true, t)
+      Rtag (tn, amp, t)
   | te:typexpr ->
       Rinherit te
   end
 
 let tag_spec_first =
   glr
-  | tn:tag_name te:{of_kw te:typexpr}? ->
-      let t = match te with
-              | None   -> []
-              | Some l -> [l]
+  | tn:tag_name te:{of_kw amp:CHR('&')? te:typexpr}? ->
+      let amp,t = match te with
+              | None   -> true,[]
+              | Some (amp,l) -> amp<>None, [l]
       in
-      [Rtag (tn, true, t)]
+      [Rtag (tn, amp, t)]
   | te:typexpr? STR("|") ts:tag_spec ->
       match te with
       | None    -> [ts]
@@ -1019,9 +1019,10 @@ let tag_spec_first =
 
 let tag_spec_full =
   glr
-  | tn:tag_name tes:{of_kw STR("&")? te:typexpr
-    tes:{STR("&") te:typexpr}* -> (te::tes)}?[[]] ->
-      Rtag (tn, false, tes)
+  | tn:tag_name (amp,tes):{of_kw amp:STR("&")? te:typexpr
+    tes:{STR("&") te:typexpr}* -> amp<>None,(te::tes)}?[true,[]] ->
+		    
+      Rtag (tn, amp, tes)
   | te:typexpr ->
       Rinherit te
   end
@@ -1037,8 +1038,8 @@ let polymorphic_variant_type : core_type grammar =
       in
       loc_typ _loc (Ptyp_variant (tss, false, None))
   | STR("[<") STR("|")? tfs:tag_spec_full tfss:{STR("|") tsf:tag_spec_full}*
-    tns:{STR(">") tns:tag_name+}? STR("]") ->
-      loc_typ _loc (Ptyp_variant (tfs :: tfss, true, tns))
+    tns:{STR(">") tns:tag_name+}?[[]] STR("]") ->
+      loc_typ _loc (Ptyp_variant (tfs :: tfss, true, Some tns))
   end
 
 let package_constraint =
@@ -1716,7 +1717,10 @@ let right_member =
 
 let value_binding =
   glr
-  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member}* -> ((pat, e)::l)
+  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member}* ->
+	    (match pat.ppat_desc with
+	    | Ppat_constraint(pat,ty) -> (pat, loc_expr _loc_e (Pexp_constraint(e,Some ty,None)))::l
+	    | _ -> ((pat, e)::l))
   end
 
 let match_cases = memoize1 (fun lvl ->
