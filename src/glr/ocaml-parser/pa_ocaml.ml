@@ -110,7 +110,8 @@ let locate g =
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
 let merge l1 l2 =
-  Location.({loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
+  Location.(
+    {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
 
 let _ = glr_locate locate merge
 
@@ -664,10 +665,10 @@ let int_hex_re = "[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
 let int_oct_re = "[0][oO][0-7][0-7_]*"
 let int_bin_re = "[0][bB][01][01_]*"
 let int_pos_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
-let int_re = "[-]?"^ int_pos_re
-let int32_re = par_re int_re ^ "l"
-let int64_re = par_re int_re ^ "L"
-let natint_re = par_re int_re ^ "n"
+let int_re = int_pos_re
+let int32_re = par_re int_pos_re ^ "l"
+let int64_re = par_re int_pos_re ^ "L"
+let natint_re = par_re int_pos_re ^ "n"
 let integer_literal =
   glr
     i:RE(int_pos_re) -> int_of_string i
@@ -699,9 +700,36 @@ let bool_lit =
   | CHR('$') STR("bool") CHR(':') e:expression CHR('$') -> if push_pop_bool e then "true" else "false"
   end
 
+let mk_unary_opp name _loc_name arg _loc_arg =
+  let res = 
+    match name, arg.pexp_desc with
+    | "-", Pexp_constant(Const_int n) ->
+       Pexp_constant(Const_int(-n))
+    | "-", Pexp_constant(Const_int32 n) ->
+       Pexp_constant(Const_int32(Int32.neg n))
+    | "-", Pexp_constant(Const_int64 n) ->
+       Pexp_constant(Const_int64(Int64.neg n))
+    | "-", Pexp_constant(Const_nativeint n) ->
+       Pexp_constant(Const_nativeint(Nativeint.neg n))
+    | ("-" | "-."), Pexp_constant(Const_float f) ->
+       Pexp_constant(Const_float("-" ^ f))
+    | "+", Pexp_constant(Const_int _)
+    | "+", Pexp_constant(Const_int32 _)
+    | "+", Pexp_constant(Const_int64 _)
+    | "+", Pexp_constant(Const_nativeint _)
+    | ("+" | "+."), Pexp_constant(Const_float _) -> arg.pexp_desc
+    | ("-" | "-." | "+" | "+."), _ ->
+       let p = loc_expr _loc_name (Pexp_ident { txt = Lident ("~" ^ name); loc = _loc_name}) in
+       Pexp_apply(p, ["", arg])
+    | _ ->
+       let p = loc_expr _loc_name (Pexp_ident { txt = Lident (name); loc = _loc_name}) in
+       Pexp_apply(p, ["", arg])
+  in
+  loc_expr (merge _loc_name _loc_arg) res
+
 (* Floating-point literals *)
-let float_lit_dec    = "[-]?[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
-let float_lit_no_dec = "[-]?[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
+let float_lit_dec    = "[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
+let float_lit_no_dec = "[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
 let float_re = union_re [float_lit_dec; float_lit_no_dec]
 
 let float_literal =
@@ -781,7 +809,7 @@ let label =
 
 let opt_label =
   glr
-  | STR("?") ln:label_name -> ("?" ^ ln)
+  | STR("?") ln:label_name -> ln
   end
 
 let maybe_opt_label =
@@ -800,6 +828,7 @@ let is_reserved_symb s =
 
 let infix_symb_re  = union_re [
  "[=<>@^|&+*/$%:-][!$%&*+./:<=>?@^|~-]*";
+ "!=";
  "mod" ^ "\\b";
  "land" ^ "\\b";
  "lor" ^ "\\b";
@@ -808,7 +837,7 @@ let infix_symb_re  = union_re [
  "lsl" ^ "\\b";
  "lsr" ^ "\\b";
  "asr" ^ "\\b"]
-let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)"
+let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
 
 let infix_symbol =
   glr
@@ -817,7 +846,7 @@ let infix_symbol =
 
 let prefix_symbol =
   glr
-    sym:RE(prefix_symb_re) -> if is_reserved_symb sym then raise Give_up; sym
+    sym:RE(prefix_symb_re) -> if is_reserved_symb sym || sym = "!=" then raise Give_up; sym
   end
 
 (* Line number directives *)
@@ -1078,7 +1107,7 @@ let typexpr_base : core_type grammar =
   | STR("(") te:typexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
   | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
-      loc_typ _loc (Ptyp_arrow (ln, mkoption _loc_te te, te'))
+      loc_typ _loc (Ptyp_arrow ("?" ^ ln, mkoption _loc_te te, te'))
   | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
@@ -1613,7 +1642,7 @@ let infix_prio s =
   | _ -> Printf.printf "%s\n%!" s; assert false
 
 let prefix_prio s =
-  if s = "-" || s = "-." then Opp else Prefix
+  if s = "-" || s = "-." || s = "+" || s = "+." then Opp else Prefix
 
 let array_function loc str name =
   let name = if !fast then "unsafe_" ^ name else name in
@@ -1672,9 +1701,9 @@ let constructor =
 let argument =
   glr
   | id:label STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
-  | id:opt_label STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
+  | id:opt_label STR(":") e:(expression_lvl (next_exp App)) -> ("?"^id, e)
   | id:label -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
-  | id:opt_label -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
+  | id:opt_label -> ("?"^id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
     (* NOTE the "id" in the first position of the couple was not prefixed with a "?". I guess this was a bug. *)
   | e:(expression_lvl (next_exp App)) -> ("", e)
   end
@@ -1701,9 +1730,9 @@ let parameter =
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
-      in (id, e, pat))
-  | id:opt_label STR":" pat:pattern -> (id, None, pat)
-  | id:opt_label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+      in ("?"^id, e, pat))
+  | id:opt_label STR":" pat:pattern -> ("?"^id, None, pat)
+  | id:opt_label -> ("?"^id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   end
 
 let right_member =
@@ -1717,10 +1746,11 @@ let right_member =
 
 let value_binding =
   glr
+  | vn:lowercase_ident CHR(':') ty:typexpr e:right_member l:{and_kw pat:pattern e:right_member}* ->
+      let pat = loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }) in
+      (pat, loc_expr _loc_e (Pexp_constraint(e,Some ty,None)))::l
   | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member}* ->
-	    (match pat.ppat_desc with
-	    | Ppat_constraint(pat,ty) -> (pat, loc_expr _loc_e (Pexp_constraint(e,Some ty,None)))::l
-	    | _ -> ((pat, e)::l))
+      ((pat, e)::l)
   end
 
 let match_cases = memoize1 (fun lvl ->
@@ -1951,8 +1981,7 @@ let expression_base = memoize1 (fun lvl ->
   | STR("{") e:{e:(expression_lvl (next_exp Seq)) with_kw}? l:record_list STR("}") ->
      (Atom, loc_expr _loc (Pexp_record(l,e)))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
-     let p = match p with "-" -> "~-" | "-." -> "~-." | _ -> p in
-     (lvl', loc_expr _loc (Pexp_apply(loc_expr _loc_p (Pexp_ident { txt = Lident p; loc = _loc_p}), ["", e])))
+     (lvl', mk_unary_opp p _loc_p e _loc_e)
   | while_kw e:expression do_kw e':expression done_kw ->
       (Atom, loc_expr _loc (Pexp_while(e, e')))
   | for_kw id:lowercase_ident CHR('=') e:expression d:downto_flag

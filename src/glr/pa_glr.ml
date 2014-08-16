@@ -41,6 +41,8 @@ let mkpatt _loc (id, (p:Ast.patt option)) = match p, !do_locate with
   | Some p, Some _ -> <:patt< ((_, $p$) as $lid:id$) >>
 				  
 let rec apply _loc ids e =
+  let ids = List.mapi (fun i (id,x) ->
+		       ((if id = "_" then "_$" ^ string_of_int i else id), x)) ids in
   let e = match !do_locate with
       None -> e
     | Some(_,merge) ->
