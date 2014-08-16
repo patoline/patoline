@@ -100,6 +100,9 @@ let blank str pos =
 
 let no_blank str pos = str, pos
 
+let ghost loc =
+  Location.({loc with loc_ghost = true})
+
 let locate g =
   filter_position g Lexing.(fun fname l pos l' pos' ->
     let s = { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
@@ -1059,6 +1062,10 @@ let opt_present =
   | EMPTY -> []
 end
 
+let mkoption loc d =
+  let loc = ghost loc in 
+  loc_typ loc (Ptyp_constr({ txt = Ldot (Lident "*predef*", "option"); loc = loc},[d]))
+
 let typexpr_base : core_type grammar =
   glr
   | STR("'") id:ident ->
@@ -1070,7 +1077,7 @@ let typexpr_base : core_type grammar =
   | STR("(") te:typexpr STR(")") ->
       loc_typ _loc te.ptyp_desc
   | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
-      loc_typ _loc (Ptyp_arrow (ln, te, te'))
+      loc_typ _loc (Ptyp_arrow (ln, mkoption _loc_te te, te'))
   | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
@@ -1332,7 +1339,7 @@ let class_type =
       let app acc (lab, te) =
         match lab with
         | None   -> pcty_loc _loc (Pcty_fun ("", te, acc))
-        | Some l -> pcty_loc _loc (Pcty_fun (l, te, acc))
+        | Some l -> pcty_loc _loc (Pcty_fun (l, (if l.[0] = '?' then mkoption _loc_tes te else te), acc))
       in
       List.fold_left app cbt (List.rev tes)
   end
