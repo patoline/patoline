@@ -37,3 +37,4 @@ done
 echo "test of the extensions to the syntax"
 /usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_ext.ml
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_ocaml $local/test_quotation.ml
+/usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_test_ext $local/test_extension.ml

@@ -58,11 +58,24 @@ $(d)/pa_glr: $(d)/pa_glr.cmx
 
 PA_GLR = $(GLR_DIR)/pa_glr
 
-$(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.ml $(d)/glr.cmxa $(PA_GLR)
+$(d)/ocaml-parser/pa_ocaml_prelude.cmx: $(d)/ocaml-parser/pa_ocaml_prelude.ml
 	$(ECHO) "[LINK] $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I +compiler-libs -package unix,glr -o $@ unix.cmxa str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $<
+	$(Q)$(OCAMLOPT_NOINTF) -c -pp $(PA_GLR) -I $(GLR_DIR)/ocaml-parser -I +compiler-libs -package unix,glr $<
 
-all: $(d)/pa_glr $(d)/ocaml-parser/pa_ocaml
+$(d)/ocaml-parser/pa_ocaml.cmx: $(d)/ocaml-parser/pa_ocaml.ml $(d)/ocaml-parser/pa_ocaml_prelude.cmx
+	$(ECHO) "[LINK] $< -> $@"
+	$(Q)$(OCAMLOPT_NOINTF) -c -pp $(PA_GLR) -I $(GLR_DIR)/ocaml-parser -I +compiler-libs -package unix,glr  $<
+
+$(d)/ocaml-parser/pa_ocaml: $(d)/ocaml-parser/pa_ocaml.cmx $(d)/glr.cmxa $(PA_GLR)
+	$(ECHO) "[LINK] $< -> $@"
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -I $(GLR_DIR)/ocaml-parser -I +compiler-libs -package unix,glr -o $@ unix.cmxa str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $(GLR_DIR)/ocaml-parser/pa_ocaml_prelude.cmx $<
+
+$(d)/ocaml-parser/pa_test_ext: $(d)/ocaml-parser/pa_test_ext.ml $(d)/ocaml-parser/pa_ocaml_prelude.cmx $(d)/ocaml-parser/pa_ocaml.cmx $(d)/glr.cmxa $(PA_GLR)
+	$(ECHO) "[LINK] $< -> $@"
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(GLR_DIR)/ocaml-parser/pa_ocaml -I $(GLR_DIR)/ocaml-parser -I +compiler-libs -package unix,glr -o $@ unix.cmxa str.cmxa $(GLR_DIR)/glr.cmxa ocamlcommon.cmxa $(GLR_DIR)/ocaml-parser/pa_ocaml_prelude.cmx $< $(GLR_DIR)/ocaml-parser/pa_ocaml.cmx
+
+
+all: $(d)/pa_glr $(d)/ocaml-parser/pa_ocaml $(d)/ocaml-parser/pa_test_ext
 
 CLEAN += $(d)/pa_glr $(d)/*.cmx $(d)/*.o $(d)/*.cmi $(d)/*.cmo $(d)/*.cma $(d)/*.cmxa $(d)/*.a
 CLEAN += $(d)/ocaml-parser/pa_ocaml $(d)/ocaml-parser/*.cmx $(d)/ocaml-parser/*.o $(d)/ocaml-parser/*.cmi $(d)/ocaml-parser/*.cmo $(d)/ocaml-parser/*.cma $(d)/ocaml-parser/*.cmxa $(d)/ocaml-parser/*.a
