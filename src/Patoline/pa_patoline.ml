@@ -102,9 +102,9 @@ let _ = glr_locate locate Loc.merge
  * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
  ****************************************************************************)
 
-let patoline_basic_text_paragraph = declare_grammar ()
+let patoline_basic_text_paragraph = declare_grammar "patoline_basic_text_paragraph"
 
-let patoline_math_toplevel = declare_grammar ()
+let patoline_math_toplevel = declare_grammar "patoline_math_toplevel"
 
 let parser_stack = Stack.create ()
 
@@ -163,7 +163,7 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           assert (!ptr = 0);
           let pos = Loc.stop_off _loc + 1 in
           let parse = glr p:patoline_basic_text_paragraph STR("|>") -> p end in
-          let new_pos, ast = partial_parse_string parse blank2 "" str pos in
+          let new_pos, ast = List.hd (partial_parse_string parse blank2 "" str pos) in
           ptr := new_pos - pos - 1; ast
       ] ];
 
@@ -175,7 +175,7 @@ module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
           assert (!ptr = 0);
           let pos = Loc.stop_off _loc + 1 in
           let parse = glr p:patoline_math_toplevel STR("$>") -> p end in
-          let new_pos, ast = partial_parse_string parse blank2 "" str pos in
+          let new_pos, ast = List.hd (partial_parse_string parse blank2 "" str pos) in
           ptr := new_pos - pos - 1; ast
       ] ];
 
@@ -447,7 +447,7 @@ let _ = set_grammar patoline_math_toplevel math_toplevel
  ****************************************************************************)
 
 (* bool param -> can contain special text environments //...// **...** ... *)
-let paragraph_basic_text, set_paragraph_basic_text = grammar_family ()
+let paragraph_basic_text, set_paragraph_basic_text = grammar_family "paragraph_basic_text"
 
 (***** Patoline macros  *****)
 let macro_argument =
@@ -561,8 +561,8 @@ let _ = set_grammar patoline_basic_text_paragraph text_only
  * Paragraphs                                                               *
  ****************************************************************************)
 
-let paragraph = declare_grammar ()
-let paragraphs = declare_grammar ()
+let paragraph = declare_grammar "paragraph"
+let paragraphs = declare_grammar "paragraphs"
 
 let paragraph_elt =
   glr
@@ -627,7 +627,7 @@ let _ = set_grammar paragraphs (
  * Sections, layout of the document.                                        *
  ****************************************************************************)
 
-let text = declare_grammar ()
+let text = declare_grammar "text"
 
 let section = "\\(===?=?=?=?=?=?=?\\)\\|\\(---?-?-?-?-?-?-?\\)"
 let op_section = "[-=]>"

@@ -111,33 +111,33 @@ IFDEF DEBUG THEN
 ENDIF;
   r
 
-let not_ready _ = failwith "not_ready"
+let not_ready name _ = failwith ("not_ready: "^name)
 
-let declare_grammar () = {
-  firsts = Lazy.from_fun not_ready;
-  firsts_sym = Lazy.from_fun not_ready;
-  accept_empty = Lazy.from_fun not_ready;
-  parse = not_ready;
+let declare_grammar name = {
+  firsts = Lazy.from_fun (not_ready name);
+  firsts_sym = Lazy.from_fun (not_ready name);
+  accept_empty = Lazy.from_fun (not_ready name);
+  parse = (not_ready name);
 }
 
 let set_grammar p1 p2 =
-  if p1.parse != not_ready then failwith "this grammar can not be set";
+(*  if p1.parse != not_ready then failwith "this grammar can not be set";*)
   p1.firsts <- p2.firsts;
   p1.firsts_sym <- p2.firsts_sym;
   p1.accept_empty <- p2.accept_empty;
   p1.parse <- p2.parse
 
-let grammar_family ?param_to_string () =
+let grammar_family ?param_to_string name =
   let tbl = Hashtbl.create 101 in
   let in_build = ref true in 
   let gn = fun param ->
     try Hashtbl.find tbl param with Not_found ->
       let message = match param_to_string with
-	  None -> "Too late to introduce a new grammar in a family"
-	| Some f -> Printf.sprintf "Too late to introduce %a in a family" f param
+	  None -> Printf.sprintf "Too late to introduce a new grammar in a family %s" name
+	| Some f -> Printf.sprintf "Too late to introduce %a in a family %s" f param name
       in
       if not !in_build then failwith message;
-      let g = declare_grammar () in
+      let g = declare_grammar name in
       Hashtbl.add tbl param g;
       g
   in gn,
@@ -204,15 +204,20 @@ let empty : 'a -> 'a grammar = fun a ->
     parse = fun blank str pos next key g -> 
 	    single str pos (g str pos str pos a) }
 
-let debug : string -> 'a -> 'a grammar = fun msg a ->
+let list_empty x = empty [x]
+ 
+let debug_aux : 'a -> string -> 'a grammar = fun a msg ->
   { firsts = Lazy.from_val empty_charset;
     firsts_sym = Lazy.from_val [];
     accept_empty = Lazy.from_val true;
     parse = fun blank str pos next key g ->
-	    let line = line str in
-	    let current = String.sub line pos (min (String.length line - pos) 10) in
-	    Printf.eprintf "%s(%d): %S\n" msg pos current;
+	    let l = line str in
+	    let current = String.sub l pos (min (String.length l - pos) 10) in
+	    Printf.eprintf "%s(%d,%d): %S\n" msg (line_num str) pos current;
 	    single str pos (g str pos str pos a) }
+
+let debug = debug_aux ()
+let list_debug = debug_aux [()]
 
 let fail : string -> 'a grammar = fun msg ->
   { firsts = Lazy.from_val empty_charset;
@@ -220,6 +225,8 @@ let fail : string -> 'a grammar = fun msg ->
     accept_empty =  Lazy.from_val false;
     parse = fun blank str pos next key g -> 
 	     parse_error key msg str pos }
+
+let list_fail = fail
 
 let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar =
   (fun fn set empty msg ->
@@ -248,6 +255,8 @@ END;
 	  let str'', pos'' = blank str' pos' in
 	  single str'' pos'' (g str pos str' pos' a)
     }
+
+let list_char c x = char c [x]
 
 let string : string -> 'a -> 'a grammar 
   = fun s a -> 
@@ -294,13 +303,15 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
       parse = 
 	fun blank str pos next key g ->
 IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Regexp(%s) %s\n%!" pos name (let c, _,_ = read str pos in Char.escaped c)
+	  Printf.eprintf "%d: Regexp(%s) %s \"%s\" %S\n%!" pos name r0 (let c, _,_ = read str pos in Char.escaped c) (line str)
 END;
-	  if string_match r (line str) pos then
-	    let f n = matched_group n (line str) in
+          let l = line str in
+	  if string_match r l pos then
+	    let f n = matched_group n l in
 	    let pos' = match_end () in
+	    let res = a f in (* now not after, blank may use Str !*)
 	    let str'', pos'' = blank str pos' in
-	    let res = single str'' pos'' (g str pos str pos' (a f)) in
+	    let res = single str'' pos'' (g str pos str pos' res) in
 IFDEF DEBUG THEN
 	    Printf.eprintf "%d: Regexp OK\n%!" pos'
 END;
@@ -313,8 +324,8 @@ END;
     }
 
 
-let list_regexp : string -> ((int -> string) -> 'a) -> 'a list grammar
-  = fun r f -> regexp r (fun groupe -> [f groupe])
+let list_regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a list grammar
+  = fun r ?(name=String.escaped r) f -> regexp r ~name (fun groupe -> [f groupe])
 
 let mk_empty in_analysis fn =
   lazy (
@@ -661,9 +672,9 @@ END;
 	  PosMap.map (fun (l, pos, l', pos', x) -> g l pos l' pos' x) res
     }
 
-let list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+let list_fixpoint' : 'a -> ('a -> 'a) list grammar -> 'a list grammar
   = fun a f1 ->
-    merge_fixpoint List.append [a] (apply (fun f l -> flat_map f l) f1)
+    merge_fixpoint List.append [a] (apply (fun f l -> flat_map (fun g -> List.map g l) f) f1)
 
 let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
@@ -688,9 +699,9 @@ END;
 	  fn PosMap.empty (single str pos (str, pos, a))
     }
 
-let list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+let list_fixpoint : 'a -> ('a -> 'a) list grammar -> 'a list grammar
   = fun a f1 ->
-    fixpoint' [a] (apply (fun f l -> flat_map f l) f1)
+    fixpoint' [a] (apply (fun f l -> flat_map (fun g -> List.map g l) f) f1)
 
 let alternatives' : 'a grammar list -> 'a grammar 
   = fun ls ->
@@ -815,7 +826,8 @@ let remove_duplicate l =
   List.sort compare
 	    (List.fold_left (fun acc x -> if List.mem x acc then acc else x :: acc) [] l)
 
-let parse_buffer grammar blank str = 
+let parse_buffer grammar blank str =
+  let grammar = sequence grammar (eof ()) (fun x _ -> x) in
   let key = next_key () in
   let la = try 	  let str, pos = blank str 0 in
 		  grammar.parse blank str pos None key (fun _ _ _ _ x -> x) 
@@ -837,11 +849,7 @@ let partial_parse_buffer grammar blank str pos =
 		let str, pos, msgs = Hashtbl.find max_hash key in
 		raise (Parse_error (fname str, line_num str, pos, remove_duplicate msgs))
   in
-  let la = PosMap.fold (fun (_,pos) a acc -> (pos,a)::acc) la [] in
-  match la with
-  | [] -> assert false
-  | [n,r] -> n,r
-  | (n,_)::_ -> assert false
+  PosMap.fold (fun (_,pos) a acc -> (pos,a)::acc) la []
 
 let partial_parse_string grammar blank name str = 
   let str = buffer_from_string name str in

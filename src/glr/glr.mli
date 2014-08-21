@@ -31,7 +31,7 @@ type ('a) grammar
     a "name" is provided for error messages only *)
 val parse_string : 'a grammar -> blank -> string -> string -> 'a
 
-val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> int * 'a
+val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> (int * 'a) list
 
 (** [parse_fine parser blank name in_channel]: load the content of the channel in a string
      and parses it. Because it is loaded in memory, it works only for real file, not stream *)
@@ -48,8 +48,14 @@ val eof : 'a -> 'a grammar
 (** [empty x]: parses no characters (always succeed) and return [x]*)
 val empty : 'a -> 'a grammar
 
-(** identical to empty but print the string on stderr for debugging *)
-val debug : string -> 'a -> 'a grammar
+(** [list_empty x := empty [x]] *)
+val list_empty : 'a -> 'a list grammar
+
+(** [debug msg] is identical to [empty ()] but print [msg] on stderr for debugging *)
+val debug : string -> unit grammar
+
+(** [list_debug msg] is identical to [list_empty ()] but print [msg] on stderr for debugging *)
+val list_debug :  string -> unit list grammar
 
 (** [fail msg]: always fails and add msg to Parse_error *)
 val fail : string -> 'a grammar
@@ -68,19 +74,22 @@ val list_eof : 'a -> 'a list grammar
 (** [char str x]: parses a given char and returns [x] *)
 val char : char -> 'a -> 'a grammar
 
+(** [list_char str x := char s [a]] *)
+val list_char : char -> 'a -> 'a list grammar
+
 (** [string str x]: parses a given string and returns [x] *)
 val string : string -> 'a -> 'a grammar
 
 (** [list_string str x := string s [a]] *)
 val list_string : string -> 'a -> 'a list grammar
 
-(** [list_regexp r f := regexp r (fun groupe -> [f groupe])] *)
-val list_regexp : string -> ((int -> string) -> 'a) -> 'a list grammar
-
 (** [regexp re g]: parses a given regexp, and returns [g groupe] where [groupe n] gives the
    n-th matching group as in the [Str] module. The optional argument is a name for
    the regexp, used in error messages *)
 val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
+
+(** [list_regexp r f := regexp r (fun groupe -> [f groupe])] *)
+val list_regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a list grammar
 
 (** [sequence p1 p2 action]: parses with [p1] which returns [x], then parses with [p2] the rest of
     the input which return [y] and returns [action x y] *)
@@ -144,13 +153,13 @@ val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 val merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
 
 (** [list_fixpoint' a grammar := merge_fixpoint List.append [a] (apply (fun f l -> flat_map f l) grammar)]*)
-val list_fixpoint' : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+val list_fixpoint' : 'a -> ('a -> 'a) list grammar -> 'a list grammar
 
 (** [fixpoint a p] : similar to the previous function, but only consider the maximum parsing *)
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 
 (** [list_fixpoint a grammar :=  fixpoint [a] (apply (fun f l -> flat_map f l) grammar)] *)
-val list_fixpoint : 'a -> ('a -> 'a list) grammar -> 'a list grammar
+val list_fixpoint : 'a -> ('a -> 'a) list grammar -> 'a list grammar
 
 (** [alternatives' [p1;...;pn]] : parses as all [pi], and keep all success *)
 val alternatives' : 'a grammar list -> 'a grammar 
@@ -187,9 +196,9 @@ val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
 
 
-(** [declare_grammar ()] return a new grammar, that can be used to define other grammar, but that
-    can not be used yet *)
-val declare_grammar : unit -> 'a grammar
+(** [declare_grammar name] return a new grammar, that can be used to define other grammar, but that
+    can not be used yet. The name is used in error messages *)
+val declare_grammar : string -> 'a grammar
 
 (** [set_grammar p p']: defines a previously declared grammar p using p' *)
 val set_grammar : 'a grammar -> 'a grammar -> unit
@@ -205,7 +214,7 @@ val set_grammar : 'a grammar -> 'a grammar -> unit
 ]}
 *)
 
-val grammar_family :  ?param_to_string:(unit -> 'a -> string) -> unit -> ('a -> 'b grammar) * (('a -> 'b grammar) -> 'a list -> unit)
+val grammar_family : ?param_to_string:(unit -> 'a -> string) -> string -> ('a -> 'b grammar) * (('a -> 'b grammar) -> 'a list -> unit)
 (**
   [grammar_family seeds] return a pair [(gr, set_gr)] where gr is a finite family of
   grammars parametrized by value of type 'a the type of the elments of the list seeds.

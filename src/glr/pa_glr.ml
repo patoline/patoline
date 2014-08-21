@@ -88,7 +88,7 @@ let apply_option _loc opt e =
     (match d with None ->
       <:expr<Glr.apply List.rev (Glr.fixpoint' [] (Glr.apply (fun x l -> [x :: l]) $e$))>>
     | Some d ->
-      <:expr<Glr.fixpoint $d$ $e$>>)
+      <:expr<Glr.fixpoint' $d$ $e$>>)
   | `Fixpoint1 d ->
    (match d with None ->
        <:expr<Glr.sequence $e$ (Glr.fixpoint [] (Glr.apply (fun x l -> [x :: l]) $e$)) (fun e l -> [e::List.rev l])>>
@@ -344,7 +344,7 @@ EXTEND Gram
       <:expr<Glr.fail str>>
 
   | "DEBUG"; str = expr LEVEL "simple" -> 
-      <:expr< Glr.debug $str$ () >>
+      <:expr< Glr.debug $str$ >>
 
   | "CHR"; str = expr LEVEL "simple"; opt = glr_opt_expr ->
       let e = match opt with None -> <:expr<()>> | Some e -> e in

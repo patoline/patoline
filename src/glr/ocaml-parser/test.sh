@@ -38,3 +38,14 @@ echo "test of the extensions to the syntax"
 /usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_ext.ml
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_ocaml $local/test_quotation.ml
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_test_ext $local/test_extension.ml
+echo
+
+echo "test of parser extension"
+/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ../examples/calc.ml 
+/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ../examples/calc_all.ml
+cp ./pa_ocaml_prelude.ml $local/
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
+cp ./pa_parser.ml $local/
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_parser.ml
+cp ./pa_ocaml.ml $local/
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_ocaml.ml

@@ -70,13 +70,33 @@ exception Unclosed_comment of int * int
  *     "(*" and or "*)",
  *   - single '"' character.
  *)
+let print_blank_state ch s =
+  let s = match s with
+      `Ini -> "Ini"
+    | `Str -> "Str"
+    | `Cls -> "Cls"
+    | `Opn -> "Opn"
+    | `Esc -> "Esc"
+    | `Chr -> "Chr"
+  in
+  Printf.fprintf ch "%s" s
+
 let blank str pos =
   let rec fn lvl state prev (str, pos as cur) =
     if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
     else 
       let c,str',pos' = read str pos in 
       let next =str', pos' in
+(*      Printf.eprintf "%d:%d -> lvl:%d,state:%a,char:%c\n%!" (line_num str) pos lvl print_blank_state state c;*)
       match state, c with
+      | `Esc , _                    -> fn lvl `Str cur next
+      | `Str , '"'                  -> fn lvl `Ini cur next
+      | `Chr , _                    -> fn lvl `Ini cur next
+      | `Str , '\\'                 -> fn lvl `Esc cur next
+      | `Str , _                    -> fn lvl `Str cur next
+      | _    , '"' when lvl > 0     -> fn lvl `Str cur next
+      | _    , '\'' when lvl > 0     -> fn lvl `Chr cur next
+
       | `Ini , '('                  -> fn lvl `Opn cur next
       | `Opn , '*'                  -> fn (lvl + 1) `Ini cur next
       | `Opn , _   when lvl = 0     -> prev
@@ -86,14 +106,6 @@ let blank str pos =
       | `Cls , '*'                  -> fn lvl `Cls cur next
       | `Cls , ')'                  -> fn (lvl - 1) `Ini cur next
       | `Cls , _                    -> fn lvl `Ini cur next
-
-      | `Str , '"'                  -> fn lvl `Ini cur next
-      | _    , '"' when lvl > 0     -> (try fn lvl `Str cur next with
-                                         Unclosed_comment _ ->
-                                           fn lvl `Ini cur next)
-      | `Str , '\\'                 -> fn lvl `Esc cur next
-      | `Esc , _                    -> fn lvl `Str cur next
-      | `Str , _                    -> fn lvl `Str cur next
 
       | _    , (' '|'\t'|'\r'|'\n') -> fn lvl `Ini cur next
       | _    , _ when lvl > 0       -> fn lvl `Ini cur next
@@ -118,18 +130,47 @@ let merge l1 l2 =
 (* declare expression soon for antiquotation *)
 module Initial = struct
   type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
-  let (expression_lvl : expression_lvl -> expression grammar), set_expression_lvl = grammar_family ()
+
+let next_exp = function
+    Top -> Let
+  | Let -> Seq
+  | Seq -> Coerce
+  | Coerce -> If
+  | If -> Aff
+  | Aff -> Tupl
+  | Tupl -> Disj
+  | Disj -> Conj
+  | Conj -> Eq
+  | Eq -> Append
+  | Append -> Cons
+  | Cons -> Sum
+  | Sum -> Prod
+  | Prod -> Pow
+  | Pow -> Opp
+  | Opp -> App
+  | App -> Dash
+  | Dash -> Dot
+  | Dot -> Prefix
+  | Prefix -> Atom
+  | Atom -> Atom
+
+
+  let (expression_lvl : expression_lvl -> expression grammar), set_expression_lvl = grammar_family "expression_lvl"
   let expr = expression_lvl Top
   let expression= expr
-  let module_item : structure_item grammar = declare_grammar ()
-  let signature_item : signature_item grammar = declare_grammar ()
+  let module_item : structure_item grammar = declare_grammar "module_item"
+  let signature_item : signature_item grammar = declare_grammar "signature_item"
   type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
-  let (typexpr_lvl : type_prio -> core_type grammar), set_typexpr_lvl = grammar_family ()
+  let (typexpr_lvl : type_prio -> core_type grammar), set_typexpr_lvl = grammar_family "typexpr_lvl"
   let typexpr = typexpr_lvl TopType
   type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
                       | AtomPat
-  let (pattern_lvl : pattern_prio -> pattern grammar), set_pattern_lvl = grammar_family ()
+  let (pattern_lvl : pattern_prio -> pattern grammar), set_pattern_lvl = grammar_family "pattern_lvl"
   let pattern = pattern_lvl TopPat
+
+  let let_binding : (Parsetree.pattern * Parsetree.expression) list grammar = declare_grammar "let_binding"
+  let class_body : Parsetree.class_structure grammar = declare_grammar "class_body"
+  let class_expr : Parsetree.class_expr grammar = declare_grammar "class_expr"
 
   let extra_expressions = ([] : (expression_lvl * expression) grammar list)
   let extra_types = ([] : core_type grammar list)
@@ -139,7 +180,7 @@ module Initial = struct
 
   let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
   let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
-
+  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
 
 (****************************************************************************
  * Quotation and anti-quotation code                                        *
@@ -537,6 +578,192 @@ let quote_str_item_2 e =
 let quote_sig_item_2 e =
   parse_string signature_item blank "quote..." e
 
+(****************************************************************************
+ * Basic syntactic elements (identifiers and literals)                      *
+ ****************************************************************************)
+let par_re s = "\\(" ^ s ^ "\\)"
+let union_re l = 
+  let l = List.map (fun s -> par_re s ) l in
+  String.concat "\\|" l
+
+(* Identifiers *)
+(* NOTE "_" is not a valid identifier, we handle it separately *)
+let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)"
+let cident_re = "[A-Z][a-zA-Z0-9_']*"
+let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
+
+let reserved_ident =
+  [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
+  ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
+  ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
+  ; "inherit" ; "initializer" ; "land" ; "lazy" ; "let" ; "lor" ; "lsl"
+  ; "lsr" ; "lxor" ; "match" ; "method" ; "mod" ; "module" ; "mutable" ; "new"
+  ; "object" ; "of" ; "open" ; "or" ; "private" ; "rec" ; "sig" ; "struct"
+  ; "then" ; "to" ; "true" ; "try" ; "type" ; "val" ; "virtual" ; "when"
+  ; "while" ; "with" ]
+
+let is_reserved_id w =
+  List.mem w reserved_ident
+
+let ident =
+  glr
+    id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
+  | CHR('$') STR("ident") CHR(':') e:expression CHR('$') -> push_pop_string e
+  end
+
+let capitalized_ident =
+  glr
+    id:RE(cident_re) -> id
+  | CHR('$') STR("uid") CHR(':') e:expression CHR('$') -> push_pop_string e
+  end
+
+let lowercase_ident =
+  glr
+    id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
+  | CHR('$') STR("lid") CHR(':') e:expression CHR('$') -> push_pop_string e
+  end
+
+(****************************************************************************
+ * Several shortcuts for flags and keywords                                 *
+ ****************************************************************************)
+let key_word s = 
+   let len_s = String.length s in
+   assert(len_s > 0);
+   black_box 
+     (fun str pos ->
+      let str' = ref str in
+      let pos' = ref pos in
+      for i = 0 to len_s - 1 do
+	let c, _str', _pos' = read !str' !pos' in
+	if c <> s.[i] then raise Give_up;
+	str' := _str'; pos' := _pos'
+      done;
+      let str' = !str' and pos' = !pos' in 
+      let c,_,_ = read str' pos' in
+      match c with
+	'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> raise Give_up
+	| _ -> (), str', pos')
+     (Charset.singleton s.[0]) false s
+
+let mutable_kw = key_word "mutable"
+let mutable_flag =
+  glr
+  | mutable_kw -> Mutable
+  | EMPTY      -> Immutable
+  end
+
+let private_kw = key_word "private"
+let private_flag =
+  glr
+  | private_kw -> Private
+  | EMPTY      -> Public
+  end
+
+let virtual_kw = key_word "virtual"
+let virtual_flag =
+  glr
+  | virtual_kw -> Virtual
+  | EMPTY      -> Concrete
+  end
+
+let rec_kw = key_word "rec"
+let rec_flag =
+  glr
+  | rec_kw -> Recursive
+  | EMPTY  -> Nonrecursive
+  end
+
+let to_kw = key_word "to"
+let downto_kw = key_word "downto"
+let downto_flag =
+  glr
+  | to_kw     -> Upto
+  | downto_kw -> Downto
+  end
+
+let method_kw = key_word "method"
+let object_kw = key_word "object"
+let class_kw = key_word "class"
+let inherit_kw = key_word "inherit"
+let as_kw = key_word "as"
+let of_kw = key_word "of"
+let module_kw = key_word "module"
+let open_kw = key_word "open"
+let include_kw = key_word "include"
+let type_kw = key_word "type"
+let val_kw = key_word "val"
+let external_kw = key_word "external"
+let constraint_kw = key_word "constraint"
+let begin_kw = key_word "begin"
+let end_kw = key_word "end"
+let and_kw = key_word "and"
+let true_kw = key_word "true"
+let false_kw = key_word "false"
+let exception_kw = key_word "exception"
+let when_kw = key_word "when"
+let fun_kw = key_word "fun"
+let function_kw = key_word "function"
+let let_kw = key_word "let"
+let in_kw = key_word "in"
+let initializer_kw = key_word "initializer"
+let with_kw = key_word "with"
+let while_kw = key_word "while"
+let for_kw = key_word "for"
+let do_kw = key_word "do"
+let done_kw = key_word "done"
+let new_kw = key_word "new"
+let assert_kw = key_word "assert"
+let if_kw = key_word "if"
+let then_kw = key_word "then"
+let else_kw = key_word "else"
+let try_kw = key_word "try"
+let match_kw = key_word "match"
+let struct_kw = key_word "struct"
+let functor_kw = key_word "functor"
+let sig_kw = key_word "sig"
+let lazy_kw = key_word "lazy"
+let glr_kw = key_word "glr"
+
+(* Integer literals *)
+let int_dec_re = "[0-9][0-9_]*"
+let int_hex_re = "[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
+let int_oct_re = "[0][oO][0-7][0-7_]*"
+let int_bin_re = "[0][bB][01][01_]*"
+let int_pos_re = (union_re [int_hex_re; int_oct_re;int_bin_re;int_dec_re]) (* decimal à la fin sinon ça ne marche pas !!! *)
+let int_re = int_pos_re
+let int32_re = par_re int_pos_re ^ "l"
+let int64_re = par_re int_pos_re ^ "L"
+let natint_re = par_re int_pos_re ^ "n"
+let integer_literal =
+  glr
+    i:RE(int_pos_re) -> int_of_string i
+  | CHR('$') STR("int") CHR(':') e:expression CHR('$') -> push_pop_int e
+  end
+
+let int32_lit =
+  glr
+    i:RE(int32_re)[groupe 1] -> Int32.of_string i
+  | CHR('$') STR("int32") CHR(':') e:expression CHR('$') -> push_pop_int32 e
+  end
+
+let int64_lit =
+  glr
+    i:RE(int64_re)[groupe 1] -> Int64.of_string i
+  | CHR('$') STR("int64") CHR(':') e:expression CHR('$') -> push_pop_int64 e
+  end
+
+let nat_int_lit =
+  glr
+    i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
+  | CHR('$') STR("natint") CHR(':') e:expression CHR('$') -> push_pop_natint e
+  end
+
+let bool_lit =
+  glr
+    false_kw -> "false"
+  | true_kw -> "true"
+  | CHR('$') STR("bool") CHR(':') e:expression CHR('$') -> if push_pop_bool e then "true" else "false"
+  end
 
 end
 
