@@ -5,6 +5,7 @@ local=./tests
 diff=./tests
 
 files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
+       $local/mixin2.ml $local/mixev.ml $local/mixev2.ml $local/mixmod.ml $local/mixmod5.ml $local/mixobj.ml \
        $ocaml/pervasives.ml $ocaml/pervasives.mli $ocaml/list.ml $ocaml/list.mli \
        $ocaml/set.ml $ocaml/set.mli $ocaml/map.ml $ocaml/map.mli $local/bigarray.ml $ocaml/bigarray.mli \
        $ocaml/string.ml $ocaml/string.mli $ocaml/array.ml $ocaml/array.mli $ocaml/char.ml $ocaml/char.mli \
@@ -22,8 +23,8 @@ for f in $files; do
   /usr/bin/time --format="%C: %e" ./pa_ocaml $f > /dev/null
   /usr/bin/time --format="%C: %e" camlp4o.opt $f > /dev/null
 
-  ocamlc.opt -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> /tmp/foo.tree
-  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
+  ocamlc.opt -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> /tmp/foo.tree
+  ocamlc.opt -rectypes -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
 #  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
 

@@ -163,7 +163,7 @@ let next_exp = function
   type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
   let (typexpr_lvl : type_prio -> core_type grammar), set_typexpr_lvl = grammar_family "typexpr_lvl"
   let typexpr = typexpr_lvl TopType
-  type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | CoercePat | ConstrPat
+  type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
                       | AtomPat
   let (pattern_lvl : pattern_prio -> pattern grammar), set_pattern_lvl = grammar_family "pattern_lvl"
   let pattern = pattern_lvl TopPat

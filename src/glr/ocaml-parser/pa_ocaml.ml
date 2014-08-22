@@ -323,7 +323,14 @@ let poly_typexpr =
   glr
   | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
       loc_typ _loc (Ptyp_poly (ids, te))
-  | te:typexpr -> loc_typ _loc (Ptyp_poly([], te))
+  | te:typexpr -> loc_typ _loc (Ptyp_poly ([], te))
+  end
+
+let maybe_poly_typexpr =
+  glr
+  | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
+      loc_typ _loc (Ptyp_poly (ids, te))
+  | te:typexpr -> te
   end
    
 let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
@@ -761,7 +768,7 @@ let neg_constant =
 
 (* Patterns *)
 
-let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; CoercePat ; ConstrPat
+let pattern_prios = [ TopPat ; AsPat ; AltPat ; TupPat ; ConsPat ; ConstrPat
                     ; AtomPat ]
 
 let next_pat_prio = function
@@ -769,8 +776,7 @@ let next_pat_prio = function
   | AsPat -> AltPat
   | AltPat -> TupPat
   | TupPat -> ConsPat
-  | ConsPat -> CoercePat
-  | CoercePat -> ConstrPat
+  | ConsPat -> ConstrPat
   | ConstrPat -> AtomPat
   | AtomPat -> AtomPat
 
@@ -881,11 +887,11 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
         ln p _loc (Ppat_construct(cons, Some args, false)))
   (* next is just for polymorphic type annotation in let ? *)
-  | te:STR(":") ids:{STR("'") id:ident}+ STR(".") te:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
-      (CoercePat, fun p -> 
+  | te:STR(":") ids:{STR("'") id:ident}+ STR(".") te:typexpr when lvl' >= AsPat && lvl <= AsPat ->
+      (AsPat, fun p -> 
         ln p _loc (Ppat_constraint(p, loc_typ _loc (Ptyp_poly (ids, te)))))
-  | te:STR(":") ty:typexpr when lvl' >= CoercePat && lvl <= CoercePat ->
-      (CoercePat, fun p -> 
+  | te:STR(":") ty:typexpr when lvl' >= AsPat && lvl <= AsPat ->
+      (AsPat, fun p -> 
         ln p _loc (Ppat_constraint(p, ty)))
   end)
 
@@ -1008,7 +1014,7 @@ let argument =
 
 let parameter =
   glr
-  | pat:pattern -> ("", None, pat)
+  | pat:(pattern_lvl (next_pat_prio AsPat)) -> ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
@@ -1035,20 +1041,28 @@ let parameter =
 
 let right_member =
   glr
-  | l:{lb:parameter}* CHR('=') e:expression -> 
+
+  | l:{lb:parameter}* ty:{CHR(':') t:typexpr}? CHR('=') e:expression -> 
       let f (lbl,opt,pat) acc =
         loc_expr _loc (Pexp_function (lbl, opt, [pat, acc]))
+      in
+      let e = match ty with
+	None -> e
+      | Some ty -> loc_expr _loc (Pexp_constraint(e, Some ty, None))
       in
       List.fold_right f l e
   end
 
 let _ = set_grammar let_binding (
   glr
-  | vn:lowercase_ident CHR(':') ty:typexpr e:right_member l:{and_kw pat:pattern e:right_member}* ->
-      let pat = loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }) in
-      (pat, loc_expr _loc_e (Pexp_constraint(e,Some ty,None)))::l
-  | pat:pattern e:right_member l:{and_kw pat:pattern e:right_member}* ->
+  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member l:{and_kw pat:pattern e:right_member}* ->
       ((pat, e)::l)
+  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member l:{and_kw pat:pattern e:right_member}* ->
+      let pat = loc_pat _loc (Ppat_constraint(
+        loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
+        ty))
+      in
+      (pat, e)::l
   end)
 
 let match_cases = memoize1 (fun lvl ->
@@ -1091,7 +1105,7 @@ let record_list =
 
 let obj_item = 
   glr 
-  | v:inst_var_name CHR('=') e:expression -> ({ txt = v ; loc = _loc_v }, e)
+  | v:inst_var_name CHR('=') e:(expression_lvl (next_exp Seq)) -> ({ txt = v ; loc = _loc_v }, e)
   end
 
 (* Class expression *)
@@ -1101,7 +1115,7 @@ let class_expr_base =
   | cp:class_path -> 
       let cp = { txt = cp; loc = _loc_cp } in
       loc_pcl _loc (Pcl_constr (cp, []))
-  | STR("[") te:typexpr tes:{STR(",") te:typexpr}* cp:class_path ->
+  | CHR('[') te:typexpr tes:{STR(",") te:typexpr}* CHR(']') cp:class_path ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_pcl _loc (Pcl_constr (cp, te :: tes))
   | STR("(") ce:class_expr STR(")") ->
@@ -1132,13 +1146,13 @@ let class_field =
   glr
   | inherit_kw o:override_flag ce:class_expr id:{as_kw id:lowercase_ident}? ->
       loc_pcf _loc (Pcf_inher (o, ce, id))
-  | val_kw o:override_flag m:mutable_flag ivn:inst_var_name te:typexpr?
+  | val_kw o:override_flag m:mutable_flag ivn:inst_var_name te:{CHR(':') t:typexpr}?
     CHR('=') e:expr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       let ex =
         match te with
         | None   -> e
-        | Some t -> { pexp_desc = Pexp_poly (e, Some t)
+        | Some t -> { pexp_desc = Pexp_constraint (e, Some t, None)
                     ; pexp_loc  = _loc_te }
       in
       loc_pcf _loc (Pcf_val (ivn, m, o, ex))
@@ -1149,25 +1163,24 @@ let class_field =
   | val_kw virtual_kw mutable_kw ivn:inst_var_name STR(":") te:typexpr ->
       let ivn = { txt = ivn; loc = _loc_ivn } in
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
+  | method_kw o:override_flag p:private_flag mn:method_name
+    te:{STR(":") te:poly_typexpr}? CHR('=') e:expr ->
+      let mn = { txt = mn; loc = _loc_mn } in
+      let e = loc_expr _loc (Pexp_poly (e, te)) in
+      loc_pcf _loc (Pcf_meth (mn, p, o, e))
   | method_kw o:override_flag p:private_flag mn:method_name ps:parameter*
     te:{STR(":") te:typexpr}? CHR('=') e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
-      let f (_,_,pat) acc =
-        { pexp_desc = Pexp_function("", None, [(pat, acc)])
-        ; pexp_loc  = _loc_ps }
+      let f (l,o,pat) acc = loc_expr _loc (Pexp_function(l, o, [(pat, acc)])) in
+      let e = 
+	match te with
+	  None -> e
+	| _ ->
+	   loc_expr _loc (Pexp_constraint (e, te, None))
       in
       let e : expression = List.fold_right f ps e in
-      let te = { pexp_desc = Pexp_poly (e, te)
-               ; pexp_loc  = _loc_te }
-      in
-      loc_pcf _loc (Pcf_meth (mn, p, o, te))
-  | method_kw o:override_flag p:private_flag mn:method_name STR(":")
-    pte:poly_typexpr CHR('=') e:expr ->
-      let mn = { txt = mn ; loc = _loc_mn } in
-      let et = { pexp_desc = Pexp_poly (e, Some pte)
-               ; pexp_loc  = _loc_pte }
-      in
-      loc_pcf _loc (Pcf_meth (mn, p, o, et))
+      let e = loc_expr _loc (Pexp_poly (e, None)) in
+      loc_pcf _loc (Pcf_meth (mn, p, o, e))
   | method_kw p:private_flag virtual_kw mn:method_name STR(":")
     pte:poly_typexpr ->
       let mn = { txt = mn ; loc = _loc_mn } in
@@ -1200,6 +1213,10 @@ let class_binding =
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
       in
+      let ce = List.fold_left (fun ce (l,o,p) ->
+			    loc_pcl _loc (Pcl_fun(l, o, p, ce)))
+		ce (List.rev ps)
+      in	      
       let ce = match ct with
                | None    -> ce
                | Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
