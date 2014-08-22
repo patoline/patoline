@@ -555,10 +555,10 @@ let _ = set_typexpr_lvl (fun lvl ->
 (* Type definition *)
 let type_param =
   glr
-  | var:opt_variance STR("'") id:ident ->
+  | var:opt_variance CHR('\'') id:ident ->
       (Some { txt = id; loc = _loc }, var)
-  | var:opt_variance STR("_") ->
-      (Some { txt = "_"; loc = _loc }, var)
+  | var:opt_variance CHR('_') ->
+      (None, var)
   end
 
 let type_params =
@@ -594,7 +594,7 @@ let constr_decl =
 				| Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
 				| Some t -> [t]
 			      in (tes, None)
-			    | CHR(':') ats:{te:typexpr tes:{CHR('*') te:typexpr}*
+			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio Prod)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio Prod))}*
 							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)}
 	    -> (let c = { txt = cn; loc = _loc_cn } in
 	        (c, tes, te, _loc_cn))
@@ -1073,7 +1073,7 @@ let argument =
 
 let parameter allow_new_type =
   glr
-  | pat:(pattern_lvl (next_pat_prio AsPat)) -> `Arg ("", None, pat)
+  | pat:(pattern_lvl AtomPat) -> `Arg ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
@@ -1328,10 +1328,10 @@ let expression_base = memoize1 (fun lvl ->
       (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
   | id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
-  | let_kw open_kw mp:module_path in_kw
+  | let_kw open_kw o:override_flag mp:module_path in_kw
     e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
       let mp = { txt = mp; loc = _loc_mp } in
-      (Let, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE on the git repository, the override flag arguments seems to have disapeared *)
+      (Let, loc_expr _loc (Pexp_open (o, mp, e))) (* NOTE on the git repository, the override flag arguments seems to have disapeared *)
   | mp:module_path STR(".") STR("(") e:expression STR(")") ->
       let mp = { txt = mp; loc = _loc_mp } in
       (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE idem (override flag) *)
