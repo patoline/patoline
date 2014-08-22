@@ -181,6 +181,8 @@ let next_exp = function
   let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
   let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
   let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
+  let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
+
 
 (****************************************************************************
  * Quotation and anti-quotation code                                        *

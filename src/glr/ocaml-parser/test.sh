@@ -21,7 +21,7 @@ files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
 for f in $files; do
   echo "File: $f"
   /usr/bin/time --format="%C: %e" ./pa_ocaml $f > /dev/null
-  /usr/bin/time --format="%C: %e" camlp4o.opt $f > /dev/null
+#  /usr/bin/time --format="%C: %e" camlp4o.opt $f > /dev/null
 
   ocamlc.opt -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> /tmp/foo.tree
   ocamlc.opt -rectypes -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree

@@ -279,3 +279,21 @@ let rec depth : 'a. 'a t2 -> 'b = function
     Leaf _ -> 1
   | Node x -> 1 + depth x
 
+
+let f45 (type t) () =
+  let module M = struct exception E of t end in
+  (fun x -> M.E x), (function M.E x -> Some x | _ -> None)
+
+let sort_uniq (type s) (cmp : s -> s -> int) =
+  let module S = Set.Make(struct type t = s let compare = cmp end) in
+  fun l ->
+  S.elements (List.fold_right S.add l S.empty)
+
+let f46 : type t.(t -> t) = fun (x:t) -> x
+
+(* non parsé avec camlp4 ! *)
+class poly_idt = 
+  object 
+    method idt : type t.(t -> t) = fun (x:t) -> x
+  end
+

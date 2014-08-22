@@ -40,6 +40,68 @@ let mk_unary_opp name _loc_name arg _loc_arg =
   in
   loc_expr (merge _loc_name _loc_arg) res
 
+let check_variable vl loc v =
+  if List.mem v vl then
+    raise Syntaxerr.(Error(Variable_in_scope(loc,v)))
+
+let varify_constructors var_names t =
+  let rec loop t =
+    let desc =
+      match t.ptyp_desc with
+      | Ptyp_any -> Ptyp_any
+      | Ptyp_var x ->
+          check_variable var_names t.ptyp_loc x;
+          Ptyp_var x
+      | Ptyp_arrow (label,core_type,core_type') ->
+          Ptyp_arrow(label, loop core_type, loop core_type')
+      | Ptyp_tuple lst -> Ptyp_tuple (List.map loop lst)
+      | Ptyp_constr( { txt = Lident s }, []) when List.mem s var_names ->
+          Ptyp_var s
+      | Ptyp_constr(longident, lst) ->
+          Ptyp_constr(longident, List.map loop lst)
+      | Ptyp_object lst ->
+          Ptyp_object (List.map loop_core_field lst)
+      | Ptyp_class (longident, lst, lbl_list) ->
+          Ptyp_class (longident, List.map loop lst, lbl_list)
+      | Ptyp_alias(core_type, string) ->
+          check_variable var_names t.ptyp_loc string;
+          Ptyp_alias(loop core_type, string)
+      | Ptyp_variant(row_field_list, flag, lbl_lst_option) ->
+          Ptyp_variant(List.map loop_row_field row_field_list,
+                       flag, lbl_lst_option)
+      | Ptyp_poly(string_lst, core_type) ->
+          List.iter (check_variable var_names t.ptyp_loc) string_lst;
+          Ptyp_poly(string_lst, loop core_type)
+      | Ptyp_package(longident,lst) ->
+          Ptyp_package(longident,List.map (fun (n,typ) -> (n,loop typ) ) lst)
+    in
+    {t with ptyp_desc = desc}
+  and loop_core_field t =
+    let desc =
+      match t.pfield_desc with
+      | Pfield(n,typ) ->
+          Pfield(n,loop typ)
+      | Pfield_var ->
+          Pfield_var
+    in
+    { t with pfield_desc=desc}
+  and loop_row_field  =
+    function
+      | Rtag(label,flag,lst) ->
+          Rtag(label,flag,List.map loop lst)
+      | Rinherit t ->
+          Rinherit (loop t)
+  in
+  loop t
+
+let wrap_type_annotation _loc newtypes core_type body =
+  let exp = loc_expr _loc (Pexp_constraint(body,Some core_type,None)) in
+  let exp =
+    List.fold_right (fun newtype exp -> loc_expr _loc (Pexp_newtype (newtype, exp)))
+      newtypes exp
+  in
+  (exp, loc_typ _loc (Ptyp_poly(newtypes,varify_constructors newtypes core_type)))
+
 (* Floating-point literals *)
 let float_lit_dec    = "[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
 let float_lit_no_dec = "[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
@@ -317,8 +379,6 @@ let next_type_prio = function
   | AppType -> AtomType
   | AtomType -> AtomType
 
-let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
-
 let poly_typexpr =
   glr
   | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
@@ -326,11 +386,10 @@ let poly_typexpr =
   | te:typexpr -> loc_typ _loc (Ptyp_poly ([], te))
   end
 
-let maybe_poly_typexpr =
+let poly_syntax_typexpr =
   glr
-  | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
-      loc_typ _loc (Ptyp_poly (ids, te))
-  | te:typexpr -> te
+  | type_kw ids:typeconstr_name+ STR(".") te:typexpr ->
+      (ids, te)
   end
    
 let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
@@ -1012,57 +1071,79 @@ let argument =
   | e:(expression_lvl (next_exp App)) -> ("", e)
   end
 
-let parameter =
+let parameter allow_new_type =
   glr
-  | pat:(pattern_lvl (next_pat_prio AsPat)) -> ("", None, pat)
+  | pat:(pattern_lvl (next_pat_prio AsPat)) -> `Arg ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
       let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
       | None   -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
-      (id, None, pat))
-  | id:label STR":" pat:pattern -> (id, None, pat)
-  | id:label -> (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+      `Arg (id, None, pat))
+  | id:label STR":" pat:pattern -> `Arg (id, None, pat)
+  | id:label -> `Arg (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
       let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_id _loc_t) (Ppat_constraint(pat,t))
-      in ("?"^id), e, pat)
+      in `Arg ("?"^id, e, pat))
   | id:opt_label STR":" STR"(" pat:pattern t:{STR(":") t:typexpr}? e:{CHR('=') e:expression}? STR")" -> (
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge _loc_pat _loc_t) (Ppat_constraint(pat,t))
-      in ("?"^id, e, pat))
-  | id:opt_label STR":" pat:pattern -> ("?"^id, None, pat)
-  | id:opt_label -> ("?"^id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+      in `Arg ("?"^id, e, pat))
+  | id:opt_label STR":" pat:pattern -> `Arg ("?"^id, None, pat)
+  | id:opt_label -> `Arg ("?"^id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | CHR('(') type_kw name:typeconstr_name CHR(')') when allow_new_type -> `Type(name)
+     
   end
+
+let apply_params _loc params e =
+  let f acc = function
+    | `Arg (lbl,opt,pat) ->
+      loc_expr _loc (Pexp_function (lbl, opt, [pat, acc]))
+    | `Type name -> loc_expr _loc (Pexp_newtype(name,acc))
+  in
+  List.fold_left f e (List.rev params)
+
+let apply_params_cls _loc params e =
+  let f acc = function
+    | `Arg (lbl,opt,pat) ->
+      loc_pcl _loc (Pcl_fun(lbl, opt, pat, acc))
+    | `Type name -> assert false
+  in
+  List.fold_left f e (List.rev params)
 
 let right_member =
   glr
 
-  | l:{lb:parameter}* ty:{CHR(':') t:typexpr}? CHR('=') e:expression -> 
-      let f (lbl,opt,pat) acc =
-        loc_expr _loc (Pexp_function (lbl, opt, [pat, acc]))
-      in
+  | l:{lb:(parameter true)}* ty:{CHR(':') t:typexpr}? CHR('=') e:expression -> 
       let e = match ty with
 	None -> e
       | Some ty -> loc_expr _loc (Pexp_constraint(e, Some ty, None))
       in
-      List.fold_right f l e
+      apply_params _loc l e
   end
 
 let _ = set_grammar let_binding (
   glr
-  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member l:{and_kw pat:pattern e:right_member}* ->
+  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member l:{and_kw l:let_binding}?[[]] ->
       ((pat, e)::l)
-  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member l:{and_kw pat:pattern e:right_member}* ->
+  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member l:{and_kw l:let_binding}?[[]] ->
       let pat = loc_pat _loc (Ppat_constraint(
         loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
         ty))
       in
       (pat, e)::l
+  | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member l:{and_kw l:let_binding}?[[]] ->
+    let (e, ty) = wrap_type_annotation _loc ids ty e in 									     
+    let pat = loc_pat _loc (Ppat_constraint(
+	loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
+        ty))
+    in
+    (pat, e)::l
   end)
 
 let match_cases = memoize1 (fun lvl ->
@@ -1122,11 +1203,8 @@ let class_expr_base =
       loc_pcl _loc ce.pcl_desc
   | STR("(") ce:class_expr STR(":") ct:class_type STR(")") ->
       loc_pcl _loc (Pcl_constraint (ce, ct))
-  | fun_kw ps:parameter+ STR("->") ce:class_expr ->
-      let f (l, eo, pat) acc =
-        loc_pcl _loc (Pcl_fun (l, eo, pat, acc))
-      in
-      List.fold_right f ps ce
+  | fun_kw ps:(parameter false)+ STR("->") ce:class_expr ->
+      apply_params_cls _loc ps ce
   | let_kw r:rec_flag lbs:let_binding in_kw ce:class_expr ->
       loc_pcl _loc (Pcl_let (r, lbs, ce))
   | object_kw cb:class_body end_kw ->
@@ -1164,21 +1242,26 @@ let class_field =
       let ivn = { txt = ivn; loc = _loc_ivn } in
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
   | method_kw o:override_flag p:private_flag mn:method_name
-    te:{STR(":") te:poly_typexpr}? CHR('=') e:expr ->
+    STR(":") te:poly_typexpr CHR('=') e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
-      let e = loc_expr _loc (Pexp_poly (e, te)) in
+      let e = loc_expr _loc (Pexp_poly (e, Some te)) in
       loc_pcf _loc (Pcf_meth (mn, p, o, e))
-  | method_kw o:override_flag p:private_flag mn:method_name ps:parameter*
+  | method_kw o:override_flag p:private_flag mn:method_name
+    STR(":") (ids,te):poly_syntax_typexpr CHR('=') e:expr ->
+      let mn = { txt = mn; loc = _loc_mn } in
+      let e, poly =  wrap_type_annotation _loc ids te e in
+      let e = loc_expr _loc (Pexp_poly (e, Some poly)) in
+      loc_pcf _loc (Pcf_meth (mn, p, o, e))
+  | method_kw o:override_flag p:private_flag mn:method_name ps:(parameter true)*
     te:{STR(":") te:typexpr}? CHR('=') e:expr ->
       let mn = { txt = mn; loc = _loc_mn } in
-      let f (l,o,pat) acc = loc_expr _loc (Pexp_function(l, o, [(pat, acc)])) in
       let e = 
 	match te with
 	  None -> e
 	| _ ->
 	   loc_expr _loc (Pexp_constraint (e, te, None))
       in
-      let e : expression = List.fold_right f ps e in
+      let e : expression = apply_params _loc ps e in
       let e = loc_expr _loc (Pexp_poly (e, None)) in
       loc_pcf _loc (Pcf_meth (mn, p, o, e))
   | method_kw p:private_flag virtual_kw mn:method_name STR(":")
@@ -1207,16 +1290,13 @@ let _ = set_grammar class_body (
 let class_binding =
   glr
   | v:virtual_flag tp:{STR("[") tp:type_parameters STR("]")}?[[]]
-    cn:class_name ps:parameter* ct:{STR(":") ct:class_type}? CHR('=')
+    cn:class_name ps:(parameter false)* ct:{STR(":") ct:class_type}? CHR('=')
     ce:class_expr ->
       let params, variance = List.split tp in
       let params = List.map (function None   -> { txt = ""; loc = _loc}
                                     | Some x -> x) params
       in
-      let ce = List.fold_left (fun ce (l,o,p) ->
-			    loc_pcl _loc (Pcl_fun(l, o, p, ce)))
-		ce (List.rev ps)
-      in	      
+      let ce = apply_params_cls _loc ps ce in
       let ce = match ct with
                | None    -> ce
                | Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
@@ -1265,8 +1345,8 @@ let expression_base = memoize1 (fun lvl ->
                (Let, loc_expr _loc (Pexp_letmodule({ txt = mn ; loc = _loc_mn }, me, e)))
              } -> r
   | function_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_function("", None, l)))
-  | fun_kw l:{lbl:parameter}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
-     (Let, (List.fold_right (fun (lbl,opt,pat) acc -> loc_expr _loc (Pexp_function(lbl, opt, [pat, acc]))) l e))
+  | fun_kw l:{lbl:(parameter true)}* STR"->" e:(expression_lvl (let_prio lvl)) when (lvl < App) -> 
+     (Let, apply_params _loc l e)
   | match_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
   | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl <= If) ->
