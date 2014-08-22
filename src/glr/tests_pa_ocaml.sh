@@ -3,6 +3,7 @@
 ocaml=`ocamlc -where`
 local=./tests_pa_ocaml
 diff=./tests_pa_ocaml
+ocamlversion=`ocamlc -version`
 
 files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
        $local/mixin2.ml $local/mixev.ml $local/mixev2.ml $local/mixmod.ml $local/mixmod5.ml $local/mixobj.ml \
@@ -37,16 +38,16 @@ done
 
 echo "test of the extensions to the syntax"
 /usr/bin/time --format="%C: %e" ocamlc -c -pp ./pa_ocaml $local/test_ext.ml
-/usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_ocaml $local/test_quotation.ml
+/usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_ocaml  -I bootstrap/$ocamlversion $local/test_quotation.ml
 /usr/bin/time --format="%C: %e" ocamlc -i -c -pp ./pa_test_ext $local/test_extension.ml
 echo
 
 echo "test of parser extension"
-/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ../examples/calc.ml 
-/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ../examples/calc_all.ml
+/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml 
+/usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc_all.ml
 cp ./pa_ocaml_prelude.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
 cp ./pa_parser.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_parser.ml
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
 cp ./pa_ocaml.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I .. -pp ./pa_ocaml $local/pa_ocaml.ml
+/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml

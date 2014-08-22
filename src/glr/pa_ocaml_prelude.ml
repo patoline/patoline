@@ -168,7 +168,11 @@ let next_exp = function
   let (pattern_lvl : pattern_prio -> pattern grammar), set_pattern_lvl = grammar_family "pattern_lvl"
   let pattern = pattern_lvl TopPat
 
+#ifversion >= 4.02
+  let let_binding : value_binding list grammar = declare_grammar "let_binding"
+#else
   let let_binding : (Parsetree.pattern * Parsetree.expression) list grammar = declare_grammar "let_binding"
+#endif
   let class_body : Parsetree.class_structure grammar = declare_grammar "class_body"
   let class_expr : Parsetree.class_expr grammar = declare_grammar "class_expr"
 
@@ -177,13 +181,47 @@ let next_exp = function
   let extra_patterns = ([] : (pattern_prio * pattern) grammar list)
   let extra_module_items = ([] : structure_item_desc grammar list)
   let extra_signature_items = ([] : signature_item_desc grammar list)
-
+#ifversion >= 4.02
+  let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; pexp_attributes = []; }
+  let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; ppat_attributes = []; }
+  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = []; }
+  let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = []; }
+  let const_string s = Const_string(s, None)			   
+  let pstr_eval e = Pstr_eval(e, [])
+  let psig_value _loc name ty prim =
+    Psig_value { pval_name = { txt = name; loc = _loc }; pval_type = ty ; pval_prim = prim ; pval_attributes = []; pval_loc = _loc }
+  let value_binding _loc pat expr =
+    { pvb_pat = pat; pvb_expr = expr; pvb_attributes = []; pvb_loc = _loc }
+  let pexp_construct(a,b) = Pexp_construct(a,b)
+  let pexp_constraint(a,b) = Pexp_constraint(a,b)
+  let pexp_coerce(a,b,c) = Pexp_coerce(a,b,c)
+  let pexp_function cases =
+    let cases = List.map (fun (pat, expr, guard) -> { pc_lhs = pat; pc_rhs = expr; pc_guard = guard } ) cases in
+    Pexp_function cases
+  let pexp_fun(label, opt, pat, expr) =
+    Pexp_fun(label,opt,pat,expr)
+#else
   let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
   let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
   let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
   let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
-
-
+  let const_string s = Const_string(s)			   
+  let pstr_eval e = Pstr_eval(e)			   
+  let psig_value _loc name ty prim =
+    Psig_value( { txt = name; loc = _loc }, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )
+  let value_binding _loc pat expr =
+    ( pat, expr)
+  let pexp_construct(a,b) = Pexp_construct(a,b,false)
+  let pexp_constraint(a,b) = Pexp_constraint(a,Some b,None)
+  let pexp_coerce(a,b,c) = Pexp_constraint(a,b,Some c)
+  let pexp_function(cases) =
+    let cases = List.map (fun (pat, expr, guard) -> 
+			  match guard with None -> (pat, expr)
+					 | Some e -> (pat, loc_expr (merge e.pexp_loc expr.pexp_loc) (Pexp_when(e,expr)))) cases in
+    Pexp_function("", None, cases)
+  let pexp_fun(label, opt, pat, expr) =
+    Pexp_function(label,opt,[pat,expr])
+#endif
 (****************************************************************************
  * Quotation and anti-quotation code                                        *
  ****************************************************************************)
@@ -279,7 +317,7 @@ let push_pop_type e =
   try
     match Stack.top quote_stack with
     | First env ->
-	env.type_stack <- e::env.type_stack; { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; }
+	env.type_stack <- e::env.type_stack; loc_typ  e.pexp_loc Ptyp_any; 
     | Second env ->
        match env.type_stack with
 	 e::l -> env.type_stack <- l; e
@@ -297,7 +335,7 @@ let push_pop_pattern e =
   try
     match Stack.top quote_stack with
     | First env ->
-	env.pattern_stack <- e::env.pattern_stack; { ppat_desc = Ppat_any; ppat_loc = e.pexp_loc; }
+	env.pattern_stack <- e::env.pattern_stack; loc_pat e.pexp_loc Ppat_any
     | Second env ->
        match env.pattern_stack with
 	 e::l -> env.pattern_stack <- l; e
@@ -315,7 +353,7 @@ let push_pop_str_item e =
   try
     match Stack.top quote_stack with
     | First env ->
-	env.str_item_stack <- e::env.str_item_stack; Pstr_eval e; 
+	env.str_item_stack <- e::env.str_item_stack; pstr_eval e; 
     | Second env ->
        match env.str_item_stack with
 	 e::l -> env.str_item_stack <- l; e
@@ -335,8 +373,7 @@ let push_pop_sig_item e =
     | First env ->
 	env.sig_item_stack <- e::env.sig_item_stack;
 	let _loc = e.pexp_loc in 
-	Psig_value({ txt = ""; loc = _loc }, { pval_type = { ptyp_desc = Ptyp_any; ptyp_loc = e.pexp_loc; };
-							     pval_prim = []; pval_loc = _loc})
+	psig_value _loc "" (loc_typ _loc Ptyp_any) []
     | Second env ->
        match env.sig_item_stack with
 	 e::l -> env.sig_item_stack <- l; e
@@ -517,7 +554,7 @@ let quote_expression _loc e name =
 		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","push"); loc = _loc }),
 		   ["", loc_expr _loc (Pexp_apply(
 							      (loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","empty_quote_env2"); loc = _loc })), 
-							      ["", loc_expr _loc (Pexp_construct({ txt = Lident "()"; loc = _loc }, None, false))]));
+							      ["", loc_expr _loc (pexp_construct({ txt = Lident "()"; loc = _loc }, None))]));
 		   
 		    "", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","quote_stack"); loc = _loc })]))
   in
@@ -561,9 +598,10 @@ let quote_expression _loc e name =
   let parse_expr = 
     loc_expr _loc (Pexp_apply(
 		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","quote_"^name^"_2"); loc = _loc }),
-		       ["", loc_expr _loc (Pexp_constant( Const_string e ))]))
+		       ["", loc_expr _loc (Pexp_constant( const_string e ))]))
   in
-  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc }),  parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
+  loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [value_binding _loc 
+											      (loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc })) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
 
 let quote_expression_2 e =
   parse_string expression blank "quote..." e

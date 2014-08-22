@@ -1,8 +1,7 @@
-FINDLIB = ocamlfind
-CAMLFLAGS = -pp "camlp4o pa_macro.cmo"
-CAMLC = $(FINDLIB) ocamlc $(CAMLFLAGS)
-CAMLOPT = $(FINDLIB) ocamlopt $(CAMLFLAGS)
-CAMLMKLIB = $(FIDLIB) ocamlmklib
+FINDLIB = #ocamlfind
+CAMLFLAGS =
+CAMLC = $(FINDLIB) ocamlc.opt $(CAMLFLAGS)
+CAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
 BINDIR = /usr/local/bin
 LIBDIR = #-destdir /usr/local/lib/ocaml
 METADIR = #-metadir ...
@@ -24,33 +23,51 @@ all: pa_glr glr.cmxa glr.cma glr.cmi doc
 
 glr.cmi: charset.cmi
 
-glr.cmo: umap.cmi charset.cmi
+glr.cmo: umap.cmi charset.cmi input.cmi
 
-glr.cmx: umap.cmx umap.cmi charset.cmx charset.cmi
+glr.cmx: umap.cmx umap.cmi charset.cmx charset.cmi input.cmx input.cmi
 
-glr.cmxa: umap.cmx charset.cmx glr.cmx
+glr.cmxa: umap.cmx charset.cmx input.cmx glr.cmx
 	$(CAMLOPT) -a -o glr.cmxa $^
 
-glr.cma: umap.cmo charset.cmo glr.cmo
+glr.cma: umap.cmo charset.cmo input.cmo glr.cmo
 	$(CAMLC) -a -o glr.cma $^
 
-pa_glr.cmo: glr.cmo pa_glr.ml
-	$(CAMLC) -pp "camlp4orf" -I +camlp4 -c pa_glr.ml
+OCAMLVERSION=$(shell ocamlc -version)
 
+bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml glr.cma
+	$(CAMLC) -I +compiler-libs -c -I bootstrap/$(OCAMLVERSION) $<
 
-pa_glr: pa_glr.cmo
-	$(CAMLC) -linkall -I +camlp4 dynlink.cma camlp4lib.cma                 \
-        unix.cma                                               \
-        Camlp4Parsers/Camlp4OCamlRevisedParser.cmo             \
-        camlp4/Camlp4Parsers/Camlp4QuotationCommon.cmo         \
-        camlp4/Camlp4Parsers/Camlp4QuotationExpander.cmo       \
-        camlp4/Camlp4Parsers/Camlp4OCamlParser.cmo             \
-        camlp4/Camlp4Parsers/Camlp4OCamlRevisedParserParser.cmo \
-        camlp4/Camlp4Parsers/Camlp4OCamlParserParser.cmo       \
-        camlp4/Camlp4Parsers/Camlp4GrammarParser.cmo           \
-        $<                                         \
-        Camlp4Printers/Camlp4AutoPrinter.cmo                   \
-        Camlp4Bin.cmo -o $@
+bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
+	$(CAMLC) -I +compiler-libs -c -I bootstrap/$(OCAMLVERSION) $< 
+
+bootstrap/$(OCAMLVERSION)/pa_parser.cmo: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
+	$(CAMLC) -I +compiler-libs -c -I bootstrap/$(OCAMLVERSION) $<
+
+pa_ocaml.byt: glr.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
+	$(CAMLC) -I +compiler-libs -o $@ unix.cma str.cma ocamlcommon.cma $^
+
+bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml glr.cmxa
+	$(CAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $< 
+
+bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
+	$(CAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $< 
+
+bootstrap/$(OCAMLVERSION)/pa_parser.cmx: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
+	$(CAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $< 
+
+pa_ocaml: glr.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
+	$(CAMLOPT) -I +compiler-libs  -I bootstrap/$(OCAMLVERSION) -o $@ unix.cmxa str.cmxa ocamlcommon.cmxa $^
+
+boot: BACKUP:=bootstrap/$(OCAMLVERSION)/$(shell date +%Y-%m-%d-%H-%M-%S)
+boot:
+	if [ ! -d bootstrap/$(OCAMLVERSION) ] ; then mkdir bootstrap/$(OCAMLVERSION) ; \
+	else if [ ! -d $(BACKUP) ] ; then mkdir $(BACKUP) ; fi ; \
+	     mv bootstrap/$(OCAMLVERSION)/*.ml $(BACKUP) ; \
+	fi
+	./pa_ocaml --ascii pa_ocaml_prelude.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml
+	./pa_ocaml --ascii pa_parser.ml > bootstrap/$(OCAMLVERSION)/pa_parser.ml
+	./pa_ocaml --ascii pa_ocaml.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml.ml
 
 examples/calc: examples/calc.cmx glr.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
@@ -131,7 +148,7 @@ uninstall:
 	- ocamlfind remove glr $(LIBDIR) $(METADIR)
 	- rm $(BINDIR)/pa_glr
 clean:
-	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa pa_glr 
+	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
 	- cd html; rm -f *
 

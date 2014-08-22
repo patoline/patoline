@@ -2,8 +2,6 @@ open Str
 open Charset
 open Input
 
-(*DEFINE DEBUG*)
-
 exception Ambiguity of string * int * int * string * int * int
 exception Parse_error of string * int * int * string list
 exception Give_up
@@ -77,9 +75,6 @@ let parse_error key msg line pos =
     if c = 0 then Hashtbl.replace max_hash key (line, pos, fn msg msgs) 
     else if c > 0 then Hashtbl.replace max_hash key (line, pos, fn msg [])
   end;
-IFDEF DEBUG THEN
-  Printf.eprintf "parse_error (%d, %d, %s)\n%!" (line_num line) pos msg; 
-ENDIF;
   raise Give_up
 
 let parse_errors key msg line pos =
@@ -89,9 +84,6 @@ let parse_errors key msg line pos =
     if c = 0 then Hashtbl.replace max_hash key (line, pos, msg @ msgs) 
     else if c > 0 then Hashtbl.replace max_hash key (line, pos, msg)
   end;
-IFDEF DEBUG THEN
-  Printf.eprintf "parse_error (%d, %s)\n%!" pos (String.concat "|" msg)
-ENDIF;
   raise Give_up
   
 let accept_empty g = Lazy.force g.accept_empty
@@ -106,9 +98,6 @@ let test s str p =
        let c, _, _ = read str p in
        get s c
   in
-IFDEF DEBUG THEN
-  Printf.eprintf "test %a %d => %b\n%!" print_charset s p r
-ENDIF;
   r
 
 let not_ready name _ = failwith ("not_ready: "^name)
@@ -188,9 +177,6 @@ let eof : 'a -> 'a grammar
       accept_empty = Lazy.from_val false;
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Eof\n%!" pos
-ENDIF;
 	  if is_empty str then single str pos (g str pos str pos a) else parse_error key "EOF" str pos
     }
 
@@ -247,9 +233,6 @@ let char : char -> 'a -> 'a grammar
       accept_empty = Lazy.from_val false;
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN	
-	  Printf.eprintf "%d: Char(%s) %s\n%!" pos (Char.escaped s) (let c, _,_ = read str pos in Char.escaped c)
-END;
           let c, str', pos' = read str pos in
 	  if c <> s then parse_error key s' str pos;
 	  let str'', pos'' = blank str' pos' in
@@ -268,9 +251,6 @@ let string : string -> 'a -> 'a grammar
       accept_empty = Lazy.from_val false;
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN	 
-	  Printf.eprintf "%d: String(%s) %s\n%!" pos (String.escaped s) (let c, _,_ = read str pos in Char.escaped c)
-END;
           let str' = ref str in
 	  let pos' = ref pos in
 	  for i = 0 to len_s - 1 do
@@ -302,9 +282,6 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
       accept_empty = Lazy.from_val (Str.string_match r "" 0);
       parse = 
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Regexp(%s) %s \"%s\" %S\n%!" pos name r0 (let c, _,_ = read str pos in Char.escaped c) (line str)
-END;
           let l = line str in
 	  if string_match r l pos then
 	    let f n = matched_group n l in
@@ -312,14 +289,8 @@ END;
 	    let res = a f in (* now not after, blank may use Str !*)
 	    let str'', pos'' = blank str pos' in
 	    let res = single str'' pos'' (g str pos str pos' res) in
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Regexp OK\n%!" pos'
-END;
 	    res
 	  else (
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Regexp Failed\n%!" pos
-END;
 	    parse_error key name str pos)
     }
 
@@ -362,20 +333,11 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
       accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d %a: Sequence\n%!" pos print_charset next
-END;
 	  let la = l1.parse blank str pos (union' l2 next) key (fun _ _ _ _ x -> x) in
 	  let res = PosMap.fold (fun (str',pos') a acc ->
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d,%d: Sequence step 2\n%!" pos pos'
-END;
 	    try
 	      let res = merge_map1 str pos acc (l2.parse blank str' pos' next key
 							 (fun _ _ l' pos' x -> g str pos l' pos' (f a x))) in
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d,%d: Sequence step 2 OK\n%!" pos pos'
-END;
 	      res
 	    with Give_up -> acc
 	  ) la PosMap.empty in
@@ -391,19 +353,10 @@ let merge_sequence : ('c -> 'c -> 'c) -> 'a grammar -> 'b grammar -> ('a -> 'b -
       accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d %a: Merge Sequence\n%!" pos print_charset next
-END;
 	  let la = l1.parse blank str pos (union' l2 next) key (fun _ _ _ _ x -> x) in
 	  let res = PosMap.fold (fun (str', pos') a acc ->
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d,%d: Merge Sequence step 2\n%!" pos pos'
-END;
 	    try	      
 	      let res = merge_map2 merge acc (l2.parse blank str' pos' next key (fun _ _ l' pos' x -> str, pos, l', pos', f a x)) in
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d,%d: Merge Sequence step 2 OK\n%!" pos pos'
-END;
 	      res
 	    with Give_up -> acc
 	  ) la PosMap.empty in
@@ -434,19 +387,10 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 	false);
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Dependent Sequence\n%!" pos
-END;
 	  let la = l1.parse blank str pos None key (fun  _ _ _ _ x -> x) in
 	  let res = PosMap.fold (fun (str', pos') a acc ->
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d,%d: Dependent Sequence step 2\n%!" pos pos'
-END;
 	    try
 	      let res = merge_map1 str pos acc ((f2 a).parse blank str' pos' next key (fun _ _ l' pos' -> g str pos l' pos')) in
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d,%d: Dependent Sequence step 2 OK\n%!" pos pos'
-END;
 	      res
 	    with Give_up -> acc
 	  ) la PosMap.empty in
@@ -468,19 +412,10 @@ let dependent_merge_sequence : ('b -> 'b -> 'b) -> 'a grammar -> ('a -> 'b gramm
 	false);
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Dependent Sequence\n%!" pos
-END;
 	  let la = l1.parse blank str pos None key (fun _ _ _ _ x -> x) in
 	  let res = PosMap.fold (fun (str', pos') a acc ->
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d,%d: Dependent Sequence step 2\n%!" pos pos'
-END;
 	    try
 	      let res = merge_map2 merge acc ((f2 a).parse blank str' pos' next key (fun _ _ l' pos' x -> str, pos, l', pos', x)) in
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d,%d: Dependent Sequence step 2 OK\n%!" pos pos'
-END;
 	      res
 	    with Give_up -> acc
 	  ) la PosMap.empty in
@@ -502,19 +437,10 @@ let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b l
 	false);
       parse =
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Dependent list Sequence\n%!" pos
-END;
 	  let la = l1.parse blank str pos None key (fun _ _ _ _ x -> x) in
 	  let res = PosMap.fold (fun (str', pos') a acc -> List.fold_left (fun acc a ->
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d,%d: Dependent list Sequence step 2\n%!" pos pos'
-END;
 	    try
 	      let res = merge_map2 merge acc ((f2 a).parse blank str' pos' next key (fun _ _ l' pos' x -> (str, pos, l', pos', x))) in
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d,%d: Dependent list Sequence step 2 OK\n%!" pos pos'
-END;
 	      res
 	    with Give_up -> acc
 	  ) acc a) la PosMap.empty in
@@ -554,13 +480,7 @@ let option' : 'a -> 'a grammar -> 'a grammar
 	fun blank str pos next key g ->
 	  let acc = if test next str pos then single str pos (g str pos str pos a) else PosMap.empty in
 	  try
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d %a: Option\n%!" pos print_charset next
-END;
 	    let res = merge_map1 str pos acc (l.parse blank str pos next key g) in
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Option OK\n%!" pos
-END;
 	    res
 	  with
 	    Give_up ->
@@ -578,13 +498,7 @@ let merge_option : ('a -> 'a -> 'a) -> 'a -> 'a grammar -> 'a grammar
 	fun blank str pos next key g ->
 	  let acc = if test next str pos then single str pos (str, pos, str, pos, a) else PosMap.empty in
 	  try
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d %a: Option\n%!" pos print_charset next
-END;
 	    let res = merge_map2 merge acc (l.parse blank str pos next key (fun l pos l' pos' x -> l, pos, l', pos', x)) in
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Option OK\n%!" pos
-END;
 	    PosMap.map (fun (l, pos, l', pos', x) -> g l pos l' pos' x) res
 	  with
 	    Give_up ->
@@ -604,13 +518,7 @@ let option : 'a -> 'a grammar -> 'a grammar
       parse =
 	fun blank str pos next key g ->
 	  try
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d %a: Option\n%!" pos print_charset next
-END;
 	    let res = l.parse blank str pos next key g in
-IFDEF DEBUG THEN
-	    Printf.eprintf "%d: Option OK\n%!" pos
-END;
 	    res
 	  with
 	    Give_up ->
@@ -630,9 +538,6 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
 	  let next' = union'' f1 next in
 	  let rec fn acc la =
 	    PosMap.fold (fun (str', pos') a acc ->
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d %a: Fixpoint\n%!" pos' print_charset next
-END;
 	      let acc = if test next str' pos' then merge_map1 str pos (single str' pos' (g str pos str' pos' a)) acc else acc in
 	      (try
 		 let r = f1.parse blank str' pos' next' key (fun _ _ _ _ f -> f a) in
@@ -656,9 +561,6 @@ let merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
 	  let next' = union'' f1 next in
 	  let rec fn acc la =
 	    PosMap.fold (fun (str', pos') a acc ->
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d %a: Merge Fixpoint\n%!" pos' print_charset next
-END;
 	      let acc = if test next str' pos' then merge_map2 merge (single str' pos' (str, pos, str', pos', a)) acc else acc in
 	      (try
 		 let r = f1.parse blank str' pos' next' key (fun _ _ _ _ f -> f a) in
@@ -686,9 +588,6 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 	  let next' = union'' f1 next in
 	  let rec fn acc la =
 	    PosMap.fold (fun (str'', pos'') (str', pos', a) acc ->
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d %a: Fixpoint\n%!" pos' print_charset next
-END;
 	      (try
 		 let r = f1.parse blank str'' pos'' next' key (fun _ _ l' pos' f -> l', pos', f a) in
 		 fun () -> fn acc r
@@ -711,9 +610,6 @@ let alternatives' : 'a grammar list -> 'a grammar
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Alternatives'\n%!" pos
-END;
 	  let ls, rej = List.partition (fun g ->
 				(accept_empty g) || 
 				  let c, _, _ = read str pos in
@@ -725,9 +621,6 @@ END;
 		 parse_errors key msgs str pos
 	       else acc
 	    | l::ls ->
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d: Alternatives' step2 (remain %d)\n%!" pos (List.length ls);
-END;
 	      let acc = 
 		try
 		  let acc = merge_map1 str pos acc (l.parse blank str pos next key g) in
@@ -748,9 +641,6 @@ let merge_alternatives : ('a -> 'a -> 'a) -> 'a grammar list -> 'a grammar
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-	  Printf.eprintf "%d: Merge Alternatives\n%!" pos
-END;
 	  let ls, rej = List.partition (fun g ->
 				(accept_empty g) || 
 				  let c, _, _ = read str pos in
@@ -762,9 +652,6 @@ END;
 		 parse_errors key msgs str pos
 	       else PosMap.map (function (l,pos,l',pos',x) -> g l pos l' pos' x) acc
 	    | l::ls ->
-IFDEF DEBUG THEN
-	      Printf.eprintf "%d: Merge Alternatives step2 (remain %d)\n%!" pos (List.length ls);
-END;
 	      let acc = 
 		try
 		  merge_map2 merge acc (l.parse blank str pos next key (fun l pos l' pos' x -> l, pos, l', pos', x))
@@ -787,9 +674,6 @@ let alternatives : 'a grammar list -> 'a grammar
     accept_empty = mk_empty flag (fun () -> List.exists accept_empty ls);
     parse = 
 	fun blank str pos next key g ->
-IFDEF DEBUG THEN
-          Printf.eprintf "%d,%d: Alternatives\n%!" (line_num str) pos;
-END;
 	  let ls, rej = List.partition (fun g ->
 				(accept_empty g) || 
 				  let c, _, _ = read str pos in
@@ -799,16 +683,10 @@ END;
 	       let msgs = flat_map firsts_sym rej in
 	       parse_errors key msgs str pos
 	    | l::ls ->
-IFDEF DEBUG THEN
-              Printf.eprintf "%d: Alternatives step2 (remain %d)\n%!" pos (List.length ls);
-END;
 	      try
 		l.parse blank str pos next key g
 	      with
 		Give_up -> 
-IFDEF DEBUG THEN
-                  Printf.eprintf "%d: Alternatives Give_up\n%!" pos;
-END;
 		  fn ls
 	  in
 	  fn ls

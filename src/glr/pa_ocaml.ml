@@ -59,10 +59,18 @@ let varify_constructors var_names t =
           Ptyp_var s
       | Ptyp_constr(longident, lst) ->
           Ptyp_constr(longident, List.map loop lst)
+#ifversion >= 4.02
+      | Ptyp_object (lst, cl) ->
+          Ptyp_object (List.map loop_core_field lst, cl)
+      | Ptyp_class (longident, lst) ->
+          Ptyp_class (longident, List.map loop lst)
+      | Ptyp_extension(_) as ty -> ty
+#else
       | Ptyp_object lst ->
           Ptyp_object (List.map loop_core_field lst)
       | Ptyp_class (longident, lst, lbl_list) ->
           Ptyp_class (longident, List.map loop lst, lbl_list)
+#endif
       | Ptyp_alias(core_type, string) ->
           check_variable var_names t.ptyp_loc string;
           Ptyp_alias(loop core_type, string)
@@ -76,6 +84,9 @@ let varify_constructors var_names t =
           Ptyp_package(longident,List.map (fun (n,typ) -> (n,loop typ) ) lst)
     in
     {t with ptyp_desc = desc}
+#ifversion >= 4.02
+  and loop_core_field (str, attr, ty) = (str, attr, loop ty)
+#else
   and loop_core_field t =
     let desc =
       match t.pfield_desc with
@@ -85,17 +96,23 @@ let varify_constructors var_names t =
           Pfield_var
     in
     { t with pfield_desc=desc}
+#endif
   and loop_row_field  =
     function
+#ifversion >= 4.02
+      | Rtag(label,attr,flag,lst) ->
+          Rtag(label,attr,flag,List.map loop lst)
+#else
       | Rtag(label,flag,lst) ->
           Rtag(label,flag,List.map loop lst)
+#endif
       | Rinherit t ->
           Rinherit (loop t)
   in
   loop t
 
 let wrap_type_annotation _loc newtypes core_type body =
-  let exp = loc_expr _loc (Pexp_constraint(body,Some core_type,None)) in
+  let exp = loc_expr _loc (pexp_constraint(body,core_type)) in
   let exp =
     List.fold_right (fun newtype exp -> loc_expr _loc (Pexp_newtype (newtype, exp)))
       newtypes exp
@@ -158,11 +175,22 @@ let interspace = "[ \t]*"
 let string_literal =
   let char_list_to_string lc =
     let len = List.length lc in
+#ifversion >= 4.02
+    let str = Bytes.create len in
+#else
     let str = String.create len in
+#endif
+    let ptr = ref lc in
     for i = 0 to len - 1 do
-      str.[i] <- List.nth lc i
+      match !ptr with
+	[] -> assert false
+      | x::l -> str.[i] <- x; ptr := l
     done;
+#ifversion >= 4.02
+    Bytes.unsafe_to_string str
+#else
     str
+#endif
   in
   glr 
     r:(change_layout (
@@ -497,12 +525,22 @@ let typexpr_base : core_type grammar =
       loc_typ _loc (Ptyp_constr (constr, te::tes))
   | pvt:polymorphic_variant_type -> pvt
   | STR("<") rv:STR("..")? STR(">") ->
+#ifversion >= 4.02
+      let ml = if rv = None then Closed else Open in
+      loc_typ _loc (Ptyp_object([], ml))
+#else
       let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object ml)
+#endif
   | STR("<") mt:method_type mts:{STR(";") mt:method_type}*
     rv:{STR(";") rv:STR("..")?}? STR(">") ->
+#ifversion >= 4.02
+      let ml = if rv = None || rv = Some None then Closed else Open in
+      loc_typ _loc (Ptyp_object ((mt :: mts), ml))
+#else
       let ml = if rv = None || rv = Some None then [] else [pfield_loc _loc_rv Pfield_var] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
+#endif
   | STR("#") cp:class_path o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, [], o))
@@ -1122,7 +1160,7 @@ let right_member =
   | l:{lb:(parameter true)}* ty:{CHR(':') t:typexpr}? CHR('=') e:expression -> 
       let e = match ty with
 	None -> e
-      | Some ty -> loc_expr _loc (Pexp_constraint(e, Some ty, None))
+      | Some ty -> loc_expr _loc (pexp_constraint(e, ty))
       in
       apply_params _loc l e
   end
@@ -1230,7 +1268,7 @@ let class_field =
       let ex =
         match te with
         | None   -> e
-        | Some t -> { pexp_desc = Pexp_constraint (e, Some t, None)
+        | Some t -> { pexp_desc = pexp_constraint (e, t)
                     ; pexp_loc  = _loc_te }
       in
       loc_pcf _loc (Pcf_val (ivn, m, o, ex))
@@ -1258,8 +1296,8 @@ let class_field =
       let e = 
 	match te with
 	  None -> e
-	| _ ->
-	   loc_expr _loc (Pexp_constraint (e, te, None))
+	| Some te ->
+	   loc_expr _loc (pexp_constraint (e, te))
       in
       let e : expression = apply_params _loc ps e in
       let e = loc_expr _loc (Pexp_poly (e, None)) in
@@ -1383,7 +1421,7 @@ let expression_base = memoize1 (fun lvl ->
                  | None    -> Pexp_pack me
                  | Some pt -> let me = loc_expr _loc_me (Pexp_pack me) in
                               let pt = loc_typ _loc_pt pt in
-                              Pexp_constraint (me, Some pt, None)
+                              pexp_constraint (me, pt)
       in
       (Atom, loc_expr _loc desc)
   | CHR('<') name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
@@ -1424,7 +1462,10 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   | l:{STR(",") e:(expression_lvl (next_exp Tupl))}+ when (lvl' > Tupl && lvl <= Tupl) -> 
       (Tupl, fun f -> ln f _loc (Pexp_tuple(f::l)))
   | t:type_coercion when (lvl' > Coerce && lvl <= Coerce) ->
-      (Seq, fun e' -> ln e' _loc (Pexp_constraint(e', fst t, snd t)))
+      (Seq, fun e' -> ln e' _loc (
+			   match t with Some t1, None -> pexp_constraint(e', t1)
+				      | t1, Some t2 -> pexp_coerce(e', t1, t2)
+				      | None, None -> assert false))
   | l:{semi_col e:(expression_lvl (next_exp Seq))}+ when (lvl' > Seq && lvl <= Seq) -> 
       (Seq, fun f -> mk_seq (f::l))
   | semi_col when (lvl' >= Seq && lvl <= Seq) -> (Seq, fun e -> e)
@@ -1499,7 +1540,7 @@ let module_expr_base =
       let e = match pt with
               | None    -> e
               | Some pt -> let pt = loc_typ _loc_pt pt in
-                           loc_expr _loc (Pexp_constraint (e, Some pt, None))
+                           loc_expr _loc (pexp_constraint (e, pt))
       in
       mexpr_loc _loc (Pmod_unpack e)
   end

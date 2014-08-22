@@ -5,9 +5,9 @@ let mask, shift, size = match Sys.word_size with
   | 64 -> 31, 5, 256 / 32
   | _ -> failwith "word_size is neither 32 nor 64, whoah !!!!"
 
-let empty_charset = Array.create size 0
+let empty_charset = Array.make size 0
 
-let full_charset = Array.create size mask
+let full_charset = Array.make size mask
  
 let get s c =
   let i = Char.code c in

@@ -16,29 +16,29 @@ let exp_int _loc n =
   loc_expr _loc (Pexp_constant (Const_int n))
 
 let exp_string _loc n =
-  loc_expr _loc (Pexp_constant (Const_string n))
+  loc_expr _loc (Pexp_constant (const_string n))
 
 let exp_None _loc =
   let cnone = { txt = Lident "None"; loc = _loc } in
-  loc_expr _loc (Pexp_construct(cnone, None, false))
+  loc_expr _loc (pexp_construct(cnone, None))
 
 let exp_Some _loc a =
   let csome = { txt = Lident "Some"; loc = _loc } in
-  loc_expr _loc (Pexp_construct(csome, Some a, false))
+  loc_expr _loc (pexp_construct(csome, Some a))
 
 let exp_unit _loc =
   let cunit = { txt = Lident "()"; loc = _loc } in
-  loc_expr _loc (Pexp_construct(cunit, None, false))
+  loc_expr _loc (pexp_construct(cunit, None))
 
 let exp_tuple _loc l = 
   loc_expr _loc (Pexp_tuple l)
 
 let exp_Nil _loc =
   let cnil = { txt = Lident "[]"; loc = _loc } in
-  loc_expr _loc (Pexp_construct(cnil, None, false))
+  loc_expr _loc (pexp_construct(cnil, None))
 
 let exp_Cons _loc a l =
-  loc_expr _loc (Pexp_construct({ txt = Lident "::"; loc = _loc}, Some (exp_tuple _loc [a;l]), false))
+  loc_expr _loc (pexp_construct({ txt = Lident "::"; loc = _loc}, Some (exp_tuple _loc [a;l])))
 
 let exp_list _loc l =
   List.fold_right (exp_Cons _loc) l (exp_Nil _loc)
@@ -56,10 +56,10 @@ let exp_lab_apply _loc f l =
   loc_expr _loc (Pexp_apply(f, l))
 
 let exp_Some_fun _loc =
-  loc_expr _loc (Pexp_function("", None, [pat_ident _loc "x", (exp_Some _loc (exp_ident _loc "x"))]))
+  loc_expr _loc (pexp_fun("", None, pat_ident _loc "x", (exp_Some _loc (exp_ident _loc "x"))))
 
 let exp_fun _loc id e =
-  loc_expr _loc (Pexp_function("", None, [pat_ident _loc id, e]))
+  loc_expr _loc (pexp_fun("", None, pat_ident _loc id, e))
 
 let exp_glr_fun _loc f =
   loc_expr _loc (Pexp_ident({ txt = Ldot(Lident "Glr",f); loc = _loc } ))
@@ -84,7 +84,7 @@ let mkpatt _loc (id, p) = match p, !do_locate with
 
 let rec apply _loc ids e =
   let ids = List.mapi (fun i (id,x) ->
-		       ((if id = "_" then "_$" ^ string_of_int i else id), x)) ids in
+		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) ids in
   let e = match !do_locate with
       None -> e
     | Some(_,merge) ->
@@ -92,29 +92,29 @@ let rec apply _loc ids e =
       | [] -> e
       | [id,_] ->
 	 loc_expr _loc (Pexp_let(Nonrecursive, [
-	   pat_ident _loc "_loc", exp_ident _loc ("_loc_"^id)], e))
+	   value_binding _loc (pat_ident _loc "_loc") (exp_ident _loc ("_loc_"^id))], e))
       | (first,_)::ids ->
 	let (last,_) = List.hd (List.rev ids) in
 	loc_expr _loc (Pexp_let(Nonrecursive, [
-	  pat_ident _loc "_loc",
-	  loc_expr _loc (Pexp_apply(merge, [
+	  value_binding _loc (pat_ident _loc "_loc")
+	  (loc_expr _loc (Pexp_apply(merge, [
 	    "", exp_ident _loc ("_loc_"^first);
-	    "", exp_ident _loc ("_loc_"^last)]))], e))
+	    "", exp_ident _loc ("_loc_"^last)])))], e))
   in
   List.fold_left (fun e id -> 
     match !do_locate with
       None ->
-      loc_expr _loc (Pexp_function("", None, [mkpatt _loc id, e]))
+      loc_expr _loc (pexp_fun("", None, mkpatt _loc id, e))
     | Some(_) ->  
       loc_expr _loc (
-	Pexp_function("", None, [
+	pexp_fun("", None,
 	  mkpatt _loc id,
 	  loc_expr _loc (Pexp_let(Nonrecursive, 
-	    [loc_pat _loc (Ppat_tuple([
+	    [value_binding _loc (loc_pat _loc (Ppat_tuple([
 		loc_pat _loc (Ppat_var { txt = "_loc_"^fst id; loc = _loc });
-		loc_pat _loc (Ppat_var { txt = fst id; loc = _loc })])),
-	     loc_expr _loc (Pexp_ident({ txt = Lident (fst id); loc = _loc}))], 
-	    e))]))
+		loc_pat _loc (Ppat_var { txt = fst id; loc = _loc })])))
+	     (loc_expr _loc (Pexp_ident({ txt = Lident (fst id); loc = _loc})))], 
+	    e))))
   ) e (List.rev ids)
 
 let filter _loc r =
@@ -498,7 +498,7 @@ let glr_list_sequence = glr
 	    None ->
 	      def (exp_Cons _loc x y)
           | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[pat_ident _loc "y", y], 
+	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
@@ -515,7 +515,7 @@ let glr_list_sequence = glr
 	    None ->
 	      def (exp_Cons _loc x y)
           | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[pat_ident _loc "y", y], 
+	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
@@ -537,7 +537,7 @@ let glr_list_sequence = glr
 	    None ->
 	      def (exp_Cons _loc x y)
           | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[pat_ident _loc "y", y], 
+	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
@@ -559,7 +559,7 @@ let glr_list_sequence = glr
 	    None ->
 	      def (exp_Cons _loc x y)
           | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[pat_ident _loc "y", y], 
+	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in

@@ -62,8 +62,14 @@ let test_directive fname num line =
 	| ">" -> (>) | "<=" -> (<=) | ">=" -> (>=)
 	| _ -> raise Exit
       in
+      let version =
+	try
+	  Sys.getenv "OCAMLVERSION"
+        with
+	  Not_found -> Sys.ocaml_version
+      in
       let major, minor = 
-	match  Str.split (Str.regexp_string ".") Sys.ocaml_version with
+	match  Str.split (Str.regexp_string ".") version with
 	| major ::  minor :: _ ->
 	   let major = int_of_string major in
 	   let minor = int_of_string minor in
@@ -112,23 +118,23 @@ let buffer_from_fun name get_line data =
 	       fn fname active num res
 	     else if Str.string_match if_directive line 1 then
 	       let b = test_directive fname num line in
-	       let status = fn fname (b && active) num res in
+	       let status, res = fn fname (b && active) num res in
 	       match status with
                | `End_of_file ->
 		  Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
 		  exit 1
 	       | `Endif -> fn fname active num res
 	       | `Else -> 
-		  let status = fn fname (not b && active) num res in 
+		  let status, res = fn fname (not b && active) num res in 
 		  match status with 
 		  | `Else | `End_of_file ->
 		    Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
 		    exit 1
 		  | `Endif -> fn fname active num res
 	     else if Str.string_match else_directive line 1 then
-	       `Else
+	       `Else, res
 	     else if Str.string_match endif_directive line 1 then
-	       `Endif
+	       `Endif, res
 	     else (
 	       let res = 
 		 if active then push res fname num line
@@ -142,11 +148,11 @@ let buffer_from_fun name get_line data =
 	     in
 	     fn fname active num res))
       with
-	End_of_file -> fun () -> `End_of_file
+	End_of_file -> fun () -> `End_of_file, res
     end ()
   in
   let start = empty_buffer name 0 in
-  let status = fn name true 0 start in
+  let status, _ = fn name true 0 start in
   match status with
   | `Else ->
      Printf.eprintf "file: %s, extra '#else'" name;
