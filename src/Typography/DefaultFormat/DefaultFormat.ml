@@ -267,7 +267,19 @@ let stackDrawings drs=
 let stackCont drs=
   bB (fun env->[stackDrawings (List.map (fun x->drawing (draw env x)) drs)])
 
+module type Output=
+  sig
+    type output
+    val outputParams : output
 
+    val output :
+      output ->
+      Typography.Document.tree ->
+      Typography.Document.environment -> string -> unit
+  end
+
+module Format=functor (D:Document.DocumentStructure)->(
+  struct
 
 let defaultEnv:environment=
   let f,str,subst,pos=selectFont alegreya Regular false in
@@ -351,21 +363,6 @@ let defaultEnv:environment=
     adjust_min_space=1./.9.;
     math_break_badness = 250.0; (* testé juste sur tests/test_break_badness *)
   }
-
-
-module type Output=
-  sig
-    type output
-    val outputParams : output
-
-    val output :
-      output ->
-      Typography.Document.tree ->
-      Typography.Document.environment -> string -> unit
-  end
-
-module Format=functor (D:Document.DocumentStructure)->(
-  struct
 
     let sourcePosition(file,line,column,char) =
       [tT (Printf.sprintf "%s: %d,%d (%d)" file line column char)]
@@ -2229,3 +2226,6 @@ module MathsFormat=struct
 
 
 end
+
+
+

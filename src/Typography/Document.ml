@@ -1551,7 +1551,6 @@ let altStates l =
 
 module type DocumentStructure=sig
   val structure:(tree*(IntMap.key*tree) list) ref
-  val defaultEnv:environment ref
 end
 module type Format=sig
   val defaultEnv:environment

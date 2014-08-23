@@ -105,7 +105,7 @@ open Typography.OutputCommon
 open DefaultFormat.MathsFormat
 
 let _ = Distance.read_cache \"%s\"
-module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) let defaultEnv=ref DefaultFormat.defaultEnv end:DocumentStructure)\n"
+module D=(struct let structure=ref (Node { empty with node_tags=[\"intoc\",\"\"] },[]) end:DocumentStructure)\n"
     (List.hd formats)
     driver
     suppl
@@ -128,14 +128,13 @@ module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)
   else
     Printf.fprintf where "module Driver = %s;;\n" driver;
 
-  Printf.fprintf where "module Patoline_Output=Patoline_Format%d.Output(Driver);;
-let _=D.defaultEnv:=Patoline_Format%d.defaultEnv;;\n" (!i-1) (!i-1);
+  Printf.fprintf where "module Patoline_Output=Patoline_Format%d.Output(Driver);;\n" (!i-1) ;
 
   let buf=Buffer.create 100 in
   do_include buf main_mod;
   Buffer.output_buffer where buf;
   Printf.fprintf where
-    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) !D.defaultEnv %S\n" outfile;
+    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) Patoline_Format.defaultEnv %S\n" outfile;
   Printf.fprintf where "let _ = Distance.write_cache \"%s\"\n" cache_name
 
 

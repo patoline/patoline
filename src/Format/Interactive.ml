@@ -218,8 +218,8 @@ let editableText ?(global=false) ?(empty_case="Type in here")
 	   [name';name'']
            [bB(fun env -> 
 	     let env = { env with 
-	       normalLead = DefaultFormat.defaultEnv.normalLead *. 0.8;
-	       lead = DefaultFormat.defaultEnv.normalLead *. 0.8;
+	       normalLead = env.normalLead *. 0.8;
+	       lead = env.normalLead *. 0.8;
 	     } in
 	     List.map (fun x-> Drawing (snd x))
 	       (IntMap.bindings 
