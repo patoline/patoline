@@ -10,7 +10,7 @@ ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)
 endif
 
-all: pa_glr glr.cmxa glr.cma glr.cmi doc
+all: pa_glr glr.cmxa glr.cma glr.cmi doc pa_ocaml
 
 %.cmi: %.mli
 	$(CAMLC) -c $< 
@@ -142,11 +142,11 @@ install: uninstall glr.mli glr.cmxa glr.cma
 	- mkdir $(LIBDIR)
 	- ocamlfind remove glr $(LIBDIR)
 	ocamlfind install glr META glr.cmi glr.cmo glr.mli glr.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx glr.cma glr.cmxa glr.a $(LIBDIR) $(METADIR)
-	install pa_glr $(BINDIR)
+	install pa_ocaml $(BINDIR)
 
 uninstall:
 	- ocamlfind remove glr $(LIBDIR) $(METADIR)
-	- rm $(BINDIR)/pa_glr
+	- rm $(BINDIR)/pa_ocaml
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge

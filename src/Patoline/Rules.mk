@@ -24,11 +24,11 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
-$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(GLR_DIR)/glr.cmxa
+$(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(GLR_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package camlp4,patutil,imagelib,dynlink,glr camlp4lib.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $<
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_GLR)
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_GLR) $(GLR_DIR)/glr.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -c -package camlp4,patutil,glr -I +camlp4/Camlp4Parsers -o $@ $< 
 
