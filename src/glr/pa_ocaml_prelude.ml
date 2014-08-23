@@ -187,6 +187,27 @@ let next_exp = function
   let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = []; }
   let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = []; }
   let const_string s = Const_string(s, None)			   
+  let constructor_declaration _loc name args res =
+    { pcd_name = name; pcd_args = args; pcd_res = res; pcd_attributes = []; pcd_loc = _loc }
+  let label_declaration _loc name mut ty =
+    { pld_name = name; pld_mutable = mut; pld_type = ty; pld_attributes = []; pld_loc = _loc }
+  let type_declaration _loc name params cstrs kind priv manifest =
+    let fn (name, var) = 
+      match name with
+	None -> (loc_typ _loc Ptyp_any, var)
+      | Some name -> (loc_typ name.loc (Ptyp_var name.txt), var)
+    in
+    let params = List.map fn params in
+    {
+     ptype_name = name;
+     ptype_params = params;
+     ptype_cstrs = cstrs;
+     ptype_kind = kind;
+     ptype_private = priv;
+     ptype_manifest = manifest;
+     ptype_attributes = [];
+     ptype_loc = _loc;
+    }
   let pstr_eval e = Pstr_eval(e, [])
   let psig_value _loc name ty prim =
     Psig_value { pval_name = { txt = name; loc = _loc }; pval_type = ty ; pval_prim = prim ; pval_attributes = []; pval_loc = _loc }
@@ -206,6 +227,20 @@ let next_exp = function
   let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
   let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
   let const_string s = Const_string(s)			   
+  let constructor_declaration _loc name args res = (name, args, res, _loc)
+  let label_declaration _loc name mut ty =
+    (name, mut, ty, _loc)
+  let type_declaration _loc name params cstrs kind priv manifest =
+    let params, variance = List.split params in
+    {
+     ptype_params = params;
+     ptype_cstrs = cstrs;
+     ptype_kind = kind;
+     ptype_private = priv;
+     ptype_variance = variance;
+     ptype_manifest = manifest;
+     ptype_loc = _loc;
+    }
   let pstr_eval e = Pstr_eval(e)			   
   let psig_value _loc name ty prim =
     Psig_value( { txt = name; loc = _loc }, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )

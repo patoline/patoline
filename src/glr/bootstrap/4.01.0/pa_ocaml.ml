@@ -738,7 +738,6 @@ module Make(Initial:Extension) =
                        let _loc = merge _loc__unnamed_0 _loc_te in (ids, te)))
            (locate (Glr.string "." ())) (fun x  -> x)) (locate typexpr)
         (fun x  -> x)
-    let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
     let method_type =
       Glr.sequence
         (Glr.sequence (locate method_name) (locate (Glr.string ":" ()))
@@ -749,8 +748,8 @@ module Make(Initial:Extension) =
                 fun pte  ->
                   let (_loc_pte,pte) = pte in
                   let _loc = merge _loc_mn _loc_pte in
-                  pfield_loc _loc (Pfield (mn, pte)))) (locate poly_typexpr)
-        (fun x  -> x)
+                  { pfield_desc = (Pfield (mn, pte)); pfield_loc = _loc }))
+        (locate poly_typexpr) (fun x  -> x)
     let tag_spec =
       Glr.alternatives
         [Glr.sequence (locate tag_name)
@@ -892,8 +891,9 @@ module Make(Initial:Extension) =
                         fun _unnamed_3  ->
                           let (_loc__unnamed_3,_unnamed_3) = _unnamed_3 in
                           let _loc = merge _loc__unnamed_0 _loc__unnamed_3 in
+                          let flag = true in
                           loc_typ _loc
-                            (Ptyp_variant ((tsf @ tss), true, None))))
+                            (Ptyp_variant ((tsf @ tss), flag, None))))
               (locate
                  (Glr.apply List.rev
                     (Glr.fixpoint []
@@ -925,7 +925,8 @@ module Make(Initial:Extension) =
                            match ts with
                            | None  -> tss
                            | Some ts -> ts :: tss in
-                         loc_typ _loc (Ptyp_variant (tss, false, None))))
+                         let flag = false in
+                         loc_typ _loc (Ptyp_variant (tss, flag, None))))
              (locate
                 (Glr.apply List.rev
                    (Glr.fixpoint []
@@ -962,9 +963,10 @@ module Make(Initial:Extension) =
                                      _unnamed_5 in
                                    let _loc =
                                      merge _loc__unnamed_0 _loc__unnamed_5 in
+                                   let flag = true in
                                    loc_typ _loc
                                      (Ptyp_variant
-                                        ((tfs :: tfss), true, (Some tns)))))
+                                        ((tfs :: tfss), flag, (Some tns)))))
                    (locate tag_spec_full) (fun x  -> x))
                 (locate
                    (Glr.apply List.rev
@@ -1208,7 +1210,8 @@ module Make(Initial:Extension) =
                     let ml =
                       if rv = None
                       then []
-                      else [pfield_loc _loc_rv Pfield_var] in
+                      else
+                        [{ pfield_desc = Pfield_var; pfield_loc = _loc_rv }] in
                     loc_typ _loc (Ptyp_object ml)))
           (locate (Glr.string ">" ())) (fun x  -> x);
         Glr.sequence
@@ -1231,7 +1234,11 @@ module Make(Initial:Extension) =
                               let ml =
                                 if (rv = None) || (rv = (Some None))
                                 then []
-                                else [pfield_loc _loc_rv Pfield_var] in
+                                else
+                                  [{
+                                     pfield_desc = Pfield_var;
+                                     pfield_loc = _loc_rv
+                                   }] in
                               loc_typ _loc (Ptyp_object ((mt :: mts) @ ml))))
                 (locate
                    (Glr.apply List.rev
@@ -1643,7 +1650,8 @@ module Make(Initial:Extension) =
            fun ((_,(tes,te)) as _unnamed_1)  ->
              let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
              let _loc = merge _loc_cn _loc__unnamed_1 in
-             let c = { txt = cn; loc = _loc_cn } in (c, tes, te, _loc_cn))
+             let c = { txt = cn; loc = _loc_cn } in
+             constructor_declaration _loc c tes te)
     let field_decl =
       Glr.sequence
         (Glr.sequence
@@ -1657,9 +1665,9 @@ module Make(Initial:Extension) =
                      fun pte  ->
                        let (_loc_pte,pte) = pte in
                        let _loc = merge _loc_m _loc_pte in
-                       ({ txt = fn; loc = _loc_fn }, m, pte, _loc_m)))
-           (locate (Glr.string ":" ())) (fun x  -> x)) (locate poly_typexpr)
-        (fun x  -> x)
+                       label_declaration _loc { txt = fn; loc = _loc_fn } m
+                         pte)) (locate (Glr.string ":" ())) (fun x  -> x))
+        (locate poly_typexpr) (fun x  -> x)
     let type_representation =
       Glr.alternatives
         [Glr.sequence
@@ -1760,9 +1768,11 @@ module Make(Initial:Extension) =
               (Glr.fixpoint []
                  (Glr.apply (fun x  l  -> x :: l) type_constraint))))
         (fun x  -> x)
-    let typedef_gen: 'a Glr.grammar -> ('a loc* type_declaration) Glr.grammar
+    let typedef_gen:
+      'a Glr.grammar ->
+        ('a -> string) -> ('a loc* type_declaration) Glr.grammar
       =
-      fun constr  ->
+      fun constr  filter  ->
         Glr.sequence
           (Glr.sequence (locate (Glr.option [] type_params)) (locate constr)
              (fun tps  ->
@@ -1780,20 +1790,13 @@ module Make(Initial:Extension) =
                           (if pri = Private then raise Give_up;
                            (Private, (Some te)))
                       | Some (_,te) -> (pri, (Some te)) in
-                    let tdec =
-                      {
-                        ptype_params = (List.map fst tps);
-                        ptype_cstrs = cstrs;
-                        ptype_kind = tkind;
-                        ptype_private = pri;
-                        ptype_manifest = te;
-                        ptype_variance = (List.map snd tps);
-                        ptype_loc = _loc_tps
-                      } in
-                    ({ txt = tcn; loc = _loc_tcn }, tdec)))
-          (locate type_information) (fun x  -> x)
-    let typedef = typedef_gen typeconstr_name
-    let typedef_in_constraint = typedef_gen typeconstr
+                    ({ txt = tcn; loc = _loc_tcn },
+                      (type_declaration _loc
+                         { txt = (filter tcn); loc = _loc_tcn } tps cstrs
+                         tkind pri te)))) (locate type_information)
+          (fun x  -> x)
+    let typedef = typedef_gen typeconstr_name (fun x  -> x)
+    let typedef_in_constraint = typedef_gen typeconstr Longident.last
     let type_definition =
       Glr.sequence
         (Glr.sequence (locate type_kw) (locate typedef)
@@ -6382,15 +6385,9 @@ module Make(Initial:Extension) =
                               let (_loc_te,te) = te in
                               let _loc = merge _loc__unnamed_0 _loc_te in
                               let td =
-                                {
-                                  ptype_params = (List.map fst tps);
-                                  ptype_cstrs = [];
-                                  ptype_kind = Ptype_abstract;
-                                  ptype_private = Public;
-                                  ptype_manifest = (Some te);
-                                  ptype_variance = (List.map snd tps);
-                                  ptype_loc = _loc
-                                } in
+                                type_declaration _loc
+                                  { txt = (Lident tcn); loc = _loc_tcn } tps
+                                  [] Ptype_abstract Public (Some te) in
                               ({ txt = (Lident tcn); loc = _loc_tcn },
                                 (Pwith_typesubst td))))
                 (locate typeconstr_name) (fun x  -> x))

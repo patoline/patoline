@@ -379,11 +379,19 @@ let classtype_path =
 let opt_variance =
   glr
   | v:RE("[+-]")? ->
+#ifversion >= 4.02
+      (match v with
+       | None     -> Invariant
+       | Some "+" -> Covariant
+       | Some "-" -> Contravariant
+       | _        -> assert false)
+#else
       (match v with
        | None     -> (false, false)
        | Some "+" -> (true , false)
        | Some "-" -> false, true
        | _        -> assert false)
+#endif
   end
 
 let override_flag =
@@ -420,11 +428,14 @@ let poly_syntax_typexpr =
       (ids, te)
   end
    
-let pfield_loc _loc d = { pfield_desc = d; pfield_loc = _loc }
 let method_type =
   glr
   | mn:method_name STR(":") pte:poly_typexpr ->
-      pfield_loc _loc (Pfield (mn, pte))
+#ifversion >= 4.02
+      mn, [], pte
+#else
+    { pfield_desc = Pfield (mn, pte); pfield_loc = _loc }
+#endif
   end
 
 let tag_spec =
@@ -434,7 +445,11 @@ let tag_spec =
               | None   -> true, []
               | Some (amp,l) -> amp<>None, [l]
       in
+#ifversion >= 4.02
+      Rtag (tn, [], amp, t)
+#else
       Rtag (tn, amp, t)
+#endif
   | te:typexpr ->
       Rinherit te
   end
@@ -446,7 +461,11 @@ let tag_spec_first =
               | None   -> true,[]
               | Some (amp,l) -> amp<>None, [l]
       in
+#ifversion >= 4.02
+      [Rtag (tn, [], amp, t)]
+#else
       [Rtag (tn, amp, t)]
+#endif
   | te:typexpr? STR("|") ts:tag_spec ->
       match te with
       | None    -> [ts]
@@ -457,8 +476,11 @@ let tag_spec_full =
   glr
   | tn:tag_name (amp,tes):{of_kw amp:STR("&")? te:typexpr
     tes:{STR("&") te:typexpr}* -> (amp<>None,(te::tes))}?[true,[]] ->
-		    
+#ifversion >= 4.02		    
+      Rtag (tn, [], amp, tes)
+#else
       Rtag (tn, amp, tes)
+#endif
   | te:typexpr ->
       Rinherit te
   end
@@ -466,16 +488,31 @@ let tag_spec_full =
 let polymorphic_variant_type : core_type grammar =
   glr
   | STR("[") tsf:tag_spec_first tss:{STR("|") ts:tag_spec}* STR("]") ->
-      loc_typ _loc (Ptyp_variant (tsf @ tss, true, None))
+#ifversion >= 4.02
+      let flag = Closed in
+#else
+      let flag = true in
+#endif
+      loc_typ _loc (Ptyp_variant (tsf @ tss, flag, None))
   | STR("[>") ts:tag_spec? tss:{STR("|") ts:tag_spec}* STR("]") ->
       let tss = match ts with
                 | None    -> tss
                 | Some ts -> ts :: tss
       in
-      loc_typ _loc (Ptyp_variant (tss, false, None))
+#ifversion >= 4.02
+      let flag = Open in
+#else
+      let flag = false in
+#endif
+      loc_typ _loc (Ptyp_variant (tss, flag, None))
   | STR("[<") STR("|")? tfs:tag_spec_full tfss:{STR("|") tsf:tag_spec_full}*
     tns:{STR(">") tns:tag_name+}?[[]] STR("]") ->
-      loc_typ _loc (Ptyp_variant (tfs :: tfss, true, Some tns))
+#ifversion >= 4.02
+      let flag = Closed in
+#else
+      let flag = true in
+#endif
+      loc_typ _loc (Ptyp_variant (tfs :: tfss, flag, Some tns))
   end
 
 let package_constraint =
@@ -529,7 +566,7 @@ let typexpr_base : core_type grammar =
       let ml = if rv = None then Closed else Open in
       loc_typ _loc (Ptyp_object([], ml))
 #else
-      let ml = if rv = None then [] else [pfield_loc _loc_rv Pfield_var] in
+      let ml = if rv = None then [] else [{ pfield_desc = Pfield_var; pfield_loc = _loc_rv}] in
       loc_typ _loc (Ptyp_object ml)
 #endif
   | STR("<") mt:method_type mts:{STR(";") mt:method_type}*
@@ -538,9 +575,18 @@ let typexpr_base : core_type grammar =
       let ml = if rv = None || rv = Some None then Closed else Open in
       loc_typ _loc (Ptyp_object ((mt :: mts), ml))
 #else
-      let ml = if rv = None || rv = Some None then [] else [pfield_loc _loc_rv Pfield_var] in
+      let ml = if rv = None || rv = Some None then [] else [{ pfield_desc = Pfield_var; pfield_loc = _loc_rv}] in
       loc_typ _loc (Ptyp_object (mt :: mts @ ml))
 #endif
+#ifversion >= 4.02
+  | STR("#") cp:class_path ->
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_typ _loc (Ptyp_class (cp, []))
+  | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")")
+    STR("#") cp:class_path ->
+      let cp = { txt = cp; loc = _loc_cp } in
+      loc_typ _loc (Ptyp_class (cp, te::tes))
+#else
   | STR("#") cp:class_path o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, [], o))
@@ -548,6 +594,7 @@ let typexpr_base : core_type grammar =
     STR("#") cp:class_path  o:opt_present ->
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
+#endif
   | CHR('$') e:(expression_lvl If) CHR('$') -> push_pop_type e
   end
 
@@ -562,11 +609,19 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
       (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> ln te _loc (Ptyp_alias (te, id)))
+#ifversion >= 4.02
+  | STR("#") cp:class_path when lvl' >= DashType && lvl <= DashType ->
+      let cp = { txt = cp; loc = _loc_cp } in
+      let tex = fun te ->
+        ln te _loc (Ptyp_class (cp, [te]))
+      in (DashType, tex)
+#else
   | STR("#") cp:class_path o:opt_present when lvl' >= DashType && lvl <= DashType ->
       let cp = { txt = cp; loc = _loc_cp } in
       let tex = fun te ->
         ln te _loc (Ptyp_class (cp, [te], o))
       in (DashType, tex)
+#endif
   end)
 
 let typexpr_suit =
@@ -635,13 +690,13 @@ let constr_decl =
 			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio Prod)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio Prod))}*
 							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)}
 	    -> (let c = { txt = cn; loc = _loc_cn } in
-	        (c, tes, te, _loc_cn))
+	        constructor_declaration _loc c tes te)
   end
 
 let field_decl =
   glr
   | m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
-      ({ txt = fn; loc = _loc_fn }, m, pte, _loc_m)
+      label_declaration _loc { txt = fn; loc = _loc_fn } m pte
   end
 
 let type_representation =
@@ -665,7 +720,7 @@ let type_information =
       (pri, te, tkind, cstrs)
   end
 
-let typedef_gen : ' a Glr.grammar -> ('a loc * type_declaration) Glr.grammar = (fun constr ->
+let typedef_gen : ' a Glr.grammar -> ('a -> string) -> ('a loc * type_declaration) Glr.grammar = (fun constr filter ->
   glr
   | tps:type_params?[[]] tcn:constr ti:type_information ->
       let (pri, te, tkind, cstrs) = ti in
@@ -676,20 +731,13 @@ let typedef_gen : ' a Glr.grammar -> ('a loc * type_declaration) Glr.grammar = (
 	   Private, Some te
 	| Some(_, te) -> pri, Some te
       in
-      let tdec =
-        { ptype_params   = List.map fst tps
-        ; ptype_cstrs    = cstrs
-        ; ptype_kind     = tkind
-        ; ptype_private  = pri
-        ; ptype_manifest = te
-        ; ptype_variance = List.map snd tps
-        ; ptype_loc      = _loc_tps
-        }
-      in ({ txt = tcn; loc = _loc_tcn }, tdec)
+      { txt = tcn; loc = _loc_tcn }, 
+         type_declaration _loc { txt = filter tcn; loc = _loc_tcn }
+	   tps cstrs tkind pri te
 end)
 
-let typedef = typedef_gen typeconstr_name
-let typedef_in_constraint = typedef_gen typeconstr
+let typedef = typedef_gen typeconstr_name (fun x -> x)
+let typedef_in_constraint = typedef_gen typeconstr Longident.last
 
 
 let type_definition =
@@ -1571,15 +1619,8 @@ let mod_constraint =
   | module_kw m1:module_path CHR('=') m2:extended_module_path ->
      ({ txt = m1; loc = _loc_m1 }, Pwith_module { txt = m2; loc = _loc_m2 })
   | type_kw tps:type_params?[[]] tcn:typeconstr_name STR(":=") te:typexpr ->
-      let td = { ptype_params = List.map fst tps
-               ; ptype_cstrs = []
-               ; ptype_kind = Ptype_abstract
-               ; ptype_private = Public
-               ; ptype_manifest = Some te
-               ; ptype_variance = List.map snd tps
-               ; ptype_loc = _loc
-               }
-      in
+      let td = type_declaration _loc { txt = Lident tcn; loc = _loc_tcn }
+	   tps [] Ptype_abstract Public (Some te) in
       ({ txt = Lident tcn; loc = _loc_tcn }, Pwith_typesubst td)
   | module_kw mn:module_name STR(":=") emp:extended_module_path ->
      ({ txt = Lident mn; loc = _loc_mn }, Pwith_modsubst { txt = emp; loc = _loc_emp })

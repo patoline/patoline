@@ -195,6 +195,19 @@ module Initial =
     let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
     let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc }
     let const_string s = Const_string s
+    let constructor_declaration _loc name args res = (name, args, res, _loc)
+    let label_declaration _loc name mut ty = (name, mut, ty, _loc)
+    let type_declaration _loc name params cstrs kind priv manifest =
+      let (params,variance) = List.split params in
+      {
+        ptype_params = params;
+        ptype_cstrs = cstrs;
+        ptype_kind = kind;
+        ptype_private = priv;
+        ptype_variance = variance;
+        ptype_manifest = manifest;
+        ptype_loc = _loc
+      }
     let pstr_eval e = Pstr_eval e
     let psig_value _loc name ty prim =
       Psig_value
