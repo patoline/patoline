@@ -160,7 +160,19 @@ let next_exp = function
   let expression= expr
   let module_item : structure_item grammar = declare_grammar "module_item"
   let signature_item : signature_item grammar = declare_grammar "signature_item"
-  type type_prio = TopType | As | Arr | Prod | DashType | AppType | AtomType
+
+  type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
+  let type_prios = [TopType; As; Arr; ProdType; DashType; AppType; AtomType]
+
+  let next_type_prio = function
+    | TopType -> As
+    | As -> Arr
+    | Arr -> ProdType
+    | ProdType -> DashType
+    | DashType -> AppType
+    | AppType -> AtomType
+    | AtomType -> AtomType
+		    
   let (typexpr_lvl : type_prio -> core_type grammar), set_typexpr_lvl = grammar_family "typexpr_lvl"
   let typexpr = typexpr_lvl TopType
   type pattern_prio = TopPat | AsPat | AltPat | TupPat | ConsPat | ConstrPat
@@ -323,19 +335,19 @@ type quote_env1 = {
   mutable bool_stack : Parsetree.expression list;
 }
 type quote_env2 = {
-  mutable expression_stack : Parsetree.expression list;
-  mutable pattern_stack : Parsetree.pattern list;
-  mutable type_stack : Parsetree.core_type list;
-  mutable str_item_stack : Parsetree.structure_item_desc list;
-  mutable sig_item_stack : Parsetree.signature_item_desc list;
-  mutable string_stack : string list;
-  mutable int_stack : int list;
-  mutable int32_stack : int32 list;
-  mutable int64_stack : int64 list;
-  mutable natint_stack : nativeint list;
-  mutable float_stack : float list;
-  mutable char_stack : char list;
-  mutable bool_stack : bool list;
+  mutable expression_stack2 : Parsetree.expression list;
+  mutable pattern_stack2 : Parsetree.pattern list;
+  mutable type_stack2 : Parsetree.core_type list;
+  mutable str_item_stack2 : Parsetree.structure_item_desc list;
+  mutable sig_item_stack2 : Parsetree.signature_item_desc list;
+  mutable string_stack2 : string list;
+  mutable int_stack2 : int list;
+  mutable int32_stack2 : int32 list;
+  mutable int64_stack2 : int64 list;
+  mutable natint_stack2 : nativeint list;
+  mutable float_stack2 : float list;
+  mutable char_stack2 : char list;
+  mutable bool_stack2 : bool list;
 }
 type quote_env =
     First of quote_env1 | Second of quote_env2
@@ -361,19 +373,19 @@ let empty_quote_env1 () = First {
 }
 
 let empty_quote_env2 () = Second {
-  expression_stack = [];
-  pattern_stack  = [];
-  type_stack =  [];
-  str_item_stack =  [];
-  sig_item_stack =  [];
-  string_stack = [];
-  int_stack = [];
-  int32_stack = [];
-  int64_stack = [];
-  natint_stack = [];
-  float_stack = [];
-  char_stack = [];
-  bool_stack = [];
+  expression_stack2 = [];
+  pattern_stack2  = [];
+  type_stack2 =  [];
+  str_item_stack2 =  [];
+  sig_item_stack2 =  [];
+  string_stack2 = [];
+  int_stack2 = [];
+  int32_stack2 = [];
+  int64_stack2 = [];
+  natint_stack2 = [];
+  float_stack2 = [];
+  char_stack2 = [];
+  bool_stack2 = [];
 }
 
 let push_pop_expression e =
@@ -382,8 +394,8 @@ let push_pop_expression e =
     | First env ->
 	env.expression_stack <- e::env.expression_stack; e
     | Second env ->
-       match env.expression_stack with
-	 e::l -> env.expression_stack <- l; e
+       match env.expression_stack2 with
+	 e::l -> env.expression_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -392,7 +404,7 @@ let push_expression e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.expression_stack <- e::env.expression_stack
+	env.expression_stack2 <- e::env.expression_stack2
 
 let push_pop_type e =
   try
@@ -400,8 +412,8 @@ let push_pop_type e =
     | First env ->
 	env.type_stack <- e::env.type_stack; loc_typ  e.pexp_loc Ptyp_any; 
     | Second env ->
-       match env.type_stack with
-	 e::l -> env.type_stack <- l; e
+       match env.type_stack2 with
+	 e::l -> env.type_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -410,7 +422,7 @@ let push_type e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.type_stack <- e::env.type_stack
+	env.type_stack2 <- e::env.type_stack2
 
 let push_pop_pattern e =
   try
@@ -418,8 +430,8 @@ let push_pop_pattern e =
     | First env ->
 	env.pattern_stack <- e::env.pattern_stack; loc_pat e.pexp_loc Ppat_any
     | Second env ->
-       match env.pattern_stack with
-	 e::l -> env.pattern_stack <- l; e
+       match env.pattern_stack2 with
+	 e::l -> env.pattern_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -428,7 +440,7 @@ let push_pattern e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.pattern_stack <- e::env.pattern_stack
+	env.pattern_stack2 <- e::env.pattern_stack2
 
 let push_pop_str_item e =
   try
@@ -436,8 +448,8 @@ let push_pop_str_item e =
     | First env ->
 	env.str_item_stack <- e::env.str_item_stack; pstr_eval e; 
     | Second env ->
-       match env.str_item_stack with
-	 e::l -> env.str_item_stack <- l; e
+       match env.str_item_stack2 with
+	 e::l -> env.str_item_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -446,7 +458,7 @@ let push_str_item e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.str_item_stack <- e::env.str_item_stack
+	env.str_item_stack2 <- e::env.str_item_stack2
 
 let push_pop_sig_item e =
   try
@@ -456,8 +468,8 @@ let push_pop_sig_item e =
 	let _loc = e.pexp_loc in 
 	psig_value _loc { txt = ""; loc = _loc} (loc_typ _loc Ptyp_any) []
     | Second env ->
-       match env.sig_item_stack with
-	 e::l -> env.sig_item_stack <- l; e
+       match env.sig_item_stack2 with
+	 e::l -> env.sig_item_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -466,7 +478,7 @@ let push_sig_item e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.sig_item_stack <- e::env.sig_item_stack
+	env.sig_item_stack2 <- e::env.sig_item_stack2
 
 let push_pop_string e =
   try
@@ -474,8 +486,8 @@ let push_pop_string e =
     | First env ->
 	env.string_stack <- e::env.string_stack; ""
     | Second env ->
-       match env.string_stack with
-	 e::l -> env.string_stack <- l; e
+       match env.string_stack2 with
+	 e::l -> env.string_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -484,7 +496,7 @@ let push_string e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.string_stack <- e::env.string_stack
+	env.string_stack2 <- e::env.string_stack2
 
 let push_pop_int e =
   try
@@ -492,8 +504,8 @@ let push_pop_int e =
     | First env ->
 	env.int_stack <- e::env.int_stack; 0
     | Second env ->
-       match env.int_stack with
-	 e::l -> env.int_stack <- l; e
+       match env.int_stack2 with
+	 e::l -> env.int_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -502,7 +514,7 @@ let push_int e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.int_stack <- e::env.int_stack
+	env.int_stack2 <- e::env.int_stack2
 
 let push_pop_int32 e =
   try
@@ -510,8 +522,8 @@ let push_pop_int32 e =
     | First env ->
 	env.int32_stack <- e::env.int32_stack; 0l
     | Second env ->
-       match env.int32_stack with
-	 e::l -> env.int32_stack <- l; e
+       match env.int32_stack2 with
+	 e::l -> env.int32_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -520,7 +532,7 @@ let push_int32 e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.int32_stack <- e::env.int32_stack
+	env.int32_stack2 <- e::env.int32_stack2
 
 let push_pop_int64 e =
   try
@@ -528,8 +540,8 @@ let push_pop_int64 e =
     | First env ->
 	env.int64_stack <- e::env.int64_stack; 0L
     | Second env ->
-       match env.int64_stack with
-	 e::l -> env.int64_stack <- l; e
+       match env.int64_stack2 with
+	 e::l -> env.int64_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -538,7 +550,7 @@ let push_int64 e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.int64_stack <- e::env.int64_stack
+	env.int64_stack2 <- e::env.int64_stack2
 
 let push_pop_natint e =
   try
@@ -546,8 +558,8 @@ let push_pop_natint e =
     | First env ->
 	env.natint_stack <- e::env.natint_stack; 0n
     | Second env ->
-       match env.natint_stack with
-	 e::l -> env.natint_stack <- l; e
+       match env.natint_stack2 with
+	 e::l -> env.natint_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -556,7 +568,7 @@ let push_natint e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.natint_stack <- e::env.natint_stack
+	env.natint_stack2 <- e::env.natint_stack2
 
 let push_pop_float e =
   try
@@ -564,8 +576,8 @@ let push_pop_float e =
     | First env ->
 	env.float_stack <- e::env.float_stack; 0.0
     | Second env ->
-       match env.float_stack with
-	 e::l -> env.float_stack <- l; e
+       match env.float_stack2 with
+	 e::l -> env.float_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -574,7 +586,7 @@ let push_float e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.float_stack <- e::env.float_stack
+	env.float_stack2 <- e::env.float_stack2
 
 let push_pop_char e =
   try
@@ -582,8 +594,8 @@ let push_pop_char e =
     | First env ->
 	env.char_stack <- e::env.char_stack; ' '
     | Second env ->
-       match env.char_stack with
-	 e::l -> env.char_stack <- l; e
+       match env.char_stack2 with
+	 e::l -> env.char_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -592,7 +604,7 @@ let push_char e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.char_stack <- e::env.char_stack
+	env.char_stack2 <- e::env.char_stack2
 
 let push_pop_bool e =
   try
@@ -600,8 +612,8 @@ let push_pop_bool e =
     | First env ->
 	env.bool_stack <- e::env.bool_stack; false
     | Second env ->
-       match env.bool_stack with
-	 e::l -> env.bool_stack <- l; e
+       match env.bool_stack2 with
+	 e::l -> env.bool_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
@@ -610,7 +622,7 @@ let push_bool e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.bool_stack <- e::env.bool_stack
+	env.bool_stack2 <- e::env.bool_stack2
 
 let quote_expression _loc e name =
   let cols =

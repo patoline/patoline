@@ -413,17 +413,6 @@ let override_flag =
  * Type expressions                                                         *
  ****************************************************************************)
 
-let type_prios = [TopType; As; Arr; Prod; DashType; AppType; AtomType]
-
-let next_type_prio = function
-  | TopType -> As
-  | As -> Arr
-  | Arr -> Prod
-  | Prod -> DashType
-  | DashType -> AppType
-  | AppType -> AtomType
-  | AtomType -> AtomType
-
 let poly_typexpr =
   glr
   | ids:{STR("'") id:ident}+ STR(".") te:typexpr ->
@@ -617,8 +606,8 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
   glr
   | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
       (Arr, fun te -> ln te _loc (Ptyp_arrow ("", te, te')))
-  | tes:{STR("*") te:(typexpr_lvl (next_type_prio Prod))}+  when lvl' > Prod && lvl <= Prod->
-      (Prod, fun te -> ln te _loc (Ptyp_tuple (te::tes)))
+  | tes:{STR("*") te:(typexpr_lvl (next_type_prio ProdType))}+  when lvl' > ProdType && lvl <= ProdType->
+      (ProdType, fun te -> ln te _loc (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
       (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
@@ -701,7 +690,7 @@ let constr_decl =
 				| Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
 				| Some t -> [t]
 			      in (tes, None)
-			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio Prod)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio Prod))}*
+			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio ProdType)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio ProdType))}*
 							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)}
 	    -> (let c = { txt = cn; loc = _loc_cn } in
 	        constructor_declaration _loc c tes te)
@@ -1473,10 +1462,18 @@ let expression_base = memoize1 (fun lvl ->
   | let_kw open_kw o:override_flag mp:module_path in_kw
     e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
       let mp = { txt = mp; loc = _loc_mp } in
-      (Let, loc_expr _loc (Pexp_open (o, mp, e))) (* NOTE on the git repository, the override flag arguments seems to have disapeared *)
+#ifversion >= 4.01
+      (Let, loc_expr _loc (Pexp_open (o, mp, e)))
+#else
+      (Let, loc_expr _loc (Pexp_open (mp, e)))
+#endif
   | mp:module_path STR(".") STR("(") e:expression STR(")") ->
       let mp = { txt = mp; loc = _loc_mp } in
-      (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e))) (* NOTE idem (override flag) *)
+#ifversion >= 4.01
+      (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e)))
+#else
+      (Atom, loc_expr _loc (Pexp_open (mp, e)))
+#endif
   | let_kw r:{r:rec_flag l:let_binding in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App)
                   -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
 #ifversion >= 4.02
@@ -1787,7 +1784,11 @@ let module_item_base =
 #ifversion >= 4.02
     Pstr_open{ popen_lid = { txt = m; loc = _loc_m}; popen_override = o; popen_loc = _loc; popen_attributes = []}
 #else
+#ifversion >= 4.01
     Pstr_open(o, { txt = m; loc = _loc_m} )
+#else
+    Pstr_open({ txt = m; loc = _loc_m} )
+#endif
 #endif
   | include_kw me:module_expr ->
 #ifversion >= 4.02
@@ -1865,7 +1866,11 @@ let signature_item_base =
 #ifversion >= 4.02
     Psig_open{ popen_lid = { txt = m; loc = _loc_m}; popen_override = o; popen_loc = _loc; popen_attributes = []}
 #else
+#ifversion >= 4.01
     Psig_open(o, { txt = m; loc = _loc_m} )
+#else
+    Psig_open({ txt = m; loc = _loc_m} )
+#endif
 #endif
   | include_kw me:module_type ->
 #ifversion >= 4.02
@@ -1915,9 +1920,15 @@ let ast =
 let _ = 
   if !ascii then begin
     begin
+#ifversion >= 4.01
       match ast with 
       | `Struct ast -> Pprintast.structure Format.std_formatter ast;
       | `Sig ast -> Pprintast.signature Format.std_formatter ast;
+#else
+      match ast with 
+      | `Struct ast -> Printast.implementation Format.std_formatter ast;
+      | `Sig ast -> Printast.interface Format.std_formatter ast;
+#endif
     end;
     Format.print_newline ()
   end else begin
