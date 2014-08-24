@@ -194,6 +194,11 @@ module Initial =
     let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc }
     let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
     let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc }
+    let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc }
+    let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc }
+    let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc }
+    let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
+    let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
     let const_string s = Const_string s
     let constructor_declaration _loc name args res = (name, args, res, _loc)
     let label_declaration _loc name mut ty = (name, mut, ty, _loc)
@@ -208,26 +213,41 @@ module Initial =
         ptype_manifest = manifest;
         ptype_loc = _loc
       }
+    let class_type_declaration _loc name params virt expr =
+      let (params,variance) = List.split params in
+      let params =
+        List.map (function | None  -> { txt = ""; loc = _loc } | Some x -> x)
+          params in
+      {
+        pci_params = (params, _loc);
+        pci_variance = variance;
+        pci_virt = virt;
+        pci_name = name;
+        pci_expr = expr;
+        pci_loc = _loc
+      }
     let pstr_eval e = Pstr_eval e
     let psig_value _loc name ty prim =
       Psig_value
         ({ txt = name; loc = _loc },
           { pval_type = ty; pval_prim = prim; pval_loc = _loc })
     let value_binding _loc pat expr = (pat, expr)
+    let module_binding _loc name mt me = (name, mt, me)
+    let ppat_construct (a,b) = Ppat_construct (a, b, false)
     let pexp_construct (a,b) = Pexp_construct (a, b, false)
     let pexp_constraint (a,b) = Pexp_constraint (a, (Some b), None)
     let pexp_coerce (a,b,c) = Pexp_constraint (a, b, (Some c))
-    let pexp_function cases =
-      let cases =
-        List.map
-          (fun (pat,expr,guard)  ->
-             match guard with
-             | None  -> (pat, expr)
-             | Some e ->
-                 (pat,
-                   (loc_expr (merge e.pexp_loc expr.pexp_loc)
-                      (Pexp_when (e, expr))))) cases in
-      Pexp_function ("", None, cases)
+    let pexp_assertfalse _loc = Pexp_assertfalse
+    let map_cases cases =
+      List.map
+        (fun (pat,expr,guard)  ->
+           match guard with
+           | None  -> (pat, expr)
+           | Some e ->
+               (pat,
+                 (loc_expr (merge e.pexp_loc expr.pexp_loc)
+                    (Pexp_when (e, expr))))) cases
+    let pexp_function cases = Pexp_function ("", None, cases)
     let pexp_fun (label,opt,pat,expr) =
       Pexp_function (label, opt, [(pat, expr)])
     type quote_env1 = 
