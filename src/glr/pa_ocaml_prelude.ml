@@ -226,12 +226,14 @@ let next_exp = function
       ; pci_loc = _loc }
   let pstr_eval e = Pstr_eval(e, [])
   let psig_value _loc name ty prim =
-    Psig_value { pval_name = { txt = name; loc = _loc }; pval_type = ty ; pval_prim = prim ; pval_attributes = []; pval_loc = _loc }
+    Psig_value { pval_name = name; pval_type = ty ; pval_prim = prim ; pval_attributes = []; pval_loc = _loc }
   let value_binding _loc pat expr =
     { pvb_pat = pat; pvb_expr = expr; pvb_attributes = []; pvb_loc = _loc }
   let module_binding _loc name mt me =
     let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me,mt)) in
     { pmb_name = name; pmb_expr = me; pmb_attributes = []; pmb_loc = _loc }
+  let module_declaration _loc name mt =
+    { pmd_name = name; pmd_type = mt; pmd_attributes = []; pmd_loc = _loc }
   let ppat_construct(a,b) = Ppat_construct(a,b)
   let pexp_construct(a,b) = Pexp_construct(a,b)
   let pexp_constraint(a,b) = Pexp_constraint(a,b)
@@ -281,11 +283,13 @@ let next_exp = function
       ; pci_loc = _loc }
   let pstr_eval e = Pstr_eval(e)			   
   let psig_value _loc name ty prim =
-    Psig_value( { txt = name; loc = _loc }, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )
+    Psig_value( name, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )
   let value_binding _loc pat expr =
     ( pat, expr)
   let module_binding _loc name mt me = 
     (name, mt, me)
+  let module_declaration _loc name mt = 
+    (name, mt)
   let ppat_construct(a,b) = Ppat_construct(a,b,false)
   let pexp_construct(a,b) = Pexp_construct(a,b,false)
   let pexp_constraint(a,b) = Pexp_constraint(a,Some b,None)
@@ -450,7 +454,7 @@ let push_pop_sig_item e =
     | First env ->
 	env.sig_item_stack <- e::env.sig_item_stack;
 	let _loc = e.pexp_loc in 
-	psig_value _loc "" (loc_typ _loc Ptyp_any) []
+	psig_value _loc { txt = ""; loc = _loc} (loc_typ _loc Ptyp_any) []
     | Second env ->
        match env.sig_item_stack with
 	 e::l -> env.sig_item_stack <- l; e

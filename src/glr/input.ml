@@ -118,23 +118,23 @@ let buffer_from_fun name get_line data =
 	       fn fname active num res
 	     else if Str.string_match if_directive line 1 then
 	       let b = test_directive fname num line in
-	       let status, res = fn fname (b && active) num res in
+	       let status, num, res = fn fname (b && active) num res in
 	       match status with
                | `End_of_file ->
 		  Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
 		  exit 1
 	       | `Endif -> fn fname active num res
 	       | `Else -> 
-		  let status, res = fn fname (not b && active) num res in 
+		  let status, num, res = fn fname (not b && active) num res in 
 		  match status with 
 		  | `Else | `End_of_file ->
 		    Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
 		    exit 1
 		  | `Endif -> fn fname active num res
 	     else if Str.string_match else_directive line 1 then
-	       `Else, res
+	       `Else, num, res
 	     else if Str.string_match endif_directive line 1 then
-	       `Endif, res
+	       `Endif, num, res
 	     else (
 	       let res = 
 		 if active then push res fname num line
@@ -148,11 +148,11 @@ let buffer_from_fun name get_line data =
 	     in
 	     fn fname active num res))
       with
-	End_of_file -> fun () -> `End_of_file, res
+	End_of_file -> fun () -> `End_of_file, num, res
     end ()
   in
   let start = empty_buffer name 0 in
-  let status, _ = fn name true 0 start in
+  let status, _, _ = fn name true 0 start in
   match status with
   | `Else ->
      Printf.eprintf "file: %s, extra '#else'" name;

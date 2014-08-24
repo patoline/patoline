@@ -76,7 +76,7 @@ let f24 = let contents = 3 in { contents }
 
 let f25 = "toto"
 
-let f26 = let s = f25 in s.[0] <- 'x' ; s.[1]
+let f26 = let s = f25 in s.[0] <- 'x'; s.[1]
 
 let f27 = [|1;2|]
 

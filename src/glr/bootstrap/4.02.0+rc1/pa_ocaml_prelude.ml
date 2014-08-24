@@ -11,16 +11,17 @@ let memoize1 f =
     with | Not_found  -> let res = f x in (Hashtbl.add h x res; res)
 let memoize2 f =
   let h = Hashtbl.create 1001 in
-  fun x  y  ->
-    try Hashtbl.find h (x, y)
-    with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
+  fun x  ->
+    fun y  ->
+      try Hashtbl.find h (x, y)
+      with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
 let fast = ref false
 let file = ref None
 let ascii = ref false
-type entry =  
+type entry =
   | FromExt
   | Impl
-  | Intf 
+  | Intf
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -42,7 +43,7 @@ let entry =
       if Filename.check_suffix s ".mli" then Intf else Impl
   | (FromExt ,None ) -> Intf
   | (i,_) -> i
-exception Unclosed_comment of int*int
+exception Unclosed_comment of int* int
 let print_blank_state ch s =
   let s =
     match s with
@@ -89,13 +90,27 @@ let ghost loc = let open Location in { loc with loc_ghost = true }
 let locate g =
   filter_position g
     (let open Lexing in
-       fun fname  l  pos  l'  pos'  ->
-         let s =
-           { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
-         let e =
-           { pos_fname = fname; pos_lnum = l'; pos_cnum = pos'; pos_bol = 0 } in
-         let open Location in
-           { loc_start = s; loc_end = e; loc_ghost = false })
+       fun fname  ->
+         fun l  ->
+           fun pos  ->
+             fun l'  ->
+               fun pos'  ->
+                 let s =
+                   {
+                     pos_fname = fname;
+                     pos_lnum = l;
+                     pos_cnum = pos;
+                     pos_bol = 0
+                   } in
+                 let e =
+                   {
+                     pos_fname = fname;
+                     pos_lnum = l';
+                     pos_cnum = pos';
+                     pos_bol = 0
+                   } in
+                 let open Location in
+                   { loc_start = s; loc_end = e; loc_ghost = false })
 let merge l1 l2 =
   let open Location in
     {
@@ -105,7 +120,7 @@ let merge l1 l2 =
     }
 module Initial =
   struct
-    type expression_lvl =  
+    type expression_lvl =
       | Top
       | Let
       | Seq
@@ -126,7 +141,7 @@ module Initial =
       | Dash
       | Dot
       | Prefix
-      | Atom 
+      | Atom
     let next_exp =
       function
       | Top  -> Let
@@ -157,29 +172,29 @@ module Initial =
     let module_item: structure_item grammar = declare_grammar "module_item"
     let signature_item: signature_item grammar =
       declare_grammar "signature_item"
-    type type_prio =  
+    type type_prio =
       | TopType
       | As
       | Arr
       | Prod
       | DashType
       | AppType
-      | AtomType 
+      | AtomType
     let ((typexpr_lvl : type_prio -> core_type grammar),set_typexpr_lvl) =
       grammar_family "typexpr_lvl"
     let typexpr = typexpr_lvl TopType
-    type pattern_prio =  
+    type pattern_prio =
       | TopPat
       | AsPat
       | AltPat
       | TupPat
       | ConsPat
       | ConstrPat
-      | AtomPat 
+      | AtomPat
     let ((pattern_lvl : pattern_prio -> pattern grammar),set_pattern_lvl) =
       grammar_family "pattern_lvl"
     let pattern = pattern_lvl TopPat
-    let let_binding: (Parsetree.pattern* Parsetree.expression) list grammar =
+    let let_binding: value_binding list grammar =
       declare_grammar "let_binding"
     let class_body: Parsetree.class_structure grammar =
       declare_grammar "class_body"
@@ -190,67 +205,104 @@ module Initial =
     let extra_patterns: (pattern_prio* pattern) grammar list = []
     let extra_module_items: structure_item_desc grammar list = []
     let extra_signature_items: signature_item_desc grammar list = []
-    let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc }
-    let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc }
-    let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
-    let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc }
-    let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc }
-    let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc }
-    let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc }
-    let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
-    let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
-    let const_string s = Const_string s
-    let constructor_declaration _loc name args res = (name, args, res, _loc)
-    let label_declaration _loc name mut ty = (name, mut, ty, _loc)
-    let type_declaration _loc name params cstrs kind priv manifest =
-      let (params,variance) = List.split params in
+    let loc_expr _loc e =
+      { pexp_desc = e; pexp_loc = _loc; pexp_attributes = [] }
+    let loc_pat _loc pat =
+      { ppat_desc = pat; ppat_loc = _loc; ppat_attributes = [] }
+    let loc_pcl _loc desc =
+      { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = [] }
+    let loc_typ _loc typ =
+      { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = [] }
+    let pctf_loc _loc desc =
+      { pctf_desc = desc; pctf_loc = _loc; pctf_attributes = [] }
+    let pcty_loc _loc desc =
+      { pcty_desc = desc; pcty_loc = _loc; pcty_attributes = [] }
+    let loc_pcf _loc desc =
+      { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = [] }
+    let mexpr_loc _loc desc =
+      { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = [] }
+    let mtyp_loc _loc desc =
+      { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = [] }
+    let const_string s = Const_string (s, None)
+    let constructor_declaration _loc name args res =
       {
+        pcd_name = name;
+        pcd_args = args;
+        pcd_res = res;
+        pcd_attributes = [];
+        pcd_loc = _loc
+      }
+    let label_declaration _loc name mut ty =
+      {
+        pld_name = name;
+        pld_mutable = mut;
+        pld_type = ty;
+        pld_attributes = [];
+        pld_loc = _loc
+      }
+    let params_map _loc params =
+      let fn (name,var) =
+        match name with
+        | None  -> ((loc_typ _loc Ptyp_any), var)
+        | Some name -> ((loc_typ name.loc (Ptyp_var (name.txt))), var) in
+      List.map fn params
+    let type_declaration _loc name params cstrs kind priv manifest =
+      let params = params_map _loc params in
+      {
+        ptype_name = name;
         ptype_params = params;
         ptype_cstrs = cstrs;
         ptype_kind = kind;
         ptype_private = priv;
-        ptype_variance = variance;
         ptype_manifest = manifest;
+        ptype_attributes = [];
         ptype_loc = _loc
       }
     let class_type_declaration _loc name params virt expr =
-      let (params,variance) = List.split params in
-      let params =
-        List.map (function | None  -> { txt = ""; loc = _loc } | Some x -> x)
-          params in
+      let params = params_map _loc params in
       {
-        pci_params = (params, _loc);
-        pci_variance = variance;
+        pci_params = params;
         pci_virt = virt;
         pci_name = name;
         pci_expr = expr;
+        pci_attributes = [];
         pci_loc = _loc
       }
-    let pstr_eval e = Pstr_eval e
+    let pstr_eval e = Pstr_eval (e, [])
     let psig_value _loc name ty prim =
       Psig_value
-        (name, { pval_type = ty; pval_prim = prim; pval_loc = _loc })
-    let value_binding _loc pat expr = (pat, expr)
-    let module_binding _loc name mt me = (name, mt, me)
-    let module_declaration _loc name mt = (name, mt)
-    let ppat_construct (a,b) = Ppat_construct (a, b, false)
-    let pexp_construct (a,b) = Pexp_construct (a, b, false)
-    let pexp_constraint (a,b) = Pexp_constraint (a, (Some b), None)
-    let pexp_coerce (a,b,c) = Pexp_constraint (a, b, (Some c))
-    let pexp_assertfalse _loc = Pexp_assertfalse
+        {
+          pval_name = name;
+          pval_type = ty;
+          pval_prim = prim;
+          pval_attributes = [];
+          pval_loc = _loc
+        }
+    let value_binding _loc pat expr =
+      { pvb_pat = pat; pvb_expr = expr; pvb_attributes = []; pvb_loc = _loc }
+    let module_binding _loc name mt me =
+      let me =
+        match mt with
+        | None  -> me
+        | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)) in
+      { pmb_name = name; pmb_expr = me; pmb_attributes = []; pmb_loc = _loc }
+    let module_declaration _loc name mt =
+      { pmd_name = name; pmd_type = mt; pmd_attributes = []; pmd_loc = _loc }
+    let ppat_construct (a,b) = Ppat_construct (a, b)
+    let pexp_construct (a,b) = Pexp_construct (a, b)
+    let pexp_constraint (a,b) = Pexp_constraint (a, b)
+    let pexp_coerce (a,b,c) = Pexp_coerce (a, b, c)
+    let pexp_assertfalse _loc =
+      Pexp_assert
+        (loc_expr _loc
+           (pexp_construct ({ txt = (Lident "false"); loc = _loc }, None)))
     let map_cases cases =
       List.map
         (fun (pat,expr,guard)  ->
-           match guard with
-           | None  -> (pat, expr)
-           | Some e ->
-               (pat,
-                 (loc_expr (merge e.pexp_loc expr.pexp_loc)
-                    (Pexp_when (e, expr))))) cases
-    let pexp_function cases = Pexp_function ("", None, cases)
-    let pexp_fun (label,opt,pat,expr) =
-      Pexp_function (label, opt, [(pat, expr)])
-    type quote_env1 = 
+           { pc_lhs = pat; pc_rhs = expr; pc_guard = guard }) cases
+    let pexp_function cases = Pexp_function cases
+    let pexp_fun (label,opt,pat,expr) = Pexp_fun (label, opt, pat, expr)
+    type quote_env1 =
       {
       mutable expression_stack: Parsetree.expression list;
       mutable pattern_stack: Parsetree.expression list;
@@ -264,8 +316,8 @@ module Initial =
       mutable natint_stack: Parsetree.expression list;
       mutable float_stack: Parsetree.expression list;
       mutable char_stack: Parsetree.expression list;
-      mutable bool_stack: Parsetree.expression list} 
-    type quote_env2 = 
+      mutable bool_stack: Parsetree.expression list;}
+    type quote_env2 =
       {
       mutable expression_stack: Parsetree.expression list;
       mutable pattern_stack: Parsetree.pattern list;
@@ -279,10 +331,10 @@ module Initial =
       mutable natint_stack: nativeint list;
       mutable float_stack: float list;
       mutable char_stack: char list;
-      mutable bool_stack: bool list} 
-    type quote_env =  
+      mutable bool_stack: bool list;}
+    type quote_env =
       | First of quote_env1
-      | Second of quote_env2 
+      | Second of quote_env2
     let quote_stack: quote_env Stack.t = Stack.create ()
     let empty_quote_env1 () =
       First
@@ -515,7 +567,7 @@ module Initial =
              ignore
                (parse_string
                   (Glr.sequence expression (Glr.eof ())
-                     (fun e  _unnamed_1  -> e)) blank "quote..." e)
+                     (fun e  -> fun _unnamed_1  -> e)) blank "quote..." e)
          | "type" -> ignore (parse_string typexpr blank "quote..." e)
          | "pattern" -> ignore (parse_string pattern blank "quote..." e)
          | "str_item" -> ignore (parse_string module_item blank "quote..." e)
@@ -561,22 +613,23 @@ module Initial =
        let fill push_expr name l =
          let p =
            List.fold_left
-             (fun acc  e  ->
-                let push_e =
-                  loc_expr _loc
-                    (Pexp_apply
-                       ((loc_expr _loc
-                           (Pexp_ident
-                              {
-                                txt =
-                                  (Ldot ((Lident "Pa_ocaml_prelude"), name));
-                                loc = _loc
-                              })), [("", e)])) in
-                match acc with
-                | None  -> Some push_e
-                | Some acc ->
-                    Some (loc_expr _loc (Pexp_sequence (acc, push_e)))) None
-             l in
+             (fun acc  ->
+                fun e  ->
+                  let push_e =
+                    loc_expr _loc
+                      (Pexp_apply
+                         ((loc_expr _loc
+                             (Pexp_ident
+                                {
+                                  txt =
+                                    (Ldot ((Lident "Pa_ocaml_prelude"), name));
+                                  loc = _loc
+                                })), [("", e)])) in
+                  match acc with
+                  | None  -> Some push_e
+                  | Some acc ->
+                      Some (loc_expr _loc (Pexp_sequence (acc, push_e))))
+             None l in
          match p with
          | None  -> push_expr
          | Some e -> loc_expr _loc (Pexp_sequence (push_expr, e)) in
@@ -723,9 +776,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "ident" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_string e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_string e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let capitalized_ident =
       Glr.alternatives
         [Glr.apply (fun id  -> id)
@@ -734,9 +790,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "uid" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_string e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_string e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let lowercase_ident =
       Glr.alternatives
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
@@ -745,27 +804,64 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "lid" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_string e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_string e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let key_word s =
       let len_s = String.length s in
       assert (len_s > 0);
       black_box
-        (fun str  pos  ->
-           let str' = ref str in
-           let pos' = ref pos in
-           for i = 0 to len_s - 1 do
-             (let (c,_str',_pos') = read (!str') (!pos') in
-              if c <> (s.[i]) then raise Give_up;
-              str' := _str';
-              pos' := _pos')
-           done;
-           (let str' = !str' and pos' = !pos' in
-            let (c,_,_) = read str' pos' in
-            match c with
-            | 'a'|'b'..'z'|'A'..'Z'|'0'..'9'|'_'|'\'' -> raise Give_up
-            | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
+        (fun str  ->
+           fun pos  ->
+             let str' = ref str in
+             let pos' = ref pos in
+             for i = 0 to len_s - 1 do
+               (let (c,_str',_pos') = read (!str') (!pos') in
+                if c <> (s.[i]) then raise Give_up;
+                str' := _str';
+                pos' := _pos')
+             done;
+             (let str' = !str'
+              and pos' = !pos' in
+              let (c,_,_) = read str' pos' in
+              match c with
+              | 'a'
+                |'b'
+                 |'c'
+                  |'d'
+                   |'e'
+                    |'f'
+                     |'g'
+                      |'h'
+                       |'i'
+                        |'j'
+                         |'k'
+                          |'l'
+                           |'m'
+                            |'n'
+                             |'o'|'p'|'q'|'r'|'s'|'t'|'u'|'v'|'w'|'x'|'y'|'z'
+                |'A'
+                 |'B'
+                  |'C'
+                   |'D'
+                    |'E'
+                     |'F'
+                      |'G'
+                       |'H'
+                        |'I'
+                         |'J'
+                          |'K'
+                           |'L'
+                            |'M'
+                             |'N'
+                              |'O'
+                               |'P'|'Q'|'R'|'S'|'T'|'U'|'V'|'W'|'X'|'Y'|'Z'
+                |'0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'|'9'|'_'|'\'' ->
+                  raise Give_up
+              | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
       Glr.alternatives
@@ -852,9 +948,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "int" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_int e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_int e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let int32_lit =
       Glr.alternatives
         [Glr.apply (fun i  -> Int32.of_string i)
@@ -863,9 +962,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "int32" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_int32 e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_int32 e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let int64_lit =
       Glr.alternatives
         [Glr.apply (fun i  -> Int64.of_string i)
@@ -874,9 +976,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "int64" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_int64 e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_int64 e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let nat_int_lit =
       Glr.alternatives
         [Glr.apply (fun i  -> Nativeint.of_string i)
@@ -885,9 +990,12 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "natint" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      push_pop_natint e)) (Glr.char ':' ()) (fun x  -> x))
-             expression (fun x  -> x)) (Glr.char '$' ()) (fun x  -> x)]
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  -> fun _unnamed_4  -> push_pop_natint e))
+                (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
+          (Glr.char '$' ()) (fun x  -> x)]
     let bool_lit =
       Glr.alternatives
         [Glr.apply (fun _unnamed_0  -> "false") false_kw;
@@ -896,13 +1004,17 @@ module Initial =
           (Glr.sequence
              (Glr.sequence
                 (Glr.sequence (Glr.char '$' ()) (Glr.string "bool" ())
-                   (fun _unnamed_0  _unnamed_1  _unnamed_2  e  _unnamed_4  ->
-                      if push_pop_bool e then "true" else "false"))
+                   (fun _unnamed_0  ->
+                      fun _unnamed_1  ->
+                        fun _unnamed_2  ->
+                          fun e  ->
+                            fun _unnamed_4  ->
+                              if push_pop_bool e then "true" else "false"))
                 (Glr.char ':' ()) (fun x  -> x)) expression (fun x  -> x))
           (Glr.char '$' ()) (fun x  -> x)]
   end
-module type Extension = module type of Initial
-module type FExt = functor (E : Extension) -> Extension
-let extensions_mod = ref ([] : (module FExt) list )
+module type Extension  = module type of Initial
+module type FExt  = functor (E : Extension) -> Extension
+let extensions_mod = ref ([] : (module FExt) list)
 let register_extension e = extensions_mod := (e :: (!extensions_mod))
 include Initial

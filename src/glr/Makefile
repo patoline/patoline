@@ -65,9 +65,10 @@ boot:
 	else if [ ! -d $(BACKUP) ] ; then mkdir $(BACKUP) ; fi ; \
 	     mv bootstrap/$(OCAMLVERSION)/*.ml $(BACKUP) ; \
 	fi
-	./pa_ocaml --ascii pa_ocaml_prelude.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml
-	./pa_ocaml --ascii pa_parser.ml > bootstrap/$(OCAMLVERSION)/pa_parser.ml
-	./pa_ocaml --ascii pa_ocaml.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml.ml
+	export OCAMLVERSION=$(OCAMLVERSION); \
+	./pa_ocaml --ascii pa_ocaml_prelude.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml ;\
+	./pa_ocaml --ascii pa_parser.ml > bootstrap/$(OCAMLVERSION)/pa_parser.ml ;\
+	./pa_ocaml --ascii pa_ocaml.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml.ml ;\
 
 examples/calc: examples/calc.cmx glr.cmxa
 	$(CAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
