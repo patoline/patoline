@@ -22,19 +22,19 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -o $@ -linkpkg $(PATOLINE_INCLUDES),threads -thread $(PAT_CMX)
 
-all: $(PA_PATOLINE)
+#all: $(PA_PATOLINE)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(GLR_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package camlp4,patutil,imagelib,dynlink,glr camlp4lib.cmxa Camlp4Parsers/Camlp4OCamlRevisedParser.cmx Camlp4Parsers/Camlp4OCamlParser.cmx -o $@ $<
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_GLR) $(GLR_DIR)/glr.cmxa
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(GLR_DIR)/pa_ocaml $(GLR_DIR)/glr.cmxa
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_GLR) -c -package camlp4,patutil,glr -I +camlp4/Camlp4Parsers -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(GLR_DIR)/pa_ocaml -c -package camlp4,patutil,glr -I +camlp4/Camlp4Parsers -o $@ $< 
 
-$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_GLR)
+$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(GLR_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_GLR) -package glr,camlp4,patutil $< > $@
+	$(Q)$(OCAMLDEP) -pp $(GLR_DIR)/pa_ocaml -package glr,camlp4,patutil $< > $@
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"

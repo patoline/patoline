@@ -10,7 +10,7 @@ ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)
 endif
 
-all: pa_glr glr.cmxa glr.cma glr.cmi doc pa_ocaml
+all: glr.cmxa glr.cma glr.cmi doc pa_ocaml
 
 %.cmi: %.mli
 	$(CAMLC) -c $< 
