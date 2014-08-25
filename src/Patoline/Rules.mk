@@ -81,14 +81,14 @@ DISTCLEAN += $(d)/*.depends
 # Installing
 install: install-patoline-bin install-patoline-lib
 .PHONY: install-patoline-bin install-patoline-lib
-install-patoline-bin: install-bindir $(d)/patoline $(PA_PATOLINE) 
+install-patoline-bin: install-bindir $(d)/patoline
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 install-patoline-lib: install-typography $(d)/Build.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
-.PHONY: install-pa_patoline
-install-pa_patoline: install-patoline-bin $(d)/pa_patoline
-	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
+#.PHONY: install-pa_patoline
+#install-pa_patoline: install-patoline-bin $(d)/pa_patoline
+#	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
