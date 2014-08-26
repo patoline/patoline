@@ -148,7 +148,7 @@ let local_packages = [
   { package_name = "Typography";
     macro_suffix = "TYPOGRAPHY";
     local_deps = ["patutil";"patfonts";"imagelib"];
-    extern_deps = ["camomile";"zip";"mysql";"dynlink"];
+    extern_deps = ["camomile";"zip";"mysql";"dynlink";"fontconfig"];
     subdirs = ["Output";"DefaultFormat"];
     has_meta = true;
   };
