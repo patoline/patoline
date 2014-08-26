@@ -5,7 +5,7 @@ open Input
     @author Christophe Raffalli *)
 
 (** For the moment, ambiguous grammar are supported, but ambiguous exception
-  raise the exception [Ambiuity(pos_start, pos_end)].
+  raise the exception [Ambiguity(pos_start, pos_end)].
   A possibility of providing your own merge function is planed *)
 exception Ambiguity of string * int * int * string * int * int
 
