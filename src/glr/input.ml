@@ -1,31 +1,26 @@
 
-type buffer = { fname : string; lnum : int; length : int; contents : string; mutable next : buffer }
+type buffer_aux = { empty: bool; fname : string; lnum : int; length : int; contents : string; mutable next : buffer }
+ and buffer = buffer_aux Lazy.t
 
 let rec empty_buffer fname lnum = 
-  let rec res = { fname; lnum; length = 0; contents = ""; next = res } in
+  let rec res = lazy { empty = true; fname; lnum; length = 0; contents = ""; next = res } in
   res
 
-let is_empty b = b == b.next
+let is_empty (lazy b) = b.empty
 
-let fname b = b.fname
+let fname (lazy b) = b.fname
 
-let line_num b = b.lnum
+let line_num (lazy b) = b.lnum
 
-let line b = b.contents
+let line (lazy b) = b.contents
 
-let rec read b i =
-  if is_empty b then ('\255', b, 0) else
+let rec read (lazy b as b0) i =
+  if b.empty then ('\255', b0, 0) else
   match compare i b.length with
-    -1 -> b.contents.[i], b, i+1
+    -1 -> b.contents.[i], b0, i+1
   | 0 -> '\n', b.next, 0
-  | _ -> read b (b.length - i - 1)
+  | _ -> read b.next (b.length - i - 1)
  
-let push b fname lnum contents =
-  let length = String.length contents in
-  let res = { fname; lnum; length; contents; next = empty_buffer fname (lnum+1) } in
-  b.next <- res;
-  res
-
 let line_num_directive =
   Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]*\\)[\"]\\)?[ \t]*$"
 
@@ -36,10 +31,10 @@ let if_directive =
   Str.regexp "[ \t]*if"
 
 let ifdef_directive =
-  Str.regexp "[ \t]*if[ \t]*def[ \t]*\\([^ \t]\\)[ \t]*"
+  Str.regexp "[ \t]*if[ \t]*def[ \t]*\\([^ \t]*\\)[ \t]*"
 
 let ifundef_directive =
-  Str.regexp "[ \t]*if[ \t]*undef[ \t]*\\([^ \t]\\)[ \t]*"
+  Str.regexp "[ \t]*if[ \t]*undef[ \t]*\\([^ \t]*\\)[ \t]*"
 
 let ifversion_directive =
   Str.regexp "[ \t]*if[ \t]*version[ \t]*\\([<>=]*\\)[ \t]*\\([0-9]+\\)[.]\\([0-9]+\\)[ \t]*"
@@ -91,8 +86,8 @@ let endif_directive =
   Str.regexp "[ \t]*endif[ \t]*"
 
 
-let buffer_from_fun name get_line data =
-  let rec fn fname active num res =
+let buffer_from_fun fname get_line data =
+  let rec fn fname active num cont =
     begin
       try
 	let num = num + 1 in
@@ -100,7 +95,7 @@ let buffer_from_fun name get_line data =
 	(fun () -> 
 	 let len = String.length line in
 	 if len = 0 then
-	   fn fname active num res
+	   fn fname active num cont
 	 else
 	   if line.[0] = '#' then
 	     if Str.string_match line_num_directive line 1 then
@@ -110,58 +105,53 @@ let buffer_from_fun name get_line data =
 	       let fname = 
 		 try Str.matched_group 3 line with Not_found -> fname
 	       in
-	       fn fname active num res
+	       fn fname active num cont
 	     else if Str.string_match define_directive line 1 then
 	       let macro_name = Str.matched_group 1 line in
 	       let value = Str.matched_group 3 line in
 	       Unix.putenv macro_name value;
-	       fn fname active num res
+	       fn fname active num cont
 	     else if Str.string_match if_directive line 1 then
 	       let b = test_directive fname num line in
-	       let status, num, res = fn fname (b && active) num res in
+	       fn fname (b && active) num (fun fname status num ->
 	       match status with
                | `End_of_file ->
 		  Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
 		  exit 1
-	       | `Endif -> fn fname active num res
+	       | `Endif -> fn fname active num cont
 	       | `Else -> 
-		  let status, num, res = fn fname (not b && active) num res in 
+		  fn fname (not b && active) num (fun fname status num ->
 		  match status with 
 		  | `Else | `End_of_file ->
 		    Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
 		    exit 1
-		  | `Endif -> fn fname active num res
+		  | `Endif -> fn fname active num cont))
 	     else if Str.string_match else_directive line 1 then
-	       `Else, num, res
+	       cont fname `Else num
 	     else if Str.string_match endif_directive line 1 then
-	       `Endif, num, res
-	     else (
-	       let res = 
-		 if active then push res fname num line
-		 else res
-	       in
-	       fn fname active num res)
-	   else (
-	     let res = 
-	       if active then push res fname num line
-	       else res
-	     in
-	     fn fname active num res))
+	       cont fname `Endif num
+	     else if active then
+	       { empty = false; fname; lnum = num; length = len ; contents = line ; 
+		 next = lazy (fn fname active num cont) }
+	     else fn fname active num cont 
+	   else if active then 
+               { empty = false; fname; lnum = num; length = len ; contents = line ; 
+		 next = lazy (fn fname active num cont) }
+	   else fn fname active num cont)
       with
-	End_of_file -> fun () -> `End_of_file, num, res
+	End_of_file -> fun () -> cont fname `End_of_file num
     end ()
   in
-  let start = empty_buffer name 0 in
-  let status, _, _ = fn name true 0 start in
+  lazy (fn fname true 0 (fun fname status line ->
   match status with
   | `Else ->
-     Printf.eprintf "file: %s, extra '#else'" name;
+     Printf.eprintf "file: %s, extra '#else'" fname;
      exit 1
   | `Endif ->
-     Printf.eprintf "file: %s, extra '#endif'" name;
+     Printf.eprintf "file: %s, extra '#endif'" fname;
      exit 1
   | `End_of_file -> 
-     start.next
+     Lazy.force (empty_buffer fname line)))
   
 let buffer_from_channel name ch = buffer_from_fun name input_line ch
 

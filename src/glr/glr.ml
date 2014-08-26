@@ -727,7 +727,7 @@ let partial_parse_buffer grammar blank str pos =
 		let str, pos, msgs = Hashtbl.find max_hash key in
 		raise (Parse_error (fname str, line_num str, pos, remove_duplicate msgs))
   in
-  PosMap.fold (fun (_,pos) a acc -> (pos,a)::acc) la []
+  PosMap.fold (fun (str,pos) a acc -> (str,pos,a)::acc) la []
 
 let partial_parse_string grammar blank name str = 
   let str = buffer_from_string name str in

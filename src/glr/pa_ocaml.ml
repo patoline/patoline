@@ -1637,6 +1637,17 @@ let semi_col = black_box
      raise Give_up)
   (Charset.singleton ';') false (";")
 
+let double_semi_col = black_box 
+  (fun str pos ->
+   let c,str',pos' = read str pos in
+   if c = ';' then
+     let c',_,_ = read str' pos' in
+     if c' <> ';' then raise Give_up
+     else (), str', pos'
+   else
+     raise Give_up)
+  (Charset.singleton ';') false (";;")
+
 let expression_suit_aux = memoize2 (fun lvl' lvl ->
   let ln f _loc e = loc_expr (merge f.pexp_loc _loc) e in
   glr
@@ -1953,57 +1964,12 @@ let _ = set_grammar signature_item (
     s:signature_item_base STR(";;")? -> loc_sig _loc s
   end)
 
-let ast =
-  (* read the whole file with a buffer ...
-     to be able to read stdin *)
-  let name, ch = match !file with
-      None -> "stdin", stdin
-    | Some name -> 
-(*       let buffer = Input.buffer_from_file name in
-       List.iter (fun line ->
-		  Printf.eprintf "%s\n" line.Input.contents) buffer;*)
-       name, open_in name
-  in
-  try
-    if entry = Impl then 
-      `Struct (parse_channel structure blank name ch)
-    else
-      `Sig (parse_channel signature blank name ch)
-  with
-    Parse_error (fname,l,n,msgs) ->
-    let msgs = String.concat " | " msgs in
-    Printf.eprintf "File %S, line %d, characters %d:\n\
-                    Error: Syntax error, %s expected\n"
-                   fname l n msgs;
-    exit 1
+exception Top_Exit
 
-let _ = 
-  if !ascii then begin
-    begin
-#ifversion >= 4.01
-      match ast with 
-      | `Struct ast -> Pprintast.structure Format.std_formatter ast;
-      | `Sig ast -> Pprintast.signature Format.std_formatter ast;
-#else
-      match ast with 
-      | `Struct ast -> Printast.implementation Format.std_formatter ast;
-      | `Sig ast -> Printast.interface Format.std_formatter ast;
-#endif
-    end;
-    Format.print_newline ()
-  end else begin
-    let magic = match ast with 
-      | `Struct _ -> Config.ast_impl_magic_number
-      | `Sig _ -> Config.ast_intf_magic_number
-    in
-    output_string stdout magic;
-    output_value stdout (match !file with None -> "" | Some name -> name);
-    begin
-      match ast with 
-      | `Struct ast -> output_value stdout ast
-      | `Sig ast -> output_value stdout ast
-    end;
-    close_out stdout
+let top_phrase = 
+  glr
+  | CHR(';')? l:{s:structure_item_base -> loc_str _loc s}+ (double_semi_col) -> Ptop_def(l)
+  | CHR(';')? EOF -> raise Top_Exit
   end
 
 end
@@ -2013,5 +1979,6 @@ module Final = (val
                       (module (Ext(Acc)))) (module Initial) (List.rev !extensions_mod))
   
 module Main = Make(Final)
+
 
 

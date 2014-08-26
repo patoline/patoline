@@ -5782,6 +5782,15 @@ module Make(Initial:Extension) =
              let (c',_,_) = read str' pos' in
              (if c' = ';' then raise Give_up else ((), str', pos'))
            else raise Give_up) (Charset.singleton ';') false ";"
+    let double_semi_col =
+      black_box
+        (fun str  pos  ->
+           let (c,str',pos') = read str pos in
+           if c = ';'
+           then
+             let (c',_,_) = read str' pos' in
+             (if c' <> ';' then raise Give_up else ((), str', pos'))
+           else raise Give_up) (Charset.singleton ';') false ";;"
     let expression_suit_aux =
       memoize2
         (fun lvl'  lvl  ->
@@ -7232,41 +7241,48 @@ module Make(Initial:Extension) =
               fun _unnamed_1  ->
                 let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
                 let _loc = merge _loc_s _loc__unnamed_1 in loc_sig _loc s))
-    let ast =
-      let (name,ch) =
-        match !file with
-        | None  -> ("stdin", stdin)
-        | Some name -> (name, (open_in name)) in
-      try
-        if entry = Impl
-        then `Struct (parse_channel structure blank name ch)
-        else `Sig (parse_channel signature blank name ch)
-      with
-      | Parse_error (fname,l,n,msgs) ->
-          let msgs = String.concat " | " msgs in
-          (Printf.eprintf
-             "File %S, line %d, characters %d:\nError: Syntax error, %s expected\n"
-             fname l n msgs;
-           exit 1)
-    let _ =
-      if !ascii
-      then
-        ((match ast with
-          | `Struct ast -> Pprintast.structure Format.std_formatter ast
-          | `Sig ast -> Pprintast.signature Format.std_formatter ast);
-         Format.print_newline ())
-      else
-        (let magic =
-           match ast with
-           | `Struct _ -> Config.ast_impl_magic_number
-           | `Sig _ -> Config.ast_intf_magic_number in
-         output_string stdout magic;
-         output_value stdout
-           (match !file with | None  -> "" | Some name -> name);
-         (match ast with
-          | `Struct ast -> output_value stdout ast
-          | `Sig ast -> output_value stdout ast);
-         close_out stdout)
+    exception Top_Exit
+    let top_phrase =
+      Glr.alternatives
+        [Glr.sequence
+           (Glr.sequence
+              (locate
+                 (Glr.option None
+                    (Glr.apply (fun x  -> Some x) (Glr.char ';' ()))))
+              (locate
+                 (Glr.sequence
+                    (Glr.apply
+                       (fun s  ->
+                          let (_loc_s,s) = s in
+                          let _loc = _loc_s in loc_str _loc s)
+                       (locate structure_item_base))
+                    (Glr.fixpoint []
+                       (Glr.apply (fun x  l  -> x :: l)
+                          (Glr.apply
+                             (fun s  ->
+                                let (_loc_s,s) = s in
+                                let _loc = _loc_s in loc_str _loc s)
+                             (locate structure_item_base))))
+                    (fun x  l  -> x :: (List.rev l))))
+              (fun _unnamed_0  ->
+                 let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                 fun l  ->
+                   let (_loc_l,l) = l in
+                   fun _unnamed_2  ->
+                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
+                     let _loc = merge _loc__unnamed_0 _loc__unnamed_2 in
+                     Ptop_def l)) (locate double_semi_col) (fun x  -> x);
+        Glr.sequence
+          (locate
+             (Glr.option None
+                (Glr.apply (fun x  -> Some x) (Glr.char ';' ()))))
+          (locate (Glr.eof ()))
+          (fun _unnamed_0  ->
+             let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+             fun _unnamed_1  ->
+               let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
+               let _loc = merge _loc__unnamed_0 _loc__unnamed_1 in
+               raise Top_Exit)]
   end
 module Final = (val
   List.fold_left

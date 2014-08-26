@@ -44,8 +44,11 @@ bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bo
 bootstrap/$(OCAMLVERSION)/pa_parser.cmo: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
 	$(OCAMLC) -I +compiler-libs -c -I bootstrap/$(OCAMLVERSION) $<
 
-pa_ocaml.byt: glr.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
-	$(OCAMLC) -I +compiler-libs -o $@ unix.cma str.cma ocamlcommon.cma $^
+bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo: bootstrap/$(OCAMLVERSION)/pa_byt_main.ml input.cmi bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
+	$(OCAMLC) -I +compiler-libs -c -I bootstrap/$(OCAMLVERSION) $<
+
+pa_ocaml.byt: glr.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo
+	$(OCAMLC) -I +compiler-libs -o $@ unix.cma str.cma ocamlcommon.cma ocamlbytecomp.cma ocamltoplevel.cma $^
 
 bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml glr.cmxa
 	$(OCAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $< 
@@ -56,7 +59,10 @@ bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bo
 bootstrap/$(OCAMLVERSION)/pa_parser.cmx: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
 	$(OCAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $< 
 
-pa_ocaml: glr.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
+bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx: bootstrap/$(OCAMLVERSION)/pa_opt_main.ml input.cmi input.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
+	$(OCAMLOPT) -I +compiler-libs -I bootstrap/$(OCAMLVERSION) -c $<
+
+pa_ocaml: glr.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx 
 	$(OCAMLOPT) -I +compiler-libs  -I bootstrap/$(OCAMLVERSION) -o $@ unix.cmxa str.cmxa ocamlcommon.cmxa $^
 
 boot: BACKUP:=bootstrap/$(OCAMLVERSION)/$(shell date +%Y-%m-%d-%H-%M-%S)
@@ -69,6 +75,9 @@ boot:
 	./pa_ocaml --ascii pa_ocaml_prelude.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.ml ;\
 	./pa_ocaml --ascii pa_parser.ml > bootstrap/$(OCAMLVERSION)/pa_parser.ml ;\
 	./pa_ocaml --ascii pa_ocaml.ml > bootstrap/$(OCAMLVERSION)/pa_ocaml.ml ;\
+	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_opt_main.ml ;\
+	export BYTE=1 ;\
+	./pa_ocaml --ascii pa_main.ml > bootstrap/$(OCAMLVERSION)/pa_byt_main.ml 
 
 examples/calc: examples/calc.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@

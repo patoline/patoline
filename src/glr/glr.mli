@@ -31,7 +31,8 @@ type ('a) grammar
     a "name" is provided for error messages only *)
 val parse_string : 'a grammar -> blank -> string -> string -> 'a
 
-val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> (int * 'a) list
+val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> (buffer * int * 'a) list
+val partial_parse_buffer : 'a grammar -> blank -> buffer-> int -> (buffer * int * 'a) list
 
 (** [parse_fine parser blank name in_channel]: load the content of the channel in a string
      and parses it. Because it is loaded in memory, it works only for real file, not stream *)

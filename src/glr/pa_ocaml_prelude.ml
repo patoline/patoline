@@ -27,7 +27,7 @@ let memoize2 f =
 let fast = ref false
 let file = ref None
 let ascii = ref false
-type entry = FromExt | Impl | Intf
+type entry = FromExt | Impl | Intf | Top
 let entry = ref FromExt
 let modern = ref false
   (* if true, 
@@ -51,7 +51,7 @@ let _ = Arg.parse spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.a
 let entry =
   match !entry, !file with
     FromExt, Some s -> if Filename.check_suffix s ".mli" then Intf else Impl
-  | FromExt, None -> Intf
+  | FromExt, None -> Top
   | i, _ -> i
 
 (****************************************************************************

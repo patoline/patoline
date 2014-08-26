@@ -20,7 +20,8 @@ let ascii = ref false
 type entry =  
   | FromExt
   | Impl
-  | Intf 
+  | Intf
+  | Top 
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -40,7 +41,7 @@ let entry =
   match ((!entry), (!file)) with
   | (FromExt ,Some s) ->
       if Filename.check_suffix s ".mli" then Intf else Impl
-  | (FromExt ,None ) -> Intf
+  | (FromExt ,None ) -> Top
   | (i,_) -> i
 exception Unclosed_comment of int*int
 let print_blank_state ch s =
