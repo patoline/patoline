@@ -138,6 +138,8 @@ OCAMLYACC := ocamlyacc
 OCAMLLEX := ocamllex
 DYPGEN := dypgen
 
+export OCAML OCAMLC OCAMLOPT OCAMLDEP OCAMLMKLIB
+
 # Useful directories, to be referenced from other Rules.ml
 FONTS_DIR := Fonts
 FORMAT_DIR := Format

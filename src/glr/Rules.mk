@@ -7,23 +7,23 @@ all: $(d)/pa_ocaml $(d)/glr.cmxa $(d)/glr.cma
 PA_OCAML = $(GLR_DIR)/pa_ocaml
 
 $(d)/pa_ocaml:
-	cd $(GLR_DIR); make pa_ocaml
+	$(MAKE) -e -C $(GLR_DIR) pa_ocaml
 $(d)/glr.cmxa:
-	cd $(GLR_DIR); make glr.cmxa
+	$(MAKE) -e -C $(GLR_DIR) glr.cmxa
 $(d)/glr.cma:
-	cd $(GLR_DIR); make glr.cma
+	$(MAKE) -e -C $(GLR_DIR) glr.cma
 
 clean: clean-glr
 
 clean-glr:
-	cd $(GLR_DIR); make clean
+	$(MAKE) -e -C $(GLR_DIR) clean
 
 $(d)/glr.a: $(d)/glr.cmxa;
 
 install: install-glr
 
 install-glr:
-	cd $(GLR_DIR); make install
+	$(MAKE) -e -C $(GLR_DIR) install
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
