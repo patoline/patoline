@@ -1604,8 +1604,10 @@ let expression_base = memoize1 (fun lvl ->
       in
       (Atom, loc_expr _loc desc)
   | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
-                  | STR("str_item") -> "str_item" | STR("sig_item") -> "sig_item" } 
-       CHR('<') q:quotation -> (Atom, quote_expression _loc_q q name)
+                  | STR("str_item") -> "str_item" | STR("sig_item") -> "sig_item"
+		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
+       loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
+       (Atom, quote_expression _loc_q loc q name)
   | CHR('$') e:expression CHR('$') -> (Atom, push_pop_expression e)
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
@@ -1872,13 +1874,8 @@ let structure_item_base =
 
 let _ = set_grammar structure_item (
   glr
-    s:structure_item_base STR(";;")? -> { pstr_desc = s; pstr_loc = _loc; }
+    s:structure_item_base STR(";;")? -> loc_str _loc s
   end)
-
-let structure =
-  glr
-    l : structure_item* EOF -> l
-  end
 
 let signature_item_base =
  glr
@@ -1953,13 +1950,8 @@ end
 
 let _ = set_grammar signature_item (
   glr
-    s:signature_item_base STR(";;")? -> { psig_desc = s; psig_loc = _loc; }
+    s:signature_item_base STR(";;")? -> loc_sig _loc s
   end)
-
-let signature =
-  glr
-    l : signature_item* EOF -> l
-  end
 
 let ast =
   (* read the whole file with a buffer ...

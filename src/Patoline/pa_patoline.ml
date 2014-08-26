@@ -5,15 +5,10 @@
 open Input
 open Glr
 open Charset
-open Camlp4.PreCast
-open Syntax
 open FilenameExtra
+open Pa_ocaml_prelude
 
-module Id : Camlp4.Sig.Id =
-  struct
-    let name = "pa_patoline"
-    let version = "0.1"
-  end
+let _ = glr_locate locate merge
 
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
@@ -32,7 +27,7 @@ exception Unclosed_comment of int * int
  *     "(*" and or "*)",
  *   - single '"' character.
  *)
-let blank mline str pos =
+let pato_blank str pos =
   let rec fn nb lvl state prev (str, pos as cur) =
     if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
     else
@@ -50,7 +45,6 @@ let blank mline str pos =
       | `Cls , _                 -> fn nb lvl `Ini cur next
 
       | _    , '\n' when lvl > 0 -> fn nb lvl `Ini cur next
-      | _    , '\n' when mline   -> fn nb lvl `Ini cur next
       | _    , '\n' when nb > 0  -> cur
       | _    , '\n'              -> fn (nb + 1) lvl `Ini cur next
 
@@ -80,9 +74,6 @@ let patoline_format   = ref "DefaultFormat"
 let patoline_driver   = ref "Pdf"
 let patoline_packages = ref ["Typography"]
 
-(* Should contain the name of the file being parsed. *)
-let fname = ref ""
-
 (* Function for geting fresh module names (Uid) *)
 let counter = ref 1
 let freshUid () =
@@ -90,231 +81,35 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-let locate g =
-  filter_position g Lexing.(fun fname l pos l' pos' ->
-    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
-    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = pos'; pos_bol = 0 } in
-    Loc.(merge (of_lexing_position s) (of_lexing_position e)))
-
 let _ = glr_locate locate Loc.merge
 
-(****************************************************************************
- * Camlp4 extension and interaction between OCaml and Patoline's parser.   *
- ****************************************************************************)
+module Ext = functor(In:Extension) -> 
+struct
+  include In
 
-let patoline_basic_text_paragraph = declare_grammar "patoline_basic_text_paragraph"
 
-let patoline_math_toplevel = declare_grammar "patoline_math_toplevel"
+  let wrapped_caml_str_item = 
+    glr
+    | CHR('(') l:structure_item* CHR(')') -> l
+    end
 
-let parser_stack = Stack.create ()
+  (* Parse a caml "expr" wrapped with parentheses *)
+  let wrapped_caml_expr = 
+    glr
+    | CHR('(') e:expression CHR(')') -> e
+    end
 
-module Extension (Syntax : Camlp4.Sig.Camlp4Syntax) =
-  struct
-    let patoline_caml_expr = Gram.Entry.mk "patoline_caml_expr"
-
-    let patoline_caml_struct = Gram.Entry.mk "patoline_caml_struct"
-
-    let patoline_caml_list = Gram.Entry.mk "patoline_caml_list"
-
-    let patoline_caml_array = Gram.Entry.mk "patoline_caml_array"
-
-    EXTEND Gram
-      patoline_caml_expr: [ [
-        e = expr LEVEL "top"; ")" -> <:expr<(fun x -> x) $e$>>
-        (* e only does not set the position to contain the ")" *)
-      ] ];
-
-      patoline_caml_struct: [ [
-        e = str_items; ")" -> <:str_item<$e$ let _ = ()>>
-        (* e only does not set the position to contain the ")" *)
-      ] ];
-
-      patoline_caml_list: [ [
-        l = LIST0 (expr LEVEL "top") SEP ";"; "]" ->
-          List.fold_left
-            (fun tl hd -> <:expr< $hd$ :: $tl$ >>) <:expr< [] >>
-            (List.rev l)
-      ] ];
-
-      patoline_caml_array: [ [
-        l = LIST0 (expr LEVEL "top") SEP ";"; "|]" ->
-          let l = List.fold_left
-                    (fun tl hd -> <:expr< $hd$ :: $tl$ >>) <:expr< [] >>
-                    (List.rev l) in
-          <:expr<Array.of_list $l$>>
-      ] ];
-
-      str_item: [ [
-        "#"; n = UIDENT; a = UIDENT ->
-          (match n with
-             | "FORMAT"  -> patoline_format := a
-             | "DRIVER"  -> patoline_driver := a
-             | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
-             | _ -> let err = Stream.Error "Unknown Patoline directive."
-                    in Loc.raise _loc err);
-          <:str_item<>>
-      ] ];
-
-      expr: LEVEL "simple" [ [
-        "<|" ->
-          let str, ptr = try Stack.top parser_stack
-                         with Stack.Empty -> assert false
-          in
-          assert (!ptr = 0);
-          let pos = Loc.stop_off _loc + 1 in
-          let parse = glr p:patoline_basic_text_paragraph STR("|>") -> p end in
-          let new_pos, ast = List.hd (partial_parse_string parse blank2 "" str pos) in
-          ptr := new_pos - pos - 1; ast
-      ] ];
-
-      expr: LEVEL "simple" [ [
-        "<$" ->
-          let str, ptr = try Stack.top parser_stack
-                         with Stack.Empty -> assert false
-          in
-          assert (!ptr = 0);
-          let pos = Loc.stop_off _loc + 1 in
-          let parse = glr p:patoline_math_toplevel STR("$>") -> p end in
-          let new_pos, ast = List.hd (partial_parse_string parse blank2 "" str pos) in
-          ptr := new_pos - pos - 1; ast
-      ] ];
-
-    END;;
-  end
-
-module M0 = Camlp4OCamlRevisedParser.Make(Syntax)
-module M1 = Camlp4OCamlParser.Make(M0)
-module M = Extension(M1)
-open M
-
-let print_state ch state =
-  match state with
-    `Start -> Printf.fprintf ch "Start"
-  | `Less ->  Printf.fprintf ch "Less"
-  | `Patoline ->  Printf.fprintf ch "Patoline"
-  | `PatolineNext ->  Printf.fprintf ch "PatolineNext"
-  | `Comment n ->  Printf.fprintf ch "Comment(%d)" n
-  | `Par(n,_) ->  Printf.fprintf ch "Par(%d)" n
-  | `Star(n,_) ->  Printf.fprintf ch "Star(%d)" n
-  | _ -> Printf.fprintf ch "?"
-
-let next_state state char = match state, char with
-    `Start, '(' -> `Par(0, state)
-  | `Comment n, '(' -> `Par(n, state)
-  | `Par (n,st), '*' -> `Comment (n+1)
-  | `Par(n,st), '(' -> state
-  | `Par(_,st), _ -> st
-  | `Comment n, '*' -> `Star(n,state)
-  | `Star(1,st), ')' -> `Start
-  | `Star(n,st), ')' -> `Comment (n-1)
-  | `Star(_,st), '*' -> state
-  | `Star(_,st), _ -> st
-
-  | `String st, '\\' -> `Escape st
-  | `Escape st, _ -> `String st
-  | `String st, '"' -> st
-  | `Start, '<' -> `Less
-  | `Less, ('|'|'$') -> `Patoline
-  | st, '"' -> `String st
-  | st, _ -> st
-
-let mk_stream str pos =
-  failwith "pa_patoline currently not wroking (waiting for pa_ocaml)"
-(*
-  let ptr = ref 0 in
-  let state = ref `Start in
-  Stack.push (str, ptr) parser_stack;
-  Stream.from (fun n ->
-    (*Printf.fprintf stderr
-       "n: %d, pos: %d, c: %c, len %d, ptr: %d, state %a\n%!"
-       n pos str.[n+pos] len !ptr print_state !state;*)
-    let c,_,_ = read str pos in
-    if c = '\255' then None
-     else if !state = `Patoline then begin
-        state := `Start; Some ' '
-      end else if !ptr > 0 then begin
-        decr ptr; Some ' '
-      end else begin
-        state := next_state !state c;
-        Some c
-      end;
-      )
- *)
-
-let caml_expr _loc =
-  let fn str pos =
-(*    Printf.fprintf stderr "entering caml_expr %d\n%!" pos;*)
-    let cs = mk_stream str pos in
-    let r = Gram.parse patoline_caml_expr _loc cs in
-    ignore (Stack.pop parser_stack);
-    let pos = Loc.stop_off (Ast.loc_of_expr r) in
-(*    Printf.fprintf stderr "pos after caml_expr: %d\n%!" pos;*)
-    r, str, pos+1
-  in
-  black_box fn full_charset false "caml_expr"
-
-let caml_struct _loc =
-  let fn str pos =
-(*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
-    let cs = mk_stream str pos in
-    let r = Gram.parse patoline_caml_struct _loc cs in
-    ignore (Stack.pop parser_stack);
-    let pos = Loc.stop_off (Ast.loc_of_str_item r) in
-    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
-      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, str, pos+1
-  in
-  black_box fn full_charset false "caml_struct"
-
-let caml_list _loc =
-  let fn str pos =
-(*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
-    let cs = mk_stream str pos in
-    let r = Gram.parse patoline_caml_list _loc cs in
-    ignore (Stack.pop parser_stack);
-    let pos = Loc.stop_off (Ast.loc_of_expr r) in
-    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
-      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, str, pos+1
-  in
-  black_box fn full_charset false "caml_list"
-
-let caml_array _loc =
-  let fn str pos =
-(*    Printf.fprintf stderr "entering caml_struct %d\n%!" pos;*)
-    let cs = mk_stream str pos in
-    let r = Gram.parse patoline_caml_array _loc cs in
-    ignore (Stack.pop parser_stack);
-    let pos = Loc.stop_off (Ast.loc_of_expr r) in
-    (*Printf.fprintf stderr "pos after caml_struct: %d, %d\n%!"
-      (Loc.start_off (Ast.loc_of_str_item r)) pos;*)
-    r, str, pos+1
-  in
-  black_box fn full_charset false "caml_array"
-
-(****************************************************************************
- * Parsing OCaml code inside patoline.                                      *
- ****************************************************************************)
-
-(* Parse a caml "str_item" wrapped with parentheses *)
-let wrapped_caml_str_item =
-  dependent_sequence (locate (glr p:STR("(") end))
-    (fun (_loc,_) -> caml_struct _loc)
-
-(* Parse a caml "expr" wrapped with parentheses *)
-let wrapped_caml_expr =
-  dependent_sequence (locate (glr p:STR("(") end))
-    (fun (_loc,_) -> caml_expr _loc)
-
-(* Parse a list of caml "expr" *)
-let wrapped_caml_list =
-  dependent_sequence (locate (glr p:STR("[") end))
-    (fun (_loc,_) -> caml_list _loc)
+  (* Parse a list of caml "expr" *)
+  let wrapped_caml_list =
+    glr
+    | CHR('[') l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] CHR(']') -> l
+    end
 
 (* Parse an array of caml "expr" *)
 let wrapped_caml_array =
-  dependent_sequence (locate (glr p:STR("[|") end))
-    (fun (_loc,_) -> caml_array _loc)
+    glr
+    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] STR("|]") -> Array.of_list l
+    end
 
 (****************************************************************************
  * Words.                                                                   *
@@ -399,14 +194,11 @@ let verbatim_environment =
 
         let buildline l =
           <:str_item<let _ = newPar D.structure ~environment:verbEnv
-                             Complete.normal ragged_left
-                             (lang_default $str:l$) >>
+                              Complete.normal ragged_left
+                              (lang_default $string:l$)>>
         in
         let fn = fun l -> buildline (String.escaped l) in
-        let lines = List.map fn lines in
-
-        let fn = fun acc r -> <:str_item<$acc$ $r$>> in
-        List.fold_left fn <:str_item<>> lines )
+        acc @ List.map fn lines)
     end
   ) no_blank
 
@@ -421,7 +213,8 @@ let verbatim_generic st forbid nd =
         let lines = ls @ [l] in
         let lines = rem_hyphen lines in
         let txt = String.concat " " lines in
-        <:expr<$lid:"verb"$ [tT $str:txt$]>>
+	let verb = "verb" in
+        <:expr@_loc<$lid:verb$ [tT $string:txt$]>>
     end
   ) no_blank
 
@@ -436,7 +229,7 @@ let verbatim_bquote = verbatim_generic "``" "`" "``"
 
 let math_toplevel =
   glr
-    STR("x") -> <:expr<Maths.noad (Maths.glyphs "x")>>
+    STR("x") -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
     (* TODO *)
   end
 
@@ -473,7 +266,7 @@ let macro_name =
 let macro =
   glr
      m:macro_name args:macro_argument* ->
-       (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
+       (let fn = fun acc r -> <:expr@_loc_args<($acc$) ($r$)>> in
         List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
   | m:verbatim_macro -> m
   end
@@ -501,7 +294,7 @@ let text_paragraph_elt allowed =
          <:expr@_loc_p<sc $p$>>
 
     | STR("(") p:(paragraph_basic_text allowed) STR(")") ->
-         <:expr@_loc_p<tT($str:"("$) :: $p$ @ [tT($str:")"$)]>>
+         <:expr@_loc_p<tT($string:\"(\"$) :: $p$ @ [tT($string:\")\"$)]>>
     | STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
@@ -607,9 +400,9 @@ let _ = set_grammar paragraph (
   change_layout (
     glr
       e:paragraph_elt es:paragraph_elt* ->
-        (let fn = fun acc r -> <:str_item<$acc$ $r false$>> in
-         let es = List.fold_left fn <:str_item<>> es in
-         fun indent -> <:str_item<$e indent$;; $es$>>
+        (let fn = fun acc r -> acc @ <:str_item<$r false$>> in
+         let es = List.fold_left fn [] es in
+         fun indent -> [<:str_item<$e indent$>>; <:str_item<$es$>>]
         )
     end
   ) blank1)
@@ -619,7 +412,7 @@ let _ = set_grammar paragraphs (
     p:paragraph ps:paragraph* ->
       (fun indent_first ->
         let p  = p indent_first in
-        let fn = fun acc r -> <:str_item<$acc$ $r true$>> in
+        let fn = fun acc r -> acc @ <:str_item<$r true$>> in
         List.fold_left fn p ps)
   end)
 
@@ -642,7 +435,7 @@ let text_item =
           | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
           | _ -> raise Give_up
         in
-        true, lvl, <:str_item< let _ = $numbered$ D.structure $title$;;
+        true, lvl, <:structure< let _ = ($numbered$) D.structure $title$;;
                                $txt false (lvl+1)$;;
                                let _ = go_up D.structure >>)
 
@@ -656,11 +449,11 @@ let text_item =
         in
         let l = String.length op - 1 in
         if l > lvl + 1 then failwith "Illegal level skip";
-        let res = ref <:str_item@_loc_op<>> in
+        let res = ref [] in
         for i = 0 to lvl - l do
-          res := <:str_item@_loc_op< $!res$ let _ = go_up D.structure>>
+          res := !res @ <:str_item@_loc_op<let _ = go_up D.structure>>
         done;
-        true, lvl, <:str_item< $!res$ let _ = $numbered$ D.structure $title$;;
+        true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
                                $txt false l$>>)
 
   | ps:paragraphs -> 
@@ -673,9 +466,9 @@ let _ = set_grammar text (
       (fun indent lvl ->
         let fn = fun (indent, lvl, ast) txt ->
                    let indent, lvl, ast' = txt indent lvl in
-                   indent, lvl, <:str_item<$ast$;; $ast'$>>
+                   indent, lvl, <:structure<$ast$;; $ast'$>>
         in
-        let _,_,r = List.fold_left fn (indent, lvl, <:str_item<>>) l in
+        let _,_,r = List.fold_left fn (indent, lvl, []) l in
         r)
   end)
 
@@ -699,13 +492,13 @@ let patoline_config =
             | "DRIVER"  -> patoline_driver := a
             | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
             | _         -> raise Give_up);
-        <:str_item<>>)
+        [])
     end
   ) no_blank
 
 let header =
   glr
-    hs:patoline_config* -> <:str_item<>>
+    hs:patoline_config* -> []
   end
 
 let title =
@@ -731,17 +524,17 @@ let title =
     | Some(t) -> <:expr@_loc_date<("Author", string_of_contents $t$)::$extras$>>
   in
   <:str_item@_loc_t<
-    let _ = Patoline_Format.title D.structure ~extra_tags:$extras$ $t$>>
+    let _ = Patoline_Format.title D.structure ~extra_tags:($extras$) $t$>>
  end
 
 let full_text =
   glr
     h:header t:title? txt:text EOF ->
       let t = match t with
-                | None   -> <:str_item<>>
+                | None   -> []
                 | Some t -> t
       in
-      <:str_item<$h$ $t$ $txt$>>
+      <:structure<$h$;; $t$;; $txt$>>
   end
 
 (****************************************************************************
@@ -776,7 +569,7 @@ let parse_patoline_caml str =
  * Helper function for top level ast.                                       *
  ****************************************************************************)
 
-let wrap basename _loc ast = <:str_item<
+let wrap basename _loc ast = <:structure<
   open Typography
   open Util
   open Typography.Box
@@ -790,7 +583,7 @@ let wrap basename _loc ast = <:str_item<
     ref ([||] : (environment -> Mathematical.style -> box list) list array)
   module Document = functor(Patoline_Output:DefaultFormat.Output)
     -> functor(D:DocumentStructure)->struct
-    module Patoline_Format = $uid:!patoline_format$.Format(D)
+    module Patoline_Format = $uid:!patoline_format$ .Format(D)
     open $uid:!patoline_format$
     open Patoline_Format
     let temp1 = List.map fst (snd !D.structure);;
@@ -862,3 +655,6 @@ let _ = try
   with
     | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
              exit 1
+
+
+end

@@ -158,6 +158,14 @@ module Initial =
       declare_grammar "structure_item"
     let signature_item: signature_item grammar =
       declare_grammar "signature_item"
+    let structure =
+      Glr.apply (fun l  -> l)
+        (Glr.apply List.rev
+           (Glr.fixpoint [] (Glr.apply (fun x  l  -> x :: l) structure_item)))
+    let signature =
+      Glr.apply (fun l  -> l)
+        (Glr.apply List.rev
+           (Glr.fixpoint [] (Glr.apply (fun x  l  -> x :: l) signature_item)))
     type type_prio =  
       | TopType
       | As
@@ -202,6 +210,8 @@ module Initial =
     let extra_patterns: (pattern_prio* pattern) grammar list = []
     let extra_structure_items: structure_item_desc grammar list = []
     let extra_signature_items: signature_item_desc grammar list = []
+    let loc_str _loc desc = { pstr_desc = desc; pstr_loc = _loc }
+    let loc_sig _loc desc = { psig_desc = desc; psig_loc = _loc }
     let loc_expr ?(attributes= [])  _loc e =
       { pexp_desc = e; pexp_loc = _loc }
     let loc_pat ?(attributes= [])  _loc pat =
@@ -518,7 +528,7 @@ module Initial =
       match Stack.top quote_stack with
       | First env -> assert false
       | Second env -> env.bool_stack2 <- e :: (env.bool_stack2)
-    let quote_expression _loc e name =
+    let quote_expression _loc loc e name =
       let cols =
         let n =
           let open Location in let open Lexing in (_loc.loc_start).pos_cnum in
@@ -543,6 +553,8 @@ module Initial =
              ignore (parse_string structure_item blank "quote..." e)
          | "sig_item" ->
              ignore (parse_string signature_item blank "quote..." e)
+         | "structure" -> ignore (parse_string structure blank "quote..." e)
+         | "signature" -> ignore (parse_string signature blank "quote..." e)
          | _ -> assert false in
        let env =
          match Stack.pop quote_stack with
@@ -639,6 +651,12 @@ module Initial =
                                              "quote_stack"));
                                       loc = _loc
                                     })))]))))])) in
+       let args =
+         match loc with
+         | None  -> [("", (loc_expr _loc (Pexp_constant (const_string e))))]
+         | Some loc ->
+             [("loc", loc);
+             ("", (loc_expr _loc (Pexp_constant (const_string e))))] in
        let parse_expr =
          loc_expr _loc
            (Pexp_apply
@@ -650,8 +668,7 @@ module Initial =
                             ((Lident "Pa_ocaml_prelude"),
                               ("quote_" ^ (name ^ "_2"))));
                        loc = _loc
-                     })),
-                [("", (loc_expr _loc (Pexp_constant (const_string e))))])) in
+                     })), args)) in
        loc_expr _loc
          (Pexp_sequence
             (push_expr,
@@ -669,11 +686,23 @@ module Initial =
                                  (Pexp_ident
                                     { txt = (Lident "quote_res"); loc = _loc
                                     })))))))))))
-    let quote_expression_2 e = parse_string expression blank "quote..." e
-    let quote_type_2 e = parse_string typexpr blank "quote..." e
-    let quote_pattern_2 e = parse_string pattern blank "quote..." e
-    let quote_str_item_2 e = parse_string structure_item blank "quote..." e
-    let quote_sig_item_2 e = parse_string signature_item blank "quote..." e
+    let quote_expression_2 ?loc  e =
+      let res = parse_string expression blank "quote..." e in
+      match loc with | None  -> res | Some loc -> loc_expr loc res.pexp_desc
+    let quote_type_2 ?loc  e =
+      let res = parse_string typexpr blank "quote..." e in
+      match loc with | None  -> res | Some loc -> loc_typ loc res.ptyp_desc
+    let quote_pattern_2 ?loc  e =
+      let res = parse_string pattern blank "quote..." e in
+      match loc with | None  -> res | Some loc -> loc_pat loc res.ppat_desc
+    let quote_str_item_2 ?loc  e =
+      let res = parse_string structure_item blank "quote..." e in
+      match loc with | None  -> res | Some loc -> loc_str loc res.pstr_desc
+    let quote_sig_item_2 ?loc  e =
+      let res = parse_string signature_item blank "quote..." e in
+      match loc with | None  -> res | Some loc -> loc_sig loc res.psig_desc
+    let quote_structure ?loc  e = parse_string structure blank "quote..." e
+    let quote_signature ?loc  e = parse_string signature blank "quote..." e
     let par_re s = "\\(" ^ (s ^ "\\)")
     let union_re l =
       let l = List.map (fun s  -> par_re s) l in String.concat "\\|" l

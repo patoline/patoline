@@ -5323,73 +5323,124 @@ module Make(Initial:Extension) =
                                      Glr.sequence
                                        (Glr.sequence
                                           (Glr.sequence
-                                             (locate (Glr.string "<:" ()))
+                                             (Glr.sequence
+                                                (locate (Glr.string "<:" ()))
+                                                (locate
+                                                   (Glr.alternatives
+                                                      [Glr.apply
+                                                         (fun _unnamed_0  ->
+                                                            let (_loc__unnamed_0,_unnamed_0)
+                                                              = _unnamed_0 in
+                                                            let _loc =
+                                                              _loc__unnamed_0 in
+                                                            "expression")
+                                                         (locate
+                                                            (Glr.string
+                                                               "expr" ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "type")
+                                                        (locate
+                                                           (Glr.string "type"
+                                                              ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "pattern")
+                                                        (locate
+                                                           (Glr.string "pat"
+                                                              ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "str_item")
+                                                        (locate
+                                                           (Glr.string
+                                                              "str_item" ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "sig_item")
+                                                        (locate
+                                                           (Glr.string
+                                                              "sig_item" ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "structure")
+                                                        (locate
+                                                           (Glr.string
+                                                              "structure" ()));
+                                                      Glr.apply
+                                                        (fun _unnamed_0  ->
+                                                           let (_loc__unnamed_0,_unnamed_0)
+                                                             = _unnamed_0 in
+                                                           let _loc =
+                                                             _loc__unnamed_0 in
+                                                           "signature")
+                                                        (locate
+                                                           (Glr.string
+                                                              "signature" ()))]))
+                                                (fun _unnamed_0  ->
+                                                   let (_loc__unnamed_0,_unnamed_0)
+                                                     = _unnamed_0 in
+                                                   fun name  ->
+                                                     let (_loc_name,name) =
+                                                       name in
+                                                     fun loc  ->
+                                                       let (_loc_loc,loc) =
+                                                         loc in
+                                                       fun _unnamed_3  ->
+                                                         let (_loc__unnamed_3,_unnamed_3)
+                                                           = _unnamed_3 in
+                                                         fun q  ->
+                                                           let (_loc_q,q) = q in
+                                                           let _loc =
+                                                             merge
+                                                               _loc__unnamed_0
+                                                               _loc_q in
+                                                           (Atom,
+                                                             (quote_expression
+                                                                _loc_q loc q
+                                                                name))))
                                              (locate
-                                                (Glr.alternatives
-                                                   [Glr.apply
-                                                      (fun _unnamed_0  ->
-                                                         let (_loc__unnamed_0,_unnamed_0)
-                                                           = _unnamed_0 in
-                                                         let _loc =
-                                                           _loc__unnamed_0 in
-                                                         "expression")
-                                                      (locate
-                                                         (Glr.string "expr"
-                                                            ()));
-                                                   Glr.apply
-                                                     (fun _unnamed_0  ->
-                                                        let (_loc__unnamed_0,_unnamed_0)
-                                                          = _unnamed_0 in
-                                                        let _loc =
-                                                          _loc__unnamed_0 in
-                                                        "type")
-                                                     (locate
-                                                        (Glr.string "type" ()));
-                                                   Glr.apply
-                                                     (fun _unnamed_0  ->
-                                                        let (_loc__unnamed_0,_unnamed_0)
-                                                          = _unnamed_0 in
-                                                        let _loc =
-                                                          _loc__unnamed_0 in
-                                                        "pattern")
-                                                     (locate
-                                                        (Glr.string "pat" ()));
-                                                   Glr.apply
-                                                     (fun _unnamed_0  ->
-                                                        let (_loc__unnamed_0,_unnamed_0)
-                                                          = _unnamed_0 in
-                                                        let _loc =
-                                                          _loc__unnamed_0 in
-                                                        "str_item")
-                                                     (locate
-                                                        (Glr.string
-                                                           "str_item" ()));
-                                                   Glr.apply
-                                                     (fun _unnamed_0  ->
-                                                        let (_loc__unnamed_0,_unnamed_0)
-                                                          = _unnamed_0 in
-                                                        let _loc =
-                                                          _loc__unnamed_0 in
-                                                        "sig_item")
-                                                     (locate
-                                                        (Glr.string
-                                                           "sig_item" ()))]))
-                                             (fun _unnamed_0  ->
-                                                let (_loc__unnamed_0,_unnamed_0)
-                                                  = _unnamed_0 in
-                                                fun name  ->
-                                                  let (_loc_name,name) = name in
-                                                  fun _unnamed_2  ->
-                                                    let (_loc__unnamed_2,_unnamed_2)
-                                                      = _unnamed_2 in
-                                                    fun q  ->
-                                                      let (_loc_q,q) = q in
-                                                      let _loc =
-                                                        merge _loc__unnamed_0
-                                                          _loc_q in
-                                                      (Atom,
-                                                        (quote_expression
-                                                           _loc_q q name))))
+                                                (Glr.option None
+                                                   (Glr.apply
+                                                      (fun x  -> Some x)
+                                                      (Glr.sequence
+                                                         (locate
+                                                            (Glr.char '@' ()))
+                                                         (locate
+                                                            (expression_lvl
+                                                               (next_exp App)))
+                                                         (fun _unnamed_0  ->
+                                                            let (_loc__unnamed_0,_unnamed_0)
+                                                              = _unnamed_0 in
+                                                            fun e  ->
+                                                              let (_loc_e,e)
+                                                                = e in
+                                                              let _loc =
+                                                                merge
+                                                                  _loc__unnamed_0
+                                                                  _loc_e in
+                                                              e)))))
+                                             (fun x  -> x))
                                           (locate (Glr.char '<' ()))
                                           (fun x  -> x)) (locate quotation)
                                        (fun x  -> x);
@@ -6939,20 +6990,7 @@ module Make(Initial:Extension) =
               let (_loc_s,s) = s in
               fun _unnamed_1  ->
                 let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-                let _loc = merge _loc_s _loc__unnamed_1 in
-                { pstr_desc = s; pstr_loc = _loc }))
-    let structure =
-      Glr.sequence
-        (locate
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l) structure_item))))
-        (locate (Glr.eof ()))
-        (fun l  ->
-           let (_loc_l,l) = l in
-           fun _unnamed_1  ->
-             let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-             let _loc = merge _loc_l _loc__unnamed_1 in l)
+                let _loc = merge _loc_s _loc__unnamed_1 in loc_str _loc s))
     let signature_item_base =
       Glr.alternatives
         [Glr.apply (fun e  -> let (_loc_e,e) = e in let _loc = _loc_e in e)
@@ -7244,20 +7282,7 @@ module Make(Initial:Extension) =
               let (_loc_s,s) = s in
               fun _unnamed_1  ->
                 let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-                let _loc = merge _loc_s _loc__unnamed_1 in
-                { psig_desc = s; psig_loc = _loc }))
-    let signature =
-      Glr.sequence
-        (locate
-           (Glr.apply List.rev
-              (Glr.fixpoint []
-                 (Glr.apply (fun x  l  -> x :: l) signature_item))))
-        (locate (Glr.eof ()))
-        (fun l  ->
-           let (_loc_l,l) = l in
-           fun _unnamed_1  ->
-             let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-             let _loc = merge _loc_l _loc__unnamed_1 in l)
+                let _loc = merge _loc_s _loc__unnamed_1 in loc_sig _loc s))
     let ast =
       let (name,ch) =
         match !file with
