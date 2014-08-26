@@ -46,8 +46,8 @@ echo "test of parser extension"
 /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc.ml 
 /usr/bin/time --format="%C: %e" ocamlc -c -I .. -pp ./pa_ocaml ./examples/calc_all.ml
 cp ./pa_ocaml_prelude.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
+/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml_prelude.ml
 cp ./pa_parser.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
+/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
 cp ./pa_ocaml.ml $local/
-/usr/bin/time --format="%C: %e" ocamlfind ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml
+/usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml

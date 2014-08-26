@@ -158,7 +158,7 @@ let next_exp = function
   let (expression_lvl : expression_lvl -> expression grammar), set_expression_lvl = grammar_family "expression_lvl"
   let expr = expression_lvl Top
   let expression= expr
-  let module_item : structure_item grammar = declare_grammar "module_item"
+  let structure_item : structure_item grammar = declare_grammar "structure_item"
   let signature_item : signature_item grammar = declare_grammar "signature_item"
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
@@ -191,18 +191,18 @@ let next_exp = function
   let extra_expressions = ([] : (expression_lvl * expression) grammar list)
   let extra_types = ([] : core_type grammar list)
   let extra_patterns = ([] : (pattern_prio * pattern) grammar list)
-  let extra_module_items = ([] : structure_item_desc grammar list)
+  let extra_structure_items = ([] : structure_item_desc grammar list)
   let extra_signature_items = ([] : signature_item_desc grammar list)
 #ifversion >= 4.02
-  let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; pexp_attributes = []; }
-  let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; ppat_attributes = []; }
-  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = []; }
-  let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = []; }
-  let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc; pctf_attributes = [] }
-  let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc; pcty_attributes = [] }
-  let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = [] }
-  let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = [] }
-  let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = [] }
+  let loc_expr ?(attributes=[]) _loc e = { pexp_desc = e; pexp_loc = _loc; pexp_attributes = attributes; }
+  let loc_pat ?(attributes=[]) _loc pat = { ppat_desc = pat; ppat_loc = _loc; ppat_attributes = attributes; }
+  let loc_pcl ?(attributes=[]) _loc desc = { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = attributes; }
+  let loc_typ ?(attributes=[]) _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = attributes; }
+  let pctf_loc ?(attributes=[]) _loc desc = { pctf_desc = desc; pctf_loc = _loc; pctf_attributes = attributes }
+  let pcty_loc ?(attributes=[]) _loc desc = { pcty_desc = desc; pcty_loc = _loc; pcty_attributes = attributes }
+  let loc_pcf ?(attributes=[]) _loc desc = { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = attributes }
+  let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = attributes }
+  let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = attributes }
 
   let const_string s = Const_string(s, None)			   
   let constructor_declaration _loc name args res =
@@ -237,10 +237,10 @@ let next_exp = function
       ; pci_attributes = []
       ; pci_loc = _loc }
   let pstr_eval e = Pstr_eval(e, [])
-  let psig_value _loc name ty prim =
-    Psig_value { pval_name = name; pval_type = ty ; pval_prim = prim ; pval_attributes = []; pval_loc = _loc }
-  let value_binding _loc pat expr =
-    { pvb_pat = pat; pvb_expr = expr; pvb_attributes = []; pvb_loc = _loc }
+  let psig_value ?(attributes=[]) _loc name ty prim =
+    Psig_value { pval_name = name; pval_type = ty ; pval_prim = prim ; pval_attributes = attributes; pval_loc = _loc }
+  let value_binding ?(attributes=[]) _loc pat expr =
+    { pvb_pat = pat; pvb_expr = expr; pvb_attributes = attributes; pvb_loc = _loc }
   let module_binding _loc name mt me =
     let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me,mt)) in
     { pmb_name = name; pmb_expr = me; pmb_attributes = []; pmb_loc = _loc }
@@ -257,16 +257,16 @@ let next_exp = function
   let pexp_fun(label, opt, pat, expr) =
     Pexp_fun(label,opt,pat,expr)
 #else
-  let loc_expr _loc e = { pexp_desc = e; pexp_loc = _loc; }
-  let loc_pat _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
-  let loc_pcl _loc desc = { pcl_desc = desc; pcl_loc = _loc }
-  let loc_typ _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
-  let pctf_loc _loc desc = { pctf_desc = desc; pctf_loc = _loc; }
-  let pcty_loc _loc desc = { pcty_desc = desc; pcty_loc = _loc; }
-  let loc_pcf _loc desc = { pcf_desc = desc; pcf_loc = _loc; }
-  let mexpr_loc _loc desc = { pmod_desc = desc; pmod_loc = _loc }
-  let mtyp_loc _loc desc = { pmty_desc = desc; pmty_loc = _loc }
-
+  let loc_expr ?(attributes=[]) _loc e = { pexp_desc = e; pexp_loc = _loc; }
+  let loc_pat ?(attributes=[]) _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
+  let loc_pcl ?(attributes=[]) _loc desc = { pcl_desc = desc; pcl_loc = _loc }
+  let loc_typ ?(attributes=[]) _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
+  let pctf_loc ?(attributes=[]) _loc desc = { pctf_desc = desc; pctf_loc = _loc; }
+  let pcty_loc ?(attributes=[]) _loc desc = { pcty_desc = desc; pcty_loc = _loc; }
+  let loc_pcf ?(attributes=[]) _loc desc = { pcf_desc = desc; pcf_loc = _loc; }
+  let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc }
+  let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc }
+ 
   let const_string s = Const_string(s)			   
   let constructor_declaration _loc name args res = (name, args, res, _loc)
   let label_declaration _loc name mut ty =
@@ -294,9 +294,9 @@ let next_exp = function
       ; pci_expr = expr
       ; pci_loc = _loc }
   let pstr_eval e = Pstr_eval(e)			   
-  let psig_value _loc name ty prim =
+  let psig_value ?(attributes=[]) _loc name ty prim =
     Psig_value( name, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )
-  let value_binding _loc pat expr =
+  let value_binding  ?(attributes=[]) _loc pat expr =
     ( pat, expr)
   let module_binding _loc name mt me = 
     (name, mt, me)
@@ -635,7 +635,7 @@ let quote_expression _loc e name =
     | "expression" -> ignore (parse_string (glr e:expression EOF end) blank "quote..." e)
     | "type"  -> ignore (parse_string typexpr blank "quote..." e)
     | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
-    | "str_item"  -> ignore (parse_string module_item blank "quote..." e)
+    | "str_item"  -> ignore (parse_string structure_item blank "quote..." e)
     | "sig_item"  -> ignore (parse_string signature_item blank "quote..." e)
     | _ -> assert false
     in
@@ -706,7 +706,7 @@ let quote_pattern_2 e =
   parse_string pattern blank "quote..." e
 
 let quote_str_item_2 e =
-  parse_string module_item blank "quote..." e
+  parse_string structure_item blank "quote..." e
 
 let quote_sig_item_2 e =
   parse_string signature_item blank "quote..." e

@@ -408,6 +408,65 @@ let override_flag =
     o:STR("!")? -> (if o <> None then Override else Fresh)
   end
 
+(****************************************************************************
+ * Attributes (parsed but ignored for ocaml < 4.02                     *
+ ****************************************************************************)
+
+let attr_id =
+  glr
+  | id:RE(ident_re) l:{ CHR('.') id:RE(ident_re)}* ->
+      { txt = String.concat "." (id::l); loc = _loc }
+  end 
+
+#ifversion < 4.02
+type attr =
+    PStr of structure_item list
+  | PTyp of core_type
+  | PPat of pattern * expression option
+#endif
+
+let payload =
+  glr
+  | s:structure_item* -> PStr(s)
+  | CHR(':') t:typexpr -> PTyp(t)
+  | CHR('?') p:pattern e:{STR("when") e:expression}? -> PPat(p,e)
+  end 
+
+let attribute = 
+  glr
+  | STR("[@") id:attr_id p:payload
+  end
+
+let attributes =
+  glr
+  | {a:attribute}*
+  end
+
+let ext_attributes =
+  glr
+  | a:{CHR('%') a:attribute}? l:attributes -> a, l
+  end
+
+let post_item_attributes =
+  glr
+  | l:{STR("[@@") id:attr_id p:payload CHR(']')}*
+  end
+
+let ext_attributes =
+  glr
+  | l:{STR("[@@@") id:attr_id p:payload CHR(']')}*
+  end
+
+let extension =
+  glr
+  | STR("[%") id:attr_id p:payload CHR(']')
+  end
+
+let item_extension =
+  glr
+  | STR("[%%") id:attr_id p:payload CHR(']')
+  end
+
 
 (****************************************************************************
  * Type expressions                                                         *
@@ -1230,21 +1289,21 @@ let right_member =
 
 let _ = set_grammar let_binding (
   glr
-  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member l:{and_kw l:let_binding}?[[]] ->
-      (value_binding (merge _loc_pat _loc_e) pat e::l)
-  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member l:{and_kw l:let_binding}?[[]] ->
+  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
+      (value_binding ~attributes:a (merge _loc_pat _loc_e) pat e::l)
+  | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
       let pat = loc_pat _loc (Ppat_constraint(
         loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
         ty))
       in
-      value_binding (merge _loc_vn _loc_e) pat e::l
-  | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member l:{and_kw l:let_binding}?[[]] ->
+      value_binding ~attributes:a (merge _loc_vn _loc_e) pat e::l
+  | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
     let (e, ty) = wrap_type_annotation _loc ids ty e in 									     
     let pat = loc_pat _loc (Ppat_constraint(
 	loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
         ty))
     in
-    value_binding (merge _loc_vn _loc_e) pat e::l
+    value_binding ~attributes:a (merge _loc_vn _loc_e) pat e::l
   end)
 
 let match_cases = memoize1 (fun lvl ->
@@ -1492,7 +1551,7 @@ let expression_base = memoize1 (fun lvl ->
      (Let, apply_params _loc l e)
   | match_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_match(e, l)))
   | try_kw e:expression with_kw l:(match_cases (let_prio lvl)) when (lvl < App) -> (Let, loc_expr _loc (Pexp_try(e, l)))
-  | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl <= If) ->
+  | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl < App) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
   | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> e | None ->
       let cunit = { txt = Lident "()"; loc = _loc } in
@@ -1639,7 +1698,7 @@ let module_expr_base =
   | mp:module_path ->
       let mid = { txt = mp; loc = _loc } in
       mexpr_loc _loc (Pmod_ident mid)
-  | struct_kw ms:module_item* end_kw -> 
+  | struct_kw ms:structure_item* end_kw -> 
       mexpr_loc _loc (Pmod_structure(ms))
 #ifversion >= 4.02
   | functor_kw STR("(") mn:module_name mt:{STR(":") mt:module_type}? STR(")")
@@ -1722,9 +1781,9 @@ let _ = set_grammar module_type (
        | Some l -> mtyp_loc _loc (Pmty_with(m, l)))
   end)
       
-let module_item_base =
+let structure_item_base =
   glr
-  | e:(alternatives extra_module_items) -> e
+  | e:(alternatives extra_structure_items) -> e
   | RE(let_re) r:rec_flag l:let_binding ->
       (match l with
 #ifversion >= 4.02
@@ -1763,13 +1822,13 @@ let module_item_base =
   |            mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt)}*
 #endif
      mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
+    let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me,mt)) in
      let me = List.fold_left (fun acc (mn,mt) ->
        mexpr_loc _loc (Pmod_functor(mn, mt, acc))) me (List.rev l) in
 #ifversion >= 4.02
-     Pstr_module(module_binding _loc { txt = mn ; loc = _loc_mn } mt me)
+     Pstr_module(module_binding _loc { txt = mn ; loc = _loc_mn } None me)
 #else
-     let (name, mt, me) = module_binding _loc { txt = mn ; loc = _loc_mn } mt me in	   
-     let me = match mt with None -> me | Some mt -> mexpr_loc _loc (Pmod_constraint(me, mt)) in
+     let (name, _, me) = module_binding _loc { txt = mn ; loc = _loc_mn } None me in	   
      Pstr_module(name,me)
 #endif
 #ifversion >= 4.02
@@ -1802,25 +1861,25 @@ let module_item_base =
   | e:expression -> pstr_eval e
   end
 
-let _ = set_grammar module_item (
+let _ = set_grammar structure_item (
   glr
-    s:module_item_base STR(";;")? -> { pstr_desc = s; pstr_loc = _loc; }
+    s:structure_item_base STR(";;")? -> { pstr_desc = s; pstr_loc = _loc; }
   end)
 
 let structure =
   glr
-    l : module_item* EOF -> l
+    l : structure_item* EOF -> l
   end
 
 let signature_item_base =
  glr
   | e:(alternatives extra_signature_items) -> e
-  | val_kw n:value_name STR(":") ty:typexpr ->
-     psig_value _loc { txt = n; loc = _loc_n } ty []
-  | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* ->
+  | val_kw n:value_name STR(":") ty:typexpr a:post_item_attributes ->
+     psig_value ~attributes:a _loc { txt = n; loc = _loc_n } ty []
+  | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* a:post_item_attributes ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
-      psig_value _loc { txt = n; loc = _loc_n } ty ls
+      psig_value ~attributes:a _loc { txt = n; loc = _loc_n } ty ls
   | td:type_definition -> 
 #ifversion >= 4.02
        Psig_type (List.map snd td)

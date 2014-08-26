@@ -3,10 +3,10 @@ open Parsetree
 open Longident
 open Pa_ocaml_prelude
 let _ = ()
-type ('a,'b) action =
+type ('a,'b) action =  
   | Default
   | Normal of 'a
-  | DepSeq of 'b
+  | DepSeq of 'b 
 let do_locate = ref None
 let exp_int _loc n = loc_expr _loc (Pexp_constant (Const_int n))
 let exp_string _loc n = loc_expr _loc (Pexp_constant (const_string n))
@@ -68,10 +68,8 @@ let mkpatt _loc (id,p) =
 let rec apply _loc ids e =
   let ids =
     List.mapi
-      (fun i  ->
-         fun (id,x)  ->
-           ((if id = "_" then "_unnamed_" ^ (string_of_int i) else id), x))
-      ids in
+      (fun i  (id,x)  ->
+         ((if id = "_" then "_unnamed_" ^ (string_of_int i) else id), x)) ids in
   let e =
     match !do_locate with
     | None  -> e
@@ -97,33 +95,31 @@ let rec apply _loc ids e =
                                ("", (exp_ident _loc ("_loc_" ^ last)))])))],
                     e))) in
   List.fold_left
-    (fun e  ->
-       fun id  ->
-         match !do_locate with
-         | None  -> loc_expr _loc (pexp_fun ("", None, (mkpatt _loc id), e))
-         | Some _ ->
-             loc_expr _loc
-               (pexp_fun
-                  ("", None, (mkpatt _loc id),
-                    (loc_expr _loc
-                       (Pexp_let
-                          (Nonrecursive,
-                            [value_binding _loc
-                               (loc_pat _loc
-                                  (Ppat_tuple
-                                     [loc_pat _loc
-                                        (Ppat_var
-                                           {
-                                             txt = ("_loc_" ^ (fst id));
-                                             loc = _loc
-                                           });
-                                     loc_pat _loc
-                                       (Ppat_var
-                                          { txt = (fst id); loc = _loc })]))
-                               (loc_expr _loc
-                                  (Pexp_ident
-                                     { txt = (Lident (fst id)); loc = _loc }))],
-                            e)))))) e (List.rev ids)
+    (fun e  id  ->
+       match !do_locate with
+       | None  -> loc_expr _loc (pexp_fun ("", None, (mkpatt _loc id), e))
+       | Some _ ->
+           loc_expr _loc
+             (pexp_fun
+                ("", None, (mkpatt _loc id),
+                  (loc_expr _loc
+                     (Pexp_let
+                        (Nonrecursive,
+                          [value_binding _loc
+                             (loc_pat _loc
+                                (Ppat_tuple
+                                   [loc_pat _loc
+                                      (Ppat_var
+                                         {
+                                           txt = ("_loc_" ^ (fst id));
+                                           loc = _loc
+                                         });
+                                   loc_pat _loc
+                                     (Ppat_var { txt = (fst id); loc = _loc })]))
+                             (loc_expr _loc
+                                (Pexp_ident
+                                   { txt = (Lident (fst id)); loc = _loc }))],
+                          e)))))) e (List.rev ids)
 let filter _loc r =
   match !do_locate with
   | None  -> r
@@ -331,7 +327,7 @@ module Ext(In:Extension) =
                      let (_loc_merge2,merge2) = merge2 in
                      let _loc = merge _loc__unnamed_0 _loc_merge2 in
                      do_locate := (Some (filter2, merge2));
-                     (Atom, (loc_expr _loc (Pexp_tuple [])))))
+                     (Atom, (exp_unit _loc))))
            (locate (expression_lvl (next_exp App))) (fun x  -> x);
         Glr.sequence
           (Glr.sequence (locate glr_kw) (locate glr_rules)
@@ -673,7 +669,7 @@ module Ext(In:Extension) =
                            let _loc = merge _loc_id _loc_opt in (id, s, opt)))
                  (locate glr_option) (fun x  -> x))
               (Glr.fixpoint []
-                 (Glr.apply (fun x  -> fun l  -> x :: l)
+                 (Glr.apply (fun x  l  -> x :: l)
                     (Glr.sequence
                        (Glr.sequence (locate glr_ident) (locate glr_sequence)
                           (fun id  ->
@@ -684,8 +680,7 @@ module Ext(In:Extension) =
                                  let (_loc_opt,opt) = opt in
                                  let _loc = merge _loc_id _loc_opt in
                                  (id, s, opt))) (locate glr_option)
-                       (fun x  -> x))))
-              (fun x  -> fun l  -> x :: (List.rev l))))
+                       (fun x  -> x)))) (fun x  l  -> x :: (List.rev l))))
     let glr_list_left_member =
       Glr.apply (fun l  -> let (_loc_l,l) = l in let _loc = _loc_l in l)
         (locate
@@ -701,7 +696,7 @@ module Ext(In:Extension) =
                            let _loc = merge _loc_id _loc_opt in (id, s, opt)))
                  (locate glr_option) (fun x  -> x))
               (Glr.fixpoint []
-                 (Glr.apply (fun x  -> fun l  -> x :: l)
+                 (Glr.apply (fun x  l  -> x :: l)
                     (Glr.sequence
                        (Glr.sequence (locate glr_ident)
                           (locate glr_list_sequence)
@@ -713,8 +708,7 @@ module Ext(In:Extension) =
                                  let (_loc_opt,opt) = opt in
                                  let _loc = merge _loc_id _loc_opt in
                                  (id, s, opt))) (locate glr_option)
-                       (fun x  -> x))))
-              (fun x  -> fun l  -> x :: (List.rev l))))
+                       (fun x  -> x)))) (fun x  l  -> x :: (List.rev l))))
     let glr_let = Glr.declare_grammar "glr_let"
     let _ =
       Glr.set_grammar glr_let
@@ -938,31 +932,29 @@ module Ext(In:Extension) =
                   | l ->
                       let l =
                         List.fold_right
-                          (fun (def,cond,x)  ->
-                             fun y  ->
-                               match cond with
-                               | None  -> def (exp_Cons _loc x y)
-                               | Some c ->
-                                   def
-                                     (loc_expr _loc
-                                        (Pexp_let
-                                           (Nonrecursive,
-                                             [value_binding _loc
-                                                (pat_ident _loc "y") y],
-                                             (loc_expr _loc
-                                                (Pexp_ifthenelse
-                                                   (c,
-                                                     (exp_Cons _loc x
-                                                        (exp_ident _loc "y")),
-                                                     (Some
-                                                        (exp_ident _loc "y")))))))))
+                          (fun (def,cond,x)  y  ->
+                             match cond with
+                             | None  -> def (exp_Cons _loc x y)
+                             | Some c ->
+                                 def
+                                   (loc_expr _loc
+                                      (Pexp_let
+                                         (Nonrecursive,
+                                           [value_binding _loc
+                                              (pat_ident _loc "y") y],
+                                           (loc_expr _loc
+                                              (Pexp_ifthenelse
+                                                 (c,
+                                                   (exp_Cons _loc x
+                                                      (exp_ident _loc "y")),
+                                                   (Some (exp_ident _loc "y")))))))))
                           (r :: l) (exp_Nil _loc) in
                       (((fun x  -> x)), None,
                         (exp_apply _loc (exp_glr_fun _loc "alternatives") [l]))))
         (locate
            (Glr.apply List.rev
               (Glr.fixpoint []
-                 (Glr.apply (fun x  -> fun l  -> x :: l)
+                 (Glr.apply (fun x  l  -> x :: l)
                     (Glr.sequence (locate (Glr.char '|' ()))
                        (locate glr_rule)
                        (fun _unnamed_0  ->
@@ -990,24 +982,22 @@ module Ext(In:Extension) =
                   | l ->
                       let l =
                         List.fold_right
-                          (fun (def,cond,x)  ->
-                             fun y  ->
-                               match cond with
-                               | None  -> def (exp_Cons _loc x y)
-                               | Some c ->
-                                   def
-                                     (loc_expr _loc
-                                        (Pexp_let
-                                           (Nonrecursive,
-                                             [value_binding _loc
-                                                (pat_ident _loc "y") y],
-                                             (loc_expr _loc
-                                                (Pexp_ifthenelse
-                                                   (c,
-                                                     (exp_Cons _loc x
-                                                        (exp_ident _loc "y")),
-                                                     (Some
-                                                        (exp_ident _loc "y")))))))))
+                          (fun (def,cond,x)  y  ->
+                             match cond with
+                             | None  -> def (exp_Cons _loc x y)
+                             | Some c ->
+                                 def
+                                   (loc_expr _loc
+                                      (Pexp_let
+                                         (Nonrecursive,
+                                           [value_binding _loc
+                                              (pat_ident _loc "y") y],
+                                           (loc_expr _loc
+                                              (Pexp_ifthenelse
+                                                 (c,
+                                                   (exp_Cons _loc x
+                                                      (exp_ident _loc "y")),
+                                                   (Some (exp_ident _loc "y")))))))))
                           (r :: l) (exp_Nil _loc) in
                       (((fun x  -> x)), None,
                         (exp_apply _loc
@@ -1015,7 +1005,7 @@ module Ext(In:Extension) =
         (locate
            (Glr.apply List.rev
               (Glr.fixpoint []
-                 (Glr.apply (fun x  -> fun l  -> x :: l)
+                 (Glr.apply (fun x  l  -> x :: l)
                     (Glr.sequence (locate (Glr.char '|' ()))
                        (locate glr_list_rule)
                        (fun _unnamed_0  ->
@@ -1069,33 +1059,30 @@ module Ext(In:Extension) =
                      | (r,l) ->
                          let l =
                            List.fold_right
-                             (fun (def,cond,x)  ->
-                                fun y  ->
-                                  match cond with
-                                  | None  -> def (exp_Cons _loc x y)
-                                  | Some c ->
-                                      def
-                                        (loc_expr _loc
-                                           (Pexp_let
-                                              (Nonrecursive,
-                                                [value_binding _loc
-                                                   (pat_ident _loc "y") y],
-                                                (loc_expr _loc
-                                                   (Pexp_ifthenelse
-                                                      (c,
-                                                        (exp_Cons _loc x
-                                                           (exp_ident _loc
-                                                              "y")),
-                                                        (Some
-                                                           (exp_ident _loc
-                                                              "y"))))))))) (r
-                             :: l) (exp_Nil _loc) in
+                             (fun (def,cond,x)  y  ->
+                                match cond with
+                                | None  -> def (exp_Cons _loc x y)
+                                | Some c ->
+                                    def
+                                      (loc_expr _loc
+                                         (Pexp_let
+                                            (Nonrecursive,
+                                              [value_binding _loc
+                                                 (pat_ident _loc "y") y],
+                                              (loc_expr _loc
+                                                 (Pexp_ifthenelse
+                                                    (c,
+                                                      (exp_Cons _loc x
+                                                         (exp_ident _loc "y")),
+                                                      (Some
+                                                         (exp_ident _loc "y")))))))))
+                             (r :: l) (exp_Nil _loc) in
                          exp_apply _loc (exp_glr_fun _loc "alternatives'")
                            [l]))
            (locate
               (Glr.apply List.rev
                  (Glr.fixpoint []
-                    (Glr.apply (fun x  -> fun l  -> x :: l)
+                    (Glr.apply (fun x  l  -> x :: l)
                        (Glr.sequence
                           (locate
                              (Glr.alternatives
@@ -1168,33 +1155,30 @@ module Ext(In:Extension) =
                      | (r,l) ->
                          let l =
                            List.fold_right
-                             (fun (def,cond,x)  ->
-                                fun y  ->
-                                  match cond with
-                                  | None  -> def (exp_Cons _loc x y)
-                                  | Some c ->
-                                      def
-                                        (loc_expr _loc
-                                           (Pexp_let
-                                              (Nonrecursive,
-                                                [value_binding _loc
-                                                   (pat_ident _loc "y") y],
-                                                (loc_expr _loc
-                                                   (Pexp_ifthenelse
-                                                      (c,
-                                                        (exp_Cons _loc x
-                                                           (exp_ident _loc
-                                                              "y")),
-                                                        (Some
-                                                           (exp_ident _loc
-                                                              "y"))))))))) (r
-                             :: l) (exp_Nil _loc) in
+                             (fun (def,cond,x)  y  ->
+                                match cond with
+                                | None  -> def (exp_Cons _loc x y)
+                                | Some c ->
+                                    def
+                                      (loc_expr _loc
+                                         (Pexp_let
+                                            (Nonrecursive,
+                                              [value_binding _loc
+                                                 (pat_ident _loc "y") y],
+                                              (loc_expr _loc
+                                                 (Pexp_ifthenelse
+                                                    (c,
+                                                      (exp_Cons _loc x
+                                                         (exp_ident _loc "y")),
+                                                      (Some
+                                                         (exp_ident _loc "y")))))))))
+                             (r :: l) (exp_Nil _loc) in
                          exp_apply _loc
                            (exp_glr_fun _loc "list_alternatives'") [l]))
            (locate
               (Glr.apply List.rev
                  (Glr.fixpoint []
-                    (Glr.apply (fun x  -> fun l  -> x :: l)
+                    (Glr.apply (fun x  l  -> x :: l)
                        (Glr.sequence
                           (locate
                              (Glr.alternatives

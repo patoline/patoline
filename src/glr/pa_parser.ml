@@ -299,7 +299,7 @@ struct
     glr
     | STR("glr_locate") filter2:(expression_lvl (next_exp App))
          merge2:(expression_lvl (next_exp App)) ->
-      (do_locate := Some(filter2,merge2); (Atom, loc_expr _loc (Pexp_tuple[])))
+      (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
     | glr_kw p:glr_rules end_kw -> (Atom, p)
     | glr_kw CHR('*') p:glr_list_rules end_kw -> (Atom, p)
     end
