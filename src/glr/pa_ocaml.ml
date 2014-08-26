@@ -211,6 +211,15 @@ let string_literal =
   | CHR('$') STR("string") CHR(':') e:expression CHR('$') -> push_pop_string e
   end
 
+let quotation = declare_grammar "quotation"
+let _ = set_grammar quotation (
+  change_layout (glr
+  | STR("<:") q:quotation q':quotation -> "<:" ^ q ^ ">>" ^ q'
+  | s: string_literal q:quotation -> s ^ q
+  | STR(">>") -> ""
+  | c:(one_char false) q:quotation -> String.make 1 c ^ q
+  end) no_blank)
+
 (* Naming labels *)
 let label_name = lowercase_ident
 
@@ -1594,9 +1603,9 @@ let expression_base = memoize1 (fun lvl ->
                               pexp_constraint (me, pt)
       in
       (Atom, loc_expr _loc desc)
-  | CHR('<') name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
+  | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
                   | STR("str_item") -> "str_item" | STR("sig_item") -> "sig_item" } 
-       CHR(':') s:string_literal CHR('>') -> (Atom, quote_expression _loc_s s name)
+       CHR('<') q:quotation -> (Atom, quote_expression _loc_q q name)
   | CHR('$') e:expression CHR('$') -> (Atom, push_pop_expression e)
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
