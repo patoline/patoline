@@ -130,7 +130,7 @@ let float_re = union_re [float_lit_dec; float_lit_no_dec]
 let float_literal =
   glr
     f:RE(float_re)   -> f
-  | CHR('$') STR("float") CHR(':') e:expression CHR('$') -> string_of_float (push_pop_float e)  end
+  | CHR('$') STR("float") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> string_of_float (push_pop_float e)  end
 
 (* Character literals *)
 let char_regular = "[^\\']"
@@ -169,7 +169,7 @@ let char_literal =
     r:(change_layout (
       glr CHR('\'') c:(one_char true) CHR('\'') -> c end
     ) no_blank) -> r
-  | CHR('$') STR("char") CHR(':') e:expression CHR('$') -> push_pop_char e  
+  | CHR('$') STR("char") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_char e  
   end
 
 (* String literals *)
@@ -208,14 +208,14 @@ let string_literal =
         lcs:(glr CHR('\\') CHR('\n') RE(interspace) lc:(one_char false)* -> lc end)*
         CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
     end) no_blank) -> r
-  | CHR('$') STR("string") CHR(':') e:expression CHR('$') -> push_pop_string e
+  | CHR('$') STR("string") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
   end
 
 let quotation = declare_grammar "quotation"
 let _ = set_grammar quotation (
   change_layout (glr
   | STR("<:") q:quotation q':quotation -> "<:" ^ q ^ ">>" ^ q'
-  | s: string_literal q:quotation -> s ^ q
+  | s: string_literal q:quotation -> Printf.sprintf "%S" s ^ q
   | STR(">>") -> ""
   | c:(one_char false) q:quotation -> String.make 1 c ^ q
   end) no_blank)
@@ -436,7 +436,7 @@ type attr =
 
 let payload =
   glr
-  | s:structure_item* -> PStr(s)
+  | s:structure -> PStr(s)
   | CHR(':') t:typexpr -> PTyp(t)
   | CHR('?') p:pattern e:{STR("when") e:expression}? -> PPat(p,e)
   end 
@@ -666,7 +666,7 @@ let typexpr_base : core_type grammar =
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
 #endif
-  | CHR('$') e:(expression_lvl If) CHR('$') -> push_pop_type e
+  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_type e
   end
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
@@ -1094,7 +1094,7 @@ let pattern_base = memoize1 (fun lvl ->
                              Ppat_constraint (loc_pat _loc_mn unpack, pt)
       in
       (AtomPat, loc_pat _loc pat)
-  | CHR('$') e:expression CHR('$') -> (AtomPat, push_pop_pattern e)
+  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> (AtomPat, push_pop_pattern e)
  end)
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
@@ -1604,11 +1604,10 @@ let expression_base = memoize1 (fun lvl ->
       in
       (Atom, loc_expr _loc desc)
   | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
-                  | STR("str_item") -> "str_item" | STR("sig_item") -> "sig_item"
 		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
        loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
        (Atom, quote_expression _loc_q loc q name)
-  | CHR('$') e:expression CHR('$') -> (Atom, push_pop_expression e)
+  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> (Atom, push_pop_expression e)
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
   end)
@@ -1720,7 +1719,7 @@ let module_expr_base =
   | mp:module_path ->
       let mid = { txt = mp; loc = _loc } in
       mexpr_loc _loc (Pmod_ident mid)
-  | struct_kw ms:structure_item* end_kw -> 
+  | struct_kw ms:structure end_kw -> 
       mexpr_loc _loc (Pmod_structure(ms))
 #ifversion >= 4.02
   | functor_kw STR("(") mn:module_name mt:{STR(":") mt:module_type}? STR(")")
@@ -1752,7 +1751,7 @@ let module_type_base =
   | mp:modtype_path ->
       let mid = { txt = mp; loc = _loc } in
       mtyp_loc _loc (Pmty_ident mid)
-  | sig_kw ms:signature_item* end_kw -> 
+  | sig_kw ms:signature end_kw -> 
      mtyp_loc _loc (Pmty_signature(ms))
 #ifversion >= 4.02
   | functor_kw STR("(") mn:module_name mt:{STR(":") mt:module_type}? STR(")")
@@ -1805,7 +1804,6 @@ let _ = set_grammar module_type (
       
 let structure_item_base =
   glr
-  | e:(alternatives extra_structure_items) -> e
   | RE(let_re) r:rec_flag l:let_binding ->
       (match l with
 #ifversion >= 4.02
@@ -1879,18 +1877,18 @@ let structure_item_base =
 #endif
   | class_kw r:{ ctd:classtype_definition -> Pstr_class_type ctd
                | cds:class_definition -> Pstr_class cds } -> r
-  | CHR('$') e:expression CHR('$') -> push_pop_str_item e
   | e:expression -> pstr_eval e
   end
 
 let _ = set_grammar structure_item (
   glr
-    s:structure_item_base STR(";;")? -> loc_str _loc s
+  | e:(alternatives extra_structure) -> e
+  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') STR(";;")? -> push_pop_structure e
+  | s:structure_item_base STR(";;")? -> [loc_str _loc s]
   end)
 
 let signature_item_base =
  glr
-  | e:(alternatives extra_signature_items) -> e
   | val_kw n:value_name STR(":") ty:typexpr a:post_item_attributes ->
      psig_value ~attributes:a _loc { txt = n; loc = _loc_n } ty []
   | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* a:post_item_attributes ->
@@ -1956,12 +1954,13 @@ let signature_item_base =
 #endif
   | class_kw r:{ ctd:classtype_definition -> Psig_class_type ctd
                | cs:class_specification -> Psig_class cs } -> r
-  | CHR('$') e:expression CHR('$') -> push_pop_sig_item e
 end
 
 let _ = set_grammar signature_item (
   glr
-    s:signature_item_base STR(";;")? -> loc_sig _loc s
+  | e:(alternatives extra_signature) -> e
+  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_signature e
+  | s:signature_item_base STR(";;")? -> [loc_sig _loc s]
   end)
 
 exception Top_Exit

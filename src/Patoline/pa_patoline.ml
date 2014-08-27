@@ -27,7 +27,7 @@ exception Unclosed_comment of int * int
  *     "(*" and or "*)",
  *   - single '"' character.
  *)
-let pato_blank str pos =
+let pato_blank mline str pos =
   let rec fn nb lvl state prev (str, pos as cur) =
     if is_empty str then (if lvl > 0 then raise (Unclosed_comment (line_num str, pos)) else cur)
     else
@@ -61,10 +61,8 @@ let pato_blank str pos =
       | _    , _                 -> cur
   in fn 0 0 `Ini (str, pos) (str, pos)
 
-let blank1 = blank false
-let blank2 = blank true
-
-let no_blank str pos = str, pos
+let blank1 = pato_blank false
+let blank2 = pato_blank true
 
 (****************************************************************************
  * Some state information (Driver in use, ...) + Code generation helpers    *
@@ -81,16 +79,16 @@ let freshUid () =
   incr counter;
   "MOD" ^ (string_of_int current)
 
-let _ = glr_locate locate Loc.merge
+let _ = glr_locate locate merge
 
 module Ext = functor(In:Extension) -> 
 struct
   include In
 
 
-  let wrapped_caml_str_item = 
+  let wrapped_caml_structure = 
     glr
-    | CHR('(') l:structure_item* CHR(')') -> l
+    | CHR('(') l:structure CHR(')') -> l
     end
 
   (* Parse a caml "expr" wrapped with parentheses *)
@@ -193,12 +191,12 @@ let verbatim_environment =
         let lines = List.map fn lines in
 
         let buildline l =
-          <:str_item<let _ = newPar D.structure ~environment:verbEnv
+          <:structure<let _ = newPar D.structure ~environment:verbEnv
                               Complete.normal ragged_left
                               (lang_default $string:l$)>>
         in
         let fn = fun l -> buildline (String.escaped l) in
-        acc @ List.map fn lines)
+        List.flatten (List.map fn lines))
     end
   ) no_blank
 
@@ -213,8 +211,7 @@ let verbatim_generic st forbid nd =
         let lines = ls @ [l] in
         let lines = rem_hyphen lines in
         let txt = String.concat " " lines in
-	let verb = "verb" in
-        <:expr@_loc<$lid:verb$ [tT $string:txt$]>>
+        <:expr@_loc< ($lid:"verb"$) [tT $string:txt$] >>
     end
   ) no_blank
 
@@ -233,8 +230,6 @@ let math_toplevel =
     (* TODO *)
   end
 
-let _ = set_grammar patoline_math_toplevel math_toplevel
-
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
@@ -247,8 +242,9 @@ let macro_argument =
   glr
      STR("{") l:(paragraph_basic_text true) STR("}") -> l
   | e:wrapped_caml_expr  -> e
-  | e:wrapped_caml_array -> e
-  | e:wrapped_caml_list  -> e
+(* FIXME: need $list:e$ and $array:e$ *)
+(*  | e:wrapped_caml_array -> e
+  | e:wrapped_caml_list  -> e*)
   end
 
 let lident = "[_a-z][_a-zA-Z0-9']*"
@@ -266,7 +262,7 @@ let macro_name =
 let macro =
   glr
      m:macro_name args:macro_argument* ->
-       (let fn = fun acc r -> <:expr@_loc_args<($acc$) ($r$)>> in
+       (let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
         List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
   | m:verbatim_macro -> m
   end
@@ -275,7 +271,7 @@ let macro =
 let text_paragraph_elt allowed =
     glr
        m:macro -> m
-    | l:words -> <:expr@_loc_l<[tT($str:l$)]>>
+    | l:words -> <:expr@_loc_l<[tT $string:l$]>>
 
     | STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
          <:expr@_loc_p<toggleItalic $p$>>
@@ -294,11 +290,11 @@ let text_paragraph_elt allowed =
          <:expr@_loc_p<sc $p$>>
 
     | STR("(") p:(paragraph_basic_text allowed) STR(")") ->
-         <:expr@_loc_p<tT($string:\"(\"$) :: $p$ @ [tT($string:\")\"$)]>>
+         <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
     | STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
-         <:expr@_loc_p<tT($str:opening$) :: $p$ @ [tT($str:closing$)]>>)
+         <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
 
     | STR("$") m:math_toplevel STR("$") ->
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
@@ -311,11 +307,13 @@ let text_paragraph_elt allowed =
     end
 
 let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
-    let x = Loc.stop_off _loc_p1 and y = Loc.start_off _loc_p2 in
+(* FIXME ... what is the best way ? *)
+(*    let x = _loc_p1.end_pos.lnum  and y = Loc.start_off _loc_p2 in*)
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
+  let y = 1 and x = 0 in
     let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
-    let _loc = Loc.merge _loc_p1 _loc_p2 in
-    <:expr<$p1$ @ $bl p2$>>
+    let _loc = merge _loc_p1 _loc_p2 in
+    <:expr@_loc<$p1$ @ $(bl p2)$>>
 
 let _ = set_paragraph_basic_text
   (fun spec_allowed ->
@@ -325,7 +323,7 @@ let _ = set_paragraph_basic_text
           | []   -> assert false
           | m::l ->
               let fn = fun (_loc_m, m) (_loc_p, p) ->
-                         (Loc.merge _loc_p _loc_m
+                         (merge _loc_p _loc_m
                          , concat_paragraph p _loc_p m _loc_m)
               in snd (List.fold_left fn m l)
     end
@@ -338,17 +336,15 @@ let paragraph_basic_text =
     p:(paragraph_basic_text true) ->
       (fun indented ->
         if indented then
-            <:str_item@_loc_p<
+            <:structure@_loc_p<
                let _ = newPar D.structure
                          Complete.normal Patoline_Format.parameters $p$ >>
         else
-              <:str_item@_loc_p<
+              <:structure@_loc_p<
                let _ = newPar D.structure
                          ~environment:(fun x -> { x with par_indent = [] })
                          Complete.normal Patoline_Format.parameters $p$>>)
   end
-
-let _ = set_grammar patoline_basic_text_paragraph text_only
 
 (****************************************************************************
  * Paragraphs                                                               *
@@ -360,14 +356,15 @@ let paragraphs = declare_grammar "paragraphs"
 let paragraph_elt =
   glr
        verb:verbatim_environment -> (fun _ -> verb)
-    | STR("\\Caml") s:wrapped_caml_str_item -> (fun _ -> s)
+    | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
     | l:paragraph_basic_text -> l
     | STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
-         <:str_item< module $uid:m1$ =
+	 let _Item = "Item" in
+         <:structure< module $uid:m1$ =
                      struct
-                       module $uid:m2$ = $uid:"Item"$ ;;
+                       module $uid:m2$ = $uid : _Item $ ;;
                        let _ = $uid:m2$.do_begin_env () ;;
                        let _ = $uid:m2$.do_end_env ()
                      end>>))
@@ -378,17 +375,18 @@ let paragraph_elt =
            if idb <> ide then raise Give_up;
            let m1 = freshUid () in
            let m2 = freshUid () in
-           <:str_item< module $uid:m1$ =
+	   let _Env = "Env_" in
+           <:structure< module $uid:m1$ =
                        struct
-                         module $uid:m2$ = $uid:"Env_"^idb$ ;;
+                         module $uid:m2$ = $uid:(_Env^idb)$ ;;
                          open $uid:m2$ ;;
-                         let _ = $uid:m2$.do_begin_env () ;;
-                         $ps indent_first$ ;;
-                         let _ = $uid:m2$.do_end_env ()
+                         let _ = $uid:m2$ . do_begin_env () ;;
+                         $(ps indent_first)$ ;;
+                         let _ = $uid:m2$ . do_end_env ()
                         end>>)
     | STR("$$") m:math_toplevel STR("$$") ->
          (fun _ ->
-           <:str_item<let _ = newPar D.structure
+           <:structure<let _ = newPar D.structure
                         ~environment:(fun x -> {x with par_indent = []})
                         Complete.normal displayedFormula
                         [bB (fun env0 -> Maths.kdraw
@@ -400,20 +398,16 @@ let _ = set_grammar paragraph (
   change_layout (
     glr
       e:paragraph_elt es:paragraph_elt* ->
-        (let fn = fun acc r -> acc @ <:str_item<$r false$>> in
-         let es = List.fold_left fn [] es in
-         fun indent -> [<:str_item<$e indent$>>; <:str_item<$es$>>]
-        )
+			 let es = List.flatten (List.map (fun r -> r false) es) in
+			 fun indent -> e indent @ es
     end
   ) blank1)
 
 let _ = set_grammar paragraphs (
   glr
     p:paragraph ps:paragraph* ->
-      (fun indent_first ->
-        let p  = p indent_first in
-        let fn = fun acc r -> acc @ <:str_item<$r true$>> in
-        List.fold_left fn p ps)
+      		   let ps = List.flatten (List.map (fun r -> r true) ps) in
+		   fun indent_first -> p indent_first @ ps
   end)
 
 (****************************************************************************
@@ -435,8 +429,8 @@ let text_item =
           | '-', '-' -> <:expr@_loc_op<newStruct ~numbered:false>>
           | _ -> raise Give_up
         in
-        true, lvl, <:structure< let _ = ($numbered$) D.structure $title$;;
-                               $txt false (lvl+1)$;;
+        true, lvl, <:structure< let _ = $numbered$ D.structure $title$;;
+                               $(txt false (lvl+1))$;;
                                let _ = go_up D.structure >>)
 
   | op:RE(section) title:text_only cl:RE(section) txt:text ->
@@ -451,10 +445,10 @@ let text_item =
         if l > lvl + 1 then failwith "Illegal level skip";
         let res = ref [] in
         for i = 0 to lvl - l do
-          res := !res @ <:str_item@_loc_op<let _ = go_up D.structure>>
+          res := !res @ <:structure@_loc_op<let _ = go_up D.structure>>
         done;
         true, lvl, <:structure< $!res$ let _ = ($numbered$) D.structure $title$;;
-                               $txt false l$>>)
+                               $(txt false l)$>>)
 
   | ps:paragraphs -> 
       (fun indent lvl -> indent, lvl, ps indent)
@@ -474,7 +468,7 @@ let _ = set_grammar text (
 
 let text =
   glr
-    txt:text -> <:str_item<$txt true 0$>>
+    txt:text -> txt true 0
   end
 
 (****************************************************************************
@@ -483,7 +477,7 @@ let text =
 
 let uident = "[A-Z][a-zA-Z0-9_']*"
 
-let patoline_config =
+let patoline_config : unit grammar =
   change_layout (
     glr
       STR("#") n:RE(uident) STR(" ") a:RE(uident) ->
@@ -492,13 +486,13 @@ let patoline_config =
             | "DRIVER"  -> patoline_driver := a
             | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
             | _         -> raise Give_up);
-        [])
+        ())
     end
   ) no_blank
 
 let header =
   glr
-    hs:patoline_config* -> []
+    patoline_config* -> []
   end
 
 let title =
@@ -523,7 +517,7 @@ let title =
       None -> <:expr@_loc_date<$extras$>>
     | Some(t) -> <:expr@_loc_date<("Author", string_of_contents $t$)::$extras$>>
   in
-  <:str_item@_loc_t<
+  <:structure@_loc_t<
     let _ = Patoline_Format.title D.structure ~extra_tags:($extras$) $t$>>
  end
 
@@ -537,33 +531,6 @@ let full_text =
       <:structure<$h$;; $t$;; $txt$>>
   end
 
-(****************************************************************************
- * Parsing main functions.                                                  *
- ****************************************************************************)
-
-(* Parse a string with Patoline as the entry point. *)
-let parse_patoline str =
-  try
-    parse_string full_text blank2 "" str
-  with
-(*    | Parse_error (fname,l,n,msgs) ->
-        Loc.raise Loc.(of_lexing_position _loc) Stream.Failure
-    | Ambiguity(fname1,l1,n,fname2,l2,p) ->
-        Loc.raise Loc.(merge (of_lexing_position _loc1)
-                             (of_lexing_position _loc2))
-                  (Stream.Error "Ambiguous expression")*)
-    | exc ->
-        Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
-        exit 1
-
-(* Parse a string with OCaml Camlp4 extension as the entry point. *)
-let parse_patoline_caml str =
-  try
-    Gram.parse_string str_item (Loc.mk !fname) str
-  with
-    | exc ->
-        Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
-        exit 1
 
 (****************************************************************************
  * Helper function for top level ast.                                       *
@@ -577,9 +544,9 @@ let wrap basename _loc ast = <:structure<
   open Typography.Document
   open Typography.OutputCommon
   open DefaultFormat.MathsFormat
-  let $lid:"cache_"^basename$  =
+  let $lid:("cache_"^basename)$  =
     ref ([||] : (environment -> Mathematical.style -> box list) array)
-  let $lid:"mcache_"^basename$ =
+  let $lid:("mcache_"^basename)$ =
     ref ([||] : (environment -> Mathematical.style -> box list) list array)
   module Document = functor(Patoline_Output:DefaultFormat.Output)
     -> functor(D:DocumentStructure)->struct
@@ -590,8 +557,8 @@ let wrap basename _loc ast = <:structure<
     $ast$
     let _ = D.structure:=follow (top !D.structure) (List.rev temp1)
   end;;
-  let _ = $lid:"cache_"^basename$ :=[||];;
-  let _ = $lid:"mcache_"^basename$ :=[||];; >>
+  let _ = $lid:("cache_"^basename)$ :=[||];;
+  let _ = $lid:("mcache_"^basename)$ :=[||];; >>
 
 (****************************************************************************
  * Main program + Command-line argument parsing.                            *
@@ -607,54 +574,17 @@ let spec =
                   "Package to link.")
   ]
 
-let patoline_extension      = [ "txp" ; "typ" ]
-let patoline_extension_caml = [ "mlp" ; "ml" ]
+let _ = 
+  entry_points := 
+    (".txp", `Impl full_text) ::
+      (".typ", `Impl full_text) ::
+	(".mlp", `Impl structure ) :: !entry_points
 
-let _ = try
+(* FIXME: combine this with pa_ocaml options parsing *)
+let _ =
   let anon_args = ref [] in
   Arg.parse spec (fun a -> anon_args := a :: !anon_args) "Usage:";
-  if List.length !anon_args < 1
-     then Arg.usage spec "No file specified:";
-  if List.length !anon_args > 1
-     then Arg.usage spec "Too many files specified:";
-  let filename = List.hd !anon_args in
-  let basename = chop_extension' filename in
-  let extension = get_extension' filename in
-  fname := filename;
-
-  let ch = open_in filename in
-  let n = in_channel_length ch in
-  let str = String.create n in
-  really_input ch str 0 n;
-
-  let parse =
-    if List.mem extension patoline_extension
-    then parse_patoline
-    else
-      begin
-        if List.mem extension patoline_extension_caml
-        then parse_patoline_caml
-        else
-          begin
-            let msg =
-              (if extension = ""
-               then "no file extension..."
-               else ("wrong file extension \"" ^ extension ^ "\" ...")) in
-            Printf.fprintf stderr "Warning: %s\n%!" msg;
-            parse_patoline
-          end
-      end
-  in
-
-  let ast = parse str in
-(*  let _loc = Loc.(of_lexing_position (find_pos str 0)) in*)
-
-  Printers.OCaml.print_implem ast; (*(wrap basename _loc ast);*)
-  close_in ch
-
-  with
-    | exc -> Format.eprintf "@[<v0>%a@]@." Camlp4.ErrorHandler.print exc;
-             exit 1
-
 
 end
+
+let _ = register_extension (module Ext)

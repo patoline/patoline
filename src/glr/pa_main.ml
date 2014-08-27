@@ -2,8 +2,21 @@ open Pa_ocaml
 open Glr
 open Format
 
+let entry =
+  match !entry, !file with
+    FromExt, Some s -> 
+    let rec fn = function
+	(ext, res)::l -> if Filename.check_suffix s ext then res else fn l
+      | [] -> eprintf "Don't know what to do with file %s\n%!" s; exit 1
+    in
+    fn !Main.entry_points
+  | FromExt, None -> `Top
+  | Intf, _ -> `Intf Main.signature
+  | Impl, _ -> `Impl Main.structure
+  | Top, _  -> `Top
+
 #ifdef BYTE
-let _ = if entry = Top then
+let _ = if entry = `Top then
   printf "Pa_ocaml top level using OCaml %s%!" (Sys.ocaml_version);
   Toploop.initialize_toplevel_env ();
   let rec loop () =
@@ -35,7 +48,7 @@ let _ = if entry = Top then
   | Main.Top_Exit -> exit 0
 #else
 let _ = 
-  if entry = Top then (
+  if entry = `Top then (
     Printf.eprintf "native toplevel not supported by pa_ocaml.\n%!" ; exit 1)
 #endif
 
@@ -51,10 +64,10 @@ let ast =
        name, open_in name
   in
   try
-    if entry = Impl then 
-      `Struct (parse_channel structure blank name ch)
-    else
-      `Sig (parse_channel signature blank name ch)
+    match entry with
+      `Impl g -> `Struct (parse_channel g blank name ch)
+    | `Intf g -> `Sig (parse_channel g blank name ch)
+    | `Top -> assert false
   with
     Parse_error (fname,l,n,msgs) ->
     let msgs = String.concat " | " msgs in

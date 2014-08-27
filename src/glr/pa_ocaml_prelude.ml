@@ -48,12 +48,6 @@ let anon_fun s = file := Some s
 
 let _ = Arg.parse spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
 
-let entry =
-  match !entry, !file with
-    FromExt, Some s -> if Filename.check_suffix s ".mli" then Intf else Impl
-  | FromExt, None -> Top
-  | i, _ -> i
-
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
@@ -158,17 +152,17 @@ let next_exp = function
   let (expression_lvl : expression_lvl -> expression grammar), set_expression_lvl = grammar_family "expression_lvl"
   let expr = expression_lvl Top
   let expression= expr
-  let structure_item : structure_item grammar = declare_grammar "structure_item"
-  let signature_item : signature_item grammar = declare_grammar "signature_item"
+  let structure_item : structure_item list grammar = declare_grammar "structure_item"
+  let signature_item : signature_item list grammar = declare_grammar "signature_item"
 
   let structure =
     glr
-      l : structure_item* -> l
+      l : structure_item* -> List.flatten l
     end
 
   let signature =
     glr
-      l : signature_item* -> l
+      l : signature_item* -> List.flatten l
     end
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
@@ -201,8 +195,8 @@ let next_exp = function
   let extra_expressions = ([] : (expression_lvl * expression) grammar list)
   let extra_types = ([] : core_type grammar list)
   let extra_patterns = ([] : (pattern_prio * pattern) grammar list)
-  let extra_structure_items = ([] : structure_item_desc grammar list)
-  let extra_signature_items = ([] : signature_item_desc grammar list)
+  let extra_structure = ([] : structure_item list grammar list)
+  let extra_signature = ([] : signature_item list grammar list)
   let loc_str _loc desc = { pstr_desc = desc; pstr_loc = _loc; }
   let loc_sig _loc desc = { psig_desc = desc; psig_loc = _loc; }
 
@@ -334,10 +328,13 @@ let next_exp = function
 
 type quote_env1 = {
   mutable expression_stack : Parsetree.expression list;
+  mutable expression_list_stack : Parsetree.expression list;
   mutable pattern_stack : Parsetree.expression list;
+  mutable pattern_list_stack : Parsetree.expression list;
   mutable type_stack : Parsetree.expression list;
-  mutable str_item_stack : Parsetree.expression list;
-  mutable sig_item_stack : Parsetree.expression list;
+  mutable type_list_stack : Parsetree.expression list;
+  mutable structure_stack : Parsetree.expression list;
+  mutable signature_stack : Parsetree.expression list;
   mutable string_stack : Parsetree.expression list;
   mutable int_stack : Parsetree.expression list;
   mutable int32_stack : Parsetree.expression list;
@@ -349,10 +346,13 @@ type quote_env1 = {
 }
 type quote_env2 = {
   mutable expression_stack2 : Parsetree.expression list;
+  mutable expression_list_stack2 : Parsetree.expression list list;
   mutable pattern_stack2 : Parsetree.pattern list;
+  mutable pattern_list_stack2 : Parsetree.pattern list list;
   mutable type_stack2 : Parsetree.core_type list;
-  mutable str_item_stack2 : Parsetree.structure_item_desc list;
-  mutable sig_item_stack2 : Parsetree.signature_item_desc list;
+  mutable type_list_stack2 : Parsetree.core_type list list;
+  mutable structure_stack2 : Parsetree.structure_item list list;
+  mutable signature_stack2 : Parsetree.signature_item list list;
   mutable string_stack2 : string list;
   mutable int_stack2 : int list;
   mutable int32_stack2 : int32 list;
@@ -371,10 +371,13 @@ let quote_stack : quote_env Stack.t =
 
 let empty_quote_env1 () = First {
   expression_stack = [];
+  expression_list_stack = [];
   pattern_stack  = [];
+  pattern_list_stack  = [];
   type_stack =  [];
-  str_item_stack =  [];
-  sig_item_stack =  [];
+  type_list_stack =  [];
+  structure_stack =  [];
+  signature_stack = [];
   string_stack = [];
   int_stack = [];
   int32_stack = [];
@@ -387,10 +390,13 @@ let empty_quote_env1 () = First {
 
 let empty_quote_env2 () = Second {
   expression_stack2 = [];
+  expression_list_stack2 = [];
   pattern_stack2  = [];
+  pattern_list_stack2  = [];
   type_stack2 =  [];
-  str_item_stack2 =  [];
-  sig_item_stack2 =  [];
+  type_list_stack2 =  [];
+  structure_stack2 =  [];
+  signature_stack2 =  [];
   string_stack2 = [];
   int_stack2 = [];
   int32_stack2 = [];
@@ -419,6 +425,24 @@ let push_expression e =
     | Second env ->
 	env.expression_stack2 <- e::env.expression_stack2
 
+let push_pop_expression_list e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.expression_list_stack <- e::env.expression_list_stack; []
+    | Second env ->
+       match env.expression_list_stack2 with
+	 e::l -> env.expression_list_stack2 <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_expression_list e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.expression_list_stack2 <- e::env.expression_list_stack2
+
 let push_pop_type e =
   try
     match Stack.top quote_stack with
@@ -436,6 +460,24 @@ let push_type e =
     | First env -> assert false
     | Second env ->
 	env.type_stack2 <- e::env.type_stack2
+
+let push_pop_type_list e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.type_list_stack <- e::env.type_list_stack; []
+    | Second env ->
+       match env.type_list_stack2 with
+	 e::l -> env.type_list_stack2 <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_type_list e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.type_list_stack2 <- e::env.type_list_stack2
 
 let push_pop_pattern e =
   try
@@ -455,43 +497,59 @@ let push_pattern e =
     | Second env ->
 	env.pattern_stack2 <- e::env.pattern_stack2
 
-let push_pop_str_item e =
+let push_pop_pattern_list e =
   try
     match Stack.top quote_stack with
     | First env ->
-	env.str_item_stack <- e::env.str_item_stack; pstr_eval e; 
+	env.pattern_list_stack <- e::env.pattern_list_stack; []
     | Second env ->
-       match env.str_item_stack2 with
-	 e::l -> env.str_item_stack2 <- l; e
+       match env.pattern_list_stack2 with
+	 e::l -> env.pattern_list_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
 
-let push_str_item e =
+let push_pattern_list e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.str_item_stack2 <- e::env.str_item_stack2
+	env.pattern_list_stack2 <- e::env.pattern_list_stack2
 
-let push_pop_sig_item e =
+let push_pop_structure e =
   try
     match Stack.top quote_stack with
     | First env ->
-	env.sig_item_stack <- e::env.sig_item_stack;
-	let _loc = e.pexp_loc in 
-	psig_value _loc { txt = ""; loc = _loc} (loc_typ _loc Ptyp_any) []
+	env.structure_stack <- e::env.structure_stack; []
     | Second env ->
-       match env.sig_item_stack2 with
-	 e::l -> env.sig_item_stack2 <- l; e
+       match env.structure_stack2 with
+	 e::l -> env.structure_stack2 <- l; e
        | _ -> assert false
   with
     Stack.Empty -> raise Give_up
 
-let push_sig_item e =
+let push_structure e =
     match Stack.top quote_stack with
     | First env -> assert false
     | Second env ->
-	env.sig_item_stack2 <- e::env.sig_item_stack2
+	env.structure_stack2 <- e::env.structure_stack2
+
+let push_pop_signature e =
+  try
+    match Stack.top quote_stack with
+    | First env ->
+	env.signature_stack <- e::env.signature_stack; []
+    | Second env ->
+       match env.signature_stack2 with
+	 e::l -> env.signature_stack2 <- l; e
+       | _ -> assert false
+  with
+    Stack.Empty -> raise Give_up
+
+let push_signature e =
+    match Stack.top quote_stack with
+    | First env -> assert false
+    | Second env ->
+	env.signature_stack2 <- e::env.signature_stack2
 
 let push_pop_string e =
   try
@@ -686,10 +744,13 @@ let quote_expression _loc loc e name =
     | Some e -> loc_expr _loc (Pexp_sequence(push_expr, e))
   in
   let push_expr = fill push_expr "push_expression" env.expression_stack in
+  let push_expr = fill push_expr "push_expression_list" env.expression_list_stack in
   let push_expr = fill push_expr "push_pattern" env.pattern_stack in
+  let push_expr = fill push_expr "push_pattern_list" env.pattern_list_stack in
   let push_expr = fill push_expr "push_type" env.type_stack in
-  let push_expr = fill push_expr "push_str_item" env.str_item_stack in
-  let push_expr = fill push_expr "push_sig_item" env.sig_item_stack in
+  let push_expr = fill push_expr "push_type_list" env.type_list_stack in
+  let push_expr = fill push_expr "push_structure" env.structure_stack in
+  let push_expr = fill push_expr "push_signature" env.signature_stack in
   let push_expr = fill push_expr "push_string" env.string_stack in
   let push_expr = fill push_expr "push_int" env.int_stack in
   let push_expr = fill push_expr "push_int32" env.int32_stack in
@@ -738,18 +799,18 @@ let quote_str_item_2 ?loc e =
   let res = parse_string structure_item blank "quote..." e in
   match loc with
     None -> res
-  | Some loc -> loc_str loc res.pstr_desc
+  | Some loc -> List.map (fun res -> loc_str loc res.pstr_desc) res
 
 let quote_sig_item_2 ?loc e =
   let res = parse_string signature_item blank "quote..." e in
   match loc with
     None -> res
-  | Some loc -> loc_sig loc res.psig_desc
+  | Some loc -> List.map (fun res -> loc_sig loc res.psig_desc) res
 
-let quote_structure ?loc e =
+let quote_structure_2 ?loc e =
   parse_string structure blank "quote..." e
  
-let quote_signature ?loc e =
+let quote_signature_2 ?loc e =
   parse_string signature blank "quote..." e 
 
 (****************************************************************************
@@ -782,19 +843,19 @@ let is_reserved_id w =
 let ident =
   glr
     id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
-  | CHR('$') STR("ident") CHR(':') e:expression CHR('$') -> push_pop_string e
+  | CHR('$') STR("ident") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
   end
 
 let capitalized_ident =
   glr
     id:RE(cident_re) -> id
-  | CHR('$') STR("uid") CHR(':') e:expression CHR('$') -> push_pop_string e
+  | CHR('$') STR("uid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
   end
 
 let lowercase_ident =
   glr
     id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
-  | CHR('$') STR("lid") CHR(':') e:expression CHR('$') -> push_pop_string e
+  | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
   end
 
 (****************************************************************************
@@ -911,34 +972,38 @@ let natint_re = par_re int_pos_re ^ "n"
 let integer_literal =
   glr
     i:RE(int_pos_re) -> int_of_string i
-  | CHR('$') STR("int") CHR(':') e:expression CHR('$') -> push_pop_int e
+  | CHR('$') STR("int") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int e
   end
 
 let int32_lit =
   glr
     i:RE(int32_re)[groupe 1] -> Int32.of_string i
-  | CHR('$') STR("int32") CHR(':') e:expression CHR('$') -> push_pop_int32 e
+  | CHR('$') STR("int32") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int32 e
   end
 
 let int64_lit =
   glr
     i:RE(int64_re)[groupe 1] -> Int64.of_string i
-  | CHR('$') STR("int64") CHR(':') e:expression CHR('$') -> push_pop_int64 e
+  | CHR('$') STR("int64") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int64 e
   end
 
 let nat_int_lit =
   glr
     i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
-  | CHR('$') STR("natint") CHR(':') e:expression CHR('$') -> push_pop_natint e
+  | CHR('$') STR("natint") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_natint e
   end
 
 let bool_lit =
   glr
     false_kw -> "false"
   | true_kw -> "true"
-  | CHR('$') STR("bool") CHR(':') e:expression CHR('$') -> if push_pop_bool e then "true" else "false"
+  | CHR('$') STR("bool") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> if push_pop_bool e then "true" else "false"
   end
 
+  let entry_points : (string *
+            [ `Impl of Parsetree.structure_item list Glr.grammar
+            | `Intf of Parsetree.signature_item list Glr.grammar | `Top ]) list ref
+   = ref [ ".mli", `Intf signature ;  ".ml", `Impl structure ]
 end
 
 module type Extension = module type of Initial
