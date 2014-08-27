@@ -330,6 +330,19 @@ module Ext(In:Extension) =
                      (Atom, (exp_unit _loc))))
            (locate (expression_lvl (next_exp App))) (fun x  -> x);
         Glr.sequence
+          (Glr.sequence (locate (Glr.string "parser_locate" ()))
+             (locate (expression_lvl (next_exp App)))
+             (fun _unnamed_0  ->
+                let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                fun filter2  ->
+                  let (_loc_filter2,filter2) = filter2 in
+                  fun merge2  ->
+                    let (_loc_merge2,merge2) = merge2 in
+                    let _loc = merge _loc__unnamed_0 _loc_merge2 in
+                    do_locate := (Some (filter2, merge2));
+                    (Atom, (exp_unit _loc))))
+          (locate (expression_lvl (next_exp App))) (fun x  -> x);
+        Glr.sequence
           (Glr.sequence (locate glr_kw) (locate glr_rules)
              (fun _unnamed_0  ->
                 let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -352,7 +365,23 @@ module Ext(In:Extension) =
                          let (_loc__unnamed_3,_unnamed_3) = _unnamed_3 in
                          let _loc = merge _loc__unnamed_0 _loc__unnamed_3 in
                          (Atom, p))) (locate glr_list_rules) (fun x  -> x))
-          (locate end_kw) (fun x  -> x)]
+          (locate end_kw) (fun x  -> x);
+        Glr.sequence (locate parser_kw) (locate glr_rules)
+          (fun _unnamed_0  ->
+             let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+             fun p  ->
+               let (_loc_p,p) = p in
+               let _loc = merge _loc__unnamed_0 _loc_p in (Atom, p));
+        Glr.sequence
+          (Glr.sequence (locate parser_kw) (locate (Glr.char '*' ()))
+             (fun _unnamed_0  ->
+                let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                fun _unnamed_1  ->
+                  let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
+                  fun p  ->
+                    let (_loc_p,p) = p in
+                    let _loc = merge _loc__unnamed_0 _loc_p in (Atom, p)))
+          (locate glr_list_rules) (fun x  -> x)]
     let extra_expressions = glr_parser :: extra_expressions
     let glr_opt_expr =
       Glr.apply (fun e  -> let (_loc_e,e) = e in let _loc = _loc_e in e)

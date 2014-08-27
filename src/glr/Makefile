@@ -82,20 +82,20 @@ boot:
 examples/calc: examples/calc.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
-examples/calc.cmx: examples/calc.ml glr.cmxa pa_glr
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+examples/calc.cmx: examples/calc.ml glr.cmxa pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/calc_simple: examples/calc_simple.cmx glr.cmxa
+examples/calc_all: examples/calc_all.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
-examples/calc_simple.cmx: examples/calc_simple.ml glr.cmxa pa_glr
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+examples/calc_all.cmx: examples/calc_all.ml glr.cmxa pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
-examples/calc_strict: examples/calc_strict.cmx glr.cmxa
+examples/calc_prio: examples/calc_prio.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
-examples/calc_strict.cmx: examples/calc_strict.ml glr.cmxa pa_glr
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+examples/calc_prio.cmx: examples/calc_prio.ml glr.cmxa pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
 examples/text: examples/text.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@

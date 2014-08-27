@@ -300,8 +300,13 @@ struct
     | STR("glr_locate") filter2:(expression_lvl (next_exp App))
          merge2:(expression_lvl (next_exp App)) ->
       (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
+    | STR("parser_locate") filter2:(expression_lvl (next_exp App))
+         merge2:(expression_lvl (next_exp App)) ->
+      (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
     | glr_kw p:glr_rules end_kw -> (Atom, p)
     | glr_kw CHR('*') p:glr_list_rules end_kw -> (Atom, p)
+    | parser_kw p:glr_rules -> (Atom, p)
+    | parser_kw CHR('*') p:glr_list_rules -> (Atom, p)
     end
 
   let extra_expressions = glr_parser::extra_expressions

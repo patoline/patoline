@@ -946,6 +946,7 @@ module Initial =
     let sig_kw = key_word "sig"
     let lazy_kw = key_word "lazy"
     let glr_kw = key_word "glr"
+    let parser_kw = key_word "parser"
     let int_dec_re = "[0-9][0-9_]*"
     let int_hex_re = "[0][xX][0-9a-fA-F][0-9a-fA-F_]*"
     let int_oct_re = "[0][oO][0-7][0-7_]*"

@@ -8,35 +8,31 @@ let arith_sum
 let re_float = "[0-9]+\\([.][0-9]+\\)?\\([eE][-]?[0-9]+\\)?"
 
 let arith_atom =
-  glr
+  parser
     f:RE(re_float)[float_of_string (groupe 0)]
   | CHR('-') f:RE(re_float)[float_of_string (groupe 0)] -> -. f
   | STR"(" s:arith_sum STR")"
-  end 
 
 let arith_pow = declare_grammar "arith_pow"
 let _ = set_grammar arith_pow 
-   glr
+   parser
     a:arith_atom r:{STR"**" b:arith_pow -> fun x -> x ** b}?[fun x -> x] -> r a
         (* ?[...] avoid to use None | Some for option *)
-   end
 
 let arith_prod =
-  glr
+  parser
     a:arith_pow 
     f:{op:RE"[*]\\|/" b:arith_pow
            -> fun f x -> if op = "*" then f x *. b else if b = 0.0 then raise Give_up else f x /. b}*[fun x -> x]
                    (* *[...] avoid to use lists for repetition *)
       -> f a
-  end
 
 let _ = set_grammar arith_sum
-  glr
+  parser
     a:arith_prod
     f:{op:RE"[+]\\|-" b:arith_prod
            -> fun f x -> if op = "+" then f x +. b else f x -. b}*[fun x -> x]
       -> f a
-  end
 
 let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)

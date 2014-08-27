@@ -958,6 +958,7 @@ let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
 let lazy_kw = key_word "lazy"
 let glr_kw = key_word "glr"
+let parser_kw = key_word "parser"
 
 (* Integer literals *)
 let int_dec_re = "[0-9][0-9_]*"
