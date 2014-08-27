@@ -6,9 +6,9 @@ open UChar
 type index = int
 
 (*
- * Encode a UTF8 character into a UTF8 string.
+ * Encode a unicode character into a UTF8 string.
  * Argument:
- *   i : the UTF8 character.
+ *   i : the unicode character.
  * Returns a string of size between 1 and 4.
  * Raise invalid_arg if i is not in the U+0000..U+10FFFF range.
  *)
@@ -247,5 +247,3 @@ module Buf =
       done;
       Buffer.contents buf
   end
-
-
