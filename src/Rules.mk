@@ -15,7 +15,7 @@ RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
 GLR_DIR := $(d)/glr
-PA_GLR := $(GLR_DIR)/pa_glr
+PA_OCAML := $(GLR_DIR)/pa_ocaml
 
 # Visit subdirectories
 MODULES := unicodelib rbuffer patutil imagelib patfonts glr \

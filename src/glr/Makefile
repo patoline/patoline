@@ -1,10 +1,10 @@
-FINDLIB = #ocamlfind
+FINDLIB =
 CAMLFLAGS =
 OCAMLC = $(FINDLIB) ocamlc.opt $(CAMLFLAGS)
 OCAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
 BINDIR = /usr/local/bin
-LIBDIR = #-destdir /usr/local/lib/ocaml
-METADIR = #-metadir ...
+LIBDIR = $(shell ocamlc -where)/glr
+METADIR = $(LIBDIR)
 
 ifeq ("$(METADIR)","")
 	METADIR=$(LIBDIR)

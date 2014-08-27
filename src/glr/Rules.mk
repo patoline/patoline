@@ -4,8 +4,6 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/pa_ocaml $(d)/glr.cmxa $(d)/glr.cma
 
-PA_OCAML = $(GLR_DIR)/pa_ocaml
-
 $(d)/pa_ocaml:
 	$(MAKE) -e -C $(GLR_DIR) pa_ocaml
 $(d)/glr.cmxa:
@@ -21,6 +19,8 @@ clean-glr:
 $(d)/glr.a: $(d)/glr.cmxa;
 
 install: install-glr
+
+install-glr: export LIBDIR := $(INSTALL_GLR_DIR)
 
 install-glr:
 	$(MAKE) -e -C $(GLR_DIR) install
