@@ -317,7 +317,7 @@ module Ext(In:Extension) =
     let glr_parser =
       Glr.alternatives
         [Glr.sequence
-           (Glr.sequence (locate (Glr.string "glr_locate" ()))
+           (Glr.sequence (locate (Glr.string "parser_locate" ()))
               (locate (expression_lvl (next_exp App)))
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -329,43 +329,6 @@ module Ext(In:Extension) =
                      do_locate := (Some (filter2, merge2));
                      (Atom, (exp_unit _loc))))
            (locate (expression_lvl (next_exp App))) (fun x  -> x);
-        Glr.sequence
-          (Glr.sequence (locate (Glr.string "parser_locate" ()))
-             (locate (expression_lvl (next_exp App)))
-             (fun _unnamed_0  ->
-                let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                fun filter2  ->
-                  let (_loc_filter2,filter2) = filter2 in
-                  fun merge2  ->
-                    let (_loc_merge2,merge2) = merge2 in
-                    let _loc = merge _loc__unnamed_0 _loc_merge2 in
-                    do_locate := (Some (filter2, merge2));
-                    (Atom, (exp_unit _loc))))
-          (locate (expression_lvl (next_exp App))) (fun x  -> x);
-        Glr.sequence
-          (Glr.sequence (locate glr_kw) (locate glr_rules)
-             (fun _unnamed_0  ->
-                let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                fun p  ->
-                  let (_loc_p,p) = p in
-                  fun _unnamed_2  ->
-                    let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
-                    let _loc = merge _loc__unnamed_0 _loc__unnamed_2 in
-                    (Atom, p))) (locate end_kw) (fun x  -> x);
-        Glr.sequence
-          (Glr.sequence
-             (Glr.sequence (locate glr_kw) (locate (Glr.char '*' ()))
-                (fun _unnamed_0  ->
-                   let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                   fun _unnamed_1  ->
-                     let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-                     fun p  ->
-                       let (_loc_p,p) = p in
-                       fun _unnamed_3  ->
-                         let (_loc__unnamed_3,_unnamed_3) = _unnamed_3 in
-                         let _loc = merge _loc__unnamed_0 _loc__unnamed_3 in
-                         (Atom, p))) (locate glr_list_rules) (fun x  -> x))
-          (locate end_kw) (fun x  -> x);
         Glr.sequence (locate parser_kw) (locate glr_rules)
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -1146,22 +1109,15 @@ module Ext(In:Extension) =
               (locate
                  (Glr.option None
                     (Glr.apply (fun x  -> Some x)
-                       (Glr.alternatives
-                          [Glr.sequence (locate (Glr.char '|' ()))
-                             (locate (Glr.char '|' ()))
-                             (fun _unnamed_0  ->
-                                let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                                fun _unnamed_1  ->
-                                  let (_loc__unnamed_1,_unnamed_1) =
-                                    _unnamed_1 in
-                                  let _loc =
-                                    merge _loc__unnamed_0 _loc__unnamed_1 in
-                                  ());
-                          Glr.apply
-                            (fun _unnamed_0  ->
-                               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                               let _loc = _loc__unnamed_0 in ())
-                            (locate else_kw)])))) (locate glr_list_rules_aux)
+                       (Glr.sequence (locate (Glr.char '|' ()))
+                          (locate (Glr.char '|' ()))
+                          (fun _unnamed_0  ->
+                             let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                             fun _unnamed_1  ->
+                               let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
+                               let _loc =
+                                 merge _loc__unnamed_0 _loc__unnamed_1 in
+                               ()))))) (locate glr_list_rules_aux)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                  fun r  ->
@@ -1210,26 +1166,17 @@ module Ext(In:Extension) =
                     (Glr.apply (fun x  l  -> x :: l)
                        (Glr.sequence
                           (locate
-                             (Glr.alternatives
-                                [Glr.sequence (locate (Glr.char '|' ()))
-                                   (locate (Glr.char '|' ()))
-                                   (fun _unnamed_0  ->
-                                      let (_loc__unnamed_0,_unnamed_0) =
-                                        _unnamed_0 in
-                                      fun _unnamed_1  ->
-                                        let (_loc__unnamed_1,_unnamed_1) =
-                                          _unnamed_1 in
-                                        let _loc =
-                                          merge _loc__unnamed_0
-                                            _loc__unnamed_1 in
-                                        ());
-                                Glr.apply
-                                  (fun _unnamed_0  ->
-                                     let (_loc__unnamed_0,_unnamed_0) =
-                                       _unnamed_0 in
-                                     let _loc = _loc__unnamed_0 in ())
-                                  (locate else_kw)]))
-                          (locate glr_list_rules_aux)
+                             (Glr.sequence (locate (Glr.char '|' ()))
+                                (locate (Glr.char '|' ()))
+                                (fun _unnamed_0  ->
+                                   let (_loc__unnamed_0,_unnamed_0) =
+                                     _unnamed_0 in
+                                   fun _unnamed_1  ->
+                                     let (_loc__unnamed_1,_unnamed_1) =
+                                       _unnamed_1 in
+                                     let _loc =
+                                       merge _loc__unnamed_0 _loc__unnamed_1 in
+                                     ()))) (locate glr_list_rules_aux)
                           (fun _unnamed_0  ->
                              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                              fun r  ->

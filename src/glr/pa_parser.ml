@@ -3,7 +3,7 @@ open Parsetree
 open Longident
 open Pa_ocaml_prelude
 
-let _ = glr_locate locate merge
+let _ = parser_locate locate merge
 
 type ('a,'b) action =
   | Default 
@@ -296,72 +296,67 @@ struct
   let glr_list_rule = Glr.declare_grammar "glr_list_rule"
 
   let glr_parser = 
-    glr
-    | STR("glr_locate") filter2:(expression_lvl (next_exp App))
-         merge2:(expression_lvl (next_exp App)) ->
-      (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
+    parser
     | STR("parser_locate") filter2:(expression_lvl (next_exp App))
          merge2:(expression_lvl (next_exp App)) ->
       (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
-    | glr_kw p:glr_rules end_kw -> (Atom, p)
-    | glr_kw CHR('*') p:glr_list_rules end_kw -> (Atom, p)
     | parser_kw p:glr_rules -> (Atom, p)
     | parser_kw CHR('*') p:glr_list_rules -> (Atom, p)
-    end
 
   let extra_expressions = glr_parser::extra_expressions
 
-  let glr_opt_expr = glr
-    e:{ CHR('[') e:expression CHR(']') }? -> e
-  end
+  let glr_opt_expr = 
+    parser
+      e:{ CHR('[') e:expression CHR(']') }? -> e
 
-  let glr_option = glr
-  | CHR('*') CHR('*') e:glr_opt_expr -> `FixpointPrime e
-  | CHR('*') e:glr_opt_expr -> `Fixpoint e
-  | CHR('+') CHR('+') e:glr_opt_expr -> `Fixpoint1Prime e
-  | CHR('+') e:glr_opt_expr -> `Fixpoint1 e
-  | CHR('?') CHR('?') e:glr_opt_expr -> `OptionPrime e
-  | CHR('?') e:glr_opt_expr -> `Option e
-  | EMPTY -> `Once
-  end
+  let glr_option =
+    parser
+    | CHR('*') CHR('*') e:glr_opt_expr -> `FixpointPrime e
+    | CHR('*') e:glr_opt_expr -> `Fixpoint e
+    | CHR('+') CHR('+') e:glr_opt_expr -> `Fixpoint1Prime e
+    | CHR('+') e:glr_opt_expr -> `Fixpoint1 e
+    | CHR('?') CHR('?') e:glr_opt_expr -> `OptionPrime e
+    | CHR('?') e:glr_opt_expr -> `Option e
+    | EMPTY -> `Once
 
-  let glr_sequence = glr
-  | CHR('{') r:glr_rules CHR('}') -> r
-  | STR("EOF") opt:glr_opt_expr ->
-     let e = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "eof") [e]
-  | STR("EMPTY") opt:glr_opt_expr ->
-     let e = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "empty") [e]
-  | STR("FAIL") e:(expression_lvl (next_exp App)) ->
-     exp_apply _loc (exp_glr_fun _loc "fail") [e]
-  | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
-     exp_apply _loc (exp_glr_fun _loc "debug") [e]
-  | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-     let opt = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
-  | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-     let opt = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
-  | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-      let opt = match opt with
-	| None -> exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
-	| Some e -> e
-      in
-      (match e.pexp_desc with
-	Pexp_ident { txt = Lident id } ->
-	let id = 
-	  let l = String.length id in
-	  if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
-	in
-	exp_lab_apply _loc (exp_glr_fun _loc "regexp") ["name", exp_string _loc id; "", e; "", exp_fun _loc "groupe" opt] 
-      | _ -> 
-	exp_apply _loc (exp_glr_fun _loc "regexp") [e; exp_fun _loc "groupe" opt])
+  let glr_sequence =
+    parser
+    | CHR('{') r:glr_rules CHR('}') -> r
+    | STR("EOF") opt:glr_opt_expr ->
+       let e = match opt with None -> exp_unit _loc | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "eof") [e]
+    | STR("EMPTY") opt:glr_opt_expr ->
+       let e = match opt with None -> exp_unit _loc | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "empty") [e]
+    | STR("FAIL") e:(expression_lvl (next_exp App)) ->
+       exp_apply _loc (exp_glr_fun _loc "fail") [e]
+    | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
+       exp_apply _loc (exp_glr_fun _loc "debug") [e]
+    | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
+       let opt = match opt with None -> exp_unit _loc | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
+    | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
+       let opt = match opt with None -> exp_unit _loc | Some e -> e in
+       exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
+    | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
+       let opt = match opt with
+	 | None -> exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
+	 | Some e -> e
+       in
+       (match e.pexp_desc with
+	  Pexp_ident { txt = Lident id } ->
+	  let id = 
+	    let l = String.length id in
+	    if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
+	  in
+	  exp_lab_apply _loc (exp_glr_fun _loc "regexp") ["name", exp_string _loc id; "", e; "", exp_fun _loc "groupe" opt] 
+	| _ -> 
+	   exp_apply _loc (exp_glr_fun _loc "regexp") [e; exp_fun _loc "groupe" opt])
+	 
+    | e:(expression_lvl Atom) -> e
 
-  | e:(expression_lvl Atom) -> e
-  end 
-
-let glr_list_sequence = glr
+let glr_list_sequence =
+  parser
   | CHR('{') r:glr_list_rules CHR('}') -> r
   | STR("EOF") opt:glr_opt_expr ->
      let e = match opt with None -> exp_unit _loc | Some e -> e in
@@ -395,55 +390,56 @@ let glr_list_sequence = glr
 	exp_apply _loc (exp_glr_fun _loc "list_regexp") [e; exp_fun _loc "groupe" opt])
 
   | e:(expression_lvl Atom) -> e
-  end 
 
-  let glr_ident = glr
-  | p:(pattern_lvl ConstrPat) CHR(':') ->
-	       (match p.ppat_desc with
-		| Ppat_alias(p, { txt = id }) -> id, Some p
-		| Ppat_var { txt = id } -> id, None
-		| _ -> "_", Some p)
-  | EMPTY -> ("_", None)
-  end
+  let glr_ident =
+    parser
+    | p:(pattern_lvl ConstrPat) CHR(':') ->
+	(match p.ppat_desc with
+	 | Ppat_alias(p, { txt = id }) -> id, Some p
+	 | Ppat_var { txt = id } -> id, None
+	 | _ -> "_", Some p)
+    | EMPTY -> ("_", None)
 
-  let glr_left_member = glr
-  | l:{ id: glr_ident s:glr_sequence opt:glr_option }+ -> l
-  end
+  let glr_left_member =
+    parser
+    | l:{ id: glr_ident s:glr_sequence opt:glr_option }+ -> l
 
-  let glr_list_left_member = glr
-  | l:{ id: glr_ident s:glr_list_sequence opt:glr_option }+ -> l
-  end
+  let glr_list_left_member =
+    parser
+    | l:{ id: glr_ident s:glr_list_sequence opt:glr_option }+ -> l
 
   let glr_let = Glr.declare_grammar "glr_let" 
-  let _ = Glr.set_grammar glr_let (glr
-  | STR("let") r:rec_flag lbs:let_binding STR("in") l:glr_let -> (fun x -> loc_expr _loc (Pexp_let(r,lbs,l x)))
-  | EMPTY -> (fun x -> x)
-  end)
+  let _ = Glr.set_grammar glr_let (
+    parser
+    | STR("let") r:rec_flag lbs:let_binding STR("in") l:glr_let -> (fun x -> loc_expr _loc (Pexp_let(r,lbs,l x)))
+    | EMPTY -> (fun x -> x)
+  )
  
-  let glr_cond = glr
-  | STR("when") e:expression -> Some e
-  | EMPTY -> None
-  end 
+  let glr_cond =
+    parser
+    | STR("when") e:expression -> Some e
+    | EMPTY -> None
 
-  let glr_action = glr
-  | STR("->>") (def, cond, r):glr_rule -> DepSeq (def, cond, r)
-  | STR("->") action:expression -> Normal action
-  | EMPTY -> Default
-  end
+  let glr_action =
+    parser
+    | STR("->>") (def, cond, r):glr_rule -> DepSeq (def, cond, r)
+    | STR("->") action:expression -> Normal action
+    | EMPTY -> Default
 
-  let glr_list_action = glr
-  | STR("->>") (def, cond, r):glr_list_rule -> DepSeq (def, cond, r)
-  | STR("->") action:(expression_lvl (next_exp Disj)) -> Normal action
-  | EMPTY -> Default
-  end
+  let glr_list_action =
+    parser
+    | STR("->>") (def, cond, r):glr_list_rule -> DepSeq (def, cond, r)
+    | STR("->") action:(expression_lvl (next_exp Disj)) -> Normal action
+    | EMPTY -> Default
 
-  let _ = Glr.set_grammar glr_rule (glr
-  | def:glr_let l:glr_left_member condition:glr_cond action:glr_action ->
-    let iter, action = match action with
+  let _ = Glr.set_grammar glr_rule (
+    parser
+    | def:glr_let l:glr_left_member condition:glr_cond action:glr_action ->
+	let iter, action = match action with
 	Normal a -> false, a
-      | Default -> false, default_action _loc l
-      | DepSeq(def, cond, a) ->
-	 true, match cond with
+    | Default -> false, default_action _loc l
+    | DepSeq(def, cond, a) ->
+        true, match cond with
 		 None -> def a 
 	       | Some cond -> def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
     in
@@ -463,10 +459,11 @@ let glr_list_sequence = glr
     let res = fn [] (List.rev l) in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
     def, condition, res
-    end)
+    )
 
-  let _ = Glr.set_grammar glr_list_rule (glr
-  | def:glr_let l:glr_list_left_member condition:glr_cond action:glr_list_action ->
+  let _ = Glr.set_grammar glr_list_rule (
+    parser
+    | def:glr_let l:glr_list_left_member condition:glr_cond action:glr_list_action ->
     let iter, action = match action with
 	Normal a -> false, a
       | Default -> false, default_action _loc l
@@ -491,10 +488,11 @@ let glr_list_sequence = glr
     let res = fn [] (List.rev l) in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter_list") [res] else res in
     def, condition, res
-    end)
+    )
 
-  let glr_rules_aux = glr
-    CHR('|')? r:glr_rule rs:{ CHR('|') r:glr_rule}* -> 
+  let glr_rules_aux = 
+    parser
+    | CHR('|')? r:glr_rule rs:{ CHR('|') r:glr_rule}* -> 
       (match rs with
       | [] -> r
       | l ->
@@ -508,10 +506,10 @@ let glr_list_sequence = glr
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
 	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "alternatives") [l]))
-  end
 
- let glr_list_rules_aux = glr
-    CHR('|')? r:glr_list_rule rs:{ CHR('|') r:glr_list_rule}* -> 
+ let glr_list_rules_aux =
+   parser
+     CHR('|')? r:glr_list_rule rs:{ CHR('|') r:glr_list_rule}* -> 
       (match rs with
       | [] -> r
       | l ->
@@ -525,10 +523,10 @@ let glr_list_sequence = glr
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
 	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "list_alternatives") [l]))
-  end
  
   (* FIXME: use only | | after bootstrap *)
-  let _ = Glr.set_grammar glr_rules (glr
+  let _ = Glr.set_grammar glr_rules (
+    parser
     { CHR('|') CHR('|') | else_kw}? r:glr_rules_aux rs:{ { CHR('|') CHR('|') | else_kw } r:glr_rules_aux}* -> 
       (match r,rs with
       | (def,cond,e),  [] ->
@@ -547,11 +545,11 @@ let glr_list_sequence = glr
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
 	exp_apply _loc (exp_glr_fun _loc "alternatives'") [l])
-  end)
+  )
 
-(* FIXME: use only || after bootstrap *)
-  let _ = Glr.set_grammar glr_list_rules (glr
-    { CHR('|') CHR('|') | else_kw}? r:glr_list_rules_aux rs:{ { CHR('|') CHR('|') | else_kw } r:glr_list_rules_aux}* -> 
+  let _ = Glr.set_grammar glr_list_rules (
+    parser
+    { CHR('|') CHR('|') }? r:glr_list_rules_aux rs:{ { CHR('|') CHR('|') } r:glr_list_rules_aux}* -> 
       (match r,rs with
       | (def,cond,e),  [] ->
 	(match cond with
@@ -569,7 +567,7 @@ let glr_list_sequence = glr
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
 	exp_apply _loc (exp_glr_fun _loc "list_alternatives'") [l])
-  end)
+  )
 
 end
 

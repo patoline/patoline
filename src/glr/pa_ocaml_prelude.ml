@@ -156,14 +156,12 @@ let next_exp = function
   let signature_item : signature_item list grammar = declare_grammar "signature_item"
 
   let structure =
-    glr
+    parser
       l : structure_item* -> List.flatten l
-    end
 
   let signature =
-    glr
+    parser
       l : signature_item* -> List.flatten l
-    end
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
   let type_prios = [TopType; As; Arr; ProdType; DashType; AppType; AtomType]
@@ -703,7 +701,7 @@ let quote_expression _loc loc e name =
   let e = Location.(Lexing.(Printf.sprintf "#%d %S\n%s" (_loc.loc_start.pos_lnum - 1) _loc.loc_start.pos_fname)) cols ^ e in  
   Stack.push (empty_quote_env1 ()) quote_stack ;
   let _ = match name with
-    | "expression" -> ignore (parse_string (glr e:expression EOF end) blank "quote..." e)
+    | "expression" -> ignore (parse_string (parser e:expression EOF) blank "quote..." e)
     | "type"  -> ignore (parse_string typexpr blank "quote..." e)
     | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
     | "str_item"  -> ignore (parse_string structure_item blank "quote..." e)
@@ -841,22 +839,19 @@ let is_reserved_id w =
   List.mem w reserved_ident
 
 let ident =
-  glr
+  parser
     id:RE(ident_re) -> (if is_reserved_id id then raise Give_up; id)
   | CHR('$') STR("ident") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
-  end
 
 let capitalized_ident =
-  glr
+  parser
     id:RE(cident_re) -> id
   | CHR('$') STR("uid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
-  end
 
 let lowercase_ident =
-  glr
+  parser
     id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
   | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
-  end
 
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *
@@ -882,39 +877,34 @@ let key_word s =
 
 let mutable_kw = key_word "mutable"
 let mutable_flag =
-  glr
+  parser
   | mutable_kw -> Mutable
   | EMPTY      -> Immutable
-  end
 
 let private_kw = key_word "private"
 let private_flag =
-  glr
+  parser
   | private_kw -> Private
   | EMPTY      -> Public
-  end
 
 let virtual_kw = key_word "virtual"
 let virtual_flag =
-  glr
+  parser
   | virtual_kw -> Virtual
   | EMPTY      -> Concrete
-  end
 
 let rec_kw = key_word "rec"
 let rec_flag =
-  glr
+  parser
   | rec_kw -> Recursive
   | EMPTY  -> Nonrecursive
-  end
 
 let to_kw = key_word "to"
 let downto_kw = key_word "downto"
 let downto_flag =
-  glr
+  parser
   | to_kw     -> Upto
   | downto_kw -> Downto
-  end
 
 let method_kw = key_word "method"
 let object_kw = key_word "object"
@@ -957,7 +947,6 @@ let struct_kw = key_word "struct"
 let functor_kw = key_word "functor"
 let sig_kw = key_word "sig"
 let lazy_kw = key_word "lazy"
-let glr_kw = key_word "glr"
 let parser_kw = key_word "parser"
 
 (* Integer literals *)
@@ -971,35 +960,30 @@ let int32_re = par_re int_pos_re ^ "l"
 let int64_re = par_re int_pos_re ^ "L"
 let natint_re = par_re int_pos_re ^ "n"
 let integer_literal =
-  glr
+  parser
     i:RE(int_pos_re) -> int_of_string i
   | CHR('$') STR("int") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int e
-  end
 
 let int32_lit =
-  glr
+  parser
     i:RE(int32_re)[groupe 1] -> Int32.of_string i
   | CHR('$') STR("int32") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int32 e
-  end
 
 let int64_lit =
-  glr
+  parser
     i:RE(int64_re)[groupe 1] -> Int64.of_string i
   | CHR('$') STR("int64") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_int64 e
-  end
 
 let nat_int_lit =
-  glr
+  parser
     i:RE(natint_re)[groupe 1] -> Nativeint.of_string i
   | CHR('$') STR("natint") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_natint e
-  end
 
 let bool_lit =
-  glr
+  parser
     false_kw -> "false"
   | true_kw -> "true"
   | CHR('$') STR("bool") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> if push_pop_bool e then "true" else "false"
-  end
 
   let entry_points : (string *
             [ `Impl of Parsetree.structure_item list Glr.grammar
