@@ -18,7 +18,7 @@ GLR_DIR := $(d)/glr
 PA_GLR := $(GLR_DIR)/pa_glr
 
 # Visit subdirectories
-MODULES := libutf8 rbuffer patutil imagelib patfonts glr \
+MODULES := unicodelib rbuffer patutil imagelib patfonts glr \
   Typography Drivers Patoline Pdf cesure Format \
   $(OCAML_BIBI) plot proof plugins
 

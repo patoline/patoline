@@ -1,60 +1,9 @@
-(*
- * Type of a UTF8 character.
- *)
-type uchar = int
+open UChar
 
 (*
  * Synonym of int for an index in a string.
  *)
 type index = int
-
-exception Out_of_bound
-
-(*
- * Converts a char into a UTF8 character.
- *)
-let of_char : char -> uchar = Char.code
-
-(*
- * Converts a UTF8 character into a char.
- * Raise Out_of_bound in cas the UTF8 character is not representable as a
- * char.
- *)
-let to_char : uchar -> char = fun c ->
-  if c < 0 || c > 0xFF then
-    raise Out_of_bound
-  else
-    Char.chr c
-
-(*
- * Converts an int into a UTF8 character.
- * Raise Out_of_bound if the character number is invalid.
- *)
-let of_int : int -> uchar = fun i ->
-  if i < 0 || i > 0x10FFFF then
-    raise Out_of_bound
-  else i
-
-(*
- * Converts a UTF8 character into an int.
- * Raise Out_of_bound if the UTF8 character is invalid.
- *)
-let to_int : uchar -> int = fun c ->
-  if c < 0 || c > 0x10FFFF then
-    raise Out_of_bound
-  else c
-
-(*
- * Returns the code of a UTF8 character.
- * Raise Out_of_bound if the UTF8 character is invalid.
- *)
-let code : uchar -> int = to_int
-
-(*
- * Returns the UTF8 character corresponding to a code.
- * Raise Out_of_bound if the code is invalid.
- *)
-let chr : int -> uchar = of_int
 
 (*
  * Encode a UTF8 character into a UTF8 string.
