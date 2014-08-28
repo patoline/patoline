@@ -101,12 +101,12 @@ let test blank s str p =
   in
   r
 
-let not_ready name = failwith ("not_ready: "^name)
+let not_ready name _ = failwith ("not_ready: "^name)
 
 let declare_grammar name = {
-  firsts = lazy (not_ready name);
-  firsts_sym = lazy (not_ready name);
-  accept_empty = lazy (not_ready name);
+  firsts = lazy (not_ready name ());
+  firsts_sym = lazy (not_ready name ());
+  accept_empty = lazy (not_ready name ());
   parse = (not_ready name);
 }
 
