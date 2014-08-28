@@ -15,7 +15,11 @@ $(d)/unicodeRanges/%.cmx $(d)/unicodeRanges/%.cmo $(d)/unicodeRanges/%.cmi: INCL
 SRC_$(d):=$(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli) \
           $(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
           $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 LINKS:=$(wildcard $(d)/CFF/*.ml) $(wildcard $(d)/CFF/*.mli) \
        $(wildcard $(d)/Opentype/*.ml) $(wildcard $(d)/Opentype/*.mli)

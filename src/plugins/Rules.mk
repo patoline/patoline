@@ -4,7 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 PLUGINS_INCLUDES := -I $(d) $(PACK_PLUGINS) -I $(PATOLINE_DIR)
 PLUGINS_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_PLUGINS) -I $(PATOLINE_DIR)

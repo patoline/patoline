@@ -9,7 +9,11 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: OFLAGS += -thread
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
+endif
+endif
 
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(GL_DRIVER_INCLUDES)
 

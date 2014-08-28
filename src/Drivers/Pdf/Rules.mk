@@ -2,7 +2,11 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/Pdf.ml.depends
+endif
+endif
 
 PDF_DRIVERS_INCLUDES:= -I $(d) -I $(DRIVERS_DIR)/SVG $(DRIVERS_INCLUDES) $(PACK_DRIVER_Pdf)
 $(d)/%.ml.depends: INCLUDES += $(PDF_DRIVERS_INCLUDES)

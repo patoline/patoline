@@ -10,7 +10,12 @@ SVG_DRIVER_ML:=$(d)/HtmlFonts.ml $(d)/SVG.ml
 SVG_DRIVER_CMO:=$(SVG_DRIVER_ML:.ml=.cmo)
 SVG_DRIVER_CMX:=$(SVG_DRIVER_ML:.ml=.cmx)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(SVG_DRIVER_ML:.ml=.ml.depends)
+endif
+endif
+
 $(SVG_DRIVER_CMX): %.cmx: %.cmo
 
 $(d)/SVG.cma: $(SVG_DRIVER_CMO)

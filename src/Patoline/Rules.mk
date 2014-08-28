@@ -16,7 +16,11 @@ $(PAT_CMX): %.cmx: %.cmo
 # Compute ML dependencies
 DEPENDS_$(d) := $(addsuffix .depends,$(wildcard $(d)/*.ml))
 $(filter-out $(d)/Parser.ml.depends,$(filter-out $(d)/pa_patoline.ml.depends,$(DEPENDS_$(d)))): $(d)/Parser.ml.depends
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
+endif
+endif
 
 $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"

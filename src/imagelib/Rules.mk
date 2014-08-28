@@ -11,7 +11,11 @@ SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 $(d)/%.depends: INCLUDES:=$(IMGLIB_DEPS_INCLUDES)
 $(d)/%.cmx $(d)/%.cmo $(d)/%.cmi: INCLUDES:=$(IMGLIB_INCLUDES)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 # Building
 IMGLIB_MODS:= imageUtil image imagePPM imagePNG imageXCF imageJPG imageGIF readImg

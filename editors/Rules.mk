@@ -8,7 +8,11 @@ all: $(d)/emacs/patoline-input.el
 
 
 # Emacs part
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/emacs/SubstKey.ml.depends
+endif
+endif
 
 $(d)/emacs/SubstKey: $(d)/emacs/SubstKey.ml
 	$(ECHO) "[OPT]    $< -> $@"

@@ -9,7 +9,12 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(PATONET_DRIVER_INCLUDES)
 
 SRC_$(d):=$(wildcard $(d)/*.ml)
 DEPENDS_$(d) := $(addsuffix .depends,$(SRC_$(d)))
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(DEPENDS_$(d))
+endif
+endif
+
 # cmi race condition
 $(d)/Patonet.cmx: %.cmx: %.cmo
 $(d)/Hammer.cmx: %.cmx: %.cmo

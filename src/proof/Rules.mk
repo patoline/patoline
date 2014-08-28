@@ -4,7 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 PROOF_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(PACK_PROOF)
 PROOF_DEPS_INCLUDES := -I $(d) -I $(DRIVERS_DIR)/Pdf $(DEPS_PACK_PROOF)

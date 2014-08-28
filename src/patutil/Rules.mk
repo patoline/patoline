@@ -11,7 +11,11 @@ $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(UTIL_INCLUDES)
 # Compute ML files dependencies
 SRC_$(d) := $(wildcard $(d)/*.ml) $(wildcard $(d)/*.mli)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 # Building
 UTIL_MODS:= FilenameExtra UsualMake Util

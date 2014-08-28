@@ -9,7 +9,11 @@ BIBI_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_BIBI)
 $(d)/%.ml.depends: INCLUDES += $(BIBI_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(BIBI_INCLUDES)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/bibi.ml.depends
+endif
+endif
 
 # Building stuff
 BIBI_LIBS := $(d)/bibi.cmxa $(d)/bibi.cma

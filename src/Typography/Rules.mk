@@ -14,7 +14,11 @@ SRC_$(d):=$(wildcard $(d)/*.ml) \
   $(wildcard $(d)/*.mli) \
   $(wildcard $(d)/*/*.ml) \
   $(wildcard $(d)/*/*.mli)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 TYPOGRAPHY_MODS:= TypoLanguage FindPath FontPattern $(FINDFONT) Config ConfigUtil Bezier Distance \
   Offset Output/OutputCommon Box Badness Break Document Complete Hyphenate Maths \

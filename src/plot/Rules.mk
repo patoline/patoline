@@ -4,7 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 # Compute ML files dependencies
 SRC_$(d):=$(wildcard $(d)/*.ml)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 # Building stuff
 PATOPLOT_LIBS := $(d)/plot.cmxa $(d)/plot.a $(d)/plot.cmi

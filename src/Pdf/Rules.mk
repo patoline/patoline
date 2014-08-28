@@ -12,7 +12,11 @@ $(d)/pdf_parser.ml.depends: $(d)/obj_parser.ml $(d)/obj_lexer.ml
 # writes both .ml and .mli files.
 $(d)/obj_parser.mli: $(d)/obj_parser.ml ;
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 $(d)/obj_lexel.cmx: $(d)/obj_lexer.cmo
 $(d)/pdf.cmx: $(d)/pdf.cmo

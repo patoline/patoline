@@ -2,7 +2,11 @@
 # while include all Rules.mk.
 d := $(if $(d),$(d)/,)$(mod)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/cesure.ml.depends
+endif
+endif
 
 CESURE_INCLUDES := -I $(d) $(PACK_CESURE)
 CESURE_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_CESURE)

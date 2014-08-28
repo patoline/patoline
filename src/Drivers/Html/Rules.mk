@@ -6,7 +6,11 @@ HTML_DRIVER_INCLUDES:=-I $(d) -I $(DRIVERS_DIR)/SVG $(PACK_DRIVER_Html)
 $(d)/%.depends : INCLUDES += $(HTML_DRIVER_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx: INCLUDES += $(HTML_DRIVER_INCLUDES)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(d)/Html.ml.depends
+endif
+endif
 
 # cmi race condition
 $(d)/Html.cmx: %.cmx: %.cmo

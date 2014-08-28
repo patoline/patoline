@@ -11,7 +11,11 @@ RBUFFER_DEPS_INCLUDES := -I $(d) $(DEPS_PACK_RBUFFER)
 $(d)/%.depends: INCLUDES:=$(RBUFFER_DEPS_INCLUDES)
 $(d)/%.cmo $(d)/%.cmi $(d)/%.cmx : INCLUDES:=$(RBUFFER_INCLUDES)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 # Building
 RBUFFER_MODS:= rbuffer

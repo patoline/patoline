@@ -13,7 +13,11 @@ SRC_$(d) := $(wildcard $(d)/*.ml)
 CMO_$(d) := $(SRC_$(d):.ml=.cmo)
 CMX_$(d) := $(SRC_$(d):.ml=.cmx)
 PCMX_$(d) := $(SRC_$(d):.ml=.p.cmx)
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),distclean)
 -include $(addsuffix .depends,$(SRC_$(d)))
+endif
+endif
 
 # Everything here depends on Typography
 $(CMO_$(d)): $(TYPOGRAPHY_DIR)/Typography.cma
