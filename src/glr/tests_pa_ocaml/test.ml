@@ -3,7 +3,11 @@ open List
 let xy = 3
 let x = 10.0
 let f x = x
-let g x y z = if x then y else z
+let g x y z =
+  if x 
+  then y
+  else z
+
 let app x y = x y
 
 let f0 = fun x y z -> x y z

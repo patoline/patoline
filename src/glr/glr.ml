@@ -157,17 +157,23 @@ let position : 'a grammar -> (string * int * int * int * int * 'a) grammar
       accept_empty = lazy (accept_empty l);
       parse =
 	fun blank str pos next key g ->
-	  l.parse blank str pos next key (fun l c l' c' x -> g l c l' c' (fname str, line_num l, c, line_num l', c', x))
+	  l.parse blank str pos next key (fun l c l' c' x -> 
+					  g l c l' c' (
+  					      let l, c = blank l c in
+					      (fname str, line_num l, c, line_num l', c', x)))
     }
 
-let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
+let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
   = fun l filter -> 
     { firsts = lazy (firsts l);
       firsts_sym = lazy (firsts_sym l);
       accept_empty = lazy (accept_empty l);
       parse =
 	fun blank str pos next key g ->
-	  l.parse blank str pos next key (fun l c l' c' x -> g l c l' c' (filter (fname str) (line_num l) c (line_num l') c', x))
+	  l.parse blank str pos next key 
+		  (fun l c l' c' x -> g l c l' c' (
+					  let l, c = blank l c in
+					  filter (fname str) (line_num l) (line_beginning l) c (line_num l') (line_beginning l') c', x))
     }
 
 let eof : 'a -> 'a grammar

@@ -3400,14 +3400,16 @@ module Make(Initial:Extension) =
                      let _loc = merge _loc_id _loc_pat in
                      `Arg (id, None, pat))) (locate pattern) (fun x  -> x))
         ::
-        (Glr.apply
-           (fun id  ->
-              let (_loc_id,id) = id in
-              let _loc = _loc_id in
-              `Arg
-                (id, None,
-                  (loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))))
-           (locate label)) ::
+        (Glr.sequence (locate (Glr.char '~' ())) (locate ident)
+           (fun _unnamed_0  ->
+              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+              fun id  ->
+                let (_loc_id,id) = id in
+                let _loc = merge _loc__unnamed_0 _loc_id in
+                `Arg
+                  (id, None,
+                    (loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id })))))
+        ::
         (Glr.sequence
            (Glr.sequence
               (Glr.sequence
@@ -3557,11 +3559,13 @@ module Make(Initial:Extension) =
                  (fun x  -> x)) (locate (Glr.char ')' ())) (fun x  -> x))
            :: y
          else y))
-    let apply_params _loc params e =
+    let apply_params params e =
       let f acc =
         function
-        | `Arg (lbl,opt,pat) -> loc_expr _loc (pexp_fun (lbl, opt, pat, acc))
-        | `Type name -> loc_expr _loc (Pexp_newtype (name, acc)) in
+        | (`Arg (lbl,opt,pat),_loc') ->
+            loc_expr (merge _loc' e.pexp_loc) (pexp_fun (lbl, opt, pat, acc))
+        | (`Type name,_loc') ->
+            loc_expr (merge _loc' e.pexp_loc) (Pexp_newtype (name, acc)) in
       List.fold_left f e (List.rev params)
     let apply_params_cls _loc params e =
       let f acc =
@@ -3580,7 +3584,7 @@ module Make(Initial:Extension) =
                           (Glr.apply
                              (fun lb  ->
                                 let (_loc_lb,lb) = lb in
-                                let _loc = _loc_lb in lb)
+                                let _loc = _loc_lb in (lb, _loc_lb))
                              (locate (parameter true)))))))
               (locate
                  (Glr.option None
@@ -3605,7 +3609,7 @@ module Make(Initial:Extension) =
                          match ty with
                          | None  -> e
                          | Some ty -> loc_expr _loc (pexp_constraint (e, ty)) in
-                       apply_params _loc l e)) (locate (Glr.char '=' ()))
+                       apply_params l e)) (locate (Glr.char '=' ()))
            (fun x  -> x)) (locate expression) (fun x  -> x)
     let _ =
       set_grammar let_binding
@@ -4335,7 +4339,7 @@ module Make(Initial:Extension) =
                                                    loc_expr _loc
                                                      (pexp_constraint (e, te)) in
                                              let e: expression =
-                                               apply_params _loc ps e in
+                                               apply_params ps e in
                                              let e =
                                                loc_expr _loc
                                                  (Pexp_poly (e, None)) in
@@ -4348,7 +4352,12 @@ module Make(Initial:Extension) =
                    (locate
                       (Glr.apply List.rev
                          (Glr.fixpoint []
-                            (Glr.apply (fun x  l  -> x :: l) (parameter true)))))
+                            (Glr.apply (fun x  l  -> x :: l)
+                               (Glr.apply
+                                  (fun p  ->
+                                     let (_loc_p,p) = p in
+                                     let _loc = _loc_p in (p, _loc_p))
+                                  (locate (parameter true)))))))
                    (fun x  -> x))
                 (locate
                    (Glr.option None
@@ -4566,82 +4575,115 @@ module Make(Initial:Extension) =
                       (Atom, (loc_expr _loc (Pexp_constant c))))
                    (locate constant))
                 ::
-                (let y =
+                (Glr.sequence
                    (Glr.sequence
                       (Glr.sequence
-                         (Glr.sequence
-                            (Glr.sequence (locate module_path)
-                               (locate (Glr.string "." ()))
-                               (fun mp  ->
-                                  let (_loc_mp,mp) = mp in
-                                  fun _unnamed_1  ->
-                                    let (_loc__unnamed_1,_unnamed_1) =
-                                      _unnamed_1 in
-                                    fun _unnamed_2  ->
-                                      let (_loc__unnamed_2,_unnamed_2) =
-                                        _unnamed_2 in
-                                      fun e  ->
-                                        let (_loc_e,e) = e in
-                                        fun _unnamed_4  ->
-                                          let (_loc__unnamed_4,_unnamed_4) =
-                                            _unnamed_4 in
-                                          let _loc =
-                                            merge _loc_mp _loc__unnamed_4 in
-                                          let mp =
-                                            { txt = mp; loc = _loc_mp } in
-                                          (Atom,
-                                            (loc_expr _loc
-                                               (Pexp_open (Fresh, mp, e))))))
-                            (locate (Glr.string "(" ())) (fun x  -> x))
-                         (locate expression) (fun x  -> x))
-                      (locate (Glr.string ")" ())) (fun x  -> x))
-                   ::
-                   (Glr.sequence (locate let_kw)
-                      (locate
-                         (Glr.alternatives
-                            (let y =
-                               let y = [] in
-                               if lvl < App
-                               then
+                         (Glr.sequence (locate module_path)
+                            (locate (Glr.string "." ()))
+                            (fun mp  ->
+                               let (_loc_mp,mp) = mp in
+                               fun _unnamed_1  ->
+                                 let (_loc__unnamed_1,_unnamed_1) =
+                                   _unnamed_1 in
+                                 fun _unnamed_2  ->
+                                   let (_loc__unnamed_2,_unnamed_2) =
+                                     _unnamed_2 in
+                                   fun e  ->
+                                     let (_loc_e,e) = e in
+                                     fun _unnamed_4  ->
+                                       let (_loc__unnamed_4,_unnamed_4) =
+                                         _unnamed_4 in
+                                       let _loc =
+                                         merge _loc_mp _loc__unnamed_4 in
+                                       let mp = { txt = mp; loc = _loc_mp } in
+                                       (Atom,
+                                         (loc_expr _loc
+                                            (Pexp_open (Fresh, mp, e))))))
+                         (locate (Glr.string "(" ())) (fun x  -> x))
+                      (locate expression) (fun x  -> x))
+                   (locate (Glr.string ")" ())) (fun x  -> x))
+                ::
+                (Glr.sequence (locate let_kw)
+                   (locate
+                      (Glr.alternatives
+                         (let y =
+                            let y =
+                              let y = [] in
+                              if lvl < App
+                              then
+                                (Glr.sequence
+                                   (Glr.sequence
+                                      (Glr.sequence
+                                         (Glr.sequence (locate open_kw)
+                                            (locate override_flag)
+                                            (fun _unnamed_0  ->
+                                               let (_loc__unnamed_0,_unnamed_0)
+                                                 = _unnamed_0 in
+                                               fun o  ->
+                                                 let (_loc_o,o) = o in
+                                                 fun mp  ->
+                                                   let (_loc_mp,mp) = mp in
+                                                   fun _unnamed_3  ->
+                                                     let (_loc__unnamed_3,_unnamed_3)
+                                                       = _unnamed_3 in
+                                                     fun e  ->
+                                                       let (_loc_e,e) = e in
+                                                       let _loc =
+                                                         merge
+                                                           _loc__unnamed_0
+                                                           _loc_e in
+                                                       let mp =
+                                                         {
+                                                           txt = mp;
+                                                           loc = _loc_mp
+                                                         } in
+                                                       fun _loc  ->
+                                                         (Let,
+                                                           (loc_expr _loc
+                                                              (Pexp_open
+                                                                 (o, mp, e))))))
+                                         (locate module_path) (fun x  -> x))
+                                      (locate in_kw) (fun x  -> x))
+                                   (locate (expression_lvl (let_prio lvl)))
+                                   (fun x  -> x))
+                                :: y
+                              else y in
+                            if lvl < App
+                            then
+                              (Glr.sequence
                                  (Glr.sequence
                                     (Glr.sequence
                                        (Glr.sequence
                                           (Glr.sequence
                                              (Glr.sequence
                                                 (Glr.sequence
-                                                   (Glr.sequence
-                                                      (locate module_kw)
-                                                      (locate module_name)
-                                                      (fun _unnamed_0  ->
-                                                         let (_loc__unnamed_0,_unnamed_0)
-                                                           = _unnamed_0 in
-                                                         fun mn  ->
-                                                           let (_loc_mn,mn) =
-                                                             mn in
-                                                           fun l  ->
-                                                             let (_loc_l,l) =
-                                                               l in
-                                                             fun mt  ->
-                                                               let (_loc_mt,mt)
-                                                                 = mt in
-                                                               fun _unnamed_4
+                                                   (locate module_kw)
+                                                   (locate module_name)
+                                                   (fun _unnamed_0  ->
+                                                      let (_loc__unnamed_0,_unnamed_0)
+                                                        = _unnamed_0 in
+                                                      fun mn  ->
+                                                        let (_loc_mn,mn) = mn in
+                                                        fun l  ->
+                                                          let (_loc_l,l) = l in
+                                                          fun mt  ->
+                                                            let (_loc_mt,mt)
+                                                              = mt in
+                                                            fun _unnamed_4 
+                                                              ->
+                                                              let (_loc__unnamed_4,_unnamed_4)
+                                                                = _unnamed_4 in
+                                                              fun me  ->
+                                                                let (_loc_me,me)
+                                                                  = me in
+                                                                fun
+                                                                  _unnamed_6 
                                                                   ->
-                                                                 let 
-                                                                   (_loc__unnamed_4,_unnamed_4)
-                                                                   =
-                                                                   _unnamed_4 in
-                                                                 fun me  ->
-                                                                   let 
-                                                                    (_loc_me,me)
-                                                                    = me in
-                                                                   fun
-                                                                    _unnamed_6
-                                                                     ->
-                                                                    let 
+                                                                  let 
                                                                     (_loc__unnamed_6,_unnamed_6)
                                                                     =
                                                                     _unnamed_6 in
-                                                                    fun e  ->
+                                                                  fun e  ->
                                                                     let 
                                                                     (_loc_e,e)
                                                                     = e in
@@ -4675,6 +4717,8 @@ module Make(Initial:Extension) =
                                                                     acc))) me
                                                                     (List.rev
                                                                     l) in
+                                                                    fun _loc 
+                                                                    ->
                                                                     (Let,
                                                                     (loc_expr
                                                                     _loc
@@ -4684,15 +4728,15 @@ module Make(Initial:Extension) =
                                                                     loc =
                                                                     _loc_mn
                                                                     }, me, e))))))
-                                                   (locate
-                                                      (Glr.apply List.rev
-                                                         (Glr.fixpoint []
-                                                            (Glr.apply
-                                                               (fun x  l  ->
-                                                                  x :: l)
+                                                (locate
+                                                   (Glr.apply List.rev
+                                                      (Glr.fixpoint []
+                                                         (Glr.apply
+                                                            (fun x  l  -> x
+                                                               :: l)
+                                                            (Glr.sequence
                                                                (Glr.sequence
                                                                   (Glr.sequence
-                                                                    (Glr.sequence
                                                                     (locate
                                                                     (Glr.string
                                                                     "(" ()))
@@ -4727,12 +4771,14 @@ module Make(Initial:Extension) =
                                                                     merge
                                                                     _loc__unnamed_0
                                                                     _loc__unnamed_3 in
+                                                                    fun _loc 
+                                                                    ->
                                                                     ({
                                                                     txt = mn;
                                                                     loc =
                                                                     _loc_mn
                                                                     }, mt)))
-                                                                    (locate
+                                                                  (locate
                                                                     (Glr.option
                                                                     None
                                                                     (Glr.apply
@@ -4762,344 +4808,329 @@ module Make(Initial:Extension) =
                                                                     _loc__unnamed_0
                                                                     _loc_mt in
                                                                     mt)))))
-                                                                    (fun x 
-                                                                    -> x))
-                                                                  (locate
-                                                                    (Glr.string
-                                                                    ")" ()))
                                                                   (fun x  ->
-                                                                    x))))))
-                                                   (fun x  -> x))
-                                                (locate
-                                                   (Glr.option None
-                                                      (Glr.apply
-                                                         (fun x  -> Some x)
-                                                         (Glr.sequence
-                                                            (locate
-                                                               (Glr.string
-                                                                  ":" ()))
-                                                            (locate
-                                                               module_type)
-                                                            (fun _unnamed_0 
-                                                               ->
-                                                               let (_loc__unnamed_0,_unnamed_0)
-                                                                 = _unnamed_0 in
-                                                               fun mt  ->
-                                                                 let 
-                                                                   (_loc_mt,mt)
-                                                                   = mt in
-                                                                 let _loc =
-                                                                   merge
-                                                                    _loc__unnamed_0
-                                                                    _loc_mt in
-                                                                 mt)))))
+                                                                    x))
+                                                               (locate
+                                                                  (Glr.string
+                                                                    ")" ()))
+                                                               (fun x  -> x))))))
                                                 (fun x  -> x))
-                                             (locate (Glr.string "=" ()))
-                                             (fun x  -> x))
-                                          (locate module_expr) (fun x  -> x))
-                                       (locate in_kw) (fun x  -> x))
-                                    (locate (expression_lvl (let_prio lvl)))
-                                    (fun x  -> x))
-                                 :: y
-                               else y in
-                             if lvl < App
-                             then
-                               (Glr.sequence
-                                  (Glr.sequence
-                                     (Glr.sequence (locate rec_flag)
-                                        (locate let_binding)
-                                        (fun r  ->
-                                           let (_loc_r,r) = r in
-                                           fun l  ->
-                                             let (_loc_l,l) = l in
-                                             fun _unnamed_2  ->
-                                               let (_loc__unnamed_2,_unnamed_2)
-                                                 = _unnamed_2 in
-                                               fun e  ->
-                                                 let (_loc_e,e) = e in
-                                                 let _loc =
-                                                   merge _loc_r _loc_e in
-                                                 (Let,
-                                                   (loc_expr _loc
-                                                      (Pexp_let (r, l, e))))))
-                                     (locate in_kw) (fun x  -> x))
-                                  (locate (expression_lvl (let_prio lvl)))
-                                  (fun x  -> x))
-                               :: y
-                             else y)))
-                      (fun _unnamed_0  ->
-                         let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                         fun r  ->
-                           let (_loc_r,r) = r in
-                           let _loc = merge _loc__unnamed_0 _loc_r in r))
-                   ::
-                   (let y =
-                      let y =
-                        let y =
-                          let y =
-                            let y =
-                              (Glr.sequence
-                                 (Glr.sequence (locate (Glr.string "(" ()))
-                                    (locate
-                                       (Glr.option None
-                                          (Glr.apply (fun x  -> Some x)
-                                             expression)))
-                                    (fun _unnamed_0  ->
-                                       let (_loc__unnamed_0,_unnamed_0) =
-                                         _unnamed_0 in
-                                       fun e  ->
-                                         let (_loc_e,e) = e in
-                                         fun _unnamed_2  ->
-                                           let (_loc__unnamed_2,_unnamed_2) =
-                                             _unnamed_2 in
-                                           let _loc =
-                                             merge _loc__unnamed_0
-                                               _loc__unnamed_2 in
-                                           (Atom,
-                                             (match e with
-                                              | Some e -> e
-                                              | None  ->
-                                                  let cunit =
-                                                    {
-                                                      txt = (Lident "()");
-                                                      loc = _loc
-                                                    } in
-                                                  loc_expr _loc
-                                                    (pexp_construct
-                                                       (cunit, None))))))
-                                 (locate (Glr.string ")" ())) (fun x  -> x))
-                              ::
-                              (Glr.sequence
-                                 (Glr.sequence (locate begin_kw)
-                                    (locate
-                                       (Glr.option None
-                                          (Glr.apply (fun x  -> Some x)
-                                             expression)))
-                                    (fun _unnamed_0  ->
-                                       let (_loc__unnamed_0,_unnamed_0) =
-                                         _unnamed_0 in
-                                       fun e  ->
-                                         let (_loc_e,e) = e in
-                                         fun _unnamed_2  ->
-                                           let (_loc__unnamed_2,_unnamed_2) =
-                                             _unnamed_2 in
-                                           let _loc =
-                                             merge _loc__unnamed_0
-                                               _loc__unnamed_2 in
-                                           (Atom,
-                                             (match e with
-                                              | Some e -> e
-                                              | None  ->
-                                                  let cunit =
-                                                    {
-                                                      txt = (Lident "()");
-                                                      loc = _loc
-                                                    } in
-                                                  loc_expr _loc
-                                                    (pexp_construct
-                                                       (cunit, None))))))
-                                 (locate end_kw) (fun x  -> x))
-                              ::
-                              (Glr.sequence (locate constructor)
-                                 (locate
-                                    (Glr.option None
-                                       (Glr.apply (fun x  -> Some x)
-                                          (if lvl <= App
-                                           then
-                                             Glr.apply
-                                               (fun e  ->
-                                                  let (_loc_e,e) = e in
-                                                  let _loc = _loc_e in e)
-                                               (locate
-                                                  (expression_lvl
-                                                     (next_exp App)))
-                                           else Glr.fail ""))))
-                                 (fun c  ->
-                                    let (_loc_c,c) = c in
-                                    fun e  ->
-                                      let (_loc_e,e) = e in
-                                      let _loc = merge _loc_c _loc_e in
-                                      (App,
-                                        (loc_expr _loc
-                                           (pexp_construct
-                                              ({ txt = c; loc = _loc_c }, e))))))
-                              ::
-                              (let y =
-                                 let y =
-                                   let y =
-                                     [Glr.apply
-                                        (fun l  ->
-                                           let (_loc_l,l) = l in
-                                           let _loc = _loc_l in
-                                           (Atom,
-                                             (loc_expr _loc
-                                                (Pexp_variant (l, None)))))
-                                        (locate tag_name);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (locate (Glr.string "[|" ()))
-                                          (locate expression_list)
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun l  ->
-                                               let (_loc_l,l) = l in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 let _loc =
-                                                   merge _loc__unnamed_0
-                                                     _loc__unnamed_2 in
-                                                 (Atom,
-                                                   (loc_expr _loc
-                                                      (Pexp_array l)))))
-                                       (locate (Glr.string "|]" ()))
-                                       (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (locate (Glr.string "[" ()))
-                                          (locate expression_list)
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun l  ->
-                                               let (_loc_l,l) = l in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 let _loc =
-                                                   merge _loc__unnamed_0
-                                                     _loc__unnamed_2 in
-                                                 (Atom,
-                                                   (List.fold_right
-                                                      (fun x  acc  ->
-                                                         loc_expr _loc
-                                                           (pexp_construct
-                                                              ({
-                                                                 txt =
-                                                                   (Lident
-                                                                    "::");
-                                                                 loc = _loc
-                                                               },
-                                                                (Some
-                                                                   (loc_expr
-                                                                    _loc
-                                                                    (Pexp_tuple
-                                                                    [x; acc]))))))
-                                                      l
-                                                      (loc_expr _loc
-                                                         (pexp_construct
-                                                            ({
-                                                               txt =
-                                                                 (Lident "[]");
-                                                               loc = _loc
-                                                             }, None)))))))
-                                       (locate (Glr.string "]" ()))
-                                       (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (Glr.sequence
-                                             (locate (Glr.string "{" ()))
                                              (locate
                                                 (Glr.option None
                                                    (Glr.apply
                                                       (fun x  -> Some x)
                                                       (Glr.sequence
                                                          (locate
-                                                            (expression_lvl
-                                                               (next_exp Seq)))
-                                                         (locate with_kw)
-                                                         (fun e  ->
-                                                            let (_loc_e,e) =
-                                                              e in
-                                                            fun _unnamed_1 
-                                                              ->
-                                                              let (_loc__unnamed_1,_unnamed_1)
-                                                                = _unnamed_1 in
+                                                            (Glr.string ":"
+                                                               ()))
+                                                         (locate module_type)
+                                                         (fun _unnamed_0  ->
+                                                            let (_loc__unnamed_0,_unnamed_0)
+                                                              = _unnamed_0 in
+                                                            fun mt  ->
+                                                              let (_loc_mt,mt)
+                                                                = mt in
                                                               let _loc =
-                                                                merge _loc_e
-                                                                  _loc__unnamed_1 in
-                                                              e)))))
+                                                                merge
+                                                                  _loc__unnamed_0
+                                                                  _loc_mt in
+                                                              mt)))))
+                                             (fun x  -> x))
+                                          (locate (Glr.string "=" ()))
+                                          (fun x  -> x)) (locate module_expr)
+                                       (fun x  -> x)) (locate in_kw)
+                                    (fun x  -> x))
+                                 (locate (expression_lvl (let_prio lvl)))
+                                 (fun x  -> x))
+                              :: y
+                            else y in
+                          if lvl < App
+                          then
+                            (Glr.sequence
+                               (Glr.sequence
+                                  (Glr.sequence (locate rec_flag)
+                                     (locate let_binding)
+                                     (fun r  ->
+                                        let (_loc_r,r) = r in
+                                        fun l  ->
+                                          let (_loc_l,l) = l in
+                                          fun _unnamed_2  ->
+                                            let (_loc__unnamed_2,_unnamed_2)
+                                              = _unnamed_2 in
+                                            fun e  ->
+                                              let (_loc_e,e) = e in
+                                              let _loc = merge _loc_r _loc_e in
+                                              fun _loc  ->
+                                                (Let,
+                                                  (loc_expr _loc
+                                                     (Pexp_let (r, l, e))))))
+                                  (locate in_kw) (fun x  -> x))
+                               (locate (expression_lvl (let_prio lvl)))
+                               (fun x  -> x))
+                            :: y
+                          else y)))
+                   (fun _unnamed_0  ->
+                      let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                      fun r  ->
+                        let (_loc_r,r) = r in
+                        let _loc = merge _loc__unnamed_0 _loc_r in r _loc))
+                ::
+                (let y =
+                   let y =
+                     let y =
+                       let y =
+                         let y =
+                           (Glr.sequence
+                              (Glr.sequence (locate (Glr.string "(" ()))
+                                 (locate
+                                    (Glr.option None
+                                       (Glr.apply (fun x  -> Some x)
+                                          expression)))
+                                 (fun _unnamed_0  ->
+                                    let (_loc__unnamed_0,_unnamed_0) =
+                                      _unnamed_0 in
+                                    fun e  ->
+                                      let (_loc_e,e) = e in
+                                      fun _unnamed_2  ->
+                                        let (_loc__unnamed_2,_unnamed_2) =
+                                          _unnamed_2 in
+                                        let _loc =
+                                          merge _loc__unnamed_0
+                                            _loc__unnamed_2 in
+                                        (Atom,
+                                          (match e with
+                                           | Some e ->
+                                               loc_expr _loc e.pexp_desc
+                                           | None  ->
+                                               let cunit =
+                                                 {
+                                                   txt = (Lident "()");
+                                                   loc = _loc
+                                                 } in
+                                               loc_expr _loc
+                                                 (pexp_construct
+                                                    (cunit, None))))))
+                              (locate (Glr.string ")" ())) (fun x  -> x))
+                           ::
+                           (Glr.sequence
+                              (Glr.sequence (locate begin_kw)
+                                 (locate
+                                    (Glr.option None
+                                       (Glr.apply (fun x  -> Some x)
+                                          expression)))
+                                 (fun _unnamed_0  ->
+                                    let (_loc__unnamed_0,_unnamed_0) =
+                                      _unnamed_0 in
+                                    fun e  ->
+                                      let (_loc_e,e) = e in
+                                      fun _unnamed_2  ->
+                                        let (_loc__unnamed_2,_unnamed_2) =
+                                          _unnamed_2 in
+                                        let _loc =
+                                          merge _loc__unnamed_0
+                                            _loc__unnamed_2 in
+                                        (Atom,
+                                          (match e with
+                                           | Some e -> e
+                                           | None  ->
+                                               let cunit =
+                                                 {
+                                                   txt = (Lident "()");
+                                                   loc = _loc
+                                                 } in
+                                               loc_expr _loc
+                                                 (pexp_construct
+                                                    (cunit, None))))))
+                              (locate end_kw) (fun x  -> x))
+                           ::
+                           (Glr.sequence (locate constructor)
+                              (locate
+                                 (Glr.option None
+                                    (Glr.apply (fun x  -> Some x)
+                                       (if lvl <= App
+                                        then
+                                          Glr.apply
+                                            (fun e  ->
+                                               let (_loc_e,e) = e in
+                                               let _loc = _loc_e in e)
+                                            (locate
+                                               (expression_lvl (next_exp App)))
+                                        else Glr.fail ""))))
+                              (fun c  ->
+                                 let (_loc_c,c) = c in
+                                 fun e  ->
+                                   let (_loc_e,e) = e in
+                                   let _loc = merge _loc_c _loc_e in
+                                   (App,
+                                     (loc_expr _loc
+                                        (pexp_construct
+                                           ({ txt = c; loc = _loc_c }, e))))))
+                           ::
+                           (let y =
+                              let y =
+                                let y =
+                                  [Glr.apply
+                                     (fun l  ->
+                                        let (_loc_l,l) = l in
+                                        let _loc = _loc_l in
+                                        (Atom,
+                                          (loc_expr _loc
+                                             (Pexp_variant (l, None)))))
+                                     (locate tag_name);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (locate (Glr.string "[|" ()))
+                                       (locate expression_list)
+                                       (fun _unnamed_0  ->
+                                          let (_loc__unnamed_0,_unnamed_0) =
+                                            _unnamed_0 in
+                                          fun l  ->
+                                            let (_loc_l,l) = l in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              let _loc =
+                                                merge _loc__unnamed_0
+                                                  _loc__unnamed_2 in
+                                              (Atom,
+                                                (loc_expr _loc (Pexp_array l)))))
+                                    (locate (Glr.string "|]" ()))
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (locate (Glr.string "[" ()))
+                                       (locate expression_list)
+                                       (fun _unnamed_0  ->
+                                          let (_loc__unnamed_0,_unnamed_0) =
+                                            _unnamed_0 in
+                                          fun l  ->
+                                            let (_loc_l,l) = l in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              let _loc =
+                                                merge _loc__unnamed_0
+                                                  _loc__unnamed_2 in
+                                              (Atom,
+                                                (List.fold_right
+                                                   (fun x  acc  ->
+                                                      loc_expr _loc
+                                                        (pexp_construct
+                                                           ({
+                                                              txt =
+                                                                (Lident "::");
+                                                              loc = _loc
+                                                            },
+                                                             (Some
+                                                                (loc_expr
+                                                                   _loc
+                                                                   (Pexp_tuple
+                                                                    [x; acc]))))))
+                                                   l
+                                                   (loc_expr _loc
+                                                      (pexp_construct
+                                                         ({
+                                                            txt =
+                                                              (Lident "[]");
+                                                            loc = _loc
+                                                          }, None)))))))
+                                    (locate (Glr.string "]" ()))
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (Glr.sequence
+                                          (locate (Glr.string "{" ()))
+                                          (locate
+                                             (Glr.option None
+                                                (Glr.apply (fun x  -> Some x)
+                                                   (Glr.sequence
+                                                      (locate
+                                                         (expression_lvl
+                                                            (next_exp Seq)))
+                                                      (locate with_kw)
+                                                      (fun e  ->
+                                                         let (_loc_e,e) = e in
+                                                         fun _unnamed_1  ->
+                                                           let (_loc__unnamed_1,_unnamed_1)
+                                                             = _unnamed_1 in
+                                                           let _loc =
+                                                             merge _loc_e
+                                                               _loc__unnamed_1 in
+                                                           e)))))
+                                          (fun _unnamed_0  ->
+                                             let (_loc__unnamed_0,_unnamed_0)
+                                               = _unnamed_0 in
+                                             fun e  ->
+                                               let (_loc_e,e) = e in
+                                               fun l  ->
+                                                 let (_loc_l,l) = l in
+                                                 fun _unnamed_3  ->
+                                                   let (_loc__unnamed_3,_unnamed_3)
+                                                     = _unnamed_3 in
+                                                   let _loc =
+                                                     merge _loc__unnamed_0
+                                                       _loc__unnamed_3 in
+                                                   (Atom,
+                                                     (loc_expr _loc
+                                                        (Pexp_record (l, e))))))
+                                       (locate record_list) (fun x  -> x))
+                                    (locate (Glr.string "}" ()))
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (Glr.sequence
+                                          (Glr.sequence (locate while_kw)
+                                             (locate expression)
                                              (fun _unnamed_0  ->
                                                 let (_loc__unnamed_0,_unnamed_0)
                                                   = _unnamed_0 in
                                                 fun e  ->
                                                   let (_loc_e,e) = e in
-                                                  fun l  ->
-                                                    let (_loc_l,l) = l in
-                                                    fun _unnamed_3  ->
-                                                      let (_loc__unnamed_3,_unnamed_3)
-                                                        = _unnamed_3 in
-                                                      let _loc =
-                                                        merge _loc__unnamed_0
-                                                          _loc__unnamed_3 in
-                                                      (Atom,
-                                                        (loc_expr _loc
-                                                           (Pexp_record
-                                                              (l, e))))))
-                                          (locate record_list) (fun x  -> x))
-                                       (locate (Glr.string "}" ()))
-                                       (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (Glr.sequence
-                                             (Glr.sequence (locate while_kw)
-                                                (locate expression)
-                                                (fun _unnamed_0  ->
-                                                   let (_loc__unnamed_0,_unnamed_0)
-                                                     = _unnamed_0 in
-                                                   fun e  ->
-                                                     let (_loc_e,e) = e in
-                                                     fun _unnamed_2  ->
-                                                       let (_loc__unnamed_2,_unnamed_2)
-                                                         = _unnamed_2 in
-                                                       fun e'  ->
-                                                         let (_loc_e',e') =
-                                                           e' in
-                                                         fun _unnamed_4  ->
-                                                           let (_loc__unnamed_4,_unnamed_4)
-                                                             = _unnamed_4 in
-                                                           let _loc =
-                                                             merge
-                                                               _loc__unnamed_0
-                                                               _loc__unnamed_4 in
-                                                           (Atom,
-                                                             (loc_expr _loc
-                                                                (Pexp_while
-                                                                   (e, e'))))))
-                                             (locate do_kw) (fun x  -> x))
-                                          (locate expression) (fun x  -> x))
-                                       (locate done_kw) (fun x  -> x);
-                                     Glr.sequence
+                                                  fun _unnamed_2  ->
+                                                    let (_loc__unnamed_2,_unnamed_2)
+                                                      = _unnamed_2 in
+                                                    fun e'  ->
+                                                      let (_loc_e',e') = e' in
+                                                      fun _unnamed_4  ->
+                                                        let (_loc__unnamed_4,_unnamed_4)
+                                                          = _unnamed_4 in
+                                                        let _loc =
+                                                          merge
+                                                            _loc__unnamed_0
+                                                            _loc__unnamed_4 in
+                                                        (Atom,
+                                                          (loc_expr _loc
+                                                             (Pexp_while
+                                                                (e, e'))))))
+                                          (locate do_kw) (fun x  -> x))
+                                       (locate expression) (fun x  -> x))
+                                    (locate done_kw) (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
                                        (Glr.sequence
                                           (Glr.sequence
                                              (Glr.sequence
                                                 (Glr.sequence
                                                    (Glr.sequence
                                                       (Glr.sequence
-                                                         (Glr.sequence
-                                                            (locate for_kw)
-                                                            (locate pattern)
-                                                            (fun _unnamed_0 
-                                                               ->
-                                                               let (_loc__unnamed_0,_unnamed_0)
-                                                                 = _unnamed_0 in
-                                                               fun id  ->
-                                                                 let 
-                                                                   (_loc_id,id)
-                                                                   = id in
-                                                                 fun
-                                                                   _unnamed_2
-                                                                    ->
-                                                                   let 
-                                                                    (_loc__unnamed_2,_unnamed_2)
-                                                                    =
-                                                                    _unnamed_2 in
-                                                                   fun e  ->
-                                                                    let 
+                                                         (locate for_kw)
+                                                         (locate pattern)
+                                                         (fun _unnamed_0  ->
+                                                            let (_loc__unnamed_0,_unnamed_0)
+                                                              = _unnamed_0 in
+                                                            fun id  ->
+                                                              let (_loc_id,id)
+                                                                = id in
+                                                              fun _unnamed_2 
+                                                                ->
+                                                                let (_loc__unnamed_2,_unnamed_2)
+                                                                  =
+                                                                  _unnamed_2 in
+                                                                fun e  ->
+                                                                  let 
                                                                     (_loc_e,e)
                                                                     = e in
-                                                                    fun d  ->
+                                                                  fun d  ->
                                                                     let 
                                                                     (_loc_d,d)
                                                                     = d in
@@ -5139,70 +5170,70 @@ module Make(Initial:Extension) =
                                                                     (id, e,
                                                                     e', d,
                                                                     e''))))))
-                                                         (locate
-                                                            (Glr.char '=' ()))
-                                                         (fun x  -> x))
-                                                      (locate expression)
+                                                      (locate
+                                                         (Glr.char '=' ()))
                                                       (fun x  -> x))
-                                                   (locate downto_flag)
+                                                   (locate expression)
                                                    (fun x  -> x))
-                                                (locate expression)
-                                                (fun x  -> x)) (locate do_kw)
-                                             (fun x  -> x))
-                                          (locate expression) (fun x  -> x))
-                                       (locate done_kw) (fun x  -> x);
-                                     Glr.sequence (locate new_kw)
-                                       (locate class_path)
+                                                (locate downto_flag)
+                                                (fun x  -> x))
+                                             (locate expression)
+                                             (fun x  -> x)) (locate do_kw)
+                                          (fun x  -> x)) (locate expression)
+                                       (fun x  -> x)) (locate done_kw)
+                                    (fun x  -> x);
+                                  Glr.sequence (locate new_kw)
+                                    (locate class_path)
+                                    (fun _unnamed_0  ->
+                                       let (_loc__unnamed_0,_unnamed_0) =
+                                         _unnamed_0 in
+                                       fun p  ->
+                                         let (_loc_p,p) = p in
+                                         let _loc =
+                                           merge _loc__unnamed_0 _loc_p in
+                                         (Atom,
+                                           (loc_expr _loc
+                                              (Pexp_new
+                                                 { txt = p; loc = _loc_p }))));
+                                  Glr.sequence
+                                    (Glr.sequence (locate object_kw)
+                                       (locate class_body)
                                        (fun _unnamed_0  ->
                                           let (_loc__unnamed_0,_unnamed_0) =
                                             _unnamed_0 in
-                                          fun p  ->
-                                            let (_loc_p,p) = p in
-                                            let _loc =
-                                              merge _loc__unnamed_0 _loc_p in
-                                            (Atom,
-                                              (loc_expr _loc
-                                                 (Pexp_new
-                                                    { txt = p; loc = _loc_p }))));
-                                     Glr.sequence
-                                       (Glr.sequence (locate object_kw)
-                                          (locate class_body)
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun o  ->
-                                               let (_loc_o,o) = o in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 let _loc =
-                                                   merge _loc__unnamed_0
-                                                     _loc__unnamed_2 in
-                                                 (Atom,
-                                                   (loc_expr _loc
-                                                      (Pexp_object o)))))
-                                       (locate end_kw) (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (locate (Glr.string "{<" ()))
-                                          (locate
-                                             (Glr.option []
+                                          fun o  ->
+                                            let (_loc_o,o) = o in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              let _loc =
+                                                merge _loc__unnamed_0
+                                                  _loc__unnamed_2 in
+                                              (Atom,
+                                                (loc_expr _loc
+                                                   (Pexp_object o)))))
+                                    (locate end_kw) (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (locate (Glr.string "{<" ()))
+                                       (locate
+                                          (Glr.option []
+                                             (Glr.sequence
                                                 (Glr.sequence
-                                                   (Glr.sequence
-                                                      (locate obj_item)
-                                                      (locate
-                                                         (Glr.apply List.rev
-                                                            (Glr.fixpoint []
-                                                               (Glr.apply
-                                                                  (fun x  l 
-                                                                    -> x :: l)
-                                                                  (Glr.sequence
-                                                                    (locate
+                                                   (locate obj_item)
+                                                   (locate
+                                                      (Glr.apply List.rev
+                                                         (Glr.fixpoint []
+                                                            (Glr.apply
+                                                               (fun x  l  ->
+                                                                  x :: l)
+                                                               (Glr.sequence
+                                                                  (locate
                                                                     (Glr.string
                                                                     ";" ()))
-                                                                    (locate
+                                                                  (locate
                                                                     obj_item)
-                                                                    (fun
+                                                                  (fun
                                                                     _unnamed_0
                                                                      ->
                                                                     let 
@@ -5219,481 +5250,424 @@ module Make(Initial:Extension) =
                                                                     _loc__unnamed_0
                                                                     _loc_o in
                                                                     o))))))
-                                                      (fun o  ->
-                                                         let (_loc_o,o) = o in
-                                                         fun l  ->
-                                                           let (_loc_l,l) = l in
-                                                           fun _unnamed_2  ->
-                                                             let (_loc__unnamed_2,_unnamed_2)
-                                                               = _unnamed_2 in
-                                                             let _loc =
-                                                               merge _loc_o
-                                                                 _loc__unnamed_2 in
-                                                             o :: l))
-                                                   (locate
-                                                      (Glr.option None
-                                                         (Glr.apply
-                                                            (fun x  -> Some x)
-                                                            (Glr.string ";"
-                                                               ()))))
-                                                   (fun x  -> x))))
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun l  ->
-                                               let (_loc_l,l) = l in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 let _loc =
-                                                   merge _loc__unnamed_0
-                                                     _loc__unnamed_2 in
-                                                 (Atom,
-                                                   (loc_expr _loc
-                                                      (Pexp_override l)))))
-                                       (locate (Glr.string ">}" ()))
-                                       (fun x  -> x);
-                                     Glr.sequence
+                                                   (fun o  ->
+                                                      let (_loc_o,o) = o in
+                                                      fun l  ->
+                                                        let (_loc_l,l) = l in
+                                                        fun _unnamed_2  ->
+                                                          let (_loc__unnamed_2,_unnamed_2)
+                                                            = _unnamed_2 in
+                                                          let _loc =
+                                                            merge _loc_o
+                                                              _loc__unnamed_2 in
+                                                          o :: l))
+                                                (locate
+                                                   (Glr.option None
+                                                      (Glr.apply
+                                                         (fun x  -> Some x)
+                                                         (Glr.string ";" ()))))
+                                                (fun x  -> x))))
+                                       (fun _unnamed_0  ->
+                                          let (_loc__unnamed_0,_unnamed_0) =
+                                            _unnamed_0 in
+                                          fun l  ->
+                                            let (_loc_l,l) = l in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              let _loc =
+                                                merge _loc__unnamed_0
+                                                  _loc__unnamed_2 in
+                                              (Atom,
+                                                (loc_expr _loc
+                                                   (Pexp_override l)))))
+                                    (locate (Glr.string ">}" ()))
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
                                        (Glr.sequence
                                           (Glr.sequence
-                                             (Glr.sequence
-                                                (locate (Glr.string "(" ()))
-                                                (locate module_kw)
-                                                (fun _unnamed_0  ->
-                                                   let (_loc__unnamed_0,_unnamed_0)
-                                                     = _unnamed_0 in
-                                                   fun _unnamed_1  ->
-                                                     let (_loc__unnamed_1,_unnamed_1)
-                                                       = _unnamed_1 in
-                                                     fun me  ->
-                                                       let (_loc_me,me) = me in
-                                                       fun pt  ->
-                                                         let (_loc_pt,pt) =
-                                                           pt in
-                                                         fun _unnamed_4  ->
-                                                           let (_loc__unnamed_4,_unnamed_4)
-                                                             = _unnamed_4 in
-                                                           let _loc =
-                                                             merge
-                                                               _loc__unnamed_0
-                                                               _loc__unnamed_4 in
-                                                           let desc =
-                                                             match pt with
-                                                             | None  ->
-                                                                 Pexp_pack me
-                                                             | Some pt ->
-                                                                 let me =
-                                                                   loc_expr
-                                                                    _loc_me
-                                                                    (Pexp_pack
+                                             (locate (Glr.string "(" ()))
+                                             (locate module_kw)
+                                             (fun _unnamed_0  ->
+                                                let (_loc__unnamed_0,_unnamed_0)
+                                                  = _unnamed_0 in
+                                                fun _unnamed_1  ->
+                                                  let (_loc__unnamed_1,_unnamed_1)
+                                                    = _unnamed_1 in
+                                                  fun me  ->
+                                                    let (_loc_me,me) = me in
+                                                    fun pt  ->
+                                                      let (_loc_pt,pt) = pt in
+                                                      fun _unnamed_4  ->
+                                                        let (_loc__unnamed_4,_unnamed_4)
+                                                          = _unnamed_4 in
+                                                        let _loc =
+                                                          merge
+                                                            _loc__unnamed_0
+                                                            _loc__unnamed_4 in
+                                                        let desc =
+                                                          match pt with
+                                                          | None  ->
+                                                              Pexp_pack me
+                                                          | Some pt ->
+                                                              let me =
+                                                                loc_expr
+                                                                  _loc_me
+                                                                  (Pexp_pack
                                                                     me) in
-                                                                 let pt =
-                                                                   loc_typ
-                                                                    _loc_pt
-                                                                    pt in
-                                                                 pexp_constraint
-                                                                   (me, pt) in
-                                                           (Atom,
-                                                             (loc_expr _loc
-                                                                desc))))
-                                             (locate module_expr)
-                                             (fun x  -> x))
+                                                              let pt =
+                                                                loc_typ
+                                                                  _loc_pt pt in
+                                                              pexp_constraint
+                                                                (me, pt) in
+                                                        (Atom,
+                                                          (loc_expr _loc desc))))
+                                          (locate module_expr) (fun x  -> x))
+                                       (locate
+                                          (Glr.option None
+                                             (Glr.apply (fun x  -> Some x)
+                                                (Glr.sequence
+                                                   (locate
+                                                      (Glr.string ":" ()))
+                                                   (locate package_type)
+                                                   (fun _unnamed_0  ->
+                                                      let (_loc__unnamed_0,_unnamed_0)
+                                                        = _unnamed_0 in
+                                                      fun pt  ->
+                                                        let (_loc_pt,pt) = pt in
+                                                        let _loc =
+                                                          merge
+                                                            _loc__unnamed_0
+                                                            _loc_pt in
+                                                        pt))))) (fun x  -> x))
+                                    (locate (Glr.string ")" ()))
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence
+                                       (Glr.sequence
+                                          (Glr.sequence
+                                             (locate (Glr.string "<:" ()))
+                                             (locate
+                                                (Glr.alternatives
+                                                   [Glr.apply
+                                                      (fun _unnamed_0  ->
+                                                         let (_loc__unnamed_0,_unnamed_0)
+                                                           = _unnamed_0 in
+                                                         let _loc =
+                                                           _loc__unnamed_0 in
+                                                         "expression")
+                                                      (locate
+                                                         (Glr.string "expr"
+                                                            ()));
+                                                   Glr.apply
+                                                     (fun _unnamed_0  ->
+                                                        let (_loc__unnamed_0,_unnamed_0)
+                                                          = _unnamed_0 in
+                                                        let _loc =
+                                                          _loc__unnamed_0 in
+                                                        "type")
+                                                     (locate
+                                                        (Glr.string "type" ()));
+                                                   Glr.apply
+                                                     (fun _unnamed_0  ->
+                                                        let (_loc__unnamed_0,_unnamed_0)
+                                                          = _unnamed_0 in
+                                                        let _loc =
+                                                          _loc__unnamed_0 in
+                                                        "pattern")
+                                                     (locate
+                                                        (Glr.string "pat" ()));
+                                                   Glr.apply
+                                                     (fun _unnamed_0  ->
+                                                        let (_loc__unnamed_0,_unnamed_0)
+                                                          = _unnamed_0 in
+                                                        let _loc =
+                                                          _loc__unnamed_0 in
+                                                        "structure")
+                                                     (locate
+                                                        (Glr.string
+                                                           "structure" ()));
+                                                   Glr.apply
+                                                     (fun _unnamed_0  ->
+                                                        let (_loc__unnamed_0,_unnamed_0)
+                                                          = _unnamed_0 in
+                                                        let _loc =
+                                                          _loc__unnamed_0 in
+                                                        "signature")
+                                                     (locate
+                                                        (Glr.string
+                                                           "signature" ()))]))
+                                             (fun _unnamed_0  ->
+                                                let (_loc__unnamed_0,_unnamed_0)
+                                                  = _unnamed_0 in
+                                                fun name  ->
+                                                  let (_loc_name,name) = name in
+                                                  fun loc  ->
+                                                    let (_loc_loc,loc) = loc in
+                                                    fun _unnamed_3  ->
+                                                      let (_loc__unnamed_3,_unnamed_3)
+                                                        = _unnamed_3 in
+                                                      fun q  ->
+                                                        let (_loc_q,q) = q in
+                                                        let _loc =
+                                                          merge
+                                                            _loc__unnamed_0
+                                                            _loc_q in
+                                                        (Atom,
+                                                          (quote_expression
+                                                             _loc_q loc q
+                                                             name))))
                                           (locate
                                              (Glr.option None
                                                 (Glr.apply (fun x  -> Some x)
                                                    (Glr.sequence
                                                       (locate
-                                                         (Glr.string ":" ()))
-                                                      (locate package_type)
+                                                         (Glr.char '@' ()))
+                                                      (locate
+                                                         (expression_lvl
+                                                            (next_exp App)))
                                                       (fun _unnamed_0  ->
                                                          let (_loc__unnamed_0,_unnamed_0)
                                                            = _unnamed_0 in
-                                                         fun pt  ->
-                                                           let (_loc_pt,pt) =
-                                                             pt in
+                                                         fun e  ->
+                                                           let (_loc_e,e) = e in
                                                            let _loc =
                                                              merge
                                                                _loc__unnamed_0
-                                                               _loc_pt in
-                                                           pt)))))
+                                                               _loc_e in
+                                                           e)))))
                                           (fun x  -> x))
-                                       (locate (Glr.string ")" ()))
-                                       (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (Glr.sequence
-                                             (Glr.sequence
-                                                (locate (Glr.string "<:" ()))
-                                                (locate
-                                                   (Glr.alternatives
-                                                      [Glr.apply
-                                                         (fun _unnamed_0  ->
-                                                            let (_loc__unnamed_0,_unnamed_0)
-                                                              = _unnamed_0 in
-                                                            let _loc =
-                                                              _loc__unnamed_0 in
-                                                            "expression")
-                                                         (locate
-                                                            (Glr.string
-                                                               "expr" ()));
-                                                      Glr.apply
-                                                        (fun _unnamed_0  ->
-                                                           let (_loc__unnamed_0,_unnamed_0)
-                                                             = _unnamed_0 in
-                                                           let _loc =
-                                                             _loc__unnamed_0 in
-                                                           "type")
-                                                        (locate
-                                                           (Glr.string "type"
-                                                              ()));
-                                                      Glr.apply
-                                                        (fun _unnamed_0  ->
-                                                           let (_loc__unnamed_0,_unnamed_0)
-                                                             = _unnamed_0 in
-                                                           let _loc =
-                                                             _loc__unnamed_0 in
-                                                           "pattern")
-                                                        (locate
-                                                           (Glr.string "pat"
-                                                              ()));
-                                                      Glr.apply
-                                                        (fun _unnamed_0  ->
-                                                           let (_loc__unnamed_0,_unnamed_0)
-                                                             = _unnamed_0 in
-                                                           let _loc =
-                                                             _loc__unnamed_0 in
-                                                           "structure")
-                                                        (locate
-                                                           (Glr.string
-                                                              "structure" ()));
-                                                      Glr.apply
-                                                        (fun _unnamed_0  ->
-                                                           let (_loc__unnamed_0,_unnamed_0)
-                                                             = _unnamed_0 in
-                                                           let _loc =
-                                                             _loc__unnamed_0 in
-                                                           "signature")
-                                                        (locate
-                                                           (Glr.string
-                                                              "signature" ()))]))
-                                                (fun _unnamed_0  ->
-                                                   let (_loc__unnamed_0,_unnamed_0)
-                                                     = _unnamed_0 in
-                                                   fun name  ->
-                                                     let (_loc_name,name) =
-                                                       name in
-                                                     fun loc  ->
-                                                       let (_loc_loc,loc) =
-                                                         loc in
-                                                       fun _unnamed_3  ->
-                                                         let (_loc__unnamed_3,_unnamed_3)
-                                                           = _unnamed_3 in
-                                                         fun q  ->
-                                                           let (_loc_q,q) = q in
-                                                           let _loc =
-                                                             merge
-                                                               _loc__unnamed_0
-                                                               _loc_q in
-                                                           (Atom,
-                                                             (quote_expression
-                                                                _loc_q loc q
-                                                                name))))
-                                             (locate
-                                                (Glr.option None
-                                                   (Glr.apply
-                                                      (fun x  -> Some x)
-                                                      (Glr.sequence
-                                                         (locate
-                                                            (Glr.char '@' ()))
-                                                         (locate
-                                                            (expression_lvl
-                                                               (next_exp App)))
-                                                         (fun _unnamed_0  ->
-                                                            let (_loc__unnamed_0,_unnamed_0)
-                                                              = _unnamed_0 in
-                                                            fun e  ->
-                                                              let (_loc_e,e)
-                                                                = e in
-                                                              let _loc =
-                                                                merge
-                                                                  _loc__unnamed_0
-                                                                  _loc_e in
-                                                              e)))))
-                                             (fun x  -> x))
-                                          (locate (Glr.char '<' ()))
-                                          (fun x  -> x)) (locate quotation)
-                                       (fun x  -> x);
-                                     Glr.sequence
-                                       (Glr.sequence
-                                          (locate (Glr.char '$' ()))
-                                          (locate
-                                             (expression_lvl (next_exp App)))
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun e  ->
-                                               let (_loc_e,e) = e in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 let _loc =
-                                                   merge _loc__unnamed_0
-                                                     _loc__unnamed_2 in
-                                                 (Atom,
-                                                   (push_pop_expression e))))
-                                       (locate (Glr.char '$' ()))
-                                       (fun x  -> x);
-                                     Glr.iter
-                                       (Glr.apply
-                                          (fun p  ->
-                                             let (_loc_p,p) = p in
-                                             let _loc = _loc_p in
-                                             let lvl' = prefix_prio p in
-                                             if lvl <= lvl'
-                                             then
-                                               Glr.apply
-                                                 (fun e  ->
-                                                    let (_loc_e,e) = e in
-                                                    let _loc = _loc_e in
-                                                    (lvl',
-                                                      (mk_unary_opp p _loc_p
-                                                         e _loc_e)))
-                                                 (locate
-                                                    (expression_lvl lvl'))
-                                             else Glr.fail "")
-                                          (locate prefix_symbol))] in
-                                   if lvl <= App
-                                   then
-                                     (Glr.sequence (locate tag_name)
-                                        (locate
-                                           (expression_lvl (next_exp App)))
-                                        (fun l  ->
-                                           let (_loc_l,l) = l in
-                                           fun e  ->
-                                             let (_loc_e,e) = e in
-                                             let _loc = merge _loc_l _loc_e in
-                                             (App,
-                                               (loc_expr _loc
-                                                  (Pexp_variant (l, (Some e)))))))
-                                     :: y
-                                   else y in
-                                 if lvl <= App
-                                 then
-                                   (Glr.sequence (locate lazy_kw)
-                                      (locate (expression_lvl App))
-                                      (fun _unnamed_0  ->
-                                         let (_loc__unnamed_0,_unnamed_0) =
-                                           _unnamed_0 in
-                                         fun e  ->
-                                           let (_loc_e,e) = e in
-                                           let _loc =
-                                             merge _loc__unnamed_0 _loc_e in
-                                           (App,
-                                             (loc_expr _loc (Pexp_lazy e)))))
-                                   :: y
-                                 else y in
-                               if lvl <= App
-                               then
-                                 (Glr.sequence (locate assert_kw)
-                                    (locate
-                                       (Glr.alternatives
-                                          [Glr.apply
-                                             (fun _unnamed_0  ->
-                                                let (_loc__unnamed_0,_unnamed_0)
-                                                  = _unnamed_0 in
-                                                let _loc = _loc__unnamed_0 in
-                                                pexp_assertfalse _loc)
-                                             (locate false_kw);
-                                          Glr.apply
-                                            (fun e  ->
-                                               let (_loc_e,e) = e in
-                                               let _loc = _loc_e in
-                                               Pexp_assert e)
-                                            (locate (expression_lvl App))]))
-                                    (fun _unnamed_0  ->
-                                       let (_loc__unnamed_0,_unnamed_0) =
-                                         _unnamed_0 in
-                                       fun e  ->
-                                         let (_loc_e,e) = e in
-                                         let _loc =
-                                           merge _loc__unnamed_0 _loc_e in
-                                         (App, (loc_expr _loc e))))
-                                 :: y
-                               else y) in
-                            if lvl < App
-                            then
-                              (Glr.sequence
-                                 (Glr.sequence
-                                    (Glr.sequence
-                                       (Glr.sequence (locate if_kw)
-                                          (locate expression)
-                                          (fun _unnamed_0  ->
-                                             let (_loc__unnamed_0,_unnamed_0)
-                                               = _unnamed_0 in
-                                             fun c  ->
-                                               let (_loc_c,c) = c in
-                                               fun _unnamed_2  ->
-                                                 let (_loc__unnamed_2,_unnamed_2)
-                                                   = _unnamed_2 in
-                                                 fun e  ->
-                                                   let (_loc_e,e) = e in
-                                                   fun e'  ->
-                                                     let (_loc_e',e') = e' in
-                                                     let _loc =
-                                                       merge _loc__unnamed_0
-                                                         _loc_e' in
-                                                     (If,
-                                                       (loc_expr _loc
-                                                          (Pexp_ifthenelse
-                                                             (c, e, e'))))))
-                                       (locate then_kw) (fun x  -> x))
-                                    (locate (expression_lvl If))
-                                    (fun x  -> x))
-                                 (locate
-                                    (Glr.option None
-                                       (Glr.apply (fun x  -> Some x)
-                                          (Glr.sequence (locate else_kw)
-                                             (locate (expression_lvl If))
-                                             (fun _unnamed_0  ->
-                                                let (_loc__unnamed_0,_unnamed_0)
-                                                  = _unnamed_0 in
-                                                fun e  ->
-                                                  let (_loc_e,e) = e in
-                                                  let _loc =
-                                                    merge _loc__unnamed_0
-                                                      _loc_e in
-                                                  e))))) (fun x  -> x))
-                              :: y
-                            else y in
-                          if lvl < App
-                          then
-                            (Glr.sequence
-                               (Glr.sequence
-                                  (Glr.sequence (locate try_kw)
-                                     (locate expression)
-                                     (fun _unnamed_0  ->
-                                        let (_loc__unnamed_0,_unnamed_0) =
-                                          _unnamed_0 in
+                                       (locate (Glr.char '<' ()))
+                                       (fun x  -> x)) (locate quotation)
+                                    (fun x  -> x);
+                                  Glr.sequence
+                                    (Glr.sequence (locate (Glr.char '$' ()))
+                                       (locate
+                                          (expression_lvl (next_exp App)))
+                                       (fun _unnamed_0  ->
+                                          let (_loc__unnamed_0,_unnamed_0) =
+                                            _unnamed_0 in
+                                          fun e  ->
+                                            let (_loc_e,e) = e in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              let _loc =
+                                                merge _loc__unnamed_0
+                                                  _loc__unnamed_2 in
+                                              (Atom, (push_pop_expression e))))
+                                    (locate (Glr.char '$' ())) (fun x  -> x);
+                                  Glr.iter
+                                    (Glr.apply
+                                       (fun p  ->
+                                          let (_loc_p,p) = p in
+                                          let _loc = _loc_p in
+                                          let lvl' = prefix_prio p in
+                                          if lvl <= lvl'
+                                          then
+                                            Glr.apply
+                                              (fun e  ->
+                                                 let (_loc_e,e) = e in
+                                                 let _loc = _loc_e in
+                                                 (lvl',
+                                                   (mk_unary_opp p _loc_p e
+                                                      _loc_e)))
+                                              (locate (expression_lvl lvl'))
+                                          else Glr.fail "")
+                                       (locate prefix_symbol))] in
+                                if lvl <= App
+                                then
+                                  (Glr.sequence (locate tag_name)
+                                     (locate (expression_lvl (next_exp App)))
+                                     (fun l  ->
+                                        let (_loc_l,l) = l in
                                         fun e  ->
                                           let (_loc_e,e) = e in
-                                          fun _unnamed_2  ->
-                                            let (_loc__unnamed_2,_unnamed_2)
-                                              = _unnamed_2 in
-                                            fun l  ->
-                                              let (_loc_l,l) = l in
-                                              let _loc =
-                                                merge _loc__unnamed_0 _loc_l in
-                                              (Let,
-                                                (loc_expr _loc
-                                                   (Pexp_try (e, l))))))
-                                  (locate with_kw) (fun x  -> x))
-                               (locate (match_cases (let_prio lvl)))
-                               (fun x  -> x))
-                            :: y
-                          else y in
-                        if lvl < App
-                        then
-                          (Glr.sequence
-                             (Glr.sequence
-                                (Glr.sequence (locate match_kw)
-                                   (locate expression)
+                                          let _loc = merge _loc_l _loc_e in
+                                          (App,
+                                            (loc_expr _loc
+                                               (Pexp_variant (l, (Some e)))))))
+                                  :: y
+                                else y in
+                              if lvl <= App
+                              then
+                                (Glr.sequence (locate lazy_kw)
+                                   (locate (expression_lvl App))
                                    (fun _unnamed_0  ->
                                       let (_loc__unnamed_0,_unnamed_0) =
                                         _unnamed_0 in
                                       fun e  ->
                                         let (_loc_e,e) = e in
-                                        fun _unnamed_2  ->
-                                          let (_loc__unnamed_2,_unnamed_2) =
-                                            _unnamed_2 in
-                                          fun l  ->
-                                            let (_loc_l,l) = l in
-                                            let _loc =
-                                              merge _loc__unnamed_0 _loc_l in
-                                            (Let,
-                                              (loc_expr _loc
-                                                 (Pexp_match (e, l))))))
-                                (locate with_kw) (fun x  -> x))
-                             (locate (match_cases (let_prio lvl)))
-                             (fun x  -> x))
-                          :: y
-                        else y in
-                      if lvl < App
-                      then
-                        (Glr.sequence
-                           (Glr.sequence
-                              (Glr.sequence (locate fun_kw)
+                                        let _loc =
+                                          merge _loc__unnamed_0 _loc_e in
+                                        (App, (loc_expr _loc (Pexp_lazy e)))))
+                                :: y
+                              else y in
+                            if lvl <= App
+                            then
+                              (Glr.sequence (locate assert_kw)
                                  (locate
-                                    (Glr.apply List.rev
-                                       (Glr.fixpoint []
-                                          (Glr.apply (fun x  l  -> x :: l)
-                                             (Glr.apply
-                                                (fun lbl  ->
-                                                   let (_loc_lbl,lbl) = lbl in
-                                                   let _loc = _loc_lbl in lbl)
-                                                (locate (parameter true)))))))
+                                    (Glr.alternatives
+                                       [Glr.apply
+                                          (fun _unnamed_0  ->
+                                             let (_loc__unnamed_0,_unnamed_0)
+                                               = _unnamed_0 in
+                                             let _loc = _loc__unnamed_0 in
+                                             pexp_assertfalse _loc)
+                                          (locate false_kw);
+                                       Glr.apply
+                                         (fun e  ->
+                                            let (_loc_e,e) = e in
+                                            let _loc = _loc_e in
+                                            Pexp_assert e)
+                                         (locate (expression_lvl App))]))
                                  (fun _unnamed_0  ->
                                     let (_loc__unnamed_0,_unnamed_0) =
                                       _unnamed_0 in
-                                    fun l  ->
-                                      let (_loc_l,l) = l in
-                                      fun _unnamed_2  ->
-                                        let (_loc__unnamed_2,_unnamed_2) =
-                                          _unnamed_2 in
-                                        fun e  ->
-                                          let (_loc_e,e) = e in
-                                          let _loc =
-                                            merge _loc__unnamed_0 _loc_e in
-                                          (Let, (apply_params _loc l e))))
-                              (locate (Glr.string "->" ())) (fun x  -> x))
-                           (locate (expression_lvl (let_prio lvl)))
-                           (fun x  -> x))
-                        :: y
-                      else y in
-                    if lvl < App
-                    then
-                      (Glr.sequence (locate function_kw)
-                         (locate (match_cases (let_prio lvl)))
-                         (fun _unnamed_0  ->
-                            let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                            fun l  ->
-                              let (_loc_l,l) = l in
-                              let _loc = merge _loc__unnamed_0 _loc_l in
-                              (Let, (loc_expr _loc (pexp_function l)))))
-                      :: y
-                    else y) in
-                 if lvl < App
-                 then
-                   (Glr.sequence
-                      (Glr.sequence
-                         (Glr.sequence
-                            (Glr.sequence
-                               (Glr.sequence (locate let_kw) (locate open_kw)
-                                  (fun _unnamed_0  ->
-                                     let (_loc__unnamed_0,_unnamed_0) =
-                                       _unnamed_0 in
-                                     fun _unnamed_1  ->
-                                       let (_loc__unnamed_1,_unnamed_1) =
-                                         _unnamed_1 in
-                                       fun o  ->
-                                         let (_loc_o,o) = o in
-                                         fun mp  ->
-                                           let (_loc_mp,mp) = mp in
-                                           fun _unnamed_4  ->
-                                             let (_loc__unnamed_4,_unnamed_4)
-                                               = _unnamed_4 in
+                                    fun e  ->
+                                      let (_loc_e,e) = e in
+                                      let _loc = merge _loc__unnamed_0 _loc_e in
+                                      (App, (loc_expr _loc e))))
+                              :: y
+                            else y) in
+                         if lvl < App
+                         then
+                           (Glr.sequence
+                              (Glr.sequence
+                                 (Glr.sequence
+                                    (Glr.sequence (locate if_kw)
+                                       (locate expression)
+                                       (fun _unnamed_0  ->
+                                          let (_loc__unnamed_0,_unnamed_0) =
+                                            _unnamed_0 in
+                                          fun c  ->
+                                            let (_loc_c,c) = c in
+                                            fun _unnamed_2  ->
+                                              let (_loc__unnamed_2,_unnamed_2)
+                                                = _unnamed_2 in
+                                              fun e  ->
+                                                let (_loc_e,e) = e in
+                                                fun e'  ->
+                                                  let (_loc_e',e') = e' in
+                                                  let _loc =
+                                                    merge _loc__unnamed_0
+                                                      _loc_e' in
+                                                  (If,
+                                                    (loc_expr _loc
+                                                       (Pexp_ifthenelse
+                                                          (c, e, e'))))))
+                                    (locate then_kw) (fun x  -> x))
+                                 (locate (expression_lvl If)) (fun x  -> x))
+                              (locate
+                                 (Glr.option None
+                                    (Glr.apply (fun x  -> Some x)
+                                       (Glr.sequence (locate else_kw)
+                                          (locate (expression_lvl If))
+                                          (fun _unnamed_0  ->
+                                             let (_loc__unnamed_0,_unnamed_0)
+                                               = _unnamed_0 in
                                              fun e  ->
                                                let (_loc_e,e) = e in
                                                let _loc =
                                                  merge _loc__unnamed_0 _loc_e in
-                                               let mp =
-                                                 { txt = mp; loc = _loc_mp } in
-                                               (Let,
-                                                 (loc_expr _loc
-                                                    (Pexp_open (o, mp, e))))))
-                               (locate override_flag) (fun x  -> x))
-                            (locate module_path) (fun x  -> x))
-                         (locate in_kw) (fun x  -> x))
-                      (locate (expression_lvl (let_prio lvl))) (fun x  -> x))
+                                               e))))) (fun x  -> x))
+                           :: y
+                         else y in
+                       if lvl < App
+                       then
+                         (Glr.sequence
+                            (Glr.sequence
+                               (Glr.sequence (locate try_kw)
+                                  (locate expression)
+                                  (fun _unnamed_0  ->
+                                     let (_loc__unnamed_0,_unnamed_0) =
+                                       _unnamed_0 in
+                                     fun e  ->
+                                       let (_loc_e,e) = e in
+                                       fun _unnamed_2  ->
+                                         let (_loc__unnamed_2,_unnamed_2) =
+                                           _unnamed_2 in
+                                         fun l  ->
+                                           let (_loc_l,l) = l in
+                                           let _loc =
+                                             merge _loc__unnamed_0 _loc_l in
+                                           (Let,
+                                             (loc_expr _loc (Pexp_try (e, l))))))
+                               (locate with_kw) (fun x  -> x))
+                            (locate (match_cases (let_prio lvl)))
+                            (fun x  -> x))
+                         :: y
+                       else y in
+                     if lvl < App
+                     then
+                       (Glr.sequence
+                          (Glr.sequence
+                             (Glr.sequence (locate match_kw)
+                                (locate expression)
+                                (fun _unnamed_0  ->
+                                   let (_loc__unnamed_0,_unnamed_0) =
+                                     _unnamed_0 in
+                                   fun e  ->
+                                     let (_loc_e,e) = e in
+                                     fun _unnamed_2  ->
+                                       let (_loc__unnamed_2,_unnamed_2) =
+                                         _unnamed_2 in
+                                       fun l  ->
+                                         let (_loc_l,l) = l in
+                                         let _loc =
+                                           merge _loc__unnamed_0 _loc_l in
+                                         (Let,
+                                           (loc_expr _loc (Pexp_match (e, l))))))
+                             (locate with_kw) (fun x  -> x))
+                          (locate (match_cases (let_prio lvl))) (fun x  -> x))
+                       :: y
+                     else y in
+                   if lvl < App
+                   then
+                     (Glr.sequence
+                        (Glr.sequence
+                           (Glr.sequence (locate fun_kw)
+                              (locate
+                                 (Glr.apply List.rev
+                                    (Glr.fixpoint []
+                                       (Glr.apply (fun x  l  -> x :: l)
+                                          (Glr.apply
+                                             (fun lbl  ->
+                                                let (_loc_lbl,lbl) = lbl in
+                                                let _loc = _loc_lbl in
+                                                (lbl, _loc_lbl))
+                                             (locate (parameter true)))))))
+                              (fun _unnamed_0  ->
+                                 let (_loc__unnamed_0,_unnamed_0) =
+                                   _unnamed_0 in
+                                 fun l  ->
+                                   let (_loc_l,l) = l in
+                                   fun _unnamed_2  ->
+                                     let (_loc__unnamed_2,_unnamed_2) =
+                                       _unnamed_2 in
+                                     fun e  ->
+                                       let (_loc_e,e) = e in
+                                       let _loc =
+                                         merge _loc__unnamed_0 _loc_e in
+                                       (Let,
+                                         (loc_expr _loc
+                                            (apply_params l e).pexp_desc))))
+                           (locate (Glr.string "->" ())) (fun x  -> x))
+                        (locate (expression_lvl (let_prio lvl)))
+                        (fun x  -> x))
+                     :: y
+                   else y in
+                 if lvl < App
+                 then
+                   (Glr.sequence (locate function_kw)
+                      (locate (match_cases (let_prio lvl)))
+                      (fun _unnamed_0  ->
+                         let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                         fun l  ->
+                           let (_loc_l,l) = l in
+                           let _loc = merge _loc__unnamed_0 _loc_l in
+                           (Let, (loc_expr _loc (pexp_function l)))))
                    :: y
                  else y) in
               if lvl <= Aff
@@ -6084,7 +6058,7 @@ module Make(Initial:Extension) =
                                                           loc = _loc_op
                                                         },
                                                          (Some
-                                                            (loc_expr _loc_op
+                                                            (ln e' _loc
                                                                (Pexp_tuple
                                                                   [e'; e]))))
                                                    else
@@ -6981,7 +6955,8 @@ module Make(Initial:Extension) =
                 let (_loc_s,s) = s in
                 fun _unnamed_1  ->
                   let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-                  let _loc = merge _loc_s _loc__unnamed_1 in [loc_str _loc s])])
+                  let _loc = merge _loc_s _loc__unnamed_1 in
+                  [loc_str _loc_s s])])
     let signature_item_base =
       Glr.alternatives
         [Glr.sequence

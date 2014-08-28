@@ -31,8 +31,11 @@ for f in $files; do
 
   cat /tmp/foo.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\([^[]*\.mli\?\)\?\[.*\])\( ghost\)\?//' > $diff/$(basename $f).pa_ocaml
   cat /tmp/bar.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\([^[]*\.mli\?\)\?\[.*\])\( ghost\)\?//' > $diff/$(basename $f).ocamlc
+  cat /tmp/bar.tree | sed -e 's/)\( ghost\)\?/)/' > /tmp/tyr.tree
   diff $diff/$(basename $f).pa_ocaml  $diff/$(basename $f).ocamlc > $diff/$(basename $f).diff
+  diff /tmp/foo.tree /tmp/tyr.tree > $diff/$(basename $f).fulldiff
   echo diff size: $(wc $diff/$(basename $f).diff)
+  echo diff size with pos: $(wc $diff/$(basename $f).fulldiff)
   echo
 done
 

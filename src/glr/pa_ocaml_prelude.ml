@@ -112,9 +112,9 @@ let ghost loc =
   Location.({loc with loc_ghost = true})
 
 let locate g =
-  filter_position g Lexing.(fun fname l pos l' pos' ->
-    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = pos; pos_bol = 0 } in
-    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = pos'; pos_bol = 0 } in
+  filter_position g Lexing.(fun fname l bol pos l' bol' pos' ->
+    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = bol+pos; pos_bol = bol } in
+    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = bol'+pos'; pos_bol = bol' } in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
 let merge l1 l2 =

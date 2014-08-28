@@ -12,6 +12,8 @@ val is_empty : buffer -> bool
 
 val line_num : buffer -> int
 
+val line_beginning : buffer -> int
+
 val line : buffer -> string
 
 val fname : buffer -> string

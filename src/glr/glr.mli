@@ -194,7 +194,7 @@ val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
     this position information is build by calling [f str begin_line begin_col end_line end_col]
     where str is the full string being parsed and begin_pos, end_pos are
     the position of the parsed tree in str. *)
-val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
+val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
 
 
 (** [declare_grammar name] return a new grammar, that can be used to define other grammar, but that
