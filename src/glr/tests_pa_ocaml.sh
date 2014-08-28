@@ -54,3 +54,10 @@ cp ./pa_parser.ml $local/
 /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_parser.ml
 cp ./pa_ocaml.ml $local/
 /usr/bin/time --format="%C: %e" ocamlc -I +compiler-libs -c -I bootstrap/$ocamlversion -pp ./pa_ocaml $local/pa_ocaml.ml
+
+echo "********************************************"
+echo TOTAL diff size: 
+wc $diff/*.diff | grep total
+echo TOTAL diff size with pos: 
+wc $diff/*.fulldiff | grep total
+echo "********************************************"
