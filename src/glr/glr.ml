@@ -159,8 +159,9 @@ let position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 	fun blank str pos next key g ->
 	  l.parse blank str pos next key (fun l c l' c' x -> 
 					  g l c l' c' (
-  					      let l, c = blank l c in
-					      (fname str, line_num l, c, line_num l', c', x)))
+  					      let l0, c0 = blank l c in
+					      let l, c = if line_beginning l0 + c0 > line_beginning l' + c' then l,c else l0,c0 in 
+					      (fname l, line_num l, c, line_num l', c', x)))
     }
 
 let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
@@ -172,8 +173,9 @@ let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -
 	fun blank str pos next key g ->
 	  l.parse blank str pos next key 
 		  (fun l c l' c' x -> g l c l' c' (
-					  let l, c = blank l c in
-					  filter (fname str) (line_num l) (line_beginning l) c (line_num l') (line_beginning l') c', x))
+  					  let l0, c0 = blank l c in
+					  let l, c = if line_beginning l0 + c0 > line_beginning l' + c' then l,c else l0,c0 in 
+					  filter (fname l) (line_num l) (line_beginning l) c (line_num l') (line_beginning l') c', x))
     }
 
 let eof : 'a -> 'a grammar
@@ -591,15 +593,15 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 	fun blank str pos next key g ->
 	  let next' = union'' f1 next in
 	  let rec fn acc la =
-	    PosMap.fold (fun (str'', pos'') (str', pos', a) acc ->
+	    PosMap.fold (fun (str', pos') a acc ->
 	      (try
-		 let r = f1.parse blank str'' pos'' next' key (fun _ _ l' pos' f -> l', pos', f a) in
+		 let r = f1.parse blank str' pos' next' key (fun _ _ _ _ f -> f a) in
 		 fun () -> fn acc r
 	       with 
 		 Give_up ->
-		 if test blank next str'' pos'' then (fun () -> single str'' pos'' (g str pos str' pos' a)) else raise Give_up) ()) la acc
+		 if test blank next str' pos' then (fun () -> single str' pos' (g str pos str' pos' a)) else raise Give_up) ()) la acc
 	  in
-	  fn PosMap.empty (single str pos (str, pos, a))
+	  fn PosMap.empty (single str pos a)
     }
 
 let list_fixpoint : 'a -> ('a -> 'a) list grammar -> 'a list grammar

@@ -93,13 +93,12 @@ let rec apply _loc ids e =
       | [id,_] ->
 	 loc_expr _loc (Pexp_let(Nonrecursive, [
 	   value_binding _loc (pat_ident _loc "_loc") (exp_ident _loc ("_loc_"^id))], e))
-      | (first,_)::ids ->
-	let (last,_) = List.hd (List.rev ids) in
+      | ids ->
+	 let all_loc = List.map (fun (id, _) -> exp_ident _loc ("_loc_"^id)) ids in
 	loc_expr _loc (Pexp_let(Nonrecursive, [
 	  value_binding _loc (pat_ident _loc "_loc")
 	  (loc_expr _loc (Pexp_apply(merge, [
-	    "", exp_ident _loc ("_loc_"^first);
-	    "", exp_ident _loc ("_loc_"^last)])))], e))
+	    "", exp_list _loc all_loc])))], e))
   in
   List.fold_left (fun e id -> 
     match !do_locate with

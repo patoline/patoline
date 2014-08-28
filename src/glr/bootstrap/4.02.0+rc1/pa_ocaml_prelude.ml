@@ -21,7 +21,7 @@ type entry =
   | FromExt
   | Impl
   | Intf
-  | Top 
+  | Toplvl 
 let entry = ref FromExt
 let modern = ref false
 let spec =
@@ -85,23 +85,40 @@ let locate g =
   filter_position g
     (let open Lexing in
        fun fname  l  bol  pos  l'  bol'  pos'  ->
-         let s =
-           {
-             pos_fname = fname;
-             pos_lnum = l;
-             pos_cnum = (bol + pos);
-             pos_bol = bol
-           } in
-         let e =
-           {
-             pos_fname = fname;
-             pos_lnum = l';
-             pos_cnum = (bol' + pos');
-             pos_bol = bol'
-           } in
-         let open Location in
-           { loc_start = s; loc_end = e; loc_ghost = false })
-let merge l1 l2 =
+         if ((l', pos') < (l, pos)) || ((bol' + pos') < (bol + pos))
+         then
+           Printf.eprintf "Bad position %d:%d+%d %d:%d+%d\n%!" l bol pos l'
+             bol' pos';
+         (let s =
+            {
+              pos_fname = fname;
+              pos_lnum = l;
+              pos_cnum = (bol + pos);
+              pos_bol = bol
+            } in
+          let e =
+            {
+              pos_fname = fname;
+              pos_lnum = l';
+              pos_cnum = (bol' + pos');
+              pos_bol = bol'
+            } in
+          let open Location in
+            { loc_start = s; loc_end = e; loc_ghost = false }))
+let rec merge =
+  function
+  | [] -> assert false
+  | loc::[] -> loc
+  | l1::ls when let open Location in l1.loc_start = l1.loc_end -> merge ls
+  | l1::ls ->
+      let l2 = List.hd (List.rev ls) in
+      let open Location in
+        {
+          loc_start = (l1.loc_start);
+          loc_end = (l2.loc_end);
+          loc_ghost = (l1.loc_ghost && l2.loc_ghost)
+        }
+let merge2 l1 l2 =
   let open Location in
     {
       loc_start = (l1.loc_start);
@@ -270,8 +287,8 @@ module Initial =
         ptype_attributes = [];
         ptype_loc = _loc
       }
-    let class_type_declaration _loc name params virt expr =
-      let params = params_map _loc params in
+    let class_type_declaration _loc' _loc name params virt expr =
+      let params = params_map _loc' params in
       {
         pci_params = params;
         pci_virt = virt;

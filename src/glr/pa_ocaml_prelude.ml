@@ -27,7 +27,7 @@ let memoize2 f =
 let fast = ref false
 let file = ref None
 let ascii = ref false
-type entry = FromExt | Impl | Intf | Top
+type entry = FromExt | Impl | Intf | Toplvl
 let entry = ref FromExt
 let modern = ref false
   (* if true, 
@@ -113,11 +113,21 @@ let ghost loc =
 
 let locate g =
   filter_position g Lexing.(fun fname l bol pos l' bol' pos' ->
+    if (l',pos') < (l, pos) || bol'+pos' < bol+pos then
+      Printf.eprintf "Bad position %d:%d+%d %d:%d+%d\n%!" l bol pos l' bol' pos';
     let s = { pos_fname = fname; pos_lnum = l; pos_cnum = bol+pos; pos_bol = bol } in
     let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = bol'+pos'; pos_bol = bol' } in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
-let merge l1 l2 =
+let rec merge = function
+  | [] -> assert false
+  | [loc] -> loc
+  | l1::ls when Location.(l1.loc_start = l1.loc_end) -> merge ls
+  | l1::ls ->  let l2 = List.hd (List.rev ls) in
+  Location.(
+    {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
+
+let merge2 l1 l2 =
   Location.(
     {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
 
@@ -233,8 +243,8 @@ let next_exp = function
      ptype_attributes = [];
      ptype_loc = _loc;
     }
-  let class_type_declaration _loc name params virt expr =
-    let params = params_map _loc params in
+  let class_type_declaration _loc' _loc name params virt expr =
+    let params = params_map _loc' params in
       { pci_params = params
       ; pci_virt = virt
       ; pci_name = name
@@ -287,12 +297,12 @@ let next_exp = function
      ptype_manifest = manifest;
      ptype_loc = _loc;
     }
-  let class_type_declaration _loc name params virt expr =
+  let class_type_declaration _loc' _loc name params virt expr =
     let params, variance = List.split params in
-    let params = List.map (function None   -> { txt = ""; loc = _loc}
+    let params = List.map (function None   -> { txt = ""; loc = _loc'}
                                   | Some x -> x) params
     in
-      { pci_params = params, _loc
+      { pci_params = params, _loc'
       ; pci_variance = variance
       ; pci_virt = virt
       ; pci_name = name
@@ -314,7 +324,7 @@ let next_exp = function
   let pexp_assertfalse _loc = Pexp_assertfalse
   let map_cases cases = List.map (fun (pat, expr, guard) -> 
 			    match guard with None -> (pat, expr)
-					   | Some e -> (pat, loc_expr (merge e.pexp_loc expr.pexp_loc) (Pexp_when(e,expr)))) cases
+					   | Some e -> (pat, loc_expr (merge2 e.pexp_loc expr.pexp_loc) (Pexp_when(e,expr)))) cases
   let pexp_function(cases) =
     Pexp_function("", None, cases)
   let pexp_fun(label, opt, pat, expr) =

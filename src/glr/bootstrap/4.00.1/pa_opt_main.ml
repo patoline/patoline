@@ -13,7 +13,7 @@ let entry =
   | (FromExt ,None ) -> `Top
   | (Intf ,_) -> `Intf Main.signature
   | (Impl ,_) -> `Impl Main.structure
-  | (Top ,_) -> `Top
+  | (Toplvl ,_) -> `Top
 let _ =
   if entry = `Top
   then
