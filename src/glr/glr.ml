@@ -101,12 +101,12 @@ let test blank s str p =
   in
   r
 
-let not_ready name _ = failwith ("not_ready: "^name)
+let not_ready name = failwith ("not_ready: "^name)
 
 let declare_grammar name = {
-  firsts = Lazy.from_fun (not_ready name);
-  firsts_sym = Lazy.from_fun (not_ready name);
-  accept_empty = Lazy.from_fun (not_ready name);
+  firsts = lazy (not_ready name);
+  firsts_sym = lazy (not_ready name);
+  accept_empty = lazy (not_ready name);
   parse = (not_ready name);
 }
 
@@ -179,9 +179,9 @@ let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -
 let eof : 'a -> 'a grammar
   = fun a ->
     let set = singleton '\255' in
-    { firsts = Lazy.from_val set;
-      firsts_sym = Lazy.from_val ["EOF"];
-      accept_empty = Lazy.from_val false;
+    { firsts = lazy set;
+      firsts_sym = lazy ["EOF"];
+      accept_empty = lazy false;
       parse =
 	fun blank str pos next key g ->
 	let str, pos = blank str pos in
@@ -192,18 +192,18 @@ let list_eof : 'a -> 'a list grammar =
   fun x -> eof [x]
 
 let empty : 'a -> 'a grammar = fun a ->
-  { firsts = Lazy.from_val empty_charset;
-    firsts_sym = Lazy.from_val [];
-    accept_empty = Lazy.from_val true;
+  { firsts = lazy empty_charset;
+    firsts_sym = lazy [];
+    accept_empty = lazy true;
     parse = fun blank str pos next key g -> 
 	    single str pos (g str pos str pos a) }
 
 let list_empty x = empty [x]
  
 let debug_aux : 'a -> string -> 'a grammar = fun a msg ->
-  { firsts = Lazy.from_val empty_charset;
-    firsts_sym = Lazy.from_val [];
-    accept_empty = Lazy.from_val true;
+  { firsts = lazy empty_charset;
+    firsts_sym = lazy [];
+    accept_empty = lazy true;
     parse = fun blank str pos next key g ->
 	    let l = line str in
 	    let current = String.sub l pos (min (String.length l - pos) 10) in
@@ -214,9 +214,9 @@ let debug = debug_aux ()
 let list_debug = debug_aux [()]
 
 let fail : string -> 'a grammar = fun msg ->
-  { firsts = Lazy.from_val empty_charset;
-    firsts_sym = Lazy.from_val [];
-    accept_empty =  Lazy.from_val false;
+  { firsts = lazy empty_charset;
+    firsts_sym = lazy [];
+    accept_empty =  lazy false;
     parse = fun blank str pos next key g -> 
 	     parse_error key msg str pos }
 
@@ -224,9 +224,9 @@ let list_fail = fail
 
 let  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar =
   (fun fn set empty msg ->
-   { firsts = Lazy.from_val set;
-    firsts_sym = Lazy.from_val [msg];
-     accept_empty = Lazy.from_val empty;
+   { firsts = lazy set;
+    firsts_sym = lazy [msg];
+     accept_empty = lazy empty;
      parse = fun blank str pos next key g ->
 	     let str, pos = blank str pos in 
 	     let a, str', pos' = try fn str pos with Give_up -> parse_error key msg str pos in
@@ -236,9 +236,9 @@ let char : char -> 'a -> 'a grammar
   = fun s a -> 
     let set = singleton s in
     let s' = String.make 1 s in
-    { firsts = Lazy.from_val set;
-      firsts_sym = Lazy.from_val [s'];
-      accept_empty = Lazy.from_val false;
+    { firsts = lazy set;
+      firsts_sym = lazy [s'];
+      accept_empty = lazy false;
       parse =
 	fun blank str pos next key g ->
 	  let str, pos = blank str pos in
@@ -254,9 +254,9 @@ let string : string -> 'a -> 'a grammar
    let len_s = String.length s in
     if len_s = 0 then failwith "string: illegal empty string";
     let set = singleton s.[0] in
-    { firsts = Lazy.from_val set;
-      firsts_sym = Lazy.from_val [s];
-      accept_empty = Lazy.from_val false;
+    { firsts = lazy set;
+      firsts_sym = lazy [s];
+      accept_empty = lazy false;
       parse =
 	fun blank str pos next key g ->
 	  let str, pos = blank str pos in
@@ -285,9 +285,9 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 	(found := true; addq set (Char.chr i))
     done;
     if not !found then failwith "regexp: illegal empty regexp";
-    { firsts = Lazy.from_val set;
-      firsts_sym = Lazy.from_val [name];
-      accept_empty = Lazy.from_val (Str.string_match r "" 0);
+    { firsts = lazy set;
+      firsts_sym = lazy [name];
+      accept_empty = lazy (Str.string_match r "" 0);
       parse = 
 	fun blank str pos next key g ->
 	let str, pos = blank str pos in
@@ -467,7 +467,7 @@ let change_layout : 'a grammar -> blank -> 'a grammar
     (* if not l1.ready then failwith "change_layout: illegal recursion"; *)
     { firsts = lazy (firsts l1);
       firsts_sym = lazy (firsts_sym l1);
-      accept_empty = Lazy.from_fun (fun () -> accept_empty l1);
+      accept_empty = lazy (accept_empty l1);
       parse =
 	fun blank str pos next key g  ->
   	  let str, pos = blank str pos in
@@ -479,7 +479,7 @@ let option' : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
     { firsts = lazy (firsts l);
       firsts_sym = lazy (firsts_sym l);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  let acc = if test blank next str pos then single str pos (g str pos str pos a) else PosMap.empty in
@@ -497,7 +497,7 @@ let merge_option : ('a -> 'a -> 'a) -> 'a -> 'a grammar -> 'a grammar
     let merge (l, pos, l', pos', a) (_, _, _, _, b) = (l, pos, l', pos', merge a b) in
     { firsts = lazy (firsts l);
       firsts_sym = lazy (firsts_sym l);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  let acc = if test blank next str pos then single str pos (str, pos, str, pos, a) else PosMap.empty in
@@ -518,7 +518,7 @@ let option : 'a -> 'a grammar -> 'a grammar
   = fun a l ->
     { firsts = lazy (firsts l);
       firsts_sym = lazy (firsts_sym l);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  try
@@ -536,7 +536,7 @@ let fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     { firsts = lazy (firsts f1);
       firsts_sym = lazy (firsts_sym f1);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  let next' = union'' f1 next in
@@ -559,7 +559,7 @@ let merge_fixpoint : ('a -> 'a -> 'a) -> 'a -> ('a -> 'a) grammar -> 'a grammar
     let merge (l, pos, l', pos', a) (_, _, _, _, b) = (l, pos, l', pos', merge a b) in
     { firsts = lazy (firsts f1);
       firsts_sym = lazy (firsts_sym f1);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  let next' = union'' f1 next in
@@ -586,7 +586,7 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
   = fun a f1 ->
     { firsts = lazy (firsts f1);
       firsts_sym = lazy (firsts_sym f1);
-      accept_empty = Lazy.from_val true;
+      accept_empty = lazy true;
       parse =
 	fun blank str pos next key g ->
 	  let next' = union'' f1 next in
