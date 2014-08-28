@@ -154,8 +154,12 @@ uninstall:
 	- rm $(BINDIR)/pa_ocaml
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
+	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
 	- cd examples; rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa calc calc_strict text text_opt test_merge
 	- cd html; rm -f *
+
+distclean: clean
+	- rm pa_ocaml pa_ocaml.byt
 
 doc: glr.mli
 	ocamldoc -d html -html glr.mli

@@ -16,6 +16,11 @@ clean: clean-glr
 clean-glr:
 	$(MAKE) -e -C $(GLR_DIR) clean
 
+distclean: distclean-glr
+
+distclean-glr:
+	$(MAKE) -e -C $(GLR_DIR) distclean
+
 $(d)/glr.a: $(d)/glr.cmxa;
 
 install: install-glr
