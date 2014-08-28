@@ -1,9 +1,9 @@
 
-type buffer_aux = { empty: bool; fname : string; lnum : int; length : int; contents : string; mutable next : buffer }
+type buffer_aux = { empty: bool; fname : string; lnum : int; bol:int; length : int; contents : string; mutable next : buffer }
  and buffer = buffer_aux Lazy.t
 
-let rec empty_buffer fname lnum = 
-  let rec res = lazy { empty = true; fname; lnum; length = 0; contents = ""; next = res } in
+let rec empty_buffer fname lnum bol = 
+  let rec res = lazy { empty = true; fname; lnum; bol; length = 0; contents = ""; next = res } in
   res
 
 let is_empty (lazy b) = b.empty
@@ -11,6 +11,8 @@ let is_empty (lazy b) = b.empty
 let fname (lazy b) = b.fname
 
 let line_num (lazy b) = b.lnum
+
+let line_beginning (lazy b) = b.bol
 
 let line (lazy b) = b.contents
 
@@ -87,17 +89,15 @@ let endif_directive =
 
 
 let buffer_from_fun fname get_line data =
-  let rec fn fname active num cont =
+  let rec fn fname active num bol cont =
     begin
       try
 	let num = num + 1 in
 	let line = get_line data in
+	let len = String.length line in
+	let bol' = bol + len + 1 in (* +1 for newline, should be 2 on windows ? *)
 	(fun () -> 
-	 let len = String.length line in
-	 if len = 0 then
-	   fn fname active num cont
-	 else
-	   if line.[0] = '#' then
+	   if len > 0 && line.[0] = '#' then
 	     if Str.string_match line_num_directive line 1 then
 	       let num =
 		 int_of_string (Str.matched_group 1 line)
@@ -105,44 +105,44 @@ let buffer_from_fun fname get_line data =
 	       let fname = 
 		 try Str.matched_group 3 line with Not_found -> fname
 	       in
-	       fn fname active num cont
+	       fn fname active num bol' cont
 	     else if Str.string_match define_directive line 1 then
 	       let macro_name = Str.matched_group 1 line in
 	       let value = Str.matched_group 3 line in
 	       Unix.putenv macro_name value;
-	       fn fname active num cont
+	       fn fname active num bol' cont
 	     else if Str.string_match if_directive line 1 then
 	       let b = test_directive fname num line in
-	       fn fname (b && active) num (fun fname status num ->
+	       fn fname (b && active) num bol' (fun fname status num bol ->
 	       match status with
                | `End_of_file ->
 		  Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
 		  exit 1
-	       | `Endif -> fn fname active num cont
+	       | `Endif -> fn fname active num bol cont
 	       | `Else -> 
-		  fn fname (not b && active) num (fun fname status num ->
+		  fn fname (not b && active) num bol (fun fname status num bol ->
 		  match status with 
 		  | `Else | `End_of_file ->
 		    Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
 		    exit 1
-		  | `Endif -> fn fname active num cont))
+		  | `Endif -> fn fname active num bol cont))
 	     else if Str.string_match else_directive line 1 then
-	       cont fname `Else num
+	       cont fname `Else num bol'
 	     else if Str.string_match endif_directive line 1 then
-	       cont fname `Endif num
+	       cont fname `Endif num bol' 
 	     else if active then
-	       { empty = false; fname; lnum = num; length = len ; contents = line ; 
-		 next = lazy (fn fname active num cont) }
-	     else fn fname active num cont 
+	       { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
+		 next = lazy (fn fname active num bol' cont) }
+	     else fn fname active num  bol' cont
 	   else if active then 
-               { empty = false; fname; lnum = num; length = len ; contents = line ; 
-		 next = lazy (fn fname active num cont) }
-	   else fn fname active num cont)
+               { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
+		 next = lazy (fn fname active num bol' cont) }
+	   else fn fname active num bol' cont)
       with
-	End_of_file -> fun () -> cont fname `End_of_file num
+	End_of_file -> fun () -> cont fname `End_of_file num bol
     end ()
   in
-  lazy (fn fname true 0 (fun fname status line ->
+  lazy (fn fname true 0 0 (fun fname status line bol ->
   match status with
   | `Else ->
      Printf.eprintf "file: %s, extra '#else'" fname;
@@ -151,7 +151,7 @@ let buffer_from_fun fname get_line data =
      Printf.eprintf "file: %s, extra '#endif'" fname;
      exit 1
   | `End_of_file -> 
-     Lazy.force (empty_buffer fname line)))
+     Lazy.force (empty_buffer fname line bol)))
   
 let buffer_from_channel name ch = buffer_from_fun name input_line ch
 

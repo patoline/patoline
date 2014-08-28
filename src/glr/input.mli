@@ -6,7 +6,7 @@ val buffer_from_file : string -> buffer
 
 val buffer_from_string : string -> string -> buffer
 
-val empty_buffer : string -> int -> buffer
+val empty_buffer : string -> int -> int -> buffer
 
 val is_empty : buffer -> bool
 

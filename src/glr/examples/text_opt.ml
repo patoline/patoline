@@ -1,27 +1,31 @@
 open Glr
 
-let blank1 = blank_regexp (Str.regexp "[ \t\r]*\\([\n][ \t\r]*\\)?")
+(* blank_regexp will automatically accept many newlines, so we can't use it to accept
+   at most one .*)
+let blank1 str pos =
+  let rec fn got_newline str pos =
+    let c,str',pos' = Input.read str pos in
+    if c = ' ' || c = '\t' || c = '\r' then fn got_newline str' pos'
+    else if c = '\n' && not got_newline then fn true str' pos'
+    else str, pos
+  in fn false str pos
+
 let blank2 = blank_regexp (Str.regexp "[ \n\t\r]*")
 
 let word_re = "[^ \t\r\n]+"
 
 let paragraph =
   change_layout
-    glr
-      l:{w:RE(word_re)[let w = groupe 0 in fun l -> w::l]}++[[]] -> List.rev l
-    end 
+    (parser
+      l:{w:RE(word_re)[let w = groupe 0 in fun l -> w::l]}+[[]] -> List.rev l)
   blank1
 
 let text =
-    glr
+    parser
       ll:{l:paragraph -> fun ll -> l::ll}*[[]] EOF -> List.rev ll
-    end
 
-let _ =
-      try
-	let l = parse_channel text blank2 stdin in
-	Printf.printf "=> %d paragraphs\n" (List.length l)
-      with
-	Parse_error n -> Printf.fprintf stderr "Parse error after char %d\n%!" n
-      | Ambiguity(n,p) -> Printf.fprintf stderr "Ambiguous expression from %d to %d\n%!" n p
+let _ = handle_exception (fun () ->
+			  let l = parse_channel text blank2 "stdin" stdin in
+			  Printf.printf "=> %d paragraphs\n" (List.length l))
+			 ()
 

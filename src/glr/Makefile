@@ -16,7 +16,7 @@ all: glr.cmxa glr.cma glr.cmi doc pa_ocaml
 %.cmx: %.ml %.cmi
 	$(OCAMLOPT) -c $< 
 
-glr.cmi: charset.cmi
+glr.cmi: charset.cmi input.cmi
 
 glr.cmo: umap.cmi charset.cmi input.cmi
 
@@ -95,14 +95,14 @@ examples/calc_prio.cmx: examples/calc_prio.ml glr.cmxa pa_ocaml
 examples/text: examples/text.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
-examples/text.cmx: examples/text.ml glr.cmxa pa_glr
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+examples/text.cmx: examples/text.ml glr.cmxa pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
 examples/text_opt: examples/text_opt.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
-examples/text_opt.cmx: examples/text_opt.ml glr.cmxa pa_glr
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+examples/text_opt.cmx: examples/text_opt.ml glr.cmxa pa_ocaml
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
 examples/test_merge: examples/test_merge.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
@@ -114,7 +114,7 @@ examples/test_list: examples/test_list.cmx glr.cmxa
 	$(OCAMLOPT) str.cmxa unix.cmxa bigarray.cmxa glr.cmxa $< -o $@
 
 examples/test_list.cmx: examples/test_list.ml glr.cmxa
-	$(OCAMLOPT) -pp ./pa_glr -c $<
+	$(OCAMLOPT) -pp ./pa_ocaml -c $<
 
 #check: examples/calc examples/calc_strict examples/calc_simple examples/text examples/text_opt examples/test_merge examples/test_list
 #	time examples/calc < benchmark/test3.txt

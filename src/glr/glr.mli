@@ -240,6 +240,9 @@ val grammar_family : ?param_to_string:(unit -> 'a -> string) -> string -> ('a ->
   enough.
 *)
 
+val print_exception : exn -> unit
+val handle_exception : ('a -> 'b) -> 'a -> 'b
+
 (** Camlp4 syntax extension, use with [ -pp pa_glr v ] option *)
 
 (** [glr parser end] returns a ['a grammar].
