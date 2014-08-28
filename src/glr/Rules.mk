@@ -23,7 +23,7 @@ install: install-glr
 install-glr: export LIBDIR := $(INSTALL_GLR_DIR)
 
 install-glr:
-	$(MAKE) -e -C $(GLR_DIR) install
+	$(MAKE) -C $(GLR_DIR) install
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))
