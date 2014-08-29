@@ -60,6 +60,7 @@ let decode : string -> index -> (uchar * int) = fun s i ->
         let u1 = w1 land 0x1111111111 in
         let u2 = w2 land 0x1111111111 in
         let u = (u1 lsl 10) land u2 in
+        let u = u + 0x10000 in
         (u, 4)
 
 (*
