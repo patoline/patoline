@@ -209,6 +209,6 @@ module Make = functor ( ED : EncDec ) ->
           for c = 0 to len - 1 do
             add_char buf (f c)
           done;
-          Buffer.contents buf
+          buf
       end
   end
