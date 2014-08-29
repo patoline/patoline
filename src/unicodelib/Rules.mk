@@ -18,7 +18,7 @@ endif
 endif
 
 # Building
-UNICODELIB_MODS:= UTF8
+UNICODELIB_MODS:= UChar UTF8 UTF16
 
 UNICODELIB_ML:=$(addsuffix .ml,$(addprefix $(d)/,$(UNICODELIB_MODS)))
 
