@@ -150,7 +150,7 @@ install: uninstall glr.mli glr.cmxa glr.cma
 	install pa_ocaml $(BINDIR)
 
 uninstall:
-	- ocamlfind -destdir $(LIBDIR) remove glr
+	- ocamlfind remove -destdir $(LIBDIR) glr
 	- rm $(BINDIR)/pa_ocaml
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
