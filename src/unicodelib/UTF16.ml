@@ -15,15 +15,15 @@ type index = int
 let encode : uchar -> string = fun u ->
   if u < 0 || u > 0x10FFFF then
     raise (invalid_arg "UF16.encode")
-  else if u <= 0x10000 then
+  else if u < 0x10000 then
     let s = String.create 2 in
     s.[0] <- char_of_int ((u lsr 8) land 0xFF);
     s.[1] <- char_of_int (u land 0xFF);
     s
   else
     let u' = u - 0x10000 in
-    let w1 = (u' lsr 10) land 0xD800 in
-    let w2 = u' land 0xDC00 in
+    let w1 = ((u' lsr 10) land 0b1111111111) lor 0xD800 in
+    let w2 = (u' land 0b1111111111) lor 0xDC00 in
     let s = String.create 4 in
     s.[0] <- char_of_int ((w1 lsr 8) land 0xFF);
     s.[1] <- char_of_int (w1 land 0xFF);
@@ -59,7 +59,7 @@ let decode : string -> index -> (uchar * int) = fun s i ->
       else
         let u1 = w1 land 0x1111111111 in
         let u2 = w2 land 0x1111111111 in
-        let u = (u1 lsl 10) land u2 in
+        let u = (u1 lsl 10) lor u2 in
         let u = u + 0x10000 in
         (u, 4)
 
