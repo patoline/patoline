@@ -212,7 +212,7 @@ let first : string -> index = fun s ->
 let last : string -> index = fun s ->
   let len = String.length s in
   if len = 0 then
-    raise (invalid_arg "UTF8.first")
+    raise (invalid_arg "UTF8.last")
   else
     prev s len
 
