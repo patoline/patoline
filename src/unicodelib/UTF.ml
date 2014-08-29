@@ -61,20 +61,37 @@ module Make = functor ( ED : EncDec ) ->
       try valid 0 with _ -> false
 
     (*
+     * Fold function on each character of an encoded string.
+     * Argument:
+     *   f   : the fold function,
+     *   ini : the initial value of the accumulator,
+     *   s   : the string.
+     * Returns the content of the accumulator once the full string has been
+     * scanned.
+     *)
+    let fold : ('a -> uchar -> 'a) -> 'a -> string -> 'a = fun f ini s ->
+      if s = "" then
+        ini
+      else
+        let l = String.length s in
+        let rec fold' acc i =
+          if i > l then
+            raise (invalid_arg "UTF.fold")
+          else if i = l then
+            acc
+          else
+            let (u, l) = decode s i in
+            fold' (f acc u) (i + l)
+        in fold' ini 0
+
+    (*
      * Compute the length of an encoded unicode string.
      * Argument:
      *   s : the string (that is supposed to be valid).
      * Returns an int.
      *)
     let length : string -> int = fun s ->
-      let slen = String.length s in
-      let rec len count pos =
-        if pos >= slen then
-          count
-        else
-          let (_, sz) = decode s pos in
-          len (count + 1) (pos + sz)
-      in len 0 0
+      fold (fun i _ -> i + 1) 0 s
 
     (*
      * Compute the index of the n-th unicode character ecoded in a string if
@@ -156,7 +173,7 @@ module Make = functor ( ED : EncDec ) ->
      *)
     let first : string -> index = fun s ->
       if s = "" then
-        raise (invalid_arg "UTF8.first")
+        raise (invalid_arg "UTF.first")
       else 0
 
     (*
@@ -169,7 +186,7 @@ module Make = functor ( ED : EncDec ) ->
     let last : string -> index = fun s ->
       let len = String.length s in
       if len = 0 then
-        raise (invalid_arg "UTF8.last")
+        raise (invalid_arg "UTF.last")
       else
         prev s len
 
@@ -194,6 +211,4 @@ module Make = functor ( ED : EncDec ) ->
           done;
           Buffer.contents buf
       end
-
   end
-
