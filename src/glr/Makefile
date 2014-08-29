@@ -151,7 +151,7 @@ install: uninstall glr.mli glr.cmxa glr.cma
 
 uninstall:
 	- ocamlfind remove -destdir $(LIBDIR) glr
-	- rm $(BINDIR)/pa_ocaml
+	- rm -f $(BINDIR)/pa_ocaml
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
