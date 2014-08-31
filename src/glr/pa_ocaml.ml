@@ -1885,11 +1885,6 @@ let top_phrase =
 
 end
 
-module Final = (val
-		  List.fold_left (fun (module Acc:Extension) (module Ext:FExt) -> 
-                      (module (Ext(Acc)))) (module Initial) (List.rev !extensions_mod))
-  
-module Main = Make(Final)
 
 
 

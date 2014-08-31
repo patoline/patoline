@@ -25,7 +25,7 @@ let memoize2 f =
 
 
 let fast = ref false
-let file = ref None
+let file : string option ref = ref None
 let ascii = ref false
 type entry = FromExt | Impl | Intf | Toplvl
 let entry = ref FromExt
@@ -36,7 +36,7 @@ let modern = ref false
      - val is accepted in structure
   *)
 
-let spec = [
+let spec = ref [
   "--ascii", Arg.Set ascii , "output ascii ast instead of serialized ast" ;
   "--impl", Arg.Unit (fun () -> entry := Impl), "treat file as an implementation" ;
   "--intf", Arg.Unit (fun () -> entry := Intf), "treat file as an interface" ;
@@ -45,8 +45,6 @@ let spec = [
 ]
 
 let anon_fun s = file := Some s
-
-let _ = Arg.parse spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
 
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *

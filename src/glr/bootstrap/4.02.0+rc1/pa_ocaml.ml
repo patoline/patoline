@@ -7956,9 +7956,3 @@ module Make(Initial:Extension) =
                let _loc = merge [_loc__unnamed_0; _loc__unnamed_1] in
                raise Top_Exit)]
   end
-module Final = (val
-  List.fold_left
-    (fun ((module Acc)  : (module Extension)) 
-       ((module Ext)  : (module FExt))  -> (module Ext(Acc))) (module
-    Initial) (List.rev (!extensions_mod)))
-module Main = Make(Final)

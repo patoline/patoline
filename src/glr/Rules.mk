@@ -4,8 +4,11 @@ d := $(if $(d),$(d)/,)$(mod)
 
 all: $(d)/pa_ocaml $(d)/glr.cmxa $(d)/glr.cma
 
+# make pa_ocaml twice to make sure we have .cmo in src/glr.
 $(d)/pa_ocaml:
 	$(MAKE) -e -C $(GLR_DIR) pa_ocaml
+	$(MAKE) -e -C $(GLR_DIR) pa_ocaml
+
 $(d)/glr.cmxa:
 	$(MAKE) -e -C $(GLR_DIR) glr.cmxa
 $(d)/glr.cma:

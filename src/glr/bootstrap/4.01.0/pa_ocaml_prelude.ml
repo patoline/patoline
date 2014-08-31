@@ -16,7 +16,7 @@ let memoize2 f =
       try Hashtbl.find h (x, y)
       with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
 let fast = ref false
-let file = ref None
+let file: string option ref = ref None
 let ascii = ref false
 type entry =
   | FromExt
@@ -26,18 +26,17 @@ type entry =
 let entry = ref FromExt
 let modern = ref false
 let spec =
-  [("--ascii", (Arg.Set ascii), "output ascii ast instead of serialized ast");
-  ("--impl", (Arg.Unit ((fun ()  -> entry := Impl))),
-    "treat file as an implementation");
-  ("--intf", (Arg.Unit ((fun ()  -> entry := Intf))),
-    "treat file as an interface");
-  ("--modern", (Arg.Set modern),
-    "enable \"modern\" extensions/restrictions of ocaml's grammar");
-  ("--unsafe", (Arg.Set fast), "use unsafe function for arrays")]
+  ref
+    [("--ascii", (Arg.Set ascii),
+       "output ascii ast instead of serialized ast");
+    ("--impl", (Arg.Unit ((fun ()  -> entry := Impl))),
+      "treat file as an implementation");
+    ("--intf", (Arg.Unit ((fun ()  -> entry := Intf))),
+      "treat file as an interface");
+    ("--modern", (Arg.Set modern),
+      "enable \"modern\" extensions/restrictions of ocaml's grammar");
+    ("--unsafe", (Arg.Set fast), "use unsafe function for arrays")]
 let anon_fun s = file := (Some s)
-let _ =
-  Arg.parse spec anon_fun
-    (Printf.sprintf "usage: %s [options] file" (Sys.argv.(0)))
 exception Unclosed_comment of int* int
 let print_blank_state ch s =
   let s =

@@ -297,7 +297,7 @@ struct
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
     let y = 1 and x = 0 in
     let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
-    let _loc = merge _loc_p1 _loc_p2 in
+    let _loc = merge2 _loc_p1 _loc_p2 in
     <:expr@_loc<$p1$ @ $(bl p2)$>>
 
   let _ = set_paragraph_basic_text
@@ -308,7 +308,7 @@ struct
 		 | []   -> assert false
 		 | m::l ->
 		    let fn = fun (_loc_m, m) (_loc_p, p) ->
-                      (merge _loc_p _loc_m
+                      (merge2 _loc_p _loc_m
                       , concat_paragraph p _loc_p m _loc_m)
 		    in snd (List.fold_left fn m l)
 	    ) [ true ]
@@ -546,7 +546,7 @@ struct
  * Main program + Command-line argument parsing.                            *
  ****************************************************************************)
 
-  let spec =
+  let _ = spec := !spec @
     [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
        "The driver against which to compile.")
     ; ("--format",  Arg.String (fun f -> patoline_format := f),
@@ -561,11 +561,6 @@ struct
       (".txp", `Impl full_text) ::
 	(".typ", `Impl full_text) ::
 	  (".mlp", `Impl structure ) :: !entry_points
-
-  (* FIXME: combine this with pa_ocaml options parsing *)
-  let _ =
-    let anon_args = ref [] in
-    Arg.parse spec (fun a -> anon_args := a :: !anon_args) "Usage:";
 
 end
 
