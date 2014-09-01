@@ -3,12 +3,14 @@ open Pa_ocaml
 open Glr
 open Format
 
+let anon_fun s = file := Some s
+
+let _ = Arg.parse !spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
+  
 module Final = (val
 		  List.fold_left (fun (module Acc:Extension) (module Ext:FExt) -> 
                       (module (Ext(Acc)))) (module Initial) (List.rev !extensions_mod))
 
-let _ = Arg.parse !spec anon_fun (Printf.sprintf "usage: %s [options] file" Sys.argv.(0)) 
-  
 module Main = Make(Final)
 
 let entry =

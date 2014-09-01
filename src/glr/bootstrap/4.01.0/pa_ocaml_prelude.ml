@@ -36,7 +36,6 @@ let spec =
     ("--modern", (Arg.Set modern),
       "enable \"modern\" extensions/restrictions of ocaml's grammar");
     ("--unsafe", (Arg.Set fast), "use unsafe function for arrays")]
-let anon_fun s = file := (Some s)
 exception Unclosed_comment of int* int
 let print_blank_state ch s =
   let s =
@@ -81,6 +80,8 @@ let blank str pos =
   fn 0 `Ini (str, pos) (str, pos)
 let no_blank str pos = (str, pos)
 let ghost loc = let open Location in { loc with loc_ghost = true }
+let start_pos loc = loc.Location.loc_start
+let end_pos loc = loc.Location.loc_end
 let locate g =
   filter_position g
     (let open Lexing in
@@ -616,16 +617,6 @@ module Initial =
       | First env -> assert false
       | Second env -> env.bool_stack2 <- e :: (env.bool_stack2)
     let quote_expression _loc loc e name =
-      let cols =
-        let n =
-          let open Location in let open Lexing in (_loc.loc_start).pos_cnum in
-        String.make (n + 1) ' ' in
-      let e =
-        ((let open Location in
-            let open Lexing in
-              Printf.sprintf "#%d %S\n%s" ((_loc.loc_start).pos_lnum - 1)
-                (_loc.loc_start).pos_fname) cols)
-          ^ e in
       Stack.push (empty_quote_env1 ()) quote_stack;
       (let _ =
          match name with
@@ -807,62 +798,63 @@ module Initial =
     let cident_re = "[A-Z][a-zA-Z0-9_']*"
     let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
     let reserved_ident =
-      ["and";
-      "as";
-      "assert";
-      "asr";
-      "begin";
-      "class";
-      "constraint";
-      "do";
-      "done";
-      "downto";
-      "else";
-      "end";
-      "exception";
-      "external";
-      "false";
-      "for";
-      "fun";
-      "function";
-      "functor";
-      "if";
-      "in";
-      "include";
-      "inherit";
-      "initializer";
-      "land";
-      "lazy";
-      "let";
-      "lor";
-      "lsl";
-      "lsr";
-      "lxor";
-      "match";
-      "method";
-      "mod";
-      "module";
-      "mutable";
-      "new";
-      "object";
-      "of";
-      "open";
-      "or";
-      "private";
-      "rec";
-      "sig";
-      "struct";
-      "then";
-      "to";
-      "true";
-      "try";
-      "type";
-      "val";
-      "virtual";
-      "when";
-      "while";
-      "with"]
-    let is_reserved_id w = List.mem w reserved_ident
+      ref
+        ["and";
+        "as";
+        "assert";
+        "asr";
+        "begin";
+        "class";
+        "constraint";
+        "do";
+        "done";
+        "downto";
+        "else";
+        "end";
+        "exception";
+        "external";
+        "false";
+        "for";
+        "fun";
+        "function";
+        "functor";
+        "if";
+        "in";
+        "include";
+        "inherit";
+        "initializer";
+        "land";
+        "lazy";
+        "let";
+        "lor";
+        "lsl";
+        "lsr";
+        "lxor";
+        "match";
+        "method";
+        "mod";
+        "module";
+        "mutable";
+        "new";
+        "object";
+        "of";
+        "open";
+        "or";
+        "private";
+        "rec";
+        "sig";
+        "struct";
+        "then";
+        "to";
+        "true";
+        "try";
+        "type";
+        "val";
+        "virtual";
+        "when";
+        "while";
+        "with"]
+    let is_reserved_id w = List.mem w (!reserved_ident)
     let ident =
       Glr.alternatives
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
@@ -908,6 +900,64 @@ module Initial =
                 (Glr.char ':' ()) (fun x  -> x))
              (expression_lvl (next_exp App)) (fun x  -> x)) (Glr.char '$' ())
           (fun x  -> x)]
+    let reserved_symbols =
+      ref
+        ["#";
+        "'";
+        "(";
+        ")";
+        ",";
+        "->";
+        ".";
+        "..";
+        ":";
+        ":>";
+        ";";
+        ";;";
+        "<-";
+        ">]";
+        ">}";
+        "?";
+        "[";
+        "[<";
+        "[>";
+        "[|";
+        "]";
+        "_";
+        "`";
+        "{";
+        "{<";
+        "|";
+        "|]";
+        "}";
+        "~"]
+    let is_reserved_symb s = List.mem s (!reserved_symbols)
+    let infix_symb_re =
+      union_re
+        ["[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
+        "!=";
+        "::";
+        ":=";
+        "mod" ^ "\\b";
+        "land" ^ "\\b";
+        "lor" ^ "\\b";
+        "or" ^ "\\b";
+        "lxor" ^ "\\b";
+        "lsl" ^ "\\b";
+        "lsr" ^ "\\b";
+        "asr" ^ "\\b"]
+    let prefix_symb_re =
+      "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
+    let infix_symbol =
+      Glr.apply (fun sym  -> if is_reserved_symb sym then raise Give_up; sym)
+        (Glr.regexp ~name:"infix_symb" infix_symb_re
+           (fun groupe  -> groupe 0))
+    let prefix_symbol =
+      Glr.apply
+        (fun sym  ->
+           if (is_reserved_symb sym) || (sym = "!=") then raise Give_up; sym)
+        (Glr.regexp ~name:"prefix_symb" prefix_symb_re
+           (fun groupe  -> groupe 0))
     let key_word s =
       let len_s = String.length s in
       assert (len_s > 0);

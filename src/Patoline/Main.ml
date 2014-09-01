@@ -552,8 +552,13 @@ and patoline_rule objects (builddir:string) (hs:string list)=
 	      let source = chg_ext pref ".typ" in
 	      let ch = open_in source in
 	      let opts= add_format (read_options_from_source_file hs ch) in
+	      let format = match opts.formats with
+		  [] -> ""
+		| f::_ -> (* FIXME: what to do with multiple formats ? Compose them ? *)
+		   "--format " ^ f
+	      in
 	      close_in ch;
- 	      source, ["-pp"; "pa_patoline --format "^(List.hd opts.formats)^" --driver "^opts.driver])
+ 	      source, ["-pp"; "pa_patoline " ^ format ^ " --driver " ^ opts.driver])
 	    else
               (chg_ext pref (if is_main then "_.tml" else ".ttml"), [])
           in

@@ -233,35 +233,6 @@ let maybe_opt_label =
   | o:STR("?")? ln:label_name ->
       (if o = None then ln else ("?" ^ ln))
 
-(* Prefix and infix symbols *)
-let reserved_symbols =
-  [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
-  ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`" ; "{" ; "{<" ; "|" ; "|]" ; "}" ; "~" ]
-
-let is_reserved_symb s =
-  List.mem s reserved_symbols
-
-let infix_symb_re  = union_re [
- "[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
- "!="; "::"; ":=";
- "mod" ^ "\\b";
- "land" ^ "\\b";
- "lor" ^ "\\b";
- "or" ^ "\\b";
- "lxor" ^ "\\b";
- "lsl" ^ "\\b";
- "lsr" ^ "\\b";
- "asr" ^ "\\b"]
-let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
-
-let infix_symbol =
-  parser
-    sym:RE(infix_symb_re) -> (if is_reserved_symb sym then raise Give_up; sym)
-
-let prefix_symbol =
-  parser
-    sym:RE(prefix_symb_re) -> (if is_reserved_symb sym || sym = "!=" then raise Give_up; sym)
-
 (****************************************************************************
  * Names                                                                    *
  ****************************************************************************)
@@ -1430,6 +1401,16 @@ let class_definition =
 let module_expr = declare_grammar "module_expr"
 let module_type = declare_grammar "module_type"
 
+let pexp_list _loc ?_loc_cl l =
+  if l = [] then
+    loc_expr _loc (pexp_construct({ txt = Lident "[]"; loc = _loc}, None))
+  else
+    let _loc_cl = match _loc_cl with None -> _loc | Some pos -> pos in
+    List.fold_right (fun (x,pos) acc ->
+		     let _loc = merge2 pos _loc_cl in
+		     loc_expr _loc (pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])))))
+		    l (loc_expr _loc_cl (pexp_construct({ txt = Lident "[]"; loc = _loc_cl}, None)))
+
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   parser
@@ -1488,15 +1469,7 @@ let expression_base = memoize1 (fun lvl ->
   | l:tag_name -> (Atom, loc_expr _loc (Pexp_variant(l,None)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array (List.map fst l)))
   | STR("[") l:expression_list cl:STR("]") ->
-      (if l = [] then
-	(Atom, loc_expr _loc (pexp_construct({ txt = Lident "[]"; loc = _loc}, None)))
-      else
-	let e = List.fold_right (fun (x,pos) acc ->
-				 let _loc = merge2 pos _loc_cl in
-				 loc_expr _loc (pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])))))
-				l (loc_expr _loc_cl (pexp_construct({ txt = Lident "[]"; loc = _loc_cl}, None)))
-	in 
-	(Atom, loc_expr _loc e.pexp_desc))
+	(Atom, loc_expr _loc (pexp_list _loc ~_loc_cl l).pexp_desc)
   | STR("{") e:{e:(expression_lvl (next_exp Seq)) with_kw}? l:record_list STR("}") ->
       (Atom, loc_expr _loc (Pexp_record(l,e)))
   | while_kw e:expression do_kw e':expression done_kw ->
@@ -1525,7 +1498,21 @@ let expression_base = memoize1 (fun lvl ->
 		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
        loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
        (Atom, quote_expression _loc_q loc q name)
-  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> (Atom, push_pop_expression e)
+  | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
+		    STR("list") -> "list" |
+		    STR("array") -> "array" } CHR(':')}? 
+       e:(expression_lvl (next_exp App)) CHR('$') ->
+	 (match t with
+	   None ->
+	   (Atom, push_pop_expression e)
+	 | Some str ->
+	    let l = push_pop_expression_list e in
+	    match str with
+	      "tuple" -> (Atom, loc_expr _loc (Pexp_tuple l))
+	    | "array" -> (Atom, loc_expr _loc (Pexp_array l))
+	    | "list" -> 
+	       let l = List.map (fun x -> x,_loc) l in
+	       (Atom, loc_expr _loc (pexp_list _loc l).pexp_desc))
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
   )

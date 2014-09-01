@@ -8,6 +8,29 @@ open Charset
 open FilenameExtra
 open Pa_ocaml_prelude
 
+(****************************************************************************
+ * Some state information (Driver in use, ...) + Code generation helpers    *
+ ****************************************************************************)
+
+let patoline_format   = ref "DefaultFormat"
+let patoline_driver   = ref "Pdf"
+let patoline_packages = ref ["Typography"]
+
+(****************************************************************************
+ * Command-line argument parsing.                                           *
+ ****************************************************************************)
+
+let _ = spec := !spec @
+		  [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
+		     "The driver against which to compile.")
+		  ; ("--format",  Arg.String (fun f -> patoline_format := f),
+		     "The document format to use.")
+		  ; ("--package", Arg.String (fun p -> let pkgs = p :: !patoline_packages
+						       in patoline_packages := pkgs),
+		     "Package to link.")
+		  ]
+
+
 let _ = parser_locate locate merge
 
 (****************************************************************************
@@ -64,14 +87,6 @@ let pato_blank mline str pos =
 let blank1 = pato_blank false
 let blank2 = pato_blank true
 
-(****************************************************************************
- * Some state information (Driver in use, ...) + Code generation helpers    *
- ****************************************************************************)
-
-let patoline_format   = ref "DefaultFormat"
-let patoline_driver   = ref "Pdf"
-let patoline_packages = ref ["Typography"]
-
 (* Function for geting fresh module names (Uid) *)
 let counter = ref 1
 let freshUid () =
@@ -107,24 +122,42 @@ struct
  * Words.                                                                   *
  ****************************************************************************)
 
-  let char_re    = "[^][ `\t\r\n{}()\\_$|/*#\"]"
-  let escaped_re = "\\\\[][\\$|({)}/*#\"`]"
+  let char_re    = "[^ \t\r\n\\{}()$>]"
+  let escaped_re =     "\\\\[\\{}()$>]"
+  let special_re =             "[()]"
+  let sup_alone = black_box 
+		    (fun str pos ->
+		     let c,str',pos' = read str pos in
+		     if c = '>' then
+		       let c',_,_ = read str' pos' in
+		       if c' = '>' then raise Give_up
+		       else ">", str', pos'
+		     else
+		       raise Give_up)
+		    (Charset.singleton '>') false (">")
+
 
   let character =
     parser
       c:RE(char_re) -> String.escaped c
     | s:RE(escaped_re) ->
 	String.escaped (String.sub s 1 (String.length s - 1))
-		       
+    | {STR("=>") | STR("->")} -> "to reject just after !"
+    | c:sup_alone -> c
+
+  let special = parser
+      s:RE(special_re) -> s
+			       
   let word =
     change_layout (
 	parser
 	  cs:character+ ->
              let w = String.concat "" cs in
              if String.length w >= 2 &&
-		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<"]
+		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>"]
              then raise Give_up;
              w
+	| c:special -> c
       ) no_blank
 		  
   let rec rem_hyphen = function
@@ -230,9 +263,8 @@ struct
     parser
       STR("{") l:(paragraph_basic_text true) STR("}") -> l
     | e:wrapped_caml_expr  -> e
-(* FIXME: need $list:e$ and $array:e$ *)
-  (*  | e:wrapped_caml_array -> e
-  | e:wrapped_caml_list  -> e*)
+    | e:wrapped_caml_array -> $array:e$
+    | e:wrapped_caml_list  -> $list:e$
 
   let lident = "[_a-z][_a-zA-Z0-9']*"
 
@@ -257,7 +289,6 @@ struct
   let text_paragraph_elt allowed =
     parser
       m:macro -> m
-    | l:words -> <:expr@_loc_l<[tT $string:l$]>>
 		   
     | STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
          <:expr@_loc_p<toggleItalic $p$>>
@@ -290,12 +321,12 @@ struct
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle [Maths.Ordinary $m$]))]>>
+    | l:words -> <:expr@_loc_l<[tT $string:l$]>>
+
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
-(* FIXME ... what is the best way ? *)
-(*    let x = _loc_p1.end_pos.lnum  and y = Loc.start_off _loc_p2 in*)
+    let x,y = Lexing.((end_pos _loc_p1).pos_cnum, (start_pos _loc_p2).pos_cnum) in
     (*Printf.fprintf stderr "x: %d, y: %d\n%!" x y;*)
-    let y = 1 and x = 0 in
     let bl e = if y - x >= 1 then <:expr@_loc_p1<tT" "::$e$>> else e in
     let _loc = merge2 _loc_p1 _loc_p2 in
     <:expr@_loc<$p1$ @ $(bl p2)$>>
@@ -341,7 +372,6 @@ struct
     parser
     | verb:verbatim_environment -> (fun _ -> verb)
     | STR("\\Caml") s:wrapped_caml_structure -> (fun _ -> s)
-    | l:paragraph_basic_text -> l
     | STR("\\item") -> (fun _ ->
         (let m1 = freshUid () in
          let m2 = freshUid () in
@@ -376,6 +406,7 @@ struct
                         [bB (fun env0 -> Maths.kdraw
                           [ { env0 with mathStyle = Mathematical.Display } ]
                           [Maths.Ordinary $m$])];;>>)
+    | l:paragraph_basic_text -> l
 
   let _ = set_grammar paragraph (
 			change_layout (
@@ -543,21 +574,36 @@ struct
 			    wrap basename _loc ast
 
 (****************************************************************************
- * Main program + Command-line argument parsing.                            *
+ * Extension to Ocaml's grammar.                                            *
  ****************************************************************************)
 
-  let _ = spec := !spec @
-    [ ("--driver",  Arg.String (fun d -> patoline_driver := d),
-       "The driver against which to compile.")
-    ; ("--format",  Arg.String (fun f -> patoline_format := f),
-       "The document format to use.")
-    ; ("--package", Arg.String (fun p -> let pkgs = p :: !patoline_packages
-					 in patoline_packages := pkgs),
-       "Package to link.")
-    ]
+  let directive =
+    parser
+      CHR('#') n:capitalized_ident a:capitalized_ident ->
+          ((match n with
+             | "FORMAT"  -> patoline_format := a
+             | "DRIVER"  -> patoline_driver := a
+             | "PACKAGE" -> patoline_packages := a :: !patoline_packages;
+             | _ -> raise Give_up);
+          <:structure<>>)
 
-  let _ = 
-    entry_points := 
+  let extra_structure = directive :: extra_structure	    
+
+  let patoline_quotations =
+      parser
+	STR("<<") par:text_only STR(">>") -> Atom, par
+      | STR("<$") mat:math_toplevel STR("$>") -> Atom, mat
+
+  let _ = reserved_symbols := "<<" :: "<$" :: !reserved_symbols
+
+  let extra_expressions = patoline_quotations :: extra_expressions
+
+ (****************************************************************************
+  * Register file extension                                                  *
+  ****************************************************************************)
+
+ let _ = 
+    entry_points:= 
       (".txp", `Impl full_text) ::
 	(".typ", `Impl full_text) ::
 	  (".mlp", `Impl structure ) :: !entry_points

@@ -26,18 +26,18 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -o $@ -linkpkg $(PATOLINE_INCLUDES),threads -thread $(PAT_CMX)
 
-#all: $(PA_PATOLINE)
+all: $(PA_PATOLINE)
 
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr -I +compiler-libs ocamlcommon.cmxa -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx $< \
           $(GLR_DIR)/pa_parser.cmx $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_opt_main.cmx
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/glr.cmxa
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/glr.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,glr -o $@ $< 
 
-$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(GLR_DIR)/pa_ocaml
+$(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package glr,patutil $< > $@
 
@@ -84,16 +84,17 @@ CLEAN += $(d)/*.o $(d)/*.cm[iox] $(d)/Parser.ml $(d)/SubSuper.dyp $(d)/patoline 
 DISTCLEAN += $(d)/*.depends
 
 # Installing
-install: install-patoline-bin install-patoline-lib
+install: install-patoline-bin install-patoline-lib install-pa_patoline
+
 .PHONY: install-patoline-bin install-patoline-lib
 install-patoline-bin: install-bindir $(d)/patoline
 	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 install-patoline-lib: install-typography $(d)/Build.cmi
 	install -m 644 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_TYPOGRAPHY_DIR)
 
-#.PHONY: install-pa_patoline
-#install-pa_patoline: install-patoline-bin $(d)/pa_patoline
-#	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
+.PHONY: install-pa_patoline
+install-pa_patoline: install-patoline-bin $(d)/pa_patoline
+	install -m 755 $(wordlist 2,$(words $^),$^) $(DESTDIR)/$(INSTALL_BIN_DIR)
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

@@ -44,8 +44,6 @@ let spec = ref [
   "--unsafe", Arg.Set fast, "use unsafe function for arrays" ;
 ]
 
-let anon_fun s = file := Some s
-
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
  ****************************************************************************)
@@ -108,6 +106,12 @@ let no_blank str pos = str, pos
 
 let ghost loc =
   Location.({loc with loc_ghost = true})
+
+let start_pos loc =
+  loc.Location.loc_start
+
+let end_pos loc =
+  loc.Location.loc_end
 
 let locate g =
   filter_position g Lexing.(fun fname l bol pos l' bol' pos' ->
@@ -702,11 +706,6 @@ let push_bool e =
 	env.bool_stack2 <- e::env.bool_stack2
 
 let quote_expression _loc loc e name =
-  let cols =
-    let n = Location.(Lexing.(_loc.loc_start.pos_cnum)) in
-    String.make (n+1) ' '
-  in
-  let e = Location.(Lexing.(Printf.sprintf "#%d %S\n%s" (_loc.loc_start.pos_lnum - 1) _loc.loc_start.pos_fname)) cols ^ e in  
   Stack.push (empty_quote_env1 ()) quote_stack ;
   let _ = match name with
     | "expression" -> ignore (parse_string (parser e:expression EOF) blank "quote..." e)
@@ -833,7 +832,7 @@ let lident_re = "\\([a-z][a-zA-Z0-9_']*\\)\\|\\([_][a-zA-Z0-9_']+\\)"
 let cident_re = "[A-Z][a-zA-Z0-9_']*"
 let ident_re = "[A-Za-z_][a-zA-Z0-9_']*"
 
-let reserved_ident =
+let reserved_ident = ref
   [ "and" ; "as" ; "assert" ; "asr" ; "begin" ; "class" ; "constraint" ; "do"
   ; "done" ; "downto" ; "else" ; "end" ; "exception" ; "external" ; "false"
   ; "for" ; "fun" ; "function" ; "functor" ; "if" ; "in" ; "include"
@@ -844,7 +843,7 @@ let reserved_ident =
   ; "while" ; "with" ]
 
 let is_reserved_id w =
-  List.mem w reserved_ident
+  List.mem w !reserved_ident
 
 let ident =
   parser
@@ -860,6 +859,35 @@ let lowercase_ident =
   parser
     id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
   | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
+
+(* Prefix and infix symbols *)
+let reserved_symbols = ref
+  [ "#" ; "'" ; "(" ; ")" ; "," ; "->" ; "." ; ".." ; ":" ; ":>" ; ";" ; ";;" ; "<-"
+  ; ">]" ; ">}" ; "?" ; "[" ; "[<" ; "[>" ; "[|" ; "]" ; "_" ; "`" ; "{" ; "{<" ; "|" ; "|]" ; "}" ; "~" ]
+
+let is_reserved_symb s =
+  List.mem s !reserved_symbols
+
+let infix_symb_re  = union_re [
+ "[=<>@^|&+*/$%-][!$%&*+./:<=>?@^|~-]*";
+ "!="; "::"; ":=";
+ "mod" ^ "\\b";
+ "land" ^ "\\b";
+ "lor" ^ "\\b";
+ "or" ^ "\\b";
+ "lxor" ^ "\\b";
+ "lsl" ^ "\\b";
+ "lsr" ^ "\\b";
+ "asr" ^ "\\b"]
+let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
+
+let infix_symbol =
+  parser
+    sym:RE(infix_symb_re) -> (if is_reserved_symb sym then raise Give_up; sym)
+
+let prefix_symbol =
+  parser
+    sym:RE(prefix_symb_re) -> (if is_reserved_symb sym || sym = "!=" then raise Give_up; sym)
 
 (****************************************************************************
  * Several shortcuts for flags and keywords                                 *

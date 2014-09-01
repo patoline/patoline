@@ -130,13 +130,13 @@ let buffer_from_fun fname get_line data =
 	       cont fname `Else num bol'
 	     else if Str.string_match endif_directive line 1 then
 	       cont fname `Endif num bol' 
-	     else if active then
+	     else if active then (
 	       { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
-		 next = lazy (fn fname active num bol' cont) }
+		 next = lazy (fn fname active num bol' cont) })
 	     else fn fname active num  bol' cont
-	   else if active then 
+	   else if active then (
                { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
-		 next = lazy (fn fname active num bol' cont) }
+		 next = lazy (fn fname active num bol' cont) })
 	   else fn fname active num bol' cont)
       with
 	End_of_file -> fun () -> cont fname `End_of_file num bol
