@@ -124,8 +124,8 @@ let wrap_type_annotation _loc newtypes core_type body =
 
 (* Floating-point literals *)
 let float_lit_dec    = "[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
-let float_lit_no_dec = "[0-9][0-9_]*[eE][+-][0-9][0-9_]*"
-let float_re = union_re [float_lit_dec; float_lit_no_dec]
+let float_lit_no_dec = "[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*"
+let float_re = union_re [float_lit_no_dec; float_lit_dec]
 
 let float_literal =
   parser
@@ -243,8 +243,8 @@ let infix_op =
 
 let operator_name =
   parser
-    op:prefix_symbol -> op
   | op:infix_op      -> op
+  | op:prefix_symbol -> op
 
 let value_name =
   parser
@@ -277,7 +277,7 @@ let module_path_suit_aux = memoize1 (fun allow_app ->
 let _ = set_module_path_suit (fun allow_app ->
     parser
       f:(module_path_suit_aux allow_app) g:(module_path_suit allow_app) -> (fun acc -> g (f acc))
-    else EMPTY -> (fun acc -> acc)
+    | |  EMPTY -> (fun acc -> acc)
     ) [true; false]
 
 let _ = set_module_path_gen (fun allow_app ->
@@ -587,7 +587,17 @@ let typexpr_base : core_type grammar =
       let cp = { txt = cp; loc = _loc_cp } in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
 #endif
-  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_type e
+ | CHR('$') t:{t:{STR("tuple") -> "tuple"}   CHR(':') }? 
+       e:(expression_lvl (next_exp App)) CHR('$') ->
+	 (match t with
+	   None ->
+	   push_pop_type e
+	 | Some str ->
+	    let l = push_pop_type_list e in
+	    match str with
+	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
+	    | _ -> raise Give_up)
+			    
 
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e = loc_typ (merge2 f.ptyp_loc _loc) e in
@@ -902,6 +912,15 @@ let next_pat_prio = function
   | ConstrPat -> AtomPat
   | AtomPat -> AtomPat
 
+let ppat_list _loc l =
+  let nil = { txt = Lident "[]"; loc = _loc } in
+  let cons x xs =
+    let c = { txt = Lident "::"; loc = _loc } in
+    let cons = ppat_construct (c, Some (loc_pat _loc (Ppat_tuple [x;xs]))) in
+    loc_pat _loc cons
+  in
+  List.fold_right cons l (loc_pat _loc (ppat_construct (nil, None)))
+
 let pattern_base = memoize1 (fun lvl ->
   parser
   | e:(alternatives extra_patterns) -> e
@@ -964,13 +983,7 @@ let pattern_base = memoize1 (fun lvl ->
       in
       (AtomPat, loc_pat _loc (Ppat_record (all, cl)))
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
-      let nil = { txt = Lident "[]"; loc = _loc } in
-      let cons x xs =
-        let c = { txt = Lident "::"; loc = _loc } in
-        let cons = ppat_construct (c, Some (loc_pat _loc (Ppat_tuple [x;xs]))) in
-        loc_pat _loc cons
-      in
-      (AtomPat, List.fold_right cons (p::ps) (loc_pat _loc (ppat_construct (nil, None))))
+      (AtomPat, ppat_list _loc (p::ps))
   | STR("[") STR("]") ->
       let nil = { txt = Lident "[]"; loc = _loc } in
       (AtomPat, loc_pat _loc (ppat_construct (nil, None)))
@@ -992,14 +1005,33 @@ let pattern_base = memoize1 (fun lvl ->
                              Ppat_constraint (loc_pat _loc_mn unpack, pt)
       in
       (AtomPat, loc_pat _loc pat)
-  | CHR('$') e:(expression_lvl (next_exp App)) CHR('$') -> (AtomPat, push_pop_pattern e)
- )
+
+  | CHR('$') c:capitalized_ident ->
+     (try let str = Sys.getenv c in
+	  AtomPat, parse_string pattern blank ("ENV:"^c) str
+      with Not_found -> raise Give_up)
+
+  | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
+		    STR("list") -> "list" |
+		    STR("array") -> "array" } CHR(':') }? 
+       e:(expression_lvl (next_exp App)) CHR('$') ->
+	 (match t with
+	   None ->
+	   (AtomPat, push_pop_pattern e)
+	 | Some str ->
+	    let l = push_pop_pattern_list e in
+	    match str with
+	    | "tuple" -> (AtomPat, loc_pat _loc (Ppat_tuple l))
+	    | "array" -> (AtomPat, loc_pat _loc (Ppat_array l))
+	    | "list" -> (AtomPat, ppat_list _loc l)
+	    | _ -> raise Give_up)
+  )
 
 let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern -> pattern)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e = loc_pat (merge2 f.ppat_loc _loc) e in
   parser
   | as_kw vn:value_name when lvl' >= AsPat && lvl <= AsPat ->
-      (AsPat, fun p ->
+      (lvl', fun p ->
         ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
   | STR("|") p':(pattern_lvl (next_pat_prio AltPat)) when lvl' >= AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
@@ -1016,8 +1048,8 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   | STR(":") ids:{STR("'") id:ident}+ STR(".") te:typexpr when lvl' >= AsPat && lvl <= AsPat ->
       (AsPat, fun p -> 
         ln p _loc (Ppat_constraint(p, loc_typ _loc (Ptyp_poly (ids, te)))))
-  | STR(":") ty:typexpr when lvl' >= AsPat && lvl <= AsPat ->
-      (AsPat, fun p -> 
+  | STR(":") ty:typexpr when lvl' >= TopPat && lvl <= TopPat ->
+      (lvl', fun p -> 
         ln p _loc (Ppat_constraint(p, ty)))
   )
 
@@ -1189,7 +1221,7 @@ let right_member =
 
 let _ = set_grammar let_binding (
   parser
-  | pat:(pattern_lvl (next_pat_prio AsPat)) e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
+  | pat:(pattern_lvl AsPat) e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
       (value_binding ~attributes:a (merge2 _loc_pat _loc_e) pat e::l)
   | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
       let pat = loc_pat _loc (Ppat_constraint(
@@ -1498,9 +1530,19 @@ let expression_base = memoize1 (fun lvl ->
 		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
        loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
        (Atom, quote_expression _loc_q loc q name)
+  | CHR('$') c:capitalized_ident -> 
+     Atom, (match c with
+      | "FILE" -> 
+	 loc_expr _loc (Pexp_constant (const_string ((start_pos _loc).Lexing.pos_fname)))
+      | "LINE" ->
+	 loc_expr _loc (Pexp_constant (Const_int ((start_pos _loc).Lexing.pos_lnum)))
+      | _ ->
+	 try let str = Sys.getenv c in
+	     parse_string expression blank ("ENV:"^c) str
+	 with Not_found -> raise Give_up)
   | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |
-		    STR("array") -> "array" } CHR(':')}? 
+		    STR("array") -> "array" } CHR(':') }? 
        e:(expression_lvl (next_exp App)) CHR('$') ->
 	 (match t with
 	   None ->
@@ -1508,11 +1550,12 @@ let expression_base = memoize1 (fun lvl ->
 	 | Some str ->
 	    let l = push_pop_expression_list e in
 	    match str with
-	      "tuple" -> (Atom, loc_expr _loc (Pexp_tuple l))
+	    | "tuple" -> (Atom, loc_expr _loc (Pexp_tuple l))
 	    | "array" -> (Atom, loc_expr _loc (Pexp_array l))
-	    | "list" -> 
+	    | "list" ->   
 	       let l = List.map (fun x -> x,_loc) l in
-	       (Atom, loc_expr _loc (pexp_list _loc l).pexp_desc))
+	       (Atom, loc_expr _loc (pexp_list _loc l).pexp_desc)
+	    | _ -> raise Give_up)
   | p:prefix_symbol ->> let lvl' = prefix_prio p in e:(expression_lvl lvl') when lvl <= lvl' -> 
      (lvl', mk_unary_opp p _loc_p e _loc_e)
   )

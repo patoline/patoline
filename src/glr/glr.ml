@@ -209,7 +209,7 @@ let debug_aux : 'a -> string -> 'a grammar = fun a msg ->
     parse = fun blank str pos next key g ->
 	    let l = line str in
 	    let current = String.sub l pos (min (String.length l - pos) 10) in
-	    Printf.eprintf "%s(%d,%d): %S\n" msg (line_num str) pos current;
+	    Printf.eprintf "%s(%d,%d): %S %a\n" msg (line_num str) pos current print_charset next;
 	    single str pos (g str pos str pos a) }
 
 let debug = debug_aux ()
@@ -599,9 +599,11 @@ let fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 		 fun () -> fn acc r
 	       with 
 		 Give_up ->
-		 if test blank next str' pos' then (fun () -> single str' pos' (g str pos str' pos' a)) else raise Give_up) ()) la acc
+		 if test blank next str' pos' then (fun () -> single str' pos' (g str pos str' pos' a)) else fun () -> acc) ()) la acc
 	  in
-	  fn PosMap.empty (single str pos a)
+	  let res = fn PosMap.empty (single str pos a) in
+	  if res = PosMap.empty then raise Give_up;
+	  res
     }
 
 let list_fixpoint : 'a -> ('a -> 'a) list grammar -> 'a list grammar

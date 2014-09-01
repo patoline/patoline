@@ -708,7 +708,7 @@ let push_bool e =
 let quote_expression _loc loc e name =
   Stack.push (empty_quote_env1 ()) quote_stack ;
   let _ = match name with
-    | "expression" -> ignore (parse_string (parser e:expression EOF) blank "quote..." e)
+    | "expression" -> ignore (parse_string expression blank "quote..." e)
     | "type"  -> ignore (parse_string typexpr blank "quote..." e)
     | "pattern"  -> ignore (parse_string pattern blank "quote..." e)
     | "str_item"  -> ignore (parse_string structure_item blank "quote..." e)
@@ -879,7 +879,7 @@ let infix_symb_re  = union_re [
  "lsl" ^ "\\b";
  "lsr" ^ "\\b";
  "asr" ^ "\\b"]
-let prefix_symb_re = "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
+let prefix_symb_re = "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\([-+][.]?\\)"
 
 let infix_symbol =
   parser

@@ -27,7 +27,7 @@ let line_num_directive =
   Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]*\\)[\"]\\)?[ \t]*$"
 
 let define_directive =
-  Str.regexp "[ \t]*if[ \t]*def[ \t]*\\([^ \t]\\)[ \t]*\\([\"]\\([^\"]\\)[\"]\\)[ \t]*"
+  Str.regexp "[ \t]*define[ \t]*\\([^ \t]*\\)[ \t]*\\([^ \n\t\r]*\\)[ \t]*"
 
 let if_directive =
   Str.regexp "[ \t]*if"
@@ -36,7 +36,7 @@ let ifdef_directive =
   Str.regexp "[ \t]*if[ \t]*def[ \t]*\\([^ \t]*\\)[ \t]*"
 
 let ifundef_directive =
-  Str.regexp "[ \t]*if[ \t]*undef[ \t]*\\([^ \t]*\\)[ \t]*"
+  Str.regexp "[ \t]*if[ \t]*ndef[ \t]*\\([^ \t]*\\)[ \t]*"
 
 let ifversion_directive =
   Str.regexp "[ \t]*if[ \t]*version[ \t]*\\([<>=]*\\)[ \t]*\\([0-9]+\\)[.]\\([0-9]+\\)[ \t]*"
@@ -108,7 +108,7 @@ let buffer_from_fun fname get_line data =
 	       fn fname active num bol' cont
 	     else if Str.string_match define_directive line 1 then
 	       let macro_name = Str.matched_group 1 line in
-	       let value = Str.matched_group 3 line in
+	       let value = Str.matched_group 2 line in
 	       Unix.putenv macro_name value;
 	       fn fname active num bol' cont
 	     else if Str.string_match if_directive line 1 then

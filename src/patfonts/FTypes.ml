@@ -23,7 +23,7 @@ type name =
     mutable subfamily_name  : string
   }
 
-exception Glyph_not_found of (string*string)
+exception Glyph_not_found of string*string
 
 
 open UsualMake

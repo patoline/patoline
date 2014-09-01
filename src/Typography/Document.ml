@@ -1147,7 +1147,7 @@ let gl_of_str env string=
       env.fontColor
       (env.word_substitutions string)
   with
-      Glyph_not_found g -> []
+      Glyph_not_found _ -> []
 
 (**/**)
 let append buf nbuf x=

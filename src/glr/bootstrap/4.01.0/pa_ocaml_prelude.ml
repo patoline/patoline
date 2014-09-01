@@ -621,10 +621,7 @@ module Initial =
       (let _ =
          match name with
          | "expression" ->
-             ignore
-               (parse_string
-                  (Glr.sequence expression (Glr.eof ())
-                     (fun e  -> fun _unnamed_1  -> e)) blank "quote..." e)
+             ignore (parse_string expression blank "quote..." e)
          | "type" -> ignore (parse_string typexpr blank "quote..." e)
          | "pattern" -> ignore (parse_string pattern blank "quote..." e)
          | "str_item" ->
@@ -947,7 +944,7 @@ module Initial =
         "lsr" ^ "\\b";
         "asr" ^ "\\b"]
     let prefix_symb_re =
-      "\\([!-][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\(+[.]?\\)"
+      "\\([!][!$%&*+./:<=>?@^|~-]*\\)\\|\\([~?][!$%&*+./:<=>?@^|~-]+\\)\\|\\([-+][.]?\\)"
     let infix_symbol =
       Glr.apply (fun sym  -> if is_reserved_symb sym then raise Give_up; sym)
         (Glr.regexp ~name:"infix_symb" infix_symb_re

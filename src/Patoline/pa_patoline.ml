@@ -116,7 +116,7 @@ struct
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
     parser
-    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] STR("|]") -> Array.of_list l
+    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] STR("|]") -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -263,8 +263,8 @@ struct
     parser
       STR("{") l:(paragraph_basic_text true) STR("}") -> l
     | e:wrapped_caml_expr  -> e
-    | e:wrapped_caml_array -> $array:e$
-    | e:wrapped_caml_list  -> $list:e$
+    | e:wrapped_caml_array -> <:expr<$array:e$>>
+    | e:wrapped_caml_list  -> <:expr<$list:e$>>
 
   let lident = "[_a-z][_a-zA-Z0-9']*"
 
@@ -295,12 +295,10 @@ struct
     | STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
          <:expr@_loc_p<bold $p$>>
     | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
-    (*
     | STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
          <:expr@_loc_p<underline $p$>>
     | STR("--") p:(paragraph_basic_text false) _e:STR("--") when allowed ->
          <:expr@_loc_p<strike $p$>>
-    *)
 
     | v:verbatim_sharp -> <:expr@_loc_v<$v$>>
     | STR("||") p:(paragraph_basic_text false) _e:STR("||") when allowed ->
