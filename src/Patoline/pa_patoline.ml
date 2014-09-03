@@ -608,4 +608,4 @@ struct
 
 end
 
-let _ = register_extension (module Ext)
+let _ = register_extension (module Ext : FExt)

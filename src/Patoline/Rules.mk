@@ -28,18 +28,31 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
+OCAMLVERSION=$(shell $(OCAMLC) -version)
+
+ifeq ($(OCAMLVERSION),3.12.1)
+COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
+COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo
+else
+COMPILER_INC = -I +compiler-libs
+COMPILER_LIBS = ocamlcommon.cma
+endif
+
+COMPILER_LIBO := $(COMPILER_LIBS:.cma=.cmxa)
+COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
+
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
-	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr -I +compiler-libs ocamlcommon.cmxa -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx $< \
+	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr $(COMPILER_INC) $(COMPILER_LIBO) -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx $< \
           $(GLR_DIR)/pa_parser.cmx $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_compose.cmx $(GLR_DIR)/pa_opt_main.cmx
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/glr.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,glr -o $@ $< 
+	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,glr -I $(GLR_DIR) $(COMPILER_INC) -o $@ $< 
 
 $(d)/pa_patoline.ml.depends: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/pa_ocaml
 	$(ECHO) "[OPT]    $< -> $@"
-	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package glr,patutil $< > $@
+	$(Q)$(OCAMLDEP) -pp $(PA_OCAML) -package patutil,glr -I $(GLR_DIR) $< > $@
 
 #$(d)/patolineGL: $(UTIL_DIR)/util.cmxa $(TYPOGRAPHY_DIR)/Typography.cmxa $(DRIVERS_DIR)/DriverGL/DriverGL.cmxa $(d)/PatolineGL.ml
 #	$(ECHO) "[OPT]    $(lastword $^) -> $@"
