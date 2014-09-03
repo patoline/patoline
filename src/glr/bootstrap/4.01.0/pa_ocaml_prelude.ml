@@ -255,14 +255,15 @@ module Initial =
       { ptyp_desc = typ; ptyp_loc = _loc }
     let pctf_loc ?(attributes= [])  _loc desc =
       { pctf_desc = desc; pctf_loc = _loc }
-    let pcty_loc ?(attributes= [])  _loc desc =
-      { pcty_desc = desc; pcty_loc = _loc }
     let loc_pcf ?(attributes= [])  _loc desc =
       { pcf_desc = desc; pcf_loc = _loc }
+    let pcty_loc ?(attributes= [])  _loc desc =
+      { pcty_desc = desc; pcty_loc = _loc }
     let mexpr_loc ?(attributes= [])  _loc desc =
       { pmod_desc = desc; pmod_loc = _loc }
     let mtyp_loc ?(attributes= [])  _loc desc =
       { pmty_desc = desc; pmty_loc = _loc }
+    let id_loc txt loc = { txt; loc }
     let const_string s = Const_string s
     let constructor_declaration _loc name args res = (name, args, res, _loc)
     let label_declaration _loc name mut ty = (name, mut, ty, _loc)
@@ -280,9 +281,7 @@ module Initial =
     let class_type_declaration _loc' _loc name params virt expr =
       let (params,variance) = List.split params in
       let params =
-        List.map
-          (function | None  -> { txt = ""; loc = _loc' } | Some x -> x)
-          params in
+        List.map (function | None  -> id_loc "" _loc' | Some x -> x) params in
       {
         pci_params = (params, _loc');
         pci_variance = variance;
@@ -639,34 +638,26 @@ module Initial =
          loc_expr _loc
            (Pexp_apply
               ((loc_expr _loc
-                  (Pexp_ident
-                     { txt = (Ldot ((Lident "Stack"), "push")); loc = _loc })),
+                  (Pexp_ident (id_loc (Ldot ((Lident "Stack"), "push")) _loc))),
                 [("",
                    (loc_expr _loc
                       (Pexp_apply
                          ((loc_expr _loc
                              (Pexp_ident
-                                {
-                                  txt =
-                                    (Ldot
-                                       ((Lident "Pa_ocaml_prelude"),
-                                         "empty_quote_env2"));
-                                  loc = _loc
-                                })),
+                                (id_loc
+                                   (Ldot
+                                      ((Lident "Pa_ocaml_prelude"),
+                                        "empty_quote_env2")) _loc))),
                            [("",
                               (loc_expr _loc
                                  (pexp_construct
-                                    ({ txt = (Lident "()"); loc = _loc },
-                                      None))))]))));
+                                    ((id_loc (Lident "()") _loc), None))))]))));
                 ("",
                   (loc_expr _loc
                      (Pexp_ident
-                        {
-                          txt =
-                            (Ldot
-                               ((Lident "Pa_ocaml_prelude"), "quote_stack"));
-                          loc = _loc
-                        })))])) in
+                        (id_loc
+                           (Ldot ((Lident "Pa_ocaml_prelude"), "quote_stack"))
+                           _loc))))])) in
        let fill push_expr name l =
          let p =
            List.fold_left
@@ -677,11 +668,9 @@ module Initial =
                       (Pexp_apply
                          ((loc_expr _loc
                              (Pexp_ident
-                                {
-                                  txt =
-                                    (Ldot ((Lident "Pa_ocaml_prelude"), name));
-                                  loc = _loc
-                                })), [("", e)])) in
+                                (id_loc
+                                   (Ldot ((Lident "Pa_ocaml_prelude"), name))
+                                   _loc))), [("", e)])) in
                   match acc with
                   | None  -> Some push_e
                   | Some acc ->
@@ -711,27 +700,20 @@ module Initial =
        let pop_expr =
          loc_expr _loc
            (Pexp_apply
-              ((loc_expr _loc
-                  (Pexp_ident { txt = (Lident "ignore"); loc = _loc })),
+              ((loc_expr _loc (Pexp_ident (id_loc (Lident "ignore") _loc))),
                 [("",
                    (loc_expr _loc
                       (Pexp_apply
                          ((loc_expr _loc
                              (Pexp_ident
-                                {
-                                  txt = (Ldot ((Lident "Stack"), "pop"));
-                                  loc = _loc
-                                })),
+                                (id_loc (Ldot ((Lident "Stack"), "pop")) _loc))),
                            [("",
                               (loc_expr _loc
                                  (Pexp_ident
-                                    {
-                                      txt =
-                                        (Ldot
-                                           ((Lident "Pa_ocaml_prelude"),
-                                             "quote_stack"));
-                                      loc = _loc
-                                    })))]))))])) in
+                                    (id_loc
+                                       (Ldot
+                                          ((Lident "Pa_ocaml_prelude"),
+                                            "quote_stack")) _loc))))]))))])) in
        let args =
          match loc with
          | None  -> [("", (loc_expr _loc (Pexp_constant (const_string e))))]
@@ -743,13 +725,10 @@ module Initial =
            (Pexp_apply
               ((loc_expr _loc
                   (Pexp_ident
-                     {
-                       txt =
-                         (Ldot
-                            ((Lident "Pa_ocaml_prelude"),
-                              ("quote_" ^ (name ^ "_2"))));
-                       loc = _loc
-                     })), args)) in
+                     (id_loc
+                        (Ldot
+                           ((Lident "Pa_ocaml_prelude"),
+                             ("quote_" ^ (name ^ "_2")))) _loc))), args)) in
        loc_expr _loc
          (Pexp_sequence
             (push_expr,
@@ -757,16 +736,14 @@ module Initial =
                  (Pexp_let
                     (Nonrecursive,
                       [value_binding _loc
-                         (loc_pat _loc
-                            (Ppat_var { txt = "quote_res"; loc = _loc }))
+                         (loc_pat _loc (Ppat_var (id_loc "quote_res" _loc)))
                          parse_expr],
                       (loc_expr _loc
                          (Pexp_sequence
                             (pop_expr,
                               (loc_expr _loc
                                  (Pexp_ident
-                                    { txt = (Lident "quote_res"); loc = _loc
-                                    })))))))))))
+                                    (id_loc (Lident "quote_res") _loc))))))))))))
     let quote_expression_2 ?loc  e =
       let res = parse_string expression blank "quote..." e in
       match loc with | None  -> res | Some loc -> loc_expr loc res.pexp_desc

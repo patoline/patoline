@@ -35,14 +35,15 @@ let mk_unary_opp name _loc_name arg _loc_arg =
     | "+", Pexp_constant(Const_nativeint _)
     | ("+" | "+."), Pexp_constant(Const_float _) -> arg.pexp_desc
     | ("-" | "-." | "+" | "+."), _ ->
-       let p = loc_expr _loc_name (Pexp_ident { txt = Lident ("~" ^ name); loc = _loc_name}) in
+       let p = loc_expr _loc_name (Pexp_ident (id_loc (Lident ("~" ^ name)) _loc_name)) in
        Pexp_apply(p, ["", arg])
     | _ ->
-       let p = loc_expr _loc_name (Pexp_ident { txt = Lident (name); loc = _loc_name}) in
+       let p = loc_expr _loc_name (Pexp_ident (id_loc (Lident (name)) _loc_name)) in
        Pexp_apply(p, ["", arg])
   in
   loc_expr (merge2 _loc_name _loc_arg) res
 
+#ifversion >= 4.00
 let check_variable vl loc v =
   if List.mem v vl then
     raise Syntaxerr.(Error(Variable_in_scope(loc,v)))
@@ -58,7 +59,11 @@ let varify_constructors var_names t =
       | Ptyp_arrow (label,core_type,core_type') ->
           Ptyp_arrow(label, loop core_type, loop core_type')
       | Ptyp_tuple lst -> Ptyp_tuple (List.map loop lst)
+#ifversion >= 4.00
       | Ptyp_constr( { txt = Lident s }, []) when List.mem s var_names ->
+#else
+      | Ptyp_constr( Lident s, []) when List.mem s var_names ->
+#endif
           Ptyp_var s
       | Ptyp_constr(longident, lst) ->
           Ptyp_constr(longident, List.map loop lst)
@@ -121,6 +126,7 @@ let wrap_type_annotation _loc newtypes core_type body =
       newtypes exp
   in
   (exp, loc_typ _loc (Ptyp_poly(newtypes,varify_constructors newtypes core_type)))
+#endif
 
 (* Floating-point literals *)
 let float_lit_dec    = "[0-9][0-9_]*[.][0-9_]*\\([eE][+-][0-9][0-9_]*\\)?"
@@ -365,7 +371,7 @@ let override_flag =
 let attr_id =
   parser
   | id:RE(ident_re) l:{ CHR('.') id:RE(ident_re)}* ->
-      { txt = String.concat "." (id::l); loc = _loc }
+      id_loc (String.concat "." (id::l)) _loc
 
 #ifversion < 4.02
 type attr =
@@ -512,15 +518,19 @@ let polymorphic_variant_type : core_type grammar =
 
 let package_constraint =
   parser
+#ifversion >= 4.00
   | type_kw tc:typeconstr CHR('=') te:typexpr ->
-      let tc = { txt = tc; loc = _loc_tc } in
+#else
+  | type_kw tc:capitalized_ident CHR('=') te:typexpr ->
+#endif
+      let tc = id_loc tc _loc_tc in
       (tc, te)
 
 let package_type =
   parser
   | mtp:modtype_path cs:{with_kw pc:package_constraint
     pcs:{and_kw pc:package_constraint}* -> (pc::pcs)}?[[]] ->
-      let mtp = { txt = mtp; loc = _loc_mtp } in
+      let mtp = id_loc mtp _loc_mtp in
       Ptyp_package (mtp, cs)
 
 let opt_present =
@@ -530,7 +540,7 @@ let opt_present =
 
 let mkoption loc d =
   let loc = ghost loc in 
-  loc_typ loc (Ptyp_constr({ txt = Ldot (Lident "*predef*", "option"); loc = loc},[d]))
+  loc_typ loc (Ptyp_constr(id_loc (Ldot (Lident "*predef*", "option")) loc,[d]))
 
 let typexpr_base : core_type grammar =
   parser
@@ -548,9 +558,9 @@ let typexpr_base : core_type grammar =
   | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow (ln, te, te'))
   | tc:typeconstr ->
-      loc_typ _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, []))
+      loc_typ _loc (Ptyp_constr (id_loc tc _loc_tc, []))
   | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")") tc:typeconstr ->
-      let constr = { txt = tc ; loc = _loc_tc } in
+      let constr = id_loc tc _loc_tc in
       loc_typ _loc (Ptyp_constr (constr, te::tes))
   | pvt:polymorphic_variant_type -> pvt
   | STR("<") rv:STR("..")? STR(">") ->
@@ -572,19 +582,19 @@ let typexpr_base : core_type grammar =
 #endif
 #ifversion >= 4.02
   | STR("#") cp:class_path ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, []))
   | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")")
     STR("#") cp:class_path ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, te::tes))
 #else
   | STR("#") cp:class_path o:opt_present ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, [], o))
   | STR("(") te:typexpr tes:{STR(",") te:typexpr}* STR(")")
     STR("#") cp:class_path  o:opt_present ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_typ _loc (Ptyp_class (cp, te::tes, o))
 #endif
  | CHR('$') t:{t:{STR("tuple") -> "tuple"}   CHR(':') }? 
@@ -607,18 +617,18 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core
   | tes:{STR("*") te:(typexpr_lvl (next_type_prio ProdType))}+  when lvl' > ProdType && lvl <= ProdType->
       (ProdType, fun te -> ln te _loc (Ptyp_tuple (te::tes)))
   | tc:typeconstr when lvl' >= AppType && lvl <= AppType ->
-      (AppType, fun te -> ln te _loc (Ptyp_constr ({ txt = tc; loc = _loc_tc }, [te])))
+      (AppType, fun te -> ln te _loc (Ptyp_constr (id_loc tc _loc_tc, [te])))
   | as_kw STR("'") id:ident when lvl' >= As && lvl <= As ->
       (As, fun te -> ln te _loc (Ptyp_alias (te, id)))
 #ifversion >= 4.02
   | STR("#") cp:class_path when lvl' >= DashType && lvl <= DashType ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       let tex = fun te ->
         ln te _loc (Ptyp_class (cp, [te]))
       in (DashType, tex)
 #else
   | STR("#") cp:class_path o:opt_present when lvl' >= DashType && lvl <= DashType ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       let tex = fun te ->
         ln te _loc (Ptyp_class (cp, [te], o))
       in (DashType, tex)
@@ -650,7 +660,7 @@ let _ = set_typexpr_lvl (fun lvl ->
 let type_param =
   parser
   | var:opt_variance CHR('\'') id:ident ->
-      (Some { txt = id; loc = _loc_id }, var)
+      (Some (id_loc id _loc_id), var)
   | var:opt_variance CHR('_') ->
       (None, var)
 
@@ -683,15 +693,18 @@ let constr_decl =
 				| Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
 				| Some t -> [t]
 			      in (tes, None)
+#ifversion >= 4.00
 			    | CHR(':') ats:{te:(typexpr_lvl (next_type_prio ProdType)) tes:{CHR('*') te:(typexpr_lvl (next_type_prio ProdType))}*
-							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)}
-	    -> (let c = { txt = cn; loc = _loc_cn } in
+							     STR("->") -> (te::tes)}?[[]] te:typexpr -> (ats, Some te)
+#endif
+                            }
+	    -> (let c = id_loc cn _loc_cn in
 	        constructor_declaration _loc c tes te)
 
 let field_decl =
   parser
   | m:mutable_flag fn:field_name STR(":") pte:poly_typexpr ->
-      label_declaration _loc { txt = fn; loc = _loc_fn } m pte
+      label_declaration _loc (id_loc fn _loc_fn) m pte
 
 let type_representation =
   parser
@@ -712,7 +725,7 @@ let type_information =
       in
       (pri, te, tkind, cstrs)
 
-let typedef_gen : ' a Glr.grammar -> ('a -> string) -> ('a loc * type_declaration) Glr.grammar = (fun constr filter ->
+let typedef_gen = (fun constr filter ->
   parser
   | tps:type_params?[[]] tcn:constr ti:type_information ->
       let (pri, te, tkind, cstrs) = ti in
@@ -723,8 +736,12 @@ let typedef_gen : ' a Glr.grammar -> ('a -> string) -> ('a loc * type_declaratio
 	   Private, Some te
 	| Some(_, te) -> pri, Some te
       in
-      { txt = tcn; loc = _loc_tcn }, 
-         type_declaration _loc { txt = filter tcn; loc = _loc_tcn }
+#ifversion < 4.00
+      let tps = List.map (function
+			     (Some s, t) -> s,t | None, _ -> raise Give_up) tps in
+#endif
+      id_loc tcn _loc_tcn, 
+         type_declaration _loc (id_loc (filter tcn) _loc_tcn)
 	   tps cstrs tkind pri te
    )
 
@@ -745,14 +762,14 @@ let exception_declaration =
         | None   -> []
         | Some { ptyp_desc = Ptyp_tuple tes; ptyp_loc = _ } -> tes
         | Some t -> [t]
-      in ({ txt = cn; loc = _loc_cn }, tes, merge2 _loc_cn _loc_te))
+      in (id_loc cn _loc_cn, tes, merge2 _loc_cn _loc_te))
 
 (* Exception definition *)
 let exception_definition =
   parser
   | exception_kw cn:constr_name CHR('=') c:constr ->
-      (let name = { txt = cn; loc = _loc_cn } in
-      let ex = { txt = c; loc = _loc_c } in
+      (let name = id_loc cn _loc_cn in
+      let ex = id_loc c _loc_c in
 #ifversion >= 4.02
        (Str.exception_ ~loc:_loc (Te.rebind ~loc:(merge2 _loc_cn _loc_c) name ex))).pstr_desc
 #else
@@ -791,21 +808,38 @@ let _ = set_grammar class_field_spec (
       pctf_loc _loc (Pctf_inher cbt)
 #endif
   | val_kw (vir,mut):virt_mut ivn:inst_var_name STR(":") te:typexpr ->
+#ifversion >= 4.00
       pctf_loc _loc (Pctf_val (ivn, mut, vir, te))
+#else
+      Pctf_val (ivn, mut, vir, te, _loc)
+#endif
   | method_kw (v,pri):virt_priv mn:method_name STR(":") te:poly_typexpr ->
 #ifversion >= 4.02
         pctf_loc _loc (Pctf_method (mn, pri, v, te))
 #else
       (if v = Concrete then
+#ifversion >= 4.00
         pctf_loc _loc (Pctf_meth (mn, pri, te))
+#else
+        Pctf_meth (mn, pri, te, _loc)
+#endif
       else
-        pctf_loc _loc (Pctf_virt (mn, pri, te)))
+#ifversion >= 4.00
+        pctf_loc _loc (Pctf_virt (mn, pri, te))
+#else
+        Pctf_virt (mn, pri, te, _loc)
+#endif
+		    )
 #endif
   | constraint_kw te:typexpr CHR('=') te':typexpr ->
 #ifversion >= 4.02
       pctf_loc _loc (Pctf_constraint (te, te'))
 #else
+#ifversion >= 4.00
       pctf_loc _loc (Pctf_cstr (te, te'))
+#else
+      Pctf_cstr (te, te',_loc)
+#endif
 #endif
   )
 
@@ -818,17 +852,21 @@ let _ = set_grammar class_body_type (
                  | Some t -> t
       in
       let sign =
+#ifversion < 4.00
+	(self, cfs)
+#else
         { pcsig_self = self
         ; pcsig_fields = cfs
 #ifversion <= 4.01
         ; pcsig_loc = merge2 _loc_te _loc_cfs
 #endif
         }
+#endif
       in
       pcty_loc _loc (Pcty_signature sign)
   | tes:{STR("[") te:typexpr tes:{STR(",") te:typexpr}*
     STR("]") -> (te::tes)}?[[]] ctp:classtype_path ->
-      let ctp = { txt = ctp; loc = _loc_ctp } in
+      let ctp = id_loc ctp _loc_ctp in
       pcty_loc _loc (Pcty_constr (ctp, tes))
   )
 
@@ -857,7 +895,7 @@ let class_spec =
   parser
   | v:virtual_flag params:{STR("[") params:type_parameters STR("]")}?[[]]
     cn:class_name STR(":") ct:class_type ->
-      class_type_declaration _loc_params _loc { txt = cn; loc = _loc_cn } params v ct
+      class_type_declaration _loc_params _loc (id_loc cn _loc_cn) params v ct
 
 let class_specification =
   parser
@@ -868,7 +906,7 @@ let classtype_def =
   parser
   | v:virtual_flag params:{STR("[") tp:type_parameters STR("]")}?[[]] cn:class_name
     CHR('=') cbt:class_body_type ->
-      class_type_declaration _loc_params _loc { txt = cn; loc = _loc_cn } params v cbt
+      class_type_declaration _loc_params _loc (id_loc cn _loc_cn) params v cbt
 
 let classtype_definition =
   parser
@@ -913,9 +951,9 @@ let next_pat_prio = function
   | AtomPat -> AtomPat
 
 let ppat_list _loc l =
-  let nil = { txt = Lident "[]"; loc = _loc } in
+  let nil = id_loc (Lident "[]") _loc in
   let cons x xs =
-    let c = { txt = Lident "::"; loc = _loc } in
+    let c = id_loc (Lident "::") _loc in
     let cons = ppat_construct (c, Some (loc_pat _loc (Ppat_tuple [x;xs]))) in
     loc_pat _loc cons
   in
@@ -925,7 +963,7 @@ let pattern_base = memoize1 (fun lvl ->
   parser
   | e:(alternatives extra_patterns) -> e
   | vn:value_name ->
-      (AtomPat, loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }))
+      (AtomPat, loc_pat _loc (Ppat_var (id_loc vn _loc_vn)))
   | STR("_") ->
       (AtomPat, loc_pat _loc Ppat_any)
   | c1:char_literal STR("..") c2:char_literal ->
@@ -950,31 +988,39 @@ let pattern_base = memoize1 (fun lvl ->
       let ast = Ppat_lazy(p) in
       (ConstrPat, loc_pat _loc ast)
   | c:constr p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
-      let ast = ppat_construct({ txt = c; loc = _loc_c }, Some p) in
+      let ast = ppat_construct(id_loc c _loc_c, Some p) in
       (ConstrPat, loc_pat _loc ast)
   | c:constr ->
-      let ast = ppat_construct({ txt = c; loc = _loc_c }, None) in
+      let ast = ppat_construct(id_loc c _loc_c, None) in
       (AtomPat, loc_pat _loc ast)
   | b:bool_lit ->
-      let fls = { txt = Lident b; loc = _loc } in
+      let fls = id_loc (Lident b) _loc in
       (AtomPat, loc_pat _loc (ppat_construct (fls, None)))
   | c:tag_name p:(pattern_lvl ConstrPat) when lvl <= ConstrPat ->
       (ConstrPat, loc_pat _loc (Ppat_variant (c, Some p)))
   | c:tag_name ->
       (AtomPat, loc_pat _loc (Ppat_variant (c, None)))
   | s:STR("#") t:typeconstr ->
-      (AtomPat, loc_pat _loc (Ppat_type { txt = t; loc = _loc_t }))
+      (AtomPat, loc_pat _loc (Ppat_type(id_loc t _loc_t)))
   | s:STR("{") f:field p:{CHR('=') p:pattern}? fps:{STR(";") f:field
-    p:{CHR('=') p:pattern}? -> ({ txt = f; loc = _loc_f }, p)}*
+    p:{CHR('=') p:pattern}? -> (id_loc f _loc_f, p)}*
     clsd:{STR(";") STR("_") -> ()}? STR(";")? STR("}") ->
-      let all = ({ txt = f; loc = _loc_f },p)::fps in
+      let all = (id_loc f _loc_f, p)::fps in
       let f (lab, pat) =
         match pat with
         | Some p -> (lab, p)
-        | None   -> let slab = match lab.txt with
-                               | Lident s -> { txt = s; loc = lab.loc }
-                               | _        -> assert false (* FIXME *)
+        | None   -> 
+#ifversion < 4.00
+	   let slab = match lab with
+                               | Lident s -> s
+                               | _        -> raise Give_up
+                    in (lab, loc_pat _loc (Ppat_var slab))
+#else
+	   let slab = match lab.txt with
+                               | Lident s -> id_loc s lab.loc
+                               | _        -> raise Give_up
                     in (lab, loc_pat lab.loc (Ppat_var slab))
+#endif
       in
       let all = List.map f all in
       let cl = match clsd with
@@ -985,18 +1031,19 @@ let pattern_base = memoize1 (fun lvl ->
   | STR("[") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("]") ->
       (AtomPat, ppat_list _loc (p::ps))
   | STR("[") STR("]") ->
-      let nil = { txt = Lident "[]"; loc = _loc } in
+      let nil = id_loc (Lident "[]") _loc in
       (AtomPat, loc_pat _loc (ppat_construct (nil, None)))
   | STR("[|") p:pattern ps:{STR(";") p:pattern -> p}* STR(";")? STR("|]") ->
       (AtomPat, loc_pat _loc (Ppat_array (p::ps)))
   | STR("[|") STR("|]") ->
       (AtomPat, loc_pat _loc (Ppat_array []))
   | STR("(") STR(")") ->
-      let unt = { txt = Lident "()"; loc = _loc } in
+      let unt = id_loc (Lident "()") _loc in
       (AtomPat, loc_pat _loc (ppat_construct (unt, None)))
   | begin_kw end_kw ->
-      let unt = { txt = Lident "()"; loc = _loc } in
+      let unt = id_loc (Lident "()") _loc in
       (AtomPat, loc_pat _loc (ppat_construct (unt, None)))
+#ifversion >= 4.00
   | STR("(") module_kw mn:module_name pt:{STR(":") pt:package_type}? STR(")") ->
       let unpack = Ppat_unpack { txt = mn; loc = _loc_mn } in
       let pat = match pt with
@@ -1005,7 +1052,7 @@ let pattern_base = memoize1 (fun lvl ->
                              Ppat_constraint (loc_pat _loc_mn unpack, pt)
       in
       (AtomPat, loc_pat _loc pat)
-
+#endif
   | CHR('$') c:capitalized_ident ->
      (try let str = Sys.getenv c in
 	  AtomPat, parse_string pattern blank ("ENV:"^c) str
@@ -1032,7 +1079,7 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   parser
   | as_kw vn:value_name when lvl' >= AsPat && lvl <= AsPat ->
       (lvl', fun p ->
-        ln p _loc (Ppat_alias(p, { txt = vn; loc= _loc_vn })))
+        ln p _loc (Ppat_alias(p, id_loc vn _loc_vn)))
   | STR("|") p':(pattern_lvl (next_pat_prio AltPat)) when lvl' >= AltPat && lvl <= AltPat ->
       (AltPat, fun p ->
         ln p _loc (Ppat_or(p, p')))
@@ -1041,7 +1088,7 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
         ln p _loc (Ppat_tuple(p::ps)))
   | c:STR("::") p':(pattern_lvl ConsPat) when lvl' > ConsPat && lvl <= ConsPat ->
       (ConsPat, fun p ->
-        let cons = { txt = Lident "::"; loc = _loc_c } in
+        let cons = id_loc (Lident "::") _loc_c in
         let args = loc_pat _loc (Ppat_tuple [p; p']) in
         ln p _loc (ppat_construct(cons, Some args)))
   (* next is just for polymorphic type annotation in let ? *)
@@ -1107,12 +1154,12 @@ let prefix_prio s =
 
 let array_function loc str name =
   let name = if !fast then "unsafe_" ^ name else name in
-  loc_expr loc (Pexp_ident { txt = Ldot(Lident str, name); loc = loc })
+  loc_expr loc (Pexp_ident (id_loc (Ldot(Lident str, name)) loc ))
 
 let bigarray_function loc str name =
   let name = if !fast then "unsafe_" ^ name else name in
   let lid = Ldot(Ldot(Lident "Bigarray", str), name) in
-  loc_expr loc (Pexp_ident { txt = lid; loc = loc })
+  loc_expr loc (Pexp_ident (id_loc lid loc))
 
 let untuplify exp =
   match exp.pexp_desc with
@@ -1162,8 +1209,8 @@ let argument =
   parser
   | id:label STR(":") e:(expression_lvl (next_exp App)) -> (id, e)
   | id:opt_label STR(":") e:(expression_lvl (next_exp App)) -> ("?"^id, e)
-  | id:label -> (id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
-  | id:opt_label -> ("?"^id, loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc }))
+  | id:label -> (id, loc_expr _loc (Pexp_ident(id_loc (Lident id) _loc)))
+  | id:opt_label -> ("?"^id, loc_expr _loc (Pexp_ident(id_loc (Lident id) _loc)))
     (* NOTE the "id" in the first position of the couple was not prefixed with a "?". I guess this was a bug. *)
   | e:(expression_lvl (next_exp App)) -> ("", e)
 
@@ -1171,16 +1218,16 @@ let parameter allow_new_type =
   parser
   | pat:(pattern_lvl AtomPat) -> `Arg ("", None, pat)
   | STR("~") STR("(") id:lowercase_ident t:{ STR":" t:typexpr }? STR")" -> (
-      let pat =  loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
+      let pat =  loc_pat _loc_id (Ppat_var(id_loc id _loc_id)) in
       let pat = match t with
       | None   -> pat
       | Some t -> loc_pat _loc (Ppat_constraint (pat, t))
       in
       `Arg (id, None, pat))
   | id:label STR":" pat:pattern -> `Arg (id, None, pat)
-  | CHR('~') id:ident -> `Arg (id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | CHR('~') id:ident -> `Arg (id, None, loc_pat _loc_id (Ppat_var(id_loc id _loc_id)))
   | STR("?") STR"(" id:lowercase_ident t:{ STR":" t:typexpr -> t }? e:{STR"=" e:expression -> e}? STR")" -> (
-      let pat = loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }) in
+      let pat = loc_pat _loc_id (Ppat_var(id_loc id _loc_id)) in
       let pat = match t with
                 | None -> pat
                 | Some t -> loc_pat (merge2 _loc_id _loc_t) (Ppat_constraint(pat,t))
@@ -1191,7 +1238,7 @@ let parameter allow_new_type =
                 | Some t -> loc_pat (merge2 _loc_pat _loc_t) (Ppat_constraint(pat,t))
       in `Arg ("?"^id, e, pat))
   | id:opt_label STR":" pat:pattern -> `Arg ("?"^id, None, pat)
-  | id:opt_label -> `Arg ("?"^id, None, loc_pat _loc_id (Ppat_var { txt = id; loc = _loc_id }))
+  | id:opt_label -> `Arg ("?"^id, None, loc_pat _loc_id (Ppat_var(id_loc id _loc_id)))
   | CHR('(') type_kw name:typeconstr_name CHR(')') when allow_new_type -> `Type(name)
 
 let apply_params params e =
@@ -1225,17 +1272,19 @@ let _ = set_grammar let_binding (
       (value_binding ~attributes:a (merge2 _loc_pat _loc_e) pat e::l)
   | vn:lowercase_ident CHR(':') ty:poly_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
       let pat = loc_pat _loc (Ppat_constraint(
-        loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
+        loc_pat _loc (Ppat_var(id_loc vn _loc_vn)),
         ty))
       in
       value_binding ~attributes:a (merge2 _loc_vn _loc_e) pat e::l
+#ifversion >= 4.00
   | vn:lowercase_ident CHR(':') (ids,ty):poly_syntax_typexpr e:right_member a:post_item_attributes l:{and_kw l:let_binding}?[[]] ->
     let (e, ty) = wrap_type_annotation _loc ids ty e in 									     
     let pat = loc_pat _loc (Ppat_constraint(
-	loc_pat _loc (Ppat_var { txt = vn; loc = _loc_vn }),
+	loc_pat _loc (Ppat_var(id_loc vn _loc_vn)),
         ty))
     in
     value_binding ~attributes:a (merge2 _loc_vn _loc_e) pat e::l
+#endif
   )
 
 let match_cases = memoize1 (fun lvl ->
@@ -1257,8 +1306,8 @@ let expression_list =
 
 let record_item = 
   parser
-  | f:field CHR('=') e:(expression_lvl (next_exp Seq)) -> ({ txt = f; loc = _loc_f},e) 
-  | f:lowercase_ident -> (let id = { txt = Lident f; loc = _loc_f} in id, loc_expr _loc_f (Pexp_ident(id)))
+  | f:field CHR('=') e:(expression_lvl (next_exp Seq)) -> (id_loc f _loc_f,e) 
+  | f:lowercase_ident -> (let id = id_loc (Lident f) _loc_f in id, loc_expr _loc_f (Pexp_ident(id)))
 
 let record_list =
   parser
@@ -1271,17 +1320,17 @@ let record_list =
 
 let obj_item = 
   parser
-  | v:inst_var_name CHR('=') e:(expression_lvl (next_exp Seq)) -> ({ txt = v ; loc = _loc_v }, e)
+  | v:inst_var_name CHR('=') e:(expression_lvl (next_exp Seq)) -> (id_loc v _loc_v, e)
 
 (* Class expression *)
 
 let class_expr_base =
   parser
   | cp:class_path -> 
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_pcl _loc (Pcl_constr (cp, []))
   | CHR('[') te:typexpr tes:{STR(",") te:typexpr}* CHR(']') cp:class_path ->
-      let cp = { txt = cp; loc = _loc_cp } in
+      let cp = id_loc cp _loc_cp in
       loc_pcl _loc (Pcl_constr (cp, te :: tes))
   | STR("(") ce:class_expr STR(")") ->
       loc_pcl _loc ce.pcl_desc
@@ -1312,7 +1361,7 @@ let class_field =
 #endif
   | val_kw o:override_flag m:mutable_flag ivn:inst_var_name te:{CHR(':') t:typexpr}?
     CHR('=') e:expr ->
-      let ivn = { txt = ivn; loc = _loc_ivn } in
+      let ivn = id_loc ivn _loc_ivn in
       let ex =
         match te with
         | None   -> e
@@ -1321,35 +1370,52 @@ let class_field =
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_val (ivn, m, Cfk_concrete(o,ex)))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_val (ivn, m, o, ex))
+#else
+      Pcf_val (ivn, m, o, ex, _loc)
+#endif
 #endif
   | val_kw m:mutable_flag virtual_kw ivn:inst_var_name
     STR(":") te:typexpr ->
-      let ivn = { txt = ivn; loc = _loc_ivn } in
+      let ivn = id_loc ivn _loc_ivn in
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_val (ivn, m, Cfk_virtual te))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_valvirt (ivn, m, te))
+#else
+      Pcf_valvirt (ivn, m, te, _loc)
+#endif
 #endif
   | val_kw virtual_kw mutable_kw ivn:inst_var_name STR(":") te:typexpr ->
-      let ivn = { txt = ivn; loc = _loc_ivn } in
+      let ivn = id_loc ivn _loc_ivn in
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_val (ivn, Mutable, Cfk_virtual te))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_valvirt (ivn, Mutable, te))
+#else
+      Pcf_valvirt (ivn, Mutable, te, _loc)
+#endif
 #endif
   | method_kw o:override_flag p:private_flag mn:method_name
     STR(":") te:poly_typexpr CHR('=') e:expr ->
-      let mn = { txt = mn; loc = _loc_mn } in
+      let mn = id_loc mn _loc_mn in
       let e = loc_expr _loc (Pexp_poly (e, Some te)) in
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_method (mn, p, Cfk_concrete(o,e)))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_meth (mn, p, o, e))
+#else
+      Pcf_meth (mn, p, o, e, _loc)
 #endif
+#endif
+#ifversion >= 4.00 
   | method_kw o:override_flag p:private_flag mn:method_name
     STR(":") (ids,te):poly_syntax_typexpr CHR('=') e:expr ->
-      let mn = { txt = mn; loc = _loc_mn } in
+      let mn = id_loc mn _loc_mn in
       let e, poly =  wrap_type_annotation _loc ids te e in
       let e = loc_expr _loc (Pexp_poly (e, Some poly)) in
 #ifversion >= 4.02
@@ -1357,9 +1423,10 @@ let class_field =
 #else
       loc_pcf _loc (Pcf_meth (mn, p, o, e))
 #endif
+#endif
   | method_kw o:override_flag p:private_flag mn:method_name ps:{p:(parameter true) -> p,_loc_p}*
     te:{STR(":") te:typexpr}? CHR('=') e:expr ->
-      let mn = { txt = mn; loc = _loc_mn } in
+      let mn = id_loc mn _loc_mn in
       let e = 
 	match te with
 	  None -> e
@@ -1371,29 +1438,45 @@ let class_field =
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_method (mn, p, Cfk_concrete(o,e)))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_meth (mn, p, o, e))
+#else
+      Pcf_meth (mn, p, o, e, _loc)
+#endif
 #endif
   | method_kw p:private_flag virtual_kw mn:method_name STR(":")
     pte:poly_typexpr ->
-      let mn = { txt = mn ; loc = _loc_mn } in
+      let mn = id_loc mn _loc_mn in
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_method (mn, p, Cfk_virtual(pte)))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_virt (mn, p, pte))
+#else
+      Pcf_virt (mn, p, pte, _loc)
+#endif
 #endif
   | method_kw virtual_kw private_kw mn:method_name
     STR(":") pte:poly_typexpr ->
-      let mn = { txt = mn ; loc = _loc_mn } in
+      let mn = id_loc mn _loc_mn in
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_method (mn, Private, Cfk_virtual(pte)))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_virt (mn, Private, pte))
+#else
+      Pcf_virt (mn, Private, pte,_loc)
+#endif
 #endif
   | constraint_kw te:typexpr CHR('=') te':typexpr ->
 #ifversion >= 4.02
       loc_pcf _loc (Pcf_constraint (te, te'))
 #else
+#ifversion >= 4.00
       loc_pcf _loc (Pcf_constr (te, te'))
+#else
+      Pcf_cstr (te, te',_loc)
+#endif
 #endif
   | initializer_kw e:expr ->
 #ifversion >= 4.02
@@ -1409,7 +1492,11 @@ let _ = set_grammar class_body (
 #ifversion >= 4.02
       { pcstr_self = p; pcstr_fields = f }
 #else
+#ifversion >= 4.00
       { pcstr_pat = p; pcstr_fields = f }
+#else
+      (p, f)
+#endif
 #endif
   )
 
@@ -1424,7 +1511,7 @@ let class_binding =
                | None    -> ce
                | Some ct -> loc_pcl _loc (Pcl_constraint(ce, ct))
       in
-      class_type_declaration _loc_params _loc { txt = cn; loc = _loc_cn } params v ce
+      class_type_declaration _loc_params _loc (id_loc cn _loc_cn) params v ce
 
 let class_definition =
   parser
@@ -1435,24 +1522,24 @@ let module_type = declare_grammar "module_type"
 
 let pexp_list _loc ?_loc_cl l =
   if l = [] then
-    loc_expr _loc (pexp_construct({ txt = Lident "[]"; loc = _loc}, None))
+    loc_expr _loc (pexp_construct(id_loc (Lident "[]") _loc, None))
   else
     let _loc_cl = match _loc_cl with None -> _loc | Some pos -> pos in
     List.fold_right (fun (x,pos) acc ->
 		     let _loc = merge2 pos _loc_cl in
-		     loc_expr _loc (pexp_construct({ txt = Lident "::"; loc = _loc}, Some (loc_expr _loc (Pexp_tuple [x;acc])))))
-		    l (loc_expr _loc_cl (pexp_construct({ txt = Lident "[]"; loc = _loc_cl}, None)))
+		     loc_expr _loc (pexp_construct(id_loc (Lident "::") _loc, Some (loc_expr _loc (Pexp_tuple [x;acc])))))
+		    l (loc_expr _loc_cl (pexp_construct(id_loc (Lident "[]") _loc_cl, None)))
 
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
   parser
   | e:(alternatives extra_expressions) -> e
   | v:inst_var_name STR("<-") e:(expression_lvl (next_exp Aff)) when lvl <= Aff->
-      (Aff, loc_expr _loc (Pexp_setinstvar({ txt = v ; loc = _loc_v }, e)))
-  | id:value_path -> (Atom, loc_expr _loc (Pexp_ident { txt = id; loc = _loc_id }))
+      (Aff, loc_expr _loc (Pexp_setinstvar(id_loc v _loc_v, e)))
+  | id:value_path -> (Atom, loc_expr _loc (Pexp_ident(id_loc id _loc_id)))
   | c:constant -> (Atom, loc_expr _loc (Pexp_constant c))
   | mp:module_path STR(".") STR("(") e:expression STR(")") ->
-      let mp = { txt = mp; loc = _loc_mp } in
+      let mp = id_loc mp _loc_mp in
 #ifversion >= 4.01
       (Atom, loc_expr _loc (Pexp_open (Fresh, mp, e)))
 #else
@@ -1462,18 +1549,18 @@ let expression_base = memoize1 (fun lvl ->
                   -> fun _loc -> (Let, loc_expr _loc (Pexp_let (r, l, e)))
 #ifversion >= 4.02
              | module_kw mn:module_name l:{ STR"(" mn:module_name mt:{STR":" mt:module_type}? STR ")" ->
-		     ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+		     (id_loc mn _loc_mn, mt, _loc)}*
 #else
-             | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+             | module_kw mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> (id_loc mn _loc_mn, mt, _loc)}*
 #endif
                  mt:{STR":" mt:module_type }? STR"=" me:module_expr in_kw e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
                let me = match mt with None -> me | Some mt -> mexpr_loc (merge2 _loc_mt _loc_me) (Pmod_constraint(me, mt)) in
                let me = List.fold_left (fun acc (mn,mt,_loc) ->
                  mexpr_loc (merge2 _loc _loc_me) (Pmod_functor(mn, mt, acc))) me (List.rev l) in
-               fun _loc -> (Let, loc_expr _loc (Pexp_letmodule({ txt = mn ; loc = _loc_mn }, me, e)))
+               fun _loc -> (Let, loc_expr _loc (Pexp_letmodule(id_loc mn _loc_mn, me, e)))
              | open_kw o:override_flag mp:module_path in_kw
 		 e:(expression_lvl (let_prio lvl)) when (lvl < App) ->
-	       let mp = { txt = mp; loc = _loc_mp } in
+	       let mp = id_loc mp _loc_mp in
 #ifversion >= 4.01
 		fun _loc -> (Let, loc_expr _loc (Pexp_open (o, mp, e)))
 #else
@@ -1488,12 +1575,12 @@ let expression_base = memoize1 (fun lvl ->
   | if_kw c:expression then_kw e:(expression_lvl If) e':{else_kw e:(expression_lvl If)}? when (lvl < App) ->
      (If, loc_expr _loc (Pexp_ifthenelse(c,e,e')))
   | STR("(") e:expression? STR(")") -> (Atom, match e with Some e -> loc_expr _loc e.pexp_desc | None ->
-      let cunit = { txt = Lident "()"; loc = _loc } in
+      let cunit = id_loc (Lident "()") _loc in
       loc_expr _loc (pexp_construct(cunit, None)))
   | begin_kw e:expression? end_kw -> (Atom, match e with Some e -> e | None ->
-      let cunit = { txt = Lident "()"; loc = _loc } in
+      let cunit = id_loc (Lident "()") _loc in
       loc_expr _loc (pexp_construct(cunit, None)))
-  | c:constructor e:{ e:(expression_lvl (next_exp App)) when lvl <= App }? -> (App, loc_expr _loc (pexp_construct({ txt = c; loc = _loc_c},e)))
+  | c:constructor e:{ e:(expression_lvl (next_exp App)) when lvl <= App }? -> (App, loc_expr _loc (pexp_construct(id_loc c _loc_c, e)))
   | assert_kw e:{ false_kw -> pexp_assertfalse _loc | e:(expression_lvl App) -> Pexp_assert(e)} when (lvl <= App) 
       -> (App,  loc_expr _loc e)
   | lazy_kw e:(expression_lvl App) when (lvl <= App) -> (App,  loc_expr _loc (Pexp_lazy(e)))
@@ -1513,17 +1600,22 @@ let expression_base = memoize1 (fun lvl ->
 #else
   | for_kw id:lowercase_ident CHR('=') e:expression d:downto_flag
     e':expression do_kw e'':expression done_kw ->
-      (Atom, loc_expr _loc (Pexp_for({ txt = id ; loc = _loc_id}, e, e', d, e'')))
+      (Atom, loc_expr _loc (Pexp_for(id_loc id _loc_id, e, e', d, e'')))
 #endif
-  | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new({ txt = p; loc = _loc_p})))
+  | new_kw p:class_path -> (Atom, loc_expr _loc (Pexp_new(id_loc p _loc_p)))
   | object_kw o:class_body end_kw -> (Atom, loc_expr _loc (Pexp_object o))
   | STR("{<") l:{ o:obj_item l:{STR";" o:obj_item}* STR(";")? -> o::l }?[[]] STR(">}") -> (Atom, loc_expr _loc (Pexp_override l))
   | STR("(") module_kw me:module_expr pt:{STR(":") pt:package_type}? STR(")") ->
       let desc = match pt with
+#ifversion >= 4.0
                  | None    -> Pexp_pack me
                  | Some pt -> let me = loc_expr _loc_me (Pexp_pack me) in
                               let pt = loc_typ _loc_pt pt in
                               pexp_constraint (me, pt)
+#else
+                 | Some(Ptyp_package(n,l)) -> Pexp_pack(me,(n,l))
+                 | _    -> raise Give_up
+#endif
       in
       (Atom, loc_expr _loc desc)
   | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
@@ -1562,7 +1654,7 @@ let expression_base = memoize1 (fun lvl ->
 
 let apply_lbl _loc (lbl, e) =
   let e = match e with
-      None -> loc_expr _loc (Pexp_ident { txt = Lident lbl; loc = _loc })
+      None -> loc_expr _loc (Pexp_ident(id_loc (Lident lbl) _loc ))
     | Some e -> e
   in (lbl, e)
 
@@ -1622,10 +1714,10 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
       (Dot, fun e' -> bigarray_get (merge2 e'.pexp_loc _loc) e' f)
   |            f:field STR("<-") e:(expression_lvl (next_exp Aff)) when (lvl' >= Aff && lvl <= Aff) -> 
       (Aff, fun e' ->
-              let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_setfield(e',f,e)))
+              let f = id_loc f _loc_f in loc_expr _loc (Pexp_setfield(e',f,e)))
   |            f:field when (lvl' >= Dot && lvl <= Dot) -> 
       (Dot, fun e' ->
-              let f = { txt = f; loc = _loc_f } in loc_expr _loc (Pexp_field(e',f))) } -> r
+              let f = id_loc f _loc_f in loc_expr _loc (Pexp_field(e',f))) } -> r
   | STR("#") f:method_name when (lvl' >= Dash && lvl <= Dash) -> 
       (Dash, fun e' -> ln e' _loc (Pexp_send(e',f)))
   | l:{a:argument}+ when (lvl' > App && lvl <= App) -> 
@@ -1635,9 +1727,9 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
                       when lvl <= p && (lvl' > p || (a = Left && lvl' = p)) ->
       (p, fun e' -> ln e' e.pexp_loc (
           if op = "::" then
-            pexp_construct({ txt = Lident "::"; loc = _loc_op}, Some (ln e' _loc (Pexp_tuple [e';e])))
+            pexp_construct(id_loc (Lident "::") _loc_op, Some (ln e' _loc (Pexp_tuple [e';e])))
           else 
-            Pexp_apply(loc_expr _loc_op (Pexp_ident { txt = Lident op; loc = _loc_op }),
+            Pexp_apply(loc_expr _loc_op (Pexp_ident(id_loc (Lident op) _loc_op)),
                      [("", e') ; ("", e)])))
   )
 
@@ -1665,7 +1757,7 @@ let _ = set_expression_lvl (fun lvl ->
 let module_expr_base = 
   parser
   | mp:module_path ->
-      let mid = { txt = mp; loc = _loc } in
+      let mid = id_loc mp _loc in
       mexpr_loc _loc (Pmod_ident mid)
   | struct_kw ms:structure end_kw -> 
       mexpr_loc _loc (Pmod_structure(ms))
@@ -1674,18 +1766,23 @@ let module_expr_base =
 #else
   | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
 #endif
-    STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor({ txt = mn; loc = _loc_mn}, mt, me))
+    STR("->") me:module_expr -> mexpr_loc _loc (Pmod_functor(id_loc mn _loc_mn, mt, me))
   | STR("(") me:module_expr mt:{STR(":") mt:module_type}? STR(")") ->
       (match mt with
        | None    -> me
        | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)))
   | STR("(") val_kw e:expr pt:{STR(":") pt:package_type}? STR(")") ->
       let e = match pt with
-              | None    -> e
+#ifversion >= 4.00
+              | None    -> Pmod_unpack e
               | Some pt -> let pt = loc_typ _loc_pt pt in
-                           loc_expr _loc (pexp_constraint (e, pt))
+                           Pmod_unpack (loc_expr _loc (pexp_constraint (e, pt)))
+#else
+                 | Some(Ptyp_package(n,l)) -> Pmod_unpack(e,(n,l))
+                 | _    -> raise Give_up
+#endif
       in
-      mexpr_loc _loc (Pmod_unpack e)
+      mexpr_loc _loc e
 
 let _ = set_grammar module_expr (
   parser
@@ -1696,7 +1793,7 @@ let _ = set_grammar module_expr (
 let module_type_base = 
   parser
   | mp:modtype_path ->
-      let mid = { txt = mp; loc = _loc } in
+      let mid = id_loc mp _loc in
       mtyp_loc _loc (Pmty_ident mid)
   | sig_kw ms:signature end_kw -> 
      mtyp_loc _loc (Pmty_signature(ms))
@@ -1705,7 +1802,7 @@ let module_type_base =
 #else
   | functor_kw STR("(") mn:module_name STR(":") mt:module_type STR(")")
 #endif
-     STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor({ txt = mn; loc = _loc_mn}, mt, me))
+     STR("->") me:module_type -> mtyp_loc _loc (Pmty_functor(id_loc mn _loc_mn, mt, me))
   | STR("(") mt:module_type STR(")") -> mt
   | module_kw type_kw of_kw me:module_expr -> mtyp_loc _loc (Pmty_typeof me)
 
@@ -1718,25 +1815,29 @@ let mod_constraint =
      (tn, Pwith_type(ty))
 #endif
   | module_kw m1:module_path CHR('=') m2:extended_module_path ->
-     let name = { txt = m1; loc = _loc_m1 } in
+     let name = id_loc m1 _loc_m1 in
 #ifversion >= 4.02		    
-     Pwith_module(name, { txt = m2; loc = _loc_m2 })
+     Pwith_module(name, id_loc m2 _loc_m2 )
 #else
-     (name, Pwith_module { txt = m2; loc = _loc_m2 })
+     (name, Pwith_module(id_loc m2 _loc_m2 ))
 #endif
   | type_kw tps:type_params?[[]] tcn:typeconstr_name STR(":=") te:typexpr ->
-      let td = type_declaration _loc { txt = tcn; loc = _loc_tcn }
+#ifversion < 4.00
+      let tps = List.map (function
+			     (Some s, t) -> s,t | None, _ -> raise Give_up) tps in
+#endif
+      let td = type_declaration _loc (id_loc tcn _loc_tcn)
 	   tps [] Ptype_abstract Public (Some te) in
 #ifversion >= 4.02		    
       Pwith_typesubst td
 #else
-      ({ txt = Lident tcn; loc = _loc_tcn }, Pwith_typesubst td)
+      (id_loc (Lident tcn) _loc_tcn, Pwith_typesubst td)
 #endif
   | module_kw mn:module_name STR(":=") emp:extended_module_path ->
 #ifversion >= 4.02		    
-     Pwith_modsubst( { txt = mn; loc = _loc_mn },{ txt = emp; loc = _loc_emp })
+     Pwith_modsubst(id_loc mn _loc_mn, id_loc emp _loc_emp)
 #else
-     ({ txt = Lident mn; loc = _loc_mn }, Pwith_modsubst { txt = emp; loc = _loc_emp })
+     (id_loc (Lident mn) _loc_mn, Pwith_modsubst(id_loc emp _loc_emp))
 #endif
 
 let _ = set_grammar module_type (
@@ -1761,9 +1862,13 @@ let structure_item_base =
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
 #ifversion >= 4.02
-      Pstr_primitive({ pval_name = {txt = n; loc = _loc_n}; pval_type = ty; pval_prim = ls; pval_loc = _loc; pval_attributes = [] })
+      Pstr_primitive({ pval_name = id_loc n _loc_n; pval_type = ty; pval_prim = ls; pval_loc = _loc; pval_attributes = [] })
 #else
-      Pstr_primitive({ txt = n; loc = _loc_n }, { pval_type = ty; pval_prim = ls; pval_loc = _loc})
+      Pstr_primitive(id_loc n _loc_n, { pval_type = ty; pval_prim = ls; 
+#ifversion >= 4.00
+					pval_loc = _loc
+#endif
+				      })
 #endif
 #ifversion >= 4.02
   | td:type_definition -> Pstr_type (List.map snd td)
@@ -1778,40 +1883,40 @@ let structure_item_base =
   | module_kw r:{rec_kw mn:module_name STR(":") mt:module_type CHR('=')
     me:module_expr ms:{and_kw mn:module_name STR(":") mt:module_type CHR('=')
 #endif
-    me:module_expr -> (module_binding _loc { txt = mn; loc = _loc_mn} mt me)}* ->
-      let m = (module_binding _loc { txt = mn; loc = _loc_mn} mt me) in
+    me:module_expr -> (module_binding _loc (id_loc mn _loc_mn) mt me)}* ->
+      let m = (module_binding _loc (id_loc mn _loc_mn) mt me) in
       Pstr_recmodule (m::ms)
 #ifversion >= 4.02
-  |            mn:module_name l:{ STR"(" mn:module_name mt:{STR":" mt:module_type }? STR")" -> ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+  |            mn:module_name l:{ STR"(" mn:module_name mt:{STR":" mt:module_type }? STR")" -> (id_loc mn _loc_mn, mt, _loc)}*
 #else
-  |            mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+  |            mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> (id_loc mn _loc_mn, mt, _loc)}*
 #endif
      mt:{STR":" mt:module_type }? STR"=" me:module_expr ->
     let me = match mt with None -> me | Some mt -> mexpr_loc (merge2 _loc_mt _loc_me) (Pmod_constraint(me,mt)) in
      let me = List.fold_left (fun acc (mn,mt,_loc) ->
        mexpr_loc (merge2 _loc _loc_me) (Pmod_functor(mn, mt, acc))) me (List.rev l) in
 #ifversion >= 4.02
-     Pstr_module(module_binding _loc { txt = mn ; loc = _loc_mn } None me)
+     Pstr_module(module_binding _loc (id_loc mn _loc_mn) None me)
 #else
-     let (name, _, me) = module_binding _loc { txt = mn ; loc = _loc_mn } None me in	   
+     let (name, _, me) = module_binding _loc (id_loc mn _loc_mn) None me in	   
      Pstr_module(name,me)
 #endif
 #ifversion >= 4.02
   |            type_kw mn:modtype_name mt:{STR"=" mt:module_type}? ->
-      Pstr_modtype{pmtd_name = { txt = mn ; loc = _loc_mn }; pmtd_type = mt; pmtd_attributes = []; pmtd_loc = _loc }
+      Pstr_modtype{pmtd_name = id_loc mn _loc_mn; pmtd_type = mt; pmtd_attributes = []; pmtd_loc = _loc }
 #else
   |            type_kw mn:modtype_name STR"=" mt:module_type ->
-      Pstr_modtype({ txt = mn ; loc = _loc_mn }, mt) 
+      Pstr_modtype(id_loc mn _loc_mn, mt) 
 #endif
                } -> r
   | open_kw o:override_flag m:module_path ->
 #ifversion >= 4.02
-    Pstr_open{ popen_lid = { txt = m; loc = _loc_m}; popen_override = o; popen_loc = _loc; popen_attributes = []}
+    Pstr_open{ popen_lid = id_loc m _loc_m; popen_override = o; popen_loc = _loc; popen_attributes = []}
 #else
 #ifversion >= 4.01
-    Pstr_open(o, { txt = m; loc = _loc_m} )
+    Pstr_open(o, id_loc m _loc_m)
 #else
-    Pstr_open({ txt = m; loc = _loc_m} )
+    Pstr_open(id_loc m _loc_m)
 #endif
 #endif
   | include_kw me:module_expr ->
@@ -1834,11 +1939,11 @@ let _ = set_grammar structure_item (
 let signature_item_base =
  parser
   | val_kw n:value_name STR(":") ty:typexpr a:post_item_attributes ->
-     psig_value ~attributes:a _loc { txt = n; loc = _loc_n } ty []
+     psig_value ~attributes:a _loc (id_loc n _loc_n) ty []
   | external_kw n:value_name STR":" ty:typexpr STR"=" ls:string_literal* a:post_item_attributes ->
       let l = List.length ls in
       if l < 1 || l > 3 then raise Give_up;
-      psig_value ~attributes:a _loc { txt = n; loc = _loc_n } ty ls
+      psig_value ~attributes:a _loc (id_loc n _loc_n) ty ls
   | td:type_definition -> 
 #ifversion >= 4.02
        Psig_type (List.map snd td)
@@ -1852,42 +1957,42 @@ let signature_item_base =
        Psig_exception (name, ed)
 #endif
   | module_kw rec_kw mn:module_name STR(":") mt:module_type
-    ms:{and_kw mn:module_name STR(":") mt:module_type -> (module_declaration _loc { txt = mn; loc = _loc_mn} mt)}* ->
-      let m = (module_declaration _loc { txt = mn; loc = _loc_mn } mt) in
+    ms:{and_kw mn:module_name STR(":") mt:module_type -> (module_declaration _loc (id_loc mn _loc_mn) mt)}* ->
+      let m = (module_declaration _loc (id_loc mn _loc_mn) mt) in
       Psig_recmodule (m::ms)
 #ifversion >= 4.02		
-  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name mt:{STR":" mt:module_type}? STR ")" -> ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name mt:{STR":" mt:module_type}? STR ")" -> (id_loc mn _loc_mn, mt, _loc)}*
 #else
-  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> ({ txt = mn; loc = _loc_mn}, mt, _loc)}*
+  | module_kw r:{mn:module_name l:{ STR"(" mn:module_name STR":" mt:module_type STR ")" -> (id_loc mn _loc_mn, mt, _loc)}*
 #endif
                                     STR":" mt:module_type ->
      let mt = List.fold_left (fun acc (mn,mt,_loc) ->
                                   mtyp_loc (merge2 _loc _loc_mt) (Pmty_functor(mn, mt, acc))) mt (List.rev l) in
 #ifversion >= 4.02
-     Psig_module(module_declaration _loc { txt = mn ; loc = _loc_mn } mt)
+     Psig_module(module_declaration _loc (id_loc mn _loc_mn) mt)
 #else
-     let a, b = module_declaration _loc { txt = mn ; loc = _loc_mn } mt in
+     let a, b = module_declaration _loc (id_loc mn _loc_mn) mt in
      Psig_module(a,b)
 #endif
   |           type_kw mn:modtype_name mt:{ STR"=" mt:module_type }? ->
 #ifversion >= 4.02
-     Psig_modtype{pmtd_name = { txt = mn ; loc = _loc_mn }; pmtd_type = mt; pmtd_attributes = []; pmtd_loc = _loc}
+     Psig_modtype{pmtd_name = id_loc mn _loc_mn; pmtd_type = mt; pmtd_attributes = []; pmtd_loc = _loc}
 #else
      let mt = match mt with
               | None    -> Pmodtype_abstract
               | Some mt -> Pmodtype_manifest mt
      in 
-     Psig_modtype({ txt = mn ; loc = _loc_mn }, mt)
+     Psig_modtype(id_loc mn _loc_mn, mt)
 #endif
 		} -> r
   | open_kw o:override_flag m:module_path ->
 #ifversion >= 4.02
-    Psig_open{ popen_lid = { txt = m; loc = _loc_m}; popen_override = o; popen_loc = _loc; popen_attributes = []}
+    Psig_open{ popen_lid = id_loc m _loc_m; popen_override = o; popen_loc = _loc; popen_attributes = []}
 #else
 #ifversion >= 4.01
-    Psig_open(o, { txt = m; loc = _loc_m} )
+    Psig_open(o, id_loc m _loc_m)
 #else
-    Psig_open({ txt = m; loc = _loc_m} )
+    Psig_open(id_loc m _loc_m)
 #endif
 #endif
   | include_kw me:module_type ->

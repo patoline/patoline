@@ -221,7 +221,7 @@ module Initial =
     let ((pattern_lvl : pattern_prio -> pattern grammar),set_pattern_lvl) =
       grammar_family "pattern_lvl"
     let pattern = pattern_lvl TopPat
-    let let_binding: value_binding list grammar =
+    let let_binding: (Parsetree.pattern* Parsetree.expression) list grammar =
       declare_grammar "let_binding"
     let class_body: Parsetree.class_structure grammar =
       declare_grammar "class_body"
@@ -235,108 +235,71 @@ module Initial =
     let loc_str _loc desc = { pstr_desc = desc; pstr_loc = _loc }
     let loc_sig _loc desc = { psig_desc = desc; psig_loc = _loc }
     let loc_expr ?(attributes= [])  _loc e =
-      { pexp_desc = e; pexp_loc = _loc; pexp_attributes = attributes }
+      { pexp_desc = e; pexp_loc = _loc }
     let loc_pat ?(attributes= [])  _loc pat =
-      { ppat_desc = pat; ppat_loc = _loc; ppat_attributes = attributes }
+      { ppat_desc = pat; ppat_loc = _loc }
     let loc_pcl ?(attributes= [])  _loc desc =
-      { pcl_desc = desc; pcl_loc = _loc; pcl_attributes = attributes }
+      { pcl_desc = desc; pcl_loc = _loc }
     let loc_typ ?(attributes= [])  _loc typ =
-      { ptyp_desc = typ; ptyp_loc = _loc; ptyp_attributes = attributes }
-    let pctf_loc ?(attributes= [])  _loc desc =
-      { pctf_desc = desc; pctf_loc = _loc; pctf_attributes = attributes }
+      { ptyp_desc = typ; ptyp_loc = _loc }
+    let pctf_loc ?(attributes= [])  _loc desc = desc
+    let loc_pcf ?(attributes= [])  _loc desc = desc
     let pcty_loc ?(attributes= [])  _loc desc =
-      { pcty_desc = desc; pcty_loc = _loc; pcty_attributes = attributes }
-    let loc_pcf ?(attributes= [])  _loc desc =
-      { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = attributes }
+      { pcty_desc = desc; pcty_loc = _loc }
     let mexpr_loc ?(attributes= [])  _loc desc =
-      { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = attributes }
+      { pmod_desc = desc; pmod_loc = _loc }
     let mtyp_loc ?(attributes= [])  _loc desc =
-      { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = attributes }
-    let id_loc txt loc = { txt; loc }
-    let const_string s = Const_string (s, None)
-    let constructor_declaration _loc name args res =
-      {
-        pcd_name = name;
-        pcd_args = args;
-        pcd_res = res;
-        pcd_attributes = [];
-        pcd_loc = _loc
-      }
-    let label_declaration _loc name mut ty =
-      {
-        pld_name = name;
-        pld_mutable = mut;
-        pld_type = ty;
-        pld_attributes = [];
-        pld_loc = _loc
-      }
-    let params_map _loc params =
-      let fn (name,var) =
-        match name with
-        | None  -> ((loc_typ _loc Ptyp_any), var)
-        | Some name -> ((loc_typ name.loc (Ptyp_var (name.txt))), var) in
-      List.map fn params
+      { pmty_desc = desc; pmty_loc = _loc }
+    let id_loc txt loc = txt
+    let const_string s = Const_string s
+    let constructor_declaration _loc name args res = (name, args, _loc)
+    let label_declaration _loc name mut ty = (name, mut, ty, _loc)
     let type_declaration _loc name params cstrs kind priv manifest =
-      let params = params_map _loc params in
+      let (params,variance) = List.split params in
       {
-        ptype_name = name;
         ptype_params = params;
         ptype_cstrs = cstrs;
         ptype_kind = kind;
         ptype_private = priv;
+        ptype_variance = variance;
         ptype_manifest = manifest;
-        ptype_attributes = [];
         ptype_loc = _loc
       }
     let class_type_declaration _loc' _loc name params virt expr =
-      let params = params_map _loc' params in
+      let (params,variance) = List.split params in
+      let params =
+        List.map (function | None  -> id_loc "" _loc' | Some x -> x) params in
       {
-        pci_params = params;
+        pci_params = (params, _loc');
+        pci_variance = variance;
         pci_virt = virt;
         pci_name = name;
         pci_expr = expr;
-        pci_attributes = [];
         pci_loc = _loc
       }
-    let pstr_eval e = Pstr_eval (e, [])
+    let pstr_eval e = Pstr_eval e
     let psig_value ?(attributes= [])  _loc name ty prim =
-      Psig_value
-        {
-          pval_name = name;
-          pval_type = ty;
-          pval_prim = prim;
-          pval_attributes = attributes;
-          pval_loc = _loc
-        }
-    let value_binding ?(attributes= [])  _loc pat expr =
-      {
-        pvb_pat = pat;
-        pvb_expr = expr;
-        pvb_attributes = attributes;
-        pvb_loc = _loc
-      }
-    let module_binding _loc name mt me =
-      let me =
-        match mt with
-        | None  -> me
-        | Some mt -> mexpr_loc _loc (Pmod_constraint (me, mt)) in
-      { pmb_name = name; pmb_expr = me; pmb_attributes = []; pmb_loc = _loc }
-    let module_declaration _loc name mt =
-      { pmd_name = name; pmd_type = mt; pmd_attributes = []; pmd_loc = _loc }
-    let ppat_construct (a,b) = Ppat_construct (a, b)
-    let pexp_construct (a,b) = Pexp_construct (a, b)
-    let pexp_constraint (a,b) = Pexp_constraint (a, b)
-    let pexp_coerce (a,b,c) = Pexp_coerce (a, b, c)
-    let pexp_assertfalse _loc =
-      Pexp_assert
-        (loc_expr _loc
-           (pexp_construct ({ txt = (Lident "false"); loc = _loc }, None)))
+      Psig_value (name, { pval_type = ty; pval_prim = prim })
+    let value_binding ?(attributes= [])  _loc pat expr = (pat, expr)
+    let module_binding _loc name mt me = (name, mt, me)
+    let module_declaration _loc name mt = (name, mt)
+    let ppat_construct (a,b) = Ppat_construct (a, b, false)
+    let pexp_construct (a,b) = Pexp_construct (a, b, false)
+    let pexp_constraint (a,b) = Pexp_constraint (a, (Some b), None)
+    let pexp_coerce (a,b,c) = Pexp_constraint (a, b, (Some c))
+    let pexp_assertfalse _loc = Pexp_assertfalse
     let map_cases cases =
       List.map
         (fun (pat,expr,guard)  ->
-           { pc_lhs = pat; pc_rhs = expr; pc_guard = guard }) cases
-    let pexp_function cases = Pexp_function cases
-    let pexp_fun (label,opt,pat,expr) = Pexp_fun (label, opt, pat, expr)
+           match guard with
+           | None  -> (pat, expr)
+           | Some e ->
+               (pat,
+                 (loc_expr (merge2 e.pexp_loc expr.pexp_loc)
+                    (Pexp_when (e, expr))))) cases
+    let pexp_function cases = Pexp_function ("", None, cases)
+    let pexp_fun (label,opt,pat,expr) =
+      Pexp_function (label, opt, [(pat, expr)])
     type quote_env1 = 
       {
       mutable expression_stack: Parsetree.expression list;

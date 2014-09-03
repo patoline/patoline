@@ -65,9 +65,11 @@ let mkpatt _loc (id,p) =
              (id_loc id _loc)))
 let rec apply _loc ids e =
   let ids =
-    List.mapi
-      (fun i  (id,x)  ->
-         ((if id = "_" then "_unnamed_" ^ (string_of_int i) else id), x)) ids in
+    Array.to_list
+      (Array.mapi
+         (fun i  (id,x)  ->
+            ((if id = "_" then "_unnamed_" ^ (string_of_int i) else id), x))
+         (Array.of_list ids)) in
   let e =
     match !do_locate with
     | None  -> e
@@ -506,7 +508,7 @@ module Ext(In:Extension) =
                             [exp_int _loc 0]
                       | Some e -> e in
                     match e.pexp_desc with
-                    | Pexp_ident { txt = Lident id } ->
+                    | Pexp_ident (Lident id) ->
                         let id =
                           let l = String.length id in
                           if (l > 3) && ((String.sub id (l - 3) 3) = "_re")
@@ -612,7 +614,7 @@ module Ext(In:Extension) =
                             [exp_int _loc 0]
                       | Some e -> e in
                     match e.pexp_desc with
-                    | Pexp_ident { txt = Lident id } ->
+                    | Pexp_ident (Lident id) ->
                         let id =
                           let l = String.length id in
                           if (l > 3) && ((String.sub id (l - 3) 3) = "_re")
@@ -638,8 +640,8 @@ module Ext(In:Extension) =
                 let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
                 let _loc = merge [_loc_p; _loc__unnamed_1] in
                 match p.ppat_desc with
-                | Ppat_alias (p,{ txt = id }) -> (id, (Some p))
-                | Ppat_var { txt = id } -> (id, None)
+                | Ppat_alias (p,id) -> (id, (Some p))
+                | Ppat_var id -> (id, None)
                 | _ -> ("_", (Some p)));
         Glr.apply
           (fun _unnamed_0  ->

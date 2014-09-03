@@ -31,7 +31,7 @@ all: $(PA_PATOLINE)
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr -I +compiler-libs ocamlcommon.cmxa -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx $< \
-          $(GLR_DIR)/pa_parser.cmx $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_opt_main.cmx
+          $(GLR_DIR)/pa_parser.cmx $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_compose.cmx $(GLR_DIR)/pa_opt_main.cmx
 
 $(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/glr.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"

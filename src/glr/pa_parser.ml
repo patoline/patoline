@@ -19,35 +19,35 @@ let exp_string _loc n =
   loc_expr _loc (Pexp_constant (const_string n))
 
 let exp_None _loc =
-  let cnone = { txt = Lident "None"; loc = _loc } in
+  let cnone = id_loc (Lident "None") _loc in
   loc_expr _loc (pexp_construct(cnone, None))
 
 let exp_Some _loc a =
-  let csome = { txt = Lident "Some"; loc = _loc } in
+  let csome = id_loc (Lident "Some") _loc in
   loc_expr _loc (pexp_construct(csome, Some a))
 
 let exp_unit _loc =
-  let cunit = { txt = Lident "()"; loc = _loc } in
+  let cunit = id_loc (Lident "()") _loc in
   loc_expr _loc (pexp_construct(cunit, None))
 
 let exp_tuple _loc l = 
   loc_expr _loc (Pexp_tuple l)
 
 let exp_Nil _loc =
-  let cnil = { txt = Lident "[]"; loc = _loc } in
+  let cnil = id_loc (Lident "[]") _loc in
   loc_expr _loc (pexp_construct(cnil, None))
 
 let exp_Cons _loc a l =
-  loc_expr _loc (pexp_construct({ txt = Lident "::"; loc = _loc}, Some (exp_tuple _loc [a;l])))
+  loc_expr _loc (pexp_construct(id_loc (Lident "::") _loc, Some (exp_tuple _loc [a;l])))
 
 let exp_list _loc l =
   List.fold_right (exp_Cons _loc) l (exp_Nil _loc)
 
 let exp_ident _loc id =
-  loc_expr _loc (Pexp_ident { txt = Lident id; loc = _loc })
+  loc_expr _loc (Pexp_ident (id_loc (Lident id) _loc ))
 
 let pat_ident _loc id =
-  loc_pat _loc (Ppat_var { txt = id; loc = _loc })
+  loc_pat _loc (Ppat_var (id_loc id _loc))
 
 let exp_apply _loc f l = 
   loc_expr _loc (Pexp_apply(f, List.map (fun x -> "", x) l))
@@ -62,13 +62,13 @@ let exp_fun _loc id e =
   loc_expr _loc (pexp_fun("", None, pat_ident _loc id, e))
 
 let exp_glr_fun _loc f =
-  loc_expr _loc (Pexp_ident({ txt = Ldot(Lident "Glr",f); loc = _loc } ))
+  loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "Glr",f)) _loc) ))
 
 let exp_list_fun _loc f =
-  loc_expr _loc (Pexp_ident({ txt = Ldot(Lident "List",f); loc = _loc } ))
+  loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "List",f)) _loc) ))
 
 let exp_str_fun _loc f =
-  loc_expr _loc (Pexp_ident({ txt = Ldot(Lident "Str",f); loc = _loc } ))
+  loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "Str",f)) _loc) ))
 
 let exp_Cons_fun _loc =
   exp_fun _loc "x" (exp_fun _loc "l" (exp_Cons _loc (exp_ident _loc "x") (exp_ident _loc "l")))
@@ -78,13 +78,18 @@ let exp_Cons_rev_fun _loc =
 
 let mkpatt _loc (id, p) = match p, !do_locate with 
     None, _ -> pat_ident _loc id
-  | Some p, None -> loc_pat _loc (Ppat_alias (p, { txt = id; loc = _loc }))
+  | Some p, None -> loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
   | Some p, Some _ -> 
-     loc_pat _loc (Ppat_alias (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p]) , { txt = id; loc = _loc }))
+     loc_pat _loc (Ppat_alias (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p]) , (id_loc (id) _loc)))
 
 let rec apply _loc ids e =
+#ifversion < 4.00
+  let ids = Array.to_list (Array.mapi (fun i (id,x) ->
+		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) (Array.of_list ids)) in
+#else
   let ids = List.mapi (fun i (id,x) ->
 		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) ids in
+#endif
   let e = match !do_locate with
       None -> e
     | Some(_,merge) ->
@@ -110,9 +115,9 @@ let rec apply _loc ids e =
 	  mkpatt _loc id,
 	  loc_expr _loc (Pexp_let(Nonrecursive, 
 	    [value_binding _loc (loc_pat _loc (Ppat_tuple([
-		loc_pat _loc (Ppat_var { txt = "_loc_"^fst id; loc = _loc });
-		loc_pat _loc (Ppat_var { txt = fst id; loc = _loc })])))
-	     (loc_expr _loc (Pexp_ident({ txt = Lident (fst id); loc = _loc})))], 
+		loc_pat _loc (Ppat_var (id_loc ("_loc_"^fst id) _loc));
+		loc_pat _loc (Ppat_var (id_loc (fst id) _loc))])))
+	     (loc_expr _loc (Pexp_ident((id_loc (Lident (fst id)) _loc))))], 
 	    e))))
   ) e (List.rev ids)
 
@@ -343,7 +348,11 @@ struct
 	 | Some e -> e
        in
        (match e.pexp_desc with
+#ifversion >= 4.00
 	  Pexp_ident { txt = Lident id } ->
+#else
+	  Pexp_ident (Lident id) ->
+#endif
 	  let id = 
 	    let l = String.length id in
 	    if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
@@ -379,7 +388,11 @@ let glr_list_sequence =
 	| Some e -> e
       in
       (match e.pexp_desc with
-	Pexp_ident { txt = Lident id } ->
+#ifversion >= 4.00
+	  Pexp_ident { txt = Lident id } ->
+#else
+	  Pexp_ident (Lident id) ->
+#endif
 	let id = 
 	  let l = String.length id in
 	  if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
@@ -394,8 +407,13 @@ let glr_list_sequence =
     parser
     | p:(pattern_lvl ConstrPat) CHR(':') ->
 	(match p.ppat_desc with
+#ifversion >= 4.00
 	 | Ppat_alias(p, { txt = id }) -> id, Some p
 	 | Ppat_var { txt = id } -> id, None
+#else
+	 | Ppat_alias(p, id ) -> id, Some p
+	 | Ppat_var id -> id, None
+#endif
 	 | _ -> "_", Some p)
     | EMPTY -> ("_", None)
 
@@ -570,4 +588,4 @@ let glr_list_sequence =
 
 end
 
-let _ = register_extension (module Ext)
+let _ = register_extension (module Ext : FExt)

@@ -2,16 +2,7 @@ open Pa_ocaml_prelude
 open Pa_ocaml
 open Glr
 open Format
-let anon_fun s = file := (Some s)
-let _ =
-  Arg.parse (!spec) anon_fun
-    (Printf.sprintf "usage: %s [options] file" (Sys.argv.(0)))
-module Final = (val
-  List.fold_left
-    (fun ((module Acc)  : (module Extension))  ->
-       fun ((module Ext)  : (module FExt))  -> (module Ext(Acc))) (module
-    Initial) (List.rev (!extensions_mod)))
-module Main = Make(Final)
+open Pa_compose
 let entry =
   match ((!entry), (!file)) with
   | (FromExt ,Some s) ->

@@ -220,6 +220,7 @@ let next_exp = function
   let loc_pcf ?(attributes=[]) _loc desc = { pcf_desc = desc; pcf_loc = _loc; pcf_attributes = attributes }
   let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc; pmod_attributes = attributes }
   let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc; pmty_attributes = attributes }
+  let id_loc txt loc = { txt; loc } 
 
   let const_string s = Const_string(s, None)			   
   let constructor_declaration _loc name args res =
@@ -278,14 +279,27 @@ let next_exp = function
   let loc_pat ?(attributes=[]) _loc pat = { ppat_desc = pat; ppat_loc = _loc; }
   let loc_pcl ?(attributes=[]) _loc desc = { pcl_desc = desc; pcl_loc = _loc }
   let loc_typ ?(attributes=[]) _loc typ = { ptyp_desc = typ; ptyp_loc = _loc; }
+#ifversion >= 4.00
   let pctf_loc ?(attributes=[]) _loc desc = { pctf_desc = desc; pctf_loc = _loc; }
-  let pcty_loc ?(attributes=[]) _loc desc = { pcty_desc = desc; pcty_loc = _loc; }
   let loc_pcf ?(attributes=[]) _loc desc = { pcf_desc = desc; pcf_loc = _loc; }
+#else
+  let pctf_loc ?(attributes=[]) _loc desc = desc
+  let loc_pcf ?(attributes=[]) _loc desc = desc
+#endif
+  let pcty_loc ?(attributes=[]) _loc desc = { pcty_desc = desc; pcty_loc = _loc; }
   let mexpr_loc ?(attributes=[]) _loc desc = { pmod_desc = desc; pmod_loc = _loc }
   let mtyp_loc ?(attributes=[]) _loc desc = { pmty_desc = desc; pmty_loc = _loc }
- 
-  let const_string s = Const_string(s)			   
+#ifversion >= 4.00
+  let id_loc txt loc = { txt; loc; } 
+#else
+  let id_loc txt loc = txt
+#endif			 
+  let const_string s = Const_string(s)	
+#ifversion >= 4.00		   
   let constructor_declaration _loc name args res = (name, args, res, _loc)
+#else
+  let constructor_declaration _loc name args res = (name, args, _loc)
+#endif
   let label_declaration _loc name mut ty =
     (name, mut, ty, _loc)
   let type_declaration _loc name params cstrs kind priv manifest =
@@ -301,7 +315,7 @@ let next_exp = function
     }
   let class_type_declaration _loc' _loc name params virt expr =
     let params, variance = List.split params in
-    let params = List.map (function None   -> { txt = ""; loc = _loc'}
+    let params = List.map (function None   -> id_loc "" _loc'
                                   | Some x -> x) params
     in
       { pci_params = params, _loc'
@@ -310,9 +324,13 @@ let next_exp = function
       ; pci_name = name
       ; pci_expr = expr
       ; pci_loc = _loc }
-  let pstr_eval e = Pstr_eval(e)			   
+  let pstr_eval e = Pstr_eval(e)
   let psig_value ?(attributes=[]) _loc name ty prim =
+#ifversion >= 4.00
     Psig_value( name, { pval_type = ty ; pval_prim = prim ; pval_loc = _loc; } )
+#else
+    Psig_value( name, { pval_type = ty ; pval_prim = prim } )
+#endif
   let value_binding  ?(attributes=[]) _loc pat expr =
     ( pat, expr)
   let module_binding _loc name mt me = 
@@ -722,12 +740,12 @@ let quote_expression _loc loc e name =
   in
   let push_expr =
     loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","push"); loc = _loc }),
+		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Stack","push")) _loc )),
 		   ["", loc_expr _loc (Pexp_apply(
-							      (loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","empty_quote_env2"); loc = _loc })), 
-							      ["", loc_expr _loc (pexp_construct({ txt = Lident "()"; loc = _loc }, None))]));
+							      (loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","empty_quote_env2")) _loc ))), 
+							      ["", loc_expr _loc (pexp_construct(id_loc (Lident "()") _loc, None))]));
 		   
-		    "", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","quote_stack"); loc = _loc })]))
+		    "", loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_stack")) _loc ))]))
   in
   let fill push_expr name l = 
     let p = 
@@ -735,7 +753,7 @@ let quote_expression _loc loc e name =
 	(fun acc e ->
 	 let push_e =
 	   loc_expr _loc (Pexp_apply(
-			      loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude",name); loc = _loc }),
+			      loc_expr _loc (Pexp_ident( id_loc (Ldot(Lident "Pa_ocaml_prelude",name)) _loc )),
 			      ["", e]))
 	 in
 	 match acc with
@@ -764,10 +782,10 @@ let quote_expression _loc loc e name =
   let push_expr = fill push_expr "push_float" env.float_stack in
   let push_expr = fill push_expr "push_char" env.char_stack in
   let push_expr = fill push_expr "push_bool" env.bool_stack in
-  let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident{ txt = Lident "ignore"; loc = _loc }),
+  let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident(id_loc (Lident "ignore") _loc )),
 				       ["",loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Stack","pop"); loc = _loc }),
-		   ["", loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","quote_stack"); loc = _loc })]))]))
+		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Stack","pop")) _loc )),
+		   ["", loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_stack")) _loc ))]))]))
   in
   let args = match loc with
       None -> ["", loc_expr _loc (Pexp_constant( const_string e ))]
@@ -775,11 +793,11 @@ let quote_expression _loc loc e name =
   in
   let parse_expr = 
     loc_expr _loc (Pexp_apply(
-		       loc_expr _loc (Pexp_ident{ txt = Ldot(Lident "Pa_ocaml_prelude","quote_"^name^"_2"); loc = _loc }),
+		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_"^name^"_2")) _loc)),
 		       args))
   in
   loc_expr _loc (Pexp_sequence(push_expr,loc_expr _loc (Pexp_let(Nonrecursive, [value_binding _loc 
-											      (loc_pat _loc (Ppat_var { txt = "quote_res"; loc = _loc })) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident{ txt = Lident "quote_res"; loc = _loc })))))))
+											      (loc_pat _loc (Ppat_var(id_loc "quote_res" _loc ))) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident(id_loc (Lident "quote_res") _loc ))))))))
 
 let quote_expression_2 ?loc e =
   let res = parse_string expression blank "quote..." e in
