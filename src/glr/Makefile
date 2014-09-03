@@ -65,7 +65,7 @@ pa_parser.cmo: pa_parser.ml pa_ocaml_prelude.cmo glr.cma
 pa_byt_main.ml: pa_main.ml
 	cp pa_main.ml pa_byt_main.ml
 
-pa_byt_main.cmo: pa_byt_main.ml input.cmi pa_ocaml.cmo
+pa_byt_main.cmo: pa_byt_main.ml pa_compose.cmo input.cmi pa_ocaml.cmo
 	export BYTE=1
 	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
@@ -84,7 +84,7 @@ pa_parser.cmx: pa_parser.ml pa_ocaml_prelude.cmx glr.cmxa
 pa_opt_main.ml: pa_main.ml
 	cp pa_main.ml pa_opt_main.ml
 
-pa_opt_main.cmx: pa_opt_main.ml input.cmi input.cmx pa_ocaml.cmx 
+pa_opt_main.cmx: pa_opt_main.ml pa_compose.cmx input.cmi input.cmx pa_ocaml.cmx 
 	$(OCAMLOPT) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 pa_ocaml: glr.cmxa pa_ocaml_prelude.cmx pa_parser.cmx pa_ocaml.cmx pa_compose.cmx pa_opt_main.cmx 
@@ -107,7 +107,7 @@ bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bo
 bootstrap/$(OCAMLVERSION)/pa_parser.cmo: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo glr.cma
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $<
 
-bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo: bootstrap/$(OCAMLVERSION)/pa_byt_main.ml input.cmi bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
+bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo: bootstrap/$(OCAMLVERSION)/pa_byt_main.ml pa_compose.cmo input.cmi bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo 
 	$(OCAMLC) $(COMPILER_INC) -c -I bootstrap/$(OCAMLVERSION) $<
 
 pa_ocaml.byt: glr.cma bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmo bootstrap/$(OCAMLVERSION)/pa_parser.cmo bootstrap/$(OCAMLVERSION)/pa_ocaml.cmo pa_compose.cmo bootstrap/$(OCAMLVERSION)/pa_byt_main.cmo
@@ -122,7 +122,7 @@ bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx: bootstrap/$(OCAMLVERSION)/pa_ocaml.ml bo
 bootstrap/$(OCAMLVERSION)/pa_parser.cmx: bootstrap/$(OCAMLVERSION)/pa_parser.ml bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx glr.cmxa
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $< 
 
-bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx: bootstrap/$(OCAMLVERSION)/pa_opt_main.ml input.cmi input.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
+bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx: bootstrap/$(OCAMLVERSION)/pa_opt_main.ml pa_compose.cmx input.cmi input.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx 
 	$(OCAMLOPT) $(COMPILER_INC) -I bootstrap/$(OCAMLVERSION) -c $<
 
 pa_ocaml: glr.cmxa bootstrap/$(OCAMLVERSION)/pa_ocaml_prelude.cmx bootstrap/$(OCAMLVERSION)/pa_parser.cmx bootstrap/$(OCAMLVERSION)/pa_ocaml.cmx pa_compose.cmx bootstrap/$(OCAMLVERSION)/pa_opt_main.cmx 
