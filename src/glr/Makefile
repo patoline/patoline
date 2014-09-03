@@ -35,6 +35,7 @@ OCAMLVERSION=$(shell ocamlc -version)
 ifeq ($(OCAMLVERSION),3.12.1)
 COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
 COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo
+COMPILER_TOP = toplevellib.cma
 else
 COMPILER_INC = -I +compiler-libs
 COMPILER_LIBS = ocamlcommon.cma
