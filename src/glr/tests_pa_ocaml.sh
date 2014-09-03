@@ -21,10 +21,10 @@ files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
 files4="$local/test4.ml"
 
 if [ `ocamlc -version` != 3.12.1 ] ; then
-    $files = $files $files4
+    files="$files $files4"
 fi
 
-#echo $files
+echo $files
 
 for f in $files; do
   echo "File: $f"

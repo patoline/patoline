@@ -1285,8 +1285,7 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_0; _loc_te; _loc__unnamed_2] in
-                    loc_typ _loc te.ptyp_desc)) (locate (Glr.string ")" ()))
-          (fun x  -> x);
+                    te)) (locate (Glr.string ")" ())) (fun x  -> x);
         Glr.sequence
           (Glr.sequence
              (Glr.sequence
@@ -1580,11 +1579,13 @@ module Make(Initial:Extension) =
              (locate (expression_lvl (next_exp App))) (fun x  -> x))
           (locate (Glr.char '$' ())) (fun x  -> x)]
     let typexpr_suit_aux:
-      type_prio -> type_prio -> (type_prio* (core_type -> core_type)) grammar
+      type_prio ->
+        type_prio ->
+          (type_prio* (core_type -> Location.t -> core_type)) grammar
       =
       memoize1
         (fun lvl'  lvl  ->
-           let ln f _loc e = loc_typ (merge2 f.ptyp_loc _loc) e in
+           let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
            Glr.alternatives
              (let y =
                 let y =
@@ -1712,14 +1713,15 @@ module Make(Initial:Extension) =
                           (fun ((_,(p2,f2)) as _unnamed_0)  ->
                              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                              let _loc = _loc__unnamed_0 in
-                             (p2, (fun f  -> f2 (f1 f))))
+                             (p2,
+                               (fun f  _loc_f  -> f2 (f1 f _loc_f) _loc_f)))
                           (locate (type_suit p1 lvl)))
                      (locate (typexpr_suit_aux lvl' lvl)));
                Glr.apply
                  (fun _unnamed_0  ->
                     let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                    let _loc = _loc__unnamed_0 in (lvl', (fun f  -> f)))
-                 (locate (Glr.empty ()))]) in
+                    let _loc = _loc__unnamed_0 in
+                    (lvl', (fun f  _loc_f  -> f))) (locate (Glr.empty ()))]) in
       let rec res x y = f res x y in res
     let _ =
       set_typexpr_lvl
@@ -1730,7 +1732,8 @@ module Make(Initial:Extension) =
                 let (_loc_t,t) = t in
                 fun ft  ->
                   let (_loc_ft,ft) = ft in
-                  let _loc = merge [_loc_t; _loc_ft] in snd ft t)) type_prios
+                  let _loc = merge [_loc_t; _loc_ft] in snd ft t _loc_t))
+        type_prios
     let type_param =
       Glr.alternatives
         [Glr.sequence
@@ -1989,7 +1992,7 @@ module Make(Initial:Extension) =
               (Glr.fixpoint []
                  (Glr.apply (fun x  l  -> x :: l) type_constraint))))
         (fun x  -> x)
-    let typedef_gen constr filter =
+    let typedef_gen ?prev_loc  constr filter =
       Glr.sequence
         (Glr.sequence (locate (Glr.option [] type_params)) (locate constr)
            (fun tps  ->
@@ -1999,6 +2002,10 @@ module Make(Initial:Extension) =
                 fun ti  ->
                   let (_loc_ti,ti) = ti in
                   let _loc = merge [_loc_tps; _loc_tcn; _loc_ti] in
+                  let _loc =
+                    match prev_loc with
+                    | None  -> _loc
+                    | Some l -> merge2 l _loc in
                   let (pri,te,tkind,cstrs) = ti in
                   let (pri,te) =
                     match te with
@@ -2017,7 +2024,8 @@ module Make(Initial:Extension) =
                        cstrs tkind pri te)))) (locate type_information)
         (fun x  -> x)
     let typedef = typedef_gen typeconstr_name (fun x  -> x)
-    let typedef_in_constraint = typedef_gen typeconstr Longident.last
+    let typedef_in_constraint prev_loc =
+      typedef_gen ~prev_loc typeconstr Longident.last
     let type_definition =
       Glr.sequence
         (Glr.sequence (locate type_kw) (locate typedef)
@@ -6878,13 +6886,16 @@ module Make(Initial:Extension) =
              (fun x  -> x)) (locate module_expr) (fun x  -> x)]
     let mod_constraint =
       Glr.alternatives
-        [Glr.sequence (locate type_kw) (locate typedef_in_constraint)
-           (fun _unnamed_0  ->
-              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-              fun ((_,(tn,ty)) as _unnamed_1)  ->
-                let (_loc__unnamed_1,_unnamed_1) = _unnamed_1 in
-                let _loc = merge [_loc__unnamed_0; _loc__unnamed_1] in
-                (tn, (Pwith_type ty)));
+        [Glr.iter
+           (Glr.apply
+              (fun t  ->
+                 let (_loc_t,t) = t in
+                 let _loc = _loc_t in
+                 Glr.apply
+                   (fun ((_,(tn,ty)) as _unnamed_0)  ->
+                      let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                      let _loc = _loc__unnamed_0 in (tn, (Pwith_type ty)))
+                   (locate (typedef_in_constraint _loc_t))) (locate type_kw));
         Glr.sequence
           (Glr.sequence
              (Glr.sequence (locate module_kw) (locate module_path)

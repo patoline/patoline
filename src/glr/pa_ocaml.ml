@@ -552,7 +552,7 @@ let typexpr_base : core_type grammar =
   | STR("(") module_kw pt:package_type STR(")") ->
       loc_typ _loc pt
   | STR("(") te:typexpr STR(")") ->
-      loc_typ _loc te.ptyp_desc
+      te
   | ln:opt_label STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
       loc_typ _loc (Ptyp_arrow ("?" ^ ln, mkoption _loc_te te, te'))
   | ln:label_name STR(":") te:(typexpr_lvl (next_type_prio Arr)) STR("->") te':typexpr ->
@@ -609,8 +609,8 @@ let typexpr_base : core_type grammar =
 	    | _ -> raise Give_up)
 			    
 
-let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> core_type)) grammar = memoize1 (fun lvl' lvl ->
-  let ln f _loc e = loc_typ (merge2 f.ptyp_loc _loc) e in
+let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize1 (fun lvl' lvl ->
+  let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
   parser
   | STR("->") te':(typexpr_lvl Arr) when lvl' > Arr && lvl <= Arr ->
       (Arr, fun te -> ln te _loc (Ptyp_arrow ("", te, te')))
@@ -640,8 +640,8 @@ let typexpr_suit =
     memoize2
       (fun lvl' lvl ->
          parser
-         | (p1,f1):(typexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> (p2, fun f -> f2 (f1 f))
-         | EMPTY -> (lvl', fun f -> f) 
+         | (p1,f1):(typexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> (p2, fun f _loc_f -> f2 (f1 f _loc_f) _loc_f)
+         | EMPTY -> (lvl', fun f _loc_f -> f) 
          )
   in
   let rec res x y = f res x y in
@@ -649,7 +649,7 @@ let typexpr_suit =
 
 let _ = set_typexpr_lvl (fun lvl ->
   parser
-  | t:typexpr_base ft:(typexpr_suit AtomType lvl) -> snd ft t
+  | t:typexpr_base ft:(typexpr_suit AtomType lvl) -> snd ft t _loc_t
   ) type_prios
 
 (****************************************************************************
@@ -725,9 +725,13 @@ let type_information =
       in
       (pri, te, tkind, cstrs)
 
-let typedef_gen = (fun constr filter ->
+let typedef_gen = (fun ?prev_loc constr filter ->
   parser
   | tps:type_params?[[]] tcn:constr ti:type_information ->
+      let _loc = match
+ 	  prev_loc with None -> _loc
+	| Some l -> merge2 l _loc
+      in
       let (pri, te, tkind, cstrs) = ti in
       let pri, te = match te with
 	  None -> pri, None
@@ -746,7 +750,7 @@ let typedef_gen = (fun constr filter ->
    )
 
 let typedef = typedef_gen typeconstr_name (fun x -> x)
-let typedef_in_constraint = typedef_gen typeconstr Longident.last
+let typedef_in_constraint prev_loc = typedef_gen ~prev_loc typeconstr Longident.last
 
 
 let type_definition =
@@ -1808,7 +1812,7 @@ let module_type_base =
 
 let mod_constraint = 
   parser
-  | type_kw (tn,ty):typedef_in_constraint ->
+  | t:type_kw ->> (tn,ty):(typedef_in_constraint _loc_t) ->
 #ifversion >= 4.02		    
      Pwith_type(tn,ty)
 #else
