@@ -1171,6 +1171,7 @@ let mappend m x=
 
 
 module UNF8=CamomileLibraryDefault.Camomile.UNF.Make(CamomileLibrary.UTF8)
+let nfkc = UNF8.nfkc
 (**/**)
 
 
@@ -1229,19 +1230,16 @@ let boxify buf nbuf env0 l=
             in
             let l=ref IntMap.empty in
             let rec cut_str i0 i=
-              if i>=String.length t then (
+              if i>=String.length t then
                 let sub=String.sub t i0 (i-i0) in
-                l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
-              ) else (
-                if is_space (UTF8.look t i) then (
-                  let sub=String.sub t i0 (i-i0) in
-                  l:=mappend !l (gl_of_str env (UNF8.nfkc sub));
-                  if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
-                  cut_str (UTF8.next t i) (UTF8.next t i)
-                ) else (
-                  cut_str i0 (UTF8.next t i)
-                )
-              )
+                l:=mappend !l (gl_of_str env (nfkc sub));
+              else if is_space (UTF8.look t i) then
+                let sub=String.sub t i0 (i-i0) in
+                l:=mappend !l (gl_of_str env (nfkc sub));
+                if i<>i0 || i=0 then l:=mappend !l [makeGlue env (UChar.uint_code (UTF8.look t i))];
+                cut_str (UTF8.next t i) (UTF8.next t i)
+              else
+                cut_str i0 (UTF8.next t i)
             in
             cut_str 0 0;
             if keep_cache then cache:=Some !l;
