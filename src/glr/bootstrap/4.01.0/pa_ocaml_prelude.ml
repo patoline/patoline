@@ -209,6 +209,15 @@ module Initial =
       | AtomType
     let type_prios =
       [TopType; As; Arr; ProdType; DashType; AppType; AtomType]
+    let type_prio_to_string =
+      function
+      | TopType  -> "TopType"
+      | As  -> "As"
+      | Arr  -> "Arr"
+      | ProdType  -> "ProdType"
+      | DashType  -> "DashType"
+      | AppType  -> "AppType"
+      | AtomType  -> "AtomType"
     let next_type_prio =
       function
       | TopType  -> As
@@ -219,7 +228,7 @@ module Initial =
       | AppType  -> AtomType
       | AtomType  -> AtomType
     let ((typexpr_lvl : type_prio -> core_type grammar),set_typexpr_lvl) =
-      grammar_family "typexpr_lvl"
+      grammar_family ~param_to_string:type_prio_to_string "typexpr_lvl"
     let typexpr = typexpr_lvl TopType
     type pattern_prio =
       | TopPat

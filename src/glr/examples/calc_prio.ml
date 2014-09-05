@@ -13,9 +13,7 @@ let next_prio = function
   | Pow -> Atom
   | Atom -> assert false
 
-let prios = [ Sum; Prod; Pow; Atom ]
-
-let prio_to_string () = function
+let prio_to_string = function
     Sum -> "Sum"
   | Prod -> "Prod"
   | Pow -> "Pow"
@@ -42,7 +40,7 @@ let _ = set_expression
       List.fold_left ( fun acc (fn, e') -> fn acc e') e l
   | CHR('-') e:(expression prio) -> -. e
   | CHR('+') e:(expression prio) -> e
-  ) prios
+  )
 
 let arith = 
   parser

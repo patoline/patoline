@@ -40,8 +40,16 @@ val parse_channel : 'a grammar -> blank -> string -> in_channel -> 'a
 
 (** [change_layout parser blank]: change the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not
-    at the beginning nor at the end *)
-val change_layout : 'a grammar -> blank -> 'a grammar
+    at the beginning nor at the end 
+    
+    The optional parameter [old_blank_before], ([true] by default) forces parsing the 
+    old blank before parsing with the given grammar (the new blank function will be used
+    before the next terminal symbol anyway).
+
+    Similarly, the optional parameter [new_blank_after], ([false] by default) forces
+    the parsing of the new blank after parsing with the given grammar.
+*)
+val change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 'a grammar -> blank -> 'a grammar
 
 (** [eof x]: parses the end of input only and returns [x] *)
 val eof : 'a -> 'a grammar
@@ -215,7 +223,7 @@ val set_grammar : 'a grammar -> 'a grammar -> unit
 ]}
 *)
 
-val grammar_family : ?param_to_string:(unit -> 'a -> string) -> string -> ('a -> 'b grammar) * (('a -> 'b grammar) -> 'a list -> unit)
+val grammar_family : ?param_to_string:('a -> string) -> string -> ('a -> 'b grammar) * (('a -> 'b grammar) -> unit)
 (**
   [grammar_family seeds] return a pair [(gr, set_gr)] where gr is a finite family of
   grammars parametrized by value of type 'a the type of the elments of the list seeds.

@@ -39,7 +39,7 @@ COMPILER_TOP = toplevellib.cma
 else
 COMPILER_INC = -I +compiler-libs
 COMPILER_LIBS = ocamlcommon.cma
-COMPILER_TOP = ocamltoplevel.cma
+COMPILER_TOP = ocamlbytecomp.cma ocamltoplevel.cma
 endif
 
 COMPILER_LIBO := $(COMPILER_LIBS:.cma=.cmxa)
@@ -132,7 +132,7 @@ endif
 
 boot: BACKUP:=bootstrap/$(OCAMLVERSION)/$(shell date +%Y-%m-%d-%H-%M-%S)
 boot:
-	- if [ ! -d bootstrap/$(OCAMLVERSION) ] ; then mkdir bootstrap/$(OCAMLVERSION)
+	- if [ ! -d bootstrap/$(OCAMLVERSION) ] ; then mkdir bootstrap/$(OCAMLVERSION); fi
 	- if [ ! -d $(BACKUP) ] ; then mkdir $(BACKUP) ; fi ; \
 	     mv bootstrap/$(OCAMLVERSION)/*.ml $(BACKUP) ; \
 	fi

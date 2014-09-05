@@ -122,28 +122,26 @@ struct
  * Words.                                                                   *
  ****************************************************************************)
 
-  let char_re    = "[^ \t\r\n\\{}()$>]"
-  let escaped_re =     "\\\\[\\{}()$>]"
+  let char_re    = "[^ \t\r\n\\{}()*/|-_$>]"
+  let escaped_re =     "\\\\[\\{}()*/|-_$>]"
   let special_re =             "[()]"
-  let sup_alone = black_box 
+  let char_alone = black_box 
 		    (fun str pos ->
 		     let c,str',pos' = read str pos in
-		     if c = '>' then
+		     if List.mem c ['>';'*';'/';'|';'-';'_'] then
 		       let c',_,_ = read str' pos' in
-		       if c' = '>' then raise Give_up
-		       else ">", str', pos'
+		       if c' = c then raise Give_up
+		       else c, str', pos'
 		     else
 		       raise Give_up)
-		    (Charset.singleton '>') false (">")
-
+		    (Charset.add (Charset.singleton '>') '*') false ("> | *")
 
   let character =
     parser
-      c:RE(char_re) -> String.escaped c
+    | c:RE(char_re) -> c
     | s:RE(escaped_re) ->
 	String.escaped (String.sub s 1 (String.length s - 1))
-    | {STR("=>") | STR("->")} -> "to reject just after !"
-    | c:sup_alone -> c
+    | c:char_alone -> String.make 1 c
 
   let special = parser
       s:RE(special_re) -> s
@@ -151,10 +149,10 @@ struct
   let word =
     change_layout (
 	parser
-	  cs:character+ ->
+        | cs:character+ ->
              let w = String.concat "" cs in
              if String.length w >= 2 &&
-		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>"]
+		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
              then raise Give_up;
              w
 	| c:special -> c
@@ -169,10 +167,6 @@ struct
 			in rem_hyphen (w :: l)
                    else w1 :: rem_hyphen (w2::l)
 					 
-  let words =
-    parser
-      ws:word+ -> String.concat " " (rem_hyphen ws)
-				
   (****************************************************************************
    * Verbatim environment / macro                                             *
    ****************************************************************************)
@@ -251,6 +245,22 @@ struct
     | STR("x") -> <:expr@_loc<Maths.noad (Maths.glyphs "x")>>
 		    (* TODO *)
 
+(*************************************************************
+ *   Type to control which t2t like tags are forbidden       *
+ *************************************************************)
+  type tag_syntax =
+    Italic | Bold | SmallCap | Underline | Strike | Quote
+
+  module Tag_syntax = struct
+    type t = tag_syntax
+    let compare = compare
+  end
+
+  module TagSet = Set.Make(Tag_syntax)
+
+  let addTag = TagSet.add
+  let allowed t f = not (TagSet.mem t f)
+  
 (****************************************************************************
  * Text content of paragraphs and macros (mutually recursive).              *
  ****************************************************************************)
@@ -261,7 +271,7 @@ struct
 (***** Patoline macros  *****)
   let macro_argument =
     parser
-      STR("{") l:(paragraph_basic_text true) STR("}") -> l
+      STR("{") l:(paragraph_basic_text TagSet.empty) STR("}") -> l
     | e:wrapped_caml_expr  -> e
     | e:wrapped_caml_array -> <:expr<$array:e$>>
     | e:wrapped_caml_list  -> <:expr<$list:e$>>
@@ -286,27 +296,28 @@ struct
 
 (****************************)
 
-  let text_paragraph_elt allowed =
+  let text_paragraph_elt (tags:TagSet.t) =
     parser
       m:macro -> m
 		   
-    | STR("//") p:(paragraph_basic_text false) _e:STR("//") when allowed ->
+    | STR("//") p:(paragraph_basic_text (addTag Italic tags)) STR("//") when allowed Italic tags ->
          <:expr@_loc_p<toggleItalic $p$>>
-    | STR("**") p:(paragraph_basic_text false) _e:STR("**") when allowed ->
+    | STR("**") p:(paragraph_basic_text (addTag Bold tags)) STR("**") when allowed Bold tags ->
          <:expr@_loc_p<bold $p$>>
-    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
-    | STR("__") p:(paragraph_basic_text false) _e:STR("__") when allowed ->
-         <:expr@_loc_p<underline $p$>>
-    | STR("--") p:(paragraph_basic_text false) _e:STR("--") when allowed ->
-         <:expr@_loc_p<strike $p$>>
-
-    | v:verbatim_sharp -> <:expr@_loc_v<$v$>>
-    | STR("||") p:(paragraph_basic_text false) _e:STR("||") when allowed ->
+    | STR("||") p:(paragraph_basic_text (addTag SmallCap tags)) STR("||") when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
+(*    | STR("__") p:(paragraph_basic_text ("__"::tags)) _e:STR("__") when not (List.mem "__" tags) ->
+         <:expr@_loc_p<underline $p$>>
+    | STR("--") p:(paragraph_basic_text ("--"::tags)) _e:STR("--") when not (List.mem "--" tags) ->
+         <:expr@_loc_p<strike $p$>>*)
 
-    | STR("(") p:(paragraph_basic_text allowed) STR(")") ->
+    | v:verbatim_bquote -> <:expr@_loc_v<$v$>>
+    | v:verbatim_sharp  -> <:expr@_loc_v<$v$>>
+
+    | STR("(") p:(paragraph_basic_text tags) STR(")") ->
          <:expr@_loc_p<tT $string:"("$ :: $p$ @ [tT $string:")"$]>>
-    | STR("\"") p:(paragraph_basic_text false) _e:STR("\"") when allowed ->
+
+    | STR("\"") p:(paragraph_basic_text (addTag Quote tags)) STR("\"") when allowed Quote tags ->
         (let opening = "``" in (* TODO addapt with the current language*)
          let closing = "''" in (* TODO addapt with the current language*)
          <:expr@_loc_p<tT($string:opening$) :: $p$ @ [tT($string:closing$)]>>)
@@ -319,7 +330,8 @@ struct
         <:expr@_loc_m<[bB (fun env0 -> Maths.kdraw
                         [ { env0 with mathStyle = env0.mathStyle } ]
                         (displayStyle [Maths.Ordinary $m$]))]>>
-    | l:words -> <:expr@_loc_l<[tT $string:l$]>>
+
+    | l:word -> <:expr@_loc_l<[tT $string:l$]>>
 
 
   let concat_paragraph p1 _loc_p1 p2 _loc_p2 =
@@ -329,24 +341,22 @@ struct
     let _loc = merge2 _loc_p1 _loc_p2 in
     <:expr@_loc<$p1$ @ $(bl p2)$>>
 
-  let _ = set_paragraph_basic_text
-	    (fun spec_allowed ->
+  let _ = set_paragraph_basic_text (fun tags ->
 	     parser
-	       l:{p:(text_paragraph_elt spec_allowed) -> (_loc, p)}+ ->
+	       l:{p:(text_paragraph_elt tags) -> (_loc, p)}+ ->
 		 match List.rev l with
 		 | []   -> assert false
 		 | m::l ->
 		    let fn = fun (_loc_m, m) (_loc_p, p) ->
                       (merge2 _loc_p _loc_m
                       , concat_paragraph p _loc_p m _loc_m)
-		    in snd (List.fold_left fn m l)
-	    ) [ true ]
+		    in snd (List.fold_left fn m l))
 
-  let text_only = change_layout (paragraph_basic_text true) blank1
+  let text_only = change_layout (paragraph_basic_text TagSet.empty) blank1
 
   let paragraph_basic_text =
     parser
-      p:(paragraph_basic_text true) ->
+      p:(paragraph_basic_text TagSet.empty) ->
 	(fun indented ->
          if indented then
            <:structure@_loc_p<

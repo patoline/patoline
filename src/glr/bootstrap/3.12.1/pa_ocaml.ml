@@ -449,7 +449,7 @@ module Make(Initial:Extension) =
                (fun _unnamed_0  ->
                   let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                   let _loc = _loc__unnamed_0 in fun acc  -> acc)
-               (locate (Glr.empty ()))]) [true; false]
+               (locate (Glr.empty ()))])
     let _ =
       set_module_path_gen
         (fun allow_app  ->
@@ -460,7 +460,6 @@ module Make(Initial:Extension) =
                 fun s  ->
                   let (_loc_s,s) = s in
                   let _loc = merge [_loc_m; _loc_s] in s (Lident m)))
-        [true; false]
     let module_path = module_path_gen false
     let extended_module_path = module_path_gen true
     let value_path =
@@ -1733,7 +1732,6 @@ module Make(Initial:Extension) =
                 fun ft  ->
                   let (_loc_ft,ft) = ft in
                   let _loc = merge [_loc_t; _loc_ft] in snd ft t _loc_t))
-        type_prios
     let type_param =
       Glr.alternatives
         [Glr.sequence
@@ -3323,7 +3321,7 @@ module Make(Initial:Extension) =
                         let (_loc_ft,ft) = ft in
                         let _loc = _loc_ft in snd ft t)
                      (locate (pattern_suit lvl' lvl)))
-                (locate (pattern_base lvl)))) pattern_prios
+                (locate (pattern_base lvl))))
     let expression_lvls =
       [Top;
       Let;
@@ -6612,7 +6610,7 @@ module Make(Initial:Extension) =
                         let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                         let _loc = _loc__unnamed_0 in f e)
                      (locate (expression_suit lvl' lvl)))
-                (locate (expression_base lvl)))) expression_lvls
+                (locate (expression_base lvl))))
     let module_expr_base =
       Glr.alternatives
         [Glr.apply

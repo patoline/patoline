@@ -284,12 +284,12 @@ let _ = set_module_path_suit (fun allow_app ->
     parser
       f:(module_path_suit_aux allow_app) g:(module_path_suit allow_app) -> (fun acc -> g (f acc))
     | |  EMPTY -> (fun acc -> acc)
-    ) [true; false]
+    )
 
 let _ = set_module_path_gen (fun allow_app ->
   parser
   | m:module_name s:(module_path_suit allow_app) -> s (Lident m)
-  ) [true; false]
+  )
 
 let module_path = module_path_gen false
 let extended_module_path = module_path_gen true
@@ -608,7 +608,6 @@ let typexpr_base : core_type grammar =
 	    | "tuple" -> loc_typ _loc (Ptyp_tuple l)
 	    | _ -> raise Give_up)
 			    
-
 let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Location.t -> core_type)) grammar = memoize1 (fun lvl' lvl ->
   let ln f _loc e _loc_f = loc_typ (merge2 _loc_f _loc) e in
   parser
@@ -650,7 +649,7 @@ let typexpr_suit =
 let _ = set_typexpr_lvl (fun lvl ->
   parser
   | t:typexpr_base ft:(typexpr_suit AtomType lvl) -> snd ft t _loc_t
-  ) type_prios
+  )
 
 (****************************************************************************
  * Type and exception definitions                                           *
@@ -1118,7 +1117,7 @@ let pattern_suit =
 let _ = set_pattern_lvl (fun lvl ->
   parser
   | (lvl',t):(pattern_base lvl) ->> ft:(pattern_suit lvl' lvl) -> snd ft t
-  ) pattern_prios
+  )
 
 (****************************************************************************
  * Expressions                                                              *
@@ -1752,7 +1751,7 @@ let expression_suit =
 let _ = set_expression_lvl (fun lvl ->
     parser
       (lvl',e):(expression_base lvl) ->> (_, f):(expression_suit lvl' lvl) -> f e
-    ) expression_lvls
+    )
 
 (****************************************************************************
  * Module expressions (module implementations)                              *

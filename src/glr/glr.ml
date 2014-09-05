@@ -117,25 +117,46 @@ let set_grammar p1 p2 =
   p1.accept_empty <- p2.accept_empty;
   p1.parse <- p2.parse
 
-let grammar_family ?param_to_string name =
+let declare_grammar name = {
+  firsts = lazy (not_ready name ());
+  firsts_sym = lazy (not_ready name ());
+  accept_empty = lazy (not_ready name ());
+  parse = (not_ready name);
+}
+
+let grammar_family ?(param_to_string=fun _ -> "<param>") name =
   let tbl = Hashtbl.create 101 in
-  let in_build = ref true in 
+  let definition = ref None in 
+  let seeds = ref [] in
+  let record p = seeds := p::!seeds in
+  let do_fix fn =
+    while !seeds <> [] do
+      let new_seeds = !seeds in
+      seeds := [];
+      List.iter (fun k -> ignore (fn k)) new_seeds;
+    done;
+    Hashtbl.iter (fun key g -> set_grammar g (fn key)) tbl;
+  in
   let gn = fun param ->
-    try Hashtbl.find tbl param with Not_found ->
-      let message = match param_to_string with
-	  None -> Printf.sprintf "Too late to introduce a new grammar in a family %s" name
-	| Some f -> Printf.sprintf "Too late to introduce %a in a family %s" f param name
+    try Hashtbl.find tbl param
+    with Not_found ->
+      record param;
+      let g = match !definition with
+	  Some f -> 
+	  let g = declare_grammar (name ^ ":" ^ (param_to_string param)) in
+	  Hashtbl.add tbl param g;
+	  let _ = f param in
+	  do_fix f;
+	  g
+	| None ->
+	   declare_grammar (name ^ ":" ^ (param_to_string param))
       in
-      if not !in_build then failwith message;
-      let g = declare_grammar name in
-      Hashtbl.add tbl param g;
+      Hashtbl.replace tbl param g;
       g
   in gn,
-  (fun fn seeds ->
-    List.iter (fun k -> ignore (fn k)) seeds;
-    List.iter (fun k -> ignore (gn k)) seeds;
-    Hashtbl.iter (fun key g -> set_grammar g (fn key)) tbl;
-    in_build := false)
+  (fun fn ->
+   do_fix fn;
+   definition := Some fn)
 
 let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
   = fun f l -> 
@@ -464,16 +485,22 @@ let dependent_list_sequence : 'a list grammar -> ('a -> 'b list grammar) -> 'b l
   costly ... should be avoided ?
 *)
 
-let change_layout : 'a grammar -> blank -> 'a grammar
-  = fun l1 blank1 ->
+let change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 'a grammar -> blank -> 'a grammar
+  = fun ?(old_blank_before=true) ?(new_blank_after=false) l1 blank1 ->
     (* if not l1.ready then failwith "change_layout: illegal recursion"; *)
     { firsts = lazy (firsts l1);
       firsts_sym = lazy (firsts_sym l1);
       accept_empty = lazy (accept_empty l1);
       parse =
 	fun blank str pos next key g  ->
-  	  let str, pos = blank str pos in
-	  l1.parse blank1 str pos None key g
+  	  let str, pos = if old_blank_before then blank str pos else str, pos in
+	  let res = l1.parse blank1 str pos None key g in
+	  if new_blank_after then
+	    PosMap.fold (fun (str, pos) a acc ->
+			 let str, pos = blank1 str pos in
+			 PosMap.add (str,pos) a acc)
+			res PosMap.empty
+	  else res
     }
 
 

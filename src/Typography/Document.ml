@@ -624,7 +624,7 @@ let font_size_ratio font1 font2 =
   let x_h f =
     let f,_,_,_ = Lazy.force (fst (List.assoc Regular f)) in
     let x=Fonts.loadGlyph f
-      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'X'}) in
+      ({empty_glyph with glyph_index=Fonts.glyph_of_char f 'o'}) in
     Fonts.glyph_y1 x -.  Fonts.glyph_y0 x
   in
   x_h font1 /. x_h font2
