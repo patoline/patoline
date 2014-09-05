@@ -17,6 +17,7 @@ let memoize2 f =
 let fast = ref false
 let file: string option ref = ref None
 let ascii = ref false
+let in_ocamldep = ref false
 type entry =  
   | FromExt
   | Impl
@@ -34,7 +35,9 @@ let spec =
       "treat file as an interface");
     ("--modern", (Arg.Set modern),
       "enable \"modern\" extensions/restrictions of ocaml's grammar");
-    ("--unsafe", (Arg.Set fast), "use unsafe function for arrays")]
+    ("--unsafe", (Arg.Set fast), "use unsafe function for arrays");
+    ("--ocamldep", (Arg.Set in_ocamldep),
+      "set a flag to inform parser that we are computing dependencies")]
 exception Unclosed_comment of int*int
 let print_blank_state ch s =
   let s =

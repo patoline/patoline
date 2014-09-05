@@ -315,7 +315,7 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 	fun blank str pos next key g ->
 	let str, pos = blank str pos in
         let l = line str in
-	if pos >= String.length l then raise Give_up;
+	if pos > String.length l then raise Give_up;
 	if string_match r l pos then
 	  let f n = matched_group n l in
 	  let pos' = match_end () in

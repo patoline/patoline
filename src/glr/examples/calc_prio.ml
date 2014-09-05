@@ -7,19 +7,7 @@ let ident_re = "[a-zA-Z_'][a-zA-Z0-9_']*"
 
 type calc_prio = Sum | Prod | Pow | Atom
 
-let next_prio = function
-    Sum -> Prod
-  | Prod -> Pow
-  | Pow -> Atom
-  | Atom -> assert false
-
-let prio_to_string = function
-    Sum -> "Sum"
-  | Prod -> "Prod"
-  | Pow -> "Pow"
-  | Atom -> "Atom"
-
-let expression, set_expression = grammar_family ~param_to_string:prio_to_string "expression" 
+let expression, set_expression = grammar_family "expression" 
 
 let env = Hashtbl.create 101
 

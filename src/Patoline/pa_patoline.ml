@@ -122,19 +122,22 @@ struct
  * Words.                                                                   *
  ****************************************************************************)
 
-  let char_re    = "[^ \t\r\n\\{}()*/|-_$>]"
-  let escaped_re =     "\\\\[\\{}()*/|-_$>]"
-  let special_re =             "[()]"
-  let char_alone = black_box 
+  let char_re    = "[^ \t\r\n\\{}()#*/|_$>-]"
+  let escaped_re =     "\\\\[\\{}()#*/|_$>-]"
+  let special_re =             "[()#]"
+  let non_special = ['>';'*';'/';'|';'-';'_']
+  let char_alone = 
+    black_box 
 		    (fun str pos ->
 		     let c,str',pos' = read str pos in
-		     if List.mem c ['>';'*';'/';'|';'-';'_'] then
+		     if List.mem c non_special then
 		       let c',_,_ = read str' pos' in
 		       if c' = c then raise Give_up
 		       else c, str', pos'
 		     else
 		       raise Give_up)
-		    (Charset.add (Charset.singleton '>') '*') false ("> | *")
+		    (List.fold_left Charset.add Charset.empty_charset non_special) false
+		    (String.concat " | " (List.map (fun c -> String.make 1 c) non_special))
 
   let character =
     parser
@@ -172,19 +175,22 @@ struct
    ****************************************************************************)
 				
   let verbatim_line   =
-    "\\(^[^#\t\n][^\t\n]*\\)\\|\\(^#?#?[^#\t\n][^\t\n]*\\)\\|\\(^[ \t]*\\)"
+    "\\(^[^#\t][^\t]*\\)\\|\\(^#?#?[^#\t][^\t]*\\)\\|\\(^[ \t]*\\)"
+(*    "^#?#?\\([^#\t\n][^\t\n]*\\)?" ??? *)
       
-  let string_filename = "\\\"[a-zA-Z0-9-_.]*\\\""
+  let string_filename = "\\\"\\([a-zA-Z0-9-_.]*\\)\\\""
   let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
+
+  let files_contents = Hashtbl.create 101 
 			  
   let verbatim_environment =
     change_layout (
 	parser
 	  RE("^###")
 	  lang:{RE("[ \t]+") id:RE(uid_coloring)}?
-	  file:{RE("[ \t]+") fn:RE(string_filename)}?
-	  RE("[ \t]*\n")
-	  lines:{l:RE(verbatim_line) RE("\n")}+
+	  file:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
+	  RE("[ \t]*") CHR('\n')
+	  lines:{l:RE(verbatim_line) CHR('\n')}+ 
 	  RE("^###") -> (
 		(* TODO do something with "lang" and "file" *)
 		assert(List.length lines <> 0); (* Forbid empty verbatim env *)
@@ -203,18 +209,40 @@ struct
 		let fn = fun acc s -> min acc (count_head_spaces s) in
 		let sps = List.fold_left fn max_int lines in
 		let sps = if sps = max_int then 0 else sps in
-		let fn = fun s -> try String.sub s sps (String.length s - sps)
-				  with Invalid_argument _ -> ""
-		in
-		let lines = List.map fn lines in
-		
-		let buildline l =
+		let fn = fun s -> 
+		  let s = 
+		    try String.sub s sps (String.length s - sps)
+		    with Invalid_argument _ -> ""
+		  in
 		  <:structure<let _ = newPar D.structure ~environment:verbEnv
                    Complete.normal ragged_left
-                   (lang_default $string:l$)>>
+                   (List.flatten (lang_default [$string:s$]))>>
 		in
-		let fn = fun l -> buildline (String.escaped l) in
-		List.flatten (List.map fn lines))
+		let str_lines = List.map fn lines in
+		begin
+		  match file with
+		  | Some name when not !in_ocamldep ->
+		     let pos = 
+		       try Hashtbl.find files_contents name
+		       with Not_found -> -1
+		     in
+		     let new_pos = (start_pos _loc).Lexing.pos_cnum in
+		     if new_pos > pos then
+		       begin
+			 Hashtbl.add files_contents name new_pos;
+			 let mode = if pos >= 0 then
+				      [Open_creat; Open_append ]
+				    else
+				      [Open_creat; Open_trunc; Open_wronly ]
+			 in
+			 Printf.eprintf "Creating file: %s\n%!" name;
+			 let ch = open_out_gen mode 0o600 name in
+			 List.iter (Printf.fprintf ch "%s\n") lines;
+			 close_out ch
+		       end
+		  | _ -> ()
+		end;
+		List.flatten str_lines)
       ) no_blank
 
   let verbatim_generic st forbid nd =

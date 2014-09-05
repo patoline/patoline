@@ -218,7 +218,7 @@ examples/test_list.cmx: examples/test_list.ml glr.cmxa
 
 install: uninstall glr.mli glr.cmxa glr.cma
 	- mkdir $(LIBDIR)
-	- ocamlfind remove glr $(LIBDIR)
+	- ocamlfind remove -destdir $(LIBDIR) glr
 	ocamlfind install -destdir $(LIBDIR) glr META glr.cmi glr.cmo glr.mli glr.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx glr.cma glr.cmxa glr.a
 	install pa_ocaml $(BINDIR)
 

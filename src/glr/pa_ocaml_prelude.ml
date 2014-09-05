@@ -27,6 +27,7 @@ let memoize2 f =
 let fast = ref false
 let file : string option ref = ref None
 let ascii = ref false
+let in_ocamldep = ref false
 type entry = FromExt | Impl | Intf | Toplvl
 let entry = ref FromExt
 let modern = ref false
@@ -42,6 +43,7 @@ let spec = ref [
   "--intf", Arg.Unit (fun () -> entry := Intf), "treat file as an interface" ;
   "--modern", Arg.Set modern, "enable \"modern\" extensions/restrictions of ocaml's grammar" ;
   "--unsafe", Arg.Set fast, "use unsafe function for arrays" ;
+  "--ocamldep", Arg.Set in_ocamldep, "set a flag to inform parser that we are computing dependencies" ;
 ]
 
 (****************************************************************************

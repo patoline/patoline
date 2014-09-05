@@ -343,9 +343,10 @@ and make_deps pre source=
   let in_deps, do_dep =
     if !recompile || date_source > date_dep then begin
       let cmd=Printf.sprintf
-	"ocamlfind ocamldep %s %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .typ '%s'"
+	"ocamlfind ocamldep %s %s %s %s -ml-synonym .tml -ml-synonym .ttml -ml-synonym .txp -ml-synonym .typ '%s'"
 	(let pack=String.concat "," (List.rev opts.packages) in
 	 if pack<>"" then "-package "^pack else "")
+	(if Filename.check_suffix source ".typ" then "-pp 'pa_patoline --ocamldep'" else "")
 	(String.concat " " dirs_)
 	(includes_opt source)
 	source
