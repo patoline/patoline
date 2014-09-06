@@ -2,6 +2,7 @@
  * Type of a unicode character.
  *)
 type uchar = int
+type t = uchar
 
 (*
  * Type of the index of an encoded uchar in a string.

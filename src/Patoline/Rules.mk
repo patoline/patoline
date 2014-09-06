@@ -28,19 +28,6 @@ $(d)/patoline: $(TYPOGRAPHY_DIR)/Typography.cmxa $(PAT_CMX)
 
 all: $(PA_PATOLINE)
 
-OCAMLVERSION=$(shell $(OCAMLC) -version)
-
-ifeq ($(OCAMLVERSION),3.12.1)
-COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
-COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo
-else
-COMPILER_INC = -I +compiler-libs
-COMPILER_LIBS = ocamlcommon.cma
-endif
-
-COMPILER_LIBO := $(COMPILER_LIBS:.cma=.cmxa)
-COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
-
 $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/imagelib.cmxa $(PA_OCAML)
 	$(ECHO) "[OPT]    ... -> $@"
 	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr $(COMPILER_INC) $(COMPILER_LIBO) -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx $< \

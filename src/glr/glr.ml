@@ -41,7 +41,7 @@ let rec merge_map2 = fun fn la lb ->
 type blank = buffer -> int -> buffer * int
 
 let blank_regexp r = 
-  let accept_newline = string_match r "\n" 0 in
+  let accept_newline = string_match r "\n" 0 && match_end () = 1 in
   let rec fn str pos =
     if string_match r (line str) pos then
       let pos' = match_end () in

@@ -153,6 +153,19 @@ OCAMLFIND_IGNORE_DUPS_IN=$(dir $(INSTALL_TYPOGRAPHY_DIR))
 export OCAMLPATH 
 export OCAMLFIND_IGNORE_DUPS_IN
 
+OCAMLVERSION=$(shell $(OCAMLC) -version)
+
+ifeq ($(OCAMLVERSION),3.12.1)
+COMPILER_INC = -I +compiler-libs/parsing -I +compiler-libs/typing -I +compiler-libs/utils
+COMPILER_LIBS = misc.cmo config.cmo longident.cmo printast.cmo
+else
+COMPILER_INC = -I +compiler-libs
+COMPILER_LIBS = ocamlcommon.cma
+endif
+
+COMPILER_LIBO := $(COMPILER_LIBS:.cma=.cmxa)
+COMPILER_LIBO := $(COMPILER_LIBO:.cmo=.cmx)
+
 # Main rule prerequisites are expected to be extended by each Rules.mk
 # We just declare it here to make it the (phony) default target.
 .PHONY: all

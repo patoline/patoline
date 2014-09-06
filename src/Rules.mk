@@ -15,6 +15,7 @@ RBUFFER_DIR := $(d)/rbuffer
 LIBFONTS_DIR := $(d)/patfonts
 CESURE_DIR := $(d)/cesure
 GLR_DIR := $(d)/glr
+UNICODE_DIR := $(d)/unicodelib
 PA_OCAML := $(GLR_DIR)/pa_ocaml
 
 # Visit subdirectories
