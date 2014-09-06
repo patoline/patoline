@@ -293,7 +293,7 @@ module Biblio (C:CitationStyle) (B:BiblioStyle)=struct
 end
 
 
-let rec default_biblio_format row=
+let rec default_biblio_format ?follow_crossrefs:(follow_crossrefs=true) row=
   match !bibfile_ with
       None->[]
     | Some bf->(
@@ -312,25 +312,25 @@ let rec default_biblio_format row=
               None->[]
             | Some i->(
               match dbCite db true (sprintf "id=%s" i) with
-                  []->[]
-                | h::_->tT "in: "::(default_biblio_format h)
+                h::_ when follow_crossrefs->tT "in: "::(default_biblio_format ~follow_crossrefs:false  h)
+              | _->[]
             )
           in
           let jour=match row.(field_num "journal") with
-              None->[]
-            | Some j->(
+            | Some j when pub_in=[] && follow_crossrefs->(
               let jour=ref [] in
               let cb row _=match row.(0) with Some a->jour:=a::(!jour) | None -> () in
               match exec db ~cb:cb (sprintf "SELECT name FROM journals WHERE id=%s" j) with
                   Rc.OK -> [tT "in: ";tT (List.hd !jour)]
                 | r ->(fprintf stderr "%s\n%s\n" (Rc.to_string r) (errmsg db); flush stderr;raise Not_found)
             )
+            | _->[]
           in
-          let booktitle=match jour,row.(field_num "booktitle") with
-              [], Some j->(
-                [tT "in: ";tT j]
-              )
-            | a,_->a
+          let booktitle=match row.(field_num "booktitle") with
+              Some j when jour=[] && pub_in=[] && follow_crossrefs->(
+              [tT "in: ";tT j]
+            )
+            | _->[]
           in
           let pub=match row.(field_num "publisher") with
               None->[]
@@ -379,7 +379,7 @@ let rec default_biblio_format row=
             | _->[]
           in
           let eprint=match row.(field_num "eprint") with
-              Some x->extLink x (verb [tT x])
+              Some x when follow_crossrefs->extLink x (verb [tT x])
             | _->[]
           in
           (
