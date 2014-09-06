@@ -1,35 +1,56 @@
-==============================================
- Documentation of the \verb{glr} library and
- \verb{pa_ocaml} parser
-----------------------------------------------
- Rodolphe Lepigre & Christophe Raffalli
-----------------------------------------------
- Lama, UMR 5127 CNRS, Univesité Savoie Mont-Blanc
-==============================================
+==============================================================================
+  Documentation of the ##glr## library and the ##pa_ocaml## parser
+------------------------------------------------------------------------------
+  Rodolphe Lepigre & Christophe Raffalli
+------------------------------------------------------------------------------
+  Lama, UMR 5127 CNRS, Univesité Savoie Mont-Blanc
+==============================================================================
 
 == Introduction ==
 
-The \verb{glr} library and
- \verb{pa_ocaml} parser gives a simple way to write parser and extend OCaml's grammar.
-Compared to camlp4, it is simpler and does not use a lexer at all which gives much more freedom
-to write syntax extension.
+The ##glr## library and ##pa_ocaml## parser provide a simple way to write
+parsers and extend the OCaml syntax. It is intended to be simpler to use than
+##camlp4##, moreover, no lexer is used, which gives more freedom to write
+syntax extensions.
 
-This softwere use propose the following:
-
+This software provides the following:
 \begin{itemize}
-\item The \verb{input} module: transforms an input channel or string into an // input buffer //
-
-\item \verb{glr} library : a minimalist parser combinator library, probably too small to be usable.
-Still it proposes a notion of "blank" function you can change to ignore blanks and can return the list
-of all possible parse tree or raise an error for ambiguous grammar
-
-\item \verb{pa_ocaml} : a parser for OCaml languages using glr. If can be used using the "##-pp##" option of OCaml's tool.
-
-\item \verb{pa_parser} : an extension of the OCaml syntax to write parser. The syntax is BNF like with one main restriction
-that //left recursive// grammar are forbidden.
-
-\item A quotation and anti-quotation mecanism that you can use to write parser to write your own extension to OCaml's syntax.
+\item ##input##: a module allowing to transforms an input channel or string
+      into an //input buffer//.
+\item ##glr##: a minimalist parser combinator library, which is probably too
+      small to be usable directly. Still it proposes a notion of "blank"
+      function you can change to ignore blanks and can return the list of all
+      possible parse tree or raise an error for ambiguous grammar.
+\item ##pa_ocaml##: a parser for the OCaml languages implemented using glr. If
+      can be used using the "##-pp##" option of OCaml's tool.
+\item ##pa_parser##: an extension of the OCaml syntax to write parsers. The
+      syntax is BNF like with one main restriction that //left recursive//
+      grammar are forbidden.
+\item A quotation and anti-quotation mecanism that you can use to write
+      parser to write your own extension to OCaml's syntax.
 \end{itemize}
+
+== Blank function ==
+
+While a string or file is being parsed, it is required to differenciate parts
+of the parsed input that are meaningful, to those that need to be ignored.
+This part of the work is usually handled by a lexer, but ##glr## relies on
+another mechanism: blank functions.
+
+A blank function inspects the input buffer at a given position, and returns
+the position of the next meaningful data (i.e. the next character that is not
+to be ignored. The type of a blank function is the following.
+
+### OCaml
+
+blank = buffer -> int -> buffer * int
+
+###
+
+When a parser is invoked (using the functon ##parse_string## for example), a
+default blank function needs to be provided. It will then be used to discard
+characters before every terminal is parsed until the function
+##change_layout## is called to change the blank function.
 
 == Examples ==
 
