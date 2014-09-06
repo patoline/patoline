@@ -206,12 +206,22 @@ let string_literal =
 #endif
   in
   parser
-    r:(change_layout (
+  | r:(change_layout (
     parser
       CHR('"') lc:(one_char false)*
         lcs:(parser CHR('\\') CHR('\n') RE(interspace) lc:(one_char false)* -> lc)*
         CHR('"') -> char_list_to_string (List.flatten (lc::lcs))
     ) no_blank) -> r
+
+  | r:(change_layout (
+	parser CHR('{') id:RE("[a-z]*") CHR('|') ->>
+	  let string_literal_suit = declare_grammar "string_literal_suit" in
+	  let _ = set_grammar string_literal_suit (
+	    parser
+	    | CHR('|') STR(id) CHR('}') -> []
+	    | c:ONE r:string_literal_suit -> c::r)
+	  in r:string_literal_suit -> char_list_to_string r) no_blank) -> r
+
   | CHR('$') STR("string") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
 
 let quotation = declare_grammar "quotation"

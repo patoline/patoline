@@ -65,8 +65,16 @@ let blank str pos =
        | (`Chr,_) -> fn lvl `Ini cur next
        | (`Str,'\\') -> fn lvl `Esc cur next
        | (`Str,_) -> fn lvl `Str cur next
+       | (`StrO l,('a'..'z')) -> fn lvl (`StrO (c :: l)) cur next
+       | (`StrO l,'|') -> fn lvl (`StrI (List.rev l)) cur next
+       | (`StrO _,_) -> fn lvl `Ini cur next
+       | (`StrI l,'|') -> fn lvl (`StrC (l, l)) cur next
+       | (`StrC (l',a::l),a') when a = a' -> fn lvl (`StrC (l', l)) cur next
+       | (`StrC (_,[]),'}') -> fn lvl `Ini cur next
+       | (`StrC (l',_),_) -> fn lvl (`StrI l') cur next
        | (_,'"') when lvl > 0 -> fn lvl `Str cur next
        | (_,'\'') when lvl > 0 -> fn lvl `Chr cur next
+       | (_,'{') when lvl > 0 -> fn lvl (`StrO []) cur next
        | (`Ini,'(') -> fn lvl `Opn cur next
        | (`Opn,'*') -> fn (lvl + 1) `Ini cur next
        | (`Opn,_) when lvl = 0 -> prev

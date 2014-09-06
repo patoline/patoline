@@ -1,13 +1,13 @@
 type charset = int array
 
-let mask, shift, size = match Sys.word_size with
-    32 -> 15, 4, 256 / 16
-  | 64 -> 31, 5, 256 / 32
+let used, mask, shift, size = match Sys.word_size with
+    32 -> 0x7fffffff, 15, 4, 256 / 16
+  | 64 -> 0x7fffffffffffffff, 31, 5, 256 / 32
   | _ -> failwith "word_size is neither 32 nor 64, whoah !!!!"
 
 let empty_charset = Array.make size 0
 
-let full_charset = Array.make size mask
+let full_charset = Array.make size used
  
 let get s c =
   let i = Char.code c in
@@ -17,10 +17,20 @@ let addq s c =
   let i = Char.code c in
   s.(i lsr shift) <- s.(i lsr shift) lor (1 lsl (i land mask))
 
+let delq s c =
+  let i = Char.code c in
+  s.(i lsr shift) <- s.(i lsr shift) land (lnot (1 lsl (i land mask)))
+
 let add s c =
   let i = Char.code c in
   let s = Array.copy s in
   s.(i lsr shift) <- s.(i lsr shift) lor (1 lsl (i land mask));
+  s
+
+let del s c =
+  let i = Char.code c in
+  let s = Array.copy s in
+  s.(i lsr shift) <- s.(i lsr shift) land (lnot (1 lsl (i land mask)));
   s
   
 let union s1 s2 = 

@@ -270,16 +270,28 @@ let char : char -> 'a -> 'a grammar
 	  single str' pos' (g str pos str' pos' a)
     }
 
+let one : char grammar 
+  = let set = del full_charset '\255' in
+    { firsts = lazy set;
+      firsts_sym = lazy ["ONE"];
+      accept_empty = lazy false;
+      parse =
+	fun blank str pos next key g ->
+	  let str, pos = blank str pos in
+          let c, str', pos' = read str pos in
+	  if c = '\255' then parse_error key "ONE" str pos;
+	  single str' pos' (g str pos str' pos' c)
+    }
+
 let list_char c x = char c [x]
 
 let string : string -> 'a -> 'a grammar 
   = fun s a -> 
    let len_s = String.length s in
-    if len_s = 0 then failwith "string: illegal empty string";
-    let set = singleton s.[0] in
+    let set = if len_s > 0 then singleton s.[0] else empty_charset in
     { firsts = lazy set;
-      firsts_sym = lazy [s];
-      accept_empty = lazy false;
+      firsts_sym = lazy (if len_s > 0 then [s] else []);
+      accept_empty = lazy (len_s = 0);
       parse =
 	fun blank str pos next key g ->
 	  let str, pos = blank str pos in

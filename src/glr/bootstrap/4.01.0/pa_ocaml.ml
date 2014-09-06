@@ -320,6 +320,67 @@ module Make(Initial:Extension) =
                                                   (one_char false)))))
                                       (fun x  -> x)))))) (fun x  -> x))
                     (locate (Glr.char '"' ())) (fun x  -> x)) no_blank));
+        Glr.apply (fun r  -> let (_loc_r,r) = r in let _loc = _loc_r in r)
+          (locate
+             (change_layout
+                (Glr.iter
+                   (Glr.sequence
+                      (Glr.sequence (locate (Glr.char '{' ()))
+                         (locate
+                            (Glr.regexp "[a-z]*" (fun groupe  -> groupe 0)))
+                         (fun _unnamed_0  ->
+                            let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                            fun id  ->
+                              let (_loc_id,id) = id in
+                              fun _unnamed_2  ->
+                                let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
+                                let _loc =
+                                  merge
+                                    [_loc__unnamed_0;
+                                    _loc_id;
+                                    _loc__unnamed_2] in
+                                let string_literal_suit =
+                                  declare_grammar "string_literal_suit" in
+                                let _ =
+                                  set_grammar string_literal_suit
+                                    (Glr.alternatives
+                                       [Glr.sequence
+                                          (Glr.sequence
+                                             (locate (Glr.char '|' ()))
+                                             (locate (Glr.string id ()))
+                                             (fun _unnamed_0  ->
+                                                let (_loc__unnamed_0,_unnamed_0)
+                                                  = _unnamed_0 in
+                                                fun _unnamed_1  ->
+                                                  let (_loc__unnamed_1,_unnamed_1)
+                                                    = _unnamed_1 in
+                                                  fun _unnamed_2  ->
+                                                    let (_loc__unnamed_2,_unnamed_2)
+                                                      = _unnamed_2 in
+                                                    let _loc =
+                                                      merge
+                                                        [_loc__unnamed_0;
+                                                        _loc__unnamed_1;
+                                                        _loc__unnamed_2] in
+                                                    []))
+                                          (locate (Glr.char '}' ()))
+                                          (fun x  -> x);
+                                       Glr.sequence (locate Glr.one)
+                                         (locate string_literal_suit)
+                                         (fun c  ->
+                                            let (_loc_c,c) = c in
+                                            fun r  ->
+                                              let (_loc_r,r) = r in
+                                              let _loc =
+                                                merge [_loc_c; _loc_r] in
+                                              c :: r)]) in
+                                Glr.apply
+                                  (fun r  ->
+                                     let (_loc_r,r) = r in
+                                     let _loc = _loc_r in
+                                     char_list_to_string r)
+                                  (locate string_literal_suit)))
+                      (locate (Glr.char '|' ())) (fun x  -> x))) no_blank));
         Glr.sequence
           (Glr.sequence
              (Glr.sequence

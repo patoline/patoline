@@ -188,7 +188,7 @@ struct
 	parser
 	  RE("^###")
 	  lang:{RE("[ \t]+") id:RE(uid_coloring)}?
-	  file:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
+	  filename:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
 	  RE("[ \t]*") CHR('\n')
 	  lines:{l:RE(verbatim_line) CHR('\n')}+ 
 	  RE("^###") -> (
@@ -220,7 +220,7 @@ struct
 		in
 		let str_lines = List.map fn lines in
 		begin
-		  match file with
+		  match filename with
 		  | Some name when not !in_ocamldep ->
 		     let pos = 
 		       try Hashtbl.find files_contents name
@@ -234,6 +234,13 @@ struct
 				      [Open_creat; Open_append ]
 				    else
 				      [Open_creat; Open_trunc; Open_wronly ]
+			 in
+			 let name = if Filename.is_relative name then
+				      match !file with
+					None -> name
+				      | Some file ->
+					 Filename.concat (Filename.dirname file) name
+				    else name
 			 in
 			 Printf.eprintf "Creating file: %s\n%!" name;
 			 let ch = open_out_gen mode 0o600 name in

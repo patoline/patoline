@@ -336,6 +336,8 @@ struct
        exp_apply _loc (exp_glr_fun _loc "fail") [e]
     | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
        exp_apply _loc (exp_glr_fun _loc "debug") [e]
+    | STR("ONE") ->
+       exp_glr_fun _loc "one"
     | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
        let opt = match opt with None -> exp_unit _loc | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "char") [e; opt]

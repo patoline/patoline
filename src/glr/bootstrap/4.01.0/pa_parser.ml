@@ -464,6 +464,11 @@ module Ext(In:Extension) =
                let (_loc_e,e) = e in
                let _loc = merge [_loc__unnamed_0; _loc_e] in
                exp_apply _loc (exp_glr_fun _loc "debug") [e]);
+        Glr.apply
+          (fun _unnamed_0  ->
+             let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+             let _loc = _loc__unnamed_0 in exp_glr_fun _loc "one")
+          (locate (Glr.string "ONE" ()));
         Glr.sequence
           (Glr.sequence (locate (Glr.string "CHR" ()))
              (locate (expression_lvl (next_exp App)))

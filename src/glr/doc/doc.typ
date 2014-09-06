@@ -35,15 +35,15 @@ that //left recursive// grammar are forbidden.
 
 === The calculator ===
 
-Here is the most classical example: a calculator, including variable.
+Here is the most classical example: a calculator, including variables.
 
 ### OCaml "calc_prio.ml"
 open Glr
 
 (* Two regexps + a blank function created from a regexp *)
-let float_re = "[0-9]+\\([.][0-9]+\\)?\\([eE][-]?[0-9]+\\)?"
-let ident_re = "[a-zA-Z_'][a-zA-Z0-9_']*"
-let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+let float_re = {|[0-9]+\([.][0-9]+\)?\([eE][-+]?[0-9]+\)?|}
+let ident_re = {|[a-zA-Z_'][a-zA-Z0-9_']*|}
+let blank = blank_regexp (Str.regexp {|[ \t\n\r]*|})
 
 (* definition of the pririoty levels and a hash tbl for the 
    values of variables *)
@@ -83,13 +83,12 @@ let command = parser
 
 let _ =
   try while true do
-    try
+    handle_exception (fun () ->
       Printf.printf ">> %!";
       (* we call the parser with the choosen blank function
          and a file name used in error messages *)
       let x = parse_string command blank "stdin" (input_line stdin) in
-      Printf.printf "=> %f\n%!" x
-    with e -> handle_error e
+      Printf.printf "=> %f\n%!" x) ()
   done with End_of_file -> ()
 ###
 

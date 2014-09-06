@@ -54,6 +54,9 @@ val change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 'a gramma
 (** [eof x]: parses the end of input only and returns [x] *)
 val eof : 'a -> 'a grammar
 
+(** [char]: parses one char and returns it *)
+val one : char grammar
+
 (** [empty x]: parses no characters (always succeed) and return [x]*)
 val empty : 'a -> 'a grammar
 
