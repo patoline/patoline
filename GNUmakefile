@@ -148,7 +148,8 @@ EDITORS_DIR := editors
 
 # Environment variable for ocamlfind to search for local package
 # and ignore duplicate definition due to previous installation
-OCAMLPATH = $(SRC_DIR)
+OCAMLPATH_SAVE := $(OCAMLPATH)
+OCAMLPATH = $(SRC_DIR):$(OCAMLPATH_SAVE)
 OCAMLFIND_IGNORE_DUPS_IN=$(dir $(INSTALL_TYPOGRAPHY_DIR))
 export OCAMLPATH 
 export OCAMLFIND_IGNORE_DUPS_IN
