@@ -320,307 +320,213 @@ module Initial =
     let pexp_function cases = Pexp_function ("", None, cases)
     let pexp_fun (label,opt,pat,expr) =
       Pexp_function (label, opt, [(pat, expr)])
-    type quote_env1 = 
-      {
-      mutable expression_stack: Parsetree.expression list;
-      mutable expression_list_stack: Parsetree.expression list;
-      mutable pattern_stack: Parsetree.expression list;
-      mutable pattern_list_stack: Parsetree.expression list;
-      mutable type_stack: Parsetree.expression list;
-      mutable type_list_stack: Parsetree.expression list;
-      mutable structure_stack: Parsetree.expression list;
-      mutable signature_stack: Parsetree.expression list;
-      mutable string_stack: Parsetree.expression list;
-      mutable int_stack: Parsetree.expression list;
-      mutable int32_stack: Parsetree.expression list;
-      mutable int64_stack: Parsetree.expression list;
-      mutable natint_stack: Parsetree.expression list;
-      mutable float_stack: Parsetree.expression list;
-      mutable char_stack: Parsetree.expression list;
-      mutable bool_stack: Parsetree.expression list} 
-    type quote_env2 = 
-      {
-      mutable expression_stack2: Parsetree.expression list;
-      mutable expression_list_stack2: Parsetree.expression list list;
-      mutable pattern_stack2: Parsetree.pattern list;
-      mutable pattern_list_stack2: Parsetree.pattern list list;
-      mutable type_stack2: Parsetree.core_type list;
-      mutable type_list_stack2: Parsetree.core_type list list;
-      mutable structure_stack2: Parsetree.structure_item list list;
-      mutable signature_stack2: Parsetree.signature_item list list;
-      mutable string_stack2: string list;
-      mutable int_stack2: int list;
-      mutable int32_stack2: int32 list;
-      mutable int64_stack2: int64 list;
-      mutable natint_stack2: nativeint list;
-      mutable float_stack2: float list;
-      mutable char_stack2: char list;
-      mutable bool_stack2: bool list} 
+    type quote_env1 = (string* Parsetree.expression) Stack.t 
+    type quote_env2_data =  
+      | Expression of Parsetree.expression
+      | Expression_list of Parsetree.expression list
+      | Pattern of Parsetree.pattern
+      | Pattern_list of Parsetree.pattern list
+      | Type of Parsetree.core_type
+      | Type_list of Parsetree.core_type list
+      | Structure of Parsetree.structure_item list
+      | Signature of Parsetree.signature_item list
+      | String of string
+      | Int of int
+      | Int32 of int32
+      | Int64 of int64
+      | Natint of nativeint
+      | Float of float
+      | Char of char
+      | Bool of bool 
+    type quote_env2 = quote_env2_data Stack.t 
     type quote_env =  
       | First of quote_env1
       | Second of quote_env2 
     let quote_stack: quote_env Stack.t = Stack.create ()
-    let empty_quote_env1 () =
-      First
-        {
-          expression_stack = [];
-          expression_list_stack = [];
-          pattern_stack = [];
-          pattern_list_stack = [];
-          type_stack = [];
-          type_list_stack = [];
-          structure_stack = [];
-          signature_stack = [];
-          string_stack = [];
-          int_stack = [];
-          int32_stack = [];
-          int64_stack = [];
-          natint_stack = [];
-          float_stack = [];
-          char_stack = [];
-          bool_stack = []
-        }
-    let empty_quote_env2 () =
-      Second
-        {
-          expression_stack2 = [];
-          expression_list_stack2 = [];
-          pattern_stack2 = [];
-          pattern_list_stack2 = [];
-          type_stack2 = [];
-          type_list_stack2 = [];
-          structure_stack2 = [];
-          signature_stack2 = [];
-          string_stack2 = [];
-          int_stack2 = [];
-          int32_stack2 = [];
-          int64_stack2 = [];
-          natint_stack2 = [];
-          float_stack2 = [];
-          char_stack2 = [];
-          bool_stack2 = []
-        }
+    let empty_quote_env1 () = First (Stack.create ())
+    let empty_quote_env2 () = Second (Stack.create ())
     let push_pop_expression e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.expression_stack <- e :: (env.expression_stack); e)
+        | First env -> (Stack.push ("push_expression", e) env; e)
         | Second env ->
-            (match env.expression_stack2 with
-             | e::l -> (env.expression_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Expression e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_expression e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.expression_stack2 <- e :: (env.expression_stack2)
+      | Second env -> Stack.push (Expression e) env
     let push_pop_expression_list e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.expression_list_stack <- e :: (env.expression_list_stack);
-             [])
+        | First env -> (Stack.push ("push_expression_list", e) env; [])
         | Second env ->
-            (match env.expression_list_stack2 with
-             | e::l -> (env.expression_list_stack2 <- l; e)
+            (match Stack.pop env with
+             | Expression_list e -> e
              | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_expression_list e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env ->
-          env.expression_list_stack2 <- e :: (env.expression_list_stack2)
+      | Second env -> Stack.push (Expression_list e) env
     let push_pop_type e =
       try
         match Stack.top quote_stack with
         | First env ->
-            (env.type_stack <- e :: (env.type_stack);
-             loc_typ e.pexp_loc Ptyp_any)
+            (Stack.push ("push_type", e) env; loc_typ e.pexp_loc Ptyp_any)
         | Second env ->
-            (match env.type_stack2 with
-             | e::l -> (env.type_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Type e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_type e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.type_stack2 <- e :: (env.type_stack2)
+      | Second env -> Stack.push (Type e) env
     let push_pop_type_list e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.type_list_stack <- e :: (env.type_list_stack); [])
+        | First env -> (Stack.push ("push_type_list", e) env; [])
         | Second env ->
-            (match env.type_list_stack2 with
-             | e::l -> (env.type_list_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Type_list e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_type_list e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.type_list_stack2 <- e :: (env.type_list_stack2)
+      | Second env -> Stack.push (Type_list e) env
     let push_pop_pattern e =
       try
         match Stack.top quote_stack with
         | First env ->
-            (env.pattern_stack <- e :: (env.pattern_stack);
-             loc_pat e.pexp_loc Ppat_any)
+            (Stack.push ("push_pattern", e) env; loc_pat e.pexp_loc Ppat_any)
         | Second env ->
-            (match env.pattern_stack2 with
-             | e::l -> (env.pattern_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Pattern e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_pattern e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.pattern_stack2 <- e :: (env.pattern_stack2)
+      | Second env -> Stack.push (Pattern e) env
     let push_pop_pattern_list e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.pattern_list_stack <- e :: (env.pattern_list_stack); [])
+        | First env -> (Stack.push ("push_pattern_list", e) env; [])
         | Second env ->
-            (match env.pattern_list_stack2 with
-             | e::l -> (env.pattern_list_stack2 <- l; e)
+            (match Stack.pop env with
+             | Pattern_list e -> e
              | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_pattern_list e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env ->
-          env.pattern_list_stack2 <- e :: (env.pattern_list_stack2)
+      | Second env -> Stack.push (Pattern_list e) env
     let push_pop_structure e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.structure_stack <- e :: (env.structure_stack); [])
+        | First env -> (Stack.push ("push_structure", e) env; [])
         | Second env ->
-            (match env.structure_stack2 with
-             | e::l -> (env.structure_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Structure e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_structure e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.structure_stack2 <- e :: (env.structure_stack2)
+      | Second env -> Stack.push (Structure e) env
     let push_pop_signature e =
       try
         match Stack.top quote_stack with
-        | First env ->
-            (env.signature_stack <- e :: (env.signature_stack); [])
+        | First env -> (Stack.push ("push_signature", e) env; [])
         | Second env ->
-            (match env.signature_stack2 with
-             | e::l -> (env.signature_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Signature e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_signature e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.signature_stack2 <- e :: (env.signature_stack2)
+      | Second env -> Stack.push (Signature e) env
     let push_pop_string e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.string_stack <- e :: (env.string_stack); "")
+        | First env -> (Stack.push ("push_string", e) env; "")
         | Second env ->
-            (match env.string_stack2 with
-             | e::l -> (env.string_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | String e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_string e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.string_stack2 <- e :: (env.string_stack2)
+      | Second env -> Stack.push (String e) env
     let push_pop_int e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.int_stack <- e :: (env.int_stack); 0)
+        | First env -> (Stack.push ("push_int", e) env; 0)
         | Second env ->
-            (match env.int_stack2 with
-             | e::l -> (env.int_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Int e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_int e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.int_stack2 <- e :: (env.int_stack2)
+      | Second env -> Stack.push (Int e) env
     let push_pop_int32 e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.int32_stack <- e :: (env.int32_stack); 0l)
+        | First env -> (Stack.push ("push_int32", e) env; 0l)
         | Second env ->
-            (match env.int32_stack2 with
-             | e::l -> (env.int32_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Int32 e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_int32 e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.int32_stack2 <- e :: (env.int32_stack2)
+      | Second env -> Stack.push (Int32 e) env
     let push_pop_int64 e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.int64_stack <- e :: (env.int64_stack); 0L)
+        | First env -> (Stack.push ("push_int64", e) env; 0L)
         | Second env ->
-            (match env.int64_stack2 with
-             | e::l -> (env.int64_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Int64 e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_int64 e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.int64_stack2 <- e :: (env.int64_stack2)
+      | Second env -> Stack.push (Int64 e) env
     let push_pop_natint e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.natint_stack <- e :: (env.natint_stack); 0n)
+        | First env -> (Stack.push ("push_natint", e) env; 0n)
         | Second env ->
-            (match env.natint_stack2 with
-             | e::l -> (env.natint_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Natint e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_natint e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.natint_stack2 <- e :: (env.natint_stack2)
+      | Second env -> Stack.push (Natint e) env
     let push_pop_float e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.float_stack <- e :: (env.float_stack); 0.0)
+        | First env -> (Stack.push ("push_float", e) env; 0.0)
         | Second env ->
-            (match env.float_stack2 with
-             | e::l -> (env.float_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Float e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_float e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.float_stack2 <- e :: (env.float_stack2)
+      | Second env -> Stack.push (Float e) env
     let push_pop_char e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.char_stack <- e :: (env.char_stack); ' ')
+        | First env -> (Stack.push ("push_char", e) env; ' ')
         | Second env ->
-            (match env.char_stack2 with
-             | e::l -> (env.char_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Char e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_char e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.char_stack2 <- e :: (env.char_stack2)
+      | Second env -> Stack.push (Char e) env
     let push_pop_bool e =
       try
         match Stack.top quote_stack with
-        | First env -> (env.bool_stack <- e :: (env.bool_stack); false)
+        | First env -> (Stack.push ("push_bool", e) env; false)
         | Second env ->
-            (match env.bool_stack2 with
-             | e::l -> (env.bool_stack2 <- l; e)
-             | _ -> assert false)
+            (match Stack.pop env with | Bool e -> e | _ -> assert false)
       with | Stack.Empty  -> raise Give_up
     let push_bool e =
       match Stack.top quote_stack with
       | First env -> assert false
-      | Second env -> env.bool_stack2 <- e :: (env.bool_stack2)
+      | Second env -> Stack.push (Bool e) env
     let localise _loc e =
       let cols =
         let n =
@@ -633,9 +539,15 @@ module Initial =
             Printf.sprintf "#%d %S\n%s" ((_loc.loc_start).pos_lnum - 1)
               (_loc.loc_start).pos_fname) cols)
         ^ e
+    let loc_none =
+      let loc =
+        let open Lexing in
+          { pos_fname = "none"; pos_lnum = 1; pos_bol = 0; pos_cnum = (-1) } in
+      let open Location in
+        { loc_start = loc; loc_end = loc; loc_ghost = true }
     let quote_expression _loc loc e name =
       Stack.push (empty_quote_env1 ()) quote_stack;
-      (let e' = localise _loc e in
+      (let e' = e in
        let _ =
          match name with
          | "expression" ->
@@ -653,6 +565,7 @@ module Initial =
          match Stack.pop quote_stack with
          | First e -> e
          | Second _ -> assert false in
+       let _loc = loc_none in
        let push_expr =
          loc_expr _loc
            (Pexp_apply
@@ -677,44 +590,21 @@ module Initial =
                         (id_loc
                            (Ldot ((Lident "Pa_ocaml_prelude"), "quote_stack"))
                            _loc))))])) in
-       let fill push_expr name l =
-         let p =
-           List.fold_left
-             (fun acc  e  ->
-                let push_e =
-                  loc_expr _loc
-                    (Pexp_apply
-                       ((loc_expr _loc
-                           (Pexp_ident
-                              (id_loc
-                                 (Ldot ((Lident "Pa_ocaml_prelude"), name))
-                                 _loc))), [("", e)])) in
-                match acc with
-                | None  -> Some push_e
-                | Some acc ->
-                    Some (loc_expr _loc (Pexp_sequence (acc, push_e)))) None
-             l in
-         match p with
-         | None  -> push_expr
-         | Some e -> loc_expr _loc (Pexp_sequence (push_expr, e)) in
-       let push_expr = fill push_expr "push_expression" env.expression_stack in
+       let rec stack_fold fn acc stack =
+         try stack_fold fn (fn acc (Stack.pop stack)) stack
+         with | Stack.Empty  -> acc in
        let push_expr =
-         fill push_expr "push_expression_list" env.expression_list_stack in
-       let push_expr = fill push_expr "push_pattern" env.pattern_stack in
-       let push_expr =
-         fill push_expr "push_pattern_list" env.pattern_list_stack in
-       let push_expr = fill push_expr "push_type" env.type_stack in
-       let push_expr = fill push_expr "push_type_list" env.type_list_stack in
-       let push_expr = fill push_expr "push_structure" env.structure_stack in
-       let push_expr = fill push_expr "push_signature" env.signature_stack in
-       let push_expr = fill push_expr "push_string" env.string_stack in
-       let push_expr = fill push_expr "push_int" env.int_stack in
-       let push_expr = fill push_expr "push_int32" env.int32_stack in
-       let push_expr = fill push_expr "push_int64" env.int64_stack in
-       let push_expr = fill push_expr "push_natint" env.natint_stack in
-       let push_expr = fill push_expr "push_float" env.float_stack in
-       let push_expr = fill push_expr "push_char" env.char_stack in
-       let push_expr = fill push_expr "push_bool" env.bool_stack in
+         stack_fold
+           (fun acc  (name,e)  ->
+              let push_e =
+                loc_expr _loc
+                  (Pexp_apply
+                     ((loc_expr _loc
+                         (Pexp_ident
+                            (id_loc
+                               (Ldot ((Lident "Pa_ocaml_prelude"), name))
+                               _loc))), [("", e)])) in
+              loc_expr _loc (Pexp_sequence (acc, push_e))) push_expr env in
        let pop_expr =
          loc_expr _loc
            (Pexp_apply
@@ -766,7 +656,7 @@ module Initial =
                                  (Pexp_ident
                                     (id_loc (Lident "quote_res") _loc))))))))))))
     let quote_expression_2 loc e =
-      let e = localise loc e in parse_string expression blank "quote..." e
+      let e = e in parse_string expression blank "quote..." e
     let quote_type_2 loc e =
       let e = localise loc e in parse_string typexpr blank "quote..." e
     let quote_pattern_2 loc e =

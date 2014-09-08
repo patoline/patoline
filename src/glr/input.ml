@@ -91,8 +91,8 @@ let endif_directive =
 let buffer_from_fun fname get_line data =
   let rec fn fname active num bol cont =
     begin
+      let num = num + 1 in
       try
-	let num = num + 1 in
 	let line = get_line data in
 	let len = String.length line in
 	let bol' = bol + len + 1 in (* +1 for newline, should be 2 on windows ? *)
@@ -170,7 +170,8 @@ let get_string_line (str, p) =
   incr p;
   if !p < len && ((str.[!p] = '\n' && str.[!p - 1] = '\r') ||
 		    (str.[!p] = '\r' && str.[!p - 1] = '\n')) then incr p;
-  String.sub str start (_end - start)
+  let len' = _end - start in
+  if start = 0 && len' = len then str else String.sub str start len'
 
 let buffer_from_string name str =
   let data = (str, ref 0) in
