@@ -781,20 +781,20 @@ let partial_parse_buffer grammar blank str pos =
   Hashtbl.remove max_hash key;
   PosMap.fold (fun (str,pos) a acc -> (str,pos,a)::acc) la []
 
-let partial_parse_string grammar blank name str = 
-  let str = buffer_from_string name str in
+let partial_parse_string ?(filename="") grammar blank str = 
+  let str = buffer_from_string ~filename str in
   partial_parse_buffer grammar blank str
 
-let parse_string grammar blank name str = 
-  let str = buffer_from_string name str in
+let parse_string ?(filename="") grammar blank str = 
+  let str = buffer_from_string ~filename str in
   parse_buffer grammar blank str
 
-let parse_channel grammar blank name ic  =
-  let str = buffer_from_channel name ic in
+let parse_channel ?(filename="") grammar blank ic  =
+  let str = buffer_from_channel ~filename ic in
   parse_buffer grammar blank str
 
-let parse_file grammar blank name  =
-  let str = buffer_from_file name in
+let parse_file grammar blank filename  =
+  let str = buffer_from_file filename in
   parse_buffer grammar blank str
 
 let print_exception = function

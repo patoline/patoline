@@ -27,16 +27,24 @@ val blank_regexp : Str.regexp -> blank
 (** type of a grammar returning value of type ['a] *)
 type ('a) grammar
 
-(** [parse_string parser blank name str]: parses the string [str] with the given grammar and blank function.
-    a "name" is provided for error messages only *)
-val parse_string : 'a grammar -> blank -> string -> string -> 'a
+(** [parse_buffer parser blank buffer] parses the given buffer using the provided parser and blank function. *)
+val parse_buffer : 'a grammar -> blank -> buffer -> 'a
+ 
+(** [parse_string ~filename parser blank str]: parses the string [str] with the given grammar and blank function.
+    a "filename" is provided for error messages only *)
+val parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a
 
-val partial_parse_string : 'a grammar -> blank -> string -> string -> int -> (buffer * int * 'a) list
+(** [parse_channel ~filename parser blank in_channel]: load the content of the channel in a string
+     and parses it. *)
+val parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a
+
+(** [parse_file parser blank filename]: open the file and calls the previous function. *)
+val parse_file : 'a grammar -> blank -> string -> 'a
+
+(* The two following function allows to parse only the beginning of the file and they return
+   the buffer after parsing. *)
 val partial_parse_buffer : 'a grammar -> blank -> buffer-> int -> (buffer * int * 'a) list
-
-(** [parse_fine parser blank name in_channel]: load the content of the channel in a string
-     and parses it. Because it is loaded in memory, it works only for real file, not stream *)
-val parse_channel : 'a grammar -> blank -> string -> in_channel -> 'a
+val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> int -> (buffer * int * 'a) list
 
 (** [change_layout parser blank]: change the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not

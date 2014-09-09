@@ -153,11 +153,12 @@ let buffer_from_fun fname get_line data =
   | `End_of_file -> 
      Lazy.force (empty_buffer fname line bol)))
   
-let buffer_from_channel name ch = buffer_from_fun name input_line ch
+let buffer_from_channel ?(filename="") ch =
+  buffer_from_fun filename input_line ch
 
-let buffer_from_file name =
-  let ch = open_in name in
-  buffer_from_fun name input_line ch
+let buffer_from_file filename =
+  let ch = open_in filename in
+  buffer_from_fun filename input_line ch
 
 let get_string_line (str, p) =
   let len = String.length str in
@@ -173,6 +174,6 @@ let get_string_line (str, p) =
   let len' = _end - start in
   if start = 0 && len' = len then str else String.sub str start len'
 
-let buffer_from_string name str =
+let buffer_from_string ?(filename="") str =
   let data = (str, ref 0) in
-  buffer_from_fun name get_string_line data
+  buffer_from_fun filename get_string_line data

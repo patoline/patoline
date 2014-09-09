@@ -20,14 +20,14 @@ let _ =
   then
     (Printf.eprintf "native toplevel not supported by pa_ocaml.\n%!"; exit 1)
 let ast =
-  let (name,ch) =
+  let (filename,ch) =
     match !file with
     | None  -> ("stdin", stdin)
     | Some name -> (name, (open_in name)) in
   try
     match entry with
-    | `Impl g -> `Struct (parse_channel g blank name ch)
-    | `Intf g -> `Sig (parse_channel g blank name ch)
+    | `Impl g -> `Struct (parse_channel ~filename g blank ch)
+    | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
   with
   | Parse_error (fname,l,n,msgs) ->

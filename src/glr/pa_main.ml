@@ -25,7 +25,7 @@ let _ = if entry = `Top then
     Format.printf "\n> %!";
     (try
 	(* the buffer is recreated for each phrase in case of parse error ! *)
-	let buffer = Input.buffer_from_channel "stdin" stdin in
+	let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
 	let phrases = partial_parse_buffer Main.top_phrase blank buffer 0 in
 	match phrases with
 	  [buffer,pos,ph] ->
@@ -57,7 +57,7 @@ let _ =
 let ast =
   (* read the whole file with a buffer ...
      to be able to read stdin *)
-  let name, ch = match !file with
+  let filename, ch = match !file with
       None -> "stdin", stdin
     | Some name -> 
 (*       let buffer = Input.buffer_from_file name in
@@ -67,8 +67,8 @@ let ast =
   in
   try
     match entry with
-      `Impl g -> `Struct (parse_channel g blank name ch)
-    | `Intf g -> `Sig (parse_channel g blank name ch)
+      `Impl g -> `Struct (parse_channel ~filename g blank ch)
+    | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
   with
     Parse_error (fname,l,n,msgs) ->

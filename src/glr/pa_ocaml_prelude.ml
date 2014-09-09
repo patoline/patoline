@@ -687,13 +687,13 @@ let quote_expression _loc loc e name =
   Stack.push (empty_quote_env1 ()) quote_stack ;
   let e' = (*localise _loc*) e in
   let _ = match name with
-    | "expression" -> ignore (parse_string expression blank "quote..." e')
-    | "type"  -> ignore (parse_string typexpr blank "quote..." e')
-    | "pattern"  -> ignore (parse_string pattern blank "quote..." e')
-    | "str_item"  -> ignore (parse_string structure_item blank "quote..." e')
-    | "sig_item"  -> ignore (parse_string signature_item blank "quote..." e')
-    | "structure"  -> ignore (parse_string structure blank "quote..." e')
-    | "signature"  -> ignore (parse_string signature blank "quote..." e')
+    | "expression" -> ignore (parse_string expression blank e')
+    | "type"  -> ignore (parse_string typexpr blank e')
+    | "pattern"  -> ignore (parse_string pattern blank e')
+    | "str_item"  -> ignore (parse_string structure_item blank e')
+    | "sig_item"  -> ignore (parse_string signature_item blank e')
+    | "structure"  -> ignore (parse_string structure blank e')
+    | "signature"  -> ignore (parse_string signature blank e')
     | _ -> assert false
     in
   let env = match Stack.pop quote_stack with
@@ -745,31 +745,31 @@ let quote_expression _loc loc e name =
 
 let quote_expression_2 loc e =
   let e = (*localise loc*) e in
-  parse_string expression blank "quote..." e
+  parse_string expression blank e
 
 let quote_type_2 loc e =
   let e = localise loc e in
-  parse_string typexpr blank "quote..." e
+  parse_string typexpr blank e
 
 let quote_pattern_2 loc e =
   let e = localise loc e in
-  parse_string pattern blank "quote..." e
+  parse_string pattern blank e
 
 let quote_str_item_2 loc e =
   let e = localise loc e in
-  parse_string structure_item blank "quote..." e
+  parse_string structure_item blank e
 
 let quote_sig_item_2 loc e =
   let e = localise loc e in
-  parse_string signature_item blank "quote..." e
+  parse_string signature_item blank e
 
 let quote_structure_2 loc e =
   let e = localise loc e in
-  parse_string structure blank "quote..." e
+  parse_string structure blank e
  
 let quote_signature_2 loc e =
   let e = localise loc e in
-  parse_string signature blank "quote..." e 
+  parse_string signature blank e 
 
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *

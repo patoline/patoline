@@ -1068,7 +1068,7 @@ let pattern_base = memoize1 (fun lvl ->
 #endif
   | CHR('$') c:capitalized_ident ->
      (try let str = Sys.getenv c in
-	  AtomPat, parse_string pattern blank ("ENV:"^c) str
+	  AtomPat, parse_string ~filename:("ENV:"^c) pattern blank str
       with Not_found -> raise Give_up)
 
   | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
@@ -1643,7 +1643,7 @@ let expression_base = memoize1 (fun lvl ->
 	 loc_expr _loc (Pexp_constant (Const_int ((start_pos _loc).Lexing.pos_lnum)))
       | _ ->
 	 try let str = Sys.getenv c in
-	     parse_string expression blank ("ENV:"^c) str
+	     parse_string ~filename:("ENV:"^c) expression blank str
 	 with Not_found -> raise Give_up)
   | CHR('$') t:{t:{ STR("tuple") -> "tuple" | 
 		    STR("list") -> "list" |

@@ -22,7 +22,7 @@ let _ =
   (let rec loop () =
      Format.printf "\n> %!";
      (try
-        let buffer = Input.buffer_from_channel "stdin" stdin in
+        let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
         let phrases = partial_parse_buffer Main.top_phrase blank buffer 0 in
         match phrases with
         | (buffer,pos,ph)::[] ->
@@ -38,14 +38,14 @@ let _ =
      loop () in
    try loop () with | Main.Top_Exit  -> exit 0)
 let ast =
-  let (name,ch) =
+  let (filename,ch) =
     match !file with
     | None  -> ("stdin", stdin)
     | Some name -> (name, (open_in name)) in
   try
     match entry with
-    | `Impl g -> `Struct (parse_channel g blank name ch)
-    | `Intf g -> `Sig (parse_channel g blank name ch)
+    | `Impl g -> `Struct (parse_channel ~filename g blank ch)
+    | `Intf g -> `Sig (parse_channel ~filename g blank ch)
     | `Top -> assert false
   with
   | Parse_error (fname,l,n,msgs) ->

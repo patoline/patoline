@@ -558,16 +558,13 @@ module Initial =
       (let e' = e in
        let _ =
          match name with
-         | "expression" ->
-             ignore (parse_string expression blank "quote..." e')
-         | "type" -> ignore (parse_string typexpr blank "quote..." e')
-         | "pattern" -> ignore (parse_string pattern blank "quote..." e')
-         | "str_item" ->
-             ignore (parse_string structure_item blank "quote..." e')
-         | "sig_item" ->
-             ignore (parse_string signature_item blank "quote..." e')
-         | "structure" -> ignore (parse_string structure blank "quote..." e')
-         | "signature" -> ignore (parse_string signature blank "quote..." e')
+         | "expression" -> ignore (parse_string expression blank e')
+         | "type" -> ignore (parse_string typexpr blank e')
+         | "pattern" -> ignore (parse_string pattern blank e')
+         | "str_item" -> ignore (parse_string structure_item blank e')
+         | "sig_item" -> ignore (parse_string signature_item blank e')
+         | "structure" -> ignore (parse_string structure blank e')
+         | "signature" -> ignore (parse_string signature blank e')
          | _ -> assert false in
        let env =
          match Stack.pop quote_stack with
@@ -664,21 +661,19 @@ module Initial =
                                  (Pexp_ident
                                     (id_loc (Lident "quote_res") _loc))))))))))))
     let quote_expression_2 loc e =
-      let e = e in parse_string expression blank "quote..." e
+      let e = e in parse_string expression blank e
     let quote_type_2 loc e =
-      let e = localise loc e in parse_string typexpr blank "quote..." e
+      let e = localise loc e in parse_string typexpr blank e
     let quote_pattern_2 loc e =
-      let e = localise loc e in parse_string pattern blank "quote..." e
+      let e = localise loc e in parse_string pattern blank e
     let quote_str_item_2 loc e =
-      let e = localise loc e in
-      parse_string structure_item blank "quote..." e
+      let e = localise loc e in parse_string structure_item blank e
     let quote_sig_item_2 loc e =
-      let e = localise loc e in
-      parse_string signature_item blank "quote..." e
+      let e = localise loc e in parse_string signature_item blank e
     let quote_structure_2 loc e =
-      let e = localise loc e in parse_string structure blank "quote..." e
+      let e = localise loc e in parse_string structure blank e
     let quote_signature_2 loc e =
-      let e = localise loc e in parse_string signature blank "quote..." e
+      let e = localise loc e in parse_string signature blank e
     let par_re s = "\\(" ^ (s ^ "\\)")
     let union_re l =
       let l = List.map (fun s  -> par_re s) l in String.concat "\\|" l

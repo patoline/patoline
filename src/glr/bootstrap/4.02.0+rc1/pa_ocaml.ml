@@ -3168,7 +3168,8 @@ module Make(Initial:Extension) =
                             try
                               let str = Sys.getenv c in
                               (AtomPat,
-                                (parse_string pattern blank ("ENV:" ^ c) str))
+                                (parse_string ~filename:("ENV:" ^ c) pattern
+                                   blank str))
                             with | Not_found  -> raise Give_up);
                      Glr.sequence
                        (Glr.sequence
@@ -5982,8 +5983,9 @@ module Make(Initial:Extension) =
                                             | _ ->
                                                 (try
                                                    let str = Sys.getenv c in
-                                                   parse_string expression
-                                                     blank ("ENV:" ^ c) str
+                                                   parse_string
+                                                     ~filename:("ENV:" ^ c)
+                                                     expression blank str
                                                  with
                                                  | Not_found  ->
                                                      raise Give_up))));

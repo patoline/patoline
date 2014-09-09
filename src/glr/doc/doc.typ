@@ -30,6 +30,47 @@ This software provides the following:
       parser to write your own extension to OCaml's syntax.
 \end{itemize}
 
+== The main types and functions ==
+
+The main type proposed by the library in ``'a Glr.grammar`` which is the type of 
+a function parsing a //buffer// and returning some data of type ``'a``.
+The data to be parsed is provided in a data structure of type ``Input.buffer``.
+Here are that main functions related to these types, we encourage the reader 
+to consult the corresponding interface file for a complete list.
+
+--- Buffer related functions ---
+
+\begin{itemize}
+\item ``input_from_file : string -> buffer`` to read a file
+\item ``buffer_from_channel : ?filename:string -> in_channel -> buffer``
+to read an input channel (the //filename// is used in 
+exceptions only and defaults to ``""``).
+\item ``buffer_from_string : ?filename:string -> string -> buffer``
+to read a string. (the first string also plays a role of a //file name// used in 
+exceptions, the data to parse is therefore in the second string).
+\item ``read : buffer -> int -> char * buffer * int`` to manually
+read the content of a buffer at a given position and return a buffer and position
+that can be used to read the rest of the input. In the current implementation, the
+   buffer is a lazy stream of lines and the 
+   position is therefore the position in the line. This might change in the futur.
+\end{itemize}
+
+--- Parsing functions ---
+
+Here are the function used to parse data. All theses function parses the data until the (or return an
+exception). Function to parse parts of the input are also provided (see the file ``glr.mli``).
+
+\begin{itemize}
+\item ``parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a``
+Parses a string, given a parser and //blank// function (see below).
+\item ``parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a``
+Similar to the previous one for input channel.
+\item ``parse_file : 'a grammar -> blank -> string -> 'a``
+Open the file and parses it using the previous function.
+\item ``parse_buffer : 'a grammar -> blank -> buffer -> 'a`` The lowest level function
+to call a parser.
+\end{itemize}
+
 == Blank function ==
 
 While a string or file is being parsed, it is required to differenciate parts
@@ -39,19 +80,72 @@ another mechanism: blank functions.
 
 A blank function inspects the input buffer at a given position, and returns
 the position of the next meaningful data (i.e. the next character that is not
-to be ignored. The type of a blank function is the following.
+to be ignored. The type of a blank function is the following:
 
 ### OCaml
-
 blank = buffer -> int -> buffer * int
-
 ###
 
 When a parser is invoked (using the functon ##parse_string## for example), a
 default blank function needs to be provided. It will then be used to discard
-characters before every terminal is parsed until the function
-##change_layout## is called to change the blank function.
+characters before every terminal is parsed.
 
+On important feature if that the blank function can be changed using the function:
+
+### OCaml
+change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 
+  'a grammar -> blank -> 'a grammar
+###
+
+The grammar returned by ``change_layout parser blank`` will only use 
+the provided blank function and ignore the old one. 
+
+Still, the is a problem at the beginning and at the end of the input.
+Blank function are called by the terminal of the grammar.
+The first optional argument ``old_blank_before`` (``true`` by default) 
+will force using first the current blank function and before parsing a terminal,
+also the new one.
+
+Similarly, ``new_blank_after`` (``false`` by default) will 
+forces to use the newly provided blank function once at the end of the 
+parsed input (and the old blank function will be used too as expected
+before the next terminal.
+
+To parse no blank, use the following definition:
+
+### OCaml
+let no_blank buffer position = buffer, position
+###
+
+If you want to parses blank according to a regexp, you may use
+the function ``blank_regexp : Str.regexp -> blank`` as in:
+
+### OCaml
+let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
+###
+
+Important remark: due to the fact that OCaml's ``Str`` module
+does not allow to match other data type than string, 
+a blank function using regexp that matches newline will be
+applied successively to lines that contains only blank.
+This means that only regexp that are idempotent should 
+be used when they match newline.
+
+Otherwise, you may read yourself the input buffer
+using the ``Input.read`` function. Here is for instance
+a blank function parsing at most one newline and all blank caractere:
+
+### OCaml
+let blank = 
+  let rec fn accept_newline buffer pos =
+    let c,buffer',pos' = Input.read buffer pos in
+    match c with
+      '\n' when accept_newline -> fn false buffer' pos'
+    | ' ' | '\t' | '\r' ->  fn false buffer' pos'
+    | _ -> buffer, pos
+  in fn true
+###   
+  
 == Examples ==
 
 === The calculator ===
