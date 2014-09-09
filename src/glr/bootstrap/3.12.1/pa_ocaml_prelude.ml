@@ -14,6 +14,11 @@ let memoize2 f =
   fun x  y  ->
     try Hashtbl.find h (x, y)
     with | Not_found  -> let res = f x y in (Hashtbl.add h (x, y) res; res)
+let memoize2' f =
+  let h = Hashtbl.create 1001 in
+  fun a  x  y  ->
+    try Hashtbl.find h (x, y)
+    with | Not_found  -> let res = f a x y in (Hashtbl.add h (x, y) res; res)
 let fast = ref false
 let file: string option ref = ref None
 let ascii = ref false

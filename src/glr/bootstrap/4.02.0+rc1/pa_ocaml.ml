@@ -1780,9 +1780,9 @@ module Make(Initial:Extension) =
                 :: y
               else y))
     let typexpr_suit =
-      let f type_suit =
-        memoize2
-          (fun lvl'  lvl  ->
+      let f =
+        memoize2'
+          (fun type_suit  lvl'  lvl  ->
              Glr.alternatives
                [Glr.iter
                   (Glr.apply
@@ -3459,9 +3459,9 @@ module Make(Initial:Extension) =
                 :: y
               else y))
     let pattern_suit =
-      let f pat_suit =
-        memoize2
-          (fun lvl'  lvl  ->
+      let f =
+        memoize2'
+          (fun pat_suit  lvl'  lvl  ->
              Glr.alternatives
                [Glr.iter
                   (Glr.apply
@@ -6883,9 +6883,9 @@ module Make(Initial:Extension) =
                 :: y
               else y))
     let expression_suit =
-      let f expression_suit =
-        memoize2
-          (fun lvl'  lvl  ->
+      let f =
+        memoize2'
+          (fun expression_suit  lvl'  lvl  ->
              Glr.alternatives
                [Glr.iter
                   (Glr.apply

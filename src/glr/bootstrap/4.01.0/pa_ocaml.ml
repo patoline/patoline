@@ -1822,31 +1822,33 @@ module Make(Initial:Extension) =
                   :: y
                 else y))
     let typexpr_suit =
-      let f type_suit =
-        memoize2
-          (fun lvl'  ->
-             fun lvl  ->
-               Glr.alternatives
-                 [Glr.iter
-                    (Glr.apply
-                       (fun ((_,(p1,f1)) as _unnamed_0)  ->
-                          let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                          let _loc = _loc__unnamed_0 in
-                          Glr.apply
-                            (fun ((_,(p2,f2)) as _unnamed_0)  ->
-                               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                               let _loc = _loc__unnamed_0 in
-                               (p2,
-                                 (fun f  ->
-                                    fun _loc_f  -> f2 (f1 f _loc_f) _loc_f)))
-                            (locate (type_suit p1 lvl)))
-                       (locate (typexpr_suit_aux lvl' lvl)));
-                 Glr.apply
-                   (fun _unnamed_0  ->
-                      let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                      let _loc = _loc__unnamed_0 in
-                      (lvl', (fun f  -> fun _loc_f  -> f)))
-                   (locate (Glr.empty ()))]) in
+      let f =
+        memoize2'
+          (fun type_suit  ->
+             fun lvl'  ->
+               fun lvl  ->
+                 Glr.alternatives
+                   [Glr.iter
+                      (Glr.apply
+                         (fun ((_,(p1,f1)) as _unnamed_0)  ->
+                            let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                            let _loc = _loc__unnamed_0 in
+                            Glr.apply
+                              (fun ((_,(p2,f2)) as _unnamed_0)  ->
+                                 let (_loc__unnamed_0,_unnamed_0) =
+                                   _unnamed_0 in
+                                 let _loc = _loc__unnamed_0 in
+                                 (p2,
+                                   (fun f  ->
+                                      fun _loc_f  -> f2 (f1 f _loc_f) _loc_f)))
+                              (locate (type_suit p1 lvl)))
+                         (locate (typexpr_suit_aux lvl' lvl)));
+                   Glr.apply
+                     (fun _unnamed_0  ->
+                        let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                        let _loc = _loc__unnamed_0 in
+                        (lvl', (fun f  -> fun _loc_f  -> f)))
+                     (locate (Glr.empty ()))]) in
       let rec res x y = f res x y in res
     let _ =
       set_typexpr_lvl
@@ -3535,28 +3537,30 @@ module Make(Initial:Extension) =
                   :: y
                 else y))
     let pattern_suit =
-      let f pat_suit =
-        memoize2
-          (fun lvl'  ->
-             fun lvl  ->
-               Glr.alternatives
-                 [Glr.iter
-                    (Glr.apply
-                       (fun ((_,(p1,f1)) as _unnamed_0)  ->
-                          let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                          let _loc = _loc__unnamed_0 in
-                          Glr.apply
-                            (fun ((_,(p2,f2)) as _unnamed_0)  ->
-                               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                               let _loc = _loc__unnamed_0 in
-                               (p2, (fun f  -> f2 (f1 f))))
-                            (locate (pat_suit p1 lvl)))
-                       (locate (pattern_suit_aux lvl' lvl)));
-                 Glr.apply
-                   (fun _unnamed_0  ->
-                      let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                      let _loc = _loc__unnamed_0 in (lvl', (fun f  -> f)))
-                   (locate (Glr.empty ()))]) in
+      let f =
+        memoize2'
+          (fun pat_suit  ->
+             fun lvl'  ->
+               fun lvl  ->
+                 Glr.alternatives
+                   [Glr.iter
+                      (Glr.apply
+                         (fun ((_,(p1,f1)) as _unnamed_0)  ->
+                            let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                            let _loc = _loc__unnamed_0 in
+                            Glr.apply
+                              (fun ((_,(p2,f2)) as _unnamed_0)  ->
+                                 let (_loc__unnamed_0,_unnamed_0) =
+                                   _unnamed_0 in
+                                 let _loc = _loc__unnamed_0 in
+                                 (p2, (fun f  -> f2 (f1 f))))
+                              (locate (pat_suit p1 lvl)))
+                         (locate (pattern_suit_aux lvl' lvl)));
+                   Glr.apply
+                     (fun _unnamed_0  ->
+                        let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                        let _loc = _loc__unnamed_0 in (lvl', (fun f  -> f)))
+                     (locate (Glr.empty ()))]) in
       let rec res x y = f res x y in res
     let _ =
       set_pattern_lvl
@@ -6976,28 +6980,30 @@ module Make(Initial:Extension) =
                   :: y
                 else y))
     let expression_suit =
-      let f expression_suit =
-        memoize2
-          (fun lvl'  ->
-             fun lvl  ->
-               Glr.alternatives
-                 [Glr.iter
-                    (Glr.apply
-                       (fun ((_,(p1,f1)) as _unnamed_0)  ->
-                          let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                          let _loc = _loc__unnamed_0 in
-                          Glr.apply
-                            (fun ((_,(p2,f2)) as _unnamed_0)  ->
-                               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                               let _loc = _loc__unnamed_0 in
-                               (p2, (fun f  -> f2 (f1 f))))
-                            (locate (expression_suit p1 lvl)))
-                       (locate (expression_suit_aux lvl' lvl)));
-                 Glr.apply
-                   (fun _unnamed_0  ->
-                      let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
-                      let _loc = _loc__unnamed_0 in (lvl', (fun f  -> f)))
-                   (locate (Glr.empty ()))]) in
+      let f =
+        memoize2'
+          (fun expression_suit  ->
+             fun lvl'  ->
+               fun lvl  ->
+                 Glr.alternatives
+                   [Glr.iter
+                      (Glr.apply
+                         (fun ((_,(p1,f1)) as _unnamed_0)  ->
+                            let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                            let _loc = _loc__unnamed_0 in
+                            Glr.apply
+                              (fun ((_,(p2,f2)) as _unnamed_0)  ->
+                                 let (_loc__unnamed_0,_unnamed_0) =
+                                   _unnamed_0 in
+                                 let _loc = _loc__unnamed_0 in
+                                 (p2, (fun f  -> f2 (f1 f))))
+                              (locate (expression_suit p1 lvl)))
+                         (locate (expression_suit_aux lvl' lvl)));
+                   Glr.apply
+                     (fun _unnamed_0  ->
+                        let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
+                        let _loc = _loc__unnamed_0 in (lvl', (fun f  -> f)))
+                     (locate (Glr.empty ()))]) in
       let rec res x y = f res x y in res
     let _ =
       set_expression_lvl

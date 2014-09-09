@@ -645,9 +645,9 @@ let typexpr_suit_aux : type_prio -> type_prio -> (type_prio * (core_type -> Loca
   )
 
 let typexpr_suit =
-  let f type_suit =
-    memoize2
-      (fun lvl' lvl ->
+  let f =
+    memoize2'
+      (fun type_suit lvl' lvl ->
          parser
          | (p1,f1):(typexpr_suit_aux lvl' lvl) ->> (p2,f2):(type_suit p1 lvl) -> (p2, fun f _loc_f -> f2 (f1 f _loc_f) _loc_f)
          | EMPTY -> (lvl', fun f _loc_f -> f) 
@@ -1114,9 +1114,9 @@ let pattern_suit_aux : pattern_prio -> pattern_prio -> (pattern_prio * (pattern 
   )
 
 let pattern_suit =
-  let f pat_suit =
-    memoize2
-      (fun lvl' lvl ->
+  let f =
+    memoize2'
+      (fun pat_suit lvl' lvl ->
          parser
          | (p1,f1):(pattern_suit_aux lvl' lvl) ->> (p2,f2):(pat_suit p1 lvl) -> (p2, fun f -> f2 (f1 f))
          | EMPTY -> (lvl', fun f -> f))
@@ -1747,9 +1747,9 @@ let expression_suit_aux = memoize2 (fun lvl' lvl ->
   )
 
 let expression_suit =
-  let f expression_suit =
-    memoize2
-      (fun lvl' lvl ->
+  let f =
+    memoize2'
+      (fun expression_suit lvl' lvl ->
          parser
           (p1,f1):(expression_suit_aux lvl' lvl) ->> (p2,f2):(expression_suit p1 lvl)
 	       -> (p2, fun f -> f2 (f1 f))
