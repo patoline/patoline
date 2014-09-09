@@ -246,6 +246,9 @@ and content=
 
   | N of tree
 
+let init_env_hook = ref ([] : (environment -> environment) list)
+let add_env_hook f = init_env_hook := f::!init_env_hook
+
 let env_accessed=ref false
 let bB f = B(f,ref None)
 let uB f = C(fun _->env_accessed:=true;[bB f])

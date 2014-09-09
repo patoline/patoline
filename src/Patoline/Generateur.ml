@@ -134,7 +134,8 @@ module Driver = (val Hashtbl.find OutputPaper.drivers driver:OutputPaper.Driver)
   do_include buf main_mod;
   Buffer.output_buffer where buf;
   Printf.fprintf where
-    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure)) Patoline_Format.defaultEnv %S\n" outfile;
+    "let _ =Patoline_Output.output Patoline_Output.outputParams (fst (top !D.structure))
+      (List.fold_left (fun acc f -> f acc) Patoline_Format.defaultEnv !init_env_hook) %S\n" outfile;
   Printf.fprintf where "let _ = Distance.write_cache \"%s\"\n" cache_name
 
 
