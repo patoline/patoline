@@ -18,63 +18,66 @@ This software provides the following:
 \item ##input##: a module allowing to transforms an input channel or string
       into an //input buffer//.
 \item ##glr##: a minimalist parser combinator library, which is probably too
-      small to be usable directly. Still it proposes a notion of "blank"
-      function you can change to ignore blanks and can return the list of all
-      possible parse tree or raise an error for ambiguous grammar.
-\item ##pa_ocaml##: a parser for the OCaml languages implemented using glr. If
-      can be used using the "##-pp##" option of OCaml's tool.
+      small to be usable directly. It provides a notion of "blank" function
+      which is used to discard the part of the input that should be ignored,
+      and that can be changed dynamicaly. Ambiguous grammars can be handled
+      in two ways: either by returning the list of all possible parse tree or
+      by raising an error in case of ambiguity.
+\item ##pa_ocaml##: a parser for the OCaml languages implemented using glr. It
+      can be invoked using the "##-pp##" option of the standard OCaml tools.
 \item ##pa_parser##: an extension of the OCaml syntax to write parsers. The
-      syntax is BNF like with one main restriction that //left recursive//
-      grammar are forbidden.
-\item A quotation and anti-quotation mecanism that you can use to write
-      parser to write your own extension to OCaml's syntax.
+      syntax is BNF like with one main restriction: //left recursive//
+      grammars are forbidden.
+\item A quotation and anti-quotation mecanism similar to ##camlp4## that can
+      be used to extend the OCaml syntax.
 \end{itemize}
 
 == The main types and functions ==
 
-The main type proposed by the library in ``'a Glr.grammar`` which is the type of 
-a function parsing a //buffer// and returning some data of type ``'a``.
-The data to be parsed is provided in a data structure of type ``Input.buffer``.
+The main type proposed by the library is ##'a Glr.grammar## which is the type
+of a function parsing a //buffer// and returning some data of type ##'a##. The
+data to be parsed is provided in a data structure of type ##Input.buffer##.
 Here are that main functions related to these types, we encourage the reader 
 to consult the corresponding interface file for a complete list.
 
 --- Buffer related functions ---
 
 \begin{itemize}
-\item ``input_from_file : string -> buffer`` to read a file
-\item ``buffer_from_channel : ?filename:string -> in_channel -> buffer``
+\item ##input_from_file : string -> buffer## to read a file
+\item ##buffer_from_channel : ?filename:string -> in_channel -> buffer##
 to read an input channel (the //filename// is used in 
-exceptions only and defaults to ``""``).
-\item ``buffer_from_string : ?filename:string -> string -> buffer``
-to read a string. (the first string also plays a role of a //file name// used in 
-exceptions, the data to parse is therefore in the second string).
-\item ``read : buffer -> int -> char * buffer * int`` to manually
-read the content of a buffer at a given position and return a buffer and position
-that can be used to read the rest of the input. In the current implementation, the
-   buffer is a lazy stream of lines and the 
-   position is therefore the position in the line. This might change in the futur.
+exceptions only and defaults to ##""##).
+\item ##buffer_from_string : ?filename:string -> string -> buffer##
+to read a string. (the first string also plays a role of a //file name// used
+in exceptions, the data to parse is therefore in the second string).
+\item ##read : buffer -> int -> char * buffer * int## to manually read the
+content of a buffer at a given position and return a buffer and position that
+can be used to read the rest of the input. In the current implementation, the
+buffer is a lazy stream of lines and the position is therefore the position in
+the line. This might change in the futur.
 \end{itemize}
 
 --- Parsing functions ---
 
-Here are the function used to parse data. All theses function parses the data until the (or return an
-exception). Function to parse parts of the input are also provided (see the file ``glr.mli``).
+Here are the function used to parse data. They either succeed in parsing all
+of the input, or return an exception. Functions to parse parts of the input
+are also provided (see the file ##glr.mli##).
 
 \begin{itemize}
-\item ``parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a``
-Parses a string, given a parser and //blank// function (see below).
-\item ``parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a``
-Similar to the previous one for input channel.
-\item ``parse_file : 'a grammar -> blank -> string -> 'a``
-Open the file and parses it using the previous function.
-\item ``parse_buffer : 'a grammar -> blank -> buffer -> 'a`` The lowest level function
-to call a parser.
+\item ##parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a##
+Parses a string, given a parser and a //blank// function (see below).
+\item ##parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a##
+Similar to the previous function, but uses a channel as input.
+\item ##parse_file : 'a grammar -> blank -> string -> 'a##
+Opens the file and parses it using the previous function.
+\item ##parse_buffer : 'a grammar -> blank -> buffer -> 'a##
+The lowest level function to call a parser.
 \end{itemize}
 
 == Blank function ==
 
-While a string or file is being parsed, it is required to differenciate parts
-of the parsed input that are meaningful, to those that need to be ignored.
+While a string or file is being parsed, it is required to differentiate parts
+of the input that are meaningful, from those that need to be ignored.
 This part of the work is usually handled by a lexer, but ##glr## relies on
 another mechanism: blank functions.
 
@@ -86,7 +89,7 @@ to be ignored. The type of a blank function is the following:
 blank = buffer -> int -> buffer * int
 ###
 
-When a parser is invoked (using the functon ##parse_string## for example), a
+When a parser is invoked (using the function ##parse_string## for example), a
 default blank function needs to be provided. It will then be used to discard
 characters before every terminal is parsed.
 
@@ -97,19 +100,20 @@ change_layout : ?old_blank_before:bool -> ?new_blank_after:bool ->
   'a grammar -> blank -> 'a grammar
 ###
 
-The grammar returned by ``change_layout parser blank`` will only use 
-the provided blank function and ignore the old one. 
+The grammar returned by ##change_layout parser blank## will only use
+the provided blank function and ignore the old one. Since blank functions
+are called before every terminals, it is not clear whether the old blank
+function should be called before entering the scope of the ##change_layout##,
+and whether the new blank function should be called after leaing the scope of
+the ##change_layout##.
 
-Still, the is a problem at the beginning and at the end of the input.
-Blank function are called by the terminal of the grammar.
-The first optional argument ``old_blank_before`` (``true`` by default) 
-will force using first the current blank function and before parsing a terminal,
-also the new one.
+The first optional argument ##old_blank_before## (##true## by default) will
+force using first the old blank function, and then the new one, before parsing
+the first terminal inside the scope of the ##change_layout##.
 
-Similarly, ``new_blank_after`` (``false`` by default) will 
-forces to use the newly provided blank function once at the end of the 
-parsed input (and the old blank function will be used too as expected
-before the next terminal.
+Similarly, ##new_blank_after## (##false## by default) will forces to use the
+newly provided blank function once at the end of the parsed input, and then
+the old blank function will be used too as expected before the next terminal.
 
 To parse no blank, use the following definition:
 
@@ -117,23 +121,23 @@ To parse no blank, use the following definition:
 let no_blank buffer position = buffer, position
 ###
 
-If you want to parses blank according to a regexp, you may use
-the function ``blank_regexp : Str.regexp -> blank`` as in:
+If you want to parses blanks according to a regexp, you may use
+the function ##blank_regexp : Str.regexp -> blank## as in:
 
 ### OCaml
 let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
 ###
 
-Important remark: due to the fact that OCaml's ``Str`` module
-does not allow to match other data type than string, 
+Important remark: due to the fact that OCaml's ##Str## module
+does not allow to match other data type than string,
 a blank function using regexp that matches newline will be
 applied successively to lines that contains only blank.
 This means that only regexp that are idempotent should 
 be used when they match newline.
 
-Otherwise, you may read yourself the input buffer
-using the ``Input.read`` function. Here is for instance
-a blank function parsing at most one newline and all blank caractere:
+Otherwise, you may use the function ##Input.read## to provide your
+own blank function. Here is for instance a blank function parsing at
+most one newline and all blank caractere:
 
 ### OCaml
 let blank = 
