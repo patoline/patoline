@@ -3,7 +3,7 @@
 ------------------------------------------------------------------------------
   Rodolphe Lepigre & Christophe Raffalli
 ------------------------------------------------------------------------------
-  Lama, UMR 5127 CNRS, Univesité Savoie Mont-Blanc
+  Lama, UMR 5127 CNRS, Université Savoie Mont-Blanc
 ==============================================================================
 
 == Introduction ==
@@ -106,7 +106,7 @@ The grammar returned by ##change_layout parser blank## will only use
 the provided blank function and ignore the old one. Since blank functions
 are called before every terminals, it is not clear whether the old blank
 function should be called before entering the scope of the ##change_layout##,
-and whether the new blank function should be called after leaing the scope of
+and whether the new blank function should be called after leaving the scope of
 the ##change_layout##.
 
 The first optional argument ##old_blank_before## (##true## by default) will
