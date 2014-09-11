@@ -64,14 +64,16 @@ of the input, or return an exception. Functions to parse parts of the input
 are also provided (see the file ##glr.mli##).
 
 \begin{itemize}
-\item ``parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a``
-Parses a string, given a parser and //blank// function (see below).
-\item ``parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a``
-Similar to the previous one for input channel.
-\item ``parse_file : 'a grammar -> blank -> string -> 'a``
-Open the file and parses it using the previous function.
-\item ``parse_buffer : 'a grammar -> blank -> buffer -> 'a`` The lowest level function
-to call a parser.
+\item ##parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a##
+Parses a string, given a parser and a //blank// function (see below).
+\item ##parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a##
+Similar to the previous function, but uses a channel as input.
+\item ##parse_file : 'a grammar -> blank -> string -> 'a##
+Opens the file and parses it using the previous function.
+\item ##parse_buffer : 'a grammar -> blank -> buffer -> 'a##
+The lowest level function to call a parser.
+\item ##handle_exception : ('a -> 'b) -> 'a -> 'b##: apply the function to its argument
+and handle eventual ##Glr## exceptions (##Parse_error## or ##Amiguity##).
 \end{itemize}
 
 == Blank function ==
@@ -136,8 +138,8 @@ This means that only regexp that are idempotent should
 be used when they match newline.
 
 Otherwise, you may read yourself the input buffer
-using the ``Input.read`` function. Here is for instance
-a blank function parsing at most one newline and all blank caractere:
+using the ##Input.read## function. Here is for instance
+a blank function parsing at most one newline and all blank characters:
 
 ### OCaml "blank1.ml"
 let blank = 
