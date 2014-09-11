@@ -9,3 +9,4 @@ val del : charset -> char -> charset
 val union: charset -> charset -> charset
 val singleton : char -> charset
 val print_charset : out_channel -> charset option -> unit
+val list_of_charset : charset -> string list

@@ -219,7 +219,7 @@ let string_literal =
 	  let _ = set_grammar string_literal_suit (
 	    parser
 	    | CHR('|') STR(id) CHR('}') -> []
-	    | c:ONE r:string_literal_suit -> c::r)
+	    | c:ANY r:string_literal_suit -> c::r)
 	  in r:string_literal_suit -> char_list_to_string r) no_blank) -> r
 
   | CHR('$') STR("string") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e

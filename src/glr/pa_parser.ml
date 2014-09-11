@@ -5,10 +5,10 @@ open Pa_ocaml_prelude
 
 let _ = parser_locate locate merge
 
-type ('a,'b) action =
+type action =
   | Default 
-  | Normal of 'a
-  | DepSeq of 'b
+  | Normal of expression
+  | DepSeq of ((expression -> expression) * expression option * expression)
 
 let do_locate = ref None
 
@@ -61,6 +61,9 @@ let exp_Some_fun _loc =
 let exp_fun _loc id e =
   loc_expr _loc (pexp_fun("", None, pat_ident _loc id, e))
 
+let exp_app _loc =
+  exp_fun _loc "x" (exp_fun _loc "y" (exp_apply _loc (exp_ident _loc "y") [exp_ident _loc "x"]))
+
 let exp_glr_fun _loc f =
   loc_expr _loc (Pexp_ident((id_loc (Ldot(Lident "Glr",f)) _loc) ))
 
@@ -98,8 +101,8 @@ let rec apply _loc ids e =
       | [id,_] ->
 	 loc_expr _loc (Pexp_let(Nonrecursive, [
 	   value_binding _loc (pat_ident _loc "_loc") (exp_ident _loc ("_loc_"^id))], e))
-      | ids ->
-	 let all_loc = List.map (fun (id, _) -> exp_ident _loc ("_loc_"^id)) ids in
+      | id1::id2::ids ->
+	 let all_loc = List.map (fun (id, _) -> exp_ident _loc ("_loc_"^id)) (List.rev (id2::id1::ids)) in
 	loc_expr _loc (Pexp_let(Nonrecursive, [
 	  value_binding _loc (pat_ident _loc "_loc")
 	  (loc_expr _loc (Pexp_apply(merge, [
@@ -280,8 +283,8 @@ let apply_list_option _loc opt e =
 	      )
 
 let default_action _loc l =
-  let l = List.filter (function (("_",_),_,_) -> false | _ -> true) l in
-  let l = List.map (fun ((id,_),_,_) -> exp_ident _loc id) l in
+  let l = List.filter (function `Normal(("_",_),_,_) -> false | `Ignore -> false | _ -> true) l in
+  let l = List.map (function `Normal((id,_),_,_) -> exp_ident _loc id | _ -> assert false) l in
   let rec fn = function
     | [] -> exp_unit _loc
     | [x] -> x
@@ -336,8 +339,8 @@ struct
        exp_apply _loc (exp_glr_fun _loc "fail") [e]
     | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
        exp_apply _loc (exp_glr_fun _loc "debug") [e]
-    | STR("ONE") ->
-       exp_glr_fun _loc "one"
+    | STR("ANY") ->
+       exp_glr_fun _loc "any"
     | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
        let opt = match opt with None -> exp_unit _loc | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
@@ -419,13 +422,24 @@ let glr_list_sequence =
 	 | _ -> "_", Some p)
     | EMPTY -> ("_", None)
 
+  let dash = Glr.black_box 
+	       (fun str pos ->
+		let c,str',pos' = Input.read str pos in
+		if c = '-' then
+		  let c',_,_ = Input.read str' pos' in
+		  if c' = '>' then raise Glr.Give_up
+		  else (), str', pos'
+		else
+		  raise Glr.Give_up)
+	       (Charset.singleton '-') false ("-")
+
   let glr_left_member =
     parser
-    | l:{ id: glr_ident s:glr_sequence opt:glr_option }+ -> l
+    | l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }+ -> l
 
   let glr_list_left_member =
     parser
-    | l:{ id: glr_ident s:glr_list_sequence opt:glr_option }+ -> l
+    | l:{ id: glr_ident s:glr_list_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }+ -> l
 
   let glr_let = Glr.declare_grammar "glr_let" 
   let _ = Glr.set_grammar glr_let (
@@ -464,18 +478,19 @@ let glr_list_sequence =
     in
     let rec fn ids l = match l with
       [] -> assert false
-    | [id,e,opt] ->
+    | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
+    | [`Normal(id,e,opt)] ->
       let e = apply_option _loc opt e in
       exp_apply _loc (exp_glr_fun _loc "apply") [apply _loc (id::ids) action; e]
-    | [ (id,e,opt); (id',e',opt') ] ->
+    | [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
       let e = apply_option _loc opt e in
       let e' = apply_option _loc opt' e' in
-      exp_apply _loc (exp_glr_fun _loc "sequence") [e';e;apply _loc (id'::id::ids) action]
-    | (id,e,opt) :: ls ->
+      exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; apply _loc (id::id'::ids) action]
+    | `Normal(id,e,opt) :: ls ->
       let e = apply_option _loc opt e in      
-      exp_apply _loc (exp_glr_fun _loc "sequence") [fn (id::ids) ls; e; exp_fun _loc "x" (exp_ident _loc "x")]
+      exp_apply _loc (exp_glr_fun _loc "sequence") [e; fn (id::ids) ls; exp_app _loc]
     in
-    let res = fn [] (List.rev l) in
+    let res = fn [] l in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
     def, condition, res
     )
@@ -493,18 +508,19 @@ let glr_list_sequence =
     in
     let rec fn ids l = match l with
       [] -> assert false
-    | [id,e,opt] ->
+    | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
+    | [`Normal(id,e,opt)] ->
       let e = apply_list_option _loc opt e in
       exp_apply _loc (exp_glr_fun _loc "apply") [apply _loc (id::ids) action; e]
-    | [ (id,e,opt); (id',e',opt') ] ->
+    | [ `Normal(id,e,opt); `Normal(id',e',opt') ] ->
       let e = apply_list_option _loc opt e in
       let e' = apply_list_option _loc opt' e' in
-      exp_apply _loc (exp_glr_fun _loc "list_sequence") [e';e;apply _loc (id'::id::ids) action]
-    | (id,e,opt) :: ls ->
+      exp_apply _loc (exp_glr_fun _loc "list_sequence") [e;e';apply _loc (id::id'::ids) action]
+    | `Normal(id,e,opt) :: ls ->
       let e = apply_list_option _loc opt e in      
-      exp_apply _loc (exp_glr_fun _loc "list_sequence") [fn (id::ids) ls; e; exp_fun _loc "x" (exp_ident _loc "x")]
+      exp_apply _loc (exp_glr_fun _loc "list_sequence") [e; fn (id::ids) ls; exp_app _loc]
     in
-    let res = fn [] (List.rev l) in
+    let res = fn [] l in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter_list") [res] else res in
     def, condition, res
     )

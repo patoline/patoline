@@ -64,14 +64,14 @@ of the input, or return an exception. Functions to parse parts of the input
 are also provided (see the file ##glr.mli##).
 
 \begin{itemize}
-\item ##parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a##
-Parses a string, given a parser and a //blank// function (see below).
-\item ##parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a##
-Similar to the previous function, but uses a channel as input.
-\item ##parse_file : 'a grammar -> blank -> string -> 'a##
-Opens the file and parses it using the previous function.
-\item ##parse_buffer : 'a grammar -> blank -> buffer -> 'a##
-The lowest level function to call a parser.
+\item ``parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a``
+Parses a string, given a parser and //blank// function (see below).
+\item ``parse_channel : ?filename:string -> 'a grammar -> blank -> in_channel -> 'a``
+Similar to the previous one for input channel.
+\item ``parse_file : 'a grammar -> blank -> string -> 'a``
+Open the file and parses it using the previous function.
+\item ``parse_buffer : 'a grammar -> blank -> buffer -> 'a`` The lowest level function
+to call a parser.
 \end{itemize}
 
 == Blank function ==
@@ -117,7 +117,7 @@ the old blank function will be used too as expected before the next terminal.
 
 To parse no blank, use the following definition:
 
-### OCaml
+### OCaml "blank0.ml"
 let no_blank buffer position = buffer, position
 ###
 
@@ -135,21 +135,59 @@ applied successively to lines that contains only blank.
 This means that only regexp that are idempotent should 
 be used when they match newline.
 
-Otherwise, you may use the function ##Input.read## to provide your
-own blank function. Here is for instance a blank function parsing at
-most one newline and all blank caractere:
+Otherwise, you may read yourself the input buffer
+using the ``Input.read`` function. Here is for instance
+a blank function parsing at most one newline and all blank caractere:
 
-### OCaml
+### OCaml "blank1.ml"
 let blank = 
   let rec fn accept_newline buffer pos =
     let c,buffer',pos' = Input.read buffer pos in
     match c with
       '\n' when accept_newline -> fn false buffer' pos'
-    | ' ' | '\t' | '\r' ->  fn false buffer' pos'
+    | ' ' | '\t' | '\r' ->  fn accept_newline buffer' pos'
     | _ -> buffer, pos
   in fn true
-###   
-  
+###
+
+Remark: using the function ``Glr.partial_parse_buffer``,
+it is possible to use a parser to write blank functions.
+
+== Writing parsers ==
+
+The combinators in the ``Glr`` library are not easy to use
+directly. An OCaml's syntax extension is provided to solve this problem.
+
+To use this syntax extension, you have to use the binary ``pa_ocaml``
+distributed with ``Glr`` as an OCaml preprocessor, using the 
+``-pp pa_ocaml`` option to ``ocamlc`` or ``ocamlopt``.
+
+A parser is declared using ``parser`` //rules// or 
+``parser*`` //rules//. The second form will return
+all the possible parse trees for the given grammar.
+This is therefore an expression of type ``'a list grammar``.
+
+The first form will raise the exception ``Ambiguity(...)`` when there
+are multiple parse trees for the same input.
+
+We now give the BNF for the grammar, using the following convention:
+"|"  denotes alternatives, "[ … ]" optional elements, 
+"(…)*" repetition 0 or more times and "(…)+" 
+repetition 1 or more times. When one of the symbol above
+is used in the grammar being described, it is embraced by simple quotes.
+ 
+\begin{itemize}
+\item //rules// ::= //rules// '##|##' //rules// | //rules// '##| |##' //rules// | //left// ##->## //action//
+\item //left//  ::= //let_binding// //left// | - //left// | //left// ##->>## //left// | ([//pattern//##:## ] //parser// [//option//] [//modifier//])+
+\item //parser// ::= //terminal// | //atom_expression// | ##{## //rules// ##}##
+\item //terminal// ::= ##ANY## | ##CHR## //atom_expression// | ##STR## //atom_expression// | ##RE## //atom_expression//
+| ##EOF##
+
+| ##EMPTY## | ##FAIL## | ##DEBUG## //atom_expression//
+\item //option// ::= '##[##' //expression// '##]##'
+\item //modifier// ::= ##?## | ##??## | ##*## | ##**## | ##+## | ##++##
+\end{itemize}
+
 == Examples ==
 
 === The calculator ===
@@ -200,13 +238,13 @@ let command = parser
   | id:RE(ident_re) CHR('=') e:(expression Sum) -> Hashtbl.add env id e; e
   | e:(expression Sum) -> e
 
+(* The main loop *)
 let _ =
-  try while true do
+  try while true do (* we use the Glr function provided to handle exception *)
     handle_exception (fun () ->
       Printf.printf ">> %!";
-      (* we call the parser with the choosen blank function
-         and a file name used in error messages *)
-      let x = parse_string command blank "stdin" (input_line stdin) in
+      (* we call the parser with the choosen blank function *)
+      let x = parse_string command blank (input_line stdin) in
       Printf.printf "=> %f\n%!" x) ()
   done with End_of_file -> ()
 ###

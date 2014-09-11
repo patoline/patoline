@@ -38,7 +38,7 @@ let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
   then
       try
-	let x = parse_channel arith_sum blank "stdin" stdin in
+	let x = parse_channel arith_sum blank stdin in
 	match x with
 	  [x] -> Printf.printf "=> %f\n" x
 	| _ -> Printf.printf "%d parse trees\n" (List.length x)
@@ -50,7 +50,7 @@ let _ =
       while true do
 	try
 	  Printf.printf ">> %!";
-	  let x = parse_string arith_sum blank "stdin" (input_line stdin) in
+	  let x = parse_string arith_sum blank (input_line stdin) in
 	  match x with
 	    [x] -> Printf.printf "=> %f\n" x
 	  | _ -> Printf.printf "%d parse trees\n" (List.length x)

@@ -1,6 +1,6 @@
 open Glr
 
-let blank = blank_regexp (Str.regexp {|[ \t\n\r]*|})
+let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
 
 let float_re = {|[0-9]+\([.][0-9]+\)?\([eE][-]?[0-9]+\)?|}
 let ident_re = {|[a-zA-Z_'][a-zA-Z0-9_']*|}
@@ -21,13 +21,13 @@ let _ = set_expression
 	 Printf.eprintf "Unbound %s\n%!" id; raise Exit)
   | CHR('(') e:(expression Sum) CHR(')') when prio = Atom -> e
   | e:(expression Atom) e':{STR("**") e':(expression Pow)}? when prio = Pow ->
-	 (match e' with None -> e | Some e' -> e ** e')
+	 match e' with None -> e | Some e' -> e ** e'
   | e:(expression Pow) l:{fn:{CHR('*') -> ( *. ) | CHR('/') -> ( /. )} e':(expression Pow)}* when prio = Prod ->
       List.fold_left ( fun acc (fn, e') -> fn acc e') e l
   | e:(expression Prod) l:{fn:{CHR('+') -> ( +. ) | CHR('-') -> ( -. )} e':(expression Prod)}* when prio = Sum ->
       List.fold_left ( fun acc (fn, e') -> fn acc e') e l
-  | CHR('-') e:(expression Pow) when prio = Pow -> -. e
-  | CHR('+') e:(expression Pow) when prio = Pow -> e
+  | CHR('-') - e:(expression Pow) when prio = Pow -> -. e
+  | CHR('+') - e:(expression Pow) when prio = Pow -> e
   )
 
 let arith = 
@@ -39,7 +39,7 @@ let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
   then
       try
-	let x = parse_channel arith blank "stdin" stdin in
+	let x = parse_channel arith blank stdin in
 	Printf.printf "=> %f\n" x
       with
 	Parse_error (fname,l,n,msg) -> Printf.fprintf stderr "%s: Parse error %d:%d, '%s' expected\n%!" fname l n (String.concat "|" msg)
@@ -49,7 +49,7 @@ let _ =
       while true do
 	try
 	  Printf.printf ">> %!";
-	  let x = parse_string arith blank "stdin" (input_line stdin) in
+	  let x = parse_string arith blank (input_line stdin) in
 	  Printf.printf "=> %f\n%!" x
 	with
 	  Parse_error(fname,l,n,msg) -> Printf.fprintf stderr "Parse error after char %d, '%s' expected\n%!" n (String.concat "|" msg)

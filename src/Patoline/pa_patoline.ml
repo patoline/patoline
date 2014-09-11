@@ -174,15 +174,16 @@ struct
    * Verbatim environment / macro                                             *
    ****************************************************************************)
 				
-  let verbatim_line   =
-    "\\(^[^#\t][^\t]*\\)\\|\\(^#?#?[^#\t][^\t]*\\)\\|\\(^[ \t]*\\)"
+  let verbatim_line =
+      "\\(^[^# \t][^\t]*\\)\\|\\(^#?#?[^#\t][^\t]*\\)\\|\\(^[\t]*\\)"
+
 (*    "^#?#?\\([^#\t\n][^\t\n]*\\)?" ??? *)
       
   let string_filename = "\\\"\\([a-zA-Z0-9-_.]*\\)\\\""
   let uid_coloring    = "[A-Z][_'a-zA-Z0-9]*"
 
-  let files_contents = Hashtbl.create 101 
-			  
+  let files_contents = Hashtbl.create 31 
+
   let verbatim_environment =
     change_layout (
 	parser
@@ -192,65 +193,98 @@ struct
 	  RE("[ \t]*") CHR('\n')
 	  lines:{l:RE(verbatim_line) CHR('\n')}+ 
 	  RE("^###") -> (
-		(* TODO do something with "lang" and "file" *)
-		assert(List.length lines <> 0); (* Forbid empty verbatim env *)
-
-		(* Remove the maximum of head spaces uniformly *)
-		let rec count_head_spaces s acc =
-		  if s.[acc] = ' '
-		  then count_head_spaces s (acc+1)
-		  else acc
-		in
-		let count_head_spaces s =
-		  if String.length s = 0
-		  then max_int
-		  else count_head_spaces s 0
-		in
-		let fn = fun acc s -> min acc (count_head_spaces s) in
-		let sps = List.fold_left fn max_int lines in
-		let sps = if sps = max_int then 0 else sps in
-		let fn = fun s -> 
-		  let s = 
-		    try String.sub s sps (String.length s - sps)
-		    with Invalid_argument _ -> ""
-		  in
-		  <:structure<let _ = newPar D.structure ~environment:verbEnv
-                   Complete.normal ragged_left
-                   (List.flatten (lang_default [$string:s$]))>>
-		in
-		let str_lines = List.map fn lines in
-		begin
-		  match filename with
-		  | Some name when not !in_ocamldep ->
-		     let pos = 
-		       try Hashtbl.find files_contents name
-		       with Not_found -> -1
-		     in
-		     let new_pos = (start_pos _loc).Lexing.pos_cnum in
-		     if new_pos > pos then
-		       begin
-			 Hashtbl.add files_contents name new_pos;
-			 let mode = if pos >= 0 then
-				      [Open_creat; Open_append ]
-				    else
-				      [Open_creat; Open_trunc; Open_wronly ]
+		    let lang = match lang with
+			None -> <:expr<lang_default>>
+		      | Some s -> <:expr<$lid:("lang_"^s)$>>
+		    in
+		    assert(List.length lines <> 0); (* Forbid empty verbatim env *)
+		    
+		    (* Remove the maximum of head spaces uniformly *)
+		    let rec count_head_spaces s acc =
+		      if s.[acc] = ' '
+		      then count_head_spaces s (acc+1)
+		      else acc
+		    in
+		    let count_head_spaces s =
+		      if String.length s = 0
+		      then max_int
+		      else count_head_spaces s 0
+		    in
+		    let fn = fun acc s -> min acc (count_head_spaces s) in
+		    let sps = List.fold_left fn max_int lines in
+		    let sps = if sps = max_int then 0 else sps in
+		    let blank = Str.regexp "[ ]+" in
+		    let rec split acc pos line =
+		      try 
+			let start_blank = Str.search_forward blank line pos in
+			let end_blank = Str.match_end () in
+			let acc =
+			  String.sub line start_blank (end_blank - start_blank)::
+			    String.sub line pos (start_blank - pos):: acc
+			in
+			split acc end_blank line
+		      with
+			Not_found ->
+			  if pos >= String.length line then List.rev acc else
+			  List.rev (String.sub line pos (String.length line - pos)::acc)
+		    in
+		    let lines = List.map (fun s -> 
+					  let s = try String.sub s sps (String.length s - sps)
+						  with Invalid_argument _ -> "" in
+					  split [] 0 s) lines
+		    in
+		    begin
+		      match filename with
+		      | Some name when not !in_ocamldep ->
+			 let pos = 
+			   try Hashtbl.find files_contents name
+			   with Not_found -> -1
 			 in
-			 let name = if Filename.is_relative name then
-				      match !file with
-					None -> name
-				      | Some file ->
-					 Filename.concat (Filename.dirname file) name
-				    else name
+			 let new_pos = (start_pos _loc).Lexing.pos_cnum in
+			 if new_pos > pos then
+			   begin
+			     Hashtbl.add files_contents name new_pos;
+			     let mode = if pos >= 0 then
+					  [Open_creat; Open_append ]
+					else
+					  [Open_creat; Open_trunc; Open_wronly ]
+			     in
+			     let name = if Filename.is_relative name then
+					  match !file with
+					    None -> name
+					  | Some file ->
+					     Filename.concat (Filename.dirname file) name
+					else name
+			     in
+			     Printf.eprintf "Creating file: %s\n%!" name;
+			     let ch = open_out_gen mode 0o600 name in
+			     (* FIXME: not all language accept the next line: *)
+			     Printf.fprintf ch "#%d \"%s\"\n" (start_pos _loc_lines).Lexing.pos_lnum (start_pos _loc_lines).Lexing.pos_fname;
+			     List.iter (Printf.fprintf ch "%a\n" (fun ch -> List.iter (Printf.fprintf ch "%s"))) lines;
+			     close_out ch
+			   end;
+		      | _ -> ()
+		    end;
+		    let lines =
+		      List.map 
+			(fun line ->
+			 let line:Parsetree.expression list =
+			   List.map (fun s -> <:expr< $string:s$ >>) line
 			 in
-			 Printf.eprintf "Creating file: %s\n%!" name;
-			 let ch = open_out_gen mode 0o600 name in
-			 List.iter (Printf.fprintf ch "%s\n") lines;
-			 close_out ch
-		       end
-		  | _ -> ()
-		end;
-		List.flatten str_lines)
-      ) no_blank
+			 <:expr< String.concat "" $list:line$ >>) lines
+		    in
+		    let line_with_num = 
+		      (* FIXME: the fact to have a line name and line number are orthogonal *)
+		      match filename with
+		      | None -> 
+			 <:expr<verb_counter "" @ line >>
+		      | Some name ->
+			 <:expr<verb_counter $string:("verb_file_"^name)$ @ line >>
+		    in
+		    <:structure<let _ = 
+		     List.iter (fun line ->
+		       newPar D.structure ~environment:verbEnv Complete.normal ragged_left $line_with_num$) ($lang$ $list:lines$)>>)
+		  ) no_blank
 
   let verbatim_generic st forbid nd =
     let line_re = "[^\n" ^ forbid ^ "]+" in
@@ -335,15 +369,15 @@ struct
     parser
       m:macro -> m
 		   
-    | STR("//") p:(paragraph_basic_text (addTag Italic tags)) STR("//") when allowed Italic tags ->
+    | STR("//") - p:(paragraph_basic_text (addTag Italic tags)) - STR("//") when allowed Italic tags ->
          <:expr@_loc_p<toggleItalic $p$>>
-    | STR("**") p:(paragraph_basic_text (addTag Bold tags)) STR("**") when allowed Bold tags ->
+    | STR("**") - p:(paragraph_basic_text (addTag Bold tags)) - STR("**") when allowed Bold tags ->
          <:expr@_loc_p<bold $p$>>
-    | STR("||") p:(paragraph_basic_text (addTag SmallCap tags)) STR("||") when allowed SmallCap tags ->
+    | STR("||") - p:(paragraph_basic_text (addTag SmallCap tags)) - STR("||") when allowed SmallCap tags ->
          <:expr@_loc_p<sc $p$>>
-(*    | STR("__") p:(paragraph_basic_text ("__"::tags)) _e:STR("__") when not (List.mem "__" tags) ->
+(*    | STR("__") - p:(paragraph_basic_text ("__"::tags)) - STR("__") when not (List.mem "__" tags) ->
          <:expr@_loc_p<underline $p$>>
-    | STR("--") p:(paragraph_basic_text ("--"::tags)) _e:STR("--") when not (List.mem "--" tags) ->
+    | STR("--") - p:(paragraph_basic_text ("--"::tags)) - STR("--") when not (List.mem "--" tags) ->
          <:expr@_loc_p<strike $p$>>*)
 
     | v:verbatim_bquote -> <:expr@_loc_v<$v$>>

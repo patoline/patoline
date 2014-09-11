@@ -59,11 +59,16 @@ val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> 
 *)
 val change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 'a grammar -> blank -> 'a grammar
 
+(* [ignore_next_blank g] prevent parsing blank at the beginning of g.
+   if g parses the empty input, blank will be parsed normally by the rest
+   of the parser. Therefore, [ignore_next_blank empty] is equivalent to empty. *)
+val ignore_next_blank : 'a grammar -> 'a grammar
+
 (** [eof x]: parses the end of input only and returns [x] *)
 val eof : 'a -> 'a grammar
 
-(** [char]: parses one char and returns it *)
-val one : char grammar
+(** [any]: parses one char and returns it *)
+val any : char grammar
 
 (** [empty x]: parses no characters (always succeed) and return [x]*)
 val empty : 'a -> 'a grammar

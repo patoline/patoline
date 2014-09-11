@@ -609,6 +609,7 @@ let defaultEnv:environment=
 
     let verb_counter filename =
       let get_line env =
+	if filename = "" then 1 else
 	  try 
 	    match StrMap.find filename env.counters
 	    with a,[line] -> line

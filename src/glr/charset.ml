@@ -43,6 +43,14 @@ let singleton =
   in
   fun c -> tbl.(Char.code c)
 
+let list_of_charset s =
+  let res = ref [] in
+  for i = 0 to 255 do
+    let c = Char.chr i in
+    if get s c then res := Char.escaped c :: !res
+  done;
+  !res
+  
 let print_charset ch s =
   match s with None -> Printf.fprintf ch "None" | Some s ->
   Printf.fprintf ch "{";

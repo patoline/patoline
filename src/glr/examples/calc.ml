@@ -38,7 +38,7 @@ let _ =
   if Unix.((fstat (descr_of_in_channel Pervasives.stdin)).st_kind = S_REG)
   then
       try
-	let x = parse_channel arith_sum blank "stdin" stdin in
+	let x = parse_channel arith_sum blank stdin in
 	Printf.printf "=> %f\n" x
       with
 	Parse_error (fname,l,n,msg) -> Printf.fprintf stderr "%s: Parse error %d:%d, '%s' expected\n%!" fname l n (String.concat "|" msg)
@@ -48,7 +48,7 @@ let _ =
       while true do
 	try
 	  Printf.printf ">> %!";
-	  let x = parse_string arith_sum blank "stdin" (input_line stdin) in
+	  let x = parse_string arith_sum blank (input_line stdin) in
 	  Printf.printf "=> %f\n%!" x
 	with
 	  Parse_error(fname,l,n,msg) -> Printf.fprintf stderr "Parse error after char %d, '%s' expected\n%!" n (String.concat "|" msg)

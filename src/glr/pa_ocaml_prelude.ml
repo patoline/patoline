@@ -667,6 +667,8 @@ let push_bool e =
     | Second env -> Stack.push (Bool e) env
 
 let localise _loc e =
+  let len = String.length e in
+  if len = 0 || e.[0] = '#' then e else
   let cols =
     let n = Location.(Lexing.(_loc.loc_start.pos_cnum - _loc.loc_start.pos_bol)) in
     String.make (n+1) ' '
@@ -682,18 +684,26 @@ let loc_none =
   }) in
   Location.({ loc_start = loc; loc_end = loc; loc_ghost = true })
 
+let parse_string' g e' =
+  try
+    parse_string g blank e'
+  with
+    e ->
+      Printf.eprintf "Error in quotation: %s\n%!" e';
+      raise e
 
 let quote_expression _loc loc e name =
   Stack.push (empty_quote_env1 ()) quote_stack ;
-  let e' = (*localise _loc*) e in
+  let e' = localise _loc e in
+  let e = e' in
   let _ = match name with
-    | "expression" -> ignore (parse_string expression blank e')
-    | "type"  -> ignore (parse_string typexpr blank e')
-    | "pattern"  -> ignore (parse_string pattern blank e')
-    | "str_item"  -> ignore (parse_string structure_item blank e')
-    | "sig_item"  -> ignore (parse_string signature_item blank e')
-    | "structure"  -> ignore (parse_string structure blank e')
-    | "signature"  -> ignore (parse_string signature blank e')
+    | "expression" -> ignore (parse_string' expression e')
+    | "type"  -> ignore (parse_string' typexpr e')
+    | "pattern"  -> ignore (parse_string' pattern e')
+    | "str_item"  -> ignore (parse_string' structure_item e')
+    | "sig_item"  -> ignore (parse_string' signature_item e')
+    | "structure"  -> ignore (parse_string' structure e')
+    | "signature"  -> ignore (parse_string' signature e')
     | _ -> assert false
     in
   let env = match Stack.pop quote_stack with
@@ -744,32 +754,32 @@ let quote_expression _loc loc e name =
 											      (loc_pat _loc (Ppat_var(id_loc "quote_res" _loc ))) parse_expr],loc_expr _loc (Pexp_sequence(pop_expr,loc_expr _loc (Pexp_ident(id_loc (Lident "quote_res") _loc ))))))))
 
 let quote_expression_2 loc e =
-  let e = (*localise loc*) e in
-  parse_string expression blank e
+  let e = localise loc e in
+  parse_string' expression e
 
 let quote_type_2 loc e =
   let e = localise loc e in
-  parse_string typexpr blank e
+  parse_string' typexpr e
 
 let quote_pattern_2 loc e =
   let e = localise loc e in
-  parse_string pattern blank e
+  parse_string' pattern e
 
 let quote_str_item_2 loc e =
   let e = localise loc e in
-  parse_string structure_item blank e
+  parse_string' structure_item e
 
 let quote_sig_item_2 loc e =
   let e = localise loc e in
-  parse_string signature_item blank e
+  parse_string' signature_item e
 
 let quote_structure_2 loc e =
   let e = localise loc e in
-  parse_string structure blank e
+  parse_string' structure e
  
 let quote_signature_2 loc e =
   let e = localise loc e in
-  parse_string signature blank e 
+  parse_string' signature e 
 
 (****************************************************************************
  * Basic syntactic elements (identifiers and literals)                      *
