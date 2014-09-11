@@ -179,7 +179,7 @@ repetition 1 or more times. When one of the symbol above
 is used in the grammar being described, it is embraced by simple quotes.
  
 \begin{itemize}
-\item //rules// ::= //rules// '##|##' //rules// | //rules// '##| |##' //rules// | //left// ##->## //action//
+\item //rules// ::= //rules// '##|##' //rules// | //rules// '##| |##' //rules// | //left// ##->## //expression//
 \item //left//  ::= //let_binding// //left// | - //left// | //left// ##->>## //left// | ([//pattern//##:## ] //parser// [//option//] [//modifier//])+
 \item //parser// ::= //terminal// | //atom_expression// | ##{## //rules// ##}##
 \item //terminal// ::= ##ANY## | ##CHR## //atom_expression// | ##STR## //atom_expression// | ##RE## //atom_expression//
@@ -189,6 +189,23 @@ is used in the grammar being described, it is embraced by simple quotes.
 \item //option// ::= '##[##' //expression// '##]##'
 \item //modifier// ::= ##?## | ##??## | ##*## | ##**## | ##+## | ##++##
 \end{itemize}
+
+In this grammar, //let_binding// and //expression// correspond to their equivalent in OCaml.
+//atom_expression//, mean an expression with the priority level just before function application, which means 
+that we can use, without parenthesis, identifiers and projection.
+
+We also see every constructor that is not a terminal in two versions. The version were the symbol is
+doubled will explore all the possibility. The simple version will not backtrack on succed.
+
+Lets give a first small example, a calcultor with just the addition and substraction:
+
+### OCaml "example1.ml"
+  let int = parser n:RE("[0-9]+") -> int_of_string n
+  let op  = parser CHR('+') -> (+) | CHR('-') -> (-)
+  let expression = parser
+    n:int l:{ op:op m:int -> (op,m) }* ->
+      List.fold_left (fun acc (op,f) -> op acc f) n l
+###
 
 == Examples ==
 

@@ -93,7 +93,7 @@ let parse_error grouped msg line pos =
   if c = 0 then Hashtbl.replace max_hash key (line, pos, msg @@ msgs) 
   else if c > 0 then Hashtbl.replace max_hash key (line, pos, msg);
   raise Give_up
-  
+ 
 let accept_empty g = Lazy.force g.accept_empty
 let firsts g = Lazy.force g.firsts
 let first_sym g = Lazy.force g.first_sym

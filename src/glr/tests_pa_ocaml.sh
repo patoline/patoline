@@ -26,6 +26,10 @@ fi
 
 echo $files
 
+make test_parsers
+
+./test_parsers $files
+
 for f in $files; do
   echo "File: $f"
   /usr/bin/time --format="%C: %U,%S,%E" ./pa_ocaml $f > /dev/null
