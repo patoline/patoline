@@ -324,7 +324,7 @@ struct
       exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; build_action _loc (id::id'::ids) action]
     | `Normal(id,e,opt) :: ls ->
       let e = apply_option _loc opt e in      
-      exp_apply _loc (exp_glr_fun _loc "sequence") [e; fn (id::ids) ls; exp_app _loc]
+      exp_apply _loc (exp_glr_fun _loc "fsequence") [e; fn (id::ids) ls]
     in
     let res = fn [] l in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in

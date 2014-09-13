@@ -149,7 +149,7 @@ val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -
 (** [apply_position f gr]: a variant of the previous function, giving directly the buffer and position
     at the beginning and end of the parsed input. You may then get the position (filename, line number ...)
     using the Input module. *)
-val apply_position : (buffer -> int -> buffer -> int -> 'a -> 'b) -> 'a grammar -> 'b grammar
+val apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar -> 'b grammar
 
 (* [lists gr] lists all the parse tree produced by the first argument. The parse-tree do
    not need to correspond to the same initial segment of the input. *)

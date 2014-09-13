@@ -221,12 +221,10 @@ let position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 	fun grouped str pos next g ->
 	  l.parse grouped str pos next (fun l c l' c' x -> 
 					  g l c l' c' (
-  					      let l0, c0 = apply_blank grouped l c in
-					      let l, c = if line_beginning l0 + c0 > line_beginning l' + c' then l,c else l0,c0 in 
 					      (fname l, line_num l, c, line_num l', c', x)))
     }
 
-let apply_position : (buffer -> int -> buffer -> int -> 'a -> 'b) -> 'a grammar -> 'b grammar
+let apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar -> 'b grammar
   = fun f l -> 
     { firsts = lazy (firsts l);
       first_sym = lazy (first_sym l);
@@ -235,9 +233,7 @@ let apply_position : (buffer -> int -> buffer -> int -> 'a -> 'b) -> 'a grammar 
 	fun grouped str pos next g ->
 	  l.parse grouped str pos next
 		  (fun l c l' c' x -> g l c l' c' (
-  		   let l0, c0 = apply_blank grouped l c in
-		   let l, c = if line_beginning l0 + c0 > line_beginning l' + c' then l,c else l0,c0 in 
-		   f l c l' c' x))
+		   f x l c l' c'))
     }
 
 let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
@@ -249,8 +245,6 @@ let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -
 	fun grouped str pos next g ->
 	  l.parse grouped str pos next
 		  (fun l c l' c' x -> g l c l' c' (
-  					  let l0, c0 = apply_blank grouped l c in
-					  let l, c = if line_beginning l0 + c0 > line_beginning l' + c' then l,c else l0,c0 in 
 					  filter (fname l) (line_num l) (line_beginning l) c (line_num l') (line_beginning l') c', x))
     }
 
@@ -392,10 +386,6 @@ let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
 	    parse_error grouped (~~ name) str pos)
     }
 
-
-let list_regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a list grammar
-  = fun r ?(name=String.escaped r) f -> regexp r ~name (fun groupe -> [f groupe])
-
 let mk_empty in_analysis fn =
   lazy (
       if !in_analysis then failwith "illegal left recursion";
@@ -436,12 +426,35 @@ let sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 	fun grouped str pos next g ->
 	  l1.parse grouped str pos (union' l2 next)
 		   (fun str pos str' pos' a ->
+		    let first_empty = str == str' && pos = pos' in
 		    l2.parse grouped str' pos' next
-			     (fun _ _ str' pos' x -> g str pos str' pos' (f a x)))
+			     (fun str0 pos0 str' pos' x ->
+			      let str, pos = if first_empty then str0, pos0 else str, pos in
+			      g str pos str' pos' (f a x)))
+    }
+
+let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
+  = fun l1 l2 f ->
+  let flag = ref false in
+    { firsts = lazy (union_firsts l1 l2);
+      first_sym = lazy (union_first_sym l1 l2);
+      accept_empty = mk_empty flag (fun () -> accept_empty l1 && accept_empty l2);
+      parse =
+	fun grouped str pos next g ->
+	  l1.parse grouped str pos (union' l2 next)
+		   (fun str pos str' pos' a ->
+		    let first_empty = str == str' && pos = pos' in
+		    l2.parse grouped str' pos' next
+			     (fun str0 pos0 str' pos' b -> 
+			      let str, pos = if first_empty then str0, pos0 else str, pos in
+			      g str pos str' pos' (f a b str pos str' pos')))
     }
 
 let fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
   = fun l1 l2 -> sequence l1 l2 (fun x f -> f x)
+
+let fsequence_position : 'a grammar -> (buffer -> int -> buffer -> int -> 'a -> 'b) grammar -> 'b grammar
+  = fun l1 l2 -> sequence_position l1 l2 (fun x f s p s' p' -> f s p s' p' x)
 
 let sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
   = fun l1 l2 l3 g ->
@@ -458,8 +471,13 @@ let dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 	false);
       parse =
 	fun grouped str pos next g ->
-	  l1.parse grouped str pos None (fun str pos str' pos' a ->
-	    (f2 a).parse grouped str' pos' next (fun _ _ str' pos' b -> g str pos str' pos' b))
+	  l1.parse grouped str pos None
+		   (fun str pos str' pos' a ->
+		    let first_empty = str == str' && pos = pos' in
+		    (f2 a).parse grouped str' pos' next
+			  (fun str0 pos0 str' pos' b ->
+			   let str, pos = if first_empty then str0, pos0 else str, pos in
+			   g str pos str' pos' b))
     }
 
 let iter : 'a grammar grammar -> 'a grammar 
