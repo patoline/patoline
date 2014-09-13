@@ -85,7 +85,13 @@ let mkpatt _loc (id, p) = match p, !do_locate with
   | Some p, Some _ -> 
      loc_pat _loc (Ppat_alias (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p]) , (id_loc (id) _loc)))
 
-let rec apply _loc ids e =
+let filter _loc r =
+  match !do_locate with
+    None -> r
+  | Some(f,_) -> 
+     loc_expr _loc (Pexp_apply(f,["", r]))
+
+let rec build_action _loc ids e =
 #ifversion < 4.00
   let ids = Array.to_list (Array.mapi (fun i (id,x) ->
 		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) (Array.of_list ids)) in
@@ -124,58 +130,36 @@ let rec apply _loc ids e =
 	    e))))
   ) e (List.rev ids)
 
-let filter _loc r =
-  match !do_locate with
-    None -> r
-  | Some(f,_) -> 
-     loc_expr _loc (Pexp_apply(f,["", r]))
-
-
 let apply_option _loc opt e = 
   filter _loc (match opt with
     `Once -> e
-  | `Option d ->
+  | `Option(strict,d) ->
+     let f = if strict then "option'" else "option" in
     (match d with 
        None ->
-       exp_apply _loc (exp_glr_fun _loc "option")
+       exp_apply _loc (exp_glr_fun _loc f)
 	  [exp_None _loc;
 	   exp_apply _loc (exp_glr_fun _loc "apply")
 	     [exp_Some_fun _loc; e]]
      | Some d ->
-	exp_apply _loc (exp_glr_fun _loc "option") [d; e])
-  | `OptionPrime d ->
-    (match d with None ->
-       exp_apply _loc (exp_glr_fun _loc "option'")
-	  [exp_None _loc;
-	   exp_apply _loc (exp_glr_fun _loc "apply")
-	     [exp_Some_fun _loc; e]]
-    | Some d ->
-	exp_apply _loc (exp_glr_fun _loc "option") [d; e])
-  | `Fixpoint d ->
+	exp_apply _loc (exp_glr_fun _loc f) [d; e])
+  | `Fixpoint(strict,d) ->
+     let f = if strict then "fixpoint'" else "fixpoint" in
     (match d with None ->
        exp_apply _loc (exp_glr_fun _loc "apply")
 	  [exp_list_fun _loc "rev";
-	   exp_apply _loc (exp_glr_fun _loc "fixpoint")
+	   exp_apply _loc (exp_glr_fun _loc f)
 	     [exp_Nil _loc;
 	      exp_apply _loc (exp_glr_fun _loc "apply")
 		[exp_Cons_fun _loc; e]]]
     | Some d ->
-       exp_apply _loc (exp_glr_fun _loc "fixpoint") [d; e])
-  | `FixpointPrime d ->
-    (match d with None ->
-       exp_apply _loc (exp_glr_fun _loc "apply")
-	  [exp_list_fun _loc "rev";
-	   exp_apply _loc (exp_glr_fun _loc "fixpoint'")
-	     [exp_Nil _loc;
-	      exp_apply _loc (exp_glr_fun _loc "apply")
-		[exp_Cons_fun _loc; e]]]
-    | Some d ->
-       exp_apply _loc (exp_glr_fun _loc "fixpoint") [d; e])
-  | `Fixpoint1 d ->
+       exp_apply _loc (exp_glr_fun _loc f) [d; e])
+  | `Fixpoint1(strict,d) ->
+     let f = if strict then "fixpoint'" else "fixpoint" in
    (match d with None ->
        exp_apply _loc (exp_glr_fun _loc "sequence")
 	  [e;
-	   exp_apply _loc (exp_glr_fun _loc "fixpoint")
+	   exp_apply _loc (exp_glr_fun _loc f)
 	     [exp_Nil _loc;
 	      exp_apply _loc (exp_glr_fun _loc "apply")
 		[exp_Cons_fun _loc; e]];
@@ -184,103 +168,10 @@ let apply_option _loc opt e =
       exp_apply _loc (exp_glr_fun _loc "dependent_sequence")
 	 [e;
 	  exp_fun _loc "x"
-	    (exp_apply _loc (exp_glr_fun _loc "fixpoint") 
+	    (exp_apply _loc (exp_glr_fun _loc f) 
 	       [exp_apply _loc (exp_ident _loc "x") [d];
 		e])])
-  | `Fixpoint1Prime d ->
-   (match d with None ->
-      exp_apply _loc (exp_glr_fun _loc "sequence")
-        [e;
-	 exp_apply _loc (exp_glr_fun _loc "fixpoint'")
-	   [exp_Nil _loc;
-	    exp_apply _loc (exp_glr_fun _loc "apply")
-		      [exp_Cons_fun _loc; e]];
-	 exp_Cons_rev_fun _loc]
-   | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "dependent_sequence")
-		[e;
-		 exp_fun _loc "x"
-			 (exp_apply _loc (exp_glr_fun _loc "fixpoint'") 
-				    [exp_apply _loc (exp_ident _loc "x") [d];
-				     e])])
    )
-
-let apply_list_option _loc opt e = 
-  filter _loc (match opt with
-    `Once -> e
-  | `Option d ->
-    (match d with None ->
-      exp_apply _loc (exp_glr_fun _loc "option") [exp_Nil _loc; e]
-    | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "option") [exp_list _loc [d]; e])
-  | `OptionPrime d ->
-    (match d with None ->
-      exp_apply _loc (exp_glr_fun _loc "option'") [exp_Nil _loc; e]
-    | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "option'") [exp_list _loc [d]; e])
-  | `Fixpoint d ->
-    (match d with None ->
-      exp_apply _loc (exp_apply _loc (exp_list_fun _loc "map") [exp_list_fun _loc "rev"])
-	 [exp_apply _loc (exp_glr_fun _loc "list_fixpoint")
-            [exp_Nil _loc;
-	     exp_apply _loc (exp_glr_fun _loc "apply")
-	        [exp_fun _loc "x" (exp_fun _loc "l" (exp_apply _loc (exp_list_fun _loc "map") [
-		    exp_fun _loc "y" (exp_Cons _loc (exp_ident _loc "y") (exp_ident _loc "l"));
-		     exp_ident _loc "x"]));
-		 e]]]
-    | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "list_fixpoint") [d; e])
-  | `FixpointPrime d ->
-    (match d with None ->
-      exp_apply _loc (exp_apply _loc (exp_list_fun _loc "map") [exp_list_fun _loc "rev"])
-	 [exp_apply _loc (exp_glr_fun _loc "list_fixpoint'")
-            [exp_Nil _loc;
-	     exp_apply _loc (exp_glr_fun _loc "apply")
-	        [exp_fun _loc "x" (exp_fun _loc "l" (exp_apply _loc (exp_list_fun _loc "map") [
-		    exp_fun _loc "y" (exp_Cons _loc (exp_ident _loc "y") (exp_ident _loc "l"));
-		     exp_ident _loc "x"]));
-		 e]]]
-    | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "list_fixpoint'") [d; e])
- | `Fixpoint1 d ->
-   (match d with None ->
-       exp_apply _loc (exp_glr_fun _loc "list_sequence")
-	  [e;
-	   exp_apply _loc (exp_glr_fun _loc "list_fixpoint")
-	     [exp_Nil _loc;
-	      exp_apply _loc (exp_glr_fun _loc "apply")
-	        [exp_fun _loc "x" (exp_fun _loc "l" (exp_apply _loc (exp_list_fun _loc "map") [
-		   exp_fun _loc "y" (exp_Cons _loc (exp_ident _loc "y") (exp_ident _loc "l"));
-		   exp_ident _loc "x"]));
-		 e]];
-	   exp_Cons_rev_fun _loc]
-   | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "list_dependent_sequence")
-	 [e;
-	  exp_fun _loc "x"
-	    (exp_apply _loc (exp_glr_fun _loc "list_fixpoint") 
-	       [exp_apply _loc (exp_ident _loc "x") [d];
-		e])])
- | `Fixpoint1Prime d ->
-   (match d with None ->
-       exp_apply _loc (exp_glr_fun _loc "list_sequence")
-	  [e;
-	   exp_apply _loc (exp_glr_fun _loc "list_fixpoint'")
-	     [exp_Nil _loc;
-	      exp_apply _loc (exp_glr_fun _loc "apply")
-	        [exp_fun _loc "x" (exp_fun _loc "l" (exp_apply _loc (exp_list_fun _loc "map") [
-		   exp_fun _loc "y" (exp_Cons _loc (exp_ident _loc "y") (exp_ident _loc "l"));
-		   exp_ident _loc "x"]));
-		 e]];
-	   exp_Cons_rev_fun _loc]
-   | Some d ->
-      exp_apply _loc (exp_glr_fun _loc "list_dependent_sequence")
-	 [e;
-	  exp_fun _loc "x"
-	    (exp_apply _loc (exp_glr_fun _loc "list_fixpoint'") 
-	       [exp_apply _loc (exp_ident _loc "x") [d];
-		e])])
-	      )
 
 let default_action _loc l =
   let l = List.filter (function `Normal(("_",_),_,_) -> false | `Ignore -> false | _ -> true) l in
@@ -298,9 +189,7 @@ struct
   include In
 
   let glr_rules = Glr.declare_grammar "glr_rules"
-  let glr_list_rules = Glr.declare_grammar "glr_list_rules"
   let glr_rule = Glr.declare_grammar "glr_rule"
-  let glr_list_rule = Glr.declare_grammar "glr_list_rule"
 
   let glr_parser = 
     parser
@@ -308,7 +197,7 @@ struct
          merge2:(expression_lvl (next_exp App)) ->
       (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
     | parser_kw p:glr_rules -> (Atom, p)
-    | parser_kw CHR('*') p:glr_list_rules -> (Atom, p)
+    | parser_kw CHR('*') p:glr_rules -> (Atom, exp_apply _loc (exp_glr_fun _loc "lists") [p])
 
   let extra_expressions = glr_parser::extra_expressions
 
@@ -318,12 +207,9 @@ struct
 
   let glr_option =
     parser
-    | CHR('*') CHR('*') e:glr_opt_expr -> `FixpointPrime e
-    | CHR('*') e:glr_opt_expr -> `Fixpoint e
-    | CHR('+') CHR('+') e:glr_opt_expr -> `Fixpoint1Prime e
-    | CHR('+') e:glr_opt_expr -> `Fixpoint1 e
-    | CHR('?') CHR('?') e:glr_opt_expr -> `OptionPrime e
-    | CHR('?') e:glr_opt_expr -> `Option e
+    | CHR('*') strict:CHR('*')? e:glr_opt_expr -> `Fixpoint(strict<>None,e)
+    | CHR('+') strict:CHR('+')? e:glr_opt_expr -> `Fixpoint1(strict<>None,e)
+    | CHR('?') strict:CHR('?')? e:glr_opt_expr -> `Option(strict<>None,e)
     | EMPTY -> `Once
 
   let glr_sequence =
@@ -342,10 +228,10 @@ struct
     | STR("ANY") ->
        exp_glr_fun _loc "any"
     | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-       let opt = match opt with None -> exp_unit _loc | Some e -> e in
+       let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "char") [e; opt]
     | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-       let opt = match opt with None -> exp_unit _loc | Some e -> e in
+       let opt = match opt with None -> e | Some e -> e in
        exp_apply _loc (exp_glr_fun _loc "string") [e; opt]
     | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
        let opt = match opt with
@@ -367,46 +253,6 @@ struct
 	   exp_apply _loc (exp_glr_fun _loc "regexp") [e; exp_fun _loc "groupe" opt])
 	 
     | e:(expression_lvl Atom) -> e
-
-let glr_list_sequence =
-  parser
-  | CHR('{') r:glr_list_rules CHR('}') -> r
-  | STR("EOF") opt:glr_opt_expr ->
-     let e = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "list_eof") [e]
-  | STR("EMPTY") opt:glr_opt_expr ->
-     let e = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "list_empty") [e]
-  | STR("FAIL") e:(expression_lvl (next_exp App)) ->
-     exp_apply _loc (exp_glr_fun _loc "list_fail") [e]
-  | STR("DEBUG") e:(expression_lvl (next_exp App)) ->
-     exp_apply _loc (exp_glr_fun _loc "list_debug") [e]
-  | STR("CHR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-     let opt = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "list_char") [e; opt]
-  | STR("STR") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-     let opt = match opt with None -> exp_unit _loc | Some e -> e in
-     exp_apply _loc (exp_glr_fun _loc "list_string") [e; opt]
-  | STR("RE") e:(expression_lvl (next_exp App)) opt:glr_opt_expr ->
-      let opt = match opt with
-	| None -> exp_apply _loc (exp_ident _loc "groupe") [exp_int _loc 0]
-	| Some e -> e
-      in
-      (match e.pexp_desc with
-#ifversion >= 4.00
-	  Pexp_ident { txt = Lident id } ->
-#else
-	  Pexp_ident (Lident id) ->
-#endif
-	let id = 
-	  let l = String.length id in
-	  if l > 3 && String.sub id (l - 3) 3 = "_re" then String.sub id 0 (l - 3) else id
-	in 
-	exp_lab_apply _loc (exp_glr_fun _loc "list_regexp") ["name", exp_string _loc id; "", e; "", exp_fun _loc "groupe" opt] 
-      | _ -> 
-	exp_apply _loc (exp_glr_fun _loc "list_regexp") [e; exp_fun _loc "groupe" opt])
-
-  | e:(expression_lvl Atom) -> e
 
   let glr_ident =
     parser
@@ -437,10 +283,6 @@ let glr_list_sequence =
     parser
     | l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }+ -> l
 
-  let glr_list_left_member =
-    parser
-    | l:{ id: glr_ident s:glr_list_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }+ -> l
-
   let glr_let = Glr.declare_grammar "glr_let" 
   let _ = Glr.set_grammar glr_let (
     parser
@@ -459,12 +301,6 @@ let glr_list_sequence =
     | STR("->") action:expression -> Normal action
     | EMPTY -> Default
 
-  let glr_list_action =
-    parser
-    | STR("->>") (def, cond, r):glr_list_rule -> DepSeq (def, cond, r)
-    | STR("->") action:(expression_lvl (next_exp Disj)) -> Normal action
-    | EMPTY -> Default
-
   let _ = Glr.set_grammar glr_rule (
     parser
     | def:glr_let l:glr_left_member condition:glr_cond action:glr_action ->
@@ -481,47 +317,17 @@ let glr_list_sequence =
     | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
     | [`Normal(id,e,opt)] ->
       let e = apply_option _loc opt e in
-      exp_apply _loc (exp_glr_fun _loc "apply") [apply _loc (id::ids) action; e]
+      exp_apply _loc (exp_glr_fun _loc "apply") [build_action _loc (id::ids) action; e]
     | [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
       let e = apply_option _loc opt e in
       let e' = apply_option _loc opt' e' in
-      exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; apply _loc (id::id'::ids) action]
+      exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; build_action _loc (id::id'::ids) action]
     | `Normal(id,e,opt) :: ls ->
       let e = apply_option _loc opt e in      
       exp_apply _loc (exp_glr_fun _loc "sequence") [e; fn (id::ids) ls; exp_app _loc]
     in
     let res = fn [] l in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
-    def, condition, res
-    )
-
-  let _ = Glr.set_grammar glr_list_rule (
-    parser
-    | def:glr_let l:glr_list_left_member condition:glr_cond action:glr_list_action ->
-    let iter, action = match action with
-	Normal a -> false, a
-      | Default -> false, default_action _loc l
-      | DepSeq(def, cond, a) ->
-	 true, match cond with
-		 None -> def a 
-	       | Some cond -> def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
-    in
-    let rec fn ids l = match l with
-      [] -> assert false
-    | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
-    | [`Normal(id,e,opt)] ->
-      let e = apply_list_option _loc opt e in
-      exp_apply _loc (exp_glr_fun _loc "apply") [apply _loc (id::ids) action; e]
-    | [ `Normal(id,e,opt); `Normal(id',e',opt') ] ->
-      let e = apply_list_option _loc opt e in
-      let e' = apply_list_option _loc opt' e' in
-      exp_apply _loc (exp_glr_fun _loc "list_sequence") [e;e';apply _loc (id::id'::ids) action]
-    | `Normal(id,e,opt) :: ls ->
-      let e = apply_list_option _loc opt e in      
-      exp_apply _loc (exp_glr_fun _loc "list_sequence") [e; fn (id::ids) ls; exp_app _loc]
-    in
-    let res = fn [] l in
-    let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter_list") [res] else res in
     def, condition, res
     )
 
@@ -540,29 +346,11 @@ let glr_list_sequence =
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
-	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "alternatives") [l]))
+	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "alternatives'") [l]))
 
- let glr_list_rules_aux =
-   parser
-     CHR('|')? r:glr_list_rule rs:{ CHR('|') r:glr_list_rule}* -> 
-      (match rs with
-      | [] -> r
-      | l ->
-	let l = List.fold_right (fun (def,cond,x) y -> 
-	  match cond with
-	    None ->
-	      def (exp_Cons _loc x y)
-          | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
-		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
-			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
-	) (r::l) (exp_Nil _loc) in
-	(fun x -> x), None, (exp_apply _loc (exp_glr_fun _loc "list_alternatives") [l]))
- 
-  (* FIXME: use only | | after bootstrap *)
   let _ = Glr.set_grammar glr_rules (
     parser
-    { CHR('|') CHR('|') | else_kw}? r:glr_rules_aux rs:{ { CHR('|') CHR('|') | else_kw } r:glr_rules_aux}* -> 
+    { CHR('|') CHR('|')}? r:glr_rules_aux rs:{ { CHR('|') CHR('|')} r:glr_rules_aux}* -> 
       (match r,rs with
       | (def,cond,e),  [] ->
 	(match cond with
@@ -579,29 +367,7 @@ let glr_list_sequence =
 		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
 			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
 	) (r::l) (exp_Nil _loc) in
-	exp_apply _loc (exp_glr_fun _loc "alternatives'") [l])
-  )
-
-  let _ = Glr.set_grammar glr_list_rules (
-    parser
-    { CHR('|') CHR('|') }? r:glr_list_rules_aux rs:{ { CHR('|') CHR('|') } r:glr_list_rules_aux}* -> 
-      (match r,rs with
-      | (def,cond,e),  [] ->
-	(match cond with
-	  None -> def e
-        | Some c -> 
-	  loc_expr _loc (Pexp_ifthenelse(c,e,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
-      | r, l ->
-	let l = List.fold_right (fun (def,cond,x) y -> 
-	  match cond with
-	    None ->
-	      def (exp_Cons _loc x y)
-          | Some c -> 
-	      def (loc_expr _loc (Pexp_let(Nonrecursive,[value_binding _loc (pat_ident _loc "y") y], 
-		   loc_expr _loc (Pexp_ifthenelse(c,exp_Cons _loc 
-			 x (exp_ident _loc "y"), Some (exp_ident _loc "y"))))))
-	) (r::l) (exp_Nil _loc) in
-	exp_apply _loc (exp_glr_fun _loc "list_alternatives'") [l])
+	exp_apply _loc (exp_glr_fun _loc "alternatives") [l])
   )
 
 end

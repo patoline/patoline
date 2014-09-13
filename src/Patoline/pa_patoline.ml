@@ -68,7 +68,7 @@ let pato_blank mline str pos =
       | `Cls , _                 -> fn nb lvl `Ini cur next
 
       | _    , '\n' when lvl > 0 -> fn nb lvl `Ini cur next
-      | _    , '\n' when nb > 0  -> cur
+      | _    , '\n' when nb > 0 && mline -> cur
       | _    , '\n'              -> fn (nb + 1) lvl `Ini cur next
 
       | `Str , '"'               -> fn nb lvl `Ini cur next
@@ -84,8 +84,8 @@ let pato_blank mline str pos =
       | _    , _                 -> cur
   in fn 0 0 `Ini (str, pos) (str, pos)
 
-let blank1 = pato_blank false
-let blank2 = pato_blank true
+let blank1 = pato_blank true
+let blank2 = pato_blank false
 
 (* Function for geting fresh module names (Uid) *)
 let counter = ref 1
@@ -111,12 +111,12 @@ struct
   (* Parse a list of caml "expr" *)
   let wrapped_caml_list =
     parser
-    | CHR('[') l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] CHR(']') -> l
+    | CHR('[') l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] CHR(']') -> l
 
   (* Parse an array of caml "expr" *)
   let wrapped_caml_array =
     parser
-    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }* CHR(';')? -> e::l}?[[]] STR("|]") -> l
+    | STR("[|") l:{e:expression l:{ CHR(';') e:expression }** CHR(';')?? -> e::l}??[[]] STR("|]") -> l
 
 (****************************************************************************
  * Words.                                                                   *
@@ -152,7 +152,7 @@ struct
   let word =
     change_layout (
 	parser
-        | cs:character+ ->
+        | cs:character++ ->
              let w = String.concat "" cs in
              if String.length w >= 2 &&
 		  List.mem (String.sub w 0 2) ["==";"=>";"=<";"--";"->";"-<";">>";"$>";]
@@ -188,10 +188,10 @@ struct
     change_layout (
 	parser
 	  RE("^###")
-	  lang:{RE("[ \t]+") id:RE(uid_coloring)}?
-	  filename:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}?
+	  lang:{RE("[ \t]+") id:RE(uid_coloring)}??
+	  filename:{RE("[ \t]+") fn:RE(string_filename)[groupe 1]}??
 	  RE("[ \t]*") CHR('\n')
-	  lines:{l:RE(verbatim_line) CHR('\n')}+ 
+	  lines:{l:RE(verbatim_line) CHR('\n')}++
 	  RE("^###") -> (
 		    let lang = match lang with
 			None -> <:expr<lang_default>>
@@ -291,7 +291,7 @@ struct
     change_layout (
 	parser
 	  STR(st)
-	  ls:{l:RE(line_re) STR("\n")}*
+	  ls:{l:RE(line_re) STR("\n")}**
 	  l:RE(line_re)
 	      STR(nd) ->
             let lines = ls @ [l] in
@@ -358,7 +358,7 @@ struct
 
   let macro =
     parser
-    | m:macro_name args:macro_argument* ->
+    | m:macro_name args:macro_argument** ->
 			(let fn = fun acc r -> <:expr@_loc_args<$acc$ $r$>> in
 			 List.fold_left fn <:expr@_loc_m<$lid:m$>> args)
     | m:verbatim_macro -> m
@@ -412,7 +412,7 @@ struct
 
   let _ = set_paragraph_basic_text (fun tags ->
 	     parser
-	       l:{p:(text_paragraph_elt tags) -> (_loc, p)}+ ->
+	       l:{p:(text_paragraph_elt tags) -> (_loc, p)}++ ->
 		 match List.rev l with
 		 | []   -> assert false
 		 | m::l ->
@@ -488,14 +488,14 @@ struct
   let _ = set_grammar paragraph (
 			change_layout (
 			    parser
-			      e:paragraph_elt es:paragraph_elt* ->
+			      e:paragraph_elt es:paragraph_elt** ->
 						 let es = List.flatten (List.map (fun r -> r false) es) in
 						 fun indent -> e indent @ es
 			  ) blank1)
 
   let _ = set_grammar paragraphs (
 			parser
-			  p:paragraph ps:paragraph* ->
+			  p:paragraph ps:paragraph** ->
       					 let ps = List.flatten (List.map (fun r -> r true) ps) in
 					 fun indent_first -> p indent_first @ ps
 		      )
@@ -545,7 +545,7 @@ struct
 
   let _ = set_grammar text (
      parser
-       l:text_item* ->
+       l:text_item** ->
 	 (fun indent lvl ->
           let fn = fun (indent, lvl, ast) txt ->
             let indent, lvl, ast' = txt indent lvl in
@@ -579,14 +579,14 @@ struct
 
   let header =
     parser
-      patoline_config* -> []
+      patoline_config** -> []
 
   let title =
     parser
       RE("==========\\(=*\\)") t:text_only
-      author:{RE("----------\\(-*\\)") t:text_only}?
-      institute:{RE("----------\\(-*\\)") t:text_only}?
-      date:{RE("----------\\(-*\\)") t:text_only}?
+      author:{RE("----------\\(-*\\)") t:text_only}??
+      institute:{RE("----------\\(-*\\)") t:text_only}??
+      date:{RE("----------\\(-*\\)") t:text_only}??
       RE("==========\\(=*\\)") ->
 
 	   let extras =
@@ -638,7 +638,7 @@ struct
 
   let full_text =
     parser
-      h:header t:title? txt:text EOF ->
+      h:header t:title?? txt:text EOF ->
 			    let t = match t with
 			      | None   -> []
 			      | Some t -> t

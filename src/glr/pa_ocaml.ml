@@ -293,7 +293,7 @@ let module_path_suit_aux = memoize1 (fun allow_app ->
 let _ = set_module_path_suit (fun allow_app ->
     parser
       f:(module_path_suit_aux allow_app) g:(module_path_suit allow_app) -> (fun acc -> g (f acc))
-    | |  EMPTY -> (fun acc -> acc)
+    | | EMPTY -> (fun acc -> acc)
     )
 
 let _ = set_module_path_gen (fun allow_app ->

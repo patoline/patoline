@@ -744,38 +744,38 @@ module Initial =
         "with"]
     let is_reserved_id w = List.mem w (!reserved_ident)
     let ident =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
            (Glr.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "ident" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "ident" "ident")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_string e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
     let capitalized_ident =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun id  -> id)
            (Glr.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "uid" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "uid" "uid")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_string e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
     let lowercase_ident =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
            (Glr.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "lid" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "lid" "lid")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_string e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
@@ -857,28 +857,28 @@ module Initial =
             | _ -> ((), str', pos'))) (Charset.singleton (s.[0])) false s
     let mutable_kw = key_word "mutable"
     let mutable_flag =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> Mutable) mutable_kw;
         Glr.apply (fun _unnamed_0  -> Immutable) (Glr.empty ())]
     let private_kw = key_word "private"
     let private_flag =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> Private) private_kw;
         Glr.apply (fun _unnamed_0  -> Public) (Glr.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> Virtual) virtual_kw;
         Glr.apply (fun _unnamed_0  -> Concrete) (Glr.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> Recursive) rec_kw;
         Glr.apply (fun _unnamed_0  -> Nonrecursive) (Glr.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> Upto) to_kw;
         Glr.apply (fun _unnamed_0  -> Downto) downto_kw]
     let method_kw = key_word "method"
@@ -934,62 +934,62 @@ module Initial =
     let int64_re = (par_re int_pos_re) ^ "L"
     let natint_re = (par_re int_pos_re) ^ "n"
     let integer_literal =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun i  -> int_of_string i)
            (Glr.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "int" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "int" "int")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_int e)) (fun x  y  -> y x)) (fun x  y  -> y x))
           (fun x  y  -> y x)]
     let int32_lit =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun i  -> Int32.of_string i)
            (Glr.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "int32" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "int32" "int32")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_int32 e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
     let int64_lit =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun i  -> Int64.of_string i)
            (Glr.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "int64" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "int64" "int64")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_int64 e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
     let nat_int_lit =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun i  -> Nativeint.of_string i)
            (Glr.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "natint" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "natint" "natint")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       push_pop_natint e)) (fun x  y  -> y x))
              (fun x  y  -> y x)) (fun x  y  -> y x)]
     let bool_lit =
-      Glr.alternatives
+      Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> "false") false_kw;
         Glr.apply (fun _unnamed_0  -> "true") true_kw;
-        Glr.sequence (Glr.char '$' ())
-          (Glr.sequence (Glr.string "bool" ())
-             (Glr.sequence (Glr.char ':' ())
+        Glr.sequence (Glr.char '$' '$')
+          (Glr.sequence (Glr.string "bool" "bool")
+             (Glr.sequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' ())
+                   (Glr.char '$' '$')
                    (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
                       if push_pop_bool e then "true" else "false"))
                 (fun x  y  -> y x)) (fun x  y  -> y x)) (fun x  y  -> y x)]

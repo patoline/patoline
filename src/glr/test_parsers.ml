@@ -4,9 +4,10 @@
 let _ = Location.input_name := ""
 
 (* necessite la librairie UNIX *)
-let nb_tests = 1
+let nb_tests = 10
 
 let with_time f x =
+  Gc.full_major ();
   let {Unix.tms_utime = ut;Unix.tms_stime = st} = Unix.times () in
   try
     for i = 0 to nb_tests - 2 do

@@ -195,7 +195,9 @@ In this grammar, //let_binding// and //expression// correspond to their equivale
 that we can use, without parenthesis, identifiers and projection.
 
 We also see every constructor that is not a terminal in two versions. The version were the symbol is
-doubled will explore all the possibility. The simple version will not backtrack on succed.
+doubled will not explore all possibilities: once a parse tree has been found it does not backtrack.
+We also have to kind of alternatives in the same spirit (more or less backtracking).
+We will come back to this later.
 
 Lets give a first small example, a calcultor with just the addition and substraction:
 
@@ -206,6 +208,28 @@ Lets give a first small example, a calcultor with just the addition and substrac
     n:int l:{ op:op m:int -> (op,m) }* ->
       List.fold_left (fun acc (op,f) -> op acc f) n l
 ###
+
+Let us first details the terminal with the meaning of their option when option are available:
+
+\begin{itemize}
+\item ##ANY##: parses one char, except end of file but including newline and returns this char.
+\item ##EOF##: parses end of file only and returns the given expression, unit if the option is not given. This is almost always useless because the function calling the parser (except ##partial_parse_XXX##)
+automaticaly add ##EOF## at the end of the given grammar.
+\item ##EMPTY[##//result//##]##: parses nothing and returns //result//, unit if //result// is not given.
+\item ##FAIL[##//message//##]##: fail immediately. The given expression will appear in the error //message//.
+\item ##DEGUG## //message//: parses nothing but print information on ##stderr##, including the given //message//.
+\item ##CHR## //char// [//result//]:
+parses only the given //char// and return the given //result//. Returns the parsed //char// if the option was not given.
+\item ##STR## //string// [//result//]:
+parses only the given //string// and return the given //result//. Returns the parsed //string// if the option was not given.
+\item ##RE## //regexp// [//result//]:
+parses only the given //regexp// of type ##Str.regexp## and returns the given //result//.
+The identifier ##group## is bound in //result// and ##group## //n//
+will return the corresponding matched group. 
+
+Limitation: the regexp can at most parse one line and can not parse newlines. You must use the other terminal if you want to parse 
+newline.
+\end{itemize}
 
 == Examples ==
 
