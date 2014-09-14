@@ -46,9 +46,10 @@ $(d)/glr.a: $(d)/glr.cmxa;
 install: install-glr
 
 install-glr: export LIBDIR := $(INSTALL_GLR_DIR)
+install-glr: export BINDIR := $(INSTALL_BIN_DIR)
 
-install-glr:
-	$(MAKE) -C $(GLR_DIR) install
+install-glr: install-bindir
+	$(MAKE) -e -C $(GLR_DIR) install
 
 # Rolling back changes made at the top
 d := $(patsubst %/,%,$(dir $(d)))

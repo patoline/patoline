@@ -2,8 +2,8 @@ FINDLIB =
 CAMLFLAGS =
 OCAMLC = $(FINDLIB) ocamlc.opt $(CAMLFLAGS)
 OCAMLOPT = $(FINDLIB) ocamlopt.opt $(CAMLFLAGS)
-BINDIR = $(DESTDIR)/usr/local/bin
-LIBDIR = $(DESTDIR)/$(shell ocamlc -where)/glr
+BINDIR = /usr/local/bin
+LIBDIR = /$(shell ocamlc -where)/glr
 
 all: glr.cmxa glr.cma glr.cmi doc pa_ocaml
 
@@ -220,14 +220,14 @@ examples/test_list.cmx: examples/test_list.ml glr.cmxa
 #	time examples/test_list 12
 
 install: uninstall glr.mli glr.cmxa glr.cma
-	- mkdir $(LIBDIR)
-	- ocamlfind remove -destdir $(LIBDIR) glr
-	ocamlfind install -destdir $(LIBDIR) glr META glr.cmi glr.cmo glr.mli glr.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx glr.cma glr.cmxa glr.a
-	install pa_ocaml $(BINDIR)
+	- mkdir $(DESTDIR)/$(LIBDIR)
+	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
+	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META glr.cmi glr.cmo glr.mli glr.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx glr.cma glr.cmxa glr.a
+	install pa_ocaml $(DESTDIR)/$(BINDIR)
 
 uninstall:
-	- ocamlfind remove -destdir $(LIBDIR) glr
-	- rm -f $(BINDIR)/pa_ocaml
+	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
+	- rm -f $(DESTDIR)/$(BINDIR)/pa_ocaml
 clean:
 	- rm -f *.cmi *.cmo *.cmx *.o *.a *.cma *.cmxa 
 	- rm -f bootstrap/*/*.cm* bootstrap/*/*.o bootstrap/*/*.a
