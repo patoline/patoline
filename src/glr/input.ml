@@ -75,18 +75,23 @@ let test_directive fname num line =
       in
       predicat (major, minor) (int_of_string major', int_of_string minor')
     with _ -> 
-      Printf.eprintf "file: %s, line %d: bad predicate version" fname num;
+      Printf.eprintf "file: %s, line %d: bad predicate version\n%!" fname num;
       exit 1
   else (
-    Printf.eprintf "file: %s, line %d: unknown #if directive" fname num;
+    Printf.eprintf "file: %s, line %d: unknown #if directive\n%!" fname num;
     exit 1)
 
 let else_directive =
   Str.regexp "[ \t]*else[ \t]*"
 
+let elif_directive =
+  Str.regexp "[ \t]*elif[ \t]*"
+
 let endif_directive =
   Str.regexp "[ \t]*endif[ \t]*"
 
+type cont_info =
+    Else | Endif | EndOfFile | Elif of bool
 
 let buffer_from_fun fname get_line data =
   let rec fn fname active num bol cont =
@@ -113,23 +118,32 @@ let buffer_from_fun fname get_line data =
 	       fn fname active num bol' cont
 	     else if Str.string_match if_directive line 1 then
 	       let b = test_directive fname num line in
-	       fn fname (b && active) num bol' (fun fname status num bol ->
-	       match status with
-               | `End_of_file ->
-		  Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
-		  exit 1
-	       | `Endif -> fn fname active num bol cont
-	       | `Else -> 
-		  fn fname (not b && active) num bol (fun fname status num bol ->
-		  match status with 
-		  | `Else | `End_of_file ->
-		    Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
-		    exit 1
-		  | `Endif -> fn fname active num bol cont))
+	       fn fname (b && active) num bol' (
+		    let rec cont' b = fun fname (status:cont_info) num bol ->
+		      match status with
+		      | EndOfFile ->
+			 Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
+			 exit 1
+		      | Endif -> fn fname active num bol cont
+		      | Else -> 
+			 fn fname (not b && active) num bol
+			    (fun fname (status:cont_info) num bol ->
+			     match status with 
+			     | Elif _ | Else | EndOfFile ->
+						  Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
+						  exit 1
+			     | Endif -> fn fname active num bol cont)
+		      | Elif b' -> 
+			 fn fname (not b && b' && active) num bol (cont' (b || b'))
+		    in
+		    cont' b)
+	     else if Str.string_match elif_directive line 1 then
+	       let b = test_directive fname num line in
+	       cont fname (Elif b) num bol'
 	     else if Str.string_match else_directive line 1 then
-	       cont fname `Else num bol'
+	       cont fname Else num bol'
 	     else if Str.string_match endif_directive line 1 then
-	       cont fname `Endif num bol' 
+	       cont fname Endif num bol' 
 	     else if active then (
 	       { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
 		 next = lazy (fn fname active num bol' cont) })
@@ -139,18 +153,21 @@ let buffer_from_fun fname get_line data =
 		 next = lazy (fn fname active num bol' cont) })
 	   else fn fname active num bol' cont)
       with
-	End_of_file -> fun () -> cont fname `End_of_file num bol
+	End_of_file -> fun () -> cont fname EndOfFile num bol
     end ()
   in
   lazy (fn fname true 0 0 (fun fname status line bol ->
   match status with
-  | `Else ->
+  | Else ->
      Printf.eprintf "file: %s, extra '#else'" fname;
      exit 1
-  | `Endif ->
+  | Elif _ ->
+     Printf.eprintf "file: %s, extra '#elif'" fname;
+     exit 1
+  | Endif ->
      Printf.eprintf "file: %s, extra '#endif'" fname;
      exit 1
-  | `End_of_file -> 
+  | EndOfFile -> 
      Lazy.force (empty_buffer fname line bol)))
   
 let buffer_from_channel ?(filename="") ch =

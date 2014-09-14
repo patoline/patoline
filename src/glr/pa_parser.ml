@@ -96,7 +96,7 @@ let rec build_action _loc ids e =
   let ids = Array.to_list (Array.mapi (fun i (id,x) ->
 		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) (Array.of_list ids)) in
 #else
-  let ids = List.mapi (fun i (id,x) ->
+  let ids = List.mapi (fun i (id, x) ->
 		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) ids in
 #endif
   let e = match !do_locate with
@@ -317,11 +317,15 @@ struct
     | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
     | [`Normal(id,e,opt)] ->
       let e = apply_option _loc opt e in
+(*      let f = match !do_locate with
+	  None -> "apply"
+	| Some _ -> "apply_position"
+      in*)
       exp_apply _loc (exp_glr_fun _loc "apply") [build_action _loc (id::ids) action; e]
     | [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
       let e = apply_option _loc opt e in
       let e' = apply_option _loc opt' e' in
-      exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; build_action _loc (id::id'::ids) action]
+       exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; build_action _loc (id::id'::ids) action]
     | `Normal(id,e,opt) :: ls ->
       let e = apply_option _loc opt e in      
       exp_apply _loc (exp_glr_fun _loc "fsequence") [e; fn (id::ids) ls]
@@ -373,3 +377,4 @@ struct
 end
 
 let _ = register_extension (module Ext : FExt)
+

@@ -137,15 +137,21 @@ let rec merge =
   function
   | [] -> assert false
   | loc::[] -> loc
-  | l1::ls when let open Location in l1.loc_start = l1.loc_end -> merge ls
-  | l1::ls ->
-      let l2 = List.hd (List.rev ls) in
-      let open Location in
-        {
-          loc_start = (l1.loc_start);
-          loc_end = (l2.loc_end);
-          loc_ghost = (l1.loc_ghost && l2.loc_ghost)
-        }
+  | l1::_ as ls ->
+      let ls = List.rev ls in
+      let rec fn =
+        function
+        | [] -> assert false
+        | loc::[] -> loc
+        | l2::ls when let open Location in l2.loc_start = l2.loc_end -> fn ls
+        | l2::ls ->
+            let open Location in
+              {
+                loc_start = (l1.loc_start);
+                loc_end = (l2.loc_end);
+                loc_ghost = (l1.loc_ghost && l2.loc_ghost)
+              } in
+      fn ls
 let merge2 l1 l2 =
   let open Location in
     {
@@ -765,50 +771,44 @@ module Initial =
       Glr.alternatives'
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
            (Glr.regexp ~name:"ident" ident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "ident" "ident")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "ident" "ident")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_string e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_string e))))]
     let capitalized_ident =
       Glr.alternatives'
         [Glr.apply (fun id  -> id)
            (Glr.regexp ~name:"cident" cident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "uid" "uid")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "uid" "uid")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_string e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_string e))))]
     let lowercase_ident =
       Glr.alternatives'
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
            (Glr.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "lid" "lid")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "lid" "lid")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_string e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_string e))))]
     let reserved_symbols =
       ref
         ["#";
@@ -969,73 +969,65 @@ module Initial =
       Glr.alternatives'
         [Glr.apply (fun i  -> int_of_string i)
            (Glr.regexp ~name:"int_pos" int_pos_re (fun groupe  -> groupe 0));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "int" "int")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "int" "int")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_int e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_int e))))]
     let int32_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Int32.of_string i)
            (Glr.regexp ~name:"int32" int32_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "int32" "int32")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "int32" "int32")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_int32 e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_int32 e))))]
     let int64_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Int64.of_string i)
            (Glr.regexp ~name:"int64" int64_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "int64" "int64")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "int64" "int64")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_int64 e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_int64 e))))]
     let nat_int_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Nativeint.of_string i)
            (Glr.regexp ~name:"natint" natint_re (fun groupe  -> groupe 1));
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "natint" "natint")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "natint" "natint")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
                       fun _unnamed_1  ->
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
-                            fun _unnamed_4  -> push_pop_natint e))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                            fun _unnamed_4  -> push_pop_natint e))))]
     let bool_lit =
       Glr.alternatives'
         [Glr.apply (fun _unnamed_0  -> "false") false_kw;
         Glr.apply (fun _unnamed_0  -> "true") true_kw;
-        Glr.sequence (Glr.char '$' '$')
-          (Glr.sequence (Glr.string "bool" "bool")
-             (Glr.sequence (Glr.char ':' ':')
+        Glr.fsequence (Glr.char '$' '$')
+          (Glr.fsequence (Glr.string "bool" "bool")
+             (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
                    (fun e  ->
@@ -1043,9 +1035,7 @@ module Initial =
                         fun _unnamed_2  ->
                           fun _unnamed_3  ->
                             fun _unnamed_4  ->
-                              if push_pop_bool e then "true" else "false"))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                              if push_pop_bool e then "true" else "false"))))]
     let entry_points:
       (string*
         [ `Impl of Parsetree.structure_item list Glr.grammar

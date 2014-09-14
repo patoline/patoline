@@ -100,9 +100,9 @@ module Make(Initial:Extension) =
         [Glr.apply (fun f  -> let (_loc_f,f) = f in let _loc = _loc_f in f)
            (locate
               (Glr.regexp ~name:"float" float_re (fun groupe  -> groupe 0)));
-        Glr.sequence (locate (Glr.char '$' '$'))
-          (Glr.sequence (locate (Glr.string "float" "float"))
-             (Glr.sequence (locate (Glr.char ':' ':'))
+        Glr.fsequence (locate (Glr.char '$' '$'))
+          (Glr.fsequence (locate (Glr.string "float" "float"))
+             (Glr.fsequence (locate (Glr.char ':' ':'))
                 (Glr.sequence (locate (expression_lvl (next_exp App)))
                    (locate (Glr.char '$' '$'))
                    (fun e  ->
@@ -122,9 +122,7 @@ module Make(Initial:Extension) =
                                   _loc__unnamed_2;
                                   _loc_e;
                                   _loc__unnamed_1] in
-                              string_of_float (push_pop_float e)))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                              string_of_float (push_pop_float e)))))]
     let char_regular = "[^\\']"
     let string_regular = "[^\\\"]"
     let char_escaped = "[\\\\][\\\\\\\"\\'ntbrs ]"
@@ -199,7 +197,7 @@ module Make(Initial:Extension) =
         [Glr.apply (fun r  -> let (_loc_r,r) = r in let _loc = _loc_r in r)
            (locate
               (change_layout
-                 (Glr.sequence (locate (Glr.char '\'' '\''))
+                 (Glr.fsequence (locate (Glr.char '\'' '\''))
                     (Glr.sequence (locate (one_char true))
                        (locate (Glr.char '\'' '\''))
                        (fun c  ->
@@ -211,10 +209,10 @@ module Make(Initial:Extension) =
                               let _loc =
                                 merge
                                   [_loc__unnamed_2; _loc_c; _loc__unnamed_1] in
-                              c)) (fun x  -> fun y  -> y x)) no_blank));
-        Glr.sequence (locate (Glr.char '$' '$'))
-          (Glr.sequence (locate (Glr.string "char" "char"))
-             (Glr.sequence (locate (Glr.char ':' ':'))
+                              c))) no_blank));
+        Glr.fsequence (locate (Glr.char '$' '$'))
+          (Glr.fsequence (locate (Glr.string "char" "char"))
+             (Glr.fsequence (locate (Glr.char ':' ':'))
                 (Glr.sequence (locate (expression_lvl (next_exp App)))
                    (locate (Glr.char '$' '$'))
                    (fun e  ->
@@ -234,8 +232,7 @@ module Make(Initial:Extension) =
                                   _loc__unnamed_2;
                                   _loc_e;
                                   _loc__unnamed_1] in
-                              push_pop_char e)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                              push_pop_char e))))]
     let interspace = "[ \t]*"
     let string_literal =
       let char_list_to_string lc =
@@ -252,8 +249,8 @@ module Make(Initial:Extension) =
         [Glr.apply (fun r  -> let (_loc_r,r) = r in let _loc = _loc_r in r)
            (locate
               (change_layout
-                 (Glr.sequence (locate (Glr.char '"' '"'))
-                    (Glr.sequence
+                 (Glr.fsequence (locate (Glr.char '"' '"'))
+                    (Glr.fsequence
                        (locate
                           (Glr.apply List.rev
                              (Glr.fixpoint []
@@ -264,9 +261,9 @@ module Make(Initial:Extension) =
                              (Glr.apply List.rev
                                 (Glr.fixpoint []
                                    (Glr.apply (fun x  -> fun l  -> x :: l)
-                                      (Glr.sequence
+                                      (Glr.fsequence
                                          (locate (Glr.char '\\' '\\'))
-                                         (Glr.sequence
+                                         (Glr.fsequence
                                             (locate (Glr.char '\n' '\n'))
                                             (Glr.sequence
                                                (locate
@@ -299,9 +296,7 @@ module Make(Initial:Extension) =
                                                             _loc__unnamed_2;
                                                             _loc__unnamed_0;
                                                             _loc_lc] in
-                                                        lc))
-                                            (fun x  -> fun y  -> y x))
-                                         (fun x  -> fun y  -> y x))))))
+                                                        lc))))))))
                           (locate (Glr.char '"' '"'))
                           (fun lcs  ->
                              let (_loc_lcs,lcs) = lcs in
@@ -319,14 +314,12 @@ module Make(Initial:Extension) =
                                        _loc_lcs;
                                        _loc__unnamed_1] in
                                    char_list_to_string
-                                     (List.flatten (lc :: lcs))))
-                       (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                 no_blank));
+                                     (List.flatten (lc :: lcs)))))) no_blank));
         Glr.apply (fun r  -> let (_loc_r,r) = r in let _loc = _loc_r in r)
           (locate
              (change_layout
                 (Glr.iter
-                   (Glr.sequence (locate (Glr.char '{' '{'))
+                   (Glr.fsequence (locate (Glr.char '{' '{'))
                       (Glr.sequence
                          (locate
                             (Glr.regexp "[a-z]*" (fun groupe  -> groupe 0)))
@@ -347,7 +340,7 @@ module Make(Initial:Extension) =
                                 let _ =
                                   set_grammar string_literal_suit
                                     (Glr.alternatives'
-                                       [Glr.sequence
+                                       [Glr.fsequence
                                           (locate (Glr.char '|' '|'))
                                           (Glr.sequence
                                              (locate (Glr.string id id))
@@ -366,8 +359,7 @@ module Make(Initial:Extension) =
                                                         [_loc__unnamed_2;
                                                         _loc__unnamed_0;
                                                         _loc__unnamed_1] in
-                                                    []))
-                                          (fun x  -> fun y  -> y x);
+                                                    []));
                                        Glr.sequence (locate Glr.any)
                                          (locate string_literal_suit)
                                          (fun c  ->
@@ -382,11 +374,10 @@ module Make(Initial:Extension) =
                                      let (_loc_r,r) = r in
                                      let _loc = _loc_r in
                                      char_list_to_string r)
-                                  (locate string_literal_suit)))
-                      (fun x  -> fun y  -> y x))) no_blank));
-        Glr.sequence (locate (Glr.char '$' '$'))
-          (Glr.sequence (locate (Glr.string "string" "string"))
-             (Glr.sequence (locate (Glr.char ':' ':'))
+                                  (locate string_literal_suit))))) no_blank));
+        Glr.fsequence (locate (Glr.char '$' '$'))
+          (Glr.fsequence (locate (Glr.string "string" "string"))
+             (Glr.fsequence (locate (Glr.char ':' ':'))
                 (Glr.sequence (locate (expression_lvl (next_exp App)))
                    (locate (Glr.char '$' '$'))
                    (fun e  ->
@@ -406,14 +397,13 @@ module Make(Initial:Extension) =
                                   _loc__unnamed_2;
                                   _loc_e;
                                   _loc__unnamed_1] in
-                              push_pop_string e)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                              push_pop_string e))))]
     let quotation = declare_grammar "quotation"
     let _ =
       set_grammar quotation
         (change_layout
            (Glr.alternatives'
-              [Glr.sequence (locate (Glr.string "<:" "<:"))
+              [Glr.fsequence (locate (Glr.string "<:" "<:"))
                  (Glr.sequence (locate quotation) (locate quotation)
                     (fun q  ->
                        let (_loc_q,q) = q in
@@ -423,8 +413,7 @@ module Make(Initial:Extension) =
                            let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                            let _loc =
                              merge [_loc__unnamed_2; _loc_q; _loc_q'] in
-                           "<:" ^ (q ^ (">>" ^ q'))))
-                 (fun x  -> fun y  -> y x);
+                           "<:" ^ (q ^ (">>" ^ q'))));
               Glr.sequence (locate string_literal) (locate quotation)
                 (fun s  ->
                    let (_loc_s,s) = s in
@@ -488,7 +477,7 @@ module Make(Initial:Extension) =
         [Glr.apply
            (fun id  -> let (_loc_id,id) = id in let _loc = _loc_id in id)
            (locate lowercase_ident);
-        Glr.sequence (locate (Glr.string "(" "("))
+        Glr.fsequence (locate (Glr.string "(" "("))
           (Glr.sequence (locate operator_name) (locate (Glr.string ")" ")"))
              (fun op  ->
                 let (_loc_op,op) = op in
@@ -498,7 +487,7 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_op; _loc__unnamed_1] in
-                    op)) (fun x  -> fun y  -> y x)]
+                    op))]
     let constr_name = capitalized_ident
     let tag_name =
       Glr.sequence (locate (Glr.string "`" "`")) (locate ident)
@@ -533,7 +522,7 @@ module Make(Initial:Extension) =
                         fun acc  -> Ldot (acc, m))] in
               if allow_app
               then
-                (Glr.sequence (locate (Glr.string "(" "("))
+                (Glr.fsequence (locate (Glr.string "(" "("))
                    (Glr.sequence (locate (module_path_gen true))
                       (locate (Glr.string ")" ")"))
                       (fun m'  ->
@@ -545,8 +534,7 @@ module Make(Initial:Extension) =
                              let _loc =
                                merge
                                  [_loc__unnamed_2; _loc_m'; _loc__unnamed_1] in
-                             fun a  -> Lapply (a, m')))
-                   (fun x  -> fun y  -> y x))
+                             fun a  -> Lapply (a, m'))))
                 :: y
               else y))
     let _ =
@@ -770,7 +758,7 @@ module Make(Initial:Extension) =
              fun t  ->
                let (_loc_t,t) = t in
                let _loc = merge [_loc__unnamed_0; _loc_t] in PTyp t);
-        Glr.sequence (locate (Glr.char '?' '?'))
+        Glr.fsequence (locate (Glr.char '?' '?'))
           (Glr.sequence (locate pattern)
              (locate
                 (Glr.option None
@@ -789,9 +777,9 @@ module Make(Initial:Extension) =
                   fun _unnamed_2  ->
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc = merge [_loc__unnamed_2; _loc_p; _loc_e] in
-                    PPat (p, e))) (fun x  -> fun y  -> y x)]
+                    PPat (p, e)))]
     let attribute =
-      Glr.sequence (locate (Glr.string "[@" "[@"))
+      Glr.fsequence (locate (Glr.string "[@" "[@"))
         (Glr.sequence (locate attr_id) (locate payload)
            (fun id  ->
               let (_loc_id,id) = id in
@@ -800,7 +788,7 @@ module Make(Initial:Extension) =
                 fun _unnamed_2  ->
                   let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                   let _loc = merge [_loc__unnamed_2; _loc_id; _loc_p] in
-                  (id, p))) (fun x  -> fun y  -> y x)
+                  (id, p)))
     let attributes =
       Glr.apply
         (fun _unnamed_0  ->
@@ -837,8 +825,8 @@ module Make(Initial:Extension) =
            (Glr.apply List.rev
               (Glr.fixpoint []
                  (Glr.apply (fun x  -> fun l  -> x :: l)
-                    (Glr.sequence (locate (Glr.string "[@@" "[@@"))
-                       (Glr.sequence (locate attr_id)
+                    (Glr.fsequence (locate (Glr.string "[@@" "[@@"))
+                       (Glr.fsequence (locate attr_id)
                           (Glr.sequence (locate payload)
                              (locate (Glr.char ']' ']'))
                              (fun p  ->
@@ -857,16 +845,15 @@ module Make(Initial:Extension) =
                                           _loc_id;
                                           _loc_p;
                                           _loc__unnamed_1] in
-                                      (id, p))) (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x))))))
+                                      (id, p)))))))))
     let ext_attributes =
       Glr.apply (fun l  -> let (_loc_l,l) = l in let _loc = _loc_l in l)
         (locate
            (Glr.apply List.rev
               (Glr.fixpoint []
                  (Glr.apply (fun x  -> fun l  -> x :: l)
-                    (Glr.sequence (locate (Glr.string "[@@@" "[@@@"))
-                       (Glr.sequence (locate attr_id)
+                    (Glr.fsequence (locate (Glr.string "[@@@" "[@@@"))
+                       (Glr.fsequence (locate attr_id)
                           (Glr.sequence (locate payload)
                              (locate (Glr.char ']' ']'))
                              (fun p  ->
@@ -885,11 +872,10 @@ module Make(Initial:Extension) =
                                           _loc_id;
                                           _loc_p;
                                           _loc__unnamed_1] in
-                                      (id, p))) (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x))))))
+                                      (id, p)))))))))
     let extension =
-      Glr.sequence (locate (Glr.string "[%" "[%"))
-        (Glr.sequence (locate attr_id)
+      Glr.fsequence (locate (Glr.string "[%" "[%"))
+        (Glr.fsequence (locate attr_id)
            (Glr.sequence (locate payload) (locate (Glr.char ']' ']'))
               (fun p  ->
                  let (_loc_p,p) = p in
@@ -905,11 +891,10 @@ module Make(Initial:Extension) =
                            _loc_id;
                            _loc_p;
                            _loc__unnamed_1] in
-                       (id, p))) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                       (id, p))))
     let item_extension =
-      Glr.sequence (locate (Glr.string "[%%" "[%%"))
-        (Glr.sequence (locate attr_id)
+      Glr.fsequence (locate (Glr.string "[%%" "[%%"))
+        (Glr.fsequence (locate attr_id)
            (Glr.sequence (locate payload) (locate (Glr.char ']' ']'))
               (fun p  ->
                  let (_loc_p,p) = p in
@@ -925,11 +910,10 @@ module Make(Initial:Extension) =
                            _loc_id;
                            _loc_p;
                            _loc__unnamed_1] in
-                       (id, p))) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                       (id, p))))
     let poly_typexpr =
       Glr.alternatives'
-        [Glr.sequence
+        [Glr.fsequence
            (locate
               (Glr.sequence
                  (Glr.sequence (locate (Glr.string "'" "'")) (locate ident)
@@ -956,16 +940,15 @@ module Make(Initial:Extension) =
                    fun ids  ->
                      let (_loc_ids,ids) = ids in
                      let _loc = merge [_loc_ids; _loc__unnamed_0; _loc_te] in
-                     loc_typ _loc (Ptyp_poly (ids, te))))
-           (fun x  -> fun y  -> y x);
+                     loc_typ _loc (Ptyp_poly (ids, te))));
         Glr.apply
           (fun te  ->
              let (_loc_te,te) = te in
              let _loc = _loc_te in loc_typ _loc (Ptyp_poly ([], te)))
           (locate typexpr)]
     let poly_syntax_typexpr =
-      Glr.sequence (locate type_kw)
-        (Glr.sequence
+      Glr.fsequence (locate type_kw)
+        (Glr.fsequence
            (locate
               (Glr.sequence typeconstr_name
                  (Glr.fixpoint []
@@ -986,10 +969,9 @@ module Make(Initial:Extension) =
                            _loc_ids;
                            _loc__unnamed_0;
                            _loc_te] in
-                       (ids, te))) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                       (ids, te))))
     let method_type =
-      Glr.sequence (locate method_name)
+      Glr.fsequence (locate method_name)
         (Glr.sequence (locate (Glr.string ":" ":")) (locate poly_typexpr)
            (fun _unnamed_0  ->
               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -999,14 +981,13 @@ module Make(Initial:Extension) =
                   let (_loc_mn,mn) = mn in
                   let _loc = merge [_loc_mn; _loc__unnamed_0; _loc_pte] in
                   { pfield_desc = (Pfield (mn, pte)); pfield_loc = _loc }))
-        (fun x  -> fun y  -> y x)
     let tag_spec =
       Glr.alternatives'
         [Glr.sequence (locate tag_name)
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence (locate of_kw)
+                    (Glr.fsequence (locate of_kw)
                        (Glr.sequence
                           (locate
                              (Glr.option None
@@ -1021,7 +1002,7 @@ module Make(Initial:Extension) =
                                    _unnamed_2 in
                                  let _loc =
                                    merge [_loc__unnamed_2; _loc_amp; _loc_te] in
-                                 (amp, te))) (fun x  -> fun y  -> y x)))))
+                                 (amp, te)))))))
            (fun tn  ->
               let (_loc_tn,tn) = tn in
               fun te  ->
@@ -1042,7 +1023,7 @@ module Make(Initial:Extension) =
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence (locate of_kw)
+                    (Glr.fsequence (locate of_kw)
                        (Glr.sequence
                           (locate
                              (Glr.option None
@@ -1057,7 +1038,7 @@ module Make(Initial:Extension) =
                                    _unnamed_2 in
                                  let _loc =
                                    merge [_loc__unnamed_2; _loc_amp; _loc_te] in
-                                 (amp, te))) (fun x  -> fun y  -> y x)))))
+                                 (amp, te)))))))
            (fun tn  ->
               let (_loc_tn,tn) = tn in
               fun te  ->
@@ -1068,7 +1049,7 @@ module Make(Initial:Extension) =
                   | None  -> (true, [])
                   | Some (amp,l) -> ((amp <> None), [l]) in
                 [Rtag (tn, amp, t)]);
-        Glr.sequence
+        Glr.fsequence
           (locate (Glr.option None (Glr.apply (fun x  -> Some x) typexpr)))
           (Glr.sequence (locate (Glr.string "|" "|")) (locate tag_spec)
              (fun _unnamed_0  ->
@@ -1080,15 +1061,14 @@ module Make(Initial:Extension) =
                     let _loc = merge [_loc_te; _loc__unnamed_0; _loc_ts] in
                     match te with
                     | None  -> [ts]
-                    | Some te -> [Rinherit te; ts]))
-          (fun x  -> fun y  -> y x)]
+                    | Some te -> [Rinherit te; ts]))]
     let tag_spec_full =
       Glr.alternatives'
         [Glr.sequence (locate tag_name)
            (locate
               (Glr.option (true, [])
-                 (Glr.sequence (locate of_kw)
-                    (Glr.sequence
+                 (Glr.fsequence (locate of_kw)
+                    (Glr.fsequence
                        (locate
                           (Glr.option None
                              (Glr.apply (fun x  -> Some x)
@@ -1125,8 +1105,7 @@ module Make(Initial:Extension) =
                                        _loc_amp;
                                        _loc_te;
                                        _loc_tes] in
-                                   ((amp <> None), (te :: tes))))
-                       (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))))
+                                   ((amp <> None), (te :: tes))))))))
            (fun tn  ->
               let (_loc_tn,tn) = tn in
               fun ((_,(amp,tes)) as _unnamed_1)  ->
@@ -1139,8 +1118,8 @@ module Make(Initial:Extension) =
           (locate typexpr)]
     let polymorphic_variant_type: core_type grammar =
       Glr.alternatives'
-        [Glr.sequence (locate (Glr.string "[" "["))
-           (Glr.sequence (locate tag_spec_first)
+        [Glr.fsequence (locate (Glr.string "[" "["))
+           (Glr.fsequence (locate tag_spec_first)
               (Glr.sequence
                  (locate
                     (Glr.apply List.rev
@@ -1172,10 +1151,9 @@ module Make(Initial:Extension) =
                               _loc__unnamed_1] in
                           let flag = true in
                           loc_typ _loc
-                            (Ptyp_variant ((tsf @ tss), flag, None))))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "[>" "[>"))
-          (Glr.sequence
+                            (Ptyp_variant ((tsf @ tss), flag, None)))));
+        Glr.fsequence (locate (Glr.string "[>" "[>"))
+          (Glr.fsequence
              (locate
                 (Glr.option None (Glr.apply (fun x  -> Some x) tag_spec)))
              (Glr.sequence
@@ -1212,15 +1190,14 @@ module Make(Initial:Extension) =
                            | None  -> tss
                            | Some ts -> ts :: tss in
                          let flag = false in
-                         loc_typ _loc (Ptyp_variant (tss, flag, None))))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "[<" "[<"))
-          (Glr.sequence
+                         loc_typ _loc (Ptyp_variant (tss, flag, None)))));
+        Glr.fsequence (locate (Glr.string "[<" "[<"))
+          (Glr.fsequence
              (locate
                 (Glr.option None
                    (Glr.apply (fun x  -> Some x) (Glr.string "|" "|"))))
-             (Glr.sequence (locate tag_spec_full)
-                (Glr.sequence
+             (Glr.fsequence (locate tag_spec_full)
+                (Glr.fsequence
                    (locate
                       (Glr.apply List.rev
                          (Glr.fixpoint []
@@ -1279,12 +1256,10 @@ module Make(Initial:Extension) =
                                    let flag = true in
                                    loc_typ _loc
                                      (Ptyp_variant
-                                        ((tfs :: tfss), flag, (Some tns)))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                                        ((tfs :: tfss), flag, (Some tns))))))))]
     let package_constraint =
-      Glr.sequence (locate type_kw)
-        (Glr.sequence (locate typeconstr)
+      Glr.fsequence (locate type_kw)
+        (Glr.fsequence (locate typeconstr)
            (Glr.sequence (locate (Glr.char '=' '=')) (locate typexpr)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -1300,13 +1275,12 @@ module Make(Initial:Extension) =
                            _loc_tc;
                            _loc__unnamed_0;
                            _loc_te] in
-                       let tc = id_loc tc _loc_tc in (tc, te)))
-           (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)
+                       let tc = id_loc tc _loc_tc in (tc, te))))
     let package_type =
       Glr.sequence (locate modtype_path)
         (locate
            (Glr.option []
-              (Glr.sequence (locate with_kw)
+              (Glr.fsequence (locate with_kw)
                  (Glr.sequence (locate package_constraint)
                     (locate
                        (Glr.apply List.rev
@@ -1330,7 +1304,7 @@ module Make(Initial:Extension) =
                            let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                            let _loc =
                              merge [_loc__unnamed_2; _loc_pc; _loc_pcs] in
-                           pc :: pcs)) (fun x  -> fun y  -> y x))))
+                           pc :: pcs)))))
         (fun mtp  ->
            let (_loc_mtp,mtp) = mtp in
            fun cs  ->
@@ -1339,7 +1313,7 @@ module Make(Initial:Extension) =
              let mtp = id_loc mtp _loc_mtp in Ptyp_package (mtp, cs))
     let opt_present =
       Glr.alternatives'
-        [Glr.sequence (locate (Glr.string "[>" "[>"))
+        [Glr.fsequence (locate (Glr.string "[>" "[>"))
            (Glr.sequence
               (locate
                  (Glr.sequence tag_name
@@ -1355,7 +1329,7 @@ module Make(Initial:Extension) =
                      let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                      let _loc =
                        merge [_loc__unnamed_2; _loc_l; _loc__unnamed_1] in
-                     l)) (fun x  -> fun y  -> y x);
+                     l));
         Glr.apply
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -1381,8 +1355,8 @@ module Make(Initial:Extension) =
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              let _loc = _loc__unnamed_0 in loc_typ _loc Ptyp_any)
           (locate (Glr.string "_" "_"));
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate module_kw)
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate module_kw)
              (Glr.sequence (locate package_type)
                 (locate (Glr.string ")" ")"))
                 (fun pt  ->
@@ -1399,9 +1373,8 @@ module Make(Initial:Extension) =
                              _loc__unnamed_2;
                              _loc_pt;
                              _loc__unnamed_1] in
-                         loc_typ _loc pt)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
+                         loc_typ _loc pt)));
+        Glr.fsequence (locate (Glr.string "(" "("))
           (Glr.sequence (locate typexpr) (locate (Glr.string ")" ")"))
              (fun te  ->
                 let (_loc_te,te) = te in
@@ -1411,10 +1384,10 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_te; _loc__unnamed_1] in
-                    te)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate opt_label)
-          (Glr.sequence (locate (Glr.string ":" ":"))
-             (Glr.sequence (locate (typexpr_lvl (next_type_prio Arr)))
+                    te));
+        Glr.fsequence (locate opt_label)
+          (Glr.fsequence (locate (Glr.string ":" ":"))
+             (Glr.fsequence (locate (typexpr_lvl (next_type_prio Arr)))
                 (Glr.sequence (locate (Glr.string "->" "->"))
                    (locate typexpr)
                    (fun _unnamed_0  ->
@@ -1436,12 +1409,10 @@ module Make(Initial:Extension) =
                                   _loc_te'] in
                               loc_typ _loc
                                 (Ptyp_arrow
-                                   (("?" ^ ln), (mkoption _loc_te te), te'))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate label_name)
-          (Glr.sequence (locate (Glr.string ":" ":"))
-             (Glr.sequence (locate (typexpr_lvl (next_type_prio Arr)))
+                                   (("?" ^ ln), (mkoption _loc_te te), te'))))));
+        Glr.fsequence (locate label_name)
+          (Glr.fsequence (locate (Glr.string ":" ":"))
+             (Glr.fsequence (locate (typexpr_lvl (next_type_prio Arr)))
                 (Glr.sequence (locate (Glr.string "->" "->"))
                    (locate typexpr)
                    (fun _unnamed_0  ->
@@ -1461,18 +1432,16 @@ module Make(Initial:Extension) =
                                   _loc_te;
                                   _loc__unnamed_0;
                                   _loc_te'] in
-                              loc_typ _loc (Ptyp_arrow (ln, te, te'))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
+                              loc_typ _loc (Ptyp_arrow (ln, te, te'))))));
         Glr.apply
           (fun tc  ->
              let (_loc_tc,tc) = tc in
              let _loc = _loc_tc in
              loc_typ _loc (Ptyp_constr ((id_loc tc _loc_tc), [])))
           (locate typeconstr);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate typexpr)
-             (Glr.sequence
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate typexpr)
+             (Glr.fsequence
                 (locate
                    (Glr.apply List.rev
                       (Glr.fixpoint []
@@ -1508,13 +1477,11 @@ module Make(Initial:Extension) =
                                   _loc_tc] in
                               let constr = id_loc tc _loc_tc in
                               loc_typ _loc
-                                (Ptyp_constr (constr, (te :: tes)))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
+                                (Ptyp_constr (constr, (te :: tes)))))));
         Glr.apply
           (fun pvt  -> let (_loc_pvt,pvt) = pvt in let _loc = _loc_pvt in pvt)
           (locate polymorphic_variant_type);
-        Glr.sequence (locate (Glr.string "<" "<"))
+        Glr.fsequence (locate (Glr.string "<" "<"))
           (Glr.sequence
              (locate
                 (Glr.option None
@@ -1533,10 +1500,10 @@ module Make(Initial:Extension) =
                       then []
                       else
                         [{ pfield_desc = Pfield_var; pfield_loc = _loc_rv }] in
-                    loc_typ _loc (Ptyp_object ml))) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "<" "<"))
-          (Glr.sequence (locate method_type)
-             (Glr.sequence
+                    loc_typ _loc (Ptyp_object ml)));
+        Glr.fsequence (locate (Glr.string "<" "<"))
+          (Glr.fsequence (locate method_type)
+             (Glr.fsequence
                 (locate
                    (Glr.apply List.rev
                       (Glr.fixpoint []
@@ -1593,10 +1560,8 @@ module Make(Initial:Extension) =
                                      pfield_desc = Pfield_var;
                                      pfield_loc = _loc_rv
                                    }] in
-                              loc_typ _loc (Ptyp_object ((mt :: mts) @ ml))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "#" "#"))
+                              loc_typ _loc (Ptyp_object ((mt :: mts) @ ml))))));
+        Glr.fsequence (locate (Glr.string "#" "#"))
           (Glr.sequence (locate class_path) (locate opt_present)
              (fun cp  ->
                 let (_loc_cp,cp) = cp in
@@ -1606,11 +1571,10 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc = merge [_loc__unnamed_2; _loc_cp; _loc_o] in
                     let cp = id_loc cp _loc_cp in
-                    loc_typ _loc (Ptyp_class (cp, [], o))))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate typexpr)
-             (Glr.sequence
+                    loc_typ _loc (Ptyp_class (cp, [], o))));
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate typexpr)
+             (Glr.fsequence
                 (locate
                    (Glr.apply List.rev
                       (Glr.fixpoint []
@@ -1625,8 +1589,8 @@ module Make(Initial:Extension) =
                                     let _loc =
                                       merge [_loc__unnamed_0; _loc_te] in
                                     te))))))
-                (Glr.sequence (locate (Glr.string ")" ")"))
-                   (Glr.sequence (locate (Glr.string "#" "#"))
+                (Glr.fsequence (locate (Glr.string ")" ")"))
+                   (Glr.fsequence (locate (Glr.string "#" "#"))
                       (Glr.sequence (locate class_path) (locate opt_present)
                          (fun cp  ->
                             let (_loc_cp,cp) = cp in
@@ -1655,12 +1619,9 @@ module Make(Initial:Extension) =
                                             _loc_o] in
                                         let cp = id_loc cp _loc_cp in
                                         loc_typ _loc
-                                          (Ptyp_class (cp, (te :: tes), o))))
-                      (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.char '$' '$'))
-          (Glr.sequence
+                                          (Ptyp_class (cp, (te :: tes), o))))))));
+        Glr.fsequence (locate (Glr.char '$' '$'))
+          (Glr.fsequence
              (locate
                 (Glr.option None
                    (Glr.apply (fun x  -> Some x)
@@ -1700,8 +1661,7 @@ module Make(Initial:Extension) =
                              let l = push_pop_type_list e in
                              (match str with
                               | "tuple" -> loc_typ _loc (Ptyp_tuple l)
-                              | _ -> raise Give_up)))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                              | _ -> raise Give_up))))]
     let typexpr_suit_aux:
       type_prio ->
         type_prio ->
@@ -1719,7 +1679,7 @@ module Make(Initial:Extension) =
                         let y = [] in
                         if (lvl' >= DashType) && (lvl <= DashType)
                         then
-                          (Glr.sequence (locate (Glr.string "#" "#"))
+                          (Glr.fsequence (locate (Glr.string "#" "#"))
                              (Glr.sequence (locate class_path)
                                 (locate opt_present)
                                 (fun cp  ->
@@ -1736,13 +1696,12 @@ module Make(Initial:Extension) =
                                        let tex te =
                                          ln te _loc
                                            (Ptyp_class (cp, [te], o)) in
-                                       (DashType, tex)))
-                             (fun x  -> fun y  -> y x))
+                                       (DashType, tex))))
                           :: y
                         else y in
                       if (lvl' >= As) && (lvl <= As)
                       then
-                        (Glr.sequence (locate as_kw)
+                        (Glr.fsequence (locate as_kw)
                            (Glr.sequence (locate (Glr.string "'" "'"))
                               (locate ident)
                               (fun _unnamed_0  ->
@@ -1760,8 +1719,7 @@ module Make(Initial:Extension) =
                                          _loc_id] in
                                      (As,
                                        (fun te  ->
-                                          ln te _loc (Ptyp_alias (te, id))))))
-                           (fun x  -> fun y  -> y x))
+                                          ln te _loc (Ptyp_alias (te, id)))))))
                         :: y
                       else y in
                     if (lvl' >= AppType) && (lvl <= AppType)
@@ -1870,7 +1828,7 @@ module Make(Initial:Extension) =
                   let _loc = merge [_loc_t; _loc_ft] in snd ft t _loc_t))
     let type_param =
       Glr.alternatives'
-        [Glr.sequence (locate opt_variance)
+        [Glr.fsequence (locate opt_variance)
            (Glr.sequence (locate (Glr.char '\'' '\'')) (locate ident)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -1879,8 +1837,7 @@ module Make(Initial:Extension) =
                    fun var  ->
                      let (_loc_var,var) = var in
                      let _loc = merge [_loc_var; _loc__unnamed_0; _loc_id] in
-                     ((Some (id_loc id _loc_id)), var)))
-           (fun x  -> fun y  -> y x);
+                     ((Some (id_loc id _loc_id)), var)));
         Glr.sequence (locate opt_variance) (locate (Glr.char '_' '_'))
           (fun var  ->
              let (_loc_var,var) = var in
@@ -1892,8 +1849,8 @@ module Make(Initial:Extension) =
         [Glr.apply
            (fun tp  -> let (_loc_tp,tp) = tp in let _loc = _loc_tp in [tp])
            (locate type_param);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate type_param)
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate type_param)
              (Glr.sequence
                 (locate
                    (Glr.apply List.rev
@@ -1923,10 +1880,9 @@ module Make(Initial:Extension) =
                              _loc_tp;
                              _loc_tps;
                              _loc__unnamed_1] in
-                         tp :: tps)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                         tp :: tps)))]
     let type_equation =
-      Glr.sequence (locate (Glr.char '=' '='))
+      Glr.fsequence (locate (Glr.char '=' '='))
         (Glr.sequence (locate private_flag) (locate typexpr)
            (fun p  ->
               let (_loc_p,p) = p in
@@ -1935,11 +1891,11 @@ module Make(Initial:Extension) =
                 fun _unnamed_2  ->
                   let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                   let _loc = merge [_loc__unnamed_2; _loc_p; _loc_te] in
-                  (p, te))) (fun x  -> fun y  -> y x)
+                  (p, te)))
     let type_constraint =
-      Glr.sequence (locate constraint_kw)
-        (Glr.sequence (locate (Glr.string "'" "'"))
-           (Glr.sequence (locate ident)
+      Glr.fsequence (locate constraint_kw)
+        (Glr.fsequence (locate (Glr.string "'" "'"))
+           (Glr.fsequence (locate ident)
               (Glr.sequence (locate (Glr.char '=' '=')) (locate typexpr)
                  (fun _unnamed_0  ->
                     let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -1958,9 +1914,7 @@ module Make(Initial:Extension) =
                                 _loc_id;
                                 _loc__unnamed_0;
                                 _loc_te] in
-                            ((loc_typ _loc_id (Ptyp_var id)), te, _loc)))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                            ((loc_typ _loc_id (Ptyp_var id)), te, _loc)))))
     let constr_decl =
       let constr_name =
         Glr.alternatives'
@@ -1998,11 +1952,11 @@ module Make(Initial:Extension) =
                                   let (_loc_te,te) = te in
                                   let _loc = merge [_loc__unnamed_0; _loc_te] in
                                   te)))));
-              Glr.sequence (locate (Glr.char ':' ':'))
+              Glr.fsequence (locate (Glr.char ':' ':'))
                 (Glr.sequence
                    (locate
                       (Glr.option []
-                         (Glr.sequence
+                         (Glr.fsequence
                             (locate (typexpr_lvl (next_type_prio ProdType)))
                             (Glr.sequence
                                (locate
@@ -2038,8 +1992,7 @@ module Make(Initial:Extension) =
                                           [_loc_te;
                                           _loc_tes;
                                           _loc__unnamed_1] in
-                                      te :: tes)) (fun x  -> fun y  -> y x))))
-                   (locate typexpr)
+                                      te :: tes))))) (locate typexpr)
                    (fun ats  ->
                       let (_loc_ats,ats) = ats in
                       fun te  ->
@@ -2048,7 +2001,7 @@ module Make(Initial:Extension) =
                           let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                           let _loc =
                             merge [_loc__unnamed_2; _loc_ats; _loc_te] in
-                          (ats, (Some te)))) (fun x  -> fun y  -> y x)]))
+                          (ats, (Some te))))]))
         (fun cn  ->
            let (_loc_cn,cn) = cn in
            fun ((_,(tes,te)) as _unnamed_1)  ->
@@ -2057,8 +2010,8 @@ module Make(Initial:Extension) =
              let c = id_loc cn _loc_cn in
              constructor_declaration _loc c tes te)
     let field_decl =
-      Glr.sequence (locate mutable_flag)
-        (Glr.sequence (locate field_name)
+      Glr.fsequence (locate mutable_flag)
+        (Glr.fsequence (locate field_name)
            (Glr.sequence (locate (Glr.string ":" ":")) (locate poly_typexpr)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -2070,11 +2023,10 @@ module Make(Initial:Extension) =
                        let (_loc_m,m) = m in
                        let _loc =
                          merge [_loc_m; _loc_fn; _loc__unnamed_0; _loc_pte] in
-                       label_declaration _loc (id_loc fn _loc_fn) m pte))
-           (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)
+                       label_declaration _loc (id_loc fn _loc_fn) m pte)))
     let type_representation =
       Glr.alternatives'
-        [Glr.sequence
+        [Glr.fsequence
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x) (Glr.string "|" "|"))))
@@ -2098,10 +2050,10 @@ module Make(Initial:Extension) =
                    fun _unnamed_2  ->
                      let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                      let _loc = merge [_loc__unnamed_2; _loc_cd; _loc_cds] in
-                     Ptype_variant (cd :: cds))) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "{" "{"))
-          (Glr.sequence (locate field_decl)
-             (Glr.sequence
+                     Ptype_variant (cd :: cds)));
+        Glr.fsequence (locate (Glr.string "{" "{"))
+          (Glr.fsequence (locate field_decl)
+             (Glr.fsequence
                 (locate
                    (Glr.apply List.rev
                       (Glr.fixpoint []
@@ -2138,18 +2090,16 @@ module Make(Initial:Extension) =
                                   _loc_fds;
                                   _loc__unnamed_0;
                                   _loc__unnamed_1] in
-                              Ptype_record (fd :: fds)))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x)]
+                              Ptype_record (fd :: fds)))))]
     let type_information =
-      Glr.sequence
+      Glr.fsequence
         (locate
            (Glr.option None (Glr.apply (fun x  -> Some x) type_equation)))
         (Glr.sequence
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence (locate (Glr.char '=' '='))
+                    (Glr.fsequence (locate (Glr.char '=' '='))
                        (Glr.sequence (locate private_flag)
                           (locate type_representation)
                           (fun pri  ->
@@ -2161,7 +2111,7 @@ module Make(Initial:Extension) =
                                    _unnamed_2 in
                                  let _loc =
                                    merge [_loc__unnamed_2; _loc_pri; _loc_tr] in
-                                 (pri, tr))) (fun x  -> fun y  -> y x)))))
+                                 (pri, tr)))))))
            (locate
               (Glr.apply List.rev
                  (Glr.fixpoint []
@@ -2177,9 +2127,9 @@ module Make(Initial:Extension) =
                     match ptr with
                     | None  -> (Public, Ptype_abstract)
                     | Some c -> c in
-                  (pri, te, tkind, cstrs))) (fun x  -> fun y  -> y x)
+                  (pri, te, tkind, cstrs)))
     let typedef_gen ?prev_loc  constr filter =
-      Glr.sequence (locate (Glr.option [] type_params))
+      Glr.fsequence (locate (Glr.option [] type_params))
         (Glr.sequence (locate constr) (locate type_information)
            (fun tcn  ->
               let (_loc_tcn,tcn) = tcn in
@@ -2202,12 +2152,12 @@ module Make(Initial:Extension) =
                     | Some (_,te) -> (pri, (Some te)) in
                   ((id_loc tcn _loc_tcn),
                     (type_declaration _loc (id_loc (filter tcn) _loc_tcn) tps
-                       cstrs tkind pri te)))) (fun x  -> fun y  -> y x)
+                       cstrs tkind pri te))))
     let typedef = typedef_gen typeconstr_name (fun x  -> x)
     let typedef_in_constraint prev_loc =
       typedef_gen ~prev_loc typeconstr Longident.last
     let type_definition =
-      Glr.sequence (locate type_kw)
+      Glr.fsequence (locate type_kw)
         (Glr.sequence (locate typedef)
            (locate
               (Glr.apply List.rev
@@ -2227,9 +2177,9 @@ module Make(Initial:Extension) =
                 fun _unnamed_2  ->
                   let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                   let _loc = merge [_loc__unnamed_2; _loc_td; _loc_tds] in td
-                    :: tds)) (fun x  -> fun y  -> y x)
+                    :: tds))
     let exception_declaration =
-      Glr.sequence (locate exception_kw)
+      Glr.fsequence (locate exception_kw)
         (Glr.sequence (locate constr_name)
            (locate
               (Glr.option None
@@ -2254,11 +2204,10 @@ module Make(Initial:Extension) =
                         tes
                     | Some t -> [t] in
                   ((id_loc cn _loc_cn), tes, (merge2 _loc_cn _loc_te))))
-        (fun x  -> fun y  -> y x)
     let exception_definition =
       Glr.alternatives'
-        [Glr.sequence (locate exception_kw)
-           (Glr.sequence (locate constr_name)
+        [Glr.fsequence (locate exception_kw)
+           (Glr.fsequence (locate constr_name)
               (Glr.sequence (locate (Glr.char '=' '=')) (locate constr)
                  (fun _unnamed_0  ->
                     let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -2276,8 +2225,7 @@ module Make(Initial:Extension) =
                               _loc_c] in
                           let name = id_loc cn _loc_cn in
                           let ex = id_loc c _loc_c in
-                          Pstr_exn_rebind (name, ex)))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
+                          Pstr_exn_rebind (name, ex))));
         Glr.apply
           (fun ((_,(name,ed,_loc')) as _unnamed_0)  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -2325,9 +2273,9 @@ module Make(Initial:Extension) =
                    let (_loc_cbt,cbt) = cbt in
                    let _loc = merge [_loc__unnamed_0; _loc_cbt] in
                    pctf_loc _loc (Pctf_inher cbt));
-           Glr.sequence (locate val_kw)
-             (Glr.sequence (locate virt_mut)
-                (Glr.sequence (locate inst_var_name)
+           Glr.fsequence (locate val_kw)
+             (Glr.fsequence (locate virt_mut)
+                (Glr.fsequence (locate inst_var_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate typexpr)
                       (fun _unnamed_0  ->
@@ -2348,12 +2296,10 @@ module Make(Initial:Extension) =
                                      _loc_ivn;
                                      _loc__unnamed_0;
                                      _loc_te] in
-                                 pctf_loc _loc (Pctf_val (ivn, mut, vir, te))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x);
-           Glr.sequence (locate method_kw)
-             (Glr.sequence (locate virt_priv)
-                (Glr.sequence (locate method_name)
+                                 pctf_loc _loc (Pctf_val (ivn, mut, vir, te))))));
+           Glr.fsequence (locate method_kw)
+             (Glr.fsequence (locate virt_priv)
+                (Glr.fsequence (locate method_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate poly_typexpr)
                       (fun _unnamed_0  ->
@@ -2376,11 +2322,9 @@ module Make(Initial:Extension) =
                                      _loc_te] in
                                  if v = Concrete
                                  then pctf_loc _loc (Pctf_meth (mn, pri, te))
-                                 else pctf_loc _loc (Pctf_virt (mn, pri, te))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x);
-           Glr.sequence (locate constraint_kw)
-             (Glr.sequence (locate typexpr)
+                                 else pctf_loc _loc (Pctf_virt (mn, pri, te))))));
+           Glr.fsequence (locate constraint_kw)
+             (Glr.fsequence (locate typexpr)
                 (Glr.sequence (locate (Glr.char '=' '=')) (locate typexpr)
                    (fun _unnamed_0  ->
                       let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -2396,17 +2340,16 @@ module Make(Initial:Extension) =
                                 _loc_te;
                                 _loc__unnamed_0;
                                 _loc_te'] in
-                            pctf_loc _loc (Pctf_cstr (te, te'))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)])
+                            pctf_loc _loc (Pctf_cstr (te, te')))))])
     let _ =
       set_grammar class_body_type
         (Glr.alternatives'
-           [Glr.sequence (locate object_kw)
-              (Glr.sequence
+           [Glr.fsequence (locate object_kw)
+              (Glr.fsequence
                  (locate
                     (Glr.option None
                        (Glr.apply (fun x  -> Some x)
-                          (Glr.sequence (locate (Glr.string "(" "("))
+                          (Glr.fsequence (locate (Glr.string "(" "("))
                              (Glr.sequence (locate typexpr)
                                 (locate (Glr.string ")" ")"))
                                 (fun te  ->
@@ -2422,7 +2365,7 @@ module Make(Initial:Extension) =
                                            [_loc__unnamed_2;
                                            _loc_te;
                                            _loc__unnamed_1] in
-                                       te)) (fun x  -> fun y  -> y x)))))
+                                       te))))))
                  (Glr.sequence
                     (locate
                        (Glr.apply List.rev
@@ -2453,13 +2396,12 @@ module Make(Initial:Extension) =
                                  pcsig_fields = cfs;
                                  pcsig_loc = (merge2 _loc_te _loc_cfs)
                                } in
-                             pcty_loc _loc (Pcty_signature sign)))
-                 (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
+                             pcty_loc _loc (Pcty_signature sign))));
            Glr.sequence
              (locate
                 (Glr.option []
-                   (Glr.sequence (locate (Glr.string "[" "["))
-                      (Glr.sequence (locate typexpr)
+                   (Glr.fsequence (locate (Glr.string "[" "["))
+                      (Glr.fsequence (locate typexpr)
                          (Glr.sequence
                             (locate
                                (Glr.apply List.rev
@@ -2495,8 +2437,7 @@ module Make(Initial:Extension) =
                                          _loc_te;
                                          _loc_tes;
                                          _loc__unnamed_1] in
-                                     te :: tes)) (fun x  -> fun y  -> y x))
-                      (fun x  -> fun y  -> y x)))) (locate classtype_path)
+                                     te :: tes)))))) (locate classtype_path)
              (fun tes  ->
                 let (_loc_tes,tes) = tes in
                 fun ctp  ->
@@ -2510,7 +2451,7 @@ module Make(Initial:Extension) =
            (Glr.apply List.rev
               (Glr.fixpoint []
                  (Glr.apply (fun x  -> fun l  -> x :: l)
-                    (Glr.sequence
+                    (Glr.fsequence
                        (locate
                           (Glr.option None
                              (Glr.apply (fun x  -> Some x) maybe_opt_label)))
@@ -2524,8 +2465,7 @@ module Make(Initial:Extension) =
                                  let (_loc_l,l) = l in
                                  let _loc =
                                    merge [_loc_l; _loc__unnamed_0; _loc_te] in
-                                 (l, te))) (fun x  -> fun y  -> y x))))))
-        (locate class_body_type)
+                                 (l, te)))))))) (locate class_body_type)
         (fun tes  ->
            let (_loc_tes,tes) = tes in
            fun cbt  ->
@@ -2560,11 +2500,11 @@ module Make(Initial:Extension) =
              let (_loc_l,l) = l in
              let _loc = merge [_loc_i1; _loc_l] in i1 :: l)
     let class_spec =
-      Glr.sequence (locate virtual_flag)
-        (Glr.sequence
+      Glr.fsequence (locate virtual_flag)
+        (Glr.fsequence
            (locate
               (Glr.option []
-                 (Glr.sequence (locate (Glr.string "[" "["))
+                 (Glr.fsequence (locate (Glr.string "[" "["))
                     (Glr.sequence (locate type_parameters)
                        (locate (Glr.string "]" "]"))
                        (fun params  ->
@@ -2578,8 +2518,8 @@ module Make(Initial:Extension) =
                                   [_loc__unnamed_2;
                                   _loc_params;
                                   _loc__unnamed_1] in
-                              params)) (fun x  -> fun y  -> y x))))
-           (Glr.sequence (locate class_name)
+                              params)))))
+           (Glr.fsequence (locate class_name)
               (Glr.sequence (locate (Glr.string ":" ":")) (locate class_type)
                  (fun _unnamed_0  ->
                     let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -2599,9 +2539,7 @@ module Make(Initial:Extension) =
                                 _loc__unnamed_0;
                                 _loc_ct] in
                             class_type_declaration _loc_params _loc
-                              (id_loc cn _loc_cn) params v ct))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                              (id_loc cn _loc_cn) params v ct))))
     let class_specification =
       Glr.sequence (locate class_spec)
         (locate
@@ -2620,11 +2558,11 @@ module Make(Initial:Extension) =
              let (_loc_css,css) = css in
              let _loc = merge [_loc_cs; _loc_css] in cs :: css)
     let classtype_def =
-      Glr.sequence (locate virtual_flag)
-        (Glr.sequence
+      Glr.fsequence (locate virtual_flag)
+        (Glr.fsequence
            (locate
               (Glr.option []
-                 (Glr.sequence (locate (Glr.string "[" "["))
+                 (Glr.fsequence (locate (Glr.string "[" "["))
                     (Glr.sequence (locate type_parameters)
                        (locate (Glr.string "]" "]"))
                        (fun tp  ->
@@ -2636,8 +2574,8 @@ module Make(Initial:Extension) =
                               let _loc =
                                 merge
                                   [_loc__unnamed_2; _loc_tp; _loc__unnamed_1] in
-                              tp)) (fun x  -> fun y  -> y x))))
-           (Glr.sequence (locate class_name)
+                              tp)))))
+           (Glr.fsequence (locate class_name)
               (Glr.sequence (locate (Glr.char '=' '='))
                  (locate class_body_type)
                  (fun _unnamed_0  ->
@@ -2658,11 +2596,9 @@ module Make(Initial:Extension) =
                                 _loc__unnamed_0;
                                 _loc_cbt] in
                             class_type_declaration _loc_params _loc
-                              (id_loc cn _loc_cn) params v cbt))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                              (id_loc cn _loc_cn) params v cbt))))
     let classtype_definition =
-      Glr.sequence (locate type_kw)
+      Glr.fsequence (locate type_kw)
         (Glr.sequence (locate classtype_def)
            (locate
               (Glr.apply List.rev
@@ -2682,7 +2618,7 @@ module Make(Initial:Extension) =
                 fun _unnamed_2  ->
                   let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                   let _loc = merge [_loc__unnamed_2; _loc_cd; _loc_cds] in cd
-                    :: cds)) (fun x  -> fun y  -> y x)
+                    :: cds))
     let constant =
       Glr.alternatives'
         [Glr.apply
@@ -2795,7 +2731,7 @@ module Make(Initial:Extension) =
                    let _loc = _loc__unnamed_0 in
                    (AtomPat, (loc_pat _loc Ppat_any)))
                 (locate (Glr.string "_" "_"))) ::
-             (Glr.sequence (locate char_literal)
+             (Glr.fsequence (locate char_literal)
                 (Glr.sequence (locate (Glr.string ".." ".."))
                    (locate char_literal)
                    (fun _unnamed_0  ->
@@ -2824,8 +2760,7 @@ module Make(Initial:Extension) =
                              (List.fold_left
                                 (fun acc  ->
                                    fun o  -> loc_pat _loc (Ppat_or (o, acc)))
-                                (List.hd opts) (List.tl opts))))))
-                (fun x  -> fun y  -> y x)) ::
+                                (List.hd opts) (List.tl opts))))))) ::
              (Glr.apply
                 (fun c  ->
                    let (_loc_c,c) = c in
@@ -2841,7 +2776,7 @@ module Make(Initial:Extension) =
                         (fun c  ->
                            let (_loc_c,c) = c in let _loc = _loc_c in c)
                         (locate neg_constant)]))) ::
-             (Glr.sequence (locate (Glr.string "(" "("))
+             (Glr.fsequence (locate (Glr.string "(" "("))
                 (Glr.sequence (locate pattern) (locate (Glr.string ")" ")"))
                    (fun p  ->
                       let (_loc_p,p) = p in
@@ -2851,7 +2786,7 @@ module Make(Initial:Extension) =
                           let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                           let _loc =
                             merge [_loc__unnamed_2; _loc_p; _loc__unnamed_1] in
-                          (AtomPat, p))) (fun x  -> fun y  -> y x)) ::
+                          (AtomPat, p)))) ::
              (let y =
                 let y =
                   (Glr.apply
@@ -2886,9 +2821,9 @@ module Make(Initial:Extension) =
                             let _loc = merge [_loc_s; _loc_t] in
                             (AtomPat,
                               (loc_pat _loc (Ppat_type (id_loc t _loc_t)))));
-                     Glr.sequence (locate (Glr.string "{" "{"))
-                       (Glr.sequence (locate field)
-                          (Glr.sequence
+                     Glr.fsequence (locate (Glr.string "{" "{"))
+                       (Glr.fsequence (locate field)
+                          (Glr.fsequence
                              (locate
                                 (Glr.option None
                                    (Glr.apply (fun x  -> Some x)
@@ -2904,13 +2839,13 @@ module Make(Initial:Extension) =
                                                 merge
                                                   [_loc__unnamed_0; _loc_p] in
                                               p)))))
-                             (Glr.sequence
+                             (Glr.fsequence
                                 (locate
                                    (Glr.apply List.rev
                                       (Glr.fixpoint []
                                          (Glr.apply
                                             (fun x  -> fun l  -> x :: l)
-                                            (Glr.sequence
+                                            (Glr.fsequence
                                                (locate (Glr.string ";" ";"))
                                                (Glr.sequence (locate field)
                                                   (locate
@@ -2950,9 +2885,8 @@ module Make(Initial:Extension) =
                                                              _loc_f;
                                                              _loc_p] in
                                                          ((id_loc f _loc_f),
-                                                           p)))
-                                               (fun x  -> fun y  -> y x))))))
-                                (Glr.sequence
+                                                           p))))))))
+                                (Glr.fsequence
                                    (locate
                                       (Glr.option None
                                          (Glr.apply (fun x  -> Some x)
@@ -3030,15 +2964,10 @@ module Make(Initial:Extension) =
                                                      (AtomPat,
                                                        (loc_pat _loc
                                                           (Ppat_record
-                                                             (all, cl))))))
-                                   (fun x  -> fun y  -> y x))
-                                (fun x  -> fun y  -> y x))
-                             (fun x  -> fun y  -> y x))
-                          (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x);
-                     Glr.sequence (locate (Glr.string "[" "["))
-                       (Glr.sequence (locate pattern)
-                          (Glr.sequence
+                                                             (all, cl))))))))));
+                     Glr.fsequence (locate (Glr.string "[" "["))
+                       (Glr.fsequence (locate pattern)
+                          (Glr.fsequence
                              (locate
                                 (Glr.apply List.rev
                                    (Glr.fixpoint []
@@ -3083,10 +3012,7 @@ module Make(Initial:Extension) =
                                                _loc__unnamed_0;
                                                _loc__unnamed_1] in
                                            (AtomPat,
-                                             (ppat_list _loc (p :: ps)))))
-                             (fun x  -> fun y  -> y x))
-                          (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x);
+                                             (ppat_list _loc (p :: ps)))))));
                      Glr.sequence (locate (Glr.string "[" "["))
                        (locate (Glr.string "]" "]"))
                        (fun _unnamed_0  ->
@@ -3098,9 +3024,9 @@ module Make(Initial:Extension) =
                             let nil = id_loc (Lident "[]") _loc in
                             (AtomPat,
                               (loc_pat _loc (ppat_construct (nil, None)))));
-                     Glr.sequence (locate (Glr.string "[|" "[|"))
-                       (Glr.sequence (locate pattern)
-                          (Glr.sequence
+                     Glr.fsequence (locate (Glr.string "[|" "[|"))
+                       (Glr.fsequence (locate pattern)
+                          (Glr.fsequence
                              (locate
                                 (Glr.apply List.rev
                                    (Glr.fixpoint []
@@ -3146,10 +3072,7 @@ module Make(Initial:Extension) =
                                                _loc__unnamed_1] in
                                            (AtomPat,
                                              (loc_pat _loc
-                                                (Ppat_array (p :: ps))))))
-                             (fun x  -> fun y  -> y x))
-                          (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x);
+                                                (Ppat_array (p :: ps))))))));
                      Glr.sequence (locate (Glr.string "[|" "[|"))
                        (locate (Glr.string "|]" "|]"))
                        (fun _unnamed_0  ->
@@ -3180,9 +3103,9 @@ module Make(Initial:Extension) =
                             let unt = id_loc (Lident "()") _loc in
                             (AtomPat,
                               (loc_pat _loc (ppat_construct (unt, None)))));
-                     Glr.sequence (locate (Glr.string "(" "("))
-                       (Glr.sequence (locate module_kw)
-                          (Glr.sequence (locate module_name)
+                     Glr.fsequence (locate (Glr.string "(" "("))
+                       (Glr.fsequence (locate module_kw)
+                          (Glr.fsequence (locate module_name)
                              (Glr.sequence
                                 (locate
                                    (Glr.option None
@@ -3232,10 +3155,7 @@ module Make(Initial:Extension) =
                                                  Ppat_constraint
                                                    ((loc_pat _loc_mn unpack),
                                                      pt) in
-                                           (AtomPat, (loc_pat _loc pat))))
-                             (fun x  -> fun y  -> y x))
-                          (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x);
+                                           (AtomPat, (loc_pat _loc pat))))));
                      Glr.sequence (locate (Glr.char '$' '$'))
                        (locate capitalized_ident)
                        (fun _unnamed_0  ->
@@ -3249,8 +3169,8 @@ module Make(Initial:Extension) =
                                 (parse_string ~filename:("ENV:" ^ c) pattern
                                    blank str))
                             with | Not_found  -> raise Give_up);
-                     Glr.sequence (locate (Glr.char '$' '$'))
-                       (Glr.sequence
+                     Glr.fsequence (locate (Glr.char '$' '$'))
+                       (Glr.fsequence
                           (locate
                              (Glr.option None
                                 (Glr.apply (fun x  -> Some x)
@@ -3323,9 +3243,7 @@ module Make(Initial:Extension) =
                                                  (loc_pat _loc (Ppat_array l)))
                                            | "list" ->
                                                (AtomPat, (ppat_list _loc l))
-                                           | _ -> raise Give_up)))
-                          (fun x  -> fun y  -> y x))
-                       (fun x  -> fun y  -> y x)] in
+                                           | _ -> raise Give_up))))] in
                    if lvl <= ConstrPat
                    then
                      (Glr.sequence (locate tag_name)
@@ -3399,8 +3317,8 @@ module Make(Initial:Extension) =
                           else y in
                         if (lvl' >= AsPat) && (lvl <= AsPat)
                         then
-                          (Glr.sequence (locate (Glr.string ":" ":"))
-                             (Glr.sequence
+                          (Glr.fsequence (locate (Glr.string ":" ":"))
+                             (Glr.fsequence
                                 (locate
                                    (Glr.sequence
                                       (Glr.sequence
@@ -3457,9 +3375,7 @@ module Make(Initial:Extension) =
                                                       (p,
                                                         (loc_typ _loc
                                                            (Ptyp_poly
-                                                              (ids, te)))))))))
-                                (fun x  -> fun y  -> y x))
-                             (fun x  -> fun y  -> y x))
+                                                              (ids, te)))))))))))
                           :: y
                         else y in
                       if (lvl' > ConsPat) && (lvl <= ConsPat)
@@ -3723,7 +3639,7 @@ module Make(Initial:Extension) =
              match m with | None  -> Lident id | Some m -> Ldot (m, id))
     let argument =
       Glr.alternatives'
-        [Glr.sequence (locate label)
+        [Glr.fsequence (locate label)
            (Glr.sequence (locate (Glr.string ":" ":"))
               (locate (expression_lvl (next_exp App)))
               (fun _unnamed_0  ->
@@ -3733,8 +3649,8 @@ module Make(Initial:Extension) =
                    fun id  ->
                      let (_loc_id,id) = id in
                      let _loc = merge [_loc_id; _loc__unnamed_0; _loc_e] in
-                     (id, e))) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate opt_label)
+                     (id, e)));
+        Glr.fsequence (locate opt_label)
           (Glr.sequence (locate (Glr.string ":" ":"))
              (locate (expression_lvl (next_exp App)))
              (fun _unnamed_0  ->
@@ -3744,7 +3660,7 @@ module Make(Initial:Extension) =
                   fun id  ->
                     let (_loc_id,id) = id in
                     let _loc = merge [_loc_id; _loc__unnamed_0; _loc_e] in
-                    (("?" ^ id), e))) (fun x  -> fun y  -> y x);
+                    (("?" ^ id), e)));
         Glr.apply
           (fun id  ->
              let (_loc_id,id) = id in
@@ -3768,9 +3684,9 @@ module Make(Initial:Extension) =
                let (_loc_pat,pat) = pat in
                let _loc = _loc_pat in `Arg ("", None, pat))
             (locate (pattern_lvl AtomPat))) ::
-        (Glr.sequence (locate (Glr.string "~" "~"))
-           (Glr.sequence (locate (Glr.string "(" "("))
-              (Glr.sequence (locate lowercase_ident)
+        (Glr.fsequence (locate (Glr.string "~" "~"))
+           (Glr.fsequence (locate (Glr.string "(" "("))
+              (Glr.fsequence (locate lowercase_ident)
                  (Glr.sequence
                     (locate
                        (Glr.option None
@@ -3810,10 +3726,8 @@ module Make(Initial:Extension) =
                                  | None  -> pat
                                  | Some t ->
                                      loc_pat _loc (Ppat_constraint (pat, t)) in
-                               `Arg (id, None, pat)))
-                 (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-           (fun x  -> fun y  -> y x)) ::
-        (Glr.sequence (locate label)
+                               `Arg (id, None, pat)))))) ::
+        (Glr.fsequence (locate label)
            (Glr.sequence (locate (Glr.string ":" ":")) (locate pattern)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -3822,7 +3736,7 @@ module Make(Initial:Extension) =
                    fun id  ->
                      let (_loc_id,id) = id in
                      let _loc = merge [_loc_id; _loc__unnamed_0; _loc_pat] in
-                     `Arg (id, None, pat))) (fun x  -> fun y  -> y x)) ::
+                     `Arg (id, None, pat)))) ::
         (Glr.sequence (locate (Glr.char '~' '~')) (locate ident)
            (fun _unnamed_0  ->
               let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -3832,10 +3746,10 @@ module Make(Initial:Extension) =
                 `Arg
                   (id, None,
                     (loc_pat _loc_id (Ppat_var (id_loc id _loc_id)))))) ::
-        (Glr.sequence (locate (Glr.string "?" "?"))
-           (Glr.sequence (locate (Glr.string "(" "("))
-              (Glr.sequence (locate lowercase_ident)
-                 (Glr.sequence
+        (Glr.fsequence (locate (Glr.string "?" "?"))
+           (Glr.fsequence (locate (Glr.string "(" "("))
+              (Glr.fsequence (locate lowercase_ident)
+                 (Glr.fsequence
                     (locate
                        (Glr.option None
                           (Glr.apply (fun x  -> Some x)
@@ -3894,14 +3808,12 @@ module Make(Initial:Extension) =
                                       | Some t ->
                                           loc_pat (merge2 _loc_id _loc_t)
                                             (Ppat_constraint (pat, t)) in
-                                    `Arg (("?" ^ id), e, pat)))
-                    (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)) ::
-        (Glr.sequence (locate opt_label)
-           (Glr.sequence (locate (Glr.string ":" ":"))
-              (Glr.sequence (locate (Glr.string "(" "("))
-                 (Glr.sequence (locate pattern)
-                    (Glr.sequence
+                                    `Arg (("?" ^ id), e, pat))))))) ::
+        (Glr.fsequence (locate opt_label)
+           (Glr.fsequence (locate (Glr.string ":" ":"))
+              (Glr.fsequence (locate (Glr.string "(" "("))
+                 (Glr.fsequence (locate pattern)
+                    (Glr.fsequence
                        (locate
                           (Glr.option None
                              (Glr.apply (fun x  -> Some x)
@@ -3962,11 +3874,8 @@ module Make(Initial:Extension) =
                                                loc_pat
                                                  (merge2 _loc_pat _loc_t)
                                                  (Ppat_constraint (pat, t)) in
-                                         `Arg (("?" ^ id), e, pat)))
-                       (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                 (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-           (fun x  -> fun y  -> y x)) ::
-        (Glr.sequence (locate opt_label)
+                                         `Arg (("?" ^ id), e, pat)))))))) ::
+        (Glr.fsequence (locate opt_label)
            (Glr.sequence (locate (Glr.string ":" ":")) (locate pattern)
               (fun _unnamed_0  ->
                  let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -3975,8 +3884,7 @@ module Make(Initial:Extension) =
                    fun id  ->
                      let (_loc_id,id) = id in
                      let _loc = merge [_loc_id; _loc__unnamed_0; _loc_pat] in
-                     `Arg (("?" ^ id), None, pat))) (fun x  -> fun y  -> y x))
-        ::
+                     `Arg (("?" ^ id), None, pat)))) ::
         (Glr.apply
            (fun id  ->
               let (_loc_id,id) = id in
@@ -3988,8 +3896,8 @@ module Make(Initial:Extension) =
         (let y = [] in
          if allow_new_type
          then
-           (Glr.sequence (locate (Glr.char '(' '('))
-              (Glr.sequence (locate type_kw)
+           (Glr.fsequence (locate (Glr.char '(' '('))
+              (Glr.fsequence (locate type_kw)
                  (Glr.sequence (locate typeconstr_name)
                     (locate (Glr.char ')' ')'))
                     (fun name  ->
@@ -4006,8 +3914,7 @@ module Make(Initial:Extension) =
                                  _loc__unnamed_2;
                                  _loc_name;
                                  _loc__unnamed_1] in
-                             `Type name)) (fun x  -> fun y  -> y x))
-              (fun x  -> fun y  -> y x))
+                             `Type name))))
            :: y
          else y))
     let apply_params params e =
@@ -4026,7 +3933,7 @@ module Make(Initial:Extension) =
         | `Type name -> assert false in
       List.fold_left f e (List.rev params)
     let right_member =
-      Glr.sequence
+      Glr.fsequence
         (locate
            (Glr.apply List.rev
               (Glr.fixpoint []
@@ -4036,7 +3943,7 @@ module Make(Initial:Extension) =
                           let (_loc_lb,lb) = lb in
                           let _loc = _loc_lb in (lb, _loc_lb))
                        (locate (parameter true)))))))
-        (Glr.sequence
+        (Glr.fsequence
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x)
@@ -4062,13 +3969,12 @@ module Make(Initial:Extension) =
                          match ty with
                          | None  -> e
                          | Some ty -> loc_expr _loc (pexp_constraint (e, ty)) in
-                       apply_params l e)) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                       apply_params l e)))
     let _ =
       set_grammar let_binding
         (Glr.alternatives'
-           [Glr.sequence (locate (pattern_lvl AsPat))
-              (Glr.sequence (locate right_member)
+           [Glr.fsequence (locate (pattern_lvl AsPat))
+              (Glr.fsequence (locate right_member)
                  (Glr.sequence (locate post_item_attributes)
                     (locate
                        (Glr.option []
@@ -4091,12 +3997,11 @@ module Make(Initial:Extension) =
                                merge [_loc_pat; _loc_e; _loc_a; _loc_l] in
                              (value_binding ~attributes:a
                                 (merge2 _loc_pat _loc_e) pat e)
-                               :: l)) (fun x  -> fun y  -> y x))
-              (fun x  -> fun y  -> y x);
-           Glr.sequence (locate lowercase_ident)
-             (Glr.sequence (locate (Glr.char ':' ':'))
-                (Glr.sequence (locate poly_typexpr)
-                   (Glr.sequence (locate right_member)
+                               :: l)));
+           Glr.fsequence (locate lowercase_ident)
+             (Glr.fsequence (locate (Glr.char ':' ':'))
+                (Glr.fsequence (locate poly_typexpr)
+                   (Glr.fsequence (locate right_member)
                       (Glr.sequence (locate post_item_attributes)
                          (locate
                             (Glr.option []
@@ -4140,13 +4045,11 @@ module Make(Initial:Extension) =
                                                ty)) in
                                       (value_binding ~attributes:a
                                          (merge2 _loc_vn _loc_e) pat e)
-                                        :: l)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x);
-           Glr.sequence (locate lowercase_ident)
-             (Glr.sequence (locate (Glr.char ':' ':'))
-                (Glr.sequence (locate poly_syntax_typexpr)
-                   (Glr.sequence (locate right_member)
+                                        :: l)))));
+           Glr.fsequence (locate lowercase_ident)
+             (Glr.fsequence (locate (Glr.char ':' ':'))
+                (Glr.fsequence (locate poly_syntax_typexpr)
+                   (Glr.fsequence (locate right_member)
                       (Glr.sequence (locate post_item_attributes)
                          (locate
                             (Glr.option []
@@ -4193,22 +4096,20 @@ module Make(Initial:Extension) =
                                                ty)) in
                                       (value_binding ~attributes:a
                                          (merge2 _loc_vn _loc_e) pat e)
-                                        :: l)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)])
+                                        :: l)))))])
     let match_cases =
       memoize1
         (fun lvl  ->
            Glr.apply (fun l  -> let (_loc_l,l) = l in let _loc = _loc_l in l)
              (locate
                 (Glr.option []
-                   (Glr.sequence
+                   (Glr.fsequence
                       (locate
                          (Glr.option None
                             (Glr.apply (fun x  -> Some x)
                                (Glr.string "|" "|"))))
-                      (Glr.sequence (locate pattern)
-                         (Glr.sequence
+                      (Glr.fsequence (locate pattern)
+                         (Glr.fsequence
                             (locate
                                (Glr.option None
                                   (Glr.apply (fun x  -> Some x)
@@ -4223,18 +4124,18 @@ module Make(Initial:Extension) =
                                                merge
                                                  [_loc__unnamed_0; _loc_e] in
                                              e)))))
-                            (Glr.sequence (locate (Glr.string "->" "->"))
+                            (Glr.fsequence (locate (Glr.string "->" "->"))
                                (Glr.sequence (locate (expression_lvl lvl))
                                   (locate
                                      (Glr.apply List.rev
                                         (Glr.fixpoint []
                                            (Glr.apply
                                               (fun x  -> fun l  -> x :: l)
-                                              (Glr.sequence
+                                              (Glr.fsequence
                                                  (locate (Glr.string "|" "|"))
-                                                 (Glr.sequence
+                                                 (Glr.fsequence
                                                     (locate pattern)
-                                                    (Glr.sequence
+                                                    (Glr.fsequence
                                                        (locate
                                                           (Glr.option None
                                                              (Glr.apply
@@ -4299,11 +4200,7 @@ module Make(Initial:Extension) =
                                                                     _loc__unnamed_0;
                                                                     _loc_e] in
                                                                     (pat, e,
-                                                                    w)))
-                                                       (fun x  ->
-                                                          fun y  -> y x))
-                                                    (fun x  -> fun y  -> y x))
-                                                 (fun x  -> fun y  -> y x))))))
+                                                                    w))))))))))
                                   (fun e  ->
                                      let (_loc_e,e) = e in
                                      fun l  ->
@@ -4326,13 +4223,10 @@ module Make(Initial:Extension) =
                                                    _loc__unnamed_2;
                                                    _loc_e;
                                                    _loc_l] in
-                                               map_cases ((pat, e, w) :: l)))
-                               (fun x  -> fun y  -> y x))
-                            (fun x  -> fun y  -> y x))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)))))
+                                               map_cases ((pat, e, w) :: l))))))))))
     let type_coercion =
       Glr.alternatives'
-        [Glr.sequence (locate (Glr.string ":" ":"))
+        [Glr.fsequence (locate (Glr.string ":" ":"))
            (Glr.sequence (locate typexpr)
               (locate
                  (Glr.option None
@@ -4352,7 +4246,7 @@ module Make(Initial:Extension) =
                    fun _unnamed_2  ->
                      let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                      let _loc = merge [_loc__unnamed_2; _loc_t; _loc_t'] in
-                     ((Some t), t'))) (fun x  -> fun y  -> y x);
+                     ((Some t), t')));
         Glr.sequence (locate (Glr.string ":>" ":>")) (locate typexpr)
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -4362,7 +4256,7 @@ module Make(Initial:Extension) =
                (None, (Some t')))]
     let expression_list =
       Glr.alternatives'
-        [Glr.sequence (locate (expression_lvl (next_exp Seq)))
+        [Glr.fsequence (locate (expression_lvl (next_exp Seq)))
            (Glr.sequence
               (locate
                  (Glr.apply List.rev
@@ -4386,14 +4280,14 @@ module Make(Initial:Extension) =
                    fun e  ->
                      let (_loc_e,e) = e in
                      let _loc = merge [_loc_e; _loc_l; _loc__unnamed_1] in
-                     (e, _loc_e) :: l)) (fun x  -> fun y  -> y x);
+                     (e, _loc_e) :: l));
         Glr.apply
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              let _loc = _loc__unnamed_0 in []) (locate (Glr.empty ()))]
     let record_item =
       Glr.alternatives'
-        [Glr.sequence (locate field)
+        [Glr.fsequence (locate field)
            (Glr.sequence (locate (Glr.char '=' '='))
               (locate (expression_lvl (next_exp Seq)))
               (fun _unnamed_0  ->
@@ -4403,7 +4297,7 @@ module Make(Initial:Extension) =
                    fun f  ->
                      let (_loc_f,f) = f in
                      let _loc = merge [_loc_f; _loc__unnamed_0; _loc_e] in
-                     ((id_loc f _loc_f), e))) (fun x  -> fun y  -> y x);
+                     ((id_loc f _loc_f), e)));
         Glr.apply
           (fun f  ->
              let (_loc_f,f) = f in
@@ -4413,7 +4307,7 @@ module Make(Initial:Extension) =
           (locate lowercase_ident)]
     let record_list =
       Glr.alternatives'
-        [Glr.sequence (locate record_item)
+        [Glr.fsequence (locate record_item)
            (Glr.sequence
               (locate
                  (Glr.apply List.rev
@@ -4437,13 +4331,13 @@ module Make(Initial:Extension) =
                    fun it  ->
                      let (_loc_it,it) = it in
                      let _loc = merge [_loc_it; _loc_l; _loc__unnamed_1] in
-                     it :: l)) (fun x  -> fun y  -> y x);
+                     it :: l));
         Glr.apply
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              let _loc = _loc__unnamed_0 in []) (locate (Glr.empty ()))]
     let obj_item =
-      Glr.sequence (locate inst_var_name)
+      Glr.fsequence (locate inst_var_name)
         (Glr.sequence (locate (Glr.char '=' '='))
            (locate (expression_lvl (next_exp Seq)))
            (fun _unnamed_0  ->
@@ -4453,7 +4347,7 @@ module Make(Initial:Extension) =
                 fun v  ->
                   let (_loc_v,v) = v in
                   let _loc = merge [_loc_v; _loc__unnamed_0; _loc_e] in
-                  ((id_loc v _loc_v), e))) (fun x  -> fun y  -> y x)
+                  ((id_loc v _loc_v), e)))
     let class_expr_base =
       Glr.alternatives'
         [Glr.apply
@@ -4462,9 +4356,9 @@ module Make(Initial:Extension) =
               let _loc = _loc_cp in
               let cp = id_loc cp _loc_cp in
               loc_pcl _loc (Pcl_constr (cp, []))) (locate class_path);
-        Glr.sequence (locate (Glr.char '[' '['))
-          (Glr.sequence (locate typexpr)
-             (Glr.sequence
+        Glr.fsequence (locate (Glr.char '[' '['))
+          (Glr.fsequence (locate typexpr)
+             (Glr.fsequence
                 (locate
                    (Glr.apply List.rev
                       (Glr.fixpoint []
@@ -4498,10 +4392,8 @@ module Make(Initial:Extension) =
                                   _loc__unnamed_0;
                                   _loc_cp] in
                               let cp = id_loc cp _loc_cp in
-                              loc_pcl _loc (Pcl_constr (cp, (te :: tes)))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
+                              loc_pcl _loc (Pcl_constr (cp, (te :: tes)))))));
+        Glr.fsequence (locate (Glr.string "(" "("))
           (Glr.sequence (locate class_expr) (locate (Glr.string ")" ")"))
              (fun ce  ->
                 let (_loc_ce,ce) = ce in
@@ -4511,10 +4403,10 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_ce; _loc__unnamed_1] in
-                    loc_pcl _loc ce.pcl_desc)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate class_expr)
-             (Glr.sequence (locate (Glr.string ":" ":"))
+                    loc_pcl _loc ce.pcl_desc));
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate class_expr)
+             (Glr.fsequence (locate (Glr.string ":" ":"))
                 (Glr.sequence (locate class_type)
                    (locate (Glr.string ")" ")"))
                    (fun ct  ->
@@ -4534,11 +4426,9 @@ module Make(Initial:Extension) =
                                   _loc__unnamed_2;
                                   _loc_ct;
                                   _loc__unnamed_1] in
-                              loc_pcl _loc (Pcl_constraint (ce, ct))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate fun_kw)
-          (Glr.sequence
+                              loc_pcl _loc (Pcl_constraint (ce, ct))))));
+        Glr.fsequence (locate fun_kw)
+          (Glr.fsequence
              (locate
                 (Glr.sequence (parameter false)
                    (Glr.fixpoint []
@@ -4561,11 +4451,10 @@ module Make(Initial:Extension) =
                              _loc_ps;
                              _loc__unnamed_0;
                              _loc_ce] in
-                         apply_params_cls _loc ps ce))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate let_kw)
-          (Glr.sequence (locate rec_flag)
-             (Glr.sequence (locate let_binding)
+                         apply_params_cls _loc ps ce)));
+        Glr.fsequence (locate let_kw)
+          (Glr.fsequence (locate rec_flag)
+             (Glr.fsequence (locate let_binding)
                 (Glr.sequence (locate in_kw) (locate class_expr)
                    (fun _unnamed_0  ->
                       let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -4584,10 +4473,8 @@ module Make(Initial:Extension) =
                                   _loc_lbs;
                                   _loc__unnamed_0;
                                   _loc_ce] in
-                              loc_pcl _loc (Pcl_let (r, lbs, ce))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate object_kw)
+                              loc_pcl _loc (Pcl_let (r, lbs, ce))))));
+        Glr.fsequence (locate object_kw)
           (Glr.sequence (locate class_body) (locate end_kw)
              (fun cb  ->
                 let (_loc_cb,cb) = cb in
@@ -4597,8 +4484,7 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_cb; _loc__unnamed_1] in
-                    loc_pcl _loc (Pcl_structure cb)))
-          (fun x  -> fun y  -> y x)]
+                    loc_pcl _loc (Pcl_structure cb)))]
     let _ =
       set_grammar class_expr
         (Glr.sequence (locate class_expr_base)
@@ -4625,8 +4511,8 @@ module Make(Initial:Extension) =
                 | Some l -> loc_pcl _loc (Pcl_apply (ce, l))))
     let class_field =
       Glr.alternatives'
-        [Glr.sequence (locate inherit_kw)
-           (Glr.sequence (locate override_flag)
+        [Glr.fsequence (locate inherit_kw)
+           (Glr.fsequence (locate override_flag)
               (Glr.sequence (locate class_expr)
                  (locate
                     (Glr.option None
@@ -4649,13 +4535,12 @@ module Make(Initial:Extension) =
                           let (_loc__unnamed_3,_unnamed_3) = _unnamed_3 in
                           let _loc =
                             merge [_loc__unnamed_3; _loc_o; _loc_ce; _loc_id] in
-                          loc_pcf _loc (Pcf_inher (o, ce, id))))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate val_kw)
-          (Glr.sequence (locate override_flag)
-             (Glr.sequence (locate mutable_flag)
-                (Glr.sequence (locate inst_var_name)
-                   (Glr.sequence
+                          loc_pcf _loc (Pcf_inher (o, ce, id)))));
+        Glr.fsequence (locate val_kw)
+          (Glr.fsequence (locate override_flag)
+             (Glr.fsequence (locate mutable_flag)
+                (Glr.fsequence (locate inst_var_name)
+                   (Glr.fsequence
                       (locate
                          (Glr.option None
                             (Glr.apply (fun x  -> Some x)
@@ -4702,14 +4587,11 @@ module Make(Initial:Extension) =
                                               loc_expr _loc_te
                                                 (pexp_constraint (e, t)) in
                                         loc_pcf _loc
-                                          (Pcf_val (ivn, m, o, ex))))
-                      (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate val_kw)
-          (Glr.sequence (locate mutable_flag)
-             (Glr.sequence (locate virtual_kw)
-                (Glr.sequence (locate inst_var_name)
+                                          (Pcf_val (ivn, m, o, ex))))))));
+        Glr.fsequence (locate val_kw)
+          (Glr.fsequence (locate mutable_flag)
+             (Glr.fsequence (locate virtual_kw)
+                (Glr.fsequence (locate inst_var_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate typexpr)
                       (fun _unnamed_0  ->
@@ -4734,13 +4616,11 @@ module Make(Initial:Extension) =
                                        _loc__unnamed_0;
                                        _loc_te] in
                                    let ivn = id_loc ivn _loc_ivn in
-                                   loc_pcf _loc (Pcf_valvirt (ivn, m, te))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate val_kw)
-          (Glr.sequence (locate virtual_kw)
-             (Glr.sequence (locate mutable_kw)
-                (Glr.sequence (locate inst_var_name)
+                                   loc_pcf _loc (Pcf_valvirt (ivn, m, te)))))));
+        Glr.fsequence (locate val_kw)
+          (Glr.fsequence (locate virtual_kw)
+             (Glr.fsequence (locate mutable_kw)
+                (Glr.fsequence (locate inst_var_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate typexpr)
                       (fun _unnamed_0  ->
@@ -4767,15 +4647,13 @@ module Make(Initial:Extension) =
                                        _loc_te] in
                                    let ivn = id_loc ivn _loc_ivn in
                                    loc_pcf _loc
-                                     (Pcf_valvirt (ivn, Mutable, te))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate method_kw)
-          (Glr.sequence (locate override_flag)
-             (Glr.sequence (locate private_flag)
-                (Glr.sequence (locate method_name)
-                   (Glr.sequence (locate (Glr.string ":" ":"))
-                      (Glr.sequence (locate poly_typexpr)
+                                     (Pcf_valvirt (ivn, Mutable, te)))))));
+        Glr.fsequence (locate method_kw)
+          (Glr.fsequence (locate override_flag)
+             (Glr.fsequence (locate private_flag)
+                (Glr.fsequence (locate method_name)
+                   (Glr.fsequence (locate (Glr.string ":" ":"))
+                      (Glr.fsequence (locate poly_typexpr)
                          (Glr.sequence (locate (Glr.char '=' '='))
                             (locate expr)
                             (fun _unnamed_0  ->
@@ -4811,16 +4689,13 @@ module Make(Initial:Extension) =
                                                loc_expr _loc
                                                  (Pexp_poly (e, (Some te))) in
                                              loc_pcf _loc
-                                               (Pcf_meth (mn, p, o, e))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate method_kw)
-          (Glr.sequence (locate override_flag)
-             (Glr.sequence (locate private_flag)
-                (Glr.sequence (locate method_name)
-                   (Glr.sequence (locate (Glr.string ":" ":"))
-                      (Glr.sequence (locate poly_syntax_typexpr)
+                                               (Pcf_meth (mn, p, o, e)))))))));
+        Glr.fsequence (locate method_kw)
+          (Glr.fsequence (locate override_flag)
+             (Glr.fsequence (locate private_flag)
+                (Glr.fsequence (locate method_name)
+                   (Glr.fsequence (locate (Glr.string ":" ":"))
+                      (Glr.fsequence (locate poly_syntax_typexpr)
                          (Glr.sequence (locate (Glr.char '=' '='))
                             (locate expr)
                             (fun _unnamed_0  ->
@@ -4860,15 +4735,12 @@ module Make(Initial:Extension) =
                                                loc_expr _loc
                                                  (Pexp_poly (e, (Some poly))) in
                                              loc_pcf _loc
-                                               (Pcf_meth (mn, p, o, e))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate method_kw)
-          (Glr.sequence (locate override_flag)
-             (Glr.sequence (locate private_flag)
-                (Glr.sequence (locate method_name)
-                   (Glr.sequence
+                                               (Pcf_meth (mn, p, o, e)))))))));
+        Glr.fsequence (locate method_kw)
+          (Glr.fsequence (locate override_flag)
+             (Glr.fsequence (locate private_flag)
+                (Glr.fsequence (locate method_name)
+                   (Glr.fsequence
                       (locate
                          (Glr.apply List.rev
                             (Glr.fixpoint []
@@ -4878,7 +4750,7 @@ module Make(Initial:Extension) =
                                         let (_loc_p,p) = p in
                                         let _loc = _loc_p in (p, _loc_p))
                                      (locate (parameter true)))))))
-                      (Glr.sequence
+                      (Glr.fsequence
                          (locate
                             (Glr.option None
                                (Glr.apply (fun x  -> Some x)
@@ -4934,14 +4806,11 @@ module Make(Initial:Extension) =
                                                loc_expr _loc
                                                  (Pexp_poly (e, None)) in
                                              loc_pcf _loc
-                                               (Pcf_meth (mn, p, o, e))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate method_kw)
-          (Glr.sequence (locate private_flag)
-             (Glr.sequence (locate virtual_kw)
-                (Glr.sequence (locate method_name)
+                                               (Pcf_meth (mn, p, o, e)))))))));
+        Glr.fsequence (locate method_kw)
+          (Glr.fsequence (locate private_flag)
+             (Glr.fsequence (locate virtual_kw)
+                (Glr.fsequence (locate method_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate poly_typexpr)
                       (fun _unnamed_0  ->
@@ -4966,13 +4835,11 @@ module Make(Initial:Extension) =
                                        _loc__unnamed_0;
                                        _loc_pte] in
                                    let mn = id_loc mn _loc_mn in
-                                   loc_pcf _loc (Pcf_virt (mn, p, pte))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate method_kw)
-          (Glr.sequence (locate virtual_kw)
-             (Glr.sequence (locate private_kw)
-                (Glr.sequence (locate method_name)
+                                   loc_pcf _loc (Pcf_virt (mn, p, pte)))))));
+        Glr.fsequence (locate method_kw)
+          (Glr.fsequence (locate virtual_kw)
+             (Glr.fsequence (locate private_kw)
+                (Glr.fsequence (locate method_name)
                    (Glr.sequence (locate (Glr.string ":" ":"))
                       (locate poly_typexpr)
                       (fun _unnamed_0  ->
@@ -4998,11 +4865,9 @@ module Make(Initial:Extension) =
                                        _loc__unnamed_0;
                                        _loc_pte] in
                                    let mn = id_loc mn _loc_mn in
-                                   loc_pcf _loc (Pcf_virt (mn, Private, pte))))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate constraint_kw)
-          (Glr.sequence (locate typexpr)
+                                   loc_pcf _loc (Pcf_virt (mn, Private, pte)))))));
+        Glr.fsequence (locate constraint_kw)
+          (Glr.fsequence (locate typexpr)
              (Glr.sequence (locate (Glr.char '=' '=')) (locate typexpr)
                 (fun _unnamed_0  ->
                    let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -5018,8 +4883,7 @@ module Make(Initial:Extension) =
                              _loc_te;
                              _loc__unnamed_0;
                              _loc_te'] in
-                         loc_pcf _loc (Pcf_constr (te, te'))))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
+                         loc_pcf _loc (Pcf_constr (te, te')))));
         Glr.sequence (locate initializer_kw) (locate expr)
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -5046,11 +4910,11 @@ module Make(Initial:Extension) =
                   | Some p -> p in
                 { pcstr_pat = p; pcstr_fields = f }))
     let class_binding =
-      Glr.sequence (locate virtual_flag)
-        (Glr.sequence
+      Glr.fsequence (locate virtual_flag)
+        (Glr.fsequence
            (locate
               (Glr.option []
-                 (Glr.sequence (locate (Glr.string "[" "["))
+                 (Glr.fsequence (locate (Glr.string "[" "["))
                     (Glr.sequence (locate type_parameters)
                        (locate (Glr.string "]" "]"))
                        (fun params  ->
@@ -5064,15 +4928,15 @@ module Make(Initial:Extension) =
                                   [_loc__unnamed_2;
                                   _loc_params;
                                   _loc__unnamed_1] in
-                              params)) (fun x  -> fun y  -> y x))))
-           (Glr.sequence (locate class_name)
-              (Glr.sequence
+                              params)))))
+           (Glr.fsequence (locate class_name)
+              (Glr.fsequence
                  (locate
                     (Glr.apply List.rev
                        (Glr.fixpoint []
                           (Glr.apply (fun x  -> fun l  -> x :: l)
                              (parameter false)))))
-                 (Glr.sequence
+                 (Glr.fsequence
                     (locate
                        (Glr.option None
                           (Glr.apply (fun x  -> Some x)
@@ -5119,10 +4983,7 @@ module Make(Initial:Extension) =
                                             loc_pcl _loc
                                               (Pcl_constraint (ce, ct)) in
                                       class_type_declaration _loc_params _loc
-                                        (id_loc cn _loc_cn) params v ce))
-                    (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-              (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-        (fun x  -> fun y  -> y x)
+                                        (id_loc cn _loc_cn) params v ce))))))
     let class_definition =
       Glr.sequence (locate class_binding)
         (locate
@@ -5180,9 +5041,9 @@ module Make(Initial:Extension) =
                       (Atom, (loc_expr _loc (Pexp_constant c))))
                    (locate constant))
                 ::
-                (Glr.sequence (locate module_path)
-                   (Glr.sequence (locate (Glr.string "." "."))
-                      (Glr.sequence (locate (Glr.string "(" "("))
+                (Glr.fsequence (locate module_path)
+                   (Glr.fsequence (locate (Glr.string "." "."))
+                      (Glr.fsequence (locate (Glr.string "(" "("))
                          (Glr.sequence (locate expression)
                             (locate (Glr.string ")" ")"))
                             (fun e  ->
@@ -5208,9 +5069,7 @@ module Make(Initial:Extension) =
                                        let mp = id_loc mp _loc_mp in
                                        (Atom,
                                          (loc_expr _loc
-                                            (Pexp_open (Fresh, mp, e))))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x))
+                                            (Pexp_open (Fresh, mp, e)))))))))
                 ::
                 (Glr.sequence (locate let_kw)
                    (locate
@@ -5220,9 +5079,9 @@ module Make(Initial:Extension) =
                               let y = [] in
                               if lvl < App
                               then
-                                (Glr.sequence (locate open_kw)
-                                   (Glr.sequence (locate override_flag)
-                                      (Glr.sequence (locate module_path)
+                                (Glr.fsequence (locate open_kw)
+                                   (Glr.fsequence (locate override_flag)
+                                      (Glr.fsequence (locate module_path)
                                          (Glr.sequence (locate in_kw)
                                             (locate
                                                (expression_lvl (let_prio lvl)))
@@ -5251,29 +5110,26 @@ module Make(Initial:Extension) =
                                                          (Let,
                                                            (loc_expr _loc
                                                               (Pexp_open
-                                                                 (o, mp, e))))))
-                                         (fun x  -> fun y  -> y x))
-                                      (fun x  -> fun y  -> y x))
-                                   (fun x  -> fun y  -> y x))
+                                                                 (o, mp, e)))))))))
                                 :: y
                               else y in
                             if lvl < App
                             then
-                              (Glr.sequence (locate module_kw)
-                                 (Glr.sequence (locate module_name)
-                                    (Glr.sequence
+                              (Glr.fsequence (locate module_kw)
+                                 (Glr.fsequence (locate module_name)
+                                    (Glr.fsequence
                                        (locate
                                           (Glr.apply List.rev
                                              (Glr.fixpoint []
                                                 (Glr.apply
                                                    (fun x  ->
                                                       fun l  -> x :: l)
-                                                   (Glr.sequence
+                                                   (Glr.fsequence
                                                       (locate
                                                          (Glr.string "(" "("))
-                                                      (Glr.sequence
+                                                      (Glr.fsequence
                                                          (locate module_name)
-                                                         (Glr.sequence
+                                                         (Glr.fsequence
                                                             (locate
                                                                (Glr.string
                                                                   ":" ":"))
@@ -5324,14 +5180,8 @@ module Make(Initial:Extension) =
                                                                     ((id_loc
                                                                     mn
                                                                     _loc_mn),
-                                                                    mt, _loc)))
-                                                            (fun x  ->
-                                                               fun y  -> y x))
-                                                         (fun x  ->
-                                                            fun y  -> y x))
-                                                      (fun x  ->
-                                                         fun y  -> y x))))))
-                                       (Glr.sequence
+                                                                    mt, _loc))))))))))
+                                       (Glr.fsequence
                                           (locate
                                              (Glr.option None
                                                 (Glr.apply (fun x  -> Some x)
@@ -5350,9 +5200,9 @@ module Make(Initial:Extension) =
                                                                [_loc__unnamed_0;
                                                                _loc_mt] in
                                                            mt)))))
-                                          (Glr.sequence
+                                          (Glr.fsequence
                                              (locate (Glr.string "=" "="))
-                                             (Glr.sequence
+                                             (Glr.fsequence
                                                 (locate module_expr)
                                                 (Glr.sequence (locate in_kw)
                                                    (locate
@@ -5437,19 +5287,13 @@ module Make(Initial:Extension) =
                                                                     ((id_loc
                                                                     mn
                                                                     _loc_mn),
-                                                                    me, e))))))
-                                                (fun x  -> fun y  -> y x))
-                                             (fun x  -> fun y  -> y x))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x))
-                                 (fun x  -> fun y  -> y x))
+                                                                    me, e))))))))))))
                               :: y
                             else y in
                           if lvl < App
                           then
-                            (Glr.sequence (locate rec_flag)
-                               (Glr.sequence (locate let_binding)
+                            (Glr.fsequence (locate rec_flag)
+                               (Glr.fsequence (locate let_binding)
                                   (Glr.sequence (locate in_kw)
                                      (locate (expression_lvl (let_prio lvl)))
                                      (fun _unnamed_0  ->
@@ -5470,9 +5314,7 @@ module Make(Initial:Extension) =
                                               fun _loc  ->
                                                 (Let,
                                                   (loc_expr _loc
-                                                     (Pexp_let (r, l, e))))))
-                                  (fun x  -> fun y  -> y x))
-                               (fun x  -> fun y  -> y x))
+                                                     (Pexp_let (r, l, e))))))))
                             :: y
                           else y)))
                    (fun _unnamed_0  ->
@@ -5486,7 +5328,7 @@ module Make(Initial:Extension) =
                      let y =
                        let y =
                          let y =
-                           (Glr.sequence (locate (Glr.string "(" "("))
+                           (Glr.fsequence (locate (Glr.string "(" "("))
                               (Glr.sequence
                                  (locate
                                     (Glr.option None
@@ -5515,10 +5357,9 @@ module Make(Initial:Extension) =
                                                  id_loc (Lident "()") _loc in
                                                loc_expr _loc
                                                  (pexp_construct
-                                                    (cunit, None))))))
-                              (fun x  -> fun y  -> y x))
+                                                    (cunit, None)))))))
                            ::
-                           (Glr.sequence (locate begin_kw)
+                           (Glr.fsequence (locate begin_kw)
                               (Glr.sequence
                                  (locate
                                     (Glr.option None
@@ -5545,8 +5386,7 @@ module Make(Initial:Extension) =
                                                  id_loc (Lident "()") _loc in
                                                loc_expr _loc
                                                  (pexp_construct
-                                                    (cunit, None))))))
-                              (fun x  -> fun y  -> y x))
+                                                    (cunit, None)))))))
                            ::
                            (Glr.sequence (locate constructor)
                               (locate
@@ -5582,7 +5422,7 @@ module Make(Initial:Extension) =
                                           (loc_expr _loc
                                              (Pexp_variant (l, None)))))
                                      (locate tag_name);
-                                  Glr.sequence
+                                  Glr.fsequence
                                     (locate (Glr.string "[|" "[|"))
                                     (Glr.sequence (locate expression_list)
                                        (locate (Glr.string "|]" "|]"))
@@ -5602,9 +5442,8 @@ module Make(Initial:Extension) =
                                               (Atom,
                                                 (loc_expr _loc
                                                    (Pexp_array
-                                                      (List.map fst l))))))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence (locate (Glr.string "[" "["))
+                                                      (List.map fst l))))));
+                                  Glr.fsequence (locate (Glr.string "[" "["))
                                     (Glr.sequence (locate expression_list)
                                        (locate (Glr.string "]" "]"))
                                        (fun l  ->
@@ -5621,10 +5460,9 @@ module Make(Initial:Extension) =
                                                   _loc_cl] in
                                               (Atom,
                                                 (loc_expr _loc
-                                                   (pexp_list _loc ~_loc_cl l).pexp_desc))))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence (locate (Glr.string "{" "{"))
-                                    (Glr.sequence
+                                                   (pexp_list _loc ~_loc_cl l).pexp_desc))));
+                                  Glr.fsequence (locate (Glr.string "{" "{"))
+                                    (Glr.fsequence
                                        (locate
                                           (Glr.option None
                                              (Glr.apply (fun x  -> Some x)
@@ -5663,12 +5501,10 @@ module Make(Initial:Extension) =
                                                        _loc__unnamed_1] in
                                                    (Atom,
                                                      (loc_expr _loc
-                                                        (Pexp_record (l, e))))))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence (locate while_kw)
-                                    (Glr.sequence (locate expression)
-                                       (Glr.sequence (locate do_kw)
+                                                        (Pexp_record (l, e)))))));
+                                  Glr.fsequence (locate while_kw)
+                                    (Glr.fsequence (locate expression)
+                                       (Glr.fsequence (locate do_kw)
                                           (Glr.sequence (locate expression)
                                              (locate done_kw)
                                              (fun e'  ->
@@ -5694,20 +5530,17 @@ module Make(Initial:Extension) =
                                                         (Atom,
                                                           (loc_expr _loc
                                                              (Pexp_while
-                                                                (e, e'))))))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence (locate for_kw)
-                                    (Glr.sequence (locate lowercase_ident)
-                                       (Glr.sequence
+                                                                (e, e'))))))));
+                                  Glr.fsequence (locate for_kw)
+                                    (Glr.fsequence (locate lowercase_ident)
+                                       (Glr.fsequence
                                           (locate (Glr.char '=' '='))
-                                          (Glr.sequence (locate expression)
-                                             (Glr.sequence
+                                          (Glr.fsequence (locate expression)
+                                             (Glr.fsequence
                                                 (locate downto_flag)
-                                                (Glr.sequence
+                                                (Glr.fsequence
                                                    (locate expression)
-                                                   (Glr.sequence
+                                                   (Glr.fsequence
                                                       (locate do_kw)
                                                       (Glr.sequence
                                                          (locate expression)
@@ -5775,15 +5608,7 @@ module Make(Initial:Extension) =
                                                                     id
                                                                     _loc_id),
                                                                     e, e', d,
-                                                                    e''))))))
-                                                      (fun x  ->
-                                                         fun y  -> y x))
-                                                   (fun x  -> fun y  -> y x))
-                                                (fun x  -> fun y  -> y x))
-                                             (fun x  -> fun y  -> y x))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
+                                                                    e''))))))))))));
                                   Glr.sequence (locate new_kw)
                                     (locate class_path)
                                     (fun _unnamed_0  ->
@@ -5796,7 +5621,7 @@ module Make(Initial:Extension) =
                                          (Atom,
                                            (loc_expr _loc
                                               (Pexp_new (id_loc p _loc_p)))));
-                                  Glr.sequence (locate object_kw)
+                                  Glr.fsequence (locate object_kw)
                                     (Glr.sequence (locate class_body)
                                        (locate end_kw)
                                        (fun o  ->
@@ -5814,14 +5639,13 @@ module Make(Initial:Extension) =
                                                   _loc__unnamed_1] in
                                               (Atom,
                                                 (loc_expr _loc
-                                                   (Pexp_object o)))))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence
+                                                   (Pexp_object o)))));
+                                  Glr.fsequence
                                     (locate (Glr.string "{<" "{<"))
                                     (Glr.sequence
                                        (locate
                                           (Glr.option []
-                                             (Glr.sequence (locate obj_item)
+                                             (Glr.fsequence (locate obj_item)
                                                 (Glr.sequence
                                                    (locate
                                                       (Glr.apply List.rev
@@ -5871,8 +5695,7 @@ module Make(Initial:Extension) =
                                                               [_loc_o;
                                                               _loc_l;
                                                               _loc__unnamed_1] in
-                                                          o :: l))
-                                                (fun x  -> fun y  -> y x))))
+                                                          o :: l)))))
                                        (locate (Glr.string ">}" ">}"))
                                        (fun l  ->
                                           let (_loc_l,l) = l in
@@ -5889,11 +5712,10 @@ module Make(Initial:Extension) =
                                                   _loc__unnamed_1] in
                                               (Atom,
                                                 (loc_expr _loc
-                                                   (Pexp_override l)))))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence (locate (Glr.string "(" "("))
-                                    (Glr.sequence (locate module_kw)
-                                       (Glr.sequence (locate module_expr)
+                                                   (Pexp_override l)))));
+                                  Glr.fsequence (locate (Glr.string "(" "("))
+                                    (Glr.fsequence (locate module_kw)
+                                       (Glr.fsequence (locate module_expr)
                                           (Glr.sequence
                                              (locate
                                                 (Glr.option None
@@ -5952,13 +5774,10 @@ module Make(Initial:Extension) =
                                                               pexp_constraint
                                                                 (me, pt) in
                                                         (Atom,
-                                                          (loc_expr _loc desc))))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
-                                  Glr.sequence
+                                                          (loc_expr _loc desc))))));
+                                  Glr.fsequence
                                     (locate (Glr.string "<:" "<:"))
-                                    (Glr.sequence
+                                    (Glr.fsequence
                                        (locate
                                           (Glr.alternatives'
                                              [Glr.apply
@@ -6003,7 +5822,7 @@ module Make(Initial:Extension) =
                                                (locate
                                                   (Glr.string "signature"
                                                      "signature"))]))
-                                       (Glr.sequence
+                                       (Glr.fsequence
                                           (locate
                                              (Glr.option None
                                                 (Glr.apply (fun x  -> Some x)
@@ -6049,10 +5868,7 @@ module Make(Initial:Extension) =
                                                         (Atom,
                                                           (quote_expression
                                                              _loc_q loc q
-                                                             name))))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
+                                                             name))))));
                                   Glr.sequence (locate (Glr.char '$' '$'))
                                     (locate capitalized_ident)
                                     (fun _unnamed_0  ->
@@ -6083,8 +5899,8 @@ module Make(Initial:Extension) =
                                                  with
                                                  | Not_found  ->
                                                      raise Give_up))));
-                                  Glr.sequence (locate (Glr.char '$' '$'))
-                                    (Glr.sequence
+                                  Glr.fsequence (locate (Glr.char '$' '$'))
+                                    (Glr.fsequence
                                        (locate
                                           (Glr.option None
                                              (Glr.apply (fun x  -> Some x)
@@ -6188,9 +6004,7 @@ module Make(Initial:Extension) =
                                                               (loc_expr _loc
                                                                  (pexp_list
                                                                     _loc l).pexp_desc))
-                                                        | _ -> raise Give_up)))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x);
+                                                        | _ -> raise Give_up))));
                                   Glr.iter
                                     (Glr.apply
                                        (fun p  ->
@@ -6267,9 +6081,9 @@ module Make(Initial:Extension) =
                             else y) in
                          if lvl < App
                          then
-                           (Glr.sequence (locate if_kw)
-                              (Glr.sequence (locate expression)
-                                 (Glr.sequence (locate then_kw)
+                           (Glr.fsequence (locate if_kw)
+                              (Glr.fsequence (locate expression)
+                                 (Glr.fsequence (locate then_kw)
                                     (Glr.sequence
                                        (locate (expression_lvl If))
                                        (locate
@@ -6311,16 +6125,13 @@ module Make(Initial:Extension) =
                                                   (If,
                                                     (loc_expr _loc
                                                        (Pexp_ifthenelse
-                                                          (c, e, e'))))))
-                                    (fun x  -> fun y  -> y x))
-                                 (fun x  -> fun y  -> y x))
-                              (fun x  -> fun y  -> y x))
+                                                          (c, e, e')))))))))
                            :: y
                          else y in
                        if lvl < App
                        then
-                         (Glr.sequence (locate try_kw)
-                            (Glr.sequence (locate expression)
+                         (Glr.fsequence (locate try_kw)
+                            (Glr.fsequence (locate expression)
                                (Glr.sequence (locate with_kw)
                                   (locate (match_cases (let_prio lvl)))
                                   (fun _unnamed_0  ->
@@ -6340,15 +6151,13 @@ module Make(Initial:Extension) =
                                                _loc__unnamed_0;
                                                _loc_l] in
                                            (Let,
-                                             (loc_expr _loc (Pexp_try (e, l))))))
-                               (fun x  -> fun y  -> y x))
-                            (fun x  -> fun y  -> y x))
+                                             (loc_expr _loc (Pexp_try (e, l))))))))
                          :: y
                        else y in
                      if lvl < App
                      then
-                       (Glr.sequence (locate match_kw)
-                          (Glr.sequence (locate expression)
+                       (Glr.fsequence (locate match_kw)
+                          (Glr.fsequence (locate expression)
                              (Glr.sequence (locate with_kw)
                                 (locate (match_cases (let_prio lvl)))
                                 (fun _unnamed_0  ->
@@ -6368,15 +6177,13 @@ module Make(Initial:Extension) =
                                              _loc__unnamed_0;
                                              _loc_l] in
                                          (Let,
-                                           (loc_expr _loc (Pexp_match (e, l))))))
-                             (fun x  -> fun y  -> y x))
-                          (fun x  -> fun y  -> y x))
+                                           (loc_expr _loc (Pexp_match (e, l))))))))
                        :: y
                      else y in
                    if lvl < App
                    then
-                     (Glr.sequence (locate fun_kw)
-                        (Glr.sequence
+                     (Glr.fsequence (locate fun_kw)
+                        (Glr.fsequence
                            (locate
                               (Glr.apply List.rev
                                  (Glr.fixpoint []
@@ -6407,9 +6214,7 @@ module Make(Initial:Extension) =
                                            _loc_e] in
                                        (Let,
                                          (loc_expr _loc
-                                            (apply_params l e).pexp_desc))))
-                           (fun x  -> fun y  -> y x))
-                        (fun x  -> fun y  -> y x))
+                                            (apply_params l e).pexp_desc))))))
                      :: y
                    else y in
                  if lvl < App
@@ -6426,7 +6231,7 @@ module Make(Initial:Extension) =
                  else y) in
               if lvl <= Aff
               then
-                (Glr.sequence (locate inst_var_name)
+                (Glr.fsequence (locate inst_var_name)
                    (Glr.sequence (locate (Glr.string "<-" "<-"))
                       (locate (expression_lvl (next_exp Aff)))
                       (fun _unnamed_0  ->
@@ -6439,8 +6244,7 @@ module Make(Initial:Extension) =
                                merge [_loc_v; _loc__unnamed_0; _loc_e] in
                              (Aff,
                                (loc_expr _loc
-                                  (Pexp_setinstvar ((id_loc v _loc_v), e))))))
-                   (fun x  -> fun y  -> y x))
+                                  (Pexp_setinstvar ((id_loc v _loc_v), e)))))))
                 :: y
               else y)))
     let apply_lbl _loc (lbl,e) =
@@ -6519,7 +6323,7 @@ module Make(Initial:Extension) =
                                               if
                                                 (lvl' >= Aff) && (lvl <= Aff)
                                               then
-                                                (Glr.sequence (locate field)
+                                                (Glr.fsequence (locate field)
                                                    (Glr.sequence
                                                       (locate
                                                          (Glr.string "<-"
@@ -6550,13 +6354,12 @@ module Make(Initial:Extension) =
                                                                     (
                                                                     Pexp_setfield
                                                                     (e', f,
-                                                                    e))))))
-                                                   (fun x  -> fun y  -> y x))
+                                                                    e)))))))
                                                 :: y
                                               else y in
                                             if (lvl' >= Dot) && (lvl <= Dot)
                                             then
-                                              (Glr.sequence
+                                              (Glr.fsequence
                                                  (locate (Glr.string "{" "{"))
                                                  (Glr.sequence
                                                     (locate expression)
@@ -6581,17 +6384,16 @@ module Make(Initial:Extension) =
                                                                   (merge2
                                                                     e'.pexp_loc
                                                                     _loc) e'
-                                                                  f))))
-                                                 (fun x  -> fun y  -> y x))
+                                                                  f)))))
                                               :: y
                                             else y in
                                           if (lvl' >= Aff) && (lvl <= Aff)
                                           then
-                                            (Glr.sequence
+                                            (Glr.fsequence
                                                (locate (Glr.string "{" "{"))
-                                               (Glr.sequence
+                                               (Glr.fsequence
                                                   (locate expression)
-                                                  (Glr.sequence
+                                                  (Glr.fsequence
                                                      (locate
                                                         (Glr.string "}" "}"))
                                                      (Glr.sequence
@@ -6636,15 +6438,12 @@ module Make(Initial:Extension) =
                                                                     (merge2
                                                                     e'.pexp_loc
                                                                     _loc) e'
-                                                                    f e))))
-                                                     (fun x  -> fun y  -> y x))
-                                                  (fun x  -> fun y  -> y x))
-                                               (fun x  -> fun y  -> y x))
+                                                                    f e)))))))
                                             :: y
                                           else y in
                                         if (lvl' >= Dot) && (lvl <= Dot)
                                         then
-                                          (Glr.sequence
+                                          (Glr.fsequence
                                              (locate (Glr.string "[" "["))
                                              (Glr.sequence
                                                 (locate expression)
@@ -6673,16 +6472,15 @@ module Make(Initial:Extension) =
                                                                     "String"
                                                                     "get"),
                                                                    [("", e');
-                                                                   ("", f)]))))))
-                                             (fun x  -> fun y  -> y x))
+                                                                   ("", f)])))))))
                                           :: y
                                         else y in
                                       if (lvl' >= Aff) && (lvl <= Aff)
                                       then
-                                        (Glr.sequence
+                                        (Glr.fsequence
                                            (locate (Glr.string "[" "["))
-                                           (Glr.sequence (locate expression)
-                                              (Glr.sequence
+                                           (Glr.fsequence (locate expression)
+                                              (Glr.fsequence
                                                  (locate (Glr.string "]" "]"))
                                                  (Glr.sequence
                                                     (locate
@@ -6726,15 +6524,12 @@ module Make(Initial:Extension) =
                                                                     [
                                                                     ("", e');
                                                                     ("", f);
-                                                                    ("", e)]))))))
-                                                 (fun x  -> fun y  -> y x))
-                                              (fun x  -> fun y  -> y x))
-                                           (fun x  -> fun y  -> y x))
+                                                                    ("", e)])))))))))
                                         :: y
                                       else y in
                                     if (lvl' >= Dot) && (lvl <= Dot)
                                     then
-                                      (Glr.sequence
+                                      (Glr.fsequence
                                          (locate (Glr.string "(" "("))
                                          (Glr.sequence (locate expression)
                                             (locate (Glr.string ")" ")"))
@@ -6762,16 +6557,15 @@ module Make(Initial:Extension) =
                                                                  "Array"
                                                                  "get"),
                                                                [("", e');
-                                                               ("", f)]))))))
-                                         (fun x  -> fun y  -> y x))
+                                                               ("", f)])))))))
                                       :: y
                                     else y in
                                   if (lvl' > Aff) && (lvl <= Aff)
                                   then
-                                    (Glr.sequence
+                                    (Glr.fsequence
                                        (locate (Glr.string "(" "("))
-                                       (Glr.sequence (locate expression)
-                                          (Glr.sequence
+                                       (Glr.fsequence (locate expression)
+                                          (Glr.fsequence
                                              (locate (Glr.string ")" ")"))
                                              (Glr.sequence
                                                 (locate
@@ -6812,10 +6606,7 @@ module Make(Initial:Extension) =
                                                                     [
                                                                     ("", e');
                                                                     ("", f);
-                                                                    ("", e)]))))))
-                                             (fun x  -> fun y  -> y x))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
+                                                                    ("", e)])))))))))
                                     :: y
                                   else y)))
                            (fun _unnamed_0  ->
@@ -7055,7 +6846,7 @@ module Make(Initial:Extension) =
               let _loc = _loc_mp in
               let mid = id_loc mp _loc in mexpr_loc _loc (Pmod_ident mid))
            (locate module_path);
-        Glr.sequence (locate struct_kw)
+        Glr.fsequence (locate struct_kw)
           (Glr.sequence (locate structure) (locate end_kw)
              (fun ms  ->
                 let (_loc_ms,ms) = ms in
@@ -7065,14 +6856,13 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_ms; _loc__unnamed_1] in
-                    mexpr_loc _loc (Pmod_structure ms)))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate functor_kw)
-          (Glr.sequence (locate (Glr.string "(" "("))
-             (Glr.sequence (locate module_name)
-                (Glr.sequence (locate (Glr.string ":" ":"))
-                   (Glr.sequence (locate module_type)
-                      (Glr.sequence (locate (Glr.string ")" ")"))
+                    mexpr_loc _loc (Pmod_structure ms)));
+        Glr.fsequence (locate functor_kw)
+          (Glr.fsequence (locate (Glr.string "(" "("))
+             (Glr.fsequence (locate module_name)
+                (Glr.fsequence (locate (Glr.string ":" ":"))
+                   (Glr.fsequence (locate module_type)
+                      (Glr.fsequence (locate (Glr.string ")" ")"))
                          (Glr.sequence (locate (Glr.string "->" "->"))
                             (locate module_expr)
                             (fun _unnamed_0  ->
@@ -7108,12 +6898,9 @@ module Make(Initial:Extension) =
                                              mexpr_loc _loc
                                                (Pmod_functor
                                                   ((id_loc mn _loc_mn), mt,
-                                                    me))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate module_expr)
+                                                    me)))))))));
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate module_expr)
              (Glr.sequence
                 (locate
                    (Glr.option None
@@ -7143,11 +6930,10 @@ module Make(Initial:Extension) =
                          match mt with
                          | None  -> me
                          | Some mt ->
-                             mexpr_loc _loc (Pmod_constraint (me, mt))))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
-          (Glr.sequence (locate val_kw)
-             (Glr.sequence (locate expr)
+                             mexpr_loc _loc (Pmod_constraint (me, mt)))));
+        Glr.fsequence (locate (Glr.string "(" "("))
+          (Glr.fsequence (locate val_kw)
+             (Glr.fsequence (locate expr)
                 (Glr.sequence
                    (locate
                       (Glr.option None
@@ -7187,8 +6973,7 @@ module Make(Initial:Extension) =
                                     Pmod_unpack
                                       (loc_expr _loc
                                          (pexp_constraint (e, pt))) in
-                              mexpr_loc _loc e)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                              mexpr_loc _loc e))))]
     let _ =
       set_grammar module_expr
         (Glr.sequence (locate module_expr_base)
@@ -7196,7 +6981,7 @@ module Make(Initial:Extension) =
               (Glr.apply List.rev
                  (Glr.fixpoint []
                     (Glr.apply (fun x  -> fun l  -> x :: l)
-                       (Glr.sequence (locate (Glr.string "(" "("))
+                       (Glr.fsequence (locate (Glr.string "(" "("))
                           (Glr.sequence (locate module_expr)
                              (locate (Glr.string ")" ")"))
                              (fun m  ->
@@ -7212,7 +6997,7 @@ module Make(Initial:Extension) =
                                         [_loc__unnamed_2;
                                         _loc_m;
                                         _loc__unnamed_1] in
-                                    (_loc, m))) (fun x  -> fun y  -> y x))))))
+                                    (_loc, m))))))))
            (fun m  ->
               let (_loc_m,m) = m in
               fun l  ->
@@ -7231,7 +7016,7 @@ module Make(Initial:Extension) =
               let _loc = _loc_mp in
               let mid = id_loc mp _loc in mtyp_loc _loc (Pmty_ident mid))
            (locate modtype_path);
-        Glr.sequence (locate sig_kw)
+        Glr.fsequence (locate sig_kw)
           (Glr.sequence (locate signature) (locate end_kw)
              (fun ms  ->
                 let (_loc_ms,ms) = ms in
@@ -7241,14 +7026,13 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_ms; _loc__unnamed_1] in
-                    mtyp_loc _loc (Pmty_signature ms)))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate functor_kw)
-          (Glr.sequence (locate (Glr.string "(" "("))
-             (Glr.sequence (locate module_name)
-                (Glr.sequence (locate (Glr.string ":" ":"))
-                   (Glr.sequence (locate module_type)
-                      (Glr.sequence (locate (Glr.string ")" ")"))
+                    mtyp_loc _loc (Pmty_signature ms)));
+        Glr.fsequence (locate functor_kw)
+          (Glr.fsequence (locate (Glr.string "(" "("))
+             (Glr.fsequence (locate module_name)
+                (Glr.fsequence (locate (Glr.string ":" ":"))
+                   (Glr.fsequence (locate module_type)
+                      (Glr.fsequence (locate (Glr.string ")" ")"))
                          (Glr.sequence (locate (Glr.string "->" "->"))
                             (locate module_type)
                             (fun _unnamed_0  ->
@@ -7284,11 +7068,8 @@ module Make(Initial:Extension) =
                                              mtyp_loc _loc
                                                (Pmty_functor
                                                   ((id_loc mn _loc_mn), mt,
-                                                    me))))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate (Glr.string "(" "("))
+                                                    me)))))))));
+        Glr.fsequence (locate (Glr.string "(" "("))
           (Glr.sequence (locate module_type) (locate (Glr.string ")" ")"))
              (fun mt  ->
                 let (_loc_mt,mt) = mt in
@@ -7298,9 +7079,9 @@ module Make(Initial:Extension) =
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc =
                       merge [_loc__unnamed_2; _loc_mt; _loc__unnamed_1] in
-                    mt)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate module_kw)
-          (Glr.sequence (locate type_kw)
+                    mt));
+        Glr.fsequence (locate module_kw)
+          (Glr.fsequence (locate type_kw)
              (Glr.sequence (locate of_kw) (locate module_expr)
                 (fun _unnamed_0  ->
                    let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -7316,8 +7097,7 @@ module Make(Initial:Extension) =
                              _loc__unnamed_2;
                              _loc__unnamed_0;
                              _loc_me] in
-                         mtyp_loc _loc (Pmty_typeof me)))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                         mtyp_loc _loc (Pmty_typeof me))))]
     let mod_constraint =
       Glr.alternatives'
         [Glr.iter
@@ -7330,8 +7110,8 @@ module Make(Initial:Extension) =
                       let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
                       let _loc = _loc__unnamed_0 in (tn, (Pwith_type ty)))
                    (locate (typedef_in_constraint _loc_t))) (locate type_kw));
-        Glr.sequence (locate module_kw)
-          (Glr.sequence (locate module_path)
+        Glr.fsequence (locate module_kw)
+          (Glr.fsequence (locate module_path)
              (Glr.sequence (locate (Glr.char '=' '='))
                 (locate extended_module_path)
                 (fun _unnamed_0  ->
@@ -7349,11 +7129,10 @@ module Make(Initial:Extension) =
                              _loc__unnamed_0;
                              _loc_m2] in
                          let name = id_loc m1 _loc_m1 in
-                         (name, (Pwith_module (id_loc m2 _loc_m2)))))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate type_kw)
-          (Glr.sequence (locate (Glr.option [] type_params))
-             (Glr.sequence (locate typeconstr_name)
+                         (name, (Pwith_module (id_loc m2 _loc_m2))))));
+        Glr.fsequence (locate type_kw)
+          (Glr.fsequence (locate (Glr.option [] type_params))
+             (Glr.fsequence (locate typeconstr_name)
                 (Glr.sequence (locate (Glr.string ":=" ":="))
                    (locate typexpr)
                    (fun _unnamed_0  ->
@@ -7377,11 +7156,9 @@ module Make(Initial:Extension) =
                                 type_declaration _loc (id_loc tcn _loc_tcn)
                                   tps [] Ptype_abstract Public (Some te) in
                               ((id_loc (Lident tcn) _loc_tcn),
-                                (Pwith_typesubst td))))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
-        Glr.sequence (locate module_kw)
-          (Glr.sequence (locate module_name)
+                                (Pwith_typesubst td))))));
+        Glr.fsequence (locate module_kw)
+          (Glr.fsequence (locate module_name)
              (Glr.sequence (locate (Glr.string ":=" ":="))
                 (locate extended_module_path)
                 (fun _unnamed_0  ->
@@ -7399,15 +7176,14 @@ module Make(Initial:Extension) =
                              _loc__unnamed_0;
                              _loc_emp] in
                          ((id_loc (Lident mn) _loc_mn),
-                           (Pwith_modsubst (id_loc emp _loc_emp)))))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]
+                           (Pwith_modsubst (id_loc emp _loc_emp))))))]
     let _ =
       set_grammar module_type
         (Glr.sequence (locate module_type_base)
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x)
-                    (Glr.sequence (locate with_kw)
+                    (Glr.fsequence (locate with_kw)
                        (Glr.sequence (locate mod_constraint)
                           (locate
                              (Glr.apply List.rev
@@ -7433,7 +7209,7 @@ module Make(Initial:Extension) =
                                    _unnamed_2 in
                                  let _loc =
                                    merge [_loc__unnamed_2; _loc_m; _loc_l] in
-                                 m :: l)) (fun x  -> fun y  -> y x)))))
+                                 m :: l))))))
            (fun m  ->
               let (_loc_m,m) = m in
               fun l  ->
@@ -7444,7 +7220,7 @@ module Make(Initial:Extension) =
                 | Some l -> mtyp_loc _loc (Pmty_with (m, l))))
     let structure_item_base =
       Glr.alternatives'
-        [Glr.sequence
+        [Glr.fsequence
            (locate (Glr.regexp ~name:"let" let_re (fun groupe  -> groupe 0)))
            (Glr.sequence (locate rec_flag) (locate let_binding)
               (fun r  ->
@@ -7457,11 +7233,11 @@ module Make(Initial:Extension) =
                      match l with
                      | ({ ppat_desc = Ppat_any ; ppat_loc = _ },e)::[] ->
                          pstr_eval e
-                     | _ -> Pstr_value (r, l))) (fun x  -> fun y  -> y x);
-        Glr.sequence (locate external_kw)
-          (Glr.sequence (locate value_name)
-             (Glr.sequence (locate (Glr.string ":" ":"))
-                (Glr.sequence (locate typexpr)
+                     | _ -> Pstr_value (r, l)));
+        Glr.fsequence (locate external_kw)
+          (Glr.fsequence (locate value_name)
+             (Glr.fsequence (locate (Glr.string ":" ":"))
+                (Glr.fsequence (locate typexpr)
                    (Glr.sequence (locate (Glr.string "=" "="))
                       (locate
                          (Glr.apply List.rev
@@ -7497,9 +7273,7 @@ module Make(Initial:Extension) =
                                          pval_type = ty;
                                          pval_prim = ls;
                                          pval_loc = _loc
-                                       }))) (fun x  -> fun y  -> y x))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
+                                       }))))));
         Glr.apply
           (fun td  ->
              let (_loc_td,td) = td in let _loc = _loc_td in Pstr_type td)
@@ -7510,24 +7284,24 @@ module Make(Initial:Extension) =
         Glr.sequence (locate module_kw)
           (locate
              (Glr.alternatives'
-                [Glr.sequence (locate rec_kw)
-                   (Glr.sequence (locate module_name)
-                      (Glr.sequence (locate (Glr.string ":" ":"))
-                         (Glr.sequence (locate module_type)
-                            (Glr.sequence (locate (Glr.char '=' '='))
+                [Glr.fsequence (locate rec_kw)
+                   (Glr.fsequence (locate module_name)
+                      (Glr.fsequence (locate (Glr.string ":" ":"))
+                         (Glr.fsequence (locate module_type)
+                            (Glr.fsequence (locate (Glr.char '=' '='))
                                (Glr.sequence (locate module_expr)
                                   (locate
                                      (Glr.apply List.rev
                                         (Glr.fixpoint []
                                            (Glr.apply
                                               (fun x  -> fun l  -> x :: l)
-                                              (Glr.sequence (locate and_kw)
-                                                 (Glr.sequence
+                                              (Glr.fsequence (locate and_kw)
+                                                 (Glr.fsequence
                                                     (locate module_name)
-                                                    (Glr.sequence
+                                                    (Glr.fsequence
                                                        (locate
                                                           (Glr.string ":" ":"))
-                                                       (Glr.sequence
+                                                       (Glr.fsequence
                                                           (locate module_type)
                                                           (Glr.sequence
                                                              (locate
@@ -7581,13 +7355,7 @@ module Make(Initial:Extension) =
                                                                     (id_loc
                                                                     mn
                                                                     _loc_mn)
-                                                                    mt me))
-                                                          (fun x  ->
-                                                             fun y  -> y x))
-                                                       (fun x  ->
-                                                          fun y  -> y x))
-                                                    (fun x  -> fun y  -> y x))
-                                                 (fun x  -> fun y  -> y x))))))
+                                                                    mt me))))))))))
                                   (fun me  ->
                                      let (_loc_me,me) = me in
                                      fun ms  ->
@@ -7618,20 +7386,16 @@ module Make(Initial:Extension) =
                                                    module_binding _loc
                                                      (id_loc mn _loc_mn) mt
                                                      me in
-                                                 Pstr_recmodule (m :: ms)))
-                               (fun x  -> fun y  -> y x))
-                            (fun x  -> fun y  -> y x))
-                         (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                   (fun x  -> fun y  -> y x);
-                Glr.sequence (locate module_name)
-                  (Glr.sequence
+                                                 Pstr_recmodule (m :: ms)))))));
+                Glr.fsequence (locate module_name)
+                  (Glr.fsequence
                      (locate
                         (Glr.apply List.rev
                            (Glr.fixpoint []
                               (Glr.apply (fun x  -> fun l  -> x :: l)
-                                 (Glr.sequence (locate (Glr.string "(" "("))
-                                    (Glr.sequence (locate module_name)
-                                       (Glr.sequence
+                                 (Glr.fsequence (locate (Glr.string "(" "("))
+                                    (Glr.fsequence (locate module_name)
+                                       (Glr.fsequence
                                           (locate (Glr.string ":" ":"))
                                           (Glr.sequence (locate module_type)
                                              (locate (Glr.string ")" ")"))
@@ -7656,11 +7420,8 @@ module Make(Initial:Extension) =
                                                             _loc_mt;
                                                             _loc__unnamed_1] in
                                                         ((id_loc mn _loc_mn),
-                                                          mt, _loc)))
-                                          (fun x  -> fun y  -> y x))
-                                       (fun x  -> fun y  -> y x))
-                                    (fun x  -> fun y  -> y x))))))
-                     (Glr.sequence
+                                                          mt, _loc))))))))))
+                     (Glr.fsequence
                         (locate
                            (Glr.option None
                               (Glr.apply (fun x  -> Some x)
@@ -7711,11 +7472,9 @@ module Make(Initial:Extension) =
                                       let (name,_,me) =
                                         module_binding _loc
                                           (id_loc mn _loc_mn) None me in
-                                      Pstr_module (name, me)))
-                        (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                  (fun x  -> fun y  -> y x);
-                Glr.sequence (locate type_kw)
-                  (Glr.sequence (locate modtype_name)
+                                      Pstr_module (name, me)))));
+                Glr.fsequence (locate type_kw)
+                  (Glr.fsequence (locate modtype_name)
                      (Glr.sequence (locate (Glr.string "=" "="))
                         (locate module_type)
                         (fun _unnamed_0  ->
@@ -7733,14 +7492,13 @@ module Make(Initial:Extension) =
                                      _loc_mn;
                                      _loc__unnamed_0;
                                      _loc_mt] in
-                                 Pstr_modtype ((id_loc mn _loc_mn), mt)))
-                     (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x)]))
+                                 Pstr_modtype ((id_loc mn _loc_mn), mt))))]))
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              fun r  ->
                let (_loc_r,r) = r in
                let _loc = merge [_loc__unnamed_0; _loc_r] in r);
-        Glr.sequence (locate open_kw)
+        Glr.fsequence (locate open_kw)
           (Glr.sequence (locate override_flag) (locate module_path)
              (fun o  ->
                 let (_loc_o,o) = o in
@@ -7749,8 +7507,7 @@ module Make(Initial:Extension) =
                   fun _unnamed_2  ->
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc = merge [_loc__unnamed_2; _loc_o; _loc_m] in
-                    Pstr_open (o, (id_loc m _loc_m))))
-          (fun x  -> fun y  -> y x);
+                    Pstr_open (o, (id_loc m _loc_m))));
         Glr.sequence (locate include_kw) (locate module_expr)
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -7784,8 +7541,8 @@ module Make(Initial:Extension) =
            [Glr.apply
               (fun e  -> let (_loc_e,e) = e in let _loc = _loc_e in e)
               (locate (alternatives extra_structure));
-           Glr.sequence (locate (Glr.char '$' '$'))
-             (Glr.sequence (locate (expression_lvl (next_exp App)))
+           Glr.fsequence (locate (Glr.char '$' '$'))
+             (Glr.fsequence (locate (expression_lvl (next_exp App)))
                 (Glr.sequence (locate (Glr.char '$' '$'))
                    (locate
                       (Glr.option None
@@ -7804,8 +7561,7 @@ module Make(Initial:Extension) =
                                 _loc_e;
                                 _loc__unnamed_0;
                                 _loc__unnamed_1] in
-                            push_pop_structure e)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x);
+                            push_pop_structure e)));
            Glr.sequence (locate structure_item_base)
              (locate
                 (Glr.option None
@@ -7818,9 +7574,9 @@ module Make(Initial:Extension) =
                   [loc_str _loc_s s])])
     let signature_item_base =
       Glr.alternatives'
-        [Glr.sequence (locate val_kw)
-           (Glr.sequence (locate value_name)
-              (Glr.sequence (locate (Glr.string ":" ":"))
+        [Glr.fsequence (locate val_kw)
+           (Glr.fsequence (locate value_name)
+              (Glr.fsequence (locate (Glr.string ":" ":"))
                  (Glr.sequence (locate typexpr) (locate post_item_attributes)
                     (fun ty  ->
                        let (_loc_ty,ty) = ty in
@@ -7840,14 +7596,12 @@ module Make(Initial:Extension) =
                                    _loc_ty;
                                    _loc_a] in
                                psig_value ~attributes:a _loc
-                                 (id_loc n _loc_n) ty []))
-                 (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-           (fun x  -> fun y  -> y x);
-        Glr.sequence (locate external_kw)
-          (Glr.sequence (locate value_name)
-             (Glr.sequence (locate (Glr.string ":" ":"))
-                (Glr.sequence (locate typexpr)
-                   (Glr.sequence (locate (Glr.string "=" "="))
+                                 (id_loc n _loc_n) ty []))));
+        Glr.fsequence (locate external_kw)
+          (Glr.fsequence (locate value_name)
+             (Glr.fsequence (locate (Glr.string ":" ":"))
+                (Glr.fsequence (locate typexpr)
+                   (Glr.fsequence (locate (Glr.string "=" "="))
                       (Glr.sequence
                          (locate
                             (Glr.apply List.rev
@@ -7884,10 +7638,7 @@ module Make(Initial:Extension) =
                                         if (l < 1) || (l > 3)
                                         then raise Give_up;
                                         psig_value ~attributes:a _loc
-                                          (id_loc n _loc_n) ty ls))
-                      (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-                (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-          (fun x  -> fun y  -> y x);
+                                          (id_loc n _loc_n) ty ls))))));
         Glr.apply
           (fun td  ->
              let (_loc_td,td) = td in let _loc = _loc_td in Psig_type td)
@@ -7897,17 +7648,17 @@ module Make(Initial:Extension) =
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              let _loc = _loc__unnamed_0 in Psig_exception (name, ed))
           (locate exception_declaration);
-        Glr.sequence (locate module_kw)
-          (Glr.sequence (locate rec_kw)
-             (Glr.sequence (locate module_name)
-                (Glr.sequence (locate (Glr.string ":" ":"))
+        Glr.fsequence (locate module_kw)
+          (Glr.fsequence (locate rec_kw)
+             (Glr.fsequence (locate module_name)
+                (Glr.fsequence (locate (Glr.string ":" ":"))
                    (Glr.sequence (locate module_type)
                       (locate
                          (Glr.apply List.rev
                             (Glr.fixpoint []
                                (Glr.apply (fun x  -> fun l  -> x :: l)
-                                  (Glr.sequence (locate and_kw)
-                                     (Glr.sequence (locate module_name)
+                                  (Glr.fsequence (locate and_kw)
+                                     (Glr.fsequence (locate module_name)
                                         (Glr.sequence
                                            (locate (Glr.string ":" ":"))
                                            (locate module_type)
@@ -7928,9 +7679,7 @@ module Make(Initial:Extension) =
                                                         _loc__unnamed_0;
                                                         _loc_mt] in
                                                     module_declaration _loc
-                                                      (id_loc mn _loc_mn) mt))
-                                        (fun x  -> fun y  -> y x))
-                                     (fun x  -> fun y  -> y x))))))
+                                                      (id_loc mn _loc_mn) mt))))))))
                       (fun mt  ->
                          let (_loc_mt,mt) = mt in
                          fun ms  ->
@@ -7956,21 +7705,20 @@ module Make(Initial:Extension) =
                                    let m =
                                      module_declaration _loc
                                        (id_loc mn _loc_mn) mt in
-                                   Psig_recmodule (m :: ms)))
-                   (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x))
-             (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
+                                   Psig_recmodule (m :: ms))))));
         Glr.sequence (locate module_kw)
           (locate
              (Glr.alternatives'
-                [Glr.sequence (locate module_name)
-                   (Glr.sequence
+                [Glr.fsequence (locate module_name)
+                   (Glr.fsequence
                       (locate
                          (Glr.apply List.rev
                             (Glr.fixpoint []
                                (Glr.apply (fun x  -> fun l  -> x :: l)
-                                  (Glr.sequence (locate (Glr.string "(" "("))
-                                     (Glr.sequence (locate module_name)
-                                        (Glr.sequence
+                                  (Glr.fsequence
+                                     (locate (Glr.string "(" "("))
+                                     (Glr.fsequence (locate module_name)
+                                        (Glr.fsequence
                                            (locate (Glr.string ":" ":"))
                                            (Glr.sequence (locate module_type)
                                               (locate (Glr.string ")" ")"))
@@ -7995,10 +7743,7 @@ module Make(Initial:Extension) =
                                                              _loc_mt;
                                                              _loc__unnamed_1] in
                                                          ((id_loc mn _loc_mn),
-                                                           mt, _loc)))
-                                           (fun x  -> fun y  -> y x))
-                                        (fun x  -> fun y  -> y x))
-                                     (fun x  -> fun y  -> y x))))))
+                                                           mt, _loc))))))))))
                       (Glr.sequence (locate (Glr.string ":" ":"))
                          (locate module_type)
                          (fun _unnamed_0  ->
@@ -8025,9 +7770,8 @@ module Make(Initial:Extension) =
                                   let (a,b) =
                                     module_declaration _loc
                                       (id_loc mn _loc_mn) mt in
-                                  Psig_module (a, b)))
-                      (fun x  -> fun y  -> y x)) (fun x  -> fun y  -> y x);
-                Glr.sequence (locate type_kw)
+                                  Psig_module (a, b))));
+                Glr.fsequence (locate type_kw)
                   (Glr.sequence (locate modtype_name)
                      (locate
                         (Glr.option None
@@ -8054,14 +7798,13 @@ module Make(Initial:Extension) =
                               match mt with
                               | None  -> Pmodtype_abstract
                               | Some mt -> Pmodtype_manifest mt in
-                            Psig_modtype ((id_loc mn _loc_mn), mt)))
-                  (fun x  -> fun y  -> y x)]))
+                            Psig_modtype ((id_loc mn _loc_mn), mt)))]))
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
              fun r  ->
                let (_loc_r,r) = r in
                let _loc = merge [_loc__unnamed_0; _loc_r] in r);
-        Glr.sequence (locate open_kw)
+        Glr.fsequence (locate open_kw)
           (Glr.sequence (locate override_flag) (locate module_path)
              (fun o  ->
                 let (_loc_o,o) = o in
@@ -8070,8 +7813,7 @@ module Make(Initial:Extension) =
                   fun _unnamed_2  ->
                     let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                     let _loc = merge [_loc__unnamed_2; _loc_o; _loc_m] in
-                    Psig_open (o, (id_loc m _loc_m))))
-          (fun x  -> fun y  -> y x);
+                    Psig_open (o, (id_loc m _loc_m))));
         Glr.sequence (locate include_kw) (locate module_type)
           (fun _unnamed_0  ->
              let (_loc__unnamed_0,_unnamed_0) = _unnamed_0 in
@@ -8102,7 +7844,7 @@ module Make(Initial:Extension) =
            [Glr.apply
               (fun e  -> let (_loc_e,e) = e in let _loc = _loc_e in e)
               (locate (alternatives extra_signature));
-           Glr.sequence (locate (Glr.char '$' '$'))
+           Glr.fsequence (locate (Glr.char '$' '$'))
              (Glr.sequence (locate (expression_lvl (next_exp App)))
                 (locate (Glr.char '$' '$'))
                 (fun e  ->
@@ -8113,7 +7855,7 @@ module Make(Initial:Extension) =
                        let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                        let _loc =
                          merge [_loc__unnamed_2; _loc_e; _loc__unnamed_1] in
-                       push_pop_signature e)) (fun x  -> fun y  -> y x);
+                       push_pop_signature e));
            Glr.sequence (locate signature_item_base)
              (locate
                 (Glr.option None
@@ -8127,7 +7869,7 @@ module Make(Initial:Extension) =
     exception Top_Exit
     let top_phrase =
       Glr.alternatives'
-        [Glr.sequence
+        [Glr.fsequence
            (locate
               (Glr.option None
                  (Glr.apply (fun x  -> Some x) (Glr.char ';' ';'))))
@@ -8156,7 +7898,7 @@ module Make(Initial:Extension) =
                      let (_loc__unnamed_2,_unnamed_2) = _unnamed_2 in
                      let _loc =
                        merge [_loc__unnamed_2; _loc_l; _loc__unnamed_1] in
-                     Ptop_def l)) (fun x  -> fun y  -> y x);
+                     Ptop_def l));
         Glr.sequence
           (locate
              (Glr.option None

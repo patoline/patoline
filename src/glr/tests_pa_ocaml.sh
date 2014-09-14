@@ -35,16 +35,16 @@ for f in $files; do
   /usr/bin/time --format="%C: %U,%S,%E" ./pa_ocaml $f > /dev/null
 #  /usr/bin/time --format="%C: %U,%S,%E" camlp4o.opt $f > /dev/null
 
-  ocamlc.opt -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> /tmp/foo.tree
+  ocamlc.opt -rectypes -c -dparsetree -o /tmp/foo.cmo -pp ./pa_ocaml  $f 2> $diff/$(basename $f).pa_ocaml.full
   ocamlc.opt -rectypes -c -dparsetree -o /tmp/bar.cmo                 $f 2> /tmp/bar.tree
 #  ocamlc.opt -c -dparsetree -o /tmp/bar.cmo -pp camlp4o.opt $f 2> /tmp/bar.tree
 #  diff /tmp/foo.cmo /tmp/bar.cmo
 
-  cat /tmp/foo.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\([^[]*\.mli\?\)\?\[.*\])\( ghost\)\?//' > $diff/$(basename $f).pa_ocaml
+  cat $diff/$(basename $f).pa_ocaml.full | sed -e 's/(.*\.mli\?\[.*\]\.\.\([^[]*\.mli\?\)\?\[.*\])\( ghost\)\?//' > $diff/$(basename $f).pa_ocaml
   cat /tmp/bar.tree | sed -e 's/(.*\.mli\?\[.*\]\.\.\([^[]*\.mli\?\)\?\[.*\])\( ghost\)\?//' > $diff/$(basename $f).ocamlc
-  cat /tmp/bar.tree | sed -e 's/)\( ghost\)\?/)/' > /tmp/tyr.tree
+  cat /tmp/bar.tree | sed -e 's/) ghost/)/g' > $diff/$(basename $f).ocamlc.full
   diff $diff/$(basename $f).pa_ocaml  $diff/$(basename $f).ocamlc > $diff/$(basename $f).diff
-  diff /tmp/foo.tree /tmp/tyr.tree > $diff/$(basename $f).fulldiff
+  diff $diff/$(basename $f).pa_ocaml.full $diff/$(basename $f).ocamlc.full > $diff/$(basename $f).fulldiff
   echo diff size: $(wc $diff/$(basename $f).diff)
   echo diff size with pos: $(wc $diff/$(basename $f).fulldiff)
   echo

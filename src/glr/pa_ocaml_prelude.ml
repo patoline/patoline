@@ -145,10 +145,16 @@ let locate g =
 let rec merge = function
   | [] -> assert false
   | [loc] -> loc
-  | l1::ls when Location.(l1.loc_start = l1.loc_end) -> merge ls
-  | l1::ls ->  let l2 = List.hd (List.rev ls) in
-  Location.(
-    {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
+  | l1::_ as ls -> 
+     let ls = List.rev ls in
+     let rec fn = function
+       | [] -> assert false
+       | [loc] -> loc
+       | l2::ls when Location.(l2.loc_start = l2.loc_end) -> fn ls
+       | l2::ls -> 
+	  Location.(
+	   {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
+     in fn ls
 
 let merge2 l1 l2 =
   Location.(

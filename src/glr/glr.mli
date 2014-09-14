@@ -50,14 +50,14 @@ val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> 
     Remark: the new layout is only used inside the input parsed by the grammar, not
     at the beginning nor at the end 
     
-    The optional parameter [old_blank_before], ([true] by default) forces parsing the 
-    old blank before parsing with the given grammar (the new blank function will be used
+    The optional parameter [new_blank_before], ([true] by default) forces parsing the 
+    new blank before parsing with the given grammar (the old blank function was used
     before the next terminal symbol anyway).
 
-    Similarly, the optional parameter [new_blank_after], ([false] by default) forces
-    the parsing of the new blank after parsing with the given grammar.
+    Similarly, the optional parameter [old_blank_after], ([true] by default) forces
+    the parsing of the old blank after parsing with the given grammar and the old blank.
 *)
-val change_layout : ?old_blank_before:bool -> ?new_blank_after:bool -> 'a grammar -> blank -> 'a grammar
+val change_layout : ?new_blank_before:bool -> ?old_blank_after:bool -> 'a grammar -> blank -> 'a grammar
 
 (* [ignore_next_blank g] prevent parsing blank at the beginning of g.
    if g parses the empty input, blank will be parsed normally by the rest
