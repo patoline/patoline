@@ -235,7 +235,7 @@ clean:
 	- cd html; rm -f *
 
 distclean: clean
-	- rm pa_ocaml pa_ocaml.byt
+	- rm -f pa_ocaml pa_ocaml.byt
 
 doc: glr.mli
 	ocamldoc -d html -html glr.mli
