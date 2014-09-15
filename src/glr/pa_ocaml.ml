@@ -10,7 +10,7 @@ open Longident
 
 include Pa_ocaml_prelude
 
-let _ = parser_locate locate merge
+let _ = parser_locate locate (*merge*) locate2
 
 module Make = functor (Initial:Extension) -> struct
 

@@ -16,6 +16,13 @@ let line_beginning (lazy b) = b.bol
 
 let line (lazy b) = b.contents
 
+let lexing_position str pos =
+    let bol = line_beginning str in
+    Lexing.({ pos_fname = fname str; 
+	      pos_lnum = line_num str;
+	      pos_cnum = bol +pos;
+	      pos_bol = bol })
+
 let rec read (lazy b as b0) i =
   if b.empty then ('\255', b0, 0) else
   match compare i b.length with

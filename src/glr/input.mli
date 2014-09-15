@@ -30,6 +30,10 @@ val buffer_from_string : ?filename:string -> string -> buffer
 (* [empty_buffer] the name says it all.*)
 val empty_buffer : string -> int -> int -> buffer
 
+(** [lexing_position buf pos]: return a record of type Lexing position from a buffer
+    and a position in this buffer *)
+val lexing_position : buffer -> int -> Lexing.position
+
 (* The next functions allow to access the internal
    content of a buffer in the current implementation. *)
 val is_empty : buffer -> bool

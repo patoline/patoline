@@ -432,8 +432,8 @@ let sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -
 let fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
   = fun l1 l2 -> sequence l1 l2 (fun x f -> f x)
 
-let fsequence_position : 'a grammar -> (buffer -> int -> buffer -> int -> 'a -> 'b) grammar -> 'b grammar
-  = fun l1 l2 -> sequence_position l1 l2 (fun x f s p s' p' -> f s p s' p' x)
+let fsequence_position : 'a grammar -> ('a -> buffer -> int -> buffer -> int -> 'b) grammar -> 'b grammar
+  = fun l1 l2 -> sequence_position l1 l2 (fun x f -> f x)
 
 let sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd) -> 'd grammar
   = fun l1 l2 l3 g ->

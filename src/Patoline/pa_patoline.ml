@@ -31,7 +31,7 @@ let _ = spec := !spec @
 		  ]
 
 
-let _ = parser_locate locate merge
+let _ = parser_locate locate locate2
 
 (****************************************************************************
  * Things that have to do with comments and things to be ignored            *
@@ -488,7 +488,7 @@ struct
   let _ = set_grammar paragraph (
 			change_layout (
 			    parser
-			      e:paragraph_elt es:paragraph_elt** ->
+			      e:paragraph_elt es:{es:paragraph_elt}** ->
 						 let es = List.flatten (List.map (fun r -> r false) es) in
 						 fun indent -> e indent @ es
 			  ) blank1)

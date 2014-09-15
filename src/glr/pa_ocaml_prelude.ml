@@ -135,11 +135,15 @@ let end_pos loc =
   loc.Location.loc_end
 
 let locate g =
-  filter_position g Lexing.(fun fname l bol pos l' bol' pos' ->
-    if (l',pos') < (l, pos) || bol'+pos' < bol+pos then
-      Printf.eprintf "Bad position %d:%d+%d %d:%d+%d\n%!" l bol pos l' bol' pos';
-    let s = { pos_fname = fname; pos_lnum = l; pos_cnum = bol+pos; pos_bol = bol } in
-    let e = { pos_fname = fname; pos_lnum = l'; pos_cnum = bol'+pos'; pos_bol = bol' } in
+  apply_position (fun x str pos str' pos' ->
+		  let s = Input.lexing_position str pos in
+		  let e = Input.lexing_position str' pos' in
+		  Location.({loc_start = s; loc_end = e; loc_ghost = false}, x)) g
+
+let locate2 str pos str' pos' =
+  Lexing.(
+    let s = Input.lexing_position str pos in
+    let e = Input.lexing_position str' pos' in
     Location.({loc_start = s; loc_end = e; loc_ghost = false}))
 
 let rec merge = function
@@ -196,11 +200,11 @@ let next_exp = function
 
   let structure =
     parser
-      l : structure_item* -> List.flatten l
+      l : structure_item** -> List.flatten l
 
   let signature =
     parser
-      l : signature_item* -> List.flatten l
+      l : signature_item** -> List.flatten l
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
 

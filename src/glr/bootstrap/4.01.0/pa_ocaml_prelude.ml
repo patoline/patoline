@@ -102,37 +102,21 @@ let ghost loc = let open Location in { loc with loc_ghost = true }
 let start_pos loc = loc.Location.loc_start
 let end_pos loc = loc.Location.loc_end
 let locate g =
-  filter_position g
-    (let open Lexing in
-       fun fname  ->
-         fun l  ->
-           fun bol  ->
-             fun pos  ->
-               fun l'  ->
-                 fun bol'  ->
-                   fun pos'  ->
-                     if
-                       ((l', pos') < (l, pos)) ||
-                         ((bol' + pos') < (bol + pos))
-                     then
-                       Printf.eprintf "Bad position %d:%d+%d %d:%d+%d\n%!" l
-                         bol pos l' bol' pos';
-                     (let s =
-                        {
-                          pos_fname = fname;
-                          pos_lnum = l;
-                          pos_cnum = (bol + pos);
-                          pos_bol = bol
-                        } in
-                      let e =
-                        {
-                          pos_fname = fname;
-                          pos_lnum = l';
-                          pos_cnum = (bol' + pos');
-                          pos_bol = bol'
-                        } in
-                      let open Location in
-                        { loc_start = s; loc_end = e; loc_ghost = false }))
+  apply_position
+    (fun x  ->
+       fun str  ->
+         fun pos  ->
+           fun str'  ->
+             fun pos'  ->
+               let s = Input.lexing_position str pos in
+               let e = Input.lexing_position str' pos' in
+               let open Location in
+                 ({ loc_start = s; loc_end = e; loc_ghost = false }, x)) g
+let locate2 str pos str' pos' =
+  let open Lexing in
+    let s = Input.lexing_position str pos in
+    let e = Input.lexing_position str' pos' in
+    let open Location in { loc_start = s; loc_end = e; loc_ghost = false }
 let rec merge =
   function
   | [] -> assert false
@@ -217,12 +201,12 @@ module Initial =
     let structure =
       Glr.apply (fun l  -> List.flatten l)
         (Glr.apply List.rev
-           (Glr.fixpoint []
+           (Glr.fixpoint' []
               (Glr.apply (fun x  -> fun l  -> x :: l) structure_item)))
     let signature =
       Glr.apply (fun l  -> List.flatten l)
         (Glr.apply List.rev
-           (Glr.fixpoint []
+           (Glr.fixpoint' []
               (Glr.apply (fun x  -> fun l  -> x :: l) signature_item)))
     type type_prio =
       | TopType

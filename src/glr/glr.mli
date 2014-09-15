@@ -102,8 +102,12 @@ val regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
     the input which return [y] and returns [action x y] *)
 val sequence : 'a grammar -> 'b grammar -> ('a -> 'b -> 'c) -> 'c grammar
 
+val sequence_position : 'a grammar -> 'b grammar -> ('a -> 'b -> buffer -> int -> buffer -> int -> 'c) -> 'c grammar
+
 (** [fsequence p1 p2 := fun l1 l2 -> sequence l1 l2 (fun x f -> f x)] *)
 val fsequence : 'a grammar -> ('a -> 'b) grammar -> 'b grammar
+
+val fsequence_position : 'a grammar -> ('a -> buffer -> int -> buffer -> int -> 'b) grammar -> 'b grammar
 
 (** [sequence3 p1 p2 p3 action =
     fun l1 l2 l3 g ->

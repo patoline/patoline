@@ -3,7 +3,7 @@ open Parsetree
 open Longident
 open Pa_ocaml_prelude
 
-let _ = parser_locate locate merge
+let _ = parser_locate locate (*merge*) locate2
 
 type action =
   | Default 
@@ -85,53 +85,56 @@ let mkpatt _loc (id, p) = match p, !do_locate with
   | Some p, Some _ -> 
      loc_pat _loc (Ppat_alias (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p]) , (id_loc (id) _loc)))
 
-let filter _loc r =
-  match !do_locate with
-    None -> r
-  | Some(f,_) -> 
+let mkpatt' _loc (id,p) =  match p with 
+    None -> pat_ident _loc id
+  | Some p -> loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
+
+let filter _loc visible r =
+  match !do_locate, visible with
+  | Some(f,_), true -> 
      loc_expr _loc (Pexp_apply(f,["", r]))
+  | _ -> r
 
 let rec build_action _loc ids e =
 #ifversion < 4.00
   let ids = Array.to_list (Array.mapi (fun i (id,x) ->
-		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) (Array.of_list ids)) in
+		       (if id = "_" then "_unnamed_" ^ string_of_int i, x, false else id, x, true)) (Array.of_list ids)) in
 #else
   let ids = List.mapi (fun i (id, x) ->
-		       ((if id = "_" then "_unnamed_" ^ string_of_int i else id), x)) ids in
+		       (if id = "_" then "_unnamed_" ^ string_of_int i, x, false else id, x, true)) ids in
 #endif
   let e = match !do_locate with
       None -> e
-    | Some(_,merge) ->
-      match ids with
-      | [] -> e
-      | [id,_] ->
-	 loc_expr _loc (Pexp_let(Nonrecursive, [
-	   value_binding _loc (pat_ident _loc "_loc") (exp_ident _loc ("_loc_"^id))], e))
-      | id1::id2::ids ->
-	 let all_loc = List.map (fun (id, _) -> exp_ident _loc ("_loc_"^id)) (List.rev (id2::id1::ids)) in
-	loc_expr _loc (Pexp_let(Nonrecursive, [
-	  value_binding _loc (pat_ident _loc "_loc")
-	  (loc_expr _loc (Pexp_apply(merge, [
-	    "", exp_list _loc all_loc])))], e))
+    | Some(_,locate2) ->
+       exp_fun _loc "__loc__start__buf" (
+	 exp_fun _loc "__loc__start__pos" (
+	   exp_fun _loc "__loc__end__buf" (
+	     exp_fun _loc "__loc__end__pos" (
+	       loc_expr _loc (Pexp_let(Nonrecursive, [
+	         value_binding _loc (pat_ident _loc "_loc")
+			       (exp_apply _loc locate2 [exp_ident _loc "__loc__start__buf";
+							exp_ident _loc "__loc__start__pos";
+							exp_ident _loc "__loc__end__buf";
+							exp_ident _loc "__loc__end__pos"])], e))))))
   in
-  List.fold_left (fun e id -> 
-    match !do_locate with
-      None ->
-      loc_expr _loc (pexp_fun("", None, mkpatt _loc id, e))
-    | Some(_) ->  
+  List.fold_left (fun e (id,x,visible) -> 
+    match !do_locate, visible with
+    | Some(_), true ->  
       loc_expr _loc (
 	pexp_fun("", None,
-	  mkpatt _loc id,
+	  mkpatt _loc (id,x),
 	  loc_expr _loc (Pexp_let(Nonrecursive, 
 	    [value_binding _loc (loc_pat _loc (Ppat_tuple([
-		loc_pat _loc (Ppat_var (id_loc ("_loc_"^fst id) _loc));
-		loc_pat _loc (Ppat_var (id_loc (fst id) _loc))])))
-	     (loc_expr _loc (Pexp_ident((id_loc (Lident (fst id)) _loc))))], 
+		loc_pat _loc (Ppat_var (id_loc ("_loc_"^id) _loc));
+		loc_pat _loc (Ppat_var (id_loc id _loc))])))
+	     (loc_expr _loc (Pexp_ident((id_loc (Lident id) _loc))))], 
 	    e))))
+    | _ ->
+      loc_expr _loc (pexp_fun("", None, mkpatt' _loc (id,x), e))
   ) e (List.rev ids)
 
-let apply_option _loc opt e = 
-  filter _loc (match opt with
+let apply_option _loc opt visible e = 
+  filter _loc visible (match opt with
     `Once -> e
   | `Option(strict,d) ->
      let f = if strict then "option'" else "option" in
@@ -281,7 +284,8 @@ struct
 
   let glr_left_member =
     parser
-    | l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }+ -> l
+    | i:{id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt)} 
+      l:{ id: glr_ident s:glr_sequence opt:glr_option -> `Normal(id,s,opt) | dash -> `Ignore }* -> i::l
 
   let glr_let = Glr.declare_grammar "glr_let" 
   let _ = Glr.set_grammar glr_let (
@@ -312,25 +316,36 @@ struct
 		 None -> def a 
 	       | Some cond -> def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
     in
-    let rec fn ids l = match l with
+    let rec fn first ids l = match l with
       [] -> assert false
-    | `Ignore::ls -> exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [fn ids ls]
+    | `Ignore::ls -> assert false
+    | `Normal(id,e,opt)::`Ignore::ls -> 
+       let e =  exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [e] in
+       fn first ids (`Normal(id,e,opt)::ls)
     | [`Normal(id,e,opt)] ->
-      let e = apply_option _loc opt e in
-(*      let f = match !do_locate with
-	  None -> "apply"
-	| Some _ -> "apply_position"
-      in*)
-      exp_apply _loc (exp_glr_fun _loc "apply") [build_action _loc (id::ids) action; e]
+      let e = apply_option _loc opt (fst id <> "_") e in
+      let f = match !do_locate, first with
+	| Some _, true -> "apply_position"
+	| _ -> "apply"
+      in
+      exp_apply _loc (exp_glr_fun _loc f) [build_action _loc (id::ids) action; e]
     | [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
-      let e = apply_option _loc opt e in
-      let e' = apply_option _loc opt' e' in
-       exp_apply _loc (exp_glr_fun _loc "sequence") [e; e'; build_action _loc (id::id'::ids) action]
+      let e = apply_option _loc opt (fst id <> "_") e in
+      let e' = apply_option _loc opt' (fst id' <> "_") e' in
+      let f = match !do_locate, first with
+	| Some _, true -> "sequence_position"
+	| _ -> "sequence"
+      in
+       exp_apply _loc (exp_glr_fun _loc f) [e; e'; build_action _loc (id::id'::ids) action]
     | `Normal(id,e,opt) :: ls ->
-      let e = apply_option _loc opt e in      
-      exp_apply _loc (exp_glr_fun _loc "fsequence") [e; fn (id::ids) ls]
+      let e = apply_option _loc opt (fst id <> "_") e in 
+      let f = match !do_locate, first with
+	| Some _, true -> "fsequence_position"
+	| _ -> "fsequence"
+      in
+      exp_apply _loc (exp_glr_fun _loc f) [e; fn false (id::ids) ls]
     in
-    let res = fn [] l in
+    let res = fn true [] l in
     let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
     def, condition, res
     )
