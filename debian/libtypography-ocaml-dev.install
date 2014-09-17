@@ -14,8 +14,8 @@ usr/lib/ocaml/Typography/Pdf.*
 src/Drivers/Pdf/Pdf.META usr/lib/ocaml/Typography/META.d
 usr/lib/ocaml/Typography/pdf_parser.*
 usr/lib/ocaml/Typography/Typography.*
-usr/lib/ocaml/Typography/Util2.cmi
 usr/share/patoline/hyphen/*
 usr/lib/ocaml/bibi/*
 usr/lib/ocaml/rbuffer/*
 usr/lib/ocaml/patoplot/*
+usr/lib/ocaml/patfonts/*

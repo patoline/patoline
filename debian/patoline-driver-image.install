@@ -1,2 +1,2 @@
-usr/lib/ocaml/Typography/Image.*
-src/Drivers/Image/Image.META usr/lib/ocaml/Typography/META.d
+usr/lib/ocaml/Typography/DriverImage.*
+src/Drivers/DriverImage/DriverImage.META usr/lib/ocaml/Typography/META.d

@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Florian Hatat <florian.hatat@univ-savoie.fr>
 Uploaders: Tom Hirschowitz <tom.hirschowitz@univ-savoie.fr>
 Build-Depends: debhelper (>= 7.0.50~), dh-ocaml, ocaml-base-nox, ocaml-findlib, dypgen (>= 0.20120619), libcamomile-ocaml-dev, ocaml-findlib, libzip-ocaml-dev, libcamlimages-ocaml-dev, liblablgtk2-gl-ocaml-dev, liblablgl-ocaml-dev, libcairo-ocaml-dev, libsqlite3-ocaml-dev, libocamlnet-ocaml-dev, libcryptokit-ocaml-dev
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Homepage: http://www.patoline.org/
 Vcs-Darcs: http://patoline.org/darcs/patoline
 
@@ -41,7 +41,7 @@ Depends: ${misc:Depends}
 Conflicts: fonts-oflb-asana-math
 Provides: fonts-oflb-asana-math
 Replaces: fonts-oflb-asana-math
-Description:  extended smart Unicode Math font
+Description: Extended smart Unicode Math font
  Asana Math provides rich Unicode coverage of the Maths-related blocks and
  support for the MATH Opentype table which means that it can be used to typeset
  documents with complex mathematical requirements using tools like XeTeX.
@@ -173,3 +173,22 @@ Description: Patoline format using Latin Modern fonts
  One may use this format in a desperate attempt to trick someone into
  thinking that a document could have been produced by (La)TeX, yet using the
  full power of Patoline.
+
+Package: libunicodelib-ocaml-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}
+Provides: libunicodelib-ocaml
+Description: Simple yet complete Unicode library for OCaml
+
+Package: libimagelib-ocaml-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}
+Provides: libimagelib-ocaml
+Description: Simple yet powerful bitmap image library for OCaml
+
+Package: libglr-ocaml-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${F:OCamlRun}
+Provides: libglr-ocaml
+Description: GLR parser for OCaml
+

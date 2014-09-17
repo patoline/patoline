@@ -1,3 +1,9 @@
+patoline (0~20140914) unstable; urgency=medium
+
+  * Sync with upstream: here come glr and pa_ocaml.
+
+ -- Florian Hatat <florian.hatat@univ-savoie.fr>  Sun, 14 Sep 2014 08:41:42 +0200
+
 patoline (0~20130826) unstable; urgency=low
 
   * Sync with upstream
