@@ -1533,15 +1533,15 @@ let class_definition =
 let module_expr = declare_grammar "module_expr"
 let module_type = declare_grammar "module_type"
 
-let pexp_list _loc ?_loc_cl l =
+let pexp_list _loc ?loc_cl l =
   if l = [] then
     loc_expr _loc (pexp_construct(id_loc (Lident "[]") _loc, None))
   else
-    let _loc_cl = match _loc_cl with None -> _loc | Some pos -> pos in
+    let loc_cl = match loc_cl with None -> _loc | Some pos -> pos in
     List.fold_right (fun (x,pos) acc ->
-		     let _loc = merge2 pos _loc_cl in
+		     let _loc = merge2 pos loc_cl in
 		     loc_expr _loc (pexp_construct(id_loc (Lident "::") _loc, Some (loc_expr _loc (Pexp_tuple [x;acc])))))
-		    l (loc_expr _loc_cl (pexp_construct(id_loc (Lident "[]") _loc_cl, None)))
+		    l (loc_expr loc_cl (pexp_construct(id_loc (Lident "[]") loc_cl, None)))
 
 (* Expressions *)
 let expression_base = memoize1 (fun lvl ->
@@ -1601,7 +1601,7 @@ let expression_base = memoize1 (fun lvl ->
   | l:tag_name -> (Atom, loc_expr _loc (Pexp_variant(l,None)))
   | STR("[|") l:expression_list STR("|]") -> (Atom, loc_expr _loc (Pexp_array (List.map fst l)))
   | STR("[") l:expression_list cl:STR("]") ->
-	(Atom, loc_expr _loc (pexp_list _loc ~_loc_cl l).pexp_desc)
+	(Atom, loc_expr _loc (pexp_list _loc ~loc_cl:_loc_cl l).pexp_desc)
   | STR("{") e:{e:(expression_lvl (next_exp Seq)) with_kw}? l:record_list STR("}") ->
       (Atom, loc_expr _loc (Pexp_record(l,e)))
   | while_kw e:expression do_kw e':expression done_kw ->

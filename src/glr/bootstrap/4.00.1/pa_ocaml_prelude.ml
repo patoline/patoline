@@ -749,8 +749,7 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_string e))))]
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let capitalized_ident =
       Glr.alternatives'
         [Glr.apply (fun id  -> id)
@@ -760,8 +759,7 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_string e))))]
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let lowercase_ident =
       Glr.alternatives'
         [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
@@ -771,8 +769,7 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_string e))))]
+                   (fun e  _  _  _  _  -> push_pop_string e))))]
     let reserved_symbols =
       ref
         ["#";
@@ -852,29 +849,29 @@ module Initial =
     let mutable_kw = key_word "mutable"
     let mutable_flag =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> Mutable) mutable_kw;
-        Glr.apply (fun _unnamed_0  -> Immutable) (Glr.empty ())]
+        [Glr.apply (fun _  -> Mutable) mutable_kw;
+        Glr.apply (fun _  -> Immutable) (Glr.empty ())]
     let private_kw = key_word "private"
     let private_flag =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> Private) private_kw;
-        Glr.apply (fun _unnamed_0  -> Public) (Glr.empty ())]
+        [Glr.apply (fun _  -> Private) private_kw;
+        Glr.apply (fun _  -> Public) (Glr.empty ())]
     let virtual_kw = key_word "virtual"
     let virtual_flag =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> Virtual) virtual_kw;
-        Glr.apply (fun _unnamed_0  -> Concrete) (Glr.empty ())]
+        [Glr.apply (fun _  -> Virtual) virtual_kw;
+        Glr.apply (fun _  -> Concrete) (Glr.empty ())]
     let rec_kw = key_word "rec"
     let rec_flag =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> Recursive) rec_kw;
-        Glr.apply (fun _unnamed_0  -> Nonrecursive) (Glr.empty ())]
+        [Glr.apply (fun _  -> Recursive) rec_kw;
+        Glr.apply (fun _  -> Nonrecursive) (Glr.empty ())]
     let to_kw = key_word "to"
     let downto_kw = key_word "downto"
     let downto_flag =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> Upto) to_kw;
-        Glr.apply (fun _unnamed_0  -> Downto) downto_kw]
+        [Glr.apply (fun _  -> Upto) to_kw;
+        Glr.apply (fun _  -> Downto) downto_kw]
     let method_kw = key_word "method"
     let object_kw = key_word "object"
     let class_kw = key_word "class"
@@ -935,9 +932,7 @@ module Initial =
           (Glr.fsequence (Glr.string "int" "int")
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
-                   (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_int e))))]
+                   (Glr.char '$' '$') (fun e  _  _  _  _  -> push_pop_int e))))]
     let int32_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Int32.of_string i)
@@ -947,8 +942,7 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_int32 e))))]
+                   (fun e  _  _  _  _  -> push_pop_int32 e))))]
     let int64_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Int64.of_string i)
@@ -958,8 +952,7 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_int64 e))))]
+                   (fun e  _  _  _  _  -> push_pop_int64 e))))]
     let nat_int_lit =
       Glr.alternatives'
         [Glr.apply (fun i  -> Nativeint.of_string i)
@@ -969,18 +962,17 @@ module Initial =
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
-                      push_pop_natint e))))]
+                   (fun e  _  _  _  _  -> push_pop_natint e))))]
     let bool_lit =
       Glr.alternatives'
-        [Glr.apply (fun _unnamed_0  -> "false") false_kw;
-        Glr.apply (fun _unnamed_0  -> "true") true_kw;
+        [Glr.apply (fun _  -> "false") false_kw;
+        Glr.apply (fun _  -> "true") true_kw;
         Glr.fsequence (Glr.char '$' '$')
           (Glr.fsequence (Glr.string "bool" "bool")
              (Glr.fsequence (Glr.char ':' ':')
                 (Glr.sequence (expression_lvl (next_exp App))
                    (Glr.char '$' '$')
-                   (fun e  _unnamed_1  _unnamed_2  _unnamed_3  _unnamed_4  ->
+                   (fun e  _  _  _  _  ->
                       if push_pop_bool e then "true" else "false"))))]
     let entry_points:
       (string*

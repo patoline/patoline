@@ -14,6 +14,10 @@ type buffer
    code should not rely on this feature ... *)
 val read : buffer -> int -> char * buffer * int
 
+(* similar to the previous one, returning only the character
+   read *)
+val get : buffer -> int -> char
+
 (* [buffer_from_channel filename ch] build
    a buffer from a channel. The provided filename
    is only used in exceptions *)

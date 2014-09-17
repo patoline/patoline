@@ -66,8 +66,7 @@ pa_byt_main.ml: pa_main.ml
 	cp pa_main.ml pa_byt_main.ml
 
 pa_byt_main.cmo: pa_byt_main.ml pa_compose.cmo input.cmi pa_ocaml.cmo
-	export BYTE=1
-	$(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
+	export BYTE=1; $(OCAMLC) -pp ./pa_ocaml $(COMPILER_INC) -c $<
 
 pa_ocaml.byt: glr.cma pa_ocaml_prelude.cmo pa_parser.cmo pa_ocaml.cmo pa_compose.cmo pa_byt_main.cmo
 	$(OCAMLC) $(COMPILER_INC) -o $@ unix.cma str.cma $(COMPILER_LIBS) $(COMPILER_TOP) $^

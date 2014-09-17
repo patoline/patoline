@@ -79,15 +79,19 @@ let exp_Cons_fun _loc =
 let exp_Cons_rev_fun _loc =
   exp_fun _loc "x" (exp_fun _loc "l" (exp_Cons _loc (exp_ident _loc "x") (exp_apply _loc (exp_list_fun _loc "rev") [exp_ident _loc "l"])))
 
+let ppat_alias _loc p id =
+  if id = "_" then p else
+    loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
+
 let mkpatt _loc (id, p) = match p, !do_locate with 
     None, _ -> pat_ident _loc id
-  | Some p, None -> loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
+  | Some p, None -> ppat_alias _loc p id
   | Some p, Some _ -> 
-     loc_pat _loc (Ppat_alias (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p]) , (id_loc (id) _loc)))
+     ppat_alias _loc (loc_pat _loc (Ppat_tuple[loc_pat _loc Ppat_any; p])) id
 
 let mkpatt' _loc (id,p) =  match p with 
     None -> pat_ident _loc id
-  | Some p -> loc_pat _loc (Ppat_alias (p, (id_loc (id) _loc)))
+  | Some p -> ppat_alias _loc p id
 
 let filter _loc visible r =
   match !do_locate, visible with
@@ -95,17 +99,33 @@ let filter _loc visible r =
      loc_expr _loc (Pexp_apply(f,["", r]))
   | _ -> r
 
-let rec build_action _loc ids e =
-#ifversion < 4.00
-  let ids = Array.to_list (Array.mapi (fun i (id,x) ->
-		       (if id = "_" then "_unnamed_" ^ string_of_int i, x, false else id, x, true)) (Array.of_list ids)) in
-#else
-  let ids = List.mapi (fun i (id, x) ->
-		       (if id = "_" then "_unnamed_" ^ string_of_int i, x, false else id, x, true)) ids in
-#endif
-  let e = match !do_locate with
-      None -> e
-    | Some(_,locate2) ->
+let push_frame, pop_frame, push_location, pop_location =
+  let loc_tbl = Stack.create () in
+  (fun () -> 
+   Stack.push (Hashtbl.create 23) loc_tbl),
+  (fun () ->
+   let h = try Stack.pop loc_tbl with Stack.Empty -> assert false in
+   Hashtbl.iter (fun l _ -> 
+		 try let h' = Stack.top loc_tbl in
+		     Hashtbl.replace h' l ()
+		 with Stack.Empty -> ()) h),
+  (fun id -> 
+   try 
+     let h = Stack.top loc_tbl in
+     Hashtbl.replace h id ()
+   with Stack.Empty -> ()),
+  (fun id ->
+   try
+     let h = Stack.top loc_tbl in
+     if Hashtbl.mem h id then
+       (Hashtbl.remove h id; true)
+     else false
+   with Stack.Empty -> false)
+
+
+let rec build_action _loc occur_loc ids e =
+  let e = match !do_locate, occur_loc with
+    | Some(_,locate2), true ->
        exp_fun _loc "__loc__start__buf" (
 	 exp_fun _loc "__loc__start__pos" (
 	   exp_fun _loc "__loc__end__buf" (
@@ -116,8 +136,9 @@ let rec build_action _loc ids e =
 							exp_ident _loc "__loc__start__pos";
 							exp_ident _loc "__loc__end__buf";
 							exp_ident _loc "__loc__end__pos"])], e))))))
+    | _ -> e
   in
-  List.fold_left (fun e (id,x,visible) -> 
+  List.fold_left (fun e ((id,x),visible) -> 
     match !do_locate, visible with
     | Some(_), true ->  
       loc_expr _loc (
@@ -194,6 +215,8 @@ struct
   let glr_rules = Glr.declare_grammar "glr_rules"
   let glr_rule = Glr.declare_grammar "glr_rule"
 
+  let location_name_re = {|_loc\([a-zA-Z0-9_']*\)|}
+
   let glr_parser = 
     parser
     | STR("parser_locate") filter2:(expression_lvl (next_exp App))
@@ -201,6 +224,14 @@ struct
       (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
     | parser_kw p:glr_rules -> (Atom, p)
     | parser_kw CHR('*') p:glr_rules -> (Atom, exp_apply _loc (exp_glr_fun _loc "lists") [p])
+    | (id,id'):RE(location_name_re)[(groupe 0, groupe 1)] ->
+	       (let id' = 	       
+		 if id' = "" then "" else
+		   if (String.length id' > 1 && id'.[0] = '_') then String.sub id' 1 (String.length id' - 1)
+		   else raise Glr.Give_up
+		in
+		push_location id';
+	        (Atom, exp_ident _loc id))
 
   let extra_expressions = glr_parser::extra_expressions
 
@@ -307,48 +338,56 @@ struct
 
   let _ = Glr.set_grammar glr_rule (
     parser
-    | def:glr_let l:glr_left_member condition:glr_cond action:glr_action ->
-	let iter, action = match action with
-	Normal a -> false, a
-    | Default -> false, default_action _loc l
-    | DepSeq(def, cond, a) ->
-        true, match cond with
-		 None -> def a 
-	       | Some cond -> def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
-    in
-    let rec fn first ids l = match l with
-      [] -> assert false
-    | `Ignore::ls -> assert false
-    | `Normal(id,e,opt)::`Ignore::ls -> 
-       let e =  exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [e] in
-       fn first ids (`Normal(id,e,opt)::ls)
-    | [`Normal(id,e,opt)] ->
-      let e = apply_option _loc opt (fst id <> "_") e in
-      let f = match !do_locate, first with
-	| Some _, true -> "apply_position"
-	| _ -> "apply"
+    | def:glr_let l:glr_left_member condition:glr_cond ->> let _ = push_frame () in action:glr_action ->
+      let iter, action = match action with
+	| Normal a -> false, a
+	| Default -> false, default_action _loc l
+	| DepSeq(def, cond, a) ->
+           true, match cond with
+		 | None -> def a 
+		 | Some cond ->
+		    def (loc_expr _loc (Pexp_ifthenelse(cond,a,Some (exp_apply _loc (exp_glr_fun _loc "fail") [exp_string _loc ""]))))
       in
-      exp_apply _loc (exp_glr_fun _loc f) [build_action _loc (id::ids) action; e]
-    | [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
-      let e = apply_option _loc opt (fst id <> "_") e in
-      let e' = apply_option _loc opt' (fst id' <> "_") e' in
-      let f = match !do_locate, first with
-	| Some _, true -> "sequence_position"
-	| _ -> "sequence"
+      let occur_loc = pop_location "" in
+      let rec fn first ids l = match l with
+	  [] -> assert false
+	| `Ignore::ls -> assert false
+	| `Normal(id,e,opt)::`Ignore::ls -> 
+	   let e =  exp_apply _loc (exp_glr_fun _loc "ignore_next_blank") [e] in
+	   fn first ids (`Normal(id,e,opt)::ls)
+	| [`Normal(id,e,opt)] ->
+	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	   let e = apply_option _loc opt occur_loc_id e in
+	   let f = match !do_locate, first && occur_loc with
+	     | Some _, true -> "apply_position"
+	     | _ -> "apply"
+	   in
+	   exp_apply _loc (exp_glr_fun _loc f) [build_action _loc occur_loc ((id,occur_loc_id)::ids) action; e]
+	| [`Normal(id,e,opt); `Normal(id',e',opt') ] ->
+	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	   let occur_loc_id' = fst id' <> "_" && pop_location (fst id') in
+	   let e = apply_option _loc opt occur_loc_id e in
+	   let e' = apply_option _loc opt' occur_loc_id' e' in
+	   let f = match !do_locate, first && occur_loc with
+	     | Some _, true -> "sequence_position"
+	     | _ -> "sequence"
+	   in
+	   exp_apply _loc (exp_glr_fun _loc f) [e; e'; build_action _loc occur_loc 
+								    ((id,occur_loc_id)::(id',occur_loc_id')::ids) action]
+	| `Normal(id,e,opt) :: ls ->
+	   let occur_loc_id = fst id <> "_" && pop_location (fst id) in
+	   let e = apply_option _loc opt occur_loc_id e in 
+	   let f = match !do_locate, first && occur_loc with
+	     | Some _, true -> "fsequence_position"
+	     | _ -> "fsequence"
+	   in
+	   exp_apply _loc (exp_glr_fun _loc f) [e; fn false ((id,occur_loc_id)::ids) ls]
       in
-       exp_apply _loc (exp_glr_fun _loc f) [e; e'; build_action _loc (id::id'::ids) action]
-    | `Normal(id,e,opt) :: ls ->
-      let e = apply_option _loc opt (fst id <> "_") e in 
-      let f = match !do_locate, first with
-	| Some _, true -> "fsequence_position"
-	| _ -> "fsequence"
-      in
-      exp_apply _loc (exp_glr_fun _loc f) [e; fn false (id::ids) ls]
-    in
-    let res = fn true [] l in
-    let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
-    def, condition, res
-    )
+      let res = fn true [] l in
+      pop_frame ();
+      let res = if iter then exp_apply _loc (exp_glr_fun _loc "iter") [res] else res in
+      def, condition, res
+     )
 
   let glr_rules_aux = 
     parser

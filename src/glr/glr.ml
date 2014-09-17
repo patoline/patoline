@@ -20,8 +20,6 @@ let collect_tree t =
   in
   List.sort compare (fn [] t)
 
-let max_hash = Hashtbl.create 101
-
 module Pos = struct
   type t = buffer * int
   let compare = fun (b,p) (b',p') -> 
@@ -45,16 +43,12 @@ let blank_regexp r =
   in
   fn
 
-type error_position_key = int
-
-let next_key =
-  let c = ref 0 in
-  fun () ->
-  let k = !c in c := k + 1; k
-
 type grouped = {
   blank: blank;
-  err_key:error_position_key;
+  mutable max_err_pos:int;
+  mutable max_err_buf:buffer;
+  mutable max_err_col:int;
+  mutable err_info: string_tree;
 }
 
 type next = {
@@ -69,12 +63,21 @@ type 'a grammar = {
   mutable parse : 'b. grouped -> buffer -> int -> next option -> (buffer -> int -> buffer -> int -> buffer -> int -> 'a -> 'b) -> 'b;
 }
 
-let parse_error grouped msg line pos =
-  let key = grouped.err_key in
-  let (line', pos', msgs) = try Hashtbl.find max_hash key with Not_found -> (line, -1, Empty) in
-  let c = Pos.compare (line, pos) (line', pos') in
-  if c = 0 then Hashtbl.replace max_hash key (line, pos, msg @@ msgs) 
-  else if c > 0 then Hashtbl.replace max_hash key (line, pos, msg);
+let record_error grouped msg str col =
+  let pos = Input.line_beginning str + col in
+  let pos' = grouped.max_err_pos in
+  let c = compare pos pos' in
+  if c = 0 then grouped.err_info <- msg @@ grouped.err_info
+  else if c > 0 then
+    begin
+      grouped.max_err_pos <- pos;
+      grouped.max_err_buf <- str;
+      grouped.max_err_col <- col;
+      grouped.err_info <- msg;
+    end
+
+let parse_error grouped msg str pos =
+  record_error grouped msg str pos;
   raise Give_up
  
 let accept_empty g = Lazy.force g.accept_empty
@@ -93,15 +96,11 @@ let test grouped next str p =
     None -> true
   | Some next -> 
      let c, _, _ = read str p in
-     let res = get next.accepted_char c in
+     let res = mem next.accepted_char c in
      if not res then
        begin
-	 let key = grouped.err_key in
-	 let (str', p', msgs) = try Hashtbl.find max_hash key with Not_found -> (str, -1, Empty) in
-	 let c = Pos.compare (str, p) (str', p') in
 	 let msg = next.first_syms in
-	 if c = 0 then Hashtbl.replace max_hash key (str, p, msg @@ msgs)
-	 else if c > 0 then Hashtbl.replace max_hash key (str, p, msg)
+	 record_error grouped msg str p
        end;
      res
 
@@ -623,38 +622,35 @@ let alternatives' : 'a grammar list -> 'a grammar
 
 let parse_buffer grammar blank str =
   let grammar = sequence grammar (eof ()) (fun x _ -> x) in
-  let key = next_key () in
-  let grouped = { blank; err_key = key } in
+  let grouped = { blank; max_err_pos = -1; 
+		  max_err_buf = str;
+		  max_err_col = -1;
+		  err_info = Empty }
+  in
   let str, pos = apply_blank grouped str 0 in
-  let a = try
+  try
       grammar.parse grouped str pos None (fun _ _ _ _ _ _ x -> x) 
     with Give_up -> 
-      let str, pos, msgs = try Hashtbl.find max_hash key with Not_found -> str, 0, Empty in
-      raise (Parse_error (fname str, line_num str, pos, collect_tree msgs))
-  in
-  Hashtbl.remove max_hash key;
-  a
+      let str = grouped.max_err_buf in
+      let pos = grouped.max_err_col in
+      let msgs = grouped.err_info in
+        raise (Parse_error (fname str, line_num str, pos, collect_tree msgs))
 
 let partial_parse_buffer grammar blank str pos = 
-  let key = next_key () in
-  let grouped = { blank; err_key = key } in
-  let m = ref PosMap.empty in
-  let cont l c l' c' l'' c'' x =
-    (try 
-	let old = PosMap.find (l', c') !m in
-	m := PosMap.add (l'', c'') (x :: old) !m				 
-      with Not_found ->
-	m := PosMap.add (l'', c'') [x] !m);
-    raise Give_up
+  let grouped = { blank; max_err_pos = -1; 
+		  max_err_buf = str;
+		  max_err_col = -1;
+		  err_info = Empty }
   in
+  let cont l c l' c' l'' c'' x = (l'',c'',x) in
   let str, pos = apply_blank grouped str pos in
-  (try
-    ignore (grammar.parse grouped str pos None cont);
-    assert false
+  try
+    grammar.parse grouped str pos None cont;
   with Give_up -> 
-    ());
-  Hashtbl.remove max_hash key;
-  PosMap.fold (fun (str'',pos'') la acc -> List.rev_append (List.map (fun a -> (str'',pos'',a)) la) acc) !m []
+    let str = grouped.max_err_buf in
+    let pos = grouped.max_err_col in
+    let msgs = grouped.err_info in
+    raise (Parse_error (fname str, line_num str, pos, collect_tree msgs))
 
 let partial_parse_string ?(filename="") grammar blank str = 
   let str = buffer_from_string ~filename str in

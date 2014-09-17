@@ -29,6 +29,13 @@ let rec read (lazy b as b0) i =
     -1 -> b.contents.[i], b0, i+1
   | 0 -> '\n', b.next, 0
   | _ -> read b.next (b.length - i - 1)
+
+let rec get (lazy b) i =
+  if b.empty then '\255' else
+  match compare i b.length with
+    -1 -> b.contents.[i]
+  | 0 -> '\n'
+  | _ -> get b.next (b.length - i - 1)
  
 let line_num_directive =
   Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]*\\)[\"]\\)?[ \t]*$"

@@ -26,11 +26,8 @@ let _ = if entry = `Top then
     (try
 	(* the buffer is recreated for each phrase in case of parse error ! *)
 	let buffer = Input.buffer_from_channel ~filename:"stdin" stdin in
-	let phrases = partial_parse_buffer Main.top_phrase blank buffer 0 in
-	match phrases with
-	  [buffer,pos,ph] ->
-	  ignore (Toploop.execute_phrase true Format.std_formatter ph)
-	| _ -> assert false
+	let (buffer,pos,ph) = partial_parse_buffer Main.top_phrase blank buffer 0 in
+	ignore (Toploop.execute_phrase true Format.std_formatter ph)
       with
       | Main.Top_Exit -> 
 	 raise Main.Top_Exit

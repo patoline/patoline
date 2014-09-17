@@ -9,7 +9,7 @@ let empty_charset = Array.make size 0
 
 let full_charset = Array.make size used
  
-let get s c =
+let mem s c =
   let i = Char.code c in
   s.(i lsr shift) land (1 lsl (i land mask)) <> 0
 
@@ -47,7 +47,7 @@ let list_of_charset s =
   let res = ref [] in
   for i = 0 to 255 do
     let c = Char.chr i in
-    if get s c then res := Char.escaped c :: !res
+    if mem s c then res := Char.escaped c :: !res
   done;
   !res
   
@@ -55,7 +55,7 @@ let print_charset ch s =
   match s with None -> Printf.fprintf ch "None" | Some s ->
   Printf.fprintf ch "{";
   for i = 0 to 255 do
-    if get s (Char.chr i) then Printf.fprintf ch "%s" (Char.escaped (Char.chr i))
+    if mem s (Char.chr i) then Printf.fprintf ch "%s" (Char.escaped (Char.chr i))
   done;
   Printf.fprintf ch "}"
 

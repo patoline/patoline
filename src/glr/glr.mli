@@ -43,8 +43,8 @@ val parse_file : 'a grammar -> blank -> string -> 'a
 
 (* The two following function allows to parse only the beginning of the file and they return
    the buffer after parsing. *)
-val partial_parse_buffer : 'a grammar -> blank -> buffer-> int -> (buffer * int * 'a) list
-val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> int -> (buffer * int * 'a) list
+val partial_parse_buffer : 'a grammar -> blank -> buffer-> int -> buffer * int * 'a
+val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> int -> buffer * int * 'a
 
 (** [change_layout parser blank]: change the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not
