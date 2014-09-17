@@ -1634,6 +1634,7 @@ let expression_base = memoize1 (fun lvl ->
   | STR("<:") name:{ STR("expr") -> "expression" | STR("type") -> "type" | STR("pat") -> "pattern"
 		  | STR("structure") -> "structure" | STR("signature") -> "signature" } 
        loc:{CHR('@') e:(expression_lvl (next_exp App))}? CHR('<') q:quotation ->
+       if loc = None then Pa_parser.push_location "";
        (Atom, quote_expression _loc_q loc q name)
   | CHR('$') c:capitalized_ident -> 
      Atom, (match c with

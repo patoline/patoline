@@ -4190,6 +4190,10 @@ module Make(Initial:Extension) =
                                                   fun loc  ->
                                                     fun name  ->
                                                       fun _  ->
+                                                        if loc = None
+                                                        then
+                                                          Pa_parser.push_location
+                                                            "";
                                                         (Atom,
                                                           (quote_expression
                                                              _loc_q loc q
