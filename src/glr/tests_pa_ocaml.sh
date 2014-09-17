@@ -20,9 +20,9 @@ files="$local/test.ml $local/objects.ml $local/variants.ml $local/prefix.ml\
 #files only working on ocaml 4
 files4="$local/test4.ml"
 
-if [ `ocamlc -version` != 3.12.1 ] ; then
-    files="$files $files4"
-fi
+#if [ `ocamlc -version` != 3.12.1 ] ; then
+#    files="$files $files4"
+#fi
 
 echo $files
 
