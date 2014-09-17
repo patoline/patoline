@@ -35,6 +35,7 @@ let parse_implementation_orig f =
   let lexbuf = Lexing.from_channel ic in
   Location.init lexbuf f;
   let res = Parse.implementation lexbuf in
+  close_in ic;
   res
 
 let parse_interface_orig f =
@@ -42,6 +43,7 @@ let parse_interface_orig f =
   let lexbuf = Lexing.from_channel ic in
   Location.init lexbuf f;
   let res = Parse.interface lexbuf in
+  close_in ic;
   res
 
 (* camlp4 *)
