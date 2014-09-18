@@ -236,5 +236,7 @@ clean:
 distclean: clean
 	- rm -f pa_ocaml pa_ocaml.byt
 
-doc: glr.mli
+doc: glr.mli charset.mli input.mli
 	ocamldoc -d html -html glr.mli
+	ocamldoc -d html -html charset.mli
+	ocamldoc -d html -html input.mli
