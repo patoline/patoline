@@ -126,13 +126,6 @@ let set_grammar p1 p2 =
   p1.accept_empty <- p2.accept_empty;
   p1.parse <- p2.parse
 
-let declare_grammar name = {
-  firsts = lazy (not_ready name ());
-  first_sym = lazy (not_ready name ());
-  accept_empty = lazy (not_ready name ());
-  parse = (not_ready name);
-}
-
 let grammar_family ?(param_to_string=fun _ -> "<param>") name =
   let tbl = Hashtbl.create 101 in
   let definition = ref None in 
