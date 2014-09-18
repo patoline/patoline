@@ -1,14 +1,40 @@
+type buffer = buffer_aux Lazy.t
+ and buffer_aux = { is_empty     : bool     (* Is the buffer empty? *)
+                  ; name         : string   (* The name of the buffer. *)
+                  ; lnum         : int      (* Current line number. *)
+                  ; bol          : int      (* Offset to current line. *)
+                  ; length       : int      (* Length of the buffer. *)
+                  ; contents     : string   (* Contents of the line. *)
+                  ; mutable next : buffer } (* Rest of the buffer. *)
 
-type buffer_aux = { empty: bool; fname : string; lnum : int; bol:int; length : int; contents : string; mutable next : buffer }
- and buffer = buffer_aux Lazy.t
+let rec read (lazy b as b0) i =
+  if b.is_empty then ('\255', b0, 0) else
+  match compare i b.length with
+  | -1 -> b.contents.[i], b0, i+1
+  | 0  -> '\n', b.next, 0
+  | _  -> read b.next (b.length - i - 1)
 
-let rec empty_buffer fname lnum bol = 
-  let rec res = lazy { empty = true; fname; lnum; bol; length = 0; contents = ""; next = res } in
-  res
+let rec get (lazy b) i =
+  if b.is_empty then '\255' else
+  match compare i b.length with
+  | -1 -> b.contents.[i]
+  | 0  -> '\n'
+  | _  -> get b.next (b.length - i - 1)
 
-let is_empty (lazy b) = b.empty
+let empty_buffer fn lnum bol = 
+  let rec res =
+    lazy { is_empty = true
+         ; name     = fn
+         ; lnum     = lnum
+         ; bol      = bol
+         ; length   = 0
+         ; contents = ""
+         ; next     = res }
+  in res
 
-let fname (lazy b) = b.fname
+let is_empty (lazy b) = b.is_empty
+
+let fname (lazy b) = b.name
 
 let line_num (lazy b) = b.lnum
 
@@ -17,26 +43,12 @@ let line_beginning (lazy b) = b.bol
 let line (lazy b) = b.contents
 
 let lexing_position str pos =
-    let bol = line_beginning str in
-    Lexing.({ pos_fname = fname str; 
-	      pos_lnum = line_num str;
-	      pos_cnum = bol +pos;
-	      pos_bol = bol })
+  let bol = line_beginning str in
+  Lexing.({ pos_fname = fname str
+          ; pos_lnum  = line_num str
+          ; pos_cnum  = bol +pos
+          ; pos_bol   = bol })
 
-let rec read (lazy b as b0) i =
-  if b.empty then ('\255', b0, 0) else
-  match compare i b.length with
-    -1 -> b.contents.[i], b0, i+1
-  | 0 -> '\n', b.next, 0
-  | _ -> read b.next (b.length - i - 1)
-
-let rec get (lazy b) i =
-  if b.empty then '\255' else
-  match compare i b.length with
-    -1 -> b.contents.[i]
-  | 0 -> '\n'
-  | _ -> get b.next (b.length - i - 1)
- 
 let line_num_directive =
   Str.regexp "[ \t]*\\([0-9]+\\)[ \t]*\\([\"]\\([^\"]*\\)[\"]\\)?[ \t]*$"
 
@@ -159,11 +171,11 @@ let buffer_from_fun fname get_line data =
 	     else if Str.string_match endif_directive line 1 then
 	       cont fname Endif num bol' 
 	     else if active then (
-	       { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
+	       { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ; 
 		 next = lazy (fn fname active num bol' cont) })
 	     else fn fname active num  bol' cont
 	   else if active then (
-               { empty = false; fname; lnum = num; bol; length = len ; contents = line ; 
+               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ; 
 		 next = lazy (fn fname active num bol' cont) })
 	   else fn fname active num bol' cont)
       with
