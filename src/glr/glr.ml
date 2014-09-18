@@ -327,7 +327,7 @@ let string : string -> 'a -> 'a grammar
 let regexp : string -> ?name:string -> ((int -> string) -> 'a) -> 'a grammar
   = fun r0 ?(name=String.escaped r0) a ->
     let r = Str.regexp r0 in
-    let set = Array.copy empty_charset in
+    let set = Charset.copy empty_charset in
     let found = ref false in
     for i = 0 to 254 do
       let s = String.make 1 (Char.chr i) in
