@@ -65,5 +65,3 @@ val line : buffer -> string
 
 (** [fname buf] returns the file name associated to the buffer [buf]. *)
 val fname : buffer -> string
-
-

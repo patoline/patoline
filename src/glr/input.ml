@@ -21,7 +21,7 @@ let rec get (lazy b) i =
   | 0  -> '\n'
   | _  -> get b.next (b.length - i - 1)
 
-let empty_buffer fn lnum bol = 
+let empty_buffer fn lnum bol =
   let rec res =
     lazy { is_empty = true
          ; name     = fn
@@ -80,27 +80,27 @@ let test_directive fname num line =
     let minor' = Str.matched_group 3 line in
     try
       let predicat =
-	match predicat with
-	| "<>" -> (<>) | "=" -> (=) | "<" -> (<) 
-	| ">" -> (>) | "<=" -> (<=) | ">=" -> (>=)
-	| _ -> raise Exit
+        match predicat with
+        | "<>" -> (<>) | "=" -> (=) | "<" -> (<)
+        | ">" -> (>) | "<=" -> (<=) | ">=" -> (>=)
+        | _ -> raise Exit
       in
       let version =
-	try
-	  Sys.getenv "OCAMLVERSION"
+        try
+          Sys.getenv "OCAMLVERSION"
         with
-	  Not_found -> Sys.ocaml_version
+          Not_found -> Sys.ocaml_version
       in
-      let major, minor = 
-	match  Str.split (Str.regexp_string ".") version with
-	| major ::  minor :: _ ->
-	   let major = int_of_string major in
-	   let minor = int_of_string minor in
-	   major, minor
-	| _ -> assert false
+      let major, minor =
+        match  Str.split (Str.regexp_string ".") version with
+        | major ::  minor :: _ ->
+           let major = int_of_string major in
+           let minor = int_of_string minor in
+           major, minor
+        | _ -> assert false
       in
       predicat (major, minor) (int_of_string major', int_of_string minor')
-    with _ -> 
+    with _ ->
       Printf.eprintf "file: %s, line %d: bad predicate version\n%!" fname num;
       exit 1
   else (
@@ -124,62 +124,62 @@ let buffer_from_fun fname get_line data =
     begin
       let num = num + 1 in
       try
-	let line = get_line data in
-	let len = String.length line in
-	let bol' = bol + len + 1 in (* +1 for newline, should be 2 on windows ? *)
-	(fun () -> 
-	   if len > 0 && line.[0] = '#' then
-	     if Str.string_match line_num_directive line 1 then
-	       let num =
-		 int_of_string (Str.matched_group 1 line)
-	       in
-	       let fname = 
-		 try Str.matched_group 3 line with Not_found -> fname
-	       in
-	       fn fname active num bol' cont
-	     else if Str.string_match define_directive line 1 then
-	       let macro_name = Str.matched_group 1 line in
-	       let value = Str.matched_group 2 line in
-	       Unix.putenv macro_name value;
-	       fn fname active num bol' cont
-	     else if Str.string_match if_directive line 1 then
-	       let b = test_directive fname num line in
-	       fn fname (b && active) num bol' (
-		    let rec cont' b = fun fname (status:cont_info) num bol ->
-		      match status with
-		      | EndOfFile ->
-			 Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
-			 exit 1
-		      | Endif -> fn fname active num bol cont
-		      | Else -> 
-			 fn fname (not b && active) num bol
-			    (fun fname (status:cont_info) num bol ->
-			     match status with 
-			     | Elif _ | Else | EndOfFile ->
-						  Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
-						  exit 1
-			     | Endif -> fn fname active num bol cont)
-		      | Elif b' -> 
-			 fn fname (not b && b' && active) num bol (cont' (b || b'))
-		    in
-		    cont' b)
-	     else if Str.string_match elif_directive line 1 then
-	       let b = test_directive fname num line in
-	       cont fname (Elif b) num bol'
-	     else if Str.string_match else_directive line 1 then
-	       cont fname Else num bol'
-	     else if Str.string_match endif_directive line 1 then
-	       cont fname Endif num bol' 
-	     else if active then (
-	       { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ; 
-		 next = lazy (fn fname active num bol' cont) })
-	     else fn fname active num  bol' cont
-	   else if active then (
-               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ; 
-		 next = lazy (fn fname active num bol' cont) })
-	   else fn fname active num bol' cont)
+        let line = get_line data in
+        let len = String.length line in
+        let bol' = bol + len + 1 in (* +1 for newline, should be 2 on windows ? *)
+        (fun () ->
+           if len > 0 && line.[0] = '#' then
+             if Str.string_match line_num_directive line 1 then
+               let num =
+                 int_of_string (Str.matched_group 1 line)
+               in
+               let fname =
+                 try Str.matched_group 3 line with Not_found -> fname
+               in
+               fn fname active num bol' cont
+             else if Str.string_match define_directive line 1 then
+               let macro_name = Str.matched_group 1 line in
+               let value = Str.matched_group 2 line in
+               Unix.putenv macro_name value;
+               fn fname active num bol' cont
+             else if Str.string_match if_directive line 1 then
+               let b = test_directive fname num line in
+               fn fname (b && active) num bol' (
+                    let rec cont' b = fun fname (status:cont_info) num bol ->
+                      match status with
+                      | EndOfFile ->
+                         Printf.eprintf "file: %s, line %d: expecting '#else' or '#endif'" fname num;
+                         exit 1
+                      | Endif -> fn fname active num bol cont
+                      | Else ->
+                         fn fname (not b && active) num bol
+                            (fun fname (status:cont_info) num bol ->
+                             match status with
+                             | Elif _ | Else | EndOfFile ->
+                                                  Printf.eprintf "file: %s, line %d: expecting '#endif'" fname num;
+                                                  exit 1
+                             | Endif -> fn fname active num bol cont)
+                      | Elif b' ->
+                         fn fname (not b && b' && active) num bol (cont' (b || b'))
+                    in
+                    cont' b)
+             else if Str.string_match elif_directive line 1 then
+               let b = test_directive fname num line in
+               cont fname (Elif b) num bol'
+             else if Str.string_match else_directive line 1 then
+               cont fname Else num bol'
+             else if Str.string_match endif_directive line 1 then
+               cont fname Endif num bol'
+             else if active then (
+               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
+                 next = lazy (fn fname active num bol' cont) })
+             else fn fname active num  bol' cont
+           else if active then (
+               { is_empty = false; name = fname; lnum = num; bol; length = len ; contents = line ;
+                 next = lazy (fn fname active num bol' cont) })
+           else fn fname active num bol' cont)
       with
-	End_of_file -> fun () -> cont fname EndOfFile num bol
+        End_of_file -> fun () -> cont fname EndOfFile num bol
     end ()
   in
   lazy (fn fname true 0 0 (fun fname status line bol ->
@@ -193,9 +193,9 @@ let buffer_from_fun fname get_line data =
   | Endif ->
      Printf.eprintf "file: %s, extra '#endif'" fname;
      exit 1
-  | EndOfFile -> 
+  | EndOfFile ->
      Lazy.force (empty_buffer fname line bol)))
-  
+
 let buffer_from_channel ?(filename="") ch =
   buffer_from_fun filename input_line ch
 
@@ -213,7 +213,7 @@ let get_string_line (str, p) =
   let _end = !p in
   incr p;
   if !p < len && ((str.[!p] = '\n' && str.[!p - 1] = '\r') ||
-		    (str.[!p] = '\r' && str.[!p - 1] = '\n')) then incr p;
+                    (str.[!p] = '\r' && str.[!p - 1] = '\n')) then incr p;
   let len' = _end - start in
   if start = 0 && len' = len then str else String.sub str start len'
 

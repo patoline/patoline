@@ -1,5 +1,5 @@
 open Charset
-open Input 
+open Input
 
 (** Glr: a module defining parser combinator similar to GLR grammar
     @author Christophe Raffalli *)
@@ -9,7 +9,7 @@ open Input
   A possibility of providing your own merge function is planed *)
 exception Ambiguity of string * int * int * string * int * int
 
-(** [Parse_error (pos, str)], give the last point succesfully reached by the parser in 
+(** [Parse_error (pos, str)], give the last point succesfully reached by the parser in
   the input and what was expected to continue*)
 exception Parse_error of string * int * int * string list
 
@@ -29,7 +29,7 @@ type ('a) grammar
 
 (** [parse_buffer parser blank buffer] parses the given buffer using the provided parser and blank function. *)
 val parse_buffer : 'a grammar -> blank -> buffer -> 'a
- 
+
 (** [parse_string ~filename parser blank str]: parses the string [str] with the given grammar and blank function.
     a "filename" is provided for error messages only *)
 val parse_string : ?filename:string -> 'a grammar -> blank -> string -> 'a
@@ -48,9 +48,9 @@ val partial_parse_string : ?filename:string -> 'a grammar -> blank -> string -> 
 
 (** [change_layout parser blank]: change the blank function for a given grammar.
     Remark: the new layout is only used inside the input parsed by the grammar, not
-    at the beginning nor at the end 
-    
-    The optional parameter [new_blank_before], ([true] by default) forces parsing the 
+    at the beginning nor at the end
+
+    The optional parameter [new_blank_before], ([true] by default) forces parsing the
     new blank before parsing with the given grammar (the old blank function was used
     before the next terminal symbol anyway).
 
@@ -84,7 +84,7 @@ val fail : string -> 'a grammar
     [cs] is the set of characters accepted as first char by your parser (or a supperset of).
     [accept_empty] shoud be false if your parser does not accept the empty string.
     If [fn] raises [Give_up], [msg] is added to Parse_error.
-*) 
+*)
 val  black_box : (buffer -> int -> 'a * buffer * int) -> charset -> bool -> string -> 'a grammar
 
 (** [char str x]: parses a given char and returns [x] *)
@@ -118,7 +118,7 @@ val sequence3 : 'a grammar -> 'b grammar -> 'c grammar -> ('a -> 'b -> 'c -> 'd)
     with [p2 x] and returns its result. *)
 val dependent_sequence : 'a grammar -> ('a -> 'b grammar) -> 'b grammar
 
-val iter : 'a grammar grammar -> 'a grammar 
+val iter : 'a grammar grammar -> 'a grammar
   (* = fun g -> dependent_sequence g (fun x -> x) *)
 
 (** [option a p]: parses input with [p], if and only if it fails return [a] consuming no input *)
@@ -128,14 +128,14 @@ val option : 'a -> 'a grammar -> 'a grammar
 val fixpoint : 'a -> ('a -> 'a) grammar -> 'a grammar
 
 (** [alternatives [p1;...;pn]] : parses as all [pi], and keep only the first success *)
-val alternatives : 'a grammar list -> 'a grammar 
+val alternatives : 'a grammar list -> 'a grammar
 
 (** the ony difference between the next function and the previous one
     if that they do not backtrack if the completely parse an object
     of type 'a grammar *)
 val option' : 'a -> 'a grammar -> 'a grammar
 val fixpoint' : 'a -> ('a -> 'a) grammar -> 'a grammar
-val alternatives' : 'a grammar list -> 'a grammar 
+val alternatives' : 'a grammar list -> 'a grammar
 
 (** [apply f grammar]: apply [f] to the value returned by the given grammar *)
 val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
@@ -175,18 +175,18 @@ val grammar_family : ?param_to_string:('a -> string) -> string -> ('a -> 'b gram
 (**
   [grammar_family seeds] return a pair [(gr, set_gr)] where gr is a finite family of
   grammars parametrized by value of type 'a the type of the elments of the list seeds.
-  
+
   You use this function in this way:
 {[
   let (gr, set_gr) = grammar_family seeds in
 
   ... code that uses all this grammar to define new mutually recursive grammars ...
   ... here you can not use the grammar in "left position" (same restriction ...
-  ... as for declare grammar (1) ... 
+  ... as for declare grammar (1) ...
 
   (* once you really set the value of the family *)
   let _ = set_gr the_grammars
- 
+
   ... now you can really use the new family ...
 ]}
 
