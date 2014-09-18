@@ -43,12 +43,16 @@ let blank_regexp r =
   in
   fn
 
-type grouped = {
-  blank: blank;
+type err_info = {
   mutable max_err_pos:int;
   mutable max_err_buf:buffer;
   mutable max_err_col:int;
-  mutable err_info: string_tree;
+  mutable err_msgs: string_tree;
+}
+
+type grouped = {
+  blank: blank;
+  err_info: err_info;
 }
 
 type next = {
@@ -67,15 +71,15 @@ type 'a grammar = {
 
 let record_error grouped msg str col =
   let pos = Input.line_beginning str + col in
-  let pos' = grouped.max_err_pos in
+  let pos' = grouped.err_info.max_err_pos in
   let c = compare pos pos' in
-  if c = 0 then grouped.err_info <- msg @@ grouped.err_info
+  if c = 0 then grouped.err_info.err_msgs <- msg @@ grouped.err_info.err_msgs
   else if c > 0 then
     begin
-      grouped.max_err_pos <- pos;
-      grouped.max_err_buf <- str;
-      grouped.max_err_col <- col;
-      grouped.err_info <- msg;
+      grouped.err_info.max_err_pos <- pos;
+      grouped.err_info.max_err_buf <- str;
+      grouped.err_info.max_err_col <- col;
+      grouped.err_info.err_msgs <- msg;
     end
 
 let parse_error grouped msg str pos =
@@ -231,18 +235,6 @@ let apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar 
 	  l.parse grouped str pos next
 		  (fun l c l' c' l'' c'' x -> g l c l' c' l'' c'' (
 		   f x l c l' c'))
-    }
-
-let filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
-  = fun l filter -> 
-    { firsts = lazy (firsts l);
-      first_sym = lazy (first_sym l);
-      accept_empty = lazy (accept_empty l);
-      parse =
-	fun grouped str pos next g ->
-	  l.parse grouped str pos next
-		  (fun l c l' c' l'' c'' x -> g l c l' c' l'' c'' (
-					  filter (fname l) (line_num l) (line_beginning l) c (line_num l') (line_beginning l') c', x))
     }
 
 let eof : 'a -> 'a grammar
@@ -624,34 +616,38 @@ let alternatives' : 'a grammar list -> 'a grammar
 
 let parse_buffer grammar blank str =
   let grammar = sequence grammar (eof ()) (fun x _ -> x) in
-  let grouped = { blank; max_err_pos = -1; 
-		  max_err_buf = str;
-		  max_err_col = -1;
-		  err_info = Empty }
+  let grouped = { blank; 
+		  err_info = {max_err_pos = -1; 
+			      max_err_buf = str;
+			      max_err_col = -1;
+			      err_msgs = Empty };
+		}
   in
   let str, pos = apply_blank grouped str 0 in
   try
       grammar.parse grouped str pos None (fun _ _ _ _ _ _ x -> x) 
     with Give_up -> 
-      let str = grouped.max_err_buf in
-      let pos = grouped.max_err_col in
-      let msgs = grouped.err_info in
+      let str = grouped.err_info.max_err_buf in
+      let pos = grouped.err_info.max_err_col in
+      let msgs = grouped.err_info.err_msgs in
         raise (Parse_error (fname str, line_num str, pos, collect_tree msgs))
 
 let partial_parse_buffer grammar blank str pos = 
-  let grouped = { blank; max_err_pos = -1; 
-		  max_err_buf = str;
-		  max_err_col = -1;
-		  err_info = Empty }
+  let grouped = { blank; 
+		  err_info = {max_err_pos = -1; 
+			      max_err_buf = str;
+			      max_err_col = -1;
+			      err_msgs = Empty };
+		}
   in
   let cont l c l' c' l'' c'' x = (l'',c'',x) in
   let str, pos = apply_blank grouped str pos in
   try
     grammar.parse grouped str pos None cont;
   with Give_up -> 
-    let str = grouped.max_err_buf in
-    let pos = grouped.max_err_col in
-    let msgs = grouped.err_info in
+    let str = grouped.err_info.max_err_buf in
+    let pos = grouped.err_info.max_err_col in
+    let msgs = grouped.err_info.err_msgs in
     raise (Parse_error (fname str, line_num str, pos, collect_tree msgs))
 
 let partial_parse_string ?(filename="") grammar blank str = 

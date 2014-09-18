@@ -143,13 +143,6 @@ val apply : ('a -> 'b) -> 'a grammar -> 'b grammar
 (** [position], tranform a given grammar to add the position of the parsed text *)
 val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
 
-(** [filter_position gr f]: return the same grammar with in the semantics 
-    the information about the position with the type the users want.
-    this position information is build by calling [f str begin_line begin_col end_line end_col]
-    where str is the full string being parsed and begin_pos, end_pos are
-    the position of the parsed tree in str. *)
-val filter_position : 'a grammar -> (string -> int -> int -> int -> int -> int -> int -> 'b) -> ('b * 'a) grammar
-
 (** [apply_position f gr]: a variant of the previous function, giving directly the buffer and position
     at the beginning and end of the parsed input. You may then get the position (filename, line number ...)
     using the Input module. *)
