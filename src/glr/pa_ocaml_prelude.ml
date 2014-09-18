@@ -720,6 +720,7 @@ let quote_expression _loc loc e name =
       First e -> e | Second _ -> assert false
   in
   let _loc = loc_none in
+  (* on push une "frame" sur la pile pour cette quotation *)
   let push_expr =
     loc_expr _loc (Pexp_apply(
 		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Stack","push")) _loc )),
@@ -729,6 +730,7 @@ let quote_expression _loc loc e name =
 		   
 		    "", loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Pa_ocaml_prelude","quote_stack")) _loc ))]))
   in
+  (* on empile les valeurs de toutes les anti-quotations *)
   let rec stack_fold fn acc stack =
     try 
       stack_fold fn (fn acc (Stack.pop stack)) stack
@@ -746,6 +748,7 @@ let quote_expression _loc loc e name =
        loc_expr _loc (Pexp_sequence(acc, push_e)))
       push_expr env
   in
+  (* on dépile la frame *)
   let pop_expr =    loc_expr _loc (Pexp_apply(loc_expr _loc (Pexp_ident(id_loc (Lident "ignore") _loc )),
 				       ["",loc_expr _loc (Pexp_apply(
 		       loc_expr _loc (Pexp_ident(id_loc (Ldot(Lident "Stack","pop")) _loc )),

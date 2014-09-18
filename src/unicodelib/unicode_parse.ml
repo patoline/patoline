@@ -1,7 +1,7 @@
 open Pa_ocaml_prelude
 open Unicode_type
 
-let _ = parser_locate locate merge
+let _ = parser_locate locate locate2
 
 module Ext = functor(In:Extension) -> 
 struct
