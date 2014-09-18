@@ -10,7 +10,7 @@ let with_time f x =
   Gc.full_major ();
   let {Unix.tms_utime = ut;Unix.tms_stime = st} = Unix.times () in
   try
-    for i = 0 to nb_tests - 2 do
+    for i = 1 to nb_tests do
       ignore (f x);
     done;
     let r = f x in

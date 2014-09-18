@@ -56,11 +56,13 @@ type next = {
   first_syms : string_tree;
 }
 
+type ('a, 'b) continuation = buffer -> int -> buffer -> int -> buffer -> int -> 'a -> 'b
+
 type 'a grammar = {
   mutable firsts : charset Lazy.t;
   mutable first_sym : string_tree Lazy.t;
   mutable accept_empty : bool Lazy.t;
-  mutable parse : 'b. grouped -> buffer -> int -> next option -> (buffer -> int -> buffer -> int -> buffer -> int -> 'a -> 'b) -> 'b;
+  mutable parse : 'b. grouped -> buffer -> int -> next option -> ('a, 'b) continuation -> 'b;
 }
 
 let record_error grouped msg str col =
