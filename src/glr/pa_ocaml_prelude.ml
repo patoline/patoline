@@ -164,6 +164,29 @@ let merge2 l1 l2 =
   Location.(
     {loc_start = l1.loc_start; loc_end = l2.loc_end; loc_ghost = l1.loc_ghost && l2.loc_ghost})
 
+let push_frame, pop_frame, push_location, pop_location =
+  let loc_tbl = Stack.create () : (string, unit) Hashtbl.t Stack.t in
+  (fun () -> 
+   Stack.push (Hashtbl.create 23) loc_tbl),
+  (fun () ->
+   let h = try Stack.pop loc_tbl with Stack.Empty -> assert false in
+   Hashtbl.iter (fun l _ -> 
+		 try let h' = Stack.top loc_tbl in
+		     Hashtbl.replace h' l ()
+		 with Stack.Empty -> ()) h),
+  (fun id -> 
+   try 
+     let h = Stack.top loc_tbl in
+     Hashtbl.replace h id ()
+   with Stack.Empty -> ()),
+  (fun id ->
+   try
+     let h = Stack.top loc_tbl in
+     if Hashtbl.mem h id then
+       (Hashtbl.remove h id; true)
+     else false
+   with Stack.Empty -> false)
+
 (* declare expression soon for antiquotation *)
 module Initial = struct
   type expression_lvl = Top | Let | Seq | Coerce | If | Aff | Tupl | Disj | Conj | Eq | Append | Cons | Sum | Prod | Pow | Opp | App | Dash | Dot | Prefix | Atom
@@ -200,11 +223,11 @@ let next_exp = function
 
   let structure =
     parser
-      l : structure_item** -> List.flatten l
+      l : {s:(delim structure_item)}** -> List.flatten l
 
   let signature =
     parser
-      l : signature_item** -> List.flatten l
+      l : {s:(delim signature_item)}** -> List.flatten l
 
   type type_prio = TopType | As | Arr | ProdType | DashType | AppType | AtomType
 
@@ -833,7 +856,18 @@ let capitalized_ident =
 
 let lowercase_ident =
   parser
-    id:RE(lident_re) -> if is_reserved_id id then raise Give_up; id
+    id:RE(lident_re) -> 
+       let len = String.length id in
+       (try
+	   if len >= 4 && String.sub id 0 4 = "_loc" then
+	     let id' =
+	       if len = 4 then ""
+	       else if len > 4 && id.[4] = '_' then String.sub id 5 (String.length id - 5)
+	       else raise Exit
+	     in
+	     push_location id'
+	 with Exit -> ());
+       if is_reserved_id id then raise Give_up; id
   | CHR('$') STR("lid") CHR(':') e:(expression_lvl (next_exp App)) CHR('$') -> push_pop_string e
 
 (* Prefix and infix symbols *)

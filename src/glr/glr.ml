@@ -170,6 +170,18 @@ let apply : ('a -> 'b) -> 'a grammar -> 'b grammar
           l.parse grouped str pos next (fun l c l' c' l'' c'' x -> g l c l' c' l'' c'' (f x));
     }
 
+let delim : 'a grammar -> 'a grammar
+  = fun l ->
+    { firsts = lazy (firsts l);
+      first_sym = lazy (first_sym l);
+      accept_empty = lazy (accept_empty l);
+      parse =
+        fun grouped str pos next g ->
+        let cont l c l' c' l'' c'' x = l, c, l', c', l'', c'', x in
+        let l, c, l', c', l'', c'', x = l.parse grouped str pos next cont in
+	g l c l' c' l'' c'' x
+    }
+
 let merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
   = fun unit merge l ->
     { firsts = lazy (firsts l);

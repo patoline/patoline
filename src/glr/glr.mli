@@ -148,11 +148,15 @@ val position : 'a grammar -> (string * int * int * int * int * 'a) grammar
     using the Input module. *)
 val apply_position : ('a -> buffer -> int -> buffer -> int -> 'b) -> 'a grammar -> 'b grammar
 
+(* [delim l] will prevent backtracking beyond grammar l *)
+val delim : 'a grammar -> 'a grammar
+
 (* [lists gr] lists all the parse tree produced by the first argument. The parse-tree do
    not need to correspond to the same initial segment of the input. *)
 val lists : 'a grammar -> 'a list grammar
 
 val merge : ('a -> 'b) -> ('b -> 'b -> 'b) -> 'a grammar -> 'b grammar
+
 (** [declare_grammar name] return a new grammar, that can be used to define other grammar, but that
     can not be used yet. The name is used in error messages *)
 val declare_grammar : string -> 'a grammar

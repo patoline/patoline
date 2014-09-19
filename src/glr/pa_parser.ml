@@ -99,29 +99,6 @@ let filter _loc visible r =
      loc_expr _loc (Pexp_apply(f,["", r]))
   | _ -> r
 
-let push_frame, pop_frame, push_location, pop_location =
-  let loc_tbl = Stack.create () in
-  (fun () -> 
-   Stack.push (Hashtbl.create 23) loc_tbl),
-  (fun () ->
-   let h = try Stack.pop loc_tbl with Stack.Empty -> assert false in
-   Hashtbl.iter (fun l _ -> 
-		 try let h' = Stack.top loc_tbl in
-		     Hashtbl.replace h' l ()
-		 with Stack.Empty -> ()) h),
-  (fun id -> 
-   try 
-     let h = Stack.top loc_tbl in
-     Hashtbl.replace h id ()
-   with Stack.Empty -> ()),
-  (fun id ->
-   try
-     let h = Stack.top loc_tbl in
-     if Hashtbl.mem h id then
-       (Hashtbl.remove h id; true)
-     else false
-   with Stack.Empty -> false)
-
 
 let rec build_action _loc occur_loc ids e =
   let e = match !do_locate, occur_loc with
@@ -224,14 +201,6 @@ struct
       (do_locate := Some(filter2,merge2); (Atom, exp_unit _loc))
     | parser_kw p:glr_rules -> (Atom, p)
     | parser_kw CHR('*') p:glr_rules -> (Atom, exp_apply _loc (exp_glr_fun _loc "lists") [p])
-    | (id,id'):RE(location_name_re)[(groupe 0, groupe 1)] ->
-	       (let id' = 	       
-		 if id' = "" then "" else
-		   if (String.length id' > 1 && id'.[0] = '_') then String.sub id' 1 (String.length id' - 1)
-		   else raise Glr.Give_up
-		in
-		push_location id';
-	        (Atom, exp_ident _loc id))
 
   let extra_expressions = glr_parser::extra_expressions
 
@@ -391,7 +360,7 @@ struct
 
   let glr_rules_aux = 
     parser
-    | CHR('|')? r:glr_rule rs:{ CHR('|') r:glr_rule}* -> 
+    | {CHR('|') CHR('|')}? r:glr_rule rs:{ CHR('|') CHR('|')? r:glr_rule}* -> 
       (match rs with
       | [] -> r
       | l ->
@@ -408,7 +377,7 @@ struct
 
   let _ = Glr.set_grammar glr_rules (
     parser
-    { CHR('|') CHR('|')}? r:glr_rules_aux rs:{ { CHR('|') CHR('|')} r:glr_rules_aux}* -> 
+    { CHR('|') }? r:glr_rules_aux rs:{ { CHR('|') } r:glr_rules_aux}* -> 
       (match r,rs with
       | (def,cond,e),  [] ->
 	(match cond with

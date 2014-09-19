@@ -73,23 +73,6 @@ let filter _loc visible r =
   match ((!do_locate), visible) with
   | (Some (f,_),true ) -> loc_expr _loc (Pexp_apply (f, [("", r)]))
   | _ -> r
-let (push_frame,pop_frame,push_location,pop_location) =
-  let loc_tbl = Stack.create () in
-  ((fun ()  -> Stack.push (Hashtbl.create 23) loc_tbl),
-    (fun ()  ->
-       let h = try Stack.pop loc_tbl with | Stack.Empty  -> assert false in
-       Hashtbl.iter
-         (fun l  _  ->
-            try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
-            with | Stack.Empty  -> ()) h),
-    (fun id  ->
-       try let h = Stack.top loc_tbl in Hashtbl.replace h id ()
-       with | Stack.Empty  -> ()),
-    (fun id  ->
-       try
-         let h = Stack.top loc_tbl in
-         if Hashtbl.mem h id then (Hashtbl.remove h id; true) else false
-       with | Stack.Empty  -> false))
 let rec build_action _loc occur_loc ids e =
   let e =
     match ((!do_locate), occur_loc) with
@@ -213,23 +196,7 @@ module Ext(In:Extension) =
                 let _loc =
                   locate2 __loc__start__buf __loc__start__pos __loc__end__buf
                     __loc__end__pos in
-                (Atom, (exp_apply _loc (exp_glr_fun _loc "lists") [p]))));
-        Glr.apply_position
-          (fun (id,id')  __loc__start__buf  __loc__start__pos 
-             __loc__end__buf  __loc__end__pos  ->
-             let _loc =
-               locate2 __loc__start__buf __loc__start__pos __loc__end__buf
-                 __loc__end__pos in
-             let id' =
-               if id' = ""
-               then ""
-               else
-                 if ((String.length id') > 1) && ((id'.[0]) = '_')
-                 then String.sub id' 1 ((String.length id') - 1)
-                 else raise Glr.Give_up in
-             push_location id'; (Atom, (exp_ident _loc id)))
-          (Glr.regexp ~name:"location_name" location_name_re
-             (fun groupe  -> ((groupe 0), (groupe 1))))]
+                (Atom, (exp_apply _loc (exp_glr_fun _loc "lists") [p]))))]
     let extra_expressions = glr_parser :: extra_expressions
     let glr_opt_expr =
       Glr.apply (fun e  -> e)
@@ -505,13 +472,19 @@ module Ext(In:Extension) =
                           (def, condition, res))) glr_action))))
     let glr_rules_aux =
       Glr.fsequence_position
-        (Glr.option None (Glr.apply (fun x  -> Some x) (Glr.char '|' '|')))
+        (Glr.option None
+           (Glr.apply (fun x  -> Some x)
+              (Glr.sequence (Glr.char '|' '|') (Glr.char '|' '|')
+                 (fun _  _  -> ()))))
         (Glr.sequence glr_rule
            (Glr.apply List.rev
               (Glr.fixpoint []
                  (Glr.apply (fun x  l  -> x :: l)
-                    (Glr.sequence (Glr.char '|' '|') glr_rule
-                       (fun _  r  -> r)))))
+                    (Glr.fsequence (Glr.char '|' '|')
+                       (Glr.sequence
+                          (Glr.option None
+                             (Glr.apply (fun x  -> Some x) (Glr.char '|' '|')))
+                          glr_rule (fun _  r  _  -> r))))))
            (fun r  rs  _  __loc__start__buf  __loc__start__pos 
               __loc__end__buf  __loc__end__pos  ->
               let _loc =
@@ -546,16 +519,14 @@ module Ext(In:Extension) =
         (Glr.fsequence_position
            (Glr.option None
               (Glr.apply (fun x  -> Some x)
-                 (Glr.sequence (Glr.char '|' '|') (Glr.char '|' '|')
-                    (fun _  _  -> ()))))
+                 (Glr.apply (fun _  -> ()) (Glr.char '|' '|'))))
            (Glr.sequence glr_rules_aux
               (Glr.apply List.rev
                  (Glr.fixpoint []
                     (Glr.apply (fun x  l  -> x :: l)
                        (Glr.sequence
-                          (Glr.sequence (Glr.char '|' '|') (Glr.char '|' '|')
-                             (fun _  _  -> ())) glr_rules_aux
-                          (fun _  r  -> r)))))
+                          (Glr.apply (fun _  -> ()) (Glr.char '|' '|'))
+                          glr_rules_aux (fun _  r  -> r)))))
               (fun r  rs  _  __loc__start__buf  __loc__start__pos 
                  __loc__end__buf  __loc__end__pos  ->
                  let _loc =

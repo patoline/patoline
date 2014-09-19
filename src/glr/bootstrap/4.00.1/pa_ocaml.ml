@@ -297,7 +297,7 @@ module Make(Initial:Extension) =
     let _ =
       set_module_path_suit
         (fun allow_app  ->
-           Glr.alternatives
+           Glr.alternatives'
              [Glr.sequence (module_path_suit_aux allow_app)
                 (module_path_suit allow_app) (fun f  g  acc  -> g (f acc));
              Glr.apply (fun _  acc  -> acc) (Glr.empty ())])
@@ -3229,9 +3229,7 @@ module Make(Initial:Extension) =
                                                 let (_loc_q,q) = q in
                                                 fun loc  name  _  ->
                                                   if loc = None
-                                                  then
-                                                    Pa_parser.push_location
-                                                      "";
+                                                  then push_location "";
                                                   (Atom,
                                                     (quote_expression _loc_q
                                                        loc q name))))));

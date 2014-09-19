@@ -135,6 +135,23 @@ let merge2 l1 l2 =
       loc_end = (l2.loc_end);
       loc_ghost = (l1.loc_ghost && l2.loc_ghost)
     }
+let (push_frame,pop_frame,push_location,pop_location) =
+  let loc_tbl: (string,unit) Hashtbl.t Stack.t = Stack.create () in
+  ((fun ()  -> Stack.push (Hashtbl.create 23) loc_tbl),
+    (fun ()  ->
+       let h = try Stack.pop loc_tbl with | Stack.Empty  -> assert false in
+       Hashtbl.iter
+         (fun l  _  ->
+            try let h' = Stack.top loc_tbl in Hashtbl.replace h' l ()
+            with | Stack.Empty  -> ()) h),
+    (fun id  ->
+       try let h = Stack.top loc_tbl in Hashtbl.replace h id ()
+       with | Stack.Empty  -> ()),
+    (fun id  ->
+       try
+         let h = Stack.top loc_tbl in
+         if Hashtbl.mem h id then (Hashtbl.remove h id; true) else false
+       with | Stack.Empty  -> false))
 module Initial =
   struct
     type expression_lvl =  
@@ -193,11 +210,15 @@ module Initial =
     let structure =
       Glr.apply (fun l  -> List.flatten l)
         (Glr.apply List.rev
-           (Glr.fixpoint' [] (Glr.apply (fun x  l  -> x :: l) structure_item)))
+           (Glr.fixpoint' []
+              (Glr.apply (fun x  l  -> x :: l)
+                 (Glr.apply (fun s  -> s) (delim structure_item)))))
     let signature =
       Glr.apply (fun l  -> List.flatten l)
         (Glr.apply List.rev
-           (Glr.fixpoint' [] (Glr.apply (fun x  l  -> x :: l) signature_item)))
+           (Glr.fixpoint' []
+              (Glr.apply (fun x  l  -> x :: l)
+                 (Glr.apply (fun s  -> s) (delim signature_item)))))
     type type_prio =  
       | TopType
       | As
@@ -762,7 +783,23 @@ module Initial =
                    (fun e  _  _  _  _  -> push_pop_string e))))]
     let lowercase_ident =
       Glr.alternatives'
-        [Glr.apply (fun id  -> if is_reserved_id id then raise Give_up; id)
+        [Glr.apply
+           (fun id  ->
+              let len = String.length id in
+              (try
+                 if (len >= 4) && ((String.sub id 0 4) = "_loc")
+                 then
+                   let id' =
+                     if len = 4
+                     then ""
+                     else
+                       if (len > 4) && ((id.[4]) = '_')
+                       then String.sub id 5 ((String.length id) - 5)
+                       else raise Exit in
+                   push_location id'
+               with | Exit  -> ());
+              if is_reserved_id id then raise Give_up;
+              id)
            (Glr.regexp ~name:"lident" lident_re (fun groupe  -> groupe 0));
         Glr.fsequence (Glr.char '$' '$')
           (Glr.fsequence (Glr.string "lid" "lid")
