@@ -1,31 +1,39 @@
 open Charset
 open Input
 
-(** Glr: a module defining parser combinator similar to GLR grammar
-    @author Christophe Raffalli *)
+(** DeCaP (Delimited Continuation Parser): a minimalist combinator library.
+  @author Christophe Raffalli *)
 
-(** For the moment, ambiguous grammar are supported, but ambiguous exception
-  raise the exception [Ambiguity(pos_start, pos_end)].
-  A possibility of providing your own merge function is planed *)
-exception Ambiguity of string * int * int * string * int * int
-
-(** [Parse_error (pos, str)], give the last point succesfully reached by the parser in
-  the input and what was expected to continue*)
+(** [Parse_error (fn, lnum, col, msgs)] is raised when the input cannot be
+  parsed. It provides the file name [fn], line number [lnum] and column
+  number [col] of the last succesfully parsed terminal. The list [msgs]
+  contains a description of the tokens that would have allowed the parsing
+  process to continue. *)
 exception Parse_error of string * int * int * string list
 
-(** You may raise this exception to reject a parsing rule from the action code *)
-exception Give_up
+(** [Give_up msg] can be raised when a parsing rule needs to be rejected. It
+  is strongly advised to provide a very explicit message [msg] while raising
+  this exception, in order for DeCaP to provide useful error messages. *)
+exception Give_up (* of string *) (* FIXME *) 
 
-(** Type of a function parsing "blank" (i.e. characters to be ignored, like spaces or comments).
-  [f str pos = pos'] means that all characteres from [pos] (included) to [pos'] (excluded) must
-  be ignored *)
+(** Type of functions that are used to parse "blanks" (i.e. parts of the input
+  that should be ignored, like spaces or comments). Such function takes as
+  input a buffer and a position [pos], and returns the new buffer together
+  with the position [pos'] of the first meaningful character. This means that
+  everything that stands between [pos] (included) and [pos'] (excluded) should
+  be ignored. *)
 type blank = buffer -> int -> buffer * int
 
-(** [blank_regexp re]: produces a blank function from a regexp *)
+(** [blank_regexp re] produces a blank function using a regular expression
+  [re]. There is an important limitation regarding regular expressions
+  containing the newline symbol [\n], due to the fact that the [Str] module
+  only matches on strings (and not on an abstract notion of buffer). Such
+  regular expressions should be idempotent, and match a string containing
+  only a newline. *)
 val blank_regexp : Str.regexp -> blank
 
-(** type of a grammar returning value of type ['a] *)
-type ('a) grammar
+(** Type of a grammar returning a value of type ['a]. *)
+type 'a grammar
 
 (** [parse_buffer parser blank buffer] parses the given buffer using the provided parser and blank function. *)
 val parse_buffer : 'a grammar -> blank -> buffer -> 'a

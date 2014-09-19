@@ -1,4 +1,4 @@
-open Glr
+open Decap
 
 let blank = blank_regexp (Str.regexp "[ \t\n\r]*")
 
@@ -42,7 +42,6 @@ let _ =
 	Printf.printf "=> %f\n" x
       with
 	Parse_error (fname,l,n,msg) -> Printf.fprintf stderr "%s: Parse error %d:%d, '%s' expected\n%!" fname l n (String.concat "|" msg)
-      | Ambiguity(fname,l,n,_,l',n') -> Printf.fprintf stderr "%s: Ambiguous expression from %d:%d to %d:%d\n%!" fname l n l' n'
   else
     try
       while true do
@@ -52,6 +51,5 @@ let _ =
 	  Printf.printf "=> %f\n%!" x
 	with
 	  Parse_error(fname,l,n,msg) -> Printf.fprintf stderr "Parse error after char %d, '%s' expected\n%!" n (String.concat "|" msg)
-	| Ambiguity(fname,l,n,_,l',n') -> Printf.fprintf stderr "Ambiguous expression from %d to %d\n%!" n n'
       done
   with End_of_file -> ()

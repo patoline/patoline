@@ -1,4 +1,4 @@
-open Glr
+open Decap
 
 (* blank_regexp will automatically accept many newlines, so we can't use it to accept
    at most one .*)

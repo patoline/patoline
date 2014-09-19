@@ -1,4 +1,4 @@
-open Glr
+open Decap
 
 type 'a tree =
   Leaf of 'a

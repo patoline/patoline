@@ -2,7 +2,6 @@ open Str
 open Charset
 open Input
 
-exception Ambiguity of string * int * int * string * int * int
 exception Parse_error of string * int * int * string list
 exception Give_up
 
@@ -673,13 +672,11 @@ let parse_file grammar blank filename  =
 let print_exception = function
   | Parse_error(fname,l,n,msg) ->
      Printf.eprintf "%s: parse error after %d:%d, '%s' expected\n%!" fname l n (String.concat "|" msg)
-  | Ambiguity(fname,l,n,_,l',n') ->
-     Printf.eprintf "%s: ambiguous expression from %d:%d to %d:%d\n%!" fname l n l' n'
   | _ -> assert false
 
 let handle_exception f a =
   try
     f a
   with
-    Parse_error _ | Ambiguity _ as e -> print_exception e; exit 1
+    Parse_error _ as e -> print_exception e; exit 1
 
