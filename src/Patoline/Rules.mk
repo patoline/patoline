@@ -33,7 +33,7 @@ $(d)/pa_patoline: $(d)/pa_patoline.cmx $(UTIL_DIR)/patutil.cmxa $(IMAGELIB_DIR)/
 	$(Q)$(OCAMLOPT) -linkpkg -package patutil,imagelib,dynlink,glr $(COMPILER_INC) $(COMPILER_LIBO) -o $@ $(GLR_DIR)/pa_ocaml_prelude.cmx \
           $(GLR_DIR)/pa_parser.cmx $< $(GLR_DIR)/pa_ocaml.cmx $(GLR_DIR)/pa_compose.cmx $(GLR_DIR)/pa_opt_main.cmx
 
-$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/glr.cmxa 
+$(d)/pa_patoline.cmx: $(d)/pa_patoline.ml $(PA_OCAML) $(GLR_DIR)/decap.cmxa 
 	$(ECHO) "[OPT]    $< -> $@"
 	$(Q)$(OCAMLOPT_NOINTF) -pp $(PA_OCAML) -c -package patutil,glr -I $(GLR_DIR) $(COMPILER_INC) -o $@ $< 
 

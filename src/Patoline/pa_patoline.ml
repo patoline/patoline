@@ -3,7 +3,7 @@
 *)
 
 open Input
-open Glr
+open Decap
 open Charset
 open FilenameExtra
 open Pa_ocaml_prelude
