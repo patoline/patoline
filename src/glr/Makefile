@@ -18,14 +18,14 @@ all: decap.cmxa decap.cma decap.cmi doc pa_ocaml
 
 decap.cmi: charset.cmi input.cmi
 
-decap.cmo: umap.cmi charset.cmi input.cmi
+decap.cmo: charset.cmi input.cmi
 
-decap.cmx: umap.cmx umap.cmi charset.cmx charset.cmi input.cmx input.cmi
+decap.cmx: charset.cmx charset.cmi input.cmx input.cmi
 
-decap.cmxa: umap.cmx charset.cmx input.cmx decap.cmx
+decap.cmxa: charset.cmx input.cmx decap.cmx
 	$(OCAMLOPT) -a -o decap.cmxa $^
 
-decap.cma: umap.cmo charset.cmo input.cmo decap.cmo
+decap.cma: charset.cmo input.cmo decap.cmo
 	$(OCAMLC) -a -o decap.cma $^
 
 HAS_PA_OCAML=$(shell if [ -x pa_ocaml ]; then echo 1; else echo 0; fi)
@@ -222,7 +222,7 @@ examples/test_list.cmx: examples/test_list.ml decap.cmxa
 install: uninstall decap.mli decap.cmxa decap.cma
 	- mkdir $(DESTDIR)/$(LIBDIR)
 	- ocamlfind remove -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr
-	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META decap.cmi decap.cmo decap.mli decap.cmx umap.cmi umap.cmo umap.mli umap.cmx charset.cmi charset.cmo charset.mli charset.cmx decap.cma decap.cmxa decap.a
+	ocamlfind install -destdir $(DESTDIR)/$(dir $(LIBDIR)) glr META decap.cmi decap.cmo decap.mli decap.cmx charset.cmi charset.cmo charset.mli charset.cmx decap.cma decap.cmxa decap.a
 	install pa_ocaml $(DESTDIR)/$(BINDIR)
 
 uninstall:
